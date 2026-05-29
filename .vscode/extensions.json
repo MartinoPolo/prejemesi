@@ -1,0 +1,11 @@
+{
+	"recommendations": [
+		"svelte.svelte-vscode",
+		"editorconfig.editorconfig",
+		"oxc.oxc-vscode",
+		"bradlc.vscode-tailwindcss",
+		"inlang.vs-code-extension",
+		"esbenp.prettier-vscode",
+		"dbaeumer.vscode-eslint"
+	]
+}

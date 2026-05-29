@@ -1,0 +1,1 @@
+C:/_MP_projects/mpx-claude-code/rules-per-project/svelte-context.md

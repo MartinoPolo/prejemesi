@@ -1,0 +1,11 @@
+{
+	"hello_world": "Hello, {name}!",
+	"welcome": "Welcome to the app",
+	"login": "Log in",
+	"signup": "Sign up",
+	"logout": "Log out",
+	"email": "Email",
+	"password": "Password",
+	"forgot_password": "Forgot password?",
+	"reset_password": "Reset password"
+}

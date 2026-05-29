@@ -1,0 +1,11 @@
+{
+	"hello_world": "Ahoj, {name}!",
+	"welcome": "Vitejte v aplikaci",
+	"login": "Prihlasit se",
+	"signup": "Registrace",
+	"logout": "Odhlasit se",
+	"email": "E-mail",
+	"password": "Heslo",
+	"forgot_password": "Zapomenute heslo?",
+	"reset_password": "Obnovit heslo"
+}
