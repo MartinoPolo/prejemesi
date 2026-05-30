@@ -41,8 +41,11 @@ export default defineConfig({
 				{
 					pattern: '/:path(.*)?',
 					localized: [
-						['en', '/:path(.*)?'],
-						['cs', '/cs/:path(.*)?'],
+						// English must come before Czech so the more-specific /en/* pattern
+						// is matched first. The Czech catch-all /:path(.*)? would otherwise
+						// greedily match /en/* URLs before the English pattern is checked.
+						['en', '/en/:path(.*)?'],
+						['cs', '/:path(.*)?'],
 					],
 				},
 			],
