@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
+	import { Input } from '$lib/components/base/input/index.js';
+	import { Textarea } from '$lib/components/base/textarea/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
 	import type { HTMLInputTypeAttribute } from 'svelte/elements';
 
 	interface Props {

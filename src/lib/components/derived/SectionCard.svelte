@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Card from '$lib/components/base/card/index.js';
 	import type { Snippet } from 'svelte';
 
 	interface Props {

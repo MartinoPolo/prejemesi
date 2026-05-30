@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import type { Snippet } from 'svelte';
 

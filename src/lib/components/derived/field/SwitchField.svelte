@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
+	import { Switch } from '$lib/components/base/switch/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
 
 	interface Props {
 		id: string;
@@ -19,7 +19,7 @@
 	}: Props = $props();
 </script>
 
-<div class="flex items-center gap-2 {className ?? ''}">
-	<Checkbox {id} bind:checked {onCheckedChange} />
-	<Label for={id} class="font-normal">{labelText}</Label>
+<div class="flex items-center justify-between {className ?? ''}">
+	<Label for={id}>{labelText}</Label>
+	<Switch {id} bind:checked {onCheckedChange} />
 </div>

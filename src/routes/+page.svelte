@@ -1,17 +1,17 @@
 <script lang="ts">
 	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
-	import LabeledSelect from '$lib/components/composed/LabeledSelect.svelte';
-	import SwitchField from '$lib/components/composed/field/SwitchField.svelte';
-	import CheckboxField from '$lib/components/composed/field/CheckboxField.svelte';
-	import FormField from '$lib/components/composed/field/FormField.svelte';
-	import SectionCard from '$lib/components/composed/SectionCard.svelte';
-	import InfoAlert from '$lib/components/composed/alert/InfoAlert.svelte';
-	import ErrorAlert from '$lib/components/composed/alert/ErrorAlert.svelte';
-	import SuccessAlert from '$lib/components/composed/alert/SuccessAlert.svelte';
+	import LabeledSelect from '$lib/components/derived/LabeledSelect.svelte';
+	import SwitchField from '$lib/components/derived/field/SwitchField.svelte';
+	import CheckboxField from '$lib/components/derived/field/CheckboxField.svelte';
+	import FormField from '$lib/components/derived/field/FormField.svelte';
+	import SectionCard from '$lib/components/derived/SectionCard.svelte';
+	import InfoAlert from '$lib/components/derived/alert/InfoAlert.svelte';
+	import ErrorAlert from '$lib/components/derived/alert/ErrorAlert.svelte';
+	import SuccessAlert from '$lib/components/derived/alert/SuccessAlert.svelte';
 	import { useShowcaseForm, type Interests } from '$lib/context/showcase_form.context.svelte';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
+	import { Button } from '$lib/components/base/button/index.js';
+	import { Badge } from '$lib/components/base/badge/index.js';
+	import { Separator } from '$lib/components/base/separator/index.js';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Loader from '@lucide/svelte/icons/loader';
 

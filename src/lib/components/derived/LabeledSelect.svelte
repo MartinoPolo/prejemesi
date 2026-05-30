@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import * as Select from '$lib/components/ui/select/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
-	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+	import * as Select from '$lib/components/base/select/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
+	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import type { Snippet } from 'svelte';
 
 	interface SelectOption {

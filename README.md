@@ -192,18 +192,18 @@ Use `await` directly in Svelte components without `{#await}` blocks. Enabled via
 ## UI Components (shadcn-svelte)
 
 Pre-configured [shadcn-svelte](https://next.shadcn-svelte.com/) component library with a green theme.
-Components live in `src/lib/components/ui/`. Use the `cn()` utility from `$lib/utils` for conditional class merging.
+Components live in `src/lib/components/base/`. Use the `cn()` utility from `$lib/utils` for conditional class merging.
 
 ### Component Architecture
 
 Components follow a two-tier structure:
 
-| Tier           | Directory                      | Naming                                    | Purpose                                                                   |
-| -------------- | ------------------------------ | ----------------------------------------- | ------------------------------------------------------------------------- |
-| **Primitives** | `src/lib/components/ui/`       | kebab-case files, dual PascalCase exports | CLI-managed shadcn-svelte components — do not edit directly               |
-| **Composed**   | `src/lib/components/composed/` | PascalCase files                          | App-level composites that reduce nesting by combining multiple primitives |
+| Tier           | Directory                     | Naming                                    | Purpose                                                                   |
+| -------------- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------------------- |
+| **Primitives** | `src/lib/components/base/`    | kebab-case files, dual PascalCase exports | CLI-managed shadcn-svelte components — do not edit directly               |
+| **Derived**    | `src/lib/components/derived/` | PascalCase files                          | App-level composites that reduce nesting by combining multiple primitives |
 
-Composed components use descriptive PascalCase names that avoid collisions with the `ui/` namespace (e.g. `LabeledSelect` instead of `Select`, `SectionCard` instead of `Card`). Inside composed components, import `ui/` primitives with their standard namespace import (`import * as Select from '$lib/components/ui/select/index.js'`).
+Derived components use descriptive PascalCase names that avoid collisions with the `base/` namespace (e.g. `LabeledSelect` instead of `Select`, `SectionCard` instead of `Card`). Inside derived components, import `base/` primitives with their standard namespace import (`import * as Select from '$lib/components/base/select/index.js'`).
 
 Standalone components that don't compose multiple primitives (like `DarkModeToggle`) stay at the `src/lib/components/` root.
 
