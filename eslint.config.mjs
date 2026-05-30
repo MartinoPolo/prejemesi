@@ -4,7 +4,11 @@ import svelteParser from 'svelte-eslint-parser';
 import checkFile from 'eslint-plugin-check-file';
 import storybook from 'eslint-plugin-storybook';
 import globals from 'globals';
-import svelteConfig from './svelte.config.js';
+// Cache-safe subset of svelte.config.js — the real config uses a function for
+// compilerOptions.runes which ESLint cannot serialize for --cache.
+const eslintSvelteConfig = {
+	compilerOptions: { runes: true },
+};
 
 export default [
 	{
@@ -15,7 +19,8 @@ export default [
 			'node_modules',
 			'src/lib/paraglide',
 			'**/*.config.*',
-			'*.d.ts',
+			'**/*.d.ts',
+			'scripts/**',
 		],
 	},
 	...tseslint.configs.recommended,
@@ -75,7 +80,7 @@ export default [
 				parser: '@typescript-eslint/parser',
 				extraFileExtensions: ['.svelte'],
 				project: true,
-				svelteConfig,
+				svelteConfig: eslintSvelteConfig,
 				svelteFeatures: {
 					experimentalGenerics: true,
 				},
@@ -106,7 +111,7 @@ export default [
 	},
 	{
 		files: ['src/lib/**/*.svelte'],
-		ignores: ['src/lib/components/ui/**'],
+		ignores: ['src/lib/components/base/**'],
 		plugins: { 'check-file': checkFile },
 		rules: {
 			'check-file/filename-naming-convention': ['error', { '**/*.svelte': 'PASCAL_CASE' }],
