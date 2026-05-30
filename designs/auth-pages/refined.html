@@ -1,0 +1,1930 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="description" content="Darecky — Auth Pages refined mockup, light mode only" />
+		<title>Darecky — Auth Pages: REFINED (Variant 2 — Split Screen)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── REFINED — Auth Pages: Variant 2 Split Screen ───────────────
+			   Light mode only. Dark mode auto-generated from tokens.
+			   Changes from variant-2:
+			   - Consistent logo from app-shell: gift-box SVG icon + wordmark + dimmed TLD
+			   - All 3 auth forms shown (login + register + magic link)
+			   - Error state on login form
+			   - Magic link success state (shown after form)
+			   - Google OAuth button with official G icon
+			   - Split-screen: 45% sage green branding / 55% white form
+			   - "Zdarma navždy · Bez reklam" at bottom of branding panel
+			   - Eyebrow labels per section
+			   - Light mode only (decisions: light mode is source of truth) */
+
+			/* ── Sage green color theme (light only) ── */
+			:root,
+			.theme-light {
+				--background: oklch(0.988 0.004 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.948 0.012 150);
+				--foreground: oklch(0.17 0.018 155);
+				--foreground-muted: oklch(0.44 0.022 150);
+				--foreground-subtle: oklch(0.6 0.014 150);
+				--border: oklch(0.918 0.012 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(0.982 0.018 155.826);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--error: oklch(0.577 0.245 27.325deg);
+				--error-soft: oklch(0.97 0.025 27);
+				--success: oklch(0.66 0.13 145);
+				--success-soft: oklch(0.95 0.04 145);
+				/* Branding panel */
+				--panel-bg: oklch(52.7% 0.154 150.069deg);
+				--panel-bg-deep: oklch(0.38 0.12 150);
+				--panel-fg: oklch(0.99 0 0);
+				--panel-fg-muted: oklch(0.88 0.06 150);
+			}
+
+			/* ── Reset & base ── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+				background: oklch(0.93 0.01 150);
+				font-family: var(--font-sans);
+				color: var(--foreground);
+				font-size: var(--text-base);
+				-webkit-font-smoothing: antialiased;
+				min-width: 1280px;
+			}
+
+			/* ── Eyebrow label (section divider, mockup only) ── */
+			.refined-eyebrow {
+				text-align: center;
+				padding: var(--space-5) var(--space-6) var(--space-4);
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+				background: var(--primary-soft);
+				border-bottom: 1px solid oklch(0.87 0.038 150);
+			}
+			.refined-eyebrow:first-child {
+				padding-top: var(--space-8);
+			}
+
+			/* ═══════════════════════════════════════════════════════
+			   SPLIT-SCREEN LAYOUT
+			   Left ~45%: sage green branding panel
+			   Right ~55%: white form panel
+			   ═══════════════════════════════════════════════════════ */
+			.auth-screen {
+				display: grid;
+				grid-template-columns: 45fr 55fr;
+				min-height: 100vh;
+				background: var(--surface);
+			}
+
+			/* ─────────────────────────────────────────────────────
+			   BRANDING PANEL (left)
+			   ───────────────────────────────────────────────────── */
+			.brand-panel {
+				background: linear-gradient(160deg, var(--panel-bg) 0%, var(--panel-bg-deep) 100%);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				padding: var(--space-16) var(--space-12);
+				position: relative;
+				overflow: hidden;
+				min-height: 100vh;
+			}
+
+			/* Decorative translucent circles */
+			.brand-panel::before {
+				content: '';
+				position: absolute;
+				top: -100px;
+				right: -100px;
+				width: 360px;
+				height: 360px;
+				border-radius: 50%;
+				background: color-mix(in oklch, var(--panel-fg) 8%, transparent);
+				pointer-events: none;
+			}
+			.brand-panel::after {
+				content: '';
+				position: absolute;
+				bottom: -60px;
+				left: -60px;
+				width: 240px;
+				height: 240px;
+				border-radius: 50%;
+				background: color-mix(in oklch, var(--panel-fg) 6%, transparent);
+				pointer-events: none;
+			}
+
+			.brand-content {
+				position: relative;
+				z-index: 1;
+				text-align: center;
+				max-width: 340px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				flex: 1;
+				justify-content: center;
+			}
+
+			/* ── Logo (consistent with app shell) ── */
+			.brand-logo {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				text-decoration: none;
+				margin-bottom: var(--space-8);
+			}
+			.brand-logo-icon {
+				width: 44px;
+				height: 44px;
+				background: color-mix(in oklch, var(--panel-fg) 18%, transparent);
+				border-radius: var(--radius-lg);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--panel-fg);
+				flex-shrink: 0;
+				backdrop-filter: blur(4px);
+			}
+			.brand-logo-wordmark {
+				font-family: var(--font-heading);
+				font-size: var(--text-3xl);
+				font-weight: var(--weight-bold);
+				color: var(--panel-fg);
+				letter-spacing: var(--tracking-tight);
+				line-height: 1;
+			}
+			.brand-logo-tld {
+				opacity: 0.45;
+				font-weight: var(--weight-medium);
+				font-size: var(--text-2xl);
+			}
+
+			/* ── Gift box illustration ── */
+			.brand-illustration {
+				margin-bottom: var(--space-8);
+			}
+
+			/* ── Tagline ── */
+			.brand-tagline {
+				font-family: var(--font-heading);
+				font-size: var(--text-xl);
+				font-weight: var(--weight-semibold);
+				color: var(--panel-fg);
+				line-height: var(--leading-snug);
+				letter-spacing: var(--tracking-snug);
+				margin-bottom: var(--space-8);
+				text-align: center;
+			}
+
+			/* ── Feature pills ── */
+			.brand-features {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-3);
+				width: 100%;
+				margin-bottom: var(--space-10);
+			}
+			.brand-feature-item {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				text-align: left;
+			}
+			.brand-feature-icon {
+				width: 32px;
+				height: 32px;
+				border-radius: var(--radius-md);
+				background: color-mix(in oklch, var(--panel-fg) 14%, transparent);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--panel-fg);
+				flex-shrink: 0;
+			}
+			.brand-feature-text {
+				font-size: var(--text-sm);
+				color: var(--panel-fg);
+				line-height: var(--leading-snug);
+			}
+			.brand-feature-text strong {
+				display: block;
+				font-weight: var(--weight-semibold);
+			}
+			.brand-feature-text span {
+				opacity: 0.75;
+				font-size: var(--text-xs);
+			}
+
+			/* ── Bottom badge ── */
+			.brand-bottom {
+				position: absolute;
+				bottom: var(--space-6);
+				left: 0;
+				right: 0;
+				text-align: center;
+				font-size: var(--text-xs);
+				color: var(--panel-fg-muted);
+				letter-spacing: var(--tracking-wide);
+			}
+
+			/* ─────────────────────────────────────────────────────
+			   FORM PANEL (right)
+			   ───────────────────────────────────────────────────── */
+			.form-panel {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				padding: var(--space-12) var(--space-10);
+				background: var(--surface);
+				overflow-y: auto;
+				min-height: 100vh;
+			}
+
+			.form-inner {
+				width: 100%;
+				max-width: 420px;
+			}
+
+			/* Form heading */
+			.form-heading {
+				font-family: var(--font-heading);
+				font-size: var(--text-2xl);
+				font-weight: var(--weight-bold);
+				color: var(--foreground);
+				letter-spacing: var(--tracking-tight);
+				margin-bottom: var(--space-1);
+				line-height: var(--leading-tight);
+			}
+			.form-subheading {
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				margin-bottom: var(--space-8);
+				line-height: var(--leading-relaxed);
+			}
+
+			/* ── Form fields ── */
+			.form-stack {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-4);
+			}
+			.form-field {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.form-label {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground);
+			}
+			.form-input {
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				height: var(--size-control-md);
+				padding: 0 var(--space-3);
+				background: var(--surface);
+				border: 1.5px solid var(--border);
+				border-radius: var(--radius-md);
+				color: var(--foreground);
+				width: 100%;
+				outline: none;
+				transition:
+					border-color var(--duration-normal),
+					box-shadow var(--duration-normal);
+			}
+			.form-input::placeholder {
+				color: var(--foreground-subtle);
+			}
+			.form-input:focus {
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 16%, transparent);
+			}
+			.form-input.is-error {
+				border-color: var(--error);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--error) 14%, transparent);
+			}
+			.form-error-text {
+				font-size: var(--text-xs);
+				color: var(--error);
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				line-height: var(--leading-snug);
+			}
+			.form-helper-text {
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+			}
+
+			/* Password wrapper with toggle */
+			.password-wrapper {
+				position: relative;
+			}
+			.password-wrapper .form-input {
+				padding-right: 44px;
+			}
+			.password-toggle {
+				position: absolute;
+				right: 10px;
+				top: 50%;
+				transform: translateY(-50%);
+				background: none;
+				border: none;
+				color: var(--foreground-subtle);
+				cursor: pointer;
+				padding: 4px;
+				display: flex;
+				align-items: center;
+				border-radius: var(--radius-xs);
+				transition: color var(--duration-fast);
+				line-height: 1;
+			}
+			.password-toggle:hover {
+				color: var(--foreground);
+			}
+
+			/* Forgot link */
+			.forgot-link {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+				text-decoration: none;
+				text-align: right;
+				display: block;
+				margin-top: 2px;
+				transition: color var(--duration-fast);
+			}
+			.forgot-link:hover {
+				color: var(--primary);
+			}
+
+			/* Password strength bar */
+			.strength-bar {
+				display: flex;
+				gap: 4px;
+				margin-top: 6px;
+			}
+			.strength-segment {
+				flex: 1;
+				height: 3px;
+				border-radius: 2px;
+				background: var(--border);
+			}
+			.strength-segment.active-strong {
+				background: var(--success);
+			}
+
+			/* ── Error banner ── */
+			.error-banner {
+				display: flex;
+				align-items: flex-start;
+				gap: var(--space-3);
+				background: var(--error-soft);
+				border: 1px solid color-mix(in oklch, var(--error) 28%, transparent);
+				border-radius: var(--radius-md);
+				padding: var(--space-3) var(--space-4);
+				margin-bottom: var(--space-5);
+				font-size: var(--text-sm);
+				color: var(--error);
+				line-height: var(--leading-snug);
+			}
+			.error-banner-icon {
+				flex-shrink: 0;
+				margin-top: 1px;
+				color: var(--error);
+			}
+
+			/* ── Buttons ── */
+			.btn-primary {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--space-2);
+				width: 100%;
+				height: var(--size-control-lg);
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				border-radius: var(--radius-md);
+				font-family: var(--font-sans);
+				font-size: var(--text-base);
+				font-weight: var(--weight-semibold);
+				cursor: pointer;
+				transition: filter var(--duration-normal);
+				box-shadow: 0 2px 10px color-mix(in oklch, var(--primary) 32%, transparent);
+				margin-top: var(--space-6);
+			}
+			.btn-primary:hover {
+				filter: brightness(1.08);
+			}
+			.btn-primary:active {
+				transform: scale(0.98);
+			}
+
+			.btn-google {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--space-2);
+				width: 100%;
+				height: var(--size-control-md);
+				background: var(--surface);
+				color: var(--foreground);
+				border: 1.5px solid var(--border);
+				border-radius: var(--radius-md);
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				cursor: pointer;
+				transition:
+					background var(--duration-normal),
+					border-color var(--duration-normal);
+			}
+			.btn-google:hover {
+				background: var(--surface-2);
+				border-color: var(--border-strong);
+			}
+
+			.btn-ghost-link {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				width: 100%;
+				height: var(--size-control-sm);
+				background: none;
+				border: none;
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition: color var(--duration-fast);
+				text-decoration: none;
+				margin-top: var(--space-2);
+			}
+			.btn-ghost-link:hover {
+				color: var(--primary);
+			}
+
+			/* ── Divider "nebo" ── */
+			.auth-divider {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				margin: var(--space-5) 0;
+			}
+			.auth-divider-line {
+				flex: 1;
+				height: 1px;
+				background: var(--border);
+			}
+			.auth-divider-text {
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				white-space: nowrap;
+				letter-spacing: var(--tracking-wide);
+			}
+
+			/* ── Footer links ── */
+			.auth-footer {
+				text-align: center;
+				margin-top: var(--space-6);
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+			}
+			.auth-footer a {
+				color: var(--primary);
+				text-decoration: none;
+				font-weight: var(--weight-semibold);
+			}
+			.auth-footer a:hover {
+				text-decoration: underline;
+			}
+
+			/* ── Success state ── */
+			.success-state {
+				text-align: center;
+				padding: var(--space-4) 0;
+			}
+			.success-icon-wrap {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 72px;
+				height: 72px;
+				background: var(--success-soft);
+				border-radius: var(--radius-full);
+				margin-bottom: var(--space-5);
+				color: var(--success);
+			}
+			.success-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-xl);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+				margin-bottom: var(--space-2);
+			}
+			.success-body {
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+			}
+			.success-back {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				margin-top: var(--space-6);
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				text-decoration: none;
+				transition: color var(--duration-fast);
+			}
+			.success-back:hover {
+				color: var(--primary);
+			}
+
+			/* ── Spinner (loading state) ── */
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+			.spinner {
+				width: 18px;
+				height: 18px;
+				border: 2px solid color-mix(in oklch, var(--primary-fg) 35%, transparent);
+				border-top-color: var(--primary-fg);
+				border-radius: 50%;
+				animation: spin 0.7s linear infinite;
+				flex-shrink: 0;
+			}
+
+			/* ── Section spacer between form sections ── */
+			.section-spacer {
+				height: var(--space-4);
+				background: oklch(0.93 0.01 150);
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ═══════════════════════════════════════════════════════════
+		     SECTION 1: PŘIHLÁŠENÍ (Login) — Default + Error state
+		     ═══════════════════════════════════════════════════════════ -->
+		<div class="refined-eyebrow" style="padding-top: var(--space-8)">
+			REFINED — Přihlášení (Login)
+		</div>
+
+		<div class="dk-root theme-light auth-screen">
+			<!-- ── Branding panel ── -->
+			<div class="brand-panel">
+				<div class="brand-content">
+					<!-- Logo: gift icon + wordmark + dimmed TLD (consistent with app shell) -->
+					<a class="brand-logo" href="/" aria-label="Darecky — domovská stránka">
+						<div class="brand-logo-icon" aria-hidden="true">
+							<!-- Lucide-style gift box icon, 26×26 within 44×44 container -->
+							<svg
+								width="26"
+								height="26"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<line x1="12" y1="22" x2="12" y2="7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						<div class="brand-logo-wordmark">
+							darecky<span class="brand-logo-tld">.cz</span>
+						</div>
+					</a>
+
+					<!-- Gift box illustration -->
+					<div class="brand-illustration" aria-hidden="true">
+						<svg width="180" height="180" viewBox="0 0 180 180" fill="none">
+							<!-- Shadow -->
+							<ellipse
+								cx="90"
+								cy="168"
+								rx="60"
+								ry="9"
+								fill="oklch(0.3 0.08 150)"
+								opacity="0.2"
+							/>
+							<!-- Gift box body -->
+							<rect
+								x="24"
+								y="92"
+								width="132"
+								height="72"
+								rx="10"
+								fill="oklch(0.99 0 0)"
+								opacity="0.96"
+							/>
+							<!-- Gift box lid -->
+							<rect
+								x="16"
+								y="72"
+								width="148"
+								height="26"
+								rx="7"
+								fill="oklch(0.99 0 0)"
+							/>
+							<!-- Ribbon vertical -->
+							<rect
+								x="82"
+								y="72"
+								width="16"
+								height="92"
+								rx="4"
+								fill="oklch(0.78 0.14 32)"
+							/>
+							<!-- Ribbon horizontal on lid -->
+							<rect
+								x="16"
+								y="79"
+								width="148"
+								height="12"
+								rx="4"
+								fill="oklch(0.78 0.14 32)"
+							/>
+							<!-- Bow left loop -->
+							<path
+								d="M90 70 C76 50, 48 50, 55 64 C62 74, 80 68, 90 70Z"
+								fill="oklch(0.72 0.18 27)"
+							/>
+							<!-- Bow right loop -->
+							<path
+								d="M90 70 C104 50, 132 50, 125 64 C118 74, 100 68, 90 70Z"
+								fill="oklch(0.72 0.18 27)"
+							/>
+							<!-- Bow center knot -->
+							<circle cx="90" cy="70" r="8" fill="oklch(0.80 0.20 30)" />
+							<!-- Floating sparkles -->
+							<circle cx="40" cy="40" r="3.5" fill="oklch(0.99 0 0)" opacity="0.55" />
+							<circle
+								cx="148"
+								cy="30"
+								r="2.5"
+								fill="oklch(0.99 0 0)"
+								opacity="0.45"
+							/>
+							<circle cx="162" cy="108" r="3" fill="oklch(0.99 0 0)" opacity="0.35" />
+							<circle cx="18" cy="122" r="2" fill="oklch(0.99 0 0)" opacity="0.4" />
+							<circle cx="156" cy="50" r="1.5" fill="oklch(0.99 0 0)" opacity="0.3" />
+							<!-- Small gift box 1 -->
+							<rect
+								x="140"
+								y="130"
+								width="28"
+								height="22"
+								rx="4"
+								fill="oklch(0.99 0 0)"
+								opacity="0.18"
+							/>
+							<rect
+								x="136"
+								y="124"
+								width="36"
+								height="10"
+								rx="3"
+								fill="oklch(0.99 0 0)"
+								opacity="0.18"
+							/>
+							<!-- Small gift box 2 -->
+							<rect
+								x="12"
+								y="134"
+								width="22"
+								height="18"
+								rx="3"
+								fill="oklch(0.99 0 0)"
+								opacity="0.16"
+							/>
+							<rect
+								x="9"
+								y="128"
+								width="28"
+								height="9"
+								rx="3"
+								fill="oklch(0.99 0 0)"
+								opacity="0.16"
+							/>
+						</svg>
+					</div>
+
+					<!-- Tagline -->
+					<p class="brand-tagline">Sdílejte přání,<br />zachovejte překvapení</p>
+
+					<!-- Feature highlights -->
+					<div class="brand-features">
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<!-- List icon -->
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<line x1="8" y1="6" x2="21" y2="6" />
+									<line x1="8" y1="12" x2="21" y2="12" />
+									<line x1="8" y1="18" x2="21" y2="18" />
+									<line x1="3" y1="6" x2="3.01" y2="6" />
+									<line x1="3" y1="12" x2="3.01" y2="12" />
+									<line x1="3" y1="18" x2="3.01" y2="18" />
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Seznamy přání</strong>
+								<span>Vytvořte a sdílejte za minutu</span>
+							</div>
+						</div>
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<!-- Eye-off icon -->
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"
+									/>
+									<path
+										d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"
+									/>
+									<line x1="1" y1="1" x2="23" y2="23" />
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Skryté rezervace</strong>
+								<span>Překvapení zůstane zachováno</span>
+							</div>
+						</div>
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<!-- Link icon -->
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+									/>
+									<path
+										d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+									/>
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Sdílení odkazem</strong>
+								<span>WhatsApp, email, Messenger…</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Bottom badge: "Zdarma navždy · Bez reklam" -->
+				<div class="brand-bottom">Zdarma navždy · Bez reklam</div>
+			</div>
+
+			<!-- ── Form panel: Login default state ── -->
+			<div class="form-panel">
+				<div class="form-inner">
+					<h1 class="form-heading">Přihlaste se</h1>
+					<p class="form-subheading">Vítejte zpět v Darecky</p>
+
+					<div class="form-stack">
+						<div class="form-field">
+							<label class="form-label" for="login-email">Email</label>
+							<input
+								class="form-input"
+								type="email"
+								id="login-email"
+								placeholder="vas@email.cz"
+								autocomplete="email"
+							/>
+						</div>
+						<div class="form-field">
+							<label class="form-label" for="login-password">Heslo</label>
+							<div class="password-wrapper">
+								<input
+									class="form-input"
+									type="password"
+									id="login-password"
+									placeholder="••••••••"
+									autocomplete="current-password"
+								/>
+								<button
+									class="password-toggle"
+									type="button"
+									aria-label="Zobrazit heslo"
+								>
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+										<circle cx="12" cy="12" r="3" />
+									</svg>
+								</button>
+							</div>
+							<a href="/reset-password" class="forgot-link">Zapomněli jste heslo?</a>
+						</div>
+					</div>
+
+					<button class="btn-primary" type="button">Přihlásit se</button>
+
+					<div class="auth-divider">
+						<div class="auth-divider-line"></div>
+						<span class="auth-divider-text">nebo</span>
+						<div class="auth-divider-line"></div>
+					</div>
+
+					<!-- Google OAuth button with official G icon -->
+					<button class="btn-google" type="button">
+						<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+							<path
+								fill="#4285F4"
+								d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+							/>
+							<path
+								fill="#34A853"
+								d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+							/>
+							<path
+								fill="#FBBC05"
+								d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+							/>
+							<path
+								fill="#EA4335"
+								d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+							/>
+						</svg>
+						Přihlásit přes Google
+					</button>
+
+					<!-- Magic link ghost button -->
+					<a href="#magic-link" class="btn-ghost-link">
+						<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+							/>
+							<polyline points="22,6 12,13 2,6" />
+						</svg>
+						Přihlásit se odkazem
+					</a>
+
+					<div class="auth-footer">
+						Nemáte účet?&ensp;<a href="#register">Zaregistrujte se</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ── Error state variant ── -->
+		<div class="refined-eyebrow">REFINED — Přihlášení · Chybový stav (Error State)</div>
+
+		<div class="dk-root theme-light auth-screen">
+			<div class="brand-panel">
+				<div class="brand-content">
+					<a class="brand-logo" href="/" aria-label="Darecky — domovská stránka">
+						<div class="brand-logo-icon" aria-hidden="true">
+							<svg
+								width="26"
+								height="26"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<line x1="12" y1="22" x2="12" y2="7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						<div class="brand-logo-wordmark">
+							darecky<span class="brand-logo-tld">.cz</span>
+						</div>
+					</a>
+					<div class="brand-illustration" aria-hidden="true">
+						<svg width="180" height="180" viewBox="0 0 180 180" fill="none">
+							<ellipse
+								cx="90"
+								cy="168"
+								rx="60"
+								ry="9"
+								fill="oklch(0.3 0.08 150)"
+								opacity="0.2"
+							/>
+							<rect
+								x="24"
+								y="92"
+								width="132"
+								height="72"
+								rx="10"
+								fill="oklch(0.99 0 0)"
+								opacity="0.96"
+							/>
+							<rect
+								x="16"
+								y="72"
+								width="148"
+								height="26"
+								rx="7"
+								fill="oklch(0.99 0 0)"
+							/>
+							<rect
+								x="82"
+								y="72"
+								width="16"
+								height="92"
+								rx="4"
+								fill="oklch(0.78 0.14 32)"
+							/>
+							<rect
+								x="16"
+								y="79"
+								width="148"
+								height="12"
+								rx="4"
+								fill="oklch(0.78 0.14 32)"
+							/>
+							<path
+								d="M90 70 C76 50, 48 50, 55 64 C62 74, 80 68, 90 70Z"
+								fill="oklch(0.72 0.18 27)"
+							/>
+							<path
+								d="M90 70 C104 50, 132 50, 125 64 C118 74, 100 68, 90 70Z"
+								fill="oklch(0.72 0.18 27)"
+							/>
+							<circle cx="90" cy="70" r="8" fill="oklch(0.80 0.20 30)" />
+							<circle cx="40" cy="40" r="3.5" fill="oklch(0.99 0 0)" opacity="0.55" />
+							<circle
+								cx="148"
+								cy="30"
+								r="2.5"
+								fill="oklch(0.99 0 0)"
+								opacity="0.45"
+							/>
+						</svg>
+					</div>
+					<p class="brand-tagline">Sdílejte přání,<br />zachovejte překvapení</p>
+				</div>
+				<div class="brand-bottom">Zdarma navždy · Bez reklam</div>
+			</div>
+
+			<div class="form-panel">
+				<div class="form-inner">
+					<h1 class="form-heading">Přihlaste se</h1>
+					<p class="form-subheading">Vítejte zpět v Darecky</p>
+
+					<!-- Error banner -->
+					<div class="error-banner" role="alert">
+						<svg
+							class="error-banner-icon"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<line x1="12" y1="8" x2="12" y2="12" />
+							<line x1="12" y1="16" x2="12.01" y2="16" />
+						</svg>
+						<span
+							>Nesprávný email nebo heslo. Zkontrolujte zadané údaje a zkuste to
+							znovu.</span
+						>
+					</div>
+
+					<div class="form-stack">
+						<div class="form-field">
+							<label class="form-label" for="login-email-err">Email</label>
+							<input
+								class="form-input is-error"
+								type="email"
+								id="login-email-err"
+								value="jana@email.cz"
+								autocomplete="email"
+								aria-invalid="true"
+								aria-describedby="login-email-error"
+							/>
+							<span class="form-error-text" id="login-email-error">
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<line x1="12" y1="8" x2="12" y2="12" />
+									<line x1="12" y1="16" x2="12.01" y2="16" />
+								</svg>
+								Nesprávný email nebo heslo
+							</span>
+						</div>
+						<div class="form-field">
+							<label class="form-label" for="login-password-err">Heslo</label>
+							<div class="password-wrapper">
+								<input
+									class="form-input is-error"
+									type="password"
+									id="login-password-err"
+									value="wrongpass"
+									autocomplete="current-password"
+									aria-invalid="true"
+									aria-describedby="login-password-error"
+								/>
+								<button
+									class="password-toggle"
+									type="button"
+									aria-label="Zobrazit heslo"
+								>
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+										<circle cx="12" cy="12" r="3" />
+									</svg>
+								</button>
+							</div>
+							<span class="form-error-text" id="login-password-error">
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<line x1="12" y1="8" x2="12" y2="12" />
+									<line x1="12" y1="16" x2="12.01" y2="16" />
+								</svg>
+								Nesprávný email nebo heslo
+							</span>
+							<a href="/reset-password" class="forgot-link">Zapomněli jste heslo?</a>
+						</div>
+					</div>
+
+					<button class="btn-primary" type="button">Přihlásit se</button>
+
+					<div class="auth-divider">
+						<div class="auth-divider-line"></div>
+						<span class="auth-divider-text">nebo</span>
+						<div class="auth-divider-line"></div>
+					</div>
+
+					<button class="btn-google" type="button">
+						<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+							<path
+								fill="#4285F4"
+								d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+							/>
+							<path
+								fill="#34A853"
+								d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+							/>
+							<path
+								fill="#FBBC05"
+								d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+							/>
+							<path
+								fill="#EA4335"
+								d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+							/>
+						</svg>
+						Přihlásit přes Google
+					</button>
+
+					<a href="#magic-link" class="btn-ghost-link">
+						<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+							/>
+							<polyline points="22,6 12,13 2,6" />
+						</svg>
+						Přihlásit se odkazem
+					</a>
+
+					<div class="auth-footer">
+						Nemáte účet?&ensp;<a href="#register">Zaregistrujte se</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     SECTION 2: REGISTRACE (Register)
+		     ═══════════════════════════════════════════════════════════ -->
+		<div class="refined-eyebrow" id="register">REFINED — Registrace (Register)</div>
+
+		<div class="dk-root theme-light auth-screen">
+			<!-- ── Branding panel ── -->
+			<div class="brand-panel">
+				<div class="brand-content">
+					<a class="brand-logo" href="/" aria-label="Darecky — domovská stránka">
+						<div class="brand-logo-icon" aria-hidden="true">
+							<svg
+								width="26"
+								height="26"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<line x1="12" y1="22" x2="12" y2="7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						<div class="brand-logo-wordmark">
+							darecky<span class="brand-logo-tld">.cz</span>
+						</div>
+					</a>
+
+					<div class="brand-illustration" aria-hidden="true">
+						<svg width="180" height="180" viewBox="0 0 180 180" fill="none">
+							<ellipse
+								cx="90"
+								cy="168"
+								rx="60"
+								ry="9"
+								fill="oklch(0.3 0.08 150)"
+								opacity="0.2"
+							/>
+							<rect
+								x="24"
+								y="92"
+								width="132"
+								height="72"
+								rx="10"
+								fill="oklch(0.99 0 0)"
+								opacity="0.96"
+							/>
+							<rect
+								x="16"
+								y="72"
+								width="148"
+								height="26"
+								rx="7"
+								fill="oklch(0.99 0 0)"
+							/>
+							<rect
+								x="82"
+								y="72"
+								width="16"
+								height="92"
+								rx="4"
+								fill="oklch(0.78 0.14 32)"
+							/>
+							<rect
+								x="16"
+								y="79"
+								width="148"
+								height="12"
+								rx="4"
+								fill="oklch(0.78 0.14 32)"
+							/>
+							<path
+								d="M90 70 C76 50, 48 50, 55 64 C62 74, 80 68, 90 70Z"
+								fill="oklch(0.72 0.18 27)"
+							/>
+							<path
+								d="M90 70 C104 50, 132 50, 125 64 C118 74, 100 68, 90 70Z"
+								fill="oklch(0.72 0.18 27)"
+							/>
+							<circle cx="90" cy="70" r="8" fill="oklch(0.80 0.20 30)" />
+							<circle cx="40" cy="40" r="3.5" fill="oklch(0.99 0 0)" opacity="0.55" />
+							<circle
+								cx="148"
+								cy="30"
+								r="2.5"
+								fill="oklch(0.99 0 0)"
+								opacity="0.45"
+							/>
+							<circle cx="162" cy="108" r="3" fill="oklch(0.99 0 0)" opacity="0.35" />
+							<circle cx="18" cy="122" r="2" fill="oklch(0.99 0 0)" opacity="0.4" />
+							<!-- Extra sparkle for register section -->
+							<circle cx="28" cy="54" r="2" fill="oklch(0.99 0 0)" opacity="0.35" />
+							<circle
+								cx="158"
+								cy="138"
+								r="2.5"
+								fill="oklch(0.99 0 0)"
+								opacity="0.25"
+							/>
+						</svg>
+					</div>
+
+					<p class="brand-tagline">Začněte vytvářet<br />seznamy přání</p>
+
+					<div class="brand-features">
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+									<polyline points="22 4 12 14.01 9 11.01" />
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Zdarma navždy</strong>
+								<span>Žádná platební karta</span>
+							</div>
+						</div>
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<polyline points="12 6 12 12 16 14" />
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Za 3 minuty hotovo</strong>
+								<span>Váš první seznam ihned</span>
+							</div>
+						</div>
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+									<circle cx="9" cy="7" r="4" />
+									<path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+									<path d="M16 3.13a4 4 0 0 1 0 7.75" />
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Sdílejte s rodinou</strong>
+								<span>Bez registrace pro hosty</span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="brand-bottom">Zdarma navždy · Bez reklam</div>
+			</div>
+
+			<!-- ── Form panel: Register ── -->
+			<div class="form-panel">
+				<div class="form-inner">
+					<h1 class="form-heading">Vytvořte si účet</h1>
+					<p class="form-subheading">Začněte vytvářet seznamy přání</p>
+
+					<div class="form-stack">
+						<div class="form-field">
+							<label class="form-label" for="reg-name">Jméno</label>
+							<input
+								class="form-input"
+								type="text"
+								id="reg-name"
+								placeholder="Jana Nováková"
+								autocomplete="name"
+							/>
+						</div>
+						<div class="form-field">
+							<label class="form-label" for="reg-email">Email</label>
+							<input
+								class="form-input"
+								type="email"
+								id="reg-email"
+								placeholder="vas@email.cz"
+								autocomplete="email"
+							/>
+						</div>
+						<div class="form-field">
+							<label class="form-label" for="reg-password">Heslo</label>
+							<div class="password-wrapper">
+								<input
+									class="form-input is-filled"
+									type="password"
+									id="reg-password"
+									value="MojeHeslo!7"
+									autocomplete="new-password"
+									style="border-color: var(--border-strong)"
+								/>
+								<button
+									class="password-toggle"
+									type="button"
+									aria-label="Zobrazit heslo"
+								>
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path
+											d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"
+										/>
+										<path
+											d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"
+										/>
+										<line x1="1" y1="1" x2="23" y2="23" />
+									</svg>
+								</button>
+							</div>
+							<!-- Strength bar: 4/4 segments filled = strong -->
+							<div
+								class="strength-bar"
+								aria-label="Síla hesla: silné"
+								role="progressbar"
+							>
+								<div class="strength-segment active-strong"></div>
+								<div class="strength-segment active-strong"></div>
+								<div class="strength-segment active-strong"></div>
+								<div class="strength-segment active-strong"></div>
+							</div>
+							<span class="form-helper-text" style="color: var(--success)"
+								>Silné heslo ✓</span
+							>
+						</div>
+					</div>
+
+					<button class="btn-primary" type="button">Vytvořit účet</button>
+
+					<div class="auth-divider">
+						<div class="auth-divider-line"></div>
+						<span class="auth-divider-text">nebo</span>
+						<div class="auth-divider-line"></div>
+					</div>
+
+					<button class="btn-google" type="button">
+						<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+							<path
+								fill="#4285F4"
+								d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+							/>
+							<path
+								fill="#34A853"
+								d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
+							/>
+							<path
+								fill="#FBBC05"
+								d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
+							/>
+							<path
+								fill="#EA4335"
+								d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
+							/>
+						</svg>
+						Registrovat přes Google
+					</button>
+
+					<div class="auth-footer">
+						Již máte účet?&ensp;<a href="#login">Přihlaste se</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     SECTION 3: MAGICKÝ ODKAZ (Magic Link) — Form + Success state
+		     ═══════════════════════════════════════════════════════════ -->
+		<div class="refined-eyebrow" id="magic-link">REFINED — Magický odkaz (Magic Link)</div>
+
+		<div class="dk-root theme-light auth-screen">
+			<!-- ── Branding panel ── -->
+			<div class="brand-panel">
+				<div class="brand-content">
+					<a class="brand-logo" href="/" aria-label="Darecky — domovská stránka">
+						<div class="brand-logo-icon" aria-hidden="true">
+							<svg
+								width="26"
+								height="26"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<line x1="12" y1="22" x2="12" y2="7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						<div class="brand-logo-wordmark">
+							darecky<span class="brand-logo-tld">.cz</span>
+						</div>
+					</a>
+
+					<div class="brand-illustration" aria-hidden="true">
+						<svg width="180" height="180" viewBox="0 0 180 180" fill="none">
+							<!-- Envelope illustration for magic link context -->
+							<!-- Shadow -->
+							<ellipse
+								cx="90"
+								cy="158"
+								rx="56"
+								ry="7"
+								fill="oklch(0.3 0.08 150)"
+								opacity="0.18"
+							/>
+							<!-- Envelope body -->
+							<rect
+								x="20"
+								y="60"
+								width="140"
+								height="90"
+								rx="10"
+								fill="oklch(0.99 0 0)"
+								opacity="0.95"
+							/>
+							<!-- Envelope flap (V shape) -->
+							<path
+								d="M20 60 L90 115 L160 60"
+								stroke="oklch(0.85 0.06 150)"
+								stroke-width="2"
+								fill="oklch(0.97 0.02 150)"
+								opacity="0.8"
+							/>
+							<!-- Envelope bottom fold lines -->
+							<line
+								x1="20"
+								y1="150"
+								x2="75"
+								y2="105"
+								stroke="oklch(0.85 0.06 150)"
+								stroke-width="1.5"
+								opacity="0.5"
+							/>
+							<line
+								x1="160"
+								y1="150"
+								x2="105"
+								y2="105"
+								stroke="oklch(0.85 0.06 150)"
+								stroke-width="1.5"
+								opacity="0.5"
+							/>
+							<!-- Magic sparkle/star bursts -->
+							<g opacity="0.7">
+								<!-- Star 1 -->
+								<line
+									x1="148"
+									y1="40"
+									x2="148"
+									y2="32"
+									stroke="oklch(0.99 0 0)"
+									stroke-width="2"
+									stroke-linecap="round"
+								/>
+								<line
+									x1="144"
+									y1="36"
+									x2="152"
+									y2="36"
+									stroke="oklch(0.99 0 0)"
+									stroke-width="2"
+									stroke-linecap="round"
+								/>
+								<line
+									x1="145.2"
+									y1="33.2"
+									x2="150.8"
+									y2="38.8"
+									stroke="oklch(0.99 0 0)"
+									stroke-width="1.5"
+									stroke-linecap="round"
+								/>
+								<line
+									x1="150.8"
+									y1="33.2"
+									x2="145.2"
+									y2="38.8"
+									stroke="oklch(0.99 0 0)"
+									stroke-width="1.5"
+									stroke-linecap="round"
+								/>
+							</g>
+							<g opacity="0.55">
+								<!-- Star 2 -->
+								<line
+									x1="32"
+									y1="44"
+									x2="32"
+									y2="38"
+									stroke="oklch(0.99 0 0)"
+									stroke-width="1.5"
+									stroke-linecap="round"
+								/>
+								<line
+									x1="29"
+									y1="41"
+									x2="35"
+									y2="41"
+									stroke="oklch(0.99 0 0)"
+									stroke-width="1.5"
+									stroke-linecap="round"
+								/>
+							</g>
+							<circle cx="158" cy="80" r="3" fill="oklch(0.99 0 0)" opacity="0.4" />
+							<circle cx="22" cy="92" r="2" fill="oklch(0.99 0 0)" opacity="0.35" />
+							<circle
+								cx="165"
+								cy="130"
+								r="2.5"
+								fill="oklch(0.99 0 0)"
+								opacity="0.3"
+							/>
+						</svg>
+					</div>
+
+					<p class="brand-tagline">Přihlaste se<br />bez hesla</p>
+
+					<div class="brand-features">
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+									/>
+									<polyline points="22,6 12,13 2,6" />
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Bez hesla</strong>
+								<span>Odkaz dorazí do emailu</span>
+							</div>
+						</div>
+						<div class="brand-feature-item">
+							<div class="brand-feature-icon" aria-hidden="true">
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<polyline points="12 6 12 12 16 14" />
+								</svg>
+							</div>
+							<div class="brand-feature-text">
+								<strong>Platný 15 minut</strong>
+								<span>Bezpečný jednorázový odkaz</span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="brand-bottom">Zdarma navždy · Bez reklam</div>
+			</div>
+
+			<!-- ── Form panel: Magic link input form ── -->
+			<div class="form-panel">
+				<div class="form-inner">
+					<h1 class="form-heading">Přihlášení odkazem</h1>
+					<p class="form-subheading">Pošleme vám přihlašovací odkaz na email</p>
+
+					<div class="form-stack">
+						<div class="form-field">
+							<label class="form-label" for="magic-email">Email</label>
+							<input
+								class="form-input"
+								type="email"
+								id="magic-email"
+								placeholder="vas@email.cz"
+								autocomplete="email"
+								autofocus
+							/>
+						</div>
+					</div>
+
+					<button class="btn-primary" type="button">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<line x1="22" y1="2" x2="11" y2="13" />
+							<polygon points="22 2 15 22 11 13 2 9 22 2" />
+						</svg>
+						Odeslat přihlašovací odkaz
+					</button>
+
+					<div class="auth-footer">
+						<a href="#login">← Zpět na přihlášení</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ── Magic link: Success state ── -->
+		<div class="refined-eyebrow">REFINED — Magický odkaz · Stav odeslání (Success State)</div>
+
+		<div class="dk-root theme-light auth-screen">
+			<div class="brand-panel">
+				<div class="brand-content">
+					<a class="brand-logo" href="/" aria-label="Darecky — domovská stránka">
+						<div class="brand-logo-icon" aria-hidden="true">
+							<svg
+								width="26"
+								height="26"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<line x1="12" y1="22" x2="12" y2="7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						<div class="brand-logo-wordmark">
+							darecky<span class="brand-logo-tld">.cz</span>
+						</div>
+					</a>
+					<div class="brand-illustration" aria-hidden="true">
+						<svg width="180" height="180" viewBox="0 0 180 180" fill="none">
+							<ellipse
+								cx="90"
+								cy="158"
+								rx="56"
+								ry="7"
+								fill="oklch(0.3 0.08 150)"
+								opacity="0.18"
+							/>
+							<rect
+								x="20"
+								y="60"
+								width="140"
+								height="90"
+								rx="10"
+								fill="oklch(0.99 0 0)"
+								opacity="0.95"
+							/>
+							<path
+								d="M20 60 L90 115 L160 60"
+								stroke="oklch(0.85 0.06 150)"
+								stroke-width="2"
+								fill="oklch(0.97 0.02 150)"
+								opacity="0.8"
+							/>
+							<line
+								x1="20"
+								y1="150"
+								x2="75"
+								y2="105"
+								stroke="oklch(0.85 0.06 150)"
+								stroke-width="1.5"
+								opacity="0.5"
+							/>
+							<line
+								x1="160"
+								y1="150"
+								x2="105"
+								y2="105"
+								stroke="oklch(0.85 0.06 150)"
+								stroke-width="1.5"
+								opacity="0.5"
+							/>
+							<!-- Checkmark overlay on envelope -->
+							<circle
+								cx="90"
+								cy="105"
+								r="20"
+								fill="oklch(0.66 0.13 145)"
+								opacity="0.92"
+							/>
+							<polyline
+								points="82,105 88,112 99,98"
+								stroke="oklch(0.99 0 0)"
+								stroke-width="2.5"
+								fill="none"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+							<circle cx="148" cy="40" r="3" fill="oklch(0.99 0 0)" opacity="0.55" />
+							<circle cx="32" cy="44" r="2" fill="oklch(0.99 0 0)" opacity="0.45" />
+							<circle
+								cx="158"
+								cy="80"
+								r="2.5"
+								fill="oklch(0.99 0 0)"
+								opacity="0.35"
+							/>
+						</svg>
+					</div>
+					<p class="brand-tagline">Zkontrolujte<br />svůj email</p>
+				</div>
+				<div class="brand-bottom">Zdarma navždy · Bez reklam</div>
+			</div>
+
+			<div class="form-panel">
+				<div class="form-inner">
+					<div class="success-state" role="status" aria-live="polite">
+						<div class="success-icon-wrap" aria-hidden="true">
+							<svg
+								width="36"
+								height="36"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+								/>
+								<polyline points="22,6 12,13 2,6" />
+							</svg>
+						</div>
+						<h2 class="success-title">Odkaz odeslán!</h2>
+						<p class="success-body">
+							Odkaz odeslán na <strong>vas@email.cz</strong>. Platnost
+							<strong>15 minut</strong>. <br /><br />
+							Zkontrolujte svou emailovou schránku.<br />
+							Pokud email nepřijde, podívejte se do spamu.
+						</p>
+						<a href="#login" class="success-back">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="15 18 9 12 15 6" />
+							</svg>
+							Zpět na přihlášení
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- bottom spacer -->
+		<div style="height: var(--space-8); background: oklch(0.93 0.01 150)"></div>
+	</body>
+</html>

@@ -1,0 +1,1167 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — App Shell Variant 3: Sidebar Persistent</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 3: Sidebar Persistent ──────────────────────────
+			   Left sidebar always visible at 240px. Top strip for user
+			   controls. Navigation lives entirely in the sidebar.
+			   Sidebar uses a subtle sage-tinted surface.               */
+
+			.theme-light {
+				--background: oklch(0.975 0.006 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.962 0.009 150);
+				--surface-hover: oklch(0.946 0.013 150);
+				--foreground: oklch(0.17 0.018 155);
+				--foreground-muted: oklch(0.44 0.022 150);
+				--foreground-subtle: oklch(0.6 0.014 150);
+				--border: oklch(0.916 0.013 150);
+				--border-strong: oklch(0.858 0.019 150);
+				--primary: oklch(0.527 0.154 150.069);
+				--primary-fg: oklch(0.982 0.018 155.826);
+				--primary-soft: oklch(0.932 0.05 150);
+				--ring: oklch(0.527 0.154 150.069);
+				--sidebar-bg: oklch(0.988 0.007 150);
+				--sidebar-border: oklch(0.912 0.014 150);
+			}
+			.theme-dark {
+				--background: oklch(0.145 0.014 155);
+				--surface: oklch(0.188 0.016 155);
+				--surface-2: oklch(0.228 0.018 155);
+				--surface-hover: oklch(0.265 0.02 155);
+				--foreground: oklch(0.962 0.008 150);
+				--foreground-muted: oklch(0.68 0.018 150);
+				--foreground-subtle: oklch(0.52 0.014 150);
+				--border: oklch(0.278 0.016 155);
+				--border-strong: oklch(0.358 0.02 155);
+				--primary: oklch(0.65 0.138 150);
+				--primary-fg: oklch(0.14 0.016 155);
+				--primary-soft: oklch(0.275 0.056 150);
+				--ring: oklch(0.65 0.138 150);
+				--sidebar-bg: oklch(0.188 0.016 155);
+				--sidebar-border: oklch(0.278 0.016 155);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+			}
+
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				font-family: var(--font-sans);
+				color: var(--foreground);
+				font-size: var(--text-base);
+				-webkit-font-smoothing: antialiased;
+				display: flex;
+				flex-direction: row;
+			}
+
+			/* ── Sidebar ── */
+			.sidebar {
+				width: 240px;
+				flex-shrink: 0;
+				background: var(--sidebar-bg);
+				border-right: 1px solid var(--sidebar-border);
+				display: flex;
+				flex-direction: column;
+				position: sticky;
+				top: 0;
+				height: 100vh;
+				overflow-y: auto;
+				z-index: var(--z-sticky);
+			}
+
+			/* Sidebar logo area */
+			.sidebar-logo-area {
+				height: var(--nav-height);
+				display: flex;
+				align-items: center;
+				padding: 0 var(--space-5);
+				border-bottom: 1px solid var(--sidebar-border);
+				flex-shrink: 0;
+			}
+			.logo {
+				font-family: var(--font-heading);
+				font-weight: var(--weight-bold);
+				font-size: var(--text-xl);
+				color: var(--primary);
+				letter-spacing: var(--tracking-tight);
+				text-decoration: none;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.logo-tld {
+				opacity: 0.45;
+				font-weight: var(--weight-medium);
+			}
+			.logo-mark {
+				width: 30px;
+				height: 30px;
+				background: var(--primary);
+				border-radius: var(--radius-md);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+			.logo-mark svg {
+				color: var(--primary-fg);
+			}
+
+			/* Sidebar nav section */
+			.sidebar-nav {
+				flex: 1;
+				padding: var(--space-4) var(--space-3);
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-1);
+			}
+
+			.nav-section-label {
+				font-size: 10px;
+				font-weight: 600;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				padding: var(--space-3) var(--space-3) var(--space-1);
+			}
+
+			.nav-link {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				height: 38px;
+				padding: 0 var(--space-3);
+				border-radius: var(--radius-md);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				text-decoration: none;
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				font-family: var(--font-sans);
+				transition:
+					background var(--duration-normal),
+					color var(--duration-normal);
+				width: 100%;
+				text-align: left;
+			}
+			.nav-link:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.nav-link.is-active {
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: var(--weight-semibold);
+			}
+			.nav-link-icon {
+				flex-shrink: 0;
+				opacity: 0.7;
+			}
+			.nav-link.is-active .nav-link-icon {
+				opacity: 1;
+			}
+			.nav-link-label {
+				flex: 1;
+			}
+			.nav-link-count {
+				min-width: 20px;
+				height: 20px;
+				padding: 0 6px;
+				background: var(--surface-2);
+				border-radius: var(--radius-full);
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+			.nav-link.is-active .nav-link-count {
+				background: color-mix(in oklch, var(--primary) 15%, transparent);
+				color: var(--primary);
+			}
+
+			/* Create button in sidebar */
+			.sidebar-create {
+				margin: 0 var(--space-3) var(--space-3);
+			}
+			.btn-create {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 7px;
+				width: 100%;
+				height: 38px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				border-radius: var(--radius-md);
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				cursor: pointer;
+				transition: filter var(--duration-normal);
+				box-shadow: var(--shadow-sm);
+			}
+			.btn-create:hover {
+				filter: brightness(1.1);
+			}
+
+			/* Sidebar divider */
+			.sidebar-divider {
+				height: 1px;
+				background: var(--sidebar-border);
+				margin: var(--space-2) var(--space-3);
+			}
+
+			/* Sidebar bottom: user area */
+			.sidebar-footer {
+				padding: var(--space-3);
+				border-top: 1px solid var(--sidebar-border);
+				flex-shrink: 0;
+			}
+			.user-row {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				padding: var(--space-2) var(--space-2);
+				border-radius: var(--radius-md);
+				cursor: pointer;
+				transition: background var(--duration-normal);
+			}
+			.user-row:hover {
+				background: var(--surface-2);
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: var(--weight-semibold);
+				font-size: 13px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+			.user-info {
+				flex: 1;
+				min-width: 0;
+			}
+			.user-name {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.user-role {
+				font-size: 11px;
+				color: var(--foreground-muted);
+			}
+			.user-chevron {
+				color: var(--foreground-subtle);
+				flex-shrink: 0;
+			}
+
+			/* ── Top strip (user controls for authenticated) ── */
+			.main-col {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				min-width: 0;
+			}
+			.topstrip {
+				height: var(--nav-height);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface);
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				padding: 0 var(--space-6);
+				gap: var(--space-2);
+				flex-shrink: 0;
+				position: sticky;
+				top: 0;
+				z-index: calc(var(--z-sticky) - 1);
+			}
+
+			.icon-btn {
+				position: relative;
+				width: 36px;
+				height: 36px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: transparent;
+				border: none;
+				border-radius: var(--radius-md);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition:
+					background var(--duration-normal),
+					color var(--duration-normal);
+			}
+			.icon-btn:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+
+			.notif-badge {
+				position: absolute;
+				top: 4px;
+				right: 4px;
+				min-width: 16px;
+				height: 16px;
+				padding: 0 4px;
+				background: var(--status-danger);
+				color: #fff;
+				border-radius: var(--radius-full);
+				font-size: 10px;
+				font-weight: var(--weight-bold);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				line-height: 1;
+				border: 2px solid var(--surface);
+			}
+
+			.mode-toggle {
+				display: inline-flex;
+				background: var(--surface-2);
+				border-radius: var(--radius-md);
+				padding: 2px;
+				gap: 1px;
+			}
+			.mode-btn {
+				width: 30px;
+				height: 28px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: none;
+				background: transparent;
+				border-radius: 5px;
+				color: var(--foreground-subtle);
+				cursor: pointer;
+				transition: all var(--duration-normal);
+			}
+			.mode-btn:hover {
+				color: var(--foreground);
+			}
+			.mode-btn.is-active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: var(--shadow-sm);
+			}
+
+			.topstrip-label {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+				flex: 1;
+			}
+
+			/* ── Content ── */
+			.content-wrap {
+				flex: 1;
+				max-width: var(--content-max-width);
+				width: 100%;
+				padding: var(--space-8) var(--space-6) var(--space-16);
+			}
+
+			.page-header {
+				display: flex;
+				align-items: flex-start;
+				justify-content: space-between;
+				margin-bottom: var(--space-6);
+			}
+			.page-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-2xl);
+				font-weight: var(--weight-bold);
+				letter-spacing: var(--tracking-snug);
+				color: var(--foreground);
+			}
+			.page-subtitle {
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				margin-top: var(--space-1);
+			}
+
+			.sort-bar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: var(--space-5);
+				padding-bottom: var(--space-4);
+				border-bottom: 1px solid var(--border);
+			}
+			.sort-tabs {
+				display: flex;
+				gap: 2px;
+			}
+			.sort-tab {
+				height: 30px;
+				padding: 0 var(--space-3);
+				border: none;
+				background: transparent;
+				border-radius: var(--radius-md);
+				font-size: var(--text-xs);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				font-family: var(--font-sans);
+				transition: all var(--duration-normal);
+			}
+			.sort-tab:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.sort-tab.is-active {
+				background: var(--surface-2);
+				color: var(--foreground);
+				font-weight: var(--weight-semibold);
+			}
+
+			.wishlists-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+				gap: var(--space-5);
+			}
+			.wl-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				overflow: hidden;
+				cursor: pointer;
+				transition:
+					border-color var(--duration-normal),
+					box-shadow var(--duration-normal);
+			}
+			.wl-card:hover {
+				border-color: var(--border-strong);
+				box-shadow: var(--shadow-md);
+			}
+			.wl-card-thumb {
+				height: 90px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 32px;
+			}
+			.wl-card-body {
+				padding: var(--space-4) var(--space-4);
+			}
+			.wl-card-name {
+				font-weight: var(--weight-semibold);
+				font-size: var(--text-sm);
+				color: var(--foreground);
+			}
+			.wl-card-meta {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				flex-wrap: wrap;
+				margin-top: var(--space-2);
+			}
+			.wl-stat {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+			}
+			.wl-stat b {
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+			}
+			.badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 20px;
+				padding: 0 7px;
+				border-radius: var(--radius-full);
+				font-size: 10px;
+				font-weight: var(--weight-medium);
+				white-space: nowrap;
+			}
+			.badge-shared {
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+			.badge-draft {
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+
+			.mode-label {
+				text-align: center;
+				padding: var(--space-3) var(--space-4);
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				width: 100%;
+			}
+			.variant-label {
+				text-align: center;
+				padding: var(--space-5) var(--space-4) var(--space-3);
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.55 0.02 150);
+				background: oklch(0.94 0.01 150);
+				width: 100%;
+			}
+
+			/* Mode label wrapper for sidebar layout */
+			.full-width-bar {
+				width: 100%;
+				display: flex;
+			}
+		</style>
+	</head>
+	<body style="margin: 0; background: oklch(0.91 0.012 150)">
+		<div
+			style="
+				width: 100%;
+				text-align: center;
+				padding: 20px 16px 12px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.55 0.02 150);
+				background: oklch(0.94 0.01 150);
+			"
+		>
+			Variant 3 — Sidebar Persistent
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     LIGHT MODE
+		     ═══════════════════════════════════════════════════════════ -->
+		<div
+			style="
+				width: 100%;
+				text-align: center;
+				padding: 12px 16px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				background: oklch(0.988 0.004 150);
+				color: oklch(0.6 0.014 150);
+				border-bottom: 1px solid oklch(0.916 0.013 150);
+			"
+		>
+			Světlý režim
+		</div>
+		<div class="page theme-light">
+			<!-- Sidebar -->
+			<aside class="sidebar">
+				<div class="sidebar-logo-area">
+					<a class="logo" href="#">
+						<div class="logo-mark">
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<path d="M12 22V7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						darecky<span class="logo-tld">.cz</span>
+					</a>
+				</div>
+
+				<nav class="sidebar-nav">
+					<div class="sidebar-create">
+						<button class="btn-create">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<line x1="12" y1="5" x2="12" y2="19" />
+								<line x1="5" y1="12" x2="19" y2="12" />
+							</svg>
+							Vytvořit seznam
+						</button>
+					</div>
+
+					<div class="sidebar-divider"></div>
+
+					<div class="nav-section-label">Moje přání</div>
+					<a class="nav-link is-active" href="#">
+						<svg
+							class="nav-link-icon"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+							<polyline points="9 22 9 12 15 12 15 22" />
+						</svg>
+						<span class="nav-link-label">Moje seznamy</span>
+						<span class="nav-link-count">3</span>
+					</a>
+					<a class="nav-link" href="#">
+						<svg
+							class="nav-link-icon"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+							<circle cx="9" cy="7" r="4" />
+							<path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+							<path d="M16 3.13a4 4 0 0 1 0 7.75" />
+						</svg>
+						<span class="nav-link-label">Spravované</span>
+						<span class="nav-link-count">2</span>
+					</a>
+					<a class="nav-link" href="#">
+						<svg
+							class="nav-link-icon"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+							<circle cx="12" cy="12" r="3" />
+						</svg>
+						<span class="nav-link-label">Sledované</span>
+						<span class="nav-link-count">5</span>
+					</a>
+				</nav>
+
+				<div class="sidebar-footer">
+					<div class="user-row">
+						<div class="avatar">JN</div>
+						<div class="user-info">
+							<div class="user-name">Jana Nováková</div>
+							<div class="user-role">jana@example.cz</div>
+						</div>
+						<svg
+							class="user-chevron"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</div>
+				</div>
+			</aside>
+
+			<!-- Main column -->
+			<div class="main-col">
+				<!-- Top strip -->
+				<header class="topstrip">
+					<span class="topstrip-label">Moje seznamy</span>
+
+					<div class="mode-toggle">
+						<button class="mode-btn is-active" title="Světlý">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<circle cx="12" cy="12" r="5" />
+								<line x1="12" y1="1" x2="12" y2="3" />
+								<line x1="12" y1="21" x2="12" y2="23" />
+								<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+								<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+								<line x1="1" y1="12" x2="3" y2="12" />
+								<line x1="21" y1="12" x2="23" y2="12" />
+							</svg>
+						</button>
+						<button class="mode-btn" title="Tmavý">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+							</svg>
+						</button>
+						<button class="mode-btn" title="Systém">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<rect x="2" y="3" width="20" height="14" rx="2" />
+								<polyline points="8 21 12 17 16 21" />
+							</svg>
+						</button>
+					</div>
+
+					<button class="icon-btn" aria-label="Oznámení">
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+							<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+						</svg>
+						<span class="notif-badge">3</span>
+					</button>
+				</header>
+
+				<!-- Page content -->
+				<div class="content-wrap">
+					<div class="page-header">
+						<div>
+							<h1 class="page-title">Moje seznamy</h1>
+							<p class="page-subtitle">Přání, která jsi vytvořila pro sebe</p>
+						</div>
+					</div>
+					<div class="sort-bar">
+						<div class="sort-tabs">
+							<button class="sort-tab is-active">Naposledy upraveno</button>
+							<button class="sort-tab">Naposledy navštíveno</button>
+							<button class="sort-tab">Název</button>
+						</div>
+						<span class="wl-stat">3 seznamy</span>
+					</div>
+					<div class="wishlists-grid">
+						<div class="wl-card">
+							<div
+								class="wl-card-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.28 0.06 25),
+										oklch(0.38 0.08 15)
+									);
+								"
+							>
+								🎄
+							</div>
+							<div class="wl-card-body">
+								<div class="wl-card-name">Vánoce 2026</div>
+								<div class="wl-card-meta">
+									<span class="wl-stat"><b>8</b> přání</span>
+									<span class="badge badge-shared">Sdíleno</span>
+								</div>
+							</div>
+						</div>
+						<div class="wl-card">
+							<div
+								class="wl-card-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.72 0.12 55),
+										oklch(0.62 0.14 45)
+									);
+								"
+							>
+								🎂
+							</div>
+							<div class="wl-card-body">
+								<div class="wl-card-name">Narozeniny - Petr</div>
+								<div class="wl-card-meta">
+									<span class="wl-stat"><b>5</b> přání</span>
+									<span class="badge badge-draft">Koncept</span>
+								</div>
+							</div>
+						</div>
+						<div class="wl-card">
+							<div
+								class="wl-card-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.85 0.06 320),
+										oklch(0.78 0.08 340)
+									);
+								"
+							>
+								💍
+							</div>
+							<div class="wl-card-body">
+								<div class="wl-card-name">Svatba Jana &amp; Tomáš</div>
+								<div class="wl-card-meta">
+									<span class="wl-stat"><b>12</b> přání</span>
+									<span class="badge badge-shared">Sdíleno</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- /light -->
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     DARK MODE
+		     ═══════════════════════════════════════════════════════════ -->
+		<div
+			style="
+				width: 100%;
+				text-align: center;
+				padding: 12px 16px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				background: oklch(0.188 0.016 155);
+				color: oklch(0.52 0.014 150);
+				border-bottom: 1px solid oklch(0.278 0.016 155);
+			"
+		>
+			Tmavý režim
+		</div>
+		<div class="page theme-dark">
+			<aside class="sidebar">
+				<div class="sidebar-logo-area">
+					<a class="logo" href="#">
+						<div class="logo-mark">
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<path d="M12 22V7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						darecky<span class="logo-tld">.cz</span>
+					</a>
+				</div>
+				<nav class="sidebar-nav">
+					<div class="sidebar-create">
+						<button class="btn-create">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<line x1="12" y1="5" x2="12" y2="19" />
+								<line x1="5" y1="12" x2="19" y2="12" />
+							</svg>
+							Vytvořit seznam
+						</button>
+					</div>
+					<div class="sidebar-divider"></div>
+					<div class="nav-section-label">Moje přání</div>
+					<a class="nav-link is-active" href="#">
+						<svg
+							class="nav-link-icon"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+							<polyline points="9 22 9 12 15 12 15 22" />
+						</svg>
+						<span class="nav-link-label">Moje seznamy</span>
+						<span class="nav-link-count">3</span>
+					</a>
+					<a class="nav-link" href="#">
+						<svg
+							class="nav-link-icon"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+							<circle cx="9" cy="7" r="4" />
+							<path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+							<path d="M16 3.13a4 4 0 0 1 0 7.75" />
+						</svg>
+						<span class="nav-link-label">Spravované</span>
+						<span class="nav-link-count">2</span>
+					</a>
+					<a class="nav-link" href="#">
+						<svg
+							class="nav-link-icon"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+							<circle cx="12" cy="12" r="3" />
+						</svg>
+						<span class="nav-link-label">Sledované</span>
+						<span class="nav-link-count">5</span>
+					</a>
+				</nav>
+				<div class="sidebar-footer">
+					<div class="user-row">
+						<div class="avatar">JN</div>
+						<div class="user-info">
+							<div class="user-name">Jana Nováková</div>
+							<div class="user-role">jana@example.cz</div>
+						</div>
+						<svg
+							class="user-chevron"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</div>
+				</div>
+			</aside>
+
+			<div class="main-col">
+				<header class="topstrip">
+					<span class="topstrip-label">Moje seznamy</span>
+					<div class="mode-toggle">
+						<button class="mode-btn" title="Světlý">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<circle cx="12" cy="12" r="5" />
+								<line x1="12" y1="1" x2="12" y2="3" />
+								<line x1="12" y1="21" x2="12" y2="23" />
+							</svg>
+						</button>
+						<button class="mode-btn is-active" title="Tmavý">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+							</svg>
+						</button>
+						<button class="mode-btn" title="Systém">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<rect x="2" y="3" width="20" height="14" rx="2" />
+								<polyline points="8 21 12 17 16 21" />
+							</svg>
+						</button>
+					</div>
+					<button class="icon-btn" aria-label="Oznámení">
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+							<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+						</svg>
+						<span class="notif-badge">3</span>
+					</button>
+				</header>
+				<div class="content-wrap">
+					<div class="page-header">
+						<div>
+							<h1 class="page-title">Moje seznamy</h1>
+							<p class="page-subtitle">Přání, která jsi vytvořila pro sebe</p>
+						</div>
+					</div>
+					<div class="sort-bar">
+						<div class="sort-tabs">
+							<button class="sort-tab is-active">Naposledy upraveno</button>
+							<button class="sort-tab">Naposledy navštíveno</button>
+						</div>
+						<span class="wl-stat">3 seznamy</span>
+					</div>
+					<div class="wishlists-grid">
+						<div class="wl-card">
+							<div
+								class="wl-card-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.22 0.05 25),
+										oklch(0.3 0.06 15)
+									);
+								"
+							>
+								🎄
+							</div>
+							<div class="wl-card-body">
+								<div class="wl-card-name">Vánoce 2026</div>
+								<div class="wl-card-meta">
+									<span class="wl-stat"><b>8</b> přání</span>
+									<span class="badge badge-shared">Sdíleno</span>
+								</div>
+							</div>
+						</div>
+						<div class="wl-card">
+							<div
+								class="wl-card-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.42 0.1 55),
+										oklch(0.35 0.12 45)
+									);
+								"
+							>
+								🎂
+							</div>
+							<div class="wl-card-body">
+								<div class="wl-card-name">Narozeniny - Petr</div>
+								<div class="wl-card-meta">
+									<span class="wl-stat"><b>5</b> přání</span>
+									<span class="badge badge-draft">Koncept</span>
+								</div>
+							</div>
+						</div>
+						<div class="wl-card">
+							<div
+								class="wl-card-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.38 0.05 320),
+										oklch(0.3 0.06 340)
+									);
+								"
+							>
+								💍
+							</div>
+							<div class="wl-card-body">
+								<div class="wl-card-name">Svatba Jana &amp; Tomáš</div>
+								<div class="wl-card-meta">
+									<span class="wl-stat"><b>12</b> přání</span>
+									<span class="badge badge-shared">Sdíleno</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- /dark -->
+	</body>
+</html>

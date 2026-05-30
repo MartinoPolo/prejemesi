@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Detail Modal — Variant 1: Center Modal (2-column)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Sage theme (primary color from app.css) ───────────── */
+			.theme-light {
+				--background: oklch(0.985 0.006 145);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 145);
+				--surface-hover: oklch(0.95 0.012 145);
+				--foreground: oklch(0.17 0.012 150);
+				--foreground-muted: oklch(0.45 0.025 150);
+				--foreground-subtle: oklch(0.62 0.018 150);
+				--border: oklch(0.92 0.012 145);
+				--border-strong: oklch(0.86 0.02 145);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.2% 0.018 155.826deg);
+				--primary-soft: oklch(0.93 0.045 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+			}
+			.theme-dark {
+				--background: oklch(0.15 0.01 150);
+				--surface: oklch(0.19 0.014 150);
+				--surface-2: oklch(0.23 0.016 150);
+				--surface-hover: oklch(0.27 0.018 150);
+				--foreground: oklch(0.96 0.008 145);
+				--foreground-muted: oklch(0.68 0.02 145);
+				--foreground-subtle: oklch(0.5 0.016 145);
+				--border: oklch(0.28 0.016 150);
+				--border-strong: oklch(0.36 0.02 150);
+				--primary: oklch(62% 0.154 150.069deg);
+				--primary-fg: oklch(0.13 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(62% 0.154 150.069deg);
+			}
+
+			/* ── Page layout ────────────────────────────────────────── */
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: 'Figtree', system-ui, sans-serif;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			.demo-row {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+			}
+
+			.demo-panel {
+				min-height: 100vh;
+				position: relative;
+				overflow: hidden;
+			}
+
+			.panel-label {
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				text-align: center;
+				padding: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				background: var(--primary);
+				color: var(--primary-fg);
+				z-index: 100;
+			}
+
+			/* ── Wishlist background (blurred) ──────────────────────── */
+			.wishlist-bg {
+				position: absolute;
+				inset: 0;
+				background: var(--background);
+				padding: 60px 32px 32px;
+				overflow: hidden;
+			}
+
+			.wishlist-nav {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 0 20px;
+				border-bottom: 1px solid var(--border);
+				margin-bottom: 24px;
+			}
+
+			.wishlist-logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+
+			.wishlist-cards {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 12px;
+			}
+
+			.bg-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				height: 160px;
+				overflow: hidden;
+			}
+
+			.bg-card-img {
+				height: 100px;
+				background: linear-gradient(135deg, var(--surface-2) 0%, var(--border) 100%);
+			}
+
+			.bg-card-body {
+				padding: 8px 10px;
+			}
+
+			.bg-card-name {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground);
+				margin-bottom: 4px;
+			}
+
+			.bg-card-price {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+
+			/* ── Backdrop ───────────────────────────────────────────── */
+			.modal-backdrop {
+				position: absolute;
+				inset: 0;
+				background: oklch(0 0 0 / 0.52);
+				backdrop-filter: blur(3px);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 24px;
+				z-index: 50;
+			}
+
+			/* ── Modal shell ────────────────────────────────────────── */
+			.modal {
+				background: var(--surface);
+				border-radius: 20px;
+				box-shadow:
+					0 24px 56px oklch(0 0 0 / 0.32),
+					0 8px 16px oklch(0 0 0 / 0.14);
+				width: 100%;
+				max-width: 720px;
+				max-height: calc(100vh - 48px);
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				position: relative;
+			}
+
+			/* ── Two-column layout ──────────────────────────────────── */
+			.modal-body {
+				display: grid;
+				grid-template-columns: 280px 1fr;
+				flex: 1;
+				overflow: hidden;
+			}
+
+			/* ── Left column: image ─────────────────────────────────── */
+			.modal-image-col {
+				position: relative;
+				background: var(--surface-2);
+				overflow: hidden;
+			}
+
+			.modal-image {
+				width: 100%;
+				height: 100%;
+				min-height: 320px;
+				object-fit: cover;
+				display: block;
+			}
+
+			/* SVG placeholder image */
+			.modal-image-placeholder {
+				width: 100%;
+				height: 100%;
+				min-height: 320px;
+				background: linear-gradient(145deg, var(--surface-2) 0%, var(--border) 100%);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 12px;
+				color: var(--foreground-subtle);
+			}
+
+			.modal-image-placeholder svg {
+				opacity: 0.4;
+			}
+
+			/* Priority badge over image */
+			.priority-badge-overlay {
+				position: absolute;
+				top: 12px;
+				left: 12px;
+			}
+
+			.priority-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 26px;
+				padding: 0 10px;
+				border-radius: 9999px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.03em;
+			}
+
+			.priority-high {
+				background: oklch(0.62 0.2 25 / 0.15);
+				color: oklch(0.62 0.2 25);
+				border: 1px solid oklch(0.62 0.2 25 / 0.3);
+			}
+			.theme-dark .priority-high {
+				background: oklch(0.62 0.2 25 / 0.22);
+				color: oklch(0.75 0.18 25);
+				border-color: oklch(0.62 0.2 25 / 0.4);
+			}
+
+			/* ── Right column: details ──────────────────────────────── */
+			.modal-detail-col {
+				display: flex;
+				flex-direction: column;
+				overflow-y: auto;
+				padding: 28px 28px 0 28px;
+				gap: 0;
+			}
+
+			/* Close button */
+			.modal-close {
+				position: absolute;
+				top: 14px;
+				right: 14px;
+				width: 36px;
+				height: 36px;
+				border-radius: 50%;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				z-index: 10;
+				transition: all 150ms ease;
+			}
+
+			.modal-close:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+
+			/* Gift name */
+			.gift-name {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--foreground);
+				letter-spacing: -0.02em;
+				line-height: 1.2;
+				margin-bottom: 12px;
+				padding-right: 32px;
+			}
+
+			/* Meta row: price + link */
+			.gift-meta-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+				margin-bottom: 16px;
+			}
+
+			.gift-price {
+				font-size: 20px;
+				font-weight: 700;
+				color: var(--primary);
+				letter-spacing: -0.01em;
+			}
+
+			.gift-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				text-decoration: none;
+				padding: 4px 10px;
+				border-radius: 6px;
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				transition: all 150ms ease;
+			}
+
+			.gift-link:hover {
+				border-color: var(--primary);
+				color: var(--primary);
+				background: var(--primary-soft);
+			}
+
+			/* Description */
+			.gift-description {
+				font-size: 14px;
+				line-height: 1.65;
+				color: var(--foreground-muted);
+				margin-bottom: 20px;
+			}
+
+			/* Divider */
+			.modal-divider {
+				height: 1px;
+				background: var(--border);
+				margin: 0 0 16px;
+			}
+
+			/* Reservation info */
+			.reservation-info {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				margin-bottom: 16px;
+				padding: 12px 14px;
+				background: var(--surface-2);
+				border-radius: 10px;
+				border: 1px solid var(--border);
+			}
+
+			.res-stat {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 2px;
+				flex: 1;
+			}
+
+			.res-stat-value {
+				font-size: 18px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+
+			.res-stat-label {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				font-weight: 500;
+				letter-spacing: 0.03em;
+				text-transform: uppercase;
+			}
+
+			.res-stat-divider {
+				width: 1px;
+				height: 32px;
+				background: var(--border);
+			}
+
+			/* Footer meta */
+			.gift-footer-meta {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 12px 0;
+				margin-bottom: 0;
+			}
+
+			.gift-date {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+			}
+
+			/* Like button */
+			.like-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 6px 12px;
+				border-radius: 9999px;
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				cursor: pointer;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				transition: all 150ms ease;
+			}
+
+			.like-btn:hover {
+				border-color: oklch(0.64 0.18 15);
+				color: oklch(0.64 0.18 15);
+				background: oklch(0.64 0.18 15 / 0.08);
+			}
+
+			.like-btn.is-liked {
+				border-color: oklch(0.64 0.18 15 / 0.5);
+				color: oklch(0.64 0.18 15);
+				background: oklch(0.64 0.18 15 / 0.1);
+			}
+
+			/* ── Modal action footer ───────────────────────────────── */
+			.modal-footer {
+				padding: 16px 28px;
+				border-top: 1px solid var(--border);
+				background: var(--surface);
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-weight: 600;
+				font-size: 14px;
+				line-height: 1;
+				padding: 0 20px;
+				height: 42px;
+				border-radius: 10px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				transition: all 150ms ease;
+				text-decoration: none;
+				white-space: nowrap;
+			}
+
+			.btn:active {
+				transform: scale(0.97);
+			}
+
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				flex: 1;
+			}
+
+			.btn-primary:hover {
+				filter: brightness(1.08);
+			}
+
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+				border-color: var(--border);
+			}
+
+			.btn-ghost:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+
+			/* ── Quantity selector (reserving state) ───────────────── */
+			.reserve-form {
+				padding: 14px 16px;
+				background: var(--primary-soft);
+				border-radius: 10px;
+				border: 1px solid oklch(52.7% 0.154 150.069deg / 0.25);
+				margin-bottom: 16px;
+			}
+
+			.reserve-form-label {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--primary);
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+				margin-bottom: 10px;
+			}
+
+			.qty-row {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.qty-btn {
+				width: 32px;
+				height: 32px;
+				border-radius: 8px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground);
+				font-size: 18px;
+				line-height: 1;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				font-weight: 500;
+			}
+
+			.qty-value {
+				font-size: 16px;
+				font-weight: 700;
+				color: var(--foreground);
+				min-width: 24px;
+				text-align: center;
+			}
+
+			.qty-hint {
+				font-size: 12px;
+				color: var(--foreground-muted);
+				margin-left: 4px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="demo-row">
+			<!-- ═══════════════════════════════════════════════════════ LIGHT -->
+			<div class="demo-panel theme-light dk-root">
+				<div class="panel-label">Světlý režim — Varianta 1: Centrum (2 sloupce)</div>
+
+				<!-- Wishlist background -->
+				<div class="wishlist-bg">
+					<div class="wishlist-nav">
+						<span class="wishlist-logo">Darecky</span>
+						<div style="display: flex; gap: 8px">
+							<div
+								style="
+									width: 80px;
+									height: 32px;
+									border-radius: 8px;
+									background: var(--surface-2);
+									border: 1px solid var(--border);
+								"
+							></div>
+							<div
+								style="
+									width: 36px;
+									height: 36px;
+									border-radius: 50%;
+									background: var(--primary-soft);
+									display: flex;
+									align-items: center;
+									justify-content: center;
+									color: var(--primary);
+									font-weight: 700;
+									font-size: 14px;
+								"
+							>
+								J
+							</div>
+						</div>
+					</div>
+					<div style="margin-bottom: 20px">
+						<div
+							style="
+								font-size: 11px;
+								font-weight: 700;
+								letter-spacing: 0.08em;
+								text-transform: uppercase;
+								color: var(--primary);
+								margin-bottom: 4px;
+							"
+						>
+							Jana Nováková
+						</div>
+						<div
+							style="
+								font-family: 'Noto Sans', sans-serif;
+								font-size: 22px;
+								font-weight: 700;
+								color: var(--foreground);
+								letter-spacing: -0.02em;
+							"
+						>
+							Narozeniny 2026 🎂
+						</div>
+					</div>
+					<div class="wishlist-cards">
+						<div class="bg-card">
+							<div
+								class="bg-card-img"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.88 0.08 150) 0%,
+										oklch(0.78 0.12 150) 100%
+									);
+								"
+							></div>
+							<div class="bg-card-body">
+								<div class="bg-card-name">Sluchátka Sony WH-1000XM5</div>
+								<div class="bg-card-price">8 490 Kč</div>
+							</div>
+						</div>
+						<div class="bg-card" style="opacity: 0.5">
+							<div
+								class="bg-card-img"
+								style="
+									background: linear-gradient(
+										135deg,
+										var(--surface-2),
+										var(--border)
+									);
+								"
+							></div>
+							<div class="bg-card-body">
+								<div class="bg-card-name">Kniha</div>
+								<div class="bg-card-price">350 Kč</div>
+							</div>
+						</div>
+						<div class="bg-card" style="opacity: 0.5">
+							<div
+								class="bg-card-img"
+								style="
+									background: linear-gradient(
+										135deg,
+										var(--surface-2),
+										var(--border)
+									);
+								"
+							></div>
+							<div class="bg-card-body">
+								<div class="bg-card-name">Svíčka</div>
+								<div class="bg-card-price">290 Kč</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Backdrop + Modal -->
+				<div class="modal-backdrop">
+					<div class="modal">
+						<!-- Close button -->
+						<button class="modal-close" aria-label="Zavřít">
+							<svg
+								width="16"
+								height="16"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.2"
+								viewBox="0 0 24 24"
+							>
+								<path d="M18 6 6 18M6 6l12 12" />
+							</svg>
+						</button>
+
+						<div class="modal-body">
+							<!-- Left: image -->
+							<div class="modal-image-col">
+								<!-- Product image placeholder -->
+								<div class="modal-image-placeholder">
+									<svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+										<rect
+											x="8"
+											y="22"
+											width="56"
+											height="38"
+											rx="4"
+											fill="currentColor"
+											opacity="0.15"
+										/>
+										<rect
+											x="16"
+											y="28"
+											width="40"
+											height="22"
+											rx="2"
+											fill="currentColor"
+											opacity="0.2"
+										/>
+										<path
+											d="M24 38 a8 8 0 0 1 8-8 a8 8 0 0 1 8 8 a8 8 0 0 1-8 8 a8 8 0 0 1-8-8z"
+											fill="currentColor"
+											opacity="0.25"
+										/>
+										<rect
+											x="28"
+											y="12"
+											width="16"
+											height="10"
+											rx="8"
+											fill="currentColor"
+											opacity="0.2"
+										/>
+										<rect
+											x="26"
+											y="60"
+											width="20"
+											height="3"
+											rx="1.5"
+											fill="currentColor"
+											opacity="0.15"
+										/>
+									</svg>
+									<span
+										style="
+											font-size: 12px;
+											letter-spacing: 0.04em;
+											font-weight: 600;
+										"
+										>Bezdrátová sluchátka</span
+									>
+								</div>
+								<!-- Priority badge -->
+								<div class="priority-badge-overlay">
+									<span class="priority-badge priority-high">
+										<svg
+											width="9"
+											height="9"
+											viewBox="0 0 9 9"
+											fill="currentColor"
+										>
+											<path d="M4.5 1 L7 7 H2 Z" />
+										</svg>
+										Vysoká priorita
+									</span>
+								</div>
+							</div>
+
+							<!-- Right: details -->
+							<div class="modal-detail-col">
+								<h2 class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</h2>
+
+								<div class="gift-meta-row">
+									<span class="gift-price">8 490 Kč</span>
+									<a href="#" class="gift-link">
+										<svg
+											width="12"
+											height="12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											viewBox="0 0 24 24"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										Koupit na alza.cz
+									</a>
+								</div>
+
+								<p class="gift-description">
+									Model WH-1000XM5, barva černá. Preferuji verzi s aktivním
+									potlačením hluku (ANC). K dostání na Alza.cz nebo Mall.cz. Pokud
+									budou v akci jinde, klidně odkudkoli.
+								</p>
+
+								<div class="modal-divider"></div>
+
+								<!-- Reservation stats (visitor only) -->
+								<div class="reservation-info">
+									<div class="res-stat">
+										<span class="res-stat-value">1</span>
+										<span class="res-stat-label">Celkem</span>
+									</div>
+									<div class="res-stat-divider"></div>
+									<div class="res-stat">
+										<span class="res-stat-value" style="color: var(--primary)"
+											>1</span
+										>
+										<span class="res-stat-label">Dostupné</span>
+									</div>
+									<div class="res-stat-divider"></div>
+									<div class="res-stat">
+										<span
+											class="res-stat-value"
+											style="color: var(--foreground-muted)"
+											>0</span
+										>
+										<span class="res-stat-label">Rezervované</span>
+									</div>
+								</div>
+
+								<div class="gift-footer-meta">
+									<span class="gift-date">Přidáno 15. 5. 2026</span>
+									<button class="like-btn is-liked">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="currentColor"
+										>
+											<path
+												d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+											/>
+										</svg>
+										3
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Footer actions -->
+						<div class="modal-footer">
+							<button class="btn btn-ghost" style="flex: 0 0 auto">
+								<svg
+									width="15"
+									height="15"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+								>
+									<path
+										d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+									/>
+								</svg>
+								Sdílet
+							</button>
+							<button class="btn btn-primary">
+								<svg
+									width="16"
+									height="16"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									viewBox="0 0 24 24"
+								>
+									<path d="M20 12V22H4V12" />
+									<path d="M22 7H2v5h20V7z" />
+									<path d="M12 22V7" />
+									<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+									<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+								</svg>
+								Rezervovat
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══════════════════════════════════════════════════════ DARK -->
+			<div class="demo-panel theme-dark dk-root">
+				<div class="panel-label">Tmavý režim — Varianta 1: Centrum (2 sloupce)</div>
+
+				<!-- Wishlist background -->
+				<div class="wishlist-bg">
+					<div class="wishlist-nav">
+						<span class="wishlist-logo">Darecky</span>
+						<div style="display: flex; gap: 8px">
+							<div
+								style="
+									width: 80px;
+									height: 32px;
+									border-radius: 8px;
+									background: var(--surface-2);
+									border: 1px solid var(--border);
+								"
+							></div>
+							<div
+								style="
+									width: 36px;
+									height: 36px;
+									border-radius: 50%;
+									background: var(--primary-soft);
+									display: flex;
+									align-items: center;
+									justify-content: center;
+									color: var(--primary);
+									font-weight: 700;
+									font-size: 14px;
+								"
+							>
+								J
+							</div>
+						</div>
+					</div>
+					<div style="margin-bottom: 20px">
+						<div
+							style="
+								font-size: 11px;
+								font-weight: 700;
+								letter-spacing: 0.08em;
+								text-transform: uppercase;
+								color: var(--primary);
+								margin-bottom: 4px;
+							"
+						>
+							Jana Nováková
+						</div>
+						<div
+							style="
+								font-family: 'Noto Sans', sans-serif;
+								font-size: 22px;
+								font-weight: 700;
+								color: var(--foreground);
+								letter-spacing: -0.02em;
+							"
+						>
+							Narozeniny 2026 🎂
+						</div>
+					</div>
+					<div class="wishlist-cards">
+						<div class="bg-card">
+							<div
+								class="bg-card-img"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.28 0.06 150),
+										oklch(0.22 0.04 150)
+									);
+								"
+							></div>
+							<div class="bg-card-body">
+								<div class="bg-card-name">Sluchátka Sony WH-1000XM5</div>
+								<div class="bg-card-price">8 490 Kč</div>
+							</div>
+						</div>
+						<div class="bg-card" style="opacity: 0.4">
+							<div class="bg-card-img" style="background: var(--surface-2)"></div>
+							<div class="bg-card-body">
+								<div class="bg-card-name">Kniha</div>
+								<div class="bg-card-price">350 Kč</div>
+							</div>
+						</div>
+						<div class="bg-card" style="opacity: 0.4">
+							<div class="bg-card-img" style="background: var(--surface-2)"></div>
+							<div class="bg-card-body">
+								<div class="bg-card-name">Svíčka</div>
+								<div class="bg-card-price">290 Kč</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Backdrop + Modal -->
+				<div class="modal-backdrop">
+					<div class="modal">
+						<button class="modal-close" aria-label="Zavřít">
+							<svg
+								width="16"
+								height="16"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.2"
+								viewBox="0 0 24 24"
+							>
+								<path d="M18 6 6 18M6 6l12 12" />
+							</svg>
+						</button>
+
+						<div class="modal-body">
+							<div class="modal-image-col">
+								<div class="modal-image-placeholder">
+									<svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+										<rect
+											x="8"
+											y="22"
+											width="56"
+											height="38"
+											rx="4"
+											fill="currentColor"
+											opacity="0.2"
+										/>
+										<rect
+											x="16"
+											y="28"
+											width="40"
+											height="22"
+											rx="2"
+											fill="currentColor"
+											opacity="0.25"
+										/>
+										<path
+											d="M24 38 a8 8 0 0 1 8-8 a8 8 0 0 1 8 8 a8 8 0 0 1-8 8 a8 8 0 0 1-8-8z"
+											fill="currentColor"
+											opacity="0.3"
+										/>
+										<rect
+											x="28"
+											y="12"
+											width="16"
+											height="10"
+											rx="8"
+											fill="currentColor"
+											opacity="0.25"
+										/>
+										<rect
+											x="26"
+											y="60"
+											width="20"
+											height="3"
+											rx="1.5"
+											fill="currentColor"
+											opacity="0.2"
+										/>
+									</svg>
+									<span
+										style="
+											font-size: 12px;
+											letter-spacing: 0.04em;
+											font-weight: 600;
+										"
+										>Bezdrátová sluchátka</span
+									>
+								</div>
+								<div class="priority-badge-overlay">
+									<span class="priority-badge priority-high">
+										<svg
+											width="9"
+											height="9"
+											viewBox="0 0 9 9"
+											fill="currentColor"
+										>
+											<path d="M4.5 1 L7 7 H2 Z" />
+										</svg>
+										Vysoká priorita
+									</span>
+								</div>
+							</div>
+
+							<div class="modal-detail-col">
+								<h2 class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</h2>
+
+								<div class="gift-meta-row">
+									<span class="gift-price">8 490 Kč</span>
+									<a href="#" class="gift-link">
+										<svg
+											width="12"
+											height="12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											viewBox="0 0 24 24"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										Koupit na alza.cz
+									</a>
+								</div>
+
+								<p class="gift-description">
+									Model WH-1000XM5, barva černá. Preferuji verzi s aktivním
+									potlačením hluku (ANC). K dostání na Alza.cz nebo Mall.cz. Pokud
+									budou v akci jinde, klidně odkudkoli.
+								</p>
+
+								<div class="modal-divider"></div>
+
+								<div class="reservation-info">
+									<div class="res-stat">
+										<span class="res-stat-value">1</span>
+										<span class="res-stat-label">Celkem</span>
+									</div>
+									<div class="res-stat-divider"></div>
+									<div class="res-stat">
+										<span class="res-stat-value" style="color: var(--primary)"
+											>1</span
+										>
+										<span class="res-stat-label">Dostupné</span>
+									</div>
+									<div class="res-stat-divider"></div>
+									<div class="res-stat">
+										<span
+											class="res-stat-value"
+											style="color: var(--foreground-muted)"
+											>0</span
+										>
+										<span class="res-stat-label">Rezervované</span>
+									</div>
+								</div>
+
+								<!-- Reserving state shown in dark mode -->
+								<div class="reserve-form">
+									<div class="reserve-form-label">Počet kusů k rezervaci</div>
+									<div class="qty-row">
+										<button class="qty-btn">−</button>
+										<span class="qty-value">1</span>
+										<button class="qty-btn">+</button>
+										<span class="qty-hint">z 1 dostupného</span>
+									</div>
+								</div>
+
+								<div class="gift-footer-meta">
+									<span class="gift-date">Přidáno 15. 5. 2026</span>
+									<button class="like-btn">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+											/>
+										</svg>
+										3
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<div class="modal-footer">
+							<button
+								class="btn btn-ghost"
+								style="flex: 0 0 auto; color: var(--foreground-muted)"
+							>
+								Zrušit
+							</button>
+							<button class="btn btn-primary">
+								<svg
+									width="16"
+									height="16"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									viewBox="0 0 24 24"
+								>
+									<path d="M20 12V22H4V12" />
+									<path d="M22 7H2v5h20V7z" />
+									<path d="M12 22V7" />
+									<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+									<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+								</svg>
+								Potvrdit rezervaci
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

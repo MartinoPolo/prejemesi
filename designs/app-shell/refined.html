@@ -1,0 +1,1337 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="description" content="Darecky — App Shell refined mockup, light mode only" />
+		<title>Darecky — App Shell: REFINED (Variant 1 + agreed nav decisions)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── REFINED — App Shell: Variant 1 + agreed nav decisions ──────
+			   Light mode only. Dark mode auto-generated from tokens.
+			   Changes from variant-1:
+			   - Gift-box SVG logo icon (no emoji)
+			   - Nav items are <a> links AND dropdown triggers on hover
+			   - Dropdown: 3 recent wishlists + "Zobrazit vše →" only
+			   - Dark mode toggle: single cycling ghost button (not 3-segment)
+			   - Page title + toolbar merged into single row
+			   - Explicit sort label dropdown ("Řazení: Poslední aktivita ▾")
+			   - View switcher (Card|List) + archive toggle in title row
+			   - Lucide-style 24×24 SVGs throughout
+			   - No dark mode section (decisions: light mode is source of truth) */
+
+			/* ── Sage green color theme (light) ── */
+			:root,
+			.theme-light {
+				--background: oklch(0.988 0.004 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.948 0.012 150);
+				--foreground: oklch(0.17 0.018 155);
+				--foreground-muted: oklch(0.44 0.022 150);
+				--foreground-subtle: oklch(0.6 0.014 150);
+				--border: oklch(0.918 0.012 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150.069);
+				--primary-fg: oklch(0.982 0.018 155.826);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150.069);
+				--nav-bg: oklch(1 0 0 / 0.92);
+			}
+
+			/* ── Reset & base ── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+				background: var(--background);
+				font-family: var(--font-sans);
+				color: var(--foreground);
+				font-size: var(--text-base);
+				-webkit-font-smoothing: antialiased;
+				min-width: 1280px;
+			}
+
+			/* ── Eyebrow label ── */
+			.refined-eyebrow {
+				text-align: center;
+				padding: var(--space-4) var(--space-6) var(--space-3);
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+				background: var(--primary-soft);
+				border-bottom: 1px solid oklch(0.87 0.038 150);
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   TOP NAVIGATION BAR
+			   ════════════════════════════════════════════════════════ */
+			.topbar {
+				position: sticky;
+				top: 0;
+				z-index: var(--z-sticky);
+				height: var(--nav-height);
+				background: var(--nav-bg);
+				backdrop-filter: blur(12px);
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				padding: 0 var(--space-6);
+				gap: var(--space-6);
+				flex-shrink: 0;
+			}
+
+			/* ── Logo ── */
+			.logo {
+				font-family: var(--font-heading);
+				font-weight: var(--weight-bold);
+				font-size: var(--text-xl);
+				color: var(--primary);
+				letter-spacing: var(--tracking-tight);
+				text-decoration: none;
+				flex-shrink: 0;
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+			.logo:hover {
+				opacity: 0.85;
+			}
+			.logo-icon-wrap {
+				width: 30px;
+				height: 30px;
+				background: var(--primary-soft);
+				border-radius: var(--radius-md);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--primary);
+				flex-shrink: 0;
+			}
+			.logo-text {
+				display: flex;
+				align-items: baseline;
+				gap: 3px;
+			}
+			.logo-tld {
+				opacity: 0.42;
+				font-weight: var(--weight-medium);
+				font-size: var(--text-lg);
+			}
+
+			/* ── Primary nav links with hover dropdowns ── */
+			.nav-links {
+				display: flex;
+				align-items: center;
+				gap: 2px;
+				flex: 1;
+			}
+
+			.nav-item {
+				position: relative;
+			}
+
+			/* Each nav item is a link, but styled as a button-like trigger */
+			.nav-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 36px;
+				padding: 0 var(--space-3);
+				border-radius: var(--radius-md);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				text-decoration: none;
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				font-family: var(--font-sans);
+				transition:
+					background var(--duration-normal) var(--ease-standard),
+					color var(--duration-normal) var(--ease-standard);
+				white-space: nowrap;
+				position: relative;
+			}
+			.nav-link:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.nav-link.is-active {
+				color: var(--primary);
+				font-weight: var(--weight-semibold);
+			}
+			/* Active underline indicator */
+			.nav-link.is-active::after {
+				content: '';
+				position: absolute;
+				bottom: -1px;
+				left: var(--space-3);
+				right: var(--space-3);
+				height: 2px;
+				background: var(--primary);
+				border-radius: var(--radius-full);
+			}
+			.nav-link.is-active:hover {
+				background: var(--primary-soft);
+			}
+			.nav-chevron {
+				opacity: 0.55;
+				transition: transform var(--duration-normal) var(--ease-standard);
+				flex-shrink: 0;
+			}
+
+			/* ── Nav hover dropdown ── */
+			.nav-dropdown {
+				position: absolute;
+				top: calc(100% + var(--space-2));
+				left: -var(--space-2);
+				left: -8px;
+				width: 320px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-xl);
+				box-shadow: var(--shadow-xl);
+				z-index: var(--z-dropdown);
+				overflow: hidden;
+				/* Hidden by default; shown via .nav-item:hover or .is-open class */
+				opacity: 0;
+				pointer-events: none;
+				transform: translateY(-4px);
+				transition:
+					opacity var(--duration-normal) var(--ease-standard),
+					transform var(--duration-normal) var(--ease-standard);
+			}
+			/* Show on hover over the nav-item wrapper */
+			.nav-item:hover .nav-dropdown,
+			.nav-item.is-open .nav-dropdown {
+				opacity: 1;
+				pointer-events: auto;
+				transform: translateY(0);
+			}
+			/* Keep dropdown open when hovering over dropdown itself */
+			.nav-item:hover .nav-chevron {
+				transform: rotate(180deg);
+			}
+
+			.nav-dropdown-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: var(--space-3) var(--space-4) var(--space-2);
+				border-bottom: 1px solid var(--border);
+			}
+			.nav-dropdown-title {
+				font-size: var(--text-xs);
+				font-weight: var(--weight-semibold);
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+			}
+			.nav-dropdown-view-all {
+				font-size: var(--text-xs);
+				font-weight: var(--weight-medium);
+				color: var(--primary);
+				text-decoration: none;
+				display: inline-flex;
+				align-items: center;
+				gap: 3px;
+			}
+			.nav-dropdown-view-all:hover {
+				text-decoration: underline;
+			}
+
+			.nav-dropdown-item {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				padding: var(--space-2) var(--space-4);
+				cursor: pointer;
+				text-decoration: none;
+				transition: background var(--duration-normal) var(--ease-standard);
+			}
+			.nav-dropdown-item:hover {
+				background: var(--surface-2);
+			}
+			.nav-dropdown-thumb {
+				width: 34px;
+				height: 34px;
+				border-radius: var(--radius-md);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 17px;
+				flex-shrink: 0;
+				overflow: hidden;
+			}
+			.nav-dropdown-info {
+				flex: 1;
+				min-width: 0;
+			}
+			.nav-dropdown-name {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.nav-dropdown-meta {
+				font-size: 11px;
+				color: var(--foreground-muted);
+				margin-top: 1px;
+			}
+			.nav-dropdown-badge {
+				font-size: 10px;
+				font-weight: var(--weight-semibold);
+				padding: 2px 7px;
+				border-radius: var(--radius-full);
+				flex-shrink: 0;
+				white-space: nowrap;
+			}
+			.badge-shared {
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+			.badge-draft {
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+
+			.nav-dropdown-footer {
+				padding: var(--space-2) var(--space-4) var(--space-3);
+				border-top: 1px solid var(--border);
+			}
+			.nav-dropdown-footer-link {
+				font-size: var(--text-sm);
+				color: var(--primary);
+				text-decoration: none;
+				font-weight: var(--weight-medium);
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-1);
+			}
+			.nav-dropdown-footer-link:hover {
+				text-decoration: underline;
+			}
+
+			/* ── Right side controls ── */
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				flex-shrink: 0;
+			}
+
+			/* Create button — primary */
+			.btn-create {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-2);
+				height: 34px;
+				padding: 0 var(--space-4);
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				border-radius: var(--radius-md);
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				cursor: pointer;
+				transition: filter var(--duration-normal) var(--ease-standard);
+				box-shadow: var(--shadow-sm);
+				white-space: nowrap;
+				text-decoration: none;
+			}
+			.btn-create:hover {
+				filter: brightness(1.1);
+			}
+
+			/* Ghost icon button (bell, dark mode) */
+			.icon-btn {
+				position: relative;
+				width: 36px;
+				height: 36px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: transparent;
+				border: none;
+				border-radius: var(--radius-md);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition:
+					background var(--duration-normal) var(--ease-standard),
+					color var(--duration-normal) var(--ease-standard);
+				flex-shrink: 0;
+			}
+			.icon-btn:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+
+			/* Notification badge */
+			.notif-badge {
+				position: absolute;
+				top: 4px;
+				right: 4px;
+				min-width: 16px;
+				height: 16px;
+				padding: 0 3px;
+				background: var(--status-danger);
+				color: #fff;
+				border-radius: var(--radius-full);
+				font-size: 10px;
+				font-weight: var(--weight-bold);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				line-height: 1;
+				border: 2px solid var(--background);
+				pointer-events: none;
+			}
+
+			/* ── User avatar + menu ── */
+			.user-menu-wrap {
+				position: relative;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: var(--weight-semibold);
+				font-size: 13px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				border: 2px solid transparent;
+				transition: border-color var(--duration-normal) var(--ease-standard);
+				flex-shrink: 0;
+				font-family: var(--font-sans);
+			}
+			.avatar:hover {
+				border-color: var(--primary);
+			}
+
+			/* User dropdown — open for demo */
+			.user-dropdown {
+				position: absolute;
+				top: calc(100% + var(--space-2));
+				right: 0;
+				width: 210px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-lg);
+				padding: var(--space-2);
+				z-index: var(--z-dropdown);
+			}
+			.dropdown-header {
+				padding: var(--space-2) var(--space-3) var(--space-3);
+				border-bottom: 1px solid var(--border);
+				margin-bottom: var(--space-1);
+			}
+			.dropdown-name {
+				font-weight: var(--weight-semibold);
+				font-size: var(--text-sm);
+				color: var(--foreground);
+			}
+			.dropdown-email {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+				margin-top: 2px;
+			}
+			.dropdown-item {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				padding: 7px var(--space-3);
+				border-radius: var(--radius-sm);
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				text-decoration: none;
+				transition:
+					background var(--duration-normal) var(--ease-standard),
+					color var(--duration-normal) var(--ease-standard);
+			}
+			.dropdown-item:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.dropdown-item.is-danger {
+				color: var(--status-danger);
+			}
+			.dropdown-item.is-danger:hover {
+				background: color-mix(in oklch, var(--status-danger) 10%, transparent);
+				color: var(--status-danger);
+			}
+			.dropdown-divider {
+				height: 1px;
+				background: var(--border);
+				margin: var(--space-1) 0;
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   PAGE CONTENT AREA
+			   ════════════════════════════════════════════════════════ */
+			.content-wrap {
+				max-width: var(--content-max-width);
+				width: 100%;
+				margin: 0 auto;
+				padding: var(--space-8) var(--space-6) var(--space-16);
+			}
+
+			/* ── Merged title + toolbar row ── */
+			.page-title-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: var(--space-4);
+				margin-bottom: var(--space-6);
+				padding-bottom: var(--space-5);
+				border-bottom: 1px solid var(--border);
+			}
+			.page-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-2xl);
+				font-weight: var(--weight-bold);
+				letter-spacing: var(--tracking-snug);
+				color: var(--foreground);
+				flex-shrink: 0;
+			}
+
+			/* Right toolbar — sort + view switcher + archive toggle */
+			.page-toolbar {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+
+			/* Sort dropdown button */
+			.sort-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-2);
+				height: 34px;
+				padding: 0 var(--space-3);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition:
+					background var(--duration-normal) var(--ease-standard),
+					border-color var(--duration-normal) var(--ease-standard),
+					color var(--duration-normal) var(--ease-standard);
+				white-space: nowrap;
+			}
+			.sort-btn:hover {
+				background: var(--surface-2);
+				border-color: var(--border-strong);
+				color: var(--foreground);
+			}
+			.sort-btn-label {
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+			}
+
+			/* View switcher (icon buttons in a group) */
+			.view-switcher {
+				display: inline-flex;
+				background: var(--surface-2);
+				border-radius: var(--radius-md);
+				padding: 2px;
+				gap: 1px;
+			}
+			.view-btn {
+				width: 30px;
+				height: 30px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: none;
+				background: transparent;
+				border-radius: 6px;
+				color: var(--foreground-subtle);
+				cursor: pointer;
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.view-btn:hover {
+				color: var(--foreground);
+			}
+			.view-btn.is-active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: var(--shadow-sm);
+			}
+
+			/* Archive toggle */
+			.archive-toggle {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-2);
+				height: 34px;
+				padding: 0 var(--space-3);
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				border-radius: var(--radius-md);
+				border: none;
+				background: transparent;
+				transition:
+					background var(--duration-normal),
+					color var(--duration-normal);
+				white-space: nowrap;
+			}
+			.archive-toggle:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.archive-toggle input[type='checkbox'] {
+				accent-color: var(--primary);
+				width: 14px;
+				height: 14px;
+				cursor: pointer;
+			}
+
+			/* Toolbar divider */
+			.toolbar-sep {
+				width: 1px;
+				height: 20px;
+				background: var(--border);
+				flex-shrink: 0;
+			}
+
+			/* ── Wishlist cards grid ── */
+			.wishlists-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+				gap: var(--space-5);
+			}
+
+			.wl-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				overflow: hidden;
+				cursor: pointer;
+				transition:
+					border-color var(--duration-normal) var(--ease-standard),
+					box-shadow var(--duration-normal) var(--ease-standard),
+					transform var(--duration-normal) var(--ease-standard);
+				text-decoration: none;
+				display: block;
+			}
+			.wl-card:hover {
+				border-color: var(--border-strong);
+				box-shadow: var(--shadow-md);
+				transform: translateY(-1px);
+			}
+			.wl-card-thumb {
+				height: 100px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 34px;
+				position: relative;
+			}
+			.wl-card-body {
+				padding: var(--space-4) var(--space-5);
+			}
+			.wl-card-name {
+				font-weight: var(--weight-semibold);
+				font-size: var(--text-base);
+				color: var(--foreground);
+				margin-bottom: var(--space-1);
+			}
+			.wl-card-sub {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+				margin-bottom: var(--space-3);
+			}
+			.wl-card-meta {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				flex-wrap: wrap;
+			}
+			.wl-stat {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+			}
+			.wl-stat b {
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+			}
+			.wl-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 20px;
+				padding: 0 7px;
+				border-radius: var(--radius-full);
+				font-size: 11px;
+				font-weight: var(--weight-medium);
+				white-space: nowrap;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ── Eyebrow header ── -->
+		<div class="refined-eyebrow">REFINED — App Shell: Variant 1 + agreed nav decisions</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     TOP NAVIGATION BAR
+		     ════════════════════════════════════════════════════════ -->
+		<header class="topbar">
+			<!-- Logo: gift-box SVG icon + "darecky" + dimmed ".cz" — both link to home -->
+			<a class="logo" href="/" aria-label="Darecky — domovská stránka">
+				<div class="logo-icon-wrap" aria-hidden="true">
+					<!-- Lucide-style gift box icon, 18×18 within 30×30 container -->
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<polyline points="20 12 20 22 4 22 4 12" />
+						<rect x="2" y="7" width="20" height="5" />
+						<line x1="12" y1="22" x2="12" y2="7" />
+						<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+						<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+					</svg>
+				</div>
+				<div class="logo-text">darecky<span class="logo-tld">.cz</span></div>
+			</a>
+
+			<!-- Primary nav: links that also open dropdowns on hover -->
+			<nav class="nav-links" aria-label="Hlavní navigace">
+				<!-- Moje seznamy — ACTIVE, dropdown shown open for demo -->
+				<div class="nav-item is-open">
+					<a class="nav-link is-active" href="/dashboard" aria-current="page">
+						Moje seznamy
+						<svg
+							class="nav-chevron"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</a>
+
+					<!-- Dropdown: 3 recent wishlists + "Zobrazit vše →". NO "Nový seznam", NO "Archivované". -->
+					<div class="nav-dropdown" role="menu" aria-label="Nedávné seznamy — Moje">
+						<div class="nav-dropdown-header">
+							<span class="nav-dropdown-title">Nedávné</span>
+							<a class="nav-dropdown-view-all" href="/dashboard">
+								Zobrazit vše
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									stroke-linecap="round"
+									aria-hidden="true"
+								>
+									<line x1="5" y1="12" x2="19" y2="12" />
+									<polyline points="12 5 19 12 12 19" />
+								</svg>
+							</a>
+						</div>
+
+						<a class="nav-dropdown-item" href="/w/vanoce-2026" role="menuitem">
+							<div
+								class="nav-dropdown-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.28 0.06 25),
+										oklch(0.38 0.08 15)
+									);
+								"
+							>
+								🎄
+							</div>
+							<div class="nav-dropdown-info">
+								<div class="nav-dropdown-name">Vánoce 2026</div>
+								<div class="nav-dropdown-meta">8 přání · upraveno dnes</div>
+							</div>
+							<span class="nav-dropdown-badge badge-shared">Sdíleno</span>
+						</a>
+
+						<a class="nav-dropdown-item" href="/w/narozeniny-petr" role="menuitem">
+							<div
+								class="nav-dropdown-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.72 0.12 55),
+										oklch(0.62 0.14 45)
+									);
+								"
+							>
+								🎂
+							</div>
+							<div class="nav-dropdown-info">
+								<div class="nav-dropdown-name">Narozeniny - Petr</div>
+								<div class="nav-dropdown-meta">5 přání · upraveno včera</div>
+							</div>
+							<span class="nav-dropdown-badge badge-draft">Koncept</span>
+						</a>
+
+						<a class="nav-dropdown-item" href="/w/svatba" role="menuitem">
+							<div
+								class="nav-dropdown-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.85 0.06 320),
+										oklch(0.78 0.08 340)
+									);
+								"
+							>
+								💍
+							</div>
+							<div class="nav-dropdown-info">
+								<div class="nav-dropdown-name">Svatba Jana &amp; Tomáš</div>
+								<div class="nav-dropdown-meta">12 přání · upraveno 3. 5.</div>
+							</div>
+							<span class="nav-dropdown-badge badge-shared">Sdíleno</span>
+						</a>
+
+						<div class="nav-dropdown-footer">
+							<a class="nav-dropdown-footer-link" href="/dashboard">
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									aria-hidden="true"
+								>
+									<rect x="3" y="3" width="7" height="7" />
+									<rect x="14" y="3" width="7" height="7" />
+									<rect x="14" y="14" width="7" height="7" />
+									<rect x="3" y="14" width="7" height="7" />
+								</svg>
+								Zobrazit vše →
+							</a>
+						</div>
+					</div>
+				</div>
+
+				<!-- Spravované -->
+				<div class="nav-item">
+					<a class="nav-link" href="/spravovane">
+						Spravované
+						<svg
+							class="nav-chevron"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</a>
+					<!-- Dropdown (hidden at rest — shown on hover via CSS) -->
+					<div class="nav-dropdown" role="menu" aria-label="Nedávné — Spravované">
+						<div class="nav-dropdown-header">
+							<span class="nav-dropdown-title">Nedávné</span>
+							<a class="nav-dropdown-view-all" href="/spravovane">Zobrazit vše →</a>
+						</div>
+						<a class="nav-dropdown-item" href="/w/narodni-svatekvychod" role="menuitem">
+							<div
+								class="nav-dropdown-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.48 0.08 200),
+										oklch(0.42 0.1 190)
+									);
+								"
+							>
+								🎉
+							</div>
+							<div class="nav-dropdown-info">
+								<div class="nav-dropdown-name">Rodinná oslava</div>
+								<div class="nav-dropdown-meta">14 přání · správce od 12. 4.</div>
+							</div>
+							<span class="nav-dropdown-badge badge-shared">Sdíleno</span>
+						</a>
+						<div class="nav-dropdown-footer">
+							<a class="nav-dropdown-footer-link" href="/spravovane"
+								>Zobrazit vše →</a
+							>
+						</div>
+					</div>
+				</div>
+
+				<!-- Sledované -->
+				<div class="nav-item">
+					<a class="nav-link" href="/sledovane">
+						Sledované
+						<svg
+							class="nav-chevron"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</a>
+					<div class="nav-dropdown" role="menu" aria-label="Nedávné — Sledované">
+						<div class="nav-dropdown-header">
+							<span class="nav-dropdown-title">Nedávné</span>
+							<a class="nav-dropdown-view-all" href="/sledovane">Zobrazit vše →</a>
+						</div>
+						<a class="nav-dropdown-item" href="/w/lucie-narky" role="menuitem">
+							<div
+								class="nav-dropdown-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.68 0.14 55),
+										oklch(0.58 0.16 45)
+									);
+								"
+							>
+								🌟
+							</div>
+							<div class="nav-dropdown-info">
+								<div class="nav-dropdown-name">Lucie – narozeniny</div>
+								<div class="nav-dropdown-meta">6 přání · sledujete od 1. 5.</div>
+							</div>
+							<span class="nav-dropdown-badge badge-shared">Sdíleno</span>
+						</a>
+						<div class="nav-dropdown-footer">
+							<a class="nav-dropdown-footer-link" href="/sledovane">Zobrazit vše →</a>
+						</div>
+					</div>
+				</div>
+			</nav>
+
+			<!-- Right controls -->
+			<div class="nav-right">
+				<!-- + Vytvořit — primary CTA -->
+				<a class="btn-create" href="/vytvorit" role="button">
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						aria-hidden="true"
+					>
+						<line x1="12" y1="5" x2="12" y2="19" />
+						<line x1="5" y1="12" x2="19" y2="12" />
+					</svg>
+					Vytvořit
+				</a>
+
+				<!-- Notification bell — ghost, red badge "3" -->
+				<button class="icon-btn" aria-label="Oznámení (3 nepřečtené)">
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+						<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+					</svg>
+					<span class="notif-badge" aria-hidden="true">3</span>
+				</button>
+
+				<!-- Dark mode toggle — single cycling ghost button, light mode active -->
+				<!-- tooltip: "Světlý režim" (current state label) -->
+				<button class="icon-btn" aria-label="Přepnout režim zobrazení" title="Světlý režim">
+					<!-- Sun icon — light mode active -->
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<circle cx="12" cy="12" r="5" />
+						<line x1="12" y1="1" x2="12" y2="3" />
+						<line x1="12" y1="21" x2="12" y2="23" />
+						<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+						<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+						<line x1="1" y1="12" x2="3" y2="12" />
+						<line x1="21" y1="12" x2="23" y2="12" />
+						<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+						<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+					</svg>
+				</button>
+
+				<!-- User avatar + dropdown (open for demo) -->
+				<div class="user-menu-wrap">
+					<button
+						class="avatar"
+						aria-label="Jana Nováková — menu uživatele"
+						aria-haspopup="true"
+					>
+						JN
+					</button>
+
+					<!-- Dropdown shown open: Profil | Nastavení | divider | Odhlásit se -->
+					<div class="user-dropdown" role="menu">
+						<div class="dropdown-header">
+							<div class="dropdown-name">Jana Nováková</div>
+							<div class="dropdown-email">jana@example.cz</div>
+						</div>
+						<a class="dropdown-item" href="/profil" role="menuitem">
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<circle cx="12" cy="8" r="4" />
+								<path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+							</svg>
+							Profil
+						</a>
+						<a class="dropdown-item" href="/nastaveni" role="menuitem">
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<circle cx="12" cy="12" r="3" />
+								<path
+									d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+								/>
+							</svg>
+							Nastavení
+						</a>
+						<div class="dropdown-divider"></div>
+						<a class="dropdown-item is-danger" href="/odhlasit" role="menuitem">
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+								<polyline points="16 17 21 12 16 7" />
+								<line x1="21" y1="12" x2="9" y2="12" />
+							</svg>
+							Odhlásit se
+						</a>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<!-- ════════════════════════════════════════════════════════
+		     PAGE CONTENT — "Moje seznamy" (default home page)
+		     ════════════════════════════════════════════════════════ -->
+		<main class="content-wrap">
+			<!-- Single merged title + toolbar row (no separate toolbar below) -->
+			<div class="page-title-row">
+				<h1 class="page-title">Moje seznamy</h1>
+
+				<div class="page-toolbar" role="toolbar" aria-label="Nástroje stránky">
+					<!-- Sort dropdown — explicit label -->
+					<button class="sort-btn" aria-haspopup="listbox" aria-label="Seřadit seznam">
+						<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<line x1="3" y1="6" x2="21" y2="6" />
+							<line x1="6" y1="12" x2="18" y2="12" />
+							<line x1="9" y1="18" x2="15" y2="18" />
+						</svg>
+						Řazení: <span class="sort-btn-label">Poslední aktivita</span>
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<polyline points="6 9 12 15 18 9" />
+						</svg>
+					</button>
+
+					<div class="toolbar-sep" aria-hidden="true"></div>
+
+					<!-- View switcher: Card | List -->
+					<div class="view-switcher" role="group" aria-label="Zobrazení">
+						<!-- Card view — active -->
+						<button
+							class="view-btn is-active"
+							title="Zobrazení karet"
+							aria-pressed="true"
+							aria-label="Karet"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<rect x="3" y="3" width="7" height="7" />
+								<rect x="14" y="3" width="7" height="7" />
+								<rect x="3" y="14" width="7" height="7" />
+								<rect x="14" y="14" width="7" height="7" />
+							</svg>
+						</button>
+						<!-- List view -->
+						<button
+							class="view-btn"
+							title="Zobrazení seznamu"
+							aria-pressed="false"
+							aria-label="Řádky"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<line x1="8" y1="6" x2="21" y2="6" />
+								<line x1="8" y1="12" x2="21" y2="12" />
+								<line x1="8" y1="18" x2="21" y2="18" />
+								<line x1="3" y1="6" x2="3.01" y2="6" />
+								<line x1="3" y1="12" x2="3.01" y2="12" />
+								<line x1="3" y1="18" x2="3.01" y2="18" />
+							</svg>
+						</button>
+					</div>
+
+					<div class="toolbar-sep" aria-hidden="true"></div>
+
+					<!-- Archive toggle checkbox -->
+					<label class="archive-toggle">
+						<input type="checkbox" aria-label="Zobrazit archivované" />
+						Archivované
+					</label>
+				</div>
+			</div>
+
+			<!-- Wishlist cards (4 cards to demonstrate layout) -->
+			<div class="wishlists-grid">
+				<!-- Card 1: Vánoce 2026 -->
+				<a class="wl-card" href="/w/vanoce-2026">
+					<div
+						class="wl-card-thumb"
+						style="
+							background: linear-gradient(
+								135deg,
+								oklch(0.28 0.06 25),
+								oklch(0.38 0.08 15)
+							);
+						"
+						aria-hidden="true"
+					>
+						🎄
+					</div>
+					<div class="wl-card-body">
+						<div class="wl-card-name">Vánoce 2026</div>
+						<div class="wl-card-sub">Upraveno dnes</div>
+						<div class="wl-card-meta">
+							<span class="wl-stat"><b>8</b> přání</span>
+							<span class="wl-badge badge-shared">
+								<svg
+									width="10"
+									height="10"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									aria-hidden="true"
+								>
+									<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+									<polyline points="16 6 12 2 8 6" />
+									<line x1="12" y1="2" x2="12" y2="15" />
+								</svg>
+								Sdíleno
+							</span>
+						</div>
+					</div>
+				</a>
+
+				<!-- Card 2: Narozeniny Petr -->
+				<a class="wl-card" href="/w/narozeniny-petr">
+					<div
+						class="wl-card-thumb"
+						style="
+							background: linear-gradient(
+								135deg,
+								oklch(0.72 0.12 55),
+								oklch(0.62 0.14 45)
+							);
+						"
+						aria-hidden="true"
+					>
+						🎂
+					</div>
+					<div class="wl-card-body">
+						<div class="wl-card-name">Narozeniny — Petr</div>
+						<div class="wl-card-sub">Upraveno včera</div>
+						<div class="wl-card-meta">
+							<span class="wl-stat"><b>5</b> přání</span>
+							<span class="wl-badge badge-draft">Koncept</span>
+						</div>
+					</div>
+				</a>
+
+				<!-- Card 3: Svatba Jana & Tomáš -->
+				<a class="wl-card" href="/w/svatba">
+					<div
+						class="wl-card-thumb"
+						style="
+							background: linear-gradient(
+								135deg,
+								oklch(0.85 0.06 320),
+								oklch(0.78 0.08 340)
+							);
+						"
+						aria-hidden="true"
+					>
+						💍
+					</div>
+					<div class="wl-card-body">
+						<div class="wl-card-name">Svatba Jana &amp; Tomáš</div>
+						<div class="wl-card-sub">Upraveno 3. 5.</div>
+						<div class="wl-card-meta">
+							<span class="wl-stat"><b>12</b> přání</span>
+							<span class="wl-badge badge-shared">
+								<svg
+									width="10"
+									height="10"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									aria-hidden="true"
+								>
+									<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+									<polyline points="16 6 12 2 8 6" />
+									<line x1="12" y1="2" x2="12" y2="15" />
+								</svg>
+								Sdíleno
+							</span>
+						</div>
+					</div>
+				</a>
+
+				<!-- Card 4: Moje přání (placeholder) -->
+				<a class="wl-card" href="/w/moje-prani">
+					<div
+						class="wl-card-thumb"
+						style="
+							background: linear-gradient(
+								135deg,
+								oklch(0.52 0.12 150),
+								oklch(0.44 0.14 145)
+							);
+						"
+						aria-hidden="true"
+					>
+						🎁
+					</div>
+					<div class="wl-card-body">
+						<div class="wl-card-name">Moje přání</div>
+						<div class="wl-card-sub">Vytvořeno 28. 4.</div>
+						<div class="wl-card-meta">
+							<span class="wl-stat"><b>3</b> přání</span>
+							<span class="wl-badge badge-draft">Koncept</span>
+						</div>
+					</div>
+				</a>
+			</div>
+		</main>
+	</body>
+</html>

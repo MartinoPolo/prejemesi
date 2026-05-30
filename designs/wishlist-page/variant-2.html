@@ -1,0 +1,1929 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Variant 2: E-commerce Grid</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 2: E-commerce Grid ─────────────────────────────
+			   Uniform card sizing like an online store.
+			   Familiar product-grid patterns. Clean borders, consistent
+			   image heights, price prominent below image.
+			   Shows: Visitor (card view) + Owner (draft) + List view.
+			   ────────────────────────────────────────────────────────── */
+
+			.theme-light {
+				--background: oklch(0.978 0.004 106);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.963 0.007 106);
+				--surface-hover: oklch(0.948 0.01 106);
+				--foreground: oklch(0.16 0.01 107);
+				--foreground-muted: oklch(0.46 0.018 107);
+				--foreground-subtle: oklch(0.61 0.012 107);
+				--border: oklch(0.914 0.01 107);
+				--border-strong: oklch(0.855 0.015 107);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(0.99 0.01 150);
+				--primary-soft: oklch(0.928 0.052 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+			}
+			.theme-dark {
+				--background: oklch(0.142 0.008 107);
+				--surface: oklch(0.186 0.011 107);
+				--surface-2: oklch(0.226 0.014 107);
+				--surface-hover: oklch(0.262 0.016 107);
+				--foreground: oklch(0.958 0.006 107);
+				--foreground-muted: oklch(0.672 0.016 107);
+				--foreground-subtle: oklch(0.518 0.012 107);
+				--border: oklch(0.272 0.014 107);
+				--border-strong: oklch(0.352 0.018 107);
+				--primary: oklch(44.8% 0.119 151.328deg);
+				--primary-fg: oklch(0.97 0.014 150);
+				--primary-soft: oklch(0.272 0.058 150);
+				--ring: oklch(44.8% 0.119 151.328deg);
+			}
+
+			/* ── E-commerce card overrides ── */
+			.var2 .dk-card {
+				border-radius: var(--radius-lg);
+				border: 1px solid var(--border);
+				box-shadow: none;
+				transition:
+					box-shadow 150ms,
+					border-color 150ms,
+					transform 150ms;
+			}
+			.var2 .dk-card:hover {
+				box-shadow: var(--shadow-md);
+				border-color: var(--border-strong);
+				transform: translateY(-1px);
+			}
+			.var2 .dk-btn-primary {
+				border-radius: var(--radius-md);
+			}
+
+			/* ── Layout ── */
+			.page {
+				min-height: 100vh;
+				padding-bottom: var(--space-16);
+			}
+			.mode-label {
+				text-align: center;
+				padding: var(--space-3) var(--space-4);
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+
+			/* ── Nav ── */
+			.nav {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 var(--space-6);
+				height: var(--nav-height);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface);
+				position: sticky;
+				top: 0;
+				z-index: var(--z-sticky);
+			}
+			.nav-logo {
+				font-family: var(--font-heading);
+				font-weight: var(--weight-bold);
+				font-size: var(--text-xl);
+				color: var(--primary);
+				letter-spacing: var(--tracking-tight);
+			}
+			.nav-logo span {
+				opacity: 0.4;
+			}
+			.nav-center {
+				display: flex;
+				gap: 2px;
+			}
+			.nav-link {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				padding: 6px 12px;
+				border-radius: var(--radius-md);
+				cursor: pointer;
+				border: none;
+				background: none;
+				text-decoration: none;
+			}
+			.nav-link:hover {
+				color: var(--foreground);
+				background: var(--surface-2);
+			}
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 13px;
+			}
+
+			/* ── Content ── */
+			.content {
+				max-width: var(--content-max-width);
+				margin: 0 auto;
+				padding: 0 var(--space-6);
+			}
+
+			/* ── Wishlist header ── */
+			.wl-header {
+				padding: var(--space-8) 0 var(--space-5);
+			}
+			.wl-top {
+				display: flex;
+				align-items: flex-start;
+				justify-content: space-between;
+				gap: var(--space-4);
+				margin-bottom: var(--space-4);
+			}
+			.wl-meta {
+				flex: 1;
+				min-width: 0;
+			}
+			.wl-owner {
+				font-family: var(--font-heading);
+				font-size: var(--text-2xl);
+				font-weight: var(--weight-bold);
+				color: var(--primary);
+				letter-spacing: var(--tracking-snug);
+				line-height: 1.2;
+				margin-bottom: var(--space-1);
+			}
+			.wl-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-3xl);
+				font-weight: var(--weight-bold);
+				letter-spacing: var(--tracking-tight);
+				line-height: var(--leading-tight);
+				color: var(--foreground);
+			}
+			.wl-subtitle {
+				font-size: var(--text-base);
+				color: var(--foreground-muted);
+				margin-top: var(--space-2);
+				line-height: var(--leading-relaxed);
+			}
+			.wl-top-actions {
+				display: flex;
+				gap: var(--space-2);
+				align-items: flex-start;
+				padding-top: 4px;
+				flex-shrink: 0;
+			}
+			.wl-bar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				flex-wrap: wrap;
+				gap: var(--space-3);
+				padding-top: var(--space-4);
+				border-top: 1px solid var(--border);
+			}
+			.wl-bar-left {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				flex-wrap: wrap;
+			}
+			.wl-bar-right {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+			.wl-stat {
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+			}
+			.wl-stat b {
+				color: var(--foreground);
+				font-weight: var(--weight-semibold);
+			}
+
+			/* ── Draft banner ── */
+			.draft-banner {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: var(--space-3);
+				padding: var(--space-3) var(--space-4);
+				background: color-mix(in oklch, var(--primary) 8%, transparent);
+				border: 1px solid color-mix(in oklch, var(--primary) 22%, transparent);
+				border-radius: var(--radius-lg);
+				margin-bottom: var(--space-4);
+				font-size: var(--text-sm);
+				color: color-mix(in oklch, var(--primary) 80%, var(--foreground));
+			}
+			.draft-banner-left {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+
+			/* ── View switcher ── */
+			.view-sw {
+				display: inline-flex;
+				background: var(--surface-2);
+				border-radius: var(--radius-md);
+				padding: 3px;
+				gap: 2px;
+				border: 1px solid var(--border);
+			}
+			.view-btn {
+				width: 32px;
+				height: 28px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: none;
+				background: transparent;
+				border-radius: 5px;
+				color: var(--foreground-subtle);
+				cursor: pointer;
+				transition: all 120ms;
+			}
+			.view-btn:hover {
+				color: var(--foreground);
+			}
+			.view-btn.is-active {
+				background: var(--surface);
+				color: var(--primary);
+				box-shadow: var(--shadow-sm);
+			}
+
+			/* ── Filter btn ── */
+			.filter-btn {
+				position: relative;
+				width: 34px;
+				height: 34px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				border-radius: var(--radius-md);
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.filter-btn:hover {
+				border-color: var(--border-strong);
+				color: var(--foreground);
+			}
+
+			/* ── Uniform gift grid ── */
+			.gift-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+				gap: var(--space-4);
+				margin-top: var(--space-5);
+			}
+
+			/* ── Gift image (uniform height) ── */
+			.gift-img {
+				height: 180px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 52px;
+				position: relative;
+				overflow: hidden;
+				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+			}
+			.gift-img-badge-tl {
+				position: absolute;
+				top: var(--space-3);
+				left: var(--space-3);
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+			}
+			.gift-img-badge-tr {
+				position: absolute;
+				top: var(--space-3);
+				right: var(--space-3);
+			}
+
+			/* ── Gift body ── */
+			.gift-body {
+				padding: var(--space-3) var(--space-4) var(--space-4);
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+			}
+			.gift-name {
+				font-weight: var(--weight-semibold);
+				font-size: var(--text-base);
+				line-height: var(--leading-snug);
+				color: var(--foreground);
+				/* 2-line clamp */
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
+			.gift-price {
+				font-weight: var(--weight-bold);
+				font-size: var(--text-xl);
+				color: var(--primary);
+				margin-top: 4px;
+			}
+			.gift-price-none {
+				font-size: var(--text-sm);
+				color: var(--foreground-subtle);
+				font-style: italic;
+			}
+			.gift-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: var(--text-xs);
+				color: var(--primary);
+				text-decoration: none;
+				opacity: 0.8;
+			}
+			.gift-link:hover {
+				opacity: 1;
+				text-decoration: underline;
+			}
+			.gift-link-none {
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+			}
+			.gift-footer {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-top: var(--space-3);
+				padding-top: var(--space-3);
+				border-top: 1px solid var(--border);
+			}
+			.gift-reserve-full {
+				width: 100%;
+				margin-top: var(--space-3);
+				padding-top: var(--space-3);
+				border-top: 1px solid var(--border);
+			}
+			.heart-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				cursor: pointer;
+				border: none;
+				background: none;
+				padding: 4px 0;
+				transition: color 150ms;
+			}
+			.heart-btn:hover {
+				color: var(--color-liked);
+			}
+			.heart-btn.is-liked {
+				color: var(--color-liked);
+			}
+
+			/* ── Owner edit controls on card ── */
+			.gift-owner-actions {
+				display: flex;
+				gap: var(--space-2);
+			}
+			.icon-btn {
+				width: 30px;
+				height: 30px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				border-radius: var(--radius-sm);
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.icon-btn:hover {
+				border-color: var(--border-strong);
+				color: var(--foreground);
+			}
+
+			/* Badge helpers */
+			.badge-high {
+				background: color-mix(in oklch, oklch(0.65 0.18 25) 14%, transparent);
+				color: oklch(0.52 0.2 25);
+				border: 1px solid color-mix(in oklch, oklch(0.65 0.18 25) 28%, transparent);
+			}
+			.badge-medium {
+				background: color-mix(in oklch, oklch(0.72 0.13 75) 14%, transparent);
+				color: oklch(0.55 0.16 72);
+				border: 1px solid color-mix(in oklch, oklch(0.72 0.13 75) 28%, transparent);
+			}
+
+			/* ── List view ── */
+			.gift-list {
+				display: flex;
+				flex-direction: column;
+				margin-top: var(--space-5);
+			}
+			.gift-row {
+				display: grid;
+				grid-template-columns: 72px 1fr auto;
+				gap: var(--space-4);
+				align-items: center;
+				padding: var(--space-3) var(--space-3);
+				border-bottom: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				transition: background 120ms;
+			}
+			.gift-row:hover {
+				background: var(--surface-2);
+			}
+			.gift-row:last-child {
+				border-bottom: none;
+			}
+			.gift-thumb {
+				width: 72px;
+				height: 72px;
+				border-radius: var(--radius-lg);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 30px;
+				flex-shrink: 0;
+				overflow: hidden;
+			}
+			.gift-row-info {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+				min-width: 0;
+			}
+			.gift-row-meta {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				flex-wrap: wrap;
+				margin-top: 2px;
+			}
+			.gift-row-actions {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				flex-shrink: 0;
+			}
+			.gift-row-price {
+				font-weight: var(--weight-bold);
+				font-size: var(--text-base);
+				color: var(--primary);
+			}
+
+			/* ── Section label ── */
+			.section-label {
+				text-align: center;
+				padding: var(--space-10) var(--space-4) var(--space-4);
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.52 0.12 150);
+			}
+			.view-section-label {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				padding: var(--space-6) 0 var(--space-3);
+				border-bottom: 1px solid var(--border);
+				margin-bottom: var(--space-1);
+			}
+		</style>
+	</head>
+	<body style="margin: 0; background: oklch(0.93 0.005 107)">
+		<div class="section-label" style="padding-top: var(--space-8)">
+			Variant 2 — E-commerce Grid
+		</div>
+
+		<!-- ═══════════ LIGHT MODE — VISITOR ROLE ═══════════ -->
+		<div class="dk-root theme-light var2 page">
+			<div class="mode-label">Light Mode — Visitor Role — Card View</div>
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-center">
+					<a class="nav-link">Moje seznamy</a>
+					<a class="nav-link">Sledované</a>
+				</div>
+				<div class="nav-right">
+					<div class="avatar">V</div>
+				</div>
+			</nav>
+			<div class="content">
+				<div class="wl-header">
+					<div class="wl-top">
+						<div class="wl-meta">
+							<div class="wl-owner">Jana Nováková</div>
+							<h1 class="wl-title">Vánoce 2026</h1>
+							<p class="wl-subtitle">
+								Přání k Vánocům 2026. Dárky prosím zabalte do červeného papíru!
+							</p>
+						</div>
+					</div>
+					<div class="wl-bar">
+						<div class="wl-bar-left">
+							<span
+								class="dk-badge dk-badge-primary"
+								style="background: var(--primary-soft); color: var(--primary)"
+								>🎁 Vánoce 2026</span
+							>
+							<span class="wl-stat"><b>8</b> přání &middot; 25. 12. 2026</span>
+						</div>
+						<div class="wl-bar-right">
+							<div class="view-sw">
+								<button class="view-btn is-active" title="Karty">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 16 16"
+										fill="currentColor"
+									>
+										<rect x="1" y="1" width="6" height="6" rx="1" />
+										<rect x="9" y="1" width="6" height="6" rx="1" />
+										<rect x="1" y="9" width="6" height="6" rx="1" />
+										<rect x="9" y="9" width="6" height="6" rx="1" />
+									</svg>
+								</button>
+								<button class="view-btn" title="Seznam">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 16 16"
+										fill="currentColor"
+									>
+										<rect x="1" y="2" width="4" height="3" rx="0.5" />
+										<rect x="7" y="2.5" width="8" height="2" rx="0.5" />
+										<rect x="1" y="7" width="4" height="3" rx="0.5" />
+										<rect x="7" y="7.5" width="8" height="2" rx="0.5" />
+										<rect x="1" y="12" width="4" height="3" rx="0.5" />
+										<rect x="7" y="12.5" width="8" height="2" rx="0.5" />
+									</svg>
+								</button>
+								<button class="view-btn" title="Kompakt">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 16 16"
+										fill="currentColor"
+									>
+										<rect x="1" y="2" width="14" height="2" rx="0.5" />
+										<rect x="1" y="5.5" width="14" height="2" rx="0.5" />
+										<rect x="1" y="9" width="14" height="2" rx="0.5" />
+										<rect x="1" y="12.5" width="14" height="2" rx="0.5" />
+									</svg>
+								</button>
+							</div>
+							<div class="filter-btn">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<line x1="4" y1="6" x2="20" y2="6" />
+									<line x1="8" y1="12" x2="16" y2="12" />
+									<line x1="11" y1="18" x2="13" y2="18" />
+								</svg>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- CARD VIEW — Visitor -->
+				<div class="view-section-label">Karty</div>
+				<div class="gift-grid">
+					<!-- Available, high priority -->
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.22 0.03 245),
+									oklch(0.34 0.05 228)
+								);
+							"
+						>
+							<span>🎧</span>
+							<div class="gift-img-badge-tl">
+								<span
+									class="dk-badge badge-high"
+									style="font-size: 10px; height: 20px; padding: 0 8px"
+									>Vysoká</span
+								>
+							</div>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</div>
+							<div class="gift-price">8 490 Kč</div>
+							<a class="gift-link" href="#">
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								alza.cz
+							</a>
+							<div class="gift-footer">
+								<button class="heart-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>3
+								</button>
+								<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+							</div>
+						</div>
+					</div>
+					<!-- Available -->
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.78 0.05 198),
+									oklch(0.66 0.07 183)
+								);
+							"
+						>
+							<span>🧳</span>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Cestovní kufr Samsonite</div>
+							<div class="gift-price">4 200 Kč</div>
+							<a class="gift-link" href="#">
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								mall.cz
+							</a>
+							<div class="gift-footer">
+								<button class="heart-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>1
+								</button>
+								<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+							</div>
+						</div>
+					</div>
+					<!-- Available, qty ×2 -->
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.88 0.065 62),
+									oklch(0.78 0.09 52)
+								);
+							"
+						>
+							<span>📚</span>
+							<div class="gift-img-badge-tr">
+								<span
+									class="dk-badge"
+									style="
+										font-size: 10px;
+										height: 20px;
+										padding: 0 8px;
+										background: oklch(0 0 0 / 0.32);
+										color: white;
+										border: none;
+									"
+									>×2</span
+								>
+							</div>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Kniha — Malý princ (ilustrovaná edice)</div>
+							<div class="gift-price">350 Kč</div>
+							<a class="gift-link" href="#">
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								knihydobrovsky.cz
+							</a>
+							<div class="gift-footer">
+								<button class="heart-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>0
+								</button>
+								<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+							</div>
+						</div>
+					</div>
+					<!-- RESERVED -->
+					<div class="dk-card" style="opacity: 0.8">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.54 0.1 148),
+									oklch(0.44 0.12 140)
+								);
+							"
+						>
+							<span>🎁</span>
+							<div class="gift-img-badge-tr">
+								<span
+									class="dk-badge dk-badge-reserved"
+									style="font-size: 10px; height: 22px; padding: 0 10px"
+									>✓ Rezervováno</span
+								>
+							</div>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Dárkový poukaz Alza.cz</div>
+							<div class="gift-price">2 000 Kč</div>
+							<a class="gift-link" href="#">
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								alza.cz
+							</a>
+							<div class="gift-footer">
+								<button class="heart-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>0
+								</button>
+								<button
+									class="dk-btn dk-btn-secondary dk-btn-sm"
+									disabled
+									style="opacity: 0.5; cursor: not-allowed"
+								>
+									Rezervováno
+								</button>
+							</div>
+						</div>
+					</div>
+					<!-- No link, liked -->
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.86 0.04 32),
+									oklch(0.76 0.06 28)
+								);
+							"
+						>
+							<span>🛁</span>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Sada ručníků z egyptské bavlny</div>
+							<div class="gift-price">1 890 Kč</div>
+							<span class="gift-link-none">Bez odkazu</span>
+							<div class="gift-footer">
+								<button class="heart-btn is-liked">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>2
+								</button>
+								<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+							</div>
+						</div>
+					</div>
+					<!-- Partial qty reserved -->
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.72 0.09 122),
+									oklch(0.62 0.12 115)
+								);
+							"
+						>
+							<span>✂️</span>
+							<div class="gift-img-badge-tr">
+								<span
+									class="dk-badge"
+									style="
+										font-size: 10px;
+										height: 20px;
+										padding: 0 8px;
+										background: oklch(0 0 0 / 0.32);
+										color: white;
+										border: none;
+									"
+									>×3</span
+								>
+							</div>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Zahradní nůžky Fiskars</div>
+							<div class="gift-price">890 Kč</div>
+							<a class="gift-link" href="#">
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								hornbach.cz
+							</a>
+							<div style="margin-top: 4px">
+								<span
+									class="dk-badge dk-badge-reserved"
+									style="font-size: 10px; height: 20px; padding: 0 8px"
+									>Rezervováno (1/3)</span
+								>
+							</div>
+							<div class="gift-footer">
+								<button class="heart-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>0
+								</button>
+								<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+							</div>
+						</div>
+					</div>
+					<!-- No link, no price -->
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.86 0.03 295),
+									oklch(0.78 0.05 285)
+								);
+							"
+						>
+							<span>🧩</span>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Puzzle 1000 dílků — Praha</div>
+							<div class="gift-price">450 Kč</div>
+							<span class="gift-link-none">Bez odkazu</span>
+							<div class="gift-footer">
+								<button class="heart-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>0
+								</button>
+								<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+							</div>
+						</div>
+					</div>
+					<!-- Available, merino -->
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.82 0.04 258),
+									oklch(0.72 0.06 248)
+								);
+							"
+						>
+							<span>🧶</span>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Deka z merino vlny</div>
+							<div class="gift-price">3 500 Kč</div>
+							<a class="gift-link" href="#">
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								westwing.cz
+							</a>
+							<div class="gift-footer">
+								<button class="heart-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/></svg
+									>0
+								</button>
+								<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- LIST VIEW — same page continuation -->
+				<div class="view-section-label" style="margin-top: var(--space-10)">
+					Seznam (List View)
+				</div>
+				<div class="gift-list">
+					<div class="gift-row">
+						<div
+							class="gift-thumb"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.22 0.03 245),
+									oklch(0.34 0.05 228)
+								);
+							"
+						>
+							🎧
+						</div>
+						<div class="gift-row-info">
+							<div class="gift-name" style="-webkit-line-clamp: 1">
+								Bezdrátová sluchátka Sony WH-1000XM5
+							</div>
+							<div class="gift-row-meta">
+								<span class="gift-row-price">8 490 Kč</span>
+								<a class="gift-link" href="#"
+									><svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+									>alza.cz</a
+								>
+								<span
+									class="dk-badge badge-high"
+									style="font-size: 10px; height: 18px; padding: 0 7px"
+									>Vysoká</span
+								>
+							</div>
+						</div>
+						<div class="gift-row-actions">
+							<button class="heart-btn">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+									/></svg
+								>3
+							</button>
+							<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+						</div>
+					</div>
+					<div class="gift-row" style="opacity: 0.78">
+						<div
+							class="gift-thumb"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.54 0.1 148),
+									oklch(0.44 0.12 140)
+								);
+							"
+						>
+							🎁
+						</div>
+						<div class="gift-row-info">
+							<div class="gift-name" style="-webkit-line-clamp: 1">
+								Dárkový poukaz Alza.cz
+							</div>
+							<div class="gift-row-meta">
+								<span class="gift-row-price">2 000 Kč</span>
+								<a class="gift-link" href="#"
+									><svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+									>alza.cz</a
+								>
+								<span
+									class="dk-badge dk-badge-reserved"
+									style="font-size: 10px; height: 18px; padding: 0 7px"
+									>✓ Rezervováno</span
+								>
+							</div>
+						</div>
+						<div class="gift-row-actions">
+							<button class="heart-btn">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+									/></svg
+								>0
+							</button>
+							<button
+								class="dk-btn dk-btn-secondary dk-btn-sm"
+								disabled
+								style="opacity: 0.5"
+							>
+								Rezervováno
+							</button>
+						</div>
+					</div>
+					<div class="gift-row">
+						<div
+							class="gift-thumb"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.86 0.04 32),
+									oklch(0.76 0.06 28)
+								);
+							"
+						>
+							🛁
+						</div>
+						<div class="gift-row-info">
+							<div class="gift-name" style="-webkit-line-clamp: 1">
+								Sada ručníků z egyptské bavlny
+							</div>
+							<div class="gift-row-meta">
+								<span class="gift-row-price">1 890 Kč</span>
+								<span class="gift-link-none">Bez odkazu</span>
+							</div>
+						</div>
+						<div class="gift-row-actions">
+							<button class="heart-btn is-liked">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="currentColor"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+									/></svg
+								>2
+							</button>
+							<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+						</div>
+					</div>
+					<div class="gift-row">
+						<div
+							class="gift-thumb"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.72 0.09 122),
+									oklch(0.62 0.12 115)
+								);
+							"
+						>
+							✂️
+						</div>
+						<div class="gift-row-info">
+							<div class="gift-name" style="-webkit-line-clamp: 1">
+								Zahradní nůžky Fiskars
+							</div>
+							<div class="gift-row-meta">
+								<span class="gift-row-price">890 Kč</span>
+								<a class="gift-link" href="#"
+									><svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+									>hornbach.cz</a
+								>
+								<span
+									class="dk-badge"
+									style="font-size: 10px; height: 18px; padding: 0 7px"
+									>×3</span
+								>
+								<span
+									class="dk-badge dk-badge-reserved"
+									style="font-size: 10px; height: 18px; padding: 0 7px"
+									>Rezervováno (1/3)</span
+								>
+							</div>
+						</div>
+						<div class="gift-row-actions">
+							<button class="heart-btn">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+									/></svg
+								>0
+							</button>
+							<button class="dk-btn dk-btn-primary dk-btn-sm">Rezervovat</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════ DARK MODE — OWNER ROLE (Draft) ═══════════ -->
+		<div class="dk-root theme-dark var2 page" style="padding-bottom: var(--space-10)">
+			<div class="mode-label">
+				Dark Mode — Owner Role (Draft — not yet shared) — Card View
+			</div>
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-center">
+					<a class="nav-link">Moje seznamy</a>
+					<a class="nav-link">Sledované</a>
+				</div>
+				<div class="nav-right">
+					<button class="dk-btn dk-btn-ghost dk-btn-sm">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path d="M18 8h1a4 4 0 0 1 0 8h-1" />
+							<path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
+							<line x1="6" y1="1" x2="6" y2="4" />
+							<line x1="10" y1="1" x2="10" y2="4" />
+							<line x1="14" y1="1" x2="14" y2="4" />
+						</svg>
+					</button>
+					<div
+						class="avatar"
+						style="background: var(--primary-soft); color: var(--primary)"
+					>
+						J
+					</div>
+				</div>
+			</nav>
+			<div class="content">
+				<div class="wl-header">
+					<div class="wl-top">
+						<div class="wl-meta">
+							<div class="wl-owner">Jana Nováková</div>
+							<h1 class="wl-title">Vánoce 2026</h1>
+							<p class="wl-subtitle">
+								Přání k Vánocům 2026. Dárky prosím zabalte do červeného papíru!
+							</p>
+						</div>
+						<div class="wl-top-actions">
+							<button class="dk-btn dk-btn-secondary dk-btn-sm">
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+									/>
+									<path
+										d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+									/>
+								</svg>
+								Upravit seznam
+							</button>
+							<button class="dk-btn dk-btn-primary dk-btn-sm">
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+									<polyline points="16 6 12 2 8 6" />
+									<line x1="12" y1="2" x2="12" y2="15" />
+								</svg>
+								Sdílet
+							</button>
+						</div>
+					</div>
+					<!-- Draft banner -->
+					<div class="draft-banner">
+						<div class="draft-banner-left">
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<line x1="12" y1="8" x2="12" y2="12" />
+								<line x1="12" y1="16" x2="12.01" y2="16" />
+							</svg>
+							Tento seznam ještě nebyl sdílen — jen ty ho vidíš.
+						</div>
+						<button class="dk-btn dk-btn-primary dk-btn-sm">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+								<polyline points="16 6 12 2 8 6" />
+								<line x1="12" y1="2" x2="12" y2="15" />
+							</svg>
+							Sdílet seznam
+						</button>
+					</div>
+					<div class="wl-bar">
+						<div class="wl-bar-left">
+							<span
+								class="dk-badge dk-badge-primary"
+								style="background: var(--primary-soft); color: var(--primary)"
+								>🎁 Vánoce 2026</span
+							>
+							<span class="wl-stat"><b>8</b> přání &middot; 25. 12. 2026</span>
+						</div>
+						<div class="wl-bar-right">
+							<button class="dk-btn dk-btn-primary dk-btn-sm">
+								<svg
+									width="13"
+									height="13"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<line x1="12" y1="5" x2="12" y2="19" />
+									<line x1="5" y1="12" x2="19" y2="12" />
+								</svg>
+								Přidat přání
+							</button>
+							<div class="view-sw">
+								<button class="view-btn is-active">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 16 16"
+										fill="currentColor"
+									>
+										<rect x="1" y="1" width="6" height="6" rx="1" />
+										<rect x="9" y="1" width="6" height="6" rx="1" />
+										<rect x="1" y="9" width="6" height="6" rx="1" />
+										<rect x="9" y="9" width="6" height="6" rx="1" />
+									</svg>
+								</button>
+								<button class="view-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 16 16"
+										fill="currentColor"
+									>
+										<rect x="1" y="2" width="4" height="3" rx="0.5" />
+										<rect x="7" y="2.5" width="8" height="2" rx="0.5" />
+										<rect x="1" y="7" width="4" height="3" rx="0.5" />
+										<rect x="7" y="7.5" width="8" height="2" rx="0.5" />
+										<rect x="1" y="12" width="4" height="3" rx="0.5" />
+										<rect x="7" y="12.5" width="8" height="2" rx="0.5" />
+									</svg>
+								</button>
+								<button class="view-btn">
+									<svg
+										width="15"
+										height="15"
+										viewBox="0 0 16 16"
+										fill="currentColor"
+									>
+										<rect x="1" y="2" width="14" height="2" rx="0.5" />
+										<rect x="1" y="5.5" width="14" height="2" rx="0.5" />
+										<rect x="1" y="9" width="14" height="2" rx="0.5" />
+										<rect x="1" y="12.5" width="14" height="2" rx="0.5" />
+									</svg>
+								</button>
+							</div>
+							<div class="filter-btn">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<line x1="4" y1="6" x2="20" y2="6" />
+									<line x1="8" y1="12" x2="16" y2="12" />
+									<line x1="11" y1="18" x2="13" y2="18" />
+								</svg>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- OWNER card grid — has edit/delete, no reserve, no reserved badges -->
+				<div class="gift-grid">
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.18 0.03 245),
+									oklch(0.28 0.05 228)
+								);
+							"
+						>
+							<span>🎧</span>
+							<div class="gift-img-badge-tl">
+								<span
+									class="dk-badge badge-high"
+									style="font-size: 10px; height: 20px; padding: 0 8px"
+									>Vysoká</span
+								>
+							</div>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</div>
+							<div class="gift-price">8 490 Kč</div>
+							<a class="gift-link" href="#"
+								><svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" /></svg
+								>alza.cz</a
+							>
+							<!-- Owner footer: edit/delete, no reserve -->
+							<div class="gift-footer">
+								<div
+									style="
+										font-size: var(--text-xs);
+										color: var(--foreground-subtle);
+										display: flex;
+										align-items: center;
+										gap: 4px;
+									"
+								>
+									<svg
+										width="13"
+										height="13"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/>
+									</svg>
+									Přetáhnout pro řazení
+								</div>
+								<div class="gift-owner-actions">
+									<button class="icon-btn" title="Upravit">
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+											/>
+										</svg>
+									</button>
+									<button
+										class="icon-btn"
+										title="Smazat"
+										style="
+											color: var(--status-danger);
+											border-color: color-mix(
+												in oklch,
+												var(--status-danger) 30%,
+												transparent
+											);
+										"
+									>
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.3 0.04 198),
+									oklch(0.22 0.06 183)
+								);
+							"
+						>
+							<span>🧳</span>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Cestovní kufr Samsonite</div>
+							<div class="gift-price">4 200 Kč</div>
+							<a class="gift-link" href="#"
+								><svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" /></svg
+								>mall.cz</a
+							>
+							<div class="gift-footer">
+								<div
+									style="
+										font-size: var(--text-xs);
+										color: var(--foreground-subtle);
+										display: flex;
+										align-items: center;
+										gap: 4px;
+									"
+								>
+									<svg
+										width="13"
+										height="13"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/></svg
+									>Přetáhnout
+								</div>
+								<div class="gift-owner-actions">
+									<button class="icon-btn">
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+											/>
+										</svg>
+									</button>
+									<button
+										class="icon-btn"
+										style="
+											color: var(--status-danger);
+											border-color: color-mix(
+												in oklch,
+												var(--status-danger) 30%,
+												transparent
+											);
+										"
+									>
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.36 0.055 62),
+									oklch(0.28 0.075 52)
+								);
+							"
+						>
+							<span>📚</span>
+							<div class="gift-img-badge-tr">
+								<span
+									class="dk-badge"
+									style="
+										font-size: 10px;
+										height: 20px;
+										padding: 0 8px;
+										background: oklch(0 0 0/0.45);
+										color: white;
+										border: none;
+									"
+									>×2</span
+								>
+							</div>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Kniha — Malý princ (ilustrovaná edice)</div>
+							<div class="gift-price">350 Kč</div>
+							<a class="gift-link" href="#"
+								><svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" /></svg
+								>knihydobrovsky.cz</a
+							>
+							<div class="gift-footer">
+								<div
+									style="
+										font-size: var(--text-xs);
+										color: var(--foreground-subtle);
+										display: flex;
+										align-items: center;
+										gap: 4px;
+									"
+								>
+									<svg
+										width="13"
+										height="13"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/></svg
+									>Přetáhnout
+								</div>
+								<div class="gift-owner-actions">
+									<button class="icon-btn">
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+											/>
+										</svg>
+									</button>
+									<button
+										class="icon-btn"
+										style="
+											color: var(--status-danger);
+											border-color: color-mix(
+												in oklch,
+												var(--status-danger) 30%,
+												transparent
+											);
+										"
+									>
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="dk-card">
+						<div
+							class="gift-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.24 0.04 32),
+									oklch(0.18 0.06 28)
+								);
+							"
+						>
+							<span>🛁</span>
+						</div>
+						<div class="gift-body">
+							<div class="gift-name">Sada ručníků z egyptské bavlny</div>
+							<div class="gift-price">1 890 Kč</div>
+							<span class="gift-link-none">Bez odkazu</span>
+							<div class="gift-footer">
+								<div
+									style="
+										font-size: var(--text-xs);
+										color: var(--foreground-subtle);
+										display: flex;
+										align-items: center;
+										gap: 4px;
+									"
+								>
+									<svg
+										width="13"
+										height="13"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/></svg
+									>Přetáhnout
+								</div>
+								<div class="gift-owner-actions">
+									<button class="icon-btn">
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+											/>
+										</svg>
+									</button>
+									<button
+										class="icon-btn"
+										style="
+											color: var(--status-danger);
+											border-color: color-mix(
+												in oklch,
+												var(--status-danger) 30%,
+												transparent
+											);
+										"
+									>
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

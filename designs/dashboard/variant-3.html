@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Dashboard Variant 3: Large Preview Cards</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 3: Large Preview Cards ─────────────────────
+         Fewer, larger cards — 2 columns max. Tall thumbnail
+         with overlaid gradient metadata. Immersive, visual-first.
+         Tab navigation between the three dashboard sections.   */
+
+			.theme-light {
+				--background: oklch(0.975 0.006 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.95 0.012 150);
+				--foreground: oklch(0.18 0.012 150);
+				--foreground-muted: oklch(0.46 0.02 150);
+				--foreground-subtle: oklch(0.62 0.014 150);
+				--border: oklch(0.92 0.01 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150);
+				--primary-fg: oklch(0.982 0.018 155);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150);
+			}
+			.theme-dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.195 0.01 140);
+				--surface-2: oklch(0.235 0.013 140);
+				--surface-hover: oklch(0.265 0.016 140);
+				--foreground: oklch(0.97 0.006 150);
+				--foreground-muted: oklch(0.68 0.018 150);
+				--foreground-subtle: oklch(0.5 0.014 150);
+				--border: oklch(0.28 0.016 140);
+				--border-strong: oklch(0.36 0.022 140);
+				--primary: oklch(0.62 0.154 150);
+				--primary-fg: oklch(0.14 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(0.62 0.154 150);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+				background: oklch(0.91 0.01 150);
+				font-family: 'Figtree', system-ui, sans-serif;
+			}
+
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				color: var(--foreground);
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 15px;
+				line-height: 1.5;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			.mode-strip {
+				text-align: center;
+				padding: 10px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+
+			/* Nav */
+			.nav {
+				height: 56px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 28px;
+				border-bottom: 1px solid var(--border);
+				background: color-mix(in oklch, var(--surface) 88%, transparent);
+				backdrop-filter: blur(12px);
+				position: sticky;
+				top: 0;
+				z-index: 30;
+			}
+			.nav-logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.nav-logo span {
+				opacity: 0.4;
+			}
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 2px solid color-mix(in oklch, var(--primary) 28%, transparent);
+				cursor: pointer;
+			}
+
+			/* Content */
+			.content {
+				max-width: 1100px;
+				margin: 0 auto;
+				padding: 0 28px 80px;
+			}
+
+			/* Tab navigation */
+			.tab-row {
+				display: flex;
+				align-items: flex-end;
+				gap: 0;
+				margin-top: 28px;
+				border-bottom: 2px solid var(--border);
+			}
+			.tab {
+				padding: 10px 22px 12px;
+				font-size: 14px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				cursor: pointer;
+				border: none;
+				background: transparent;
+				border-bottom: 2px solid transparent;
+				margin-bottom: -2px;
+				transition: all 140ms;
+				display: flex;
+				align-items: center;
+				gap: 7px;
+			}
+			.tab:hover {
+				color: var(--foreground);
+			}
+			.tab.is-active {
+				color: var(--primary);
+				border-bottom-color: var(--primary);
+			}
+			.tab-count {
+				font-size: 11px;
+				font-weight: 700;
+				padding: 1px 6px;
+				border-radius: 9999px;
+				background: var(--surface-2);
+				color: var(--foreground-subtle);
+			}
+			.tab.is-active .tab-count {
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+
+			/* Tab panel content area */
+			.tab-panel {
+				padding-top: 28px;
+			}
+
+			/* Panel header */
+			.panel-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 20px;
+				flex-wrap: wrap;
+				gap: 12px;
+			}
+			.panel-header-left {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.panel-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 18px;
+				font-weight: 700;
+				letter-spacing: -0.015em;
+				color: var(--foreground);
+			}
+			.panel-desc {
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+			.panel-header-right {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			/* Sort chips */
+			.sort-chips {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.sort-chip {
+				padding: 5px 12px;
+				font-size: 12px;
+				font-weight: 500;
+				border-radius: 9999px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition: all 120ms;
+			}
+			.sort-chip:hover {
+				border-color: var(--border-strong);
+				color: var(--foreground);
+			}
+			.sort-chip.is-active {
+				background: var(--primary-soft);
+				border-color: color-mix(in oklch, var(--primary) 35%, transparent);
+				color: var(--primary);
+				font-weight: 600;
+			}
+
+			/* Btn */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-weight: 600;
+				font-size: 13px;
+				padding: 0 18px;
+				height: 40px;
+				border-radius: 10px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				transition: all 130ms;
+				white-space: nowrap;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: 0 2px 6px oklch(0.527 0.154 150 / 0.25);
+			}
+			.btn-primary:hover {
+				filter: brightness(1.08);
+			}
+			.btn-secondary {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-secondary:hover {
+				background: var(--surface-2);
+				border-color: var(--border-strong);
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+			}
+			.btn-ghost:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.btn-sm {
+				height: 34px;
+				padding: 0 14px;
+				font-size: 12px;
+				border-radius: 8px;
+			}
+			.btn-danger {
+				background: transparent;
+				color: oklch(0.55 0.18 25);
+				border: 1px solid oklch(0.55 0.18 25 / 0.3);
+			}
+			.btn-danger:hover {
+				background: oklch(0.96 0.015 25);
+			}
+
+			/* Badge */
+			.badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 24px;
+				padding: 0 10px;
+				font-size: 11px;
+				font-weight: 700;
+				border-radius: 9999px;
+				white-space: nowrap;
+				letter-spacing: 0.02em;
+			}
+			.badge-draft {
+				background: oklch(0.93 0.01 260);
+				color: oklch(0.42 0.04 260);
+			}
+			.badge-active {
+				background: color-mix(in oklch, oklch(0.527 0.154 150) 16%, transparent);
+				color: oklch(0.44 0.15 150);
+			}
+			.badge-archived {
+				background: oklch(0.9 0.01 250);
+				color: oklch(0.5 0.025 250);
+			}
+			.badge-occasion {
+				background: oklch(0 0 0 / 0.35);
+				color: oklch(1 0 0 / 0.92);
+				backdrop-filter: blur(4px);
+			}
+
+			/* ── LARGE CARD ── */
+			.wl-large-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+				gap: 24px;
+			}
+
+			.wl-large-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 18px;
+				overflow: hidden;
+				cursor: pointer;
+				transition:
+					border-color 150ms,
+					box-shadow 150ms,
+					transform 160ms;
+				position: relative;
+			}
+			.wl-large-card:hover {
+				border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+				box-shadow:
+					0 12px 36px oklch(0.527 0.154 150 / 0.12),
+					0 3px 8px oklch(0 0 0 / 0.06);
+				transform: translateY(-3px);
+			}
+			.wl-large-card.is-archived {
+				opacity: 0.62;
+				filter: saturate(0.3) brightness(0.95);
+			}
+			.wl-large-card.is-archived:hover {
+				box-shadow: 0 6px 18px oklch(0 0 0 / 0.1);
+				transform: translateY(-1px);
+			}
+
+			/* Tall thumbnail with overlay */
+			.wl-large-thumb {
+				height: 220px;
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 80px;
+				overflow: hidden;
+			}
+			.wl-large-thumb-overlay {
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(
+					to bottom,
+					oklch(0 0 0 / 0) 30%,
+					oklch(0 0 0 / 0.65) 100%
+				);
+			}
+			.wl-large-thumb-bottom {
+				position: absolute;
+				bottom: 14px;
+				left: 16px;
+				right: 16px;
+				display: flex;
+				align-items: flex-end;
+				justify-content: space-between;
+				gap: 8px;
+			}
+			.wl-large-thumb-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 20px;
+				font-weight: 700;
+				color: oklch(1 0 0 / 0.95);
+				letter-spacing: -0.02em;
+				line-height: 1.2;
+				text-shadow: 0 1px 4px oklch(0 0 0 / 0.4);
+				flex: 1;
+			}
+			.wl-large-thumb-badges {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-end;
+				gap: 5px;
+				flex-shrink: 0;
+			}
+			.wl-large-thumb-accent {
+				position: absolute;
+				top: 12px;
+				left: 14px;
+			}
+
+			/* Card body */
+			.wl-large-body {
+				padding: 16px 18px 18px;
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+			.wl-large-meta {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+			}
+			.wl-large-meta-item {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				gap: 4px;
+			}
+			.meta-dot {
+				width: 3px;
+				height: 3px;
+				border-radius: 9999px;
+				background: var(--border-strong);
+			}
+
+			/* Owner row */
+			.owner-row {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+			.owner-avatar {
+				width: 26px;
+				height: 26px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 11px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			/* Progress bar */
+			.progress-wrap {
+				display: flex;
+				flex-direction: column;
+				gap: 5px;
+			}
+			.progress-label {
+				display: flex;
+				justify-content: space-between;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+			.progress-label strong {
+				color: var(--primary);
+				font-weight: 700;
+			}
+			.progress-track {
+				height: 6px;
+				background: var(--surface-2);
+				border-radius: 9999px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+			}
+			.progress-fill {
+				height: 100%;
+				border-radius: 9999px;
+				background: var(--primary);
+			}
+
+			/* My reservation chip */
+			.my-res-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 12px;
+				font-weight: 600;
+				padding: 4px 10px;
+				border-radius: 9999px;
+				background: color-mix(in oklch, var(--primary) 12%, transparent);
+				color: var(--primary);
+			}
+
+			/* Divider */
+			.card-divider {
+				height: 1px;
+				background: var(--border);
+			}
+
+			/* Action row */
+			.wl-large-actions {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 8px;
+			}
+			.wl-large-actions-left {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			/* Empty state */
+			.empty-panel {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 16px;
+				padding: 80px 24px;
+				text-align: center;
+			}
+			.empty-glyph {
+				width: 80px;
+				height: 80px;
+				border-radius: 22px;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 36px;
+			}
+			.empty-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 19px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.empty-desc {
+				font-size: 14px;
+				color: var(--foreground-muted);
+				max-width: 340px;
+				line-height: 1.65;
+			}
+
+			/* Section label for stacking */
+			.section-eyebrow {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				padding: 40px 0 4px;
+				border-top: 1px solid var(--border);
+				margin-top: 40px;
+			}
+		</style>
+	</head>
+	<body>
+		<p
+			style="
+				text-align: center;
+				padding: 12px 0 8px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.5 0.06 150);
+				font-family: 'Figtree', sans-serif;
+			"
+		>
+			Variant 3 — Large Preview Cards
+		</p>
+
+		<!-- ═══════════════════ LIGHT MODE ═══════════════════ -->
+		<div class="page theme-light">
+			<div class="mode-strip">Light Mode — Moje seznamy (active tab)</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-right">
+					<button class="btn btn-primary btn-sm">
+						<svg
+							width="13"
+							height="13"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Nový seznam
+					</button>
+					<div class="avatar">M</div>
+				</div>
+			</nav>
+
+			<div class="content">
+				<!-- Tab nav -->
+				<div class="tab-row">
+					<button class="tab is-active">
+						📋 Moje seznamy
+						<span class="tab-count">5</span>
+					</button>
+					<button class="tab">
+						🔧 Spravované
+						<span class="tab-count">2</span>
+					</button>
+					<button class="tab">
+						🔖 Sledované
+						<span class="tab-count">2</span>
+					</button>
+				</div>
+
+				<!-- MOJE SEZNAMY panel -->
+				<div class="tab-panel">
+					<div class="panel-header">
+						<div class="panel-header-left">
+							<div class="sort-chips">
+								<span
+									style="
+										font-size: 12px;
+										color: var(--foreground-subtle);
+										font-weight: 500;
+									"
+									>Řadit:</span
+								>
+								<button class="sort-chip is-active">Poslední návštěva</button>
+								<button class="sort-chip">Poslední úprava</button>
+								<button class="sort-chip">Abecedně</button>
+							</div>
+						</div>
+					</div>
+
+					<div class="wl-large-grid">
+						<!-- Card 1: Vánoce -->
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.22 0.05 160),
+										oklch(0.32 0.1 145),
+										oklch(0.18 0.04 170)
+									);
+								"
+							>
+								🎄
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-accent">
+									<span class="badge badge-occasion">🎁 Vánoce</span>
+								</div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Vánoce 2026</div>
+									<div class="wl-large-thumb-badges">
+										<span class="badge badge-active">● Sdíleno</span>
+									</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path d="M20 12V22H4V12" />
+											<path d="M22 7H2v5h20V7z" />
+											<path d="M12 22V7" />
+										</svg>
+										8 přání
+									</span>
+									<div class="meta-dot"></div>
+									<span class="wl-large-meta-item">📅 25. 12. 2026</span>
+									<div class="meta-dot"></div>
+									<span
+										class="wl-large-meta-item"
+										style="color: var(--foreground-subtle)"
+										>upraveno před 2 h</span
+									>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<div class="wl-large-actions-left">
+										<button class="btn btn-secondary btn-sm">Upravit</button>
+										<button class="btn btn-secondary btn-sm">
+											<svg
+												width="12"
+												height="12"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"
+												/>
+												<polyline points="16 6 12 2 8 6" />
+												<line x1="12" y1="2" x2="12" y2="15" />
+											</svg>
+											Sdílet
+										</button>
+									</div>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Card 2: Narozeniny Petr — Koncept -->
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.65 0.14 55),
+										oklch(0.78 0.16 65),
+										oklch(0.6 0.12 48)
+									);
+								"
+							>
+								🎂
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-accent">
+									<span class="badge badge-occasion">🎂 Narozeniny</span>
+								</div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Narozeniny — Petr</div>
+									<div class="wl-large-thumb-badges">
+										<span
+											class="badge badge-draft"
+											style="
+												background: oklch(0 0 0 / 0.35);
+												color: oklch(1 0 0 / 0.8);
+											"
+											>○ Koncept</span
+										>
+									</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">5 přání</span>
+									<div class="meta-dot"></div>
+									<span class="wl-large-meta-item">📅 15. 3. 2027</span>
+									<div class="meta-dot"></div>
+									<span
+										class="wl-large-meta-item"
+										style="color: var(--foreground-subtle)"
+										>Ještě nesdíleno</span
+									>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<div class="wl-large-actions-left">
+										<button class="btn btn-primary btn-sm">
+											Upravit &amp; sdílet
+										</button>
+									</div>
+									<button class="btn btn-secondary btn-sm">Náhled →</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Card 3: Maminka -->
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.68 0.1 340),
+										oklch(0.78 0.12 355),
+										oklch(0.6 0.08 330)
+									);
+								"
+							>
+								💐
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-accent">
+									<span class="badge badge-occasion">💐 Výchozí</span>
+								</div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Dárky pro maminku</div>
+									<div class="wl-large-thumb-badges">
+										<span class="badge badge-active">● Sdíleno</span>
+									</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">3 přání</span>
+									<div class="meta-dot"></div>
+									<span
+										class="wl-large-meta-item"
+										style="color: var(--foreground-subtle)"
+										>upraveno před 3 dny</span
+									>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<div class="wl-large-actions-left">
+										<button class="btn btn-secondary btn-sm">Upravit</button>
+										<button class="btn btn-secondary btn-sm">Sdílet</button>
+									</div>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Card 4: Kolegové -->
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.42 0.14 220),
+										oklch(0.55 0.18 210),
+										oklch(0.38 0.12 235)
+									);
+								"
+							>
+								🎉
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-accent">
+									<span class="badge badge-occasion">🎉 Zábava</span>
+								</div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Wish list pro kolegy</div>
+									<div class="wl-large-thumb-badges">
+										<span class="badge badge-active">● Sdíleno</span>
+									</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">15 přání</span>
+									<div class="meta-dot"></div>
+									<span
+										class="wl-large-meta-item"
+										style="color: var(--foreground-subtle)"
+										>aktivní dnes</span
+									>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<div class="wl-large-actions-left">
+										<button class="btn btn-secondary btn-sm">Upravit</button>
+										<button class="btn btn-secondary btn-sm">Sdílet</button>
+									</div>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Card 5: Archived -->
+						<div class="wl-large-card is-archived">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.35 0.02 260),
+										oklch(0.42 0.025 250),
+										oklch(0.3 0.02 265)
+									);
+								"
+							>
+								💍
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-accent">
+									<span
+										class="badge badge-archived"
+										style="
+											background: oklch(0 0 0 / 0.35);
+											color: oklch(0.85 0 0 / 0.7);
+										"
+										>💍 Elegantní</span
+									>
+								</div>
+								<div class="wl-large-thumb-bottom">
+									<div
+										class="wl-large-thumb-title"
+										style="font-style: italic; opacity: 0.8"
+									>
+										Svatba Jana &amp; Tomáš
+									</div>
+									<div class="wl-large-thumb-badges">
+										<span class="badge badge-archived">✗ Archivováno</span>
+									</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">12 přání</span>
+									<div class="meta-dot"></div>
+									<span class="wl-large-meta-item">📅 12. 6. 2025</span>
+									<div class="meta-dot"></div>
+									<span
+										class="wl-large-meta-item"
+										style="color: var(--foreground-subtle)"
+										>archivováno před rokem</span
+									>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<div class="wl-large-actions-left"></div>
+									<button class="btn btn-secondary btn-sm">Zobrazit →</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- SPRAVOVANÉ — shown as next section for completeness -->
+				<div class="section-eyebrow">Spravované — náhled sekce</div>
+				<div class="tab-panel" style="padding-top: 20px">
+					<div class="wl-large-grid">
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.22 0.05 160),
+										oklch(0.32 0.1 145)
+									);
+								"
+							>
+								🎄
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Vánoce 2026</div>
+									<span class="badge badge-active">● Aktivní</span>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="owner-row">
+									<div class="owner-avatar">J</div>
+									<span>Jana Nováková</span>
+									<span style="color: var(--foreground-subtle); font-size: 12px"
+										>· vlastník</span
+									>
+								</div>
+								<div class="progress-wrap">
+									<div class="progress-label">
+										<span>Průběh rezervací</span>
+										<strong>5 / 8 rezervováno</strong>
+									</div>
+									<div class="progress-track">
+										<div class="progress-fill" style="width: 62.5%"></div>
+									</div>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<button class="btn btn-secondary btn-sm">Správa dárků</button>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.42 0.14 220),
+										oklch(0.55 0.18 210)
+									);
+								"
+							>
+								🎉
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Wish list pro kolegy</div>
+									<span class="badge badge-active">● Aktivní</span>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="owner-row">
+									<div class="owner-avatar">T</div>
+									<span>Tomáš Bartoš</span>
+									<span style="color: var(--foreground-subtle); font-size: 12px"
+										>· vlastník</span
+									>
+								</div>
+								<div class="progress-wrap">
+									<div class="progress-label">
+										<span>Průběh rezervací</span>
+										<strong>7 / 15 rezervováno</strong>
+									</div>
+									<div class="progress-track">
+										<div class="progress-fill" style="width: 46.7%"></div>
+									</div>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<button class="btn btn-secondary btn-sm">Správa dárků</button>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- SLEDOVANÉ section -->
+				<div class="section-eyebrow">Sledované — náhled sekce</div>
+				<div class="tab-panel" style="padding-top: 20px">
+					<div class="wl-large-grid">
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.65 0.14 55),
+										oklch(0.78 0.16 65)
+									);
+								"
+							>
+								🎂
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Narozeniny — Petr</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="owner-row">
+									<div class="owner-avatar">P</div>
+									<span>Petr Novák</span>
+								</div>
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">3 dostupná přání</span>
+									<div class="meta-dot"></div>
+									<span class="my-res-chip">✓ Moje rezervace: 2</span>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<button class="btn btn-danger btn-sm">Přestat sledovat</button>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.68 0.1 340),
+										oklch(0.78 0.12 355)
+									);
+								"
+							>
+								💐
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Dárky pro maminku</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="owner-row">
+									<div class="owner-avatar">K</div>
+									<span>Kateřina Horáková</span>
+								</div>
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">3 dostupná přání</span>
+									<div class="meta-dot"></div>
+									<span
+										class="wl-large-meta-item"
+										style="color: var(--foreground-subtle)"
+										>žádné rezervace</span
+									>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<button class="btn btn-danger btn-sm">Přestat sledovat</button>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════════════ DARK MODE ═══════════════════ -->
+		<div class="page theme-dark">
+			<div class="mode-strip">Dark Mode — Sledované (active tab)</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-right">
+					<button class="btn btn-primary btn-sm">
+						<svg
+							width="13"
+							height="13"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Nový seznam
+					</button>
+					<div class="avatar">M</div>
+				</div>
+			</nav>
+
+			<div class="content">
+				<div class="tab-row">
+					<button class="tab">
+						📋 Moje seznamy
+						<span class="tab-count">5</span>
+					</button>
+					<button class="tab">
+						🔧 Spravované
+						<span class="tab-count">2</span>
+					</button>
+					<button class="tab is-active">
+						🔖 Sledované
+						<span class="tab-count">2</span>
+					</button>
+				</div>
+
+				<div class="tab-panel">
+					<div class="panel-header">
+						<div class="sort-chips">
+							<span
+								style="
+									font-size: 12px;
+									color: var(--foreground-subtle);
+									font-weight: 500;
+								"
+								>Řadit:</span
+							>
+							<button class="sort-chip is-active">Poslední návštěva</button>
+							<button class="sort-chip">Nová přání</button>
+							<button class="sort-chip">Název</button>
+						</div>
+					</div>
+
+					<div class="wl-large-grid">
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.22 0.06 55),
+										oklch(0.32 0.1 60)
+									);
+								"
+							>
+								🎂
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Narozeniny — Petr</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="owner-row">
+									<div class="owner-avatar">P</div>
+									<span>Petr Novák</span>
+								</div>
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">3 dostupná přání</span>
+									<div class="meta-dot"></div>
+									<span class="my-res-chip">✓ Moje rezervace: 2</span>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<button class="btn btn-danger btn-sm">Přestat sledovat</button>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+
+						<div class="wl-large-card">
+							<div
+								class="wl-large-thumb"
+								style="
+									background: linear-gradient(
+										140deg,
+										oklch(0.3 0.05 340),
+										oklch(0.4 0.07 350)
+									);
+								"
+							>
+								💐
+								<div class="wl-large-thumb-overlay"></div>
+								<div class="wl-large-thumb-bottom">
+									<div class="wl-large-thumb-title">Dárky pro maminku</div>
+								</div>
+							</div>
+							<div class="wl-large-body">
+								<div class="owner-row">
+									<div class="owner-avatar">K</div>
+									<span>Kateřina Horáková</span>
+								</div>
+								<div class="wl-large-meta">
+									<span class="wl-large-meta-item">3 dostupná přání</span>
+									<div class="meta-dot"></div>
+									<span
+										class="wl-large-meta-item"
+										style="color: var(--foreground-subtle)"
+										>žádné rezervace</span
+									>
+								</div>
+								<div class="card-divider"></div>
+								<div class="wl-large-actions">
+									<button class="btn btn-danger btn-sm">Přestat sledovat</button>
+									<button class="btn btn-primary btn-sm">Otevřít →</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Empty state in dark -->
+				<div class="section-eyebrow" style="margin-top: 40px">Prázdný stav — příklad</div>
+				<div class="empty-panel">
+					<div class="empty-glyph">📋</div>
+					<div class="empty-title">Zatím žádné seznamy</div>
+					<div class="empty-desc">
+						Vytvořte svůj první wishlist a sdílejte ho s přáteli a rodinou.
+					</div>
+					<button class="btn btn-primary" style="margin-top: 4px">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Vytvořit seznam
+					</button>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,2143 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="description" content="Darecky — Landing Page refined mockup, light mode only" />
+		<title>Darecky — Landing Page: REFINED (Variant 2 — Feature showcase)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── REFINED — Landing Page: Variant 2 (feature showcase) + consistent logo ──
+			   Light mode only. Sage green primary. Czech copy. Warm family feel.
+			   Base: variant-2.html feature sections + app-shell logo design.
+			   Changes:
+			   - Gift-box SVG logo icon (matches app-shell refined.html)
+			   - Simple public nav: no center links, only ghost + primary CTA on right
+			   - Updated headlines per brief: "Překvapení zůstane překvapením"
+			   - Updated features per brief: Tajné rezervace, Sdílení, Tematické, Zdarma
+			   - How It Works section: 4-step horizontal flow
+			   - Trust strip replacing stats row
+			   - Updated footer with logo + links + love stamp
+			   - Hero visual: floating wishlist card from variant-3 style
+			   - Full page scroll, min-width 1280px */
+
+			/* ── Color theme (light only) ── */
+			:root,
+			.theme-light {
+				--background: oklch(98.8% 0.004 150);
+				--surface: oklch(100% 0 0);
+				--surface-2: oklch(96.5% 0.008 150);
+				--surface-hover: oklch(93% 0.014 150);
+				--surface-accent: oklch(94% 0.035 150);
+				--foreground: oklch(13% 0.01 150);
+				--foreground-muted: oklch(44% 0.022 145);
+				--foreground-subtle: oklch(62% 0.015 145);
+				--border: oklch(91% 0.01 150);
+				--border-strong: oklch(83% 0.017 150);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.5% 0.018 155);
+				--primary-soft: oklch(92% 0.04 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--nav-bg: oklch(100% 0 0 / 0.92);
+			}
+
+			/* ── Reset ── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+				background: var(--background);
+				font-family: var(--font-sans);
+				color: var(--foreground);
+				font-size: var(--text-base);
+				-webkit-font-smoothing: antialiased;
+				min-width: 1280px;
+			}
+
+			/* ── Eyebrow label ── */
+			.refined-eyebrow {
+				text-align: center;
+				padding: var(--space-4) var(--space-6) var(--space-3);
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+				background: var(--primary-soft);
+				border-bottom: 1px solid oklch(87% 0.038 150);
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   TOP NAVIGATION BAR — simple public nav, not app shell
+			   ════════════════════════════════════════════════════════ */
+			.topnav {
+				position: sticky;
+				top: 0;
+				z-index: var(--z-sticky);
+				height: var(--nav-height);
+				background: var(--nav-bg);
+				backdrop-filter: blur(16px);
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 var(--space-8);
+			}
+
+			/* ── Logo — matches app-shell refined.html exactly ── */
+			.logo {
+				font-family: var(--font-heading);
+				font-weight: var(--weight-bold);
+				font-size: var(--text-xl);
+				color: var(--primary);
+				letter-spacing: var(--tracking-tight);
+				text-decoration: none;
+				flex-shrink: 0;
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+			.logo:hover {
+				opacity: 0.85;
+			}
+			.logo-icon-wrap {
+				width: 30px;
+				height: 30px;
+				background: var(--primary-soft);
+				border-radius: var(--radius-md);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--primary);
+				flex-shrink: 0;
+			}
+			.logo-text {
+				display: flex;
+				align-items: baseline;
+				gap: 3px;
+			}
+			.logo-tld {
+				opacity: 0.42;
+				font-weight: var(--weight-medium);
+				font-size: var(--text-lg);
+			}
+
+			/* ── Nav actions ── */
+			.nav-actions {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   HERO SECTION
+			   ════════════════════════════════════════════════════════ */
+			.hero-wrap {
+				background: linear-gradient(
+					160deg,
+					oklch(98.8% 0.004 150) 0%,
+					oklch(96% 0.016 150) 50%,
+					oklch(98.5% 0.006 150) 100%
+				);
+				border-bottom: 1px solid var(--border);
+				position: relative;
+				overflow: hidden;
+			}
+			/* Subtle decorative blob */
+			.hero-wrap::before {
+				content: '';
+				position: absolute;
+				top: -120px;
+				right: -100px;
+				width: 600px;
+				height: 600px;
+				background: radial-gradient(
+					ellipse,
+					oklch(52.7% 0.154 150 / 0.07) 0%,
+					transparent 70%
+				);
+				pointer-events: none;
+			}
+			.hero-inner {
+				max-width: var(--content-max-width);
+				margin: 0 auto;
+				padding: var(--space-20) var(--space-8);
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: var(--space-16);
+				align-items: center;
+				position: relative;
+				z-index: 1;
+			}
+			.hero-text {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-6);
+			}
+			.hero-badge-row {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				flex-wrap: wrap;
+			}
+			.hero-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				font-size: 12px;
+				font-weight: var(--weight-semibold);
+				padding: 5px 12px;
+				border-radius: var(--radius-full);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				background: var(--surface);
+			}
+			.hero-badge.featured {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border-color: color-mix(in oklch, var(--primary) 30%, transparent);
+			}
+			.hero-headline {
+				font-family: var(--font-heading);
+				font-size: 56px;
+				font-weight: 800;
+				letter-spacing: -0.03em;
+				line-height: 1.05;
+				color: var(--foreground);
+			}
+			.hero-sub {
+				font-size: var(--text-xl);
+				line-height: var(--leading-relaxed);
+				color: var(--foreground-muted);
+				max-width: 520px;
+			}
+			.hero-actions {
+				display: flex;
+				align-items: center;
+				gap: var(--space-4);
+				flex-wrap: wrap;
+			}
+			.hero-ghost-link {
+				font-family: var(--font-sans);
+				font-size: var(--text-base);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				background: transparent;
+				border: none;
+				cursor: pointer;
+				text-decoration: none;
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 0 var(--space-2);
+			}
+			.hero-ghost-link:hover {
+				color: var(--foreground);
+			}
+			.hero-note {
+				font-size: var(--text-sm);
+				color: var(--foreground-subtle);
+			}
+
+			/* ── Hero visual — floating wishlist card ── */
+			.hero-visual {
+				position: relative;
+			}
+			.hero-wishlist-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-3xl);
+				box-shadow: var(--shadow-xl);
+				overflow: hidden;
+			}
+			.hero-wl-header {
+				padding: var(--space-6) var(--space-6) var(--space-5);
+				border-bottom: 1px solid var(--border);
+				background: linear-gradient(135deg, oklch(97% 0.016 150), oklch(99% 0.006 150));
+			}
+			.hero-wl-owner-label {
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+				font-weight: var(--weight-semibold);
+				margin-bottom: var(--space-1);
+			}
+			.hero-wl-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-2xl);
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.hero-wl-meta {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				margin-top: var(--space-3);
+			}
+			.hero-wl-tag {
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				padding: 3px 10px;
+				border-radius: var(--radius-full);
+				letter-spacing: 0.03em;
+				background: oklch(94% 0.05 60);
+				color: oklch(42% 0.09 60);
+			}
+			.hero-wl-count {
+				font-size: 11px;
+				font-weight: var(--weight-medium);
+				padding: 3px 10px;
+				border-radius: var(--radius-full);
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+			.hero-gift-row {
+				display: flex;
+				align-items: center;
+				gap: var(--space-4);
+				padding: 14px var(--space-6);
+				border-bottom: 1px solid var(--border);
+			}
+			.hero-gift-row:last-child {
+				border-bottom: none;
+			}
+			.hero-gift-img {
+				width: 44px;
+				height: 44px;
+				border-radius: var(--radius-lg);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 22px;
+				flex-shrink: 0;
+			}
+			.hero-gift-info {
+				flex: 1;
+				min-width: 0;
+			}
+			.hero-gift-name {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.hero-gift-price {
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				margin-top: 2px;
+			}
+			.hero-gift-badge-free {
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				padding: 3px 10px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+				color: var(--primary);
+				white-space: nowrap;
+				flex-shrink: 0;
+			}
+			.hero-gift-badge-reserved {
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				padding: 3px 10px;
+				border-radius: var(--radius-full);
+				background: oklch(90% 0.05 200 / 0.35);
+				color: oklch(38% 0.1 200);
+				white-space: nowrap;
+				flex-shrink: 0;
+			}
+			/* Floating note */
+			.hero-floating-note {
+				position: absolute;
+				bottom: -20px;
+				right: -24px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				border-radius: var(--radius-2xl);
+				padding: var(--space-4) var(--space-5);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				box-shadow: 0 8px 24px oklch(52.7% 0.154 150 / 0.4);
+				line-height: 1.45;
+				max-width: 210px;
+			}
+			.hero-floating-note-icon {
+				font-size: 20px;
+				margin-bottom: var(--space-2);
+				display: block;
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   HOW IT WORKS SECTION
+			   ════════════════════════════════════════════════════════ */
+			.how-wrap {
+				background: var(--surface);
+				border-bottom: 1px solid var(--border);
+			}
+			.how-inner {
+				max-width: var(--content-max-width);
+				margin: 0 auto;
+				padding: var(--space-20) var(--space-8);
+			}
+			.section-eyebrow {
+				display: block;
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				letter-spacing: var(--tracking-wider);
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: var(--space-3);
+			}
+			.section-headline {
+				font-family: var(--font-heading);
+				font-size: var(--text-4xl);
+				font-weight: 800;
+				letter-spacing: var(--tracking-tight);
+				line-height: var(--leading-snug);
+				color: var(--foreground);
+				margin-bottom: var(--space-12);
+			}
+			.how-steps {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: var(--space-8);
+				position: relative;
+			}
+			/* Connecting line between steps */
+			.how-steps::before {
+				content: '';
+				position: absolute;
+				top: 28px;
+				left: calc(12.5% + 28px);
+				right: calc(12.5% + 28px);
+				height: 2px;
+				background: linear-gradient(
+					90deg,
+					var(--border) 0%,
+					var(--primary) 40%,
+					var(--primary) 60%,
+					var(--border) 100%
+				);
+			}
+			.how-step {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				text-align: center;
+				gap: var(--space-4);
+				position: relative;
+			}
+			.how-step-icon-wrap {
+				width: 56px;
+				height: 56px;
+				border-radius: var(--radius-full);
+				background: var(--surface);
+				border: 2px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--primary);
+				position: relative;
+				z-index: 1;
+				flex-shrink: 0;
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.how-step:hover .how-step-icon-wrap {
+				background: var(--primary-soft);
+				border-color: var(--primary);
+				box-shadow: 0 0 0 4px color-mix(in oklch, var(--primary) 15%, transparent);
+			}
+			.how-step-num {
+				position: absolute;
+				top: -6px;
+				right: -6px;
+				width: 20px;
+				height: 20px;
+				border-radius: var(--radius-full);
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-size: 11px;
+				font-weight: var(--weight-bold);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.how-step-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-lg);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+				letter-spacing: var(--tracking-snug);
+			}
+			.how-step-desc {
+				font-size: var(--text-sm);
+				line-height: var(--leading-relaxed);
+				color: var(--foreground-muted);
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   FEATURE SHOWCASE SECTIONS — alternating layout
+			   ════════════════════════════════════════════════════════ */
+			.features-intro {
+				background: var(--surface-2);
+				border-bottom: 1px solid var(--border);
+			}
+			.features-intro-inner {
+				max-width: var(--content-max-width);
+				margin: 0 auto;
+				padding: var(--space-20) var(--space-8) var(--space-8);
+			}
+
+			.feature-section {
+				max-width: var(--content-max-width);
+				margin: 0 auto;
+				padding: var(--space-20) var(--space-8);
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				align-items: center;
+				gap: var(--space-16);
+			}
+			.feature-section.reverse {
+				direction: rtl;
+			}
+			.feature-section.reverse > * {
+				direction: ltr;
+			}
+			.feature-section-wrap {
+				border-bottom: 1px solid var(--border);
+			}
+			.feature-section-wrap.alt {
+				background: var(--surface-2);
+			}
+
+			.feat-text {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-5);
+			}
+			.feat-number {
+				font-family: var(--font-heading);
+				font-size: 80px;
+				font-weight: 800;
+				line-height: 1;
+				color: color-mix(in oklch, var(--primary) 15%, transparent);
+				letter-spacing: -0.04em;
+				user-select: none;
+			}
+			.feat-eyebrow {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				letter-spacing: var(--tracking-wider);
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.feat-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-4xl);
+				font-weight: 800;
+				letter-spacing: var(--tracking-tight);
+				line-height: var(--leading-snug);
+				color: var(--foreground);
+			}
+			.feat-desc {
+				font-size: var(--text-lg);
+				line-height: var(--leading-relaxed);
+				color: var(--foreground-muted);
+			}
+			.feat-detail-list {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-3);
+				list-style: none;
+			}
+			.feat-detail-list li {
+				display: flex;
+				align-items: flex-start;
+				gap: var(--space-3);
+				font-size: var(--text-base);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+			}
+			.feat-detail-list li svg {
+				flex-shrink: 0;
+				color: var(--primary);
+				margin-top: 2px;
+			}
+
+			/* Feature visuals */
+			.feat-visual {
+				border-radius: var(--radius-3xl);
+				overflow: hidden;
+				background: var(--surface-accent);
+				border: 1px solid var(--border);
+				box-shadow: var(--shadow-xl);
+				padding: var(--space-6);
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-4);
+			}
+
+			/* Secret feature visual */
+			.vis-header-label {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+			}
+			.owner-view-label {
+				font-size: 10px;
+				font-weight: var(--weight-semibold);
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				padding: 4px 10px;
+				border-radius: var(--radius-full);
+				display: inline-block;
+			}
+			.owner-view-label.visitor {
+				color: var(--primary);
+				background: var(--primary-soft);
+				border-color: color-mix(in oklch, var(--primary) 25%, transparent);
+			}
+			.vis-gift-row {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				padding: var(--space-3);
+				border-radius: var(--radius-lg);
+				background: var(--surface);
+				border: 1px solid var(--border);
+			}
+			.vis-gift-emoji {
+				width: 40px;
+				height: 40px;
+				border-radius: var(--radius-md);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 20px;
+				flex-shrink: 0;
+			}
+			.vis-gift-info {
+				flex: 1;
+			}
+			.vis-gift-name {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+			}
+			.vis-gift-sub {
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				margin-top: 2px;
+			}
+			.vis-badge-reserved {
+				font-size: 11px;
+				font-weight: var(--weight-medium);
+				padding: 3px 10px;
+				border-radius: var(--radius-full);
+				background: color-mix(in oklch, var(--color-reserved) 14%, transparent);
+				color: var(--color-reserved);
+				border: 1px solid color-mix(in oklch, var(--color-reserved) 28%, transparent);
+				white-space: nowrap;
+				flex-shrink: 0;
+			}
+			.vis-blurred {
+				filter: blur(5px);
+				user-select: none;
+				pointer-events: none;
+			}
+			.vis-hidden-label {
+				text-align: center;
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				padding: var(--space-2);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+			}
+
+			/* Theme visual */
+			.theme-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: var(--space-3);
+			}
+			.theme-swatch {
+				border-radius: var(--radius-xl);
+				padding: var(--space-4);
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-2);
+				border: 2px solid transparent;
+				cursor: pointer;
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.theme-swatch.active {
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 20%, transparent);
+			}
+			.theme-swatch-icon {
+				font-size: 22px;
+			}
+			.theme-swatch-name {
+				font-size: var(--text-xs);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+			}
+			.theme-preview-strip {
+				margin-top: var(--space-4);
+				padding: var(--space-4);
+				background: linear-gradient(135deg, oklch(92% 0.04 150), oklch(96% 0.02 150));
+				border-radius: var(--radius-xl);
+			}
+			.theme-preview-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-lg);
+				font-weight: 800;
+				color: oklch(35% 0.08 150);
+			}
+			.theme-preview-sub {
+				font-size: var(--text-sm);
+				color: oklch(45% 0.06 150);
+				margin-top: 4px;
+			}
+
+			/* Share visual */
+			.share-visual {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-4);
+			}
+			.share-url-row {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				padding: var(--space-3) var(--space-4);
+			}
+			.share-url-text {
+				flex: 1;
+				font-size: var(--text-sm);
+				font-family: monospace;
+				color: var(--primary);
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.share-buttons-row {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: var(--space-2);
+			}
+			.share-app-btn {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 6px;
+				padding: var(--space-3);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-xl);
+				font-size: var(--text-xs);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.share-app-btn:hover {
+				background: var(--surface-2);
+				border-color: var(--border-strong);
+			}
+			.share-app-icon {
+				font-size: 22px;
+			}
+			.share-anon-note {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				padding: var(--space-3) var(--space-4);
+				background: var(--primary-soft);
+				border-radius: var(--radius-lg);
+				font-size: var(--text-sm);
+				color: var(--primary);
+				font-weight: var(--weight-medium);
+			}
+
+			/* Free feature visual */
+			.free-visual {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-4);
+			}
+			.free-trust-item {
+				display: flex;
+				align-items: flex-start;
+				gap: var(--space-4);
+				padding: var(--space-4);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-xl);
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.free-trust-item:hover {
+				border-color: var(--border-strong);
+				box-shadow: var(--shadow-md);
+			}
+			.free-trust-icon {
+				width: 44px;
+				height: 44px;
+				border-radius: var(--radius-lg);
+				background: var(--primary-soft);
+				color: var(--primary);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+			.free-trust-text {
+				flex: 1;
+			}
+			.free-trust-title {
+				font-size: var(--text-base);
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+				margin-bottom: 2px;
+			}
+			.free-trust-sub {
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   FINAL CTA SECTION
+			   ════════════════════════════════════════════════════════ */
+			.cta-wrap {
+				background: var(--surface);
+				border-top: 1px solid var(--border);
+				position: relative;
+				overflow: hidden;
+			}
+			.cta-wrap::before {
+				content: '';
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				width: 700px;
+				height: 500px;
+				background: radial-gradient(
+					ellipse,
+					oklch(52.7% 0.154 150 / 0.06) 0%,
+					transparent 70%
+				);
+				pointer-events: none;
+			}
+			.cta-inner {
+				max-width: 680px;
+				margin: 0 auto;
+				padding: var(--space-20) var(--space-8);
+				text-align: center;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: var(--space-6);
+				position: relative;
+				z-index: 1;
+			}
+			.cta-headline {
+				font-family: var(--font-heading);
+				font-size: var(--text-4xl);
+				font-weight: 800;
+				letter-spacing: var(--tracking-tight);
+				line-height: var(--leading-snug);
+				color: var(--foreground);
+			}
+			.cta-sub {
+				font-size: var(--text-xl);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+			}
+			.cta-actions {
+				display: flex;
+				gap: var(--space-4);
+				flex-wrap: wrap;
+				justify-content: center;
+			}
+			.cta-note {
+				font-size: var(--text-sm);
+				color: var(--foreground-subtle);
+				display: flex;
+				align-items: center;
+				gap: var(--space-4);
+				flex-wrap: wrap;
+				justify-content: center;
+			}
+			.cta-note-sep {
+				opacity: 0.35;
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   FOOTER
+			   ════════════════════════════════════════════════════════ */
+			.footer-wrap {
+				border-top: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+			.footer-inner {
+				max-width: var(--content-max-width);
+				margin: 0 auto;
+				padding: var(--space-8) var(--space-8);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: var(--space-6);
+			}
+			.footer-logo {
+				font-family: var(--font-heading);
+				font-weight: var(--weight-bold);
+				font-size: var(--text-base);
+				color: var(--primary);
+				text-decoration: none;
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+			.footer-logo:hover {
+				opacity: 0.8;
+			}
+			.footer-logo-icon {
+				width: 24px;
+				height: 24px;
+				background: var(--primary-soft);
+				border-radius: var(--radius-sm);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--primary);
+			}
+			.footer-logo-tld {
+				opacity: 0.42;
+				font-weight: var(--weight-medium);
+			}
+			.footer-links {
+				display: flex;
+				align-items: center;
+				gap: var(--space-1);
+			}
+			.footer-link {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				text-decoration: none;
+				padding: 6px var(--space-3);
+				border-radius: var(--radius-md);
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.footer-link:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+			.footer-sep {
+				color: var(--border-strong);
+				font-size: var(--text-sm);
+			}
+			.footer-love {
+				font-size: var(--text-sm);
+				color: var(--foreground-subtle);
+			}
+		</style>
+	</head>
+	<body>
+		<!-- Eyebrow label -->
+		<div class="refined-eyebrow">
+			REFINED — Landing Page: Variant 2 (feature showcase) + consistent logo
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     TOP NAVIGATION
+		     ════════════════════════════════════════════════════════ -->
+		<nav class="topnav" aria-label="Veřejná navigace">
+			<!-- Logo — matches app-shell refined.html: icon + "darecky" + dimmed ".cz" -->
+			<a class="logo" href="/" aria-label="Darecky — domovská stránka">
+				<div class="logo-icon-wrap" aria-hidden="true">
+					<!-- Lucide-style gift box icon, 18×18 within 30×30 container -->
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<polyline points="20 12 20 22 4 22 4 12" />
+						<rect x="2" y="7" width="20" height="5" />
+						<line x1="12" y1="22" x2="12" y2="7" />
+						<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+						<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+					</svg>
+				</div>
+				<div class="logo-text">darecky<span class="logo-tld">.cz</span></div>
+			</a>
+
+			<!-- Right: auth actions only -->
+			<div class="nav-actions">
+				<a href="/login" class="dk-btn dk-btn-ghost">Přihlásit se</a>
+				<a
+					href="/register"
+					class="dk-btn dk-btn-primary"
+					style="border-radius: var(--radius-md)"
+					>Začít zdarma</a
+				>
+			</div>
+		</nav>
+
+		<!-- ════════════════════════════════════════════════════════
+		     HERO
+		     ════════════════════════════════════════════════════════ -->
+		<section class="hero-wrap" aria-label="Hlavní sekce">
+			<div class="hero-inner">
+				<!-- Text column -->
+				<div class="hero-text">
+					<div class="hero-badge-row">
+						<span class="hero-badge featured">
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Zdarma navždy
+						</span>
+						<span class="hero-badge">🎁 Vánoce, narozeniny, výročí</span>
+					</div>
+
+					<h1 class="hero-headline">Překvapení zůstane překvapením</h1>
+
+					<p class="hero-sub">
+						Vytvořte si přehledný seznam přání a sdílejte ho s rodinou a přáteli. Nikdy
+						neuvidíte, kdo co rezervoval.
+					</p>
+
+					<div class="hero-actions">
+						<a
+							href="/register"
+							class="dk-btn dk-btn-primary dk-btn-lg"
+							style="border-radius: var(--radius-lg)"
+						>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<line x1="12" y1="22" x2="12" y2="7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+							Vytvořit seznam přání
+						</a>
+						<a href="#jak-to-funguje" class="hero-ghost-link">
+							Jak to funguje?
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path d="M12 5v14M19 12l-7 7-7-7" />
+							</svg>
+						</a>
+					</div>
+
+					<p class="hero-note">Žádná platební karta. Žádný háček. Navždy zdarma.</p>
+				</div>
+
+				<!-- Visual column — floating wishlist card -->
+				<div class="hero-visual">
+					<div class="hero-wishlist-card">
+						<div class="hero-wl-header">
+							<div class="hero-wl-owner-label">Přání pro</div>
+							<div class="hero-wl-title">Tereza Nováková</div>
+							<div class="hero-wl-meta">
+								<span class="hero-wl-tag">🎂 Narozeniny</span>
+								<span class="hero-wl-count">8 přání</span>
+							</div>
+						</div>
+
+						<div class="hero-gift-row">
+							<div class="hero-gift-img" style="background: oklch(94% 0.04 150)">
+								📗
+							</div>
+							<div class="hero-gift-info">
+								<div class="hero-gift-name">Kniha Atomové návyky</div>
+								<div class="hero-gift-price">349 Kč · alza.cz</div>
+							</div>
+							<span class="hero-gift-badge-free">Volné</span>
+						</div>
+						<div class="hero-gift-row">
+							<div class="hero-gift-img" style="background: oklch(94% 0.04 200)">
+								🎧
+							</div>
+							<div class="hero-gift-info">
+								<div class="hero-gift-name">Bezdrátová sluchátka Sony</div>
+								<div class="hero-gift-price">2 490 Kč · mall.cz</div>
+							</div>
+							<span class="hero-gift-badge-reserved">Rezervováno</span>
+						</div>
+						<div class="hero-gift-row">
+							<div class="hero-gift-img" style="background: oklch(94% 0.04 60)">
+								🕯️
+							</div>
+							<div class="hero-gift-info">
+								<div class="hero-gift-name">Sada vonných svíček</div>
+								<div class="hero-gift-price">650 Kč · notino.cz</div>
+							</div>
+							<span class="hero-gift-badge-free">Volné</span>
+						</div>
+						<div class="hero-gift-row">
+							<div class="hero-gift-img" style="background: oklch(94% 0.04 330)">
+								🧴
+							</div>
+							<div class="hero-gift-info">
+								<div class="hero-gift-name">Kosmetická sada La Mer</div>
+								<div class="hero-gift-price">1 890 Kč · sephora.cz</div>
+							</div>
+							<span class="hero-gift-badge-reserved">Rezervováno</span>
+						</div>
+					</div>
+
+					<!-- Floating note -->
+					<div class="hero-floating-note" aria-hidden="true">
+						<span class="hero-floating-note-icon">🔒</span>
+						Tereza nevidí, kdo co rezervoval
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ════════════════════════════════════════════════════════
+		     HOW IT WORKS
+		     ════════════════════════════════════════════════════════ -->
+		<section class="how-wrap" id="jak-to-funguje" aria-label="Jak to funguje">
+			<div class="how-inner">
+				<span class="section-eyebrow">Jak to funguje</span>
+				<h2 class="section-headline">Čtyři kroky k dokonalému překvapení</h2>
+
+				<div class="how-steps">
+					<!-- Step 1 -->
+					<div class="how-step">
+						<div class="how-step-icon-wrap">
+							<div class="how-step-num">1</div>
+							<!-- List icon -->
+							<svg
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<line x1="8" y1="6" x2="21" y2="6" />
+								<line x1="8" y1="12" x2="21" y2="12" />
+								<line x1="8" y1="18" x2="21" y2="18" />
+								<line x1="3" y1="6" x2="3.01" y2="6" />
+								<line x1="3" y1="12" x2="3.01" y2="12" />
+								<line x1="3" y1="18" x2="3.01" y2="18" />
+							</svg>
+						</div>
+						<div class="how-step-title">Vytvořte seznam</div>
+						<div class="how-step-desc">
+							Pojmenujte seznam, nastavte téma a event — za minutu je připravený.
+						</div>
+					</div>
+
+					<!-- Step 2 -->
+					<div class="how-step">
+						<div class="how-step-icon-wrap">
+							<div class="how-step-num">2</div>
+							<!-- Gift icon -->
+							<svg
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 12 20 22 4 22 4 12" />
+								<rect x="2" y="7" width="20" height="5" />
+								<line x1="12" y1="22" x2="12" y2="7" />
+								<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+								<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+							</svg>
+						</div>
+						<div class="how-step-title">Přidejte přání</div>
+						<div class="how-step-desc">
+							Vložte odkaz z e-shopu nebo popište přání vlastními slovy s cenou.
+						</div>
+					</div>
+
+					<!-- Step 3 -->
+					<div class="how-step">
+						<div class="how-step-icon-wrap">
+							<div class="how-step-num">3</div>
+							<!-- Share icon -->
+							<svg
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<circle cx="18" cy="5" r="3" />
+								<circle cx="6" cy="12" r="3" />
+								<circle cx="18" cy="19" r="3" />
+								<line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+								<line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+							</svg>
+						</div>
+						<div class="how-step-title">Sdílejte odkaz</div>
+						<div class="how-step-desc">
+							Pošlete jeden odkaz přes WhatsApp, email nebo SMS. Dárci nepotřebují
+							účet.
+						</div>
+					</div>
+
+					<!-- Step 4 -->
+					<div class="how-step">
+						<div class="how-step-icon-wrap">
+							<div class="how-step-num">4</div>
+							<!-- Sparkles / party icon -->
+							<svg
+								width="24"
+								height="24"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<path
+									d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
+								/>
+							</svg>
+						</div>
+						<div class="how-step-title">Překvapení!</div>
+						<div class="how-step-desc">
+							Dárky přijdou — a vy opravdu nevíte od koho. Přesně tak to má být.
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ════════════════════════════════════════════════════════
+		     FEATURES SECTION HEADER
+		     ════════════════════════════════════════════════════════ -->
+		<div class="features-intro">
+			<div class="features-intro-inner">
+				<span class="section-eyebrow">Funkce</span>
+				<h2 class="section-headline" style="margin-bottom: 0">
+					Vše, co potřebujete pro bezstarostné dárky
+				</h2>
+			</div>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     FEATURE 1 — Tajné rezervace
+		     ════════════════════════════════════════════════════════ -->
+		<div class="feature-section-wrap">
+			<section class="feature-section" aria-label="Tajné rezervace">
+				<div class="feat-text">
+					<div class="feat-number">01</div>
+					<div class="feat-eyebrow">
+						<!-- eye-off icon -->
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"
+							/>
+							<path
+								d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"
+							/>
+							<line x1="1" y1="1" x2="23" y2="23" />
+						</svg>
+						Tajné rezervace
+					</div>
+					<h2 class="feat-title">Vlastník seznamu nikdy neuvidí, kdo co rezervoval</h2>
+					<p class="feat-desc">
+						Překvapení je zachováno. Systém zaručuje, že vlastník nemůže vidět stav
+						rezervací — ani když se pokusí.
+					</p>
+					<ul class="feat-detail-list">
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Rezervace vidí jen dárci — nikdy vlastník
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Po sdílení vlastník nemůže editovat stávající přání
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Moderátor vidí plný stav a koordinuje nákupy za vás
+						</li>
+					</ul>
+				</div>
+
+				<!-- Visual: owner vs. gifter view -->
+				<div class="feat-visual">
+					<div class="vis-header-label">Vánoční přání 2026 — Martina</div>
+
+					<div style="display: flex; flex-direction: column; gap: var(--space-2)">
+						<span class="owner-view-label">👁 Pohled vlastníka</span>
+						<div class="vis-gift-row">
+							<div
+								class="vis-gift-emoji"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.25 0.02 240),
+										oklch(0.35 0.03 220)
+									);
+								"
+							>
+								🎧
+							</div>
+							<div class="vis-gift-info">
+								<div class="vis-gift-name">Bezdrátová sluchátka Sony</div>
+								<div class="vis-gift-sub">7 490 Kč · alza.cz</div>
+							</div>
+							<span class="vis-blurred vis-badge-reserved">✓ Petra</span>
+						</div>
+						<div class="vis-gift-row">
+							<div
+								class="vis-gift-emoji"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.85 0.06 55),
+										oklch(0.75 0.08 45)
+									);
+								"
+							>
+								📖
+							</div>
+							<div class="vis-gift-info">
+								<div class="vis-gift-name">Sapiens — Y.N. Harari</div>
+								<div class="vis-gift-sub">399 Kč</div>
+							</div>
+							<span class="vis-blurred vis-badge-reserved">✓ Milan</span>
+						</div>
+						<div class="vis-hidden-label">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<rect x="3" y="11" width="18" height="11" rx="2" />
+								<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+							</svg>
+							Kdo co rezervoval zůstává skryto
+						</div>
+					</div>
+
+					<div
+						style="
+							display: flex;
+							flex-direction: column;
+							gap: var(--space-2);
+							margin-top: var(--space-2);
+						"
+					>
+						<span class="owner-view-label visitor">🛍 Pohled dárce</span>
+						<div class="vis-gift-row">
+							<div
+								class="vis-gift-emoji"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.25 0.02 240),
+										oklch(0.35 0.03 220)
+									);
+								"
+							>
+								🎧
+							</div>
+							<div class="vis-gift-info">
+								<div class="vis-gift-name">Bezdrátová sluchátka Sony</div>
+								<div class="vis-gift-sub">7 490 Kč · alza.cz</div>
+							</div>
+							<span class="vis-badge-reserved">✓ Rezervováno</span>
+						</div>
+						<div class="vis-gift-row">
+							<div
+								class="vis-gift-emoji"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.85 0.06 55),
+										oklch(0.75 0.08 45)
+									);
+								"
+							>
+								📖
+							</div>
+							<div class="vis-gift-info">
+								<div class="vis-gift-name">Sapiens — Y.N. Harari</div>
+								<div class="vis-gift-sub">399 Kč</div>
+							</div>
+							<button
+								class="dk-btn dk-btn-primary dk-btn-sm"
+								style="border-radius: var(--radius-md)"
+							>
+								Rezervovat
+							</button>
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     FEATURE 2 — Sdílení jedním odkazem
+		     ════════════════════════════════════════════════════════ -->
+		<div class="feature-section-wrap alt">
+			<section class="feature-section reverse" aria-label="Sdílení jedním odkazem">
+				<div class="feat-text">
+					<div class="feat-number">02</div>
+					<div class="feat-eyebrow">
+						<!-- share-2 icon -->
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<circle cx="18" cy="5" r="3" />
+							<circle cx="6" cy="12" r="3" />
+							<circle cx="18" cy="19" r="3" />
+							<line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+							<line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+						</svg>
+						Sdílení jedním odkazem
+					</div>
+					<h2 class="feat-title">Pošlete odkaz přes WhatsApp, email nebo SMS</h2>
+					<p class="feat-desc">
+						Kdokoli může rezervovat. Jeden odkaz pro celou rodinu — dárci nepotřebují
+						vytvářet účet.
+					</p>
+					<ul class="feat-detail-list">
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Anonymní mód — dárce zadá jen jméno
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Sdílet přes WhatsApp, email, Messenger nebo Telegram
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Trvalý odkaz — funguje po celou dobu události
+						</li>
+					</ul>
+				</div>
+
+				<!-- Visual: share UI -->
+				<div class="feat-visual">
+					<div class="share-visual">
+						<div
+							style="
+								font-size: var(--text-sm);
+								font-weight: var(--weight-semibold);
+								color: var(--foreground);
+							"
+						>
+							Odkaz pro dárce
+						</div>
+						<div class="share-url-row">
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								style="color: var(--foreground-subtle); flex-shrink: 0"
+								aria-hidden="true"
+							>
+								<path
+									d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+								/>
+								<path
+									d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+								/>
+							</svg>
+							<span class="share-url-text">darecky.cz/w/martina-vanocni-2026</span>
+							<button
+								class="dk-btn dk-btn-secondary dk-btn-sm"
+								style="border-radius: var(--radius-md); flex-shrink: 0"
+							>
+								Kopírovat
+							</button>
+						</div>
+						<div
+							style="
+								font-size: var(--text-sm);
+								font-weight: var(--weight-semibold);
+								color: var(--foreground);
+							"
+						>
+							Sdílet přes
+						</div>
+						<div class="share-buttons-row">
+							<div class="share-app-btn">
+								<div class="share-app-icon">💬</div>
+								<span>WhatsApp</span>
+							</div>
+							<div class="share-app-btn">
+								<div class="share-app-icon">✉️</div>
+								<span>Email</span>
+							</div>
+							<div class="share-app-btn">
+								<div class="share-app-icon">📱</div>
+								<span>Messenger</span>
+							</div>
+							<div class="share-app-btn">
+								<div class="share-app-icon">✈️</div>
+								<span>Telegram</span>
+							</div>
+						</div>
+						<div class="share-anon-note">
+							<svg
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								aria-hidden="true"
+							>
+								<circle cx="12" cy="8" r="4" />
+								<path d="M20 21a8 8 0 1 0-16 0" />
+							</svg>
+							Dárci nepotřebují účet — stačí zadat jméno
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     FEATURE 3 — Tematické seznamy
+		     ════════════════════════════════════════════════════════ -->
+		<div class="feature-section-wrap">
+			<section class="feature-section" aria-label="Tematické seznamy">
+				<div class="feat-text">
+					<div class="feat-number">03</div>
+					<div class="feat-eyebrow">
+						<!-- palette icon -->
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+							<circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+							<circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+							<circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+							<path
+								d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
+							/>
+						</svg>
+						Tematické seznamy
+					</div>
+					<h2 class="feat-title">
+						Vánoce, narozeniny, svatba — každý seznam má svůj styl
+					</h2>
+					<p class="feat-desc">
+						Každý seznam může mít svůj vlastní vzhled. Vyberte z pěti témat nebo
+						nastavte vlastní barvu.
+					</p>
+					<ul class="feat-detail-list">
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Pět připravených témat: Výchozí, Vánoce, Narozeniny, Elegantní, Zábava
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Vlastní barva s automaticky odvozenou paletou
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Téma se změní pro všechny návštěvníky okamžitě
+						</li>
+					</ul>
+				</div>
+
+				<!-- Visual: theme swatches -->
+				<div class="feat-visual">
+					<div
+						style="
+							font-size: var(--text-sm);
+							font-weight: var(--weight-semibold);
+							color: var(--foreground);
+							margin-bottom: var(--space-2);
+						"
+					>
+						Vyberte téma
+					</div>
+					<div class="theme-grid">
+						<div
+							class="theme-swatch active"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.92 0.04 150),
+									oklch(0.96 0.02 150)
+								);
+							"
+						>
+							<div class="theme-swatch-icon">🌿</div>
+							<div class="theme-swatch-name">Výchozí</div>
+						</div>
+						<div
+							class="theme-swatch"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.95 0.04 20),
+									oklch(0.98 0.02 30)
+								);
+							"
+						>
+							<div class="theme-swatch-icon">🎄</div>
+							<div class="theme-swatch-name">Vánoce</div>
+						</div>
+						<div
+							class="theme-swatch"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.94 0.05 55),
+									oklch(0.97 0.03 60)
+								);
+							"
+						>
+							<div class="theme-swatch-icon">🎂</div>
+							<div class="theme-swatch-name">Narozeniny</div>
+						</div>
+						<div
+							class="theme-swatch"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.93 0.04 270),
+									oklch(0.96 0.02 280)
+								);
+							"
+						>
+							<div class="theme-swatch-icon">💍</div>
+							<div class="theme-swatch-name">Elegantní</div>
+						</div>
+						<div
+							class="theme-swatch"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.95 0.05 340),
+									oklch(0.97 0.03 350)
+								);
+							"
+						>
+							<div class="theme-swatch-icon">🎉</div>
+							<div class="theme-swatch-name">Zábava</div>
+						</div>
+						<div
+							class="theme-swatch"
+							style="
+								background: var(--surface-2);
+								border-style: dashed;
+								border-color: var(--border-strong);
+							"
+						>
+							<div class="theme-swatch-icon">🎨</div>
+							<div class="theme-swatch-name">Vlastní</div>
+						</div>
+					</div>
+					<div class="theme-preview-strip">
+						<div class="theme-preview-title">Martina — Vánoční přání</div>
+						<div class="theme-preview-sub">
+							Tady jsou věci, které by mě letos potěšily :)
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     FEATURE 4 — Zdarma navždy
+		     ════════════════════════════════════════════════════════ -->
+		<div class="feature-section-wrap alt">
+			<section class="feature-section reverse" aria-label="Zdarma navždy">
+				<div class="feat-text">
+					<div class="feat-number">04</div>
+					<div class="feat-eyebrow">
+						<!-- heart icon -->
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+							/>
+						</svg>
+						Zdarma navždy
+					</div>
+					<h2 class="feat-title">Žádné poplatky, žádné reklamy</h2>
+					<p class="feat-desc">
+						Darecky je a vždy bude zdarma. Žádná platební karta, žádné skryté poplatky,
+						žádná reklama.
+					</p>
+					<ul class="feat-detail-list">
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Zdarma pro vlastníky i dárce — navždy
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Žádná reklama, žádné sledování třetí stranou
+						</li>
+						<li>
+							<svg
+								width="18"
+								height="18"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polyline points="20 6 9 17 4 12" />
+							</svg>
+							Bez limitu na počet seznamů nebo přání
+						</li>
+					</ul>
+				</div>
+
+				<!-- Visual: trust items -->
+				<div class="feat-visual">
+					<div class="free-visual">
+						<div class="free-trust-item">
+							<div class="free-trust-icon">
+								<!-- shield-check -->
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path
+										d="M12 2L4 5v4c0 4.42 2.55 8.16 6 9.5 3.45-1.34 6-5.08 6-9.5V5l-6-3Z"
+									/>
+									<path d="M9 12l2 2 4-4" />
+								</svg>
+							</div>
+							<div class="free-trust-text">
+								<div class="free-trust-title">Zdarma navždy</div>
+								<div class="free-trust-sub">
+									Žádná platební karta. Žádný háček. Žádné trial období.
+								</div>
+							</div>
+						</div>
+						<div class="free-trust-item">
+							<div class="free-trust-icon">
+								<!-- eye-off -->
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path
+										d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"
+									/>
+									<path
+										d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"
+									/>
+									<line x1="1" y1="1" x2="23" y2="23" />
+								</svg>
+							</div>
+							<div class="free-trust-text">
+								<div class="free-trust-title">Žádné reklamy, žádné sledování</div>
+								<div class="free-trust-sub">
+									Žádná data třetím stranám. Vaše přání jsou vaše.
+								</div>
+							</div>
+						</div>
+						<div class="free-trust-item">
+							<div class="free-trust-icon">
+								<!-- user-check -->
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+									<circle cx="9" cy="7" r="4" />
+									<polyline points="16 11 18 13 22 9" />
+								</svg>
+							</div>
+							<div class="free-trust-text">
+								<div class="free-trust-title">Dárci bez registrace</div>
+								<div class="free-trust-sub">
+									Stačí zadat jméno. Bez stahování aplikace.
+								</div>
+							</div>
+						</div>
+						<div class="free-trust-item">
+							<div class="free-trust-icon">
+								<!-- lock -->
+								<svg
+									width="20"
+									height="20"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<rect x="3" y="11" width="18" height="11" rx="2" />
+									<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+								</svg>
+							</div>
+							<div class="free-trust-text">
+								<div class="free-trust-title">Překvapení zaručeno</div>
+								<div class="free-trust-sub">
+									Vlastník nikdy neuvidí, kdo co rezervoval.
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     FINAL CTA
+		     ════════════════════════════════════════════════════════ -->
+		<section class="cta-wrap" aria-label="Výzva k akci">
+			<div class="cta-inner">
+				<span class="section-eyebrow" style="display: block">Začněte dnes</span>
+				<h2 class="cta-headline">Vytvořte svůj první seznam přání</h2>
+				<p class="cta-sub">
+					Registrace jedním klikem. Žádná platební karta. Váš první seznam hotový za
+					minutu.
+				</p>
+				<div class="cta-actions">
+					<a
+						href="/register"
+						class="dk-btn dk-btn-primary dk-btn-lg"
+						style="border-radius: var(--radius-lg); min-width: 220px"
+					>
+						Začít zdarma
+					</a>
+					<a
+						href="/login"
+						class="dk-btn dk-btn-secondary dk-btn-lg"
+						style="border-radius: var(--radius-lg)"
+					>
+						Přihlásit se
+					</a>
+				</div>
+				<div class="cta-note">
+					<span>Zdarma navždy</span>
+					<span class="cta-note-sep">·</span>
+					<span>Žádná platební karta</span>
+					<span class="cta-note-sep">·</span>
+					<span>Překvapení zaručeno</span>
+				</div>
+			</div>
+		</section>
+
+		<!-- ════════════════════════════════════════════════════════
+		     FOOTER
+		     ════════════════════════════════════════════════════════ -->
+		<footer class="footer-wrap" aria-label="Zápatí stránky">
+			<div class="footer-inner">
+				<!-- Logo -->
+				<a class="footer-logo" href="/" aria-label="Darecky — domovská stránka">
+					<div class="footer-logo-icon" aria-hidden="true">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<polyline points="20 12 20 22 4 22 4 12" />
+							<rect x="2" y="7" width="20" height="5" />
+							<line x1="12" y1="22" x2="12" y2="7" />
+							<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+							<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+						</svg>
+					</div>
+					<span>darecky<span class="footer-logo-tld">.cz</span></span>
+				</a>
+
+				<!-- Links -->
+				<nav class="footer-links" aria-label="Navigace zápatí">
+					<a href="/login" class="footer-link">Přihlásit se</a>
+					<span class="footer-sep" aria-hidden="true">·</span>
+					<a href="/register" class="footer-link">Vytvořit účet</a>
+				</nav>
+
+				<!-- Love stamp -->
+				<div class="footer-love">Vytvořeno s ❤ v Česku</div>
+			</div>
+		</footer>
+	</body>
+</html>

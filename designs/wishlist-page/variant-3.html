@@ -1,0 +1,2360 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Variant 3: Magazine Editorial</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 3: Magazine Editorial ─────────────────────────────
+			   Large hero gift image commands the top half.
+			   Below: mixed 2-column + 1-column editorial rhythm.
+			   Strong typographic hierarchy, aspirational mood.
+			   Light: Moderator role — sees full reservation state.
+			   Dark:  Owner role (active/shared) — locked gifts, no reservation info.
+			   ────────────────────────────────────────────────────────── */
+
+			.theme-light {
+				--background: oklch(0.985 0.004 200);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.967 0.007 200);
+				--surface-hover: oklch(0.952 0.01 200);
+				--foreground: oklch(0.14 0.015 210);
+				--foreground-muted: oklch(0.44 0.02 205);
+				--foreground-subtle: oklch(0.6 0.014 205);
+				--border: oklch(0.912 0.012 200);
+				--border-strong: oklch(0.858 0.018 200);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(0.99 0.008 150);
+				--primary-soft: oklch(0.932 0.055 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+			}
+			.theme-dark {
+				--background: oklch(0.13 0.01 220);
+				--surface: oklch(0.176 0.014 218);
+				--surface-2: oklch(0.22 0.016 216);
+				--surface-hover: oklch(0.258 0.018 216);
+				--foreground: oklch(0.965 0.006 210);
+				--foreground-muted: oklch(0.665 0.015 210);
+				--foreground-subtle: oklch(0.508 0.012 210);
+				--border: oklch(0.268 0.014 218);
+				--border-strong: oklch(0.348 0.018 218);
+				--primary: oklch(44.8% 0.119 151.328deg);
+				--primary-fg: oklch(0.97 0.015 150);
+				--primary-soft: oklch(0.268 0.06 150);
+				--ring: oklch(44.8% 0.119 151.328deg);
+			}
+
+			/* ── Layout ── */
+			.page {
+				min-height: 100vh;
+				padding-bottom: var(--space-16);
+			}
+			.mode-label {
+				text-align: center;
+				padding: var(--space-3) var(--space-4);
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				background: var(--primary);
+				color: var(--primary-fg);
+			}
+			.content-wrap {
+				max-width: var(--content-max-width);
+				margin: 0 auto;
+				padding: 0 var(--space-6);
+			}
+
+			/* ── Nav ── */
+			.nav {
+				height: var(--nav-height);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface);
+				display: flex;
+				align-items: center;
+				padding: 0 var(--space-6);
+				gap: var(--space-8);
+				position: sticky;
+				top: 0;
+				z-index: 30;
+			}
+			.nav-logo {
+				font-family: var(--font-heading);
+				font-weight: 700;
+				font-size: var(--text-xl);
+				color: var(--primary);
+				letter-spacing: -0.02em;
+				text-decoration: none;
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+			.nav-logo svg {
+				flex-shrink: 0;
+			}
+			.nav-links {
+				display: flex;
+				gap: var(--space-1);
+				flex: 1;
+				justify-content: center;
+			}
+			.nav-link {
+				font-size: var(--text-sm);
+				font-weight: 500;
+				color: var(--foreground-muted);
+				padding: var(--space-2) var(--space-3);
+				border-radius: var(--radius-md);
+				text-decoration: none;
+				transition:
+					color 120ms,
+					background 120ms;
+			}
+			.nav-link:hover {
+				color: var(--foreground);
+				background: var(--surface-2);
+			}
+			.nav-link.active {
+				color: var(--foreground);
+				font-weight: 600;
+			}
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+			}
+			.avatar {
+				width: 32px;
+				height: 32px;
+				border-radius: 50%;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: var(--text-xs);
+				font-weight: 700;
+				color: var(--primary);
+				border: 2px solid var(--border);
+				cursor: pointer;
+			}
+
+			/* ── Wishlist header ── */
+			.wl-header {
+				padding: var(--space-10) 0 var(--space-6);
+				border-bottom: 1px solid var(--border);
+				margin-bottom: 0;
+			}
+			.wl-owner {
+				font-size: var(--text-lg);
+				font-weight: 700;
+				color: var(--primary);
+				font-family: var(--font-sans);
+				letter-spacing: -0.01em;
+				margin-bottom: var(--space-1);
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+			}
+			.wl-owner-dot {
+				width: 7px;
+				height: 7px;
+				border-radius: 50%;
+				background: var(--primary);
+				opacity: 0.6;
+			}
+			.wl-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-4xl);
+				font-weight: 700;
+				color: var(--foreground);
+				letter-spacing: -0.04em;
+				line-height: 1.1;
+				margin-bottom: var(--space-3);
+			}
+			.wl-subtitle {
+				font-size: var(--text-base);
+				color: var(--foreground-muted);
+				max-width: 560px;
+				line-height: 1.55;
+				margin-bottom: var(--space-4);
+			}
+			.wl-meta-row {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				flex-wrap: wrap;
+			}
+			.wl-badge-occasion {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-1-5);
+				padding: 3px var(--space-3);
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-size: var(--text-xs);
+				font-weight: 600;
+			}
+			.wl-stat {
+				font-size: var(--text-sm);
+				color: var(--foreground-subtle);
+			}
+			.wl-stat-sep {
+				color: var(--border-strong);
+			}
+
+			/* ── Moderator badge ── */
+			.mod-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-1-5);
+				padding: 3px var(--space-3);
+				border-radius: var(--radius-full);
+				background: oklch(0.92 0.06 270 / 0.15);
+				color: oklch(0.45 0.12 270);
+				font-size: var(--text-xs);
+				font-weight: 600;
+				border: 1px solid oklch(0.72 0.1 270 / 0.3);
+			}
+			.theme-dark .mod-badge {
+				background: oklch(0.35 0.08 270 / 0.2);
+				color: oklch(0.72 0.1 270);
+				border-color: oklch(0.5 0.1 270 / 0.3);
+			}
+
+			/* ── Toolbar ── */
+			.toolbar {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				padding: var(--space-4) 0;
+				border-bottom: 1px solid var(--border);
+				margin-bottom: var(--space-8);
+			}
+			.view-switcher {
+				display: inline-flex;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				overflow: hidden;
+				flex-shrink: 0;
+			}
+			.view-btn {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 32px;
+				height: 28px;
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				color: var(--foreground-subtle);
+				border-right: 1px solid var(--border);
+				transition:
+					color 120ms,
+					background 120ms;
+			}
+			.view-btn:last-child {
+				border-right: none;
+			}
+			.view-btn:hover {
+				color: var(--foreground);
+				background: var(--surface-hover);
+			}
+			.view-btn.active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: var(--shadow-sm);
+			}
+			.toolbar-sep {
+				flex: 1;
+			}
+			.icon-btn {
+				width: 32px;
+				height: 32px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition:
+					color 120ms,
+					border-color 120ms,
+					background 120ms;
+				position: relative;
+				flex-shrink: 0;
+			}
+			.icon-btn:hover {
+				color: var(--foreground);
+				border-color: var(--border-strong);
+			}
+			.filter-dot {
+				position: absolute;
+				top: 4px;
+				right: 4px;
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: var(--primary);
+				border: 1.5px solid var(--surface);
+			}
+
+			/* ── Section label ── */
+			.section-label {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: var(--space-4);
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+			}
+			.section-label::after {
+				content: '';
+				flex: 1;
+				height: 1px;
+				background: var(--border);
+			}
+
+			/* ── Magazine editorial layout ── */
+			.editorial-layout {
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-8);
+			}
+
+			/* Hero gift — large single card */
+			.hero-gift {
+				display: grid;
+				grid-template-columns: 1fr 380px;
+				border-radius: var(--radius-xl);
+				overflow: hidden;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				box-shadow: var(--shadow-md);
+				min-height: 380px;
+			}
+			.hero-img {
+				position: relative;
+				background: linear-gradient(135deg, oklch(0.22 0.03 220), oklch(0.32 0.05 190));
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				overflow: hidden;
+			}
+			.theme-light .hero-img {
+				background: linear-gradient(135deg, oklch(0.78 0.06 220), oklch(0.88 0.04 190));
+			}
+			.hero-img-emoji {
+				font-size: 80px;
+				filter: drop-shadow(0 4px 24px oklch(0 0 0 / 0.15));
+			}
+			.hero-img-overlay {
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(to right, transparent 60%, oklch(0 0 0 / 0.18));
+			}
+			.theme-light .hero-img-overlay {
+				background: linear-gradient(to right, transparent 60%, oklch(1 0 0 / 0.2));
+			}
+			.hero-badge-prio {
+				position: absolute;
+				top: var(--space-4);
+				left: var(--space-4);
+				padding: 4px var(--space-3);
+				border-radius: var(--radius-full);
+				background: oklch(0 0 0 / 0.4);
+				color: oklch(0.86 0.18 25);
+				font-size: var(--text-xs);
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				display: flex;
+				align-items: center;
+				gap: var(--space-1);
+				backdrop-filter: blur(4px);
+			}
+			.hero-body {
+				padding: var(--space-8);
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				gap: var(--space-4);
+			}
+			.hero-label {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.hero-name {
+				font-family: var(--font-heading);
+				font-size: var(--text-2xl);
+				font-weight: 700;
+				color: var(--foreground);
+				line-height: 1.25;
+				letter-spacing: -0.02em;
+			}
+			.hero-price {
+				font-size: var(--text-3xl);
+				font-weight: 800;
+				color: var(--primary);
+				letter-spacing: -0.03em;
+			}
+			.hero-link {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-1);
+				font-size: var(--text-sm);
+				color: var(--primary);
+				text-decoration: none;
+				font-weight: 500;
+			}
+			.hero-meta {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+			}
+			.hero-footer {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				padding-top: var(--space-4);
+				border-top: 1px solid var(--border);
+			}
+			.hero-reserve-btn {
+				flex: 1;
+				height: 44px;
+				border-radius: var(--radius-lg);
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				font-size: var(--text-base);
+				font-weight: 700;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--space-2);
+				transition: opacity 150ms;
+				letter-spacing: -0.01em;
+			}
+			.hero-reserve-btn:hover {
+				opacity: 0.88;
+			}
+			.hero-heart {
+				width: 44px;
+				height: 44px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-direction: column;
+				gap: 2px;
+				cursor: pointer;
+				color: var(--foreground-muted);
+				font-size: 9px;
+				font-weight: 600;
+				transition:
+					color 120ms,
+					background 120ms;
+				flex-shrink: 0;
+			}
+			.hero-heart:hover {
+				color: oklch(0.64 0.18 15);
+			}
+
+			/* Moderator who-reserved section */
+			.mod-reserved-info {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				padding: var(--space-2) var(--space-3);
+				border-radius: var(--radius-md);
+				background: oklch(0.62 0.13 145 / 0.1);
+				border: 1px solid oklch(0.62 0.13 145 / 0.25);
+				font-size: var(--text-xs);
+				color: oklch(0.36 0.1 145);
+				font-weight: 600;
+			}
+			.theme-dark .mod-reserved-info {
+				background: oklch(0.62 0.13 145 / 0.12);
+				border-color: oklch(0.62 0.13 145 / 0.28);
+				color: oklch(0.72 0.1 145);
+			}
+			.mod-reserved-dot {
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: oklch(0.62 0.13 145);
+				flex-shrink: 0;
+			}
+
+			/* ── Secondary row ── */
+			.secondary-row {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: var(--space-5);
+			}
+
+			/* Medium gift cards */
+			.med-gift {
+				background: var(--surface);
+				border-radius: var(--radius-xl);
+				border: 1px solid var(--border);
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				transition:
+					box-shadow 150ms,
+					transform 150ms;
+			}
+			.med-gift:hover {
+				box-shadow: var(--shadow-md);
+				transform: translateY(-2px);
+			}
+			.med-img {
+				height: 200px;
+				background: linear-gradient(135deg, oklch(0.24 0.04 170), oklch(0.34 0.06 155));
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 48px;
+				position: relative;
+				overflow: hidden;
+			}
+			.theme-light .med-img {
+				background: linear-gradient(135deg, oklch(0.8 0.07 170), oklch(0.9 0.05 155));
+			}
+			.med-body {
+				padding: var(--space-5);
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-2);
+				flex: 1;
+			}
+			.med-badges {
+				display: flex;
+				gap: var(--space-2);
+				flex-wrap: wrap;
+			}
+			.med-name {
+				font-size: var(--text-base);
+				font-weight: 700;
+				color: var(--foreground);
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+				line-height: 1.35;
+			}
+			.med-price {
+				font-size: var(--text-xl);
+				font-weight: 800;
+				color: var(--primary);
+				letter-spacing: -0.03em;
+			}
+			.med-link {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-1);
+				font-size: var(--text-xs);
+				color: var(--primary);
+				font-weight: 500;
+				text-decoration: none;
+			}
+			.med-footer {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				padding-top: var(--space-3);
+				border-top: 1px solid var(--border);
+				margin-top: auto;
+			}
+			.reserve-btn-sm {
+				flex: 1;
+				height: 36px;
+				border-radius: var(--radius-md);
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				font-size: var(--text-sm);
+				font-weight: 700;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: var(--space-1-5);
+				transition: opacity 150ms;
+			}
+			.reserve-btn-sm:hover {
+				opacity: 0.88;
+			}
+			.reserve-btn-sm.disabled {
+				background: var(--surface-2);
+				color: var(--foreground-subtle);
+				cursor: default;
+				opacity: 1;
+			}
+			.heart-sm {
+				width: 36px;
+				height: 36px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				color: var(--foreground-muted);
+				transition:
+					color 120ms,
+					background 120ms;
+				flex-shrink: 0;
+			}
+			.heart-sm:hover {
+				color: oklch(0.64 0.18 15);
+			}
+			.heart-sm.liked {
+				color: oklch(0.64 0.18 15);
+				background: oklch(0.64 0.18 15 / 0.08);
+			}
+
+			/* ── Tertiary row: 3-column ── */
+			.tertiary-row {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: var(--space-5);
+			}
+
+			/* Small editorial gift card */
+			.sm-gift {
+				background: var(--surface);
+				border-radius: var(--radius-lg);
+				border: 1px solid var(--border);
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				transition:
+					box-shadow 120ms,
+					transform 120ms;
+			}
+			.sm-gift:hover {
+				box-shadow: var(--shadow-sm);
+				transform: translateY(-1px);
+			}
+			.sm-img {
+				height: 140px;
+				background: linear-gradient(135deg, oklch(0.2 0.03 260), oklch(0.3 0.04 240));
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 36px;
+				position: relative;
+				overflow: hidden;
+			}
+			.theme-light .sm-img {
+				background: linear-gradient(135deg, oklch(0.82 0.04 260), oklch(0.92 0.03 240));
+			}
+			.sm-body {
+				padding: var(--space-4);
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-1-5);
+				flex: 1;
+			}
+			.sm-name {
+				font-size: var(--text-sm);
+				font-weight: 700;
+				color: var(--foreground);
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+				line-height: 1.35;
+			}
+			.sm-price {
+				font-size: var(--text-base);
+				font-weight: 800;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.sm-footer {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				padding: var(--space-3) var(--space-4);
+				border-top: 1px solid var(--border);
+			}
+
+			/* Reserved overlay badge */
+			.img-badge-reserved {
+				position: absolute;
+				top: var(--space-3);
+				right: var(--space-3);
+				padding: 3px var(--space-2-5);
+				border-radius: var(--radius-full);
+				background: oklch(0 0 0 / 0.36);
+				color: oklch(0.86 0.1 145);
+				font-size: 10px;
+				font-weight: 700;
+				backdrop-filter: blur(4px);
+				display: flex;
+				align-items: center;
+				gap: var(--space-1);
+			}
+			.img-badge-qty {
+				position: absolute;
+				bottom: var(--space-3);
+				right: var(--space-3);
+				padding: 3px var(--space-2-5);
+				border-radius: var(--radius-full);
+				background: oklch(0 0 0 / 0.36);
+				color: white;
+				font-size: 10px;
+				font-weight: 700;
+				backdrop-filter: blur(4px);
+			}
+			/* Moderator edit/delete actions */
+			.mod-actions {
+				display: flex;
+				gap: var(--space-1-5);
+				margin-left: auto;
+			}
+			.mod-icon-btn {
+				width: 30px;
+				height: 30px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				transition:
+					color 120ms,
+					background 120ms;
+			}
+			.mod-icon-btn:hover {
+				color: var(--foreground);
+				background: var(--surface-hover);
+			}
+			.mod-icon-btn.danger:hover {
+				color: oklch(0.52 0.18 25);
+			}
+			.mod-icon-btn.disabled {
+				opacity: 0.35;
+				cursor: not-allowed;
+			}
+
+			/* ── Owner mode: lock icon on cards ── */
+			.owner-lock {
+				display: flex;
+				align-items: center;
+				gap: var(--space-1-5);
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				padding: var(--space-2) var(--space-3);
+				border-top: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+
+			/* ── Lifecycle banners ── */
+			.lifecycle-banner {
+				border-radius: var(--radius-lg);
+				padding: var(--space-3) var(--space-5);
+				margin-bottom: var(--space-5);
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				font-size: var(--text-sm);
+				font-weight: 500;
+			}
+			.lifecycle-banner.info {
+				background: oklch(0.96 0.03 220);
+				border: 1px solid oklch(0.87 0.05 220);
+				color: oklch(0.35 0.1 220);
+			}
+			.theme-dark .lifecycle-banner.info {
+				background: oklch(0.24 0.05 220);
+				border-color: oklch(0.38 0.07 220);
+				color: oklch(0.72 0.1 220);
+			}
+
+			/* ── dk-badge overrides ── */
+			.dk-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				padding: 2px 8px;
+				border-radius: var(--radius-sm);
+				font-size: var(--text-xs);
+				font-weight: 600;
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+			.dk-badge.high {
+				background: oklch(0.65 0.18 25 / 0.12);
+				color: oklch(0.52 0.18 25);
+				border-color: oklch(0.65 0.18 25 / 0.25);
+			}
+			.dk-badge.medium {
+				background: oklch(0.72 0.13 75 / 0.12);
+				color: oklch(0.5 0.12 75);
+				border-color: oklch(0.72 0.13 75 / 0.25);
+			}
+			.dk-badge.reserved {
+				background: oklch(0.62 0.13 145 / 0.12);
+				color: oklch(0.38 0.12 145);
+				border-color: oklch(0.62 0.13 145 / 0.28);
+			}
+			.theme-dark .dk-badge.reserved {
+				background: oklch(0.62 0.13 145 / 0.15);
+				color: oklch(0.72 0.1 145);
+				border-color: oklch(0.62 0.13 145 / 0.3);
+			}
+
+			/* ── Btn overrides ── */
+			.dk-btn-secondary {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-1-5);
+				padding: 0 var(--space-4);
+				height: 32px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground);
+				font-size: var(--text-sm);
+				font-weight: 600;
+				cursor: pointer;
+				transition:
+					border-color 120ms,
+					background 120ms;
+				white-space: nowrap;
+			}
+			.dk-btn-secondary:hover {
+				border-color: var(--border-strong);
+				background: var(--surface-2);
+			}
+			.dk-btn-primary {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--space-1-5);
+				padding: 0 var(--space-4);
+				height: 32px;
+				border-radius: var(--radius-md);
+				border: none;
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-size: var(--text-sm);
+				font-weight: 700;
+				cursor: pointer;
+				transition: opacity 150ms;
+				white-space: nowrap;
+			}
+			.dk-btn-primary:hover {
+				opacity: 0.88;
+			}
+
+			/* Gift desaturation when reserved */
+			.gift-reserved-state {
+				opacity: 0.7;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ════════════════════════════════════════════
+		     LIGHT MODE — MODERATOR ROLE
+		     Sees full reservation state + who reserved
+		     Edit/Delete actions on all cards
+		     ════════════════════════════════════════════ -->
+		<div class="theme-light">
+			<div
+				class="page"
+				style="
+					background: var(--background);
+					color: var(--foreground);
+					font-family: var(--font-sans);
+				"
+			>
+				<div class="mode-label">SVĚTLÝ REŽIM — ROLE: MODERÁTOR — REDAKČNÍ ROZLOŽENÍ</div>
+
+				<!-- Nav -->
+				<nav class="nav" style="background: var(--surface); border-color: var(--border)">
+					<a class="nav-logo" href="#">
+						<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+							<rect width="22" height="22" rx="7" fill="currentColor" />
+							<path
+								d="M7 11h8M11 7l4 4-4 4"
+								stroke="oklch(1 0 0)"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+						Darecky
+					</a>
+					<nav class="nav-links">
+						<a class="nav-link" href="#">Moje přání</a>
+						<a class="nav-link active" href="#">Spravuji</a>
+						<a class="nav-link" href="#">Sleduji</a>
+					</nav>
+					<div class="nav-right">
+						<div class="avatar">TN</div>
+					</div>
+				</nav>
+
+				<div class="content-wrap">
+					<!-- Wishlist header -->
+					<header class="wl-header">
+						<div class="wl-owner">
+							<span class="wl-owner-dot"></span>
+							Jana Nováková
+						</div>
+						<h1 class="wl-title">Vánoce 2026</h1>
+						<p class="wl-subtitle">
+							Malé radosti pod stromečkem — tohle by mě opravdu potěšilo ✨
+						</p>
+						<div class="wl-meta-row">
+							<span class="wl-badge-occasion">
+								<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+									<path
+										d="M6 1l1.2 3.6H11L8.4 6.8 9.6 10.4 6 8.2l-3.6 2.2 1.2-3.6L1 4.6h3.8z"
+									/>
+								</svg>
+								Vánoce 25. 12. 2026
+							</span>
+							<span class="wl-stat">8 přání</span>
+							<span class="wl-stat-sep">·</span>
+							<span class="wl-stat">3 rezervováno</span>
+							<span class="wl-stat-sep">·</span>
+							<span class="wl-stat">2 oblíbeno</span>
+							<span class="mod-badge">
+								<svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor">
+									<path
+										d="M5.5 1L7 4h3.5L8 6.2l1 3.3L5.5 7.8 3 9.5l1-3.3L1.5 4H5z"
+									/>
+								</svg>
+								Moderátor
+							</span>
+						</div>
+					</header>
+
+					<!-- Toolbar -->
+					<div class="toolbar">
+						<div class="view-switcher">
+							<button
+								class="view-btn active"
+								aria-pressed="true"
+								aria-label="Zobrazení karet"
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<rect x="1" y="1" width="5" height="5" rx="1" />
+									<rect x="8" y="1" width="5" height="5" rx="1" />
+									<rect x="1" y="8" width="5" height="5" rx="1" />
+									<rect x="8" y="8" width="5" height="5" rx="1" />
+								</svg>
+							</button>
+							<button
+								class="view-btn"
+								aria-pressed="false"
+								aria-label="Zobrazení seznamu"
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<rect x="1" y="1" width="4" height="4" rx="0.5" />
+									<line x1="7" y1="3" x2="13" y2="3" />
+									<rect x="1" y="6.5" width="4" height="4" rx="0.5" />
+									<line x1="7" y1="8.5" x2="13" y2="8.5" />
+									<rect x="1" y="12" width="4" height="1.5" rx="0.5" />
+								</svg>
+							</button>
+							<button
+								class="view-btn"
+								aria-pressed="false"
+								aria-label="Kompaktní zobrazení"
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<line x1="1" y1="2.5" x2="13" y2="2.5" />
+									<line x1="1" y1="5.5" x2="13" y2="5.5" />
+									<line x1="1" y1="8.5" x2="13" y2="8.5" />
+									<line x1="1" y1="11.5" x2="13" y2="11.5" />
+								</svg>
+							</button>
+						</div>
+						<div class="toolbar-sep"></div>
+						<button class="icon-btn" aria-label="Filtrovat a řadit">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 14 14"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<line x1="2" y1="4" x2="12" y2="4" />
+								<line x1="4" y1="7" x2="10" y2="7" />
+								<line x1="6" y1="10" x2="8" y2="10" />
+							</svg>
+						</button>
+						<button class="dk-btn-secondary">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 14 14"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<path d="M7 1v8M4 6l3 3 3-3M2 11h10" />
+							</svg>
+							Sdílet
+						</button>
+						<button class="dk-btn-primary">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 14 14"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<line x1="7" y1="2" x2="7" y2="12" />
+								<line x1="2" y1="7" x2="12" y2="7" />
+							</svg>
+							Přidat přání
+						</button>
+					</div>
+
+					<!-- Editorial layout -->
+					<div class="editorial-layout">
+						<div class="section-label">Výběr editora</div>
+
+						<!-- Hero gift: Ergonomická kancelářská židle — moderator sees it's reserved by Tomáš K. -->
+						<div class="hero-gift">
+							<div class="hero-img">
+								<span class="hero-img-emoji">🪑</span>
+								<div class="hero-img-overlay"></div>
+								<div class="hero-badge-prio">
+									<svg
+										width="10"
+										height="10"
+										viewBox="0 0 10 10"
+										fill="currentColor"
+									>
+										<path
+											d="M5 1L6 3.8H9L6.8 5.5l.8 2.8L5 6.8l-2.6 1.5.8-2.8L1 3.8h3z"
+										/>
+									</svg>
+									Vysoká priorita
+								</div>
+							</div>
+							<div class="hero-body">
+								<div class="hero-label">Přání č. 1 · Nejvyšší priorita</div>
+								<div class="hero-name">Ergonomická kancelářská židle</div>
+								<div
+									style="
+										display: flex;
+										align-items: baseline;
+										gap: var(--space-2);
+									"
+								>
+									<div class="hero-price">4 990 Kč</div>
+								</div>
+								<a class="hero-link" href="#">
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 12 12"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+									>
+										<path
+											d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+										/>
+									</svg>
+									ikea.com
+								</a>
+								<div class="mod-reserved-info">
+									<span class="mod-reserved-dot"></span>
+									Rezervováno: Tomáš K.
+								</div>
+								<div class="hero-footer">
+									<button
+										class="hero-reserve-btn disabled"
+										style="
+											background: var(--surface-2);
+											color: var(--foreground-subtle);
+											cursor: default;
+											opacity: 1;
+											font-weight: 600;
+										"
+									>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 14 14"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+										>
+											<path d="M2 7l3 3 7-7" />
+										</svg>
+										Rezervováno
+									</button>
+									<div class="hero-heart">
+										<svg
+											width="16"
+											height="16"
+											viewBox="0 0 16 16"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+										>
+											<path
+												d="M8 13.5S2 9.5 2 5.5a3 3 0 015-2.2A3 3 0 0114 5.5c0 4-6 8-6 8z"
+											/>
+										</svg>
+										<span style="color: var(--foreground-subtle)">2</span>
+									</div>
+									<div class="mod-actions">
+										<button class="mod-icon-btn" title="Upravit">
+											<svg
+												width="12"
+												height="12"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path d="M8.5 1.5L10.5 3.5l-7 7H1.5V9l7-7.5z" />
+											</svg>
+										</button>
+										<button
+											class="mod-icon-btn danger disabled"
+											title="Nejdříve zrušte rezervaci"
+										>
+											<svg
+												width="12"
+												height="12"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M3 3l.5 7h5L9 3"
+												/>
+											</svg>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Secondary row: 2 medium gifts -->
+						<div>
+							<div class="section-label">Střední priorita</div>
+							<div class="secondary-row">
+								<!-- Kuchyňský robot — partially reserved -->
+								<div class="med-gift">
+									<div class="med-img">
+										<span>🤖</span>
+										<div class="img-badge-qty">×2</div>
+										<div
+											style="
+												position: absolute;
+												top: var(--space-3);
+												left: var(--space-3);
+											"
+										>
+											<span class="dk-badge medium">Střední priorita</span>
+										</div>
+									</div>
+									<div class="med-body">
+										<div class="med-name">Kuchyňský robot Kenwood</div>
+										<div class="med-price">3 490 Kč</div>
+										<a class="med-link" href="#">
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											alza.cz
+										</a>
+										<div class="mod-reserved-info">
+											<span class="mod-reserved-dot"></span>
+											Rezervováno: 1× Tomáš K.
+										</div>
+										<div class="med-footer">
+											<button class="reserve-btn-sm">
+												<svg
+													width="12"
+													height="12"
+													viewBox="0 0 12 12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path
+														d="M6 1a4 4 0 100 8A4 4 0 006 1zM6 9v2M4 11h4"
+													/>
+												</svg>
+												Rezervovat
+											</button>
+											<div class="heart-sm">
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 14 14"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path
+														d="M7 12S2 8 2 5a2.5 2.5 0 015-1 2.5 2.5 0 015 1c0 3-5 7-5 7z"
+													/>
+												</svg>
+											</div>
+											<div class="mod-actions">
+												<button class="mod-icon-btn" title="Upravit">
+													<svg
+														width="12"
+														height="12"
+														viewBox="0 0 12 12"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.5"
+													>
+														<path
+															d="M8.5 1.5L10.5 3.5l-7 7H1.5V9l7-7.5z"
+														/>
+													</svg>
+												</button>
+												<button
+													class="mod-icon-btn danger disabled"
+													title="Nejdříve zrušte rezervaci"
+												>
+													<svg
+														width="12"
+														height="12"
+														viewBox="0 0 12 12"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.5"
+													>
+														<path
+															d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M3 3l.5 7h5L9 3"
+														/>
+													</svg>
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<!-- Merino vlněný přehoz — available, liked -->
+								<div class="med-gift">
+									<div
+										class="med-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.82 0.06 30),
+												oklch(0.92 0.04 50)
+											);
+										"
+									>
+										<span>🧶</span>
+										<div
+											style="
+												position: absolute;
+												top: var(--space-3);
+												left: var(--space-3);
+											"
+										>
+											<span class="dk-badge">Nízká priorita</span>
+										</div>
+									</div>
+									<div class="med-body">
+										<div class="med-name">Merino vlněný přehoz Woolmark</div>
+										<div class="med-price">1 890 Kč</div>
+										<a class="med-link" href="#">
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											woolmark.cz
+										</a>
+										<div class="med-footer">
+											<button class="reserve-btn-sm">Rezervovat</button>
+											<div class="heart-sm liked">
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 14 14"
+													fill="oklch(0.64 0.18 15)"
+													stroke="oklch(0.64 0.18 15)"
+													stroke-width="1.5"
+												>
+													<path
+														d="M7 12S2 8 2 5a2.5 2.5 0 015-1 2.5 2.5 0 015 1c0 3-5 7-5 7z"
+													/>
+												</svg>
+											</div>
+											<div class="mod-actions">
+												<button class="mod-icon-btn" title="Upravit">
+													<svg
+														width="12"
+														height="12"
+														viewBox="0 0 12 12"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.5"
+													>
+														<path
+															d="M8.5 1.5L10.5 3.5l-7 7H1.5V9l7-7.5z"
+														/>
+													</svg>
+												</button>
+												<button class="mod-icon-btn danger" title="Smazat">
+													<svg
+														width="12"
+														height="12"
+														viewBox="0 0 12 12"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.5"
+													>
+														<path
+															d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M3 3l.5 7h5L9 3"
+														/>
+													</svg>
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Tertiary row: 3 small cards -->
+						<div>
+							<div class="section-label">Ostatní přání</div>
+							<div class="tertiary-row">
+								<!-- Kniha — reserved -->
+								<div class="sm-gift gift-reserved-state">
+									<div
+										class="sm-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.85 0.04 100),
+												oklch(0.93 0.03 85)
+											);
+										"
+									>
+										<span>📚</span>
+										<div class="img-badge-reserved">
+											<svg
+												width="8"
+												height="8"
+												viewBox="0 0 8 8"
+												fill="currentColor"
+											>
+												<path d="M1 4l2 2 4-4" />
+											</svg>
+											Rezervováno
+										</div>
+									</div>
+									<div class="sm-body">
+										<div class="sm-name">Atomové návyky — James Clear</div>
+										<div class="sm-price">390 Kč</div>
+										<a
+											class="med-link"
+											href="#"
+											style="font-size: var(--text-xs)"
+										>
+											<svg
+												width="10"
+												height="10"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											knihy.cz
+										</a>
+										<div
+											class="mod-reserved-info"
+											style="margin-top: var(--space-1)"
+										>
+											<span class="mod-reserved-dot"></span>
+											Rezervováno: Eva M.
+										</div>
+									</div>
+									<div class="sm-footer">
+										<button
+											class="reserve-btn-sm disabled"
+											style="font-size: var(--text-xs)"
+										>
+											Rezervováno
+										</button>
+										<div class="heart-sm">
+											<svg
+												width="13"
+												height="13"
+												viewBox="0 0 14 14"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M7 12S2 8 2 5a2.5 2.5 0 015-1 2.5 2.5 0 015 1c0 3-5 7-5 7z"
+												/>
+											</svg>
+										</div>
+										<div class="mod-actions">
+											<button
+												class="mod-icon-btn"
+												title="Upravit"
+												style="width: 26px; height: 26px"
+											>
+												<svg
+													width="11"
+													height="11"
+													viewBox="0 0 12 12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path d="M8.5 1.5L10.5 3.5l-7 7H1.5V9l7-7.5z" />
+												</svg>
+											</button>
+											<button
+												class="mod-icon-btn danger disabled"
+												title="Nejdříve zrušte rezervaci"
+												style="width: 26px; height: 26px"
+											>
+												<svg
+													width="11"
+													height="11"
+													viewBox="0 0 12 12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path
+														d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M3 3l.5 7h5L9 3"
+													/>
+												</svg>
+											</button>
+										</div>
+									</div>
+								</div>
+
+								<!-- Zahradní nůžky Fiskars ×3 partial -->
+								<div class="sm-gift">
+									<div
+										class="sm-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.8 0.07 145),
+												oklch(0.9 0.05 155)
+											);
+										"
+									>
+										<span>✂️</span>
+										<div class="img-badge-qty">×3</div>
+									</div>
+									<div class="sm-body">
+										<div class="sm-name">Zahradní nůžky Fiskars ×3</div>
+										<div class="sm-price">720 Kč</div>
+										<a
+											class="med-link"
+											href="#"
+											style="font-size: var(--text-xs)"
+										>
+											<svg
+												width="10"
+												height="10"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											fiskars.cz
+										</a>
+										<div
+											class="mod-reserved-info"
+											style="margin-top: var(--space-1)"
+										>
+											<span class="mod-reserved-dot"></span>
+											Rezervováno: 1× Tomáš K.
+										</div>
+									</div>
+									<div class="sm-footer">
+										<button
+											class="reserve-btn-sm"
+											style="font-size: var(--text-xs)"
+										>
+											Rezervovat
+										</button>
+										<div class="heart-sm">
+											<svg
+												width="13"
+												height="13"
+												viewBox="0 0 14 14"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M7 12S2 8 2 5a2.5 2.5 0 015-1 2.5 2.5 0 015 1c0 3-5 7-5 7z"
+												/>
+											</svg>
+										</div>
+										<div class="mod-actions">
+											<button
+												class="mod-icon-btn"
+												style="width: 26px; height: 26px"
+											>
+												<svg
+													width="11"
+													height="11"
+													viewBox="0 0 12 12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path d="M8.5 1.5L10.5 3.5l-7 7H1.5V9l7-7.5z" />
+												</svg>
+											</button>
+											<button
+												class="mod-icon-btn danger disabled"
+												style="width: 26px; height: 26px"
+												title="Nejdříve zrušte rezervaci"
+											>
+												<svg
+													width="11"
+													height="11"
+													viewBox="0 0 12 12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path
+														d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M3 3l.5 7h5L9 3"
+													/>
+												</svg>
+											</button>
+										</div>
+									</div>
+								</div>
+
+								<!-- Puzzle 1000 — no link, no image -->
+								<div class="sm-gift">
+									<div
+										class="sm-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.86 0.03 240),
+												oklch(0.94 0.02 260)
+											);
+											align-items: center;
+											justify-content: center;
+											display: flex;
+										"
+									>
+										<svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+											<rect
+												x="4"
+												y="4"
+												width="14"
+												height="14"
+												rx="2"
+												fill="oklch(0.7 0.02 240)"
+											/>
+											<rect
+												x="22"
+												y="4"
+												width="14"
+												height="14"
+												rx="2"
+												fill="oklch(0.7 0.02 240)"
+											/>
+											<rect
+												x="4"
+												y="22"
+												width="14"
+												height="14"
+												rx="2"
+												fill="oklch(0.7 0.02 240)"
+											/>
+											<rect
+												x="22"
+												y="22"
+												width="14"
+												height="14"
+												rx="2"
+												fill="oklch(0.7 0.02 240)"
+											/>
+											<circle
+												cx="20"
+												cy="11"
+												r="3"
+												fill="oklch(0.86 0.03 240)"
+											/>
+											<circle
+												cx="11"
+												cy="20"
+												r="3"
+												fill="oklch(0.86 0.03 240)"
+											/>
+											<circle
+												cx="29"
+												cy="20"
+												r="3"
+												fill="oklch(0.86 0.03 240)"
+											/>
+											<circle
+												cx="20"
+												cy="29"
+												r="3"
+												fill="oklch(0.86 0.03 240)"
+											/>
+										</svg>
+									</div>
+									<div class="sm-body">
+										<div class="sm-name">Puzzle 1000 dílků Ravensburger</div>
+										<div class="sm-price">650 Kč</div>
+										<span
+											style="
+												font-size: var(--text-xs);
+												color: var(--foreground-subtle);
+											"
+											>Bez odkazu</span
+										>
+									</div>
+									<div class="sm-footer">
+										<button
+											class="reserve-btn-sm"
+											style="font-size: var(--text-xs)"
+										>
+											Rezervovat
+										</button>
+										<div class="heart-sm">
+											<svg
+												width="13"
+												height="13"
+												viewBox="0 0 14 14"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M7 12S2 8 2 5a2.5 2.5 0 015-1 2.5 2.5 0 015 1c0 3-5 7-5 7z"
+												/>
+											</svg>
+										</div>
+										<div class="mod-actions">
+											<button
+												class="mod-icon-btn"
+												style="width: 26px; height: 26px"
+											>
+												<svg
+													width="11"
+													height="11"
+													viewBox="0 0 12 12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path d="M8.5 1.5L10.5 3.5l-7 7H1.5V9l7-7.5z" />
+												</svg>
+											</button>
+											<button
+												class="mod-icon-btn danger"
+												style="width: 26px; height: 26px"
+												title="Smazat"
+											>
+												<svg
+													width="11"
+													height="11"
+													viewBox="0 0 12 12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="1.5"
+												>
+													<path
+														d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M3 3l.5 7h5L9 3"
+													/>
+												</svg>
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════════════════════════════════════
+		     DARK MODE — OWNER ROLE (ACTIVE/SHARED)
+		     Gifts are locked — no edit, no delete for existing
+		     No reservation state shown anywhere
+		     Draft banner about sharing replaced by lock indicators
+		     ════════════════════════════════════════════ -->
+		<div class="theme-dark">
+			<div
+				class="page"
+				style="
+					background: var(--background);
+					color: var(--foreground);
+					font-family: var(--font-sans);
+				"
+			>
+				<div
+					class="mode-label"
+					style="background: oklch(0.3 0.04 220); color: oklch(0.82 0.06 210)"
+				>
+					TMAVÝ REŽIM — ROLE: VLASTNÍK (SDÍLENO) — ZAMČENÉ ÚPRAVY
+				</div>
+
+				<!-- Nav -->
+				<nav class="nav" style="background: var(--surface); border-color: var(--border)">
+					<a class="nav-logo" href="#">
+						<svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+							<rect width="22" height="22" rx="7" fill="currentColor" />
+							<path
+								d="M7 11h8M11 7l4 4-4 4"
+								stroke="oklch(0.13 0.01 220)"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+						</svg>
+						Darecky
+					</a>
+					<nav class="nav-links">
+						<a class="nav-link active" href="#">Moje přání</a>
+						<a class="nav-link" href="#">Spravuji</a>
+						<a class="nav-link" href="#">Sleduji</a>
+					</nav>
+					<div class="nav-right">
+						<div class="avatar">JN</div>
+					</div>
+				</nav>
+
+				<div class="content-wrap">
+					<!-- Wishlist header -->
+					<header class="wl-header">
+						<div class="wl-owner" style="color: var(--primary)">
+							<span class="wl-owner-dot"></span>
+							Jana Nováková
+						</div>
+						<h1 class="wl-title">Vánoce 2026</h1>
+						<p class="wl-subtitle">
+							Malé radosti pod stromečkem — tohle by mě opravdu potěšilo ✨
+						</p>
+						<div class="wl-meta-row">
+							<span class="wl-badge-occasion">
+								<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+									<path
+										d="M6 1l1.2 3.6H11L8.4 6.8 9.6 10.4 6 8.2l-3.6 2.2 1.2-3.6L1 4.6h3.8z"
+									/>
+								</svg>
+								Vánoce 25. 12. 2026
+							</span>
+							<span class="wl-stat">8 přání</span>
+						</div>
+					</header>
+
+					<!-- Toolbar (owner mode — no filter dot) -->
+					<div class="toolbar">
+						<div class="view-switcher">
+							<button
+								class="view-btn active"
+								aria-pressed="true"
+								aria-label="Zobrazení karet"
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<rect x="1" y="1" width="5" height="5" rx="1" />
+									<rect x="8" y="1" width="5" height="5" rx="1" />
+									<rect x="1" y="8" width="5" height="5" rx="1" />
+									<rect x="8" y="8" width="5" height="5" rx="1" />
+								</svg>
+							</button>
+							<button
+								class="view-btn"
+								aria-pressed="false"
+								aria-label="Zobrazení seznamu"
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<rect x="1" y="1" width="4" height="4" rx="0.5" />
+									<line x1="7" y1="3" x2="13" y2="3" />
+									<rect x="1" y="6.5" width="4" height="4" rx="0.5" />
+									<line x1="7" y1="8.5" x2="13" y2="8.5" />
+									<rect x="1" y="12" width="4" height="1.5" rx="0.5" />
+								</svg>
+							</button>
+							<button
+								class="view-btn"
+								aria-pressed="false"
+								aria-label="Kompaktní zobrazení"
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 14 14"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.5"
+								>
+									<line x1="1" y1="2.5" x2="13" y2="2.5" />
+									<line x1="1" y1="5.5" x2="13" y2="5.5" />
+									<line x1="1" y1="8.5" x2="13" y2="8.5" />
+									<line x1="1" y1="11.5" x2="13" y2="11.5" />
+								</svg>
+							</button>
+						</div>
+						<div class="toolbar-sep"></div>
+						<button class="icon-btn" aria-label="Filtrovat a řadit">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 14 14"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<line x1="2" y1="4" x2="12" y2="4" />
+								<line x1="4" y1="7" x2="10" y2="7" />
+								<line x1="6" y1="10" x2="8" y2="10" />
+							</svg>
+						</button>
+						<button class="dk-btn-secondary">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 14 14"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<path d="M7 1v8M4 6l3 3 3-3M2 11h10" />
+							</svg>
+							Sdílet
+						</button>
+						<button class="dk-btn-primary">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 14 14"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<line x1="7" y1="2" x2="7" y2="12" />
+								<line x1="2" y1="7" x2="12" y2="7" />
+							</svg>
+							Přidat přání
+						</button>
+					</div>
+
+					<!-- Editorial layout — owner view (locked, no reservation info) -->
+					<div class="editorial-layout">
+						<div class="section-label" style="color: var(--foreground-subtle)">
+							Výběr editora
+						</div>
+
+						<!-- Hero gift — locked, no reserve, no reservation info -->
+						<div class="hero-gift" style="opacity: 0.92">
+							<div
+								class="hero-img"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.22 0.03 220),
+										oklch(0.32 0.05 190)
+									);
+								"
+							>
+								<span class="hero-img-emoji">🪑</span>
+								<div class="hero-img-overlay"></div>
+								<div class="hero-badge-prio">
+									<svg
+										width="10"
+										height="10"
+										viewBox="0 0 10 10"
+										fill="currentColor"
+									>
+										<path
+											d="M5 1L6 3.8H9L6.8 5.5l.8 2.8L5 6.8l-2.6 1.5.8-2.8L1 3.8h3z"
+										/>
+									</svg>
+									Vysoká priorita
+								</div>
+							</div>
+							<div class="hero-body">
+								<div class="hero-label">Přání č. 1 · Nejvyšší priorita</div>
+								<div class="hero-name">Ergonomická kancelářská židle</div>
+								<div
+									style="
+										display: flex;
+										align-items: baseline;
+										gap: var(--space-2);
+									"
+								>
+									<div class="hero-price">4 990 Kč</div>
+								</div>
+								<a class="hero-link" href="#">
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 12 12"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+									>
+										<path
+											d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+										/>
+									</svg>
+									ikea.com
+								</a>
+								<!-- Owner lock footer -->
+								<div
+									class="owner-lock"
+									style="border-radius: var(--radius-md); margin-top: auto"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 12 12"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+									>
+										<rect x="2.5" y="5" width="7" height="6" rx="1" />
+										<path d="M4 5V3.5a2 2 0 014 0V5" />
+									</svg>
+									Přání nelze po sdílení upravovat
+								</div>
+							</div>
+						</div>
+
+						<!-- Secondary row: 2 medium gifts — owner locked -->
+						<div>
+							<div class="section-label" style="color: var(--foreground-subtle)">
+								Střední priorita
+							</div>
+							<div class="secondary-row">
+								<div class="med-gift">
+									<div
+										class="med-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.24 0.04 170),
+												oklch(0.34 0.06 155)
+											);
+										"
+									>
+										<span>🤖</span>
+										<div class="img-badge-qty">×2</div>
+									</div>
+									<div class="med-body">
+										<span class="dk-badge medium" style="align-self: flex-start"
+											>Střední priorita</span
+										>
+										<div class="med-name">Kuchyňský robot Kenwood</div>
+										<div class="med-price">3 490 Kč</div>
+										<a class="med-link" href="#">
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											alza.cz
+										</a>
+									</div>
+									<div class="owner-lock">
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 12 12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+										>
+											<rect x="2.5" y="5" width="7" height="6" rx="1" />
+											<path d="M4 5V3.5a2 2 0 014 0V5" />
+										</svg>
+										Přání nelze po sdílení upravovat
+									</div>
+								</div>
+
+								<div class="med-gift">
+									<div
+										class="med-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.24 0.04 30),
+												oklch(0.34 0.04 50)
+											);
+										"
+									>
+										<span>🧶</span>
+									</div>
+									<div class="med-body">
+										<span class="dk-badge" style="align-self: flex-start"
+											>Nízká priorita</span
+										>
+										<div class="med-name">Merino vlněný přehoz Woolmark</div>
+										<div class="med-price">1 890 Kč</div>
+										<a class="med-link" href="#">
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											woolmark.cz
+										</a>
+									</div>
+									<div class="owner-lock">
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 12 12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+										>
+											<rect x="2.5" y="5" width="7" height="6" rx="1" />
+											<path d="M4 5V3.5a2 2 0 014 0V5" />
+										</svg>
+										Přání nelze po sdílení upravovat
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Tertiary row — 3 small, owner locked -->
+						<div>
+							<div class="section-label" style="color: var(--foreground-subtle)">
+								Ostatní přání
+							</div>
+							<div class="tertiary-row">
+								<div class="sm-gift">
+									<div
+										class="sm-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.22 0.04 100),
+												oklch(0.3 0.03 85)
+											);
+										"
+									>
+										<span>📚</span>
+									</div>
+									<div class="sm-body">
+										<div class="sm-name">Atomové návyky — James Clear</div>
+										<div class="sm-price">390 Kč</div>
+										<a
+											class="med-link"
+											href="#"
+											style="font-size: var(--text-xs)"
+										>
+											<svg
+												width="10"
+												height="10"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											knihy.cz
+										</a>
+									</div>
+									<div
+										class="owner-lock"
+										style="
+											font-size: 10px;
+											padding: var(--space-2) var(--space-3);
+										"
+									>
+										<svg
+											width="10"
+											height="10"
+											viewBox="0 0 12 12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+										>
+											<rect x="2.5" y="5" width="7" height="6" rx="1" />
+											<path d="M4 5V3.5a2 2 0 014 0V5" />
+										</svg>
+										Zamčeno
+									</div>
+								</div>
+
+								<div class="sm-gift">
+									<div
+										class="sm-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.22 0.05 145),
+												oklch(0.3 0.06 155)
+											);
+										"
+									>
+										<span>✂️</span>
+										<div class="img-badge-qty">×3</div>
+									</div>
+									<div class="sm-body">
+										<div class="sm-name">Zahradní nůžky Fiskars ×3</div>
+										<div class="sm-price">720 Kč</div>
+										<a
+											class="med-link"
+											href="#"
+											style="font-size: var(--text-xs)"
+										>
+											<svg
+												width="10"
+												height="10"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											fiskars.cz
+										</a>
+									</div>
+									<div
+										class="owner-lock"
+										style="
+											font-size: 10px;
+											padding: var(--space-2) var(--space-3);
+										"
+									>
+										<svg
+											width="10"
+											height="10"
+											viewBox="0 0 12 12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+										>
+											<rect x="2.5" y="5" width="7" height="6" rx="1" />
+											<path d="M4 5V3.5a2 2 0 014 0V5" />
+										</svg>
+										Zamčeno
+									</div>
+								</div>
+
+								<!-- New gift added after sharing — CAN be edited (it's new) -->
+								<div
+									class="sm-gift"
+									style="
+										border: 1.5px dashed var(--primary);
+										background: oklch(0.28 0.06 150 / 0.08);
+									"
+								>
+									<div
+										class="sm-img"
+										style="
+											background: linear-gradient(
+												135deg,
+												oklch(0.24 0.05 150),
+												oklch(0.32 0.06 155)
+											);
+										"
+									>
+										<span>☕</span>
+									</div>
+									<div class="sm-body">
+										<div class="sm-name" style="color: var(--primary)">
+											Kávový mlýnek — přidáno nově
+										</div>
+										<div class="sm-price">1 290 Kč</div>
+										<a
+											class="med-link"
+											href="#"
+											style="font-size: var(--text-xs)"
+										>
+											<svg
+												width="10"
+												height="10"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M5 3H3a1 1 0 00-1 1v5a1 1 0 001 1h5a1 1 0 001-1V7M7 1h4m0 0v4M11 1L5.5 6.5"
+												/>
+											</svg>
+											kava.cz
+										</a>
+									</div>
+									<div
+										class="sm-footer"
+										style="border-color: var(--border); gap: var(--space-2)"
+									>
+										<button
+											class="mod-icon-btn"
+											title="Upravit"
+											style="width: 28px; height: 28px"
+										>
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path d="M8.5 1.5L10.5 3.5l-7 7H1.5V9l7-7.5z" />
+											</svg>
+										</button>
+										<button
+											class="mod-icon-btn danger"
+											title="Smazat"
+											style="width: 28px; height: 28px"
+										>
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 12 12"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+											>
+												<path
+													d="M2 3h8M4 3V2h4v1M5 5v4M7 5v4M3 3l.5 7h5L9 3"
+												/>
+											</svg>
+										</button>
+										<span
+											style="
+												font-size: 10px;
+												color: var(--primary);
+												margin-left: auto;
+												font-weight: 600;
+											"
+											>Nové</span
+										>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

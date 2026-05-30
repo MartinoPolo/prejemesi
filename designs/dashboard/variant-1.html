@@ -1,0 +1,1375 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Dashboard Variant 1: Card Grid</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 1: Card Grid ────────────────────────────────
+         Responsive 3-column grid of wishlist cards.
+         Sage green primary. Thumbnail top, metadata below.
+         Status badge top-right overlay on thumbnail.        */
+
+			.theme-light {
+				--background: oklch(0.975 0.006 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.95 0.012 150);
+				--foreground: oklch(0.18 0.012 150);
+				--foreground-muted: oklch(0.46 0.02 150);
+				--foreground-subtle: oklch(0.62 0.014 150);
+				--border: oklch(0.92 0.01 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150);
+				--primary-fg: oklch(0.982 0.018 155);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150);
+			}
+			.theme-dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.195 0.01 140);
+				--surface-2: oklch(0.235 0.013 140);
+				--surface-hover: oklch(0.265 0.016 140);
+				--foreground: oklch(0.97 0.006 150);
+				--foreground-muted: oklch(0.68 0.018 150);
+				--foreground-subtle: oklch(0.5 0.014 150);
+				--border: oklch(0.28 0.016 140);
+				--border-strong: oklch(0.36 0.022 140);
+				--primary: oklch(0.62 0.154 150);
+				--primary-fg: oklch(0.14 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(0.62 0.154 150);
+			}
+
+			/* ── Page shell ── */
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+				background: oklch(0.91 0.01 150);
+				font-family: 'Figtree', system-ui, sans-serif;
+			}
+
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				font-family: 'Figtree', system-ui, sans-serif;
+				color: var(--foreground);
+				font-size: 15px;
+				line-height: 1.5;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			.mode-strip {
+				text-align: center;
+				padding: 10px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+
+			/* Nav */
+			.nav {
+				height: 56px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 24px;
+				border-bottom: 1px solid var(--border);
+				background: color-mix(in oklch, var(--surface) 85%, transparent);
+				backdrop-filter: blur(12px);
+				position: sticky;
+				top: 0;
+				z-index: 30;
+			}
+			.nav-logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.nav-logo span {
+				opacity: 0.4;
+			}
+			.nav-links {
+				display: flex;
+				align-items: center;
+				gap: 2px;
+			}
+			.nav-link {
+				padding: 6px 14px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				border-radius: 8px;
+				cursor: pointer;
+				border: none;
+				background: transparent;
+				transition: all 120ms;
+				text-decoration: none;
+			}
+			.nav-link:hover {
+				color: var(--foreground);
+				background: var(--surface-2);
+			}
+			.nav-link.is-active {
+				color: var(--primary);
+				background: var(--primary-soft);
+				font-weight: 600;
+			}
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				border: 2px solid color-mix(in oklch, var(--primary) 30%, transparent);
+			}
+
+			/* Content */
+			.content {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 24px 64px;
+			}
+
+			/* Page header */
+			.page-header {
+				display: flex;
+				align-items: flex-end;
+				justify-content: space-between;
+				padding: 32px 0 20px;
+				gap: 16px;
+				flex-wrap: wrap;
+			}
+			.page-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 28px;
+				font-weight: 700;
+				letter-spacing: -0.02em;
+				line-height: 1.15;
+				color: var(--foreground);
+			}
+			.page-subtitle {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-top: 4px;
+			}
+			.page-header-right {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			/* Sort bar */
+			.sort-bar {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--border);
+				margin-bottom: 24px;
+			}
+			.sort-label {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				font-weight: 500;
+				margin-right: 4px;
+			}
+			.sort-chip {
+				padding: 5px 12px;
+				font-size: 12px;
+				font-weight: 500;
+				border-radius: 9999px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition: all 120ms;
+			}
+			.sort-chip:hover {
+				border-color: var(--border-strong);
+				color: var(--foreground);
+			}
+			.sort-chip.is-active {
+				background: var(--primary-soft);
+				border-color: color-mix(in oklch, var(--primary) 35%, transparent);
+				color: var(--primary);
+				font-weight: 600;
+			}
+
+			/* Btn */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-weight: 600;
+				font-size: 13px;
+				padding: 0 16px;
+				height: 38px;
+				border-radius: 8px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				transition: all 130ms;
+				white-space: nowrap;
+				text-decoration: none;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.12);
+			}
+			.btn-primary:hover {
+				filter: brightness(1.08);
+			}
+			.btn-secondary {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-secondary:hover {
+				background: var(--surface-2);
+				border-color: var(--border-strong);
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+			}
+			.btn-ghost:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.btn-sm {
+				height: 32px;
+				padding: 0 12px;
+				font-size: 12px;
+				border-radius: 6px;
+			}
+			.btn-danger-ghost {
+				background: transparent;
+				color: oklch(0.55 0.18 25);
+			}
+			.btn-danger-ghost:hover {
+				background: oklch(0.96 0.015 25);
+			}
+
+			/* Badge */
+			.badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 22px;
+				padding: 0 9px;
+				font-size: 11px;
+				font-weight: 600;
+				border-radius: 9999px;
+				white-space: nowrap;
+			}
+			.badge-draft {
+				background: oklch(0.93 0.01 260);
+				color: oklch(0.42 0.04 260);
+			}
+			.badge-active {
+				background: color-mix(in oklch, oklch(0.527 0.154 150) 14%, transparent);
+				color: oklch(0.527 0.154 150);
+			}
+			.badge-archived {
+				background: color-mix(in oklch, oklch(0.55 0.02 250) 15%, transparent);
+				color: oklch(0.55 0.02 250);
+			}
+			.badge-occasion {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border: 1px solid color-mix(in oklch, var(--primary) 22%, transparent);
+			}
+
+			/* ── WISHLIST CARD ── */
+			.wl-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+				gap: 20px;
+			}
+
+			.wl-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				overflow: hidden;
+				cursor: pointer;
+				transition:
+					border-color 140ms,
+					box-shadow 140ms,
+					transform 140ms;
+				position: relative;
+			}
+			.wl-card:hover {
+				border-color: var(--border-strong);
+				box-shadow:
+					0 8px 24px oklch(0.527 0.154 150 / 0.1),
+					0 2px 6px oklch(0 0 0 / 0.06);
+				transform: translateY(-2px);
+			}
+			.wl-card.is-archived {
+				opacity: 0.68;
+				filter: saturate(0.4);
+			}
+			.wl-card.is-archived:hover {
+				box-shadow: 0 4px 12px oklch(0 0 0 / 0.08);
+				transform: translateY(-1px);
+			}
+
+			/* Thumbnail */
+			.wl-thumb {
+				height: 148px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 52px;
+				position: relative;
+				overflow: hidden;
+			}
+			.wl-thumb-accent {
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				height: 3px;
+			}
+			.wl-thumb-status {
+				position: absolute;
+				top: 10px;
+				right: 10px;
+			}
+
+			/* Card body */
+			.wl-body {
+				padding: 14px 16px 16px;
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.wl-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 16px;
+				line-height: 1.3;
+				letter-spacing: -0.01em;
+				color: var(--foreground);
+			}
+			.wl-meta {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				flex-wrap: wrap;
+				margin-top: 2px;
+			}
+			.wl-meta-item {
+				font-size: 12px;
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				gap: 3px;
+			}
+			.wl-meta-dot {
+				width: 3px;
+				height: 3px;
+				border-radius: 9999px;
+				background: var(--border-strong);
+			}
+			.wl-footer {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-top: 8px;
+				padding-top: 10px;
+				border-top: 1px solid var(--border);
+			}
+			.wl-owner-row {
+				font-size: 12px;
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.owner-dot {
+				width: 22px;
+				height: 22px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 10px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+
+			/* Progress bar (moderator view) */
+			.progress-wrap {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				margin-top: 4px;
+			}
+			.progress-label {
+				display: flex;
+				justify-content: space-between;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+			.progress-label strong {
+				color: var(--foreground);
+				font-weight: 600;
+			}
+			.progress-track {
+				height: 5px;
+				background: var(--surface-2);
+				border-radius: 9999px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+			}
+			.progress-fill {
+				height: 100%;
+				border-radius: 9999px;
+				background: var(--primary);
+				transition: width 300ms;
+			}
+
+			/* Reservation own chip */
+			.my-res-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 11px;
+				font-weight: 600;
+				padding: 3px 8px;
+				border-radius: 9999px;
+				background: color-mix(in oklch, oklch(0.527 0.154 150) 12%, transparent);
+				color: var(--primary);
+			}
+
+			/* Card hover actions */
+			.wl-actions {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+
+			/* Empty state */
+			.empty-state {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 16px;
+				padding: 80px 24px;
+				text-align: center;
+			}
+			.empty-icon {
+				width: 72px;
+				height: 72px;
+				border-radius: 20px;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 32px;
+			}
+			.empty-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 18px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.empty-desc {
+				font-size: 14px;
+				color: var(--foreground-muted);
+				max-width: 320px;
+				line-height: 1.6;
+			}
+
+			/* Section divider for stacked views */
+			.section-sep {
+				margin: 40px 0 0;
+				padding-top: 32px;
+				border-top: 2px solid var(--border);
+			}
+			.view-section-title {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 6px;
+			}
+		</style>
+	</head>
+	<body>
+		<p
+			style="
+				text-align: center;
+				padding: 12px 0 8px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.5 0.06 150);
+				font-family: 'Figtree', sans-serif;
+			"
+		>
+			Variant 1 — Card Grid
+		</p>
+
+		<!-- ═══════════════════ LIGHT MODE ═══════════════════ -->
+		<div class="page theme-light">
+			<div class="mode-strip">Light Mode</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="nav-right">
+					<div class="avatar">M</div>
+				</div>
+			</nav>
+
+			<div class="content">
+				<!-- ── MOJE SEZNAMY ── -->
+				<div class="view-section-title" style="margin-top: 32px">Moje seznamy</div>
+				<div class="page-header">
+					<div>
+						<h1 class="page-title">Moje seznamy</h1>
+						<p class="page-subtitle">5 aktivních a archivovaných seznamů</p>
+					</div>
+					<div class="page-header-right">
+						<button class="btn btn-primary">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+							>
+								<line x1="12" y1="5" x2="12" y2="19" />
+								<line x1="5" y1="12" x2="19" y2="12" />
+							</svg>
+							Nový seznam
+						</button>
+					</div>
+				</div>
+
+				<div class="sort-bar">
+					<span class="sort-label">Řadit:</span>
+					<button class="sort-chip is-active">Poslední návštěva</button>
+					<button class="sort-chip">Poslední úprava</button>
+					<button class="sort-chip">Abecedně</button>
+				</div>
+
+				<div class="wl-grid">
+					<!-- Card 1: Vánoce 2026 — Sdíleno -->
+					<div class="wl-card">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.28 0.04 160),
+									oklch(0.22 0.06 145)
+								);
+							"
+						>
+							🎄
+							<div
+								class="wl-thumb-accent"
+								style="
+									background: linear-gradient(
+										90deg,
+										oklch(0.527 0.154 150),
+										oklch(0.65 0.18 155)
+									);
+								"
+							></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-active">● Sdíleno</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title">Vánoce 2026</div>
+							<div class="wl-meta">
+								<span class="badge badge-occasion">🎁 Vánoce</span>
+								<span class="wl-meta-item">25. 12. 2026</span>
+							</div>
+							<div class="wl-meta" style="margin-top: 4px">
+								<span class="wl-meta-item">
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M20 12V22H4V12" />
+										<path d="M22 7H2v5h20V7z" />
+										<path d="M12 22V7" />
+										<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+										<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+									</svg>
+									8 přání
+								</span>
+								<div class="wl-meta-dot"></div>
+								<span class="wl-meta-item">Upraveno před 2 h</span>
+							</div>
+							<div class="wl-footer">
+								<div class="wl-actions">
+									<button class="btn btn-secondary btn-sm">Upravit</button>
+									<button class="btn btn-secondary btn-sm">
+										<svg
+											width="12"
+											height="12"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+											<polyline points="16 6 12 2 8 6" />
+											<line x1="12" y1="2" x2="12" y2="15" />
+										</svg>
+										Sdílet
+									</button>
+								</div>
+								<button
+									class="btn btn-ghost btn-sm"
+									style="color: var(--foreground-subtle)"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M5 12h14" />
+										<path d="M12 5l7 7-7 7" />
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Card 2: Narozeniny Petr — Koncept -->
+					<div class="wl-card">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.72 0.12 55),
+									oklch(0.62 0.16 45)
+								);
+							"
+						>
+							🎂
+							<div
+								class="wl-thumb-accent"
+								style="
+									background: linear-gradient(
+										90deg,
+										oklch(0.72 0.12 55),
+										oklch(0.82 0.14 65)
+									);
+								"
+							></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-draft">○ Koncept</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title">Narozeniny — Petr</div>
+							<div class="wl-meta">
+								<span class="badge badge-occasion">🎂 Narozeniny</span>
+								<span class="wl-meta-item">15. 3. 2027</span>
+							</div>
+							<div class="wl-meta" style="margin-top: 4px">
+								<span class="wl-meta-item">
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M20 12V22H4V12" />
+										<path d="M22 7H2v5h20V7z" />
+										<path d="M12 22V7" />
+										<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+										<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+									</svg>
+									5 přání
+								</span>
+								<div class="wl-meta-dot"></div>
+								<span class="wl-meta-item">Upraveno včera</span>
+							</div>
+							<div class="wl-footer">
+								<div class="wl-actions">
+									<button class="btn btn-primary btn-sm">Upravit</button>
+									<button class="btn btn-secondary btn-sm">Sdílet</button>
+								</div>
+								<button
+									class="btn btn-ghost btn-sm"
+									style="color: var(--foreground-subtle)"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M5 12h14" />
+										<path d="M12 5l7 7-7 7" />
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Card 3: Dárky pro maminku — Sdíleno -->
+					<div class="wl-card">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.75 0.1 340),
+									oklch(0.65 0.12 330)
+								);
+							"
+						>
+							💐
+							<div
+								class="wl-thumb-accent"
+								style="
+									background: linear-gradient(
+										90deg,
+										oklch(0.65 0.12 330),
+										oklch(0.75 0.14 345)
+									);
+								"
+							></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-active">● Sdíleno</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title">Dárky pro maminku</div>
+							<div class="wl-meta">
+								<span class="badge badge-occasion">💐 Výchozí</span>
+							</div>
+							<div class="wl-meta" style="margin-top: 4px">
+								<span class="wl-meta-item">3 přání</span>
+								<div class="wl-meta-dot"></div>
+								<span class="wl-meta-item">Upraveno před 3 dny</span>
+							</div>
+							<div class="wl-footer">
+								<div class="wl-actions">
+									<button class="btn btn-secondary btn-sm">Upravit</button>
+									<button class="btn btn-secondary btn-sm">Sdílet</button>
+								</div>
+								<button
+									class="btn btn-ghost btn-sm"
+									style="color: var(--foreground-subtle)"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M5 12h14" />
+										<path d="M12 5l7 7-7 7" />
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Card 4: Wish list pro kolegy — Sdíleno -->
+					<div class="wl-card">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.55 0.14 220),
+									oklch(0.45 0.16 230)
+								);
+							"
+						>
+							🎉
+							<div
+								class="wl-thumb-accent"
+								style="
+									background: linear-gradient(
+										90deg,
+										oklch(0.55 0.14 220),
+										oklch(0.65 0.18 215)
+									);
+								"
+							></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-active">● Sdíleno</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title">Wish list pro kolegy</div>
+							<div class="wl-meta">
+								<span class="badge badge-occasion">🎉 Zábava</span>
+							</div>
+							<div class="wl-meta" style="margin-top: 4px">
+								<span class="wl-meta-item">15 přání</span>
+								<div class="wl-meta-dot"></div>
+								<span class="wl-meta-item">Aktivní dnes</span>
+							</div>
+							<div class="wl-footer">
+								<div class="wl-actions">
+									<button class="btn btn-secondary btn-sm">Upravit</button>
+									<button class="btn btn-secondary btn-sm">Sdílet</button>
+								</div>
+								<button
+									class="btn btn-ghost btn-sm"
+									style="color: var(--foreground-subtle)"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M5 12h14" />
+										<path d="M12 5l7 7-7 7" />
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Card 5: Svatba — Archivováno -->
+					<div class="wl-card is-archived">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.38 0.02 260),
+									oklch(0.3 0.02 250)
+								);
+							"
+						>
+							💍
+							<div
+								class="wl-thumb-accent"
+								style="background: oklch(0.55 0.02 250)"
+							></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-archived">✗ Archivováno</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title" style="font-style: italic">
+								Svatba Jana &amp; Tomáš
+							</div>
+							<div class="wl-meta">
+								<span class="badge badge-occasion" style="filter: saturate(0.3)"
+									>💍 Elegantní</span
+								>
+								<span class="wl-meta-item">12. 6. 2025</span>
+							</div>
+							<div class="wl-meta" style="margin-top: 4px">
+								<span class="wl-meta-item">12 přání</span>
+								<div class="wl-meta-dot"></div>
+								<span class="wl-meta-item">Archivováno před 1 rokem</span>
+							</div>
+							<div class="wl-footer">
+								<div class="wl-actions">
+									<button class="btn btn-secondary btn-sm">Zobrazit</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- ── SPRAVOVANÉ ── -->
+				<div class="section-sep">
+					<div class="view-section-title">Spravované</div>
+					<div class="page-header" style="padding-top: 16px">
+						<div>
+							<h1 class="page-title">Spravované</h1>
+							<p class="page-subtitle">Seznamy, kde jste moderátorem</p>
+						</div>
+					</div>
+					<div class="sort-bar">
+						<span class="sort-label">Řadit:</span>
+						<button class="sort-chip is-active">Poslední aktivita</button>
+						<button class="sort-chip">Nejvíce potřeba</button>
+						<button class="sort-chip">Název</button>
+					</div>
+					<div class="wl-grid">
+						<!-- Moderator card 1 -->
+						<div class="wl-card">
+							<div
+								class="wl-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.28 0.04 160),
+										oklch(0.22 0.06 145)
+									);
+								"
+							>
+								🎄
+								<div
+									class="wl-thumb-accent"
+									style="background: var(--primary)"
+								></div>
+								<div class="wl-thumb-status">
+									<span class="badge badge-active">● Aktivní</span>
+								</div>
+							</div>
+							<div class="wl-body">
+								<div class="wl-title">Vánoce 2026</div>
+								<div class="wl-owner-row">
+									<div class="owner-dot">J</div>
+									Jana Nováková
+								</div>
+								<div class="progress-wrap" style="margin-top: 10px">
+									<div class="progress-label">
+										<span>Rezervace</span>
+										<strong>5 / 8 rezervováno</strong>
+									</div>
+									<div class="progress-track">
+										<div class="progress-fill" style="width: 62.5%"></div>
+									</div>
+								</div>
+								<div class="wl-footer">
+									<div class="wl-actions">
+										<button class="btn btn-secondary btn-sm">
+											Správa dárků
+										</button>
+									</div>
+									<button class="btn btn-primary btn-sm">Otevřít</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Moderator card 2 -->
+						<div class="wl-card">
+							<div
+								class="wl-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.55 0.14 220),
+										oklch(0.45 0.16 230)
+									);
+								"
+							>
+								🎉
+								<div
+									class="wl-thumb-accent"
+									style="background: var(--primary)"
+								></div>
+								<div class="wl-thumb-status">
+									<span class="badge badge-active">● Aktivní</span>
+								</div>
+							</div>
+							<div class="wl-body">
+								<div class="wl-title">Wish list pro kolegy</div>
+								<div class="wl-owner-row">
+									<div class="owner-dot">T</div>
+									Tomáš Bartoš
+								</div>
+								<div class="progress-wrap" style="margin-top: 10px">
+									<div class="progress-label">
+										<span>Rezervace</span>
+										<strong>7 / 15 rezervováno</strong>
+									</div>
+									<div class="progress-track">
+										<div class="progress-fill" style="width: 46.7%"></div>
+									</div>
+								</div>
+								<div class="wl-footer">
+									<div class="wl-actions">
+										<button class="btn btn-secondary btn-sm">
+											Správa dárků
+										</button>
+									</div>
+									<button class="btn btn-primary btn-sm">Otevřít</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- ── SLEDOVANÉ ── -->
+				<div class="section-sep">
+					<div class="view-section-title">Sledované</div>
+					<div class="page-header" style="padding-top: 16px">
+						<div>
+							<h1 class="page-title">Sledované</h1>
+							<p class="page-subtitle">Seznamy, které sledujete</p>
+						</div>
+					</div>
+					<div class="sort-bar">
+						<span class="sort-label">Řadit:</span>
+						<button class="sort-chip is-active">Poslední návštěva</button>
+						<button class="sort-chip">Nová přání</button>
+						<button class="sort-chip">Název</button>
+					</div>
+					<div class="wl-grid">
+						<!-- Followed card 1 -->
+						<div class="wl-card">
+							<div
+								class="wl-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.72 0.12 55),
+										oklch(0.62 0.16 45)
+									);
+								"
+							>
+								🎂
+								<div
+									class="wl-thumb-accent"
+									style="background: var(--primary)"
+								></div>
+							</div>
+							<div class="wl-body">
+								<div class="wl-title">Narozeniny — Petr</div>
+								<div class="wl-owner-row">
+									<div class="owner-dot">P</div>
+									Petr Novák
+								</div>
+								<div class="wl-meta" style="margin-top: 6px">
+									<span class="wl-meta-item">3 dostupných přání</span>
+									<div class="wl-meta-dot"></div>
+									<span class="my-res-chip">✓ Moje rezervace: 2</span>
+								</div>
+								<div class="wl-footer">
+									<button class="btn btn-primary btn-sm">Otevřít</button>
+									<button class="btn btn-danger-ghost btn-sm">
+										Přestat sledovat
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Followed card 2 -->
+						<div class="wl-card">
+							<div
+								class="wl-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.75 0.1 340),
+										oklch(0.65 0.12 330)
+									);
+								"
+							>
+								💐
+								<div
+									class="wl-thumb-accent"
+									style="background: var(--primary)"
+								></div>
+							</div>
+							<div class="wl-body">
+								<div class="wl-title">Dárky pro maminku</div>
+								<div class="wl-owner-row">
+									<div class="owner-dot">K</div>
+									Kateřina Horáková
+								</div>
+								<div class="wl-meta" style="margin-top: 6px">
+									<span class="wl-meta-item">3 dostupná přání</span>
+									<div class="wl-meta-dot"></div>
+									<span
+										class="wl-meta-item"
+										style="color: var(--foreground-subtle)"
+										>Žádné rezervace</span
+									>
+								</div>
+								<div class="wl-footer">
+									<button class="btn btn-primary btn-sm">Otevřít</button>
+									<button class="btn btn-danger-ghost btn-sm">
+										Přestat sledovat
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Followed card 3: empty state inline -->
+						<div
+							class="wl-card"
+							style="border-style: dashed; cursor: default; background: transparent"
+						>
+							<div
+								style="
+									padding: 40px 20px;
+									text-align: center;
+									display: flex;
+									flex-direction: column;
+									align-items: center;
+									gap: 10px;
+								"
+							>
+								<div style="font-size: 36px">🔍</div>
+								<div
+									style="
+										font-size: 14px;
+										font-weight: 600;
+										color: var(--foreground-muted);
+									"
+								>
+									Přidejte další seznam
+								</div>
+								<div
+									style="
+										font-size: 12px;
+										color: var(--foreground-subtle);
+										line-height: 1.6;
+									"
+								>
+									Otevřete sdílený odkaz a seznam se automaticky přidá sem.
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /content -->
+		</div>
+		<!-- /theme-light -->
+
+		<!-- ═══════════════════ DARK MODE ═══════════════════ -->
+		<div class="page theme-dark">
+			<div class="mode-strip">Dark Mode</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link" href="#">Moje seznamy</a>
+					<a class="nav-link is-active" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="nav-right">
+					<div class="avatar">M</div>
+				</div>
+			</nav>
+
+			<div class="content">
+				<!-- Spravované — dark -->
+				<div class="page-header" style="padding-top: 32px">
+					<div>
+						<h1 class="page-title">Spravované</h1>
+						<p class="page-subtitle">Seznamy, kde jste moderátorem</p>
+					</div>
+				</div>
+
+				<div class="sort-bar">
+					<span class="sort-label">Řadit:</span>
+					<button class="sort-chip is-active">Poslední aktivita</button>
+					<button class="sort-chip">Nejvíce potřeba</button>
+					<button class="sort-chip">Název</button>
+				</div>
+
+				<div class="wl-grid">
+					<div class="wl-card">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.2 0.04 160),
+									oklch(0.16 0.06 145)
+								);
+							"
+						>
+							🎄
+							<div class="wl-thumb-accent" style="background: var(--primary)"></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-active">● Aktivní</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title">Vánoce 2026</div>
+							<div class="wl-owner-row">
+								<div class="owner-dot">J</div>
+								Jana Nováková
+							</div>
+							<div class="progress-wrap" style="margin-top: 10px">
+								<div class="progress-label">
+									<span>Rezervace</span>
+									<strong>5 / 8 rezervováno</strong>
+								</div>
+								<div class="progress-track">
+									<div class="progress-fill" style="width: 62.5%"></div>
+								</div>
+							</div>
+							<div class="wl-footer">
+								<div class="wl-actions">
+									<button class="btn btn-secondary btn-sm">Správa dárků</button>
+								</div>
+								<button class="btn btn-primary btn-sm">Otevřít</button>
+							</div>
+						</div>
+					</div>
+
+					<div class="wl-card">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.18 0.03 55),
+									oklch(0.14 0.04 45)
+								);
+							"
+						>
+							🎂
+							<div class="wl-thumb-accent" style="background: var(--primary)"></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-active">● Aktivní</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title">Narozeniny — Petr</div>
+							<div class="wl-owner-row">
+								<div class="owner-dot">P</div>
+								Petr Novák
+							</div>
+							<div class="progress-wrap" style="margin-top: 10px">
+								<div class="progress-label">
+									<span>Rezervace</span>
+									<strong>2 / 5 rezervováno</strong>
+								</div>
+								<div class="progress-track">
+									<div class="progress-fill" style="width: 40%"></div>
+								</div>
+							</div>
+							<div class="wl-footer">
+								<div class="wl-actions">
+									<button class="btn btn-secondary btn-sm">Správa dárků</button>
+								</div>
+								<button class="btn btn-primary btn-sm">Otevřít</button>
+							</div>
+						</div>
+					</div>
+
+					<!-- Archived in dark -->
+					<div class="wl-card is-archived">
+						<div
+							class="wl-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.22 0.01 260),
+									oklch(0.18 0.01 250)
+								);
+							"
+						>
+							💍
+							<div
+								class="wl-thumb-accent"
+								style="background: oklch(0.42 0.02 250)"
+							></div>
+							<div class="wl-thumb-status">
+								<span class="badge badge-archived">✗ Archivováno</span>
+							</div>
+						</div>
+						<div class="wl-body">
+							<div class="wl-title" style="font-style: italic">
+								Svatba Jana &amp; Tomáš
+							</div>
+							<div class="wl-owner-row">
+								<div class="owner-dot">J</div>
+								Jana Nováková
+							</div>
+							<div class="progress-wrap" style="margin-top: 10px">
+								<div class="progress-label">
+									<span>Rezervace</span>
+									<strong>12 / 12 rezervováno</strong>
+								</div>
+								<div class="progress-track">
+									<div
+										class="progress-fill"
+										style="width: 100%; background: oklch(0.55 0.02 250)"
+									></div>
+								</div>
+							</div>
+							<div class="wl-footer">
+								<button class="btn btn-secondary btn-sm">Zobrazit</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Empty state example — dark -->
+				<div class="section-sep">
+					<div class="view-section-title">Sledované — prázdný stav</div>
+					<div class="empty-state">
+						<div class="empty-icon">🔖</div>
+						<div class="empty-title">Žádné sledované seznamy</div>
+						<div class="empty-desc">
+							Zatím nesledujete žádné seznamy. Otevřete sdílený odkaz a seznam se
+							automaticky přidá sem.
+						</div>
+						<button class="btn btn-primary" style="margin-top: 4px">
+							Přidat seznam
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

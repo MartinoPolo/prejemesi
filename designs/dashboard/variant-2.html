@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Dashboard Variant 2: List Rows</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 2: List Rows ────────────────────────────────
+         Compact horizontal rows. Small square thumbnail left,
+         metadata middle, actions right. Dense information view.
+         All three dashboard sections stacked vertically.       */
+
+			.theme-light {
+				--background: oklch(0.975 0.006 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.95 0.012 150);
+				--foreground: oklch(0.18 0.012 150);
+				--foreground-muted: oklch(0.46 0.02 150);
+				--foreground-subtle: oklch(0.62 0.014 150);
+				--border: oklch(0.92 0.01 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150);
+				--primary-fg: oklch(0.982 0.018 155);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150);
+			}
+			.theme-dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.195 0.01 140);
+				--surface-2: oklch(0.235 0.013 140);
+				--surface-hover: oklch(0.265 0.016 140);
+				--foreground: oklch(0.97 0.006 150);
+				--foreground-muted: oklch(0.68 0.018 150);
+				--foreground-subtle: oklch(0.5 0.014 150);
+				--border: oklch(0.28 0.016 140);
+				--border-strong: oklch(0.36 0.022 140);
+				--primary: oklch(0.62 0.154 150);
+				--primary-fg: oklch(0.14 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(0.62 0.154 150);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+				background: oklch(0.91 0.01 150);
+				font-family: 'Figtree', system-ui, sans-serif;
+			}
+
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				color: var(--foreground);
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 15px;
+				line-height: 1.5;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			.mode-strip {
+				text-align: center;
+				padding: 10px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+
+			/* Nav */
+			.nav {
+				height: 56px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 24px;
+				border-bottom: 1px solid var(--border);
+				background: color-mix(in oklch, var(--surface) 85%, transparent);
+				backdrop-filter: blur(12px);
+			}
+			.nav-logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.nav-logo span {
+				opacity: 0.4;
+			}
+			.nav-links {
+				display: flex;
+				align-items: center;
+				gap: 2px;
+			}
+			.nav-link {
+				padding: 6px 14px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				border-radius: 8px;
+				cursor: pointer;
+				border: none;
+				background: transparent;
+				transition: all 120ms;
+				text-decoration: none;
+			}
+			.nav-link:hover {
+				color: var(--foreground);
+				background: var(--surface-2);
+			}
+			.nav-link.is-active {
+				color: var(--primary);
+				background: var(--primary-soft);
+				font-weight: 600;
+			}
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 2px solid color-mix(in oklch, var(--primary) 28%, transparent);
+			}
+
+			/* Content */
+			.content {
+				max-width: 900px;
+				margin: 0 auto;
+				padding: 0 24px 64px;
+			}
+
+			/* Page header */
+			.page-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 28px 0 16px;
+				gap: 16px;
+				flex-wrap: wrap;
+			}
+			.page-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 22px;
+				font-weight: 700;
+				letter-spacing: -0.015em;
+				color: var(--foreground);
+			}
+			.page-subtitle {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-top: 2px;
+			}
+			.page-header-right {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			/* Toolbar row */
+			.toolbar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 8px 0 12px;
+				border-bottom: 1px solid var(--border);
+				margin-bottom: 4px;
+			}
+			.toolbar-left {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.toolbar-count {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				font-weight: 500;
+			}
+			.sort-select {
+				appearance: none;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 12px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 6px;
+				padding: 4px 24px 4px 10px;
+				cursor: pointer;
+				background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+				background-repeat: no-repeat;
+				background-position: right 8px center;
+			}
+
+			/* Btns */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-weight: 600;
+				font-size: 13px;
+				padding: 0 14px;
+				height: 36px;
+				border-radius: 8px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				transition: all 130ms;
+				white-space: nowrap;
+				text-decoration: none;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.12);
+			}
+			.btn-primary:hover {
+				filter: brightness(1.08);
+			}
+			.btn-secondary {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-secondary:hover {
+				background: var(--surface-2);
+				border-color: var(--border-strong);
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+			}
+			.btn-ghost:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.btn-sm {
+				height: 30px;
+				padding: 0 10px;
+				font-size: 12px;
+				border-radius: 6px;
+			}
+			.btn-xs {
+				height: 26px;
+				padding: 0 8px;
+				font-size: 11px;
+				border-radius: 5px;
+			}
+			.btn-danger-ghost {
+				background: transparent;
+				color: oklch(0.55 0.18 25);
+				border-color: transparent;
+			}
+			.btn-danger-ghost:hover {
+				background: oklch(0.96 0.015 25);
+			}
+
+			/* Badge */
+			.badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 20px;
+				padding: 0 8px;
+				font-size: 11px;
+				font-weight: 600;
+				border-radius: 9999px;
+				white-space: nowrap;
+			}
+			.badge-draft {
+				background: oklch(0.93 0.01 260);
+				color: oklch(0.42 0.04 260);
+			}
+			.badge-active {
+				background: color-mix(in oklch, oklch(0.527 0.154 150) 14%, transparent);
+				color: oklch(0.527 0.154 150);
+			}
+			.badge-archived {
+				background: color-mix(in oklch, oklch(0.55 0.02 250) 15%, transparent);
+				color: oklch(0.55 0.02 250);
+			}
+			.badge-occasion {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border: 1px solid color-mix(in oklch, var(--primary) 20%, transparent);
+			}
+
+			/* ── LIST ROW ── */
+			.list-table {
+				width: 100%;
+				border-collapse: collapse;
+			}
+
+			/* Row */
+			.wl-row {
+				display: grid;
+				grid-template-columns: 52px 1fr auto;
+				align-items: center;
+				gap: 14px;
+				padding: 10px 10px 10px 8px;
+				border-bottom: 1px solid var(--border);
+				border-radius: 0;
+				cursor: pointer;
+				transition: background 110ms;
+				position: relative;
+			}
+			.wl-row:first-child {
+				border-top: 1px solid var(--border);
+			}
+			.wl-row:hover {
+				background: var(--surface-2);
+				border-radius: 8px;
+				margin: 0 -4px;
+				padding-left: 12px;
+				padding-right: 14px;
+				border-bottom-color: transparent;
+			}
+			.wl-row:hover + .wl-row {
+				border-top-color: transparent;
+			}
+			.wl-row.is-archived {
+				opacity: 0.6;
+				filter: saturate(0.35);
+			}
+
+			/* Thumbnail */
+			.row-thumb {
+				width: 52px;
+				height: 52px;
+				border-radius: 10px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 22px;
+				flex-shrink: 0;
+				overflow: hidden;
+			}
+
+			/* Middle info */
+			.row-info {
+				display: flex;
+				flex-direction: column;
+				gap: 3px;
+				min-width: 0;
+			}
+			.row-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 600;
+				font-size: 14px;
+				color: var(--foreground);
+				letter-spacing: -0.01em;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.row-title.archived {
+				font-style: italic;
+			}
+			.row-meta {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+			.row-meta-item {
+				font-size: 12px;
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				gap: 3px;
+			}
+			.meta-sep {
+				color: var(--border-strong);
+				font-size: 10px;
+			}
+			.owner-inline {
+				display: flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+			.owner-dot-xs {
+				width: 18px;
+				height: 18px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 9px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+
+			/* Progress inline */
+			.progress-inline {
+				display: flex;
+				align-items: center;
+				gap: 7px;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+			.progress-bar-mini {
+				width: 80px;
+				height: 4px;
+				background: var(--surface-2);
+				border-radius: 9999px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				flex-shrink: 0;
+			}
+			.progress-fill-mini {
+				height: 100%;
+				border-radius: 9999px;
+				background: var(--primary);
+			}
+
+			/* My reservation chip */
+			.my-res-chip {
+				font-size: 11px;
+				font-weight: 600;
+				padding: 2px 7px;
+				border-radius: 9999px;
+				background: color-mix(in oklch, var(--primary) 12%, transparent);
+				color: var(--primary);
+				white-space: nowrap;
+			}
+
+			/* Row actions */
+			.row-actions {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				flex-shrink: 0;
+			}
+
+			/* Section blocks */
+			.section-block {
+				margin-top: 36px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				overflow: hidden;
+			}
+			.section-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 14px 16px;
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+			.section-header-left {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.section-icon {
+				width: 30px;
+				height: 30px;
+				border-radius: 8px;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 15px;
+			}
+			.section-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 14px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.section-count {
+				font-size: 12px;
+				font-weight: 600;
+				padding: 2px 8px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 9999px;
+				color: var(--foreground-muted);
+			}
+			.section-body {
+				padding: 0 8px;
+			}
+
+			/* Empty row */
+			.empty-row {
+				padding: 32px 16px;
+				text-align: center;
+				color: var(--foreground-subtle);
+				font-size: 13px;
+			}
+			.empty-row strong {
+				display: block;
+				font-size: 14px;
+				color: var(--foreground-muted);
+				margin-bottom: 4px;
+			}
+
+			/* Section sep */
+			.section-sep {
+				margin-top: 48px;
+			}
+		</style>
+	</head>
+	<body>
+		<p
+			style="
+				text-align: center;
+				padding: 12px 0 8px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.5 0.06 150);
+				font-family: 'Figtree', sans-serif;
+			"
+		>
+			Variant 2 — List Rows
+		</p>
+
+		<!-- ═══════════════════ LIGHT MODE ═══════════════════ -->
+		<div class="page theme-light">
+			<div class="mode-strip">Light Mode</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="nav-right">
+					<div class="avatar">M</div>
+				</div>
+			</nav>
+
+			<div class="content">
+				<div class="page-header">
+					<div>
+						<h1 class="page-title">Přehled seznamů</h1>
+						<p class="page-subtitle">Všechny vaše wishlisty na jednom místě</p>
+					</div>
+					<div class="page-header-right">
+						<button class="btn btn-primary">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+							>
+								<line x1="12" y1="5" x2="12" y2="19" />
+								<line x1="5" y1="12" x2="19" y2="12" />
+							</svg>
+							Nový seznam
+						</button>
+					</div>
+				</div>
+
+				<!-- MOJE SEZNAMY block -->
+				<div class="section-block">
+					<div class="section-header">
+						<div class="section-header-left">
+							<div class="section-icon">📋</div>
+							<span class="section-title">Moje seznamy</span>
+							<span class="section-count">5</span>
+						</div>
+						<div style="display: flex; align-items: center; gap: 8px">
+							<select class="sort-select">
+								<option>Poslední návštěva</option>
+								<option>Poslední úprava</option>
+								<option>Abecedně</option>
+							</select>
+						</div>
+					</div>
+					<div class="section-body">
+						<!-- Row 1: Vánoce -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.28 0.04 160),
+										oklch(0.22 0.06 145)
+									);
+								"
+							>
+								🎄
+							</div>
+							<div class="row-info">
+								<div class="row-title">Vánoce 2026</div>
+								<div class="row-meta">
+									<span class="badge badge-active">● Sdíleno</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">🎁 Vánoce</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">8 přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>25. 12. 2026</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button
+									class="btn btn-ghost btn-sm"
+									onclick="event.stopPropagation()"
+								>
+									Upravit
+								</button>
+								<button
+									class="btn btn-ghost btn-sm"
+									onclick="event.stopPropagation()"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+										<polyline points="16 6 12 2 8 6" />
+										<line x1="12" y1="2" x2="12" y2="15" />
+									</svg>
+									Sdílet
+								</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+
+						<!-- Row 2: Petr -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.72 0.12 55),
+										oklch(0.62 0.16 45)
+									);
+								"
+							>
+								🎂
+							</div>
+							<div class="row-info">
+								<div class="row-title">Narozeniny — Petr</div>
+								<div class="row-meta">
+									<span class="badge badge-draft">○ Koncept</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">🎂 Narozeniny</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">5 přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>15. 3. 2027</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Upravit</button>
+								<button class="btn btn-ghost btn-sm">Sdílet</button>
+								<button class="btn btn-secondary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+
+						<!-- Row 3: Maminka -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.75 0.1 340),
+										oklch(0.65 0.12 330)
+									);
+								"
+							>
+								💐
+							</div>
+							<div class="row-info">
+								<div class="row-title">Dárky pro maminku</div>
+								<div class="row-meta">
+									<span class="badge badge-active">● Sdíleno</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">💐 Výchozí</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">3 přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>upraveno před 3 dny</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Upravit</button>
+								<button class="btn btn-ghost btn-sm">Sdílet</button>
+								<button class="btn btn-secondary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+
+						<!-- Row 4: Kolegové -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.55 0.14 220),
+										oklch(0.45 0.16 230)
+									);
+								"
+							>
+								🎉
+							</div>
+							<div class="row-info">
+								<div class="row-title">Wish list pro kolegy</div>
+								<div class="row-meta">
+									<span class="badge badge-active">● Sdíleno</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">🎉 Zábava</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">15 přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>aktivní dnes</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Upravit</button>
+								<button class="btn btn-ghost btn-sm">Sdílet</button>
+								<button class="btn btn-secondary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+
+						<!-- Row 5: Archivováno -->
+						<div class="wl-row is-archived">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.38 0.02 260),
+										oklch(0.3 0.02 250)
+									);
+								"
+							>
+								💍
+							</div>
+							<div class="row-info">
+								<div class="row-title archived">Svatba Jana &amp; Tomáš</div>
+								<div class="row-meta">
+									<span class="badge badge-archived">✗ Archivováno</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">💍 Elegantní</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">12 přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>12. 6. 2025</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Zobrazit →</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- SPRAVOVANÉ block -->
+				<div class="section-block" style="margin-top: 20px">
+					<div class="section-header">
+						<div class="section-header-left">
+							<div class="section-icon">🔧</div>
+							<span class="section-title">Spravované</span>
+							<span class="section-count">2</span>
+						</div>
+						<div style="display: flex; align-items: center; gap: 8px">
+							<select class="sort-select">
+								<option>Poslední aktivita</option>
+								<option>Nejvíce potřeba</option>
+								<option>Název</option>
+							</select>
+						</div>
+					</div>
+					<div class="section-body">
+						<!-- Moderator row 1 -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.28 0.04 160),
+										oklch(0.22 0.06 145)
+									);
+								"
+							>
+								🎄
+							</div>
+							<div class="row-info">
+								<div class="row-title">Vánoce 2026</div>
+								<div class="row-meta">
+									<span class="badge badge-active">● Aktivní</span>
+									<span class="meta-sep">·</span>
+									<div class="owner-inline">
+										<div class="owner-dot-xs">J</div>
+										Jana Nováková
+									</div>
+									<span class="meta-sep">·</span>
+									<div class="progress-inline">
+										<div class="progress-bar-mini">
+											<div
+												class="progress-fill-mini"
+												style="width: 62.5%"
+											></div>
+										</div>
+										<span>5 / 8 rezervováno</span>
+									</div>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Správa dárků</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+
+						<!-- Moderator row 2 -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.55 0.14 220),
+										oklch(0.45 0.16 230)
+									);
+								"
+							>
+								🎉
+							</div>
+							<div class="row-info">
+								<div class="row-title">Wish list pro kolegy</div>
+								<div class="row-meta">
+									<span class="badge badge-active">● Aktivní</span>
+									<span class="meta-sep">·</span>
+									<div class="owner-inline">
+										<div class="owner-dot-xs">T</div>
+										Tomáš Bartoš
+									</div>
+									<span class="meta-sep">·</span>
+									<div class="progress-inline">
+										<div class="progress-bar-mini">
+											<div
+												class="progress-fill-mini"
+												style="width: 46.7%"
+											></div>
+										</div>
+										<span>7 / 15 rezervováno</span>
+									</div>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Správa dárků</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- SLEDOVANÉ block -->
+				<div class="section-block" style="margin-top: 20px">
+					<div class="section-header">
+						<div class="section-header-left">
+							<div class="section-icon">🔖</div>
+							<span class="section-title">Sledované</span>
+							<span class="section-count">2</span>
+						</div>
+						<div style="display: flex; align-items: center; gap: 8px">
+							<select class="sort-select">
+								<option>Poslední návštěva</option>
+								<option>Nová přání</option>
+								<option>Název</option>
+							</select>
+						</div>
+					</div>
+					<div class="section-body">
+						<!-- Followed row 1 -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.72 0.12 55),
+										oklch(0.62 0.16 45)
+									);
+								"
+							>
+								🎂
+							</div>
+							<div class="row-info">
+								<div class="row-title">Narozeniny — Petr</div>
+								<div class="row-meta">
+									<div class="owner-inline">
+										<div class="owner-dot-xs">P</div>
+										Petr Novák
+									</div>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">3 dostupná přání</span>
+									<span class="meta-sep">·</span>
+									<span class="my-res-chip">✓ Moje rezervace: 2</span>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-danger-ghost btn-xs">
+									Přestat sledovat
+								</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+
+						<!-- Followed row 2 -->
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.75 0.1 340),
+										oklch(0.65 0.12 330)
+									);
+								"
+							>
+								💐
+							</div>
+							<div class="row-info">
+								<div class="row-title">Dárky pro maminku</div>
+								<div class="row-meta">
+									<div class="owner-inline">
+										<div class="owner-dot-xs">K</div>
+										Kateřina Horáková
+									</div>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">3 dostupná přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>žádné rezervace</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-danger-ghost btn-xs">
+									Přestat sledovat
+								</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ═══════════════════ DARK MODE ═══════════════════ -->
+		<div class="page theme-dark">
+			<div class="mode-strip">Dark Mode</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link is-active" href="#">Sledované</a>
+				</div>
+				<div class="nav-right">
+					<div class="avatar">M</div>
+				</div>
+			</nav>
+
+			<div class="content">
+				<div class="page-header">
+					<div>
+						<h1 class="page-title">Přehled seznamů</h1>
+						<p class="page-subtitle">Všechny vaše wishlisty na jednom místě</p>
+					</div>
+					<div class="page-header-right">
+						<button class="btn btn-primary">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+							>
+								<line x1="12" y1="5" x2="12" y2="19" />
+								<line x1="5" y1="12" x2="19" y2="12" />
+							</svg>
+							Nový seznam
+						</button>
+					</div>
+				</div>
+
+				<!-- Moje — dark, shows empty state -->
+				<div class="section-block">
+					<div class="section-header">
+						<div class="section-header-left">
+							<div class="section-icon">📋</div>
+							<span class="section-title">Moje seznamy</span>
+							<span class="section-count">5</span>
+						</div>
+						<select
+							class="sort-select"
+							style="
+								background-color: var(--surface-2);
+								color: var(--foreground-muted);
+							"
+						>
+							<option>Poslední návštěva</option>
+						</select>
+					</div>
+					<div class="section-body">
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.2 0.04 160),
+										oklch(0.16 0.05 145)
+									);
+								"
+							>
+								🎄
+							</div>
+							<div class="row-info">
+								<div class="row-title">Vánoce 2026</div>
+								<div class="row-meta">
+									<span class="badge badge-active">● Sdíleno</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">8 přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>25. 12. 2026</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Upravit</button>
+								<button class="btn btn-ghost btn-sm">Sdílet</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.36 0.06 55),
+										oklch(0.28 0.08 45)
+									);
+								"
+							>
+								🎂
+							</div>
+							<div class="row-info">
+								<div class="row-title">Narozeniny — Petr</div>
+								<div class="row-meta">
+									<span class="badge badge-draft">○ Koncept</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">5 přání</span>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Upravit</button>
+								<button class="btn btn-ghost btn-sm">Sdílet</button>
+								<button class="btn btn-secondary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+						<div class="wl-row is-archived">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.22 0.01 260),
+										oklch(0.18 0.01 250)
+									);
+								"
+							>
+								💍
+							</div>
+							<div class="row-info">
+								<div class="row-title archived">Svatba Jana &amp; Tomáš</div>
+								<div class="row-meta">
+									<span class="badge badge-archived">✗ Archivováno</span>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">12 přání</span>
+									<span class="meta-sep">·</span>
+									<span
+										class="row-meta-item"
+										style="color: var(--foreground-subtle)"
+										>12. 6. 2025</span
+									>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-ghost btn-sm">Zobrazit →</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Sledované — dark -->
+				<div class="section-block" style="margin-top: 20px">
+					<div class="section-header">
+						<div class="section-header-left">
+							<div class="section-icon">🔖</div>
+							<span class="section-title">Sledované</span>
+							<span class="section-count">2</span>
+						</div>
+						<select
+							class="sort-select"
+							style="
+								background-color: var(--surface-2);
+								color: var(--foreground-muted);
+							"
+						>
+							<option>Poslední návštěva</option>
+						</select>
+					</div>
+					<div class="section-body">
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.36 0.06 55),
+										oklch(0.28 0.08 45)
+									);
+								"
+							>
+								🎂
+							</div>
+							<div class="row-info">
+								<div class="row-title">Narozeniny — Petr</div>
+								<div class="row-meta">
+									<div class="owner-inline">
+										<div class="owner-dot-xs">P</div>
+										Petr Novák
+									</div>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">3 dostupná přání</span>
+									<span class="meta-sep">·</span>
+									<span class="my-res-chip">✓ Moje rezervace: 2</span>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-danger-ghost btn-xs">
+									Přestat sledovat
+								</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+						<div class="wl-row">
+							<div
+								class="row-thumb"
+								style="
+									background: linear-gradient(
+										135deg,
+										oklch(0.35 0.04 340),
+										oklch(0.28 0.05 330)
+									);
+								"
+							>
+								💐
+							</div>
+							<div class="row-info">
+								<div class="row-title">Dárky pro maminku</div>
+								<div class="row-meta">
+									<div class="owner-inline">
+										<div class="owner-dot-xs">K</div>
+										Kateřina Horáková
+									</div>
+									<span class="meta-sep">·</span>
+									<span class="row-meta-item">3 dostupná přání</span>
+								</div>
+							</div>
+							<div class="row-actions">
+								<button class="btn btn-danger-ghost btn-xs">
+									Přestat sledovat
+								</button>
+								<button class="btn btn-primary btn-sm">Otevřít →</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Spravované — dark, empty state -->
+				<div class="section-block" style="margin-top: 20px">
+					<div class="section-header">
+						<div class="section-header-left">
+							<div class="section-icon">🔧</div>
+							<span class="section-title">Spravované</span>
+							<span class="section-count">0</span>
+						</div>
+					</div>
+					<div class="section-body">
+						<div class="empty-row">
+							<strong>Žádné spravované seznamy</strong>
+							Zatím nejste moderátorem žádného seznamu.
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,2750 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Varianta 3: Story-driven</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 3: Story-driven ──────────────────────────────
+			   Sequential narrative: the page tells a story from the
+			   perspective of a birthday recipient. Each section is a
+			   chapter. Warm, personal, almost journalistic. Full-width
+			   text moments with illustrated asides. */
+
+			.theme-light {
+				--background: oklch(98.8% 0.005 60);
+				--surface: oklch(100% 0 0);
+				--surface-2: oklch(97% 0.008 60);
+				--surface-hover: oklch(94% 0.012 60);
+				--foreground: oklch(13% 0.01 60);
+				--foreground-muted: oklch(44% 0.018 60);
+				--foreground-subtle: oklch(63% 0.012 60);
+				--border: oklch(91% 0.01 60);
+				--border-strong: oklch(82% 0.016 60);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.5% 0.018 155);
+				--primary-soft: oklch(93% 0.04 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--chapter-bg-1: oklch(98.8% 0.005 60);
+				--chapter-bg-2: oklch(97% 0.012 150);
+				--chapter-bg-3: oklch(99% 0 0);
+				--chapter-bg-4: oklch(96.5% 0.01 60);
+				--chapter-number-color: oklch(88% 0.04 150);
+			}
+			.theme-dark {
+				--background: oklch(12% 0.008 60);
+				--surface: oklch(17% 0.01 60);
+				--surface-2: oklch(21% 0.014 60);
+				--surface-hover: oklch(25% 0.016 60);
+				--foreground: oklch(97% 0.004 60);
+				--foreground-muted: oklch(67% 0.014 60);
+				--foreground-subtle: oklch(50% 0.01 60);
+				--border: oklch(27% 0.014 60);
+				--border-strong: oklch(36% 0.018 60);
+				--primary: oklch(63% 0.138 150);
+				--primary-fg: oklch(13% 0.01 150);
+				--primary-soft: oklch(23% 0.055 150);
+				--ring: oklch(63% 0.138 150);
+				--chapter-bg-1: oklch(12% 0.008 60);
+				--chapter-bg-2: oklch(16% 0.018 150);
+				--chapter-bg-3: oklch(18% 0.01 60);
+				--chapter-bg-4: oklch(14% 0.012 60);
+				--chapter-number-color: oklch(24% 0.06 150);
+			}
+
+			/* ── Reset & base ── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: var(--font-sans, 'Figtree', sans-serif);
+				line-height: 1.6;
+				-webkit-font-smoothing: antialiased;
+			}
+
+			/* ── Mockup wrapper ── */
+			.page-sep {
+				height: 3px;
+				background: repeating-linear-gradient(
+					90deg,
+					oklch(70% 0.05 150) 0,
+					oklch(70% 0.05 150) 8px,
+					transparent 8px,
+					transparent 16px
+				);
+			}
+			.mode-label {
+				font-family: monospace;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				padding: 6px 14px;
+				background: oklch(30% 0.01 150);
+				color: oklch(85% 0.02 150);
+				display: inline-block;
+			}
+			.section-label {
+				font-family: monospace;
+				font-size: 10px;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				padding: 4px 10px;
+				background: oklch(70% 0.05 150 / 0.15);
+				color: oklch(50% 0.1 150);
+				border-left: 2px solid oklch(52.7% 0.154 150.069deg);
+				position: absolute;
+				top: 0;
+				left: 0;
+				z-index: 10;
+			}
+
+			/* ── Page ── */
+			.lp-page {
+				background-color: var(--background);
+				color: var(--foreground);
+				min-width: 1440px;
+			}
+
+			/* ── Nav ── */
+			.lp-nav {
+				height: 60px;
+				display: flex;
+				align-items: center;
+				padding: 0 40px;
+				background: var(--background);
+				border-bottom: 1px solid var(--border);
+				position: sticky;
+				top: 0;
+				z-index: 30;
+				backdrop-filter: blur(12px);
+				background: color-mix(in oklch, var(--background) 85%, transparent);
+			}
+			.lp-nav-logo {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+				text-decoration: none;
+				margin-right: auto;
+			}
+			.lp-nav-logo span {
+				color: var(--foreground-subtle);
+				font-weight: 400;
+			}
+			.lp-nav-actions {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.lp-btn-ghost {
+				font-family: var(--font-sans);
+				font-size: 14px;
+				font-weight: 500;
+				padding: 8px 18px;
+				border: 1px solid var(--border-strong);
+				border-radius: 8px;
+				background: transparent;
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition: all 0.2s;
+			}
+			.lp-btn-primary {
+				font-family: var(--font-sans);
+				font-size: 14px;
+				font-weight: 600;
+				padding: 8px 20px;
+				border: none;
+				border-radius: 8px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				cursor: pointer;
+				transition: all 0.2s;
+			}
+
+			/* ── Story hero ── */
+			.story-hero {
+				background: var(--chapter-bg-1);
+				padding: 100px 0 80px;
+				position: relative;
+				overflow: hidden;
+			}
+			.story-hero-inner {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 40px;
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 80px;
+				align-items: center;
+			}
+			.story-hero-text {
+				position: relative;
+				z-index: 1;
+			}
+			.story-chapter-label {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.15em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: 20px;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.story-chapter-label::before {
+				content: '';
+				display: block;
+				width: 24px;
+				height: 2px;
+				background: var(--primary);
+			}
+			.story-hero-headline {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 56px;
+				font-weight: 700;
+				line-height: 1.08;
+				letter-spacing: -0.02em;
+				color: var(--foreground);
+				margin-bottom: 24px;
+			}
+			.story-hero-headline em {
+				font-style: normal;
+				color: var(--primary);
+			}
+			.story-hero-sub {
+				font-size: 19px;
+				line-height: 1.65;
+				color: var(--foreground-muted);
+				margin-bottom: 36px;
+				max-width: 480px;
+			}
+			.story-hero-cta-row {
+				display: flex;
+				align-items: center;
+				gap: 14px;
+			}
+			.story-cta-primary {
+				font-family: var(--font-sans);
+				font-size: 16px;
+				font-weight: 600;
+				padding: 14px 28px;
+				border: none;
+				border-radius: 8px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				cursor: pointer;
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.story-cta-ghost {
+				font-family: var(--font-sans);
+				font-size: 15px;
+				font-weight: 500;
+				padding: 14px 24px;
+				border: 1px solid var(--border-strong);
+				border-radius: 8px;
+				background: transparent;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+
+			/* Hero illustration — floating wishlist */
+			.story-hero-visual {
+				position: relative;
+			}
+			.hero-wishlist-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 20px;
+				box-shadow: 0 24px 64px oklch(0% 0 0 / 0.12);
+				overflow: hidden;
+			}
+			.hero-wl-header {
+				padding: 24px 28px 20px;
+				border-bottom: 1px solid var(--border);
+				background: var(--surface);
+			}
+			.hero-wl-owner {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+				margin-bottom: 4px;
+			}
+			.hero-wl-title {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.hero-wl-meta {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				margin-top: 10px;
+			}
+			.hero-wl-badge {
+				font-size: 11px;
+				font-weight: 600;
+				padding: 3px 10px;
+				border-radius: 20px;
+				letter-spacing: 0.04em;
+			}
+			.hero-wl-badge-theme {
+				background: oklch(90% 0.06 60);
+				color: oklch(40% 0.08 60);
+			}
+			.theme-dark .hero-wl-badge-theme {
+				background: oklch(28% 0.06 60);
+				color: oklch(75% 0.08 60);
+			}
+			.hero-wl-badge-count {
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+			}
+			.hero-wl-gifts {
+				padding: 0;
+			}
+			.hero-gift-row {
+				display: flex;
+				align-items: center;
+				gap: 14px;
+				padding: 14px 28px;
+				border-bottom: 1px solid var(--border);
+			}
+			.hero-gift-row:last-child {
+				border-bottom: none;
+			}
+			.hero-gift-img {
+				width: 44px;
+				height: 44px;
+				border-radius: 10px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 22px;
+				flex-shrink: 0;
+			}
+			.hero-gift-info {
+				flex: 1;
+				min-width: 0;
+			}
+			.hero-gift-name {
+				font-size: 14px;
+				font-weight: 600;
+				color: var(--foreground);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.hero-gift-price {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				margin-top: 2px;
+			}
+			.hero-gift-badge {
+				font-size: 11px;
+				font-weight: 600;
+				padding: 3px 10px;
+				border-radius: 20px;
+				white-space: nowrap;
+				flex-shrink: 0;
+			}
+			.hero-gift-badge-free {
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+			.hero-gift-badge-reserved {
+				background: oklch(85% 0.05 200 / 0.3);
+				color: oklch(38% 0.1 200);
+			}
+			.theme-dark .hero-gift-badge-reserved {
+				background: oklch(30% 0.06 200 / 0.4);
+				color: oklch(72% 0.1 200);
+			}
+			/* Floating story accent */
+			.story-floating-note {
+				position: absolute;
+				bottom: -20px;
+				right: -20px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				border-radius: 14px;
+				padding: 14px 18px;
+				font-size: 13px;
+				font-weight: 600;
+				box-shadow: 0 8px 24px oklch(52.7% 0.154 150 / 0.4);
+				max-width: 200px;
+				line-height: 1.4;
+			}
+			.story-floating-note-icon {
+				font-size: 20px;
+				margin-bottom: 6px;
+				display: block;
+			}
+
+			/* ── Story chapter structure ── */
+			.story-chapter {
+				padding: 100px 0;
+				position: relative;
+			}
+			.story-chapter-inner {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 40px;
+			}
+
+			/* Chapter heading with big ghost number */
+			.chapter-heading-row {
+				display: flex;
+				align-items: flex-start;
+				gap: 48px;
+				margin-bottom: 80px;
+			}
+			.chapter-ghost-number {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 120px;
+				font-weight: 900;
+				line-height: 0.85;
+				color: var(--chapter-number-color);
+				flex-shrink: 0;
+				letter-spacing: -0.04em;
+				user-select: none;
+			}
+			.chapter-heading-text {
+				padding-top: 16px;
+			}
+			.chapter-eyebrow {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: 12px;
+			}
+			.chapter-title {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 42px;
+				font-weight: 700;
+				line-height: 1.1;
+				letter-spacing: -0.02em;
+				color: var(--foreground);
+				margin-bottom: 16px;
+			}
+			.chapter-subtitle {
+				font-size: 18px;
+				line-height: 1.65;
+				color: var(--foreground-muted);
+				max-width: 560px;
+			}
+
+			/* ── Chapter 1: Create list ── */
+			.ch1-bg {
+				background: var(--chapter-bg-1);
+			}
+			.ch1-content {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 60px;
+				align-items: start;
+			}
+			.ch1-steps {
+				display: flex;
+				flex-direction: column;
+				gap: 0;
+			}
+			.ch1-step {
+				display: flex;
+				gap: 20px;
+				padding: 28px 0;
+				border-bottom: 1px solid var(--border);
+			}
+			.ch1-step:last-child {
+				border-bottom: none;
+			}
+			.ch1-step-num {
+				width: 36px;
+				height: 36px;
+				border-radius: 50%;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-size: 15px;
+				font-weight: 700;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+				margin-top: 2px;
+			}
+			.ch1-step-body {
+				flex: 1;
+			}
+			.ch1-step-title {
+				font-size: 16px;
+				font-weight: 700;
+				color: var(--foreground);
+				margin-bottom: 6px;
+			}
+			.ch1-step-desc {
+				font-size: 14px;
+				line-height: 1.6;
+				color: var(--foreground-muted);
+			}
+
+			/* Create list mockup */
+			.create-list-mockup {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 20px;
+				box-shadow: 0 16px 48px oklch(0% 0 0 / 0.1);
+				padding: 28px;
+			}
+			.mockup-field-label {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				margin-bottom: 6px;
+				letter-spacing: 0.04em;
+			}
+			.mockup-field-input {
+				width: 100%;
+				padding: 12px 16px;
+				border: 1px solid var(--border-strong);
+				border-radius: 10px;
+				background: var(--surface-2);
+				color: var(--foreground);
+				font-family: var(--font-sans);
+				font-size: 15px;
+				margin-bottom: 18px;
+			}
+			.mockup-field-input:last-of-type {
+				margin-bottom: 24px;
+			}
+			.mockup-theme-row {
+				margin-bottom: 24px;
+			}
+			.mockup-theme-label {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				margin-bottom: 10px;
+				letter-spacing: 0.04em;
+			}
+			.mockup-theme-swatches {
+				display: flex;
+				gap: 8px;
+			}
+			.mockup-theme-swatch {
+				width: 36px;
+				height: 36px;
+				border-radius: 50%;
+				cursor: pointer;
+				position: relative;
+			}
+			.mockup-theme-swatch.selected::after {
+				content: '✓';
+				position: absolute;
+				inset: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 16px;
+				color: white;
+				font-weight: 700;
+			}
+			.swatch-default {
+				background: oklch(52.7% 0.154 150);
+			}
+			.swatch-christmas {
+				background: oklch(55% 0.18 25);
+			}
+			.swatch-birthday {
+				background: oklch(62% 0.16 300);
+			}
+			.swatch-fun {
+				background: oklch(65% 0.16 55);
+			}
+			.swatch-elegant {
+				background: oklch(40% 0.02 200);
+			}
+			.mockup-create-btn {
+				width: 100%;
+				padding: 13px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				border-radius: 10px;
+				font-family: var(--font-sans);
+				font-size: 15px;
+				font-weight: 600;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+			}
+
+			/* ── Chapter 2: Add gifts ── */
+			.ch2-bg {
+				background: var(--chapter-bg-2);
+			}
+			.ch2-content {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 60px;
+				align-items: start;
+			}
+			.gift-add-mockup {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 20px;
+				box-shadow: 0 16px 48px oklch(0% 0 0 / 0.1);
+				overflow: hidden;
+			}
+			.gift-add-header {
+				padding: 20px 24px;
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.gift-add-header-icon {
+				width: 36px;
+				height: 36px;
+				border-radius: 10px;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.gift-add-header-text {
+				font-size: 15px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.gift-add-body {
+				padding: 24px;
+			}
+			.gift-card-preview {
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				padding: 18px;
+				margin-bottom: 18px;
+				display: flex;
+				gap: 14px;
+			}
+			.gift-card-img-box {
+				width: 60px;
+				height: 60px;
+				border-radius: 10px;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 26px;
+				flex-shrink: 0;
+			}
+			.gift-card-meta {
+				flex: 1;
+			}
+			.gift-card-name {
+				font-size: 14px;
+				font-weight: 700;
+				color: var(--foreground);
+				margin-bottom: 4px;
+			}
+			.gift-card-price {
+				font-size: 14px;
+				font-weight: 600;
+				color: var(--primary);
+				margin-bottom: 6px;
+			}
+			.gift-card-link {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				display: flex;
+				align-items: center;
+				gap: 4px;
+			}
+			.gift-list-accumulated {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+			}
+			.gift-mini-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				padding: 10px 14px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+			}
+			.gift-mini-emoji {
+				font-size: 18px;
+				width: 28px;
+				text-align: center;
+			}
+			.gift-mini-name {
+				font-size: 13px;
+				font-weight: 600;
+				color: var(--foreground);
+				flex: 1;
+			}
+			.gift-mini-price {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+			}
+
+			.ch2-prose {
+				padding-top: 16px;
+			}
+			.ch2-prose-text {
+				font-size: 18px;
+				line-height: 1.7;
+				color: var(--foreground-muted);
+				margin-bottom: 28px;
+			}
+			.ch2-prose-text strong {
+				color: var(--foreground);
+				font-weight: 700;
+			}
+			.ch2-highlight-box {
+				background: var(--primary-soft);
+				border-left: 3px solid var(--primary);
+				border-radius: 0 12px 12px 0;
+				padding: 18px 22px;
+				font-size: 15px;
+				line-height: 1.65;
+				color: var(--foreground);
+			}
+
+			/* ── Chapter 3: Share ── */
+			.ch3-bg {
+				background: var(--chapter-bg-3);
+			}
+			.ch3-content {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 60px;
+				align-items: start;
+			}
+			.ch3-prose {
+				display: flex;
+				flex-direction: column;
+				gap: 28px;
+			}
+			.ch3-prose-text {
+				font-size: 18px;
+				line-height: 1.7;
+				color: var(--foreground-muted);
+			}
+			.ch3-prose-text strong {
+				color: var(--foreground);
+				font-weight: 700;
+			}
+			.share-mockup {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 20px;
+				box-shadow: 0 16px 48px oklch(0% 0 0 / 0.1);
+				overflow: hidden;
+			}
+			.share-mockup-header {
+				padding: 20px 24px;
+				border-bottom: 1px solid var(--border);
+				font-size: 15px;
+				font-weight: 700;
+				color: var(--foreground);
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.share-url-bar {
+				margin: 24px;
+				display: flex;
+				align-items: center;
+				gap: 0;
+				border: 1px solid var(--border-strong);
+				border-radius: 10px;
+				overflow: hidden;
+			}
+			.share-url-text {
+				flex: 1;
+				padding: 12px 16px;
+				font-size: 13px;
+				color: var(--foreground-muted);
+				background: var(--surface-2);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				font-family: monospace;
+			}
+			.share-url-btn {
+				padding: 12px 16px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-size: 13px;
+				font-weight: 600;
+				border: none;
+				cursor: pointer;
+				font-family: var(--font-sans);
+				white-space: nowrap;
+			}
+			.share-apps-grid {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 10px;
+				padding: 0 24px 24px;
+			}
+			.share-app-btn {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 6px;
+				padding: 14px 8px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				cursor: pointer;
+			}
+			.share-app-icon {
+				width: 32px;
+				height: 32px;
+				border-radius: 8px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 18px;
+			}
+			.share-app-name {
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+			}
+			.share-anon-note {
+				margin: 0 24px 24px;
+				background: var(--primary-soft);
+				border-radius: 10px;
+				padding: 14px 16px;
+				font-size: 13px;
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: flex-start;
+				gap: 10px;
+			}
+			.share-anon-note-icon {
+				color: var(--primary);
+				flex-shrink: 0;
+				margin-top: 1px;
+			}
+
+			/* ── Chapter 4: The surprise ── */
+			.ch4-bg {
+				background: var(--chapter-bg-4);
+			}
+			.ch4-content {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 60px;
+				align-items: center;
+			}
+			.ch4-prose {
+				display: flex;
+				flex-direction: column;
+				gap: 28px;
+			}
+			.ch4-headline {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 38px;
+				font-weight: 700;
+				line-height: 1.15;
+				letter-spacing: -0.02em;
+				color: var(--foreground);
+			}
+			.ch4-headline em {
+				font-style: normal;
+				color: var(--primary);
+			}
+			.ch4-prose-text {
+				font-size: 18px;
+				line-height: 1.7;
+				color: var(--foreground-muted);
+			}
+			.ch4-prose-text strong {
+				color: var(--foreground);
+				font-weight: 700;
+			}
+
+			/* Gift opening visual */
+			.gift-opening-visual {
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+			}
+			.gift-incoming-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 16px;
+				padding: 20px 24px;
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				box-shadow: 0 4px 16px oklch(0% 0 0 / 0.06);
+			}
+			.gift-incoming-icon {
+				font-size: 36px;
+				flex-shrink: 0;
+			}
+			.gift-incoming-meta {
+				flex: 1;
+			}
+			.gift-incoming-label {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 4px;
+			}
+			.gift-incoming-title {
+				font-size: 17px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.gift-incoming-from {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+				margin-top: 3px;
+			}
+			.gift-surprise-banner {
+				background: var(--primary);
+				color: var(--primary-fg);
+				border-radius: 14px;
+				padding: 20px 24px;
+				text-align: center;
+			}
+			.gift-surprise-banner-big {
+				font-size: 36px;
+				margin-bottom: 6px;
+			}
+			.gift-surprise-banner-text {
+				font-size: 15px;
+				font-weight: 700;
+				margin-bottom: 4px;
+			}
+			.gift-surprise-banner-sub {
+				font-size: 13px;
+				opacity: 0.8;
+			}
+			.owner-never-sees {
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				padding: 16px 20px;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.owner-never-sees-icon {
+				width: 32px;
+				height: 32px;
+				border-radius: 50%;
+				background: var(--primary-soft);
+				color: var(--primary);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+			.owner-never-sees-text {
+				font-size: 13px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+			}
+
+			/* ── Progress bar connector between chapters ── */
+			.chapter-connector {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0;
+				position: relative;
+			}
+			.chapter-connector-line {
+				width: 2px;
+				height: 60px;
+				background: linear-gradient(
+					to bottom,
+					var(--border),
+					var(--primary),
+					var(--border)
+				);
+			}
+			.chapter-connector-dot {
+				position: absolute;
+				width: 12px;
+				height: 12px;
+				border-radius: 50%;
+				background: var(--primary);
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+			}
+
+			/* ── Trust strip ── */
+			.trust-strip {
+				background: var(--surface-2);
+				padding: 56px 0;
+			}
+			.trust-strip-inner {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 40px;
+			}
+			.trust-strip-headline {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 18px;
+				font-weight: 700;
+				text-align: center;
+				color: var(--foreground-muted);
+				margin-bottom: 36px;
+				letter-spacing: 0.02em;
+			}
+			.trust-items {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 24px;
+			}
+			.trust-item {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 10px;
+				text-align: center;
+			}
+			.trust-item-icon {
+				width: 44px;
+				height: 44px;
+				border-radius: 12px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.trust-item-text {
+				font-size: 14px;
+				font-weight: 600;
+				color: var(--foreground);
+				line-height: 1.45;
+			}
+
+			/* ── Final CTA ── */
+			.final-cta {
+				padding: 120px 0;
+				text-align: center;
+				background: var(--background);
+				position: relative;
+				overflow: hidden;
+			}
+			.final-cta::before {
+				content: '';
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				width: 700px;
+				height: 500px;
+				background: radial-gradient(
+					ellipse,
+					oklch(52.7% 0.154 150 / 0.06) 0%,
+					transparent 70%
+				);
+				pointer-events: none;
+			}
+			.final-cta-inner {
+				max-width: 640px;
+				margin: 0 auto;
+				padding: 0 40px;
+				position: relative;
+				z-index: 1;
+			}
+			.final-cta-eyebrow {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.15em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: 16px;
+			}
+			.final-cta-headline {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 44px;
+				font-weight: 700;
+				line-height: 1.1;
+				letter-spacing: -0.02em;
+				color: var(--foreground);
+				margin-bottom: 20px;
+			}
+			.final-cta-sub {
+				font-size: 17px;
+				line-height: 1.65;
+				color: var(--foreground-muted);
+				margin-bottom: 36px;
+			}
+			.final-cta-btns {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 14px;
+				margin-bottom: 20px;
+			}
+			.final-note {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+			}
+
+			/* ── Footer ── */
+			.lp-footer {
+				background: var(--surface-2);
+				border-top: 1px solid var(--border);
+				padding: 28px 40px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.lp-footer-logo {
+				font-family: var(--font-heading, 'Noto Sans', sans-serif);
+				font-size: 18px;
+				font-weight: 700;
+				color: var(--primary);
+			}
+			.lp-footer-logo span {
+				color: var(--foreground-subtle);
+				font-weight: 400;
+			}
+			.lp-footer-copy {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+			}
+			.lp-footer-lang {
+				display: flex;
+				gap: 8px;
+			}
+			.lang-btn {
+				font-size: 12px;
+				font-weight: 600;
+				padding: 5px 12px;
+				border-radius: 6px;
+				border: 1px solid var(--border);
+				background: transparent;
+				cursor: pointer;
+				letter-spacing: 0.06em;
+			}
+			.lang-btn.active {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border-color: transparent;
+			}
+			.lang-btn:not(.active) {
+				color: var(--foreground-muted);
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ═══════════════════════════════════════════════════
+		     LIGHT MODE
+		     ═══════════════════════════════════════════════════ -->
+		<div class="lp-page theme-light" style="position: relative">
+			<div class="mode-label">Light Mode</div>
+
+			<!-- Nav -->
+			<nav class="lp-nav" style="position: relative">
+				<div class="section-label">Nav</div>
+				<a class="lp-nav-logo" href="#">darecky<span>.cz</span></a>
+				<div class="lp-nav-actions">
+					<button class="lp-btn-ghost">Přihlásit se</button>
+					<button class="lp-btn-primary">Začít zdarma</button>
+				</div>
+			</nav>
+
+			<!-- ── Hero ── -->
+			<section class="story-hero" style="position: relative">
+				<div class="section-label">Hero</div>
+				<div class="story-hero-inner">
+					<div class="story-hero-text">
+						<div class="story-chapter-label">Váš příběh začíná tady</div>
+						<h1 class="story-hero-headline">
+							Přání, která<br />
+							<em>skutečně dostanete.</em>
+						</h1>
+						<p class="story-hero-sub">
+							Vytvořte seznam přání, sdílejte ho s rodinou a překvapení bude zachováno
+							— nikdo nevidí, kdo co chystá.
+						</p>
+						<div class="story-hero-cta-row">
+							<button class="story-cta-primary">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+									<rect
+										x="2"
+										y="4"
+										width="12"
+										height="9"
+										rx="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M5 4V3a3 3 0 0 1 6 0v1"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+									<circle cx="8" cy="8.5" r="1.5" fill="currentColor" />
+								</svg>
+								Vytvořit seznam přání
+							</button>
+							<button class="story-cta-ghost">Přihlásit se</button>
+						</div>
+					</div>
+					<div class="story-hero-visual">
+						<div class="hero-wishlist-card">
+							<div class="hero-wl-header">
+								<div class="hero-wl-owner">Přání pro</div>
+								<div class="hero-wl-title">Tereza Nováková</div>
+								<div class="hero-wl-meta">
+									<span class="hero-wl-badge hero-wl-badge-theme"
+										>🎂 Narozeniny</span
+									>
+									<span class="hero-wl-badge hero-wl-badge-count">8 přání</span>
+								</div>
+							</div>
+							<div class="hero-wl-gifts">
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(94% 0.04 150)"
+									>
+										📗
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Kniha Atomové návyky</div>
+										<div class="hero-gift-price">349 Kč · alza.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-free">Volné</span>
+								</div>
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(94% 0.04 200)"
+									>
+										🎧
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Bezdrátová sluchátka Sony</div>
+										<div class="hero-gift-price">2 490 Kč · mall.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-reserved"
+										>Rezervováno</span
+									>
+								</div>
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(94% 0.04 60)"
+									>
+										🕯️
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Sada vonných svíček</div>
+										<div class="hero-gift-price">650 Kč · notino.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-free">Volné</span>
+								</div>
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(94% 0.04 330)"
+									>
+										🧴
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Kosmetická sada La Mer</div>
+										<div class="hero-gift-price">1 890 Kč · sephora.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-reserved"
+										>Rezervováno</span
+									>
+								</div>
+							</div>
+						</div>
+						<div class="story-floating-note">
+							<span class="story-floating-note-icon">🔒</span>
+							Tereza nevidí, kdo co rezervoval
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Chapter connector -->
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- ── Chapter 1: Create the list ── -->
+			<section class="story-chapter ch1-bg" style="position: relative">
+				<div class="section-label">Chapter 1</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">01</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok první</div>
+							<h2 class="chapter-title">Vytvořte seznam<br />a nastavte téma</h2>
+							<p class="chapter-subtitle">
+								Za minutu máte hotový seznam přání se jménem, datem události a
+								tématem, které naladí náladu.
+							</p>
+						</div>
+					</div>
+					<div class="ch1-content">
+						<div class="ch1-steps">
+							<div class="ch1-step">
+								<div class="ch1-step-num">1</div>
+								<div class="ch1-step-body">
+									<div class="ch1-step-title">Pojmenujte seznam</div>
+									<div class="ch1-step-desc">
+										Zadejte název a volitelně datum události — narozeniny,
+										Vánoce, výročí. Datum vám připomene archivaci po oslavě.
+									</div>
+								</div>
+							</div>
+							<div class="ch1-step">
+								<div class="ch1-step-num">2</div>
+								<div class="ch1-step-body">
+									<div class="ch1-step-title">Vyberte téma</div>
+									<div class="ch1-step-desc">
+										5 předdefinovaných témat nebo vlastní barva. Každé téma
+										změní vizuální styl celého seznamu pro návštěvníky.
+									</div>
+								</div>
+							</div>
+							<div class="ch1-step">
+								<div class="ch1-step-num">3</div>
+								<div class="ch1-step-body">
+									<div class="ch1-step-title">
+										Nastavte moderátora (volitelně)
+									</div>
+									<div class="ch1-step-desc">
+										Přidejte důvěryhodnou osobu jako moderátora — ona vidí stav
+										rezervací a koordinuje dárky za vás.
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="create-list-mockup">
+							<div class="mockup-field-label">Název seznamu</div>
+							<div
+								class="mockup-field-input"
+								style="display: flex; align-items: center"
+							>
+								<span style="color: var(--foreground)"
+									>Narozeninové přání 2025</span
+								>
+							</div>
+							<div class="mockup-field-label">Datum události</div>
+							<div
+								class="mockup-field-input"
+								style="display: flex; align-items: center"
+							>
+								<span style="color: var(--foreground-muted)">15. září 2025</span>
+							</div>
+							<div class="mockup-theme-row">
+								<div class="mockup-theme-label">Téma seznamu</div>
+								<div class="mockup-theme-swatches">
+									<div class="mockup-theme-swatch swatch-default"></div>
+									<div class="mockup-theme-swatch swatch-christmas"></div>
+									<div class="mockup-theme-swatch swatch-birthday selected"></div>
+									<div class="mockup-theme-swatch swatch-fun"></div>
+									<div class="mockup-theme-swatch swatch-elegant"></div>
+								</div>
+							</div>
+							<button class="mockup-create-btn">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+									<path
+										d="M8 3v10M3 8h10"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+									/>
+								</svg>
+								Vytvořit seznam
+							</button>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- ── Chapter 2: Add gifts ── -->
+			<section class="story-chapter ch2-bg" style="position: relative">
+				<div class="section-label">Chapter 2</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">02</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok druhý</div>
+							<h2 class="chapter-title">
+								Přidejte přání,<br />která vás skutečně těší
+							</h2>
+							<p class="chapter-subtitle">
+								Odkaz z e-shopu nebo vlastní popis — každé přání dostane obrázek,
+								cenu a prioritu.
+							</p>
+						</div>
+					</div>
+					<div class="ch2-content">
+						<div class="gift-add-mockup">
+							<div class="gift-add-header">
+								<div class="gift-add-header-icon">
+									<svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+										<rect
+											x="2"
+											y="5"
+											width="14"
+											height="10"
+											rx="2"
+											stroke="currentColor"
+											stroke-width="1.5"
+										/>
+										<path
+											d="M6 5V4a3 3 0 0 1 6 0v1"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+										<path
+											d="M9 9v4M7 11h4"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+									</svg>
+								</div>
+								<div class="gift-add-header-text">Nové přání</div>
+							</div>
+							<div class="gift-add-body">
+								<div class="gift-card-preview">
+									<div class="gift-card-img-box">📚</div>
+									<div class="gift-card-meta">
+										<div class="gift-card-name">
+											Kompletní sada Harry Potter
+										</div>
+										<div class="gift-card-price">1 299 Kč</div>
+										<div class="gift-card-link">
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 11 11"
+												fill="none"
+											>
+												<path
+													d="M2 9L9 2M9 2H5M9 2v4"
+													stroke="currentColor"
+													stroke-width="1.5"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												/>
+											</svg>
+											alza.cz
+										</div>
+									</div>
+								</div>
+								<div
+									style="
+										font-size: 11px;
+										font-weight: 700;
+										letter-spacing: 0.1em;
+										text-transform: uppercase;
+										color: var(--foreground-subtle);
+										margin-bottom: 10px;
+									"
+								>
+									Přání v seznamu (3)
+								</div>
+								<div class="gift-list-accumulated">
+									<div class="gift-mini-row">
+										<div class="gift-mini-emoji">📗</div>
+										<div class="gift-mini-name">Kniha Atomové návyky</div>
+										<div class="gift-mini-price">349 Kč</div>
+									</div>
+									<div class="gift-mini-row">
+										<div class="gift-mini-emoji">🎧</div>
+										<div class="gift-mini-name">Bezdrátová sluchátka Sony</div>
+										<div class="gift-mini-price">2 490 Kč</div>
+									</div>
+									<div class="gift-mini-row">
+										<div class="gift-mini-emoji">🕯️</div>
+										<div class="gift-mini-name">Sada vonných svíček</div>
+										<div class="gift-mini-price">650 Kč</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="ch2-prose">
+							<p class="ch2-prose-text">
+								Stačí vložit <strong>odkaz z e-shopu</strong> a Darecky automaticky
+								vyplní název, cenu a obrázek. Nebo přidejte cokoli vlastního — třeba
+								„výlet do Paříže".
+							</p>
+							<p class="ch2-prose-text">
+								Každé přání má <strong>prioritu</strong> — od "moc bych chtěl" po
+								"pokud možno". Dárci to uvidí, vy máte čistou hlavu.
+							</p>
+							<div class="ch2-highlight-box">
+								💡 <strong>Tip:</strong> Po sdílení seznamu budete moci přidávat
+								nová přání, ale stávající upravovat nebo mazat. Tím je zachovaná
+								integrita pro dárce.
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- ── Chapter 3: Share ── -->
+			<section class="story-chapter ch3-bg" style="position: relative">
+				<div class="section-label">Chapter 3</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">03</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok třetí</div>
+							<h2 class="chapter-title">Sdílejte jedním<br />odkazem — a hotovo</h2>
+							<p class="chapter-subtitle">
+								Jeden odkaz pro celou rodinu. Přes WhatsApp, e-mail nebo Messenger.
+								Dárci nepotřebují účet.
+							</p>
+						</div>
+					</div>
+					<div class="ch3-content">
+						<div class="ch3-prose">
+							<p class="ch3-prose-text">
+								Dostanete <strong>trvalý odkaz</strong> přímo na váš seznam.
+								Sdílejte ho jak chcete — v rodinné skupině, e-mailem tetě, nebo
+								jednoduše zkopírujte do zprávy.
+							</p>
+							<p class="ch3-prose-text">
+								Každý, kdo přijde přes odkaz,
+								<strong>vidí přání a může rezervovat</strong> — bez registrace, bez
+								instalace aplikace.
+							</p>
+							<p class="ch3-prose-text">
+								Rezervace jsou anonymní vůči vám. Vy uvidíte jen stav "volné /
+								rezervováno", <strong>nikdy ne, kdo to udělal.</strong>
+							</p>
+						</div>
+						<div class="share-mockup">
+							<div class="share-mockup-header">
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 18 18"
+									fill="none"
+									style="color: var(--primary)"
+								>
+									<circle
+										cx="14"
+										cy="4"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<circle
+										cx="4"
+										cy="9"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<circle
+										cx="14"
+										cy="14"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M6 10l6 3M6 8l6-3"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+								</svg>
+								Sdílet seznam
+							</div>
+							<div class="share-url-bar">
+								<div class="share-url-text">
+									darecky.cz/w/tereza-novakova-narozeniny
+								</div>
+								<button class="share-url-btn">Kopírovat</button>
+							</div>
+							<div class="share-apps-grid">
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(92% 0.08 145)"
+									>
+										<svg
+											width="18"
+											height="18"
+											viewBox="0 0 18 18"
+											fill="oklch(40% 0.15 145)"
+										>
+											<path
+												d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9c0 1.34.36 2.6.98 3.7L1.5 16.5l3.94-.97A7.47 7.47 0 0 0 9 16.5c4.14 0 7.5-3.36 7.5-7.5S13.14 1.5 9 1.5Zm4.47 10.57c-.19.53-1.11.98-1.52 1.04-.39.06-.88.08-1.42-.09-.33-.1-.75-.25-1.28-.49-2.26-.97-3.74-3.24-3.85-3.39-.11-.14-.9-1.2-.9-2.28 0-1.09.57-1.62.77-1.84.2-.22.44-.27.59-.27.15 0 .3 0 .43.01.14.01.32-.05.51.39.19.44.64 1.57.7 1.68.06.11.1.24.02.39-.08.15-.12.24-.24.37-.12.13-.25.29-.36.39-.12.12-.24.24-.1.48.14.23.62.99 1.33 1.61.91.81 1.68 1.06 1.92 1.18.23.12.37.1.51-.06.14-.15.6-.7.76-.94.16-.24.32-.2.54-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.56-.13 1.09Z"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">WhatsApp</div>
+								</div>
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(94% 0.03 220)"
+									>
+										<svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+											<rect
+												x="2"
+												y="4"
+												width="14"
+												height="10"
+												rx="2"
+												stroke="oklch(50% 0.1 220)"
+												stroke-width="1.5"
+											/>
+											<path
+												d="M2 6l7 5 7-5"
+												stroke="oklch(50% 0.1 220)"
+												stroke-width="1.5"
+												stroke-linecap="round"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">E-mail</div>
+								</div>
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(94% 0.04 245)"
+									>
+										<svg
+											width="18"
+											height="18"
+											viewBox="0 0 18 18"
+											fill="oklch(45% 0.15 245)"
+										>
+											<path
+												d="M9 1.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm3.34 5.16H11c-.37 0-.44.17-.44.35v.94h1.76l-.23 1.78H10.56V14H8.72V9.73H7.5V7.95h1.22v-1c0-1.22.74-1.88 1.82-1.88.52 0 .97.04 1.1.06v1.53Z"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">Messenger</div>
+								</div>
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(93% 0.06 210)"
+									>
+										<svg
+											width="18"
+											height="18"
+											viewBox="0 0 18 18"
+											fill="oklch(45% 0.15 210)"
+										>
+											<path
+												d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9c0 1.34.36 2.6.98 3.7L1.5 16.5l3.94-.97A7.47 7.47 0 0 0 9 16.5c4.14 0 7.5-3.36 7.5-7.5S13.14 1.5 9 1.5Zm4.28 9.97c-.1.29-.6.57-.82.6-.22.03-.43.09-.97-.21-.25-.14-.56-.3-.95-.51-1.7-.85-2.8-2.59-2.88-2.71-.08-.12-.67-.89-.67-1.7 0-.8.42-1.2.57-1.36.15-.17.33-.21.44-.21h.33c.1 0 .24-.04.38.29.14.33.48 1.17.52 1.26.04.09.07.18.01.29-.06.11-.09.18-.18.27-.09.1-.19.22-.27.29-.09.09-.18.18-.08.36.1.17.46.74.99 1.2.68.6 1.25.79 1.43.88.18.09.28.07.38-.04.1-.11.45-.52.57-.7.12-.18.24-.15.4-.09.16.06 1.04.5 1.22.59.18.09.3.13.34.2.04.08.04.42-.06.7Z"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">Telegram</div>
+								</div>
+							</div>
+							<div class="share-anon-note">
+								<svg
+									class="share-anon-note-icon"
+									width="16"
+									height="16"
+									viewBox="0 0 16 16"
+									fill="none"
+								>
+									<circle
+										cx="8"
+										cy="8"
+										r="6.5"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M8 7v4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+									<circle cx="8" cy="5" r="0.75" fill="currentColor" />
+								</svg>
+								Dárci mohou rezervovat bez registrace — stačí zadat jméno.
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- ── Chapter 4: The surprise ── -->
+			<section class="story-chapter ch4-bg" style="position: relative">
+				<div class="section-label">Chapter 4</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">04</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok čtvrtý</div>
+							<h2 class="chapter-title">Užijte si<br />překvapení</h2>
+							<p class="chapter-subtitle">
+								Dárky přijdou — a vy opravdu nevíte od koho. Přesně tak to má být.
+							</p>
+						</div>
+					</div>
+					<div class="ch4-content">
+						<div class="ch4-prose">
+							<h3 class="ch4-headline">
+								Vlastník <em>nikdy</em> nevidí,<br />
+								kdo co rezervoval.
+							</h3>
+							<p class="ch4-prose-text">
+								Tohle je srdce Darecky. Dárci si rezervují přání anonymně — jen
+								moderátor (pokud ho máte) koordinaci vidí.
+								<strong>Vy vidíte jen, kolik přání zbývá.</strong>
+							</p>
+							<p class="ch4-prose-text">
+								Výsledek? Skutečné překvapení u každého dárku. Žádné tipy, žádné
+								náznaky, žádné "aha, tohle jsi musel koupit ty".
+							</p>
+						</div>
+						<div class="gift-opening-visual">
+							<div class="gift-incoming-card">
+								<div class="gift-incoming-icon">📦</div>
+								<div class="gift-incoming-meta">
+									<div class="gift-incoming-label">Právě dorazil dárek</div>
+									<div class="gift-incoming-title">Bezdrátová sluchátka Sony</div>
+									<div class="gift-incoming-from">
+										od: ??? (zachováno tajemství)
+									</div>
+								</div>
+							</div>
+							<div class="gift-incoming-card">
+								<div class="gift-incoming-icon">🕯️</div>
+								<div class="gift-incoming-meta">
+									<div class="gift-incoming-label">Právě dorazil dárek</div>
+									<div class="gift-incoming-title">Sada vonných svíček</div>
+									<div class="gift-incoming-from">
+										od: ??? (zachováno tajemství)
+									</div>
+								</div>
+							</div>
+							<div class="gift-surprise-banner">
+								<div class="gift-surprise-banner-big">🎉</div>
+								<div class="gift-surprise-banner-text">Překvapení zachováno!</div>
+								<div class="gift-surprise-banner-sub">
+									Váš seznam měl 8 přání · 6 rezervováno
+								</div>
+							</div>
+							<div class="owner-never-sees">
+								<div class="owner-never-sees-icon">
+									<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+										<path
+											d="M2 8s2.5-4.5 6-4.5S14 8 14 8s-2.5 4.5-6 4.5S2 8 2 8Z"
+											stroke="currentColor"
+											stroke-width="1.5"
+										/>
+										<circle
+											cx="8"
+											cy="8"
+											r="2"
+											stroke="currentColor"
+											stroke-width="1.5"
+										/>
+										<path
+											d="M3 3l10 10"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+									</svg>
+								</div>
+								<div class="owner-never-sees-text">
+									Tereza nikdy neviděla, kdo co rezervoval
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Trust strip -->
+			<div class="trust-strip" style="position: relative">
+				<div class="section-label">Trust</div>
+				<div class="trust-strip-inner">
+					<div class="trust-strip-headline">Žádné kompromisy</div>
+					<div class="trust-items">
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<path
+										d="M10 2L4 5v4c0 4.42 2.55 8.16 6 9.5 3.45-1.34 6-5.08 6-9.5V5l-6-3Z"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linejoin="round"
+									/>
+									<path
+										d="M7 10l2 2 4-4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">
+								Zdarma navždy<br />žádná platební karta
+							</div>
+						</div>
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<path
+										d="M10 2.5C7 2.5 4.5 5 4.5 8c0 4.5 5.5 9 5.5 9s5.5-4.5 5.5-9c0-3-2.5-5.5-5.5-5.5Z"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<circle
+										cx="10"
+										cy="8"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">Překvapení je<br />vždy zachováno</div>
+						</div>
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<circle
+										cx="10"
+										cy="8"
+										r="4"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M3 18c0-3.31 3.13-6 7-6s7 2.69 7 6"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">Dárci bez registrace<br />stačí jméno</div>
+						</div>
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<rect
+										x="3"
+										y="3"
+										width="14"
+										height="14"
+										rx="3"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M3 9h14M9 9v8"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M6 6h.01M9 6h.01"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">Žádné reklamy<br />žádné sledování</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Final CTA -->
+			<section class="final-cta" style="position: relative">
+				<div class="section-label">Final CTA</div>
+				<div class="final-cta-inner">
+					<div class="final-cta-eyebrow">Váš příběh čeká</div>
+					<h2 class="final-cta-headline">Začněte psát svůj<br />příběh přání</h2>
+					<p class="final-cta-sub">
+						Vytvořte první seznam zdarma. Za minutu sdílíte — překvapení garantováno.
+					</p>
+					<div class="final-cta-btns">
+						<button
+							class="story-cta-primary"
+							style="font-size: 15px; padding: 14px 28px"
+						>
+							Vytvořit seznam přání
+						</button>
+						<button class="story-cta-ghost" style="font-size: 15px">
+							Přihlásit se
+						</button>
+					</div>
+					<div class="final-note">
+						Zdarma navždy · Žádná platební karta · Překvapení zaručeno
+					</div>
+				</div>
+			</section>
+
+			<!-- Footer -->
+			<footer class="lp-footer" style="position: relative">
+				<div class="section-label">Footer</div>
+				<div class="lp-footer-logo">darecky<span>.cz</span></div>
+				<div class="lp-footer-copy">© 2025 Darecky · Vyrobeno s láskou v Česku</div>
+				<div class="lp-footer-lang">
+					<button class="lang-btn active">CS</button>
+					<button class="lang-btn">EN</button>
+				</div>
+			</footer>
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════
+		     SEPARATOR
+		     ═══════════════════════════════════════════════════ -->
+		<div class="page-sep"></div>
+
+		<!-- ═══════════════════════════════════════════════════
+		     DARK MODE
+		     ═══════════════════════════════════════════════════ -->
+		<div class="lp-page theme-dark" style="position: relative">
+			<div class="mode-label">Dark Mode</div>
+
+			<!-- Nav -->
+			<nav class="lp-nav" style="position: relative">
+				<div class="section-label">Nav</div>
+				<a class="lp-nav-logo" href="#">darecky<span>.cz</span></a>
+				<div class="lp-nav-actions">
+					<button class="lp-btn-ghost">Přihlásit se</button>
+					<button class="lp-btn-primary">Začít zdarma</button>
+				</div>
+			</nav>
+
+			<!-- ── Hero ── -->
+			<section class="story-hero" style="position: relative">
+				<div class="section-label">Hero</div>
+				<div class="story-hero-inner">
+					<div class="story-hero-text">
+						<div class="story-chapter-label">Váš příběh začíná tady</div>
+						<h1 class="story-hero-headline">
+							Přání, která<br />
+							<em>skutečně dostanete.</em>
+						</h1>
+						<p class="story-hero-sub">
+							Vytvořte seznam přání, sdílejte ho s rodinou a překvapení bude zachováno
+							— nikdo nevidí, kdo co chystá.
+						</p>
+						<div class="story-hero-cta-row">
+							<button class="story-cta-primary">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+									<rect
+										x="2"
+										y="4"
+										width="12"
+										height="9"
+										rx="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M5 4V3a3 3 0 0 1 6 0v1"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+									<circle cx="8" cy="8.5" r="1.5" fill="currentColor" />
+								</svg>
+								Vytvořit seznam přání
+							</button>
+							<button class="story-cta-ghost">Přihlásit se</button>
+						</div>
+					</div>
+					<div class="story-hero-visual">
+						<div class="hero-wishlist-card">
+							<div class="hero-wl-header">
+								<div class="hero-wl-owner">Přání pro</div>
+								<div class="hero-wl-title">Tereza Nováková</div>
+								<div class="hero-wl-meta">
+									<span class="hero-wl-badge hero-wl-badge-theme"
+										>🎂 Narozeniny</span
+									>
+									<span class="hero-wl-badge hero-wl-badge-count">8 přání</span>
+								</div>
+							</div>
+							<div class="hero-wl-gifts">
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(30% 0.04 150)"
+									>
+										📗
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Kniha Atomové návyky</div>
+										<div class="hero-gift-price">349 Kč · alza.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-free">Volné</span>
+								</div>
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(28% 0.04 200)"
+									>
+										🎧
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Bezdrátová sluchátka Sony</div>
+										<div class="hero-gift-price">2 490 Kč · mall.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-reserved"
+										>Rezervováno</span
+									>
+								</div>
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(28% 0.04 60)"
+									>
+										🕯️
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Sada vonných svíček</div>
+										<div class="hero-gift-price">650 Kč · notino.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-free">Volné</span>
+								</div>
+								<div class="hero-gift-row">
+									<div
+										class="hero-gift-img"
+										style="background: oklch(28% 0.04 330)"
+									>
+										🧴
+									</div>
+									<div class="hero-gift-info">
+										<div class="hero-gift-name">Kosmetická sada La Mer</div>
+										<div class="hero-gift-price">1 890 Kč · sephora.cz</div>
+									</div>
+									<span class="hero-gift-badge hero-gift-badge-reserved"
+										>Rezervováno</span
+									>
+								</div>
+							</div>
+						</div>
+						<div class="story-floating-note">
+							<span class="story-floating-note-icon">🔒</span>
+							Tereza nevidí, kdo co rezervoval
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- Chapter 1 -->
+			<section class="story-chapter ch1-bg" style="position: relative">
+				<div class="section-label">Chapter 1</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">01</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok první</div>
+							<h2 class="chapter-title">Vytvořte seznam<br />a nastavte téma</h2>
+							<p class="chapter-subtitle">
+								Za minutu máte hotový seznam přání se jménem, datem události a
+								tématem, které naladí náladu.
+							</p>
+						</div>
+					</div>
+					<div class="ch1-content">
+						<div class="ch1-steps">
+							<div class="ch1-step">
+								<div class="ch1-step-num">1</div>
+								<div class="ch1-step-body">
+									<div class="ch1-step-title">Pojmenujte seznam</div>
+									<div class="ch1-step-desc">
+										Zadejte název a volitelně datum události — narozeniny,
+										Vánoce, výročí. Datum vám připomene archivaci po oslavě.
+									</div>
+								</div>
+							</div>
+							<div class="ch1-step">
+								<div class="ch1-step-num">2</div>
+								<div class="ch1-step-body">
+									<div class="ch1-step-title">Vyberte téma</div>
+									<div class="ch1-step-desc">
+										5 předdefinovaných témat nebo vlastní barva. Každé téma
+										změní vizuální styl celého seznamu pro návštěvníky.
+									</div>
+								</div>
+							</div>
+							<div class="ch1-step">
+								<div class="ch1-step-num">3</div>
+								<div class="ch1-step-body">
+									<div class="ch1-step-title">
+										Nastavte moderátora (volitelně)
+									</div>
+									<div class="ch1-step-desc">
+										Přidejte důvěryhodnou osobu jako moderátora — ona vidí stav
+										rezervací a koordinuje dárky za vás.
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="create-list-mockup">
+							<div class="mockup-field-label">Název seznamu</div>
+							<div
+								class="mockup-field-input"
+								style="display: flex; align-items: center"
+							>
+								<span style="color: var(--foreground)"
+									>Narozeninové přání 2025</span
+								>
+							</div>
+							<div class="mockup-field-label">Datum události</div>
+							<div
+								class="mockup-field-input"
+								style="display: flex; align-items: center"
+							>
+								<span style="color: var(--foreground-muted)">15. září 2025</span>
+							</div>
+							<div class="mockup-theme-row">
+								<div class="mockup-theme-label">Téma seznamu</div>
+								<div class="mockup-theme-swatches">
+									<div class="mockup-theme-swatch swatch-default"></div>
+									<div class="mockup-theme-swatch swatch-christmas"></div>
+									<div class="mockup-theme-swatch swatch-birthday selected"></div>
+									<div class="mockup-theme-swatch swatch-fun"></div>
+									<div class="mockup-theme-swatch swatch-elegant"></div>
+								</div>
+							</div>
+							<button class="mockup-create-btn">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+									<path
+										d="M8 3v10M3 8h10"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+									/>
+								</svg>
+								Vytvořit seznam
+							</button>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- Chapter 2 -->
+			<section class="story-chapter ch2-bg" style="position: relative">
+				<div class="section-label">Chapter 2</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">02</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok druhý</div>
+							<h2 class="chapter-title">
+								Přidejte přání,<br />která vás skutečně těší
+							</h2>
+							<p class="chapter-subtitle">
+								Odkaz z e-shopu nebo vlastní popis — každé přání dostane obrázek,
+								cenu a prioritu.
+							</p>
+						</div>
+					</div>
+					<div class="ch2-content">
+						<div class="gift-add-mockup">
+							<div class="gift-add-header">
+								<div class="gift-add-header-icon">
+									<svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+										<rect
+											x="2"
+											y="5"
+											width="14"
+											height="10"
+											rx="2"
+											stroke="currentColor"
+											stroke-width="1.5"
+										/>
+										<path
+											d="M6 5V4a3 3 0 0 1 6 0v1"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+										<path
+											d="M9 9v4M7 11h4"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+									</svg>
+								</div>
+								<div class="gift-add-header-text">Nové přání</div>
+							</div>
+							<div class="gift-add-body">
+								<div class="gift-card-preview">
+									<div class="gift-card-img-box">📚</div>
+									<div class="gift-card-meta">
+										<div class="gift-card-name">
+											Kompletní sada Harry Potter
+										</div>
+										<div class="gift-card-price">1 299 Kč</div>
+										<div class="gift-card-link">
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 11 11"
+												fill="none"
+											>
+												<path
+													d="M2 9L9 2M9 2H5M9 2v4"
+													stroke="currentColor"
+													stroke-width="1.5"
+													stroke-linecap="round"
+													stroke-linejoin="round"
+												/>
+											</svg>
+											alza.cz
+										</div>
+									</div>
+								</div>
+								<div
+									style="
+										font-size: 11px;
+										font-weight: 700;
+										letter-spacing: 0.1em;
+										text-transform: uppercase;
+										color: var(--foreground-subtle);
+										margin-bottom: 10px;
+									"
+								>
+									Přání v seznamu (3)
+								</div>
+								<div class="gift-list-accumulated">
+									<div class="gift-mini-row">
+										<div class="gift-mini-emoji">📗</div>
+										<div class="gift-mini-name">Kniha Atomové návyky</div>
+										<div class="gift-mini-price">349 Kč</div>
+									</div>
+									<div class="gift-mini-row">
+										<div class="gift-mini-emoji">🎧</div>
+										<div class="gift-mini-name">Bezdrátová sluchátka Sony</div>
+										<div class="gift-mini-price">2 490 Kč</div>
+									</div>
+									<div class="gift-mini-row">
+										<div class="gift-mini-emoji">🕯️</div>
+										<div class="gift-mini-name">Sada vonných svíček</div>
+										<div class="gift-mini-price">650 Kč</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="ch2-prose">
+							<p class="ch2-prose-text">
+								Stačí vložit <strong>odkaz z e-shopu</strong> a Darecky automaticky
+								vyplní název, cenu a obrázek. Nebo přidejte cokoli vlastního — třeba
+								„výlet do Paříže".
+							</p>
+							<p class="ch2-prose-text">
+								Každé přání má <strong>prioritu</strong> — od "moc bych chtěl" po
+								"pokud možno". Dárci to uvidí, vy máte čistou hlavu.
+							</p>
+							<div class="ch2-highlight-box">
+								💡 <strong>Tip:</strong> Po sdílení seznamu budete moci přidávat
+								nová přání, ale stávající upravovat nebo mazat. Tím je zachovaná
+								integrita pro dárce.
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- Chapter 3 -->
+			<section class="story-chapter ch3-bg" style="position: relative">
+				<div class="section-label">Chapter 3</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">03</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok třetí</div>
+							<h2 class="chapter-title">Sdílejte jedním<br />odkazem — a hotovo</h2>
+							<p class="chapter-subtitle">
+								Jeden odkaz pro celou rodinu. Přes WhatsApp, e-mail nebo Messenger.
+								Dárci nepotřebují účet.
+							</p>
+						</div>
+					</div>
+					<div class="ch3-content">
+						<div class="ch3-prose">
+							<p class="ch3-prose-text">
+								Dostanete <strong>trvalý odkaz</strong> přímo na váš seznam.
+								Sdílejte ho jak chcete — v rodinné skupině, e-mailem tetě, nebo
+								jednoduše zkopírujte do zprávy.
+							</p>
+							<p class="ch3-prose-text">
+								Každý, kdo přijde přes odkaz,
+								<strong>vidí přání a může rezervovat</strong> — bez registrace, bez
+								instalace aplikace.
+							</p>
+							<p class="ch3-prose-text">
+								Rezervace jsou anonymní vůči vám. Vy uvidíte jen stav "volné /
+								rezervováno", <strong>nikdy ne, kdo to udělal.</strong>
+							</p>
+						</div>
+						<div class="share-mockup">
+							<div class="share-mockup-header">
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 18 18"
+									fill="none"
+									style="color: var(--primary)"
+								>
+									<circle
+										cx="14"
+										cy="4"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<circle
+										cx="4"
+										cy="9"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<circle
+										cx="14"
+										cy="14"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M6 10l6 3M6 8l6-3"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+								</svg>
+								Sdílet seznam
+							</div>
+							<div class="share-url-bar">
+								<div class="share-url-text">
+									darecky.cz/w/tereza-novakova-narozeniny
+								</div>
+								<button class="share-url-btn">Kopírovat</button>
+							</div>
+							<div class="share-apps-grid">
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(22% 0.06 145)"
+									>
+										<svg
+											width="18"
+											height="18"
+											viewBox="0 0 18 18"
+											fill="oklch(70% 0.12 145)"
+										>
+											<path
+												d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9c0 1.34.36 2.6.98 3.7L1.5 16.5l3.94-.97A7.47 7.47 0 0 0 9 16.5c4.14 0 7.5-3.36 7.5-7.5S13.14 1.5 9 1.5Zm4.47 10.57c-.19.53-1.11.98-1.52 1.04-.39.06-.88.08-1.42-.09-.33-.1-.75-.25-1.28-.49-2.26-.97-3.74-3.24-3.85-3.39-.11-.14-.9-1.2-.9-2.28 0-1.09.57-1.62.77-1.84.2-.22.44-.27.59-.27.15 0 .3 0 .43.01.14.01.32-.05.51.39.19.44.64 1.57.7 1.68.06.11.1.24.02.39-.08.15-.12.24-.24.37-.12.13-.25.29-.36.39-.12.12-.24.24-.1.48.14.23.62.99 1.33 1.61.91.81 1.68 1.06 1.92 1.18.23.12.37.1.51-.06.14-.15.6-.7.76-.94.16-.24.32-.2.54-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.56-.13 1.09Z"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">WhatsApp</div>
+								</div>
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(22% 0.04 220)"
+									>
+										<svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+											<rect
+												x="2"
+												y="4"
+												width="14"
+												height="10"
+												rx="2"
+												stroke="oklch(65% 0.08 220)"
+												stroke-width="1.5"
+											/>
+											<path
+												d="M2 6l7 5 7-5"
+												stroke="oklch(65% 0.08 220)"
+												stroke-width="1.5"
+												stroke-linecap="round"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">E-mail</div>
+								</div>
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(22% 0.05 245)"
+									>
+										<svg
+											width="18"
+											height="18"
+											viewBox="0 0 18 18"
+											fill="oklch(65% 0.12 245)"
+										>
+											<path
+												d="M9 1.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm3.34 5.16H11c-.37 0-.44.17-.44.35v.94h1.76l-.23 1.78H10.56V14H8.72V9.73H7.5V7.95h1.22v-1c0-1.22.74-1.88 1.82-1.88.52 0 .97.04 1.1.06v1.53Z"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">Messenger</div>
+								</div>
+								<div class="share-app-btn">
+									<div
+										class="share-app-icon"
+										style="background: oklch(22% 0.05 210)"
+									>
+										<svg
+											width="18"
+											height="18"
+											viewBox="0 0 18 18"
+											fill="oklch(65% 0.12 210)"
+										>
+											<path
+												d="M9 1.5C4.86 1.5 1.5 4.86 1.5 9c0 1.34.36 2.6.98 3.7L1.5 16.5l3.94-.97A7.47 7.47 0 0 0 9 16.5c4.14 0 7.5-3.36 7.5-7.5S13.14 1.5 9 1.5Zm4.28 9.97c-.1.29-.6.57-.82.6-.22.03-.43.09-.97-.21-.25-.14-.56-.3-.95-.51-1.7-.85-2.8-2.59-2.88-2.71-.08-.12-.67-.89-.67-1.7 0-.8.42-1.2.57-1.36.15-.17.33-.21.44-.21h.33c.1 0 .24-.04.38.29.14.33.48 1.17.52 1.26.04.09.07.18.01.29-.06.11-.09.18-.18.27-.09.1-.19.22-.27.29-.09.09-.18.18-.08.36.1.17.46.74.99 1.2.68.6 1.25.79 1.43.88.18.09.28.07.38-.04.1-.11.45-.52.57-.7.12-.18.24-.15.4-.09.16.06 1.04.5 1.22.59.18.09.3.13.34.2.04.08.04.42-.06.7Z"
+											/>
+										</svg>
+									</div>
+									<div class="share-app-name">Telegram</div>
+								</div>
+							</div>
+							<div class="share-anon-note">
+								<svg
+									class="share-anon-note-icon"
+									width="16"
+									height="16"
+									viewBox="0 0 16 16"
+									fill="none"
+								>
+									<circle
+										cx="8"
+										cy="8"
+										r="6.5"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M8 7v4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+									<circle cx="8" cy="5" r="0.75" fill="currentColor" />
+								</svg>
+								Dárci mohou rezervovat bez registrace — stačí zadat jméno.
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="chapter-connector">
+				<div class="chapter-connector-line"></div>
+				<div class="chapter-connector-dot"></div>
+			</div>
+
+			<!-- Chapter 4 -->
+			<section class="story-chapter ch4-bg" style="position: relative">
+				<div class="section-label">Chapter 4</div>
+				<div class="story-chapter-inner">
+					<div class="chapter-heading-row">
+						<div class="chapter-ghost-number">04</div>
+						<div class="chapter-heading-text">
+							<div class="chapter-eyebrow">Krok čtvrtý</div>
+							<h2 class="chapter-title">Užijte si<br />překvapení</h2>
+							<p class="chapter-subtitle">
+								Dárky přijdou — a vy opravdu nevíte od koho. Přesně tak to má být.
+							</p>
+						</div>
+					</div>
+					<div class="ch4-content">
+						<div class="ch4-prose">
+							<h3 class="ch4-headline">
+								Vlastník <em>nikdy</em> nevidí,<br />
+								kdo co rezervoval.
+							</h3>
+							<p class="ch4-prose-text">
+								Tohle je srdce Darecky. Dárci si rezervují přání anonymně — jen
+								moderátor (pokud ho máte) koordinaci vidí.
+								<strong>Vy vidíte jen, kolik přání zbývá.</strong>
+							</p>
+							<p class="ch4-prose-text">
+								Výsledek? Skutečné překvapení u každého dárku. Žádné tipy, žádné
+								náznaky, žádné "aha, tohle jsi musel koupit ty".
+							</p>
+						</div>
+						<div class="gift-opening-visual">
+							<div class="gift-incoming-card">
+								<div class="gift-incoming-icon">📦</div>
+								<div class="gift-incoming-meta">
+									<div class="gift-incoming-label">Právě dorazil dárek</div>
+									<div class="gift-incoming-title">Bezdrátová sluchátka Sony</div>
+									<div class="gift-incoming-from">
+										od: ??? (zachováno tajemství)
+									</div>
+								</div>
+							</div>
+							<div class="gift-incoming-card">
+								<div class="gift-incoming-icon">🕯️</div>
+								<div class="gift-incoming-meta">
+									<div class="gift-incoming-label">Právě dorazil dárek</div>
+									<div class="gift-incoming-title">Sada vonných svíček</div>
+									<div class="gift-incoming-from">
+										od: ??? (zachováno tajemství)
+									</div>
+								</div>
+							</div>
+							<div class="gift-surprise-banner">
+								<div class="gift-surprise-banner-big">🎉</div>
+								<div class="gift-surprise-banner-text">Překvapení zachováno!</div>
+								<div class="gift-surprise-banner-sub">
+									Váš seznam měl 8 přání · 6 rezervováno
+								</div>
+							</div>
+							<div class="owner-never-sees">
+								<div class="owner-never-sees-icon">
+									<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+										<path
+											d="M2 8s2.5-4.5 6-4.5S14 8 14 8s-2.5 4.5-6 4.5S2 8 2 8Z"
+											stroke="currentColor"
+											stroke-width="1.5"
+										/>
+										<circle
+											cx="8"
+											cy="8"
+											r="2"
+											stroke="currentColor"
+											stroke-width="1.5"
+										/>
+										<path
+											d="M3 3l10 10"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+										/>
+									</svg>
+								</div>
+								<div class="owner-never-sees-text">
+									Tereza nikdy neviděla, kdo co rezervoval
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Trust strip -->
+			<div class="trust-strip" style="position: relative">
+				<div class="section-label">Trust</div>
+				<div class="trust-strip-inner">
+					<div class="trust-strip-headline">Žádné kompromisy</div>
+					<div class="trust-items">
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<path
+										d="M10 2L4 5v4c0 4.42 2.55 8.16 6 9.5 3.45-1.34 6-5.08 6-9.5V5l-6-3Z"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linejoin="round"
+									/>
+									<path
+										d="M7 10l2 2 4-4"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">
+								Zdarma navždy<br />žádná platební karta
+							</div>
+						</div>
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<path
+										d="M10 2.5C7 2.5 4.5 5 4.5 8c0 4.5 5.5 9 5.5 9s5.5-4.5 5.5-9c0-3-2.5-5.5-5.5-5.5Z"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<circle
+										cx="10"
+										cy="8"
+										r="2"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">Překvapení je<br />vždy zachováno</div>
+						</div>
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<circle
+										cx="10"
+										cy="8"
+										r="4"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M3 18c0-3.31 3.13-6 7-6s7 2.69 7 6"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">Dárci bez registrace<br />stačí jméno</div>
+						</div>
+						<div class="trust-item">
+							<div class="trust-item-icon">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<rect
+										x="3"
+										y="3"
+										width="14"
+										height="14"
+										rx="3"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M3 9h14M9 9v8"
+										stroke="currentColor"
+										stroke-width="1.5"
+									/>
+									<path
+										d="M6 6h.01M9 6h.01"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+									/>
+								</svg>
+							</div>
+							<div class="trust-item-text">Žádné reklamy<br />žádné sledování</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Final CTA -->
+			<section class="final-cta" style="position: relative">
+				<div class="section-label">Final CTA</div>
+				<div class="final-cta-inner">
+					<div class="final-cta-eyebrow">Váš příběh čeká</div>
+					<h2 class="final-cta-headline">Začněte psát svůj<br />příběh přání</h2>
+					<p class="final-cta-sub">
+						Vytvořte první seznam zdarma. Za minutu sdílíte — překvapení garantováno.
+					</p>
+					<div class="final-cta-btns">
+						<button
+							class="story-cta-primary"
+							style="font-size: 15px; padding: 14px 28px"
+						>
+							Vytvořit seznam přání
+						</button>
+						<button class="story-cta-ghost" style="font-size: 15px">
+							Přihlásit se
+						</button>
+					</div>
+					<div class="final-note">
+						Zdarma navždy · Žádná platební karta · Překvapení zaručeno
+					</div>
+				</div>
+			</section>
+
+			<!-- Footer -->
+			<footer class="lp-footer" style="position: relative">
+				<div class="section-label">Footer</div>
+				<div class="lp-footer-logo">darecky<span>.cz</span></div>
+				<div class="lp-footer-copy">© 2025 Darecky · Vyrobeno s láskou v Česku</div>
+				<div class="lp-footer-lang">
+					<button class="lang-btn active">CS</button>
+					<button class="lang-btn">EN</button>
+				</div>
+			</footer>
+		</div>
+	</body>
+</html>

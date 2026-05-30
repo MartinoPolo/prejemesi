@@ -1,0 +1,1250 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — App Shell Variant 2: Top Bar with Mega-Menu</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Variant 2: Top Bar with Mega-Menu ──────────────────────
+			   Nav bar with dropdown menus per section. Each nav item
+			   opens a rich panel with contextual actions + recent items.
+			   Sage green primary.                                        */
+
+			.theme-light {
+				--background: oklch(0.988 0.004 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.948 0.012 150);
+				--foreground: oklch(0.17 0.018 155);
+				--foreground-muted: oklch(0.44 0.022 150);
+				--foreground-subtle: oklch(0.6 0.014 150);
+				--border: oklch(0.918 0.012 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150.069);
+				--primary-fg: oklch(0.982 0.018 155.826);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150.069);
+			}
+			.theme-dark {
+				--background: oklch(0.148 0.014 155);
+				--surface: oklch(0.19 0.016 155);
+				--surface-2: oklch(0.23 0.018 155);
+				--surface-hover: oklch(0.268 0.02 155);
+				--foreground: oklch(0.962 0.008 150);
+				--foreground-muted: oklch(0.68 0.018 150);
+				--foreground-subtle: oklch(0.52 0.014 150);
+				--border: oklch(0.28 0.016 155);
+				--border-strong: oklch(0.36 0.02 155);
+				--primary: oklch(0.65 0.138 150);
+				--primary-fg: oklch(0.14 0.016 155);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(0.65 0.138 150);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				margin: 0;
+			}
+
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				font-family: var(--font-sans);
+				color: var(--foreground);
+				font-size: var(--text-base);
+				-webkit-font-smoothing: antialiased;
+				display: flex;
+				flex-direction: column;
+			}
+
+			/* ── Top bar ── */
+			.topbar {
+				position: sticky;
+				top: 0;
+				z-index: var(--z-sticky);
+				height: var(--nav-height);
+				background: color-mix(in oklch, var(--surface) 90%, transparent);
+				backdrop-filter: blur(12px);
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				padding: 0 var(--space-6);
+				gap: var(--space-6);
+				flex-shrink: 0;
+			}
+
+			/* Logo */
+			.logo {
+				font-family: var(--font-heading);
+				font-weight: var(--weight-bold);
+				font-size: var(--text-xl);
+				color: var(--primary);
+				letter-spacing: var(--tracking-tight);
+				text-decoration: none;
+				flex-shrink: 0;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.logo-tld {
+				opacity: 0.45;
+				font-weight: var(--weight-medium);
+			}
+			.logo-dot {
+				width: 7px;
+				height: 7px;
+				border-radius: var(--radius-full);
+				background: var(--primary);
+				opacity: 0.6;
+				flex-shrink: 0;
+			}
+
+			/* Nav with mega-menu triggers */
+			.nav-links {
+				display: flex;
+				align-items: center;
+				gap: 2px;
+				flex: 1;
+			}
+
+			.nav-item {
+				position: relative;
+			}
+
+			.nav-trigger {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 36px;
+				padding: 0 var(--space-3);
+				border-radius: var(--radius-md);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				background: transparent;
+				border: none;
+				cursor: pointer;
+				font-family: var(--font-sans);
+				transition:
+					background var(--duration-normal),
+					color var(--duration-normal);
+				white-space: nowrap;
+			}
+			.nav-trigger:hover,
+			.nav-trigger.is-open {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.nav-trigger.is-active {
+				color: var(--primary);
+				background: var(--primary-soft);
+				font-weight: var(--weight-semibold);
+			}
+			.chevron {
+				transition: transform var(--duration-normal);
+				opacity: 0.6;
+			}
+			.nav-trigger.is-open .chevron {
+				transform: rotate(180deg);
+			}
+
+			/* ── Mega-menu panel ── */
+			.mega-menu {
+				position: absolute;
+				top: calc(100% + 10px);
+				left: -16px;
+				width: 340px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-xl);
+				box-shadow: var(--shadow-xl);
+				z-index: var(--z-dropdown);
+				overflow: hidden;
+			}
+
+			.mega-header {
+				padding: var(--space-4) var(--space-5) var(--space-3);
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.mega-title {
+				font-weight: var(--weight-semibold);
+				font-size: var(--text-base);
+				color: var(--foreground);
+			}
+			.mega-link {
+				font-size: var(--text-xs);
+				color: var(--primary);
+				text-decoration: none;
+				font-weight: var(--weight-medium);
+			}
+			.mega-link:hover {
+				text-decoration: underline;
+			}
+
+			.mega-section-label {
+				padding: var(--space-3) var(--space-5) var(--space-1);
+				font-size: 10px;
+				font-weight: 600;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+			}
+
+			.mega-item {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				padding: 9px var(--space-5);
+				cursor: pointer;
+				transition: background var(--duration-normal);
+			}
+			.mega-item:hover {
+				background: var(--surface-2);
+			}
+			.mega-item-thumb {
+				width: 36px;
+				height: 36px;
+				border-radius: var(--radius-md);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 18px;
+				flex-shrink: 0;
+			}
+			.mega-item-info {
+				flex: 1;
+				min-width: 0;
+			}
+			.mega-item-name {
+				font-size: var(--text-sm);
+				font-weight: var(--weight-medium);
+				color: var(--foreground);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.mega-item-meta {
+				font-size: 11px;
+				color: var(--foreground-muted);
+				margin-top: 1px;
+			}
+			.mega-item-badge {
+				font-size: 10px;
+				font-weight: 600;
+				padding: 2px 7px;
+				border-radius: var(--radius-full);
+				flex-shrink: 0;
+			}
+			.badge-shared {
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+			.badge-draft {
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+
+			.mega-footer {
+				padding: var(--space-3) var(--space-5);
+				border-top: 1px solid var(--border);
+				display: flex;
+				gap: var(--space-2);
+			}
+			.mega-action {
+				flex: 1;
+				height: 34px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: transparent;
+				color: var(--foreground-muted);
+				font-size: var(--text-xs);
+				font-weight: var(--weight-medium);
+				cursor: pointer;
+				font-family: var(--font-sans);
+				transition: all var(--duration-normal);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 5px;
+			}
+			.mega-action:hover {
+				background: var(--surface-2);
+				border-color: var(--border-strong);
+				color: var(--foreground);
+			}
+			.mega-action.is-primary {
+				background: var(--primary);
+				border-color: var(--primary);
+				color: var(--primary-fg);
+			}
+			.mega-action.is-primary:hover {
+				filter: brightness(1.1);
+			}
+
+			/* ── Right side ── */
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				flex-shrink: 0;
+			}
+
+			.btn-create {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				height: 34px;
+				padding: 0 var(--space-4);
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				border-radius: var(--radius-md);
+				font-family: var(--font-sans);
+				font-size: var(--text-sm);
+				font-weight: var(--weight-semibold);
+				cursor: pointer;
+				transition: filter var(--duration-normal);
+				box-shadow: var(--shadow-sm);
+				white-space: nowrap;
+			}
+			.btn-create:hover {
+				filter: brightness(1.1);
+			}
+
+			.icon-btn {
+				position: relative;
+				width: 36px;
+				height: 36px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: transparent;
+				border: none;
+				border-radius: var(--radius-md);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition:
+					background var(--duration-normal),
+					color var(--duration-normal);
+			}
+			.icon-btn:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+
+			.notif-badge {
+				position: absolute;
+				top: 4px;
+				right: 4px;
+				min-width: 16px;
+				height: 16px;
+				padding: 0 4px;
+				background: var(--status-danger);
+				color: #fff;
+				border-radius: var(--radius-full);
+				font-size: 10px;
+				font-weight: var(--weight-bold);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				line-height: 1;
+				border: 2px solid var(--background);
+			}
+
+			/* Dark mode — icon pair toggle */
+			.mode-pair {
+				display: inline-flex;
+				align-items: center;
+				gap: 1px;
+				background: var(--surface-2);
+				border-radius: var(--radius-md);
+				padding: 2px;
+			}
+			.mode-pair-btn {
+				width: 30px;
+				height: 28px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: none;
+				background: transparent;
+				border-radius: 5px;
+				color: var(--foreground-subtle);
+				cursor: pointer;
+				transition: all var(--duration-normal);
+			}
+			.mode-pair-btn:hover {
+				color: var(--foreground);
+			}
+			.mode-pair-btn.is-active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: var(--shadow-sm);
+			}
+
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: var(--weight-semibold);
+				font-size: 13px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				border: 2px solid transparent;
+				transition: border-color var(--duration-normal);
+				flex-shrink: 0;
+			}
+			.avatar:hover {
+				border-color: var(--primary);
+			}
+
+			/* ── Content ── */
+			.content-wrap {
+				flex: 1;
+				max-width: var(--content-max-width);
+				width: 100%;
+				margin: 0 auto;
+				padding: var(--space-8) var(--space-6) var(--space-16);
+			}
+
+			.page-header {
+				margin-bottom: var(--space-6);
+			}
+			.page-eyebrow {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: var(--space-1);
+			}
+			.page-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-2xl);
+				font-weight: var(--weight-bold);
+				letter-spacing: var(--tracking-snug);
+				color: var(--foreground);
+			}
+			.page-subtitle {
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				margin-top: var(--space-1);
+			}
+
+			.sort-bar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: var(--space-5);
+				padding-bottom: var(--space-4);
+				border-bottom: 1px solid var(--border);
+			}
+			.sort-tabs {
+				display: flex;
+				gap: 2px;
+			}
+			.sort-tab {
+				height: 30px;
+				padding: 0 var(--space-3);
+				border: none;
+				background: transparent;
+				border-radius: var(--radius-md);
+				font-size: var(--text-xs);
+				font-weight: var(--weight-medium);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				font-family: var(--font-sans);
+				transition: all var(--duration-normal);
+			}
+			.sort-tab:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.sort-tab.is-active {
+				background: var(--surface-2);
+				color: var(--foreground);
+				font-weight: var(--weight-semibold);
+			}
+			.count-chip {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+			}
+
+			.wishlists-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+				gap: var(--space-5);
+			}
+			.wl-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				overflow: hidden;
+				cursor: pointer;
+				transition:
+					border-color var(--duration-normal),
+					box-shadow var(--duration-normal);
+			}
+			.wl-card:hover {
+				border-color: var(--border-strong);
+				box-shadow: var(--shadow-md);
+			}
+			.wl-card-thumb {
+				height: 100px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 36px;
+			}
+			.wl-card-body {
+				padding: var(--space-4) var(--space-5);
+			}
+			.wl-card-name {
+				font-weight: var(--weight-semibold);
+				font-size: var(--text-base);
+				color: var(--foreground);
+				margin-bottom: var(--space-1);
+			}
+			.wl-card-meta {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				flex-wrap: wrap;
+				margin-top: var(--space-3);
+			}
+			.wl-stat {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+			}
+			.wl-stat b {
+				font-weight: var(--weight-semibold);
+				color: var(--foreground);
+			}
+			.badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 22px;
+				padding: 0 8px;
+				border-radius: var(--radius-full);
+				font-size: 11px;
+				font-weight: var(--weight-medium);
+				white-space: nowrap;
+			}
+
+			.mode-label {
+				text-align: center;
+				padding: var(--space-3) var(--space-4);
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+			}
+			.variant-label {
+				text-align: center;
+				padding: var(--space-5) var(--space-4) var(--space-3);
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.55 0.02 150);
+				background: oklch(0.94 0.01 150);
+			}
+
+			/* ── User dropdown ── */
+			.user-menu-wrap {
+				position: relative;
+			}
+			.user-dropdown {
+				position: absolute;
+				top: calc(100% + 8px);
+				right: 0;
+				width: 200px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-lg);
+				padding: var(--space-2);
+				z-index: var(--z-dropdown);
+			}
+			.dropdown-header {
+				padding: var(--space-2) var(--space-3) var(--space-3);
+				border-bottom: 1px solid var(--border);
+				margin-bottom: var(--space-1);
+			}
+			.dropdown-name {
+				font-weight: var(--weight-semibold);
+				font-size: var(--text-sm);
+				color: var(--foreground);
+			}
+			.dropdown-email {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+				margin-top: 2px;
+			}
+			.dropdown-item {
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
+				padding: 7px var(--space-3);
+				border-radius: var(--radius-sm);
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				transition:
+					background var(--duration-normal),
+					color var(--duration-normal);
+			}
+			.dropdown-item:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.dropdown-item.is-danger {
+				color: var(--status-danger);
+			}
+			.dropdown-item.is-danger:hover {
+				background: color-mix(in oklch, var(--status-danger) 10%, transparent);
+			}
+			.dropdown-divider {
+				height: 1px;
+				background: var(--border);
+				margin: var(--space-1) 0;
+			}
+		</style>
+	</head>
+	<body style="margin: 0; background: oklch(0.91 0.012 150)">
+		<div class="variant-label">Variant 2 — Top Bar with Mega-Menu</div>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     LIGHT MODE
+		     ═══════════════════════════════════════════════════════════ -->
+		<div class="page theme-light">
+			<div class="mode-label">Světlý režim</div>
+
+			<header class="topbar">
+				<!-- Logo -->
+				<a class="logo" href="#">
+					<div class="logo-dot"></div>
+					darecky<span class="logo-tld">.cz</span>
+				</a>
+
+				<!-- Nav with mega-menu triggers -->
+				<nav class="nav-links">
+					<!-- Moje seznamy — open state (mega-menu shown) -->
+					<div class="nav-item">
+						<button class="nav-trigger is-active is-open">
+							Moje seznamy
+							<svg
+								class="chevron"
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+						<!-- Mega-menu panel -->
+						<div class="mega-menu">
+							<div class="mega-header">
+								<span class="mega-title">Moje seznamy</span>
+								<a class="mega-link" href="#">Zobrazit vše →</a>
+							</div>
+							<div class="mega-section-label">Nedávné</div>
+							<div class="mega-item">
+								<div
+									class="mega-item-thumb"
+									style="
+										background: linear-gradient(
+											135deg,
+											oklch(0.28 0.06 25),
+											oklch(0.38 0.08 15)
+										);
+									"
+								>
+									🎄
+								</div>
+								<div class="mega-item-info">
+									<div class="mega-item-name">Vánoce 2026</div>
+									<div class="mega-item-meta">8 přání · upraveno dnes</div>
+								</div>
+								<span class="mega-item-badge badge-shared">Sdíleno</span>
+							</div>
+							<div class="mega-item">
+								<div
+									class="mega-item-thumb"
+									style="
+										background: linear-gradient(
+											135deg,
+											oklch(0.72 0.12 55),
+											oklch(0.62 0.14 45)
+										);
+									"
+								>
+									🎂
+								</div>
+								<div class="mega-item-info">
+									<div class="mega-item-name">Narozeniny - Petr</div>
+									<div class="mega-item-meta">5 přání · upraveno včera</div>
+								</div>
+								<span class="mega-item-badge badge-draft">Koncept</span>
+							</div>
+							<div class="mega-item">
+								<div
+									class="mega-item-thumb"
+									style="
+										background: linear-gradient(
+											135deg,
+											oklch(0.85 0.06 320),
+											oklch(0.78 0.08 340)
+										);
+									"
+								>
+									💍
+								</div>
+								<div class="mega-item-info">
+									<div class="mega-item-name">Svatba Jana &amp; Tomáš</div>
+									<div class="mega-item-meta">12 přání · upraveno 3. 5.</div>
+								</div>
+								<span class="mega-item-badge badge-shared">Sdíleno</span>
+							</div>
+							<div class="mega-footer">
+								<button class="mega-action is-primary">
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										stroke-linecap="round"
+									>
+										<line x1="12" y1="5" x2="12" y2="19" />
+										<line x1="5" y1="12" x2="19" y2="12" />
+									</svg>
+									Nový seznam
+								</button>
+								<button class="mega-action">Archivované</button>
+							</div>
+						</div>
+					</div>
+
+					<div class="nav-item">
+						<button class="nav-trigger">
+							Spravované
+							<svg
+								class="chevron"
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+
+					<div class="nav-item">
+						<button class="nav-trigger">
+							Sledované
+							<svg
+								class="chevron"
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+				</nav>
+
+				<!-- Right controls -->
+				<div class="nav-right">
+					<button class="btn-create">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Vytvořit
+					</button>
+
+					<div class="mode-pair">
+						<button class="mode-pair-btn is-active" title="Světlý">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<circle cx="12" cy="12" r="5" />
+								<line x1="12" y1="1" x2="12" y2="3" />
+								<line x1="12" y1="21" x2="12" y2="23" />
+								<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+								<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+								<line x1="1" y1="12" x2="3" y2="12" />
+								<line x1="21" y1="12" x2="23" y2="12" />
+							</svg>
+						</button>
+						<button class="mode-pair-btn" title="Tmavý">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+							</svg>
+						</button>
+						<button class="mode-pair-btn" title="Systém">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<rect x="2" y="3" width="20" height="14" rx="2" />
+								<polyline points="8 21 12 17 16 21" />
+							</svg>
+						</button>
+					</div>
+
+					<button class="icon-btn" aria-label="Oznámení">
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+							<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+						</svg>
+						<span class="notif-badge">3</span>
+					</button>
+
+					<div class="user-menu-wrap">
+						<div class="avatar">JN</div>
+					</div>
+				</div>
+			</header>
+
+			<!-- Dashboard content -->
+			<main class="content-wrap">
+				<div class="page-header">
+					<div class="page-eyebrow">Dashboard</div>
+					<h1 class="page-title">Moje seznamy</h1>
+					<p class="page-subtitle">Přání, která jsi vytvořila pro sebe</p>
+				</div>
+				<div class="sort-bar">
+					<div class="sort-tabs">
+						<button class="sort-tab is-active">Naposledy upraveno</button>
+						<button class="sort-tab">Naposledy navštíveno</button>
+						<button class="sort-tab">Název</button>
+					</div>
+					<span class="count-chip">3 seznamy</span>
+				</div>
+				<div class="wishlists-grid">
+					<div class="wl-card">
+						<div
+							class="wl-card-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.28 0.06 25),
+									oklch(0.38 0.08 15)
+								);
+							"
+						>
+							🎄
+						</div>
+						<div class="wl-card-body">
+							<div class="wl-card-name">Vánoce 2026</div>
+							<div class="wl-card-meta">
+								<span class="wl-stat"><b>8</b> přání</span>
+								<span class="badge badge-shared">Sdíleno</span>
+							</div>
+						</div>
+					</div>
+					<div class="wl-card">
+						<div
+							class="wl-card-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.72 0.12 55),
+									oklch(0.62 0.14 45)
+								);
+							"
+						>
+							🎂
+						</div>
+						<div class="wl-card-body">
+							<div class="wl-card-name">Narozeniny - Petr</div>
+							<div class="wl-card-meta">
+								<span class="wl-stat"><b>5</b> přání</span>
+								<span class="badge badge-draft">Koncept</span>
+							</div>
+						</div>
+					</div>
+					<div class="wl-card">
+						<div
+							class="wl-card-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.85 0.06 320),
+									oklch(0.78 0.08 340)
+								);
+							"
+						>
+							💍
+						</div>
+						<div class="wl-card-body">
+							<div class="wl-card-name">Svatba Jana &amp; Tomáš</div>
+							<div class="wl-card-meta">
+								<span class="wl-stat"><b>12</b> přání</span>
+								<span class="badge badge-shared">Sdíleno</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</main>
+		</div>
+
+		<!-- ═══════════════════════════════════════════════════════════
+		     DARK MODE
+		     ═══════════════════════════════════════════════════════════ -->
+		<div class="page theme-dark">
+			<div class="mode-label">Tmavý režim</div>
+
+			<header class="topbar">
+				<a class="logo" href="#">
+					<div class="logo-dot"></div>
+					darecky<span class="logo-tld">.cz</span>
+				</a>
+
+				<nav class="nav-links">
+					<div class="nav-item">
+						<button class="nav-trigger is-active">
+							Moje seznamy
+							<svg
+								class="chevron"
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+					<div class="nav-item">
+						<button class="nav-trigger">
+							Spravované
+							<svg
+								class="chevron"
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+					<div class="nav-item">
+						<button class="nav-trigger">
+							Sledované
+							<svg
+								class="chevron"
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+				</nav>
+
+				<div class="nav-right">
+					<button class="btn-create">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Vytvořit
+					</button>
+					<div class="mode-pair">
+						<button class="mode-pair-btn" title="Světlý">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<circle cx="12" cy="12" r="5" />
+								<line x1="12" y1="1" x2="12" y2="3" />
+								<line x1="12" y1="21" x2="12" y2="23" />
+							</svg>
+						</button>
+						<button class="mode-pair-btn is-active" title="Tmavý">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+							</svg>
+						</button>
+						<button class="mode-pair-btn" title="Systém">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<rect x="2" y="3" width="20" height="14" rx="2" />
+								<polyline points="8 21 12 17 16 21" />
+							</svg>
+						</button>
+					</div>
+					<button class="icon-btn" aria-label="Oznámení">
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+							<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+						</svg>
+						<span class="notif-badge">3</span>
+					</button>
+					<div class="user-menu-wrap">
+						<div class="avatar">JN</div>
+						<div class="user-dropdown">
+							<div class="dropdown-header">
+								<div class="dropdown-name">Jana Nováková</div>
+								<div class="dropdown-email">jana@example.cz</div>
+							</div>
+							<div class="dropdown-item">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+								>
+									<circle cx="12" cy="8" r="4" />
+									<path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+								</svg>
+								Profil
+							</div>
+							<div class="dropdown-item">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+								>
+									<circle cx="12" cy="12" r="3" />
+									<path
+										d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+									/>
+								</svg>
+								Nastavení
+							</div>
+							<div class="dropdown-divider"></div>
+							<div class="dropdown-item is-danger">
+								<svg
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+								>
+									<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+									<polyline points="16 17 21 12 16 7" />
+									<line x1="21" y1="12" x2="9" y2="12" />
+								</svg>
+								Odhlásit se
+							</div>
+						</div>
+					</div>
+				</div>
+			</header>
+
+			<main class="content-wrap">
+				<div class="page-header">
+					<div class="page-eyebrow">Dashboard</div>
+					<h1 class="page-title">Moje seznamy</h1>
+					<p class="page-subtitle">Přání, která jsi vytvořila pro sebe</p>
+				</div>
+				<div class="sort-bar">
+					<div class="sort-tabs">
+						<button class="sort-tab is-active">Naposledy upraveno</button>
+						<button class="sort-tab">Naposledy navštíveno</button>
+					</div>
+					<span class="count-chip">3 seznamy</span>
+				</div>
+				<div class="wishlists-grid">
+					<div class="wl-card">
+						<div
+							class="wl-card-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.22 0.05 25),
+									oklch(0.3 0.06 15)
+								);
+							"
+						>
+							🎄
+						</div>
+						<div class="wl-card-body">
+							<div class="wl-card-name">Vánoce 2026</div>
+							<div class="wl-card-meta">
+								<span class="wl-stat"><b>8</b> přání</span>
+								<span class="badge badge-shared">Sdíleno</span>
+							</div>
+						</div>
+					</div>
+					<div class="wl-card">
+						<div
+							class="wl-card-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.42 0.1 55),
+									oklch(0.35 0.12 45)
+								);
+							"
+						>
+							🎂
+						</div>
+						<div class="wl-card-body">
+							<div class="wl-card-name">Narozeniny - Petr</div>
+							<div class="wl-card-meta">
+								<span class="wl-stat"><b>5</b> přání</span>
+								<span class="badge badge-draft">Koncept</span>
+							</div>
+						</div>
+					</div>
+					<div class="wl-card">
+						<div
+							class="wl-card-thumb"
+							style="
+								background: linear-gradient(
+									135deg,
+									oklch(0.38 0.05 320),
+									oklch(0.3 0.06 340)
+								);
+							"
+						>
+							💍
+						</div>
+						<div class="wl-card-body">
+							<div class="wl-card-name">Svatba Jana &amp; Tomáš</div>
+							<div class="wl-card-meta">
+								<span class="wl-stat"><b>12</b> přání</span>
+								<span class="badge badge-shared">Sdíleno</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</main>
+		</div>
+	</body>
+</html>

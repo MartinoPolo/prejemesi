@@ -1,0 +1,1536 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Detail Modal: REFINED (Variant 1 + visitor states)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Light mode color theme (sage green) ─────────────────── */
+			:root {
+				--background: oklch(0.988 0.004 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.948 0.012 150);
+				--foreground: oklch(0.17 0.018 155);
+				--foreground-muted: oklch(0.44 0.022 150);
+				--foreground-subtle: oklch(0.6 0.014 150);
+				--border: oklch(0.918 0.012 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.2% 0.018 155.826deg);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--nav-bg: oklch(1 0 0 / 0.92);
+				--status-success: oklch(0.66 0.13 145);
+				--status-danger: oklch(0.62 0.2 25);
+				--color-liked: oklch(0.64 0.18 15);
+				--color-reserved: oklch(0.62 0.13 145);
+			}
+
+			/* ── Reset ──────────────────────────────────────────────── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: 'Figtree', system-ui, sans-serif;
+				background: var(--background);
+				color: var(--foreground);
+				-webkit-font-smoothing: antialiased;
+				min-width: 1280px;
+			}
+
+			/* ── Eyebrow ────────────────────────────────────────────── */
+			.refined-eyebrow {
+				text-align: center;
+				padding: 10px 24px 8px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+				background: var(--primary-soft);
+				border-bottom: 1px solid oklch(0.87 0.038 150);
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   APP SHELL NAV (from refined app-shell)
+			   ════════════════════════════════════════════════════════ */
+			.topbar {
+				position: sticky;
+				top: 0;
+				z-index: var(--z-sticky, 30);
+				height: 56px;
+				background: var(--nav-bg);
+				backdrop-filter: blur(12px);
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				padding: 0 24px;
+				gap: 24px;
+				flex-shrink: 0;
+			}
+
+			.logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+				text-decoration: none;
+				flex-shrink: 0;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.logo-icon-wrap {
+				width: 30px;
+				height: 30px;
+				background: var(--primary-soft);
+				border-radius: 8px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--primary);
+				flex-shrink: 0;
+			}
+			.logo-text {
+				display: flex;
+				align-items: baseline;
+				gap: 3px;
+			}
+			.logo-tld {
+				opacity: 0.42;
+				font-weight: 500;
+				font-size: 17px;
+			}
+
+			.nav-links {
+				display: flex;
+				align-items: center;
+				gap: 2px;
+				flex: 1;
+			}
+			.nav-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 36px;
+				padding: 0 12px;
+				border-radius: 8px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				text-decoration: none;
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				font-family: 'Figtree', system-ui, sans-serif;
+				white-space: nowrap;
+			}
+			.nav-link.is-active {
+				color: var(--primary);
+				font-weight: 600;
+			}
+
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex-shrink: 0;
+			}
+			.btn-create {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				height: 34px;
+				padding: 0 16px;
+				background: var(--primary);
+				color: var(--primary-fg);
+				border: none;
+				border-radius: 8px;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				white-space: nowrap;
+				text-decoration: none;
+			}
+			.icon-btn {
+				position: relative;
+				width: 36px;
+				height: 36px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: transparent;
+				border: none;
+				border-radius: 8px;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.notif-badge {
+				position: absolute;
+				top: 4px;
+				right: 4px;
+				min-width: 16px;
+				height: 16px;
+				padding: 0 3px;
+				background: var(--status-danger);
+				color: #fff;
+				border-radius: 9999px;
+				font-size: 10px;
+				font-weight: 700;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				line-height: 1;
+				border: 2px solid var(--background);
+				pointer-events: none;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 600;
+				font-size: 13px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				border: 2px solid transparent;
+				font-family: 'Figtree', system-ui, sans-serif;
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   WISHLIST PAGE BACKGROUND (dimmed behind modal)
+			   ════════════════════════════════════════════════════════ */
+			.page-content {
+				padding: 32px 48px 48px;
+				overflow: hidden;
+			}
+
+			/* Wishlist header */
+			.wishlist-header {
+				margin-bottom: 24px;
+			}
+			.wishlist-owner-label {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: 4px;
+			}
+			.wishlist-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 26px;
+				font-weight: 700;
+				color: var(--foreground);
+				letter-spacing: -0.02em;
+			}
+
+			/* Toolbar row */
+			.wishlist-toolbar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 20px;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--border);
+			}
+			.wishlist-count {
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+			.toolbar-actions {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.toolbar-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				height: 30px;
+				padding: 0 10px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 12px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+
+			/* Gift card grid */
+			.gift-grid {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 14px;
+			}
+			.gift-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				overflow: hidden;
+				cursor: pointer;
+			}
+			.gift-card-img {
+				height: 120px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				position: relative;
+			}
+			.gift-card-body {
+				padding: 10px 12px 12px;
+			}
+			.gift-card-name {
+				font-size: 13px;
+				font-weight: 600;
+				color: var(--foreground);
+				margin-bottom: 4px;
+				line-height: 1.3;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.gift-card-price {
+				font-size: 13px;
+				font-weight: 700;
+				color: var(--primary);
+				margin-bottom: 8px;
+			}
+			.gift-card-meta {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.gift-card-link {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   MODAL SECTION HEADERS (state separators)
+			   ════════════════════════════════════════════════════════ */
+			.section-separator {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				padding: 32px 48px 16px;
+			}
+			.section-separator-line {
+				flex: 1;
+				height: 1px;
+				background: var(--border);
+			}
+			.section-separator-label {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				white-space: nowrap;
+			}
+
+			/* ════════════════════════════════════════════════════════
+			   MODAL WRAPPER (each state shown vertically)
+			   ════════════════════════════════════════════════════════ */
+			.modal-scene {
+				padding: 0 48px 48px;
+			}
+
+			/* ── Modal backdrop ───────────────────────────────────── */
+			.modal-backdrop {
+				background: oklch(0 0 0 / 0.5);
+				backdrop-filter: blur(8px);
+				border-radius: 16px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 32px;
+				position: relative;
+			}
+
+			/* ── Modal shell ──────────────────────────────────────── */
+			.modal {
+				background: var(--surface);
+				border-radius: 20px;
+				box-shadow:
+					0 24px 56px oklch(0 0 0 / 0.32),
+					0 8px 16px oklch(0 0 0 / 0.14);
+				width: 100%;
+				max-width: 900px;
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				position: relative;
+			}
+
+			/* ── Two-column body ──────────────────────────────────── */
+			.modal-body {
+				display: grid;
+				grid-template-columns: 45% 55%;
+				min-height: 520px;
+			}
+
+			/* ── Left column: image ───────────────────────────────── */
+			.modal-image-col {
+				position: relative;
+				background: var(--surface-2);
+				overflow: hidden;
+				border-right: 1px solid var(--border);
+			}
+			.modal-image-placeholder {
+				width: 100%;
+				height: 100%;
+				min-height: 520px;
+				background: linear-gradient(
+					145deg,
+					oklch(0.94 0.018 150) 0%,
+					oklch(0.87 0.032 150) 100%
+				);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 14px;
+				color: oklch(0.52 0.07 150);
+			}
+			.modal-image-placeholder-text {
+				font-size: 12px;
+				font-weight: 600;
+				letter-spacing: 0.04em;
+				opacity: 0.7;
+			}
+
+			/* Priority badge overlay */
+			.priority-badge-overlay {
+				position: absolute;
+				top: 14px;
+				left: 14px;
+			}
+			.priority-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 26px;
+				padding: 0 10px;
+				border-radius: 9999px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.03em;
+				background: oklch(0.62 0.2 25 / 0.12);
+				color: oklch(0.52 0.2 25);
+				border: 1px solid oklch(0.62 0.2 25 / 0.28);
+			}
+
+			/* ── Right column: details ────────────────────────────── */
+			.modal-detail-col {
+				display: flex;
+				flex-direction: column;
+				padding: 28px 28px 24px;
+				gap: 0;
+				overflow-y: auto;
+			}
+
+			/* Close button */
+			.modal-close {
+				position: absolute;
+				top: 14px;
+				right: 14px;
+				width: 36px;
+				height: 36px;
+				border-radius: 50%;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				z-index: 10;
+				transition: all 150ms ease;
+				flex-shrink: 0;
+			}
+			.modal-close:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+
+			/* Gift name */
+			.gift-name {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 20px;
+				font-weight: 700;
+				color: var(--foreground);
+				letter-spacing: -0.02em;
+				line-height: 1.2;
+				margin-bottom: 10px;
+				padding-right: 28px;
+			}
+
+			/* Price row */
+			.gift-price-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+				margin-bottom: 12px;
+			}
+			.gift-price {
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--primary);
+				letter-spacing: -0.01em;
+			}
+			.gift-priority-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 24px;
+				padding: 0 10px;
+				border-radius: 9999px;
+				font-size: 11px;
+				font-weight: 600;
+				background: oklch(0.62 0.2 25 / 0.1);
+				color: oklch(0.52 0.2 25);
+				border: 1px solid oklch(0.62 0.2 25 / 0.25);
+			}
+
+			/* Description */
+			.gift-description {
+				font-size: 14px;
+				line-height: 1.65;
+				color: var(--foreground-muted);
+				margin-bottom: 14px;
+			}
+
+			/* External link */
+			.gift-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 13px;
+				font-weight: 600;
+				color: var(--primary);
+				text-decoration: none;
+				margin-bottom: 16px;
+				transition: opacity 150ms ease;
+			}
+			.gift-link:hover {
+				opacity: 0.75;
+				text-decoration: underline;
+			}
+
+			/* Quantity info (visitor only) */
+			.gift-availability {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 6px 12px;
+				margin-bottom: 14px;
+				align-self: flex-start;
+			}
+			.gift-availability .avail-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				background: var(--status-success);
+				flex-shrink: 0;
+			}
+
+			/* Divider */
+			.modal-divider {
+				height: 1px;
+				background: var(--border);
+				margin: 0 0 14px;
+			}
+
+			/* Footer meta row: like + date */
+			.gift-footer-meta {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 16px;
+			}
+			.gift-date {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+			}
+
+			/* Like button */
+			.like-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 6px 12px;
+				border-radius: 9999px;
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				cursor: pointer;
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				transition: all 150ms ease;
+			}
+			.like-btn:hover {
+				border-color: oklch(0.64 0.18 15);
+				color: oklch(0.64 0.18 15);
+				background: oklch(0.64 0.18 15 / 0.08);
+			}
+			.like-btn.is-liked {
+				border-color: oklch(0.64 0.18 15 / 0.5);
+				color: oklch(0.64 0.18 15);
+				background: oklch(0.64 0.18 15 / 0.1);
+			}
+
+			/* Reserve button (full-width of right column) */
+			.btn-reserve {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				width: 100%;
+				height: 48px;
+				border-radius: 12px;
+				border: none;
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 15px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: filter 150ms ease;
+				margin-top: auto;
+			}
+			.btn-reserve:hover {
+				filter: brightness(1.08);
+			}
+			.btn-reserve:active {
+				transform: scale(0.98);
+			}
+
+			/* Cancel reservation button */
+			.btn-cancel-reserve {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				width: 100%;
+				height: 48px;
+				border-radius: 12px;
+				border: 1.5px solid var(--status-danger);
+				background: transparent;
+				color: var(--status-danger);
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 15px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: background 150ms ease;
+				margin-top: auto;
+			}
+			.btn-cancel-reserve:hover {
+				background: oklch(0.62 0.2 25 / 0.06);
+			}
+
+			/* ── State banners ────────────────────────────────────── */
+			.reserved-by-me-banner {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				padding: 12px 16px;
+				background: color-mix(in oklch, var(--status-success) 12%, transparent);
+				border: 1px solid color-mix(in oklch, var(--status-success) 30%, transparent);
+				border-radius: 10px;
+				margin-bottom: 14px;
+				font-size: 13px;
+				font-weight: 600;
+				color: oklch(0.38 0.12 145);
+			}
+			.reserved-by-me-banner svg {
+				flex-shrink: 0;
+				color: var(--status-success);
+			}
+
+			.fully-reserved-label {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				padding: 10px 14px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				margin-bottom: 16px;
+				font-size: 13px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				margin-top: auto;
+			}
+			.fully-reserved-label .reserved-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				background: var(--foreground-subtle);
+				flex-shrink: 0;
+			}
+
+			/* Fully reserved — availability indicator override */
+			.gift-availability.is-full {
+				color: var(--foreground-subtle);
+			}
+			.gift-availability.is-full .avail-dot {
+				background: var(--foreground-subtle);
+			}
+
+			/* ── Background scene overlay (dimmed page) ──────────── */
+			.bg-scene {
+				position: relative;
+			}
+			.bg-scene-overlay {
+				position: absolute;
+				inset: 0;
+				background: oklch(0 0 0 / 0.38);
+				backdrop-filter: blur(6px);
+				pointer-events: none;
+				z-index: 5;
+				border-radius: 0 0 12px 12px;
+			}
+
+			/* ── Stacked states layout ────────────────────────────── */
+			.states-stack {
+				display: flex;
+				flex-direction: column;
+				gap: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- Eyebrow -->
+		<div class="refined-eyebrow">
+			REFINED — Gift Detail Modal: Variant 1 (center 2-column) + visitor states
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     APP SHELL NAV (approved, from refined app-shell)
+		     ════════════════════════════════════════════════════════ -->
+		<header class="topbar">
+			<a class="logo" href="/" aria-label="Darecky — domovská stránka">
+				<div class="logo-icon-wrap" aria-hidden="true">
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<polyline points="20 12 20 22 4 22 4 12" />
+						<rect x="2" y="7" width="20" height="5" />
+						<line x1="12" y1="22" x2="12" y2="7" />
+						<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+						<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+					</svg>
+				</div>
+				<div class="logo-text">darecky<span class="logo-tld">.cz</span></div>
+			</a>
+
+			<nav class="nav-links" aria-label="Hlavní navigace">
+				<a class="nav-link" href="/dashboard">Moje seznamy</a>
+				<a class="nav-link" href="/spravovane">Spravované</a>
+				<a class="nav-link is-active" href="/sledovane" aria-current="page">Sledované</a>
+			</nav>
+
+			<div class="nav-right">
+				<a class="btn-create" href="/vytvorit" role="button">
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						aria-hidden="true"
+					>
+						<line x1="12" y1="5" x2="12" y2="19" />
+						<line x1="5" y1="12" x2="19" y2="12" />
+					</svg>
+					Vytvořit
+				</a>
+				<button class="icon-btn" aria-label="Oznámení (3 nepřečtené)">
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+						<path d="M13.73 21a2 2 0 0 1-3.46 0" />
+					</svg>
+					<span class="notif-badge" aria-hidden="true">3</span>
+				</button>
+				<button class="icon-btn" aria-label="Přepnout režim zobrazení" title="Světlý režim">
+					<svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<circle cx="12" cy="12" r="5" />
+						<line x1="12" y1="1" x2="12" y2="3" />
+						<line x1="12" y1="21" x2="12" y2="23" />
+						<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+						<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+						<line x1="1" y1="12" x2="3" y2="12" />
+						<line x1="21" y1="12" x2="23" y2="12" />
+						<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+						<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+					</svg>
+				</button>
+				<button class="avatar" aria-label="Jana Nováková — menu uživatele">JN</button>
+			</div>
+		</header>
+
+		<!-- ════════════════════════════════════════════════════════
+		     WISHLIST PAGE BACKGROUND (dimmed, blurred behind modal)
+		     ════════════════════════════════════════════════════════ -->
+		<div class="bg-scene">
+			<div class="page-content">
+				<div class="wishlist-header">
+					<div class="wishlist-owner-label">Jana Nováková</div>
+					<div class="wishlist-title">Narozeniny 2026 🎂</div>
+				</div>
+
+				<div class="wishlist-toolbar">
+					<span class="wishlist-count">8 přání</span>
+					<div class="toolbar-actions">
+						<button class="toolbar-btn">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<line x1="3" y1="6" x2="21" y2="6" />
+								<line x1="6" y1="12" x2="18" y2="12" />
+								<line x1="9" y1="18" x2="15" y2="18" />
+							</svg>
+							Řazení
+						</button>
+						<button class="toolbar-btn">
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+							>
+								<rect x="3" y="3" width="7" height="7" />
+								<rect x="14" y="3" width="7" height="7" />
+								<rect x="3" y="14" width="7" height="7" />
+								<rect x="14" y="14" width="7" height="7" />
+							</svg>
+						</button>
+					</div>
+				</div>
+
+				<!-- Gift card grid (blurred behind modal) -->
+				<div class="gift-grid">
+					<!-- Active card (the one being opened) -->
+					<div
+						class="gift-card"
+						style="outline: 2px solid var(--primary); outline-offset: 2px"
+					>
+						<div
+							class="gift-card-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.88 0.06 150),
+									oklch(0.78 0.1 150)
+								);
+							"
+						>
+							<svg
+								width="40"
+								height="40"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="oklch(0.52 0.10 150)"
+								stroke-width="1.5"
+								aria-hidden="true"
+							>
+								<path d="M9 10V6a3 3 0 0 1 6 0v4" />
+								<rect x="2" y="10" width="20" height="12" rx="2" />
+								<line x1="12" y1="15" x2="12" y2="17" />
+							</svg>
+							<div style="position: absolute; top: 8px; left: 8px">
+								<span
+									class="priority-badge"
+									style="font-size: 10px; height: 22px; padding: 0 8px"
+								>
+									<svg width="7" height="7" viewBox="0 0 9 9" fill="currentColor">
+										<path d="M4.5 1 L7 7 H2 Z" />
+									</svg>
+									Vysoká
+								</span>
+							</div>
+						</div>
+						<div class="gift-card-body">
+							<div class="gift-card-name">Sluchátka Sony WH-1000XM5</div>
+							<div class="gift-card-price">8 490 Kč</div>
+							<div class="gift-card-meta">
+								<span class="gift-card-link">↗ alza.cz</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="gift-card" style="opacity: 0.55">
+						<div
+							class="gift-card-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.92 0.008 150),
+									oklch(0.85 0.012 150)
+								);
+							"
+						></div>
+						<div class="gift-card-body">
+							<div class="gift-card-name">Parfém Chanel N°5</div>
+							<div class="gift-card-price">3 200 Kč</div>
+							<div class="gift-card-meta">
+								<span class="gift-card-link">↗ sephora.cz</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="gift-card" style="opacity: 0.55">
+						<div
+							class="gift-card-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.92 0.008 150),
+									oklch(0.85 0.012 150)
+								);
+							"
+						></div>
+						<div class="gift-card-body">
+							<div class="gift-card-name">Kniha Sapiens</div>
+							<div class="gift-card-price">350 Kč</div>
+							<div class="gift-card-meta">
+								<span class="gift-card-link">↗ bookport.cz</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="gift-card" style="opacity: 0.55">
+						<div
+							class="gift-card-img"
+							style="
+								background: linear-gradient(
+									145deg,
+									oklch(0.92 0.008 150),
+									oklch(0.85 0.012 150)
+								);
+							"
+						></div>
+						<div class="gift-card-body">
+							<div class="gift-card-name">Svíčka Diptyque</div>
+							<div class="gift-card-price">1 490 Kč</div>
+							<div class="gift-card-meta">
+								<span class="gift-card-link">↗ elnino.cz</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- The overlay dim/blur layer applied to background page -->
+			<div class="bg-scene-overlay" aria-hidden="true"></div>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     STATE 1: VISITOR — DEFAULT (gift available)
+		     ════════════════════════════════════════════════════════ -->
+		<div class="section-separator">
+			<div class="section-separator-line"></div>
+			<span class="section-separator-label">Stav 1 — Návštěvník: dar dostupný</span>
+			<div class="section-separator-line"></div>
+		</div>
+
+		<div class="modal-scene">
+			<div class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Detail daru">
+				<div class="modal">
+					<!-- Close button -->
+					<button class="modal-close" aria-label="Zavřít">
+						<svg
+							width="16"
+							height="16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.2"
+							viewBox="0 0 24 24"
+						>
+							<path d="M18 6 6 18M6 6l12 12" />
+						</svg>
+					</button>
+
+					<div class="modal-body">
+						<!-- Left: image -->
+						<div class="modal-image-col">
+							<div class="modal-image-placeholder" aria-label="Obrázek daru">
+								<svg
+									width="72"
+									height="72"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.2"
+									stroke-linecap="round"
+									opacity="0.5"
+									aria-hidden="true"
+								>
+									<path d="M9 10V6a3 3 0 0 1 6 0v4" />
+									<rect x="2" y="10" width="20" height="12" rx="2" />
+									<line x1="12" y1="15" x2="12" y2="17" />
+									<line x1="2" y1="10" x2="22" y2="10" />
+									<path d="M12 10C12 10 9 7 6 9" />
+									<path d="M12 10C12 10 15 7 18 9" />
+								</svg>
+								<span class="modal-image-placeholder-text"
+									>Bezdrátová sluchátka</span
+								>
+							</div>
+							<!-- Priority badge overlay -->
+							<div class="priority-badge-overlay">
+								<span class="priority-badge">
+									<svg
+										width="8"
+										height="8"
+										viewBox="0 0 9 9"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M4.5 1 L7 7 H2 Z" />
+									</svg>
+									Vysoká priorita
+								</span>
+							</div>
+						</div>
+
+						<!-- Right: details -->
+						<div class="modal-detail-col">
+							<h2 class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</h2>
+
+							<div class="gift-price-row">
+								<span class="gift-price">8 490 Kč</span>
+								<span class="gift-priority-badge">
+									<svg
+										width="8"
+										height="8"
+										viewBox="0 0 9 9"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M4.5 1 L7 7 H2 Z" />
+									</svg>
+									Vysoká
+								</span>
+							</div>
+
+							<p class="gift-description">
+								Model WH-1000XM5, barva černá. Preferuji verzi s aktivním potlačením
+								hluku (ANC). K dostání na Alza.cz nebo Mall.cz. Pokud budou v akci
+								jinde, klidně odkudkoli.
+							</p>
+
+							<a href="#" class="gift-link" target="_blank" rel="noopener noreferrer">
+								<svg
+									width="13"
+									height="13"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								Koupit na alza.cz ↗
+							</a>
+
+							<!-- Quantity info (visitor only, NOT shown to owner) -->
+							<div class="gift-availability" aria-label="Dostupnost">
+								<span class="avail-dot" aria-hidden="true"></span>
+								Dostupné: 1 z 1
+							</div>
+
+							<div class="modal-divider"></div>
+
+							<div class="gift-footer-meta">
+								<span class="gift-date">Přidáno 15. 5. 2026</span>
+								<button
+									class="like-btn is-liked"
+									aria-label="Líbí se vám (3 líbí se)"
+									aria-pressed="true"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/>
+									</svg>
+									3 líbí se
+								</button>
+							</div>
+
+							<div class="modal-divider"></div>
+
+							<!-- Reserve button: full width of right column -->
+							<button class="btn-reserve" aria-label="Rezervovat tento dar">
+								<svg
+									width="17"
+									height="17"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path d="M20 12V22H4V12" />
+									<path d="M22 7H2v5h20V7z" />
+									<path d="M12 22V7" />
+									<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+									<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+								</svg>
+								Rezervovat
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     STATE 2: VISITOR — RESERVED BY ME
+		     ════════════════════════════════════════════════════════ -->
+		<div class="section-separator">
+			<div class="section-separator-line"></div>
+			<span class="section-separator-label">Stav 2 — Návštěvník: rezervováno vámi</span>
+			<div class="section-separator-line"></div>
+		</div>
+
+		<div class="modal-scene">
+			<div
+				class="modal-backdrop"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Detail daru — rezervováno vámi"
+			>
+				<div class="modal">
+					<button class="modal-close" aria-label="Zavřít">
+						<svg
+							width="16"
+							height="16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.2"
+							viewBox="0 0 24 24"
+						>
+							<path d="M18 6 6 18M6 6l12 12" />
+						</svg>
+					</button>
+
+					<div class="modal-body">
+						<!-- Left: image -->
+						<div class="modal-image-col">
+							<div class="modal-image-placeholder" aria-label="Obrázek daru">
+								<svg
+									width="72"
+									height="72"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.2"
+									stroke-linecap="round"
+									opacity="0.5"
+									aria-hidden="true"
+								>
+									<path d="M9 10V6a3 3 0 0 1 6 0v4" />
+									<rect x="2" y="10" width="20" height="12" rx="2" />
+									<line x1="12" y1="15" x2="12" y2="17" />
+									<line x1="2" y1="10" x2="22" y2="10" />
+									<path d="M12 10C12 10 9 7 6 9" />
+									<path d="M12 10C12 10 15 7 18 9" />
+								</svg>
+								<span class="modal-image-placeholder-text"
+									>Bezdrátová sluchátka</span
+								>
+							</div>
+							<div class="priority-badge-overlay">
+								<span class="priority-badge">
+									<svg
+										width="8"
+										height="8"
+										viewBox="0 0 9 9"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M4.5 1 L7 7 H2 Z" />
+									</svg>
+									Vysoká priorita
+								</span>
+							</div>
+						</div>
+
+						<!-- Right: details -->
+						<div class="modal-detail-col">
+							<h2 class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</h2>
+
+							<div class="gift-price-row">
+								<span class="gift-price">8 490 Kč</span>
+								<span class="gift-priority-badge">
+									<svg
+										width="8"
+										height="8"
+										viewBox="0 0 9 9"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M4.5 1 L7 7 H2 Z" />
+									</svg>
+									Vysoká
+								</span>
+							</div>
+
+							<p class="gift-description">
+								Model WH-1000XM5, barva černá. Preferuji verzi s aktivním potlačením
+								hluku (ANC). K dostání na Alza.cz nebo Mall.cz. Pokud budou v akci
+								jinde, klidně odkudkoli.
+							</p>
+
+							<a href="#" class="gift-link" target="_blank" rel="noopener noreferrer">
+								<svg
+									width="13"
+									height="13"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								Koupit na alza.cz ↗
+							</a>
+
+							<!-- "Reserved by me" green banner -->
+							<div class="reserved-by-me-banner" role="status" aria-live="polite">
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									stroke-linecap="round"
+									aria-hidden="true"
+								>
+									<polyline points="20 6 9 17 4 12" />
+								</svg>
+								Rezervováno vámi
+							</div>
+
+							<!-- Quantity info (visitor only) -->
+							<div class="gift-availability" aria-label="Dostupnost">
+								<span
+									class="avail-dot"
+									style="background: var(--status-success)"
+									aria-hidden="true"
+								></span>
+								Dostupné: 0 z 1
+							</div>
+
+							<div class="modal-divider"></div>
+
+							<div class="gift-footer-meta">
+								<span class="gift-date">Přidáno 15. 5. 2026</span>
+								<button
+									class="like-btn is-liked"
+									aria-label="Líbí se vám (3 líbí se)"
+									aria-pressed="true"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/>
+									</svg>
+									3 líbí se
+								</button>
+							</div>
+
+							<div class="modal-divider"></div>
+
+							<!-- Cancel reservation: destructive outline button -->
+							<button class="btn-cancel-reserve" aria-label="Zrušit moji rezervaci">
+								<svg
+									width="16"
+									height="16"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path d="M3 6h18" />
+									<path d="M8 6V4h8v2" />
+									<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+								</svg>
+								Zrušit rezervaci
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════════════════════════════════════════════════
+		     STATE 3: VISITOR — FULLY RESERVED BY SOMEONE ELSE
+		     ════════════════════════════════════════════════════════ -->
+		<div class="section-separator">
+			<div class="section-separator-line"></div>
+			<span class="section-separator-label"
+				>Stav 3 — Návštěvník: plně rezervováno (někým jiným)</span
+			>
+			<div class="section-separator-line"></div>
+		</div>
+
+		<div class="modal-scene" style="padding-bottom: 64px">
+			<div
+				class="modal-backdrop"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Detail daru — plně rezervováno"
+			>
+				<div class="modal">
+					<button class="modal-close" aria-label="Zavřít">
+						<svg
+							width="16"
+							height="16"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.2"
+							viewBox="0 0 24 24"
+						>
+							<path d="M18 6 6 18M6 6l12 12" />
+						</svg>
+					</button>
+
+					<div class="modal-body">
+						<!-- Left: image with reserved overlay tint -->
+						<div class="modal-image-col">
+							<div
+								class="modal-image-placeholder"
+								aria-label="Obrázek daru"
+								style="filter: grayscale(0.4) opacity(0.85)"
+							>
+								<svg
+									width="72"
+									height="72"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.2"
+									stroke-linecap="round"
+									opacity="0.5"
+									aria-hidden="true"
+								>
+									<path d="M9 10V6a3 3 0 0 1 6 0v4" />
+									<rect x="2" y="10" width="20" height="12" rx="2" />
+									<line x1="12" y1="15" x2="12" y2="17" />
+									<line x1="2" y1="10" x2="22" y2="10" />
+									<path d="M12 10C12 10 9 7 6 9" />
+									<path d="M12 10C12 10 15 7 18 9" />
+								</svg>
+								<span class="modal-image-placeholder-text"
+									>Bezdrátová sluchátka</span
+								>
+							</div>
+							<div class="priority-badge-overlay">
+								<span class="priority-badge">
+									<svg
+										width="8"
+										height="8"
+										viewBox="0 0 9 9"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M4.5 1 L7 7 H2 Z" />
+									</svg>
+									Vysoká priorita
+								</span>
+							</div>
+						</div>
+
+						<!-- Right: details -->
+						<div class="modal-detail-col">
+							<h2 class="gift-name" style="color: var(--foreground-muted)">
+								Bezdrátová sluchátka Sony WH-1000XM5
+							</h2>
+
+							<div class="gift-price-row">
+								<span class="gift-price" style="color: var(--foreground-muted)"
+									>8 490 Kč</span
+								>
+								<span class="gift-priority-badge">
+									<svg
+										width="8"
+										height="8"
+										viewBox="0 0 9 9"
+										fill="currentColor"
+										aria-hidden="true"
+									>
+										<path d="M4.5 1 L7 7 H2 Z" />
+									</svg>
+									Vysoká
+								</span>
+							</div>
+
+							<p class="gift-description">
+								Model WH-1000XM5, barva černá. Preferuji verzi s aktivním potlačením
+								hluku (ANC). K dostání na Alza.cz nebo Mall.cz. Pokud budou v akci
+								jinde, klidně odkudkoli.
+							</p>
+
+							<a href="#" class="gift-link" target="_blank" rel="noopener noreferrer">
+								<svg
+									width="13"
+									height="13"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+									aria-hidden="true"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								Koupit na alza.cz ↗
+							</a>
+
+							<!-- Fully reserved availability indicator -->
+							<div class="gift-availability is-full" aria-label="Dostupnost">
+								<span class="reserved-dot" aria-hidden="true"></span>
+								Dostupné: 0 z 1
+							</div>
+
+							<div class="modal-divider"></div>
+
+							<div class="gift-footer-meta">
+								<span class="gift-date">Přidáno 15. 5. 2026</span>
+								<button
+									class="like-btn"
+									aria-label="Líbí se vám (3 líbí se)"
+									aria-pressed="false"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<path
+											d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+										/>
+									</svg>
+									3 líbí se
+								</button>
+							</div>
+
+							<div class="modal-divider"></div>
+
+							<!-- "Plně rezervováno" label — NO reserve button -->
+							<div
+								class="fully-reserved-label"
+								role="status"
+								aria-label="Tento dar je plně rezervován"
+							>
+								<span class="reserved-dot" aria-hidden="true"></span>
+								Plně rezervováno
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
