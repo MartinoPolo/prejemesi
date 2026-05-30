@@ -7,7 +7,9 @@
 			name="description"
 			content="Darecky — Wishlist Page refined mockup, light mode only"
 		/>
-		<title>Darecky — Wishlist Page: REFINED (E-commerce grid + visitor/owner views)</title>
+		<title>
+			Darecky — Wishlist Page: REFINED (4 role views + gift card component reference)
+		</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -16,10 +18,10 @@
 		/>
 		<link rel="stylesheet" href="../tokens.css" />
 		<style>
-			/* ── REFINED — Wishlist Page: Variant 2 (E-commerce grid) + visitor/owner views ──
+			/* ── REFINED — Wishlist Page: 4 role views + gift card component reference ──
 			   Light mode only. Approved app-shell nav (exact copy).
-			   Two role sections: Visitor view (primary) + Owner view (secondary).
-			   3-way view toggle, sort/filter dropdown, full gift card anatomy.
+			   Sections: Component Reference · Visitor · Owner-Draft · Owner-Shared · Moderator
+			   Each role section has its own toolbar.
 			   ─────────────────────────────────────────────────────────────────────────── */
 
 			/* ── Sage green color theme (light) — matches app-shell refined ── */
@@ -241,7 +243,6 @@
 			.nav-dropdown-view-all:hover {
 				text-decoration: underline;
 			}
-
 			.nav-dropdown-item {
 				display: flex;
 				align-items: center;
@@ -426,7 +427,6 @@
 				padding: var(--space-8) 0 0;
 			}
 
-			/* Hero/banner gradient strip */
 			.wl-banner {
 				height: 120px;
 				border-radius: var(--radius-xl);
@@ -507,25 +507,18 @@
 				color: var(--foreground-subtle);
 				font-size: 10px;
 			}
-			.wl-header-actions {
-				display: flex;
-				gap: var(--space-2);
-				align-items: flex-start;
-				padding-top: 4px;
-				flex-shrink: 0;
-			}
 
 			/* ════════════════════════════════════════════════════════
-			   TOOLBAR
+			   PER-SECTION TOOLBAR
 			   ════════════════════════════════════════════════════════ */
-			.toolbar {
+			.section-toolbar {
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
 				gap: var(--space-3);
-				padding: var(--space-4) 0 var(--space-5);
-				border-top: 1px solid var(--border);
-				margin-top: var(--space-2);
+				padding: var(--space-3) 0 var(--space-4);
+				border-bottom: 1px solid var(--border);
+				margin-bottom: var(--space-5);
 			}
 			.toolbar-left {
 				display: flex;
@@ -575,7 +568,7 @@
 				box-shadow: var(--shadow-sm);
 			}
 
-			/* Sort/filter button with label */
+			/* Sort/filter button */
 			.sort-btn {
 				display: inline-flex;
 				align-items: center;
@@ -739,7 +732,7 @@
 				display: flex;
 				align-items: center;
 				gap: var(--space-3);
-				margin-bottom: var(--space-5);
+				margin-bottom: var(--space-4);
 				padding: var(--space-3) var(--space-4);
 				border-radius: var(--radius-lg);
 			}
@@ -747,9 +740,17 @@
 				background: color-mix(in oklch, var(--primary) 6%, transparent);
 				border: 1px solid color-mix(in oklch, var(--primary) 18%, transparent);
 			}
-			.role-section-header.owner {
+			.role-section-header.owner-draft {
 				background: var(--surface-2);
 				border: 1px solid var(--border);
+			}
+			.role-section-header.owner-shared {
+				background: color-mix(in oklch, oklch(0.72 0.13 75) 8%, transparent);
+				border: 1px solid color-mix(in oklch, oklch(0.72 0.13 75) 22%, transparent);
+			}
+			.role-section-header.moderator {
+				background: color-mix(in oklch, oklch(0.62 0.14 240) 7%, transparent);
+				border: 1px solid color-mix(in oklch, oklch(0.62 0.14 240) 20%, transparent);
 			}
 			.role-eyebrow {
 				font-size: 11px;
@@ -760,13 +761,25 @@
 			.role-eyebrow.visitor {
 				color: var(--primary);
 			}
-			.role-eyebrow.owner {
+			.role-eyebrow.owner-draft {
 				color: var(--foreground-subtle);
+			}
+			.role-eyebrow.owner-shared {
+				color: oklch(0.55 0.16 72);
+			}
+			.role-eyebrow.moderator {
+				color: oklch(0.52 0.14 240);
 			}
 			.role-desc {
 				font-size: var(--text-sm);
 				color: var(--foreground-muted);
 				margin-top: 2px;
+			}
+			.role-section-header-right {
+				margin-left: auto;
+				display: flex;
+				align-items: center;
+				gap: var(--space-2);
 			}
 			.role-section-divider {
 				height: 3px;
@@ -778,6 +791,58 @@
 				);
 				border-radius: var(--radius-full);
 				margin: var(--space-12) 0 var(--space-8);
+			}
+
+			/* Lifecycle badge */
+			.badge-lifecycle {
+				font-size: 10px;
+				font-weight: var(--weight-semibold);
+				padding: 2px 8px;
+				border-radius: var(--radius-full);
+			}
+			.badge-lifecycle.is-koncept {
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+			.badge-lifecycle.is-sdileno {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border: 1px solid color-mix(in oklch, var(--primary) 28%, transparent);
+			}
+
+			/* Info/warning banners */
+			.info-banner {
+				display: flex;
+				align-items: center;
+				gap: var(--space-3);
+				padding: var(--space-3) var(--space-4);
+				border-radius: var(--radius-md);
+				font-size: var(--text-sm);
+				margin-bottom: var(--space-5);
+			}
+			.info-banner.is-draft {
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+			}
+			.info-banner-action {
+				font-weight: var(--weight-semibold);
+				color: var(--primary);
+				cursor: pointer;
+				text-decoration: none;
+			}
+			.moderator-info {
+				display: flex;
+				align-items: flex-start;
+				gap: var(--space-2);
+				padding: var(--space-3) var(--space-4);
+				border-radius: var(--radius-md);
+				font-size: var(--text-sm);
+				color: oklch(0.4 0.1 240);
+				background: oklch(0.96 0.02 240);
+				border: 1px solid oklch(0.87 0.04 240);
+				margin-bottom: var(--space-5);
 			}
 
 			/* ════════════════════════════════════════════════════════
@@ -809,6 +874,9 @@
 			}
 			.gift-card.is-reserved {
 				opacity: 0.78;
+			}
+			.gift-card.is-locked {
+				opacity: 0.82;
 			}
 
 			/* ── Gift image area ── */
@@ -897,7 +965,6 @@
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
-				margin-top: auto;
 				padding-top: var(--space-3);
 				border-top: 1px solid var(--border);
 				margin-top: var(--space-3);
@@ -963,7 +1030,7 @@
 				opacity: 0.7;
 			}
 
-			/* ── Badge variants (inline) ── */
+			/* ── Badge variants ── */
 			.badge {
 				display: inline-flex;
 				align-items: center;
@@ -1009,6 +1076,21 @@
 				color: white;
 				border: none;
 			}
+			.badge-new {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border: 1px solid color-mix(in oklch, var(--primary) 28%, transparent);
+			}
+			.badge-moderator-reserved {
+				background: color-mix(in oklch, var(--color-reserved) 10%, transparent);
+				color: oklch(0.38 0.12 145);
+				border: 1px solid color-mix(in oklch, var(--color-reserved) 22%, transparent);
+				font-size: 10px;
+				padding: 2px 8px;
+				border-radius: var(--radius-full);
+				white-space: nowrap;
+				display: inline-block;
+			}
 
 			/* ── Owner edit controls ── */
 			.drag-hint {
@@ -1047,19 +1129,70 @@
 			.icon-btn-card.danger:hover {
 				background: color-mix(in oklch, var(--status-danger) 8%, transparent);
 			}
+			.icon-btn-card.is-disabled {
+				opacity: 0.32;
+				cursor: not-allowed;
+				pointer-events: none;
+			}
+
+			/* ── Component reference section ── */
+			.comp-ref-section {
+				padding: var(--space-8) 0 0;
+			}
+			.comp-ref-header {
+				margin-bottom: var(--space-5);
+			}
+			.comp-ref-eyebrow {
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: var(--space-1);
+			}
+			.comp-ref-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-xl);
+				font-weight: var(--weight-bold);
+				color: var(--foreground);
+			}
+			.comp-ref-grid {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: var(--space-4);
+			}
+			.comp-ref-item {
+				display: flex;
+				flex-direction: column;
+				gap: 0;
+			}
+			.comp-ref-item .gift-card {
+				flex: 1;
+			}
+			.state-label {
+				font-size: 11px;
+				font-weight: var(--weight-semibold);
+				color: var(--foreground-subtle);
+				text-align: center;
+				letter-spacing: 0.06em;
+				padding: var(--space-2) 0;
+				background: var(--surface-2);
+				border-top: 1px solid var(--border);
+				margin-top: -1px;
+			}
 		</style>
 	</head>
 	<body>
 		<!-- ── Eyebrow label ── -->
 		<div class="refined-eyebrow">
-			REFINED — Wishlist Page: Variant 2 (E-commerce grid) + visitor/owner views
+			REFINED — Wishlist Page: 4 role views (Visitor · Owner-Koncept · Owner-Sdíleno ·
+			Moderátor) + gift card component reference
 		</div>
 
 		<!-- ════════════════════════════════════════════════════════
-		     TOP NAVIGATION BAR — exact copy from app-shell/refined.html
-		     "Moje seznamy" is active (user is viewing one of their wishlists)
-		     Dropdown closed (default state for a wishlist page, not the dashboard)
-		     ════════════════════════════════════════════════════════ -->
+	     TOP NAVIGATION BAR — exact copy from app-shell/refined.html
+	     "Moje seznamy" is active. Dropdown closed (default state).
+	     ════════════════════════════════════════════════════════ -->
 		<header class="topbar">
 			<!-- Logo -->
 			<a class="logo" href="/" aria-label="Darecky — domovská stránka">
@@ -1087,7 +1220,7 @@
 
 			<!-- Primary nav -->
 			<nav class="nav-links" aria-label="Hlavní navigace">
-				<!-- Moje seznamy — ACTIVE, dropdown CLOSED (default state on wishlist page) -->
+				<!-- Moje seznamy — ACTIVE, dropdown CLOSED -->
 				<div class="nav-item">
 					<a class="nav-link is-active" href="/dashboard" aria-current="page">
 						Moje seznamy
@@ -1379,15 +1512,15 @@
 		</header>
 
 		<!-- ════════════════════════════════════════════════════════
-		     PAGE CONTENT
-		     ════════════════════════════════════════════════════════ -->
+	     PAGE CONTENT
+	     ════════════════════════════════════════════════════════ -->
 		<main class="content-wrap">
 			<!-- ─── WISHLIST HEADER ─── -->
 			<div class="wl-header">
 				<!-- Banner / hero gradient -->
 				<div class="wl-banner" aria-hidden="true">🎄 🎁 ⛄ 🎅</div>
 
-				<!-- Title area + top-right actions -->
+				<!-- Title area -->
 				<div class="wl-header-main">
 					<div class="wl-meta">
 						<div class="wl-owner" aria-label="Vlastník seznamu">Jana Nováková</div>
@@ -1401,226 +1534,398 @@
 							<span class="wl-stat">Sdíleno 20. 11. 2026</span>
 						</div>
 					</div>
-					<!-- Actions shown here for visitor — share is owner-only but shown for reference in visitor section label below -->
 				</div>
+			</div>
+			<!-- /wl-header — no shared toolbar; each role section has its own -->
 
-				<!-- ─── TOOLBAR ─── -->
-				<div class="toolbar" role="toolbar" aria-label="Nástroje přání">
-					<div class="toolbar-left">
-						<!-- View switcher: Card | List | Compact -->
-						<div class="view-switcher" role="group" aria-label="Zobrazení přání">
-							<!-- Card — active -->
-							<button
-								class="view-btn is-active"
-								title="Zobrazení karet"
-								aria-pressed="true"
-								aria-label="Karty"
+			<!-- ════════════════════════════════════════════════════════
+		     SECTION A: GIFT CARD COMPONENT REFERENCE
+		     Shows all visual states in one grid for dev reference
+		     ════════════════════════════════════════════════════════ -->
+			<div class="comp-ref-section">
+				<div class="comp-ref-header">
+					<div class="comp-ref-eyebrow">Komponenta</div>
+					<div class="comp-ref-title">Gift Card — všechny stavy</div>
+				</div>
+				<div class="comp-ref-grid">
+					<!-- State 1: Available (visitor) -->
+					<div class="comp-ref-item">
+						<div class="gift-card">
+							<div
+								class="gift-img"
+								style="
+									background: linear-gradient(
+										145deg,
+										oklch(0.2 0.04 245),
+										oklch(0.32 0.06 228)
+									);
+								"
 							>
-								<svg
-									width="15"
-									height="15"
-									viewBox="0 0 16 16"
-									fill="currentColor"
-									aria-hidden="true"
-								>
-									<rect x="1" y="1" width="6" height="6" rx="1" />
-									<rect x="9" y="1" width="6" height="6" rx="1" />
-									<rect x="1" y="9" width="6" height="6" rx="1" />
-									<rect x="9" y="9" width="6" height="6" rx="1" />
-								</svg>
-							</button>
-							<!-- List -->
-							<button
-								class="view-btn"
-								title="Zobrazení seznamu"
-								aria-pressed="false"
-								aria-label="Seznam"
-							>
-								<svg
-									width="15"
-									height="15"
-									viewBox="0 0 16 16"
-									fill="currentColor"
-									aria-hidden="true"
-								>
-									<rect x="1" y="2" width="4" height="3" rx="0.5" />
-									<rect x="7" y="2.5" width="8" height="2" rx="0.5" />
-									<rect x="1" y="7" width="4" height="3" rx="0.5" />
-									<rect x="7" y="7.5" width="8" height="2" rx="0.5" />
-									<rect x="1" y="12" width="4" height="3" rx="0.5" />
-									<rect x="7" y="12.5" width="8" height="2" rx="0.5" />
-								</svg>
-							</button>
-							<!-- Compact -->
-							<button
-								class="view-btn"
-								title="Kompaktní zobrazení"
-								aria-pressed="false"
-								aria-label="Kompakt"
-							>
-								<svg
-									width="15"
-									height="15"
-									viewBox="0 0 16 16"
-									fill="currentColor"
-									aria-hidden="true"
-								>
-									<rect x="1" y="2" width="14" height="2" rx="0.5" />
-									<rect x="1" y="5.5" width="14" height="2" rx="0.5" />
-									<rect x="1" y="9" width="14" height="2" rx="0.5" />
-									<rect x="1" y="12.5" width="14" height="2" rx="0.5" />
-								</svg>
-							</button>
+								🎧
+								<div class="gift-img-badges-tl">
+									<span class="badge badge-priority-high">Vysoká</span>
+								</div>
+							</div>
+							<div class="gift-body">
+								<div class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</div>
+								<div class="gift-price">8 490 Kč</div>
+								<a class="gift-link" href="#" aria-label="Odkaz na alza.cz">
+									<svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										aria-hidden="true"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" />
+									</svg>
+									alza.cz
+								</a>
+								<div class="gift-footer">
+									<button
+										class="heart-btn"
+										aria-label="Oblíbit"
+										aria-pressed="false"
+									>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											aria-hidden="true"
+										>
+											<path
+												d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+											/>
+										</svg>
+										3
+									</button>
+									<button class="btn-reserve" aria-label="Rezervovat">
+										Rezervovat
+									</button>
+								</div>
+							</div>
 						</div>
+						<div class="state-label">Dostupné — visitor</div>
 					</div>
 
-					<div class="toolbar-right">
-						<!-- Sort/filter dropdown -->
-						<div style="position: relative">
-							<button
-								class="sort-btn"
-								aria-haspopup="listbox"
-								aria-label="Řazení a filtry přání"
-								id="sort-btn"
-							>
-								<svg
-									width="15"
-									height="15"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									aria-hidden="true"
-								>
-									<line x1="4" y1="6" x2="20" y2="6" />
-									<line x1="8" y1="12" x2="16" y2="12" />
-									<line x1="11" y1="18" x2="13" y2="18" />
-								</svg>
-								Řazení: <span class="sort-label-text">Pořadí vlastníka</span>
-								<svg
-									width="13"
-									height="13"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2.5"
-									stroke-linecap="round"
-									aria-hidden="true"
-								>
-									<polyline points="6 9 12 15 18 9" />
-								</svg>
-							</button>
-							<!-- Dropdown shown open for demo -->
+					<!-- State 2: Partially reserved (visitor) -->
+					<div class="comp-ref-item">
+						<div class="gift-card">
 							<div
-								class="sort-dropdown"
-								role="listbox"
-								aria-label="Možnosti řazení a filtrování"
+								class="gift-img"
+								style="
+									background: linear-gradient(
+										145deg,
+										oklch(0.88 0.065 62),
+										oklch(0.78 0.09 52)
+									);
+								"
 							>
-								<div class="sort-dropdown-section">
-									<div class="sort-dropdown-label">Řadit podle</div>
-									<div
-										class="sort-option is-selected"
-										role="option"
-										aria-selected="true"
+								📚
+								<div class="gift-img-badge-tr">
+									<span class="badge badge-qty-overlay">×2</span>
+								</div>
+							</div>
+							<div class="gift-body">
+								<div class="gift-name">Kniha — Malý princ (ilustrovaná edice)</div>
+								<div class="gift-price">350 Kč</div>
+								<a
+									class="gift-link"
+									href="#"
+									aria-label="Odkaz na knihydobrovsky.cz"
+								>
+									<svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										aria-hidden="true"
 									>
-										<span class="sort-check">
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" />
+									</svg>
+									knihydobrovsky.cz
+								</a>
+								<div class="gift-badges">
+									<span class="badge badge-reserved-state"
+										>Rezervováno (1/2)</span
+									>
+								</div>
+								<div class="gift-footer">
+									<button
+										class="heart-btn"
+										aria-label="Oblíbit"
+										aria-pressed="false"
+									>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											aria-hidden="true"
+										>
+											<path
+												d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+											/>
+										</svg>
+										0
+									</button>
+									<button
+										class="btn-reserve"
+										aria-label="Rezervovat (1 dostupný)"
+									>
+										Rezervovat
+									</button>
+								</div>
+							</div>
+						</div>
+						<div class="state-label">Částečně rezervováno — visitor</div>
+					</div>
+
+					<!-- State 3: Fully reserved (visitor) -->
+					<div class="comp-ref-item">
+						<div class="gift-card is-reserved">
+							<div
+								class="gift-img"
+								style="
+									background: linear-gradient(
+										145deg,
+										oklch(0.54 0.1 148),
+										oklch(0.44 0.12 140)
+									);
+								"
+							>
+								🎁
+								<div class="gift-img-badge-tr">
+									<span class="badge badge-reserved-overlay">✓ Rezervováno</span>
+								</div>
+							</div>
+							<div class="gift-body">
+								<div class="gift-name">Dárkový poukaz Alza.cz</div>
+								<div class="gift-price">2 000 Kč</div>
+								<a class="gift-link" href="#" aria-label="Odkaz na alza.cz">
+									<svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										aria-hidden="true"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" />
+									</svg>
+									alza.cz
+								</a>
+								<div class="gift-footer">
+									<button
+										class="heart-btn"
+										aria-label="Oblíbit"
+										aria-pressed="false"
+									>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											aria-hidden="true"
+										>
+											<path
+												d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+											/>
+										</svg>
+										0
+									</button>
+									<button
+										class="btn-reserved"
+										disabled
+										aria-label="Plně rezervováno"
+										aria-disabled="true"
+									>
+										Rezervováno
+									</button>
+								</div>
+							</div>
+						</div>
+						<div class="state-label">Plně rezervováno — visitor</div>
+					</div>
+
+					<!-- State 4: Owner card (draft — no reservation state) -->
+					<div class="comp-ref-item">
+						<div class="gift-card">
+							<div
+								class="gift-img"
+								style="
+									background: linear-gradient(
+										145deg,
+										oklch(0.76 0.06 198),
+										oklch(0.64 0.09 183)
+									);
+								"
+							>
+								🧳
+							</div>
+							<div class="gift-body">
+								<div class="gift-name">Cestovní kufr Samsonite</div>
+								<div class="gift-price">4 200 Kč</div>
+								<a class="gift-link" href="#" aria-label="Odkaz na mall.cz">
+									<svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										aria-hidden="true"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" />
+									</svg>
+									mall.cz
+								</a>
+								<div class="gift-footer">
+									<div
+										class="drag-hint"
+										title="Přetáhnout pro změnu pořadí"
+										aria-label="Přetáhnout"
+									>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											aria-hidden="true"
+										>
+											<circle
+												cx="9"
+												cy="5"
+												r="1"
+												fill="currentColor"
+												stroke="none"
+											/>
+											<circle
+												cx="15"
+												cy="5"
+												r="1"
+												fill="currentColor"
+												stroke="none"
+											/>
+											<circle
+												cx="9"
+												cy="12"
+												r="1"
+												fill="currentColor"
+												stroke="none"
+											/>
+											<circle
+												cx="15"
+												cy="12"
+												r="1"
+												fill="currentColor"
+												stroke="none"
+											/>
+											<circle
+												cx="9"
+												cy="19"
+												r="1"
+												fill="currentColor"
+												stroke="none"
+											/>
+											<circle
+												cx="15"
+												cy="19"
+												r="1"
+												fill="currentColor"
+												stroke="none"
+											/>
+										</svg>
+										Přetáhnout
+									</div>
+									<div class="gift-owner-actions">
+										<button
+											class="icon-btn-card"
+											title="Upravit přání"
+											aria-label="Upravit"
+										>
 											<svg
-												width="13"
-												height="13"
+												width="12"
+												height="12"
 												viewBox="0 0 24 24"
 												fill="none"
 												stroke="currentColor"
-												stroke-width="3"
-												stroke-linecap="round"
+												stroke-width="2"
 												aria-hidden="true"
 											>
-												<polyline points="20 6 9 17 4 12" />
+												<path
+													d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+												/>
 											</svg>
-										</span>
-										Pořadí vlastníka
-									</div>
-									<div class="sort-option" role="option" aria-selected="false">
-										<span class="sort-check"></span>
-										Priorita
-									</div>
-									<div class="sort-option" role="option" aria-selected="false">
-										<span class="sort-check"></span>
-										Cena ↑ (nejlevnější)
-									</div>
-									<div class="sort-option" role="option" aria-selected="false">
-										<span class="sort-check"></span>
-										Cena ↓ (nejdražší)
-									</div>
-									<div class="sort-option" role="option" aria-selected="false">
-										<span class="sort-check"></span>
-										Název
-									</div>
-									<div class="sort-option" role="option" aria-selected="false">
-										<span class="sort-check"></span>
-										Datum přidání
-									</div>
-								</div>
-								<div class="sort-dropdown-section">
-									<div class="sort-dropdown-label">Filtrovat</div>
-									<div class="filter-option">
-										<span class="filter-checkbox"></span>
-										Jen dostupné
-									</div>
-									<div class="filter-option">
-										<span class="filter-checkbox"></span>
-										S odkazem
+										</button>
+										<button
+											class="icon-btn-card danger"
+											title="Smazat přání"
+											aria-label="Smazat"
+										>
+											<svg
+												width="12"
+												height="12"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												aria-hidden="true"
+											>
+												<polyline points="3 6 5 6 21 6" />
+												<path
+													d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+												/>
+											</svg>
+										</button>
 									</div>
 								</div>
 							</div>
 						</div>
-
-						<div class="toolbar-sep" aria-hidden="true"></div>
-
-						<!-- Share (owner/moderator only) -->
-						<button class="btn-share" aria-label="Sdílet seznam">
-							<svg
-								width="14"
-								height="14"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								aria-hidden="true"
-							>
-								<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-								<polyline points="16 6 12 2 8 6" />
-								<line x1="12" y1="2" x2="12" y2="15" />
-							</svg>
-							Sdílet
-						</button>
-
-						<!-- Add gift (owner view) -->
-						<button class="btn-add" aria-label="Přidat přání">
-							<svg
-								width="14"
-								height="14"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2.5"
-								stroke-linecap="round"
-								aria-hidden="true"
-							>
-								<line x1="12" y1="5" x2="12" y2="19" />
-								<line x1="5" y1="12" x2="19" y2="12" />
-							</svg>
-							+ Přidat přání
-						</button>
+						<div class="state-label">Vlastník — editovatelné</div>
 					</div>
 				</div>
 			</div>
+			<!-- /section A -->
+
+			<div class="role-section-divider" aria-hidden="true"></div>
 
 			<!-- ════════════════════════════════════════════════════════
-			     SECTION 1: VISITOR VIEW (primary)
-			     Shows reserve buttons + reservation states
-			     ════════════════════════════════════════════════════════ -->
+		     SECTION B: VISITOR VIEW
+		     Reserve buttons + reservation states. No edit/delete.
+		     Toolbar: view switcher + sort/filter ONLY.
+		     ════════════════════════════════════════════════════════ -->
 			<div class="role-section-header visitor">
 				<svg
 					width="16"
@@ -1642,6 +1947,111 @@
 					<div class="role-eyebrow visitor">Pohled návštěvníka</div>
 					<div class="role-desc">
 						Vidí přání s tlačítky rezervace a stavem rezervace. Bez možnosti úprav.
+						Sdílet a Přidat přání nejsou zobrazeny.
+					</div>
+				</div>
+			</div>
+
+			<!-- Visitor toolbar: view switcher + sort/filter only -->
+			<div class="section-toolbar" role="toolbar" aria-label="Nástroje přání — návštěvník">
+				<div class="toolbar-left">
+					<div class="view-switcher" role="group" aria-label="Zobrazení přání">
+						<button
+							class="view-btn is-active"
+							title="Zobrazení karet"
+							aria-pressed="true"
+							aria-label="Karty"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="1" width="6" height="6" rx="1" />
+								<rect x="9" y="1" width="6" height="6" rx="1" />
+								<rect x="1" y="9" width="6" height="6" rx="1" />
+								<rect x="9" y="9" width="6" height="6" rx="1" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Zobrazení seznamu"
+							aria-pressed="false"
+							aria-label="Seznam"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="4" height="3" rx="0.5" />
+								<rect x="7" y="2.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="7" width="4" height="3" rx="0.5" />
+								<rect x="7" y="7.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="12" width="4" height="3" rx="0.5" />
+								<rect x="7" y="12.5" width="8" height="2" rx="0.5" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Kompaktní zobrazení"
+							aria-pressed="false"
+							aria-label="Kompakt"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="14" height="2" rx="0.5" />
+								<rect x="1" y="5.5" width="14" height="2" rx="0.5" />
+								<rect x="1" y="9" width="14" height="2" rx="0.5" />
+								<rect x="1" y="12.5" width="14" height="2" rx="0.5" />
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div class="toolbar-right">
+					<div style="position: relative">
+						<button
+							class="sort-btn"
+							aria-haspopup="listbox"
+							aria-label="Řazení a filtry přání"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<line x1="4" y1="6" x2="20" y2="6" />
+								<line x1="8" y1="12" x2="16" y2="12" />
+								<line x1="11" y1="18" x2="13" y2="18" />
+							</svg>
+							Řazení: <span class="sort-label-text">Pořadí vlastníka</span>
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
 					</div>
 				</div>
 			</div>
@@ -1718,73 +2128,7 @@
 					</div>
 				</div>
 
-				<!-- 2. Cestovní kufr Samsonite — Dostupné, ♡ 1 -->
-				<div class="gift-card">
-					<div
-						class="gift-img"
-						style="
-							background: linear-gradient(
-								145deg,
-								oklch(0.76 0.06 198),
-								oklch(0.64 0.09 183)
-							);
-						"
-					>
-						🧳
-					</div>
-					<div class="gift-body">
-						<div class="gift-name">Cestovní kufr Samsonite</div>
-						<div class="gift-price">4 200 Kč</div>
-						<a class="gift-link" href="#" aria-label="Odkaz na produkt na mall.cz">
-							<svg
-								width="11"
-								height="11"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2.5"
-								aria-hidden="true"
-							>
-								<path
-									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-								/>
-								<polyline points="15 3 21 3 21 9" />
-								<line x1="10" y1="14" x2="21" y2="3" />
-							</svg>
-							mall.cz
-						</a>
-						<div class="gift-footer">
-							<button
-								class="heart-btn"
-								aria-label="Oblíbit Cestovní kufr Samsonite"
-								aria-pressed="false"
-							>
-								<svg
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									aria-hidden="true"
-								>
-									<path
-										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-									/>
-								</svg>
-								1
-							</button>
-							<button
-								class="btn-reserve"
-								aria-label="Rezervovat Cestovní kufr Samsonite"
-							>
-								Rezervovat
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- 3. Malý princ — ×2, 1/2 Rezervováno (partially reserved) -->
+				<!-- 2. Malý princ ×2 — Částečně rezervováno (1/2), ♡ 0 -->
 				<div class="gift-card">
 					<div
 						class="gift-img"
@@ -1860,7 +2204,7 @@
 					</div>
 				</div>
 
-				<!-- 4. Dárkový poukaz Alza.cz — Plně rezervováno -->
+				<!-- 3. Dárkový poukaz Alza.cz — Plně rezervováno -->
 				<div class="gift-card is-reserved">
 					<div
 						class="gift-img"
@@ -1922,131 +2266,16 @@
 							<button
 								class="btn-reserved"
 								disabled
-								aria-label="Dárkový poukaz Alza.cz — rezervováno"
+								aria-label="Dárkový poukaz Alza.cz je plně rezervován"
 								aria-disabled="true"
 							>
-								✓ Rezervováno
+								Rezervováno
 							</button>
 						</div>
 					</div>
 				</div>
 
-				<!-- 5. Sada ručníků z egyptské bavlny — Bez odkazu, ♡ 2 liked -->
-				<div class="gift-card">
-					<div
-						class="gift-img"
-						style="
-							background: linear-gradient(
-								145deg,
-								oklch(0.86 0.04 32),
-								oklch(0.76 0.06 28)
-							);
-						"
-					>
-						🛁
-					</div>
-					<div class="gift-body">
-						<div class="gift-name">Sada ručníků z egyptské bavlny</div>
-						<div class="gift-price">1 890 Kč</div>
-						<span class="gift-link-none">Bez odkazu</span>
-						<div class="gift-footer">
-							<button
-								class="heart-btn is-liked"
-								aria-label="Oblíbit Sada ručníků z egyptské bavlny"
-								aria-pressed="true"
-							>
-								<svg
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="currentColor"
-									stroke="currentColor"
-									stroke-width="2"
-									aria-hidden="true"
-								>
-									<path
-										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-									/>
-								</svg>
-								2
-							</button>
-							<button
-								class="btn-reserve"
-								aria-label="Rezervovat Sada ručníků z egyptské bavlny"
-							>
-								Rezervovat
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- 6. Deka z merino vlny — Střední priorita -->
-				<div class="gift-card">
-					<div
-						class="gift-img"
-						style="
-							background: linear-gradient(
-								145deg,
-								oklch(0.82 0.04 258),
-								oklch(0.72 0.06 248)
-							);
-						"
-					>
-						🧶
-						<div class="gift-img-badges-tl">
-							<span class="badge badge-priority-medium">Střední</span>
-						</div>
-					</div>
-					<div class="gift-body">
-						<div class="gift-name">Deka z merino vlny</div>
-						<div class="gift-price">3 500 Kč</div>
-						<a class="gift-link" href="#" aria-label="Odkaz na produkt na westwing.cz">
-							<svg
-								width="11"
-								height="11"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2.5"
-								aria-hidden="true"
-							>
-								<path
-									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-								/>
-								<polyline points="15 3 21 3 21 9" />
-								<line x1="10" y1="14" x2="21" y2="3" />
-							</svg>
-							westwing.cz
-						</a>
-						<div class="gift-footer">
-							<button
-								class="heart-btn"
-								aria-label="Oblíbit Deka z merino vlny"
-								aria-pressed="false"
-							>
-								<svg
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									aria-hidden="true"
-								>
-									<path
-										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-									/>
-								</svg>
-								0
-							</button>
-							<button class="btn-reserve" aria-label="Rezervovat Deka z merino vlny">
-								Rezervovat
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- 7. Zahradní nůžky Fiskars — ×3, 1/3 Rezervováno -->
+				<!-- 4. Zahradní nůžky Fiskars ×3 — Částečně rezervováno (1/3), ♡ is-liked -->
 				<div class="gift-card">
 					<div
 						class="gift-img"
@@ -2064,7 +2293,7 @@
 						</div>
 					</div>
 					<div class="gift-body">
-						<div class="gift-name">Zahradní nůžky Fiskars</div>
+						<div class="gift-name">Zahradní nůžky Fiskars PowerGear</div>
 						<div class="gift-price">890 Kč</div>
 						<a class="gift-link" href="#" aria-label="Odkaz na produkt na hornbach.cz">
 							<svg
@@ -2089,15 +2318,15 @@
 						</div>
 						<div class="gift-footer">
 							<button
-								class="heart-btn"
+								class="heart-btn is-liked"
 								aria-label="Oblíbit Zahradní nůžky Fiskars"
-								aria-pressed="false"
+								aria-pressed="true"
 							>
 								<svg
 									width="14"
 									height="14"
 									viewBox="0 0 24 24"
-									fill="none"
+									fill="currentColor"
 									stroke="currentColor"
 									stroke-width="2"
 									aria-hidden="true"
@@ -2106,60 +2335,11 @@
 										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
 									/>
 								</svg>
-								0
+								2
 							</button>
 							<button
 								class="btn-reserve"
-								aria-label="Rezervovat Zahradní nůžky Fiskars"
-							>
-								Rezervovat
-							</button>
-						</div>
-					</div>
-				</div>
-
-				<!-- 8. Puzzle 1000 dílků — Bez odkazu -->
-				<div class="gift-card">
-					<div
-						class="gift-img"
-						style="
-							background: linear-gradient(
-								145deg,
-								oklch(0.86 0.03 295),
-								oklch(0.78 0.05 285)
-							);
-						"
-					>
-						🧩
-					</div>
-					<div class="gift-body">
-						<div class="gift-name">Puzzle 1000 dílků — Praha</div>
-						<div class="gift-price">450 Kč</div>
-						<span class="gift-link-none">Bez odkazu</span>
-						<div class="gift-footer">
-							<button
-								class="heart-btn"
-								aria-label="Oblíbit Puzzle 1000 dílků — Praha"
-								aria-pressed="false"
-							>
-								<svg
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									aria-hidden="true"
-								>
-									<path
-										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-									/>
-								</svg>
-								0
-							</button>
-							<button
-								class="btn-reserve"
-								aria-label="Rezervovat Puzzle 1000 dílků — Praha"
+								aria-label="Rezervovat Zahradní nůžky Fiskars (2 dostupné)"
 							>
 								Rezervovat
 							</button>
@@ -2167,19 +2347,16 @@
 					</div>
 				</div>
 			</div>
-			<!-- /visitor gift grid -->
+			<!-- /section B visitor -->
 
-			<!-- ════════════════════════════════════════════════════════
-			     THICK DIVIDER between role sections
-			     ════════════════════════════════════════════════════════ -->
 			<div class="role-section-divider" aria-hidden="true"></div>
 
 			<!-- ════════════════════════════════════════════════════════
-			     SECTION 2: OWNER VIEW (secondary)
-			     NO reserve buttons, NO reservation states, NO "Rezervováno" badges
-			     HAS drag handles, edit/delete icon buttons
-			     ════════════════════════════════════════════════════════ -->
-			<div class="role-section-header owner">
+		     SECTION C: OWNER — KONCEPT (Draft)
+		     No reservation state anywhere. Full edit powers.
+		     Toolbar: view switcher + sort/filter + Sdílet + Přidat přání
+		     ════════════════════════════════════════════════════════ -->
+			<div class="role-section-header owner-draft">
 				<svg
 					width="16"
 					height="16"
@@ -2195,43 +2372,181 @@
 					<circle cx="12" cy="7" r="4" />
 				</svg>
 				<div>
-					<div class="role-eyebrow owner">Pohled vlastníka</div>
+					<div class="role-eyebrow owner-draft">Pohled vlastníka — Koncept</div>
 					<div class="role-desc">
-						Vidí přání bez rezervací. Může přeřazovat přetažením, upravovat a mazat.
-						Nikdy nevidí stav rezervace.
+						Seznam ještě nebyl sdílen. Plné úpravy: přetažení, editace, mazání.
+						Rezervace nejsou nikdy viditelné.
 					</div>
+				</div>
+				<div class="role-section-header-right">
+					<span class="badge-lifecycle is-koncept">Koncept</span>
 				</div>
 			</div>
 
-			<!-- Owner toolbar — has + Přidat přání -->
+			<!-- Draft info banner -->
+			<div class="info-banner is-draft" role="status">
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					aria-hidden="true"
+				>
+					<circle cx="12" cy="12" r="10" />
+					<line x1="12" y1="8" x2="12" y2="12" />
+					<line x1="12" y1="16" x2="12.01" y2="16" />
+				</svg>
+				Tento seznam ještě nebyl sdílen.
+				<a class="info-banner-action" href="#">Sdílet seznam →</a>
+			</div>
+
+			<!-- Owner-Draft toolbar: full controls -->
 			<div
-				style="
-					display: flex;
-					align-items: center;
-					justify-content: flex-end;
-					margin-bottom: var(--space-5);
-				"
+				class="section-toolbar"
+				role="toolbar"
+				aria-label="Nástroje přání — vlastník (koncept)"
 			>
-				<button class="btn-add" aria-label="Přidat nové přání do seznamu">
-					<svg
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2.5"
-						stroke-linecap="round"
-						aria-hidden="true"
-					>
-						<line x1="12" y1="5" x2="12" y2="19" />
-						<line x1="5" y1="12" x2="19" y2="12" />
-					</svg>
-					+ Přidat přání
-				</button>
+				<div class="toolbar-left">
+					<div class="view-switcher" role="group" aria-label="Zobrazení přání">
+						<button
+							class="view-btn is-active"
+							title="Zobrazení karet"
+							aria-pressed="true"
+							aria-label="Karty"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="1" width="6" height="6" rx="1" />
+								<rect x="9" y="1" width="6" height="6" rx="1" />
+								<rect x="1" y="9" width="6" height="6" rx="1" />
+								<rect x="9" y="9" width="6" height="6" rx="1" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Zobrazení seznamu"
+							aria-pressed="false"
+							aria-label="Seznam"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="4" height="3" rx="0.5" />
+								<rect x="7" y="2.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="7" width="4" height="3" rx="0.5" />
+								<rect x="7" y="7.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="12" width="4" height="3" rx="0.5" />
+								<rect x="7" y="12.5" width="8" height="2" rx="0.5" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Kompaktní zobrazení"
+							aria-pressed="false"
+							aria-label="Kompakt"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="14" height="2" rx="0.5" />
+								<rect x="1" y="5.5" width="14" height="2" rx="0.5" />
+								<rect x="1" y="9" width="14" height="2" rx="0.5" />
+								<rect x="1" y="12.5" width="14" height="2" rx="0.5" />
+							</svg>
+						</button>
+					</div>
+					<div class="toolbar-sep" aria-hidden="true"></div>
+					<div style="position: relative">
+						<button
+							class="sort-btn"
+							aria-haspopup="listbox"
+							aria-label="Řazení a filtry přání"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<line x1="4" y1="6" x2="20" y2="6" />
+								<line x1="8" y1="12" x2="16" y2="12" />
+								<line x1="11" y1="18" x2="13" y2="18" />
+							</svg>
+							Řazení: <span class="sort-label-text">Pořadí vlastníka</span>
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div class="toolbar-right">
+					<button class="btn-share" aria-label="Sdílet seznam">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+							<polyline points="16 6 12 2 8 6" />
+							<line x1="12" y1="2" x2="12" y2="15" />
+						</svg>
+						Sdílet
+					</button>
+					<button class="btn-add" aria-label="Přidat přání do seznamu">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Přidat přání
+					</button>
+				</div>
 			</div>
 
 			<div class="gift-grid">
-				<!-- 1. Sony — Vysoká priorita, drag handle, edit/delete -->
+				<!-- 1. Sony — Vysoká priorita, drag + edit + delete -->
 				<div class="gift-card">
 					<div
 						class="gift-img"
@@ -2273,7 +2588,7 @@
 							<div
 								class="drag-hint"
 								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
+								aria-label="Přetáhnout"
 							>
 								<svg
 									width="14"
@@ -2369,7 +2684,7 @@
 					</div>
 				</div>
 
-				<!-- 2. Cestovní kufr Samsonite — no priority -->
+				<!-- 2. Cestovní kufr Samsonite — drag + edit + delete -->
 				<div class="gift-card">
 					<div
 						class="gift-img"
@@ -2408,7 +2723,7 @@
 							<div
 								class="drag-hint"
 								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
+								aria-label="Přetáhnout"
 							>
 								<svg
 									width="14"
@@ -2462,7 +2777,7 @@
 							<div class="gift-owner-actions">
 								<button
 									class="icon-btn-card"
-									title="Upravit"
+									title="Upravit přání"
 									aria-label="Upravit Cestovní kufr Samsonite"
 								>
 									<svg
@@ -2481,7 +2796,7 @@
 								</button>
 								<button
 									class="icon-btn-card danger"
-									title="Smazat"
+									title="Smazat přání"
 									aria-label="Smazat Cestovní kufr Samsonite"
 								>
 									<svg
@@ -2504,7 +2819,7 @@
 					</div>
 				</div>
 
-				<!-- 3. Malý princ — ×2 qty badge (NO reservation state shown) -->
+				<!-- 3. Malý princ ×2 — qty badge only, NO reservation state, drag + edit + delete -->
 				<div class="gift-card">
 					<div
 						class="gift-img"
@@ -2546,12 +2861,12 @@
 							</svg>
 							knihydobrovsky.cz
 						</a>
-						<!-- NOTE: No reservation badge here — owner never sees it -->
+						<!-- NO badge-reserved-state here — owner never sees reservation status -->
 						<div class="gift-footer">
 							<div
 								class="drag-hint"
 								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
+								aria-label="Přetáhnout"
 							>
 								<svg
 									width="14"
@@ -2605,7 +2920,7 @@
 							<div class="gift-owner-actions">
 								<button
 									class="icon-btn-card"
-									title="Upravit"
+									title="Upravit přání"
 									aria-label="Upravit Kniha — Malý princ"
 								>
 									<svg
@@ -2624,7 +2939,7 @@
 								</button>
 								<button
 									class="icon-btn-card danger"
-									title="Smazat"
+									title="Smazat přání"
 									aria-label="Smazat Kniha — Malý princ"
 								>
 									<svg
@@ -2647,7 +2962,7 @@
 					</div>
 				</div>
 
-				<!-- 4. Dárkový poukaz — NO "Rezervováno" badge (owner never sees) — just normal card -->
+				<!-- 4. Dárkový poukaz Alza.cz — normal appearance, NO overlay, drag + edit + delete -->
 				<div class="gift-card">
 					<div
 						class="gift-img"
@@ -2660,7 +2975,6 @@
 						"
 					>
 						🎁
-						<!-- NO reserved overlay badge in owner view -->
 					</div>
 					<div class="gift-body">
 						<div class="gift-name">Dárkový poukaz Alza.cz</div>
@@ -2683,11 +2997,12 @@
 							</svg>
 							alza.cz
 						</a>
+						<!-- NO reserved overlay — owner never sees reservation status -->
 						<div class="gift-footer">
 							<div
 								class="drag-hint"
 								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
+								aria-label="Přetáhnout"
 							>
 								<svg
 									width="14"
@@ -2741,7 +3056,7 @@
 							<div class="gift-owner-actions">
 								<button
 									class="icon-btn-card"
-									title="Upravit"
+									title="Upravit přání"
 									aria-label="Upravit Dárkový poukaz Alza.cz"
 								>
 									<svg
@@ -2760,7 +3075,7 @@
 								</button>
 								<button
 									class="icon-btn-card danger"
-									title="Smazat"
+									title="Smazat přání"
 									aria-label="Smazat Dárkový poukaz Alza.cz"
 								>
 									<svg
@@ -2782,146 +3097,208 @@
 						</div>
 					</div>
 				</div>
+			</div>
+			<!-- /section C owner-draft -->
 
-				<!-- 5. Sada ručníků — Bez odkazu, no heart (owner view) -->
-				<div class="gift-card">
-					<div
-						class="gift-img"
-						style="
-							background: linear-gradient(
-								145deg,
-								oklch(0.86 0.04 32),
-								oklch(0.76 0.06 28)
-							);
-						"
-					>
-						🛁
-					</div>
-					<div class="gift-body">
-						<div class="gift-name">Sada ručníků z egyptské bavlny</div>
-						<div class="gift-price">1 890 Kč</div>
-						<span class="gift-link-none">Bez odkazu</span>
-						<div class="gift-footer">
-							<div
-								class="drag-hint"
-								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
-							>
-								<svg
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									aria-hidden="true"
-								>
-									<circle cx="9" cy="5" r="1" fill="currentColor" stroke="none" />
-									<circle
-										cx="15"
-										cy="5"
-										r="1"
-										fill="currentColor"
-										stroke="none"
-									/>
-									<circle
-										cx="9"
-										cy="12"
-										r="1"
-										fill="currentColor"
-										stroke="none"
-									/>
-									<circle
-										cx="15"
-										cy="12"
-										r="1"
-										fill="currentColor"
-										stroke="none"
-									/>
-									<circle
-										cx="9"
-										cy="19"
-										r="1"
-										fill="currentColor"
-										stroke="none"
-									/>
-									<circle
-										cx="15"
-										cy="19"
-										r="1"
-										fill="currentColor"
-										stroke="none"
-									/>
-								</svg>
-								Přetáhnout
-							</div>
-							<div class="gift-owner-actions">
-								<button
-									class="icon-btn-card"
-									title="Upravit"
-									aria-label="Upravit Sada ručníků z egyptské bavlny"
-								>
-									<svg
-										width="12"
-										height="12"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										aria-hidden="true"
-									>
-										<path
-											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
-										/>
-									</svg>
-								</button>
-								<button
-									class="icon-btn-card danger"
-									title="Smazat"
-									aria-label="Smazat Sada ručníků z egyptské bavlny"
-								>
-									<svg
-										width="12"
-										height="12"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										aria-hidden="true"
-									>
-										<polyline points="3 6 5 6 21 6" />
-										<path
-											d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
-										/>
-									</svg>
-								</button>
-							</div>
-						</div>
+			<div class="role-section-divider" aria-hidden="true"></div>
+
+			<!-- ════════════════════════════════════════════════════════
+		     SECTION D: OWNER — SDÍLENO (Shared/Active)
+		     Existing gifts are locked (edit/delete disabled).
+		     One new gift added after sharing — fully editable + "Nové" badge.
+		     No reservation state anywhere.
+		     ════════════════════════════════════════════════════════ -->
+			<div class="role-section-header owner-shared">
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					color="oklch(0.55 0.16 72)"
+					aria-hidden="true"
+				>
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+					<circle cx="12" cy="7" r="4" />
+				</svg>
+				<div>
+					<div class="role-eyebrow owner-shared">Pohled vlastníka — Sdíleno</div>
+					<div class="role-desc">
+						Seznam je sdílen. Přání přidaná před sdílením jsou uzamčena. Nová přání
+						přidaná po sdílení jsou plně editovatelná. Rezervace nejsou nikdy viditelné.
 					</div>
 				</div>
+				<div class="role-section-header-right">
+					<span class="badge-lifecycle is-sdileno">Sdíleno</span>
+				</div>
+			</div>
 
-				<!-- 6. Deka z merino vlny — Střední priorita -->
-				<div class="gift-card">
+			<!-- Owner-Shared toolbar: full controls -->
+			<div
+				class="section-toolbar"
+				role="toolbar"
+				aria-label="Nástroje přání — vlastník (sdíleno)"
+			>
+				<div class="toolbar-left">
+					<div class="view-switcher" role="group" aria-label="Zobrazení přání">
+						<button
+							class="view-btn is-active"
+							title="Zobrazení karet"
+							aria-pressed="true"
+							aria-label="Karty"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="1" width="6" height="6" rx="1" />
+								<rect x="9" y="1" width="6" height="6" rx="1" />
+								<rect x="1" y="9" width="6" height="6" rx="1" />
+								<rect x="9" y="9" width="6" height="6" rx="1" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Zobrazení seznamu"
+							aria-pressed="false"
+							aria-label="Seznam"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="4" height="3" rx="0.5" />
+								<rect x="7" y="2.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="7" width="4" height="3" rx="0.5" />
+								<rect x="7" y="7.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="12" width="4" height="3" rx="0.5" />
+								<rect x="7" y="12.5" width="8" height="2" rx="0.5" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Kompaktní zobrazení"
+							aria-pressed="false"
+							aria-label="Kompakt"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="14" height="2" rx="0.5" />
+								<rect x="1" y="5.5" width="14" height="2" rx="0.5" />
+								<rect x="1" y="9" width="14" height="2" rx="0.5" />
+								<rect x="1" y="12.5" width="14" height="2" rx="0.5" />
+							</svg>
+						</button>
+					</div>
+					<div class="toolbar-sep" aria-hidden="true"></div>
+					<div style="position: relative">
+						<button
+							class="sort-btn"
+							aria-haspopup="listbox"
+							aria-label="Řazení a filtry přání"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<line x1="4" y1="6" x2="20" y2="6" />
+								<line x1="8" y1="12" x2="16" y2="12" />
+								<line x1="11" y1="18" x2="13" y2="18" />
+							</svg>
+							Řazení: <span class="sort-label-text">Pořadí vlastníka</span>
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div class="toolbar-right">
+					<button class="btn-share" aria-label="Sdílet seznam">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+							<polyline points="16 6 12 2 8 6" />
+							<line x1="12" y1="2" x2="12" y2="15" />
+						</svg>
+						Sdílet
+					</button>
+					<button class="btn-add" aria-label="Přidat přání do seznamu">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.5"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Přidat přání
+					</button>
+				</div>
+			</div>
+
+			<div class="gift-grid">
+				<!-- 1. Sony — is-locked, edit+delete is-disabled -->
+				<div class="gift-card is-locked">
 					<div
 						class="gift-img"
 						style="
 							background: linear-gradient(
 								145deg,
-								oklch(0.82 0.04 258),
-								oklch(0.72 0.06 248)
+								oklch(0.2 0.04 245),
+								oklch(0.32 0.06 228)
 							);
 						"
 					>
-						🧶
+						🎧
 						<div class="gift-img-badges-tl">
-							<span class="badge badge-priority-medium">Střední</span>
+							<span class="badge badge-priority-high">Vysoká</span>
 						</div>
 					</div>
 					<div class="gift-body">
-						<div class="gift-name">Deka z merino vlny</div>
-						<div class="gift-price">3 500 Kč</div>
-						<a class="gift-link" href="#" aria-label="Odkaz na produkt na westwing.cz">
+						<div class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</div>
+						<div class="gift-price">8 490 Kč</div>
+						<a class="gift-link" href="#" aria-label="Odkaz na produkt na alza.cz">
 							<svg
 								width="11"
 								height="11"
@@ -2937,13 +3314,13 @@
 								<polyline points="15 3 21 3 21 9" />
 								<line x1="10" y1="14" x2="21" y2="3" />
 							</svg>
-							westwing.cz
+							alza.cz
 						</a>
 						<div class="gift-footer">
 							<div
 								class="drag-hint"
-								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
+								style="opacity: 0.3; cursor: not-allowed"
+								aria-hidden="true"
 							>
 								<svg
 									width="14"
@@ -2992,13 +3369,14 @@
 										stroke="none"
 									/>
 								</svg>
-								Přetáhnout
 							</div>
 							<div class="gift-owner-actions">
 								<button
-									class="icon-btn-card"
-									title="Upravit"
-									aria-label="Upravit Deka z merino vlny"
+									class="icon-btn-card is-disabled"
+									title="Přání nelze po sdílení upravovat"
+									aria-label="Upravit — uzamčeno"
+									aria-disabled="true"
+									disabled
 								>
 									<svg
 										width="12"
@@ -3015,9 +3393,11 @@
 									</svg>
 								</button>
 								<button
-									class="icon-btn-card danger"
-									title="Smazat"
-									aria-label="Smazat Deka z merino vlny"
+									class="icon-btn-card danger is-disabled"
+									title="Přání nelze po sdílení smazat"
+									aria-label="Smazat — uzamčeno"
+									aria-disabled="true"
+									disabled
 								>
 									<svg
 										width="12"
@@ -3039,27 +3419,24 @@
 					</div>
 				</div>
 
-				<!-- 7. Zahradní nůžky Fiskars — ×3 qty (NO reservation badge in owner view) -->
-				<div class="gift-card">
+				<!-- 2. Cestovní kufr — is-locked -->
+				<div class="gift-card is-locked">
 					<div
 						class="gift-img"
 						style="
 							background: linear-gradient(
 								145deg,
-								oklch(0.72 0.09 122),
-								oklch(0.62 0.12 115)
+								oklch(0.76 0.06 198),
+								oklch(0.64 0.09 183)
 							);
 						"
 					>
-						✂️
-						<div class="gift-img-badge-tr">
-							<span class="badge badge-qty-overlay">×3</span>
-						</div>
+						🧳
 					</div>
 					<div class="gift-body">
-						<div class="gift-name">Zahradní nůžky Fiskars</div>
-						<div class="gift-price">890 Kč</div>
-						<a class="gift-link" href="#" aria-label="Odkaz na produkt na hornbach.cz">
+						<div class="gift-name">Cestovní kufr Samsonite</div>
+						<div class="gift-price">4 200 Kč</div>
+						<a class="gift-link" href="#" aria-label="Odkaz na produkt na mall.cz">
 							<svg
 								width="11"
 								height="11"
@@ -3075,14 +3452,13 @@
 								<polyline points="15 3 21 3 21 9" />
 								<line x1="10" y1="14" x2="21" y2="3" />
 							</svg>
-							hornbach.cz
+							mall.cz
 						</a>
-						<!-- NO reservation badge here — owner never sees -->
 						<div class="gift-footer">
 							<div
 								class="drag-hint"
-								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
+								style="opacity: 0.3; cursor: not-allowed"
+								aria-hidden="true"
 							>
 								<svg
 									width="14"
@@ -3131,13 +3507,14 @@
 										stroke="none"
 									/>
 								</svg>
-								Přetáhnout
 							</div>
 							<div class="gift-owner-actions">
 								<button
-									class="icon-btn-card"
-									title="Upravit"
-									aria-label="Upravit Zahradní nůžky Fiskars"
+									class="icon-btn-card is-disabled"
+									title="Přání nelze po sdílení upravovat"
+									aria-label="Upravit — uzamčeno"
+									aria-disabled="true"
+									disabled
 								>
 									<svg
 										width="12"
@@ -3154,9 +3531,11 @@
 									</svg>
 								</button>
 								<button
-									class="icon-btn-card danger"
-									title="Smazat"
-									aria-label="Smazat Zahradní nůžky Fiskars"
+									class="icon-btn-card danger is-disabled"
+									title="Přání nelze po sdílení smazat"
+									aria-label="Smazat — uzamčeno"
+									aria-disabled="true"
+									disabled
 								>
 									<svg
 										width="12"
@@ -3178,7 +3557,152 @@
 					</div>
 				</div>
 
-				<!-- 8. Puzzle 1000 dílků — Bez odkazu -->
+				<!-- 3. Malý princ ×2 — is-locked -->
+				<div class="gift-card is-locked">
+					<div
+						class="gift-img"
+						style="
+							background: linear-gradient(
+								145deg,
+								oklch(0.88 0.065 62),
+								oklch(0.78 0.09 52)
+							);
+						"
+					>
+						📚
+						<div class="gift-img-badge-tr">
+							<span class="badge badge-qty-overlay">×2</span>
+						</div>
+					</div>
+					<div class="gift-body">
+						<div class="gift-name">Kniha — Malý princ (ilustrovaná edice)</div>
+						<div class="gift-price">350 Kč</div>
+						<a
+							class="gift-link"
+							href="#"
+							aria-label="Odkaz na produkt na knihydobrovsky.cz"
+						>
+							<svg
+								width="11"
+								height="11"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								aria-hidden="true"
+							>
+								<path
+									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+								/>
+								<polyline points="15 3 21 3 21 9" />
+								<line x1="10" y1="14" x2="21" y2="3" />
+							</svg>
+							knihydobrovsky.cz
+						</a>
+						<div class="gift-footer">
+							<div
+								class="drag-hint"
+								style="opacity: 0.3; cursor: not-allowed"
+								aria-hidden="true"
+							>
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									aria-hidden="true"
+								>
+									<circle cx="9" cy="5" r="1" fill="currentColor" stroke="none" />
+									<circle
+										cx="15"
+										cy="5"
+										r="1"
+										fill="currentColor"
+										stroke="none"
+									/>
+									<circle
+										cx="9"
+										cy="12"
+										r="1"
+										fill="currentColor"
+										stroke="none"
+									/>
+									<circle
+										cx="15"
+										cy="12"
+										r="1"
+										fill="currentColor"
+										stroke="none"
+									/>
+									<circle
+										cx="9"
+										cy="19"
+										r="1"
+										fill="currentColor"
+										stroke="none"
+									/>
+									<circle
+										cx="15"
+										cy="19"
+										r="1"
+										fill="currentColor"
+										stroke="none"
+									/>
+								</svg>
+							</div>
+							<div class="gift-owner-actions">
+								<button
+									class="icon-btn-card is-disabled"
+									title="Přání nelze po sdílení upravovat"
+									aria-label="Upravit — uzamčeno"
+									aria-disabled="true"
+									disabled
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/>
+									</svg>
+								</button>
+								<button
+									class="icon-btn-card danger is-disabled"
+									title="Přání nelze po sdílení smazat"
+									aria-label="Smazat — uzamčeno"
+									aria-disabled="true"
+									disabled
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<polyline points="3 6 5 6 21 6" />
+										<path
+											d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+										/>
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- 4. Puzzle 1000 dílků — NEW (added after sharing), badge-new, fully editable -->
 				<div class="gift-card">
 					<div
 						class="gift-img"
@@ -3191,16 +3715,19 @@
 						"
 					>
 						🧩
+						<div class="gift-img-badges-tl">
+							<span class="badge badge-new">Nové</span>
+						</div>
 					</div>
 					<div class="gift-body">
-						<div class="gift-name">Puzzle 1000 dílků — Praha</div>
-						<div class="gift-price">450 Kč</div>
+						<div class="gift-name">Puzzle 1000 dílků — Praha v noci</div>
+						<div class="gift-price">580 Kč</div>
 						<span class="gift-link-none">Bez odkazu</span>
 						<div class="gift-footer">
 							<div
 								class="drag-hint"
 								title="Přetáhnout pro změnu pořadí"
-								aria-label="Přetáhněte pro změnu pořadí přání"
+								aria-label="Přetáhnout"
 							>
 								<svg
 									width="14"
@@ -3254,8 +3781,8 @@
 							<div class="gift-owner-actions">
 								<button
 									class="icon-btn-card"
-									title="Upravit"
-									aria-label="Upravit Puzzle 1000 dílků — Praha"
+									title="Upravit přání"
+									aria-label="Upravit Puzzle 1000 dílků"
 								>
 									<svg
 										width="12"
@@ -3273,8 +3800,8 @@
 								</button>
 								<button
 									class="icon-btn-card danger"
-									title="Smazat"
-									aria-label="Smazat Puzzle 1000 dílků — Praha"
+									title="Smazat přání"
+									aria-label="Smazat Puzzle 1000 dílků"
 								>
 									<svg
 										width="12"
@@ -3296,7 +3823,827 @@
 					</div>
 				</div>
 			</div>
-			<!-- /owner gift grid -->
+			<!-- /section D owner-shared -->
+
+			<div class="role-section-divider" aria-hidden="true"></div>
+
+			<!-- ════════════════════════════════════════════════════════
+	         SECTION E: MODERATOR VIEW
+	         Sees reservation state + reserver names. Full controls.
+	         Can edit/delete EXCEPT fully reserved gifts (delete disabled).
+	         ════════════════════════════════════════════════════════ -->
+			<div class="role-section-header moderator">
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					color="var(--primary)"
+					aria-hidden="true"
+				>
+					<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+				</svg>
+				<div>
+					<div class="role-eyebrow moderator">Pohled moderátora</div>
+					<div class="role-desc">
+						Vidí vše jako vlastník + stav rezervace a jméno rezervujícího. Může
+						upravovat a mazat přání — kromě plně rezervovaných (smazání vyžaduje nejprve
+						zrušení rezervace).
+					</div>
+				</div>
+			</div>
+
+			<!-- Moderator info banner -->
+			<div class="moderator-info" role="note">
+				<svg
+					width="15"
+					height="15"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					aria-hidden="true"
+				>
+					<circle cx="12" cy="12" r="10" />
+					<line x1="12" y1="8" x2="12" y2="12" />
+					<line x1="12" y1="16" x2="12.01" y2="16" />
+				</svg>
+				<span
+					>Moderátor vidí stav rezervací včetně jmen. Plně rezervovaná přání nelze smazat
+					— nejprve zrušte rezervaci.</span
+				>
+			</div>
+
+			<!-- Moderator toolbar: full controls -->
+			<div class="section-toolbar" role="toolbar" aria-label="Nástroje přání — moderátor">
+				<div class="toolbar-left">
+					<div class="view-switcher" role="group" aria-label="Zobrazení přání">
+						<button
+							class="view-btn is-active"
+							title="Zobrazení karet"
+							aria-pressed="true"
+							aria-label="Karty"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="1" width="6" height="6" rx="1" />
+								<rect x="9" y="1" width="6" height="6" rx="1" />
+								<rect x="1" y="9" width="6" height="6" rx="1" />
+								<rect x="9" y="9" width="6" height="6" rx="1" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Zobrazení seznamu"
+							aria-pressed="false"
+							aria-label="Seznam"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="4" height="3" rx="0.5" />
+								<rect x="7" y="2.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="7" width="4" height="3" rx="0.5" />
+								<rect x="7" y="7.5" width="8" height="2" rx="0.5" />
+								<rect x="1" y="12" width="4" height="3" rx="0.5" />
+								<rect x="7" y="12.5" width="8" height="2" rx="0.5" />
+							</svg>
+						</button>
+						<button
+							class="view-btn"
+							title="Kompaktní zobrazení"
+							aria-pressed="false"
+							aria-label="Kompakt"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 16 16"
+								fill="currentColor"
+								aria-hidden="true"
+							>
+								<rect x="1" y="2" width="14" height="2" rx="0.5" />
+								<rect x="1" y="5.5" width="14" height="2" rx="0.5" />
+								<rect x="1" y="9" width="14" height="2" rx="0.5" />
+								<rect x="1" y="12.5" width="14" height="2" rx="0.5" />
+							</svg>
+						</button>
+					</div>
+					<div class="toolbar-sep" aria-hidden="true"></div>
+					<div style="position: relative">
+						<button
+							class="sort-btn"
+							aria-haspopup="listbox"
+							aria-label="Řazení a filtry přání"
+						>
+							<svg
+								width="15"
+								height="15"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<line x1="4" y1="6" x2="20" y2="6" />
+								<line x1="8" y1="12" x2="16" y2="12" />
+								<line x1="11" y1="18" x2="13" y2="18" />
+							</svg>
+							Řazení: <span class="sort-label-text">Pořadí vlastníka</span>
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								stroke-linecap="round"
+								aria-hidden="true"
+							>
+								<polyline points="6 9 12 15 18 9" />
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div class="toolbar-right">
+					<button class="btn-share" aria-label="Sdílet seznam přání">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<circle cx="18" cy="5" r="3" />
+							<circle cx="6" cy="12" r="3" />
+							<circle cx="18" cy="19" r="3" />
+							<line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+							<line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+						</svg>
+						Sdílet
+					</button>
+					<button class="btn-add" aria-label="Přidat nové přání">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							aria-hidden="true"
+						>
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						Přidat přání
+					</button>
+				</div>
+			</div>
+
+			<div class="gift-grid">
+				<!-- 1. Sony WH-1000XM5 — Dostupné, Vysoká priorita, ♡ 3, edit+delete enabled -->
+				<div class="gift-card">
+					<div
+						class="gift-img"
+						style="
+							background: linear-gradient(
+								145deg,
+								oklch(0.2 0.04 245),
+								oklch(0.32 0.06 228)
+							);
+						"
+					>
+						🎧
+						<div class="gift-img-badges-tl">
+							<span class="badge badge-priority-high" title="Vysoká priorita"
+								>Vysoká</span
+							>
+						</div>
+					</div>
+					<div class="gift-body">
+						<div class="gift-name">Bezdrátová sluchátka Sony WH-1000XM5</div>
+						<div class="gift-price">8 490 Kč</div>
+						<a class="gift-link" href="#" aria-label="Odkaz na produkt na alza.cz">
+							<svg
+								width="11"
+								height="11"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								aria-hidden="true"
+							>
+								<path
+									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+								/>
+								<polyline points="15 3 21 3 21 9" />
+								<line x1="10" y1="14" x2="21" y2="3" />
+							</svg>
+							alza.cz
+						</a>
+						<div class="gift-footer">
+							<div class="gift-owner-actions">
+								<div
+									class="drag-hint"
+									title="Přetáhnout pro změnu pořadí"
+									aria-label="Přetáhnout"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										aria-hidden="true"
+									>
+										<circle
+											cx="9"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+									</svg>
+								</div>
+								<button
+									class="icon-btn-card"
+									title="Upravit přání"
+									aria-label="Upravit Bezdrátová sluchátka Sony WH-1000XM5"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/>
+									</svg>
+								</button>
+								<button
+									class="icon-btn-card danger"
+									title="Smazat přání"
+									aria-label="Smazat Bezdrátová sluchátka Sony WH-1000XM5"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<polyline points="3 6 5 6 21 6" />
+										<path
+											d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+										/>
+									</svg>
+								</button>
+							</div>
+							<button
+								class="btn-reserve"
+								aria-label="Rezervovat Bezdrátová sluchátka Sony WH-1000XM5"
+							>
+								Rezervovat
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- 2. Malý princ ×2 — Částečně rezervováno (1/2), badge-moderator-reserved, edit+delete enabled -->
+				<div class="gift-card">
+					<div
+						class="gift-img"
+						style="
+							background: linear-gradient(
+								145deg,
+								oklch(0.88 0.065 62),
+								oklch(0.78 0.09 52)
+							);
+						"
+					>
+						📚
+						<div class="gift-img-badge-tr">
+							<span class="badge badge-qty-overlay">×2</span>
+						</div>
+					</div>
+					<div class="gift-body">
+						<div class="gift-name">Kniha — Malý princ (ilustrovaná edice)</div>
+						<div class="gift-price">350 Kč</div>
+						<a
+							class="gift-link"
+							href="#"
+							aria-label="Odkaz na produkt na knihydobrovsky.cz"
+						>
+							<svg
+								width="11"
+								height="11"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								aria-hidden="true"
+							>
+								<path
+									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+								/>
+								<polyline points="15 3 21 3 21 9" />
+								<line x1="10" y1="14" x2="21" y2="3" />
+							</svg>
+							knihydobrovsky.cz
+						</a>
+						<div class="gift-badges">
+							<span class="badge badge-reserved-state">Rezervováno (1/2)</span>
+							<span class="badge badge-moderator-reserved"
+								>Rezervováno: 1× Tomáš K.</span
+							>
+						</div>
+						<div class="gift-footer">
+							<div class="gift-owner-actions">
+								<div
+									class="drag-hint"
+									title="Přetáhnout pro změnu pořadí"
+									aria-label="Přetáhnout"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										aria-hidden="true"
+									>
+										<circle
+											cx="9"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+									</svg>
+								</div>
+								<button
+									class="icon-btn-card"
+									title="Upravit přání"
+									aria-label="Upravit Kniha — Malý princ"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/>
+									</svg>
+								</button>
+								<button
+									class="icon-btn-card danger"
+									title="Smazat přání"
+									aria-label="Smazat Kniha — Malý princ"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<polyline points="3 6 5 6 21 6" />
+										<path
+											d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+										/>
+									</svg>
+								</button>
+							</div>
+							<button
+								class="btn-reserve"
+								aria-label="Rezervovat Kniha — Malý princ (1 dostupný)"
+							>
+								Rezervovat
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- 3. Dárkový poukaz Alza.cz — Plně rezervováno, delete is-disabled -->
+				<div class="gift-card is-reserved">
+					<div
+						class="gift-img"
+						style="
+							background: linear-gradient(
+								145deg,
+								oklch(0.54 0.1 148),
+								oklch(0.44 0.12 140)
+							);
+						"
+					>
+						🎁
+						<div class="gift-img-badge-tr">
+							<span class="badge badge-reserved-overlay">✓ Rezervováno</span>
+						</div>
+					</div>
+					<div class="gift-body">
+						<div class="gift-name">Dárkový poukaz Alza.cz</div>
+						<div class="gift-price">2 000 Kč</div>
+						<a class="gift-link" href="#" aria-label="Odkaz na produkt na alza.cz">
+							<svg
+								width="11"
+								height="11"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								aria-hidden="true"
+							>
+								<path
+									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+								/>
+								<polyline points="15 3 21 3 21 9" />
+								<line x1="10" y1="14" x2="21" y2="3" />
+							</svg>
+							alza.cz
+						</a>
+						<div class="gift-badges">
+							<span class="badge badge-moderator-reserved"
+								>Rezervováno: Martin H.</span
+							>
+						</div>
+						<div class="gift-footer">
+							<div class="gift-owner-actions">
+								<div
+									class="drag-hint"
+									title="Přetáhnout pro změnu pořadí"
+									aria-label="Přetáhnout"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										aria-hidden="true"
+									>
+										<circle
+											cx="9"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+									</svg>
+								</div>
+								<button
+									class="icon-btn-card"
+									title="Upravit přání"
+									aria-label="Upravit Dárkový poukaz Alza.cz"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/>
+									</svg>
+								</button>
+								<button
+									class="icon-btn-card danger is-disabled"
+									title="Nejdříve zrušte rezervaci"
+									aria-label="Nelze smazat — přání je plně rezervováno"
+									aria-disabled="true"
+									disabled
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<polyline points="3 6 5 6 21 6" />
+										<path
+											d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+										/>
+									</svg>
+								</button>
+							</div>
+							<button
+								class="btn-reserved"
+								disabled
+								aria-label="Dárkový poukaz Alza.cz je plně rezervován"
+								aria-disabled="true"
+							>
+								Rezervováno
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- 4. Zahradní nůžky Fiskars ×3 — Částečně rezervováno (1/3), badge-moderator-reserved, edit+delete enabled -->
+				<div class="gift-card">
+					<div
+						class="gift-img"
+						style="
+							background: linear-gradient(
+								145deg,
+								oklch(0.72 0.09 122),
+								oklch(0.62 0.12 115)
+							);
+						"
+					>
+						✂️
+						<div class="gift-img-badge-tr">
+							<span class="badge badge-qty-overlay">×3</span>
+						</div>
+					</div>
+					<div class="gift-body">
+						<div class="gift-name">Zahradní nůžky Fiskars PowerGear</div>
+						<div class="gift-price">890 Kč</div>
+						<a class="gift-link" href="#" aria-label="Odkaz na produkt na hornbach.cz">
+							<svg
+								width="11"
+								height="11"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.5"
+								aria-hidden="true"
+							>
+								<path
+									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+								/>
+								<polyline points="15 3 21 3 21 9" />
+								<line x1="10" y1="14" x2="21" y2="3" />
+							</svg>
+							hornbach.cz
+						</a>
+						<div class="gift-badges">
+							<span class="badge badge-reserved-state">Rezervováno (1/3)</span>
+							<span class="badge badge-moderator-reserved"
+								>Rezervováno: 1× Lucie P.</span
+							>
+						</div>
+						<div class="gift-footer">
+							<div class="gift-owner-actions">
+								<div
+									class="drag-hint"
+									title="Přetáhnout pro změnu pořadí"
+									aria-label="Přetáhnout"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										aria-hidden="true"
+									>
+										<circle
+											cx="9"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="5"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="12"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="9"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+										<circle
+											cx="15"
+											cy="19"
+											r="1"
+											fill="currentColor"
+											stroke="none"
+										/>
+									</svg>
+								</div>
+								<button
+									class="icon-btn-card"
+									title="Upravit přání"
+									aria-label="Upravit Zahradní nůžky Fiskars PowerGear"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<path
+											d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+										/>
+									</svg>
+								</button>
+								<button
+									class="icon-btn-card danger"
+									title="Smazat přání"
+									aria-label="Smazat Zahradní nůžky Fiskars PowerGear"
+								>
+									<svg
+										width="12"
+										height="12"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<polyline points="3 6 5 6 21 6" />
+										<path
+											d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"
+										/>
+									</svg>
+								</button>
+							</div>
+							<button
+								class="btn-reserve"
+								aria-label="Rezervovat Zahradní nůžky Fiskars (2 dostupné)"
+							>
+								Rezervovat
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /section E moderator -->
 		</main>
+		<!-- /content-wrap -->
 	</body>
 </html>

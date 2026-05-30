@@ -86,6 +86,20 @@
     - `moderator`: same as visitor + "flag" action.
 - Reservation DOM nodes are never present in the owner render -- not CSS-hidden, not rendered at all.
 
+### Gift Card States
+
+| State                        | Visible to         | Visual treatment                                         | Actions available                                 |
+| ---------------------------- | ------------------ | -------------------------------------------------------- | ------------------------------------------------- |
+| Available                    | Visitor, Moderator | Full opacity, normal                                     | Reserve button active                             |
+| Partially reserved (qty > 1) | Visitor, Moderator | Full opacity, "Rezervováno (1/3)" badge                  | Reserve button active for remaining units         |
+| Fully reserved               | Visitor, Moderator | Slight desaturation, overlay badge "✓ Rezervováno"       | Reserve button disabled                           |
+| Owner editable (draft)       | Owner, Moderator   | Normal, drag handle visible                              | Drag, Edit, Delete                                |
+| Owner locked (post-share)    | Owner, Moderator   | Lock visual, drag handle dimmed                          | Edit+Delete disabled (tooltip explains why)       |
+| Newly added post-share       | Owner, Moderator   | "Nové" badge in image area                               | Drag, Edit, Delete fully enabled                  |
+| Moderator sees reserver name | Moderator only     | "Rezervováno: Jméno" badge below reservation state badge | Edit enabled; Delete disabled when fully reserved |
+
+---
+
 ### Reservation State Filtering
 
 - For owner requests the server STRIPS reservation fields before serializing.
