@@ -1,0 +1,1634 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Database Schema Visualization</title>
+		<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+		<style>
+			:root {
+				--bg: #0f0f0f;
+				--surface: #1a1a1a;
+				--surface2: #252525;
+				--border: #333;
+				--text: #e8e8e8;
+				--text-muted: #888;
+				--accent: #f5c542;
+				--accent2: #42b883;
+				--danger: #e55;
+				--info: #5ba8f5;
+				--purple: #a87df5;
+			}
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family:
+					'Inter',
+					-apple-system,
+					sans-serif;
+				background: var(--bg);
+				color: var(--text);
+				line-height: 1.6;
+				padding: 2rem;
+			}
+			h1 {
+				font-size: 2rem;
+				margin-bottom: 0.5rem;
+				color: var(--accent);
+			}
+			h2 {
+				font-size: 1.4rem;
+				margin: 2rem 0 1rem;
+				color: var(--accent2);
+				border-bottom: 1px solid var(--border);
+				padding-bottom: 0.5rem;
+			}
+			h3 {
+				font-size: 1.1rem;
+				margin: 1.5rem 0 0.5rem;
+				color: var(--purple);
+			}
+			.subtitle {
+				color: var(--text-muted);
+				margin-bottom: 2rem;
+			}
+
+			.grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+				gap: 1.5rem;
+				margin: 1rem 0;
+			}
+
+			.card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				padding: 1.25rem;
+				transition: border-color 0.2s;
+			}
+			.card:hover {
+				border-color: var(--accent);
+			}
+			.card h4 {
+				font-size: 1rem;
+				margin-bottom: 0.75rem;
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+			}
+			.card h4 .badge {
+				font-size: 0.7rem;
+				padding: 2px 8px;
+				border-radius: 99px;
+				font-weight: 500;
+			}
+			.badge-core {
+				background: var(--accent);
+				color: #000;
+			}
+			.badge-junction {
+				background: var(--purple);
+				color: #fff;
+			}
+			.badge-support {
+				background: var(--info);
+				color: #fff;
+			}
+			.badge-new {
+				background: var(--accent2);
+				color: #000;
+			}
+
+			table.schema {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 0.82rem;
+			}
+			table.schema th {
+				text-align: left;
+				color: var(--text-muted);
+				font-weight: 500;
+				padding: 4px 8px;
+				border-bottom: 1px solid var(--border);
+			}
+			table.schema td {
+				padding: 4px 8px;
+				border-bottom: 1px solid var(--surface2);
+				vertical-align: top;
+			}
+			table.schema td:first-child {
+				font-weight: 600;
+				color: var(--accent2);
+				white-space: nowrap;
+			}
+			table.schema td:nth-child(2) {
+				color: var(--info);
+				font-family: monospace;
+				font-size: 0.78rem;
+			}
+			table.schema td:nth-child(3) {
+				color: var(--text-muted);
+				font-size: 0.78rem;
+			}
+			.pk {
+				color: var(--accent) !important;
+			}
+			.fk {
+				color: var(--purple) !important;
+			}
+			.nullable {
+				opacity: 0.7;
+			}
+			.soft-delete {
+				color: var(--danger) !important;
+				font-style: italic;
+			}
+
+			.er-diagram {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				padding: 1.5rem;
+				margin: 1rem 0;
+				overflow-x: auto;
+			}
+
+			.constraints {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: 1rem;
+				margin: 1rem 0;
+			}
+			.constraint {
+				background: var(--surface);
+				border-left: 3px solid var(--danger);
+				padding: 0.75rem 1rem;
+				border-radius: 0 8px 8px 0;
+				font-size: 0.85rem;
+			}
+			.constraint.info {
+				border-left-color: var(--info);
+			}
+			.constraint.warn {
+				border-left-color: var(--accent);
+			}
+			.constraint.settled {
+				border-left-color: var(--accent2);
+			}
+			.constraint strong {
+				display: block;
+				margin-bottom: 0.25rem;
+			}
+
+			.flow {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				padding: 1.5rem;
+				margin: 1rem 0;
+			}
+			.flow-step {
+				display: flex;
+				align-items: flex-start;
+				gap: 1rem;
+				margin: 0.75rem 0;
+				font-size: 0.85rem;
+			}
+			.flow-step .num {
+				background: var(--accent);
+				color: #000;
+				width: 24px;
+				height: 24px;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-weight: 700;
+				font-size: 0.75rem;
+				flex-shrink: 0;
+			}
+
+			.stats {
+				display: flex;
+				gap: 1.5rem;
+				flex-wrap: wrap;
+				margin: 1rem 0;
+			}
+			.stat {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 0.75rem 1.25rem;
+				text-align: center;
+			}
+			.stat .num {
+				font-size: 1.8rem;
+				font-weight: 700;
+				color: var(--accent);
+			}
+			.stat .label {
+				font-size: 0.75rem;
+				color: var(--text-muted);
+			}
+
+			.enum-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				margin: 0.5rem 0;
+			}
+			.enum-val {
+				background: var(--surface2);
+				border: 1px solid var(--border);
+				padding: 3px 10px;
+				border-radius: 6px;
+				font-size: 0.78rem;
+				font-family: monospace;
+			}
+
+			.scenario-tabs {
+				display: flex;
+				gap: 0.5rem;
+				margin-bottom: 1rem;
+				flex-wrap: wrap;
+			}
+			.scenario-tab {
+				background: var(--surface2);
+				border: 1px solid var(--border);
+				padding: 6px 14px;
+				border-radius: 6px;
+				cursor: pointer;
+				font-size: 0.82rem;
+				transition: all 0.2s;
+			}
+			.scenario-tab.active,
+			.scenario-tab:hover {
+				background: var(--accent);
+				color: #000;
+				border-color: var(--accent);
+			}
+			.scenario-content {
+				display: none;
+			}
+			.scenario-content.active {
+				display: block;
+			}
+
+			.legend {
+				display: flex;
+				gap: 1.5rem;
+				flex-wrap: wrap;
+				margin: 1rem 0;
+				font-size: 0.8rem;
+			}
+			.legend-item {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+			}
+			.legend-dot {
+				width: 12px;
+				height: 12px;
+				border-radius: 3px;
+			}
+
+			.mermaid {
+				text-align: center;
+			}
+
+			.change-note {
+				background: #1a2a1a;
+				border: 1px solid var(--accent2);
+				border-radius: 8px;
+				padding: 1rem;
+				margin: 1rem 0;
+				font-size: 0.85rem;
+			}
+			.change-note h3 {
+				margin: 0 0 0.5rem;
+				color: var(--accent2);
+				font-size: 0.95rem;
+			}
+			.change-note ul {
+				padding-left: 1.2rem;
+			}
+			.change-note li {
+				margin: 0.3rem 0;
+			}
+			.change-note .tag {
+				display: inline-block;
+				font-size: 0.7rem;
+				padding: 1px 6px;
+				border-radius: 4px;
+				font-weight: 600;
+				margin-right: 0.3rem;
+			}
+			.tag-new {
+				background: var(--accent2);
+				color: #000;
+			}
+			.tag-changed {
+				background: var(--accent);
+				color: #000;
+			}
+			.tag-removed {
+				background: var(--danger);
+				color: #fff;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Darecky — Database Schema</h1>
+		<p class="subtitle">
+			Shareable wishlist app with surprise mechanic. Owner never sees reservation state.
+		</p>
+
+		<div class="change-note">
+			<h3>Changes from v1 (2026-05-30)</h3>
+			<ul>
+				<li>
+					<span class="tag tag-new">NEW</span> <strong>priority_level</strong> table —
+					replaces jsonb column on wishlist. Owner can customize labels.
+				</li>
+				<li>
+					<span class="tag tag-changed">CHANGED</span> <strong>Soft delete</strong> on all
+					core tables (wishlist, gift, reservation, like, moderator_assignment) via
+					<code>deleted_at</code> column.
+				</li>
+				<li>
+					<span class="tag tag-changed">CHANGED</span>
+					<strong>wishlist_follower</strong> gains <code>unfollowed_at</code> — supports
+					"Zobrazit opustene" toggle on Sledovane page.
+				</li>
+				<li>
+					<span class="tag tag-changed">CHANGED</span> <strong>Notifications</strong> —
+					hard-deleted after 1 year (cron/scheduled job).
+				</li>
+				<li>
+					<span class="tag tag-removed">RESOLVED</span> Owner self-promote is
+					<strong>irreversible</strong>.
+				</li>
+				<li>
+					<span class="tag tag-removed">RESOLVED</span> Owner
+					<strong>cannot reserve</strong> on their own wishlist.
+				</li>
+			</ul>
+		</div>
+
+		<div class="stats">
+			<div class="stat">
+				<div class="num">10</div>
+				<div class="label">Tables</div>
+			</div>
+			<div class="stat">
+				<div class="num">3</div>
+				<div class="label">Enums</div>
+			</div>
+			<div class="stat">
+				<div class="num">7</div>
+				<div class="label">Domain Modules</div>
+			</div>
+			<div class="stat">
+				<div class="num">6</div>
+				<div class="label">Notification Types</div>
+			</div>
+			<div class="stat">
+				<div class="num">3</div>
+				<div class="label">Roles</div>
+			</div>
+		</div>
+
+		<h2>Entity-Relationship Diagram</h2>
+		<div class="er-diagram">
+			<div class="mermaid">
+				erDiagram USER ||--o{ WISHLIST : "owns" USER ||--o{ MODERATOR_ASSIGNMENT :
+				"assigned" USER ||--o{ RESERVATION : "reserves" USER ||--o{ LIKE : "likes" USER
+				||--o{ WISHLIST_FOLLOWER : "follows" USER ||--o{ NOTIFICATION : "receives" WISHLIST
+				||--o{ GIFT : "contains" WISHLIST ||--o{ PRIORITY_LEVEL : "defines" WISHLIST ||--o{
+				MODERATOR_ASSIGNMENT : "has" WISHLIST ||--o{ MODERATOR_INVITE : "has" WISHLIST
+				||--o{ WISHLIST_FOLLOWER : "has" GIFT ||--o{ RESERVATION : "claimed by" GIFT ||--o{
+				LIKE : "liked by" GIFT }o--o| PRIORITY_LEVEL : "assigned" USER { text id PK text
+				name text email UK bool email_verified text image timestamp created_at } WISHLIST {
+				text id PK text owner_id FK text title text description timestamp event_date enum
+				status enum theme text custom_theme_color text banner_image_key text
+				thumbnail_image_key bool owner_is_moderator timestamp shared_at timestamp
+				archived_at timestamp deleted_at timestamp created_at } PRIORITY_LEVEL { text id PK
+				text wishlist_id FK int sort_order text label timestamp created_at } GIFT { text id
+				PK text wishlist_id FK text priority_level_id FK text name text description text url
+				int price text currency text image_url text image_key int quantity int sort_order
+				bool received timestamp deleted_at timestamp created_at } RESERVATION { text id PK
+				text gift_id FK text user_id FK text anonymous_name text anonymous_email int
+				quantity timestamp deleted_at timestamp created_at } LIKE { text id PK text gift_id
+				FK text user_id FK timestamp deleted_at timestamp created_at } MODERATOR_ASSIGNMENT
+				{ text id PK text wishlist_id FK text user_id FK timestamp deleted_at timestamp
+				assigned_at } MODERATOR_INVITE { text id PK text wishlist_id FK text token UK text
+				created_by_user_id FK text used_by_user_id FK timestamp used_at timestamp revoked_at
+				timestamp created_at } WISHLIST_FOLLOWER { text wishlist_id PK text user_id PK
+				timestamp last_visited_at timestamp unfollowed_at timestamp created_at }
+				NOTIFICATION { text id PK text user_id FK text type text wishlist_id FK text gift_id
+				FK text actor_id FK text actor_name bool read bool email_sent timestamp created_at }
+			</div>
+		</div>
+
+		<div class="legend">
+			<div class="legend-item">
+				<div class="legend-dot" style="background: var(--accent)"></div>
+				Primary Key
+			</div>
+			<div class="legend-item">
+				<div class="legend-dot" style="background: var(--purple)"></div>
+				Foreign Key
+			</div>
+			<div class="legend-item">
+				<div class="legend-dot" style="background: var(--info)"></div>
+				Unique
+			</div>
+			<div class="legend-item">
+				<div class="legend-dot" style="background: var(--danger)"></div>
+				Invariant / Hard constraint
+			</div>
+			<div class="legend-item">
+				<div class="legend-dot" style="background: var(--accent2)"></div>
+				Settled (was open question)
+			</div>
+		</div>
+
+		<h2>Enums</h2>
+		<div class="grid">
+			<div class="card">
+				<h4>wishlist_status</h4>
+				<div class="enum-list">
+					<span class="enum-val">draft</span>
+					<span class="enum-val">active</span>
+					<span class="enum-val">archived</span>
+				</div>
+				<p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem">
+					Draft → Active (on first share) → Archived (manual by owner). All transitions
+					are one-way.
+				</p>
+			</div>
+			<div class="card">
+				<h4>wishlist_theme</h4>
+				<div class="enum-list">
+					<span class="enum-val">default</span>
+					<span class="enum-val">christmas</span>
+					<span class="enum-val">birthday</span>
+					<span class="enum-val">fun</span>
+					<span class="enum-val">elegant</span>
+					<span class="enum-val">custom</span>
+				</div>
+				<p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem">
+					When theme = 'custom', custom_theme_color holds the OKLCH seed color.
+				</p>
+			</div>
+			<div class="card">
+				<h4>notification_type (app-level, not pg enum)</h4>
+				<div class="enum-list">
+					<span class="enum-val" style="border-color: var(--danger)"
+						>liked_gift_reserved</span
+					>
+					<span class="enum-val" style="border-color: var(--danger)"
+						>reserved_gift_edited</span
+					>
+					<span class="enum-val" style="border-color: var(--danger)"
+						>wishlist_archived</span
+					>
+					<span class="enum-val" style="border-color: var(--danger)"
+						>owner_became_moderator</span
+					>
+					<span class="enum-val">gift_reserved</span>
+					<span class="enum-val">gift_added</span>
+				</div>
+				<p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem">
+					Red border = critical (email). Regular = non-critical (in-app batched).
+					Hard-deleted after 1 year.
+				</p>
+			</div>
+		</div>
+
+		<h2>Soft Delete Strategy</h2>
+		<div class="card" style="max-width: 700px; margin: 1rem 0">
+			<h4>Convention</h4>
+			<p style="font-size: 0.85rem; margin-bottom: 0.75rem">
+				All core domain tables have a <code>deleted_at timestamptz</code> column (NULL =
+				active). Queries must filter <code>WHERE deleted_at IS NULL</code> unless explicitly
+				showing deleted records.
+			</p>
+			<table class="schema">
+				<tr>
+					<th>Table</th>
+					<th>Soft Delete Semantics</th>
+				</tr>
+				<tr>
+					<td>wishlist</td>
+					<td>Owner "deletes" a wishlist — hidden from all views, data preserved</td>
+				</tr>
+				<tr>
+					<td>gift</td>
+					<td>Moderator removes an unreserved gift — reversible undo</td>
+				</tr>
+				<tr>
+					<td>reservation</td>
+					<td>Unreserve = soft delete (preserves history for moderators)</td>
+				</tr>
+				<tr>
+					<td>like</td>
+					<td>Unlike = soft delete (preserves notification history)</td>
+				</tr>
+				<tr>
+					<td>moderator_assignment</td>
+					<td>Owner revokes moderator — preserves audit trail</td>
+				</tr>
+			</table>
+			<p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.75rem">
+				<strong>Exceptions (no soft delete):</strong> priority_level (replaced inline),
+				moderator_invite (has revoked_at), wishlist_follower (has unfollowed_at),
+				notification (hard-deleted after 1 year by cron).
+			</p>
+		</div>
+
+		<h2>Table Definitions</h2>
+		<div class="grid">
+			<!-- WISHLIST -->
+			<div class="card">
+				<h4>wishlist <span class="badge badge-core">core</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12) — also the URL slug /w/{id}</td>
+					</tr>
+					<tr>
+						<td class="fk">owner_id</td>
+						<td>text</td>
+						<td>→ user.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td>title</td>
+						<td>text</td>
+						<td>NOT NULL</td>
+					</tr>
+					<tr>
+						<td class="nullable">description</td>
+						<td>text</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="nullable">event_date</td>
+						<td>timestamptz</td>
+						<td>Used for archive prompt</td>
+					</tr>
+					<tr>
+						<td>status</td>
+						<td>wishlist_status</td>
+						<td>DEFAULT 'draft'</td>
+					</tr>
+					<tr>
+						<td>theme</td>
+						<td>wishlist_theme</td>
+						<td>DEFAULT 'default'</td>
+					</tr>
+					<tr>
+						<td class="nullable">custom_theme_color</td>
+						<td>text</td>
+						<td>OKLCH string when theme='custom'</td>
+					</tr>
+					<tr>
+						<td class="nullable">banner_image_key</td>
+						<td>text</td>
+						<td>R2 key</td>
+					</tr>
+					<tr>
+						<td class="nullable">thumbnail_image_key</td>
+						<td>text</td>
+						<td>R2 key</td>
+					</tr>
+					<tr>
+						<td>owner_is_moderator</td>
+						<td>boolean</td>
+						<td>DEFAULT false, IRREVERSIBLE once true</td>
+					</tr>
+					<tr>
+						<td class="nullable">shared_at</td>
+						<td>timestamptz</td>
+						<td>When draft → active</td>
+					</tr>
+					<tr>
+						<td class="nullable">archived_at</td>
+						<td>timestamptz</td>
+						<td>When archived</td>
+					</tr>
+					<tr>
+						<td class="soft-delete nullable">deleted_at</td>
+						<td>timestamptz</td>
+						<td>Soft delete</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+					<tr>
+						<td>updated_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+			</div>
+
+			<!-- PRIORITY_LEVEL (NEW) -->
+			<div class="card">
+				<h4>priority_level <span class="badge badge-new">new</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12)</td>
+					</tr>
+					<tr>
+						<td class="fk">wishlist_id</td>
+						<td>text</td>
+						<td>→ wishlist.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td>sort_order</td>
+						<td>integer</td>
+						<td>0 = highest priority</td>
+					</tr>
+					<tr>
+						<td>label</td>
+						<td>text</td>
+						<td>NOT NULL, e.g. "Nejvic chci", "Bylo by fajn"</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
+					Default 3 levels seeded on wishlist creation: ["Nejvic chci", "Bylo by fajn",
+					"Kdyz nevite"]. Owner can rename, add, remove, reorder. Gift references
+					priority_level.id (nullable FK). No soft delete — levels are replaced/reordered
+					inline.
+				</p>
+			</div>
+
+			<!-- GIFT -->
+			<div class="card">
+				<h4>gift <span class="badge badge-core">core</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12)</td>
+					</tr>
+					<tr>
+						<td class="fk">wishlist_id</td>
+						<td>text</td>
+						<td>→ wishlist.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td class="fk nullable">priority_level_id</td>
+						<td>text</td>
+						<td>→ priority_level.id, SET NULL</td>
+					</tr>
+					<tr>
+						<td>name</td>
+						<td>text</td>
+						<td>NOT NULL</td>
+					</tr>
+					<tr>
+						<td class="nullable">description</td>
+						<td>text</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td class="nullable">url</td>
+						<td>text</td>
+						<td>External store link (always visible)</td>
+					</tr>
+					<tr>
+						<td class="nullable">price</td>
+						<td>integer</td>
+						<td>In cents (500 CZK = 50000)</td>
+					</tr>
+					<tr>
+						<td class="nullable">currency</td>
+						<td>text</td>
+						<td>ISO 4217, DEFAULT 'CZK'</td>
+					</tr>
+					<tr>
+						<td class="nullable">image_url</td>
+						<td>text</td>
+						<td>External image URL</td>
+					</tr>
+					<tr>
+						<td class="nullable">image_key</td>
+						<td>text</td>
+						<td>R2 uploaded image key</td>
+					</tr>
+					<tr>
+						<td>quantity</td>
+						<td>integer</td>
+						<td>DEFAULT 1, NULL = unlimited</td>
+					</tr>
+					<tr>
+						<td>sort_order</td>
+						<td>integer</td>
+						<td>DEFAULT 0, owner drag-and-drop</td>
+					</tr>
+					<tr>
+						<td>received</td>
+						<td>boolean</td>
+						<td>DEFAULT false, visible to all</td>
+					</tr>
+					<tr>
+						<td class="soft-delete nullable">deleted_at</td>
+						<td>timestamptz</td>
+						<td>Soft delete (moderator remove)</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+					<tr>
+						<td>updated_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+			</div>
+
+			<!-- RESERVATION -->
+			<div class="card">
+				<h4>reservation <span class="badge badge-core">core</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12)</td>
+					</tr>
+					<tr>
+						<td class="fk">gift_id</td>
+						<td>text</td>
+						<td>→ gift.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td class="fk nullable">user_id</td>
+						<td>text</td>
+						<td>→ user.id, SET NULL (nullable for anon)</td>
+					</tr>
+					<tr>
+						<td class="nullable">anonymous_name</td>
+						<td>text</td>
+						<td>Required when user_id is null</td>
+					</tr>
+					<tr>
+						<td class="nullable">anonymous_email</td>
+						<td>text</td>
+						<td>Optional, for notifications</td>
+					</tr>
+					<tr>
+						<td>quantity</td>
+						<td>integer</td>
+						<td>DEFAULT 1</td>
+					</tr>
+					<tr>
+						<td class="soft-delete nullable">deleted_at</td>
+						<td>timestamptz</td>
+						<td>Soft delete (unreserve)</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--danger); margin-top: 0.5rem">
+					CHECK: user_id IS NOT NULL OR anonymous_name IS NOT NULL<br />
+					CHECK: user_id != (SELECT owner_id FROM wishlist WHERE id = gift.wishlist_id) —
+					owner cannot reserve own gifts
+				</p>
+			</div>
+
+			<!-- LIKE -->
+			<div class="card">
+				<h4>like <span class="badge badge-junction">junction</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12)</td>
+					</tr>
+					<tr>
+						<td class="fk">gift_id</td>
+						<td>text</td>
+						<td>→ gift.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td class="fk">user_id</td>
+						<td>text</td>
+						<td>→ user.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td class="soft-delete nullable">deleted_at</td>
+						<td>timestamptz</td>
+						<td>Soft delete (unlike)</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
+					UNIQUE(gift_id, user_id) WHERE deleted_at IS NULL — one active like per user per
+					gift. Requires auth.
+				</p>
+			</div>
+
+			<!-- MODERATOR_ASSIGNMENT -->
+			<div class="card">
+				<h4>moderator_assignment <span class="badge badge-junction">junction</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12)</td>
+					</tr>
+					<tr>
+						<td class="fk">wishlist_id</td>
+						<td>text</td>
+						<td>→ wishlist.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td class="fk">user_id</td>
+						<td>text</td>
+						<td>→ user.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td class="soft-delete nullable">deleted_at</td>
+						<td>timestamptz</td>
+						<td>Soft delete (revoke moderator)</td>
+					</tr>
+					<tr>
+						<td>assigned_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
+					UNIQUE(wishlist_id, user_id) WHERE deleted_at IS NULL — no duplicate active
+					assignments
+				</p>
+			</div>
+
+			<!-- MODERATOR_INVITE -->
+			<div class="card">
+				<h4>moderator_invite <span class="badge badge-support">support</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12)</td>
+					</tr>
+					<tr>
+						<td class="fk">wishlist_id</td>
+						<td>text</td>
+						<td>→ wishlist.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td>token</td>
+						<td>text</td>
+						<td>UNIQUE, nanoid(24)</td>
+					</tr>
+					<tr>
+						<td class="fk">created_by_user_id</td>
+						<td>text</td>
+						<td>→ user.id</td>
+					</tr>
+					<tr>
+						<td class="fk nullable">used_by_user_id</td>
+						<td>text</td>
+						<td>→ user.id</td>
+					</tr>
+					<tr>
+						<td class="nullable">used_at</td>
+						<td>timestamptz</td>
+						<td>Marks as consumed</td>
+					</tr>
+					<tr>
+						<td class="nullable">revoked_at</td>
+						<td>timestamptz</td>
+						<td>Owner can revoke</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
+					Valid = used_at IS NULL AND revoked_at IS NULL. No soft delete — revoked_at
+					serves same purpose.
+				</p>
+			</div>
+
+			<!-- WISHLIST_FOLLOWER -->
+			<div class="card">
+				<h4>wishlist_follower <span class="badge badge-junction">junction</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk fk">wishlist_id</td>
+						<td>text</td>
+						<td>→ wishlist.id, CASCADE (composite PK)</td>
+					</tr>
+					<tr>
+						<td class="pk fk">user_id</td>
+						<td>text</td>
+						<td>→ user.id, CASCADE (composite PK)</td>
+					</tr>
+					<tr>
+						<td class="nullable">last_visited_at</td>
+						<td>timestamptz</td>
+						<td>For "new since last visit" badge</td>
+					</tr>
+					<tr>
+						<td class="nullable" style="color: var(--accent2) !important">
+							unfollowed_at
+						</td>
+						<td>timestamptz</td>
+						<td>
+							NULL = active follower. Set = unfollowed (shown in "Zobrazit opustene")
+						</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
+					Auto-created on reservation (if auth). Manual follow/unfollow toggle. Re-follow
+					= SET unfollowed_at = NULL. No soft delete — unfollowed_at handles the
+					unfollow/re-follow cycle.
+				</p>
+			</div>
+
+			<!-- NOTIFICATION -->
+			<div class="card">
+				<h4>notification <span class="badge badge-support">support</span></h4>
+				<table class="schema">
+					<tr>
+						<th>Column</th>
+						<th>Type</th>
+						<th>Notes</th>
+					</tr>
+					<tr>
+						<td class="pk">id</td>
+						<td>text</td>
+						<td>nanoid(12)</td>
+					</tr>
+					<tr>
+						<td class="fk">user_id</td>
+						<td>text</td>
+						<td>→ user.id, CASCADE</td>
+					</tr>
+					<tr>
+						<td>type</td>
+						<td>text</td>
+						<td>App-level enum (see types)</td>
+					</tr>
+					<tr>
+						<td class="fk nullable">wishlist_id</td>
+						<td>text</td>
+						<td>→ wishlist.id, SET NULL</td>
+					</tr>
+					<tr>
+						<td class="fk nullable">gift_id</td>
+						<td>text</td>
+						<td>→ gift.id, SET NULL</td>
+					</tr>
+					<tr>
+						<td class="fk nullable">actor_id</td>
+						<td>text</td>
+						<td>→ user.id (who triggered it)</td>
+					</tr>
+					<tr>
+						<td class="nullable">actor_name</td>
+						<td>text</td>
+						<td>For anonymous actors</td>
+					</tr>
+					<tr>
+						<td>read</td>
+						<td>boolean</td>
+						<td>DEFAULT false</td>
+					</tr>
+					<tr>
+						<td>email_sent</td>
+						<td>boolean</td>
+						<td>DEFAULT false</td>
+					</tr>
+					<tr>
+						<td>created_at</td>
+						<td>timestamptz</td>
+						<td>DEFAULT now()</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
+					No soft delete. Hard-deleted by cron after 1 year (created_at < now() - interval
+					'1 year').
+				</p>
+			</div>
+		</div>
+
+		<h2>Key Invariants & Constraints</h2>
+		<div class="constraints">
+			<div class="constraint">
+				<strong>Owner NEVER sees reservation state</strong>
+				All queries for wishlist owner must exclude reservation data. No reservation counts,
+				no gifter names, no reserved/free indicators. This is the CORE product invariant.
+			</div>
+			<div class="constraint">
+				<strong>Owner cannot reserve on own wishlist</strong>
+				Enforced at app level. Owner is the "recipient" role — if they want to reserve, they
+				follow someone else's list.
+			</div>
+			<div class="constraint">
+				<strong>Sharing locks owner editing</strong>
+				When wishlist.status = 'active' (shared_at IS NOT NULL), owner can only INSERT new
+				gifts. UPDATE and DELETE on existing gifts are blocked for owner role.
+			</div>
+			<div class="constraint">
+				<strong>Reserved gifts cannot be removed</strong>
+				Moderators cannot soft-delete a gift that has any active reservations (WHERE
+				deleted_at IS NULL). Must contact gifter first.
+			</div>
+			<div class="constraint">
+				<strong>Owner self-promote is IRREVERSIBLE</strong>
+				Once owner_is_moderator = true, it cannot be set back to false. Triggers
+				notification to all followers. Shows permanent banner on wishlist.
+			</div>
+			<div class="constraint info">
+				<strong>Reservation quantity ≤ available</strong>
+				SUM(active reservation.quantity) for a gift must not exceed gift.quantity (when not
+				NULL/unlimited). Enforced at app level with soft-delete filter.
+			</div>
+			<div class="constraint info">
+				<strong>Anonymous identity constraint</strong>
+				CHECK: reservation.user_id IS NOT NULL OR reservation.anonymous_name IS NOT NULL.
+				Every reservation must have an identifiable actor.
+			</div>
+			<div class="constraint info">
+				<strong>Auto-follow on reservation</strong>
+				When an authenticated user creates a reservation, upsert into wishlist_follower
+				(clear unfollowed_at if re-following).
+			</div>
+			<div class="constraint info">
+				<strong>Archived = read-only</strong>
+				When wishlist.status = 'archived', no new reservations accepted. Existing data is
+				preserved as-is.
+			</div>
+			<div class="constraint info">
+				<strong>Soft-delete queries must filter</strong>
+				All standard queries must include WHERE deleted_at IS NULL. Only admin/audit views
+				may show soft-deleted records.
+			</div>
+		</div>
+
+		<h2>Data Flows</h2>
+
+		<div class="scenario-tabs">
+			<div class="scenario-tab active" onclick="showScenario('reserve')">Reserve a Gift</div>
+			<div class="scenario-tab" onclick="showScenario('unreserve')">Unreserve</div>
+			<div class="scenario-tab" onclick="showScenario('share')">Share Wishlist</div>
+			<div class="scenario-tab" onclick="showScenario('moderate')">Moderator Edit</div>
+			<div class="scenario-tab" onclick="showScenario('archive')">Archive</div>
+			<div class="scenario-tab" onclick="showScenario('unfollow')">Unfollow / Refollow</div>
+		</div>
+
+		<div class="flow scenario-content active" id="scenario-reserve">
+			<h3>Visitor Reserves a Gift</h3>
+			<div class="flow-step">
+				<div class="num">1</div>
+				<div>Visitor clicks "Reserve" on gift (authed or anonymous w/ name)</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">2</div>
+				<div>Check: user is NOT the wishlist owner</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">3</div>
+				<div>
+					Check: gift.quantity IS NULL (unlimited) OR SUM(active reservations) + requested
+					≤ gift.quantity
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">4</div>
+				<div>
+					INSERT into <strong>reservation</strong> (user_id or anonymous_name +
+					anonymous_email)
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">5</div>
+				<div>
+					If user is authenticated → UPSERT into <strong>wishlist_follower</strong> (clear
+					unfollowed_at)
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">6</div>
+				<div>
+					Query: any active <strong>like</strong> rows for this gift_id WHERE user_id ≠
+					reserver?
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">7</div>
+				<div>
+					For each liker → INSERT <strong>notification</strong> (type:
+					liked_gift_reserved, email_sent: true)
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">8</div>
+				<div>
+					For each active follower (excl. reserver + owner) → INSERT
+					<strong>notification</strong> (type: gift_reserved, email_sent: false)
+				</div>
+			</div>
+		</div>
+
+		<div class="flow scenario-content" id="scenario-unreserve">
+			<h3>Visitor Unreserves a Gift</h3>
+			<div class="flow-step">
+				<div class="num">1</div>
+				<div>Visitor clicks "Unreserve" on a gift they reserved</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">2</div>
+				<div>
+					UPDATE reservation SET deleted_at = now() WHERE id = :id AND deleted_at IS NULL
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">3</div>
+				<div>
+					Gift's available quantity recalculated (SUM of active reservations decreases)
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">4</div>
+				<div>No notification triggered (unreserve is silent)</div>
+			</div>
+		</div>
+
+		<div class="flow scenario-content" id="scenario-share">
+			<h3>Owner Shares Wishlist</h3>
+			<div class="flow-step">
+				<div class="num">1</div>
+				<div>Owner enters sharing wizard (Step 1: confirm lock)</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">2</div>
+				<div>UPDATE wishlist SET status = 'active', shared_at = now()</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">3</div>
+				<div>
+					From this point: owner can only INSERT new gifts (edit/remove locked for
+					existing)
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">4</div>
+				<div>
+					Step 2: choose sharing method → Step 3: success with clear text about
+					restrictions
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">5</div>
+				<div>
+					Social sharing via intent URLs (WhatsApp, email, Telegram, SMS, copy link)
+				</div>
+			</div>
+		</div>
+
+		<div class="flow scenario-content" id="scenario-moderate">
+			<h3>Moderator Edits/Removes a Gift</h3>
+			<div class="flow-step">
+				<div class="num">1</div>
+				<div>
+					Check: user has active <strong>moderator_assignment</strong> (deleted_at IS
+					NULL) for this wishlist
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">2</div>
+				<div>
+					Check: if removing — gift has no active reservations (deleted_at IS NULL). Block
+					if any.
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">3</div>
+				<div>UPDATE gift (edit) or SET gift.deleted_at = now() (soft remove)</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">4</div>
+				<div>If UPDATE and gift has active reservations → find reservers</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">5</div>
+				<div>
+					For each reserver → INSERT <strong>notification</strong> (type:
+					reserved_gift_edited, email_sent: true)
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">6</div>
+				<div>If reserver has anonymous_email → send email to that address too</div>
+			</div>
+		</div>
+
+		<div class="flow scenario-content" id="scenario-archive">
+			<h3>Owner Archives Wishlist</h3>
+			<div class="flow-step">
+				<div class="num">1</div>
+				<div>Owner clicks "Archive" (or prompted after event_date passes)</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">2</div>
+				<div>UPDATE wishlist SET status = 'archived', archived_at = now()</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">3</div>
+				<div>No new reservations accepted (enforced at app level)</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">4</div>
+				<div>
+					For each active follower → INSERT <strong>notification</strong> (type:
+					wishlist_archived, email_sent: true)
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">5</div>
+				<div>
+					Wishlist rendered with archived treatment (desaturated, dimmed in dashboard)
+				</div>
+			</div>
+		</div>
+
+		<div class="flow scenario-content" id="scenario-unfollow">
+			<h3>Unfollow / Refollow a Wishlist</h3>
+			<div class="flow-step">
+				<div class="num">1</div>
+				<div>User clicks "Prestat sledovat" on a followed wishlist</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">2</div>
+				<div>
+					UPDATE wishlist_follower SET unfollowed_at = now() WHERE wishlist_id = :wid AND
+					user_id = :uid
+				</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">3</div>
+				<div>Wishlist disappears from Sledovane page (default view)</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">4</div>
+				<div>User enables "Zobrazit opustene" toggle → unfollowed lists appear dimmed</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">5</div>
+				<div>User clicks "Znovu sledovat" → UPDATE SET unfollowed_at = NULL</div>
+			</div>
+			<div class="flow-step">
+				<div class="num">6</div>
+				<div>Wishlist reappears in active Sledovane view, notifications resume</div>
+			</div>
+		</div>
+
+		<h2>Access Control Matrix</h2>
+		<div style="overflow-x: auto">
+			<table class="schema" style="max-width: 900px">
+				<tr>
+					<th>Action</th>
+					<th style="color: var(--accent)">Owner</th>
+					<th style="color: var(--purple)">Moderator</th>
+					<th style="color: var(--accent2)">Visitor (auth)</th>
+					<th style="color: var(--text-muted)">Visitor (anon)</th>
+				</tr>
+				<tr>
+					<td>View wishlist</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✓</td>
+				</tr>
+				<tr>
+					<td>See reservation state</td>
+					<td style="color: var(--danger)">✗ NEVER</td>
+					<td>✓</td>
+					<td>Own only</td>
+					<td>Own only</td>
+				</tr>
+				<tr>
+					<td>Add gift (draft)</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Add gift (active)</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Edit gift (draft)</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Edit gift (active)</td>
+					<td style="color: var(--danger)">✗ LOCKED</td>
+					<td>✓ (notify reservers)</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Remove gift (active)</td>
+					<td style="color: var(--danger)">✗ LOCKED</td>
+					<td>✓ (if unreserved, soft-delete)</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Reserve/unreserve</td>
+					<td style="color: var(--danger)">✗ OWN LIST</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✓</td>
+				</tr>
+				<tr>
+					<td>Like</td>
+					<td>✗</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✗ (needs auth)</td>
+				</tr>
+				<tr>
+					<td>Follow/unfollow</td>
+					<td>✗</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✗ (needs auth)</td>
+				</tr>
+				<tr>
+					<td>Mark received</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Assign moderator</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Archive</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Set theme</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+				<tr>
+					<td>Edit priority levels</td>
+					<td>✓</td>
+					<td>✓</td>
+					<td>✗</td>
+					<td>✗</td>
+				</tr>
+			</table>
+		</div>
+
+		<h2>Index Strategy</h2>
+		<div class="grid">
+			<div class="card">
+				<h4>Performance-Critical Queries</h4>
+				<table class="schema">
+					<tr>
+						<th>Query</th>
+						<th>Index</th>
+					</tr>
+					<tr>
+						<td>Active gifts by wishlist (sorted)</td>
+						<td>gift(wishlist_id, sort_order) WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>Active reservations for a gift</td>
+						<td>reservation(gift_id) WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>User's active reservations</td>
+						<td>reservation(user_id) WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>User's active followed wishlists</td>
+						<td>wishlist_follower(user_id) WHERE unfollowed_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>User's unfollowed wishlists</td>
+						<td>wishlist_follower(user_id) WHERE unfollowed_at IS NOT NULL</td>
+					</tr>
+					<tr>
+						<td>Unread notifications</td>
+						<td>notification(user_id, read) WHERE read=false</td>
+					</tr>
+					<tr>
+						<td>Wishlists by owner (active)</td>
+						<td>wishlist(owner_id, status) WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>Likes for notification check</td>
+						<td>like(gift_id) WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>Active moderator check</td>
+						<td>moderator_assignment(wishlist_id, user_id) WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>Priority levels for wishlist</td>
+						<td>priority_level(wishlist_id, sort_order)</td>
+					</tr>
+					<tr>
+						<td>Notification cleanup (cron)</td>
+						<td>notification(created_at) — for DELETE WHERE created_at < 1yr</td>
+					</tr>
+				</table>
+			</div>
+			<div class="card">
+				<h4>Unique Constraints (partial)</h4>
+				<table class="schema">
+					<tr>
+						<th>Table</th>
+						<th>Columns</th>
+						<th>Condition</th>
+					</tr>
+					<tr>
+						<td>like</td>
+						<td>(gift_id, user_id)</td>
+						<td>WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>moderator_assignment</td>
+						<td>(wishlist_id, user_id)</td>
+						<td>WHERE deleted_at IS NULL</td>
+					</tr>
+					<tr>
+						<td>wishlist_follower</td>
+						<td>(wishlist_id, user_id)</td>
+						<td>composite PK (always unique)</td>
+					</tr>
+					<tr>
+						<td>moderator_invite</td>
+						<td>(token)</td>
+						<td>always unique</td>
+					</tr>
+					<tr>
+						<td>priority_level</td>
+						<td>(wishlist_id, sort_order)</td>
+						<td>—</td>
+					</tr>
+				</table>
+				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
+					Partial unique indexes (WHERE deleted_at IS NULL) allow soft-deleted duplicates
+					while preventing active duplicates.
+				</p>
+			</div>
+		</div>
+
+		<h2>Size Estimates (Family App Scale)</h2>
+		<div class="stats">
+			<div class="stat">
+				<div class="num">~50</div>
+				<div class="label">Users</div>
+			</div>
+			<div class="stat">
+				<div class="num">~200</div>
+				<div class="label">Wishlists</div>
+			</div>
+			<div class="stat">
+				<div class="num">~2K</div>
+				<div class="label">Gifts</div>
+			</div>
+			<div class="stat">
+				<div class="num">~5K</div>
+				<div class="label">Reservations</div>
+			</div>
+			<div class="stat">
+				<div class="num">~600</div>
+				<div class="label">Priority Levels</div>
+			</div>
+			<div class="stat">
+				<div class="num">~10K</div>
+				<div class="label">Notifications/yr</div>
+			</div>
+		</div>
+		<p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem">
+			At this scale, all queries are trivially fast. Partial indexes on deleted_at are good
+			practice but won't matter until ~100x growth. Notification cleanup cron keeps the table
+			bounded at ~10K rows max.
+		</p>
+
+		<script>
+			function showScenario(id) {
+				document
+					.querySelectorAll('.scenario-content')
+					.forEach((el) => el.classList.remove('active'));
+				document
+					.querySelectorAll('.scenario-tab')
+					.forEach((el) => el.classList.remove('active'));
+				document.getElementById('scenario-' + id).classList.add('active');
+				event.target.classList.add('active');
+			}
+
+			mermaid.initialize({
+				theme: 'dark',
+				themeVariables: {
+					primaryColor: '#f5c542',
+					primaryTextColor: '#e8e8e8',
+					lineColor: '#555',
+					secondaryColor: '#252525',
+					tertiaryColor: '#1a1a1a',
+				},
+			});
+		</script>
+	</body>
+</html>
