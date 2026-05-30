@@ -1,27 +1,27 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { env } from '$env/dynamic/private';
+import { getRequestEvent } from '$app/server';
 import * as schema from './schema.js';
 
 export function isDatabaseConfigured(): boolean {
 	return env.DATABASE_URL !== undefined && env.DATABASE_URL !== '';
 }
 
-let _db: ReturnType<typeof drizzle<typeof schema>> | undefined;
-
 export function getDb() {
-	if (!_db) {
-		if (!isDatabaseConfigured()) {
-			throw new Error('DATABASE_URL environment variable is required');
-		}
-		const client = postgres(env.DATABASE_URL!);
-		_db = drizzle(client, { schema });
-	}
-	return _db;
-}
+	const event = getRequestEvent();
+	const connectionString: string | undefined =
+		(event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined) ??
+		env.DATABASE_URL;
 
-export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
-	get(_, prop) {
-		return Reflect.get(getDb(), prop);
-	},
-});
+	if (connectionString === undefined || connectionString === '') {
+		throw new Error('No database connection: set DATABASE_URL or configure Hyperdrive');
+	}
+
+	const client = postgres(connectionString, {
+		prepare: false,
+		fetch_types: false,
+	});
+
+	return drizzle(client, { schema });
+}

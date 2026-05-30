@@ -3,13 +3,13 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
-import { db } from './db/index.js';
+import { getDb } from './db/index.js';
 
 export const auth = betterAuth({
 	baseURL: env.ORIGIN ?? 'http://localhost:5173',
 	secret: env.AUTH_SECRET,
 
-	database: drizzleAdapter(db, { provider: 'pg' }),
+	database: drizzleAdapter(getDb(), { provider: 'pg' }),
 
 	emailAndPassword: {
 		enabled: true,

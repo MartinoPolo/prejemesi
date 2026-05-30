@@ -1,8 +1,8 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "template-sveltekit",
-	"compatibility_date": "2025-03-27",
-	"compatibility_flags": ["nodejs_als"],
+	"name": "darecky",
+	"compatibility_date": "2025-05-30",
+	"compatibility_flags": ["nodejs_compat"],
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"binding": "ASSETS",
@@ -10,4 +10,7 @@
 	},
 	"workers_dev": true,
 	"preview_urls": true,
+	// hyperdrive and r2_buckets are configured at deploy time — leave empty for local dev
+	// "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<your-hyperdrive-id>" }],
+	// "r2_buckets": [{ "binding": "R2", "bucket_name": "<your-bucket-name>" }],
 }

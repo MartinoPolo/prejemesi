@@ -15,7 +15,11 @@ declare global {
 		// interface PageData {}
 		// interface PageState {}
 		interface Platform {
-			env: Env;
+			env: {
+				HYPERDRIVE: Hyperdrive;
+				R2: R2Bucket;
+				ASSETS: Fetcher;
+			};
 			ctx: ExecutionContext;
 			caches: CacheStorage;
 			cf?: IncomingRequestCfProperties;
