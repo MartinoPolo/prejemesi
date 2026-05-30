@@ -1,0 +1,25 @@
+{
+	"schema_version": 1,
+	"fallow_version": "2.84.0",
+	"timestamp": "2026-05-30T13:11:27Z",
+	"git_sha": "1575c4f7f58795e181469b4d02835f3af3cd3640",
+	"check": {
+		"total_issues": 18,
+		"unused_files": 9,
+		"unused_exports": 0,
+		"unused_types": 1,
+		"unused_dependencies": 0,
+		"unused_dev_dependencies": 0,
+		"unused_optional_dependencies": 0,
+		"unused_enum_members": 0,
+		"unused_class_members": 0,
+		"unresolved_imports": 8,
+		"unlisted_dependencies": 0,
+		"duplicate_exports": 0,
+		"circular_dependencies": 0,
+		"re_export_cycles": 0,
+		"type_only_dependencies": 0,
+		"test_only_dependencies": 0,
+		"boundary_violations": 0
+	}
+}

@@ -12,7 +12,7 @@
 
 - `pnpm run dev` -- dev server
 - `pnpm run check` -- typecheck
-- `pnpm run check:all` -- full check suite (format + lint + typecheck + stylelint + knip)
+- `pnpm run check:all` -- full check suite (format + lint + typecheck + stylelint + fallow)
 - `pnpm run test` -- unit tests
 - `pnpm run test:e2e` -- E2E tests
 

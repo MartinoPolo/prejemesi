@@ -1,0 +1,47 @@
+{
+	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+	"entry": [
+		"src/lib/components/base/*/index.ts",
+		"src/lib/components/derived/*/index.ts",
+		"src/lib/components/blocks/*/index.ts",
+		"src/lib/modules/*/index.ts",
+		"**/*.stories.svelte",
+		"src/lib/reactivity/*.svelte.ts"
+	],
+	"ignorePatterns": ["scripts/**", "designs/**"],
+	"ignoreExports": [
+		{
+			"file": "src/lib/components/**/index.ts",
+			"exports": ["*"]
+		}
+	],
+	"ignoreDependencies": [
+		"@typescript-eslint/parser",
+		"vitest-browser-svelte",
+		"@fontsource-variable/figtree",
+		"@fontsource-variable/noto-sans",
+		"shadcn-svelte",
+		"tw-animate-css",
+		"@fallow-cli/win32-x64-msvc",
+		"@inlang/paraglide-js",
+		"@internationalized/date",
+		"postcss-html",
+		"bits-ui",
+		"@cloudflare/workers-types"
+	],
+	"health": {
+		"maxCrap": 60
+	},
+	"rules": {
+		"unused-files": "error",
+		"unused-exports": "warn",
+		"unused-types": "warn",
+		"unused-dependencies": "error",
+		"unused-class-members": "warn",
+		"unresolved-imports": "error",
+		"duplicate-exports": "off",
+		"circular-dependencies": "error",
+		"boundary-violations": "off",
+		"stale-suppressions": "error"
+	}
+}
