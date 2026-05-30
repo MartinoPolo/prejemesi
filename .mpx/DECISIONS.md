@@ -437,3 +437,164 @@ Why: Saves horizontal space. Three separate icons are visually noisy for a simpl
 Decided: 2026-05-30
 What: All design mockups use light mode as the source of truth. Dark mode is auto-generated from design tokens — no need for manual dark variant designs.
 Why: Reduces design work by 50%. OKLCH token system produces good dark mode automatically.
+
+## V1 Scope & Routing
+
+### V1: Single release, all features
+
+Decided: 2026-05-30
+What: All 16 core features ship in a single V1 release. No MVP/phased rollout within V1.
+Why: Features are interconnected (sharing depends on gifts, notifications depend on reservations). Phasing would ship an incomplete product.
+Rejected: MVP subset first (would leave holes in the core loop).
+
+### English URL slugs
+
+Decided: 2026-05-30
+What: Routes use English slugs: `/login`, `/register`, `/magic-link`, `/reset-password`, `/my-lists`, `/moderated`, `/followed`, `/w/<short-id>`, `/settings`. Logged-in users visiting `/` redirect to `/my-lists`.
+Why: Cleaner URLs, no encoding issues with Czech diacritics, consistent with tech conventions.
+Rejected: Czech slugs (`/prihlaseni`, `/moje-seznamy`).
+
+### Wishlist creation as modal
+
+Decided: 2026-05-30
+What: Creating a wishlist opens a modal with minimal fields: title (required), event date (optional), theme (optional, default preset). After creation, redirects to the wishlist page. Description, images, and custom theme are edited on the wishlist page itself.
+Why: Fast creation flow — the modal keeps context, and most fields are optional at creation time.
+Rejected: Separate page (`/new-list`), multi-step wizard (over-engineered for 1-3 fields).
+
+## Authentication Flow
+
+### Anonymous reservation: inline form in modal
+
+Decided: 2026-05-30
+What: When an anonymous visitor tries to reserve a gift, they see an inline form (display name required + email optional) within the reservation modal. Login/register options are also available in the same modal.
+Why: Minimizes friction — the visitor is already in the reservation context. Separate auth page breaks flow.
+Rejected: Auth page redirect (friction), prompt before viewing (blocks browsing).
+
+### Anonymous → registered: auto-link by email
+
+Decided: 2026-05-30
+What: When a user registers with an email that matches anonymous reservations, those reservations are automatically linked to the new account.
+Why: Preserves the anonymous user's actions without manual claim flow. Email is the natural linking key.
+Rejected: Manual claim flow (too complex for V1), no linking (reservations orphaned).
+
+### Magic link redirect to previous page
+
+Decided: 2026-05-30
+What: Magic link encodes a `redirect` param with the full URL the user was on. After clicking the magic link, they return to that page.
+Why: Users typically arrive via a shared wishlist link — they should land back on that wishlist, not a dashboard.
+Rejected: Always redirect to dashboard (breaks the context the user was in).
+
+### Password reset in V1
+
+Decided: 2026-05-30
+What: Password reset via email is a V1 feature. BetterAuth handles the flow natively.
+Why: Essential if offering email/password auth. Users forget passwords.
+
+## Data & Technical
+
+### Owner-never-sees-reservations enforcement: API + UI
+
+Decided: 2026-05-30
+What: Remote functions strip reservation data before returning to the owner (API-level). UI components also conditionally hide reservation elements for the owner role (defense-in-depth). Role is derived from the server session, not from the client.
+Why: API is the security boundary. UI is defense-in-depth to prevent accidental leaks via component bugs.
+Rejected: DB-level views (unnecessary complexity), UI-only (insecure).
+
+### Client-side theme palette derivation
+
+Decided: 2026-05-30
+What: Server returns theme name + custom color. Presets are predefined CSS variable sets. Custom themes use a JS utility to derive an OKLCH palette from a single input color and set CSS variables on the page wrapper. Live preview during editing.
+Why: Simpler than server-side computation, works reactively, enables live preview without round-trips.
+Rejected: Server-side pre-computation (adds latency, no live preview), build-time generation (can't handle dynamic custom colors).
+
+### Presigned R2 URLs for image uploads
+
+Decided: 2026-05-30
+What: Client requests a presigned upload URL via a command, uploads directly to R2, then sends the R2 key back to save on the gift/wishlist record.
+Why: Avoids Workers body size limits on free tier, reduces server load, standard pattern for edge deployments.
+Rejected: Server proxy (hits Workers body size limits on free tier).
+
+### Currencies: CZK, EUR, USD
+
+Decided: 2026-05-30
+What: Three supported currencies: CZK (default), EUR, USD. UI is a select dropdown next to the price field.
+Why: CZK for Czech audience, EUR/USD for international family. Minimal effort (just a dropdown + stored string).
+Rejected: CZK-only (limits international use), more currencies like GBP (unnecessary scope).
+
+### Priority levels: predefined defaults
+
+Decided: 2026-05-30
+What: Each wishlist gets predefined priority levels (Vysoká / Střední / Nízká) auto-created on wishlist creation. Owner can rename or add custom levels.
+Why: Sensible defaults reduce setup friction. Custom labels allow personalization for power users.
+Rejected: No defaults (owner must create from scratch), fixed labels (too rigid).
+
+## UX Patterns
+
+### V1 email set
+
+Decided: 2026-05-30
+What: V1 sends these emails via Resend: magic link, password reset, liked gift reserved by someone else, reserved gift edited by moderator, wishlist archived, owner self-promoted to moderator, moderator invite.
+Why: Covers auth flows + critical notifications + moderator onboarding. No welcome email (low value).
+Rejected: Welcome email (unnecessary), email verification (deferred — too much friction for a family app).
+
+### Loading: skeleton + toast + inline errors
+
+Decided: 2026-05-30
+What: Content loading uses skeleton components. Action errors (reserve failed, etc.) use toasts. Form validation uses inline field errors.
+Why: Skeleton loading provides perceived performance. Toasts are non-blocking for action feedback. Inline errors are the standard form pattern.
+Rejected: Spinners (less polished), full-page error states (too disruptive).
+
+### Mobile: responsive adaptations, no dedicated mobile design
+
+Decided: 2026-05-30
+What: V1 uses responsive CSS: hamburger menu with slide-out nav on mobile, stacked card grids, gift detail modal becomes full-screen sheet on small screens. No dedicated mobile sidebar redesign.
+Why: Family app — links shared via WhatsApp must work on phones. Responsive adaptations are sufficient; dedicated mobile design is V2 scope.
+Rejected: Desktop-only (unacceptable for target audience), dedicated mobile layout (too much scope for V1).
+
+### Auto-follow on first visit
+
+Decided: 2026-05-30
+What: Logged-in users automatically become followers of a wishlist on their first visit to `/w/<short-id>`. "Přestat sledovat" option available. The Sledované page shows all followed lists.
+Why: Ensures the user can find lists they've interacted with. Explicit follow button adds friction.
+Rejected: Explicit follow button (friction), auto-follow on reservation only (misses visitors who only browse).
+
+### Gift creation/editing as modal
+
+Decided: 2026-05-30
+What: Adding/editing a gift uses a modal — the same GiftDetailModal component in "edit mode." 2-column layout: image upload left, fields right. Stacks on mobile.
+Why: Reuses the detail modal component, consistent pattern, keeps single-page feel.
+Rejected: Inline form (noisy), separate page (breaks flow), drawer (less space for image).
+
+### Moderator management via wishlist settings
+
+Decided: 2026-05-30
+What: A gear/settings icon on the wishlist page header opens a panel/modal for moderator management: list moderators, generate invite link, revoke access.
+Why: Contextual — moderators belong to a specific wishlist. No need for a global moderator page.
+Rejected: Global settings page (wrong level), inside sharing flow (conflates two concerns).
+
+### OG meta tags for wishlist pages
+
+Decided: 2026-05-30
+What: Public wishlist pages (`/w/<short-id>`) include OpenGraph meta tags (title, owner name, thumbnail). Landing page gets standard meta. Auth/dashboard pages get `noindex`.
+Why: Shared links in WhatsApp/Messenger show rich preview cards — critical for a sharing-driven app.
+Rejected: No OG tags (missed opportunity for viral sharing).
+
+### Storybook: Grovekeeper pattern with play functions
+
+Decided: 2026-05-30
+What: Components use `addon-svelte-csf` with `defineMeta`, play functions for interaction tests, autodocs, and "All Variants" grid stories. `tailwind-variants` (`tv()`) for all new derived and block components. Stories for every component with significant complexity.
+Why: Proven pattern from Grovekeeper. Play functions provide interaction testing without separate test files.
+Rejected: CSF3 JS format (less ergonomic for Svelte), no play functions (misses testing opportunity).
+
+### app.css as canonical design token source
+
+Decided: 2026-05-30
+What: `src/app.css` is the single source of truth for design tokens. Missing tokens from `designs/tokens.css` (typography scale, motion, z-index, shadows) must be migrated in. `designs/tokens.css` remains as design reference only.
+Why: Tokens must be in the Tailwind pipeline to be usable. Two sources of truth causes drift.
+Rejected: Importing designs/tokens.css directly (not wired to Tailwind @theme), keeping both in sync manually (drift risk).
+
+### createContext API for all new code
+
+Decided: 2026-05-30
+What: All new module contexts use the `createContext` API (Svelte 5.40+). The old `getContext`/`setContext` pattern in the showcase is legacy and will not be replicated.
+Why: `createContext` provides type-safe, key-free context with better DX. Consistent with project rules.
+Rejected: Old getContext/setContext (manual key management, type-unsafe).
