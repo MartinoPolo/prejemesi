@@ -17,8 +17,6 @@
 
 	let { children } = $props();
 
-	setShowcaseFormContext();
-
 	// afterNavigate fires after SvelteKit applies <svelte:head><title> from the page,
 	// so we can safely prepend without the page overwriting us again.
 	// Port is read here (browser-only) so each worktree's port is included.
