@@ -1,8 +1,20 @@
-import { boolean, index, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+	boolean,
+	index,
+	integer,
+	pgTable,
+	text,
+	timestamp,
+	uniqueIndex,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
 import { wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
 import { generateId } from './id.js';
+
+export function generateShortId(): string {
+	return generateId(8);
+}
 
 export const wishlist = pgTable(
 	'wishlist',
@@ -10,6 +22,10 @@ export const wishlist = pgTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => generateId()),
+		shortId: text('short_id')
+			.notNull()
+			.unique()
+			.$defaultFn(() => generateShortId()),
 		ownerId: text('owner_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
@@ -32,6 +48,7 @@ export const wishlist = pgTable(
 		ownerStatusIdx: index('wishlist_owner_status_idx')
 			.on(table.ownerId, table.status)
 			.where(sql`${table.deletedAt} IS NULL`),
+		shortIdIdx: uniqueIndex('wishlist_short_id_idx').on(table.shortId),
 	}),
 );
 

@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
+	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
 	import UserMenu from './UserMenu.svelte';
@@ -54,6 +55,8 @@
 		},
 	];
 
+	let isCreateModalOpen = $state(false);
+
 	function isActive(href: string): boolean {
 		return page.url.pathname.startsWith(href);
 	}
@@ -86,7 +89,12 @@
 	<!-- Right controls -->
 	<div class="nav-right">
 		<!-- Create CTA -->
-		<Button variant="default" size="sm" class="hidden md:inline-flex">
+		<Button
+			variant="default"
+			size="sm"
+			class="hidden md:inline-flex"
+			onclick={() => (isCreateModalOpen = true)}
+		>
 			<PlusIcon data-icon="inline-start" />
 			Vytvorit
 		</Button>
@@ -106,6 +114,8 @@
 		<UserMenu {userName} {userEmail} {userInitials} {userImage} />
 	</div>
 </header>
+
+<CreateWishlistModal bind:open={isCreateModalOpen} />
 
 <style>
 	.topbar {

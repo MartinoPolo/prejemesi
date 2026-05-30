@@ -56,3 +56,19 @@ export function guardedForm(handler: (authContext: AuthContext, formData: FormDa
 		return handler(authContext, formData);
 	});
 }
+
+/**
+ * A public command that does not require authentication.
+ * Optionally receives user/session if logged in.
+ */
+export function publicCommand<TArgs extends unknown[], TResult>(
+	handler: (authContext: AuthContext | null, ...args: TArgs) => TResult,
+): (...args: TArgs) => TResult {
+	return command((...args: TArgs) => {
+		const event = getRequestEvent();
+		const user = event.locals.user;
+		const session = event.locals.session;
+		const authContext = user !== undefined && session !== undefined ? { user, session } : null;
+		return handler(authContext, ...args);
+	});
+}
