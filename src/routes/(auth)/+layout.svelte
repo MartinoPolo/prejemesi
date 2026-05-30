@@ -8,16 +8,21 @@
 	let { children }: AuthLayoutProps = $props();
 </script>
 
-<main class="auth-layout">
+<div class="auth-screen">
 	{@render children()}
-</main>
+</div>
 
 <style>
-	.auth-layout {
-		display: flex;
-		align-items: center;
-		justify-content: center;
+	.auth-screen {
+		display: grid;
+		grid-template-columns: 45fr 55fr;
 		min-height: 100dvh;
-		padding: var(--space-6);
+		background: var(--background);
+	}
+
+	@media (max-width: 768px) {
+		.auth-screen {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>
