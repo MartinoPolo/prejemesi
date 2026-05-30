@@ -1,5 +1,5 @@
 {
-	"name": "template-sveltekit",
+	"name": "darecky",
 	"version": "0.0.1",
 	"private": true,
 	"type": "module",
@@ -8,7 +8,10 @@
 		"build": "vite build",
 		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:all": "svelte-kit sync && prettier --write . && oxlint && stylelint \"src/**/*.{css,svelte}\" && knip && svelte-check --tsconfig ./tsconfig.json && eslint .",
+		"check:all": "svelte-kit sync && prettier --write . && oxlint && stylelint \"src/**/*.{css,svelte}\" && pnpm check:fallow && svelte-check --tsconfig ./tsconfig.json && eslint --cache .",
+		"check:fallow": "node scripts/fallow-check.js",
+		"fallow:audit": "fallow audit --format json --quiet --explain",
+		"fallow:save-baseline": "fallow dead-code --save-regression-baseline fallow-baselines/dead-code-regression.json",
 		"lint": "oxlint",
 		"lint:eslint": "eslint .",
 		"lint:css": "stylelint \"src/**/*.{css,svelte}\"",
@@ -27,15 +30,17 @@
 		"build:storybook": "svelte-kit sync && storybook build"
 	},
 	"dependencies": {
-		"@node-rs/argon2": "^2.0.2",
 		"better-auth": "~1.4.22",
 		"drizzle-orm": "^0.45.1",
 		"mode-watcher": "^1.1.0",
+		"nanoid": "^5.1.11",
 		"postgres": "^3.4.8"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.22",
 		"@chromatic-com/storybook": "^5.1.1",
+		"@cloudflare/workers-types": "^4.20250530.0",
+		"@fallow-cli/win32-x64-msvc": "^2.48.4",
 		"@fontsource-variable/figtree": "^5.2.10",
 		"@fontsource-variable/noto-sans": "^5.2.10",
 		"@inlang/paraglide-js": "^2.15.1",
@@ -63,9 +68,9 @@
 		"eslint-plugin-check-file": "^3.3.1",
 		"eslint-plugin-storybook": "^10.3.3",
 		"eslint-plugin-svelte": "^3.16.0",
+		"fallow": "^2.48.4",
 		"globals": "^17.4.0",
 		"husky": "^9.1.7",
-		"knip": "^6.0.6",
 		"lint-staged": "^16.4.0",
 		"oxlint": "^1.58.0",
 		"playwright": "^1.58.2",
