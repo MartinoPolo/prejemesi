@@ -10,8 +10,14 @@
 	import GiftCompactRow from '$lib/components/blocks/gift/GiftCompactRow.svelte';
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
+	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
+	import { unfollowWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
+	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
+	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import { untrack } from 'svelte';
+	import { toast } from 'svelte-sonner';
 	import {
 		createGift,
 		updateGift,
@@ -24,6 +30,7 @@
 	import type {
 		GiftFilters,
 		GiftSortOption,
+		GiftForVisitor,
 		GiftByRole,
 		GiftPriorityLevel,
 		CreateGiftInput,
@@ -43,6 +50,9 @@
 	const giftsContext = untrack(() =>
 		setGiftsContext(data.gifts, data.role, data.wishlist.status === 'archived'),
 	);
+
+	// Set likes context for visitor/moderator
+	untrack(() => setLikesContext(data.userLikedGiftIds));
 
 	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
 	const viewMode = $derived(giftsContext.viewMode.current);
@@ -198,6 +208,16 @@
 		selectedGift = null;
 	}
 
+	async function handleUnfollow() {
+		try {
+			await unfollowWishlist(wishlist.id);
+			toast.success('Seznam jste prestali sledovat');
+		} catch (thrown) {
+			console.error('Failed to unfollow:', thrown);
+			toast.error('Nepodarilo se prestat sledovat');
+		}
+	}
+
 	// ── Drag-and-drop handlers ──────────────────────────────────────────────
 
 	function handleDragStart(event: DragEvent, index: number) {
@@ -262,6 +282,39 @@
 		draggedIndex = null;
 		dragOverIndex = null;
 	}
+
+	// ── Reservation handlers ───────────────────────────────────────────────
+
+	let reserveModalOpen = $state(false);
+	let reservingGift = $state<GiftForVisitor | null>(null);
+	let isReserving = $state(false);
+	const isAuthenticated = $derived(data.isAuthenticated);
+
+	function handleOpenReserveModal(giftItem: GiftForVisitor) {
+		reservingGift = giftItem;
+		reserveModalOpen = true;
+	}
+
+	function handleReserveModalClose() {
+		reserveModalOpen = false;
+		reservingGift = null;
+	}
+
+	async function handleReserve(input: ReserveGiftInput) {
+		isReserving = true;
+		try {
+			await reserveGift(input);
+			reserveModalOpen = false;
+			reservingGift = null;
+			toast.success('Darek byl rezervovan');
+			await refreshGifts();
+		} catch (thrown) {
+			const message = thrown instanceof Error ? thrown.message : 'Rezervace se nezdarila';
+			toast.error(message);
+		} finally {
+			isReserving = false;
+		}
+	}
 </script>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
@@ -290,6 +343,9 @@
 		/>
 
 		<div class="ml-auto flex items-center gap-2">
+			{#if !isOwner && !isArchived}
+				<Button size="sm" variant="ghost" onclick={handleUnfollow}>Prestat sledovat</Button>
+			{/if}
 			{#if isOwnerOrModerator && !isArchived}
 				<Button size="sm" aria-label="Pridat darek" onclick={openCreateModal}>
 					<PlusIcon data-icon="inline-start" />
@@ -375,7 +431,12 @@
 							<GripVerticalIcon class="size-4 text-muted-foreground" />
 						</div>
 					{/if}
-					<GiftCard gift={giftItem} {role} {isArchived} />
+					<GiftCard
+						gift={giftItem}
+						{role}
+						{isArchived}
+						onreserve={handleOpenReserveModal}
+					/>
 				</div>
 			{/each}
 		</div>
@@ -407,7 +468,12 @@
 					ondrop={(e) => handleDrop(e, index)}
 					ondragend={handleDragEnd}
 				>
-					<GiftListItem gift={giftItem} {role} {isArchived} />
+					<GiftListItem
+						gift={giftItem}
+						{role}
+						{isArchived}
+						onreserve={handleOpenReserveModal}
+					/>
 				</div>
 			{/each}
 		</div>
@@ -458,6 +524,7 @@
 							onclick={() => {
 								if (isOwnerOrModerator) openEditModal(giftItem);
 							}}
+							onreserve={handleOpenReserveModal}
 						/>
 					{/each}
 				</tbody>
@@ -484,5 +551,17 @@
 		ondelete={handleDelete}
 		onreceived={handleReceived}
 		onclose={handleModalClose}
+	/>
+{/if}
+
+<!-- Reserve Modal (visitor/moderator only, hidden for owner) -->
+{#if !isOwner}
+	<ReserveModal
+		bind:open={reserveModalOpen}
+		gift={reservingGift}
+		{isAuthenticated}
+		isSubmitting={isReserving}
+		onreserve={handleReserve}
+		onclose={handleReserveModalClose}
 	/>
 {/if}

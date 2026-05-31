@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/base/badge/index.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import HeartIcon from '@lucide/svelte/icons/heart';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
+	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
+	import ReservationBadge from '$lib/components/blocks/reservation/ReservationBadge.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -18,9 +19,10 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		onreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false }: GiftListItemProps = $props();
+	let { gift, role, isArchived = false, onreserve }: GiftListItemProps = $props();
 
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
@@ -95,20 +97,8 @@
 				</Badge>
 			{/if}
 
-			{#if isVisitorOrModerator && visitorGift && isFullyReserved}
-				<Badge
-					variant="secondary"
-					class="bg-reserved/15 text-reserved border-reserved/25 text-[11px]"
-				>
-					Rezervovano
-				</Badge>
-			{:else if isVisitorOrModerator && visitorGift && visitorGift.reservedCount > 0 && (gift.quantity ?? 1) > 1}
-				<Badge
-					variant="secondary"
-					class="bg-reserved/15 text-reserved border-reserved/25 text-[11px]"
-				>
-					Rezervovano ({visitorGift.reservedCount}/{gift.quantity})
-				</Badge>
+			{#if visitorGift}
+				<ReservationBadge gift={visitorGift} />
 			{/if}
 		</div>
 	</div>
@@ -116,31 +106,9 @@
 	<!-- Actions -->
 	{#if isVisitorOrModerator && visitorGift}
 		<div class="flex flex-shrink-0 items-center gap-2">
-			<button
-				type="button"
-				class="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-liked"
-				aria-label="Oblibit {gift.name}"
-			>
-				<HeartIcon class="size-4" />
-				{#if visitorGift.likeCount > 0}
-					<span class="text-xs">{visitorGift.likeCount}</span>
-				{/if}
-			</button>
+			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
 
-			{#if !isArchived}
-				<Button
-					size="sm"
-					variant={isFullyReserved ? 'outline' : 'default'}
-					disabled={isFullyReserved}
-					aria-label="Rezervovat {gift.name}"
-				>
-					{#if isFullyReserved}
-						Rezervovano
-					{:else}
-						Rezervovat
-					{/if}
-				</Button>
-			{/if}
+			<ReserveButton gift={visitorGift} {isArchived} {onreserve} />
 		</div>
 	{/if}
 </div>

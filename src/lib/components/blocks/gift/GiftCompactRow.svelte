@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Button } from '$lib/components/base/button/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import HeartIcon from '@lucide/svelte/icons/heart';
+	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
+	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice, extractDomain } from '$lib/modules/gifts/gift-display.js';
@@ -12,9 +12,10 @@
 		role: WishlistRole;
 		isArchived?: boolean;
 		onclick?: () => void;
+		onreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false, onclick }: GiftCompactRowProps = $props();
+	let { gift, role, isArchived = false, onclick, onreserve }: GiftCompactRowProps = $props();
 
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
@@ -76,25 +77,19 @@
 
 	{#if isVisitorOrModerator && visitorGift}
 		<td class="px-3 py-1.5 text-center">
-			<button
-				type="button"
-				class="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-liked"
-				aria-label="Oblibit {gift.name}"
-			>
-				<HeartIcon class="size-3.5" />
-				{#if visitorGift.likeCount > 0}
-					<span class="text-[11px]">{visitorGift.likeCount}</span>
-				{/if}
-			</button>
+			<LikeButton
+				giftId={gift.id}
+				giftName={gift.name}
+				likeCount={visitorGift.likeCount}
+				size="sm"
+			/>
 		</td>
 
 		<td class="px-3 py-1.5 text-right">
 			{#if isFullyReserved}
 				<span class="text-xs font-medium text-reserved">Rezervovano</span>
-			{:else if !isArchived}
-				<Button size="xs" variant="default" aria-label="Rezervovat {gift.name}">
-					Rezervovat
-				</Button>
+			{:else if visitorGift}
+				<ReserveButton gift={visitorGift} {isArchived} size="xs" {onreserve} />
 			{/if}
 		</td>
 	{/if}

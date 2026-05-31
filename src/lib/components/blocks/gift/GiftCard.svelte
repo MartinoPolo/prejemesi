@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/base/badge/index.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import HeartIcon from '@lucide/svelte/icons/heart';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
-	import type { GiftForVisitor, GiftForOwner, GiftByRole } from '$lib/modules/gifts/types.js';
+	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
+	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
+	import ReservationBadge from '$lib/components/blocks/reservation/ReservationBadge.svelte';
+	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		formatPrice,
@@ -18,9 +19,10 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		onreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false }: GiftCardProps = $props();
+	let { gift, role, isArchived = false, onreserve }: GiftCardProps = $props();
 
 	const isOwner = $derived(role === 'owner');
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
@@ -34,20 +36,6 @@
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const showQuantity = $derived((gift.quantity ?? 1) > 1);
-
-	const reservationLabel = $derived.by(() => {
-		if (visitorGift === null) {
-			return '';
-		}
-		const qty = gift.quantity ?? 1;
-		if (visitorGift.isFullyReserved) {
-			return 'Rezervovano';
-		}
-		if (visitorGift.reservedCount > 0 && qty > 1) {
-			return `Rezervovano (${visitorGift.reservedCount}/${qty})`;
-		}
-		return '';
-	});
 </script>
 
 <div class={styles.card()}>
@@ -119,10 +107,8 @@
 				<span class={styles.quantityBadge()}>x{gift.quantity}</span>
 			{/if}
 
-			{#if isVisitorOrModerator && reservationLabel !== '' && !isFullyReserved}
-				<Badge variant="secondary" class="bg-reserved/15 text-reserved border-reserved/25">
-					{reservationLabel}
-				</Badge>
+			{#if visitorGift && !isFullyReserved}
+				<ReservationBadge gift={visitorGift} />
 			{/if}
 		</div>
 	</div>
@@ -130,30 +116,10 @@
 	<!-- Footer: like + reserve (visitor/moderator only) -->
 	{#if isVisitorOrModerator && visitorGift}
 		<div class={styles.footer()}>
-			<button
-				type="button"
-				class="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-liked"
-				aria-label="Oblibit {gift.name}"
-			>
-				<HeartIcon class="size-4" />
-				{#if visitorGift.likeCount > 0}
-					<span class="text-xs">{visitorGift.likeCount}</span>
-				{/if}
-			</button>
+			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
 
-			{#if !isArchived}
-				<Button
-					size="sm"
-					variant={isFullyReserved ? 'outline' : 'default'}
-					disabled={isFullyReserved}
-					aria-label="Rezervovat {gift.name}"
-				>
-					{#if isFullyReserved}
-						Rezervovano
-					{:else}
-						Rezervovat
-					{/if}
-				</Button>
+			{#if visitorGift}
+				<ReserveButton gift={visitorGift} {isArchived} {onreserve} />
 			{/if}
 		</div>
 	{/if}
