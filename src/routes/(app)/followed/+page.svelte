@@ -11,7 +11,7 @@
 		unfollowWishlist,
 		refollowWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
-	import { toast } from 'svelte-sonner';
+	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { FollowedWishlist } from '$lib/modules/wishlists/dashboard_types.js';
 
@@ -50,9 +50,9 @@
 		try {
 			await unfollowWishlist(wishlistId);
 			await fetchWishlists();
-			toast.success('Seznam jste prestali sledovat');
+			toastSuccess('Seznam jste prestali sledovat');
 		} catch {
-			toast.error('Nepodarilo se prestat sledovat');
+			toastError('Nepodarilo se prestat sledovat');
 		}
 	}
 
@@ -60,9 +60,9 @@
 		try {
 			await refollowWishlist(wishlistId);
 			await fetchWishlists();
-			toast.success('Seznam znovu sledujete');
+			toastSuccess('Seznam znovu sledujete');
 		} catch {
-			toast.error('Nepodarilo se znovu sledovat');
+			toastError('Nepodarilo se znovu sledovat');
 		}
 	}
 

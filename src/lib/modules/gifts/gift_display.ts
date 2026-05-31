@@ -32,10 +32,15 @@ export function extractDomain(url: string | null): string | null {
 
 /** Priority label to Czech display */
 export const PRIORITY_DISPLAY = {
-	Vysoka: { label: 'Vysoka', colorClass: 'bg-[oklch(0.92_0.06_25)] text-[oklch(0.45_0.15_25)]' },
+	Vysoka: {
+		label: 'Vysoka',
+		colorClass:
+			'bg-[oklch(0.92_0.06_25)] text-[oklch(0.45_0.15_25)] dark:bg-[oklch(0.28_0.05_25)] dark:text-[oklch(0.78_0.1_25)]',
+	},
 	Stredni: {
 		label: 'Stredni',
-		colorClass: 'bg-[oklch(0.93_0.05_75)] text-[oklch(0.50_0.12_75)]',
+		colorClass:
+			'bg-[oklch(0.93_0.05_75)] text-[oklch(0.50_0.12_75)] dark:bg-[oklch(0.28_0.04_75)] dark:text-[oklch(0.78_0.08_75)]',
 	},
 	Nizka: { label: 'Nizka', colorClass: 'bg-muted text-muted-foreground' },
 } as const;

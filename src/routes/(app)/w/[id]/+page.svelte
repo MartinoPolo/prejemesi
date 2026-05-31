@@ -28,7 +28,7 @@
 	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import { untrack } from 'svelte';
-	import { toast } from 'svelte-sonner';
+	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import {
 		createGift,
 		updateGift as updateGiftRemote,
@@ -263,7 +263,7 @@
 
 	async function handleReceived(giftId: string, received: boolean) {
 		try {
-			await markGiftReceived(giftId, received);
+			await markGiftReceived({ giftId, received });
 			await refreshGifts();
 		} catch (thrown) {
 			console.error('Failed to toggle received:', thrown);
@@ -278,10 +278,10 @@
 	async function handleUnfollow() {
 		try {
 			await unfollowWishlist(wishlist.id);
-			toast.success('Seznam jste prestali sledovat');
+			toastSuccess('Seznam jste prestali sledovat');
 		} catch (thrown) {
 			console.error('Failed to unfollow:', thrown);
-			toast.error('Nepodarilo se prestat sledovat');
+			toastError('Nepodarilo se prestat sledovat');
 		}
 	}
 
@@ -309,10 +309,10 @@
 
 			themeContext.commitTheme(theme);
 			themeSheetOpen = false;
-			toast.success('Motiv byl ulozen');
+			toastSuccess('Motiv byl ulozen');
 		} catch (thrown) {
 			console.error('Failed to save theme:', thrown);
-			toast.error('Nepodarilo se ulozit motiv');
+			toastError('Nepodarilo se ulozit motiv');
 		}
 	}
 
@@ -404,11 +404,11 @@
 			await reserveGift(input);
 			reserveModalOpen = false;
 			reservingGift = null;
-			toast.success('Darek byl rezervovan');
+			toastSuccess('Darek byl rezervovan');
 			await refreshGifts();
 		} catch (thrown) {
 			const message = thrown instanceof Error ? thrown.message : 'Rezervace se nezdarila';
-			toast.error(message);
+			toastError(message);
 		} finally {
 			isReserving = false;
 		}

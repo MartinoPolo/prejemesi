@@ -1,7 +1,7 @@
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
-import { guardedQuery, guardedCommand } from '$lib/server/remote.js';
+import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
 import { NOTIFICATION_MESSAGES, type Notification, type NotificationType } from './types.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ export const markAsRead = guardedCommand(async ({ user }, notificationIds: strin
 	}
 });
 
-export const markAllAsRead = guardedCommand(async ({ user }) => {
+export const markAllAsRead = guardedCommandNoArgs(async ({ user }) => {
 	const database = getDb();
 
 	await database

@@ -2,6 +2,7 @@
 	import { useNotifications } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
+	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import CheckCheckIcon from '@lucide/svelte/icons/check-check';
 	import BellOffIcon from '@lucide/svelte/icons/bell-off';
 	import NotificationItem from './NotificationItem.svelte';
@@ -37,10 +38,10 @@
 			<!-- Loading skeleton -->
 			{#each [0, 1, 2] as index (index)}
 				<div class="flex items-start gap-3 px-3 py-2.5">
-					<div class="size-8 shrink-0 animate-pulse rounded-full bg-muted"></div>
+					<Skeleton class="size-8 shrink-0 rounded-full" />
 					<div class="flex flex-1 flex-col gap-1.5">
-						<div class="h-3.5 w-3/4 animate-pulse rounded bg-muted"></div>
-						<div class="h-3 w-1/3 animate-pulse rounded bg-muted"></div>
+						<Skeleton class="h-3.5 w-3/4" />
+						<Skeleton class="h-3 w-1/3" />
 					</div>
 				</div>
 			{/each}

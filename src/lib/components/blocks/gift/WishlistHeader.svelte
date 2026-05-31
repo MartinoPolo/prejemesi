@@ -169,7 +169,7 @@
 		<div class={styles.draftBanner()}>
 			<InfoIcon class="size-4 flex-shrink-0" />
 			<span>Tento seznam jeste nebyl sdilen.</span>
-			<Button size="sm" intent="link" class="ml-auto px-0 text-blue-800" onclick={onshare}>
+			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
 				Sdilet seznam
 			</Button>
 		</div>

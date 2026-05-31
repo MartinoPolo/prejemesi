@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 
 	interface ErrorBannerProps {
@@ -9,31 +10,8 @@
 </script>
 
 {#if message}
-	<div class="error-banner" role="alert">
-		<CircleAlert class="error-banner-icon" />
-		<span>{message}</span>
-	</div>
+	<Alert.Root tone="destructive" class="mb-5">
+		<CircleAlert />
+		<Alert.Description>{message}</Alert.Description>
+	</Alert.Root>
 {/if}
-
-<style>
-	.error-banner {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		background: oklch(from var(--destructive) l c h / 8%);
-		border: 1px solid oklch(from var(--destructive) l c h / 28%);
-		border-radius: var(--radius-md);
-		padding: var(--space-3) var(--space-4);
-		margin-bottom: var(--space-5);
-		font-size: var(--text-sm);
-		color: var(--destructive);
-		line-height: var(--leading-snug);
-	}
-
-	.error-banner :global(.error-banner-icon) {
-		flex-shrink: 0;
-		width: 16px;
-		height: 16px;
-		margin-top: 1px;
-	}
-</style>

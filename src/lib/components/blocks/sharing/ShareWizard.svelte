@@ -11,7 +11,7 @@
 	} from '$lib/modules/sharing/types.js';
 	import { useSharing } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { shareWishlist } from '$lib/modules/sharing/sharing.remote.js';
-	import { toast } from 'svelte-sonner';
+	import { toastError } from '$lib/components/base/toast/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import AlertTriangleIcon from '@lucide/svelte/icons/triangle-alert';
@@ -101,7 +101,7 @@
 			onshared?.();
 		} catch (thrown) {
 			const message = thrown instanceof Error ? thrown.message : 'Sdileni se nezdarilo';
-			toast.error(message);
+			toastError(message);
 		} finally {
 			isSubmitting = false;
 		}
@@ -224,11 +224,7 @@
 							</span>
 						</div>
 						{#if linkCopied}
-							<Button
-								intent="primary"
-								class="h-11 flex-shrink-0 bg-[oklch(0.66_0.13_145)] hover:bg-[oklch(0.60_0.13_145)]"
-								aria-live="polite"
-							>
+							<Button intent="primary" class="h-11 flex-shrink-0" aria-live="polite">
 								<CheckIcon data-icon="inline-start" />
 								Zkopirovano!
 							</Button>

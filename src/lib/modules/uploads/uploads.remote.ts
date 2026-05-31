@@ -28,40 +28,41 @@ function getExtensionFromContentType(contentType: string): string {
  * Server command that authorizes an upload and returns the upload endpoint + object key.
  * The client then uploads the file directly to the returned URL.
  */
+interface AuthorizeUploadInput {
+	target: string;
+	fileName: string;
+	contentType: string;
+	fileSize: number;
+}
+
 export const authorizeUpload = guardedCommand(
-	(
-		_authContext,
-		target: string,
-		_fileName: string,
-		contentType: string,
-		fileSize: number,
-	): UploadAuthorization => {
+	(_authContext, input: AuthorizeUploadInput): UploadAuthorization => {
 		// Validate target
-		if (!isUploadTarget(target)) {
-			error(400, `Invalid upload target: ${target}`);
+		if (!isUploadTarget(input.target)) {
+			error(400, `Invalid upload target: ${input.target}`);
 		}
 
 		// Validate content type
-		if (!isAllowedContentType(contentType)) {
+		if (!isAllowedContentType(input.contentType)) {
 			error(
 				400,
-				`Invalid content type: ${contentType}. Allowed: image/jpeg, image/png, image/webp, image/gif`,
+				`Invalid content type: ${input.contentType}. Allowed: image/jpeg, image/png, image/webp, image/gif`,
 			);
 		}
 
 		// Validate file size
-		const maxSize = MAX_FILE_SIZE[target];
-		if (fileSize <= 0) {
+		const maxSize = MAX_FILE_SIZE[input.target];
+		if (input.fileSize <= 0) {
 			error(400, 'File size must be greater than 0');
 		}
-		if (fileSize > maxSize) {
+		if (input.fileSize > maxSize) {
 			const maxMb = Math.round(maxSize / (1024 * 1024));
-			error(400, `File too large. Maximum size for ${target}: ${String(maxMb)}MB`);
+			error(400, `File too large. Maximum size for ${input.target}: ${String(maxMb)}MB`);
 		}
 
 		// Generate unique object key
-		const prefix = UPLOAD_TARGETS[target];
-		const extension = getExtensionFromContentType(contentType);
+		const prefix = UPLOAD_TARGETS[input.target];
+		const extension = getExtensionFromContentType(input.contentType);
 		const uniqueId = generateId();
 		const objectKey = `${prefix}/${uniqueId}.${extension}`;
 

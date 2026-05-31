@@ -40,7 +40,12 @@ export async function uploadFile(
 
 		// Step 1: Request authorization from server
 		report({ status: 'authorizing', percentage: 0 });
-		const authorization = await authorizeUpload(target, file.name, file.type, file.size);
+		const authorization = await authorizeUpload({
+			target,
+			fileName: file.name,
+			contentType: file.type,
+			fileSize: file.size,
+		});
 
 		// Step 2: Upload file to the upload API route
 		report({ status: 'uploading', percentage: 0 });

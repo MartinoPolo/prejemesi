@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { account } from '$lib/server/db/auth.schema.js';
-import { guardedQuery, guardedCommand } from '$lib/server/remote.js';
+import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -39,21 +39,21 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 // ── Commands ───────────────────────────────────────────────────────────────
 
 export const updateProfile = guardedCommand(
-	async ({ user: authUser }, name: string, image: string | null) => {
+	async ({ user: authUser }, input: { name: string; image: string | null }) => {
 		const database = getDb();
 
 		await database
 			.update(user)
 			.set({
-				name,
-				image,
+				name: input.name,
+				image: input.image,
 				updatedAt: new Date(),
 			})
 			.where(eq(user.id, authUser.id));
 	},
 );
 
-export const deleteAccount = guardedCommand(async ({ user: authUser }) => {
+export const deleteAccount = guardedCommandNoArgs(async ({ user: authUser }) => {
 	const database = getDb();
 
 	// Cascade delete handles sessions, accounts, etc.

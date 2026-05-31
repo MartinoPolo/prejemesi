@@ -1,4 +1,4 @@
-import { getRequestEvent, query, command, form } from '$app/server';
+import { getRequestEvent, query, command } from '$app/server';
 import { error } from '@sveltejs/kit';
 import type { User, Session } from 'better-auth';
 
@@ -19,49 +19,47 @@ function getAuthContext(): AuthContext {
 	return { user, session };
 }
 
-export function guardedQuery<TResult>(
-	handler: (authContext: AuthContext) => TResult,
-): () => TResult {
+export function guardedQuery<TResult>(handler: (authContext: AuthContext) => TResult) {
 	return query(() => {
 		const authContext = getAuthContext();
 		return handler(authContext);
 	});
 }
 
-export function guardedQueryWithArgs<TArgs extends unknown[], TResult>(
-	handler: (authContext: AuthContext, ...args: TArgs) => TResult,
-): (...args: TArgs) => TResult {
-	return query('unchecked', (...args: TArgs) => {
+export function guardedQueryWithArgs<TArg, TResult>(
+	handler: (authContext: AuthContext, arg: TArg) => TResult,
+) {
+	return query('unchecked', (arg: TArg) => {
 		const authContext = getAuthContext();
-		return handler(authContext, ...args);
+		return handler(authContext, arg);
 	});
 }
 
-export function publicQuery<TArgs extends unknown[], TResult>(
-	handler: (authContext: AuthContext | null, ...args: TArgs) => TResult,
-): (...args: TArgs) => TResult {
-	return query('unchecked', (...args: TArgs) => {
+export function publicQuery<TArg, TResult>(
+	handler: (authContext: AuthContext | null, arg: TArg) => TResult,
+) {
+	return query('unchecked', (arg: TArg) => {
 		const event = getRequestEvent();
 		const user = event.locals.user;
 		const session = event.locals.session;
 		const authContext = user !== undefined && session !== undefined ? { user, session } : null;
-		return handler(authContext, ...args);
+		return handler(authContext, arg);
 	});
 }
 
-export function guardedCommand<TArgs extends unknown[], TResult>(
-	handler: (authContext: AuthContext, ...args: TArgs) => TResult,
-): (...args: TArgs) => TResult {
-	return command('unchecked', (...args: TArgs) => {
+export function guardedCommand<TArg, TResult>(
+	handler: (authContext: AuthContext, arg: TArg) => TResult,
+) {
+	return command('unchecked', (arg: TArg) => {
 		const authContext = getAuthContext();
-		return handler(authContext, ...args);
+		return handler(authContext, arg);
 	});
 }
 
-export function guardedForm(handler: (authContext: AuthContext, formData: FormData) => unknown) {
-	return form(async (formData: FormData) => {
+export function guardedCommandNoArgs<TResult>(handler: (authContext: AuthContext) => TResult) {
+	return command(() => {
 		const authContext = getAuthContext();
-		return handler(authContext, formData);
+		return handler(authContext);
 	});
 }
 
@@ -69,14 +67,14 @@ export function guardedForm(handler: (authContext: AuthContext, formData: FormDa
  * A public command that does not require authentication.
  * Optionally receives user/session if logged in.
  */
-export function publicCommand<TArgs extends unknown[], TResult>(
-	handler: (authContext: AuthContext | null, ...args: TArgs) => TResult,
-): (...args: TArgs) => TResult {
-	return command('unchecked', (...args: TArgs) => {
+export function publicCommand<TArg, TResult>(
+	handler: (authContext: AuthContext | null, arg: TArg) => TResult,
+) {
+	return command('unchecked', (arg: TArg) => {
 		const event = getRequestEvent();
 		const user = event.locals.user;
 		const session = event.locals.session;
 		const authContext = user !== undefined && session !== undefined ? { user, session } : null;
-		return handler(authContext, ...args);
+		return handler(authContext, arg);
 	});
 }

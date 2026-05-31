@@ -395,13 +395,13 @@ export const reorderGifts = guardedCommand(async ({ user }, items: ReorderGiftIt
 });
 
 export const markGiftReceived = guardedCommand(
-	async ({ user }, giftId: string, received: boolean) => {
+	async ({ user }, input: { giftId: string; received: boolean }) => {
 		const database = getDb();
 
 		const giftRows = await database
 			.select()
 			.from(gift)
-			.where(and(eq(gift.id, giftId), isNull(gift.deletedAt)))
+			.where(and(eq(gift.id, input.giftId), isNull(gift.deletedAt)))
 			.limit(1);
 
 		const giftRow = giftRows[0];
@@ -426,8 +426,8 @@ export const markGiftReceived = guardedCommand(
 
 		const [updated] = await database
 			.update(gift)
-			.set({ received, updatedAt: new Date() })
-			.where(eq(gift.id, giftId))
+			.set({ received: input.received, updatedAt: new Date() })
+			.where(eq(gift.id, input.giftId))
 			.returning();
 
 		return updated;

@@ -93,7 +93,7 @@
 			</p>
 
 			<div class="flex flex-wrap items-center gap-4">
-				<Button size="lg" href={resolve('/register')} class="rounded-lg">
+				<Button size="lg" href={resolve('/register')}>
 					<Gift data-icon="inline-start" />
 					Vytvořit seznam přání
 				</Button>
@@ -333,7 +333,7 @@
 						<div class="text-sm font-semibold">Sapiens — Y.N. Harari</div>
 						<div class="mt-0.5 text-xs text-muted-foreground/70">399 Kč</div>
 					</div>
-					<Button size="sm" class="shrink-0 rounded-md">Rezervovat</Button>
+					<Button size="sm" class="shrink-0">Rezervovat</Button>
 				</div>
 			</div>
 		</div>
@@ -356,7 +356,7 @@
 				<span class="flex-1 truncate font-mono text-sm text-primary">
 					darecky.cz/w/martina-vanocni-2026
 				</span>
-				<Button intent="secondary" size="sm" class="shrink-0 rounded-md">Kopírovat</Button>
+				<Button intent="secondary" size="sm" class="shrink-0">Kopírovat</Button>
 			</div>
 
 			<div class="mt-1 text-sm font-semibold">Sdílet přes</div>
@@ -556,12 +556,10 @@
 			Registrace jedním klikem. Žádná platební karta. Váš první seznam hotový za minutu.
 		</p>
 		<div class="flex flex-wrap justify-center gap-4">
-			<Button size="lg" href={resolve('/register')} class="min-w-[220px] rounded-lg">
+			<Button size="lg" href={resolve('/register')} class="min-w-[220px]">
 				Začít zdarma
 			</Button>
-			<Button intent="secondary" size="lg" href={resolve('/login')} class="rounded-lg">
-				Přihlásit se
-			</Button>
+			<Button intent="secondary" size="lg" href={resolve('/login')}>Přihlásit se</Button>
 		</div>
 		<div
 			class="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground/70"

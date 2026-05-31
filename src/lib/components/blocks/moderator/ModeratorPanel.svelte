@@ -12,7 +12,7 @@
 		selfPromoteToModerator,
 	} from '$lib/modules/moderators/moderators.remote.js';
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
-	import { toast } from 'svelte-sonner';
+	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -69,11 +69,11 @@
 			const result = await generateModeratorInviteLink({ wishlistId });
 			generatedInvitePath = result.invitePath;
 			await loadModerators();
-			toast.success('Pozvanka byla vygenerovana');
+			toastSuccess('Pozvanka byla vygenerovana');
 		} catch (thrown) {
 			const message =
 				thrown instanceof Error ? thrown.message : 'Nepodarilo se vygenerovat pozvanku';
-			toast.error(message);
+			toastError(message);
 		} finally {
 			isGenerating = false;
 		}
@@ -87,12 +87,12 @@
 			const fullUrl = `${window.location.origin}${generatedInvitePath}`;
 			await navigator.clipboard.writeText(fullUrl);
 			linkCopied = true;
-			toast.success('Odkaz byl zkopirovan');
+			toastSuccess('Odkaz byl zkopirovan');
 			setTimeout(() => {
 				linkCopied = false;
 			}, 3000);
 		} catch {
-			toast.error('Nepodarilo se zkopirovat odkaz');
+			toastError('Nepodarilo se zkopirovat odkaz');
 		}
 	}
 
@@ -103,11 +103,11 @@
 			await loadModerators();
 			// Clear generated link if it was for this invite
 			generatedInvitePath = null;
-			toast.success('Pozvanka byla zrusena');
+			toastSuccess('Pozvanka byla zrusena');
 		} catch (thrown) {
 			const message =
 				thrown instanceof Error ? thrown.message : 'Nepodarilo se zrusit pozvanku';
-			toast.error(message);
+			toastError(message);
 		} finally {
 			isRevokingId = null;
 		}
@@ -118,11 +118,11 @@
 		try {
 			await removeModerator({ assignmentId });
 			await loadModerators();
-			toast.success('Moderator byl odebran');
+			toastSuccess('Moderator byl odebran');
 		} catch (thrown) {
 			const message =
 				thrown instanceof Error ? thrown.message : 'Nepodarilo se odebrat moderatora';
-			toast.error(message);
+			toastError(message);
 		} finally {
 			isRemoving = false;
 		}
@@ -132,12 +132,12 @@
 		isSelfPromoting = true;
 		try {
 			await selfPromoteToModerator({ wishlistId });
-			toast.success('Nyni vidite stav rezervaci');
+			toastSuccess('Nyni vidite stav rezervaci');
 			onselfpromoted?.();
 		} catch (thrown) {
 			const message =
 				thrown instanceof Error ? thrown.message : 'Nepodarilo se aktivovat zobrazeni';
-			toast.error(message);
+			toastError(message);
 		} finally {
 			isSelfPromoting = false;
 		}

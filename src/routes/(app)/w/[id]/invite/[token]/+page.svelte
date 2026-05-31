@@ -4,7 +4,7 @@
 	import { acceptModeratorInvite } from '$lib/modules/moderators/moderators.remote.js';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { toast } from 'svelte-sonner';
+	import { toastSuccess } from '$lib/components/base/toast/index.js';
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import XCircleIcon from '@lucide/svelte/icons/x-circle';
@@ -21,7 +21,7 @@
 		try {
 			const result = await acceptModeratorInvite({ token: data.token });
 			accepted = true;
-			toast.success('Pozvanka byla prijata!');
+			toastSuccess('Pozvanka byla prijata!');
 			// Redirect to the wishlist after a short delay
 			setTimeout(() => {
 				void goto(resolve('/(app)/w/[id]', { id: result.wishlistShortId }));

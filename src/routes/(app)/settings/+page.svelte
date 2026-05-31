@@ -82,7 +82,7 @@
 		profileSaving = true;
 		profileSaved = false;
 		try {
-			await updateProfile(displayName, avatarUrl);
+			await updateProfile({ name: displayName, image: avatarUrl });
 			profileSaved = true;
 			setTimeout(() => {
 				profileSaved = false;
