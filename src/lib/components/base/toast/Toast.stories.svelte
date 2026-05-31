@@ -5,6 +5,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import AlertTriangleIcon from '@lucide/svelte/icons/triangle-alert';
 	import XIcon from '@lucide/svelte/icons/x';
+	import InfoIcon from '@lucide/svelte/icons/info';
 	import { Button } from '$lib/components/base/button/index.js';
 
 	const { Story } = defineMeta({
@@ -22,6 +23,10 @@
 	});
 </script>
 
+<script lang="ts">
+	import { toastSuccess, toastError, toastWarning, toastInfo, toastLoading } from './index.js';
+</script>
+
 <Story name="All Variants">
 	{#snippet template()}
 		<div class="flex max-w-135 flex-col gap-3">
@@ -37,7 +42,7 @@
 						{:else if tone === 'loading'}
 							<RefreshIcon class="size-3.5 animate-spin" />
 						{:else}
-							<RefreshIcon class="size-3.5" />
+							<InfoIcon class="size-3.5" />
 						{/if}
 					{/snippet}
 				</Toast>
@@ -49,12 +54,8 @@
 <Story name="Info">
 	{#snippet template()}
 		<div class="max-w-135">
-			<Toast
-				tone="info"
-				title="Syncing grovekeeper…"
-				body="Fetching 3 new commits from origin."
-			>
-				{#snippet icon()}<RefreshIcon class="size-3.5" />{/snippet}
+			<Toast tone="info" title="Syncing wishlist…" body="Fetching 3 new items from source.">
+				{#snippet icon()}<InfoIcon class="size-3.5" />{/snippet}
 			</Toast>
 		</div>
 	{/snippet}
@@ -63,11 +64,7 @@
 <Story name="Success">
 	{#snippet template()}
 		<div class="max-w-135">
-			<Toast
-				tone="success"
-				title="Worktree created"
-				body="Branch feat/forest-overlays checked out."
-			>
+			<Toast tone="success" title="Item reserved" body="Gift marked as reserved for you.">
 				{#snippet icon()}<CheckIcon class="size-3.5" />{/snippet}
 			</Toast>
 		</div>
@@ -79,12 +76,12 @@
 		<div class="max-w-135">
 			<Toast
 				tone="warning"
-				title="Permission required"
-				body="Session #128 wants to run a Bash command."
+				title="Invite expiring"
+				body="Your moderator invite expires in 2 hours."
 			>
 				{#snippet icon()}<AlertTriangleIcon class="size-3.5" />{/snippet}
 				{#snippet action()}
-					<Button intent="secondary" size="sm">Review</Button>
+					<Button intent="secondary" size="sm">Accept now</Button>
 				{/snippet}
 			</Toast>
 		</div>
@@ -96,8 +93,8 @@
 		<div class="max-w-135">
 			<Toast
 				tone="danger"
-				title="Sync failed"
-				body="GitHub returned 401 — check token in Settings."
+				title="Reserve failed"
+				body="Someone else already reserved this item."
 			>
 				{#snippet icon()}<XIcon class="size-3.5" />{/snippet}
 				{#snippet action()}
@@ -111,8 +108,23 @@
 <Story name="Loading">
 	{#snippet template()}
 		<div class="max-w-135">
-			<Toast tone="loading" title="Setting up worktree…" body="Creating worktree for #142">
+			<Toast tone="loading" title="Generating invite…" body="Creating shareable link.">
 				{#snippet icon()}<RefreshIcon class="size-3.5 animate-spin" />{/snippet}
+			</Toast>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="With Dismiss">
+	{#snippet template()}
+		<div class="max-w-135">
+			<Toast
+				tone="success"
+				title="Link copied"
+				body="Shareable link has been copied to clipboard."
+				onDismiss={() => {}}
+			>
+				{#snippet icon()}<CheckIcon class="size-3.5" />{/snippet}
 			</Toast>
 		</div>
 	{/snippet}
@@ -121,43 +133,129 @@
 <Story name="Stack">
 	{#snippet template()}
 		<div class="flex max-w-135 flex-col gap-3">
-			<Toast
-				tone="info"
-				title="Syncing grovekeeper…"
-				body="Fetching 3 new commits from origin."
-			>
-				{#snippet icon()}<RefreshIcon class="size-3.5" />{/snippet}
+			<Toast tone="info" title="Syncing wishlist…" body="Fetching 3 new items from source.">
+				{#snippet icon()}<InfoIcon class="size-3.5" />{/snippet}
 			</Toast>
-			<Toast
-				tone="success"
-				title="Worktree created"
-				body="Branch feat/forest-overlays checked out."
-			>
+			<Toast tone="success" title="Item reserved" body="Gift marked as reserved for you.">
 				{#snippet icon()}<CheckIcon class="size-3.5" />{/snippet}
 			</Toast>
 			<Toast
 				tone="warning"
-				title="Permission required"
-				body="Session #128 wants to run a Bash command."
+				title="Invite expiring"
+				body="Your moderator invite expires in 2 hours."
 			>
 				{#snippet icon()}<AlertTriangleIcon class="size-3.5" />{/snippet}
 				{#snippet action()}
-					<Button intent="secondary" size="sm">Review</Button>
+					<Button intent="secondary" size="sm">Accept now</Button>
 				{/snippet}
 			</Toast>
 			<Toast
 				tone="danger"
-				title="Sync failed"
-				body="GitHub returned 401 — check token in Settings."
+				title="Reserve failed"
+				body="Someone else already reserved this item."
+				onDismiss={() => {}}
 			>
 				{#snippet icon()}<XIcon class="size-3.5" />{/snippet}
 				{#snippet action()}
 					<Button intent="secondary" size="sm">Retry</Button>
 				{/snippet}
 			</Toast>
-			<Toast tone="loading" title="Setting up worktree…" body="Creating worktree for #142">
+			<Toast tone="loading" title="Generating invite…" body="Creating shareable link.">
 				{#snippet icon()}<RefreshIcon class="size-3.5 animate-spin" />{/snippet}
 			</Toast>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Sonner Comparison">
+	{#snippet template()}
+		<div class="flex max-w-4xl gap-8">
+			<div class="flex-1">
+				<h3 class="mb-3 text-sm font-semibold text-foreground">
+					Custom Toast Component (design system)
+				</h3>
+				<div class="flex flex-col gap-3">
+					<Toast
+						tone="success"
+						title="Item reserved"
+						body="Gift marked as reserved for you."
+					>
+						{#snippet icon()}<CheckIcon class="size-3.5" />{/snippet}
+					</Toast>
+					<Toast
+						tone="danger"
+						title="Reserve failed"
+						body="Someone else already reserved this item."
+						onDismiss={() => {}}
+					>
+						{#snippet icon()}<XIcon class="size-3.5" />{/snippet}
+					</Toast>
+					<Toast
+						tone="warning"
+						title="Invite expiring"
+						body="Your moderator invite expires in 2 hours."
+					>
+						{#snippet icon()}<AlertTriangleIcon class="size-3.5" />{/snippet}
+						{#snippet action()}
+							<Button intent="secondary" size="sm">Accept now</Button>
+						{/snippet}
+					</Toast>
+				</div>
+			</div>
+
+			<div class="flex-1">
+				<h3 class="mb-3 text-sm font-semibold text-foreground">
+					Integrated (sonner management + custom visuals)
+				</h3>
+				<div class="flex flex-col gap-2">
+					<Button
+						intent="secondary"
+						size="sm"
+						onclick={() =>
+							toastSuccess('Item reserved', 'Gift marked as reserved for you.')}
+					>
+						toastSuccess()
+					</Button>
+					<Button
+						intent="secondary"
+						size="sm"
+						onclick={() =>
+							toastError(
+								'Reserve failed',
+								'Someone else already reserved this item.',
+							)}
+					>
+						toastError()
+					</Button>
+					<Button
+						intent="secondary"
+						size="sm"
+						onclick={() =>
+							toastWarning(
+								'Invite expiring',
+								'Your moderator invite expires in 2 hours.',
+							)}
+					>
+						toastWarning()
+					</Button>
+					<Button
+						intent="secondary"
+						size="sm"
+						onclick={() =>
+							toastInfo('Syncing wishlist…', 'Fetching 3 new items from source.')}
+					>
+						toastInfo()
+					</Button>
+					<Button
+						intent="secondary"
+						size="sm"
+						onclick={() =>
+							toastLoading('Generating invite…', 'Creating shareable link.')}
+					>
+						toastLoading()
+					</Button>
+				</div>
+			</div>
 		</div>
 	{/snippet}
 </Story>

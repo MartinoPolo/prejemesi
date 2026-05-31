@@ -75,6 +75,8 @@
 <script lang="ts">
 	import { Tab } from './index.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
+	import StoryKeyboardHints from '$lib/storybook/StoryKeyboardHints.svelte';
+	import KeyboardHint from '$lib/storybook/KeyboardHint.svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import BellIcon from '@lucide/svelte/icons/bell';
@@ -147,17 +149,23 @@
 
 <Story name="With Badge [play: keyboard activation]" play={playKeyboardActivation}>
 	{#snippet template()}
-		<Tabs>
-			<Tab active={badgeActive === 'Inbox'} onclick={() => (badgeActive = 'Inbox')}
-				>Inbox <Badge tone="primary" class="ml-1.5">3</Badge></Tab
-			>
-			<Tab active={badgeActive === 'Drafts'} onclick={() => (badgeActive = 'Drafts')}
-				>Drafts</Tab
-			>
-			<Tab active={badgeActive === 'Archive'} onclick={() => (badgeActive = 'Archive')}
-				>Archive</Tab
-			>
-		</Tabs>
+		<div>
+			<StoryKeyboardHints>
+				<KeyboardHint keys="Enter / Space" action="Activate focused tab" />
+				<KeyboardHint keys="→ / ←" action="Move focus between tabs" />
+			</StoryKeyboardHints>
+			<Tabs>
+				<Tab active={badgeActive === 'Inbox'} onclick={() => (badgeActive = 'Inbox')}
+					>Inbox <Badge tone="primary" class="ml-1.5">3</Badge></Tab
+				>
+				<Tab active={badgeActive === 'Drafts'} onclick={() => (badgeActive = 'Drafts')}
+					>Drafts</Tab
+				>
+				<Tab active={badgeActive === 'Archive'} onclick={() => (badgeActive = 'Archive')}
+					>Archive</Tab
+				>
+			</Tabs>
+		</div>
 	{/snippet}
 </Story>
 
