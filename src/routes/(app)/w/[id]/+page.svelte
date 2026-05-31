@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as Sheet from '$lib/components/base/sheet/index.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
@@ -11,8 +13,16 @@
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
+	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
+	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
+	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
+	import { setWishlistThemeContext } from '$lib/modules/themes/themes.context.svelte.js';
+	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply-theme.js';
+	import { isCustomTheme } from '$lib/modules/themes/types.js';
+	import type { WishlistTheme } from '$lib/modules/themes/types.js';
+	import { updateWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { unfollowWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
@@ -20,7 +30,7 @@
 	import { toast } from 'svelte-sonner';
 	import {
 		createGift,
-		updateGift,
+		updateGift as updateGiftRemote,
 		deleteGift,
 		reorderGifts,
 		markGiftReceived,
@@ -54,6 +64,28 @@
 	// Set likes context for visitor/moderator
 	untrack(() => setLikesContext(data.userLikedGiftIds));
 
+	// Set sharing context for owner
+	const sharingContext = untrack(() =>
+		setSharingContext(data.wishlist.shortId, data.wishlist.sharedAt !== null),
+	);
+
+	// Set wishlist theme context
+	const themeContext = untrack(() =>
+		setWishlistThemeContext(data.wishlist.theme, data.wishlist.customThemeColor),
+	);
+
+	// Wishlist status (reactive, updates after sharing)
+	let wishlistStatus = $state(data.wishlist.status as 'draft' | 'active' | 'archived');
+
+	function handleShareOpened() {
+		sharingContext.openWizard();
+	}
+
+	function handleShared() {
+		// Update local status to reflect sharing
+		wishlistStatus = 'active';
+	}
+
 	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const totalCount = $derived(giftsContext.giftCount.current);
@@ -69,9 +101,29 @@
 	let isSubmitting = $state(false);
 	let isDeleting = $state(false);
 
+	// Theme selector sheet state
+	let themeSheetOpen = $state(false);
+
 	// Drag-and-drop state
 	let draggedIndex = $state<number | null>(null);
 	let dragOverIndex = $state<number | null>(null);
+
+	// ── Theme application via $effect ──────────────────────────────────────────
+
+	let themeWrapperElement = $state<HTMLElement | null>(null);
+
+	$effect(() => {
+		if (themeWrapperElement === null) {
+			return;
+		}
+		const theme = themeContext.effectiveTheme.current;
+		applyWishlistTheme(themeWrapperElement, theme);
+		return () => {
+			if (themeWrapperElement !== null) {
+				removeWishlistTheme(themeWrapperElement);
+			}
+		};
+	});
 
 	// Computed: can user edit/delete the selected gift?
 	const canEditSelectedGift = $derived.by(() => {
@@ -171,7 +223,7 @@
 	async function handleUpdate(input: UpdateGiftInput) {
 		isSubmitting = true;
 		try {
-			await updateGift(input);
+			await updateGiftRemote(input);
 			modalOpen = false;
 			await refreshGifts();
 		} catch (thrown) {
@@ -215,6 +267,37 @@
 		} catch (thrown) {
 			console.error('Failed to unfollow:', thrown);
 			toast.error('Nepodarilo se prestat sledovat');
+		}
+	}
+
+	// ── Theme handlers ────────────────────────────────────────────────────────
+
+	function handleThemePreview(theme: WishlistTheme) {
+		themeContext.startPreview(theme);
+	}
+
+	function handleThemeCancel() {
+		themeContext.cancelPreview();
+		themeSheetOpen = false;
+	}
+
+	async function handleThemeSave(theme: WishlistTheme) {
+		try {
+			const themePreset = isCustomTheme(theme) ? 'custom' : theme;
+			const customThemeColor = isCustomTheme(theme) ? theme.color : null;
+
+			await updateWishlist({
+				id: wishlist.id,
+				theme: themePreset,
+				customThemeColor,
+			});
+
+			themeContext.commitTheme(theme);
+			themeSheetOpen = false;
+			toast.success('Motiv byl ulozen');
+		} catch (thrown) {
+			console.error('Failed to save theme:', thrown);
+			toast.error('Nepodarilo se ulozit motiv');
 		}
 	}
 
@@ -317,7 +400,7 @@
 	}
 </script>
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
+<div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
 	<!-- Wishlist Header -->
 	<WishlistHeader
 		title={wishlist.title}
@@ -325,9 +408,10 @@
 		description={wishlist.description}
 		bannerImageKey={wishlist.bannerImageKey}
 		eventDate={wishlist.eventDate}
-		status={wishlist.status}
+		status={wishlistStatus}
 		{role}
 		giftCount={totalCount}
+		onshare={handleShareOpened}
 	/>
 
 	<!-- Toolbar -->
@@ -343,6 +427,17 @@
 		/>
 
 		<div class="ml-auto flex items-center gap-2">
+			{#if isOwner && !isArchived}
+				<Button
+					size="sm"
+					variant="outline"
+					aria-label="Zmenit motiv"
+					onclick={() => (themeSheetOpen = true)}
+				>
+					<PaletteIcon data-icon="inline-start" />
+					Motiv
+				</Button>
+			{/if}
 			{#if !isOwner && !isArchived}
 				<Button size="sm" variant="ghost" onclick={handleUnfollow}>Prestat sledovat</Button>
 			{/if}
@@ -565,3 +660,56 @@
 		onclose={handleReserveModalClose}
 	/>
 {/if}
+
+<!-- Share Wizard (owner only) -->
+{#if isOwner}
+	<ShareWizard
+		wishlistId={wishlist.id}
+		wishlistTitle={wishlist.title}
+		giftCount={totalCount}
+		onshared={handleShared}
+	/>
+{/if}
+
+<!-- Theme Selector Sheet (owner only) -->
+{#if isOwner}
+	<Sheet.Root
+		bind:open={themeSheetOpen}
+		onOpenChange={(open) => {
+			if (!open) {
+				themeContext.cancelPreview();
+			}
+		}}
+	>
+		<Sheet.Content side="right" class="w-full sm:max-w-md">
+			<Sheet.Header>
+				<Sheet.Title>Motiv seznamu</Sheet.Title>
+				<Sheet.Description>Zvolte prednastaveny motiv nebo vlastni barvu.</Sheet.Description
+				>
+			</Sheet.Header>
+			<div class="px-4 py-4">
+				<ThemeSelector
+					currentTheme={themeContext.activeTheme.current}
+					onsave={handleThemeSave}
+					oncancel={handleThemeCancel}
+					onpreview={handleThemePreview}
+				/>
+			</div>
+		</Sheet.Content>
+	</Sheet.Root>
+{/if}
+
+<!-- OpenGraph Meta Tags -->
+<svelte:head>
+	<title>{wishlist.title} — Darecky</title>
+	<meta property="og:title" content={wishlist.title} />
+	<meta property="og:description" content="Seznam prani od {wishlist.ownerName}" />
+	<meta property="og:type" content="website" />
+	<meta
+		property="og:url"
+		content="{typeof window !== 'undefined' ? window.location.origin : ''}/w/{wishlist.shortId}"
+	/>
+	{#if wishlist.thumbnailImageKey}
+		<meta property="og:image" content={wishlist.thumbnailImageKey} />
+	{/if}
+</svelte:head>

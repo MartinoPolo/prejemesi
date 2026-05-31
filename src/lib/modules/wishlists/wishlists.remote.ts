@@ -248,17 +248,19 @@ export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishl
 		updateData['description'] = input.description;
 	}
 
-	// These fields are locked after sharing
+	// Event date is locked after sharing
 	if (!isShared) {
 		if (input.eventDate !== undefined) {
 			updateData['eventDate'] = input.eventDate;
 		}
-		if (input.theme !== undefined) {
-			updateData['theme'] = input.theme;
-		}
-		if (input.customThemeColor !== undefined) {
-			updateData['customThemeColor'] = input.customThemeColor;
-		}
+	}
+
+	// Theme can always be updated (visual preference, not content)
+	if (input.theme !== undefined) {
+		updateData['theme'] = input.theme;
+	}
+	if (input.customThemeColor !== undefined) {
+		updateData['customThemeColor'] = input.customThemeColor;
 	}
 
 	// Images can always be updated
