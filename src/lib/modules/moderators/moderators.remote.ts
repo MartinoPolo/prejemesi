@@ -1,12 +1,10 @@
-import 'use server';
-
 import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment, moderatorInvite } from '$lib/server/db/moderator.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
-import { guardedCommand } from '$lib/server/remote.js';
+import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
 import type {
 	GenerateInviteInput,
 	AcceptInviteInput,
@@ -46,7 +44,7 @@ async function verifyWishlistOwner(userId: string, wishlistId: string) {
  * Get moderators and pending invites for a wishlist.
  * Accessible by owner and moderators.
  */
-export const getModeratorsForWishlist = guardedCommand(
+export const getModeratorsForWishlist = guardedQueryWithArgs(
 	async ({ user: currentUser }, wishlistId: string): Promise<ModeratorsData> => {
 		const database = getDb();
 

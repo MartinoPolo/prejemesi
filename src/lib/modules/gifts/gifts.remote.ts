@@ -1,12 +1,15 @@
-import 'use server';
-
 import { eq, and, isNull, sql, count as drizzleCount } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
-import { publicCommand, guardedCommand } from '$lib/server/remote.js';
+import {
+	publicQuery,
+	publicCommand,
+	guardedCommand,
+	guardedQueryWithArgs,
+} from '$lib/server/remote.js';
 import type {
 	GiftForOwner,
 	GiftForVisitor,
@@ -20,7 +23,7 @@ import type { WishlistRole } from '$lib/modules/wishlists/types.js';
  * Fetch gifts for a wishlist by its shortId.
  * Determines viewer role and strips reservation data for owners.
  */
-export const getGiftsByWishlistShortId = publicCommand(async (authContext, shortId: string) => {
+export const getGiftsByWishlistShortId = publicQuery(async (authContext, shortId: string) => {
 	const database = getDb();
 
 	// Find wishlist
@@ -432,7 +435,7 @@ export const markGiftReceived = guardedCommand(
 );
 
 /** Fetch priority levels for a wishlist */
-export const getPriorityLevels = guardedCommand(async ({ user }, wishlistId: string) => {
+export const getPriorityLevels = guardedQueryWithArgs(async ({ user }, wishlistId: string) => {
 	const database = getDb();
 
 	// Verify access

@@ -1,5 +1,3 @@
-import 'use server';
-
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';

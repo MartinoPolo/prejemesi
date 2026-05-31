@@ -1,5 +1,3 @@
-import 'use server';
-
 import { error } from '@sveltejs/kit';
 import { guardedCommand } from '$lib/server/remote.js';
 import { generateId } from '$lib/server/db/id.js';

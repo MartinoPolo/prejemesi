@@ -1,5 +1,3 @@
-import 'use server';
-
 import { eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';

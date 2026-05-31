@@ -17,7 +17,7 @@
 
 <Button
 	onclick={cycleMode}
-	intent="outline"
+	intent="ghost"
 	size="icon"
 	aria-label={`Toggle theme (${userPrefersMode.current})`}
 >

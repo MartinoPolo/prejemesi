@@ -1,18 +1,5 @@
-import 'use server';
-
-// Module augmentation for svelte/server remote function APIs (added in Svelte >5.55).
-// These stubs let TypeScript compile until the upstream package ships the exports.
-declare module 'svelte/server' {
-	function query<TResult>(fn: () => TResult): () => TResult;
-	function command<TArgs extends unknown[], TResult>(
-		fn: (...args: TArgs) => TResult,
-	): (...args: TArgs) => TResult;
-	function form(fn: (formData: FormData) => unknown): (formData: FormData) => unknown;
-}
-
-import { getRequestEvent } from '$app/server';
+import { getRequestEvent, query, command, form } from '$app/server';
 import { error } from '@sveltejs/kit';
-import { query, command, form } from 'svelte/server';
 import type { User, Session } from 'better-auth';
 
 interface AuthContext {
@@ -41,10 +28,31 @@ export function guardedQuery<TResult>(
 	});
 }
 
+export function guardedQueryWithArgs<TArgs extends unknown[], TResult>(
+	handler: (authContext: AuthContext, ...args: TArgs) => TResult,
+): (...args: TArgs) => TResult {
+	return query('unchecked', (...args: TArgs) => {
+		const authContext = getAuthContext();
+		return handler(authContext, ...args);
+	});
+}
+
+export function publicQuery<TArgs extends unknown[], TResult>(
+	handler: (authContext: AuthContext | null, ...args: TArgs) => TResult,
+): (...args: TArgs) => TResult {
+	return query('unchecked', (...args: TArgs) => {
+		const event = getRequestEvent();
+		const user = event.locals.user;
+		const session = event.locals.session;
+		const authContext = user !== undefined && session !== undefined ? { user, session } : null;
+		return handler(authContext, ...args);
+	});
+}
+
 export function guardedCommand<TArgs extends unknown[], TResult>(
 	handler: (authContext: AuthContext, ...args: TArgs) => TResult,
 ): (...args: TArgs) => TResult {
-	return command((...args: TArgs) => {
+	return command('unchecked', (...args: TArgs) => {
 		const authContext = getAuthContext();
 		return handler(authContext, ...args);
 	});
@@ -64,7 +72,7 @@ export function guardedForm(handler: (authContext: AuthContext, formData: FormDa
 export function publicCommand<TArgs extends unknown[], TResult>(
 	handler: (authContext: AuthContext | null, ...args: TArgs) => TResult,
 ): (...args: TArgs) => TResult {
-	return command((...args: TArgs) => {
+	return command('unchecked', (...args: TArgs) => {
 		const event = getRequestEvent();
 		const user = event.locals.user;
 		const session = event.locals.session;

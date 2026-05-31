@@ -4,26 +4,30 @@ import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 import { followWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const [wishlistData, giftsData] = await Promise.all([
+export const load: PageServerLoad = async ({ params, parent }) => {
+	const [parentData, wishlistData, giftsData] = await Promise.all([
+		parent(),
 		getWishlistByShortId(params.id),
 		getGiftsByWishlistShortId(params.id),
 	]);
 
+	const isAuthenticated = parentData.user !== null;
+
 	// Fetch user likes and auto-follow in parallel (both are guarded, so they no-op for anon)
 	let userLikedGiftIds: string[] = [];
-	try {
-		const [likedIds] = await Promise.allSettled([
-			getUserLikesForWishlist(),
-			// Auto-follow on first visit (no-op for owner or already following)
-			followWishlist(wishlistData.id),
-		]);
+	if (isAuthenticated) {
+		try {
+			const [likedIds] = await Promise.allSettled([
+				getUserLikesForWishlist(),
+				followWishlist(wishlistData.id),
+			]);
 
-		if (likedIds.status === 'fulfilled') {
-			userLikedGiftIds = likedIds.value;
+			if (likedIds.status === 'fulfilled') {
+				userLikedGiftIds = likedIds.value;
+			}
+		} catch {
+			// Guarded calls may still fail — ignore
 		}
-	} catch {
-		// Unauthenticated users — no likes, no follow
 	}
 
 	return {
@@ -31,6 +35,6 @@ export const load: PageServerLoad = async ({ params }) => {
 		gifts: giftsData.gifts,
 		role: giftsData.role,
 		userLikedGiftIds,
-		isAuthenticated: true,
+		isAuthenticated,
 	};
 };

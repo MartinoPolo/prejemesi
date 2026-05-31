@@ -1,5 +1,3 @@
-import 'use server';
-
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
@@ -8,7 +6,7 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
-import { guardedCommand, guardedQuery, publicCommand } from '$lib/server/remote.js';
+import { guardedCommand, guardedQuery, publicCommand, publicQuery } from '$lib/server/remote.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	type CreateWishlistInput,
@@ -28,7 +26,7 @@ export const getMyWishlists = guardedQuery(async ({ user }) => {
 		.orderBy(wishlist.createdAt);
 });
 
-export const getWishlistByShortId = publicCommand(async (authContext, shortId: string) => {
+export const getWishlistByShortId = publicQuery(async (authContext, shortId: string) => {
 	const database = getDb();
 
 	const rows = await database

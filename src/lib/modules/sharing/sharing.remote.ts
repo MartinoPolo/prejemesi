@@ -1,5 +1,3 @@
-import 'use server';
-
 import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';

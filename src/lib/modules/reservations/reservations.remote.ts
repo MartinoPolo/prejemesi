@@ -1,12 +1,10 @@
-import 'use server';
-
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
-import { publicCommand } from '$lib/server/remote.js';
+import { publicQuery, publicCommand } from '$lib/server/remote.js';
 import type { ReserveGiftInput, UnreserveInput, ReservationForModerator } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
@@ -210,7 +208,7 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
  * Moderator: returns full details.
  * Visitor: returns empty (visitors see counts via gifts, not individual reservations).
  */
-export const getReservationsForGift = publicCommand(async (authContext, giftId: string) => {
+export const getReservationsForGift = publicQuery(async (authContext, giftId: string) => {
 	const wishlistRow = (await getGiftWithWishlist(giftId)).wishlist;
 
 	const userId = authContext?.user.id ?? null;
@@ -249,7 +247,7 @@ export const getReservationsForGift = publicCommand(async (authContext, giftId: 
  * Get the current user's reservations for a specific gift.
  * Used to show "you already reserved X" and enable unreserve.
  */
-export const getMyReservationsForGift = publicCommand(async (authContext, giftId: string) => {
+export const getMyReservationsForGift = publicQuery(async (authContext, giftId: string) => {
 	if (authContext === null) {
 		return [];
 	}

@@ -8,14 +8,26 @@ export function isDatabaseConfigured(): boolean {
 	return env.DATABASE_URL !== undefined && env.DATABASE_URL !== '';
 }
 
+const clientCache = new Map<string, ReturnType<typeof drizzle>>();
+
 export function getDb() {
-	const event = getRequestEvent();
-	const connectionString: string | undefined =
-		(event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined) ??
-		env.DATABASE_URL;
+	let connectionString: string | undefined;
+	try {
+		const event = getRequestEvent();
+		connectionString =
+			(event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined) ??
+			env.DATABASE_URL;
+	} catch {
+		connectionString = env.DATABASE_URL;
+	}
 
 	if (connectionString === undefined || connectionString === '') {
 		throw new Error('No database connection: set DATABASE_URL or configure Hyperdrive');
+	}
+
+	const cached = clientCache.get(connectionString);
+	if (cached) {
+		return cached;
 	}
 
 	const client = postgres(connectionString, {
@@ -23,5 +35,7 @@ export function getDb() {
 		fetch_types: false,
 	});
 
-	return drizzle(client, { schema });
+	const db = drizzle(client, { schema });
+	clientCache.set(connectionString, db);
+	return db;
 }

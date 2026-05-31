@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
+	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
 	import LogoMark from '$lib/components/blocks/navbar/LogoMark.svelte';
 	import Gift from '@lucide/svelte/icons/gift';
 	import Check from '@lucide/svelte/icons/check';
@@ -40,7 +41,8 @@
 	aria-label="Veřejná navigace"
 >
 	<LogoMark />
-	<div class="flex items-center gap-3">
+	<div class="flex items-center gap-2">
+		<DarkModeToggle />
 		<Button intent="ghost" href={resolve('/login')}>Přihlásit se</Button>
 		<Button href={resolve('/register')}>Začít zdarma</Button>
 	</div>
@@ -113,10 +115,7 @@
 		<div class="relative">
 			<div class="overflow-hidden rounded-3xl border border-border bg-background shadow-xl">
 				<!-- Card header -->
-				<div
-					class="border-b border-border px-6 pb-5 pt-6"
-					style="background: linear-gradient(135deg, oklch(97% 0.016 150deg), oklch(99% 0.006 150deg))"
-				>
+				<div class="hero-card-header border-b border-border px-6 pb-5 pt-6">
 					<div
 						class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70"
 					>
@@ -125,8 +124,7 @@
 					<div class="font-heading text-2xl font-bold">Tereza Nováková</div>
 					<div class="mt-3 flex items-center gap-3">
 						<span
-							class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-							style="background: oklch(94% 0.05 60deg); color: oklch(42% 0.09 60deg)"
+							class="hero-badge-event rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
 						>
 							Narozeniny
 						</span>
@@ -139,13 +137,13 @@
 				</div>
 
 				<!-- Gift rows -->
-				{#each [{ emoji: '📗', bg: 'oklch(94% 0.04 150)', name: 'Kniha Atomové návyky', price: '349 Kč · alza.cz', status: 'free' }, { emoji: '🎧', bg: 'oklch(94% 0.04 200)', name: 'Bezdrátová sluchátka Sony', price: '2 490 Kč · mall.cz', status: 'reserved' }, { emoji: '🕯️', bg: 'oklch(94% 0.04 60)', name: 'Sada vonných svíček', price: '650 Kč · notino.cz', status: 'free' }, { emoji: '🧴', bg: 'oklch(94% 0.04 330)', name: 'Kosmetická sada La Mer', price: '1 890 Kč · sephora.cz', status: 'reserved' }] as gift (gift.name)}
+				{#each [{ emoji: '📗', hue: '150', name: 'Kniha Atomové návyky', price: '349 Kč · alza.cz', status: 'free' }, { emoji: '🎧', hue: '200', name: 'Bezdrátová sluchátka Sony', price: '2 490 Kč · mall.cz', status: 'reserved' }, { emoji: '🕯️', hue: '60', name: 'Sada vonných svíček', price: '650 Kč · notino.cz', status: 'free' }, { emoji: '🧴', hue: '330', name: 'Kosmetická sada La Mer', price: '1 890 Kč · sephora.cz', status: 'reserved' }] as gift (gift.name)}
 					<div
 						class="flex items-center gap-4 border-b border-border px-6 py-3.5 last:border-b-0"
 					>
 						<div
-							class="flex size-11 shrink-0 items-center justify-center rounded-lg text-[22px]"
-							style="background: {gift.bg}"
+							class="gift-icon-bg flex size-11 shrink-0 items-center justify-center rounded-lg text-[22px]"
+							style="--gift-hue: {gift.hue}deg"
 						>
 							{gift.emoji}
 						</div>
@@ -161,8 +159,7 @@
 							</span>
 						{:else}
 							<span
-								class="shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-								style="background: oklch(90% 0.05 200deg / 35%); color: oklch(38% 0.1 200deg)"
+								class="hero-badge-reserved shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
 							>
 								Rezervováno
 							</span>
@@ -274,8 +271,8 @@
 						class="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
 					>
 						<div
-							class="flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-							style="background: linear-gradient(135deg, oklch(25% 0.02 240deg), oklch(35% 0.03 220deg))"
+							class="feat-emoji-icon flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
+							style="--icon-hue: 240deg"
 						>
 							{gift.emoji}
 						</div>
@@ -284,8 +281,7 @@
 							<div class="mt-0.5 text-xs text-muted-foreground/70">{gift.sub}</div>
 						</div>
 						<span
-							class="shrink-0 select-none rounded-full border px-2.5 py-0.5 text-[11px] font-medium blur-[5px]"
-							style="background: oklch(62% 0.13 145deg / 14%); color: oklch(62% 0.13 145deg); border-color: oklch(62% 0.13 145deg / 28%)"
+							class="feat-status-badge shrink-0 select-none rounded-full border px-2.5 py-0.5 text-[11px] font-medium blur-[5px]"
 							aria-hidden="true"
 						>
 							Skryto
@@ -307,8 +303,8 @@
 					class="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
 				>
 					<div
-						class="flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-						style="background: linear-gradient(135deg, oklch(25% 0.02 240deg), oklch(35% 0.03 220deg))"
+						class="feat-emoji-icon flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
+						style="--icon-hue: 240deg"
 					>
 						🎧
 					</div>
@@ -319,8 +315,7 @@
 						</div>
 					</div>
 					<span
-						class="shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
-						style="background: oklch(62% 0.13 145deg / 14%); color: oklch(62% 0.13 145deg); border-color: oklch(62% 0.13 145deg / 28%)"
+						class="feat-status-badge shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
 					>
 						Rezervováno
 					</span>
@@ -329,8 +324,8 @@
 					class="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
 				>
 					<div
-						class="flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-						style="background: linear-gradient(135deg, oklch(85% 0.06 55deg), oklch(75% 0.08 45deg))"
+						class="feat-emoji-icon flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
+						style="--icon-hue: 55deg"
 					>
 						📖
 					</div>
@@ -449,14 +444,14 @@
 		<div class="feat-visual">
 			<div class="mb-2 text-sm font-semibold">Vyberte téma</div>
 			<div class="grid grid-cols-3 gap-3">
-				{#each [{ name: 'Výchozí', emoji: '🌿', bg: 'linear-gradient(135deg, oklch(0.92 0.04 150), oklch(0.96 0.02 150))', active: true }, { name: 'Vánoce', emoji: '🎄', bg: 'linear-gradient(135deg, oklch(0.95 0.04 20), oklch(0.98 0.02 30))', active: false }, { name: 'Narozeniny', emoji: '🎂', bg: 'linear-gradient(135deg, oklch(0.94 0.05 55), oklch(0.97 0.03 60))', active: false }, { name: 'Elegantní', emoji: '💍', bg: 'linear-gradient(135deg, oklch(0.93 0.04 270), oklch(0.96 0.02 280))', active: false }, { name: 'Zábava', emoji: '🎉', bg: 'linear-gradient(135deg, oklch(0.95 0.05 340), oklch(0.97 0.03 350))', active: false }, { name: 'Vlastní', emoji: '🎨', bg: 'var(--muted)', active: false }] as theme (theme.name)}
+				{#each [{ name: 'Výchozí', emoji: '🌿', hue: '150', active: true }, { name: 'Vánoce', emoji: '🎄', hue: '20', active: false }, { name: 'Narozeniny', emoji: '🎂', hue: '55', active: false }, { name: 'Elegantní', emoji: '💍', hue: '270', active: false }, { name: 'Zábava', emoji: '🎉', hue: '340', active: false }, { name: 'Vlastní', emoji: '🎨', hue: '', active: false }] as theme (theme.name)}
 					<div
 						class="flex cursor-pointer flex-col gap-2 rounded-xl border-2 p-4 transition-all {theme.active
 							? 'border-primary shadow-[0_0_0_3px_oklch(from_var(--primary)_l_c_h_/_0.2)]'
 							: theme.name === 'Vlastní'
 								? 'border-dashed border-border'
-								: 'border-transparent'}"
-						style="background: {theme.bg}"
+								: 'border-transparent'} {theme.hue ? 'theme-swatch' : 'bg-muted'}"
+						style={theme.hue ? `--swatch-hue: ${theme.hue}deg` : ''}
 					>
 						<span class="text-[22px]">{theme.emoji}</span>
 						<span class="text-xs font-semibold">{theme.name}</span>
@@ -465,17 +460,11 @@
 			</div>
 
 			<!-- Theme preview -->
-			<div
-				class="mt-4 rounded-xl p-4"
-				style="background: linear-gradient(135deg, oklch(92% 0.04 150deg), oklch(96% 0.02 150deg))"
-			>
-				<div
-					class="font-heading text-lg font-extrabold"
-					style="color: oklch(35% 0.08 150deg)"
-				>
+			<div class="theme-preview-card mt-4 rounded-xl p-4">
+				<div class="theme-preview-title font-heading text-lg font-extrabold">
 					Martina — Vánoční přání
 				</div>
-				<div class="mt-1 text-sm" style="color: oklch(45% 0.06 150deg)">
+				<div class="theme-preview-subtitle mt-1 text-sm">
 					Tady jsou věci, které by mě letos potěšily :)
 				</div>
 			</div>
@@ -739,5 +728,117 @@
 				var(--border) 100%
 			);
 		}
+	}
+
+	/* Hero card header */
+	.hero-card-header {
+		background: linear-gradient(135deg, oklch(97% 0.016 150deg), oklch(99% 0.006 150deg));
+	}
+
+	:global(.dark) .hero-card-header {
+		background: linear-gradient(135deg, oklch(22% 0.02 150deg), oklch(18% 0.01 150deg));
+	}
+
+	/* Hero badge - event type */
+	.hero-badge-event {
+		background: oklch(94% 0.05 60deg);
+		color: oklch(42% 0.09 60deg);
+	}
+
+	:global(.dark) .hero-badge-event {
+		background: oklch(30% 0.04 60deg);
+		color: oklch(78% 0.08 60deg);
+	}
+
+	/* Gift icon background — uses --gift-hue custom property */
+	.gift-icon-bg {
+		background: oklch(94% 0.04 var(--gift-hue));
+	}
+
+	:global(.dark) .gift-icon-bg {
+		background: oklch(30% 0.03 var(--gift-hue));
+	}
+
+	/* Hero reserved badge */
+	.hero-badge-reserved {
+		background: oklch(90% 0.05 200deg / 35%);
+		color: oklch(38% 0.1 200deg);
+	}
+
+	:global(.dark) .hero-badge-reserved {
+		background: oklch(30% 0.06 200deg / 40%);
+		color: oklch(72% 0.08 200deg);
+	}
+
+	/* Feature 1 — emoji icon dark bg */
+	.feat-emoji-icon {
+		background: linear-gradient(
+			135deg,
+			oklch(92% 0.03 var(--icon-hue)),
+			oklch(95% 0.02 var(--icon-hue))
+		);
+	}
+
+	:global(.dark) .feat-emoji-icon {
+		background: linear-gradient(
+			135deg,
+			oklch(25% 0.02 var(--icon-hue)),
+			oklch(30% 0.03 var(--icon-hue))
+		);
+	}
+
+	/* Feature 1 — status badge (green "reserved") */
+	.feat-status-badge {
+		background: oklch(62% 0.13 145deg / 14%);
+		color: oklch(62% 0.13 145deg);
+		border-color: oklch(62% 0.13 145deg / 28%);
+	}
+
+	:global(.dark) .feat-status-badge {
+		background: oklch(62% 0.13 145deg / 20%);
+		color: oklch(72% 0.1 145deg);
+		border-color: oklch(62% 0.13 145deg / 35%);
+	}
+
+	/* Feature 3 — theme swatch card */
+	.theme-swatch {
+		background: linear-gradient(
+			135deg,
+			oklch(92% 0.04 var(--swatch-hue)),
+			oklch(96% 0.02 var(--swatch-hue))
+		);
+	}
+
+	:global(.dark) .theme-swatch {
+		background: linear-gradient(
+			135deg,
+			oklch(25% 0.03 var(--swatch-hue)),
+			oklch(30% 0.02 var(--swatch-hue))
+		);
+	}
+
+	/* Feature 3 — theme preview card */
+	.theme-preview-card {
+		background: linear-gradient(135deg, oklch(92% 0.04 150deg), oklch(96% 0.02 150deg));
+	}
+
+	:global(.dark) .theme-preview-card {
+		background: linear-gradient(135deg, oklch(25% 0.03 150deg), oklch(30% 0.02 150deg));
+	}
+
+	.theme-preview-title {
+		color: oklch(35% 0.08 150deg);
+	}
+
+	:global(.dark) .theme-preview-title {
+		color: oklch(78% 0.06 150deg);
+	}
+
+	.theme-preview-subtitle {
+		color: oklch(45% 0.06 150deg);
+	}
+
+	:global(.dark) .theme-preview-subtitle {
+		color: oklch(68% 0.04 150deg);
 	}
 </style>
