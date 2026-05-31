@@ -13,7 +13,6 @@
 	import { authClient } from '$lib/auth_client.js';
 	import { updateProfile, deleteAccount } from '$lib/modules/settings/settings.remote.js';
 	import { userPrefersMode, setMode } from 'mode-watcher';
-	import { m } from '$lib/paraglide/messages.js';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
 	import BellIcon from '@lucide/svelte/icons/bell';
@@ -102,11 +101,11 @@
 		passwordSuccess = false;
 
 		if (newPassword.length < 8) {
-			passwordError = m.settings_password_min_length();
+			passwordError = 'Heslo musi mit alespon 8 znaku';
 			return;
 		}
 		if (newPassword !== confirmPassword) {
-			passwordError = m.settings_password_mismatch();
+			passwordError = 'Hesla se neshoduji';
 			return;
 		}
 
@@ -160,14 +159,14 @@
 </script>
 
 <svelte:head>
-	<title>{m.settings_title()} | Darecky</title>
+	<title>Nastaveni | Darecky</title>
 </svelte:head>
 
 <div class="settings-page">
 	<!-- Page header -->
 	<div class="mb-8">
-		<h1 class="text-2xl font-bold">{m.settings_title()}</h1>
-		<p class="mt-1 text-muted-foreground">{m.settings_subtitle()}</p>
+		<h1 class="text-2xl font-bold">Nastaveni</h1>
+		<p class="mt-1 text-muted-foreground">Spravujte svuj profil, zabezpeceni a predvolby</p>
 	</div>
 
 	<div class="settings-sections">
@@ -179,8 +178,8 @@
 				<div class="flex items-center gap-2">
 					<UserIcon class="size-5 text-muted-foreground" />
 					<div>
-						<Card.Title>{m.settings_profile_title()}</Card.Title>
-						<Card.Description>{m.settings_profile_description()}</Card.Description>
+						<Card.Title>Profil</Card.Title>
+						<Card.Description>Vase zakladni udaje a fotografie</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
@@ -188,7 +187,7 @@
 				<div class="flex flex-col gap-6">
 					<!-- Avatar -->
 					<div class="flex flex-col gap-2">
-						<Label>{m.settings_avatar_label()}</Label>
+						<Label>Profilova fotografie</Label>
 						<div class="flex items-center gap-4">
 							{#if avatarUrl}
 								<img
@@ -217,18 +216,18 @@
 
 					<!-- Display name -->
 					<div class="flex flex-col gap-2">
-						<Label for="settings-display-name">{m.settings_display_name()}</Label>
+						<Label for="settings-display-name">Zobrazovane jmeno</Label>
 						<Input
 							id="settings-display-name"
 							type="text"
-							placeholder={m.settings_display_name_placeholder()}
+							placeholder="Vase jmeno"
 							bind:value={displayName}
 						/>
 					</div>
 
 					<!-- Email -->
 					<div class="flex flex-col gap-2">
-						<Label for="settings-email">{m.settings_email_label()}</Label>
+						<Label for="settings-email">E-mail</Label>
 						<Input
 							id="settings-email"
 							type="email"
@@ -238,7 +237,7 @@
 						/>
 						{#if profile.isOAuthUser}
 							<p class="text-xs text-muted-foreground">
-								{m.settings_email_readonly_hint()}
+								E-mail nelze zmenit u uctu prihlaseneho pres Google
 							</p>
 						{/if}
 					</div>
@@ -247,11 +246,11 @@
 			<Card.Footer class="flex justify-end">
 				<Button onclick={handleSaveProfile} disabled={profileSaving}>
 					{#if profileSaving}
-						{m.settings_saving()}
+						Ukladam...
 					{:else if profileSaved}
-						{m.settings_saved()}
+						Ulozeno
 					{:else}
-						{m.settings_save_profile()}
+						Ulozit profil
 					{/if}
 				</Button>
 			</Card.Footer>
@@ -266,8 +265,9 @@
 					<div class="flex items-center gap-2">
 						<ShieldIcon class="size-5 text-muted-foreground" />
 						<div>
-							<Card.Title>{m.settings_security_title()}</Card.Title>
-							<Card.Description>{m.settings_security_description()}</Card.Description>
+							<Card.Title>Zabezpeceni</Card.Title>
+							<Card.Description>Zmena hesla a nastaveni prihlasovani</Card.Description
+							>
 						</div>
 					</div>
 				</Card.Header>
@@ -275,9 +275,7 @@
 					<div class="flex flex-col gap-4">
 						<!-- Current password -->
 						<div class="flex flex-col gap-2">
-							<Label for="settings-current-password"
-								>{m.settings_current_password()}</Label
-							>
+							<Label for="settings-current-password">Soucasne heslo</Label>
 							<div class="relative">
 								<Input
 									id="settings-current-password"
@@ -306,7 +304,7 @@
 
 						<!-- New password -->
 						<div class="flex flex-col gap-2">
-							<Label for="settings-new-password">{m.settings_new_password()}</Label>
+							<Label for="settings-new-password">Nove heslo</Label>
 							<div class="relative">
 								<Input
 									id="settings-new-password"
@@ -333,9 +331,7 @@
 
 						<!-- Confirm password -->
 						<div class="flex flex-col gap-2">
-							<Label for="settings-confirm-password"
-								>{m.settings_confirm_password()}</Label
-							>
+							<Label for="settings-confirm-password">Potvrzeni noveho hesla</Label>
 							<Input
 								id="settings-confirm-password"
 								type="password"
@@ -349,7 +345,7 @@
 						{/if}
 						{#if passwordSuccess}
 							<p class="text-sm text-green-600 dark:text-green-400">
-								{m.settings_password_changed()}
+								Heslo bylo zmeneno
 							</p>
 						{/if}
 					</div>
@@ -362,7 +358,7 @@
 							!newPassword ||
 							!confirmPassword}
 					>
-						{passwordSaving ? m.settings_saving() : m.settings_change_password()}
+						{passwordSaving ? 'Ukladam...' : 'Zmenit heslo'}
 					</Button>
 				</Card.Footer>
 			</Card.Root>
@@ -376,9 +372,8 @@
 				<div class="flex items-center gap-2">
 					<BellIcon class="size-5 text-muted-foreground" />
 					<div>
-						<Card.Title>{m.settings_notifications_title()}</Card.Title>
-						<Card.Description>{m.settings_notifications_description()}</Card.Description
-						>
+						<Card.Title>Upozorneni</Card.Title>
+						<Card.Description>Nastavte si, jak chcete byt informovani</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
@@ -398,8 +393,8 @@
 				<div class="flex items-center gap-2">
 					<PaletteIcon class="size-5 text-muted-foreground" />
 					<div>
-						<Card.Title>{m.settings_appearance_title()}</Card.Title>
-						<Card.Description>{m.settings_appearance_description()}</Card.Description>
+						<Card.Title>Vzhled</Card.Title>
+						<Card.Description>Motiv a jazyk aplikace</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
@@ -407,37 +402,37 @@
 				<div class="flex flex-col gap-6">
 					<!-- Dark mode -->
 					<div class="flex flex-col gap-2">
-						<Label>{m.settings_dark_mode_label()}</Label>
+						<Label>Barevny rezim</Label>
 						<div class="mode-selector">
 							<button
 								class="mode-option"
 								class:is-active={currentMode === 'light'}
 								type="button"
 								onclick={() => setMode('light')}
-								aria-label={m.settings_mode_light()}
+								aria-label="Svetly"
 							>
 								<SunIcon class="size-4" />
-								<span>{m.settings_mode_light()}</span>
+								<span>Svetly</span>
 							</button>
 							<button
 								class="mode-option"
 								class:is-active={currentMode === 'dark'}
 								type="button"
 								onclick={() => setMode('dark')}
-								aria-label={m.settings_mode_dark()}
+								aria-label="Tmavy"
 							>
 								<MoonIcon class="size-4" />
-								<span>{m.settings_mode_dark()}</span>
+								<span>Tmavy</span>
 							</button>
 							<button
 								class="mode-option"
 								class:is-active={currentMode === 'system'}
 								type="button"
 								onclick={() => setMode('system')}
-								aria-label={m.settings_mode_system()}
+								aria-label="System"
 							>
 								<MonitorIcon class="size-4" />
-								<span>{m.settings_mode_system()}</span>
+								<span>System</span>
 							</button>
 						</div>
 					</div>
@@ -446,7 +441,7 @@
 
 					<!-- Language -->
 					<div class="flex flex-col gap-2">
-						<Label>{m.settings_language_label()}</Label>
+						<Label>Jazyk</Label>
 						<LanguageToggle />
 					</div>
 				</div>
@@ -461,18 +456,17 @@
 				<div class="flex items-center gap-2">
 					<TriangleAlertIcon class="size-5 text-destructive" />
 					<div>
-						<Card.Title class="text-destructive">{m.settings_danger_title()}</Card.Title
-						>
-						<Card.Description>{m.settings_danger_description()}</Card.Description>
+						<Card.Title class="text-destructive">Nebezpecna zona</Card.Title>
+						<Card.Description>Nevratne akce s vasim uctem</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
 			<Card.Content>
 				<div class="flex items-center justify-between gap-4">
 					<div>
-						<p class="text-sm font-medium">{m.settings_delete_account()}</p>
+						<p class="text-sm font-medium">Smazat ucet</p>
 						<p class="text-xs text-muted-foreground">
-							{m.settings_delete_account_description()}
+							Trvale smazete svuj ucet a vsechna data. Tuto akci nelze vratit.
 						</p>
 					</div>
 					<Button
@@ -480,7 +474,7 @@
 						size="sm"
 						onclick={() => (deleteDialogOpen = true)}
 					>
-						{m.settings_delete_account()}
+						Smazat ucet
 					</Button>
 				</div>
 			</Card.Content>
@@ -492,9 +486,9 @@
 <Dialog.Root bind:open={deleteDialogOpen}>
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>{m.settings_delete_confirm_title()}</Dialog.Title>
+			<Dialog.Title>Opravdu chcete smazat ucet?</Dialog.Title>
 			<Dialog.Description>
-				{m.settings_delete_confirm_description()}
+				Tato akce je nevratna. Vsechna vase data, seznamy a prani budou trvale smazana.
 			</Dialog.Description>
 		</Dialog.Header>
 		<Dialog.Footer class="flex gap-2">
@@ -503,10 +497,10 @@
 				onclick={() => (deleteDialogOpen = false)}
 				disabled={deleting}
 			>
-				{m.settings_delete_cancel()}
+				Zrusit
 			</Button>
 			<Button variant="destructive" onclick={handleDeleteAccount} disabled={deleting}>
-				{deleting ? m.settings_deleting() : m.settings_delete_confirm_button()}
+				{deleting ? 'Mazani...' : 'Ano, smazat ucet'}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

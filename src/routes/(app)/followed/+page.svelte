@@ -20,19 +20,36 @@
 	let showArchived = $state(false);
 	let showUnfollowed = $state(false);
 
-	const wishlists = getFollowedWishlists();
+	let wishlistData = $state<FollowedWishlist[]>([]);
+	let isLoading = $state(true);
+
+	async function fetchWishlists() {
+		isLoading = true;
+		try {
+			wishlistData = await getFollowedWishlists();
+		} catch {
+			wishlistData = [];
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	fetchWishlists();
 
 	const filteredWishlists = $derived.by(() => {
-		const all = wishlists.current ?? [];
-		let filtered = showArchived ? all : all.filter((w) => w.status !== 'archived');
-		filtered = showUnfollowed ? filtered : filtered.filter((w) => w.unfollowedAt === null);
+		let filtered = showArchived
+			? wishlistData
+			: wishlistData.filter((w: FollowedWishlist) => w.status !== 'archived');
+		filtered = showUnfollowed
+			? filtered
+			: filtered.filter((w: FollowedWishlist) => w.unfollowedAt === null);
 		return sortFollowedWishlists(filtered, sortValue);
 	});
 
 	async function handleUnfollow(wishlistId: string) {
 		try {
 			await unfollowWishlist(wishlistId);
-			wishlists.refetch();
+			await fetchWishlists();
 			toast.success('Seznam jste prestali sledovat');
 		} catch {
 			toast.error('Nepodarilo se prestat sledovat');
@@ -42,7 +59,7 @@
 	async function handleRefollow(wishlistId: string) {
 		try {
 			await refollowWishlist(wishlistId);
-			wishlists.refetch();
+			await fetchWishlists();
 			toast.success('Seznam znovu sledujete');
 		} catch {
 			toast.error('Nepodarilo se znovu sledovat');
@@ -96,7 +113,7 @@
 	{/snippet}
 </PageHeader>
 
-{#if wishlists.loading}
+{#if isLoading}
 	<p class="py-12 text-center text-muted-foreground">Načítání...</p>
 {:else if filteredWishlists.length === 0}
 	<EmptyState

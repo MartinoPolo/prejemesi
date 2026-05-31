@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
+import { magicLink } from 'better-auth/plugins/magic-link';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from './db/index.js';
@@ -51,5 +52,13 @@ export const auth = betterAuth({
 		},
 	},
 
-	plugins: [sveltekitCookies(getRequestEvent)],
+	plugins: [
+		sveltekitCookies(getRequestEvent),
+		magicLink({
+			sendMagicLink: async ({ email, url }) => {
+				// TODO: replace with your email service (e.g. Resend, SendGrid, Postmark)
+				console.log(`[Auth] Magic link for ${email}: ${url}`);
+			},
+		}),
+	],
 });

@@ -66,7 +66,7 @@
 </script>
 
 <a
-	href={resolve('/w/[id]', { id: wishlistData.shortId })}
+	href={resolve('/(app)/w/[id]', { id: wishlistData.shortId })}
 	class={cn(variants.root(), className)}
 	aria-label={wishlistData.title}
 >

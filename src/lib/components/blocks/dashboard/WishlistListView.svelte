@@ -31,7 +31,7 @@
 		{@const isArchived = item.wishlist.status === 'archived'}
 		{@const rowVariants = wishlistListViewVariants({ archived: isArchived })}
 		<a
-			href={resolve('/w/[id]', { id: item.wishlist.shortId })}
+			href={resolve('/(app)/w/[id]', { id: item.wishlist.shortId })}
 			class={rowVariants.row()}
 			aria-label={item.wishlist.title}
 		>

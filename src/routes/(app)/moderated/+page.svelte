@@ -13,11 +13,26 @@
 	let viewMode = $state<ViewMode>('grid');
 	let showArchived = $state(false);
 
-	const wishlists = getModeratedWishlists();
+	let wishlistData = $state<ModeratedWishlist[]>([]);
+	let isLoading = $state(true);
+
+	async function fetchWishlists() {
+		isLoading = true;
+		try {
+			wishlistData = await getModeratedWishlists();
+		} catch {
+			wishlistData = [];
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	fetchWishlists();
 
 	const filteredWishlists = $derived.by(() => {
-		const all = wishlists.current ?? [];
-		const filtered = showArchived ? all : all.filter((w) => w.status !== 'archived');
+		const filtered = showArchived
+			? wishlistData
+			: wishlistData.filter((w: ModeratedWishlist) => w.status !== 'archived');
 		return sortModeratedWishlists(filtered, sortValue);
 	});
 
@@ -62,7 +77,7 @@
 	{/snippet}
 </PageHeader>
 
-{#if wishlists.loading}
+{#if isLoading}
 	<p class="py-12 text-center text-muted-foreground">Načítání...</p>
 {:else if filteredWishlists.length === 0}
 	<EmptyState
