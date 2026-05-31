@@ -5,7 +5,7 @@
 	interface ReserveButtonProps {
 		gift: GiftForVisitor;
 		isArchived?: boolean;
-		size?: 'md' | 'sm' | 'xs';
+		size?: 'md' | 'sm';
 		onreserve?: (gift: GiftForVisitor) => void;
 	}
 

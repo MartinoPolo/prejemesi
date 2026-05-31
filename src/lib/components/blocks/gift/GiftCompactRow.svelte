@@ -89,7 +89,7 @@
 			{#if isFullyReserved}
 				<span class="text-xs font-medium text-reserved">Rezervovano</span>
 			{:else if visitorGift}
-				<ReserveButton gift={visitorGift} {isArchived} size="xs" {onreserve} />
+				<ReserveButton gift={visitorGift} {isArchived} size="sm" {onreserve} />
 			{/if}
 		</td>
 	{/if}

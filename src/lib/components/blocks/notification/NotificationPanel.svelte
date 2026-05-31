@@ -22,7 +22,7 @@
 	<div class="flex items-center justify-between px-3 pb-2">
 		<h3 class="text-sm font-semibold">Upozorneni</h3>
 		{#if ctx.hasUnread.current}
-			<Button intent="ghost" size="xs" onclick={handleMarkAllAsRead}>
+			<Button intent="ghost" size="sm" onclick={handleMarkAllAsRead}>
 				<CheckCheckIcon data-icon="inline-start" />
 				Oznacit vse
 			</Button>
