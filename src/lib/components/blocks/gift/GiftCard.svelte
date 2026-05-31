@@ -12,8 +12,8 @@
 		formatPrice,
 		extractDomain,
 		getPriorityDisplay,
-	} from '$lib/modules/gifts/gift-display.js';
-	import { giftCardVariants } from './gift-card-variants.js';
+	} from '$lib/modules/gifts/gift_display.js';
+	import { giftCardVariants } from './gift_card_variants.js';
 
 	interface GiftCardProps {
 		gift: GiftByRole;
@@ -24,7 +24,6 @@
 
 	let { gift, role, isArchived = false, onreserve }: GiftCardProps = $props();
 
-	const isOwner = $derived(role === 'owner');
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
@@ -52,7 +51,8 @@
 		{#if isVisitorOrModerator && isFullyReserved}
 			<div class={styles.reservedOverlay()}>
 				<Badge
-					variant="secondary"
+					tone="neutral"
+					badgeStyle="subtle"
 					class="bg-reserved/15 text-reserved gap-1 border-reserved/25"
 				>
 					<CheckIcon class="size-3" />
@@ -63,7 +63,7 @@
 
 		{#if gift.received}
 			<div class="absolute top-2 right-2">
-				<Badge variant="default" class="gap-1">
+				<Badge tone="neutral" class="gap-1">
 					<CheckIcon class="size-3" />
 					Prijato
 				</Badge>
@@ -85,7 +85,7 @@
 			<a
 				href={gift.url ?? '#'}
 				target="_blank"
-				rel="noopener noreferrer"
+				rel="external noopener noreferrer"
 				class={styles.linkRow()}
 			>
 				<ExternalLinkIcon class="size-3" />
@@ -98,7 +98,7 @@
 		<!-- Badges row -->
 		<div class={styles.badgeRow()}>
 			{#if priorityInfo}
-				<Badge variant="secondary" class={priorityInfo.colorClass}>
+				<Badge tone="neutral" badgeStyle="subtle" class={priorityInfo.colorClass}>
 					{priorityInfo.label}
 				</Badge>
 			{/if}

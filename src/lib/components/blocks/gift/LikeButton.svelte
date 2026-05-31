@@ -2,7 +2,7 @@
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import { useLikes } from '$lib/modules/likes/likes.context.svelte.js';
 	import { toggleLike } from '$lib/modules/likes/likes.remote.js';
-	import { likeButtonVariants, type LikeButtonSize } from './like-button-variants.js';
+	import { likeButtonVariants, type LikeButtonSize } from './like_button_variants.js';
 	import { cn } from '$lib/utils.js';
 
 	interface LikeButtonProps {

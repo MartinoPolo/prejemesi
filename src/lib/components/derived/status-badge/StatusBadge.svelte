@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
-	import { statusBadgeVariants, type StatusBadgeStatus } from './status-badge-variants.js';
+	import { statusBadgeVariants, type StatusBadgeStatus } from './status_badge_variants.js';
 	import type { Snippet } from 'svelte';
 
 	interface Props {

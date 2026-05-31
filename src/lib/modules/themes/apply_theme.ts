@@ -1,7 +1,7 @@
 import type { ThemePalette, WishlistTheme } from './types.js';
 import { isCustomTheme, THEME_PALETTE_KEYS } from './types.js';
-import { THEME_PRESETS } from './theme-presets.js';
-import { deriveOklchPalette } from './oklch-palette.js';
+import { THEME_PRESETS } from './theme_presets.js';
+import { deriveOklchPalette } from './oklch_palette.js';
 
 /**
  * Resolve a WishlistTheme to a ThemePalette.

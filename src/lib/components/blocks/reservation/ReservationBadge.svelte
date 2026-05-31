@@ -26,12 +26,20 @@
 </script>
 
 {#if gift.isFullyReserved}
-	<Badge variant="secondary" class="bg-reserved/15 text-reserved gap-1 border-reserved/25">
+	<Badge
+		tone="neutral"
+		badgeStyle="subtle"
+		class="bg-reserved/15 text-reserved gap-1 border-reserved/25"
+	>
 		<CheckIcon class="size-3" />
 		{label}
 	</Badge>
 {:else if showPartial}
-	<Badge variant="secondary" class="bg-reserved/15 text-reserved border-reserved/25">
+	<Badge
+		tone="neutral"
+		badgeStyle="subtle"
+		class="bg-reserved/15 text-reserved border-reserved/25"
+	>
 		{label}
 	</Badge>
 {/if}

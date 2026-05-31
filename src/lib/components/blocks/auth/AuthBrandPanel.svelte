@@ -67,7 +67,7 @@
 
 <style>
 	.brand-panel {
-		background: linear-gradient(160deg, var(--primary) 0%, oklch(0.38 0.12 150) 100%);
+		background: linear-gradient(160deg, var(--primary) 0%, oklch(38% 0.12 150deg) 100%);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -86,7 +86,7 @@
 		width: 360px;
 		height: 360px;
 		border-radius: 50%;
-		background: oklch(from white l c h / 0.08);
+		background: oklch(from white l c h / 8%);
 		pointer-events: none;
 	}
 
@@ -98,7 +98,7 @@
 		width: 240px;
 		height: 240px;
 		border-radius: 50%;
-		background: oklch(from white l c h / 0.06);
+		background: oklch(from white l c h / 6%);
 		pointer-events: none;
 	}
 
@@ -125,7 +125,7 @@
 	.brand-logo-icon {
 		width: 44px;
 		height: 44px;
-		background: oklch(from white l c h / 0.18);
+		background: oklch(from white l c h / 18%);
 		border-radius: var(--radius-lg);
 		display: flex;
 		align-items: center;
@@ -180,11 +180,11 @@
 		right: 0;
 		text-align: center;
 		font-size: var(--text-xs);
-		color: oklch(from white l c h / 0.65);
+		color: oklch(from white l c h / 65%);
 		letter-spacing: var(--tracking-wide);
 	}
 
-	@media (max-width: 768px) {
+	@media (width <= 768px) {
 		.brand-panel {
 			display: none;
 		}

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
 	import { resolve } from '$app/paths';
-	import { wishlistCardVariants, STATUS_DOT_CLASSES } from './wishlist-card-variants.js';
-	import { getThemePreset, type WishlistTheme } from '$lib/modules/wishlists/wishlist-theme.js';
-	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard-types.js';
+	import { wishlistCardVariants, STATUS_DOT_CLASSES } from './wishlist_card_variants.js';
+	import { getThemePreset, type WishlistTheme } from '$lib/modules/wishlists/wishlist_theme.js';
+	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';

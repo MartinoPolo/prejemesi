@@ -68,6 +68,7 @@
 	<LogoMark />
 
 	<!-- Desktop nav links with dropdowns -->
+	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	<nav class="nav-links" aria-label="Hlavni navigace">
 		{#each NAV_LINKS as link (link.href)}
 			<div class="nav-item">
@@ -88,7 +89,7 @@
 	<div class="nav-right">
 		<!-- Create CTA -->
 		<Button
-			variant="default"
+			intent="primary"
 			size="sm"
 			class="hidden md:inline-flex"
 			onclick={() => (isCreateModalOpen = true)}
@@ -116,7 +117,7 @@
 		top: 0;
 		z-index: var(--z-sticky);
 		height: var(--nav-height);
-		background: oklch(from var(--background) l c h / 0.92);
+		background: oklch(from var(--background) l c h / 92%);
 		backdrop-filter: blur(12px);
 		border-bottom: 1px solid var(--border);
 		display: flex;
@@ -134,7 +135,7 @@
 		flex: 1;
 	}
 
-	@media (min-width: 768px) {
+	@media (width >= 768px) {
 		.nav-links {
 			display: flex;
 		}
@@ -189,7 +190,7 @@
 	}
 
 	.nav-link.is-active:hover {
-		background: oklch(from var(--primary) l c h / 0.08);
+		background: oklch(from var(--primary) l c h / 8%);
 	}
 
 	.nav-item:hover :global(.nav-chevron) {

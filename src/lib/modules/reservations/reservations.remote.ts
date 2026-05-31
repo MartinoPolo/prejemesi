@@ -102,7 +102,7 @@ export const reserveGift = publicCommand(async (authContext, input: ReserveGiftI
 
 	// Anonymous users must provide a display name
 	if (authContext === null) {
-		if (!input.anonymousName || input.anonymousName.trim() === '') {
+		if (input.anonymousName == null || input.anonymousName.trim() === '') {
 			error(400, 'Pro anonymni rezervaci je potreba zadat jmeno');
 		}
 	}
@@ -129,7 +129,9 @@ export const reserveGift = publicCommand(async (authContext, input: ReserveGiftI
 			userId: authContext?.user.id ?? null,
 			anonymousName: authContext === null ? input.anonymousName!.trim() : null,
 			anonymousEmail:
-				authContext === null && input.anonymousEmail ? input.anonymousEmail.trim() : null,
+				authContext === null && input.anonymousEmail != null && input.anonymousEmail !== ''
+					? input.anonymousEmail.trim()
+					: null,
 			quantity: requestedQuantity,
 		})
 		.returning();
@@ -209,7 +211,7 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
  * Visitor: returns empty (visitors see counts via gifts, not individual reservations).
  */
 export const getReservationsForGift = publicCommand(async (authContext, giftId: string) => {
-	const { gift: giftRow, wishlist: wishlistRow } = await getGiftWithWishlist(giftId);
+	const wishlistRow = (await getGiftWithWishlist(giftId)).wishlist;
 
 	const userId = authContext?.user.id ?? null;
 	const role = await determineRole(userId, wishlistRow.ownerId, wishlistRow.id);

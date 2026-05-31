@@ -5,7 +5,7 @@
 	interface ReserveButtonProps {
 		gift: GiftForVisitor;
 		isArchived?: boolean;
-		size?: 'default' | 'sm' | 'xs';
+		size?: 'md' | 'sm' | 'xs';
 		onreserve?: (gift: GiftForVisitor) => void;
 	}
 
@@ -24,7 +24,7 @@
 {#if !isArchived}
 	<Button
 		{size}
-		variant={isFullyReserved ? 'outline' : 'default'}
+		intent={isFullyReserved ? 'outline' : 'primary'}
 		disabled={isFullyReserved}
 		aria-label="Rezervovat {gift.name}"
 		onclick={handleClick}

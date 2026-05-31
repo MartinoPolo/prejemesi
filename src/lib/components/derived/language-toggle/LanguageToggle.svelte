@@ -11,7 +11,7 @@
 	let currentLocale = $derived(getLocale());
 
 	function handleLocaleChange(newLocale: string | undefined) {
-		if (newLocale && newLocale !== currentLocale) {
+		if (newLocale != null && newLocale !== '' && newLocale !== currentLocale) {
 			setLocale(newLocale as Locale);
 		}
 	}

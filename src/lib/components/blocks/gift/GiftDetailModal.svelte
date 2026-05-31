@@ -15,7 +15,7 @@
 	import {
 		giftDetailModalVariants,
 		type GiftDetailModalMode,
-	} from './gift-detail-modal-variants.js';
+	} from './gift_detail_modal_variants.js';
 	import {
 		GIFT_CURRENCIES,
 		GIFT_CURRENCY_LABELS,
@@ -34,7 +34,6 @@
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
 		isOwner?: boolean;
-		canEdit?: boolean;
 		canDelete?: boolean;
 		isSubmitting?: boolean;
 		isDeleting?: boolean;
@@ -52,7 +51,6 @@
 		wishlistId,
 		priorityLevels,
 		isOwner = false,
-		canEdit = true,
 		canDelete = true,
 		isSubmitting = false,
 		isDeleting = false,
@@ -82,9 +80,6 @@
 	const isEdit = $derived(mode === 'edit');
 	const title = $derived(isEdit ? 'Upravit darek' : 'Pridat darek');
 	const submitLabel = $derived(isEdit ? 'Ulozit' : 'Pridat darek');
-	const showQuantityField = $derived(
-		Number(quantity) > 1 || mode === 'create' || mode === 'edit',
-	);
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
 	// Reset form when gift changes or modal opens
@@ -100,7 +95,7 @@
 				imageKey = '';
 				quantity = String(gift.quantity ?? 1);
 				priorityLevelId = '';
-				imageMode = gift.imageUrl ? 'url' : 'url';
+				imageMode = 'url';
 			} else {
 				name = '';
 				description = '';
@@ -384,7 +379,7 @@
 					{#if isEdit && gift !== null}
 						{#if isOwner}
 							<Button
-								variant="outline"
+								intent="outline"
 								class={styles.receivedButton()}
 								onclick={handleReceived}
 							>
@@ -395,7 +390,7 @@
 
 						{#if canDelete}
 							<Button
-								variant="destructive"
+								intent="danger"
 								class={styles.deleteButton()}
 								disabled={isDeleting}
 								onclick={handleDelete}

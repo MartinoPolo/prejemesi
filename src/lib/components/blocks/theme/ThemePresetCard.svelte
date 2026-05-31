@@ -1,7 +1,7 @@
 <script lang="ts">
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import type { ThemePresetDefinition, ThemePalette } from '$lib/modules/themes/types.js';
-	import { themePresetCardVariants } from './theme-selector-variants.js';
+	import { themePresetCardVariants } from './theme_selector_variants.js';
 
 	interface ThemePresetCardProps {
 		preset: ThemePresetDefinition;

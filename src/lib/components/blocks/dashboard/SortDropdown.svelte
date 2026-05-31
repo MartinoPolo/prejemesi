@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
-	import { SORT_LABELS, type SortOption } from '$lib/modules/wishlists/dashboard-types.js';
+	import { SORT_LABELS, type SortOption } from '$lib/modules/wishlists/dashboard_types.js';
 
 	interface SortDropdownProps {
 		value: SortOption;

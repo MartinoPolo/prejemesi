@@ -6,8 +6,8 @@
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { getModeratedWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
-	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard-types.js';
-	import type { ModeratedWishlist } from '$lib/modules/wishlists/dashboard-types.js';
+	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
+	import type { ModeratedWishlist } from '$lib/modules/wishlists/dashboard_types.js';
 
 	let sortValue = $state<SortOption>('lastActivity');
 	let viewMode = $state<ViewMode>('grid');

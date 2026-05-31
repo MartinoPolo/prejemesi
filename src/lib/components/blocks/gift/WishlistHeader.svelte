@@ -12,8 +12,8 @@
 	import {
 		WISHLIST_STATUS_LABELS,
 		WISHLIST_STATUS_BADGE_MAP,
-	} from '$lib/modules/wishlists/dashboard-types.js';
-	import { wishlistHeaderVariants } from './wishlist-header-variants.js';
+	} from '$lib/modules/wishlists/dashboard_types.js';
+	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
 
 	interface WishlistHeaderProps {
 		title: string;
@@ -68,16 +68,7 @@
 
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[status]);
 
-	const statusBadgeVariant = $derived.by(() => {
-		const mapped = WISHLIST_STATUS_BADGE_MAP[status];
-		if (mapped === 'success') {
-			return 'default' as const;
-		}
-		if (mapped === 'warning') {
-			return 'secondary' as const;
-		}
-		return 'outline' as const;
-	});
+	const statusBadgeTone = $derived(WISHLIST_STATUS_BADGE_MAP[status]);
 
 	const giftCountLabel = $derived.by(() => {
 		if (giftCount === 1) {
@@ -102,7 +93,7 @@
 					<p class={styles.descriptionOnBanner()}>{description}</p>
 				{/if}
 				<div class={styles.metaRowOnBanner()}>
-					<Badge variant={statusBadgeVariant}>{statusLabel}</Badge>
+					<Badge tone={statusBadgeTone}>{statusLabel}</Badge>
 					<span>{giftCountLabel}</span>
 					{#if formattedDate}
 						<span class="inline-flex items-center gap-1">
@@ -122,7 +113,7 @@
 				<p class={styles.description()}>{description}</p>
 			{/if}
 			<div class={styles.metaRow()}>
-				<Badge variant={statusBadgeVariant}>{statusLabel}</Badge>
+				<Badge tone={statusBadgeTone}>{statusLabel}</Badge>
 				<span>{giftCountLabel}</span>
 				{#if formattedDate}
 					<span class="inline-flex items-center gap-1">
@@ -138,13 +129,13 @@
 	{#if isOwnerOrModerator}
 		<div class={styles.actionRow()}>
 			{#if isOwner && !isArchived}
-				<Button size="sm" variant="outline" aria-label="Sdilet seznam" onclick={onshare}>
+				<Button size="sm" intent="outline" aria-label="Sdilet seznam" onclick={onshare}>
 					<ShareIcon data-icon="inline-start" />
 					Sdilet
 				</Button>
 			{/if}
 			{#if isOwner}
-				<Button size="sm" variant="outline" aria-label="Moderatori" onclick={onmoderators}>
+				<Button size="sm" intent="outline" aria-label="Moderatori" onclick={onmoderators}>
 					<UsersIcon data-icon="inline-start" />
 					Moderatori
 				</Button>
@@ -170,7 +161,7 @@
 		<div class={styles.sharedBanner()}>
 			<LockIcon class="size-4 flex-shrink-0" />
 			<span>Seznam je sdileny — stavajici prani nelze upravovat.</span>
-			<Button size="sm" variant="link" class="ml-auto px-0" onclick={onshare}>
+			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
 				Znovu sdilet
 			</Button>
 		</div>
@@ -178,7 +169,7 @@
 		<div class={styles.draftBanner()}>
 			<InfoIcon class="size-4 flex-shrink-0" />
 			<span>Tento seznam jeste nebyl sdilen.</span>
-			<Button size="sm" variant="link" class="ml-auto px-0 text-blue-800" onclick={onshare}>
+			<Button size="sm" intent="link" class="ml-auto px-0 text-blue-800" onclick={onshare}>
 				Sdilet seznam
 			</Button>
 		</div>

@@ -36,7 +36,7 @@ function buildEmailUrl(shareUrl: string, message: string): string {
 	return `mailto:?subject=${encodeURIComponent('Muj seznam prani')}&body=${encodeURIComponent(message + ' ' + shareUrl)}`;
 }
 
-function buildMessengerUrl(shareUrl: string, _message: string): string {
+function buildMessengerUrl(shareUrl: string): string {
 	return `https://www.facebook.com/dialog/send?link=${encodeURIComponent(shareUrl)}&app_id=0&redirect_uri=${encodeURIComponent(shareUrl)}`;
 }
 

@@ -259,7 +259,7 @@
 		<!-- ═══════════════════════════════════════════════════════════════════ -->
 		<!-- Security Section (email/password users only) -->
 		<!-- ═══════════════════════════════════════════════════════════════════ -->
-		{#if !profile.isOAuthUser}
+		{#if profile.isOAuthUser !== true}
 			<Card.Root>
 				<Card.Header>
 					<div class="flex items-center gap-2">
@@ -469,11 +469,7 @@
 							Trvale smazete svuj ucet a vsechna data. Tuto akci nelze vratit.
 						</p>
 					</div>
-					<Button
-						variant="destructive"
-						size="sm"
-						onclick={() => (deleteDialogOpen = true)}
-					>
+					<Button intent="danger" size="sm" onclick={() => (deleteDialogOpen = true)}>
 						Smazat ucet
 					</Button>
 				</div>
@@ -492,14 +488,10 @@
 			</Dialog.Description>
 		</Dialog.Header>
 		<Dialog.Footer class="flex gap-2">
-			<Button
-				variant="outline"
-				onclick={() => (deleteDialogOpen = false)}
-				disabled={deleting}
-			>
+			<Button intent="outline" onclick={() => (deleteDialogOpen = false)} disabled={deleting}>
 				Zrusit
 			</Button>
-			<Button variant="destructive" onclick={handleDeleteAccount} disabled={deleting}>
+			<Button intent="danger" onclick={handleDeleteAccount} disabled={deleting}>
 				{deleting ? 'Mazani...' : 'Ano, smazat ucet'}
 			</Button>
 		</Dialog.Footer>

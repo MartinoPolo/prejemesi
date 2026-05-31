@@ -26,7 +26,7 @@
 
 <Story name="All Statuses">
 	<div class="flex flex-wrap items-center gap-3">
-		{#each STATUS_BADGE_STATUSES as status}
+		{#each STATUS_BADGE_STATUSES as status (status)}
 			<StatusBadge {status}>{status}</StatusBadge>
 		{/each}
 	</div>

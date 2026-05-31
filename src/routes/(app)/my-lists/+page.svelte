@@ -8,7 +8,7 @@
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { getMyWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
-	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard-types.js';
+	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 

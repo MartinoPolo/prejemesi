@@ -20,8 +20,8 @@
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-3);
-		background: oklch(from var(--destructive) l c h / 0.08);
-		border: 1px solid oklch(from var(--destructive) l c h / 0.28);
+		background: oklch(from var(--destructive) l c h / 8%);
+		border: 1px solid oklch(from var(--destructive) l c h / 28%);
 		border-radius: var(--radius-md);
 		padding: var(--space-3) var(--space-4);
 		margin-bottom: var(--space-5);

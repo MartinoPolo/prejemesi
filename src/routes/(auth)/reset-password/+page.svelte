@@ -126,7 +126,7 @@
 			return;
 		}
 
-		if (!token) {
+		if (token == null || token === '') {
 			resetError = 'Chybi token pro obnovu hesla. Pouzijte odkaz z emailu.';
 			return;
 		}
@@ -390,8 +390,8 @@
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-3);
-		background: oklch(from var(--status-success) l c h / 0.08);
-		border: 1px solid oklch(from var(--status-success) l c h / 0.28);
+		background: oklch(from var(--status-success) l c h / 8%);
+		border: 1px solid oklch(from var(--status-success) l c h / 28%);
 		border-radius: var(--radius-md);
 		padding: var(--space-3) var(--space-4);
 		margin-bottom: var(--space-5);
@@ -444,7 +444,7 @@
 	.spinner {
 		width: 18px;
 		height: 18px;
-		border: 2px solid oklch(from var(--primary-foreground) l c h / 0.35);
+		border: 2px solid oklch(from var(--primary-foreground) l c h / 35%);
 		border-top-color: var(--primary-foreground);
 		border-radius: 50%;
 		animation: spin 0.7s linear infinite;

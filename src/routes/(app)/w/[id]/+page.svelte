@@ -20,7 +20,7 @@
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { setWishlistThemeContext } from '$lib/modules/themes/themes.context.svelte.js';
-	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply-theme.js';
+	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply_theme.js';
 	import { isCustomTheme } from '$lib/modules/themes/types.js';
 	import type { WishlistTheme } from '$lib/modules/themes/types.js';
 	import { updateWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
@@ -447,7 +447,7 @@
 			{#if isOwner && !isArchived}
 				<Button
 					size="sm"
-					variant="outline"
+					intent="outline"
 					aria-label="Zmenit motiv"
 					onclick={() => (themeSheetOpen = true)}
 				>
@@ -456,7 +456,7 @@
 				</Button>
 			{/if}
 			{#if !isOwner && !isArchived}
-				<Button size="sm" variant="ghost" onclick={handleUnfollow}>Prestat sledovat</Button>
+				<Button size="sm" intent="ghost" onclick={handleUnfollow}>Prestat sledovat</Button>
 			{/if}
 			{#if isOwnerOrModerator && !isArchived}
 				<Button size="sm" aria-label="Pridat darek" onclick={openCreateModal}>
@@ -504,7 +504,7 @@
 			description="Zkuste zmenit nebo zrusit filtry."
 		>
 			{#snippet actions()}
-				<Button variant="outline" onclick={clearFilters}>Zrusit filtry</Button>
+				<Button intent="outline" onclick={clearFilters}>Zrusit filtry</Button>
 			{/snippet}
 		</EmptyState>
 	{:else if viewMode === 'card'}
@@ -628,7 +628,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each displayedGifts as giftItem, index (giftItem.id)}
+					{#each displayedGifts as giftItem (giftItem.id)}
 						<GiftCompactRow
 							gift={giftItem}
 							{role}
@@ -654,7 +654,6 @@
 		wishlistId={wishlist.id}
 		{priorityLevels}
 		{isOwner}
-		canEdit={modalMode === 'create' || canEditSelectedGift}
 		canDelete={canDeleteSelectedGift}
 		{isSubmitting}
 		{isDeleting}
@@ -693,7 +692,7 @@
 	<Sheet.Root
 		bind:open={themeSheetOpen}
 		onOpenChange={(open) => {
-			if (!open) {
+			if (open !== true) {
 				themeContext.cancelPreview();
 			}
 		}}
@@ -720,7 +719,6 @@
 {#if isOwner}
 	<ModeratorPanel
 		wishlistId={wishlist.id}
-		wishlistShortId={wishlist.shortId}
 		ownerIsModerator={ownerIsModeratorLocal}
 		bind:open={moderatorPanelOpen}
 		onselfpromoted={handleSelfPromoted}

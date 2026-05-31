@@ -23,6 +23,7 @@
 <a
 	class="flex h-12 cursor-pointer items-center gap-3 rounded-lg border-[1.5px] border-border bg-muted/50 px-4 no-underline transition-all hover:translate-x-0.5 hover:border-border hover:bg-accent"
 	{href}
+	rel="external noopener noreferrer"
 	aria-label={platform.label}
 	onclick={handleClick}
 >

@@ -215,7 +215,7 @@
 		justify-content: center;
 		width: 72px;
 		height: 72px;
-		background: oklch(from var(--status-success) l c h / 0.12);
+		background: oklch(from var(--status-success) l c h / 12%);
 		border-radius: 9999px;
 		margin-bottom: var(--space-5);
 		color: var(--status-success);
@@ -257,7 +257,7 @@
 	.spinner {
 		width: 18px;
 		height: 18px;
-		border: 2px solid oklch(from var(--primary-foreground) l c h / 0.35);
+		border: 2px solid oklch(from var(--primary-foreground) l c h / 35%);
 		border-top-color: var(--primary-foreground);
 		border-radius: 50%;
 		animation: spin 0.7s linear infinite;

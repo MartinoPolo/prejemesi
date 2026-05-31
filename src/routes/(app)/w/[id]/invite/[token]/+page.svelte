@@ -3,6 +3,7 @@
 	import * as Card from '$lib/components/base/card/index.js';
 	import { acceptModeratorInvite } from '$lib/modules/moderators/moderators.remote.js';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { toast } from 'svelte-sonner';
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -23,7 +24,7 @@
 			toast.success('Pozvanka byla prijata!');
 			// Redirect to the wishlist after a short delay
 			setTimeout(() => {
-				void goto(`/w/${result.wishlistShortId}`);
+				void goto(resolve('/(app)/w/[id]', { id: result.wishlistShortId }));
 			}, 1500);
 		} catch (thrown) {
 			if (thrown instanceof Error) {
@@ -87,7 +88,11 @@
 			</Card.Content>
 
 			<Card.Footer class="flex justify-center gap-3">
-				<Button variant="outline" onclick={() => void goto(`/w/${data.wishlist.shortId}`)}>
+				<Button
+					intent="outline"
+					onclick={() =>
+						void goto(resolve('/(app)/w/[id]', { id: data.wishlist.shortId }))}
+				>
 					Zrusit
 				</Button>
 				<Button disabled={isAccepting} onclick={handleAccept}>
@@ -102,7 +107,11 @@
 
 		{#if errorMessage !== null}
 			<Card.Footer class="flex justify-center">
-				<Button variant="outline" onclick={() => void goto(`/w/${data.wishlist.shortId}`)}>
+				<Button
+					intent="outline"
+					onclick={() =>
+						void goto(resolve('/(app)/w/[id]', { id: data.wishlist.shortId }))}
+				>
 					Zpet na seznam
 				</Button>
 			</Card.Footer>

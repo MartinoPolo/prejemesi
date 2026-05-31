@@ -2,10 +2,10 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ThemePresetName, WishlistTheme } from '$lib/modules/themes/types.js';
 	import { isCustomTheme, THEME_PRESET_NAMES } from '$lib/modules/themes/types.js';
-	import { THEME_PRESETS, THEME_PRESET_LIST } from '$lib/modules/themes/theme-presets.js';
-	import { hexToOklch, deriveOklchPalette } from '$lib/modules/themes/oklch-palette.js';
+	import { THEME_PRESETS, THEME_PRESET_LIST } from '$lib/modules/themes/theme_presets.js';
+	import { hexToOklch, deriveOklchPalette } from '$lib/modules/themes/oklch_palette.js';
 	import ThemePresetCard from './ThemePresetCard.svelte';
-	import { themeSelectorVariants } from './theme-selector-variants.js';
+	import { themeSelectorVariants } from './theme_selector_variants.js';
 
 	interface ThemeSelectorProps {
 		currentTheme: WishlistTheme;
@@ -142,7 +142,7 @@
 
 	<!-- Footer actions -->
 	<div class={styles.footer()}>
-		<Button variant="outline" size="sm" onclick={oncancel}>Zrusit</Button>
+		<Button intent="outline" size="sm" onclick={oncancel}>Zrusit</Button>
 		<Button size="sm" disabled={!canSave} onclick={handleSave}>Ulozit motiv</Button>
 	</div>
 </div>

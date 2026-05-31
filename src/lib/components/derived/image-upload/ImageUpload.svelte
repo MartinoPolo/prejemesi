@@ -3,7 +3,7 @@
 	import { uploadFile } from '$lib/modules/uploads/upload.js';
 	import type { UploadTarget } from '$lib/server/storage/r2.js';
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
-	import { imageUploadVariants, type ImageUploadSize } from './image-upload-variants.js';
+	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 
@@ -99,7 +99,7 @@
 
 	async function processFile(file: File) {
 		// Client-side max size check
-		if (maxSize && file.size > maxSize) {
+		if (maxSize != null && file.size > maxSize) {
 			const maxMb = Math.round(maxSize / (1024 * 1024));
 			const fileError = new Error(`File too large. Maximum size: ${String(maxMb)}MB`);
 			progress = { status: 'error', percentage: 0, errorMessage: fileError.message };
@@ -108,7 +108,7 @@
 		}
 
 		// Generate preview
-		if (previewUrl) {
+		if (previewUrl != null && previewUrl !== '') {
 			URL.revokeObjectURL(previewUrl);
 		}
 		previewUrl = URL.createObjectURL(file);
@@ -126,7 +126,7 @@
 
 	function handleRemove(event: MouseEvent) {
 		event.stopPropagation();
-		if (previewUrl) {
+		if (previewUrl != null && previewUrl !== '') {
 			URL.revokeObjectURL(previewUrl);
 		}
 		previewUrl = undefined;

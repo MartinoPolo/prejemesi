@@ -43,15 +43,15 @@
 			<h3 class="text-2xl font-semibold tracking-tight">Buttons</h3>
 			<div class="flex flex-wrap items-center gap-3">
 				<Button>Default</Button>
-				<Button variant="secondary">Secondary</Button>
-				<Button variant="outline">Outline</Button>
-				<Button variant="ghost">Ghost</Button>
-				<Button variant="link">Link</Button>
-				<Button variant="destructive">Destructive</Button>
+				<Button intent="secondary">Secondary</Button>
+				<Button intent="outline">Outline</Button>
+				<Button intent="ghost">Ghost</Button>
+				<Button intent="link">Link</Button>
+				<Button intent="danger">Destructive</Button>
 			</div>
 			<div class="flex flex-wrap items-center gap-3">
 				<Button size="sm">Small</Button>
-				<Button size="default">Default</Button>
+				<Button size="md">Default</Button>
 				<Button size="lg">Large</Button>
 				<Button size="icon" aria-label="Send email"><Mail size={16} /></Button>
 			</div>
@@ -70,9 +70,9 @@
 			<h3 class="text-2xl font-semibold tracking-tight">Badges</h3>
 			<div class="flex flex-wrap items-center gap-3">
 				<Badge>Default</Badge>
-				<Badge variant="secondary">Secondary</Badge>
-				<Badge variant="outline">Outline</Badge>
-				<Badge variant="destructive">Destructive</Badge>
+				<Badge tone="neutral" badgeStyle="subtle">Secondary</Badge>
+				<Badge tone="neutral" badgeStyle="outlined">Outline</Badge>
+				<Badge tone="danger">Destructive</Badge>
 			</div>
 		</section>
 
@@ -81,7 +81,7 @@
 		<section class="flex flex-col gap-4">
 			<h3 class="text-2xl font-semibold tracking-tight">Status Badges</h3>
 			<div class="flex flex-wrap items-center gap-3">
-				{#each STATUS_BADGE_STATUSES as status}
+				{#each STATUS_BADGE_STATUSES as status (status)}
 					<StatusBadge {status}>{status}</StatusBadge>
 				{/each}
 			</div>
@@ -163,7 +163,7 @@
 						>This is an informational alert using the default variant.</Alert.Description
 					>
 				</Alert.Root>
-				<Alert.Root variant="destructive">
+				<Alert.Root tone="destructive">
 					<TriangleAlert size={16} />
 					<Alert.Title>Error</Alert.Title>
 					<Alert.Description

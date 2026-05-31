@@ -1,6 +1,6 @@
 import 'use server';
 
-import { eq, and, isNull, sql, count as drizzleCount, inArray } from 'drizzle-orm';
+import { eq, and, isNull, sql, count as drizzleCount } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
@@ -219,7 +219,7 @@ async function verifyOwnerOrModerator(
 
 export const createGift = guardedCommand(async ({ user }, input: CreateGiftInput) => {
 	const database = getDb();
-	const { wishlistRow } = await verifyOwnerOrModerator(user.id, input.wishlistId);
+	await verifyOwnerOrModerator(user.id, input.wishlistId);
 
 	// Determine sortOrder: place at the end
 	const maxSortRows = await database

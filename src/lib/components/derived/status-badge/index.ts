@@ -3,4 +3,4 @@ export {
 	statusBadgeVariants,
 	type StatusBadgeStatus,
 	STATUS_BADGE_STATUSES,
-} from './status-badge-variants.js';
+} from './status_badge_variants.js';

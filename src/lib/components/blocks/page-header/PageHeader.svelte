@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { pageHeaderVariants, type PageHeaderSize } from './page-header-variants.js';
+	import { pageHeaderVariants, type PageHeaderSize } from './page_header_variants.js';
 	import { cn } from '$lib/utils.js';
 
 	interface PageHeaderProps {

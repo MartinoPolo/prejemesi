@@ -32,7 +32,7 @@
 		width: 32px;
 		height: 32px;
 		border-radius: var(--radius-md);
-		background: oklch(from white l c h / 0.14);
+		background: oklch(from white l c h / 14%);
 		display: flex;
 		align-items: center;
 		justify-content: center;

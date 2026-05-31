@@ -30,7 +30,7 @@
 		{#snippet child({ props })}
 			<Button
 				{...props}
-				variant="ghost"
+				intent="ghost"
 				size="icon"
 				aria-label="Otevreni menu"
 				class="md:hidden"
@@ -55,7 +55,7 @@
 
 		<nav class="flex flex-col gap-1 p-3">
 			<Button
-				variant="default"
+				intent="primary"
 				href={resolve('/')}
 				class="mb-2 w-full justify-center"
 				onclick={() => (open = false)}
@@ -66,7 +66,7 @@
 
 			{#each navLinks as link (link.href)}
 				<Button
-					variant={isActive(link.href) ? 'secondary' : 'ghost'}
+					intent={isActive(link.href) ? 'secondary' : 'ghost'}
 					href={link.href}
 					class={cn(
 						'w-full justify-start',

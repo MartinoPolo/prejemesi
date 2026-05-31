@@ -9,7 +9,6 @@ import {
 	type GiftSortOption,
 	type GiftFilters,
 	type GiftForVisitor,
-	type GiftForOwner,
 	type GiftByRole,
 } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';

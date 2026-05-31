@@ -30,6 +30,7 @@ try {
 	const reg = result.regression;
 
 	const unusedFiles = result.unused_files ?? [];
+	const unusedExports = result.unused_exports ?? [];
 	const unusedTypes = result.unused_types ?? [];
 	const unresolvedImports = result.unresolved_imports ?? [];
 	const unusedDeps = result.unused_dependencies ?? [];
@@ -37,6 +38,7 @@ try {
 
 	const totalIssues =
 		unusedFiles.length +
+		unusedExports.length +
 		unusedTypes.length +
 		unresolvedImports.length +
 		unusedDeps.length +
@@ -49,6 +51,13 @@ try {
 			console.log(`  ● Unused files (${unusedFiles.length})`);
 			for (const item of unusedFiles) {
 				console.log(`    ${item.path}`);
+			}
+			console.log();
+		}
+		if (unusedExports.length > 0) {
+			console.log(`  ● Unused exports (${unusedExports.length})`);
+			for (const item of unusedExports) {
+				console.log(`    ${item.path}:${item.line} ${item.export_name}`);
 			}
 			console.log();
 		}

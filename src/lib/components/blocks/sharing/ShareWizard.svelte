@@ -2,7 +2,7 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import ShareMethodButton from './ShareMethodButton.svelte';
-	import { shareWizardVariants } from './share-wizard-variants.js';
+	import { shareWizardVariants } from './share_wizard_variants.js';
 	import {
 		SHARE_WIZARD_STEPS,
 		SHARE_PLATFORM_INFO,
@@ -192,7 +192,7 @@
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button variant="outline" onclick={handleClose}>Zrusit</Button>
+					<Button intent="outline" onclick={handleClose}>Zrusit</Button>
 					<Button class="flex-1" disabled={isSubmitting} onclick={handleConfirmShare}>
 						Sdilet seznam
 						<ArrowRightIcon data-icon="inline-end" />
@@ -225,7 +225,7 @@
 						</div>
 						{#if linkCopied}
 							<Button
-								variant="default"
+								intent="primary"
 								class="h-11 flex-shrink-0 bg-[oklch(0.66_0.13_145)] hover:bg-[oklch(0.60_0.13_145)]"
 								aria-live="polite"
 							>
@@ -234,7 +234,7 @@
 							</Button>
 						{:else}
 							<Button
-								variant="default"
+								intent="primary"
 								class="h-11 flex-shrink-0"
 								onclick={() => sharing.copyLink()}
 							>
@@ -342,7 +342,7 @@
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button variant="outline" onclick={handleClose}>Zavrit</Button>
+					<Button intent="outline" onclick={handleClose}>Zavrit</Button>
 					<Button
 						class="flex-1"
 						onclick={() => sharing.goToStep(SHARE_WIZARD_STEPS.success)}

@@ -3,7 +3,7 @@
 	import { tv } from 'tailwind-variants';
 	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
 	import ListIcon from '@lucide/svelte/icons/list';
-	import type { ViewMode } from '$lib/modules/wishlists/dashboard-types.js';
+	import type { ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 
 	const viewToggleVariants = tv({
 		slots: {

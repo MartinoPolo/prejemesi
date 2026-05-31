@@ -24,7 +24,7 @@
 		{#snippet child({ props })}
 			<Button
 				{...props}
-				variant="ghost"
+				intent="ghost"
 				size="icon"
 				aria-label="Upozorneni ({ctx.unreadCount.current} neprectenych)"
 			>
@@ -38,7 +38,7 @@
 		{/snippet}
 	</Popover.Trigger>
 	<Popover.Content align="end" class="w-80 p-0 pt-3 pb-1">
-		<Popover.Title class="sr-only">Upozorneni</Popover.Title>
+		<p class="sr-only">Upozorneni</p>
 		<NotificationPanel />
 	</Popover.Content>
 </Popover.Root>

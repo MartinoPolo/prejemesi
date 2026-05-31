@@ -125,7 +125,7 @@
 			<Dialog.Footer>
 				<Button
 					type="button"
-					variant="outline"
+					intent="outline"
 					onclick={() => handleOpenChange(false)}
 					disabled={isSubmitting}
 				>

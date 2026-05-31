@@ -19,6 +19,7 @@
 	let { title, viewAllHref, items }: NavDropdownProps = $props();
 </script>
 
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
 <div class="nav-dropdown" role="menu" aria-label="Nedavne — {title}">
 	<div class="nav-dropdown-header">
 		<span class="nav-dropdown-title">Nedavne</span>
@@ -168,7 +169,7 @@
 	}
 
 	.badge-shared {
-		background: oklch(from var(--primary) l c h / 0.12);
+		background: oklch(from var(--primary) l c h / 12%);
 		color: var(--primary);
 	}
 

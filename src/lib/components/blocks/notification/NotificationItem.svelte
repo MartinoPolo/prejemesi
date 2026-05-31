@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import type { Notification } from '$lib/modules/notifications/types.js';
-	import { formatRelativeTime } from '$lib/modules/notifications/notification-display.js';
+	import { formatRelativeTime } from '$lib/modules/notifications/notification_display.js';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
@@ -39,7 +39,7 @@
 			onMarkAsRead(notification.id);
 		}
 
-		if (notification.wishlistId) {
+		if (notification.wishlistId != null && notification.wishlistId !== '') {
 			void goto(resolve('/(app)/w/[id]', { id: notification.wishlistId }));
 		}
 	}

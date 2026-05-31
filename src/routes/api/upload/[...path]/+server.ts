@@ -20,7 +20,7 @@ const localDevStore = new Map<string, { body: ArrayBuffer; contentType: string }
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	// Require authentication
-	if (!locals.user || !locals.session) {
+	if (locals.user == null || locals.session == null) {
 		error(401, 'Authentication required');
 	}
 
@@ -92,7 +92,7 @@ export const GET: RequestHandler = async ({ params }) => {
  * DELETE handler — removes a file from R2 (or local dev store).
  */
 export const DELETE: RequestHandler = async ({ params, locals }) => {
-	if (!locals.user || !locals.session) {
+	if (locals.user == null || locals.session == null) {
 		error(401, 'Authentication required');
 	}
 

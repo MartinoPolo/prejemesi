@@ -1,6 +1,6 @@
 import 'use server';
 
-import { eq, and, isNull, sql, isNotNull } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
@@ -15,7 +15,7 @@ import {
 	type UpdateWishlistInput,
 	type WishlistRole,
 } from './types.js';
-import type { ModeratedWishlist, FollowedWishlist } from './dashboard-types.js';
+import type { ModeratedWishlist, FollowedWishlist } from './dashboard_types.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 

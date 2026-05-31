@@ -598,3 +598,54 @@ Decided: 2026-05-30
 What: All new module contexts use the `createContext` API (Svelte 5.40+). The old `getContext`/`setContext` pattern in the showcase is legacy and will not be replicated.
 Why: `createContext` provides type-safe, key-free context with better DX. Consistent with project rules.
 Rejected: Old getContext/setContext (manual key management, type-unsafe).
+
+## Component Library
+
+### Base components carried over from Grovekeeper
+
+Decided: 2026-05-31
+What: Upgrade base component library using Grovekeeper's mature implementations. Carry over GK versions for Button, Badge, Card, Input, Textarea, Alert, Tooltip. Keep Darecky versions for Dialog, Select, DropdownMenu, Sheet, Switch, Checkbox, Separator, Skeleton. Merge Label (GK typography + Darecky flex layout). Add 14 new components from GK: HelpText, SearchField, Toggle, ToggleGroup, Tabs, Accordion, Collapsible, Popover, Kbd, InputGroup, Progress, RadioGroup, Toast, Calendar/RangeCalendar.
+Why: Grovekeeper has production-tested components with better variant systems, testing, and stories. Standardizing across projects reduces maintenance.
+Rejected: Keeping Darecky's simpler components (missing error states, no variant files, fewer stories).
+
+### Component naming: intent/tone instead of variant
+
+Decided: 2026-05-31
+What: Button uses `intent` prop (primary, secondary, ghost, ghost-overlay, danger, primary-destructive, outline, link). Badge and Alert use `tone` prop. Input/Textarea/Card use `state` prop.
+Why: Semantic naming — `intent` describes what the button means to do, `tone` describes informational quality, `state` describes component condition. Avoids "everything is variant" ambiguity.
+Rejected: Universal `variant` prop (ambiguous, conflicts between components).
+
+### Separate \*-variants.ts files for tv() definitions
+
+Decided: 2026-05-31
+What: Components with `tv()` definitions extract them into a `*-variants.ts` file. Types and constants derived from the tv() config. Components without tv() variants (Dialog, Sheet, Select) don't need a variants file.
+Why: Single source of truth for styling. Types stay in sync with variants. Index.ts re-exports from variants file, not from `<script module>`.
+Rejected: Inline `<script module>` exports (couples types to component, harder to reuse).
+
+### Design tokens: merge GK tokens into Darecky
+
+Decided: 2026-05-31
+What: Add GK surface/text/border tokens as aliases or new values: `--surface` (→ background), `--surface-2` (→ secondary), `--surface-3` (→ muted), `--surface-hover`, `--foreground-subtle`, `--border-strong`, `--primary-soft`. Keep all existing Darecky tokens. Keep `.light`/`.dark` class selector (not GK's `[data-theme]`). Keep Darecky fonts and spacing base.
+Why: GK components reference these tokens. Aliases avoid duplicating values while maintaining compatibility with both naming conventions.
+Rejected: Full GK token system replacement (would break existing Darecky code), translating every GK class to Darecky tokens (too much manual work, loses GK consistency).
+
+### PascalCase component file naming
+
+Decided: 2026-05-31
+What: Folders lowercase (`button/`). Main component PascalCase (`Button.svelte`). Sub-components lowercase-prefixed (`dialog-content.svelte`). Variants lowercase (`button-variants.ts`). Stories PascalCase (`Button.stories.svelte`).
+Why: Matches Grovekeeper convention. PascalCase for components is the Svelte community standard.
+Rejected: All lowercase (harder to distinguish component files from sub-components).
+
+### No native select — custom-only
+
+Decided: 2026-05-31
+What: The Select component uses only the custom bits-ui implementation. No native `<select>` fallback.
+Why: Consistent styling and behavior. Native select cannot be styled to match the design system.
+Rejected: GK's dual native + custom approach (unnecessary complexity, native select looks out of place).
+
+### Select and DropdownMenu: merge best of both projects
+
+Decided: 2026-05-31
+What: Keep Darecky's styling and UX features (scroll buttons, size prop, bold focus, cursor-default, dark mode destructive). Add GK's structural improvements (state prop on Select trigger, SubContent defaults on DropdownMenu, destructive shortcut coloring). Create comprehensive stories with play tests from GK.
+Why: Darecky's UX decisions (bold focus, OS-convention cursor) are better. GK's structural completeness (error states, proper defaults, testing) fills gaps.
+Rejected: Taking either project's version wholesale (both have genuine strengths the other lacks).

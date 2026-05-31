@@ -22,7 +22,7 @@
 	<div class="flex items-center justify-between px-3 pb-2">
 		<h3 class="text-sm font-semibold">Upozorneni</h3>
 		{#if ctx.hasUnread.current}
-			<Button variant="ghost" size="xs" onclick={handleMarkAllAsRead}>
+			<Button intent="ghost" size="xs" onclick={handleMarkAllAsRead}>
 				<CheckCheckIcon data-icon="inline-start" />
 				Oznacit vse
 			</Button>
@@ -35,7 +35,7 @@
 	<div class="max-h-80 overflow-y-auto">
 		{#if ctx.isLoading.current && ctx.notifications.current.length === 0}
 			<!-- Loading skeleton -->
-			{#each { length: 3 } as _, index (index)}
+			{#each [0, 1, 2] as index (index)}
 				<div class="flex items-start gap-3 px-3 py-2.5">
 					<div class="size-8 shrink-0 animate-pulse rounded-full bg-muted"></div>
 					<div class="flex flex-1 flex-col gap-1.5">

@@ -12,7 +12,7 @@
 		formatPrice,
 		extractDomain,
 		getPriorityDisplay,
-	} from '$lib/modules/gifts/gift-display.js';
+	} from '$lib/modules/gifts/gift_display.js';
 	import { cn } from '$lib/utils.js';
 
 	interface GiftListItemProps {
@@ -61,7 +61,7 @@
 				{/if}
 			</h3>
 			{#if gift.received}
-				<Badge variant="default" class="gap-1 text-[11px]">
+				<Badge tone="neutral" class="gap-1 text-[11px]">
 					<CheckIcon class="size-2.5" />
 					Prijato
 				</Badge>
@@ -81,7 +81,7 @@
 				<a
 					href={gift.url ?? '#'}
 					target="_blank"
-					rel="noopener noreferrer"
+					rel="external noopener noreferrer"
 					class="inline-flex items-center gap-1 text-xs text-primary"
 				>
 					<ExternalLinkIcon class="size-3" />
@@ -92,7 +92,11 @@
 			{/if}
 
 			{#if priorityInfo}
-				<Badge variant="secondary" class={cn('text-[11px]', priorityInfo.colorClass)}>
+				<Badge
+					tone="neutral"
+					badgeStyle="subtle"
+					class={cn('text-[11px]', priorityInfo.colorClass)}
+				>
 					{priorityInfo.label}
 				</Badge>
 			{/if}

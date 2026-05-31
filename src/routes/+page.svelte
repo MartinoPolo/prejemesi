@@ -41,7 +41,7 @@
 >
 	<LogoMark />
 	<div class="flex items-center gap-3">
-		<Button variant="ghost" href={resolve('/login')}>Přihlásit se</Button>
+		<Button intent="ghost" href={resolve('/login')}>Přihlásit se</Button>
 		<Button href={resolve('/register')}>Začít zdarma</Button>
 	</div>
 </nav>
@@ -56,7 +56,7 @@
 	<!-- Decorative blob -->
 	<div
 		class="pointer-events-none absolute -right-24 -top-28 h-[600px] w-[600px] rounded-full opacity-70"
-		style="background: radial-gradient(ellipse, oklch(52.7% 0.154 150 / 0.07) 0%, transparent 70%)"
+		style="background: radial-gradient(ellipse, oklch(52.7% 0.154 150deg / 7%) 0%, transparent 70%)"
 		aria-hidden="true"
 	></div>
 
@@ -115,7 +115,7 @@
 				<!-- Card header -->
 				<div
 					class="border-b border-border px-6 pb-5 pt-6"
-					style="background: linear-gradient(135deg, oklch(97% 0.016 150), oklch(99% 0.006 150))"
+					style="background: linear-gradient(135deg, oklch(97% 0.016 150deg), oklch(99% 0.006 150deg))"
 				>
 					<div
 						class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70"
@@ -126,7 +126,7 @@
 					<div class="mt-3 flex items-center gap-3">
 						<span
 							class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-							style="background: oklch(94% 0.05 60); color: oklch(42% 0.09 60)"
+							style="background: oklch(94% 0.05 60deg); color: oklch(42% 0.09 60deg)"
 						>
 							Narozeniny
 						</span>
@@ -162,7 +162,7 @@
 						{:else}
 							<span
 								class="shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-								style="background: oklch(90% 0.05 200 / 0.35); color: oklch(38% 0.1 200)"
+								style="background: oklch(90% 0.05 200deg / 35%); color: oklch(38% 0.1 200deg)"
 							>
 								Rezervováno
 							</span>
@@ -175,7 +175,7 @@
 			<div
 				class="absolute -bottom-5 -right-3 max-w-[210px] rounded-2xl bg-primary px-5 py-4 text-sm font-semibold leading-snug text-primary-foreground shadow-lg md:-right-6"
 				aria-hidden="true"
-				style="box-shadow: 0 8px 24px oklch(52.7% 0.154 150 / 0.4)"
+				style="box-shadow: 0 8px 24px oklch(52.7% 0.154 150deg / 40%)"
 			>
 				<Lock class="mb-2 size-5" />
 				Tereza nevidí, kdo co rezervoval
@@ -275,7 +275,7 @@
 					>
 						<div
 							class="flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-							style="background: linear-gradient(135deg, oklch(0.25 0.02 240), oklch(0.35 0.03 220))"
+							style="background: linear-gradient(135deg, oklch(25% 0.02 240deg), oklch(35% 0.03 220deg))"
 						>
 							{gift.emoji}
 						</div>
@@ -285,7 +285,7 @@
 						</div>
 						<span
 							class="shrink-0 select-none rounded-full border px-2.5 py-0.5 text-[11px] font-medium blur-[5px]"
-							style="background: oklch(0.62 0.13 145 / 0.14); color: oklch(0.62 0.13 145); border-color: oklch(0.62 0.13 145 / 0.28)"
+							style="background: oklch(62% 0.13 145deg / 14%); color: oklch(62% 0.13 145deg); border-color: oklch(62% 0.13 145deg / 28%)"
 							aria-hidden="true"
 						>
 							Skryto
@@ -308,7 +308,7 @@
 				>
 					<div
 						class="flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-						style="background: linear-gradient(135deg, oklch(0.25 0.02 240), oklch(0.35 0.03 220))"
+						style="background: linear-gradient(135deg, oklch(25% 0.02 240deg), oklch(35% 0.03 220deg))"
 					>
 						🎧
 					</div>
@@ -320,7 +320,7 @@
 					</div>
 					<span
 						class="shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
-						style="background: oklch(0.62 0.13 145 / 0.14); color: oklch(0.62 0.13 145); border-color: oklch(0.62 0.13 145 / 0.28)"
+						style="background: oklch(62% 0.13 145deg / 14%); color: oklch(62% 0.13 145deg); border-color: oklch(62% 0.13 145deg / 28%)"
 					>
 						Rezervováno
 					</span>
@@ -330,7 +330,7 @@
 				>
 					<div
 						class="flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-						style="background: linear-gradient(135deg, oklch(0.85 0.06 55), oklch(0.75 0.08 45))"
+						style="background: linear-gradient(135deg, oklch(85% 0.06 55deg), oklch(75% 0.08 45deg))"
 					>
 						📖
 					</div>
@@ -361,7 +361,7 @@
 				<span class="flex-1 truncate font-mono text-sm text-primary">
 					darecky.cz/w/martina-vanocni-2026
 				</span>
-				<Button variant="secondary" size="sm" class="shrink-0 rounded-md">Kopírovat</Button>
+				<Button intent="secondary" size="sm" class="shrink-0 rounded-md">Kopírovat</Button>
 			</div>
 
 			<div class="mt-1 text-sm font-semibold">Sdílet přes</div>
@@ -467,12 +467,15 @@
 			<!-- Theme preview -->
 			<div
 				class="mt-4 rounded-xl p-4"
-				style="background: linear-gradient(135deg, oklch(92% 0.04 150), oklch(96% 0.02 150))"
+				style="background: linear-gradient(135deg, oklch(92% 0.04 150deg), oklch(96% 0.02 150deg))"
 			>
-				<div class="font-heading text-lg font-extrabold" style="color: oklch(35% 0.08 150)">
+				<div
+					class="font-heading text-lg font-extrabold"
+					style="color: oklch(35% 0.08 150deg)"
+				>
 					Martina — Vánoční přání
 				</div>
-				<div class="mt-1 text-sm" style="color: oklch(45% 0.06 150)">
+				<div class="mt-1 text-sm" style="color: oklch(45% 0.06 150deg)">
 					Tady jsou věci, které by mě letos potěšily :)
 				</div>
 			</div>
@@ -549,7 +552,7 @@
 	<!-- Decorative blob -->
 	<div
 		class="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/2"
-		style="background: radial-gradient(ellipse, oklch(52.7% 0.154 150 / 0.06) 0%, transparent 70%)"
+		style="background: radial-gradient(ellipse, oklch(52.7% 0.154 150deg / 6%) 0%, transparent 70%)"
 		aria-hidden="true"
 	></div>
 
@@ -567,7 +570,7 @@
 			<Button size="lg" href={resolve('/register')} class="min-w-[220px] rounded-lg">
 				Začít zdarma
 			</Button>
-			<Button variant="secondary" size="lg" href={resolve('/login')} class="rounded-lg">
+			<Button intent="secondary" size="lg" href={resolve('/login')} class="rounded-lg">
 				Přihlásit se
 			</Button>
 		</div>
@@ -633,18 +636,18 @@
 	.hero-gradient {
 		background: linear-gradient(
 			160deg,
-			oklch(98.8% 0.004 150) 0%,
-			oklch(96% 0.016 150) 50%,
-			oklch(98.5% 0.006 150) 100%
+			oklch(98.8% 0.004 150deg) 0%,
+			oklch(96% 0.016 150deg) 50%,
+			oklch(98.5% 0.006 150deg) 100%
 		);
 	}
 
 	:global(.dark) .hero-gradient {
 		background: linear-gradient(
 			160deg,
-			oklch(15.3% 0.006 107) 0%,
-			oklch(18% 0.012 150) 50%,
-			oklch(15.3% 0.006 107) 100%
+			oklch(15.3% 0.006 107deg) 0%,
+			oklch(18% 0.012 150deg) 50%,
+			oklch(15.3% 0.006 107deg) 100%
 		);
 	}
 
@@ -676,7 +679,7 @@
 		font-size: 80px;
 		font-weight: 800;
 		line-height: 1;
-		color: oklch(from var(--primary) l c h / 0.15);
+		color: oklch(from var(--primary) l c h / 15%);
 		letter-spacing: -0.04em;
 		user-select: none;
 	}
@@ -685,7 +688,7 @@
 	.feat-visual {
 		border-radius: var(--radius-3xl);
 		overflow: hidden;
-		background: oklch(from var(--primary) 0.94 0.035 h);
+		background: oklch(from var(--primary) 94% 0.035 h);
 		border: 1px solid var(--border);
 		box-shadow: var(--shadow-xl);
 		padding: var(--space-6);
@@ -695,7 +698,7 @@
 	}
 
 	:global(.dark) .feat-visual {
-		background: oklch(from var(--primary) 0.22 0.015 h);
+		background: oklch(from var(--primary) 22% 0.015 h);
 	}
 
 	/* View labels (owner/gifter) */
@@ -715,12 +718,12 @@
 
 	.view-label-visitor {
 		color: var(--primary);
-		background: oklch(from var(--primary) l c h / 0.1);
-		border-color: oklch(from var(--primary) l c h / 0.25);
+		background: oklch(from var(--primary) l c h / 10%);
+		border-color: oklch(from var(--primary) l c h / 25%);
 	}
 
 	/* How-it-works connecting line on desktop */
-	@media (min-width: 1024px) {
+	@media (width >= 1024px) {
 		.how-steps::before {
 			content: '';
 			position: absolute;

@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import type { ModeratorWithUser } from '$lib/modules/moderators/types.js';
-	import { moderatorPanelVariants } from './moderator-panel-variants.js';
+	import { moderatorPanelVariants } from './moderator_panel_variants.js';
 
 	interface ModeratorListItemProps {
 		moderator: ModeratorWithUser;
@@ -57,7 +57,7 @@
 	{#if canRemove}
 		<Button
 			size="sm"
-			variant="ghost"
+			intent="ghost"
 			class="text-destructive hover:text-destructive"
 			disabled={isRemoving}
 			aria-label="Odebrat moderatora {moderator.userName}"

@@ -155,20 +155,20 @@ export function hexToOklch(hex: string): string | null {
 	const z = 0.0193339 * lr + 0.119192 * lg + 0.9503041 * lb;
 
 	// XYZ to LMS (using M1 matrix)
-	const lms_l = 0.8189330101 * x + 0.3618667424 * y - 0.1288597137 * z;
-	const lms_m = 0.0329845436 * x + 0.9293118715 * y + 0.0361456387 * z;
-	const lms_s = 0.0482003018 * x + 0.2643662691 * y + 0.633851707 * z;
+	const lmsL = 0.8189330101 * x + 0.3618667424 * y - 0.1288597137 * z;
+	const lmsM = 0.0329845436 * x + 0.9293118715 * y + 0.0361456387 * z;
+	const lmsS = 0.0482003018 * x + 0.2643662691 * y + 0.633851707 * z;
 
 	// Cube root
 	const cbrt = (n: number) => (n >= 0 ? Math.pow(n, 1 / 3) : -Math.pow(-n, 1 / 3));
-	const lms_l_ = cbrt(lms_l);
-	const lms_m_ = cbrt(lms_m);
-	const lms_s_ = cbrt(lms_s);
+	const lmsLPrime = cbrt(lmsL);
+	const lmsMPrime = cbrt(lmsM);
+	const lmsSPrime = cbrt(lmsS);
 
 	// LMS to OKLab
-	const labL = 0.2104542553 * lms_l_ + 0.793617785 * lms_m_ - 0.0040720468 * lms_s_;
-	const labA = 1.9779984951 * lms_l_ - 2.428592205 * lms_m_ + 0.4505937099 * lms_s_;
-	const labB = 0.0259040371 * lms_l_ + 0.7827717662 * lms_m_ - 0.808675766 * lms_s_;
+	const labL = 0.2104542553 * lmsLPrime + 0.793617785 * lmsMPrime - 0.0040720468 * lmsSPrime;
+	const labA = 1.9779984951 * lmsLPrime - 2.428592205 * lmsMPrime + 0.4505937099 * lmsSPrime;
+	const labB = 0.0259040371 * lmsLPrime + 0.7827717662 * lmsMPrime - 0.808675766 * lmsSPrime;
 
 	// OKLab to OKLCH
 	const lightness = labL;

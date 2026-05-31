@@ -30,7 +30,7 @@
 		{#snippet child({ props })}
 			<Button
 				{...props}
-				variant="ghost"
+				intent="ghost"
 				size="icon"
 				class="rounded-full"
 				aria-label="{userName} — menu uzivatele"

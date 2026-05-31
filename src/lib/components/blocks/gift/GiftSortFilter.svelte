@@ -56,7 +56,7 @@
 			<Button
 				{...props}
 				size="icon"
-				variant="outline"
+				intent="outline"
 				class={cn('relative size-8', hasActiveFilters && 'border-primary')}
 				aria-label="Radit a filtrovat"
 			>

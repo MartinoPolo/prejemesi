@@ -15,6 +15,7 @@ export default [
 		ignores: [
 			'.svelte-kit',
 			'.storybook',
+			'storybook-static',
 			'build',
 			'node_modules',
 			'src/lib/paraglide',
@@ -114,7 +115,11 @@ export default [
 		ignores: ['src/lib/components/base/**'],
 		plugins: { 'check-file': checkFile },
 		rules: {
-			'check-file/filename-naming-convention': ['error', { '**/*.svelte': 'PASCAL_CASE' }],
+			'check-file/filename-naming-convention': [
+				'error',
+				{ '**/*.svelte': 'PASCAL_CASE' },
+				{ ignoreMiddleExtensions: true },
+			],
 		},
 	},
 ];

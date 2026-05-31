@@ -1,4 +1,5 @@
 import { createContext } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
 
 type LikesContext = ReturnType<typeof createLikesContext>;
@@ -13,7 +14,7 @@ export function setLikesContext(initialLikedGiftIds: string[]) {
 }
 
 function createLikesContext(initialLikedGiftIds: string[]) {
-	const likedGiftIds = new StateRaw<Set<string>>(new Set(initialLikedGiftIds));
+	const likedGiftIds = new StateRaw<SvelteSet<string>>(new SvelteSet(initialLikedGiftIds));
 
 	function isLiked(giftId: string): boolean {
 		return likedGiftIds.current.has(giftId);
@@ -21,7 +22,7 @@ function createLikesContext(initialLikedGiftIds: string[]) {
 
 	/** Optimistic toggle — returns the new liked state */
 	function optimisticToggle(giftId: string): boolean {
-		const currentSet = new Set(likedGiftIds.current);
+		const currentSet = new SvelteSet(likedGiftIds.current);
 		const wasLiked = currentSet.has(giftId);
 
 		if (wasLiked) {
@@ -36,7 +37,7 @@ function createLikesContext(initialLikedGiftIds: string[]) {
 
 	/** Revert optimistic toggle on error */
 	function revertToggle(giftId: string, wasLiked: boolean) {
-		const currentSet = new Set(likedGiftIds.current);
+		const currentSet = new SvelteSet(likedGiftIds.current);
 
 		if (wasLiked) {
 			currentSet.add(giftId);

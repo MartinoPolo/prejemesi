@@ -1,4 +1,4 @@
-import { THEME_PRESETS } from '$lib/modules/themes/theme-presets.js';
+import { THEME_PRESETS } from '$lib/modules/themes/theme_presets.js';
 import type { ThemePresetName } from '$lib/modules/themes/types.js';
 
 /**

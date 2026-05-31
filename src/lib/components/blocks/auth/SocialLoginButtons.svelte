@@ -65,7 +65,7 @@
 </button>
 
 {#if showMagicLink}
-	<Button variant="ghost" href={resolve('/magic-link')} class="mt-2 w-full">
+	<Button intent="ghost" href={resolve('/magic-link')} class="mt-2 w-full">
 		<Mail data-icon="inline-start" />
 		Prihlasit se odkazem
 	</Button>
@@ -92,20 +92,20 @@
 			border-color var(--duration-normal);
 	}
 
-	.btn-google:hover:not(:disabled) {
-		background: oklch(from var(--muted) l c h);
-		border-color: oklch(from var(--border) calc(l - 0.07) c h);
-	}
-
 	.btn-google:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
 
+	.btn-google:hover:not(:disabled) {
+		background: oklch(from var(--muted) l c h);
+		border-color: oklch(from var(--border) calc(l - 0.07) c h);
+	}
+
 	.spinner {
 		width: 18px;
 		height: 18px;
-		border: 2px solid oklch(from var(--foreground) l c h / 0.25);
+		border: 2px solid oklch(from var(--foreground) l c h / 25%);
 		border-top-color: var(--foreground);
 		border-radius: 50%;
 		animation: spin 0.7s linear infinite;

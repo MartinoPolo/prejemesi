@@ -3,8 +3,8 @@ import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import { Derived } from '$lib/reactivity/derived.svelte.js';
 import type { WishlistTheme, ThemePalette, ThemePresetName } from './types.js';
 import { isCustomTheme, toWishlistTheme } from './types.js';
-import { resolveThemePalette } from './apply-theme.js';
-import { THEME_PRESETS } from './theme-presets.js';
+import { resolveThemePalette } from './apply_theme.js';
+import { THEME_PRESETS } from './theme_presets.js';
 
 type WishlistThemeContext = ReturnType<typeof createWishlistThemeContext>;
 

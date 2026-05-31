@@ -4,7 +4,7 @@
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, extractDomain } from '$lib/modules/gifts/gift-display.js';
+	import { formatPrice, extractDomain } from '$lib/modules/gifts/gift_display.js';
 	import { cn } from '$lib/utils.js';
 
 	interface GiftCompactRowProps {
@@ -56,7 +56,7 @@
 			<a
 				href={gift.url ?? '#'}
 				target="_blank"
-				rel="noopener noreferrer"
+				rel="external noopener noreferrer"
 				class="inline-flex items-center gap-1 text-xs text-primary"
 			>
 				<ExternalLinkIcon class="size-3" />

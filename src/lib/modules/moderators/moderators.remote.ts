@@ -6,7 +6,7 @@ import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment, moderatorInvite } from '$lib/server/db/moderator.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
-import { guardedCommand, guardedQuery } from '$lib/server/remote.js';
+import { guardedCommand } from '$lib/server/remote.js';
 import type {
 	GenerateInviteInput,
 	AcceptInviteInput,

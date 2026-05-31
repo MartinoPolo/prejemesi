@@ -74,7 +74,7 @@ export function isR2Available(): boolean {
  */
 export function getPublicUrl(objectKey: string): string {
 	const publicUrl = env.R2_PUBLIC_URL;
-	if (publicUrl) {
+	if (publicUrl != null && publicUrl !== '') {
 		return `${publicUrl.replace(/\/$/, '')}/${objectKey}`;
 	}
 	// Local dev fallback — served from the upload API route
@@ -91,7 +91,7 @@ export async function putObject(
 	contentType: string,
 ): Promise<boolean> {
 	const bucket = getR2Bucket();
-	if (!bucket) {
+	if (bucket == null) {
 		return false;
 	}
 
@@ -107,7 +107,7 @@ export async function putObject(
  */
 export async function getObject(key: string): Promise<R2StoredObject | null> {
 	const bucket = getR2Bucket();
-	if (!bucket) {
+	if (bucket == null) {
 		return null;
 	}
 
@@ -119,7 +119,7 @@ export async function getObject(key: string): Promise<R2StoredObject | null> {
  */
 export async function deleteObject(key: string): Promise<void> {
 	const bucket = getR2Bucket();
-	if (!bucket) {
+	if (bucket == null) {
 		return;
 	}
 

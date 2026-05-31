@@ -84,6 +84,7 @@
 				errorMessage =
 					'Nespravny email nebo heslo. Zkontrolujte zadane udaje a zkuste to znovu.';
 			} else {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				await goto(callbackUrl);
 			}
 		} catch {
@@ -285,7 +286,7 @@
 	.spinner {
 		width: 18px;
 		height: 18px;
-		border: 2px solid oklch(from var(--primary-foreground) l c h / 0.35);
+		border: 2px solid oklch(from var(--primary-foreground) l c h / 35%);
 		border-top-color: var(--primary-foreground);
 		border-radius: 50%;
 		animation: spin 0.7s linear infinite;

@@ -20,7 +20,7 @@
 		background: var(--background);
 	}
 
-	@media (max-width: 768px) {
+	@media (width <= 768px) {
 		.auth-screen {
 			grid-template-columns: 1fr;
 		}

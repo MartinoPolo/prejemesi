@@ -5,7 +5,7 @@
 	import ViewToggle from './ViewToggle.svelte';
 	import SortDropdown from './SortDropdown.svelte';
 	import { Separator } from '$lib/components/base/separator/index.js';
-	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard-types.js';
+	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 
 	interface DashboardToolbarProps {
 		sortValue: SortOption;

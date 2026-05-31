@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ModeratorListItem from './ModeratorListItem.svelte';
-	import { moderatorPanelVariants } from './moderator-panel-variants.js';
+	import { moderatorPanelVariants } from './moderator_panel_variants.js';
 	import {
 		getModeratorsForWishlist,
 		generateModeratorInviteLink,
@@ -22,7 +22,6 @@
 
 	interface ModeratorPanelProps {
 		wishlistId: string;
-		wishlistShortId: string;
 		ownerIsModerator: boolean;
 		open: boolean;
 		onopenchange?: (open: boolean) => void;
@@ -31,7 +30,6 @@
 
 	let {
 		wishlistId,
-		wishlistShortId,
 		ownerIsModerator,
 		open = $bindable(false),
 		onopenchange,
@@ -204,7 +202,7 @@
 						</div>
 						<Button
 							size="sm"
-							variant={linkCopied ? 'default' : 'outline'}
+							intent={linkCopied ? 'primary' : 'outline'}
 							onclick={handleCopyLink}
 						>
 							{#if linkCopied}
@@ -218,7 +216,7 @@
 
 				<Button
 					size="sm"
-					variant="outline"
+					intent="outline"
 					disabled={isGenerating}
 					onclick={handleGenerateInvite}
 				>
@@ -253,7 +251,7 @@
 							</div>
 							<Button
 								size="sm"
-								variant="ghost"
+								intent="ghost"
 								class="text-destructive hover:text-destructive"
 								disabled={isRevokingId === invite.id}
 								aria-label="Zrusit pozvanku"
@@ -287,7 +285,7 @@
 						</div>
 						<Button
 							size="sm"
-							variant="outline"
+							intent="outline"
 							class="mt-1 self-start"
 							disabled={isSelfPromoting}
 							onclick={handleSelfPromote}

@@ -33,7 +33,7 @@
 	.logo-icon-wrap {
 		width: 30px;
 		height: 30px;
-		background: oklch(from var(--primary) l c h / 0.12);
+		background: oklch(from var(--primary) l c h / 12%);
 		border-radius: var(--radius-md);
 		display: flex;
 		align-items: center;

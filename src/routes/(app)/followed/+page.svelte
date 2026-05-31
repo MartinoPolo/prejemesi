@@ -12,8 +12,8 @@
 		refollowWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { toast } from 'svelte-sonner';
-	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard-types.js';
-	import type { FollowedWishlist } from '$lib/modules/wishlists/dashboard-types.js';
+	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
+	import type { FollowedWishlist } from '$lib/modules/wishlists/dashboard_types.js';
 
 	let sortValue = $state<SortOption>('lastActivity');
 	let viewMode = $state<ViewMode>('grid');
@@ -134,7 +134,7 @@
 					{#if wishlistItem.unfollowedAt !== null}
 						<Button
 							size="sm"
-							variant="outline"
+							intent="outline"
 							onclick={(e) => {
 								e.preventDefault();
 								handleRefollow(wishlistItem.id);
@@ -145,7 +145,7 @@
 					{:else}
 						<Button
 							size="sm"
-							variant="ghost"
+							intent="ghost"
 							onclick={(e) => {
 								e.preventDefault();
 								handleUnfollow(wishlistItem.id);

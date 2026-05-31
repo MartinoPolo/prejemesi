@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
-	import { emptyStateVariants } from './empty-state-variants.js';
+	import { emptyStateVariants } from './empty_state_variants.js';
 	import type { Snippet } from 'svelte';
 
 	interface EmptyStateProps {

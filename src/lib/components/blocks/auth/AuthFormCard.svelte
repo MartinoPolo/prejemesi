@@ -52,7 +52,7 @@
 		line-height: var(--leading-relaxed);
 	}
 
-	@media (max-width: 768px) {
+	@media (width <= 768px) {
 		.form-panel {
 			padding: var(--space-6) var(--space-4);
 			min-height: auto;

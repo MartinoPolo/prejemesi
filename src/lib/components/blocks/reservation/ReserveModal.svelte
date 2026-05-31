@@ -8,8 +8,8 @@
 	import MinusIcon from '@lucide/svelte/icons/minus';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { resolve } from '$app/paths';
-	import { reserveModalVariants } from './reserve-modal-variants.js';
-	import { formatPrice } from '$lib/modules/gifts/gift-display.js';
+	import { reserveModalVariants } from './reserve_modal_variants.js';
+	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 
@@ -154,7 +154,7 @@
 						<div class={styles.quantityRow()}>
 							<Button
 								size="icon"
-								variant="outline"
+								intent="outline"
 								disabled={quantity <= 1}
 								onclick={decrementQuantity}
 								aria-label="Snizit pocet"
@@ -166,7 +166,7 @@
 							</span>
 							<Button
 								size="icon"
-								variant="outline"
+								intent="outline"
 								disabled={quantity >= availableCount}
 								onclick={incrementQuantity}
 								aria-label="Zvysit pocet"
@@ -228,9 +228,7 @@
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button variant="outline" onclick={() => handleOpenChange(false)}>
-						Zrusit
-					</Button>
+					<Button intent="outline" onclick={() => handleOpenChange(false)}>Zrusit</Button>
 					<Button disabled={isSubmitting} onclick={handleSubmit}>
 						{#if isSubmitting}
 							Rezervuji...

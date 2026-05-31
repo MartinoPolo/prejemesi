@@ -147,14 +147,15 @@
 
 			if (result.error) {
 				if (
-					result.error.message?.includes('already exists') ||
-					result.error.message?.includes('already')
+					result.error.message?.includes('already exists') === true ||
+					result.error.message?.includes('already') === true
 				) {
 					errorMessage = 'Ucet s timto emailem jiz existuje. Zkuste se prihlasit.';
 				} else {
 					errorMessage = 'Registrace se nezdarila. Zkuste to prosim znovu.';
 				}
 			} else {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				await goto(callbackUrl);
 			}
 		} catch {
@@ -269,7 +270,7 @@
 						role="progressbar"
 						aria-label="Sila hesla: {strengthLabel}"
 					>
-						{#each [0, 1, 2, 3] as index}
+						{#each [0, 1, 2, 3] as index (index)}
 							<div
 								class="strength-segment"
 								style:background={index < passwordStrength
@@ -390,7 +391,7 @@
 	.spinner {
 		width: 18px;
 		height: 18px;
-		border: 2px solid oklch(from var(--primary-foreground) l c h / 0.35);
+		border: 2px solid oklch(from var(--primary-foreground) l c h / 35%);
 		border-top-color: var(--primary-foreground);
 		border-radius: 50%;
 		animation: spin 0.7s linear infinite;
