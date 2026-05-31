@@ -1,0 +1,56 @@
+type LocalizedString = import('../runtime.js').LocalizedString;
+
+// Auto-generated from messages/*.json — keep in sync when adding new keys.
+// The Vite plugin provides the actual implementations at build/dev time.
+
+export declare function hello_world(params: { name: string }): LocalizedString;
+export declare function welcome(): LocalizedString;
+export declare function login(): LocalizedString;
+export declare function signup(): LocalizedString;
+export declare function logout(): LocalizedString;
+export declare function email(): LocalizedString;
+export declare function password(): LocalizedString;
+export declare function forgot_password(): LocalizedString;
+export declare function reset_password(): LocalizedString;
+export declare function settings_title(): LocalizedString;
+export declare function settings_subtitle(): LocalizedString;
+export declare function settings_profile_title(): LocalizedString;
+export declare function settings_profile_description(): LocalizedString;
+export declare function settings_display_name(): LocalizedString;
+export declare function settings_display_name_placeholder(): LocalizedString;
+export declare function settings_email_label(): LocalizedString;
+export declare function settings_email_readonly_hint(): LocalizedString;
+export declare function settings_avatar_label(): LocalizedString;
+export declare function settings_avatar_upload(): LocalizedString;
+export declare function settings_save_profile(): LocalizedString;
+export declare function settings_saving(): LocalizedString;
+export declare function settings_saved(): LocalizedString;
+export declare function settings_security_title(): LocalizedString;
+export declare function settings_security_description(): LocalizedString;
+export declare function settings_current_password(): LocalizedString;
+export declare function settings_new_password(): LocalizedString;
+export declare function settings_confirm_password(): LocalizedString;
+export declare function settings_change_password(): LocalizedString;
+export declare function settings_password_changed(): LocalizedString;
+export declare function settings_password_min_length(): LocalizedString;
+export declare function settings_password_mismatch(): LocalizedString;
+export declare function settings_notifications_title(): LocalizedString;
+export declare function settings_notifications_description(): LocalizedString;
+export declare function settings_appearance_title(): LocalizedString;
+export declare function settings_appearance_description(): LocalizedString;
+export declare function settings_dark_mode_label(): LocalizedString;
+export declare function settings_mode_light(): LocalizedString;
+export declare function settings_mode_dark(): LocalizedString;
+export declare function settings_mode_system(): LocalizedString;
+export declare function settings_language_label(): LocalizedString;
+export declare function settings_language_cs(): LocalizedString;
+export declare function settings_language_en(): LocalizedString;
+export declare function settings_danger_title(): LocalizedString;
+export declare function settings_danger_description(): LocalizedString;
+export declare function settings_delete_account(): LocalizedString;
+export declare function settings_delete_account_description(): LocalizedString;
+export declare function settings_delete_confirm_title(): LocalizedString;
+export declare function settings_delete_confirm_description(): LocalizedString;
+export declare function settings_delete_confirm_button(): LocalizedString;
+export declare function settings_delete_cancel(): LocalizedString;
+export declare function settings_deleting(): LocalizedString;

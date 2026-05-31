@@ -53,8 +53,13 @@ coverage/
 playwright-report/
 test-results/
 
-# Paraglide
-src/lib/paraglide/
+# Paraglide (auto-generated, except hand-maintained type declarations)
+src/lib/paraglide/*
+!src/lib/paraglide/.gitignore
+!src/lib/paraglide/messages/
+!src/lib/paraglide/messages.d.ts
+src/lib/paraglide/messages/*
+!src/lib/paraglide/messages/_index.d.ts
 project.inlang/cache/
 
 # Database
