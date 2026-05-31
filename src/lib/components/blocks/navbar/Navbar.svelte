@@ -4,13 +4,13 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
+	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
 	import UserMenu from './UserMenu.svelte';
 	import MobileNav from './MobileNav.svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import BellIcon from '@lucide/svelte/icons/bell';
 	import { cn } from '$lib/utils.js';
 
 	interface NavbarProps {
@@ -18,7 +18,6 @@
 		userEmail?: string;
 		userInitials?: string;
 		userImage?: string | null;
-		notificationCount?: number;
 	}
 
 	let {
@@ -26,7 +25,6 @@
 		userEmail = '',
 		userInitials = 'U',
 		userImage = null,
-		notificationCount = 0,
 	}: NavbarProps = $props();
 
 	const NAV_LINKS = [
@@ -100,12 +98,7 @@
 		</Button>
 
 		<!-- Notification bell -->
-		<Button variant="ghost" size="icon" aria-label="Oznameni ({notificationCount} neprectene)">
-			<BellIcon />
-			{#if notificationCount > 0}
-				<span class="notif-badge" aria-hidden="true">{notificationCount}</span>
-			{/if}
-		</Button>
+		<NotificationBell />
 
 		<!-- Dark mode toggle -->
 		<DarkModeToggle />
@@ -218,26 +211,5 @@
 		gap: var(--space-1);
 		flex-shrink: 0;
 		margin-left: auto;
-	}
-
-	/* Notification badge */
-	.notif-badge {
-		position: absolute;
-		top: 2px;
-		right: 2px;
-		min-width: 16px;
-		height: 16px;
-		padding: 0 3px;
-		background: var(--destructive);
-		color: white;
-		border-radius: 9999px;
-		font-size: 10px;
-		font-weight: var(--weight-bold);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		line-height: 1;
-		border: 2px solid var(--background);
-		pointer-events: none;
 	}
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Navbar from '$lib/components/blocks/navbar/Navbar.svelte';
+	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
 
 	import type { Snippet } from 'svelte';
 
@@ -8,6 +9,8 @@
 	}
 
 	let { children }: AppLayoutProps = $props();
+
+	setNotificationsContext();
 </script>
 
 <div class="app-shell">
