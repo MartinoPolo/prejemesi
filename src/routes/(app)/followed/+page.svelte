@@ -5,7 +5,13 @@
 	import WishlistListView from '$lib/components/blocks/dashboard/WishlistListView.svelte';
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
-	import { getFollowedWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
+	import { Button } from '$lib/components/base/button/index.js';
+	import {
+		getFollowedWishlists,
+		unfollowWishlist,
+		refollowWishlist,
+	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { toast } from 'svelte-sonner';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard-types.js';
 	import type { FollowedWishlist } from '$lib/modules/wishlists/dashboard-types.js';
 
@@ -22,6 +28,26 @@
 		filtered = showUnfollowed ? filtered : filtered.filter((w) => w.unfollowedAt === null);
 		return sortFollowedWishlists(filtered, sortValue);
 	});
+
+	async function handleUnfollow(wishlistId: string) {
+		try {
+			await unfollowWishlist(wishlistId);
+			wishlists.refetch();
+			toast.success('Seznam jste prestali sledovat');
+		} catch {
+			toast.error('Nepodarilo se prestat sledovat');
+		}
+	}
+
+	async function handleRefollow(wishlistId: string) {
+		try {
+			await refollowWishlist(wishlistId);
+			wishlists.refetch();
+			toast.success('Seznam znovu sledujete');
+		} catch {
+			toast.error('Nepodarilo se znovu sledovat');
+		}
+	}
 
 	function sortFollowedWishlists(
 		items: FollowedWishlist[],
@@ -86,7 +112,33 @@
 				ownerName={wishlistItem.ownerName}
 				availableGifts={wishlistItem.availableGifts}
 				myReservations={wishlistItem.myReservations}
-			/>
+			>
+				{#snippet actions()}
+					{#if wishlistItem.unfollowedAt !== null}
+						<Button
+							size="sm"
+							variant="outline"
+							onclick={(e) => {
+								e.preventDefault();
+								handleRefollow(wishlistItem.id);
+							}}
+						>
+							Znovu sledovat
+						</Button>
+					{:else}
+						<Button
+							size="sm"
+							variant="ghost"
+							onclick={(e) => {
+								e.preventDefault();
+								handleUnfollow(wishlistItem.id);
+							}}
+						>
+							Prestat sledovat
+						</Button>
+					{/if}
+				{/snippet}
+			</WishlistCard>
 		{/each}
 	</WishlistCardGrid>
 {:else}

@@ -334,3 +334,92 @@ export const deleteWishlist = guardedCommand(async ({ user }, wishlistId: string
 		.set({ deletedAt: new Date(), updatedAt: new Date() })
 		.where(eq(wishlist.id, wishlistId));
 });
+
+// ── Follower Commands ──────────────────────────────────────────────────────
+
+/**
+ * Auto-follow a wishlist on first visit.
+ * No-op if user is the owner or already following.
+ */
+export const followWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+	const database = getDb();
+
+	// Verify wishlist exists
+	const wishlistRows = await database
+		.select({ ownerId: wishlist.ownerId })
+		.from(wishlist)
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.limit(1);
+
+	const wishlistRow = wishlistRows[0];
+	if (wishlistRow === undefined) {
+		error(404, 'Wishlist not found');
+	}
+
+	// Don't follow own wishlist
+	if (wishlistRow.ownerId === user.id) {
+		return { followed: false, alreadyFollowing: false };
+	}
+
+	// Check if already following
+	const existingRows = await database
+		.select()
+		.from(wishlistFollower)
+		.where(
+			and(eq(wishlistFollower.wishlistId, wishlistId), eq(wishlistFollower.userId, user.id)),
+		)
+		.limit(1);
+
+	const existing = existingRows[0];
+
+	if (existing !== undefined) {
+		// Update last visited timestamp
+		await database
+			.update(wishlistFollower)
+			.set({ lastVisitedAt: new Date() })
+			.where(
+				and(
+					eq(wishlistFollower.wishlistId, wishlistId),
+					eq(wishlistFollower.userId, user.id),
+				),
+			);
+		return { followed: false, alreadyFollowing: existing.unfollowedAt === null };
+	}
+
+	// Create new follower record
+	await database.insert(wishlistFollower).values({
+		wishlistId,
+		userId: user.id,
+		lastVisitedAt: new Date(),
+	});
+
+	return { followed: true, alreadyFollowing: false };
+});
+
+/**
+ * Unfollow a wishlist. Sets unfollowedAt timestamp.
+ */
+export const unfollowWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+	const database = getDb();
+
+	await database
+		.update(wishlistFollower)
+		.set({ unfollowedAt: new Date() })
+		.where(
+			and(eq(wishlistFollower.wishlistId, wishlistId), eq(wishlistFollower.userId, user.id)),
+		);
+});
+
+/**
+ * Re-follow a previously unfollowed wishlist. Clears unfollowedAt.
+ */
+export const refollowWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+	const database = getDb();
+
+	await database
+		.update(wishlistFollower)
+		.set({ unfollowedAt: null, lastVisitedAt: new Date() })
+		.where(
+			and(eq(wishlistFollower.wishlistId, wishlistId), eq(wishlistFollower.userId, user.id)),
+		);
+});
