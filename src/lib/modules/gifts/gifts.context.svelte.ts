@@ -107,6 +107,34 @@ function createGiftsContext(initialGifts: GiftByRole[], role: WishlistRole, isAr
 	const giftCount = new Derived(() => gifts.current.length);
 	const filteredCount = new Derived(() => sortedAndFilteredGifts.current.length);
 
+	/** Replace the full gifts list (e.g. after server refetch) */
+	function replaceGifts(newGifts: GiftByRole[]) {
+		gifts.current = newGifts;
+	}
+
+	/** Add a single gift to the list */
+	function addGift(newGift: GiftByRole) {
+		gifts.current = [...gifts.current, newGift];
+	}
+
+	/** Update a single gift in the list */
+	function updateGift(updatedGift: GiftByRole) {
+		gifts.current = gifts.current.map((g) => (g.id === updatedGift.id ? updatedGift : g));
+	}
+
+	/** Remove a gift from the list */
+	function removeGift(giftId: string) {
+		gifts.current = gifts.current.filter((g) => g.id !== giftId);
+	}
+
+	/** Reorder gifts by updating sortOrder values */
+	function reorderGifts(reorderedGifts: GiftByRole[]) {
+		gifts.current = reorderedGifts.map((g, index) => ({
+			...g,
+			sortOrder: index,
+		}));
+	}
+
 	return {
 		gifts,
 		viewerRole,
@@ -118,5 +146,10 @@ function createGiftsContext(initialGifts: GiftByRole[], role: WishlistRole, isAr
 		sortedAndFilteredGifts,
 		giftCount,
 		filteredCount,
+		replaceGifts,
+		addGift,
+		updateGift,
+		removeGift,
+		reorderGifts,
 	};
 }

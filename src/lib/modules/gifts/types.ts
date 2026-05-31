@@ -81,3 +81,53 @@ export interface GiftFilters {
 	availableOnly: boolean;
 	withLinkOnly: boolean;
 }
+
+/** Supported currencies */
+export const GIFT_CURRENCIES = {
+	CZK: 'CZK',
+	EUR: 'EUR',
+	USD: 'USD',
+} as const;
+
+export type GiftCurrency = (typeof GIFT_CURRENCIES)[keyof typeof GIFT_CURRENCIES];
+
+export const GIFT_CURRENCY_LABELS = {
+	CZK: 'CZK (Kc)',
+	EUR: 'EUR',
+	USD: 'USD',
+} as const satisfies Record<GiftCurrency, string>;
+
+/** Input for creating a new gift */
+export interface CreateGiftInput {
+	wishlistId: string;
+	name: string;
+	description?: string | null;
+	url?: string | null;
+	price?: number | null;
+	currency?: string | null;
+	imageUrl?: string | null;
+	imageKey?: string | null;
+	quantity?: number | null;
+	priorityLevelId?: string | null;
+	sortOrder?: number;
+}
+
+/** Input for updating an existing gift */
+export interface UpdateGiftInput {
+	id: string;
+	name?: string;
+	description?: string | null;
+	url?: string | null;
+	price?: number | null;
+	currency?: string | null;
+	imageUrl?: string | null;
+	imageKey?: string | null;
+	quantity?: number | null;
+	priorityLevelId?: string | null;
+}
+
+/** Input for reordering gifts */
+export interface ReorderGiftItem {
+	id: string;
+	sortOrder: number;
+}

@@ -11,9 +11,10 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		onclick?: () => void;
 	}
 
-	let { gift, role, isArchived = false }: GiftCompactRowProps = $props();
+	let { gift, role, isArchived = false, onclick }: GiftCompactRowProps = $props();
 
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
@@ -28,7 +29,17 @@
 	class={cn(
 		'h-10 border-b border-border transition-colors hover:bg-muted/50',
 		isFullyReserved && 'opacity-65',
+		onclick && 'cursor-pointer',
 	)}
+	onclick={() => onclick?.()}
+	onkeydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			onclick?.();
+		}
+	}}
+	role={onclick ? 'button' : undefined}
+	tabindex={onclick ? 0 : undefined}
 >
 	<td class="px-3 py-1.5">
 		<span class="text-sm font-medium text-foreground">
