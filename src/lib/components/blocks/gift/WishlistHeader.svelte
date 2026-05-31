@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import ShareIcon from '@lucide/svelte/icons/share-2';
+	import LockIcon from '@lucide/svelte/icons/lock';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import InfoIcon from '@lucide/svelte/icons/info';
@@ -22,6 +23,7 @@
 		status: 'draft' | 'active' | 'archived';
 		role: WishlistRole;
 		giftCount: number;
+		onshare?: () => void;
 	}
 
 	let {
@@ -33,6 +35,7 @@
 		status,
 		role,
 		giftCount,
+		onshare,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -129,10 +132,12 @@
 	<!-- Action buttons -->
 	{#if isOwnerOrModerator}
 		<div class={styles.actionRow()}>
-			<Button size="sm" variant="outline" aria-label="Sdilet seznam">
-				<ShareIcon data-icon="inline-start" />
-				Sdilet
-			</Button>
+			{#if isOwner && !isArchived}
+				<Button size="sm" variant="outline" aria-label="Sdilet seznam" onclick={onshare}>
+					<ShareIcon data-icon="inline-start" />
+					Sdilet
+				</Button>
+			{/if}
 			{#if isOwner}
 				<Button size="sm" variant="outline" aria-label="Nastaveni seznamu">
 					<SettingsIcon data-icon="inline-start" />
@@ -148,11 +153,19 @@
 			<ArchiveIcon class="size-4 flex-shrink-0" />
 			<span>Archivovano — seznam je uzavren. Nova rezervace neni mozna.</span>
 		</div>
+	{:else if !isDraft && isOwner}
+		<div class={styles.sharedBanner()}>
+			<LockIcon class="size-4 flex-shrink-0" />
+			<span>Seznam je sdileny — stavajici prani nelze upravovat.</span>
+			<Button size="sm" variant="link" class="ml-auto px-0" onclick={onshare}>
+				Znovu sdilet
+			</Button>
+		</div>
 	{:else if isDraft && isOwner}
 		<div class={styles.draftBanner()}>
 			<InfoIcon class="size-4 flex-shrink-0" />
 			<span>Tento seznam jeste nebyl sdilen.</span>
-			<Button size="sm" variant="link" class="ml-auto px-0 text-blue-800">
+			<Button size="sm" variant="link" class="ml-auto px-0 text-blue-800" onclick={onshare}>
 				Sdilet seznam
 			</Button>
 		</div>
