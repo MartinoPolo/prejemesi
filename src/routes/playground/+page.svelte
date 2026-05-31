@@ -53,12 +53,12 @@
 				<Button size="sm">Small</Button>
 				<Button size="md">Default</Button>
 				<Button size="lg">Large</Button>
-				<Button size="icon" aria-label="Send email"><Mail size={16} /></Button>
+				<Button size="icon" aria-label="Send email"><Mail data-icon /></Button>
 			</div>
 			<div class="flex flex-wrap items-center gap-3">
 				<Button disabled>Disabled</Button>
 				<Button disabled>
-					<Loader class="animate-spin" size={16} />
+					<Loader class="animate-spin" data-icon="inline-start" />
 					Loading...
 				</Button>
 			</div>

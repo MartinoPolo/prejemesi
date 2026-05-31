@@ -28,7 +28,7 @@
 				size="icon"
 				aria-label="Upozorneni ({ctx.unreadCount.current} neprectenych)"
 			>
-				<BellIcon />
+				<BellIcon data-icon />
 				{#if ctx.hasUnread.current}
 					<span class="notif-badge" aria-hidden="true">
 						{ctx.unreadCount.current > 99 ? '99+' : ctx.unreadCount.current}

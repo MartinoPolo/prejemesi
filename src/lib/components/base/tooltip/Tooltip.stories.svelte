@@ -77,7 +77,7 @@
 								size="icon-sm"
 								aria-label="Settings"
 							>
-								<SettingsIcon />
+								<SettingsIcon data-icon />
 							</Button>
 						{/snippet}
 					</Tooltip.Trigger>
@@ -103,7 +103,7 @@
 								size="icon-sm"
 								aria-label="Settings"
 							>
-								<SettingsIcon />
+								<SettingsIcon data-icon />
 							</Button>
 						{/snippet}
 					</Tooltip.Trigger>
@@ -217,7 +217,7 @@
 									size="icon-sm"
 									aria-label="Top"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>
@@ -236,7 +236,7 @@
 									size="icon-sm"
 									aria-label="Bottom"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>
@@ -255,7 +255,7 @@
 									size="icon-sm"
 									aria-label="Left"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>
@@ -274,7 +274,7 @@
 									size="icon-sm"
 									aria-label="Right"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>
@@ -361,7 +361,7 @@
 									size="icon-sm"
 									aria-label="Top placement"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>
@@ -380,7 +380,7 @@
 									size="icon-sm"
 									aria-label="Bottom placement"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>
@@ -399,7 +399,7 @@
 									size="icon-sm"
 									aria-label="Left placement"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>
@@ -418,7 +418,7 @@
 									size="icon-sm"
 									aria-label="Right placement"
 								>
-									<SettingsIcon />
+									<SettingsIcon data-icon />
 								</Button>
 							{/snippet}
 						</Tooltip.Trigger>

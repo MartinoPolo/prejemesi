@@ -127,8 +127,10 @@
 			return;
 		}
 
-		const parsedPrice = price.trim() !== '' ? Number(price) : null;
-		const parsedQuantity = quantity.trim() !== '' ? Number(quantity) : 1;
+		const priceStr = String(price).trim();
+		const quantityStr = String(quantity).trim();
+		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
+		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
 
 		if (mode === 'create') {
 			oncreate?.({

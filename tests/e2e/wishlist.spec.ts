@@ -30,7 +30,7 @@ test.describe('Wishlist page', () => {
 		await page.context().close();
 	});
 
-	test('can add a gift', async ({ browser, request, baseURL }) => {
+	test('can add a gift with all fields', async ({ browser, request, baseURL }) => {
 		const user = createTestUser('wl-gift');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
@@ -43,6 +43,8 @@ test.describe('Wishlist page', () => {
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 		await dialog.getByRole('textbox', { name: /Nazev/i }).fill(TEST_GIFT.name);
+		await dialog.getByRole('textbox', { name: /Popis/i }).fill('Testovaci popis darku');
+		await dialog.getByLabel(/Cena/).fill(TEST_GIFT.price);
 		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
 
 		await expect(page.getByText(TEST_GIFT.name)).toBeVisible({ timeout: 10_000 });

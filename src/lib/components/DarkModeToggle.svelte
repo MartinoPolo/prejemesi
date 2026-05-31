@@ -22,10 +22,10 @@
 	aria-label={`Toggle theme (${userPrefersMode.current})`}
 >
 	{#if userPrefersMode.current === 'light'}
-		<Sun size={16} />
+		<Sun data-icon />
 	{:else if userPrefersMode.current === 'dark'}
-		<Moon size={16} />
+		<Moon data-icon />
 	{:else}
-		<Monitor size={16} />
+		<Monitor data-icon />
 	{/if}
 </Button>

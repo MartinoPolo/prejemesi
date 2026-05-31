@@ -35,7 +35,7 @@
 				aria-label="Otevreni menu"
 				class="md:hidden"
 			>
-				<MenuIcon />
+				<MenuIcon data-icon />
 			</Button>
 		{/snippet}
 	</Sheet.Trigger>
