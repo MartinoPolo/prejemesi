@@ -1,29 +1,47 @@
-/* Palette surface/UI token overrides for light and dark mode.
-   Darecky uses class-based dark mode (.dark), not data-theme attribute.
-   Light:  :not(.dark)
-   Dark:   .dark
-   GK-specific environment tokens (sky, mountain, ground, star, moon) excluded.
-*/
+/* ── Background Theme: Golden Hour ───────────────────────────────────── */
 
-:not(.dark) {
-	--background: oklch(100% 0 0deg);
-	--foreground: oklch(15.3% 0.006 107.1deg);
-	--surface: oklch(100% 0 0deg);
-	--surface-2: oklch(96.7% 0.001 286.375deg);
-	--surface-3: oklch(96.6% 0.005 106.5deg);
-	--surface-hover: color-mix(in oklch, oklch(15.3% 0.006 107.1deg) 6%, transparent);
-	--foreground-muted: oklch(58% 0.031 107.3deg);
-	--foreground-subtle: oklch(50% 0.012 107deg);
-	--border: oklch(93% 0.007 106.5deg);
-	--border-strong: oklch(81.5% 0.018 107deg);
+[data-bg-theme='golden-hour']:not(.dark) {
+	--background: oklch(98.5% 0.006 80deg);
+	--surface-2: oklch(96.5% 0.01 80deg);
+	--surface-3: oklch(94% 0.014 80deg);
+	--sidebar-bg: oklch(95.5% 0.012 85deg);
+	--border: oklch(90% 0.014 80deg);
+	--border-strong: oklch(81.5% 0.02 80deg);
+	--foreground-muted: oklch(46% 0.02 70deg);
+	--foreground-subtle: oklch(50% 0.016 70deg);
 }
 
-.dark {
-	--surface: oklch(15.3% 0.006 107.1deg);
-	--surface-2: oklch(22.8% 0.013 107.4deg);
-	--surface-3: oklch(28.6% 0.016 107.4deg);
-	--surface-hover: color-mix(in oklch, oklch(98.8% 0.003 106.5deg) 8%, transparent);
-	--foreground-muted: oklch(73.7% 0.021 106.9deg);
-	--foreground-subtle: oklch(55% 0.012 107deg);
-	--border-strong: oklch(35% 0.015 107deg);
+[data-bg-theme='golden-hour'].dark {
+	--background: oklch(15.5% 0.02 60deg);
+	--surface-2: oklch(22.5% 0.024 60deg);
+	--surface-3: oklch(26.5% 0.026 60deg);
+	--sidebar-bg: oklch(18% 0.024 60deg);
+	--border: oklch(29.5% 0.024 55deg);
+	--border-strong: oklch(38% 0.03 55deg);
+	--foreground-muted: oklch(73% 0.02 70deg);
+	--foreground-subtle: oklch(64% 0.022 65deg);
+}
+
+/* ── Background Theme: Twilight ──────────────────────────────────────── */
+
+[data-bg-theme='twilight']:not(.dark) {
+	--background: oklch(98.5% 0.006 210deg);
+	--surface-2: oklch(96.5% 0.01 210deg);
+	--surface-3: oklch(94% 0.014 210deg);
+	--sidebar-bg: oklch(95.5% 0.012 200deg);
+	--border: oklch(90% 0.014 205deg);
+	--border-strong: oklch(81.5% 0.02 205deg);
+	--foreground-muted: oklch(46% 0.02 220deg);
+	--foreground-subtle: oklch(50% 0.016 220deg);
+}
+
+[data-bg-theme='twilight'].dark {
+	--background: oklch(15.5% 0.02 225deg);
+	--surface-2: oklch(22.5% 0.024 225deg);
+	--surface-3: oklch(26.5% 0.026 225deg);
+	--sidebar-bg: oklch(18% 0.024 220deg);
+	--border: oklch(29.5% 0.024 218deg);
+	--border-strong: oklch(38% 0.03 215deg);
+	--foreground-muted: oklch(73% 0.02 210deg);
+	--foreground-subtle: oklch(64% 0.022 215deg);
 }
