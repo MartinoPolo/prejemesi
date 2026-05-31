@@ -15,6 +15,7 @@
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
 	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
+	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
@@ -76,6 +77,20 @@
 
 	// Wishlist status (reactive, updates after sharing)
 	let wishlistStatus = $state(data.wishlist.status as 'draft' | 'active' | 'archived');
+
+	// Moderator panel state
+	let moderatorPanelOpen = $state(false);
+	let ownerIsModeratorLocal = $state(data.wishlist.ownerIsModerator);
+
+	function handleModeratorsOpened() {
+		moderatorPanelOpen = true;
+	}
+
+	function handleSelfPromoted() {
+		ownerIsModeratorLocal = true;
+		// Refresh gifts to show reservation data for owner
+		void refreshGifts();
+	}
 
 	function handleShareOpened() {
 		sharingContext.openWizard();
@@ -411,7 +426,9 @@
 		status={wishlistStatus}
 		{role}
 		giftCount={totalCount}
+		ownerIsModerator={ownerIsModeratorLocal}
 		onshare={handleShareOpened}
+		onmoderators={handleModeratorsOpened}
 	/>
 
 	<!-- Toolbar -->
@@ -697,6 +714,17 @@
 			</div>
 		</Sheet.Content>
 	</Sheet.Root>
+{/if}
+
+<!-- Moderator Panel (owner only) -->
+{#if isOwner}
+	<ModeratorPanel
+		wishlistId={wishlist.id}
+		wishlistShortId={wishlist.shortId}
+		ownerIsModerator={ownerIsModeratorLocal}
+		bind:open={moderatorPanelOpen}
+		onselfpromoted={handleSelfPromoted}
+	/>
 {/if}
 
 <!-- OpenGraph Meta Tags -->

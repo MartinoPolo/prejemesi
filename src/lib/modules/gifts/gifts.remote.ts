@@ -83,8 +83,8 @@ export const getGiftsByWishlistShortId = publicCommand(async (authContext, short
 		.where(and(eq(gift.wishlistId, wishlistRow.id), isNull(gift.deletedAt)))
 		.orderBy(gift.sortOrder);
 
-	if (role === 'owner') {
-		// Owner: no reservation data, no like counts
+	if (role === 'owner' && !wishlistRow.ownerIsModerator) {
+		// Owner without self-promote: no reservation data, no like counts
 		const ownerGifts: GiftForOwner[] = giftRows.map((row) => ({
 			id: row.id,
 			wishlistId: row.wishlistId,
@@ -104,6 +104,8 @@ export const getGiftsByWishlistShortId = publicCommand(async (authContext, short
 
 		return { role, gifts: ownerGifts } as const;
 	}
+
+	// Owner with self-promote sees reservation data (role stays 'owner' for UI)
 
 	// Visitor/Moderator: include reservation counts and like counts
 	const giftIds = giftRows.map((row) => row.id);

@@ -4,9 +4,10 @@
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import ShareIcon from '@lucide/svelte/icons/share-2';
 	import LockIcon from '@lucide/svelte/icons/lock';
-	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
 	import InfoIcon from '@lucide/svelte/icons/info';
+	import UsersIcon from '@lucide/svelte/icons/users';
+	import EyeIcon from '@lucide/svelte/icons/eye';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		WISHLIST_STATUS_LABELS,
@@ -23,7 +24,9 @@
 		status: 'draft' | 'active' | 'archived';
 		role: WishlistRole;
 		giftCount: number;
+		ownerIsModerator: boolean;
 		onshare?: () => void;
+		onmoderators?: () => void;
 	}
 
 	let {
@@ -35,7 +38,9 @@
 		status,
 		role,
 		giftCount,
+		ownerIsModerator,
 		onshare,
+		onmoderators,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -139,11 +144,19 @@
 				</Button>
 			{/if}
 			{#if isOwner}
-				<Button size="sm" variant="outline" aria-label="Nastaveni seznamu">
-					<SettingsIcon data-icon="inline-start" />
-					Nastaveni
+				<Button size="sm" variant="outline" aria-label="Moderatori" onclick={onmoderators}>
+					<UsersIcon data-icon="inline-start" />
+					Moderatori
 				</Button>
 			{/if}
+		</div>
+	{/if}
+
+	<!-- Owner sees reservations disclosure — visible to ALL users -->
+	{#if ownerIsModerator}
+		<div class={styles.disclosureBanner()}>
+			<EyeIcon class="size-4 flex-shrink-0" />
+			<span>Vlastnik vidi stav rezervaci tohoto seznamu.</span>
 		</div>
 	{/if}
 
