@@ -1,15 +1,21 @@
 import 'use server';
 
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, sql, isNotNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
+import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
+import { wishlistFollower } from '$lib/server/db/follower.schema.js';
+import { gift, reservation } from '$lib/server/db/gift.schema.js';
+import { user } from '$lib/server/db/auth.schema.js';
 import { guardedCommand, guardedQuery, publicCommand } from '$lib/server/remote.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	type CreateWishlistInput,
 	type UpdateWishlistInput,
+	type WishlistRole,
 } from './types.js';
+import type { ModeratedWishlist, FollowedWishlist } from './dashboard-types.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -26,8 +32,12 @@ export const getWishlistByShortId = publicCommand(async (authContext, shortId: s
 	const database = getDb();
 
 	const rows = await database
-		.select()
+		.select({
+			wishlist: wishlist,
+			ownerName: user.name,
+		})
 		.from(wishlist)
+		.innerJoin(user, eq(wishlist.ownerId, user.id))
 		.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt)))
 		.limit(1);
 
@@ -36,10 +46,144 @@ export const getWishlistByShortId = publicCommand(async (authContext, shortId: s
 		error(404, 'Wishlist not found');
 	}
 
-	const isOwner = authContext !== null && authContext.user.id === row.ownerId;
-	const role = isOwner ? 'owner' : 'visitor';
+	// Determine role
+	let role: WishlistRole = 'visitor';
+	if (authContext !== null) {
+		if (authContext.user.id === row.wishlist.ownerId) {
+			role = 'owner';
+		} else {
+			const modRows = await database
+				.select()
+				.from(moderatorAssignment)
+				.where(
+					and(
+						eq(moderatorAssignment.wishlistId, row.wishlist.id),
+						eq(moderatorAssignment.userId, authContext.user.id),
+						isNull(moderatorAssignment.deletedAt),
+					),
+				)
+				.limit(1);
 
-	return { ...row, role } as const;
+			if (modRows[0] !== undefined) {
+				role = 'moderator';
+			}
+		}
+	}
+
+	return { ...row.wishlist, ownerName: row.ownerName, role } as const;
+});
+
+export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) => {
+	const database = getDb();
+
+	const totalGiftsSubquery = database
+		.select({
+			wishlistId: gift.wishlistId,
+			count: sql<number>`count(*)`.as('total_gifts'),
+		})
+		.from(gift)
+		.where(isNull(gift.deletedAt))
+		.groupBy(gift.wishlistId)
+		.as('total_gifts_sq');
+
+	const reservedGiftsSubquery = database
+		.select({
+			wishlistId: gift.wishlistId,
+			count: sql<number>`count(distinct ${gift.id})`.as('reserved_gifts'),
+		})
+		.from(gift)
+		.innerJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
+		.where(isNull(gift.deletedAt))
+		.groupBy(gift.wishlistId)
+		.as('reserved_gifts_sq');
+
+	const rows = await database
+		.select({
+			wishlist: wishlist,
+			ownerName: user.name,
+			totalGifts: sql<number>`coalesce(${totalGiftsSubquery.count}, 0)`,
+			reservedGifts: sql<number>`coalesce(${reservedGiftsSubquery.count}, 0)`,
+		})
+		.from(moderatorAssignment)
+		.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
+		.innerJoin(user, eq(wishlist.ownerId, user.id))
+		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
+		.leftJoin(reservedGiftsSubquery, eq(reservedGiftsSubquery.wishlistId, wishlist.id))
+		.where(
+			and(
+				eq(moderatorAssignment.userId, currentUser.id),
+				isNull(moderatorAssignment.deletedAt),
+				isNull(wishlist.deletedAt),
+			),
+		)
+		.orderBy(wishlist.updatedAt);
+
+	return rows.map(
+		(row): ModeratedWishlist => ({
+			...row.wishlist,
+			ownerName: row.ownerName,
+			totalGifts: Number(row.totalGifts),
+			reservedGifts: Number(row.reservedGifts),
+		}),
+	);
+});
+
+export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) => {
+	const database = getDb();
+
+	const availableGiftsSubquery = database
+		.select({
+			wishlistId: gift.wishlistId,
+			count: sql<number>`count(*)`.as('available_gifts'),
+		})
+		.from(gift)
+		.leftJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
+		.where(and(isNull(gift.deletedAt), isNull(reservation.id)))
+		.groupBy(gift.wishlistId)
+		.as('available_gifts_sq');
+
+	const myReservationsSubquery = database
+		.select({
+			wishlistId: gift.wishlistId,
+			count: sql<number>`count(*)`.as('my_reservations'),
+		})
+		.from(reservation)
+		.innerJoin(gift, eq(reservation.giftId, gift.id))
+		.where(
+			and(
+				eq(reservation.userId, currentUser.id),
+				isNull(reservation.deletedAt),
+				isNull(gift.deletedAt),
+			),
+		)
+		.groupBy(gift.wishlistId)
+		.as('my_reservations_sq');
+
+	const rows = await database
+		.select({
+			wishlist: wishlist,
+			ownerName: user.name,
+			availableGifts: sql<number>`coalesce(${availableGiftsSubquery.count}, 0)`,
+			myReservations: sql<number>`coalesce(${myReservationsSubquery.count}, 0)`,
+			unfollowedAt: wishlistFollower.unfollowedAt,
+		})
+		.from(wishlistFollower)
+		.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
+		.innerJoin(user, eq(wishlist.ownerId, user.id))
+		.leftJoin(availableGiftsSubquery, eq(availableGiftsSubquery.wishlistId, wishlist.id))
+		.leftJoin(myReservationsSubquery, eq(myReservationsSubquery.wishlistId, wishlist.id))
+		.where(and(eq(wishlistFollower.userId, currentUser.id), isNull(wishlist.deletedAt)))
+		.orderBy(wishlist.updatedAt);
+
+	return rows.map(
+		(row): FollowedWishlist => ({
+			...row.wishlist,
+			ownerName: row.ownerName,
+			availableGifts: Number(row.availableGifts),
+			myReservations: Number(row.myReservations),
+			unfollowedAt: row.unfollowedAt,
+		}),
+	);
 });
 
 // ── Commands ─────────────────────────────────────────────────────────────────
