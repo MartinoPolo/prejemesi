@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn-svelte/tailwind.css';
+@import './accent-colors.css';
+@import './palette-colors.css';
 
 /* Figtree Variable — latin */
 @font-face {
@@ -127,6 +129,112 @@
 
 	/* Primary */
 	--primary-soft: oklch(92% 0.03 150deg);
+
+	/* Status */
+	--status-success: oklch(66% 0.135 145deg);
+	--status-warning: oklch(77% 0.155 75deg);
+	--status-danger: oklch(62% 0.205 25deg);
+	--status-info: oklch(66% 0.105 220deg);
+
+	/* Size control */
+	--size-control-sm: 26px;
+	--size-control-md: 32px;
+	--size-control-lg: 38px;
+
+	/* Text sizes */
+	--text-2xs: 10.5px;
+	--text-xs: 11px;
+	--text-sm: 12px;
+	--text-md: 13px;
+	--text-base: 14px;
+	--text-lg: 15px;
+	--text-xl: 17px;
+	--text-2xl: 22px;
+	--text-3xl: 28px;
+	--text-4xl: 36px;
+	--text-5xl: 48px;
+
+	/* Z-index */
+	--z-base: 0;
+	--z-raised: 10;
+	--z-dropdown: 20;
+	--z-sticky: 30;
+	--z-overlay: 40;
+	--z-modal: 50;
+	--z-toast: 60;
+	--z-tooltip: 70;
+
+	/* Transition durations */
+	--transition-duration-1: 90ms;
+	--transition-duration-2: 120ms;
+	--transition-duration-3: 160ms;
+	--transition-duration-4: 220ms;
+	--transition-duration-5: 320ms;
+
+	/* Color scales */
+	--moss-50: oklch(97.2% 0.018 130deg);
+	--moss-100: oklch(94% 0.034 130deg);
+	--moss-200: oklch(88% 0.058 130deg);
+	--moss-300: oklch(79.5% 0.082 130deg);
+	--moss-400: oklch(69% 0.098 132deg);
+	--moss-500: oklch(58% 0.096 134deg);
+	--moss-600: oklch(48% 0.082 138deg);
+	--moss-700: oklch(39.5% 0.066 142deg);
+	--moss-800: oklch(30% 0.048 145deg);
+	--moss-900: oklch(21.5% 0.032 148deg);
+	--moss-950: oklch(15.5% 0.024 150deg);
+	--amber-300: oklch(84% 0.13 78deg);
+	--amber-400: oklch(77% 0.15 65deg);
+	--amber-500: oklch(69% 0.165 55deg);
+	--amber-600: oklch(59.5% 0.16 48deg);
+	--bark-300: oklch(70% 0.06 60deg);
+	--bark-500: oklch(50% 0.075 55deg);
+	--bark-700: oklch(34.5% 0.055 50deg);
+	--azure-300: oklch(75% 0.09 230deg);
+	--azure-400: oklch(66% 0.12 230deg);
+	--azure-500: oklch(57% 0.13 235deg);
+	--azure-600: oklch(49% 0.115 240deg);
+	--azure-700: oklch(40% 0.095 240deg);
+	--plum-300: oklch(72% 0.1 320deg);
+	--plum-400: oklch(64% 0.13 320deg);
+	--plum-500: oklch(56% 0.15 320deg);
+	--plum-600: oklch(48% 0.13 320deg);
+	--plum-700: oklch(40% 0.11 320deg);
+	--teal-300: oklch(78% 0.075 195deg);
+	--teal-400: oklch(70% 0.095 195deg);
+	--teal-500: oklch(62% 0.11 195deg);
+	--teal-600: oklch(54% 0.095 195deg);
+	--teal-700: oklch(46% 0.08 195deg);
+	--rose-300: oklch(80% 0.105 15deg);
+	--rose-400: oklch(72% 0.135 15deg);
+	--rose-500: oklch(64% 0.155 15deg);
+	--rose-600: oklch(56% 0.135 15deg);
+	--rose-700: oklch(48% 0.115 15deg);
+	--coral-300: oklch(78% 0.105 30deg);
+	--coral-400: oklch(70% 0.135 30deg);
+	--coral-500: oklch(62% 0.155 30deg);
+	--coral-600: oklch(54% 0.135 30deg);
+	--coral-700: oklch(46% 0.115 30deg);
+	--gold-300: oklch(81% 0.09 90deg);
+	--gold-400: oklch(73% 0.115 90deg);
+	--gold-500: oklch(65% 0.135 90deg);
+	--gold-600: oklch(57% 0.115 90deg);
+	--gold-700: oklch(49% 0.095 90deg);
+	--sage-300: oklch(76% 0.055 160deg);
+	--sage-400: oklch(68% 0.07 160deg);
+	--sage-500: oklch(60% 0.085 160deg);
+	--sage-600: oklch(52% 0.07 160deg);
+	--sage-700: oklch(44% 0.06 160deg);
+	--indigo-300: oklch(70% 0.095 275deg);
+	--indigo-400: oklch(62% 0.12 275deg);
+	--indigo-500: oklch(54% 0.14 275deg);
+	--indigo-600: oklch(46% 0.12 275deg);
+	--indigo-700: oklch(38% 0.1 275deg);
+	--fuchsia-300: oklch(74% 0.105 350deg);
+	--fuchsia-400: oklch(66% 0.135 350deg);
+	--fuchsia-500: oklch(58% 0.155 350deg);
+	--fuchsia-600: oklch(50% 0.135 350deg);
+	--fuchsia-700: oklch(42% 0.115 350deg);
 }
 
 .dark {
@@ -219,6 +327,10 @@
 	--color-foreground-subtle: var(--foreground-subtle);
 	--color-border-strong: var(--border-strong);
 	--color-primary-soft: var(--primary-soft);
+	--color-status-success: var(--status-success);
+	--color-status-warning: var(--status-warning);
+	--color-status-danger: var(--status-danger);
+	--color-status-info: var(--status-info);
 	--font-sans: 'Figtree Variable', 'Figtree Fallback', sans-serif;
 	--font-heading: 'Noto Sans Variable', 'Noto Sans Fallback', sans-serif;
 	--default-transition-duration: 75ms;
@@ -248,6 +360,72 @@
 
 	--animate-accordion-down: accordion-down 0.2s ease-out;
 	--animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@theme {
+	--color-moss-50: var(--moss-50);
+	--color-moss-100: var(--moss-100);
+	--color-moss-200: var(--moss-200);
+	--color-moss-300: var(--moss-300);
+	--color-moss-400: var(--moss-400);
+	--color-moss-500: var(--moss-500);
+	--color-moss-600: var(--moss-600);
+	--color-moss-700: var(--moss-700);
+	--color-moss-800: var(--moss-800);
+	--color-moss-900: var(--moss-900);
+	--color-moss-950: var(--moss-950);
+	--color-amber-300: var(--amber-300);
+	--color-amber-400: var(--amber-400);
+	--color-amber-500: var(--amber-500);
+	--color-amber-600: var(--amber-600);
+	--color-bark-300: var(--bark-300);
+	--color-bark-500: var(--bark-500);
+	--color-bark-700: var(--bark-700);
+	--color-azure-300: var(--azure-300);
+	--color-azure-400: var(--azure-400);
+	--color-azure-500: var(--azure-500);
+	--color-azure-600: var(--azure-600);
+	--color-azure-700: var(--azure-700);
+	--color-plum-300: var(--plum-300);
+	--color-plum-400: var(--plum-400);
+	--color-plum-500: var(--plum-500);
+	--color-plum-600: var(--plum-600);
+	--color-plum-700: var(--plum-700);
+	--color-teal-300: var(--teal-300);
+	--color-teal-400: var(--teal-400);
+	--color-teal-500: var(--teal-500);
+	--color-teal-600: var(--teal-600);
+	--color-teal-700: var(--teal-700);
+	--color-rose-300: var(--rose-300);
+	--color-rose-400: var(--rose-400);
+	--color-rose-500: var(--rose-500);
+	--color-rose-600: var(--rose-600);
+	--color-rose-700: var(--rose-700);
+	--color-coral-300: var(--coral-300);
+	--color-coral-400: var(--coral-400);
+	--color-coral-500: var(--coral-500);
+	--color-coral-600: var(--coral-600);
+	--color-coral-700: var(--coral-700);
+	--color-gold-300: var(--gold-300);
+	--color-gold-400: var(--gold-400);
+	--color-gold-500: var(--gold-500);
+	--color-gold-600: var(--gold-600);
+	--color-gold-700: var(--gold-700);
+	--color-sage-300: var(--sage-300);
+	--color-sage-400: var(--sage-400);
+	--color-sage-500: var(--sage-500);
+	--color-sage-600: var(--sage-600);
+	--color-sage-700: var(--sage-700);
+	--color-indigo-300: var(--indigo-300);
+	--color-indigo-400: var(--indigo-400);
+	--color-indigo-500: var(--indigo-500);
+	--color-indigo-600: var(--indigo-600);
+	--color-indigo-700: var(--indigo-700);
+	--color-fuchsia-300: var(--fuchsia-300);
+	--color-fuchsia-400: var(--fuchsia-400);
+	--color-fuchsia-500: var(--fuchsia-500);
+	--color-fuchsia-600: var(--fuchsia-600);
+	--color-fuchsia-700: var(--fuchsia-700);
 }
 
 @layer base {

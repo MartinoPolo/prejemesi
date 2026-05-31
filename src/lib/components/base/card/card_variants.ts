@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const cardVariants = tv({
-	base: 'relative bg-background border rounded-lg shadow-sm',
+	base: 'relative bg-surface border rounded-lg shadow-sm',
 	variants: {
 		padding: {
 			none: '',

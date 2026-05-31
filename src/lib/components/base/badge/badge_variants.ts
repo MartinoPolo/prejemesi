@@ -7,7 +7,7 @@ export const badgeVariants = tv({
 	base: 'inline-flex items-center justify-center gap-1 font-medium border tracking-[0.01em] whitespace-nowrap',
 	variants: {
 		tone: {
-			neutral: 'bg-secondary text-muted-foreground border-border',
+			neutral: 'bg-surface-2 text-foreground-muted border-border',
 			success:
 				'bg-[color-mix(in_oklch,var(--status-success)_14%,transparent)] text-status-success border-[color-mix(in_oklch,var(--status-success)_30%,transparent)]',
 			warning:
@@ -39,7 +39,7 @@ export const badgeVariants = tv({
 		{ badgeStyle: 'solid', tone: 'info', class: 'bg-status-info text-white' },
 		{ badgeStyle: 'solid', tone: 'primary', class: 'bg-primary text-primary-foreground' },
 		{ badgeStyle: 'solid', tone: 'accent', class: 'bg-accent text-white' },
-		{ badgeStyle: 'solid', tone: 'neutral', class: 'bg-muted-foreground text-background' },
+		{ badgeStyle: 'solid', tone: 'neutral', class: 'bg-foreground-muted text-background' },
 	],
 	defaultVariants: {
 		tone: 'neutral',

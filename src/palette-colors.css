@@ -1,0 +1,29 @@
+/* Palette surface/UI token overrides for light and dark mode.
+   Darecky uses class-based dark mode (.dark), not data-theme attribute.
+   Light:  :not(.dark)
+   Dark:   .dark
+   GK-specific environment tokens (sky, mountain, ground, star, moon) excluded.
+*/
+
+:not(.dark) {
+	--background: oklch(100% 0 0deg);
+	--foreground: oklch(15.3% 0.006 107.1deg);
+	--surface: oklch(100% 0 0deg);
+	--surface-2: oklch(96.7% 0.001 286.375deg);
+	--surface-3: oklch(96.6% 0.005 106.5deg);
+	--surface-hover: color-mix(in oklch, oklch(15.3% 0.006 107.1deg) 6%, transparent);
+	--foreground-muted: oklch(58% 0.031 107.3deg);
+	--foreground-subtle: oklch(50% 0.012 107deg);
+	--border: oklch(93% 0.007 106.5deg);
+	--border-strong: oklch(81.5% 0.018 107deg);
+}
+
+.dark {
+	--surface: oklch(15.3% 0.006 107.1deg);
+	--surface-2: oklch(22.8% 0.013 107.4deg);
+	--surface-3: oklch(28.6% 0.016 107.4deg);
+	--surface-hover: color-mix(in oklch, oklch(98.8% 0.003 106.5deg) 8%, transparent);
+	--foreground-muted: oklch(73.7% 0.021 106.9deg);
+	--foreground-subtle: oklch(55% 0.012 107deg);
+	--border-strong: oklch(35% 0.015 107deg);
+}

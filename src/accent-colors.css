@@ -1,0 +1,269 @@
+/* Accent color overrides per [data-accent] attribute.
+   Darecky uses class-based dark mode (.dark), not data-theme attribute.
+   Light:  :not(.dark)
+   Dark:   .dark
+*/
+
+/* ── moss (default primary is already moss-based; only override accent tokens) ── */
+[data-accent='moss']:not(.dark) {
+	--accent: var(--moss-100);
+	--accent-foreground: var(--moss-800);
+}
+
+[data-accent='moss'].dark {
+	--accent: var(--moss-800);
+	--accent-foreground: var(--moss-100);
+}
+
+/* ── amber ── */
+[data-accent='amber']:not(.dark) {
+	--primary: var(--amber-500);
+	--primary-foreground: oklch(98% 0.01 80deg);
+	--primary-soft: oklch(95% 0.04 78deg);
+	--accent: var(--amber-300);
+	--accent-foreground: oklch(25% 0.06 60deg);
+	--ring: var(--amber-400);
+	--sidebar-primary: var(--amber-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 80deg);
+}
+
+[data-accent='amber'].dark {
+	--primary: var(--amber-400);
+	--primary-foreground: oklch(15% 0.04 60deg);
+	--primary-soft: oklch(22% 0.05 65deg);
+	--accent: var(--amber-600);
+	--accent-foreground: oklch(95% 0.03 78deg);
+	--ring: var(--amber-500);
+	--sidebar-primary: var(--amber-400);
+	--sidebar-primary-foreground: oklch(15% 0.04 60deg);
+}
+
+/* ── bark ── */
+[data-accent='bark']:not(.dark) {
+	--primary: var(--bark-500);
+	--primary-foreground: oklch(98% 0.01 60deg);
+	--primary-soft: oklch(94% 0.025 60deg);
+	--accent: var(--bark-300);
+	--accent-foreground: oklch(25% 0.04 55deg);
+	--ring: var(--bark-500);
+	--sidebar-primary: var(--bark-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 60deg);
+}
+
+[data-accent='bark'].dark {
+	--primary: var(--bark-300);
+	--primary-foreground: oklch(15% 0.03 55deg);
+	--primary-soft: oklch(22% 0.04 55deg);
+	--accent: var(--bark-700);
+	--accent-foreground: oklch(95% 0.02 60deg);
+	--ring: var(--bark-500);
+	--sidebar-primary: var(--bark-300);
+	--sidebar-primary-foreground: oklch(15% 0.03 55deg);
+}
+
+/* ── azure ── */
+[data-accent='azure']:not(.dark) {
+	--primary: var(--azure-500);
+	--primary-foreground: oklch(98% 0.01 230deg);
+	--primary-soft: oklch(94% 0.035 230deg);
+	--accent: var(--azure-300);
+	--accent-foreground: oklch(25% 0.06 235deg);
+	--ring: var(--azure-400);
+	--sidebar-primary: var(--azure-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 230deg);
+}
+
+[data-accent='azure'].dark {
+	--primary: var(--azure-400);
+	--primary-foreground: oklch(15% 0.05 235deg);
+	--primary-soft: oklch(22% 0.06 235deg);
+	--accent: var(--azure-700);
+	--accent-foreground: oklch(95% 0.03 230deg);
+	--ring: var(--azure-500);
+	--sidebar-primary: var(--azure-400);
+	--sidebar-primary-foreground: oklch(15% 0.05 235deg);
+}
+
+/* ── plum ── */
+[data-accent='plum']:not(.dark) {
+	--primary: var(--plum-500);
+	--primary-foreground: oklch(98% 0.01 320deg);
+	--primary-soft: oklch(94% 0.04 320deg);
+	--accent: var(--plum-300);
+	--accent-foreground: oklch(25% 0.07 320deg);
+	--ring: var(--plum-400);
+	--sidebar-primary: var(--plum-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 320deg);
+}
+
+[data-accent='plum'].dark {
+	--primary: var(--plum-400);
+	--primary-foreground: oklch(15% 0.06 320deg);
+	--primary-soft: oklch(22% 0.07 320deg);
+	--accent: var(--plum-700);
+	--accent-foreground: oklch(95% 0.04 320deg);
+	--ring: var(--plum-500);
+	--sidebar-primary: var(--plum-400);
+	--sidebar-primary-foreground: oklch(15% 0.06 320deg);
+}
+
+/* ── teal ── */
+[data-accent='teal']:not(.dark) {
+	--primary: var(--teal-500);
+	--primary-foreground: oklch(98% 0.01 195deg);
+	--primary-soft: oklch(94% 0.03 195deg);
+	--accent: var(--teal-300);
+	--accent-foreground: oklch(25% 0.055 195deg);
+	--ring: var(--teal-400);
+	--sidebar-primary: var(--teal-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 195deg);
+}
+
+[data-accent='teal'].dark {
+	--primary: var(--teal-400);
+	--primary-foreground: oklch(15% 0.05 195deg);
+	--primary-soft: oklch(22% 0.055 195deg);
+	--accent: var(--teal-700);
+	--accent-foreground: oklch(95% 0.03 195deg);
+	--ring: var(--teal-500);
+	--sidebar-primary: var(--teal-400);
+	--sidebar-primary-foreground: oklch(15% 0.05 195deg);
+}
+
+/* ── rose ── */
+[data-accent='rose']:not(.dark) {
+	--primary: var(--rose-500);
+	--primary-foreground: oklch(98% 0.01 15deg);
+	--primary-soft: oklch(94% 0.04 15deg);
+	--accent: var(--rose-300);
+	--accent-foreground: oklch(25% 0.07 15deg);
+	--ring: var(--rose-400);
+	--sidebar-primary: var(--rose-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 15deg);
+}
+
+[data-accent='rose'].dark {
+	--primary: var(--rose-400);
+	--primary-foreground: oklch(15% 0.06 15deg);
+	--primary-soft: oklch(22% 0.07 15deg);
+	--accent: var(--rose-700);
+	--accent-foreground: oklch(95% 0.04 15deg);
+	--ring: var(--rose-500);
+	--sidebar-primary: var(--rose-400);
+	--sidebar-primary-foreground: oklch(15% 0.06 15deg);
+}
+
+/* ── coral ── */
+[data-accent='coral']:not(.dark) {
+	--primary: var(--coral-500);
+	--primary-foreground: oklch(98% 0.01 30deg);
+	--primary-soft: oklch(94% 0.04 30deg);
+	--accent: var(--coral-300);
+	--accent-foreground: oklch(25% 0.07 30deg);
+	--ring: var(--coral-400);
+	--sidebar-primary: var(--coral-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 30deg);
+}
+
+[data-accent='coral'].dark {
+	--primary: var(--coral-400);
+	--primary-foreground: oklch(15% 0.06 30deg);
+	--primary-soft: oklch(22% 0.07 30deg);
+	--accent: var(--coral-700);
+	--accent-foreground: oklch(95% 0.04 30deg);
+	--ring: var(--coral-500);
+	--sidebar-primary: var(--coral-400);
+	--sidebar-primary-foreground: oklch(15% 0.06 30deg);
+}
+
+/* ── gold ── */
+[data-accent='gold']:not(.dark) {
+	--primary: var(--gold-500);
+	--primary-foreground: oklch(98% 0.01 90deg);
+	--primary-soft: oklch(94% 0.035 90deg);
+	--accent: var(--gold-300);
+	--accent-foreground: oklch(25% 0.055 90deg);
+	--ring: var(--gold-400);
+	--sidebar-primary: var(--gold-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 90deg);
+}
+
+[data-accent='gold'].dark {
+	--primary: var(--gold-400);
+	--primary-foreground: oklch(15% 0.05 90deg);
+	--primary-soft: oklch(22% 0.055 90deg);
+	--accent: var(--gold-700);
+	--accent-foreground: oklch(95% 0.03 90deg);
+	--ring: var(--gold-500);
+	--sidebar-primary: var(--gold-400);
+	--sidebar-primary-foreground: oklch(15% 0.05 90deg);
+}
+
+/* ── sage ── */
+[data-accent='sage']:not(.dark) {
+	--primary: var(--sage-500);
+	--primary-foreground: oklch(98% 0.01 160deg);
+	--primary-soft: oklch(94% 0.03 160deg);
+	--accent: var(--sage-300);
+	--accent-foreground: oklch(25% 0.045 160deg);
+	--ring: var(--sage-400);
+	--sidebar-primary: var(--sage-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 160deg);
+}
+
+[data-accent='sage'].dark {
+	--primary: var(--sage-400);
+	--primary-foreground: oklch(15% 0.04 160deg);
+	--primary-soft: oklch(22% 0.045 160deg);
+	--accent: var(--sage-700);
+	--accent-foreground: oklch(95% 0.03 160deg);
+	--ring: var(--sage-500);
+	--sidebar-primary: var(--sage-400);
+	--sidebar-primary-foreground: oklch(15% 0.04 160deg);
+}
+
+/* ── indigo ── */
+[data-accent='indigo']:not(.dark) {
+	--primary: var(--indigo-500);
+	--primary-foreground: oklch(98% 0.01 275deg);
+	--primary-soft: oklch(94% 0.04 275deg);
+	--accent: var(--indigo-300);
+	--accent-foreground: oklch(25% 0.065 275deg);
+	--ring: var(--indigo-400);
+	--sidebar-primary: var(--indigo-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 275deg);
+}
+
+[data-accent='indigo'].dark {
+	--primary: var(--indigo-400);
+	--primary-foreground: oklch(15% 0.055 275deg);
+	--primary-soft: oklch(22% 0.065 275deg);
+	--accent: var(--indigo-700);
+	--accent-foreground: oklch(95% 0.04 275deg);
+	--ring: var(--indigo-500);
+	--sidebar-primary: var(--indigo-400);
+	--sidebar-primary-foreground: oklch(15% 0.055 275deg);
+}
+
+/* ── fuchsia ── */
+[data-accent='fuchsia']:not(.dark) {
+	--primary: var(--fuchsia-500);
+	--primary-foreground: oklch(98% 0.01 350deg);
+	--primary-soft: oklch(94% 0.04 350deg);
+	--accent: var(--fuchsia-300);
+	--accent-foreground: oklch(25% 0.07 350deg);
+	--ring: var(--fuchsia-400);
+	--sidebar-primary: var(--fuchsia-500);
+	--sidebar-primary-foreground: oklch(98% 0.01 350deg);
+}
+
+[data-accent='fuchsia'].dark {
+	--primary: var(--fuchsia-400);
+	--primary-foreground: oklch(15% 0.06 350deg);
+	--primary-soft: oklch(22% 0.07 350deg);
+	--accent: var(--fuchsia-700);
+	--accent-foreground: oklch(95% 0.04 350deg);
+	--ring: var(--fuchsia-500);
+	--sidebar-primary: var(--fuchsia-400);
+	--sidebar-primary-foreground: oklch(15% 0.06 350deg);
+}

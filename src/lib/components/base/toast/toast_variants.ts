@@ -3,7 +3,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const toastVariants = tv({
-	base: 'flex items-center gap-3 rounded-lg border border-border bg-background p-3 shadow-md',
+	base: 'flex items-center gap-3 rounded-lg border border-border bg-surface p-3 shadow-md',
 	variants: {
 		tone: {
 			info: 'border-l-2 border-l-status-info',

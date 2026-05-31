@@ -10,8 +10,8 @@ export const buttonVariants = tv({
 			primary:
 				'bg-primary text-primary-foreground shadow-sm hover:bg-[color-mix(in_oklch,var(--primary)_88%,white_12%)] dark:hover:bg-[color-mix(in_oklch,var(--primary)_88%,black_12%)]',
 			secondary:
-				'border-border bg-secondary text-foreground hover:bg-muted hover:border-border-strong',
-			ghost: 'bg-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+				'border-border bg-surface-2 text-foreground hover:bg-surface-3 hover:border-border-strong',
+			ghost: 'bg-transparent text-foreground-muted hover:bg-surface-hover hover:text-foreground',
 			'ghost-overlay':
 				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklch,currentColor_10%,transparent)]',
 			danger: 'bg-transparent text-status-danger border-[color-mix(in_oklch,var(--status-danger)_35%,transparent)] hover:bg-[color-mix(in_oklch,var(--status-danger)_12%,transparent)]',
@@ -21,7 +21,7 @@ export const buttonVariants = tv({
 			link: 'text-primary underline-offset-4 hover:underline',
 		},
 		size: {
-			xs: 'h-7 px-1.5 text-xs rounded-sm [&_[data-icon]]:size-3',
+			xs: 'h-7 px-1.5 text-(length:--text-xs) rounded-sm [&_[data-icon]]:size-3',
 			sm: 'h-(--size-control-sm) px-2.25 text-(length:--text-sm) rounded-sm [&_[data-icon]]:size-3.5',
 			md: 'h-(--size-control-md) px-3 text-(length:--text-md) [&_[data-icon]]:size-4',
 			lg: 'h-(--size-control-lg) px-4 text-(length:--text-base) [&_[data-icon]]:size-4',
