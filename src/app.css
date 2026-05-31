@@ -111,6 +111,22 @@
 	--sidebar-accent-foreground: oklch(22.8% 0.013 107.4deg);
 	--sidebar-border: oklch(93% 0.007 106.5deg);
 	--sidebar-ring: oklch(73.7% 0.021 106.9deg);
+
+	/* Surface hierarchy */
+	--surface: var(--background);
+	--surface-2: var(--secondary);
+	--surface-3: var(--muted);
+	--surface-hover: color-mix(in oklch, var(--foreground) 6%, transparent);
+
+	/* Text hierarchy */
+	--foreground-muted: var(--muted-foreground);
+	--foreground-subtle: oklch(50% 0.012 107deg);
+
+	/* Border */
+	--border-strong: oklch(81.5% 0.018 107deg);
+
+	/* Primary */
+	--primary-soft: oklch(92% 0.03 150deg);
 }
 
 .dark {
@@ -145,6 +161,18 @@
 	--sidebar-accent-foreground: oklch(98.8% 0.003 106.5deg);
 	--sidebar-border: oklch(100% 0 0deg / 10%);
 	--sidebar-ring: oklch(58% 0.031 107.3deg);
+
+	/* Surface hierarchy (dark) */
+	--surface-hover: color-mix(in oklch, var(--foreground) 8%, transparent);
+
+	/* Text hierarchy (dark) */
+	--foreground-subtle: oklch(55% 0.012 107deg);
+
+	/* Border (dark) */
+	--border-strong: oklch(35% 0.015 107deg);
+
+	/* Primary (dark) */
+	--primary-soft: oklch(25% 0.04 150deg);
 }
 
 @theme inline {
@@ -183,12 +211,43 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+	--color-surface: var(--surface);
+	--color-surface-2: var(--surface-2);
+	--color-surface-3: var(--surface-3);
+	--color-surface-hover: var(--surface-hover);
+	--color-foreground-muted: var(--foreground-muted);
+	--color-foreground-subtle: var(--foreground-subtle);
+	--color-border-strong: var(--border-strong);
+	--color-primary-soft: var(--primary-soft);
 	--font-sans: 'Figtree Variable', 'Figtree Fallback', sans-serif;
 	--font-heading: 'Noto Sans Variable', 'Noto Sans Fallback', sans-serif;
 	--default-transition-duration: 75ms;
 	--radius-2xl: calc(var(--radius) * 1.8);
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
+
+	@keyframes accordion-down {
+		from {
+			height: 0;
+		}
+
+		to {
+			height: var(--bits-accordion-content-height, auto);
+		}
+	}
+
+	@keyframes accordion-up {
+		from {
+			height: var(--bits-accordion-content-height, auto);
+		}
+
+		to {
+			height: 0;
+		}
+	}
+
+	--animate-accordion-down: accordion-down 0.2s ease-out;
+	--animate-accordion-up: accordion-up 0.2s ease-out;
 }
 
 @layer base {

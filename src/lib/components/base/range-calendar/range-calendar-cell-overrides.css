@@ -1,0 +1,21 @@
+/*
+ * Tailwind CSS 4 cannot generate :has(+ sibling) selectors. Chrome does
+ * not support nested :has() inside :has(). This file uses the descendant
+ * combinator form (+ td [attr]) instead of (+ td:has([attr])) and is
+ * imported via ?raw to bypass both Tailwind and Vite CSS processing.
+ */
+
+/* stylelint-disable no-descending-specificity -- intentional: lower-specificity
+   "last in sequence" rule must follow so it doesn't override the higher-specificity
+   forward-hover rule for non-last range-start cells. */
+
+/* Last highlighted cell in a sequence: end-side rounding */
+td.range-calendar-cell:has([data-highlighted]):not(:has(+ td [data-highlighted])) {
+	border-start-end-radius: var(--cell-radius);
+	border-end-end-radius: var(--cell-radius);
+}
+
+/* Forward hover: range-start cell bg when followed by highlighted cells */
+td.range-calendar-cell:has([data-range-start][data-highlighted]):has(+ td [data-highlighted]) {
+	background-color: color-mix(in oklab, var(--accent) 15%, transparent);
+}

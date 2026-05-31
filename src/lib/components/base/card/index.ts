@@ -1,4 +1,4 @@
-import Root from './card.svelte';
+import Root from './Card.svelte';
 import Content from './card-content.svelte';
 import Description from './card-description.svelte';
 import Footer from './card-footer.svelte';
@@ -23,3 +23,12 @@ export {
 	Title as CardTitle,
 	Action as CardAction,
 };
+
+export {
+	CARD_PADDING_OPTIONS,
+	CARD_STATE_OPTIONS,
+	cardVariants,
+	type CardPadding,
+	type CardProps,
+	type CardState,
+} from './card_variants.js';

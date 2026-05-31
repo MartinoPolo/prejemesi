@@ -12,8 +12,30 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import { Tabs, Tab } from '$lib/components/base/tabs/index.js';
+	import { Toggle } from '$lib/components/base/toggle/index.js';
+	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import * as Accordion from '$lib/components/base/accordion/index.js';
+	import * as Collapsible from '$lib/components/base/collapsible/index.js';
+	import * as Popover from '$lib/components/base/popover/index.js';
+	import { Kbd, KbdGroup } from '$lib/components/base/kbd/index.js';
+	import { Progress } from '$lib/components/base/progress/index.js';
+	import { RadioGroup, RadioGroupItem } from '$lib/components/base/radio-group/index.js';
+	import { Toast } from '$lib/components/base/toast/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
+	import * as InputGroup from '$lib/components/base/input-group/index.js';
+	import { SearchField } from '$lib/components/base/search-field/index.js';
+	import { Calendar } from '$lib/components/base/calendar/index.js';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Loader from '@lucide/svelte/icons/loader';
+	import CommandIcon from '@lucide/svelte/icons/command';
+	import CheckIcon from '@lucide/svelte/icons/check';
+	import AlignLeftIcon from '@lucide/svelte/icons/align-left';
+	import AlignCenterIcon from '@lucide/svelte/icons/align-center';
+	import AlignRightIcon from '@lucide/svelte/icons/align-right';
+	import AtSignIcon from '@lucide/svelte/icons/at-sign';
+	import InfoIcon from '@lucide/svelte/icons/info';
 
 	const { framework, role, interests, selectionCount } = useShowcaseForm();
 
@@ -35,6 +57,21 @@
 		const prev = interests.current;
 		interests.current = { ...prev, [key]: !prev[key] };
 	}
+
+	// Tabs
+	let activeTab = $state('overview');
+
+	// Toggle
+	let togglePressed = $state(false);
+
+	// ToggleGroup
+	let alignValue = $state('left');
+
+	// RadioGroup
+	let radioValue = $state('standard');
+
+	// SearchField
+	let searchQuery = $state('');
 </script>
 
 <main class="min-h-screen bg-background text-foreground">
@@ -53,7 +90,7 @@
 			<p class="text-muted-foreground text-lg">
 				shadcn-svelte components with a green theme, light &amp; dark mode support.
 			</p>
-			<Badge variant="secondary" class={selectionCount.current > 0 ? '' : 'invisible'}>
+			<Badge tone="neutral" class={selectionCount.current > 0 ? '' : 'invisible'}>
 				{selectionCount.current} selection{selectionCount.current === 1 ? '' : 's'} made
 			</Badge>
 		</section>
@@ -65,15 +102,15 @@
 			<h3 class="text-2xl font-semibold tracking-tight">Buttons</h3>
 			<div class="flex flex-wrap items-center gap-3">
 				<Button>Default</Button>
-				<Button variant="secondary">Secondary</Button>
-				<Button variant="outline">Outline</Button>
-				<Button variant="ghost">Ghost</Button>
-				<Button variant="link">Link</Button>
-				<Button variant="destructive">Destructive</Button>
+				<Button intent="secondary">Secondary</Button>
+				<Button intent="outline">Outline</Button>
+				<Button intent="ghost">Ghost</Button>
+				<Button intent="link">Link</Button>
+				<Button intent="danger">Destructive</Button>
 			</div>
 			<div class="flex flex-wrap items-center gap-3">
 				<Button size="sm">Small</Button>
-				<Button size="default">Default</Button>
+				<Button size="md">Default</Button>
 				<Button size="lg">Large</Button>
 				<Button size="icon" aria-label="Send email"><Mail size={16} /></Button>
 			</div>
@@ -93,9 +130,9 @@
 			<h3 class="text-2xl font-semibold tracking-tight">Badges</h3>
 			<div class="flex flex-wrap items-center gap-3">
 				<Badge>Default</Badge>
-				<Badge variant="secondary">Secondary</Badge>
-				<Badge variant="outline">Outline</Badge>
-				<Badge variant="destructive">Destructive</Badge>
+				<Badge tone="neutral" badgeStyle="subtle">Subtle</Badge>
+				<Badge tone="neutral" badgeStyle="outlined">Outlined</Badge>
+				<Badge tone="danger">Danger</Badge>
 			</div>
 		</section>
 
@@ -192,6 +229,275 @@
 				<ErrorAlert>Something went wrong. Please try again later.</ErrorAlert>
 				<SuccessAlert>Your changes have been saved successfully.</SuccessAlert>
 			</div>
+		</section>
+
+		<!-- HelpText -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">HelpText</h3>
+			<div class="flex flex-col gap-2">
+				<HelpText state="default">This field is required.</HelpText>
+				<HelpText state="error">Email address is invalid.</HelpText>
+				<HelpText state="success">Username is available.</HelpText>
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- Tabs -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Tabs</h3>
+			<Tabs>
+				<Tab active={activeTab === 'overview'} onclick={() => (activeTab = 'overview')}>
+					Overview
+				</Tab>
+				<Tab active={activeTab === 'activity'} onclick={() => (activeTab = 'activity')}>
+					Activity
+				</Tab>
+				<Tab active={activeTab === 'settings'} onclick={() => (activeTab = 'settings')}>
+					Settings
+				</Tab>
+			</Tabs>
+			<p class="text-muted-foreground text-sm">Active tab: {activeTab}</p>
+		</section>
+
+		<Separator />
+
+		<!-- Toggle -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Toggle</h3>
+			<Toggle pressed={togglePressed} onPressedChange={(v) => (togglePressed = v)}>
+				{togglePressed ? 'On' : 'Off'}
+			</Toggle>
+		</section>
+
+		<Separator />
+
+		<!-- ToggleGroup -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">ToggleGroup</h3>
+			<ToggleGroup.Root
+				type="single"
+				value={alignValue}
+				onValueChange={(v) => (alignValue = v ?? 'left')}
+			>
+				<ToggleGroup.Item value="left" aria-label="Align left">
+					<AlignLeftIcon data-icon="inline-start" />
+					Left
+				</ToggleGroup.Item>
+				<ToggleGroup.Item value="center" aria-label="Align center">
+					<AlignCenterIcon data-icon="inline-start" />
+					Center
+				</ToggleGroup.Item>
+				<ToggleGroup.Item value="right" aria-label="Align right">
+					<AlignRightIcon data-icon="inline-start" />
+					Right
+				</ToggleGroup.Item>
+			</ToggleGroup.Root>
+		</section>
+
+		<Separator />
+
+		<!-- Accordion -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Accordion</h3>
+			<div class="w-96">
+				<Accordion.Root type="single" value="item-1">
+					<Accordion.Item value="item-1">
+						<Accordion.Trigger>What is SvelteKit?</Accordion.Trigger>
+						<Accordion.Content>
+							SvelteKit is a framework for building web applications with Svelte.
+						</Accordion.Content>
+					</Accordion.Item>
+					<Accordion.Item value="item-2">
+						<Accordion.Trigger>What is Tailwind CSS?</Accordion.Trigger>
+						<Accordion.Content>
+							Tailwind CSS is a utility-first CSS framework for rapid UI development.
+						</Accordion.Content>
+					</Accordion.Item>
+					<Accordion.Item value="item-3">
+						<Accordion.Trigger>What is Drizzle ORM?</Accordion.Trigger>
+						<Accordion.Content>
+							Drizzle ORM is a TypeScript ORM for SQL databases with a focus on type
+							safety.
+						</Accordion.Content>
+					</Accordion.Item>
+				</Accordion.Root>
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- Collapsible -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Collapsible</h3>
+			<div class="w-80">
+				<Collapsible.Root>
+					<Collapsible.Trigger
+						class="flex w-full items-center justify-between rounded-md px-4 py-2 text-sm font-medium hover:bg-accent"
+					>
+						Show details
+					</Collapsible.Trigger>
+					<Collapsible.Content>
+						<div class="px-4 py-2 text-sm text-muted-foreground">
+							This content is revealed when the collapsible is opened.
+						</div>
+					</Collapsible.Content>
+				</Collapsible.Root>
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- Popover -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Popover</h3>
+			<Popover.Root>
+				<Popover.Trigger>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>
+							<InfoIcon data-icon="inline-start" />
+							More options
+						</Button>
+					{/snippet}
+				</Popover.Trigger>
+				<Popover.Content class="w-48">
+					<Popover.Label>Actions</Popover.Label>
+					<Popover.Item>Edit</Popover.Item>
+					<Popover.Item>Duplicate</Popover.Item>
+					<Popover.Divider />
+					<Popover.Item>Delete</Popover.Item>
+				</Popover.Content>
+			</Popover.Root>
+		</section>
+
+		<Separator />
+
+		<!-- Kbd -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Kbd</h3>
+			<div class="flex flex-col gap-3">
+				<div
+					class="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 w-72"
+				>
+					<span class="text-sm text-muted-foreground">Open command palette</span>
+					<KbdGroup>
+						<Kbd format="lucide"><CommandIcon /></Kbd>
+						<Kbd>K</Kbd>
+					</KbdGroup>
+				</div>
+				<div
+					class="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 w-72"
+				>
+					<span class="text-sm text-muted-foreground">Save file</span>
+					<KbdGroup>
+						<Kbd>Ctrl</Kbd>
+						<Kbd>S</Kbd>
+					</KbdGroup>
+				</div>
+				<div
+					class="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-2 w-72"
+				>
+					<span class="text-sm text-muted-foreground">Dismiss</span>
+					<Kbd>Esc</Kbd>
+				</div>
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- Progress -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Progress</h3>
+			<div class="w-80 space-y-3">
+				<Progress value={30} max={100} />
+				<Progress value={65} max={100} />
+				<Progress value={100} max={100} />
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- RadioGroup -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">RadioGroup</h3>
+			<RadioGroup bind:value={radioValue}>
+				<label class="flex items-center gap-2 cursor-pointer">
+					<RadioGroupItem value="standard" />
+					<span class="text-sm">Standard</span>
+				</label>
+				<label class="flex items-center gap-2 cursor-pointer">
+					<RadioGroupItem value="pro" />
+					<span class="text-sm">Pro</span>
+				</label>
+				<label class="flex items-center gap-2 cursor-pointer">
+					<RadioGroupItem value="enterprise" />
+					<span class="text-sm">Enterprise</span>
+				</label>
+			</RadioGroup>
+		</section>
+
+		<Separator />
+
+		<!-- Toast -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Toast</h3>
+			<div class="max-w-sm">
+				<Toast
+					tone="success"
+					title="Changes saved"
+					body="Your profile has been updated successfully."
+				>
+					{#snippet icon()}<CheckIcon class="size-3.5" />{/snippet}
+				</Toast>
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- Tooltip -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Tooltip</h3>
+			<SimpleTooltip text="Send an email notification">
+				{#snippet asChild(props)}
+					<Button intent="outline" {...props}>
+						<Mail data-icon="inline-start" />
+						Send email
+					</Button>
+				{/snippet}
+			</SimpleTooltip>
+		</section>
+
+		<Separator />
+
+		<!-- InputGroup -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">InputGroup</h3>
+			<div class="w-72">
+				<InputGroup.Root>
+					<InputGroup.Addon align="inline-start">
+						<AtSignIcon />
+					</InputGroup.Addon>
+					<InputGroup.Input placeholder="username" />
+				</InputGroup.Root>
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- SearchField -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">SearchField</h3>
+			<div class="w-72">
+				<SearchField bind:value={searchQuery} placeholder="Search components…" />
+			</div>
+		</section>
+
+		<Separator />
+
+		<!-- Calendar -->
+		<section class="space-y-4">
+			<h3 class="text-2xl font-semibold tracking-tight">Calendar</h3>
+			<Calendar type="single" />
 		</section>
 
 		<!-- Footer -->

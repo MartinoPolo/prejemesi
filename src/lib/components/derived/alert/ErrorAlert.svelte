@@ -12,7 +12,7 @@
 	let { title = 'Error', children, class: className }: Props = $props();
 </script>
 
-<Alert.Root variant="destructive" class={className}>
+<Alert.Root tone="destructive" class={className}>
 	<TriangleAlert size={16} />
 	<Alert.Title>{title}</Alert.Title>
 	<Alert.Description>
