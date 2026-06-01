@@ -1,1 +1,9 @@
 export { default as CreateWishlistModal } from './CreateWishlistModal.svelte';
+export { default as WishlistDetailToolbar } from './WishlistDetailToolbar.svelte';
+export { default as WishlistGiftDisplay } from './WishlistGiftDisplay.svelte';
+export { default as WishlistGiftCardGrid } from './WishlistGiftCardGrid.svelte';
+export { default as WishlistGiftListView } from './WishlistGiftListView.svelte';
+export { default as WishlistGiftCompactTable } from './WishlistGiftCompactTable.svelte';
+export { default as WishlistGiftDraggableWrapper } from './WishlistGiftDraggableWrapper.svelte';
+export { default as WishlistEmptyState } from './WishlistEmptyState.svelte';
+export { default as WishlistModals } from './WishlistModals.svelte';

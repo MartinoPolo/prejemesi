@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Input } from '$lib/components/base/input/index.js';
-	import { Label } from '$lib/components/base/label/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import AuthBrandPanel from '$lib/components/blocks/auth/AuthBrandPanel.svelte';
 	import AuthBrandFeature from '$lib/components/blocks/auth/AuthBrandFeature.svelte';
@@ -11,16 +10,17 @@
 	import AuthDivider from '$lib/components/blocks/auth/AuthDivider.svelte';
 	import SocialLoginButtons from '$lib/components/blocks/auth/SocialLoginButtons.svelte';
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
+	import AuthFormField from '$lib/components/blocks/auth/AuthFormField.svelte';
+	import AuthPasswordInput from '$lib/components/blocks/auth/AuthPasswordInput.svelte';
+	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
 	import { authClient } from '$lib/auth_client.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import ListIcon from '@lucide/svelte/icons/list';
 	import LinkIcon from '@lucide/svelte/icons/link';
-	import EyeIcon from '@lucide/svelte/icons/eye';
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 
 	let email = $state('');
 	let password = $state('');
-	let showPassword = $state(false);
 	let loading = $state(false);
 	let errorMessage = $state('');
 	let emailError = $state('');
@@ -125,8 +125,7 @@
 
 	<form onsubmit={handleSubmit} novalidate>
 		<div class="form-stack">
-			<div class="form-field">
-				<Label for="login-email">{m.email_label()}</Label>
+			<AuthFormField fieldId="login-email" label={m.email_label()} errorMessage={emailError}>
 				<Input
 					id="login-email"
 					type="email"
@@ -139,49 +138,27 @@
 					disabled={loading}
 					class={emailError ? 'border-destructive! ring-destructive/20! ring-3!' : ''}
 				/>
-				{#if emailError}
-					<span class="form-error-text" id="login-email-error">{emailError}</span>
-				{/if}
-			</div>
+			</AuthFormField>
 
-			<div class="form-field">
-				<Label for="login-password">{m.password_label()}</Label>
-				<div class="password-wrapper">
-					<Input
-						id="login-password"
-						type={showPassword ? 'text' : 'password'}
-						placeholder="........"
-						autocomplete="current-password"
-						bind:value={password}
-						onblur={handlePasswordBlur}
-						aria-invalid={passwordError ? true : undefined}
-						aria-describedby={passwordError ? 'login-password-error' : undefined}
-						disabled={loading}
-						class="{passwordError
-							? 'border-destructive! ring-destructive/20! ring-3!'
-							: ''} pr-11!"
-					/>
-					<button
-						class="password-toggle"
-						type="button"
-						aria-label={showPassword ? m.hide_password() : m.show_password()}
-						onclick={() => (showPassword = !showPassword)}
-						tabindex={-1}
-					>
-						{#if showPassword}
-							<EyeOffIcon class="size-4" />
-						{:else}
-							<EyeIcon class="size-4" />
-						{/if}
-					</button>
-				</div>
-				{#if passwordError}
-					<span class="form-error-text" id="login-password-error">{passwordError}</span>
-				{/if}
+			<AuthFormField
+				fieldId="login-password"
+				label={m.password_label()}
+				errorMessage={passwordError}
+			>
+				<AuthPasswordInput
+					fieldId="login-password"
+					bind:value={password}
+					autocomplete="current-password"
+					placeholder="........"
+					hasError={!!passwordError}
+					errorDescribedById={passwordError ? 'login-password-error' : undefined}
+					disabled={loading}
+					onblur={handlePasswordBlur}
+				/>
 				<a href={resolve('/reset-password')} class="forgot-link"
 					>{m.login_forgot_password()}</a
 				>
-			</div>
+			</AuthFormField>
 		</div>
 
 		<Button type="submit" class="mt-6 w-full" size="lg" disabled={loading}>
@@ -201,9 +178,11 @@
 		{loading}
 	/>
 
-	<div class="auth-footer">
-		{m.login_no_account()}&ensp;<a href={resolve('/register')}>{m.login_signup_link()}</a>
-	</div>
+	<AuthFooterLink
+		promptText={m.login_no_account()}
+		linkHref={resolve('/register')}
+		linkText={m.login_signup_link()}
+	/>
 </AuthFormCard>
 
 <style>
@@ -211,46 +190,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
-	}
-
-	.form-field {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.password-wrapper {
-		position: relative;
-	}
-
-	.password-toggle {
-		position: absolute;
-		right: 10px;
-		top: 50%;
-		transform: translateY(-50%);
-		background: none;
-		border: none;
-		color: var(--muted-foreground);
-		cursor: pointer;
-		padding: 4px;
-		display: flex;
-		align-items: center;
-		border-radius: var(--radius-sm);
-		transition: color var(--duration-fast);
-		line-height: 1;
-	}
-
-	.password-toggle:hover {
-		color: var(--foreground);
-	}
-
-	.form-error-text {
-		font-size: var(--text-xs);
-		color: var(--destructive);
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		line-height: var(--leading-snug);
 	}
 
 	.forgot-link {
@@ -265,24 +204,6 @@
 
 	.forgot-link:hover {
 		color: var(--primary);
-	}
-
-	.auth-footer {
-		text-align: center;
-		margin-top: var(--space-6);
-		font-size: var(--text-sm);
-		color: var(--muted-foreground);
-		line-height: var(--leading-relaxed);
-	}
-
-	.auth-footer :global(a) {
-		color: var(--primary);
-		text-decoration: none;
-		font-weight: var(--weight-semibold);
-	}
-
-	.auth-footer :global(a:hover) {
-		text-decoration: underline;
 	}
 
 	.spinner {
