@@ -36,6 +36,7 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 - `pnpm run check:all` -- full check suite (format + lint + typecheck + stylelint + fallow)
 - `pnpm run test` -- unit tests
 - `pnpm run test:e2e` -- E2E tests
+- `pnpm run db:seed` -- populate DB with test data (idempotent, safe to re-run)
 
 ## Svelte Rules
 
@@ -46,3 +47,16 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 
 - Drizzle with `strict: true` -- always enabled to prevent data loss on renames.
 - Schema in `src/lib/server/db/schema.ts`
+- Seed script: `src/lib/server/db/seed.ts` — run `pnpm db:seed` to populate test data.
+
+### Test Accounts (password: see `SEED_PASSWORD` in seed.ts — "password" + "123")
+
+| Email          | Name           | Role                                                |
+| -------------- | -------------- | --------------------------------------------------- |
+| martin@test.cz | Martin Novák   | Primary owner — 4 wishlists (active/draft/archived) |
+| jana@test.cz   | Jana Dvořáková | Owner + moderator on Martin's lists                 |
+| petr@test.cz   | Petr Svoboda   | Active gifter — many reservations                   |
+| eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                       |
+| tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list        |
+
+Seed includes 9 wishlists, 38 gifts, 21 reservations, 10 likes, moderator assignments, followers (incl. unfollowed), and notifications. All seed IDs are prefixed `seed-` for easy identification/cleanup.
