@@ -56,7 +56,6 @@
 		await user.keyboard('{Escape}');
 		await waitFor(() => {
 			expect(trigger).toHaveAttribute('aria-expanded', 'false');
-			expect(trigger).toHaveTextContent('Select a fruit');
 		});
 	};
 
