@@ -154,6 +154,7 @@
 
 <AuthBrandPanel>
 	{#snippet tagline()}
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 		{@html m.auth_tagline_reset()}
 	{/snippet}
 	{#snippet features()}

@@ -82,8 +82,10 @@
 <AuthBrandPanel>
 	{#snippet tagline()}
 		{#if sent}
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 			{@html m.auth_tagline_magic_sent()}
 		{:else}
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 			{@html m.auth_tagline_magic_default()}
 		{/if}
 	{/snippet}
@@ -109,6 +111,7 @@
 			</div>
 			<h2 class="success-title">{m.magic_sent_title()}</h2>
 			<p class="success-body">
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				{@html m.magic_sent_body({ email: sentEmail })}
 			</p>
 			<p class="success-body mt-hint">
