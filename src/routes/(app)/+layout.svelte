@@ -12,17 +12,20 @@
 
 	let { data, children }: AppLayoutProps = $props();
 
-	const user = $derived(data.user);
-	const userInitials = $derived(
-		user?.name
-			? user.name
-					.split(' ')
-					.map((part: string) => part[0])
-					.join('')
-					.toUpperCase()
-					.slice(0, 2)
-			: 'U',
+	const user: typeof data.user | null = $derived(
+		typeof data.user === 'object' ? data.user : null,
 	);
+	const userInitials = $derived.by(() => {
+		if (user !== null && typeof user.name === 'string' && user.name.length > 0) {
+			return user.name
+				.split(' ')
+				.map((part: string) => part[0])
+				.join('')
+				.toUpperCase()
+				.slice(0, 2);
+		}
+		return 'U';
+	});
 
 	setNotificationsContext();
 </script>
@@ -41,18 +44,20 @@
 </div>
 
 <style>
+	:global(body) {
+		margin: 0;
+		padding: 0;
+	}
+
 	.app-shell {
 		display: flex;
 		flex-direction: column;
-		min-height: 100dvh;
+		height: 100dvh;
+		overflow: hidden;
 	}
 
 	.app-content {
 		flex: 1;
-		width: 100%;
-		max-width: var(--content-max-width);
-		margin-inline: auto;
-		padding-inline: var(--space-6);
-		padding-block: var(--space-6);
+		overflow: auto;
 	}
 </style>

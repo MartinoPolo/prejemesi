@@ -6,8 +6,8 @@
 	import LogoMark from './LogoMark.svelte';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import type { NavLink } from './navbar-types.js';
-	import { isNavActive } from './navbar-utils.js';
+	import type { NavLink } from './navbar_types.js';
+	import { isNavActive } from './navbar_utils.js';
 
 	interface MobileNavProps {
 		navLinks: readonly NavLink[];

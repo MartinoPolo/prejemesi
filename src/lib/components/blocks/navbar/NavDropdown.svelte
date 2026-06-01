@@ -2,7 +2,7 @@
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import type { NavDropdownItem } from './navbar-types.js';
+	import type { NavDropdownItem } from './navbar_types.js';
 
 	interface NavDropdownProps {
 		title: string;

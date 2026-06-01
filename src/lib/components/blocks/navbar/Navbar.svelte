@@ -7,8 +7,8 @@
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
-	import type { NavDropdownItem } from './navbar-types.js';
-	import { isNavActive } from './navbar-utils.js';
+	import type { NavDropdownItem } from './navbar_types.js';
+	import { isNavActive } from './navbar_utils.js';
 	import UserMenu from './UserMenu.svelte';
 	import MobileNav from './MobileNav.svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';

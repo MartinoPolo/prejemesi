@@ -10,7 +10,7 @@
 </script>
 
 <script lang="ts">
-	import type { NavDropdownItem } from './navbar-types.js';
+	import type { NavDropdownItem } from './navbar_types.js';
 
 	const sampleItems: NavDropdownItem[] = [
 		{
