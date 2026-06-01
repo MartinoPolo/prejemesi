@@ -73,7 +73,7 @@ export const THEME_PRESETS = {
 		label: () => m.theme_default(),
 		palette: DEFAULT_PALETTE,
 		gradient:
-			'linear-gradient(145deg, oklch(0.48 0.12 150), oklch(0.56 0.14 145), oklch(0.42 0.1 155))',
+			'linear-gradient(145deg, oklch(0.64 0.14 150), oklch(0.72 0.16 145), oklch(0.58 0.12 155))',
 	},
 	christmas: {
 		name: 'christmas',
@@ -81,7 +81,7 @@ export const THEME_PRESETS = {
 		label: () => m.theme_christmas(),
 		palette: CHRISTMAS_PALETTE,
 		gradient:
-			'linear-gradient(145deg, oklch(0.45 0.15 25), oklch(0.50 0.14 145), oklch(0.65 0.12 85))',
+			'linear-gradient(145deg, oklch(0.62 0.17 25), oklch(0.66 0.16 145), oklch(0.78 0.13 85))',
 	},
 	birthday: {
 		name: 'birthday',
@@ -89,7 +89,7 @@ export const THEME_PRESETS = {
 		label: () => m.theme_birthday(),
 		palette: BIRTHDAY_PALETTE,
 		gradient:
-			'linear-gradient(145deg, oklch(0.55 0.16 330), oklch(0.50 0.14 290), oklch(0.65 0.12 85))',
+			'linear-gradient(145deg, oklch(0.70 0.18 330), oklch(0.66 0.16 290), oklch(0.78 0.13 85))',
 	},
 	fun: {
 		name: 'fun',
@@ -97,7 +97,7 @@ export const THEME_PRESETS = {
 		label: () => m.theme_fun(),
 		palette: FUN_PALETTE,
 		gradient:
-			'linear-gradient(145deg, oklch(0.55 0.14 250), oklch(0.70 0.16 65), oklch(0.65 0.15 45))',
+			'linear-gradient(145deg, oklch(0.70 0.16 250), oklch(0.82 0.17 65), oklch(0.78 0.16 45))',
 	},
 	elegant: {
 		name: 'elegant',
@@ -105,7 +105,7 @@ export const THEME_PRESETS = {
 		label: () => m.theme_elegant(),
 		palette: ELEGANT_PALETTE,
 		gradient:
-			'linear-gradient(145deg, oklch(0.30 0.04 260), oklch(0.40 0.05 255), oklch(0.70 0.10 85))',
+			'linear-gradient(145deg, oklch(0.48 0.05 260), oklch(0.58 0.06 255), oklch(0.82 0.11 85))',
 	},
 } satisfies Record<ThemePresetName, ThemePresetDefinition>;
 

@@ -20,11 +20,11 @@ const [useGifts, setGiftsInternal] = createContext<GiftsContext>();
 export { useGifts };
 
 export function setGiftsContext(
-	initialGifts: GiftByRole[],
-	role: WishlistRole,
-	isArchived: boolean,
+	getGifts: () => GiftByRole[],
+	getRole: () => WishlistRole,
+	getIsArchived: () => boolean,
 ) {
-	const context = createGiftsContext(initialGifts, role, isArchived);
+	const context = createGiftsContext(getGifts, getRole, getIsArchived);
 	setGiftsInternal(context);
 	return context;
 }
@@ -35,10 +35,19 @@ function isGiftViewMode(value: unknown): value is GiftViewMode {
 	);
 }
 
-function createGiftsContext(initialGifts: GiftByRole[], role: WishlistRole, isArchived: boolean) {
-	const gifts = new StateRaw<GiftByRole[]>(initialGifts);
-	const viewerRole = new StateRaw<WishlistRole>(role);
-	const archived = new StateRaw(isArchived);
+function createGiftsContext(
+	getGifts: () => GiftByRole[],
+	getRole: () => WishlistRole,
+	getIsArchived: () => boolean,
+) {
+	const gifts = new Derived(getGifts);
+	const viewerRole = new Derived(getRole);
+	const archived = new Derived(getIsArchived);
+
+	const reorderOverride = new StateRaw<GiftByRole[] | null>(null);
+	const effectiveGifts = new Derived<GiftByRole[]>(
+		() => reorderOverride.current ?? gifts.current,
+	);
 
 	const viewMode = new Persisted<GiftViewMode>({
 		key: 'darecky-gift-view-mode',
@@ -57,9 +66,8 @@ function createGiftsContext(initialGifts: GiftByRole[], role: WishlistRole, isAr
 	);
 
 	const sortedAndFilteredGifts = new Derived<GiftByRole[]>(() => {
-		let result = [...gifts.current];
+		let result = [...effectiveGifts.current];
 
-		// Apply filters (only for visitor/moderator with reservation data)
 		const currentFilters = filters.current;
 		if (currentFilters.availableOnly && viewerRole.current !== 'owner') {
 			result = result.filter((giftItem) => {
@@ -71,7 +79,6 @@ function createGiftsContext(initialGifts: GiftByRole[], role: WishlistRole, isAr
 			result = result.filter((giftItem) => giftItem.url !== null && giftItem.url !== '');
 		}
 
-		// Apply sort
 		const currentSort = sortOption.current;
 		result.sort((a, b) => {
 			switch (currentSort) {
@@ -104,39 +111,23 @@ function createGiftsContext(initialGifts: GiftByRole[], role: WishlistRole, isAr
 		return result;
 	});
 
-	const giftCount = new Derived(() => gifts.current.length);
+	const giftCount = new Derived(() => effectiveGifts.current.length);
 	const filteredCount = new Derived(() => sortedAndFilteredGifts.current.length);
 
-	/** Replace the full gifts list (e.g. after server refetch) */
-	function replaceGifts(newGifts: GiftByRole[]) {
-		gifts.current = newGifts;
-	}
-
-	/** Add a single gift to the list */
-	function addGift(newGift: GiftByRole) {
-		gifts.current = [...gifts.current, newGift];
-	}
-
-	/** Update a single gift in the list */
-	function updateGift(updatedGift: GiftByRole) {
-		gifts.current = gifts.current.map((g) => (g.id === updatedGift.id ? updatedGift : g));
-	}
-
-	/** Remove a gift from the list */
-	function removeGift(giftId: string) {
-		gifts.current = gifts.current.filter((g) => g.id !== giftId);
-	}
-
-	/** Reorder gifts by updating sortOrder values */
 	function reorderGifts(reorderedGifts: GiftByRole[]) {
-		gifts.current = reorderedGifts.map((g, index) => ({
+		reorderOverride.current = reorderedGifts.map((g, index) => ({
 			...g,
 			sortOrder: index,
 		}));
 	}
 
+	function clearReorderOverride() {
+		reorderOverride.current = null;
+	}
+
 	return {
 		gifts,
+		effectiveGifts,
 		viewerRole,
 		archived,
 		viewMode,
@@ -146,10 +137,7 @@ function createGiftsContext(initialGifts: GiftByRole[], role: WishlistRole, isAr
 		sortedAndFilteredGifts,
 		giftCount,
 		filteredCount,
-		replaceGifts,
-		addGift,
-		updateGift,
-		removeGift,
 		reorderGifts,
+		clearReorderOverride,
 	};
 }

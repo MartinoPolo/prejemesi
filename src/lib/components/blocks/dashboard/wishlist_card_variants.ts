@@ -5,8 +5,8 @@ export const wishlistCardVariants = tv({
 		root: 'group/card relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-slow ease-out',
 		banner: 'relative flex h-45 shrink-0 items-center justify-center overflow-hidden',
 		bannerOverlay:
-			'pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 via-black/30 to-black/65',
-		bannerEmoji: 'select-none text-6xl opacity-50 drop-shadow-lg',
+			'pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black/45 dark:from-black/10 dark:via-black/30 dark:to-black/65',
+		bannerEmoji: 'select-none text-6xl opacity-70 drop-shadow-lg dark:opacity-45',
 		bannerTitle:
 			'absolute bottom-3 left-3.5 right-20 font-heading text-lg font-bold leading-tight tracking-tight text-white/95 [text-shadow:0_1px_3px_oklch(0_0_0/0.45)]',
 		statusBadge:

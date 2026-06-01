@@ -98,7 +98,6 @@
 		isSubmitting = true;
 		try {
 			await shareWishlist(wishlistId);
-			sharing.markShared();
 			sharing.goToStep(SHARE_WIZARD_STEPS.success);
 			onshared?.();
 		} catch (thrown) {

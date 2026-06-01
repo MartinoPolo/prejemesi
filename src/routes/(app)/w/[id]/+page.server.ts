@@ -4,7 +4,8 @@ import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 import { followWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 
-export const load: PageServerLoad = async ({ params, parent }) => {
+export const load: PageServerLoad = async ({ params, parent, depends }) => {
+	depends('app:wishlist-data');
 	const [parentData, wishlistData, giftsData] = await Promise.all([
 		parent(),
 		getWishlistByShortId(params.id),

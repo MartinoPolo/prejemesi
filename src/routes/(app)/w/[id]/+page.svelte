@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
@@ -22,7 +23,7 @@
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { setWishlistThemeContext } from '$lib/modules/themes/themes.context.svelte.js';
 	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply_theme.js';
-	import { isCustomTheme } from '$lib/modules/themes/types.js';
+	import { isCustomTheme, toWishlistTheme } from '$lib/modules/themes/types.js';
 	import type { WishlistTheme } from '$lib/modules/themes/types.js';
 	import { updateWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { unfollowWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
@@ -38,7 +39,6 @@
 		reorderGifts,
 		markGiftReceived,
 		getPriorityLevels,
-		getGiftsByWishlistShortId,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import type {
 		GiftFilters,
@@ -61,39 +61,39 @@
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 
 	const giftsContext = untrack(() =>
-		setGiftsContext(data.gifts, data.role, data.wishlist.status === 'archived'),
+		setGiftsContext(
+			() => data.gifts,
+			() => data.role,
+			() => data.wishlist.status === 'archived',
+		),
 	);
 
-	// Set likes context for visitor/moderator
-	untrack(() => setLikesContext(data.userLikedGiftIds));
+	untrack(() => setLikesContext(() => data.userLikedGiftIds));
 
-	// Set sharing context for owner
 	const sharingContext = untrack(() =>
-		setSharingContext(data.wishlist.shortId, data.wishlist.sharedAt !== null),
+		setSharingContext(
+			() => data.wishlist.shortId,
+			() => data.wishlist.sharedAt !== null,
+		),
 	);
 
-	// Set wishlist theme context
 	const themeContext = untrack(() =>
-		setWishlistThemeContext(data.wishlist.theme, data.wishlist.customThemeColor),
+		setWishlistThemeContext(() =>
+			toWishlistTheme(data.wishlist.theme, data.wishlist.customThemeColor),
+		),
 	);
 
-	// Optimistic overrides — null means "use server data"
-	let statusOverride = $state<'draft' | 'active' | 'archived' | null>(null);
-	const wishlistStatus = $derived(
-		statusOverride ?? (data.wishlist.status as 'draft' | 'active' | 'archived'),
-	);
+	const wishlistStatus = $derived(data.wishlist.status as 'draft' | 'active' | 'archived');
 
 	let moderatorPanelOpen = $state(false);
-	let moderatorOverride = $state<boolean | null>(null);
-	const ownerIsModeratorLocal = $derived(moderatorOverride ?? data.wishlist.ownerIsModerator);
+	const ownerIsModeratorLocal = $derived(data.wishlist.ownerIsModerator);
 
 	function handleModeratorsOpened() {
 		moderatorPanelOpen = true;
 	}
 
-	function handleSelfPromoted() {
-		moderatorOverride = true;
-		void refreshGifts();
+	async function handleSelfPromoted() {
+		await invalidate('app:wishlist-data');
 	}
 
 	function handleShareOpened() {
@@ -101,7 +101,7 @@
 	}
 
 	function handleShared() {
-		statusOverride = 'active';
+		void invalidate('app:wishlist-data');
 	}
 
 	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
@@ -152,7 +152,6 @@
 			return true;
 		}
 		if (isOwner) {
-			// Owner can only edit gifts added after sharing
 			if (wishlist.sharedAt !== null) {
 				return new Date(selectedGift.createdAt) > new Date(wishlist.sharedAt);
 			}
@@ -165,7 +164,6 @@
 		if (!canEditSelectedGift) {
 			return false;
 		}
-		// Cannot delete reserved gifts (only visible for visitor/moderator)
 		if (
 			'reservedCount' in selectedGift! &&
 			(selectedGift as { reservedCount: number }).reservedCount > 0
@@ -216,21 +214,12 @@
 		}
 	}
 
-	async function refreshGifts() {
-		try {
-			const result = await getGiftsByWishlistShortId(wishlist.shortId);
-			giftsContext.replaceGifts(result.gifts);
-		} catch (thrown) {
-			console.error('Failed to refresh gifts:', thrown);
-		}
-	}
-
 	async function handleCreate(input: CreateGiftInput) {
 		isSubmitting = true;
 		try {
 			await createGift(input);
 			modalOpen = false;
-			await refreshGifts();
+			await invalidate('app:wishlist-data');
 		} catch (thrown) {
 			console.error('Failed to create gift:', thrown);
 		} finally {
@@ -243,7 +232,7 @@
 		try {
 			await updateGiftRemote(input);
 			modalOpen = false;
-			await refreshGifts();
+			await invalidate('app:wishlist-data');
 		} catch (thrown) {
 			console.error('Failed to update gift:', thrown);
 		} finally {
@@ -256,7 +245,7 @@
 		try {
 			await deleteGift(giftId);
 			modalOpen = false;
-			await refreshGifts();
+			await invalidate('app:wishlist-data');
 		} catch (thrown) {
 			console.error('Failed to delete gift:', thrown);
 		} finally {
@@ -267,7 +256,7 @@
 	async function handleReceived(giftId: string, received: boolean) {
 		try {
 			await markGiftReceived({ giftId, received });
-			await refreshGifts();
+			await invalidate('app:wishlist-data');
 		} catch (thrown) {
 			console.error('Failed to toggle received:', thrown);
 		}
@@ -310,7 +299,8 @@
 				customThemeColor,
 			});
 
-			themeContext.commitTheme(theme);
+			themeContext.cancelPreview();
+			await invalidate('app:wishlist-data');
 			themeSheetOpen = false;
 			toastSuccess(m.toast_theme_saved());
 		} catch (thrown) {
@@ -352,8 +342,7 @@
 			return;
 		}
 
-		// Reorder locally
-		const items = [...giftsContext.gifts.current];
+		const items = [...giftsContext.effectiveGifts.current];
 		const [movedItem] = items.splice(draggedIndex, 1);
 		if (movedItem === undefined) {
 			draggedIndex = null;
@@ -366,16 +355,18 @@
 		draggedIndex = null;
 		dragOverIndex = null;
 
-		// Persist to server
 		try {
 			const reorderItems = items.map((item, index) => ({
 				id: item.id,
 				sortOrder: index,
 			}));
 			await reorderGifts(reorderItems);
+			giftsContext.clearReorderOverride();
+			await invalidate('app:wishlist-data');
 		} catch (thrown) {
 			console.error('Failed to reorder gifts:', thrown);
-			await refreshGifts();
+			giftsContext.clearReorderOverride();
+			await invalidate('app:wishlist-data');
 		}
 	}
 
@@ -408,7 +399,7 @@
 			reserveModalOpen = false;
 			reservingGift = null;
 			toastSuccess(m.toast_gift_reserved());
-			await refreshGifts();
+			await invalidate('app:wishlist-data');
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {

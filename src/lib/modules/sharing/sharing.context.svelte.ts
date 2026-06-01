@@ -8,17 +8,17 @@ type SharingContext = ReturnType<typeof createSharingContext>;
 const [useSharing, setSharingInternal] = createContext<SharingContext>();
 export { useSharing };
 
-export function setSharingContext(shortId: string, isAlreadyShared: boolean) {
-	const context = createSharingContext(shortId, isAlreadyShared);
+export function setSharingContext(getShortId: () => string, getIsShared: () => boolean) {
+	const context = createSharingContext(getShortId, getIsShared);
 	setSharingInternal(context);
 	return context;
 }
 
-function createSharingContext(shortId: string, isAlreadyShared: boolean) {
+function createSharingContext(getShortId: () => string, getIsShared: () => boolean) {
 	const wizardOpen = new StateRaw(false);
 	const wizardStep = new StateRaw<ShareWizardStep>(SHARE_WIZARD_STEPS.confirm);
-	const wishlistShortId = new StateRaw(shortId);
-	const shared = new StateRaw(isAlreadyShared);
+	const wishlistShortId = new Derived(getShortId);
+	const shared = new Derived(getIsShared);
 	const linkCopied = new StateRaw(false);
 
 	const shareUrl = new Derived(() => {
@@ -33,7 +33,6 @@ function createSharingContext(shortId: string, isAlreadyShared: boolean) {
 
 	function openWizard() {
 		if (shared.current) {
-			// Already shared — skip confirmation, go directly to share step
 			wizardStep.current = SHARE_WIZARD_STEPS.share;
 		} else {
 			wizardStep.current = SHARE_WIZARD_STEPS.confirm;
@@ -50,10 +49,6 @@ function createSharingContext(shortId: string, isAlreadyShared: boolean) {
 		wizardStep.current = step;
 	}
 
-	function markShared() {
-		shared.current = true;
-	}
-
 	async function copyLink() {
 		try {
 			await navigator.clipboard.writeText(shareUrl.current);
@@ -62,7 +57,6 @@ function createSharingContext(shortId: string, isAlreadyShared: boolean) {
 				linkCopied.current = false;
 			}, 2000);
 		} catch {
-			// Fallback: try execCommand
 			const textArea = document.createElement('textarea');
 			textArea.value = shareUrl.current;
 			textArea.style.position = 'fixed';
@@ -89,7 +83,6 @@ function createSharingContext(shortId: string, isAlreadyShared: boolean) {
 		openWizard,
 		closeWizard,
 		goToStep,
-		markShared,
 		copyLink,
 	};
 }
