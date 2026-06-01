@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { eq, and, isNull, sql, count as drizzleCount, inArray } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
@@ -5,20 +6,17 @@ import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
-import type {
-	GiftForOwner,
-	GiftForVisitor,
-	CreateGiftInput,
-	UpdateGiftInput,
-	ReorderGiftItem,
+import {
+	CreateGiftInputSchema,
+	UpdateGiftInputSchema,
+	ReorderGiftItemSchema,
+	MarkGiftReceivedInputSchema,
+	type GiftForOwner,
+	type GiftForVisitor,
 } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
-/**
- * Fetch gifts for a wishlist by its shortId.
- * Determines viewer role and strips reservation data for owners.
- */
-export const getGiftsByWishlistShortId = publicQuery(async (authContext, shortId: string) => {
+export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
 
 	// Find wishlist
@@ -102,8 +100,6 @@ export const getGiftsByWishlistShortId = publicQuery(async (authContext, shortId
 
 		return { role, gifts: ownerGifts } as const;
 	}
-
-	// Owner with self-promote sees reservation data (role stays 'owner' for UI)
 
 	// Visitor/Moderator: include reservation counts and like counts
 	const giftIds = giftRows.map((row) => row.id);
@@ -215,7 +211,7 @@ async function verifyOwnerOrModerator(
 
 // ── Commands ────────────────────────────────────────────────────────────────
 
-export const createGift = guardedCommand(async ({ user }, input: CreateGiftInput) => {
+export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user }, input) => {
 	const database = getDb();
 	await verifyOwnerOrModerator(user.id, input.wishlistId);
 
@@ -251,7 +247,7 @@ export const createGift = guardedCommand(async ({ user }, input: CreateGiftInput
 	return created;
 });
 
-export const updateGift = guardedCommand(async ({ user }, input: UpdateGiftInput) => {
+export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
 	// Find the gift
@@ -316,7 +312,7 @@ export const updateGift = guardedCommand(async ({ user }, input: UpdateGiftInput
 	return updated;
 });
 
-export const deleteGift = guardedCommand(async ({ user }, giftId: string) => {
+export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) => {
 	const database = getDb();
 
 	// Find the gift
@@ -359,38 +355,42 @@ export const deleteGift = guardedCommand(async ({ user }, giftId: string) => {
 		.where(eq(gift.id, giftId));
 });
 
-export const reorderGifts = guardedCommand(async ({ user }, items: ReorderGiftItem[]) => {
-	if (items.length === 0) {
-		return;
-	}
+export const reorderGifts = guardedCommand(
+	v.array(ReorderGiftItemSchema),
+	async ({ user }, items) => {
+		if (items.length === 0) {
+			return;
+		}
 
-	const database = getDb();
+		const database = getDb();
 
-	// Get the wishlistId from the first gift
-	const firstGiftRows = await database
-		.select({ wishlistId: gift.wishlistId })
-		.from(gift)
-		.where(eq(gift.id, items[0]!.id))
-		.limit(1);
+		// Get the wishlistId from the first gift
+		const firstGiftRows = await database
+			.select({ wishlistId: gift.wishlistId })
+			.from(gift)
+			.where(eq(gift.id, items[0]!.id))
+			.limit(1);
 
-	const firstGift = firstGiftRows[0];
-	if (firstGift === undefined) {
-		error(404, 'Gift not found');
-	}
+		const firstGift = firstGiftRows[0];
+		if (firstGift === undefined) {
+			error(404, 'Gift not found');
+		}
 
-	await verifyOwnerOrModerator(user.id, firstGift.wishlistId);
+		await verifyOwnerOrModerator(user.id, firstGift.wishlistId);
 
-	// Batch update sortOrder
-	for (const item of items) {
-		await database
-			.update(gift)
-			.set({ sortOrder: item.sortOrder, updatedAt: new Date() })
-			.where(and(eq(gift.id, item.id), isNull(gift.deletedAt)));
-	}
-});
+		// Batch update sortOrder
+		for (const item of items) {
+			await database
+				.update(gift)
+				.set({ sortOrder: item.sortOrder, updatedAt: new Date() })
+				.where(and(eq(gift.id, item.id), isNull(gift.deletedAt)));
+		}
+	},
+);
 
 export const markGiftReceived = guardedCommand(
-	async ({ user }, input: { giftId: string; received: boolean }) => {
+	MarkGiftReceivedInputSchema,
+	async ({ user }, input) => {
 		const database = getDb();
 
 		const giftRows = await database
@@ -430,7 +430,7 @@ export const markGiftReceived = guardedCommand(
 );
 
 /** Fetch priority levels for a wishlist */
-export const getPriorityLevels = guardedQueryWithArgs(async ({ user }, wishlistId: string) => {
+export const getPriorityLevels = guardedQueryWithArgs(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	// Verify access

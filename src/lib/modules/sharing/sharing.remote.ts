@@ -1,14 +1,11 @@
+import * as v from 'valibot';
 import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { guardedCommand } from '$lib/server/remote.js';
 
-/**
- * Share a wishlist: sets sharedAt timestamp and status to 'active'.
- * Owner only. Returns the wishlist shortId for building the public URL.
- */
-export const shareWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const shareWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	const rows = await database
@@ -25,7 +22,6 @@ export const shareWishlist = guardedCommand(async ({ user }, wishlistId: string)
 		error(403, 'Not authorized');
 	}
 	if (row.sharedAt !== null) {
-		// Already shared — return existing shortId
 		return { shortId: row.shortId, alreadyShared: true } as const;
 	}
 

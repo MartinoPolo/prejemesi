@@ -38,13 +38,13 @@ function makeRemoteWrapper(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
-	publicCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		makeRemoteWrapper('command', handler),
 	),
-	publicQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	publicQuery: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		makeRemoteWrapper('query', handler),
 	),
-	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		makeRemoteWrapper('command', handler),
 	),
 	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>

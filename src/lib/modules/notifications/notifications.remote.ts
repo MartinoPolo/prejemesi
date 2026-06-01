@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
@@ -43,7 +44,7 @@ export const getUnreadCount = guardedQuery(async ({ user }) => {
 
 // ── Commands ────────────────────────────────────────────────────────────────
 
-export const markAsRead = guardedCommand(async ({ user }, notificationIds: string[]) => {
+export const markAsRead = guardedCommand(v.array(v.string()), async ({ user }, notificationIds) => {
 	if (notificationIds.length === 0) {
 		return;
 	}

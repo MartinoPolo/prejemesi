@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
@@ -14,12 +15,16 @@ export interface UserProfile {
 	isOAuthUser: boolean;
 }
 
+const UpdateProfileInputSchema = v.object({
+	name: v.string(),
+	image: v.nullable(v.string()),
+});
+
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<UserProfile> => {
 	const database = getDb();
 
-	// Check if user has an OAuth account (non-credential provider)
 	const accounts = await database
 		.select({ providerId: account.providerId })
 		.from(account)
@@ -39,7 +44,8 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 // ── Commands ───────────────────────────────────────────────────────────────
 
 export const updateProfile = guardedCommand(
-	async ({ user: authUser }, input: { name: string; image: string | null }) => {
+	UpdateProfileInputSchema,
+	async ({ user: authUser }, input) => {
 		const database = getDb();
 
 		await database
@@ -56,6 +62,5 @@ export const updateProfile = guardedCommand(
 export const deleteAccount = guardedCommandNoArgs(async ({ user: authUser }) => {
 	const database = getDb();
 
-	// Cascade delete handles sessions, accounts, etc.
 	await database.delete(user).where(eq(user.id, authUser.id));
 });

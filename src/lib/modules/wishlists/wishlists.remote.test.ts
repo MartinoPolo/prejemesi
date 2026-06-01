@@ -27,14 +27,16 @@ function wrapWithRemoteMarker(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
 	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
-	publicQuery: vi.fn((handler: (...args: unknown[]) => unknown) => wrapWithRemoteMarker(handler)),
-	publicCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	publicQuery: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
+		wrapWithRemoteMarker(handler),
+	),
+	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
 }));

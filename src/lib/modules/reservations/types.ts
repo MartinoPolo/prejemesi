@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import type { reservation } from '$lib/server/db/gift.schema.js';
 
 /** Full reservation row from DB */
@@ -20,7 +21,18 @@ export interface ReserveGiftInput {
 	anonymousEmail?: string;
 }
 
+export const ReserveGiftInputSchema = v.object({
+	giftId: v.string(),
+	quantity: v.number(),
+	anonymousName: v.optional(v.string()),
+	anonymousEmail: v.optional(v.string()),
+});
+
 /** Input for unreserving a gift */
 export interface UnreserveInput {
 	reservationId: string;
 }
+
+export const UnreserveInputSchema = v.object({
+	reservationId: v.string(),
+});

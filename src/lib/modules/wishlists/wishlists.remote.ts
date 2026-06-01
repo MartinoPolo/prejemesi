@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
@@ -9,8 +10,8 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
-	type CreateWishlistInput,
-	type UpdateWishlistInput,
+	CreateWishlistInputSchema,
+	UpdateWishlistInputSchema,
 	type WishlistRole,
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist } from './dashboard_types.js';
@@ -26,7 +27,7 @@ export const getMyWishlists = guardedQuery(async ({ user }) => {
 		.orderBy(wishlist.createdAt);
 });
 
-export const getWishlistByShortId = publicQuery(async (authContext, shortId: string) => {
+export const getWishlistByShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
 
 	const rows = await database
@@ -186,7 +187,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 
-export const createWishlist = guardedCommand(async ({ user }, input: CreateWishlistInput) => {
+export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
 	const [created] = await database
@@ -215,7 +216,7 @@ export const createWishlist = guardedCommand(async ({ user }, input: CreateWishl
 	return created;
 });
 
-export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishlistInput) => {
+export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
 	// Verify ownership
@@ -278,7 +279,7 @@ export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishl
 	return updated;
 });
 
-export const archiveWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	const existing = await database
@@ -308,7 +309,7 @@ export const archiveWishlist = guardedCommand(async ({ user }, wishlistId: strin
 	return archived;
 });
 
-export const deleteWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	const existing = await database
@@ -337,11 +338,7 @@ export const deleteWishlist = guardedCommand(async ({ user }, wishlistId: string
 
 // ── Follower Commands ──────────────────────────────────────────────────────
 
-/**
- * Auto-follow a wishlist on first visit.
- * No-op if user is the owner or already following.
- */
-export const followWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const followWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	// Verify wishlist exists
@@ -396,10 +393,7 @@ export const followWishlist = guardedCommand(async ({ user }, wishlistId: string
 	return { followed: true, alreadyFollowing: false };
 });
 
-/**
- * Unfollow a wishlist. Sets unfollowedAt timestamp.
- */
-export const unfollowWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const unfollowWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	await database
@@ -410,10 +404,7 @@ export const unfollowWishlist = guardedCommand(async ({ user }, wishlistId: stri
 		);
 });
 
-/**
- * Re-follow a previously unfollowed wishlist. Clears unfollowedAt.
- */
-export const refollowWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	await database

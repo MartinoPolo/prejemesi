@@ -1,6 +1,7 @@
 import { getRequestEvent, query, command } from '$app/server';
 import { error } from '@sveltejs/kit';
 import type { User, Session } from 'better-auth';
+import type { StandardSchemaV1 } from '@standard-schema/spec';
 
 interface AuthContext {
 	user: User;
@@ -26,19 +27,24 @@ export function guardedQuery<TResult>(handler: (authContext: AuthContext) => TRe
 	});
 }
 
-export function guardedQueryWithArgs<TArg, TResult>(
-	handler: (authContext: AuthContext, arg: TArg) => TResult,
+export function guardedQueryWithArgs<TSchema extends StandardSchemaV1, TResult>(
+	schema: TSchema,
+	handler: (authContext: AuthContext, arg: StandardSchemaV1.InferOutput<TSchema>) => TResult,
 ) {
-	return query('unchecked', (arg: TArg) => {
+	return query(schema, (arg: StandardSchemaV1.InferOutput<TSchema>) => {
 		const authContext = getAuthContext();
 		return handler(authContext, arg);
 	});
 }
 
-export function publicQuery<TArg, TResult>(
-	handler: (authContext: AuthContext | null, arg: TArg) => TResult,
+export function publicQuery<TSchema extends StandardSchemaV1, TResult>(
+	schema: TSchema,
+	handler: (
+		authContext: AuthContext | null,
+		arg: StandardSchemaV1.InferOutput<TSchema>,
+	) => TResult,
 ) {
-	return query('unchecked', (arg: TArg) => {
+	return query(schema, (arg: StandardSchemaV1.InferOutput<TSchema>) => {
 		const event = getRequestEvent();
 		const user = event.locals.user;
 		const session = event.locals.session;
@@ -47,10 +53,11 @@ export function publicQuery<TArg, TResult>(
 	});
 }
 
-export function guardedCommand<TArg, TResult>(
-	handler: (authContext: AuthContext, arg: TArg) => TResult,
+export function guardedCommand<TSchema extends StandardSchemaV1, TResult>(
+	schema: TSchema,
+	handler: (authContext: AuthContext, arg: StandardSchemaV1.InferOutput<TSchema>) => TResult,
 ) {
-	return command('unchecked', (arg: TArg) => {
+	return command(schema, (arg: StandardSchemaV1.InferOutput<TSchema>) => {
 		const authContext = getAuthContext();
 		return handler(authContext, arg);
 	});
@@ -63,14 +70,14 @@ export function guardedCommandNoArgs<TResult>(handler: (authContext: AuthContext
 	});
 }
 
-/**
- * A public command that does not require authentication.
- * Optionally receives user/session if logged in.
- */
-export function publicCommand<TArg, TResult>(
-	handler: (authContext: AuthContext | null, arg: TArg) => TResult,
+export function publicCommand<TSchema extends StandardSchemaV1, TResult>(
+	schema: TSchema,
+	handler: (
+		authContext: AuthContext | null,
+		arg: StandardSchemaV1.InferOutput<TSchema>,
+	) => TResult,
 ) {
-	return command('unchecked', (arg: TArg) => {
+	return command(schema, (arg: StandardSchemaV1.InferOutput<TSchema>) => {
 		const event = getRequestEvent();
 		const user = event.locals.user;
 		const session = event.locals.session;

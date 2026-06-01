@@ -21,7 +21,7 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
+	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
