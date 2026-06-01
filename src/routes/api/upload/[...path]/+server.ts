@@ -1,4 +1,17 @@
+/**
+ * Upload proxy route — intentional design choice over R2 presigned URLs.
+ *
+ * Trade-off: upload bandwidth flows through the server. Acceptable for images
+ * (max 10 MB). Consider presigned URLs if video/large-file uploads are added.
+ *
+ * Benefits of proxying:
+ * - HMAC token verification binds each upload to a specific user + objectKey
+ * - Session cookie auth works without CORS presigned URL complexity
+ * - Content-type and size validation happens server-side before storage
+ * - Simpler client code — PUT to a same-origin URL
+ */
 import { error, json } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types.js';
 import {
 	isAllowedContentType,
@@ -9,13 +22,48 @@ import {
 	MAX_FILE_SIZE,
 	UPLOAD_TARGETS,
 } from '$lib/server/storage/r2.js';
+import { verifyUploadToken } from '$lib/server/crypto/upload_token.js';
+import type { UploadTokenPayload } from '$lib/server/crypto/upload_token.js';
 
-/**
- * PUT handler — receives a file upload and stores it in R2.
- * The object key comes from the URL path (e.g., /api/upload/gifts/abc123.jpg).
- *
- * In development without R2 bindings, files are stored in a local Map.
- */
+async function extractAndVerifyToken(request: Request): Promise<UploadTokenPayload> {
+	const tokenHeader = request.headers.get('x-upload-token');
+	if (tokenHeader == null || tokenHeader === '') {
+		error(403, 'Missing upload token');
+	}
+
+	const key = env.AUTH_SECRET;
+	if (key == null || key === '') {
+		throw new Error(
+			'AUTH_SECRET environment variable is required for upload token verification',
+		);
+	}
+
+	let payload: UploadTokenPayload;
+	try {
+		payload = await verifyUploadToken(tokenHeader, key);
+	} catch {
+		error(403, 'Invalid upload token');
+	}
+
+	if (payload.expiresAt < Date.now()) {
+		error(401, 'Upload token expired');
+	}
+
+	return payload;
+}
+
+function validateTokenBinding(
+	payload: UploadTokenPayload,
+	userId: string,
+	objectKey: string,
+): void {
+	if (payload.userId !== userId) {
+		error(403, 'Upload token user mismatch');
+	}
+	if (payload.objectKey !== objectKey) {
+		error(403, 'Upload token path mismatch');
+	}
+}
 
 // In-memory fallback store for local development (no persistence across restarts)
 const localDevStore = new Map<string, { body: ArrayBuffer; contentType: string }>();
@@ -39,6 +87,9 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	if (!objectKey) {
 		error(400, 'Missing upload path');
 	}
+
+	const tokenPayload = await extractAndVerifyToken(request);
+	validateTokenBinding(tokenPayload, locals.user.id, objectKey);
 
 	const target = getTargetFromPath(objectKey);
 	if (!target) {
@@ -130,10 +181,7 @@ export const GET: RequestHandler = async ({ params }) => {
 	});
 };
 
-/**
- * DELETE handler — removes a file from R2 (or local dev store).
- */
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	if (locals.user == null || locals.session == null) {
 		error(401, 'Authentication required');
 	}
@@ -142,6 +190,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	if (!objectKey) {
 		error(400, 'Missing path');
 	}
+
+	const tokenPayload = await extractAndVerifyToken(request);
+	validateTokenBinding(tokenPayload, locals.user.id, objectKey);
 
 	if (isR2Available()) {
 		await deleteObject(objectKey);
