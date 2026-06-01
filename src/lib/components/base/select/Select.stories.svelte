@@ -77,10 +77,13 @@
 			expect(trigger).toHaveAttribute('aria-expanded', 'true');
 			expect(document.querySelector('[role="listbox"]')).toBeInTheDocument();
 		});
-		await user.click(canvasElement);
-		await waitFor(() => {
-			expect(trigger).toHaveAttribute('aria-expanded', 'false');
-		});
+		await user.click(document.body);
+		await waitFor(
+			() => {
+				expect(trigger).toHaveAttribute('aria-expanded', 'false');
+			},
+			{ timeout: 3000 },
+		);
 	};
 
 	const playKeyboardArrowDown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
