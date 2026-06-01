@@ -23,7 +23,7 @@ export interface ReserveGiftInput {
 
 export const ReserveGiftInputSchema = v.object({
 	giftId: v.string(),
-	quantity: v.number(),
+	quantity: v.pipe(v.number(), v.integer(), v.minValue(1)),
 	anonymousName: v.optional(v.string()),
 	anonymousEmail: v.optional(v.string()),
 });

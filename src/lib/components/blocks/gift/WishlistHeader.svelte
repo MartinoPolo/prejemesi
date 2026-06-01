@@ -30,6 +30,7 @@
 		themeGradient?: string;
 		onshare?: () => void;
 		onmoderators?: () => void;
+		onarchive?: () => void;
 	}
 
 	let {
@@ -45,6 +46,7 @@
 		themeGradient,
 		onshare,
 		onmoderators,
+		onarchive,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -54,6 +56,7 @@
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 	const isArchived = $derived(status === 'archived');
 	const isDraft = $derived(status === 'draft');
+	const isEventPast = $derived(eventDate !== null && new Date(eventDate) < new Date());
 
 	const formattedDate = $derived.by(() => {
 		if (eventDate === null) {
@@ -160,6 +163,17 @@
 					{m.wishlist_moderators_label()}
 				</Button>
 			{/if}
+			{#if isOwner && !isArchived}
+				<Button
+					size="sm"
+					intent="outline"
+					aria-label={m.wishlist_archive_label()}
+					onclick={onarchive}
+				>
+					<ArchiveIcon data-icon="inline-start" />
+					{m.wishlist_archive_button()}
+				</Button>
+			{/if}
 		</div>
 	{/if}
 
@@ -176,6 +190,14 @@
 		<div class={styles.archivedBanner()}>
 			<ArchiveIcon class="size-4 flex-shrink-0" />
 			<span>{m.wishlist_archived_banner()}</span>
+		</div>
+	{:else if isOwner && isEventPast}
+		<div class={styles.archivedBanner()}>
+			<ArchiveIcon class="size-4 flex-shrink-0" />
+			<span>{m.wishlist_archive_event_passed()}</span>
+			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onarchive}>
+				{m.wishlist_archive_button()}
+			</Button>
 		</div>
 	{:else if !isDraft && isOwner}
 		<div class={styles.sharedBanner()}>

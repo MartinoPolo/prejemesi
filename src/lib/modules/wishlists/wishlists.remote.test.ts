@@ -147,6 +147,11 @@ function createMockDb(): MockDb {
 					indexRef.value++;
 					return (resolve: (value: unknown) => void) => resolve(result);
 				}
+				if (prop === 'transaction') {
+					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+						callback(chain),
+					);
+				}
 				return vi.fn(() => chain);
 			},
 		},
@@ -356,6 +361,22 @@ describe('updateWishlist', () => {
 			).rejects.toMatchObject({
 				status: 403,
 				message: 'Not authorized',
+			});
+		});
+	});
+
+	describe('archived wishlist cannot be updated', () => {
+		it('throws 400 when wishlist status is archived', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(
+				callUpdateWishlist(makeOwnerAuthContext(), {
+					id: WISHLIST_ID,
+					title: 'Should Fail',
+				}),
+			).rejects.toMatchObject({
+				status: 400,
+				message: 'CANNOT_MODIFY_ARCHIVED_WISHLIST',
 			});
 		});
 	});

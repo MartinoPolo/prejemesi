@@ -21,6 +21,9 @@ export const shareWishlist = guardedCommand(v.string(), async ({ user }, wishlis
 	if (row.ownerId !== user.id) {
 		error(403, 'Not authorized');
 	}
+	if (row.status === 'archived') {
+		error(400, 'Cannot share an archived wishlist');
+	}
 	if (row.sharedAt !== null) {
 		return { shortId: row.shortId, alreadyShared: true } as const;
 	}

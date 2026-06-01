@@ -7,6 +7,7 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
@@ -190,30 +191,31 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
-	const [created] = await database
-		.insert(wishlist)
-		.values({
-			ownerId: user.id,
-			title: input.title,
-			eventDate: input.eventDate ?? null,
-			theme: input.theme ?? 'default',
-		})
-		.returning();
+	return database.transaction(async (tx) => {
+		const [created] = await tx
+			.insert(wishlist)
+			.values({
+				ownerId: user.id,
+				title: input.title,
+				eventDate: input.eventDate ?? null,
+				theme: input.theme ?? 'default',
+			})
+			.returning();
 
-	if (created === undefined) {
-		error(500, 'Failed to create wishlist');
-	}
+		if (created === undefined) {
+			error(500, 'Failed to create wishlist');
+		}
 
-	// Auto-create default priority levels
-	await database.insert(priorityLevel).values(
-		DEFAULT_PRIORITY_LEVELS.map((level) => ({
-			wishlistId: created.id,
-			label: level.label,
-			sortOrder: level.sortOrder,
-		})),
-	);
+		await tx.insert(priorityLevel).values(
+			DEFAULT_PRIORITY_LEVELS.map((level) => ({
+				wishlistId: created.id,
+				label: level.label,
+				sortOrder: level.sortOrder,
+			})),
+		);
 
-	return created;
+		return created;
+	});
 });
 
 export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
@@ -232,6 +234,9 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 	}
 	if (row.ownerId !== user.id) {
 		error(403, 'Not authorized');
+	}
+	if (row.status === 'archived') {
+		error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
 	}
 
 	// Edit lock: if shared, only allow limited field updates

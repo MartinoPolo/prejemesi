@@ -153,6 +153,10 @@ export const generateModeratorInviteLink = guardedCommand(
 		const database = getDb();
 		const wishlistRow = await verifyWishlistOwner(currentUser.id, input.wishlistId);
 
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED);
+		}
+
 		// Create invite record (token is auto-generated via $defaultFn)
 		const [created] = await database
 			.insert(moderatorInvite)
@@ -212,6 +216,10 @@ export const acceptModeratorInvite = guardedCommand(
 			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 		}
 
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED);
+		}
+
 		// Cannot accept own invite (owner)
 		if (wishlistRow.ownerId === currentUser.id) {
 			error(400, SERVER_ERROR.OWNER_CANNOT_ACCEPT_OWN_INVITE);
@@ -234,33 +242,33 @@ export const acceptModeratorInvite = guardedCommand(
 			error(400, SERVER_ERROR.ALREADY_MODERATOR);
 		}
 
-		// Mark invite as used
-		await database
-			.update(moderatorInvite)
-			.set({
-				usedByUserId: currentUser.id,
-				usedAt: new Date(),
-			})
-			.where(eq(moderatorInvite.id, invite.id));
+		return database.transaction(async (tx) => {
+			await tx
+				.update(moderatorInvite)
+				.set({
+					usedByUserId: currentUser.id,
+					usedAt: new Date(),
+				})
+				.where(eq(moderatorInvite.id, invite.id));
 
-		// Create moderator assignment
-		const [assignment] = await database
-			.insert(moderatorAssignment)
-			.values({
+			const [assignment] = await tx
+				.insert(moderatorAssignment)
+				.values({
+					wishlistId: invite.wishlistId,
+					userId: currentUser.id,
+				})
+				.returning();
+
+			if (assignment === undefined) {
+				error(500, SERVER_ERROR.FAILED_TO_ASSIGN_MODERATOR);
+			}
+
+			return {
 				wishlistId: invite.wishlistId,
-				userId: currentUser.id,
-			})
-			.returning();
-
-		if (assignment === undefined) {
-			error(500, SERVER_ERROR.FAILED_TO_ASSIGN_MODERATOR);
-		}
-
-		return {
-			wishlistId: invite.wishlistId,
-			wishlistShortId: wishlistRow.shortId,
-			wishlistTitle: wishlistRow.title,
-		};
+				wishlistShortId: wishlistRow.shortId,
+				wishlistTitle: wishlistRow.title,
+			};
+		});
 	},
 );
 
@@ -339,6 +347,9 @@ export const selfPromoteToModerator = guardedCommand(
 		const database = getDb();
 		const wishlistRow = await verifyWishlistOwner(currentUser.id, input.wishlistId);
 
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_SELF_PROMOTE_ON_ARCHIVED);
+		}
 		if (wishlistRow.ownerIsModerator) {
 			error(400, SERVER_ERROR.ALREADY_SEEING_RESERVATIONS);
 		}

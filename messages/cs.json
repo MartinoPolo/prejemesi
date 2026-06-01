@@ -300,6 +300,12 @@
 	"wishlist_reshare": "Znovu sdílet",
 	"wishlist_draft_banner": "Tento seznam ještě nebyl sdílen.",
 	"wishlist_share_list": "Sdílet seznam",
+	"wishlist_archive_button": "Archivovat",
+	"wishlist_archive_label": "Archivovat seznam",
+	"wishlist_archive_confirm_title": "Archivovat tento seznam?",
+	"wishlist_archive_confirm_description": "Archivované seznamy jsou jen ke čtení. Nové rezervace nebudou možné. Tuto akci nelze vrátit.",
+	"wishlist_archive_confirm_action": "Archivovat",
+	"wishlist_archive_event_passed": "Datum události již uplynulo. Chcete tento seznam archivovat?",
 
 	"gift_sort_owner_order": "Pořadí vlastníka",
 	"gift_sort_priority": "Priorita",
@@ -502,6 +508,8 @@
 	"toast_theme_save_error": "Nepodařilo se uložit motiv",
 	"toast_refollowed": "Seznam znovu sledujete",
 	"toast_refollow_error": "Nepodařilo se znovu sledovat",
+	"toast_wishlist_archived": "Seznam byl archivován",
+	"toast_wishlist_archive_error": "Nepodařilo se archivovat seznam",
 
 	"server_error_wishlist_not_found": "Seznam nebyl nalezen",
 	"server_error_only_owner_can_manage_moderators": "Pouze vlastník může spravovat moderátory",

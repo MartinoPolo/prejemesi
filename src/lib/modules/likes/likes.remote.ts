@@ -27,14 +27,17 @@ export const toggleLike = guardedCommand(
 		}
 
 		const wishlistRows = await database
-			.select({ ownerId: wishlist.ownerId })
+			.select({ ownerId: wishlist.ownerId, status: wishlist.status })
 			.from(wishlist)
-			.where(eq(wishlist.id, giftRow.wishlistId))
+			.where(and(eq(wishlist.id, giftRow.wishlistId), isNull(wishlist.deletedAt)))
 			.limit(1);
 
 		const wishlistRow = wishlistRows[0];
 		if (wishlistRow === undefined) {
 			error(404, 'Wishlist not found');
+		}
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_LIKE_ON_ARCHIVED);
 		}
 		if (wishlistRow.ownerId === user.id) {
 			error(403, SERVER_ERROR.OWNER_CANNOT_LIKE_OWN_GIFTS);

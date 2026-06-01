@@ -16,7 +16,7 @@ export interface UserProfile {
 }
 
 const UpdateProfileInputSchema = v.object({
-	name: v.string(),
+	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 	image: v.nullable(v.string()),
 });
 

@@ -26,7 +26,7 @@ export interface CreateWishlistInput {
 }
 
 export const CreateWishlistInputSchema = v.object({
-	title: v.string(),
+	title: v.pipe(v.string(), v.trim(), v.minLength(1)),
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
 });
@@ -45,7 +45,7 @@ export interface UpdateWishlistInput {
 
 export const UpdateWishlistInputSchema = v.object({
 	id: v.string(),
-	title: v.optional(v.string()),
+	title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),

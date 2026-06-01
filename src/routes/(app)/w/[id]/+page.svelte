@@ -16,6 +16,7 @@
 	import {
 		getWishlistByShortId,
 		updateWishlist,
+		archiveWishlist,
 		unfollowWishlist,
 		followWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
@@ -351,6 +352,23 @@
 		}
 	}
 
+	// ── Archive handler ───────────────────────────────────────────────────────
+
+	async function handleArchive() {
+		const confirmed = confirm(m.wishlist_archive_confirm_description());
+		if (!confirmed) {
+			return;
+		}
+		try {
+			await archiveWishlist(wishlist.id);
+			toastSuccess(m.toast_wishlist_archived());
+			await refreshData();
+		} catch (thrown) {
+			console.error('Failed to archive wishlist:', thrown);
+			toastError(m.toast_wishlist_archive_error());
+		}
+	}
+
 	// ── Theme handlers ────────────────────────────────────────────────────────
 
 	function handleThemePreview(theme: WishlistTheme) {
@@ -510,6 +528,7 @@
 		themeGradient={themeContext.effectiveGradient.current}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
+		onarchive={handleArchive}
 	/>
 
 	<WishlistDetailToolbar

@@ -117,6 +117,15 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 		insert: vi.fn(() => createChain()),
 		update: vi.fn(() => createChain()),
 		delete: vi.fn(() => createChain()),
+		transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+			const txProxy = {
+				select: vi.fn(() => createChain()),
+				insert: vi.fn(() => createChain()),
+				update: vi.fn(() => createChain()),
+				delete: vi.fn(() => createChain()),
+			};
+			return callback(txProxy);
+		}),
 	} as unknown as ReturnType<typeof getDb>;
 }
 
@@ -138,6 +147,7 @@ const activeWishlistRow = {
 	ownerId: ownerUser.id,
 	shortId: 'short-abc',
 	title: 'Test List',
+	status: 'active',
 	ownerIsModerator: false,
 	deletedAt: null,
 };
