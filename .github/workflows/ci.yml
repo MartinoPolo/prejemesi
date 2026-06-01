@@ -18,7 +18,7 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: pnpm run cf:types
-            - run: pnpm exec paraglide-js compile --outdir ./src/lib/paraglide
+            - run: pnpm exec paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy url cookie baseLocale
             - run: pnpm run check:all
             - run: pnpm exec playwright install --with-deps chromium
             - run: pnpm run test -- --coverage
