@@ -3,18 +3,38 @@
 	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
 
 	import type { Snippet } from 'svelte';
+	import type { LayoutData } from './$types.js';
 
 	interface AppLayoutProps {
+		data: LayoutData;
 		children: Snippet;
 	}
 
-	let { children }: AppLayoutProps = $props();
+	let { data, children }: AppLayoutProps = $props();
+
+	const user = $derived(data.user);
+	const userInitials = $derived(
+		user?.name
+			? user.name
+					.split(' ')
+					.map((part: string) => part[0])
+					.join('')
+					.toUpperCase()
+					.slice(0, 2)
+			: 'U',
+	);
 
 	setNotificationsContext();
 </script>
 
 <div class="app-shell">
-	<Navbar />
+	<Navbar
+		{user}
+		userName={user?.name ?? 'Uzivatel'}
+		userEmail={user?.email ?? ''}
+		{userInitials}
+		userImage={user?.image}
+	/>
 	<main class="app-content">
 		{@render children()}
 	</main>

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -7,7 +6,9 @@
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
-	import NavDropdown, { type NavDropdownItem } from './NavDropdown.svelte';
+	import NavDropdown from './NavDropdown.svelte';
+	import type { NavDropdownItem } from './navbar-types.js';
+	import { isNavActive } from './navbar-utils.js';
 	import UserMenu from './UserMenu.svelte';
 	import MobileNav from './MobileNav.svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -27,6 +28,7 @@
 	} from '$lib/modules/wishlists/dashboard_types.js';
 
 	interface NavbarProps {
+		user?: { name: string; email: string; image?: string | null } | null;
 		userName?: string;
 		userEmail?: string;
 		userInitials?: string;
@@ -34,6 +36,7 @@
 	}
 
 	let {
+		user = null,
 		userName = m.nav_default_user(),
 		userEmail = '',
 		userInitials = 'U',
@@ -95,7 +98,24 @@
 		};
 	}
 
+	const NAV_LINKS = [
+		{ label: m.nav_my_lists(), href: resolve('/(app)/my-lists') },
+		{ label: m.nav_moderated(), href: resolve('/(app)/moderated') },
+		{ label: m.nav_followed(), href: resolve('/(app)/followed') },
+	] as const;
+
+	const navDropdownItems = $derived<NavDropdownItem[][]>([
+		myListsItems,
+		moderatedItems,
+		followedItems,
+	]);
+
+	let isCreateModalOpen = $state(false);
+
 	onMount(async () => {
+		if (!user) {
+			return;
+		}
 		const [myLists, moderated, followed] = await Promise.allSettled([
 			getMyWishlists(),
 			getModeratedWishlists(),
@@ -123,80 +143,74 @@
 				.map(followedToDropdownItem);
 		}
 	});
-
-	const NAV_LINKS = [
-		{ label: m.nav_my_lists(), href: resolve('/(app)/my-lists') },
-		{ label: m.nav_moderated(), href: resolve('/(app)/moderated') },
-		{ label: m.nav_followed(), href: resolve('/(app)/followed') },
-	] as const;
-
-	const navDropdownItems = $derived<NavDropdownItem[][]>([
-		myListsItems,
-		moderatedItems,
-		followedItems,
-	]);
-
-	let isCreateModalOpen = $state(false);
-
-	function isActive(href: string): boolean {
-		return page.url.pathname.startsWith(href);
-	}
 </script>
 
 <header class="topbar">
 	<!-- Mobile hamburger -->
-	<MobileNav navLinks={NAV_LINKS.map((l) => ({ label: l.label, href: l.href }))} />
+	{#if user}
+		<MobileNav navLinks={NAV_LINKS} oncreate={() => (isCreateModalOpen = true)} />
+	{/if}
 
 	<!-- Logo -->
 	<LogoMark />
 
 	<!-- Desktop nav links with dropdowns -->
 	<!-- eslint-disable svelte/no-navigation-without-resolve -->
-	<nav class="nav-links" aria-label={m.nav_main_label()}>
-		{#each NAV_LINKS as link (link.href)}
-			<div class="nav-item">
-				<a
-					class={cn('nav-link', isActive(link.href) && 'is-active')}
-					href={link.href}
-					aria-current={isActive(link.href) ? 'page' : undefined}
-				>
-					{link.label}
-					<ChevronDown class="nav-chevron" />
-				</a>
-				<NavDropdown
-					title={link.label}
-					viewAllHref={link.href}
-					items={navDropdownItems[NAV_LINKS.indexOf(link)]}
-				/>
-			</div>
-		{/each}
-	</nav>
+	{#if user}
+		<nav class="nav-links" aria-label={m.nav_main_label()}>
+			{#each NAV_LINKS as link, i (link.href)}
+				<div class="nav-item">
+					<a
+						class={cn('nav-link', isNavActive(link.href) && 'is-active')}
+						href={link.href}
+						aria-current={isNavActive(link.href) ? 'page' : undefined}
+					>
+						{link.label}
+						<ChevronDown class="nav-chevron" />
+					</a>
+					<NavDropdown
+						title={link.label}
+						viewAllHref={link.href}
+						items={navDropdownItems[i]}
+					/>
+				</div>
+			{/each}
+		</nav>
+	{/if}
 
 	<!-- Right controls -->
 	<div class="nav-right">
-		<!-- Create CTA -->
-		<Button
-			intent="primary"
-			size="sm"
-			class="hidden md:inline-flex"
-			onclick={() => (isCreateModalOpen = true)}
-		>
-			<PlusIcon data-icon="inline-start" />
-			{m.nav_create()}
-		</Button>
+		{#if user}
+			<!-- Create CTA -->
+			<Button
+				intent="primary"
+				size="sm"
+				class="hidden md:inline-flex"
+				onclick={() => (isCreateModalOpen = true)}
+			>
+				<PlusIcon data-icon="inline-start" />
+				{m.nav_create()}
+			</Button>
 
-		<!-- Notification bell -->
-		<NotificationBell />
+			<!-- Notification bell -->
+			<NotificationBell />
+		{/if}
 
 		<!-- Dark mode toggle -->
 		<DarkModeToggle />
 
-		<!-- User menu -->
-		<UserMenu {userName} {userEmail} {userInitials} {userImage} />
+		{#if user}
+			<!-- User menu -->
+			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
+		{:else}
+			<Button intent="primary" size="sm" href={resolve('/login')}>Prihlasit se</Button>
+		{/if}
 	</div>
 </header>
 
-<CreateWishlistModal bind:open={isCreateModalOpen} />
+{#if user}
+	<CreateWishlistModal bind:open={isCreateModalOpen} />
+{/if}
 
 <style>
 	.topbar {

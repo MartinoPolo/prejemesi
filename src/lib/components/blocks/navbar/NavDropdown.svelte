@@ -1,18 +1,8 @@
-<script lang="ts" module>
-	export interface NavDropdownItem {
-		name: string;
-		meta: string;
-		href: string;
-		emoji: string;
-		badgeLabel?: string;
-		badgeVariant?: 'shared' | 'draft';
-	}
-</script>
-
 <script lang="ts">
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import type { NavDropdownItem } from './navbar-types.js';
 
 	interface NavDropdownProps {
 		title: string;
