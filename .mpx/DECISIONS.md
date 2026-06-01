@@ -506,12 +506,12 @@ What: Server returns theme name + custom color. Presets are predefined CSS varia
 Why: Simpler than server-side computation, works reactively, enables live preview without round-trips.
 Rejected: Server-side pre-computation (adds latency, no live preview), build-time generation (can't handle dynamic custom colors).
 
-### Presigned R2 URLs for image uploads
+### Server proxy for image uploads (revised from presigned R2 URLs)
 
-Decided: 2026-05-30
-What: Client requests a presigned upload URL via a command, uploads directly to R2, then sends the R2 key back to save on the gift/wishlist record.
-Why: Avoids Workers body size limits on free tier, reduces server load, standard pattern for edge deployments.
-Rejected: Server proxy (hits Workers body size limits on free tier).
+Decided: 2026-06-01 (revised from 2026-05-30)
+What: Client uploads via a same-origin PUT to `/api/upload/[objectKey]`, which proxies to R2. HMAC token (signed `{objectKey, userId, expiresAt}`, derived from AUTH_SECRET) authorizes each upload/delete. Token passed as `X-Upload-Token` header, verified server-side before storage.
+Why: Presigned R2 URLs require `aws4fetch` signing, R2 CORS config, and free-tier support verification. The proxy is simpler: session cookie auth works natively, content-type/size validation happens server-side, and HMAC binding prevents unauthorized overwrites. Acceptable for images (max 10 MB). The PRD's Known Risks section anticipated this: "R2 presigned URL support on free tier needs verification during implementation."
+Rejected: Presigned R2 URLs (CORS complexity, unverified free-tier support, requires separate signing library). Reconsider if video/large-file uploads are added.
 
 ### Currencies: CZK, EUR, USD
 

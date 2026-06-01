@@ -19,8 +19,6 @@ vi.mock('$app/server', () => ({
 }));
 
 // ── Mock remote wrappers — extract handlers directly ────────────────────────
-// The Vite transform injects `fn.__.id = ...` for every export after calling
-// init_remote_functions, so each returned handler must carry a `__` object.
 function wrapWithRemoteMarker(
 	handler: (...args: unknown[]) => unknown,
 ): (...args: unknown[]) => unknown {
@@ -47,6 +45,10 @@ vi.mock('$lib/server/db/id.js', () => ({
 	generateId: vi.fn(() => 'test-id-123'),
 }));
 
+vi.mock('$env/dynamic/private', () => ({
+	env: { AUTH_SECRET: 'test-auth-secret-for-hmac' },
+}));
+
 vi.mock('$lib/server/storage/r2.js', async () => {
 	const types = await import('./types.js');
 	return {
@@ -67,32 +69,29 @@ vi.mock('$lib/server/storage/r2.js', async () => {
 	};
 });
 
-import { authorizeUpload } from './uploads.remote.js';
-import type { UploadAuthorization } from './types.js';
+import { authorizeUpload, authorizeDelete } from './uploads.remote.js';
+import type { UploadAuthorization, DeleteAuthorization } from './types.js';
 
-// ── Typed handler alias ─────────────────────────────────────────────────────
-// guardedCommand wraps (authContext, arg) => result. The mock returns the raw
-// handler, so authorizeUpload IS (authContext, input) => UploadAuthorization.
-
+// ── Typed handler aliases ───────────────────────────────────────────────────
 const fakeAuthContext = { user: { id: 'test-user' }, session: {} };
 
-type AuthorizeUploadHandler = (
-	authContext: typeof fakeAuthContext,
-	input: {
-		target: string;
-		fileName: string;
-		contentType: string;
-		fileSize: number;
-	},
-) => UploadAuthorization;
-
-const callAuthorizeUpload = (input: {
+const callAuthorizeUpload = async (input: {
 	target: string;
 	fileName: string;
 	contentType: string;
 	fileSize: number;
-}): UploadAuthorization => {
-	return (authorizeUpload as unknown as AuthorizeUploadHandler)(fakeAuthContext, input);
+}): Promise<UploadAuthorization> => {
+	return (authorizeUpload as unknown as (...args: unknown[]) => Promise<unknown>)(
+		fakeAuthContext,
+		input,
+	) as Promise<UploadAuthorization>;
+};
+
+const callAuthorizeDelete = async (input: { objectKey: string }): Promise<DeleteAuthorization> => {
+	return (authorizeDelete as unknown as (...args: unknown[]) => Promise<unknown>)(
+		fakeAuthContext,
+		input,
+	) as Promise<DeleteAuthorization>;
 };
 
 beforeEach(() => {
@@ -119,8 +118,8 @@ describe('authorizeUpload', () => {
 			},
 		])(
 			'$target returns objectKey with $prefix/ prefix',
-			({ target, prefix, contentType, extension }) => {
-				const result = callAuthorizeUpload({
+			async ({ target, prefix, contentType, extension }) => {
+				const result = await callAuthorizeUpload({
 					target,
 					fileName: `photo.${extension}`,
 					contentType,
@@ -130,6 +129,10 @@ describe('authorizeUpload', () => {
 				expect(result.objectKey).toBe(`${prefix}/test-id-123.${extension}`);
 				expect(result.uploadUrl).toMatch(/^\/api\/upload\//);
 				expect(result.publicUrl).toContain(result.objectKey);
+				expect(result.token).toBeTypeOf('string');
+				expect(result.token).toContain('.');
+				expect(result.expiresAt).toBeTypeOf('number');
+				expect(result.expiresAt).toBeGreaterThan(Date.now());
 			},
 		);
 	});
@@ -137,8 +140,8 @@ describe('authorizeUpload', () => {
 	// ── Object key format ────────────────────────────────────────────────────
 
 	describe('object key format', () => {
-		it('follows {prefix}/{uniqueId}.{extension} pattern', () => {
-			const result = callAuthorizeUpload({
+		it('follows {prefix}/{uniqueId}.{extension} pattern', async () => {
+			const result = await callAuthorizeUpload({
 				target: 'gift-image',
 				fileName: 'photo.jpg',
 				contentType: 'image/jpeg',
@@ -152,8 +155,8 @@ describe('authorizeUpload', () => {
 	// ── Upload URL format ────────────────────────────────────────────────────
 
 	describe('upload URL format', () => {
-		it('starts with /api/upload/', () => {
-			const result = callAuthorizeUpload({
+		it('starts with /api/upload/', async () => {
+			const result = await callAuthorizeUpload({
 				target: 'gift-image',
 				fileName: 'photo.jpg',
 				contentType: 'image/jpeg',
@@ -167,8 +170,8 @@ describe('authorizeUpload', () => {
 	// ── Public URL ───────────────────────────────────────────────────────────
 
 	describe('public URL', () => {
-		it('contains the object key', () => {
-			const result = callAuthorizeUpload({
+		it('contains the object key', async () => {
+			const result = await callAuthorizeUpload({
 				target: 'gift-image',
 				fileName: 'photo.jpg',
 				contentType: 'image/jpeg',
@@ -182,15 +185,15 @@ describe('authorizeUpload', () => {
 	// ── Invalid target ───────────────────────────────────────────────────────
 
 	describe('invalid target', () => {
-		it('throws 400 for unknown target', () => {
-			expect(() =>
+		it('throws 400 for unknown target', async () => {
+			await expect(
 				callAuthorizeUpload({
 					target: 'unknown-target',
 					fileName: 'file.jpg',
 					contentType: 'image/jpeg',
 					fileSize: 1024,
 				}),
-			).toThrowError(
+			).rejects.toThrow(
 				expect.objectContaining({
 					status: 400,
 					message: expect.stringContaining('Invalid upload target'),
@@ -204,15 +207,15 @@ describe('authorizeUpload', () => {
 	describe('content type validation', () => {
 		it.each(['application/pdf', 'text/html', 'image/svg+xml', 'video/mp4'])(
 			'rejects %s',
-			(contentType) => {
-				expect(() =>
+			async (contentType) => {
+				await expect(
 					callAuthorizeUpload({
 						target: 'gift-image',
 						fileName: 'file',
 						contentType,
 						fileSize: 1024,
 					}),
-				).toThrowError(
+				).rejects.toThrow(
 					expect.objectContaining({
 						status: 400,
 						message: expect.stringContaining('Invalid content type'),
@@ -223,15 +226,15 @@ describe('authorizeUpload', () => {
 
 		it.each(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])(
 			'accepts %s',
-			(contentType) => {
-				expect(() =>
+			async (contentType) => {
+				await expect(
 					callAuthorizeUpload({
 						target: 'gift-image',
 						fileName: 'file',
 						contentType,
 						fileSize: 1024,
 					}),
-				).not.toThrow();
+				).resolves.toBeTruthy();
 			},
 		);
 	});
@@ -239,15 +242,15 @@ describe('authorizeUpload', () => {
 	// ── File size validation ─────────────────────────────────────────────────
 
 	describe('file size validation', () => {
-		it('rejects 0 bytes', () => {
-			expect(() =>
+		it('rejects 0 bytes', async () => {
+			await expect(
 				callAuthorizeUpload({
 					target: 'gift-image',
 					fileName: 'file.jpg',
 					contentType: 'image/jpeg',
 					fileSize: 0,
 				}),
-			).toThrowError(
+			).rejects.toThrow(
 				expect.objectContaining({
 					status: 400,
 					message: 'File size must be greater than 0',
@@ -255,30 +258,30 @@ describe('authorizeUpload', () => {
 			);
 		});
 
-		it('rejects negative file size', () => {
-			expect(() =>
+		it('rejects negative file size', async () => {
+			await expect(
 				callAuthorizeUpload({
 					target: 'gift-image',
 					fileName: 'file.jpg',
 					contentType: 'image/jpeg',
 					fileSize: -1,
 				}),
-			).toThrowError(expect.objectContaining({ status: 400 }));
+			).rejects.toThrow(expect.objectContaining({ status: 400 }));
 		});
 
 		it.each([
 			{ target: 'gift-image', maxBytes: 5 * 1024 * 1024, label: '5MB' },
 			{ target: 'wishlist-banner', maxBytes: 10 * 1024 * 1024, label: '10MB' },
 			{ target: 'wishlist-thumbnail', maxBytes: 5 * 1024 * 1024, label: '5MB' },
-		])('$target: rejects file over $label limit', ({ target, maxBytes }) => {
-			expect(() =>
+		])('$target: rejects file over $label limit', async ({ target, maxBytes }) => {
+			await expect(
 				callAuthorizeUpload({
 					target,
 					fileName: 'big.jpg',
 					contentType: 'image/jpeg',
 					fileSize: maxBytes + 1,
 				}),
-			).toThrowError(
+			).rejects.toThrow(
 				expect.objectContaining({
 					status: 400,
 					message: expect.stringContaining('File too large'),
@@ -290,28 +293,31 @@ describe('authorizeUpload', () => {
 			{ target: 'gift-image', maxBytes: 5 * 1024 * 1024 },
 			{ target: 'wishlist-banner', maxBytes: 10 * 1024 * 1024 },
 			{ target: 'wishlist-thumbnail', maxBytes: 5 * 1024 * 1024 },
-		])('$target: accepts file exactly at limit ($maxBytes bytes)', ({ target, maxBytes }) => {
-			const result = callAuthorizeUpload({
-				target,
-				fileName: 'max.jpg',
-				contentType: 'image/jpeg',
-				fileSize: maxBytes,
-			});
+		])(
+			'$target: accepts file exactly at limit ($maxBytes bytes)',
+			async ({ target, maxBytes }) => {
+				const result = await callAuthorizeUpload({
+					target,
+					fileName: 'max.jpg',
+					contentType: 'image/jpeg',
+					fileSize: maxBytes,
+				});
 
-			expect(result.objectKey).toBeTruthy();
-		});
+				expect(result.objectKey).toBeTruthy();
+			},
+		);
 
-		it('rejects file at limit+1 byte (off-by-one boundary)', () => {
+		it('rejects file at limit+1 byte (off-by-one boundary)', async () => {
 			const limit = 5 * 1024 * 1024;
 
-			expect(() =>
+			await expect(
 				callAuthorizeUpload({
 					target: 'gift-image',
 					fileName: 'file.jpg',
 					contentType: 'image/jpeg',
 					fileSize: limit + 1,
 				}),
-			).toThrowError(
+			).rejects.toThrow(
 				expect.objectContaining({
 					status: 400,
 					message: expect.stringContaining('File too large'),
@@ -328,8 +334,8 @@ describe('authorizeUpload', () => {
 			['image/png', 'png'],
 			['image/webp', 'webp'],
 			['image/gif', 'gif'],
-		])('maps %s to .%s extension in objectKey', (contentType, expectedExtension) => {
-			const result = callAuthorizeUpload({
+		])('maps %s to .%s extension in objectKey', async (contentType, expectedExtension) => {
+			const result = await callAuthorizeUpload({
 				target: 'gift-image',
 				fileName: `file.${expectedExtension}`,
 				contentType,
@@ -338,5 +344,25 @@ describe('authorizeUpload', () => {
 
 			expect(result.objectKey).toBe(`gifts/test-id-123.${expectedExtension}`);
 		});
+	});
+});
+
+describe('authorizeDelete', () => {
+	it('returns a token and expiresAt for a valid object key', async () => {
+		const result = await callAuthorizeDelete({ objectKey: 'gifts/test-id-123.jpg' });
+
+		expect(result.token).toBeTypeOf('string');
+		expect(result.token).toContain('.');
+		expect(result.expiresAt).toBeTypeOf('number');
+		expect(result.expiresAt).toBeGreaterThan(Date.now());
+	});
+
+	it('throws 400 for an empty object key', async () => {
+		await expect(callAuthorizeDelete({ objectKey: '' })).rejects.toThrow(
+			expect.objectContaining({
+				status: 400,
+				message: 'Missing object key',
+			}),
+		);
 	});
 });
