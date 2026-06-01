@@ -25,6 +25,9 @@ export function getThemePreset(theme: WishlistTheme): ThemePresetDisplay {
 		};
 	}
 	const preset = THEME_PRESETS[theme];
+	if (preset === undefined) {
+		return { emoji: '🎁', label: 'Vychozi', gradient: THEME_PRESETS.default.gradient };
+	}
 	return {
 		emoji: preset.emoji,
 		label: preset.label(),
