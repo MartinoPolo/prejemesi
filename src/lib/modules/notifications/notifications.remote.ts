@@ -20,7 +20,7 @@ export const getNotifications = guardedQuery(async ({ user }) => {
 		(row): Notification => ({
 			id: row.id,
 			type: row.type as NotificationType,
-			message: NOTIFICATION_MESSAGES[row.type as NotificationType] ?? row.type,
+			message: (NOTIFICATION_MESSAGES[row.type as NotificationType] ?? (() => row.type))(),
 			wishlistId: row.wishlistId,
 			giftId: row.giftId,
 			actorName: row.actorName,

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
+	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
@@ -101,11 +102,11 @@
 		passwordSuccess = false;
 
 		if (newPassword.length < 8) {
-			passwordError = 'Heslo musi mit alespon 8 znaku';
+			passwordError = m.settings_password_min_length();
 			return;
 		}
 		if (newPassword !== confirmPassword) {
-			passwordError = 'Hesla se neshoduji';
+			passwordError = m.settings_password_mismatch();
 			return;
 		}
 
@@ -117,7 +118,7 @@
 			});
 
 			if (result.error) {
-				passwordError = result.error.message ?? 'Chyba pri zmene hesla';
+				passwordError = result.error.message ?? m.settings_password_error();
 			} else {
 				passwordSuccess = true;
 				currentPassword = '';
@@ -128,7 +129,7 @@
 				}, 3000);
 			}
 		} catch {
-			passwordError = 'Doslo k chybe. Zkuste to znovu.';
+			passwordError = m.error_generic();
 		} finally {
 			passwordSaving = false;
 		}
@@ -159,14 +160,14 @@
 </script>
 
 <svelte:head>
-	<title>Nastaveni | Darecky</title>
+	<title>{m.settings_page_title()}</title>
 </svelte:head>
 
 <div class="settings-page">
 	<!-- Page header -->
 	<div class="mb-8">
-		<h1 class="text-2xl font-bold">Nastaveni</h1>
-		<p class="mt-1 text-muted-foreground">Spravujte svuj profil, zabezpeceni a predvolby</p>
+		<h1 class="text-2xl font-bold">{m.settings_title()}</h1>
+		<p class="mt-1 text-muted-foreground">{m.settings_subtitle()}</p>
 	</div>
 
 	<div class="settings-sections">
@@ -178,8 +179,8 @@
 				<div class="flex items-center gap-2">
 					<UserIcon class="size-5 text-muted-foreground" />
 					<div>
-						<Card.Title>Profil</Card.Title>
-						<Card.Description>Vase zakladni udaje a fotografie</Card.Description>
+						<Card.Title>{m.settings_profile_title()}</Card.Title>
+						<Card.Description>{m.settings_profile_description()}</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
@@ -187,7 +188,7 @@
 				<div class="flex flex-col gap-6">
 					<!-- Avatar -->
 					<div class="flex flex-col gap-2">
-						<Label>Profilova fotografie</Label>
+						<Label>{m.settings_avatar_label()}</Label>
 						<div class="flex items-center gap-4">
 							{#if avatarUrl}
 								<img
@@ -216,18 +217,18 @@
 
 					<!-- Display name -->
 					<div class="flex flex-col gap-2">
-						<Label for="settings-display-name">Zobrazovane jmeno</Label>
+						<Label for="settings-display-name">{m.settings_display_name()}</Label>
 						<Input
 							id="settings-display-name"
 							type="text"
-							placeholder="Vase jmeno"
+							placeholder={m.settings_display_name_placeholder()}
 							bind:value={displayName}
 						/>
 					</div>
 
 					<!-- Email -->
 					<div class="flex flex-col gap-2">
-						<Label for="settings-email">E-mail</Label>
+						<Label for="settings-email">{m.settings_email_label()}</Label>
 						<Input
 							id="settings-email"
 							type="email"
@@ -237,7 +238,7 @@
 						/>
 						{#if profile.isOAuthUser}
 							<p class="text-xs text-muted-foreground">
-								E-mail nelze zmenit u uctu prihlaseneho pres Google
+								{m.settings_email_readonly_hint()}
 							</p>
 						{/if}
 					</div>
@@ -246,11 +247,11 @@
 			<Card.Footer class="flex justify-end">
 				<Button onclick={handleSaveProfile} disabled={profileSaving}>
 					{#if profileSaving}
-						Ukladam...
+						{m.saving()}
 					{:else if profileSaved}
-						Ulozeno
+						{m.saved()}
 					{:else}
-						Ulozit profil
+						{m.settings_save_profile()}
 					{/if}
 				</Button>
 			</Card.Footer>
@@ -265,9 +266,8 @@
 					<div class="flex items-center gap-2">
 						<ShieldIcon class="size-5 text-muted-foreground" />
 						<div>
-							<Card.Title>Zabezpeceni</Card.Title>
-							<Card.Description>Zmena hesla a nastaveni prihlasovani</Card.Description
-							>
+							<Card.Title>{m.settings_security_title()}</Card.Title>
+							<Card.Description>{m.settings_security_description()}</Card.Description>
 						</div>
 					</div>
 				</Card.Header>
@@ -275,7 +275,9 @@
 					<div class="flex flex-col gap-4">
 						<!-- Current password -->
 						<div class="flex flex-col gap-2">
-							<Label for="settings-current-password">Soucasne heslo</Label>
+							<Label for="settings-current-password"
+								>{m.settings_current_password()}</Label
+							>
 							<div class="relative">
 								<Input
 									id="settings-current-password"
@@ -288,8 +290,8 @@
 									class="password-toggle"
 									type="button"
 									aria-label={showCurrentPassword
-										? 'Skryt heslo'
-										: 'Zobrazit heslo'}
+										? m.hide_password()
+										: m.show_password()}
 									onclick={() => (showCurrentPassword = !showCurrentPassword)}
 									tabindex={-1}
 								>
@@ -304,7 +306,7 @@
 
 						<!-- New password -->
 						<div class="flex flex-col gap-2">
-							<Label for="settings-new-password">Nove heslo</Label>
+							<Label for="settings-new-password">{m.settings_new_password()}</Label>
 							<div class="relative">
 								<Input
 									id="settings-new-password"
@@ -316,7 +318,9 @@
 								<button
 									class="password-toggle"
 									type="button"
-									aria-label={showNewPassword ? 'Skryt heslo' : 'Zobrazit heslo'}
+									aria-label={showNewPassword
+										? m.hide_password()
+										: m.show_password()}
 									onclick={() => (showNewPassword = !showNewPassword)}
 									tabindex={-1}
 								>
@@ -331,7 +335,9 @@
 
 						<!-- Confirm password -->
 						<div class="flex flex-col gap-2">
-							<Label for="settings-confirm-password">Potvrzeni noveho hesla</Label>
+							<Label for="settings-confirm-password"
+								>{m.settings_confirm_password()}</Label
+							>
 							<Input
 								id="settings-confirm-password"
 								type="password"
@@ -344,7 +350,9 @@
 							<p class="text-sm text-destructive">{passwordError}</p>
 						{/if}
 						{#if passwordSuccess}
-							<p class="text-sm text-status-success">Heslo bylo zmeneno</p>
+							<p class="text-sm text-status-success">
+								{m.settings_password_changed()}
+							</p>
 						{/if}
 					</div>
 				</Card.Content>
@@ -356,7 +364,7 @@
 							!newPassword ||
 							!confirmPassword}
 					>
-						{passwordSaving ? 'Ukladam...' : 'Zmenit heslo'}
+						{passwordSaving ? m.saving() : m.settings_change_password()}
 					</Button>
 				</Card.Footer>
 			</Card.Root>
@@ -370,8 +378,9 @@
 				<div class="flex items-center gap-2">
 					<BellIcon class="size-5 text-muted-foreground" />
 					<div>
-						<Card.Title>Upozorneni</Card.Title>
-						<Card.Description>Nastavte si, jak chcete byt informovani</Card.Description>
+						<Card.Title>{m.settings_notifications_title()}</Card.Title>
+						<Card.Description>{m.settings_notifications_description()}</Card.Description
+						>
 					</div>
 				</div>
 			</Card.Header>
@@ -391,8 +400,8 @@
 				<div class="flex items-center gap-2">
 					<PaletteIcon class="size-5 text-muted-foreground" />
 					<div>
-						<Card.Title>Vzhled</Card.Title>
-						<Card.Description>Motiv a jazyk aplikace</Card.Description>
+						<Card.Title>{m.settings_appearance_title()}</Card.Title>
+						<Card.Description>{m.settings_appearance_description()}</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
@@ -400,37 +409,37 @@
 				<div class="flex flex-col gap-6">
 					<!-- Dark mode -->
 					<div class="flex flex-col gap-2">
-						<Label>Barevny rezim</Label>
+						<Label>{m.settings_dark_mode_label()}</Label>
 						<div class="mode-selector">
 							<button
 								class="mode-option"
 								class:is-active={currentMode === 'light'}
 								type="button"
 								onclick={() => setMode('light')}
-								aria-label="Svetly"
+								aria-label={m.settings_mode_light()}
 							>
 								<SunIcon class="size-4" />
-								<span>Svetly</span>
+								<span>{m.settings_mode_light()}</span>
 							</button>
 							<button
 								class="mode-option"
 								class:is-active={currentMode === 'dark'}
 								type="button"
 								onclick={() => setMode('dark')}
-								aria-label="Tmavy"
+								aria-label={m.settings_mode_dark()}
 							>
 								<MoonIcon class="size-4" />
-								<span>Tmavy</span>
+								<span>{m.settings_mode_dark()}</span>
 							</button>
 							<button
 								class="mode-option"
 								class:is-active={currentMode === 'system'}
 								type="button"
 								onclick={() => setMode('system')}
-								aria-label="System"
+								aria-label={m.settings_mode_system()}
 							>
 								<MonitorIcon class="size-4" />
-								<span>System</span>
+								<span>{m.settings_mode_system()}</span>
 							</button>
 						</div>
 					</div>
@@ -439,7 +448,7 @@
 
 					<!-- Language -->
 					<div class="flex flex-col gap-2">
-						<Label>Jazyk</Label>
+						<Label>{m.settings_language_label()}</Label>
 						<LanguageToggle />
 					</div>
 				</div>
@@ -454,21 +463,22 @@
 				<div class="flex items-center gap-2">
 					<TriangleAlertIcon class="size-5 text-destructive" />
 					<div>
-						<Card.Title class="text-destructive">Nebezpecna zona</Card.Title>
-						<Card.Description>Nevratne akce s vasim uctem</Card.Description>
+						<Card.Title class="text-destructive">{m.settings_danger_title()}</Card.Title
+						>
+						<Card.Description>{m.settings_danger_description()}</Card.Description>
 					</div>
 				</div>
 			</Card.Header>
 			<Card.Content>
 				<div class="flex items-center justify-between gap-4">
 					<div>
-						<p class="text-sm font-medium">Smazat ucet</p>
+						<p class="text-sm font-medium">{m.settings_delete_account()}</p>
 						<p class="text-xs text-muted-foreground">
-							Trvale smazete svuj ucet a vsechna data. Tuto akci nelze vratit.
+							{m.settings_delete_account_description()}
 						</p>
 					</div>
 					<Button intent="danger" size="sm" onclick={() => (deleteDialogOpen = true)}>
-						Smazat ucet
+						{m.settings_delete_account()}
 					</Button>
 				</div>
 			</Card.Content>
@@ -480,17 +490,17 @@
 <Dialog.Root bind:open={deleteDialogOpen}>
 	<Dialog.Content class="max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>Opravdu chcete smazat ucet?</Dialog.Title>
+			<Dialog.Title>{m.settings_delete_confirm_title()}</Dialog.Title>
 			<Dialog.Description>
-				Tato akce je nevratna. Vsechna vase data, seznamy a prani budou trvale smazana.
+				{m.settings_delete_confirm_description()}
 			</Dialog.Description>
 		</Dialog.Header>
 		<Dialog.Footer class="flex gap-2">
 			<Button intent="outline" onclick={() => (deleteDialogOpen = false)} disabled={deleting}>
-				Zrusit
+				{m.cancel()}
 			</Button>
 			<Button intent="danger" onclick={handleDeleteAccount} disabled={deleting}>
-				{deleting ? 'Mazani...' : 'Ano, smazat ucet'}
+				{deleting ? m.deleting() : m.settings_delete_confirm_button()}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

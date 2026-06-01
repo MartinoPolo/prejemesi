@@ -1,3 +1,4 @@
+import * as m from '$lib/paraglide/messages.js';
 import type { ThemePresetDefinition, ThemePalette, ThemePresetName } from './types.js';
 
 const DEFAULT_PALETTE: ThemePalette = {
@@ -69,7 +70,7 @@ export const THEME_PRESETS = {
 	default: {
 		name: 'default',
 		emoji: '🎁',
-		label: 'Vychozi',
+		label: () => m.theme_default(),
 		palette: DEFAULT_PALETTE,
 		gradient:
 			'linear-gradient(145deg, oklch(0.48 0.12 150), oklch(0.56 0.14 145), oklch(0.42 0.1 155))',
@@ -77,7 +78,7 @@ export const THEME_PRESETS = {
 	christmas: {
 		name: 'christmas',
 		emoji: '🎄',
-		label: 'Vanoce',
+		label: () => m.theme_christmas(),
 		palette: CHRISTMAS_PALETTE,
 		gradient:
 			'linear-gradient(145deg, oklch(0.45 0.15 25), oklch(0.50 0.14 145), oklch(0.65 0.12 85))',
@@ -85,7 +86,7 @@ export const THEME_PRESETS = {
 	birthday: {
 		name: 'birthday',
 		emoji: '🎂',
-		label: 'Narozeniny',
+		label: () => m.theme_birthday(),
 		palette: BIRTHDAY_PALETTE,
 		gradient:
 			'linear-gradient(145deg, oklch(0.55 0.16 330), oklch(0.50 0.14 290), oklch(0.65 0.12 85))',
@@ -93,7 +94,7 @@ export const THEME_PRESETS = {
 	fun: {
 		name: 'fun',
 		emoji: '🎉',
-		label: 'Zabava',
+		label: () => m.theme_fun(),
 		palette: FUN_PALETTE,
 		gradient:
 			'linear-gradient(145deg, oklch(0.55 0.14 250), oklch(0.70 0.16 65), oklch(0.65 0.15 45))',
@@ -101,12 +102,12 @@ export const THEME_PRESETS = {
 	elegant: {
 		name: 'elegant',
 		emoji: '💍',
-		label: 'Elegantni',
+		label: () => m.theme_elegant(),
 		palette: ELEGANT_PALETTE,
 		gradient:
 			'linear-gradient(145deg, oklch(0.30 0.04 260), oklch(0.40 0.05 255), oklch(0.70 0.10 85))',
 	},
-} as const satisfies Record<ThemePresetName, ThemePresetDefinition>;
+} satisfies Record<ThemePresetName, ThemePresetDefinition>;
 
 /** Ordered array of all preset names for rendering */
 export const THEME_PRESET_LIST = [

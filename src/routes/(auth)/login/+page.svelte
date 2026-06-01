@@ -12,6 +12,7 @@
 	import SocialLoginButtons from '$lib/components/blocks/auth/SocialLoginButtons.svelte';
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import List from '@lucide/svelte/icons/list';
 	import EyeOff from '@lucide/svelte/icons/eye-off';
 	import LinkIcon from '@lucide/svelte/icons/link';
@@ -30,11 +31,11 @@
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
-			emailError = 'Zadejte emailovou adresu';
+			emailError = m.enter_email();
 			return false;
 		}
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			emailError = 'Zadejte platnou emailovou adresu';
+			emailError = m.enter_valid_email();
 			return false;
 		}
 		emailError = '';
@@ -43,7 +44,7 @@
 
 	function validatePassword(): boolean {
 		if (!password) {
-			passwordError = 'Zadejte heslo';
+			passwordError = m.enter_password();
 			return false;
 		}
 		passwordError = '';
@@ -81,14 +82,13 @@
 			});
 
 			if (result.error) {
-				errorMessage =
-					'Nespravny email nebo heslo. Zkontrolujte zadane udaje a zkuste to znovu.';
+				errorMessage = m.login_error_credentials();
 			} else {
 				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				await goto(callbackUrl);
 			}
 		} catch {
-			errorMessage = 'Doslo k chybe. Zkuste to prosim znovu.';
+			errorMessage = m.error_generic();
 		} finally {
 			loading = false;
 		}
@@ -97,28 +97,29 @@
 
 <AuthBrandPanel>
 	{#snippet tagline()}
-		Sdilejte prani,<br />zachovejte prekvapeni
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+		{@html m.auth_tagline_login()}
 	{/snippet}
 	{#snippet features()}
 		<AuthBrandFeature
 			icon={List}
-			title="Seznamy prani"
-			description="Vytvorte a sdilejte za minutu"
+			title={m.auth_feature_wishlists_title()}
+			description={m.auth_feature_wishlists_description()}
 		/>
 		<AuthBrandFeature
 			icon={EyeOff}
-			title="Skryte rezervace"
-			description="Prekvapeni zustane zachovano"
+			title={m.auth_feature_hidden_title()}
+			description={m.auth_feature_hidden_description()}
 		/>
 		<AuthBrandFeature
 			icon={LinkIcon}
-			title="Sdileni odkazem"
-			description="WhatsApp, email, Messenger..."
+			title={m.auth_feature_sharing_title()}
+			description={m.auth_feature_sharing_description()}
 		/>
 	{/snippet}
 </AuthBrandPanel>
 
-<AuthFormCard title="Prihlaste se" subtitle="Vitejte zpet v Darecky">
+<AuthFormCard title={m.login_title()} subtitle={m.login_subtitle()}>
 	{#if errorMessage}
 		<ErrorBanner message={errorMessage} />
 	{/if}
@@ -126,11 +127,11 @@
 	<form onsubmit={handleSubmit} novalidate>
 		<div class="form-stack">
 			<div class="form-field">
-				<Label for="login-email">Email</Label>
+				<Label for="login-email">{m.email_label()}</Label>
 				<Input
 					id="login-email"
 					type="email"
-					placeholder="vas@email.cz"
+					placeholder={m.email_placeholder()}
 					autocomplete="email"
 					bind:value={email}
 					onblur={handleEmailBlur}
@@ -145,7 +146,7 @@
 			</div>
 
 			<div class="form-field">
-				<Label for="login-password">Heslo</Label>
+				<Label for="login-password">{m.password_label()}</Label>
 				<div class="password-wrapper">
 					<Input
 						id="login-password"
@@ -164,7 +165,7 @@
 					<button
 						class="password-toggle"
 						type="button"
-						aria-label={showPassword ? 'Skryt heslo' : 'Zobrazit heslo'}
+						aria-label={showPassword ? m.hide_password() : m.show_password()}
 						onclick={() => (showPassword = !showPassword)}
 						tabindex={-1}
 					>
@@ -178,7 +179,9 @@
 				{#if passwordError}
 					<span class="form-error-text" id="login-password-error">{passwordError}</span>
 				{/if}
-				<a href={resolve('/reset-password')} class="forgot-link">Zapomneli jste heslo?</a>
+				<a href={resolve('/reset-password')} class="forgot-link"
+					>{m.login_forgot_password()}</a
+				>
 			</div>
 		</div>
 
@@ -186,21 +189,21 @@
 			{#if loading}
 				<span class="spinner"></span>
 			{/if}
-			Prihlasit se
+			{m.login_submit()}
 		</Button>
 	</form>
 
 	<AuthDivider />
 
 	<SocialLoginButtons
-		googleLabel="Prihlasit pres Google"
+		googleLabel={m.login_google()}
 		{callbackUrl}
 		showMagicLink={true}
 		{loading}
 	/>
 
 	<div class="auth-footer">
-		Nemate ucet?&ensp;<a href={resolve('/register')}>Zaregistrujte se</a>
+		{m.login_no_account()}&ensp;<a href={resolve('/register')}>{m.login_signup_link()}</a>
 	</div>
 </AuthFormCard>
 

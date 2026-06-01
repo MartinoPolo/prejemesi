@@ -1,3 +1,4 @@
+import * as m from '$lib/paraglide/messages.js';
 import type { notification } from '$lib/server/db/notification.schema.js';
 
 // ── Notification Types ──────────────────────────────────────────────────────
@@ -32,14 +33,14 @@ export const IN_APP_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = [
 // ── Notification Messages (Czech) ───────────────────────────────────────────
 
 export const NOTIFICATION_MESSAGES = {
-	liked_gift_reserved: 'Někdo rezervoval dárek, který se vám líbí',
-	reserved_gift_edited: 'Dárek, který jste rezervovali, byl upraven',
-	wishlist_archived: 'Seznam byl archivován',
-	owner_self_promoted: 'Vlastník seznamu nyní vidí rezervace',
-	new_gift_added: 'Nový dárek na seznamu',
-	gift_reserved: 'Dárek byl rezervován',
-	moderator_invited: 'Pozvánka ke správě seznamu',
-} as const satisfies Record<NotificationType, string>;
+	liked_gift_reserved: () => m.notification_type_liked_reserved(),
+	reserved_gift_edited: () => m.notification_type_reserved_edited(),
+	wishlist_archived: () => m.notification_type_archived(),
+	owner_self_promoted: () => m.notification_type_owner_promoted(),
+	new_gift_added: () => m.notification_type_new_gift(),
+	gift_reserved: () => m.notification_type_reserved(),
+	moderator_invited: () => m.notification_type_moderator_invited(),
+} satisfies Record<NotificationType, () => string>;
 
 // ── DB Row Type ─────────────────────────────────────────────────────────────
 

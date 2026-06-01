@@ -1,3 +1,4 @@
+import * as m from '$lib/paraglide/messages.js';
 import type { Wishlist } from './types.js';
 
 /** Wishlist with owner name for moderated/followed views */
@@ -29,11 +30,11 @@ export const SORT_OPTIONS = {
 export type SortOption = (typeof SORT_OPTIONS)[keyof typeof SORT_OPTIONS];
 
 export const SORT_LABELS = {
-	lastActivity: 'Poslední aktivita',
-	alphabetical: 'Abecedně',
-	dateCreated: 'Datum vytvoření',
-	eventDate: 'Datum události',
-} as const satisfies Record<SortOption, string>;
+	lastActivity: () => m.dashboard_sort_last_activity(),
+	alphabetical: () => m.dashboard_sort_alphabetical(),
+	dateCreated: () => m.dashboard_sort_date_created(),
+	eventDate: () => m.dashboard_sort_event_date(),
+} satisfies Record<SortOption, () => string>;
 
 /** View mode for dashboard pages */
 export const VIEW_MODES = {
@@ -45,10 +46,10 @@ export type ViewMode = (typeof VIEW_MODES)[keyof typeof VIEW_MODES];
 
 /** Wishlist status display mapping */
 export const WISHLIST_STATUS_LABELS = {
-	draft: 'Koncept',
-	active: 'Sdíleno',
-	archived: 'Archivováno',
-} as const satisfies Record<Wishlist['status'], string>;
+	draft: () => m.dashboard_status_draft(),
+	active: () => m.dashboard_status_shared(),
+	archived: () => m.dashboard_status_archived(),
+} satisfies Record<Wishlist['status'], () => string>;
 
 export const WISHLIST_STATUS_BADGE_MAP = {
 	draft: 'info',
