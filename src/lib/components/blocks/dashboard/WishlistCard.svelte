@@ -40,7 +40,7 @@
 	const isArchived = $derived(wishlistData.status === 'archived');
 	const theme = $derived(getThemePreset(wishlistData.theme as WishlistTheme));
 	const variants = $derived(wishlistCardVariants({ archived: isArchived }));
-	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]);
+	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
 	const statusDotClass = $derived(STATUS_DOT_CLASSES[wishlistData.status]);
 
 	function getOwnerInitials(name: string): string {

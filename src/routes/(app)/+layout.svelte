@@ -39,7 +39,9 @@
 		userImage={user?.image}
 	/>
 	<main class="app-content">
-		{@render children()}
+		<div class="app-content-inner">
+			{@render children()}
+		</div>
 	</main>
 </div>
 
@@ -58,8 +60,11 @@
 
 	.app-content {
 		flex: 1;
-		overflow: auto;
-		width: 100%;
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+
+	.app-content-inner {
 		max-width: var(--content-max-width);
 		margin-inline: auto;
 		padding-inline: var(--space-6);

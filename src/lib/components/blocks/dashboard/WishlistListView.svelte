@@ -68,7 +68,7 @@
 							STATUS_DOT_CLASSES[item.wishlist.status],
 						)}
 					></span>
-					{WISHLIST_STATUS_LABELS[item.wishlist.status]}
+					{WISHLIST_STATUS_LABELS[item.wishlist.status]()}
 				</div>
 			</div>
 		</a>
