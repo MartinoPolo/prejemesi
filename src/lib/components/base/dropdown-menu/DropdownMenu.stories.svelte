@@ -30,6 +30,12 @@
 		});
 	}
 
+	async function waitForStoryReady() {
+		await waitFor(() => {
+			expect(getComputedStyle(document.body).pointerEvents).not.toBe('none');
+		});
+	}
+
 	function findDropdownTrigger(canvasElement: HTMLElement): HTMLElement {
 		const trigger = canvasElement.querySelector(
 			'[data-dropdown-menu-trigger] [data-slot="button"]',
@@ -47,12 +53,14 @@
 	}
 
 	const playOpensOnClick = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
 	};
 
 	const playArrowDownFocusesItems = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
@@ -65,6 +73,7 @@
 	};
 
 	const playEnterSelectsItem = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
@@ -76,6 +85,7 @@
 	};
 
 	const playEscapeClosesMenu = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
@@ -89,7 +99,9 @@
 		<div class="flex h-48 items-start justify-center pt-4">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button intent="secondary">Open Menu</Button>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Open Menu</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content portalProps={{ disabled: true }}>
 					<DropdownMenu.Item>Profile</DropdownMenu.Item>
@@ -136,7 +148,9 @@
 		<div class="flex h-48 items-start justify-center pt-4">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button intent="secondary">Open Menu</Button>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Open Menu</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content portalProps={{ disabled: true }}>
 					<DropdownMenu.Item>
@@ -205,7 +219,9 @@
 		<div class="flex h-48 items-start justify-center pt-4">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button intent="secondary">Open Menu</Button>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Open Menu</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content portalProps={{ disabled: true }}>
 					<DropdownMenu.Item>Profile</DropdownMenu.Item>
@@ -232,7 +248,9 @@
 		<div class="flex h-48 items-start justify-center pt-4">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button intent="secondary">Open Menu</Button>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Open Menu</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content class="min-w-55" portalProps={{ disabled: true }}>
 					<DropdownMenu.Item>
@@ -264,7 +282,9 @@
 		<div class="flex h-64 flex-wrap items-start gap-6 px-4 pt-4">
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button intent="secondary">Account</Button>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Account</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content class="min-w-52" portalProps={{ disabled: true }}>
 					<DropdownMenu.Group>
@@ -288,7 +308,9 @@
 
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button intent="secondary">Workspace</Button>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Workspace</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content class="min-w-55" portalProps={{ disabled: true }}>
 					<DropdownMenu.Item>
@@ -314,7 +336,9 @@
 
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button intent="secondary">Edit</Button>
+					{#snippet child({ props })}
+						<Button intent="secondary" {...props}>Edit</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content class="min-w-48" portalProps={{ disabled: true }}>
 					<DropdownMenu.Item>
