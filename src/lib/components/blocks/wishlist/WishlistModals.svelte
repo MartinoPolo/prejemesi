@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Sheet from '$lib/components/base/sheet/index.js';
+	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
@@ -35,8 +35,8 @@
 		reserveModalOpen: boolean;
 		reservingGift: GiftForVisitor | null;
 		isReserving: boolean;
-		// Theme sheet
-		themeSheetOpen: boolean;
+		// Theme dialog
+		themeDialogOpen: boolean;
 		activeTheme: WishlistTheme;
 		// Moderator panel
 		moderatorPanelOpen: boolean;
@@ -49,7 +49,7 @@
 		onreservemodalclose: () => void;
 		onreserve: (input: ReserveGiftInput) => void;
 		onshared: () => void;
-		onthemesheetopenchange: (open: boolean) => void;
+		onthemedialogopenchange: (open: boolean) => void;
 		onthemepreview: (theme: WishlistTheme) => void;
 		onthemesave: (theme: WishlistTheme) => void;
 		onthemecancel: () => void;
@@ -74,7 +74,7 @@
 		reserveModalOpen = $bindable(),
 		reservingGift,
 		isReserving,
-		themeSheetOpen = $bindable(),
+		themeDialogOpen = $bindable(),
 		activeTheme,
 		moderatorPanelOpen = $bindable(),
 		ongiftmodalclose,
@@ -85,7 +85,7 @@
 		onreservemodalclose,
 		onreserve,
 		onshared,
-		onthemesheetopenchange,
+		onthemedialogopenchange,
 		onthemepreview,
 		onthemesave,
 		onthemecancel,
@@ -130,30 +130,29 @@
 	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
 {/if}
 
-<!-- Theme Selector Sheet (owner only) -->
+<!-- Theme Selector Dialog (owner only) -->
 {#if isOwner}
-	<Sheet.Root
-		bind:open={themeSheetOpen}
+	<Dialog.Root
+		bind:open={themeDialogOpen}
 		onOpenChange={(open) => {
-			onthemesheetopenchange(open ?? false);
+			onthemedialogopenchange(open ?? false);
 		}}
 	>
-		<Sheet.Content side="right" class="w-full sm:max-w-md">
-			<Sheet.Header>
-				<Sheet.Title>Motiv seznamu</Sheet.Title>
-				<Sheet.Description>Zvolte prednastaveny motiv nebo vlastni barvu.</Sheet.Description
+		<Dialog.Content class="sm:max-w-lg">
+			<Dialog.Header>
+				<Dialog.Title>Motiv seznamu</Dialog.Title>
+				<Dialog.Description
+					>Zvolte prednastaveny motiv nebo vlastni barvu.</Dialog.Description
 				>
-			</Sheet.Header>
-			<div class="px-4 py-4">
-				<ThemeSelector
-					currentTheme={activeTheme}
-					onsave={onthemesave}
-					oncancel={onthemecancel}
-					onpreview={onthemepreview}
-				/>
-			</div>
-		</Sheet.Content>
-	</Sheet.Root>
+			</Dialog.Header>
+			<ThemeSelector
+				currentTheme={activeTheme}
+				onsave={onthemesave}
+				oncancel={onthemecancel}
+				onpreview={onthemepreview}
+			/>
+		</Dialog.Content>
+	</Dialog.Root>
 {/if}
 
 <!-- Moderator Panel (owner only) -->

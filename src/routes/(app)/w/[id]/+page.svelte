@@ -145,9 +145,9 @@
 	let isSubmitting = $state(false);
 	let isDeleting = $state(false);
 
-	// ── Theme selector sheet state ───────────────────────────────────────────
+	// ── Theme selector dialog state ──────────────────────────────────────────
 
-	let themeSheetOpen = $state(false);
+	let themeDialogOpen = $state(false);
 
 	// ── Drag-and-drop state ──────────────────────────────────────────────────
 
@@ -359,7 +359,7 @@
 
 	function handleThemeCancel() {
 		themeContext.cancelPreview();
-		themeSheetOpen = false;
+		themeDialogOpen = false;
 	}
 
 	async function handleThemeSave(theme: WishlistTheme) {
@@ -373,9 +373,10 @@
 				customThemeColor,
 			});
 
+			wishlist.theme = themePreset;
+			wishlist.customThemeColor = customThemeColor;
 			themeContext.cancelPreview();
-			await refreshData();
-			themeSheetOpen = false;
+			themeDialogOpen = false;
 			toastSuccess(m.toast_theme_saved());
 		} catch (thrown) {
 			console.error('Failed to save theme:', thrown);
@@ -383,7 +384,7 @@
 		}
 	}
 
-	function handleThemeSheetOpenChange(open: boolean) {
+	function handleThemeDialogOpenChange(open: boolean) {
 		if (!open) {
 			themeContext.cancelPreview();
 		}
@@ -506,6 +507,7 @@
 		{role}
 		giftCount={totalCount}
 		ownerIsModerator={ownerIsModeratorLocal}
+		themeGradient={themeContext.effectiveGradient.current}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 	/>
@@ -521,7 +523,7 @@
 		onviewmodechange={handleViewModeChange}
 		onsortchange={handleSortChange}
 		onfilterchange={handleFilterChange}
-		onthemeopen={() => (themeSheetOpen = true)}
+		onthemeopen={() => (themeDialogOpen = true)}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
 	/>
@@ -567,7 +569,7 @@
 	bind:reserveModalOpen
 	{reservingGift}
 	{isReserving}
-	bind:themeSheetOpen
+	bind:themeDialogOpen
 	activeTheme={themeContext.activeTheme.current}
 	bind:moderatorPanelOpen
 	ongiftmodalclose={handleGiftModalClose}
@@ -578,7 +580,7 @@
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onshared={handleShared}
-	onthemesheetopenchange={handleThemeSheetOpenChange}
+	onthemedialogopenchange={handleThemeDialogOpenChange}
 	onthemepreview={handleThemePreview}
 	onthemesave={handleThemeSave}
 	onthemecancel={handleThemeCancel}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
+	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
@@ -53,15 +54,16 @@
 
 	<div class="ml-auto flex items-center gap-2">
 		{#if isOwner && !isArchived}
-			<Button
-				size="sm"
-				intent="outline"
-				aria-label={m.wishlist_detail_change_theme()}
-				onclick={onthemeopen}
-			>
-				<PaletteIcon data-icon="inline-start" />
-				{m.wishlist_detail_theme_button()}
-			</Button>
+			<SimpleTooltip text={m.wishlist_detail_change_theme()}>
+				<Button
+					size="icon-sm"
+					intent="outline"
+					aria-label={m.wishlist_detail_change_theme()}
+					onclick={onthemeopen}
+				>
+					<PaletteIcon />
+				</Button>
+			</SimpleTooltip>
 		{/if}
 		{#if !isOwner && !isArchived}
 			<Button size="sm" intent="ghost" onclick={onunfollow}

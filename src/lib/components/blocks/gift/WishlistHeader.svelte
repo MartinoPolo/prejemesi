@@ -27,6 +27,7 @@
 		role: WishlistRole;
 		giftCount: number;
 		ownerIsModerator: boolean;
+		themeGradient?: string;
 		onshare?: () => void;
 		onmoderators?: () => void;
 	}
@@ -41,6 +42,7 @@
 		role,
 		giftCount,
 		ownerIsModerator,
+		themeGradient,
 		onshare,
 		onmoderators,
 	}: WishlistHeaderProps = $props();
@@ -104,6 +106,15 @@
 			</div>
 		</div>
 	{:else}
+		<!-- Theme gradient strip -->
+		{#if themeGradient}
+			<div
+				class="h-3 w-full rounded-full"
+				style:background={themeGradient}
+				data-testid="theme-gradient-banner"
+			></div>
+		{/if}
+
 		<!-- No banner — standard header -->
 		<div class={styles.contentArea()}>
 			<span class={styles.ownerName()}>{ownerName}</span>
