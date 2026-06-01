@@ -205,7 +205,7 @@
 			</p>
 
 			<div class="grid grid-cols-4 gap-3">
-				{#each [{ name: '--status-success', label: 'Success', light: 'L=66%', dark: 'L=72%' }, { name: '--status-warning', label: 'Warning', light: 'L=77%', dark: 'L=82%' }, { name: '--status-danger', label: 'Danger', light: 'L=62%', dark: 'L=68%' }, { name: '--status-info', label: 'Info', light: 'L=66%', dark: 'L=72%' }] as swatch}
+				{#each [{ name: '--status-success', label: 'Success', light: 'L=66%', dark: 'L=72%' }, { name: '--status-warning', label: 'Warning', light: 'L=77%', dark: 'L=82%' }, { name: '--status-danger', label: 'Danger', light: 'L=62%', dark: 'L=68%' }, { name: '--status-info', label: 'Info', light: 'L=66%', dark: 'L=72%' }] as swatch (swatch.name)}
 					<div class="flex flex-col gap-1">
 						<div
 							class="h-12 rounded-md border border-border"
@@ -249,7 +249,7 @@
 			</p>
 
 			<div class="grid grid-cols-3 gap-3">
-				{#each [{ name: '--reserved', label: 'Reserved', light: 'L=62%', dark: 'L=68%' }, { name: '--liked', label: 'Liked', light: 'L=64%', dark: 'L=70%' }, { name: '--archived', label: 'Archived', light: 'L=55%', dark: 'L=65%' }] as swatch}
+				{#each [{ name: '--reserved', label: 'Reserved', light: 'L=62%', dark: 'L=68%' }, { name: '--liked', label: 'Liked', light: 'L=64%', dark: 'L=70%' }, { name: '--archived', label: 'Archived', light: 'L=55%', dark: 'L=65%' }] as swatch (swatch.name)}
 					<div class="flex flex-col gap-1">
 						<div
 							class="h-12 rounded-md border border-border"
@@ -282,7 +282,7 @@
 			</p>
 
 			<div class="grid grid-cols-5 gap-3">
-				{#each [{ var: '--wishlist-primary', label: 'primary' }, { var: '--wishlist-primary-fg', label: 'primary-fg' }, { var: '--wishlist-accent', label: 'accent' }, { var: '--wishlist-surface', label: 'surface' }, { var: '--wishlist-surface-hover', label: 'surface-hover' }, { var: '--wishlist-border', label: 'border' }, { var: '--wishlist-border-strong', label: 'border-strong' }, { var: '--wishlist-muted', label: 'muted' }, { var: '--wishlist-muted-fg', label: 'muted-fg' }, { var: '--wishlist-accent-fg', label: 'accent-fg' }] as swatch}
+				{#each [{ var: '--wishlist-primary', label: 'primary' }, { var: '--wishlist-primary-fg', label: 'primary-fg' }, { var: '--wishlist-accent', label: 'accent' }, { var: '--wishlist-surface', label: 'surface' }, { var: '--wishlist-surface-hover', label: 'surface-hover' }, { var: '--wishlist-border', label: 'border' }, { var: '--wishlist-border-strong', label: 'border-strong' }, { var: '--wishlist-muted', label: 'muted' }, { var: '--wishlist-muted-fg', label: 'muted-fg' }, { var: '--wishlist-accent-fg', label: 'accent-fg' }] as swatch (swatch.var)}
 					<div class="flex flex-col gap-1">
 						<div
 							class="h-10 rounded-md border border-border"
@@ -492,7 +492,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						{#each [{ token: '--input-surface', light: 'transparent', dark: '5% white' }, { token: '--input-surface-hover', light: 'transparent', dark: '8% white' }, { token: '--invalid-ring', light: 'destructive 20%', dark: 'destructive 40%' }, { token: '--invalid-border', light: 'destructive 100%', dark: 'destructive 50%' }, { token: '--switch-track', light: 'var(--input)', dark: '12% white' }, { token: '--switch-thumb', light: 'var(--background)', dark: 'var(--foreground)' }, { token: '--switch-thumb-active', light: 'var(--background)', dark: 'var(--primary-fg)' }] as row}
+						{#each [{ token: '--input-surface', light: 'transparent', dark: '5% white' }, { token: '--input-surface-hover', light: 'transparent', dark: '8% white' }, { token: '--invalid-ring', light: 'destructive 20%', dark: 'destructive 40%' }, { token: '--invalid-border', light: 'destructive 100%', dark: 'destructive 50%' }, { token: '--switch-track', light: 'var(--input)', dark: '12% white' }, { token: '--switch-thumb', light: 'var(--background)', dark: 'var(--foreground)' }, { token: '--switch-thumb-active', light: 'var(--background)', dark: 'var(--primary-fg)' }] as row (row.token)}
 							<tr class="border-t border-border">
 								<td class="px-3 py-2"><code>{row.token}</code></td>
 								<td class="px-3 py-2">

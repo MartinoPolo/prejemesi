@@ -18,7 +18,7 @@
 	type="single"
 	{value}
 	onValueChange={(newValue) => {
-		if (newValue) value = newValue as ViewMode;
+		if (newValue !== '') value = newValue as ViewMode;
 	}}
 	intent="default"
 	size="icon-sm"

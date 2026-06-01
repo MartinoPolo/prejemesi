@@ -23,7 +23,7 @@
 	type="single"
 	{value}
 	onValueChange={(newValue) => {
-		if (newValue) onchange(newValue as GiftViewMode);
+		if (newValue !== '') onchange(newValue as GiftViewMode);
 	}}
 	intent="default"
 	size="icon"
