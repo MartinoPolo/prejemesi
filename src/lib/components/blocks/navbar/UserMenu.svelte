@@ -21,8 +21,11 @@
 	const settingsHref = resolve('/(app)/settings');
 
 	async function handleSignOut() {
-		await authClient.signOut();
-		window.location.href = resolve('/');
+		try {
+			await authClient.signOut();
+		} finally {
+			window.location.href = resolve('/');
+		}
 	}
 </script>
 
