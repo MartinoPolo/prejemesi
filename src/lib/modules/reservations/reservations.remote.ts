@@ -1,5 +1,6 @@
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_error_codes.js';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -25,7 +26,7 @@ async function getGiftWithWishlist(giftId: string) {
 
 	const row = rows[0];
 	if (row === undefined) {
-		error(404, 'Darek nebyl nalezen');
+		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
 
 	return row;
@@ -90,18 +91,18 @@ export const reserveGift = publicCommand(async (authContext, input: ReserveGiftI
 
 	// Cannot reserve on archived wishlists
 	if (wishlistRow.status === 'archived') {
-		error(400, 'Nelze rezervovat na archivovanem seznamu');
+		error(400, SERVER_ERROR.CANNOT_RESERVE_ON_ARCHIVED);
 	}
 
 	// Owner cannot reserve their own gifts
 	if (authContext !== null && authContext.user.id === wishlistRow.ownerId) {
-		error(403, 'Vlastnik nemuze rezervovat sve darky');
+		error(403, SERVER_ERROR.OWNER_CANNOT_RESERVE_OWN_GIFTS);
 	}
 
 	// Anonymous users must provide a display name
 	if (authContext === null) {
 		if (input.anonymousName == null || input.anonymousName.trim() === '') {
-			error(400, 'Pro anonymni rezervaci je potreba zadat jmeno');
+			error(400, SERVER_ERROR.ANONYMOUS_NAME_REQUIRED);
 		}
 	}
 
@@ -110,14 +111,14 @@ export const reserveGift = publicCommand(async (authContext, input: ReserveGiftI
 	const requestedQuantity = input.quantity;
 
 	if (requestedQuantity < 1) {
-		error(400, 'Mnozstvi musi byt alespon 1');
+		error(400, SERVER_ERROR.QUANTITY_MUST_BE_AT_LEAST_ONE);
 	}
 
 	const currentReserved = await getActiveReservedCount(input.giftId);
 	const available = maxQuantity - currentReserved;
 
 	if (requestedQuantity > available) {
-		error(400, `Neni dostatek dostupnych kusu. Dostupne: ${available}`);
+		error(400, encodeServerError(SERVER_ERROR.NOT_ENOUGH_AVAILABLE, { available }));
 	}
 
 	const [created] = await database
@@ -135,7 +136,7 @@ export const reserveGift = publicCommand(async (authContext, input: ReserveGiftI
 		.returning();
 
 	if (created === undefined) {
-		error(500, 'Rezervace se nezdarila');
+		error(500, SERVER_ERROR.RESERVATION_FAILED);
 	}
 
 	return { id: created.id };
@@ -156,20 +157,20 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
 
 	const reservationRow = rows[0];
 	if (reservationRow === undefined) {
-		error(404, 'Rezervace nebyla nalezena');
+		error(404, SERVER_ERROR.RESERVATION_NOT_FOUND);
 	}
 
 	// Check authorization: only the reserver can unreserve
 	if (reservationRow.userId !== null) {
 		// Authenticated reservation — must match userId
 		if (authContext === null || authContext.user.id !== reservationRow.userId) {
-			error(403, 'Nemuzete zrusit cizi rezervaci');
+			error(403, SERVER_ERROR.CANNOT_CANCEL_OTHERS_RESERVATION);
 		}
 	} else {
 		// Anonymous reservation — only moderators can unreserve on behalf
 		// For now, anonymous users cannot unreserve (no token mechanism)
 		if (authContext === null) {
-			error(403, 'Anonymni uzivatele nemohou rusit rezervace');
+			error(403, SERVER_ERROR.ANONYMOUS_CANNOT_CANCEL_RESERVATIONS);
 		}
 		// Check if authenticated user is moderator for this wishlist
 		const giftRow = await database
@@ -179,7 +180,7 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
 			.limit(1);
 
 		if (giftRow[0] === undefined) {
-			error(404, 'Darek nebyl nalezen');
+			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 		}
 
 		const role = await determineRole(
@@ -189,7 +190,7 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
 		);
 
 		if (role !== 'moderator') {
-			error(403, 'Nemuzete zrusit anonymni rezervaci');
+			error(403, SERVER_ERROR.CANNOT_CANCEL_ANONYMOUS_RESERVATION);
 		}
 	}
 
@@ -236,7 +237,7 @@ export const getReservationsForGift = publicQuery(async (authContext, giftId: st
 		id: row.id,
 		giftId: row.giftId,
 		quantity: row.quantity,
-		displayName: row.anonymousName ?? 'Prihlaseny uzivatel',
+		displayName: row.anonymousName ?? 'Authenticated user',
 		createdAt: row.createdAt,
 	}));
 

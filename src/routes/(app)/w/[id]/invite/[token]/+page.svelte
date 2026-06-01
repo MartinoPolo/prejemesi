@@ -5,6 +5,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { toastSuccess } from '$lib/components/base/toast/index.js';
+	import * as m from '$lib/paraglide/messages.js';
+	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import XCircleIcon from '@lucide/svelte/icons/x-circle';
@@ -21,17 +23,13 @@
 		try {
 			const result = await acceptModeratorInvite({ token: data.token });
 			accepted = true;
-			toastSuccess('Pozvanka byla prijata!');
+			toastSuccess(m.invite_toast_accepted());
 			// Redirect to the wishlist after a short delay
 			setTimeout(() => {
 				void goto(resolve('/(app)/w/[id]', { id: result.wishlistShortId }));
 			}, 1500);
 		} catch (thrown) {
-			if (thrown instanceof Error) {
-				errorMessage = thrown.message;
-			} else {
-				errorMessage = 'Nepodarilo se prijmout pozvanku';
-			}
+			errorMessage = translateServerError(thrown, m.invite_error_generic());
 		} finally {
 			isAccepting = false;
 		}
@@ -54,21 +52,23 @@
 			</div>
 			<Card.Title class="text-xl">
 				{#if accepted}
-					Pozvanka prijata!
+					{m.invite_accepted_title()}
 				{:else if errorMessage !== null}
-					Chyba
+					{m.invite_error_title()}
 				{:else}
-					Pozvanka do seznamu
+					{m.invite_pending_title()}
 				{/if}
 			</Card.Title>
 			<Card.Description>
 				{#if accepted}
-					Nyni jste moderatorem seznamu "{data.wishlist.title}". Presmerovavame vas...
+					{m.invite_accepted_description({ title: data.wishlist.title })}
 				{:else if errorMessage !== null}
 					{errorMessage}
 				{:else}
-					Byli jste pozváni jako moderator seznamu prani "{data.wishlist.title}" od {data
-						.wishlist.ownerName}.
+					{m.invite_pending_description({
+						title: data.wishlist.title,
+						owner: data.wishlist.ownerName,
+					})}
 				{/if}
 			</Card.Description>
 		</Card.Header>
@@ -78,11 +78,11 @@
 				<div
 					class="rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground"
 				>
-					<p class="font-medium text-foreground">Jako moderator budete moci:</p>
+					<p class="font-medium text-foreground">{m.invite_moderator_can()}</p>
 					<ul class="mt-2 flex flex-col gap-1">
-						<li>Videt stav rezervaci</li>
-						<li>Pridavat a upravovat darky</li>
-						<li>Pomahat se spravou seznamu</li>
+						<li>{m.invite_can_see_reservations()}</li>
+						<li>{m.invite_can_add_gifts()}</li>
+						<li>{m.invite_can_manage()}</li>
 					</ul>
 				</div>
 			</Card.Content>
@@ -93,13 +93,13 @@
 					onclick={() =>
 						void goto(resolve('/(app)/w/[id]', { id: data.wishlist.shortId }))}
 				>
-					Zrusit
+					{m.cancel()}
 				</Button>
 				<Button disabled={isAccepting} onclick={handleAccept}>
 					{#if isAccepting}
-						Prijimam...
+						{m.invite_accepting()}
 					{:else}
-						Prijmout pozvanku
+						{m.invite_accept_button()}
 					{/if}
 				</Button>
 			</Card.Footer>
@@ -112,7 +112,7 @@
 					onclick={() =>
 						void goto(resolve('/(app)/w/[id]', { id: data.wishlist.shortId }))}
 				>
-					Zpet na seznam
+					{m.invite_back_to_list()}
 				</Button>
 			</Card.Footer>
 		{/if}
@@ -120,5 +120,5 @@
 </div>
 
 <svelte:head>
-	<title>Pozvanka — {data.wishlist.title} — Darecky</title>
+	<title>{m.invite_page_title({ title: data.wishlist.title })}</title>
 </svelte:head>

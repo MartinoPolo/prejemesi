@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import PageHeader from '$lib/components/blocks/page-header/PageHeader.svelte';
 	import DashboardToolbar from '$lib/components/blocks/dashboard/DashboardToolbar.svelte';
 	import WishlistCardGrid from '$lib/components/blocks/dashboard/WishlistCardGrid.svelte';
@@ -58,7 +59,7 @@
 	}
 </script>
 
-<PageHeader title="Moje seznamy">
+<PageHeader title={m.dashboard_my_lists_title()}>
 	{#snippet toolbar()}
 		<DashboardToolbar bind:sortValue bind:viewMode bind:showArchived />
 	{/snippet}
@@ -67,13 +68,13 @@
 {#if filteredWishlists.length === 0}
 	<EmptyState
 		emoji="📝"
-		title="Zatím žádné seznamy"
-		description="Vytvořte svůj první seznam přání a začněte přidávat dárky."
+		title={m.dashboard_empty_title()}
+		description={m.dashboard_empty_description()}
 	>
 		{#snippet actions()}
 			<Button onclick={() => (isCreateModalOpen = true)}>
 				<PlusIcon data-icon="inline-start" />
-				Vytvořit seznam
+				{m.dashboard_create_list()}
 			</Button>
 		{/snippet}
 	</EmptyState>

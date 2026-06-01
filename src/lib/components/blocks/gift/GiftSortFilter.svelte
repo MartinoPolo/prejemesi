@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import FilterIcon from '@lucide/svelte/icons/list-filter';
@@ -27,13 +28,13 @@
 	}: GiftSortFilterProps = $props();
 
 	const SORT_LABELS = {
-		ownerOrder: 'Poradi vlastnika',
-		priority: 'Priorita',
-		priceAsc: 'Cena (vzestupne)',
-		priceDesc: 'Cena (sestupne)',
-		name: 'Nazev',
-		dateAdded: 'Datum pridani',
-	} as const satisfies Record<GiftSortOption, string>;
+		ownerOrder: () => m.gift_sort_owner_order(),
+		priority: () => m.gift_sort_priority(),
+		priceAsc: () => m.gift_sort_price_asc(),
+		priceDesc: () => m.gift_sort_price_desc(),
+		name: () => m.gift_sort_name(),
+		dateAdded: () => m.gift_sort_date_added(),
+	} satisfies Record<GiftSortOption, () => string>;
 
 	const SORT_KEYS = Object.keys(GIFT_SORT_OPTIONS) as GiftSortOption[];
 
@@ -58,7 +59,7 @@
 				size="icon"
 				intent="outline"
 				class={cn('relative size-8', hasActiveFilters && 'border-primary')}
-				aria-label="Radit a filtrovat"
+				aria-label={m.gift_sort_filter_label()}
 			>
 				<FilterIcon class="size-4" />
 				{#if hasActiveFilters}
@@ -74,7 +75,7 @@
 	<DropdownMenu.Portal>
 		<DropdownMenu.Content align="end" class="w-56">
 			<DropdownMenu.Group>
-				<DropdownMenu.GroupHeading>Radit podle</DropdownMenu.GroupHeading>
+				<DropdownMenu.GroupHeading>{m.gift_sort_by()}</DropdownMenu.GroupHeading>
 				{#each SORT_KEYS as option (option)}
 					<DropdownMenu.Item onclick={() => handleSortSelect(option)}>
 						<span class="flex w-full items-center gap-2">
@@ -83,7 +84,7 @@
 									<CheckIcon class="size-4" />
 								{/if}
 							</span>
-							{SORT_LABELS[option]}
+							{SORT_LABELS[option]()}
 						</span>
 					</DropdownMenu.Item>
 				{/each}
@@ -92,18 +93,18 @@
 			<DropdownMenu.Separator />
 
 			<DropdownMenu.Group>
-				<DropdownMenu.GroupHeading>Filtrovat</DropdownMenu.GroupHeading>
+				<DropdownMenu.GroupHeading>{m.gift_filter()}</DropdownMenu.GroupHeading>
 				<DropdownMenu.CheckboxItem
 					checked={filters.availableOnly}
 					onclick={toggleAvailableOnly}
 				>
-					Pouze dostupne
+					{m.gift_filter_available_only()}
 				</DropdownMenu.CheckboxItem>
 				<DropdownMenu.CheckboxItem
 					checked={filters.withLinkOnly}
 					onclick={toggleWithLinkOnly}
 				>
-					S odkazem
+					{m.gift_filter_with_link()}
 				</DropdownMenu.CheckboxItem>
 			</DropdownMenu.Group>
 		</DropdownMenu.Content>

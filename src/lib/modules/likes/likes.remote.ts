@@ -1,5 +1,6 @@
 import { eq, and, isNull, count as drizzleCount } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -41,7 +42,7 @@ export const toggleLike = guardedCommand(
 			error(404, 'Wishlist not found');
 		}
 		if (wishlistRow.ownerId === user.id) {
-			error(403, 'Vlastnik nemuze likovat sve darky');
+			error(403, SERVER_ERROR.OWNER_CANNOT_LIKE_OWN_GIFTS);
 		}
 
 		// Check for existing like (active or soft-deleted)
