@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RadioGroup as RadioGroupPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
-	import type { RadioGroupProps } from './radio_group_variants.js';
+	import type { RadioGroupProps } from './radio_group_types.js';
 
 	let {
 		ref = $bindable(null),

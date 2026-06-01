@@ -11,6 +11,7 @@
 	import BookmarkCheckIcon from '@lucide/svelte/icons/bookmark-check';
 	import UserPlusIcon from '@lucide/svelte/icons/user-plus';
 	import BellIcon from '@lucide/svelte/icons/bell';
+	import { Button } from '$lib/components/base/button/index.js';
 	import { cn } from '$lib/utils.js';
 
 	interface NotificationItemProps {
@@ -45,10 +46,10 @@
 	}
 </script>
 
-<button
-	type="button"
+<Button
+	intent="ghost"
 	class={cn(
-		'flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted/50',
+		'flex h-auto w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted/50',
 		!notification.read && 'bg-primary/5',
 	)}
 	onclick={handleClick}
@@ -78,4 +79,4 @@
 	{#if !notification.read}
 		<span class="mt-2 size-2 shrink-0 rounded-full bg-primary" aria-label="Neprecten"></span>
 	{/if}
-</button>
+</Button>

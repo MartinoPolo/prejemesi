@@ -5,6 +5,7 @@
 	import { ALLOWED_CONTENT_TYPES } from '$lib/modules/uploads/types.js';
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
 	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
+	import { Button } from '$lib/components/base/button/index.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 
@@ -185,14 +186,15 @@
 		<img src={previewUrl} alt="Upload preview" class={styles.preview()} />
 
 		{#if progress.status !== 'uploading'}
-			<button
-				type="button"
+			<Button
+				size="icon-sm"
+				intent="ghost"
 				class={styles.removeButton()}
 				onclick={handleRemove}
 				aria-label="Remove image"
 			>
-				<XIcon class="size-3.5" />
-			</button>
+				<XIcon data-icon="solo" />
+			</Button>
 		{/if}
 	{:else}
 		<UploadIcon class="size-8 text-muted-foreground" />

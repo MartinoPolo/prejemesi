@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import { Button } from '$lib/components/base/button/index.js';
 	import type { ThemePresetDefinition, ThemePalette } from '$lib/modules/themes/types.js';
 	import { themePresetCardVariants } from './theme_selector_variants.js';
 
@@ -15,7 +16,7 @@
 	const palette: ThemePalette = $derived(preset.palette);
 </script>
 
-<button type="button" class={styles.root()} {onclick} aria-pressed={selected}>
+<Button intent="ghost" class={styles.root()} {onclick} aria-pressed={selected}>
 	<!-- Color swatches showing the palette -->
 	<div class={styles.swatchRow()}>
 		<div class={styles.swatch()} style:background={palette['--wishlist-primary']}></div>
@@ -37,4 +38,4 @@
 			<CheckIcon class="size-3" />
 		</div>
 	{/if}
-</button>
+</Button>

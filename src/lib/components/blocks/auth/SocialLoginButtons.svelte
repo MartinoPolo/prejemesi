@@ -34,16 +34,16 @@
 	}
 </script>
 
-<button
-	class="btn-google"
-	type="button"
+<Button
+	intent="outline"
+	class="w-full"
 	disabled={loading || googleLoading}
 	onclick={handleGoogleLogin}
 >
 	{#if googleLoading}
-		<span class="spinner"></span>
+		<span class="spinner" data-icon="inline-start"></span>
 	{:else}
-		<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+		<svg data-icon="inline-start" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
 			<path
 				fill="#4285F4"
 				d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
@@ -63,7 +63,7 @@
 		</svg>
 	{/if}
 	{googleLabel}
-</button>
+</Button>
 
 {#if showMagicLink}
 	<Button intent="ghost" href={resolve('/magic-link')} class="mt-2 w-full">
@@ -73,36 +73,6 @@
 {/if}
 
 <style>
-	.btn-google {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-2);
-		width: 100%;
-		height: var(--size-control-md);
-		background: var(--background);
-		color: var(--foreground);
-		border: 1.5px solid var(--border);
-		border-radius: var(--radius-md);
-		font-family: var(--font-sans);
-		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
-		cursor: pointer;
-		transition:
-			background var(--duration-normal),
-			border-color var(--duration-normal);
-	}
-
-	.btn-google:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-google:hover:not(:disabled) {
-		background: oklch(from var(--muted) l c h);
-		border-color: oklch(from var(--border) calc(l - 0.07) c h);
-	}
-
 	.spinner {
 		width: 18px;
 		height: 18px;

@@ -2,7 +2,7 @@
 	import { ToggleGroup as ToggleGroupPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 	import { setToggleGroupContext } from './toggle_group.context.svelte.js';
-	import type { ToggleGroupProps } from './toggle_group_variants.js';
+	import type { ToggleGroupProps } from './toggle_group_types.js';
 
 	let {
 		class: className,
