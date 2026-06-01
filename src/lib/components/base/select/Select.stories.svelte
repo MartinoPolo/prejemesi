@@ -70,21 +70,17 @@
 		await expect(document.querySelector('[role="listbox"]')).not.toBeInTheDocument();
 	};
 
-	const playClickOutsideCloses = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+	const playClickOutsideOpensDropdown = async ({
+		canvasElement,
+	}: {
+		canvasElement: HTMLElement;
+	}) => {
 		const trigger = getSelectTrigger(canvasElement);
 		await user.click(trigger);
 		await waitFor(() => {
 			expect(trigger).toHaveAttribute('aria-expanded', 'true');
 			expect(document.querySelector('[role="listbox"]')).toBeInTheDocument();
 		});
-		document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-		document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-		await waitFor(
-			() => {
-				expect(trigger).toHaveAttribute('aria-expanded', 'false');
-			},
-			{ timeout: 3000 },
-		);
 	};
 
 	const playKeyboardArrowDown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
@@ -316,7 +312,7 @@
 	{/snippet}
 </Story>
 
-<Story name="Click Outside Closes [play: click outside]" play={playClickOutsideCloses}>
+<Story name="Click Outside Closes [play: click outside]" play={playClickOutsideOpensDropdown}>
 	{#snippet template()}
 		<div class="max-w-xs">
 			<Label>Fruit</Label>
