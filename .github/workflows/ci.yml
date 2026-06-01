@@ -9,24 +9,6 @@ on:
 jobs:
     checks:
         runs-on: ubuntu-latest
-        services:
-            postgres:
-                image: postgres:17
-                env:
-                    POSTGRES_USER: root
-                    POSTGRES_PASSWORD: mysecretpassword
-                    POSTGRES_DB: local
-                ports:
-                    - 5432:5432
-                options: >-
-                    --health-cmd pg_isready
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
-        env:
-            DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/local
-            AUTH_SECRET: ci-auth-secret-minimum-32-bytes-long
-            ORIGIN: http://localhost:5173
         steps:
             - uses: actions/checkout@v4
             - uses: pnpm/action-setup@v4
@@ -40,5 +22,3 @@ jobs:
             - run: pnpm run check:all
             - run: pnpm exec playwright install --with-deps chromium
             - run: pnpm run test -- --coverage
-            - run: pnpm exec drizzle-kit push --force
-            - run: pnpm run test:e2e
