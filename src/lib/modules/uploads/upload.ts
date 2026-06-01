@@ -1,17 +1,11 @@
 import { authorizeUpload } from './uploads.remote.js';
 import type { UploadTarget } from '$lib/server/storage/r2.js';
-import type { AllowedContentType } from '$lib/server/storage/r2.js';
-import type { UploadResult, UploadProgress } from './types.js';
+import { isAllowedContentType, type UploadResult, type UploadProgress } from './types.js';
 
 /**
  * Callback invoked as upload progress changes.
  */
 export type UploadProgressCallback = (progress: UploadProgress) => void;
-
-function isAllowedContentType(value: string): value is AllowedContentType {
-	const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-	return allowed.includes(value);
-}
 
 /**
  * Uploads a file to R2 storage via the server upload flow:
@@ -23,6 +17,7 @@ export async function uploadFile(
 	file: File,
 	target: UploadTarget,
 	onProgress?: UploadProgressCallback,
+	signal?: AbortSignal,
 ): Promise<UploadResult> {
 	const report = (partial: Partial<UploadProgress>) => {
 		onProgress?.({
@@ -36,6 +31,10 @@ export async function uploadFile(
 		// Validate content type client-side before sending to server
 		if (!isAllowedContentType(file.type)) {
 			throw new Error(`Invalid file type: ${file.type}. Allowed: JPEG, PNG, WebP, GIF`);
+		}
+
+		if (signal?.aborted === true) {
+			throw new Error('Upload was aborted');
 		}
 
 		// Step 1: Request authorization from server
@@ -56,6 +55,7 @@ export async function uploadFile(
 			(percentage) => {
 				report({ status: 'uploading', percentage });
 			},
+			signal,
 		);
 
 		if (!uploadResult.ok) {
@@ -83,6 +83,7 @@ function uploadWithProgress(
 	url: string,
 	file: File,
 	onProgress: (percentage: number) => void,
+	signal?: AbortSignal,
 ): Promise<{ ok: boolean; status: number }> {
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
@@ -107,6 +108,20 @@ function uploadWithProgress(
 		xhr.addEventListener('abort', () => {
 			reject(new Error('Upload was aborted'));
 		});
+
+		if (signal != null) {
+			if (signal.aborted) {
+				xhr.abort();
+				return;
+			}
+			signal.addEventListener(
+				'abort',
+				() => {
+					xhr.abort();
+				},
+				{ once: true },
+			);
+		}
 
 		xhr.send(file);
 	});

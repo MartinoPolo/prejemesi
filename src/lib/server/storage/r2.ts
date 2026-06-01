@@ -1,5 +1,12 @@
 import { getRequestEvent } from '$app/server';
 import { env } from '$env/dynamic/private';
+import { UPLOAD_API_BASE } from '$lib/modules/uploads/types.js';
+
+export {
+	ALLOWED_CONTENT_TYPES,
+	isAllowedContentType,
+	type AllowedContentType,
+} from '$lib/modules/uploads/types.js';
 
 /**
  * R2 types extracted from App.Platform to avoid depending on @cloudflare/workers-types globals.
@@ -25,6 +32,7 @@ export const UPLOAD_TARGETS = {
 	'gift-image': 'gifts',
 	'wishlist-banner': 'wishlists/banners',
 	'wishlist-thumbnail': 'wishlists/thumbnails',
+	// Forward-ported from profile/settings — not in issue #5 scope but already wired up
 	avatar: 'avatars',
 } as const;
 
@@ -38,27 +46,17 @@ export const MAX_FILE_SIZE = {
 	avatar: 5 * 1024 * 1024, // 5 MB
 } as const satisfies Record<UploadTarget, number>;
 
-/** Allowed image MIME types. */
-export const ALLOWED_CONTENT_TYPES = [
-	'image/jpeg',
-	'image/png',
-	'image/webp',
-	'image/gif',
-] as const;
-
-export type AllowedContentType = (typeof ALLOWED_CONTENT_TYPES)[number];
-
-export function isAllowedContentType(value: string): value is AllowedContentType {
-	return (ALLOWED_CONTENT_TYPES as readonly string[]).includes(value);
-}
-
 /**
  * Returns the R2 bucket binding from the platform environment.
  * Returns `undefined` when running locally without R2 configured.
  */
 export function getR2Bucket(): PlatformR2Bucket | undefined {
-	const event = getRequestEvent();
-	return event?.platform?.env?.R2;
+	try {
+		const event = getRequestEvent();
+		return event?.platform?.env?.R2;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -78,7 +76,7 @@ export function getPublicUrl(objectKey: string): string {
 		return `${publicUrl.replace(/\/$/, '')}/${objectKey}`;
 	}
 	// Local dev fallback — served from the upload API route
-	return `/api/upload/${objectKey}`;
+	return `${UPLOAD_API_BASE}/${objectKey}`;
 }
 
 /**
