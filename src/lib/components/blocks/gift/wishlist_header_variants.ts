@@ -17,12 +17,12 @@ export const wishlistHeaderVariants = tv({
 		metaRowOnBanner: 'flex flex-wrap items-center gap-3 text-sm text-white/70',
 		actionRow: 'flex items-center gap-2',
 		archivedBanner:
-			'flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800',
+			'flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200',
 		sharedBanner:
-			'flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800',
+			'flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200',
 		draftBanner:
-			'flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800',
+			'flex items-center gap-2 rounded-lg border border-blue-500/25 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200',
 		disclosureBanner:
-			'flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800',
+			'flex items-center gap-2 rounded-lg border border-purple-500/25 bg-purple-500/10 px-4 py-3 text-sm text-purple-800 dark:text-purple-200',
 	},
 });

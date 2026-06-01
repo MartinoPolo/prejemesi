@@ -1,5 +1,5 @@
 import Root from './Tabs.svelte';
-import Tab from './Tab.svelte';
+import Tab from './tab.svelte';
 export { Root, Root as Tabs, Tab };
 export {
 	tabsContainerVariants,

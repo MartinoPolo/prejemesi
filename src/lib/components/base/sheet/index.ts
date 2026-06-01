@@ -1,3 +1,5 @@
+export type Side = 'top' | 'right' | 'bottom' | 'left';
+
 import Root from './sheet.svelte';
 import Portal from './sheet-portal.svelte';
 import Trigger from './sheet-trigger.svelte';

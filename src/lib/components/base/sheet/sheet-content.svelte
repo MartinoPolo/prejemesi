@@ -1,7 +1,3 @@
-<script lang="ts" module>
-	export type Side = 'top' | 'right' | 'bottom' | 'left';
-</script>
-
 <script lang="ts">
 	import { Dialog as SheetPrimitive } from 'bits-ui';
 	import type { Snippet } from 'svelte';
@@ -11,6 +7,7 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
+	import type { Side } from './index.js';
 
 	let {
 		ref = $bindable(null),
@@ -45,7 +42,7 @@
 			<SheetPrimitive.Close data-slot="sheet-close">
 				{#snippet child({ props })}
 					<Button intent="ghost" class="absolute top-4 right-4" size="icon-sm" {...props}>
-						<XIcon />
+						<XIcon data-icon="inline-start" />
 						<span class="sr-only">Close</span>
 					</Button>
 				{/snippet}

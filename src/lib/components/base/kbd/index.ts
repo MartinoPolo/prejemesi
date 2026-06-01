@@ -1,5 +1,5 @@
 import Root from './Kbd.svelte';
-import Group from './KbdGroup.svelte';
+import Group from './kbd-group.svelte';
 export { Root, Root as Kbd, Group, Group as KbdGroup };
 export {
 	KBD_TONES,

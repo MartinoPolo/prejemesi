@@ -1,7 +1,5 @@
-<script lang="ts">
-	import ArrowRight from '@lucide/svelte/icons/arrow-right';
-
-	interface NavDropdownItem {
+<script lang="ts" module>
+	export interface NavDropdownItem {
 		name: string;
 		meta: string;
 		href: string;
@@ -9,6 +7,11 @@
 		badgeLabel?: string;
 		badgeVariant?: 'shared' | 'draft';
 	}
+</script>
+
+<script lang="ts">
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import { Badge } from '$lib/components/base/badge/index.js';
 
 	interface NavDropdownProps {
 		title: string;
@@ -21,56 +24,68 @@
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 <div class="nav-dropdown" role="menu" aria-label="Nedavne — {title}">
-	<div class="nav-dropdown-header">
-		<span class="nav-dropdown-title">Nedavne</span>
-		<a class="nav-dropdown-view-all" href={viewAllHref}>
-			Zobrazit vse
-			<ArrowRight class="size-3" />
-		</a>
-	</div>
+	<div class="nav-dropdown-panel">
+		{#if items.length > 0}
+			<div class="nav-dropdown-header">
+				<span class="nav-dropdown-title">Nedavne</span>
+				<a class="nav-dropdown-view-all" href={viewAllHref}>
+					Zobrazit vse
+					<ArrowRight class="size-3" />
+				</a>
+			</div>
 
-	{#each items as item (item.href)}
-		<a class="nav-dropdown-item" href={item.href} role="menuitem">
-			<span class="nav-dropdown-thumb">{item.emoji}</span>
-			<span class="nav-dropdown-info">
-				<span class="nav-dropdown-name">{item.name}</span>
-				<span class="nav-dropdown-meta">{item.meta}</span>
-			</span>
-			{#if item.badgeLabel}
-				<span
-					class="nav-dropdown-badge"
-					class:badge-shared={item.badgeVariant === 'shared'}
-					class:badge-draft={item.badgeVariant === 'draft'}
-				>
-					{item.badgeLabel}
-				</span>
-			{/if}
-		</a>
-	{/each}
+			{#each items as item (item.href)}
+				<a class="nav-dropdown-item" href={item.href} role="menuitem">
+					<span class="nav-dropdown-thumb">{item.emoji}</span>
+					<span class="nav-dropdown-info">
+						<span class="nav-dropdown-name">{item.name}</span>
+						<span class="nav-dropdown-meta">{item.meta}</span>
+					</span>
+					{#if item.badgeLabel}
+						<Badge
+							tone={item.badgeVariant === 'shared' ? 'primary' : 'neutral'}
+							badgeStyle="subtle"
+							size="compact"
+						>
+							{item.badgeLabel}
+						</Badge>
+					{/if}
+				</a>
+			{/each}
+		{:else}
+			<div class="nav-dropdown-empty">
+				<span class="nav-dropdown-empty-text">Zatim zadne seznamy</span>
+			</div>
+		{/if}
 
-	<div class="nav-dropdown-footer">
-		<a class="nav-dropdown-footer-link" href={viewAllHref}> Zobrazit vse </a>
+		<div class="nav-dropdown-footer">
+			<a class="nav-dropdown-footer-link" href={viewAllHref}> Zobrazit vse </a>
+		</div>
 	</div>
 </div>
 
 <style>
 	.nav-dropdown {
 		position: absolute;
-		top: calc(100% + var(--space-2));
+		top: 100%;
 		left: -8px;
 		width: 320px;
-		background: var(--popover);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-xl);
-		box-shadow: var(--shadow-xl);
-		z-index: var(--z-dropdown);
-		overflow: hidden;
+		padding-top: var(--space-2);
 		opacity: 0;
 		pointer-events: none;
 		transform: translateY(-4px);
 		transition:
 			opacity var(--duration-normal) var(--ease-standard),
 			transform var(--duration-normal) var(--ease-standard);
+		z-index: var(--z-dropdown);
+	}
+
+	.nav-dropdown-panel {
+		background: var(--popover);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-xl);
+		box-shadow: var(--shadow-xl);
+		overflow: hidden;
 	}
 
 	:global(.nav-item:hover) .nav-dropdown,
@@ -159,26 +174,6 @@
 		margin-top: 1px;
 	}
 
-	.nav-dropdown-badge {
-		font-size: 10px;
-		font-weight: var(--weight-semibold);
-		padding: 2px 7px;
-		border-radius: 9999px;
-		flex-shrink: 0;
-		white-space: nowrap;
-	}
-
-	.badge-shared {
-		background: oklch(from var(--primary) l c h / 12%);
-		color: var(--primary);
-	}
-
-	.badge-draft {
-		background: var(--accent);
-		color: var(--muted-foreground);
-		border: 1px solid var(--border);
-	}
-
 	.nav-dropdown-footer {
 		padding: var(--space-2) var(--space-4) var(--space-3);
 		border-top: 1px solid var(--border);
@@ -193,5 +188,15 @@
 
 	.nav-dropdown-footer-link:hover {
 		text-decoration: underline;
+	}
+
+	.nav-dropdown-empty {
+		padding: var(--space-4);
+		text-align: center;
+	}
+
+	.nav-dropdown-empty-text {
+		font-size: var(--text-sm);
+		color: var(--muted-foreground);
 	}
 </style>

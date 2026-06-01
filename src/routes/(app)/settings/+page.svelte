@@ -344,9 +344,7 @@
 							<p class="text-sm text-destructive">{passwordError}</p>
 						{/if}
 						{#if passwordSuccess}
-							<p class="text-sm text-green-600 dark:text-green-400">
-								Heslo bylo zmeneno
-							</p>
+							<p class="text-sm text-status-success">Heslo bylo zmeneno</p>
 						{/if}
 					</div>
 				</Card.Content>

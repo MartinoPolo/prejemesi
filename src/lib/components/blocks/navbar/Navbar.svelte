@@ -1,17 +1,29 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
-	import NavDropdown from './NavDropdown.svelte';
+	import NavDropdown, { type NavDropdownItem } from './NavDropdown.svelte';
 	import UserMenu from './UserMenu.svelte';
 	import MobileNav from './MobileNav.svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { cn } from '$lib/utils.js';
+	import {
+		getMyWishlists,
+		getModeratedWishlists,
+		getFollowedWishlists,
+	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { getThemePreset, type WishlistTheme } from '$lib/modules/wishlists/wishlist_theme.js';
+	import type { Wishlist } from '$lib/modules/wishlists/types.js';
+	import type {
+		ModeratedWishlist,
+		FollowedWishlist,
+	} from '$lib/modules/wishlists/dashboard_types.js';
 
 	interface NavbarProps {
 		userName?: string;
@@ -27,31 +39,101 @@
 		userImage = null,
 	}: NavbarProps = $props();
 
+	const MAX_DROPDOWN_ITEMS = 3;
+
+	const STATUS_BADGE: Record<
+		Wishlist['status'],
+		{ label: string; variant: NavDropdownItem['badgeVariant'] }
+	> = {
+		draft: { label: 'Koncept', variant: 'draft' },
+		active: { label: 'Sdileno', variant: 'shared' },
+		archived: { label: 'Archivovano', variant: 'draft' },
+	};
+
+	let myListsItems = $state<NavDropdownItem[]>([]);
+	let moderatedItems = $state<NavDropdownItem[]>([]);
+	let followedItems = $state<NavDropdownItem[]>([]);
+
+	function wishlistToDropdownItem(wishlistRecord: Wishlist): NavDropdownItem {
+		const theme = getThemePreset(wishlistRecord.theme as WishlistTheme);
+		const badge = STATUS_BADGE[wishlistRecord.status];
+		return {
+			name: wishlistRecord.title,
+			meta: theme.label,
+			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			emoji: theme.emoji,
+			badgeLabel: badge.label,
+			badgeVariant: badge.variant,
+		};
+	}
+
+	function moderatedToDropdownItem(wishlistRecord: ModeratedWishlist): NavDropdownItem {
+		const theme = getThemePreset(wishlistRecord.theme as WishlistTheme);
+		return {
+			name: wishlistRecord.title,
+			meta: wishlistRecord.ownerName,
+			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			emoji: theme.emoji,
+			badgeLabel: `${wishlistRecord.reservedGifts}/${wishlistRecord.totalGifts}`,
+			badgeVariant: 'draft',
+		};
+	}
+
+	function followedToDropdownItem(wishlistRecord: FollowedWishlist): NavDropdownItem {
+		const theme = getThemePreset(wishlistRecord.theme as WishlistTheme);
+		return {
+			name: wishlistRecord.title,
+			meta: wishlistRecord.ownerName,
+			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			emoji: theme.emoji,
+			badgeLabel:
+				wishlistRecord.availableGifts > 0
+					? `${wishlistRecord.availableGifts} volnych`
+					: undefined,
+			badgeVariant: 'shared',
+		};
+	}
+
+	onMount(async () => {
+		const [myLists, moderated, followed] = await Promise.allSettled([
+			getMyWishlists(),
+			getModeratedWishlists(),
+			getFollowedWishlists(),
+		]);
+
+		if (myLists.status === 'fulfilled') {
+			myListsItems = myLists.value
+				.filter((w) => w.status !== 'archived')
+				.slice(-MAX_DROPDOWN_ITEMS)
+				.reverse()
+				.map(wishlistToDropdownItem);
+		}
+		if (moderated.status === 'fulfilled') {
+			moderatedItems = moderated.value
+				.slice(-MAX_DROPDOWN_ITEMS)
+				.reverse()
+				.map(moderatedToDropdownItem);
+		}
+		if (followed.status === 'fulfilled') {
+			followedItems = followed.value
+				.filter((w) => w.unfollowedAt === null)
+				.slice(-MAX_DROPDOWN_ITEMS)
+				.reverse()
+				.map(followedToDropdownItem);
+		}
+	});
+
 	const NAV_LINKS = [
 		{ label: 'Moje seznamy', href: resolve('/(app)/my-lists') },
 		{ label: 'Spravovane', href: resolve('/(app)/moderated') },
 		{ label: 'Sledovane', href: resolve('/(app)/followed') },
 	] as const;
 
-	/** Placeholder recent items for nav dropdowns */
-	const PLACEHOLDER_ITEMS = [
-		{
-			name: 'Vanoce 2026',
-			meta: '8 prani',
-			href: resolve('/(app)/w/[id]', { id: 'placeholder-1' }),
-			emoji: '🎄',
-			badgeLabel: 'Sdileno',
-			badgeVariant: 'shared' as const,
-		},
-		{
-			name: 'Narozeniny',
-			meta: '5 prani',
-			href: resolve('/(app)/w/[id]', { id: 'placeholder-2' }),
-			emoji: '🎂',
-			badgeLabel: 'Koncept',
-			badgeVariant: 'draft' as const,
-		},
-	];
+	const navDropdownItems = $derived<NavDropdownItem[][]>([
+		myListsItems,
+		moderatedItems,
+		followedItems,
+	]);
 
 	let isCreateModalOpen = $state(false);
 
@@ -80,7 +162,11 @@
 					{link.label}
 					<ChevronDown class="nav-chevron" />
 				</a>
-				<NavDropdown title={link.label} viewAllHref={link.href} items={PLACEHOLDER_ITEMS} />
+				<NavDropdown
+					title={link.label}
+					viewAllHref={link.href}
+					items={navDropdownItems[NAV_LINKS.indexOf(link)]}
+				/>
 			</div>
 		{/each}
 	</nav>

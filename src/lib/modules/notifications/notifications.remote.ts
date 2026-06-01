@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
@@ -50,13 +50,10 @@ export const markAsRead = guardedCommand(async ({ user }, notificationIds: strin
 
 	const database = getDb();
 
-	// Mark each notification as read (only if owned by user)
-	for (const notificationId of notificationIds) {
-		await database
-			.update(notification)
-			.set({ read: true })
-			.where(and(eq(notification.id, notificationId), eq(notification.userId, user.id)));
-	}
+	await database
+		.update(notification)
+		.set({ read: true })
+		.where(and(inArray(notification.id, notificationIds), eq(notification.userId, user.id)));
 });
 
 export const markAllAsRead = guardedCommandNoArgs(async ({ user }) => {

@@ -1,4 +1,4 @@
-import { eq, and, isNull, sql, count as drizzleCount } from 'drizzle-orm';
+import { eq, and, isNull, sql, count as drizzleCount, inArray } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
@@ -113,7 +113,7 @@ export const getGiftsByWishlistShortId = publicQuery(async (authContext, shortId
 	// Visitor/Moderator: include reservation counts and like counts
 	const giftIds = giftRows.map((row) => row.id);
 
-	// Batch fetch reservation counts
+	// Batch fetch reservation counts (scoped to this wishlist's gifts)
 	const reservationCounts = new Map<string, number>();
 	if (giftIds.length > 0) {
 		const resCounts = await database
@@ -124,7 +124,7 @@ export const getGiftsByWishlistShortId = publicQuery(async (authContext, shortId
 				),
 			})
 			.from(reservation)
-			.where(and(isNull(reservation.deletedAt)))
+			.where(and(inArray(reservation.giftId, giftIds), isNull(reservation.deletedAt)))
 			.groupBy(reservation.giftId);
 
 		for (const row of resCounts) {
@@ -132,7 +132,7 @@ export const getGiftsByWishlistShortId = publicQuery(async (authContext, shortId
 		}
 	}
 
-	// Batch fetch like counts
+	// Batch fetch like counts (scoped to this wishlist's gifts)
 	const likeCounts = new Map<string, number>();
 	if (giftIds.length > 0) {
 		const lkCounts = await database
@@ -141,7 +141,7 @@ export const getGiftsByWishlistShortId = publicQuery(async (authContext, shortId
 				count: drizzleCount(),
 			})
 			.from(giftLike)
-			.where(isNull(giftLike.deletedAt))
+			.where(and(inArray(giftLike.giftId, giftIds), isNull(giftLike.deletedAt)))
 			.groupBy(giftLike.giftId);
 
 		for (const row of lkCounts) {
