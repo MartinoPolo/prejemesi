@@ -27,6 +27,7 @@
 				{...props}
 				intent="ghost"
 				size="icon"
+				class="relative"
 				aria-label={m.notification_bell_label({ count: ctx.unreadCount.current })}
 			>
 				<BellIcon data-icon />

@@ -1,6 +1,9 @@
 import type { LayoutServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { resolve } from '$app/paths';
+import { eq, and, sql } from 'drizzle-orm';
+import { getDb } from '$lib/server/db/index.js';
+import { notification } from '$lib/server/db/notification.schema.js';
 
 const PUBLIC_PATH_PREFIXES = ['/w/'];
 
@@ -12,7 +15,15 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			const redirectParam = encodeURIComponent(url.pathname);
 			throw redirect(303, resolve('/login') + `?redirect=${redirectParam}`);
 		}
-		return { user: null };
+		return { user: null, unreadNotificationCount: 0 };
 	}
-	return { user: locals.user };
+
+	const database = getDb();
+	const result = await database
+		.select({ count: sql<number>`count(*)` })
+		.from(notification)
+		.where(and(eq(notification.userId, locals.user.id), eq(notification.read, false)));
+	const unreadNotificationCount = Number(result[0]?.count ?? 0);
+
+	return { user: locals.user, unreadNotificationCount };
 };

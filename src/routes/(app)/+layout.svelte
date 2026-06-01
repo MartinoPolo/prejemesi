@@ -27,7 +27,7 @@
 		return 'U';
 	});
 
-	setNotificationsContext();
+	setNotificationsContext(data.unreadNotificationCount);
 </script>
 
 <div class="app-shell">
