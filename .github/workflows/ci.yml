@@ -16,7 +16,7 @@ jobs:
               with:
                   node-version: 22
                   cache: pnpm
-            - run: pnpm install --frozen-lockfile --config.ignore-platform=true
+            - run: pnpm install --frozen-lockfile
             - run: pnpm run cf:types
             - run: pnpm run check:all
             - run: pnpm run test -- --coverage
