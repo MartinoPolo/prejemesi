@@ -1,5 +1,3 @@
-import type { UploadTarget } from '$lib/server/storage/r2.js';
-
 /** Allowed image MIME types — shared between client and server. */
 export const ALLOWED_CONTENT_TYPES = [
 	'image/jpeg',

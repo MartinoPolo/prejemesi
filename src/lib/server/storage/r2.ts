@@ -1,11 +1,6 @@
 import { getRequestEvent } from '$app/server';
 import { env } from '$env/dynamic/private';
-import {
-	ALLOWED_CONTENT_TYPES,
-	isAllowedContentType,
-	UPLOAD_API_BASE,
-	type AllowedContentType,
-} from '$lib/modules/uploads/types.js';
+import { UPLOAD_API_BASE } from '$lib/modules/uploads/types.js';
 
 export {
 	ALLOWED_CONTENT_TYPES,

@@ -4,7 +4,7 @@
 	import type { UploadTarget } from '$lib/server/storage/r2.js';
 	import { ALLOWED_CONTENT_TYPES } from '$lib/modules/uploads/types.js';
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
-	import { imageUploadVariants, type ImageUploadSize } from './image-upload-variants.js';
+	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 
