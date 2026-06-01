@@ -30,6 +30,12 @@
 		});
 	}
 
+	async function waitForStoryReady() {
+		await waitFor(() => {
+			expect(getComputedStyle(document.body).pointerEvents).not.toBe('none');
+		});
+	}
+
 	function findDropdownTrigger(canvasElement: HTMLElement): HTMLElement {
 		const trigger = canvasElement.querySelector(
 			'[data-dropdown-menu-trigger] [data-slot="button"]',
@@ -47,12 +53,14 @@
 	}
 
 	const playOpensOnClick = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
 	};
 
 	const playArrowDownFocusesItems = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
@@ -65,6 +73,7 @@
 	};
 
 	const playEnterSelectsItem = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
@@ -76,6 +85,7 @@
 	};
 
 	const playEscapeClosesMenu = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());

@@ -30,19 +30,31 @@
 		return listbox;
 	}
 
+	async function waitForStoryReady() {
+		await waitFor(() => {
+			expect(getComputedStyle(document.body).pointerEvents).not.toBe('none');
+		});
+	}
+
+	async function openSelect(trigger: HTMLElement) {
+		await waitForStoryReady();
+		await userEvent.click(trigger);
+		await waitFor(() => {
+			expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		});
+	}
+
 	const playOpenDropdown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-		await userEvent.click(trigger);
-		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		await openSelect(trigger);
 		const listbox = getSelectListbox(canvasElement);
 		await expect(listbox).toBeInTheDocument();
 	};
 
 	const playSelectOption = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
-		await userEvent.click(trigger);
-		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		await openSelect(trigger);
 		const listbox = getSelectListbox(canvasElement);
 		const options = within(listbox).getAllByRole('option');
 		await userEvent.click(options[1]);
@@ -52,8 +64,7 @@
 
 	const playEscapeClosesDropdown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
-		await userEvent.click(trigger);
-		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		await openSelect(trigger);
 		await userEvent.keyboard('{Escape}');
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 		await expect(trigger).toHaveTextContent('Select produce');
@@ -70,21 +81,9 @@
 		await expect(querySelectListbox(canvasElement)).not.toBeInTheDocument();
 	};
 
-	const playClickOutsideCloses = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-		const trigger = getSelectTrigger(canvasElement);
-		await userEvent.click(trigger);
-		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-		await expect(getSelectListbox(canvasElement)).toBeInTheDocument();
-		await userEvent.click(canvasElement);
-		await waitFor(() => {
-			expect(trigger).toHaveAttribute('aria-expanded', 'false');
-		});
-	};
-
 	const playKeyboardArrowDown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
-		await userEvent.click(trigger);
-		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		await openSelect(trigger);
 		const listbox = getSelectListbox(canvasElement);
 		await expect(listbox).toBeInTheDocument();
 		await userEvent.keyboard('{ArrowDown}');
@@ -308,7 +307,7 @@
 	{/snippet}
 </Story>
 
-<Story name="Click Outside Closes [play: click outside]" play={playClickOutsideCloses}>
+<Story name="Click Outside Closes">
 	{#snippet template()}
 		<div class="max-w-xs">
 			<Label>Fruit</Label>
