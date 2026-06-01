@@ -52,6 +52,7 @@ export async function uploadFile(
 		const uploadResult = await uploadWithProgress(
 			authorization.uploadUrl,
 			file,
+			authorization.token,
 			(percentage) => {
 				report({ status: 'uploading', percentage });
 			},
@@ -82,6 +83,7 @@ export async function uploadFile(
 function uploadWithProgress(
 	url: string,
 	file: File,
+	token: string,
 	onProgress: (percentage: number) => void,
 	signal?: AbortSignal,
 ): Promise<{ ok: boolean; status: number }> {
@@ -89,6 +91,7 @@ function uploadWithProgress(
 		const xhr = new XMLHttpRequest();
 		xhr.open('PUT', url);
 		xhr.setRequestHeader('Content-Type', file.type);
+		xhr.setRequestHeader('X-Upload-Token', token);
 
 		xhr.upload.addEventListener('progress', (event) => {
 			if (event.lengthComputable) {
@@ -107,6 +110,10 @@ function uploadWithProgress(
 
 		xhr.addEventListener('abort', () => {
 			reject(new Error('Upload was aborted'));
+		});
+
+		xhr.addEventListener('timeout', () => {
+			reject(new Error('Upload timed out'));
 		});
 
 		if (signal != null) {

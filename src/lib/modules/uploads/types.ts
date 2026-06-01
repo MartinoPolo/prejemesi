@@ -23,6 +23,18 @@ export interface UploadAuthorization {
 	uploadUrl: string;
 	/** Public URL to access the uploaded file after upload completes. */
 	publicUrl: string;
+	/** HMAC token authorizing this specific upload. */
+	token: string;
+	/** Token expiry as Unix millisecond timestamp. */
+	expiresAt: number;
+}
+
+/** Response from the delete authorization command. */
+export interface DeleteAuthorization {
+	/** HMAC token authorizing deletion of a specific object. */
+	token: string;
+	/** Token expiry as Unix millisecond timestamp. */
+	expiresAt: number;
 }
 
 /** Result of a completed upload. */
