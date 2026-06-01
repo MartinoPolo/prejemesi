@@ -7,9 +7,10 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --emit-ts-declarations --silent",
+		"check": "pnpm paraglide:compile && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:fast": "prettier --write --log-level warn . && oxlint",
-		"check:all": "svelte-kit sync && prettier --write . && oxlint && stylelint \"src/**/*.{css,svelte}\" && pnpm check:fallow && svelte-check --tsconfig ./tsconfig.json && eslint --cache .",
+		"check:all": "pnpm paraglide:compile && svelte-kit sync && prettier --write . && oxlint && stylelint \"src/**/*.{css,svelte}\" && pnpm check:fallow && svelte-check --tsconfig ./tsconfig.json && eslint --cache .",
 		"check:fallow": "node scripts/fallow-check.js",
 		"fallow:audit": "fallow audit --format json --quiet --explain",
 		"fallow:save-baseline": "fallow dead-code --save-regression-baseline fallow-baselines/dead-code-regression.json",
@@ -29,8 +30,8 @@
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
 		"ports": "powershell -NoProfile -Command \"netstat -ano | Select-String ':5173 |:4173 |:6006 ' | Select-String 'LISTENING'\"",
 		"ports:kill": "powershell -NoProfile -Command \"$pids = @(); netstat -ano | Select-String ':5173 |:4173 |:6006 ' | Select-String 'LISTENING' | ForEach-Object { if ($_ -match '\\s(\\d+)$') { $pids += $Matches[1] } }; $pids = $pids | Select-Object -Unique; if ($pids.Count -eq 0) { Write-Host 'No processes on ports 5173/4173/6006' } else { $pids | ForEach-Object { Stop-Process -Id $_ -Force; Write-Host \\\"Killed PID $_\\\" } }\"",
-		"storybook": "svelte-kit sync && storybook dev -p 6006",
-		"build:storybook": "svelte-kit sync && storybook build"
+		"storybook": "pnpm paraglide:compile && svelte-kit sync && storybook dev -p 6006",
+		"build:storybook": "pnpm paraglide:compile && svelte-kit sync && storybook build"
 	},
 	"dependencies": {
 		"better-auth": "~1.4.22",
