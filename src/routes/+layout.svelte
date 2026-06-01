@@ -5,7 +5,8 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import figtreeLatinUrl from '@fontsource-variable/figtree/files/figtree-latin-wght-normal.woff2?url';
 	import notoSansLatinUrl from '@fontsource-variable/noto-sans/files/noto-sans-latin-wght-normal.woff2?url';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, preloadCode } from '$app/navigation';
+	import { browser } from '$app/environment';
 
 	// Tab title prefix — injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
@@ -27,6 +28,18 @@
 			document.title = `${prefix} ${document.title}`;
 		}
 	});
+
+	if (browser) {
+		const primaryRoutes = [
+			'/my-lists',
+			'/moderated',
+			'/followed',
+			'/settings',
+			'/login',
+			'/register',
+		];
+		Promise.allSettled(primaryRoutes.map((route) => preloadCode(route)));
+	}
 </script>
 
 <ModeWatcher />
