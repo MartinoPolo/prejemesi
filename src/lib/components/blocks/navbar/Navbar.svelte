@@ -184,7 +184,7 @@
 			<!-- Create CTA -->
 			<Button
 				intent="primary"
-				size="sm"
+				size="md"
 				class="hidden md:inline-flex"
 				onclick={() => (isCreateModalOpen = true)}
 			>
