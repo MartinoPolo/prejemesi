@@ -4,12 +4,7 @@ import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
-import {
-	publicQuery,
-	publicCommand,
-	guardedCommand,
-	guardedQueryWithArgs,
-} from '$lib/server/remote.js';
+import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
 import type {
 	GiftForOwner,
 	GiftForVisitor,

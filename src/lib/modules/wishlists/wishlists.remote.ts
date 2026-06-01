@@ -6,7 +6,7 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
-import { guardedCommand, guardedQuery, publicCommand, publicQuery } from '$lib/server/remote.js';
+import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	type CreateWishlistInput,

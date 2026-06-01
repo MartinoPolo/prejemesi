@@ -28,17 +28,28 @@ vi.mock('@sveltejs/kit', () => ({
  * which requires `fn.__?.type` to be a recognised remote type, while still
  * being callable as a plain function in tests.
  */
-function makeRemoteWrapper(type: string, handler: Function): Function {
+function makeRemoteWrapper(
+	type: string,
+	handler: (...args: unknown[]) => unknown,
+): (...args: unknown[]) => unknown {
 	const wrapper = (...args: unknown[]) => handler(...args);
 	(wrapper as unknown as Record<string, unknown>).__ = { type };
 	return wrapper;
 }
 
 vi.mock('$lib/server/remote.js', () => ({
-	publicCommand: vi.fn((handler: Function) => makeRemoteWrapper('command', handler)),
-	publicQuery: vi.fn((handler: Function) => makeRemoteWrapper('query', handler)),
-	guardedCommand: vi.fn((handler: Function) => makeRemoteWrapper('command', handler)),
-	guardedQuery: vi.fn((handler: Function) => makeRemoteWrapper('query', handler)),
+	publicCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+		makeRemoteWrapper('command', handler),
+	),
+	publicQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
+		makeRemoteWrapper('query', handler),
+	),
+	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+		makeRemoteWrapper('command', handler),
+	),
+	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
+		makeRemoteWrapper('query', handler),
+	),
 }));
 
 vi.mock('$lib/server/db/index.js', () => ({
@@ -115,13 +126,14 @@ function createMultiQueryChain(...resultsQueue: unknown[][]) {
 	] as const;
 
 	for (const method of chainMethods) {
-		chain[method] = vi.fn((..._args: unknown[]) => chain);
+		chain[method] = vi.fn(() => chain);
 	}
 
 	// .returning() terminates insert chains — pops from queue
 	chain['returning'] = vi.fn(() => Promise.resolve(queue.shift() ?? []));
 
 	// Make the chain awaitable — each top-level await pops from queue
+	// oxlint-ignore-next-line no-thenable -- intentional: mock must be thenable to simulate Drizzle's await behavior
 	chain['then'] = (resolve: (value: unknown) => unknown) => resolve(queue.shift() ?? []);
 
 	return chain;
@@ -180,7 +192,7 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(countDb as unknown as ReturnType<typeof getDb>);
 
-		const result = await (reserveGift as Function)(
+		const result = await (reserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
 			validInput,
 		);
@@ -199,7 +211,10 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(reserveGift as Function)(makeAuthContext(fakeOwnerUser), validInput),
+			(reserveGift as (...args: unknown[]) => unknown)(
+				makeAuthContext(fakeOwnerUser),
+				validInput,
+			),
 		).rejects.toMatchObject({ status: 403 });
 	});
 
@@ -216,7 +231,10 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(reserveGift as Function)(makeAuthContext(fakeVisitorUser), validInput),
+			(reserveGift as (...args: unknown[]) => unknown)(
+				makeAuthContext(fakeVisitorUser),
+				validInput,
+			),
 		).rejects.toMatchObject({ status: 400 });
 	});
 
@@ -229,7 +247,10 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(reserveGift as Function)(null, { ...validInput, anonymousName: '' }),
+			(reserveGift as (...args: unknown[]) => unknown)(null, {
+				...validInput,
+				anonymousName: '',
+			}),
 		).rejects.toMatchObject({ status: 400 });
 	});
 
@@ -242,7 +263,10 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(reserveGift as Function)(null, { ...validInput, anonymousName: '   ' }),
+			(reserveGift as (...args: unknown[]) => unknown)(null, {
+				...validInput,
+				anonymousName: '   ',
+			}),
 		).rejects.toMatchObject({ status: 400 });
 	});
 
@@ -255,7 +279,7 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(reserveGift as Function)(makeAuthContext(fakeVisitorUser), {
+			(reserveGift as (...args: unknown[]) => unknown)(makeAuthContext(fakeVisitorUser), {
 				...validInput,
 				quantity: 0,
 			}),
@@ -274,7 +298,7 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(countDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(reserveGift as Function)(makeAuthContext(fakeVisitorUser), {
+			(reserveGift as (...args: unknown[]) => unknown)(makeAuthContext(fakeVisitorUser), {
 				...validInput,
 				quantity: 1,
 			}),
@@ -291,7 +315,7 @@ describe('reserveGift', () => {
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(countDb as unknown as ReturnType<typeof getDb>);
 
-		const result = await (reserveGift as Function)(null, {
+		const result = await (reserveGift as (...args: unknown[]) => unknown)(null, {
 			...validInput,
 			anonymousName: 'Jan Novak',
 		});
@@ -325,7 +349,7 @@ describe('unreserveGift', () => {
 
 		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
-		const result = await (unreserveGift as Function)(
+		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
 			validInput,
 		);
@@ -342,7 +366,10 @@ describe('unreserveGift', () => {
 		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(unreserveGift as Function)(makeAuthContext(fakeVisitorUser), validInput),
+			(unreserveGift as (...args: unknown[]) => unknown)(
+				makeAuthContext(fakeVisitorUser),
+				validInput,
+			),
 		).rejects.toMatchObject({ status: 403 });
 	});
 
@@ -354,7 +381,9 @@ describe('unreserveGift', () => {
 
 		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
 
-		await expect((unreserveGift as Function)(null, validInput)).rejects.toMatchObject({
+		await expect(
+			(unreserveGift as (...args: unknown[]) => unknown)(null, validInput),
+		).rejects.toMatchObject({
 			status: 403,
 		});
 	});
@@ -373,7 +402,7 @@ describe('unreserveGift', () => {
 			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
 
-		const result = await (unreserveGift as Function)(
+		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeModeratorUser),
 			validInput,
 		);
@@ -395,7 +424,10 @@ describe('unreserveGift', () => {
 			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
-			(unreserveGift as Function)(makeAuthContext(fakeVisitorUser), validInput),
+			(unreserveGift as (...args: unknown[]) => unknown)(
+				makeAuthContext(fakeVisitorUser),
+				validInput,
+			),
 		).rejects.toMatchObject({ status: 403 });
 	});
 });
@@ -413,10 +445,10 @@ describe('getReservationsForGift', () => {
 		// determineRole: userId === ownerId → short-circuits, no DB call needed
 		mockGetDb.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>);
 
-		const result = await (getReservationsForGift as Function)(
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeOwnerUser),
 			GIFT_ID,
-		);
+		)) as { reservations: unknown[]; role: string };
 
 		expect(result.reservations).toEqual([]);
 		expect(result.role).toBe('owner');
@@ -428,7 +460,10 @@ describe('getReservationsForGift', () => {
 		// determineRole: userId is null → returns 'visitor' without DB call
 		mockGetDb.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>);
 
-		const result = await (getReservationsForGift as Function)(null, GIFT_ID);
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
+			null,
+			GIFT_ID,
+		)) as { reservations: unknown[]; role: string };
 
 		expect(result.reservations).toEqual([]);
 		expect(result.role).toBe('visitor');
@@ -442,10 +477,10 @@ describe('getReservationsForGift', () => {
 			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>);
 
-		const result = await (getReservationsForGift as Function)(
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
 			GIFT_ID,
-		);
+		)) as { reservations: unknown[]; role: string };
 
 		expect(result.reservations).toEqual([]);
 		expect(result.role).toBe('visitor');
@@ -481,10 +516,10 @@ describe('getReservationsForGift', () => {
 			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
 
-		const result = await (getReservationsForGift as Function)(
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeModeratorUser),
 			GIFT_ID,
-		);
+		)) as { reservations: Record<string, unknown>[]; role: string };
 
 		expect(result.role).toBe('moderator');
 		expect(result.reservations).toHaveLength(2);
@@ -509,7 +544,10 @@ describe('getMyReservationsForGift', () => {
 	});
 
 	it('anonymous user gets empty array without hitting the DB', async () => {
-		const result = await (getMyReservationsForGift as Function)(null, GIFT_ID);
+		const result = await (getMyReservationsForGift as (...args: unknown[]) => unknown)(
+			null,
+			GIFT_ID,
+		);
 
 		expect(result).toEqual([]);
 		expect(mockGetDb).not.toHaveBeenCalled();
@@ -522,7 +560,7 @@ describe('getMyReservationsForGift', () => {
 		const reservationsChain = createChain(ownReservations);
 		mockGetDb.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
 
-		const result = await (getMyReservationsForGift as Function)(
+		const result = await (getMyReservationsForGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
 			GIFT_ID,
 		);
@@ -534,7 +572,7 @@ describe('getMyReservationsForGift', () => {
 		const reservationsChain = createChain([]);
 		mockGetDb.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
 
-		const result = await (getMyReservationsForGift as Function)(
+		const result = await (getMyReservationsForGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
 			GIFT_ID,
 		);

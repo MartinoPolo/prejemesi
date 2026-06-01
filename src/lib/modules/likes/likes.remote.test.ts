@@ -21,12 +21,12 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: Function) => {
+	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
 	}),
-	guardedQuery: vi.fn((handler: Function) => {
+	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
@@ -106,10 +106,10 @@ const testAuthContext = { user: testUser };
 const testInput = { giftId: 'gift-abc' };
 
 const callToggleLike = (authContext: typeof testAuthContext, input: typeof testInput) =>
-	(toggleLike as unknown as Function)(authContext, input);
+	(toggleLike as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callGetUserLikesForWishlist = (authContext: typeof testAuthContext) =>
-	(getUserLikesForWishlist as unknown as Function)(authContext);
+	(getUserLikesForWishlist as unknown as (...args: unknown[]) => unknown)(authContext);
 
 beforeEach(() => {
 	vi.clearAllMocks();

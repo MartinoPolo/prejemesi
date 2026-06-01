@@ -21,7 +21,7 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: Function) => {
+	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		// Attach the __type metadata that SvelteKit's init_remote_functions expects,
 		// while still making the exported value directly callable as the handler.
 		const wrapped = (...args: unknown[]) => handler(...args);
@@ -66,7 +66,10 @@ const callAuthorizeUpload = (input: {
 	contentType: string;
 	fileSize: number;
 }): UploadAuthorization => {
-	return (authorizeUpload as unknown as Function)(null, input) as UploadAuthorization;
+	return (authorizeUpload as unknown as (...args: unknown[]) => unknown)(
+		null,
+		input,
+	) as UploadAuthorization;
 };
 
 beforeEach(() => {

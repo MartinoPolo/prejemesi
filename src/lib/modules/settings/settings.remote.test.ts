@@ -21,17 +21,17 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: Function) => {
+	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
 	}),
-	guardedCommandNoArgs: vi.fn((handler: Function) => {
+	guardedCommandNoArgs: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
 	}),
-	guardedQuery: vi.fn((handler: Function) => {
+	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
@@ -104,7 +104,9 @@ describe('getUserProfile', () => {
 			createMockDb([[{ providerId: 'credential' }, { providerId: 'credential' }]]),
 		);
 
-		const result = await (getUserProfile as unknown as Function)(testAuthContext);
+		const result = await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		);
 
 		expect(result).toEqual({
 			id: testUser.id,
@@ -120,7 +122,9 @@ describe('getUserProfile', () => {
 			createMockDb([[{ providerId: 'credential' }, { providerId: 'google' }]]),
 		);
 
-		const result = await (getUserProfile as unknown as Function)(testAuthContext);
+		const result = await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		);
 
 		expect(result).toEqual({
 			id: testUser.id,
@@ -137,7 +141,7 @@ describe('updateProfile', () => {
 		const mockDb = createMockDb([[]]);
 		mockGetDb.mockReturnValue(mockDb);
 
-		await (updateProfile as unknown as Function)(testAuthContext, {
+		await (updateProfile as unknown as (...args: unknown[]) => unknown)(testAuthContext, {
 			name: 'New Name',
 			image: 'https://example.com/new-avatar.jpg',
 		});
@@ -151,7 +155,7 @@ describe('deleteAccount', () => {
 		const mockDb = createMockDb([[]]);
 		mockGetDb.mockReturnValue(mockDb);
 
-		await (deleteAccount as unknown as Function)(testAuthContext);
+		await (deleteAccount as unknown as (...args: unknown[]) => unknown)(testAuthContext);
 
 		expect(mockDb.delete).toHaveBeenCalledTimes(1);
 	});

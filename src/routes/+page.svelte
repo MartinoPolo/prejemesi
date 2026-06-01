@@ -143,7 +143,9 @@
 					>
 						<div
 							class="gift-icon-bg flex size-11 shrink-0 items-center justify-center rounded-lg text-[22px]"
-							style="--gift-hue: {gift.hue}deg"
+							style="
+
+--gift-hue: {gift.hue}deg"
 						>
 							{gift.emoji}
 						</div>
@@ -272,7 +274,9 @@
 					>
 						<div
 							class="feat-emoji-icon flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-							style="--icon-hue: 240deg"
+							style="
+
+--icon-hue: 240deg"
 						>
 							{gift.emoji}
 						</div>
@@ -304,7 +308,9 @@
 				>
 					<div
 						class="feat-emoji-icon flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-						style="--icon-hue: 240deg"
+						style="
+
+--icon-hue: 240deg"
 					>
 						🎧
 					</div>
@@ -325,7 +331,9 @@
 				>
 					<div
 						class="feat-emoji-icon flex size-10 shrink-0 items-center justify-center rounded-md text-xl"
-						style="--icon-hue: 55deg"
+						style="
+
+--icon-hue: 55deg"
 					>
 						📖
 					</div>

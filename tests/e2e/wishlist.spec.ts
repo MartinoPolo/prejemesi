@@ -1,8 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { createTestUser, TEST_GIFT } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 
-async function createWishlistAndNavigate(page: import('@playwright/test').Page, title: string) {
+async function createWishlistAndNavigate(page: Page, title: string) {
 	await page.goto('/my-lists');
 	await page.waitForLoadState('networkidle');
 	await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();

@@ -21,17 +21,17 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: Function) => {
+	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
 	}),
-	guardedCommandNoArgs: vi.fn((handler: Function) => {
+	guardedCommandNoArgs: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
 	}),
-	guardedQuery: vi.fn((handler: Function) => {
+	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
@@ -123,7 +123,9 @@ describe('getNotifications', () => {
 			]),
 		);
 
-		const result = await (getNotifications as unknown as Function)(testAuthContext);
+		const result = await (getNotifications as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		);
 
 		expect(result).toEqual([
 			{
@@ -142,7 +144,9 @@ describe('getNotifications', () => {
 	it('returns empty array when no notifications', async () => {
 		mockGetDb.mockReturnValue(createMockDb([[]]));
 
-		const result = await (getNotifications as unknown as Function)(testAuthContext);
+		const result = await (getNotifications as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		);
 
 		expect(result).toEqual([]);
 	});
@@ -152,7 +156,9 @@ describe('getUnreadCount', () => {
 	it('returns the count of unread notifications', async () => {
 		mockGetDb.mockReturnValue(createMockDb([[{ count: 7 }]]));
 
-		const result = await (getUnreadCount as unknown as Function)(testAuthContext);
+		const result = await (getUnreadCount as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		);
 
 		expect(result).toBe(7);
 	});
@@ -160,7 +166,9 @@ describe('getUnreadCount', () => {
 	it('returns 0 when no unread notifications', async () => {
 		mockGetDb.mockReturnValue(createMockDb([[]]));
 
-		const result = await (getUnreadCount as unknown as Function)(testAuthContext);
+		const result = await (getUnreadCount as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		);
 
 		expect(result).toBe(0);
 	});
@@ -171,7 +179,7 @@ describe('markAsRead', () => {
 		const mockDb = createMockDb([]);
 		mockGetDb.mockReturnValue(mockDb);
 
-		await (markAsRead as unknown as Function)(testAuthContext, []);
+		await (markAsRead as unknown as (...args: unknown[]) => unknown)(testAuthContext, []);
 
 		expect(mockDb.update).not.toHaveBeenCalled();
 	});
@@ -180,7 +188,10 @@ describe('markAsRead', () => {
 		const mockDb = createMockDb([[]]);
 		mockGetDb.mockReturnValue(mockDb);
 
-		await (markAsRead as unknown as Function)(testAuthContext, ['notif-1', 'notif-2']);
+		await (markAsRead as unknown as (...args: unknown[]) => unknown)(testAuthContext, [
+			'notif-1',
+			'notif-2',
+		]);
 
 		expect(mockDb.update).toHaveBeenCalledTimes(1);
 	});
@@ -191,7 +202,7 @@ describe('markAllAsRead', () => {
 		const mockDb = createMockDb([[]]);
 		mockGetDb.mockReturnValue(mockDb);
 
-		await (markAllAsRead as unknown as Function)(testAuthContext);
+		await (markAllAsRead as unknown as (...args: unknown[]) => unknown)(testAuthContext);
 
 		expect(mockDb.update).toHaveBeenCalledTimes(1);
 	});

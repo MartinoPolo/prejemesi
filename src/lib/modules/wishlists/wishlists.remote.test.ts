@@ -19,16 +19,24 @@ vi.mock('$app/server', () => ({
 }));
 
 // ── Mock remote wrappers — attach .__  so init_remote_functions validator passes
-function wrapWithRemoteMarker(handler: Function): Function {
-	(handler as any).__ = {};
+function wrapWithRemoteMarker(
+	handler: (...args: unknown[]) => unknown,
+): (...args: unknown[]) => unknown {
+	(handler as unknown as Record<string, unknown>).__ = {};
 	return handler;
 }
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: Function) => wrapWithRemoteMarker(handler)),
-	guardedQuery: vi.fn((handler: Function) => wrapWithRemoteMarker(handler)),
-	publicQuery: vi.fn((handler: Function) => wrapWithRemoteMarker(handler)),
-	publicCommand: vi.fn((handler: Function) => wrapWithRemoteMarker(handler)),
+	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+		wrapWithRemoteMarker(handler),
+	),
+	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
+		wrapWithRemoteMarker(handler),
+	),
+	publicQuery: vi.fn((handler: (...args: unknown[]) => unknown) => wrapWithRemoteMarker(handler)),
+	publicCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+		wrapWithRemoteMarker(handler),
+	),
 }));
 
 // ── Mock SvelteKit error so it throws with a .status property ────────────────
@@ -119,7 +127,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 // ── DB mock helper ────────────────────────────────────────────────────────────
 
 interface MockDb {
-	db: any;
+	db: Record<string | symbol, unknown>;
 	pushResult: (result: unknown[]) => void;
 	reset: () => void;
 }
@@ -128,14 +136,14 @@ function createMockDb(): MockDb {
 	const results: unknown[][] = [];
 	const indexRef = { value: 0 };
 
-	const chain: any = new Proxy(
+	const chain: Record<string | symbol, unknown> = new Proxy(
 		{},
 		{
 			get(_target, prop) {
 				if (prop === 'then') {
 					const result = results[indexRef.value] ?? [];
 					indexRef.value++;
-					return (resolve: Function) => resolve(result);
+					return (resolve: (value: unknown) => void) => resolve(result);
 				}
 				return vi.fn(() => chain);
 			},

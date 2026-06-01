@@ -21,12 +21,12 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: Function) => {
+	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
 	}),
-	guardedQueryWithArgs: vi.fn((handler: Function) => {
+	guardedQueryWithArgs: vi.fn((handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
@@ -166,25 +166,28 @@ const activeAssignmentRow = {
 const callAcceptModeratorInvite = (
 	authContext: typeof ownerAuthContext,
 	input: { token: string },
-) => (acceptModeratorInvite as unknown as Function)(authContext, input);
+) => (acceptModeratorInvite as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callRevokeModeratorInvite = (
 	authContext: typeof ownerAuthContext,
 	input: { inviteId: string },
-) => (revokeModeratorInvite as unknown as Function)(authContext, input);
+) => (revokeModeratorInvite as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callRemoveModerator = (
 	authContext: typeof ownerAuthContext,
 	input: { assignmentId: string },
-) => (removeModerator as unknown as Function)(authContext, input);
+) => (removeModerator as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callSelfPromoteToModerator = (
 	authContext: typeof ownerAuthContext,
 	input: { wishlistId: string },
-) => (selfPromoteToModerator as unknown as Function)(authContext, input);
+) => (selfPromoteToModerator as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callGetModeratorsForWishlist = (authContext: typeof ownerAuthContext, wishlistId: string) =>
-	(getModeratorsForWishlist as unknown as Function)(authContext, wishlistId);
+	(getModeratorsForWishlist as unknown as (...args: unknown[]) => unknown)(
+		authContext,
+		wishlistId,
+	);
 
 // ── beforeEach ───────────────────────────────────────────────────────────────
 
