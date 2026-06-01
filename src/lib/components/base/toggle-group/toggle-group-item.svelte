@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { ToggleGroup as ToggleGroupPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
-	import { getContext } from 'svelte';
 	import { Button } from '../button/index.js';
 	import {
 		togglePressedVariants,
 		TOGGLE_INTENT_TO_BUTTON_INTENT,
-		type ToggleIntent,
-		type ToggleSize,
 	} from '../toggle/toggle_variants.js';
 	import type { ToggleGroupItemProps } from './toggle_group_variants.js';
+	import { useToggleGroup } from './toggle_group.context.svelte.js';
 
 	let {
 		class: className,
@@ -20,7 +18,7 @@
 		...restProps
 	}: ToggleGroupItemProps = $props();
 
-	const groupContext = getContext<{ intent: ToggleIntent; size: ToggleSize }>('toggle-group');
+	const groupContext = useToggleGroup();
 
 	const resolvedIntent = $derived(intent ?? groupContext.intent);
 	const resolvedSize = $derived(size ?? groupContext.size);

@@ -144,6 +144,7 @@
 		progress = { status: 'idle', percentage: 0 };
 	}
 
+	// Unmount guard — manual revokes in handlers cover the normal case
 	$effect(() => {
 		const url = previewUrl;
 		return () => {
@@ -163,6 +164,7 @@
 <div
 	class={cn(styles.root(), className)}
 	role="button"
+	aria-label="Nahrát obrázek"
 	tabindex={progress.status === 'uploading' ? -1 : 0}
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}

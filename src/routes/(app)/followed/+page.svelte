@@ -21,7 +21,7 @@
 	let showArchived = $state(false);
 	let showUnfollowed = $state(false);
 
-	let wishlistData = $state<FollowedWishlist[]>([]);
+	let wishlistData = $state.raw<FollowedWishlist[]>([]);
 	let isLoading = $state(true);
 
 	async function fetchWishlists() {

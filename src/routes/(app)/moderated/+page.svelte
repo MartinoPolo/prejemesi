@@ -14,7 +14,7 @@
 	let viewMode = $state<ViewMode>('grid');
 	let showArchived = $state(false);
 
-	let wishlistData = $state<ModeratedWishlist[]>([]);
+	let wishlistData = $state.raw<ModeratedWishlist[]>([]);
 	let isLoading = $state(true);
 
 	async function fetchWishlists() {

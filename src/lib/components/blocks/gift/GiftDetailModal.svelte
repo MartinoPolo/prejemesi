@@ -83,36 +83,33 @@
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
-	// Reset form when gift changes or modal opens
-	$effect(() => {
-		if (open) {
-			if (mode === 'edit' && gift !== null) {
-				name = gift.name;
-				description = gift.description ?? '';
-				url = gift.url ?? '';
-				price = gift.price !== null ? String(gift.price) : '';
-				currency = (gift.currency as GiftCurrency) ?? 'CZK';
-				imageUrl = gift.imageUrl ?? '';
-				imageKey = '';
-				quantity = String(gift.quantity ?? 1);
-				priorityLevelId = '';
-				imageMode = 'url';
-			} else {
-				name = '';
-				description = '';
-				url = '';
-				price = '';
-				currency = 'CZK';
-				imageUrl = '';
-				imageKey = '';
-				quantity = '1';
-				priorityLevelId = '';
-				imageMode = 'url';
-			}
-			showDeleteConfirm = false;
-			nameError = '';
+	function resetForm() {
+		if (mode === 'edit' && gift !== null) {
+			name = gift.name;
+			description = gift.description ?? '';
+			url = gift.url ?? '';
+			price = gift.price !== null ? String(gift.price) : '';
+			currency = (gift.currency as GiftCurrency) ?? 'CZK';
+			imageUrl = gift.imageUrl ?? '';
+			imageKey = '';
+			quantity = String(gift.quantity ?? 1);
+			priorityLevelId = '';
+			imageMode = 'url';
+		} else {
+			name = '';
+			description = '';
+			url = '';
+			price = '';
+			currency = 'CZK';
+			imageUrl = '';
+			imageKey = '';
+			quantity = '1';
+			priorityLevelId = '';
+			imageMode = 'url';
 		}
-	});
+		showDeleteConfirm = false;
+		nameError = '';
+	}
 
 	function validateForm(): boolean {
 		nameError = '';
@@ -188,14 +185,16 @@
 	}
 
 	function handleOpenChange(newOpen: boolean) {
-		if (!newOpen) {
+		if (newOpen) {
+			resetForm();
+		} else {
 			onclose?.();
 		}
 		open = newOpen;
 	}
 </script>
 
-<Dialog.Root bind:open onOpenChange={handleOpenChange}>
+<Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content class={styles.content()} showCloseButton={true}>
 		<Dialog.Title class="sr-only">{title}</Dialog.Title>
 		<Dialog.Description class="sr-only">

@@ -41,8 +41,8 @@
 
 	const styles = moderatorPanelVariants();
 
-	let moderators = $state<ModeratorWithUser[]>([]);
-	let pendingInvites = $state<PendingInvite[]>([]);
+	let moderators = $state.raw<ModeratorWithUser[]>([]);
+	let pendingInvites = $state.raw<PendingInvite[]>([]);
 	let isLoading = $state(false);
 	let isGenerating = $state(false);
 	let isRemoving = $state(false);

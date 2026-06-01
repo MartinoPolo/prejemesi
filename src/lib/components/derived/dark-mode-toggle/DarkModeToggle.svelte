@@ -2,9 +2,9 @@
 	import { userPrefersMode, setMode } from 'mode-watcher';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
-	import Moon from '@lucide/svelte/icons/moon';
-	import Monitor from '@lucide/svelte/icons/monitor';
-	import Sun from '@lucide/svelte/icons/sun';
+	import MoonIcon from '@lucide/svelte/icons/moon';
+	import MonitorIcon from '@lucide/svelte/icons/monitor';
+	import SunIcon from '@lucide/svelte/icons/sun';
 
 	const MODES = ['light', 'dark', 'system'] as const;
 	type Mode = (typeof MODES)[number];
@@ -34,11 +34,11 @@
 			aria-label={tooltipText}
 		>
 			{#if userPrefersMode.current === 'light'}
-				<Sun data-icon />
+				<SunIcon data-icon />
 			{:else if userPrefersMode.current === 'dark'}
-				<Moon data-icon />
+				<MoonIcon data-icon />
 			{:else}
-				<Monitor data-icon />
+				<MonitorIcon data-icon />
 			{/if}
 		</Button>
 	{/snippet}

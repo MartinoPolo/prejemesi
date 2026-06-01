@@ -48,17 +48,6 @@
 	const showQuantitySelector = $derived(maxQuantity > 1);
 	const priceDisplay = $derived(gift ? formatPrice(gift.price, gift.currency) : '');
 
-	// Reset form when modal opens
-	$effect(() => {
-		if (open) {
-			quantity = 1;
-			anonymousName = '';
-			anonymousEmail = '';
-			nameError = '';
-			quantityError = '';
-		}
-	});
-
 	function incrementQuantity() {
 		if (quantity < availableCount) {
 			quantity += 1;
@@ -105,14 +94,20 @@
 	}
 
 	function handleOpenChange(newOpen: boolean) {
-		if (!newOpen) {
+		if (newOpen) {
+			quantity = 1;
+			anonymousName = '';
+			anonymousEmail = '';
+			nameError = '';
+			quantityError = '';
+		} else {
 			onclose?.();
 		}
 		open = newOpen;
 	}
 </script>
 
-<Dialog.Root bind:open onOpenChange={handleOpenChange}>
+<Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content class={styles.content()} showCloseButton={true}>
 		<Dialog.Header>
 			<Dialog.Title>{m.reserve_title()}</Dialog.Title>

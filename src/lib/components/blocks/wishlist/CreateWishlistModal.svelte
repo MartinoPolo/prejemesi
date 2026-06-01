@@ -7,7 +7,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
-	import Loader from '@lucide/svelte/icons/loader';
+	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 
 	interface CreateWishlistModalProps {
@@ -134,7 +134,7 @@
 				</Button>
 				<Button type="submit" disabled={isSubmitting}>
 					{#if isSubmitting}
-						<Loader class="animate-spin" data-icon="inline-start" />
+						<LoaderIcon class="animate-spin" data-icon="inline-start" />
 						{m.creating()}
 					{:else}
 						{m.create()}

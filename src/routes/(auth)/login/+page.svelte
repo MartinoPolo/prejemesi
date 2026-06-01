@@ -13,10 +13,9 @@
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import List from '@lucide/svelte/icons/list';
-	import EyeOff from '@lucide/svelte/icons/eye-off';
+	import ListIcon from '@lucide/svelte/icons/list';
 	import LinkIcon from '@lucide/svelte/icons/link';
-	import Eye from '@lucide/svelte/icons/eye';
+	import EyeIcon from '@lucide/svelte/icons/eye';
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 
 	let email = $state('');
@@ -102,12 +101,12 @@
 	{/snippet}
 	{#snippet features()}
 		<AuthBrandFeature
-			icon={List}
+			icon={ListIcon}
 			title={m.auth_feature_wishlists_title()}
 			description={m.auth_feature_wishlists_description()}
 		/>
 		<AuthBrandFeature
-			icon={EyeOff}
+			icon={EyeOffIcon}
 			title={m.auth_feature_hidden_title()}
 			description={m.auth_feature_hidden_description()}
 		/>
@@ -172,7 +171,7 @@
 						{#if showPassword}
 							<EyeOffIcon class="size-4" />
 						{:else}
-							<Eye class="size-4" />
+							<EyeIcon class="size-4" />
 						{/if}
 					</button>
 				</div>

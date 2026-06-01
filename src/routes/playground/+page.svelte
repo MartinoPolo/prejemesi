@@ -1,5 +1,5 @@
 <script lang="ts">
-	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
+	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import {
 		StatusBadge,
 		STATUS_BADGE_STATUSES,
@@ -14,11 +14,11 @@
 	import { Switch } from '$lib/components/base/switch/index.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
-	import Mail from '@lucide/svelte/icons/mail';
-	import Loader from '@lucide/svelte/icons/loader';
-	import Info from '@lucide/svelte/icons/info';
-	import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
-	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import MailIcon from '@lucide/svelte/icons/mail';
+	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 </script>
 
 <main class="min-h-screen bg-background text-foreground">
@@ -53,12 +53,12 @@
 				<Button size="sm">Small</Button>
 				<Button size="md">Default</Button>
 				<Button size="lg">Large</Button>
-				<Button size="icon" aria-label="Send email"><Mail data-icon /></Button>
+				<Button size="icon" aria-label="Send email"><MailIcon data-icon /></Button>
 			</div>
 			<div class="flex flex-wrap items-center gap-3">
 				<Button disabled>Disabled</Button>
 				<Button disabled>
-					<Loader class="animate-spin" data-icon="inline-start" />
+					<LoaderIcon class="animate-spin" data-icon="inline-start" />
 					Loading...
 				</Button>
 			</div>
@@ -157,21 +157,21 @@
 			<h3 class="text-2xl font-semibold tracking-tight">Alerts</h3>
 			<div class="flex flex-col gap-3">
 				<Alert.Root>
-					<Info size={16} />
+					<InfoIcon size={16} />
 					<Alert.Title>Information</Alert.Title>
 					<Alert.Description
 						>This is an informational alert using the default variant.</Alert.Description
 					>
 				</Alert.Root>
 				<Alert.Root tone="destructive">
-					<TriangleAlert size={16} />
+					<TriangleAlertIcon size={16} />
 					<Alert.Title>Error</Alert.Title>
 					<Alert.Description
 						>Something went wrong. Please try again later.</Alert.Description
 					>
 				</Alert.Root>
 				<Alert.Root class="border-primary/50 text-primary [&>svg]:text-primary">
-					<CircleCheck size={16} />
+					<CircleCheckIcon size={16} />
 					<Alert.Title>Success</Alert.Title>
 					<Alert.Description>Your changes have been saved successfully.</Alert.Description
 					>
