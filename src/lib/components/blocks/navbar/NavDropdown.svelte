@@ -12,6 +12,7 @@
 <script lang="ts">
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import { Badge } from '$lib/components/base/badge/index.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface NavDropdownProps {
 		title: string;
@@ -23,13 +24,13 @@
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
-<div class="nav-dropdown" role="menu" aria-label="Nedavne — {title}">
+<div class="nav-dropdown" role="menu" aria-label="{m.nav_recent()} — {title}">
 	<div class="nav-dropdown-panel">
 		{#if items.length > 0}
 			<div class="nav-dropdown-header">
-				<span class="nav-dropdown-title">Nedavne</span>
+				<span class="nav-dropdown-title">{m.nav_recent()}</span>
 				<a class="nav-dropdown-view-all" href={viewAllHref}>
-					Zobrazit vse
+					{m.nav_view_all()}
 					<ArrowRight class="size-3" />
 				</a>
 			</div>
@@ -54,12 +55,12 @@
 			{/each}
 		{:else}
 			<div class="nav-dropdown-empty">
-				<span class="nav-dropdown-empty-text">Zatim zadne seznamy</span>
+				<span class="nav-dropdown-empty-text">{m.nav_no_lists()}</span>
 			</div>
 		{/if}
 
 		<div class="nav-dropdown-footer">
-			<a class="nav-dropdown-footer-link" href={viewAllHref}> Zobrazit vse </a>
+			<a class="nav-dropdown-footer-link" href={viewAllHref}>{m.nav_view_all()}</a>
 		</div>
 	</div>
 </div>

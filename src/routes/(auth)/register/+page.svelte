@@ -12,6 +12,7 @@
 	import SocialLoginButtons from '$lib/components/blocks/auth/SocialLoginButtons.svelte';
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Clock from '@lucide/svelte/icons/clock';
 	import Users from '@lucide/svelte/icons/users';
@@ -55,15 +56,15 @@
 			return '';
 		}
 		if (passwordStrength <= 1) {
-			return 'Slabe heslo';
+			return m.register_strength_weak();
 		}
 		if (passwordStrength === 2) {
-			return 'Prijatelne heslo';
+			return m.register_strength_fair();
 		}
 		if (passwordStrength === 3) {
-			return 'Dobre heslo';
+			return m.register_strength_good();
 		}
-		return 'Silne heslo';
+		return m.register_strength_strong();
 	});
 
 	let strengthColor = $derived.by(() => {
@@ -78,7 +79,7 @@
 
 	function validateName(): boolean {
 		if (name.trim().length < 2) {
-			nameError = 'Jmeno musi mit alespon 2 znaky';
+			nameError = m.register_name_error();
 			return false;
 		}
 		nameError = '';
@@ -87,11 +88,11 @@
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
-			emailError = 'Zadejte emailovou adresu';
+			emailError = m.enter_email();
 			return false;
 		}
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			emailError = 'Zadejte platnou emailovou adresu';
+			emailError = m.enter_valid_email();
 			return false;
 		}
 		emailError = '';
@@ -100,7 +101,7 @@
 
 	function validatePassword(): boolean {
 		if (password.length < 8) {
-			passwordError = 'Heslo musi mit alespon 8 znaku';
+			passwordError = m.register_password_min();
 			return false;
 		}
 		passwordError = '';
@@ -150,16 +151,16 @@
 					result.error.message?.includes('already exists') === true ||
 					result.error.message?.includes('already') === true
 				) {
-					errorMessage = 'Ucet s timto emailem jiz existuje. Zkuste se prihlasit.';
+					errorMessage = m.register_error_exists();
 				} else {
-					errorMessage = 'Registrace se nezdarila. Zkuste to prosim znovu.';
+					errorMessage = m.register_error_failed();
 				}
 			} else {
 				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				await goto(callbackUrl);
 			}
 		} catch {
-			errorMessage = 'Doslo k chybe. Zkuste to prosim znovu.';
+			errorMessage = m.error_generic();
 		} finally {
 			loading = false;
 		}
@@ -168,28 +169,29 @@
 
 <AuthBrandPanel>
 	{#snippet tagline()}
-		Zacnete vytvaret<br />seznamy prani
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+		{@html m.auth_tagline_register()}
 	{/snippet}
 	{#snippet features()}
 		<AuthBrandFeature
 			icon={CircleCheck}
-			title="Zdarma navzdy"
-			description="Zadna platebni karta"
+			title={m.auth_feature_free_title()}
+			description={m.auth_feature_free_description()}
 		/>
 		<AuthBrandFeature
 			icon={Clock}
-			title="Za 3 minuty hotovo"
-			description="Vas prvni seznam ihned"
+			title={m.auth_feature_quick_title()}
+			description={m.auth_feature_quick_description()}
 		/>
 		<AuthBrandFeature
 			icon={Users}
-			title="Sdilejte s rodinou"
-			description="Bez registrace pro hosty"
+			title={m.auth_feature_family_title()}
+			description={m.auth_feature_family_description()}
 		/>
 	{/snippet}
 </AuthBrandPanel>
 
-<AuthFormCard title="Vytvorte si ucet" subtitle="Zacnete vytvaret seznamy prani">
+<AuthFormCard title={m.register_title()} subtitle={m.register_subtitle()}>
 	{#if errorMessage}
 		<ErrorBanner message={errorMessage} />
 	{/if}
@@ -197,11 +199,11 @@
 	<form onsubmit={handleSubmit} novalidate>
 		<div class="form-stack">
 			<div class="form-field">
-				<Label for="reg-name">Jmeno</Label>
+				<Label for="reg-name">{m.register_name_label()}</Label>
 				<Input
 					id="reg-name"
 					type="text"
-					placeholder="Jana Novakova"
+					placeholder={m.register_name_placeholder()}
 					autocomplete="name"
 					bind:value={name}
 					onblur={handleNameBlur}
@@ -216,11 +218,11 @@
 			</div>
 
 			<div class="form-field">
-				<Label for="reg-email">Email</Label>
+				<Label for="reg-email">{m.email_label()}</Label>
 				<Input
 					id="reg-email"
 					type="email"
-					placeholder="vas@email.cz"
+					placeholder={m.email_placeholder()}
 					autocomplete="email"
 					bind:value={email}
 					onblur={handleEmailBlur}
@@ -235,7 +237,7 @@
 			</div>
 
 			<div class="form-field">
-				<Label for="reg-password">Heslo</Label>
+				<Label for="reg-password">{m.password_label()}</Label>
 				<div class="password-wrapper">
 					<Input
 						id="reg-password"
@@ -253,7 +255,7 @@
 					<button
 						class="password-toggle"
 						type="button"
-						aria-label={showPassword ? 'Skryt heslo' : 'Zobrazit heslo'}
+						aria-label={showPassword ? m.hide_password() : m.show_password()}
 						onclick={() => (showPassword = !showPassword)}
 						tabindex={-1}
 					>
@@ -268,7 +270,7 @@
 					<div
 						class="strength-bar"
 						role="progressbar"
-						aria-label="Sila hesla: {strengthLabel}"
+						aria-label={m.register_strength_label({ label: strengthLabel })}
 					>
 						{#each [0, 1, 2, 3] as index (index)}
 							<div
@@ -292,16 +294,16 @@
 			{#if loading}
 				<span class="spinner"></span>
 			{/if}
-			Vytvorit ucet
+			{m.register_submit()}
 		</Button>
 	</form>
 
 	<AuthDivider />
 
-	<SocialLoginButtons googleLabel="Registrovat pres Google" {callbackUrl} {loading} />
+	<SocialLoginButtons googleLabel={m.register_google()} {callbackUrl} {loading} />
 
 	<div class="auth-footer">
-		Jiz mate ucet?&ensp;<a href={resolve('/login')}>Prihlaste se</a>
+		{m.register_has_account()}&ensp;<a href={resolve('/login')}>{m.register_login_link()}</a>
 	</div>
 </AuthFormCard>
 

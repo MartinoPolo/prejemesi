@@ -1,4 +1,6 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
@@ -13,6 +15,7 @@
 	} from '$lib/modules/moderators/moderators.remote.js';
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -69,11 +72,9 @@
 			const result = await generateModeratorInviteLink({ wishlistId });
 			generatedInvitePath = result.invitePath;
 			await loadModerators();
-			toastSuccess('Pozvanka byla vygenerovana');
+			toastSuccess(m.moderator_toast_invite_generated());
 		} catch (thrown) {
-			const message =
-				thrown instanceof Error ? thrown.message : 'Nepodarilo se vygenerovat pozvanku';
-			toastError(message);
+			toastError(translateServerError(thrown, m.moderator_error_generate()));
 		} finally {
 			isGenerating = false;
 		}
@@ -87,12 +88,12 @@
 			const fullUrl = `${window.location.origin}${generatedInvitePath}`;
 			await navigator.clipboard.writeText(fullUrl);
 			linkCopied = true;
-			toastSuccess('Odkaz byl zkopirovan');
+			toastSuccess(m.moderator_toast_link_copied());
 			setTimeout(() => {
 				linkCopied = false;
 			}, 3000);
 		} catch {
-			toastError('Nepodarilo se zkopirovat odkaz');
+			toastError(m.moderator_error_copy());
 		}
 	}
 
@@ -103,11 +104,9 @@
 			await loadModerators();
 			// Clear generated link if it was for this invite
 			generatedInvitePath = null;
-			toastSuccess('Pozvanka byla zrusena');
+			toastSuccess(m.moderator_toast_invite_revoked());
 		} catch (thrown) {
-			const message =
-				thrown instanceof Error ? thrown.message : 'Nepodarilo se zrusit pozvanku';
-			toastError(message);
+			toastError(translateServerError(thrown, m.moderator_error_revoke()));
 		} finally {
 			isRevokingId = null;
 		}
@@ -118,11 +117,9 @@
 		try {
 			await removeModerator({ assignmentId });
 			await loadModerators();
-			toastSuccess('Moderator byl odebran');
+			toastSuccess(m.moderator_toast_removed());
 		} catch (thrown) {
-			const message =
-				thrown instanceof Error ? thrown.message : 'Nepodarilo se odebrat moderatora';
-			toastError(message);
+			toastError(translateServerError(thrown, m.moderator_error_remove()));
 		} finally {
 			isRemoving = false;
 		}
@@ -132,12 +129,10 @@
 		isSelfPromoting = true;
 		try {
 			await selfPromoteToModerator({ wishlistId });
-			toastSuccess('Nyni vidite stav rezervaci');
+			toastSuccess(m.moderator_toast_self_promoted());
 			onselfpromoted?.();
 		} catch (thrown) {
-			const message =
-				thrown instanceof Error ? thrown.message : 'Nepodarilo se aktivovat zobrazeni';
-			toastError(message);
+			toastError(translateServerError(thrown, m.moderator_error_activate()));
 		} finally {
 			isSelfPromoting = false;
 		}
@@ -159,19 +154,19 @@
 <Sheet.Root {open} onOpenChange={handleOpenChange}>
 	<Sheet.Content side="right" class="w-full sm:max-w-md">
 		<Sheet.Header>
-			<Sheet.Title>Moderatori</Sheet.Title>
-			<Sheet.Description>Spravujte moderatory vaseho seznamu prani.</Sheet.Description>
+			<Sheet.Title>{m.moderator_title()}</Sheet.Title>
+			<Sheet.Description>{m.moderator_description()}</Sheet.Description>
 		</Sheet.Header>
 
 		<div class="flex flex-col gap-6 px-4 py-4">
 			<!-- Active moderators -->
 			<div class={styles.section()}>
-				<div class={styles.sectionTitle()}>Aktivni moderatori</div>
+				<div class={styles.sectionTitle()}>{m.moderator_active_title()}</div>
 
 				{#if isLoading}
-					<div class={styles.emptyText()}>Nacitam...</div>
+					<div class={styles.emptyText()}>{m.moderator_loading()}</div>
 				{:else if moderators.length === 0}
-					<div class={styles.emptyText()}>Zatim zadni moderatori</div>
+					<div class={styles.emptyText()}>{m.moderator_empty()}</div>
 				{:else}
 					{#each moderators as moderator (moderator.id)}
 						<ModeratorListItem
@@ -188,9 +183,9 @@
 
 			<!-- Generate invite -->
 			<div class={styles.section()}>
-				<div class={styles.sectionTitle()}>Pozvat moderatora</div>
+				<div class={styles.sectionTitle()}>{m.moderator_invite_title()}</div>
 				<div class={styles.sectionDescription()}>
-					Vygenerujte odkaz a poslete ho osobe, kterou chcete pridat jako moderatora.
+					{m.moderator_invite_description()}
 				</div>
 
 				{#if generatedInvitePath !== null}
@@ -221,7 +216,7 @@
 					onclick={handleGenerateInvite}
 				>
 					<LinkIcon data-icon="inline-start" />
-					{isGenerating ? 'Generuji...' : 'Generovat pozvanku'}
+					{isGenerating ? m.moderator_generating() : m.moderator_generate_invite()}
 				</Button>
 			</div>
 
@@ -231,7 +226,7 @@
 
 				<div class={styles.section()}>
 					<div class={styles.sectionTitle()}>
-						Cekajici pozvanky ({pendingInvites.length})
+						{m.moderator_pending_title({ count: pendingInvites.length })}
 					</div>
 
 					{#each pendingInvites as invite (invite.id)}
@@ -241,7 +236,7 @@
 									...{invite.token.slice(-8)}
 								</div>
 								<div class={styles.inviteDate()}>
-									{new Intl.DateTimeFormat('cs-CZ', {
+									{new Intl.DateTimeFormat(getLocale(), {
 										day: 'numeric',
 										month: 'short',
 										hour: '2-digit',
@@ -254,7 +249,7 @@
 								intent="ghost"
 								class="text-destructive hover:text-destructive"
 								disabled={isRevokingId === invite.id}
-								aria-label="Zrusit pozvanku"
+								aria-label={m.moderator_revoke_invite()}
 								onclick={() => handleRevokeInvite(invite.id)}
 							>
 								<XIcon class="size-4" />
@@ -269,19 +264,17 @@
 			<!-- Self-promote section -->
 			{#if !ownerIsModerator}
 				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>Zobrazeni rezervaci</div>
+					<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
 
 					<div class={styles.selfPromoteWarning()}>
 						<div class="flex items-center gap-2">
 							<AlertTriangleIcon class="size-4 flex-shrink-0" />
 							<div class={styles.selfPromoteTitle()}>
-								Chcete videt stav rezervaci?
+								{m.moderator_see_reservations_title()}
 							</div>
 						</div>
 						<div class={styles.selfPromoteDescription()}>
-							Po aktivaci uvidite, ktere darky jsou rezervovane. Vsem navstevnikum se
-							zobrazi upozorneni, ze vlastnik vidi stav rezervaci. Tuto akci nelze
-							vzit zpet.
+							{m.moderator_see_reservations_description()}
 						</div>
 						<Button
 							size="sm"
@@ -291,16 +284,18 @@
 							onclick={handleSelfPromote}
 						>
 							<EyeIcon data-icon="inline-start" />
-							{isSelfPromoting ? 'Aktivuji...' : 'Aktivovat zobrazeni'}
+							{isSelfPromoting
+								? m.moderator_activating()
+								: m.moderator_activate_button()}
 						</Button>
 					</div>
 				</div>
 			{:else}
 				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>Zobrazeni rezervaci</div>
+					<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
 					<div class={styles.disclosureBanner()}>
 						<EyeIcon class="size-4 flex-shrink-0" />
-						<span>Vidite stav rezervaci tohoto seznamu.</span>
+						<span>{m.moderator_active_disclosure()}</span>
 					</div>
 				</div>
 			{/if}

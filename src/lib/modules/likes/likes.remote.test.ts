@@ -144,7 +144,7 @@ describe('toggleLike', () => {
 
 		await expect(callToggleLike(testAuthContext, testInput)).rejects.toMatchObject({
 			status: 403,
-			message: 'Vlastnik nemuze likovat sve darky',
+			message: 'OWNER_CANNOT_LIKE_OWN_GIFTS',
 		});
 	});
 

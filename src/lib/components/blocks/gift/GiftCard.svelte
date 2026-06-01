@@ -99,7 +99,7 @@
 		<div class={styles.badgeRow()}>
 			{#if priorityInfo}
 				<Badge tone="neutral" badgeStyle="subtle" class={priorityInfo.colorClass}>
-					{priorityInfo.label}
+					{priorityInfo.label()}
 				</Badge>
 			{/if}
 

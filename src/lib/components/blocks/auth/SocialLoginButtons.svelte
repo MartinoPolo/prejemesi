@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { authClient } from '$lib/auth_client.js';
 	import Mail from '@lucide/svelte/icons/mail';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface SocialLoginButtonsProps {
 		googleLabel: string;
@@ -67,7 +68,7 @@
 {#if showMagicLink}
 	<Button intent="ghost" href={resolve('/magic-link')} class="mt-2 w-full">
 		<Mail data-icon="inline-start" />
-		Prihlasit se odkazem
+		{m.login_magic_link()}
 	</Button>
 {/if}
 

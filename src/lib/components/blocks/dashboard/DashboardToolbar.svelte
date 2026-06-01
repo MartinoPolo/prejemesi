@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import * as Switch from '$lib/components/base/switch/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
@@ -38,7 +39,7 @@
 	<div class="flex items-center gap-1.5">
 		<Switch.Root bind:checked={showArchived} size="sm" id="show-archived" />
 		<Label for="show-archived" class="cursor-pointer text-sm text-muted-foreground">
-			Archivované
+			{m.dashboard_show_archived()}
 		</Label>
 	</div>
 
@@ -46,7 +47,7 @@
 		<div class="flex items-center gap-1.5">
 			<Switch.Root bind:checked={unfollowedValue} size="sm" id="show-unfollowed" />
 			<Label for="show-unfollowed" class="cursor-pointer text-sm text-muted-foreground">
-				Opuštěné
+				{m.dashboard_show_unfollowed()}
 			</Label>
 		</div>
 	{/if}

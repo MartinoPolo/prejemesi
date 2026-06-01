@@ -1,3 +1,5 @@
+import * as m from '$lib/paraglide/messages.js';
+
 /** Sharing wizard step */
 export const SHARE_WIZARD_STEPS = {
 	confirm: 'confirm',
@@ -33,7 +35,7 @@ function buildWhatsAppUrl(shareUrl: string, message: string): string {
 }
 
 function buildEmailUrl(shareUrl: string, message: string): string {
-	return `mailto:?subject=${encodeURIComponent('Muj seznam prani')}&body=${encodeURIComponent(message + ' ' + shareUrl)}`;
+	return `mailto:?subject=${encodeURIComponent(m.share_email_subject())}&body=${encodeURIComponent(message + ' ' + shareUrl)}`;
 }
 
 function buildMessengerUrl(shareUrl: string): string {
@@ -93,5 +95,5 @@ export const SHARE_PLATFORM_ORDER: Exclude<SharePlatform, 'clipboard'>[] = [
 
 /** Build the default sharing message for a wishlist */
 export function buildShareMessage(wishlistTitle: string): string {
-	return `Ahoj! Tady je muj seznam prani: ${wishlistTitle}`;
+	return m.share_message_template({ title: wishlistTitle });
 }

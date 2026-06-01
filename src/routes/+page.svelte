@@ -16,19 +16,14 @@
 	import Link from '@lucide/svelte/icons/link';
 	import ShieldCheck from '@lucide/svelte/icons/shield-check';
 	import UserCheck from '@lucide/svelte/icons/user-check';
+	import * as m from '$lib/paraglide/messages.js';
 </script>
 
 <svelte:head>
-	<title>Darecky — Sdílejte svá přání</title>
-	<meta
-		name="description"
-		content="Vytvořte si přehledný seznam přání a sdílejte ho s rodinou a přáteli. Nikdy neuvidíte, kdo co rezervoval — překvapení je zachováno."
-	/>
-	<meta property="og:title" content="Darecky — Sdílejte svá přání" />
-	<meta
-		property="og:description"
-		content="Vytvořte si seznam přání, sdílejte ho jedním odkazem. Dárci rezervují anonymně — překvapení zůstane překvapením."
-	/>
+	<title>{m.landing_meta_title()}</title>
+	<meta name="description" content={m.landing_meta_description()} />
+	<meta property="og:title" content={m.landing_og_title()} />
+	<meta property="og:description" content={m.landing_og_description()} />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://darecky.cz" />
 </svelte:head>
@@ -38,13 +33,13 @@
      ═══════════════════════════════════════════════════ -->
 <nav
 	class="sticky top-0 z-30 flex h-[var(--nav-height)] items-center justify-between border-b border-border bg-background/92 px-6 backdrop-blur-lg md:px-8"
-	aria-label="Veřejná navigace"
+	aria-label={m.landing_nav_label()}
 >
 	<LogoMark />
 	<div class="flex items-center gap-2">
 		<DarkModeToggle />
-		<Button intent="ghost" href={resolve('/login')}>Přihlásit se</Button>
-		<Button href={resolve('/register')}>Začít zdarma</Button>
+		<Button intent="ghost" href={resolve('/login')}>{m.landing_login()}</Button>
+		<Button href={resolve('/register')}>{m.landing_get_started()}</Button>
 	</div>
 </nav>
 
@@ -53,7 +48,7 @@
      ═══════════════════════════════════════════════════ -->
 <section
 	class="hero-gradient relative overflow-hidden border-b border-border"
-	aria-label="Hlavní sekce"
+	aria-label={m.landing_hero_section_label()}
 >
 	<!-- Decorative blob -->
 	<div
@@ -72,42 +67,41 @@
 					class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
 				>
 					<Check class="size-3" />
-					Zdarma navždy
+					{m.landing_badge_free()}
 				</span>
 				<span
 					class="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-muted-foreground"
 				>
-					Vánoce, narozeniny, výročí
+					{m.landing_badge_occasions()}
 				</span>
 			</div>
 
 			<h1
 				class="font-heading text-4xl font-extrabold leading-tight tracking-tight md:text-5xl md:leading-[1.05]"
 			>
-				Překvapení zůstane překvapením
+				{m.landing_hero_title()}
 			</h1>
 
 			<p class="max-w-[520px] text-lg leading-relaxed text-muted-foreground md:text-xl">
-				Vytvořte si přehledný seznam přání a sdílejte ho s rodinou a přáteli. Nikdy
-				neuvidíte, kdo co rezervoval.
+				{m.landing_hero_description()}
 			</p>
 
 			<div class="flex flex-wrap items-center gap-4">
 				<Button size="lg" href={resolve('/register')}>
 					<Gift data-icon="inline-start" />
-					Vytvořit seznam přání
+					{m.landing_hero_cta()}
 				</Button>
 				<a
 					href="#jak-to-funguje"
 					class="inline-flex items-center gap-1.5 px-2 font-medium text-muted-foreground transition-colors hover:text-foreground"
 				>
-					Jak to funguje?
+					{m.landing_hero_how()}
 					<ArrowDown class="size-4" />
 				</a>
 			</div>
 
 			<p class="text-sm text-muted-foreground/70">
-				Žádná platební karta. Žádný háček. Navždy zdarma.
+				{m.landing_hero_no_card()}
 			</p>
 		</div>
 
@@ -119,25 +113,25 @@
 					<div
 						class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70"
 					>
-						Přání pro
+						{m.landing_wishes_for()}
 					</div>
-					<div class="font-heading text-2xl font-bold">Tereza Nováková</div>
+					<div class="font-heading text-2xl font-bold">{m.landing_example_name()}</div>
 					<div class="mt-3 flex items-center gap-3">
 						<span
 							class="hero-badge-event rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
 						>
-							Narozeniny
+							{m.landing_birthday()}
 						</span>
 						<span
 							class="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
 						>
-							8 přání
+							{m.landing_wishes_count({ count: 8 })}
 						</span>
 					</div>
 				</div>
 
 				<!-- Gift rows -->
-				{#each [{ emoji: '📗', hue: '150', name: 'Kniha Atomové návyky', price: '349 Kč · alza.cz', status: 'free' }, { emoji: '🎧', hue: '200', name: 'Bezdrátová sluchátka Sony', price: '2 490 Kč · mall.cz', status: 'reserved' }, { emoji: '🕯️', hue: '60', name: 'Sada vonných svíček', price: '650 Kč · notino.cz', status: 'free' }, { emoji: '🧴', hue: '330', name: 'Kosmetická sada La Mer', price: '1 890 Kč · sephora.cz', status: 'reserved' }] as gift (gift.name)}
+				{#each [{ emoji: '📗', hue: '150', name: m.landing_gift_book(), price: '349 Kč · alza.cz', status: 'free' }, { emoji: '🎧', hue: '200', name: m.landing_gift_headphones(), price: '2 490 Kč · mall.cz', status: 'reserved' }, { emoji: '🕯️', hue: '60', name: m.landing_gift_candles(), price: '650 Kč · notino.cz', status: 'free' }, { emoji: '🧴', hue: '330', name: m.landing_gift_cosmetics(), price: '1 890 Kč · sephora.cz', status: 'reserved' }] as gift (gift.name)}
 					<div
 						class="flex items-center gap-4 border-b border-border px-6 py-3.5 last:border-b-0"
 					>
@@ -157,13 +151,13 @@
 							<span
 								class="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary"
 							>
-								Volné
+								{m.landing_status_free()}
 							</span>
 						{:else}
 							<span
 								class="hero-badge-reserved shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
 							>
-								Rezervováno
+								{m.landing_status_reserved()}
 							</span>
 						{/if}
 					</div>
@@ -177,7 +171,7 @@
 				style="box-shadow: 0 8px 24px oklch(52.7% 0.154 150deg / 40%)"
 			>
 				<Lock class="mb-2 size-5" />
-				Tereza nevidí, kdo co rezervoval
+				{m.landing_privacy_note()}
 			</div>
 		</div>
 	</div>
@@ -189,14 +183,14 @@
 <section
 	class="border-b border-border bg-background"
 	id="jak-to-funguje"
-	aria-label="Jak to funguje"
+	aria-label={m.landing_how_section_label()}
 >
 	<div class="mx-auto max-w-[var(--content-max-width)] px-4 py-16 md:px-8 md:py-20">
-		<span class="section-eyebrow">Jak to funguje</span>
-		<h2 class="section-headline">Čtyři kroky k dokonalému překvapení</h2>
+		<span class="section-eyebrow">{m.landing_how_eyebrow()}</span>
+		<h2 class="section-headline">{m.landing_how_headline()}</h2>
 
 		<div class="how-steps relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-			{#each [{ icon: List, title: 'Vytvořte seznam', description: 'Pojmenujte seznam, nastavte téma a event — za minutu je připravený.' }, { icon: Gift, title: 'Přidejte přání', description: 'Vložte odkaz z e-shopu nebo popište přání vlastními slovy s cenou.' }, { icon: Share2, title: 'Sdílejte odkaz', description: 'Pošlete jeden odkaz přes WhatsApp, email nebo SMS. Dárci nepotřebují účet.' }, { icon: Sparkles, title: 'Překvapení!', description: 'Dárky přijdou — a vy opravdu nevíte od koho. Přesně tak to má být.' }] as step, index (step.title)}
+			{#each [{ icon: List, title: m.landing_how_step1_title(), description: m.landing_how_step1_description() }, { icon: Gift, title: m.landing_how_step2_title(), description: m.landing_how_step2_description() }, { icon: Share2, title: m.landing_how_step3_title(), description: m.landing_how_step3_description() }, { icon: Sparkles, title: m.landing_how_step4_title(), description: m.landing_how_step4_description() }] as step, index (step.title)}
 				<div class="flex flex-col items-center gap-4 text-center">
 					<div
 						class="group relative flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-background text-primary transition-all hover:border-primary hover:bg-primary/10"
@@ -223,8 +217,8 @@
      ═══════════════════════════════════════════════════ -->
 <div class="border-b border-border bg-muted">
 	<div class="mx-auto max-w-[var(--content-max-width)] px-4 pb-8 pt-16 md:px-8 md:pt-20">
-		<span class="section-eyebrow">Funkce</span>
-		<h2 class="section-headline !mb-0">Vše, co potřebujete pro bezstarostné dárky</h2>
+		<span class="section-eyebrow">{m.landing_features_eyebrow()}</span>
+		<h2 class="section-headline !mb-0">{m.landing_features_headline()}</h2>
 	</div>
 </div>
 
@@ -234,25 +228,24 @@
 <div class="border-b border-border">
 	<section
 		class="mx-auto grid max-w-[var(--content-max-width)] items-center gap-10 px-4 py-16 md:grid-cols-2 md:gap-16 md:px-8 md:py-20"
-		aria-label="Tajné rezervace"
+		aria-label={m.landing_feat1_label()}
 	>
 		<div class="flex flex-col gap-5">
 			<div class="feat-number" aria-hidden="true">01</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
 				<EyeOff class="size-3.5" />
-				Tajné rezervace
+				{m.landing_feat1_eyebrow()}
 			</div>
 			<h2
 				class="font-heading text-3xl font-extrabold leading-snug tracking-tight md:text-4xl"
 			>
-				Vlastník seznamu nikdy neuvidí, kdo co rezervoval
+				{m.landing_feat1_title()}
 			</h2>
 			<p class="text-lg leading-relaxed text-muted-foreground">
-				Překvapení je zachováno. Systém zaručuje, že vlastník nemůže vidět stav rezervací —
-				ani když se pokusí.
+				{m.landing_feat1_description()}
 			</p>
 			<ul class="flex flex-col gap-3">
-				{#each ['Rezervace vidí jen dárci — nikdy vlastník', 'Po sdílení vlastník nemůže editovat stávající přání', 'Moderátor vidí plný stav a koordinuje nákupy za vás'] as item (item)}
+				{#each [m.landing_feat1_check1(), m.landing_feat1_check2(), m.landing_feat1_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
 						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
@@ -263,12 +256,12 @@
 
 		<!-- Visual: owner vs. gifter view -->
 		<div class="feat-visual">
-			<div class="mb-1 text-sm font-semibold">Vánoční přání 2026 — Martina</div>
+			<div class="mb-1 text-sm font-semibold">{m.landing_feat1_visual_title()}</div>
 
 			<!-- Owner view -->
 			<div class="flex flex-col gap-2">
-				<span class="view-label">Pohled vlastníka</span>
-				{#each [{ emoji: '🎧', name: 'Bezdrátová sluchátka Sony', sub: '7 490 Kč · alza.cz' }, { emoji: '📖', name: 'Sapiens — Y.N. Harari', sub: '399 Kč' }] as gift (gift.name)}
+				<span class="view-label">{m.landing_feat1_owner_view()}</span>
+				{#each [{ emoji: '🎧', name: m.landing_gift_headphones(), sub: '7 490 Kč · alza.cz' }, { emoji: '📖', name: 'Sapiens — Y.N. Harari', sub: '399 Kč' }] as gift (gift.name)}
 					<div
 						class="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
 					>
@@ -288,7 +281,7 @@
 							class="feat-status-badge shrink-0 select-none rounded-full border px-2.5 py-0.5 text-[11px] font-medium blur-[5px]"
 							aria-hidden="true"
 						>
-							Skryto
+							{m.landing_feat1_hidden()}
 						</span>
 					</div>
 				{/each}
@@ -296,13 +289,13 @@
 					class="flex items-center justify-center gap-1.5 p-2 text-xs text-muted-foreground/70"
 				>
 					<Lock class="size-3.5" />
-					Kdo co rezervoval zůstává skryto
+					{m.landing_feat1_hidden_note()}
 				</div>
 			</div>
 
 			<!-- Gifter view -->
 			<div class="mt-2 flex flex-col gap-2">
-				<span class="view-label view-label-visitor">Pohled dárce</span>
+				<span class="view-label view-label-visitor">{m.landing_feat1_gifter_view()}</span>
 				<div
 					class="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
 				>
@@ -315,7 +308,7 @@
 						🎧
 					</div>
 					<div class="flex-1">
-						<div class="text-sm font-semibold">Bezdrátová sluchátka Sony</div>
+						<div class="text-sm font-semibold">{m.landing_gift_headphones()}</div>
 						<div class="mt-0.5 text-xs text-muted-foreground/70">
 							7 490 Kč · alza.cz
 						</div>
@@ -323,7 +316,7 @@
 					<span
 						class="feat-status-badge shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
 					>
-						Rezervováno
+						{m.landing_status_reserved()}
 					</span>
 				</div>
 				<div
@@ -341,7 +334,7 @@
 						<div class="text-sm font-semibold">Sapiens — Y.N. Harari</div>
 						<div class="mt-0.5 text-xs text-muted-foreground/70">399 Kč</div>
 					</div>
-					<Button size="sm" class="shrink-0">Rezervovat</Button>
+					<Button size="sm" class="shrink-0">{m.landing_feat1_reserve_button()}</Button>
 				</div>
 			</div>
 		</div>
@@ -354,20 +347,22 @@
 <div class="border-b border-border bg-muted">
 	<section
 		class="mx-auto grid max-w-[var(--content-max-width)] items-center gap-10 px-4 py-16 md:grid-cols-2 md:gap-16 md:px-8 md:py-20"
-		aria-label="Sdílení jedním odkazem"
+		aria-label={m.landing_feat2_label()}
 	>
 		<!-- Visual first on desktop (reversed order) -->
 		<div class="feat-visual order-2 md:order-1">
-			<div class="mb-1 text-sm font-semibold">Odkaz pro dárce</div>
+			<div class="mb-1 text-sm font-semibold">{m.landing_feat2_link_label()}</div>
 			<div class="flex items-center gap-2 rounded-lg border border-border bg-background p-3">
 				<Link class="size-4 shrink-0 text-muted-foreground/70" />
 				<span class="flex-1 truncate font-mono text-sm text-primary">
 					darecky.cz/w/martina-vanocni-2026
 				</span>
-				<Button intent="secondary" size="sm" class="shrink-0">Kopírovat</Button>
+				<Button intent="secondary" size="sm" class="shrink-0"
+					>{m.landing_feat2_copy()}</Button
+				>
 			</div>
 
-			<div class="mt-1 text-sm font-semibold">Sdílet přes</div>
+			<div class="mt-1 text-sm font-semibold">{m.landing_feat2_share_via()}</div>
 			<div class="grid grid-cols-4 gap-2">
 				{#each [{ label: 'WhatsApp', emoji: '💬' }, { label: 'Email', emoji: '✉️' }, { label: 'Messenger', emoji: '📱' }, { label: 'Telegram', emoji: '✈️' }] as app (app.label)}
 					<div
@@ -383,7 +378,7 @@
 				class="flex items-center gap-2 rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary"
 			>
 				<UserCheck class="size-4 shrink-0" />
-				Dárci nepotřebují účet — stačí zadat jméno
+				{m.landing_feat2_no_account()}
 			</div>
 		</div>
 
@@ -392,19 +387,18 @@
 			<div class="feat-number" aria-hidden="true">02</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
 				<Share2 class="size-3.5" />
-				Sdílení jedním odkazem
+				{m.landing_feat2_eyebrow()}
 			</div>
 			<h2
 				class="font-heading text-3xl font-extrabold leading-snug tracking-tight md:text-4xl"
 			>
-				Pošlete odkaz přes WhatsApp, email nebo SMS
+				{m.landing_feat2_title()}
 			</h2>
 			<p class="text-lg leading-relaxed text-muted-foreground">
-				Kdokoli může rezervovat. Jeden odkaz pro celou rodinu — dárci nepotřebují vytvářet
-				účet.
+				{m.landing_feat2_description()}
 			</p>
 			<ul class="flex flex-col gap-3">
-				{#each ['Anonymní mód — dárce zadá jen jméno', 'Sdílet přes WhatsApp, email, Messenger nebo Telegram', 'Trvalý odkaz — funguje po celou dobu události'] as item (item)}
+				{#each [m.landing_feat2_check1(), m.landing_feat2_check2(), m.landing_feat2_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
 						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
@@ -421,25 +415,24 @@
 <div class="border-b border-border">
 	<section
 		class="mx-auto grid max-w-[var(--content-max-width)] items-center gap-10 px-4 py-16 md:grid-cols-2 md:gap-16 md:px-8 md:py-20"
-		aria-label="Tematické seznamy"
+		aria-label={m.landing_feat3_label()}
 	>
 		<div class="flex flex-col gap-5">
 			<div class="feat-number" aria-hidden="true">03</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
 				<Palette class="size-3.5" />
-				Tematické seznamy
+				{m.landing_feat3_eyebrow()}
 			</div>
 			<h2
 				class="font-heading text-3xl font-extrabold leading-snug tracking-tight md:text-4xl"
 			>
-				Vánoce, narozeniny, svatba — každý seznam má svůj styl
+				{m.landing_feat3_title()}
 			</h2>
 			<p class="text-lg leading-relaxed text-muted-foreground">
-				Každý seznam může mít svůj vlastní vzhled. Vyberte z pěti témat nebo nastavte
-				vlastní barvu.
+				{m.landing_feat3_description()}
 			</p>
 			<ul class="flex flex-col gap-3">
-				{#each ['Pět připravených témat: Výchozí, Vánoce, Narozeniny, Elegantní, Zábava', 'Vlastní barva s automaticky odvozenou paletou', 'Téma se změní pro všechny návštěvníky okamžitě'] as item (item)}
+				{#each [m.landing_feat3_check1(), m.landing_feat3_check2(), m.landing_feat3_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
 						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
@@ -450,19 +443,19 @@
 
 		<!-- Visual: theme swatches -->
 		<div class="feat-visual">
-			<div class="mb-2 text-sm font-semibold">Vyberte téma</div>
+			<div class="mb-2 text-sm font-semibold">{m.landing_feat3_choose_theme()}</div>
 			<div class="grid grid-cols-3 gap-3">
-				{#each [{ name: 'Výchozí', emoji: '🌿', hue: '150', active: true }, { name: 'Vánoce', emoji: '🎄', hue: '20', active: false }, { name: 'Narozeniny', emoji: '🎂', hue: '55', active: false }, { name: 'Elegantní', emoji: '💍', hue: '270', active: false }, { name: 'Zábava', emoji: '🎉', hue: '340', active: false }, { name: 'Vlastní', emoji: '🎨', hue: '', active: false }] as theme (theme.name)}
+				{#each [{ name: 'default', label: m.theme_default(), emoji: '🌿', hue: '150', active: true }, { name: 'christmas', label: m.theme_christmas(), emoji: '🎄', hue: '20', active: false }, { name: 'birthday', label: m.theme_birthday(), emoji: '🎂', hue: '55', active: false }, { name: 'elegant', label: m.theme_elegant(), emoji: '💍', hue: '270', active: false }, { name: 'fun', label: m.theme_fun(), emoji: '🎉', hue: '340', active: false }, { name: 'custom', label: m.landing_feat3_custom(), emoji: '🎨', hue: '', active: false }] as theme (theme.name)}
 					<div
 						class="flex cursor-pointer flex-col gap-2 rounded-xl border-2 p-4 transition-all {theme.active
 							? 'border-primary shadow-[0_0_0_3px_oklch(from_var(--primary)_l_c_h_/_0.2)]'
-							: theme.name === 'Vlastní'
+							: theme.name === 'custom'
 								? 'border-dashed border-border'
 								: 'border-transparent'} {theme.hue ? 'theme-swatch' : 'bg-muted'}"
 						style={theme.hue ? `--swatch-hue: ${theme.hue}deg` : ''}
 					>
 						<span class="text-[22px]">{theme.emoji}</span>
-						<span class="text-xs font-semibold">{theme.name}</span>
+						<span class="text-xs font-semibold">{theme.label}</span>
 					</div>
 				{/each}
 			</div>
@@ -470,10 +463,10 @@
 			<!-- Theme preview -->
 			<div class="theme-preview-card mt-4 rounded-xl p-4">
 				<div class="theme-preview-title font-heading text-lg font-extrabold">
-					Martina — Vánoční přání
+					{m.landing_feat3_preview_title()}
 				</div>
 				<div class="theme-preview-subtitle mt-1 text-sm">
-					Tady jsou věci, které by mě letos potěšily :)
+					{m.landing_feat3_preview_subtitle()}
 				</div>
 			</div>
 		</div>
@@ -486,12 +479,12 @@
 <div class="border-b border-border bg-muted">
 	<section
 		class="mx-auto grid max-w-[var(--content-max-width)] items-center gap-10 px-4 py-16 md:grid-cols-2 md:gap-16 md:px-8 md:py-20"
-		aria-label="Zdarma navždy"
+		aria-label={m.landing_feat4_label()}
 	>
 		<!-- Visual first on desktop (reversed) -->
 		<div class="feat-visual order-2 md:order-1">
 			<div class="flex flex-col gap-4">
-				{#each [{ icon: ShieldCheck, title: 'Zdarma navždy', sub: 'Žádná platební karta. Žádný háček. Žádné trial období.' }, { icon: EyeOff, title: 'Žádné reklamy, žádné sledování', sub: 'Žádná data třetím stranám. Vaše přání jsou vaše.' }, { icon: UserCheck, title: 'Dárci bez registrace', sub: 'Stačí zadat jméno. Bez stahování aplikace.' }, { icon: Lock, title: 'Překvapení zaručeno', sub: 'Vlastník nikdy neuvidí, kdo co rezervoval.' }] as trust (trust.title)}
+				{#each [{ icon: ShieldCheck, title: m.landing_feat4_trust_free_title(), sub: m.landing_feat4_trust_free_sub() }, { icon: EyeOff, title: m.landing_feat4_trust_noads_title(), sub: m.landing_feat4_trust_noads_sub() }, { icon: UserCheck, title: m.landing_feat4_trust_noreg_title(), sub: m.landing_feat4_trust_noreg_sub() }, { icon: Lock, title: m.landing_feat4_trust_surprise_title(), sub: m.landing_feat4_trust_surprise_sub() }] as trust (trust.title)}
 					<div
 						class="flex items-start gap-4 rounded-xl border border-border bg-background p-4 transition-all hover:border-border hover:shadow-md"
 					>
@@ -516,19 +509,18 @@
 			<div class="feat-number" aria-hidden="true">04</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
 				<Heart class="size-3.5" />
-				Zdarma navždy
+				{m.landing_feat4_eyebrow()}
 			</div>
 			<h2
 				class="font-heading text-3xl font-extrabold leading-snug tracking-tight md:text-4xl"
 			>
-				Žádné poplatky, žádné reklamy
+				{m.landing_feat4_title()}
 			</h2>
 			<p class="text-lg leading-relaxed text-muted-foreground">
-				Darecky je a vždy bude zdarma. Žádná platební karta, žádné skryté poplatky, žádná
-				reklama.
+				{m.landing_feat4_description()}
 			</p>
 			<ul class="flex flex-col gap-3">
-				{#each ['Zdarma pro vlastníky i dárce — navždy', 'Žádná reklama, žádné sledování třetí stranou', 'Bez limitu na počet seznamů nebo přání'] as item (item)}
+				{#each [m.landing_feat4_check1(), m.landing_feat4_check2(), m.landing_feat4_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
 						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
@@ -544,7 +536,7 @@
      ═══════════════════════════════════════════════════ -->
 <section
 	class="relative overflow-hidden border-t border-border bg-background"
-	aria-label="Výzva k akci"
+	aria-label={m.landing_cta_label()}
 >
 	<!-- Decorative blob -->
 	<div
@@ -556,27 +548,29 @@
 	<div
 		class="relative z-[1] mx-auto flex max-w-[680px] flex-col items-center gap-6 px-4 py-16 text-center md:px-8 md:py-20"
 	>
-		<span class="section-eyebrow">Začněte dnes</span>
+		<span class="section-eyebrow">{m.landing_cta_eyebrow()}</span>
 		<h2 class="font-heading text-3xl font-extrabold leading-snug tracking-tight md:text-4xl">
-			Vytvořte svůj první seznam přání
+			{m.landing_cta_title()}
 		</h2>
 		<p class="text-lg leading-relaxed text-muted-foreground md:text-xl">
-			Registrace jedním klikem. Žádná platební karta. Váš první seznam hotový za minutu.
+			{m.landing_cta_description()}
 		</p>
 		<div class="flex flex-wrap justify-center gap-4">
 			<Button size="lg" href={resolve('/register')} class="min-w-[220px]">
-				Začít zdarma
+				{m.landing_get_started()}
 			</Button>
-			<Button intent="secondary" size="lg" href={resolve('/login')}>Přihlásit se</Button>
+			<Button intent="secondary" size="lg" href={resolve('/login')}
+				>{m.landing_login()}</Button
+			>
 		</div>
 		<div
 			class="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground/70"
 		>
-			<span>Zdarma navždy</span>
+			<span>{m.landing_badge_free()}</span>
 			<span class="opacity-35" aria-hidden="true">·</span>
-			<span>Žádná platební karta</span>
+			<span>{m.landing_cta_no_card()}</span>
 			<span class="opacity-35" aria-hidden="true">·</span>
-			<span>Překvapení zaručeno</span>
+			<span>{m.landing_cta_surprise()}</span>
 		</div>
 	</div>
 </section>
@@ -584,7 +578,7 @@
 <!-- ═══════════════════════════════════════════════════
      FOOTER
      ═══════════════════════════════════════════════════ -->
-<footer class="border-t border-border bg-muted" aria-label="Zápatí stránky">
+<footer class="border-t border-border bg-muted" aria-label={m.landing_footer_label()}>
 	<div
 		class="mx-auto flex max-w-[var(--content-max-width)] flex-col items-center gap-4 px-4 py-8 sm:flex-row sm:justify-between md:px-8"
 	>
@@ -592,7 +586,7 @@
 		<a
 			class="flex items-center gap-2 font-heading font-bold text-primary no-underline hover:opacity-80"
 			href={resolve('/')}
-			aria-label="Darecky — domovská stránka"
+			aria-label={m.landing_footer_homepage()}
 		>
 			<span
 				class="flex size-6 items-center justify-center rounded-sm bg-primary/10 text-primary"
@@ -603,19 +597,19 @@
 		</a>
 
 		<!-- Links -->
-		<nav class="flex items-center gap-1" aria-label="Navigace zápatí">
+		<nav class="flex items-center gap-1" aria-label={m.landing_footer_nav_label()}>
 			<a
 				href={resolve('/login')}
 				class="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline transition-all hover:bg-accent hover:text-foreground"
 			>
-				Přihlásit se
+				{m.landing_login()}
 			</a>
 			<span class="text-sm text-border" aria-hidden="true">·</span>
 			<a
 				href={resolve('/register')}
 				class="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline transition-all hover:bg-accent hover:text-foreground"
 			>
-				Vytvořit účet
+				{m.landing_footer_create_account()}
 			</a>
 		</nav>
 

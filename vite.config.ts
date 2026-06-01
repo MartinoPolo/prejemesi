@@ -25,6 +25,16 @@ const dirname =
 export default defineConfig({
 	server: {
 		open: true,
+		warmup: {
+			clientFiles: [
+				'./src/routes/(app)/my-lists/+page.svelte',
+				'./src/routes/(app)/moderated/+page.svelte',
+				'./src/routes/(app)/followed/+page.svelte',
+				'./src/routes/(app)/settings/+page.svelte',
+				'./src/routes/(auth)/login/+page.svelte',
+				'./src/routes/(auth)/register/+page.svelte',
+			],
+		},
 	},
 	define: {
 		// Exposed as __GIT_BRANCH__ global; consumed in +layout.svelte to prefix tab titles.
@@ -41,9 +51,6 @@ export default defineConfig({
 				{
 					pattern: '/:path(.*)?',
 					localized: [
-						// English must come before Czech so the more-specific /en/* pattern
-						// is matched first. The Czech catch-all /:path(.*)? would otherwise
-						// greedily match /en/* URLs before the English pattern is checked.
 						['en', '/en/:path(.*)?'],
 						['cs', '/:path(.*)?'],
 					],

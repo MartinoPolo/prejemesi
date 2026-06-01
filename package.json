@@ -45,7 +45,6 @@
 		"@better-auth/cli": "~1.4.22",
 		"@chromatic-com/storybook": "^5.1.1",
 		"@cloudflare/workers-types": "^4.20250530.0",
-		"@fallow-cli/win32-x64-msvc": "^2.48.4",
 		"@fontsource-variable/figtree": "^5.2.10",
 		"@fontsource-variable/noto-sans": "^5.2.10",
 		"@inlang/paraglide-js": "^2.15.1",

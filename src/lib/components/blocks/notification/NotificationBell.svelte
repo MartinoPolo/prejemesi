@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import BellIcon from '@lucide/svelte/icons/bell';
@@ -26,7 +27,7 @@
 				{...props}
 				intent="ghost"
 				size="icon"
-				aria-label="Upozorneni ({ctx.unreadCount.current} neprectenych)"
+				aria-label={m.notification_bell_label({ count: ctx.unreadCount.current })}
 			>
 				<BellIcon data-icon />
 				{#if ctx.hasUnread.current}
@@ -38,7 +39,7 @@
 		{/snippet}
 	</Popover.Trigger>
 	<Popover.Content align="end" class="w-80 p-0 pt-3 pb-1">
-		<p class="sr-only">Upozorneni</p>
+		<p class="sr-only">{m.notification_panel_title()}</p>
 		<NotificationPanel />
 	</Popover.Content>
 </Popover.Root>

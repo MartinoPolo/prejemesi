@@ -28,7 +28,7 @@
 	<!-- Label -->
 	<div class={styles.labelRow()}>
 		<span class={styles.emoji()}>{preset.emoji}</span>
-		<span class={styles.label()}>{preset.label}</span>
+		<span class={styles.label()}>{preset.label()}</span>
 	</div>
 
 	<!-- Selected indicator -->
