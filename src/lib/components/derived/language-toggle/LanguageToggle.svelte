@@ -8,7 +8,7 @@
 		en: 'English',
 	};
 
-	let currentLocale = $derived(getLocale());
+	const currentLocale = $derived(getLocale());
 
 	function handleLocaleChange(newLocale: string | undefined) {
 		if (newLocale != null && newLocale !== '' && newLocale !== currentLocale) {

@@ -3,7 +3,6 @@
 	import { goto } from '$app/navigation';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import UserIcon from '@lucide/svelte/icons/user';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import { authClient } from '$lib/auth_client.js';
@@ -58,10 +57,6 @@
 		</DropdownMenu.Label>
 		<DropdownMenu.Separator />
 		<DropdownMenu.Group>
-			<DropdownMenu.Item onSelect={() => goto(settingsHref)}>
-				<UserIcon data-icon="inline-start" />
-				{m.profile()}
-			</DropdownMenu.Item>
 			<DropdownMenu.Item onSelect={() => goto(settingsHref)}>
 				<SettingsIcon data-icon="inline-start" />
 				{m.nav_settings()}

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { invalidate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
@@ -25,8 +26,14 @@
 	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply_theme.js';
 	import { isCustomTheme, toWishlistTheme } from '$lib/modules/themes/types.js';
 	import type { WishlistTheme } from '$lib/modules/themes/types.js';
-	import { updateWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
-	import { unfollowWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
+	import {
+		getWishlistByShortId,
+		updateWishlist,
+		unfollowWishlist,
+		followWishlist,
+	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
+	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import { untrack } from 'svelte';
@@ -53,80 +60,110 @@
 
 	let { data } = $props();
 
-	const wishlist = $derived(data.wishlist);
-	const role = $derived(data.role);
+	const shortId = page.params.id!;
+	// Capture auth state before top-level await so Svelte doesn't warn about
+	// reading reactive $props in an initialization block.
+	const initialUser = untrack(() => data.user);
+	const isAuthenticated = $derived(data.user !== null);
+
+	// ── Remote data fetch ────────────────────────────────────────────────────
+
+	const [wishlistData, giftsData] = await Promise.all([
+		getWishlistByShortId(shortId),
+		getGiftsByWishlistShortId(shortId),
+	]);
+
+	let userLikedGiftIds: string[] = [];
+	if (initialUser !== null) {
+		try {
+			userLikedGiftIds = await getUserLikesForWishlist();
+		} catch {
+			// Guarded calls may fail for unauthenticated users — ignore
+		}
+	}
+
+	// ── Reactive state (initialized from remote data) ───────────────────────
+
+	let wishlist = $state(wishlistData);
+	let gifts = $state(giftsData.gifts);
+	let role = $state(giftsData.role);
+	let likedGiftIds = $state.raw(userLikedGiftIds);
+
+	// ── Refresh function (replaces invalidate('app:wishlist-data')) ──────────
+
+	async function refreshData() {
+		try {
+			const [freshWishlist, freshGifts] = await Promise.all([
+				getWishlistByShortId(shortId),
+				getGiftsByWishlistShortId(shortId),
+			]);
+			wishlist = freshWishlist;
+			gifts = freshGifts.gifts;
+			role = freshGifts.role;
+			if (isAuthenticated) {
+				try {
+					likedGiftIds = await getUserLikesForWishlist();
+				} catch {
+					// ignore
+				}
+			}
+		} catch (thrown) {
+			console.error('Failed to refresh wishlist data:', thrown);
+		}
+	}
+
+	// ── Derived values ───────────────────────────────────────────────────────
+
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isOwner = $derived(role === 'owner');
 	const isModerator = $derived(role === 'moderator');
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
+	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
+	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
+
+	// ── Context setup ────────────────────────────────────────────────────────
 
 	const giftsContext = untrack(() =>
 		setGiftsContext(
-			() => data.gifts,
-			() => data.role,
-			() => data.wishlist.status === 'archived',
+			() => gifts,
+			() => role,
+			() => wishlist.status === 'archived',
 		),
 	);
 
-	untrack(() => setLikesContext(() => data.userLikedGiftIds));
+	untrack(() => setLikesContext(() => likedGiftIds));
 
 	const sharingContext = untrack(() =>
 		setSharingContext(
-			() => data.wishlist.shortId,
-			() => data.wishlist.sharedAt !== null,
+			() => wishlist.shortId,
+			() => wishlist.sharedAt !== null,
 		),
 	);
 
 	const themeContext = untrack(() =>
-		setWishlistThemeContext(() =>
-			toWishlistTheme(data.wishlist.theme, data.wishlist.customThemeColor),
-		),
+		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
 	);
 
-	const wishlistStatus = $derived(data.wishlist.status as 'draft' | 'active' | 'archived');
+	// ── Modal state ──────────────────────────────────────────────────────────
 
 	let moderatorPanelOpen = $state(false);
-	const ownerIsModeratorLocal = $derived(data.wishlist.ownerIsModerator);
-
-	function handleModeratorsOpened() {
-		moderatorPanelOpen = true;
-	}
-
-	async function handleSelfPromoted() {
-		await invalidate('app:wishlist-data');
-	}
-
-	function handleShareOpened() {
-		sharingContext.openWizard();
-	}
-
-	function handleShared() {
-		void invalidate('app:wishlist-data');
-	}
-
-	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
-	const viewMode = $derived(giftsContext.viewMode.current);
-	const totalCount = $derived(giftsContext.giftCount.current);
-	const hasActiveFilters = $derived(giftsContext.hasActiveFilters.current);
-	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
-	const isEmpty = $derived(totalCount === 0);
-
-	// Modal state
 	let modalOpen = $state(false);
 	let modalMode = $state<'create' | 'edit'>('create');
 	let selectedGift = $state<GiftByRole | null>(null);
-	let priorityLevels = $state<GiftPriorityLevel[]>([]);
+	let priorityLevels = $state.raw<GiftPriorityLevel[]>([]);
 	let isSubmitting = $state(false);
 	let isDeleting = $state(false);
 
-	// Theme selector sheet state
+	// ── Theme selector sheet state ───────────────────────────────────────────
+
 	let themeSheetOpen = $state(false);
 
-	// Drag-and-drop state
+	// ── Drag-and-drop state ──────────────────────────────────────────────────
+
 	let draggedIndex = $state<number | null>(null);
 	let dragOverIndex = $state<number | null>(null);
 
-	// ── Theme application via $effect ──────────────────────────────────────────
+	// ── Theme application via $effect ─────────────────────────────────────────
 
 	let themeWrapperElement = $state<HTMLElement | null>(null);
 
@@ -143,7 +180,17 @@
 		};
 	});
 
-	// Computed: can user edit/delete the selected gift?
+	// ── Gift display ─────────────────────────────────────────────────────────
+
+	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
+	const viewMode = $derived(giftsContext.viewMode.current);
+	const totalCount = $derived(giftsContext.giftCount.current);
+	const hasActiveFilters = $derived(giftsContext.hasActiveFilters.current);
+	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
+	const isEmpty = $derived(totalCount === 0);
+
+	// ── Computed: can user edit/delete the selected gift? ────────────────────
+
 	const canEditSelectedGift = $derived.by(() => {
 		if (selectedGift === null) {
 			return false;
@@ -172,6 +219,24 @@
 		}
 		return true;
 	});
+
+	// ── Event handlers ───────────────────────────────────────────────────────
+
+	function handleModeratorsOpened() {
+		moderatorPanelOpen = true;
+	}
+
+	async function handleSelfPromoted() {
+		await refreshData();
+	}
+
+	function handleShareOpened() {
+		sharingContext.openWizard();
+	}
+
+	function handleShared() {
+		void refreshData();
+	}
 
 	function handleViewModeChange(mode: typeof viewMode) {
 		giftsContext.viewMode.current = mode;
@@ -219,7 +284,7 @@
 		try {
 			await createGift(input);
 			modalOpen = false;
-			await invalidate('app:wishlist-data');
+			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to create gift:', thrown);
 		} finally {
@@ -232,7 +297,7 @@
 		try {
 			await updateGiftRemote(input);
 			modalOpen = false;
-			await invalidate('app:wishlist-data');
+			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to update gift:', thrown);
 		} finally {
@@ -245,7 +310,7 @@
 		try {
 			await deleteGift(giftId);
 			modalOpen = false;
-			await invalidate('app:wishlist-data');
+			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to delete gift:', thrown);
 		} finally {
@@ -256,7 +321,7 @@
 	async function handleReceived(giftId: string, received: boolean) {
 		try {
 			await markGiftReceived({ giftId, received });
-			await invalidate('app:wishlist-data');
+			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to toggle received:', thrown);
 		}
@@ -300,7 +365,7 @@
 			});
 
 			themeContext.cancelPreview();
-			await invalidate('app:wishlist-data');
+			await refreshData();
 			themeSheetOpen = false;
 			toastSuccess(m.toast_theme_saved());
 		} catch (thrown) {
@@ -309,7 +374,7 @@
 		}
 	}
 
-	// ── Drag-and-drop handlers ──────────────────────────────────────────────
+	// ── Drag-and-drop handlers ────────────────────────────────────────────────
 
 	function handleDragStart(event: DragEvent, index: number) {
 		if (!isOwnerOrModerator) {
@@ -362,11 +427,11 @@
 			}));
 			await reorderGifts(reorderItems);
 			giftsContext.clearReorderOverride();
-			await invalidate('app:wishlist-data');
+			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to reorder gifts:', thrown);
 			giftsContext.clearReorderOverride();
-			await invalidate('app:wishlist-data');
+			await refreshData();
 		}
 	}
 
@@ -375,12 +440,11 @@
 		dragOverIndex = null;
 	}
 
-	// ── Reservation handlers ───────────────────────────────────────────────
+	// ── Reservation handlers ──────────────────────────────────────────────────
 
 	let reserveModalOpen = $state(false);
 	let reservingGift = $state<GiftForVisitor | null>(null);
 	let isReserving = $state(false);
-	const isAuthenticated = $derived(data.isAuthenticated);
 
 	function handleOpenReserveModal(giftItem: GiftForVisitor) {
 		reservingGift = giftItem;
@@ -399,13 +463,25 @@
 			reserveModalOpen = false;
 			reservingGift = null;
 			toastSuccess(m.toast_gift_reserved());
-			await invalidate('app:wishlist-data');
+			await refreshData();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
 			isReserving = false;
 		}
 	}
+
+	// ── Lifecycle: auto-follow on mount ───────────────────────────────────────
+
+	onMount(async () => {
+		if (isAuthenticated) {
+			try {
+				await followWishlist(wishlist.id);
+			} catch {
+				// Auto-follow failure is non-critical — ignore
+			}
+		}
+	});
 </script>
 
 <div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">

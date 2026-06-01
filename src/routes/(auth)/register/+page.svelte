@@ -13,11 +13,11 @@
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import CircleCheck from '@lucide/svelte/icons/circle-check';
-	import Clock from '@lucide/svelte/icons/clock';
-	import Users from '@lucide/svelte/icons/users';
-	import Eye from '@lucide/svelte/icons/eye';
-	import EyeOff from '@lucide/svelte/icons/eye-off';
+	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import UsersIcon from '@lucide/svelte/icons/users';
+	import EyeIcon from '@lucide/svelte/icons/eye';
+	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 
 	let name = $state('');
 	let email = $state('');
@@ -174,17 +174,17 @@
 	{/snippet}
 	{#snippet features()}
 		<AuthBrandFeature
-			icon={CircleCheck}
+			icon={CircleCheckIcon}
 			title={m.auth_feature_free_title()}
 			description={m.auth_feature_free_description()}
 		/>
 		<AuthBrandFeature
-			icon={Clock}
+			icon={ClockIcon}
 			title={m.auth_feature_quick_title()}
 			description={m.auth_feature_quick_description()}
 		/>
 		<AuthBrandFeature
-			icon={Users}
+			icon={UsersIcon}
 			title={m.auth_feature_family_title()}
 			description={m.auth_feature_family_description()}
 		/>
@@ -260,9 +260,9 @@
 						tabindex={-1}
 					>
 						{#if showPassword}
-							<EyeOff class="size-4" />
+							<EyeOffIcon class="size-4" />
 						{:else}
-							<Eye class="size-4" />
+							<EyeIcon class="size-4" />
 						{/if}
 					</button>
 				</div>

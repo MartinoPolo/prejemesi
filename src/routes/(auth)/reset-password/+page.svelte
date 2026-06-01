@@ -10,12 +10,12 @@
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import ShieldCheck from '@lucide/svelte/icons/shield-check';
-	import KeyRound from '@lucide/svelte/icons/key-round';
-	import Mail from '@lucide/svelte/icons/mail';
-	import Eye from '@lucide/svelte/icons/eye';
-	import EyeOff from '@lucide/svelte/icons/eye-off';
-	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
+	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
+	import MailIcon from '@lucide/svelte/icons/mail';
+	import EyeIcon from '@lucide/svelte/icons/eye';
+	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
+	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 
 	let token = $derived(page.url.searchParams.get('token'));
 
@@ -159,17 +159,17 @@
 	{/snippet}
 	{#snippet features()}
 		<AuthBrandFeature
-			icon={ShieldCheck}
+			icon={ShieldCheckIcon}
 			title={m.auth_feature_secure_title()}
 			description={m.auth_feature_secure_description()}
 		/>
 		<AuthBrandFeature
-			icon={KeyRound}
+			icon={KeyRoundIcon}
 			title={m.auth_feature_strong_pw_title()}
 			description={m.auth_feature_strong_pw_description()}
 		/>
 		<AuthBrandFeature
-			icon={Mail}
+			icon={MailIcon}
 			title={m.auth_feature_email_verify_title()}
 			description={m.auth_feature_email_verify_description()}
 		/>
@@ -180,7 +180,7 @@
 	<AuthFormCard title={m.reset_set_title()} subtitle={m.reset_set_subtitle()}>
 		{#if resetSuccess}
 			<div class="success-banner" role="status">
-				<CircleCheck class="success-icon" />
+				<CircleCheckIcon class="success-icon" />
 				<div>
 					<p class="success-text">{m.reset_success()}</p>
 					<a href={resolve('/login')} class="success-link">{m.reset_success_link()}</a>
@@ -219,9 +219,9 @@
 								tabindex={-1}
 							>
 								{#if showPassword}
-									<EyeOff class="size-4" />
+									<EyeOffIcon class="size-4" />
 								{:else}
-									<Eye class="size-4" />
+									<EyeIcon class="size-4" />
 								{/if}
 							</button>
 						</div>
@@ -262,9 +262,9 @@
 								tabindex={-1}
 							>
 								{#if showConfirmPassword}
-									<EyeOff class="size-4" />
+									<EyeOffIcon class="size-4" />
 								{:else}
-									<Eye class="size-4" />
+									<EyeIcon class="size-4" />
 								{/if}
 							</button>
 						</div>
@@ -293,7 +293,7 @@
 	<AuthFormCard title={m.reset_request_title()} subtitle={m.reset_request_subtitle()}>
 		{#if requestSuccess}
 			<div class="success-banner" role="status">
-				<CircleCheck class="success-icon" />
+				<CircleCheckIcon class="success-icon" />
 				<div>
 					<p class="success-text">{m.reset_request_success()}</p>
 				</div>

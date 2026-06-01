@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import { untrack } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ThemePresetName, WishlistTheme } from '$lib/modules/themes/types.js';
 	import { isCustomTheme, THEME_PRESET_NAMES } from '$lib/modules/themes/types.js';
@@ -19,17 +20,14 @@
 
 	const styles = themeSelectorVariants();
 
-	// Internal editing state — initialized from currentTheme, then user-managed
-	let selectedPreset = $state<ThemePresetName | 'custom'>('default');
+	// Internal editing state — initialized once from currentTheme (parent remounts on re-open)
+	let selectedPreset = $state<ThemePresetName | 'custom'>(
+		untrack(() => (isCustomTheme(currentTheme) ? 'custom' : currentTheme)),
+	);
 	let customColorHex = $state('#6366f1');
-	let customOklch = $state<string | null>(null);
-
-	// Reset internal state when currentTheme changes (e.g., on re-open)
-	$effect.pre(() => {
-		const theme = currentTheme;
-		selectedPreset = isCustomTheme(theme) ? 'custom' : theme;
-		customOklch = isCustomTheme(theme) ? theme.color : null;
-	});
+	let customOklch = $state<string | null>(
+		untrack(() => (isCustomTheme(currentTheme) ? currentTheme.color : null)),
+	);
 
 	const selectedTheme = $derived.by((): WishlistTheme => {
 		if (selectedPreset === 'custom' && customOklch !== null) {

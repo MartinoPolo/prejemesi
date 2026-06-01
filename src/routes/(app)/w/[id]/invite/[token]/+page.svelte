@@ -2,6 +2,8 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import { acceptModeratorInvite } from '$lib/modules/moderators/moderators.remote.js';
+	import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { toastSuccess } from '$lib/components/base/toast/index.js';
@@ -11,7 +13,8 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import XCircleIcon from '@lucide/svelte/icons/x-circle';
 
-	let { data } = $props();
+	const wishlistData = await getWishlistByShortId(page.params.id!);
+	const token = page.params.token!;
 
 	let isAccepting = $state(false);
 	let errorMessage = $state<string | null>(null);
@@ -21,7 +24,7 @@
 		isAccepting = true;
 		errorMessage = null;
 		try {
-			const result = await acceptModeratorInvite({ token: data.token });
+			const result = await acceptModeratorInvite({ token });
 			accepted = true;
 			toastSuccess(m.invite_toast_accepted());
 			// Redirect to the wishlist after a short delay
@@ -61,13 +64,13 @@
 			</Card.Title>
 			<Card.Description>
 				{#if accepted}
-					{m.invite_accepted_description({ title: data.wishlist.title })}
+					{m.invite_accepted_description({ title: wishlistData.title })}
 				{:else if errorMessage !== null}
 					{errorMessage}
 				{:else}
 					{m.invite_pending_description({
-						title: data.wishlist.title,
-						owner: data.wishlist.ownerName,
+						title: wishlistData.title,
+						owner: wishlistData.ownerName,
 					})}
 				{/if}
 			</Card.Description>
@@ -91,7 +94,7 @@
 				<Button
 					intent="outline"
 					onclick={() =>
-						void goto(resolve('/(app)/w/[id]', { id: data.wishlist.shortId }))}
+						void goto(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
 				>
 					{m.cancel()}
 				</Button>
@@ -110,7 +113,7 @@
 				<Button
 					intent="outline"
 					onclick={() =>
-						void goto(resolve('/(app)/w/[id]', { id: data.wishlist.shortId }))}
+						void goto(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
 				>
 					{m.invite_back_to_list()}
 				</Button>
@@ -120,5 +123,5 @@
 </div>
 
 <svelte:head>
-	<title>{m.invite_page_title({ title: data.wishlist.title })}</title>
+	<title>{m.invite_page_title({ title: wishlistData.title })}</title>
 </svelte:head>

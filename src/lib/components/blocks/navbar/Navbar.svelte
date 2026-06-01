@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
-	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
+	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
@@ -11,7 +11,7 @@
 	import { isNavActive } from './navbar_utils.js';
 	import UserMenu from './UserMenu.svelte';
 	import MobileNav from './MobileNav.svelte';
-	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -166,7 +166,7 @@
 						aria-current={isNavActive(link.href) ? 'page' : undefined}
 					>
 						{link.label}
-						<ChevronDown class="nav-chevron" />
+						<ChevronDownIcon class="nav-chevron" />
 					</a>
 					<NavDropdown
 						title={link.label}
