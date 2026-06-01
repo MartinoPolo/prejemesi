@@ -9,6 +9,7 @@
 	import AuthFormCard from '$lib/components/blocks/auth/AuthFormCard.svelte';
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import Mail from '@lucide/svelte/icons/mail';
 	import Clock from '@lucide/svelte/icons/clock';
 	import Send from '@lucide/svelte/icons/send';
@@ -25,11 +26,11 @@
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
-			emailError = 'Zadejte emailovou adresu';
+			emailError = m.enter_email();
 			return false;
 		}
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			emailError = 'Zadejte platnou emailovou adresu';
+			emailError = m.enter_valid_email();
 			return false;
 		}
 		emailError = '';
@@ -58,13 +59,13 @@
 			});
 
 			if (result.error) {
-				errorMessage = 'Odeslani odkazu se nezdarilo. Zkuste to prosim znovu.';
+				errorMessage = m.magic_error();
 			} else {
 				sentEmail = email.trim();
 				sent = true;
 			}
 		} catch {
-			errorMessage = 'Doslo k chybe. Zkuste to prosim znovu.';
+			errorMessage = m.error_generic();
 		} finally {
 			loading = false;
 		}
@@ -81,17 +82,21 @@
 <AuthBrandPanel>
 	{#snippet tagline()}
 		{#if sent}
-			Zkontrolujte<br />svuj email
+			{@html m.auth_tagline_magic_sent()}
 		{:else}
-			Prihlaste se<br />bez hesla
+			{@html m.auth_tagline_magic_default()}
 		{/if}
 	{/snippet}
 	{#snippet features()}
-		<AuthBrandFeature icon={Mail} title="Bez hesla" description="Odkaz dorazi do emailu" />
+		<AuthBrandFeature
+			icon={Mail}
+			title={m.auth_feature_no_password_title()}
+			description={m.auth_feature_no_password_description()}
+		/>
 		<AuthBrandFeature
 			icon={Clock}
-			title="Platny 15 minut"
-			description="Bezpecny jednorazovy odkaz"
+			title={m.auth_feature_valid_15_title()}
+			description={m.auth_feature_valid_15_description()}
 		/>
 	{/snippet}
 </AuthBrandPanel>
@@ -102,22 +107,22 @@
 			<div class="success-icon-wrap" aria-hidden="true">
 				<Mail class="size-9" />
 			</div>
-			<h2 class="success-title">Odkaz odeslan!</h2>
+			<h2 class="success-title">{m.magic_sent_title()}</h2>
 			<p class="success-body">
-				Odkaz odeslan na <strong>{sentEmail}</strong>. Platnost <strong>15 minut</strong>.
+				{@html m.magic_sent_body({ email: sentEmail })}
 			</p>
 			<p class="success-body mt-hint">
-				Zkontrolujte svou emailovou schranku.<br />
-				Pokud email neprijde, podivejte se do spamu.
+				{m.magic_sent_check()}<br />
+				{m.magic_sent_spam()}
 			</p>
 			<a href={resolve('/login')} class="success-back" onclick={handleReset}>
 				<ChevronLeft class="size-3.5" />
-				Zpet na prihlaseni
+				{m.back_to_login()}
 			</a>
 		</div>
 	</AuthFormCard>
 {:else}
-	<AuthFormCard title="Prihlaseni odkazem" subtitle="Posleme vam prihlasovaci odkaz na email">
+	<AuthFormCard title={m.magic_title()} subtitle={m.magic_subtitle()}>
 		{#if errorMessage}
 			<ErrorBanner message={errorMessage} />
 		{/if}
@@ -125,11 +130,11 @@
 		<form onsubmit={handleSubmit} novalidate>
 			<div class="form-stack">
 				<div class="form-field">
-					<Label for="magic-email">Email</Label>
+					<Label for="magic-email">{m.email_label()}</Label>
 					<Input
 						id="magic-email"
 						type="email"
-						placeholder="vas@email.cz"
+						placeholder={m.email_placeholder()}
 						autocomplete="email"
 						bind:value={email}
 						onblur={handleEmailBlur}
@@ -150,14 +155,14 @@
 				{:else}
 					<Send data-icon="inline-start" />
 				{/if}
-				Odeslat prihlasovaci odkaz
+				{m.magic_submit()}
 			</Button>
 		</form>
 
 		<div class="auth-footer">
 			<a href={resolve('/login')}>
 				<ChevronLeft class="inline size-3.5 align-[-2px]" />
-				Zpet na prihlaseni
+				{m.back_to_login()}
 			</a>
 		</div>
 	</AuthFormCard>

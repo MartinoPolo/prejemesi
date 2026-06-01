@@ -9,6 +9,7 @@
 	import AuthFormCard from '$lib/components/blocks/auth/AuthFormCard.svelte';
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import ShieldCheck from '@lucide/svelte/icons/shield-check';
 	import KeyRound from '@lucide/svelte/icons/key-round';
 	import Mail from '@lucide/svelte/icons/mail';
@@ -38,11 +39,11 @@
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
-			emailError = 'Zadejte emailovou adresu';
+			emailError = m.enter_email();
 			return false;
 		}
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			emailError = 'Zadejte platnou emailovou adresu';
+			emailError = m.enter_valid_email();
 			return false;
 		}
 		emailError = '';
@@ -51,7 +52,7 @@
 
 	function validateNewPassword(): boolean {
 		if (newPassword.length < 8) {
-			newPasswordError = 'Heslo musi mit alespon 8 znaku';
+			newPasswordError = m.settings_password_min_length();
 			return false;
 		}
 		newPasswordError = '';
@@ -60,11 +61,11 @@
 
 	function validateConfirmPassword(): boolean {
 		if (!confirmPassword) {
-			confirmPasswordError = 'Potvrdte nove heslo';
+			confirmPasswordError = m.reset_confirm_required();
 			return false;
 		}
 		if (confirmPassword !== newPassword) {
-			confirmPasswordError = 'Hesla se neshoduji';
+			confirmPasswordError = m.reset_passwords_mismatch();
 			return false;
 		}
 		confirmPasswordError = '';
@@ -105,12 +106,12 @@
 			});
 
 			if (result.error) {
-				requestError = 'Nepodarilo se odeslat odkaz pro obnovu. Zkuste to prosim znovu.';
+				requestError = m.reset_request_error();
 			} else {
 				requestSuccess = true;
 			}
 		} catch {
-			requestError = 'Doslo k chybe. Zkuste to prosim znovu.';
+			requestError = m.error_generic();
 		} finally {
 			requestLoading = false;
 		}
@@ -127,7 +128,7 @@
 		}
 
 		if (token == null || token === '') {
-			resetError = 'Chybi token pro obnovu hesla. Pouzijte odkaz z emailu.';
+			resetError = m.reset_token_missing();
 			return;
 		}
 
@@ -139,13 +140,12 @@
 			});
 
 			if (result.error) {
-				resetError =
-					'Nepodarilo se nastavit nove heslo. Odkaz mohl vyprset — zkuste pozadat o novy.';
+				resetError = m.reset_set_error();
 			} else {
 				resetSuccess = true;
 			}
 		} catch {
-			resetError = 'Doslo k chybe. Zkuste to prosim znovu.';
+			resetError = m.error_generic();
 		} finally {
 			resetLoading = false;
 		}
@@ -154,35 +154,35 @@
 
 <AuthBrandPanel>
 	{#snippet tagline()}
-		Obnovte pristup<br />ke svemu uctu
+		{@html m.auth_tagline_reset()}
 	{/snippet}
 	{#snippet features()}
 		<AuthBrandFeature
 			icon={ShieldCheck}
-			title="Bezpecna obnova"
-			description="Overeny proces zmeny hesla"
+			title={m.auth_feature_secure_title()}
+			description={m.auth_feature_secure_description()}
 		/>
 		<AuthBrandFeature
 			icon={KeyRound}
-			title="Silne heslo"
-			description="Alespon 8 znaku pro bezpecnost"
+			title={m.auth_feature_strong_pw_title()}
+			description={m.auth_feature_strong_pw_description()}
 		/>
 		<AuthBrandFeature
 			icon={Mail}
-			title="Email overeni"
-			description="Odkaz primo do vasi schranky"
+			title={m.auth_feature_email_verify_title()}
+			description={m.auth_feature_email_verify_description()}
 		/>
 	{/snippet}
 </AuthBrandPanel>
 
 {#if token}
-	<AuthFormCard title="Nastavte nove heslo" subtitle="Zadejte sve nove heslo">
+	<AuthFormCard title={m.reset_set_title()} subtitle={m.reset_set_subtitle()}>
 		{#if resetSuccess}
 			<div class="success-banner" role="status">
 				<CircleCheck class="success-icon" />
 				<div>
-					<p class="success-text">Heslo bylo uspesne zmeneno.</p>
-					<a href={resolve('/login')} class="success-link">Prejit na prihlaseni</a>
+					<p class="success-text">{m.reset_success()}</p>
+					<a href={resolve('/login')} class="success-link">{m.reset_success_link()}</a>
 				</div>
 			</div>
 		{:else}
@@ -193,7 +193,7 @@
 			<form onsubmit={handleResetSubmit} novalidate>
 				<div class="form-stack">
 					<div class="form-field">
-						<Label for="reset-new-password">Nove heslo</Label>
+						<Label for="reset-new-password">{m.reset_new_password_label()}</Label>
 						<div class="password-wrapper">
 							<Input
 								id="reset-new-password"
@@ -213,7 +213,7 @@
 							<button
 								class="password-toggle"
 								type="button"
-								aria-label={showPassword ? 'Skryt heslo' : 'Zobrazit heslo'}
+								aria-label={showPassword ? m.hide_password() : m.show_password()}
 								onclick={() => (showPassword = !showPassword)}
 								tabindex={-1}
 							>
@@ -232,7 +232,9 @@
 					</div>
 
 					<div class="form-field">
-						<Label for="reset-confirm-password">Potvrzeni hesla</Label>
+						<Label for="reset-confirm-password"
+							>{m.reset_confirm_password_label()}</Label
+						>
 						<div class="password-wrapper">
 							<Input
 								id="reset-confirm-password"
@@ -252,7 +254,9 @@
 							<button
 								class="password-toggle"
 								type="button"
-								aria-label={showConfirmPassword ? 'Skryt heslo' : 'Zobrazit heslo'}
+								aria-label={showConfirmPassword
+									? m.hide_password()
+									: m.show_password()}
 								onclick={() => (showConfirmPassword = !showConfirmPassword)}
 								tabindex={-1}
 							>
@@ -275,24 +279,22 @@
 					{#if resetLoading}
 						<span class="spinner"></span>
 					{/if}
-					Nastavit nove heslo
+					{m.reset_submit()}
 				</Button>
 			</form>
 
 			<div class="auth-footer">
-				<a href={resolve('/login')}>Zpet na prihlaseni</a>
+				<a href={resolve('/login')}>{m.back_to_login()}</a>
 			</div>
 		{/if}
 	</AuthFormCard>
 {:else}
-	<AuthFormCard title="Obnova hesla" subtitle="Zadejte svuj email pro obnovu hesla">
+	<AuthFormCard title={m.reset_request_title()} subtitle={m.reset_request_subtitle()}>
 		{#if requestSuccess}
 			<div class="success-banner" role="status">
 				<CircleCheck class="success-icon" />
 				<div>
-					<p class="success-text">
-						Odkaz pro obnovu hesla byl odeslan na vas email. Zkontrolujte svou schranku.
-					</p>
+					<p class="success-text">{m.reset_request_success()}</p>
 				</div>
 			</div>
 		{:else}
@@ -303,11 +305,11 @@
 			<form onsubmit={handleRequestSubmit} novalidate>
 				<div class="form-stack">
 					<div class="form-field">
-						<Label for="reset-email">Email</Label>
+						<Label for="reset-email">{m.email_label()}</Label>
 						<Input
 							id="reset-email"
 							type="email"
-							placeholder="vas@email.cz"
+							placeholder={m.email_placeholder()}
 							autocomplete="email"
 							bind:value={email}
 							onblur={handleEmailBlur}
@@ -328,13 +330,13 @@
 					{#if requestLoading}
 						<span class="spinner"></span>
 					{/if}
-					Odeslat odkaz pro obnovu
+					{m.reset_request_submit()}
 				</Button>
 			</form>
 		{/if}
 
 		<div class="auth-footer">
-			<a href={resolve('/login')}>Zpet na prihlaseni</a>
+			<a href={resolve('/login')}>{m.back_to_login()}</a>
 		</div>
 	</AuthFormCard>
 {/if}

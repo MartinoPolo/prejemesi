@@ -13,6 +13,7 @@
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { cn } from '$lib/utils.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import {
 		getMyWishlists,
 		getModeratedWishlists,
@@ -33,7 +34,7 @@
 	}
 
 	let {
-		userName = 'Uzivatel',
+		userName = m.nav_default_user(),
 		userEmail = '',
 		userInitials = 'U',
 		userImage = null,
@@ -45,9 +46,9 @@
 		Wishlist['status'],
 		{ label: string; variant: NavDropdownItem['badgeVariant'] }
 	> = {
-		draft: { label: 'Koncept', variant: 'draft' },
-		active: { label: 'Sdileno', variant: 'shared' },
-		archived: { label: 'Archivovano', variant: 'draft' },
+		draft: { label: m.dashboard_status_draft(), variant: 'draft' },
+		active: { label: m.dashboard_status_shared(), variant: 'shared' },
+		archived: { label: m.dashboard_status_archived(), variant: 'draft' },
 	};
 
 	let myListsItems = $state<NavDropdownItem[]>([]);
@@ -88,7 +89,7 @@
 			emoji: theme.emoji,
 			badgeLabel:
 				wishlistRecord.availableGifts > 0
-					? `${wishlistRecord.availableGifts} volnych`
+					? m.nav_available_count({ count: wishlistRecord.availableGifts })
 					: undefined,
 			badgeVariant: 'shared',
 		};
@@ -124,9 +125,9 @@
 	});
 
 	const NAV_LINKS = [
-		{ label: 'Moje seznamy', href: resolve('/(app)/my-lists') },
-		{ label: 'Spravovane', href: resolve('/(app)/moderated') },
-		{ label: 'Sledovane', href: resolve('/(app)/followed') },
+		{ label: m.nav_my_lists(), href: resolve('/(app)/my-lists') },
+		{ label: m.nav_moderated(), href: resolve('/(app)/moderated') },
+		{ label: m.nav_followed(), href: resolve('/(app)/followed') },
 	] as const;
 
 	const navDropdownItems = $derived<NavDropdownItem[][]>([
@@ -151,7 +152,7 @@
 
 	<!-- Desktop nav links with dropdowns -->
 	<!-- eslint-disable svelte/no-navigation-without-resolve -->
-	<nav class="nav-links" aria-label="Hlavni navigace">
+	<nav class="nav-links" aria-label={m.nav_main_label()}>
 		{#each NAV_LINKS as link (link.href)}
 			<div class="nav-item">
 				<a
@@ -181,7 +182,7 @@
 			onclick={() => (isCreateModalOpen = true)}
 		>
 			<PlusIcon data-icon="inline-start" />
-			Vytvorit
+			{m.nav_create()}
 		</Button>
 
 		<!-- Notification bell -->

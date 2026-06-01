@@ -6,6 +6,7 @@
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { getModeratedWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { ModeratedWishlist } from '$lib/modules/wishlists/dashboard_types.js';
 
@@ -71,19 +72,19 @@
 	}
 </script>
 
-<PageHeader title="Spravované">
+<PageHeader title={m.moderated_title()}>
 	{#snippet toolbar()}
 		<DashboardToolbar bind:sortValue bind:viewMode bind:showArchived />
 	{/snippet}
 </PageHeader>
 
 {#if isLoading}
-	<p class="py-12 text-center text-muted-foreground">Načítání...</p>
+	<p class="py-12 text-center text-muted-foreground">{m.moderated_loading()}</p>
 {:else if filteredWishlists.length === 0}
 	<EmptyState
 		emoji="🛡️"
-		title="Nespravujete žádné seznamy"
-		description="Až vás někdo přidá jako správce svého seznamu, zobrazí se zde."
+		title={m.moderated_empty_title()}
+		description={m.moderated_empty_description()}
 	/>
 {:else if viewMode === 'grid'}
 	<WishlistCardGrid>

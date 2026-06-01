@@ -7,6 +7,7 @@
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { cn } from '$lib/utils.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface NavLink {
 		label: string;
@@ -32,7 +33,7 @@
 				{...props}
 				intent="ghost"
 				size="icon"
-				aria-label="Otevreni menu"
+				aria-label={m.nav_open_menu()}
 				class="md:hidden"
 			>
 				<MenuIcon data-icon />
@@ -61,7 +62,7 @@
 				onclick={() => (open = false)}
 			>
 				<PlusIcon data-icon="inline-start" />
-				Vytvorit
+				{m.nav_create()}
 			</Button>
 
 			{#each navLinks as link (link.href)}

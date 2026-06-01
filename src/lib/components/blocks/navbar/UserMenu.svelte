@@ -7,6 +7,7 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import { authClient } from '$lib/auth_client.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface UserMenuProps {
 		userName: string;
@@ -33,7 +34,7 @@
 				intent="ghost"
 				size="icon"
 				class="rounded-full"
-				aria-label="{userName} — menu uzivatele"
+				aria-label={m.nav_user_menu({ name: userName })}
 			>
 				{#if userImage}
 					<img src={userImage} alt={userName} class="size-8 rounded-full object-cover" />
@@ -56,18 +57,18 @@
 		<DropdownMenu.Group>
 			<DropdownMenu.Item onSelect={() => goto(settingsHref)}>
 				<UserIcon data-icon="inline-start" />
-				Profil
+				{m.profile()}
 			</DropdownMenu.Item>
 			<DropdownMenu.Item onSelect={() => goto(settingsHref)}>
 				<SettingsIcon data-icon="inline-start" />
-				Nastaveni
+				{m.nav_settings()}
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
 		<DropdownMenu.Separator />
 		<DropdownMenu.Group>
 			<DropdownMenu.Item variant="destructive" onclick={handleSignOut}>
 				<LogOutIcon data-icon="inline-start" />
-				Odhlasit se
+				{m.nav_logout()}
 			</DropdownMenu.Item>
 		</DropdownMenu.Group>
 	</DropdownMenu.Content>

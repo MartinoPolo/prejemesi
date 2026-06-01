@@ -90,7 +90,7 @@ export function buildNotificationEmail(
 	data: EmailTemplateData,
 ): { subject: string; html: string } {
 	const baseUrl = data.appUrl ?? 'https://darecky.cz';
-	const message = NOTIFICATION_MESSAGES[type];
+	const message = NOTIFICATION_MESSAGES[type]();
 
 	const templates: Record<NotificationType, () => { subject: string; content: string }> = {
 		liked_gift_reserved: () => ({

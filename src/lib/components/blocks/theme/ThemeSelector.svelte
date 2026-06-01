@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ThemePresetName, WishlistTheme } from '$lib/modules/themes/types.js';
 	import { isCustomTheme, THEME_PRESET_NAMES } from '$lib/modules/themes/types.js';
@@ -81,7 +82,7 @@
 </script>
 
 <div class={styles.root()}>
-	<p class={styles.title()}>Motiv seznamu</p>
+	<p class={styles.title()}>{m.theme_title()}</p>
 
 	<!-- Preset grid -->
 	<div class={styles.presetGrid()}>
@@ -102,9 +103,9 @@
 			onclick={handleCustomSelect}
 		>
 			<span class="text-base">✨</span>
-			<span class={styles.customLabel()}>Vlastni barva</span>
+			<span class={styles.customLabel()}>{m.theme_custom_color()}</span>
 			{#if selectedPreset === 'custom'}
-				<span class="ml-auto text-xs font-medium text-primary">Vybrano</span>
+				<span class="ml-auto text-xs font-medium text-primary">{m.theme_selected()}</span>
 			{/if}
 		</button>
 
@@ -115,10 +116,10 @@
 					class={styles.colorInput()}
 					value={customColorHex}
 					oninput={handleColorInput}
-					aria-label="Vybrat vlastni barvu"
+					aria-label={m.theme_color_input_label()}
 				/>
 				<span class={styles.colorPreview()}>
-					{customOklch ?? 'Vyberte barvu'}
+					{customOklch ?? m.theme_color_placeholder()}
 				</span>
 			</div>
 
@@ -142,7 +143,7 @@
 
 	<!-- Footer actions -->
 	<div class={styles.footer()}>
-		<Button intent="outline" size="sm" onclick={oncancel}>Zrusit</Button>
-		<Button size="sm" disabled={!canSave} onclick={handleSave}>Ulozit motiv</Button>
+		<Button intent="outline" size="sm" onclick={oncancel}>{m.cancel()}</Button>
+		<Button size="sm" disabled={!canSave} onclick={handleSave}>{m.theme_save()}</Button>
 	</div>
 </div>
