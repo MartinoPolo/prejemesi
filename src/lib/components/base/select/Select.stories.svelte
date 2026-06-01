@@ -77,7 +77,8 @@
 			expect(trigger).toHaveAttribute('aria-expanded', 'true');
 			expect(document.querySelector('[role="listbox"]')).toBeInTheDocument();
 		});
-		await user.click(document.body);
+		document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+		document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 		await waitFor(
 			() => {
 				expect(trigger).toHaveAttribute('aria-expanded', 'false');
