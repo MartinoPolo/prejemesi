@@ -23,6 +23,7 @@
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { untrack } from 'svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
@@ -47,11 +48,50 @@
 
 	let { data } = $props();
 
-	const shortId = page.params.id!;
+	const shortId = $derived(page.params.id!);
 	// Capture auth state before top-level await so Svelte doesn't warn about
 	// reading reactive $props in an initialization block.
 	const initialUser = untrack(() => data.user);
 	const isAuthenticated = $derived(data.user !== null);
+
+	// ── Reactive state (declared before await for synchronous context setup) ─
+
+	let wishlist = $state<Wishlist & { ownerName: string; role: WishlistRole }>(undefined!);
+	let gifts = $state<GiftByRole[]>([]);
+	let role = $state<WishlistRole>('visitor');
+	let likedGiftIds = $state.raw<string[]>([]);
+
+	// ── Context setup (must be synchronous — before any await) ───────────────
+
+	const giftsContext = untrack(() =>
+		setGiftsContext(
+			() => gifts,
+			() => role,
+			() => wishlist.status === 'archived',
+		),
+	);
+
+	untrack(() => setLikesContext(() => likedGiftIds));
+
+	const sharingContext = untrack(() =>
+		setSharingContext(
+			() => wishlist.shortId,
+			() => wishlist.sharedAt !== null,
+		),
+	);
+
+	const themeContext = untrack(() =>
+		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
+	);
+
+	// ── Derived values ───────────────────────────────────────────────────────
+
+	const isArchived = $derived(wishlist.status === 'archived');
+	const isOwner = $derived(role === 'owner');
+	const isModerator = $derived(role === 'moderator');
+	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
+	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
+	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
@@ -60,21 +100,17 @@
 		getGiftsByWishlistShortId(shortId),
 	]);
 
-	let userLikedGiftIds: string[] = [];
+	wishlist = wishlistData;
+	gifts = giftsData.gifts;
+	role = giftsData.role;
+
 	if (initialUser !== null) {
 		try {
-			userLikedGiftIds = await getUserLikesForWishlist();
+			likedGiftIds = await getUserLikesForWishlist();
 		} catch {
 			// Guarded calls may fail for unauthenticated users — ignore
 		}
 	}
-
-	// ── Reactive state (initialized from remote data) ───────────────────────
-
-	let wishlist = $state(wishlistData);
-	let gifts = $state(giftsData.gifts);
-	let role = $state(giftsData.role);
-	let likedGiftIds = $state.raw(userLikedGiftIds);
 
 	// ── Refresh function ─────────────────────────────────────────────────────
 
@@ -98,38 +134,6 @@
 			console.error('Failed to refresh wishlist data:', thrown);
 		}
 	}
-
-	// ── Derived values ───────────────────────────────────────────────────────
-
-	const isArchived = $derived(wishlist.status === 'archived');
-	const isOwner = $derived(role === 'owner');
-	const isModerator = $derived(role === 'moderator');
-	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
-	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
-	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
-
-	// ── Context setup ────────────────────────────────────────────────────────
-
-	const giftsContext = untrack(() =>
-		setGiftsContext(
-			() => gifts,
-			() => role,
-			() => wishlist.status === 'archived',
-		),
-	);
-
-	untrack(() => setLikesContext(() => likedGiftIds));
-
-	const sharingContext = untrack(() =>
-		setSharingContext(
-			() => wishlist.shortId,
-			() => wishlist.sharedAt !== null,
-		),
-	);
-
-	const themeContext = untrack(() =>
-		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
-	);
 
 	// ── Modal state ──────────────────────────────────────────────────────────
 
@@ -171,6 +175,18 @@
 				removeWishlistTheme(themeWrapperElement);
 			}
 		};
+	});
+
+	// ── Re-fetch on route param change ───────────────────────────────────────
+
+	let lastLoadedId = shortId;
+
+	$effect(() => {
+		if (shortId === lastLoadedId) {
+			return;
+		}
+		lastLoadedId = shortId;
+		void refreshData();
 	});
 
 	// ── Gift display ─────────────────────────────────────────────────────────
