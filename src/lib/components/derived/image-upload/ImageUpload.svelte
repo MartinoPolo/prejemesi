@@ -2,8 +2,9 @@
 	import { cn } from '$lib/utils.js';
 	import { uploadFile } from '$lib/modules/uploads/upload.js';
 	import type { UploadTarget } from '$lib/server/storage/r2.js';
+	import { ALLOWED_CONTENT_TYPES } from '$lib/modules/uploads/types.js';
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
-	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
+	import { imageUploadVariants, type ImageUploadSize } from './image-upload-variants.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 
@@ -26,7 +27,7 @@
 
 	let {
 		target,
-		accept = 'image/jpeg,image/png,image/webp,image/gif',
+		accept = ALLOWED_CONTENT_TYPES.join(','),
 		maxSize,
 		size = 'medium',
 		onUpload,
@@ -37,6 +38,7 @@
 	let fileInputElement: HTMLInputElement | undefined = $state(undefined);
 	let isDragOver = $state(false);
 	let previewUrl = $state<string | undefined>(undefined);
+	let activeAbortController: AbortController | null = null;
 	let progress = $state<UploadProgress>({
 		status: 'idle',
 		percentage: 0,
@@ -69,7 +71,7 @@
 		event.preventDefault();
 		isDragOver = false;
 		const file = event.dataTransfer?.files[0];
-		if (file) {
+		if (file != null) {
 			void processFile(file);
 		}
 	}
@@ -90,7 +92,7 @@
 	function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
-		if (file) {
+		if (file != null) {
 			void processFile(file);
 		}
 		// Reset input so re-selecting the same file triggers change
@@ -108,30 +110,54 @@
 		}
 
 		// Generate preview
-		if (previewUrl != null && previewUrl !== '') {
+		if (previewUrl != null) {
 			URL.revokeObjectURL(previewUrl);
 		}
 		previewUrl = URL.createObjectURL(file);
 
+		activeAbortController = new AbortController();
+
 		try {
-			const result = await uploadFile(file, target, (uploadProgress) => {
-				progress = uploadProgress;
-			});
+			const result = await uploadFile(
+				file,
+				target,
+				(uploadProgress) => {
+					progress = uploadProgress;
+				},
+				activeAbortController.signal,
+			);
 			onUpload?.(result);
 		} catch (thrown) {
 			const uploadError = thrown instanceof Error ? thrown : new Error('Upload failed');
 			onError?.(uploadError);
+		} finally {
+			activeAbortController = null;
 		}
 	}
 
 	function handleRemove(event: MouseEvent) {
 		event.stopPropagation();
-		if (previewUrl != null && previewUrl !== '') {
+		if (previewUrl != null) {
 			URL.revokeObjectURL(previewUrl);
 		}
 		previewUrl = undefined;
 		progress = { status: 'idle', percentage: 0 };
 	}
+
+	$effect(() => {
+		const url = previewUrl;
+		return () => {
+			if (url != null) {
+				URL.revokeObjectURL(url);
+			}
+		};
+	});
+
+	$effect(() => {
+		return () => {
+			activeAbortController?.abort();
+		};
+	});
 </script>
 
 <div

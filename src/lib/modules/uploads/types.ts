@@ -1,12 +1,21 @@
-import type { UploadTarget, AllowedContentType } from '$lib/server/storage/r2.js';
+import type { UploadTarget } from '$lib/server/storage/r2.js';
 
-/** Parameters for requesting an upload. */
-export interface UploadRequest {
-	target: UploadTarget;
-	fileName: string;
-	contentType: AllowedContentType;
-	fileSize: number;
+/** Allowed image MIME types — shared between client and server. */
+export const ALLOWED_CONTENT_TYPES = [
+	'image/jpeg',
+	'image/png',
+	'image/webp',
+	'image/gif',
+] as const;
+
+export type AllowedContentType = (typeof ALLOWED_CONTENT_TYPES)[number];
+
+export function isAllowedContentType(value: string): value is AllowedContentType {
+	return (ALLOWED_CONTENT_TYPES as readonly string[]).includes(value);
 }
+
+/** Base path for the upload API route. */
+export const UPLOAD_API_BASE = '/api/upload';
 
 /** Response from the upload authorization command. */
 export interface UploadAuthorization {

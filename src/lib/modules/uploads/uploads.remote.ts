@@ -8,6 +8,7 @@ import {
 	getPublicUrl,
 	type UploadTarget,
 } from '$lib/server/storage/r2.js';
+import { UPLOAD_API_BASE } from './types.js';
 import type { UploadAuthorization } from './types.js';
 
 function isUploadTarget(value: string): value is UploadTarget {
@@ -67,7 +68,7 @@ export const authorizeUpload = guardedCommand(
 		const objectKey = `${prefix}/${uniqueId}.${extension}`;
 
 		// Build upload URL (points to our API route that proxies to R2)
-		const uploadUrl = `/api/upload/${objectKey}`;
+		const uploadUrl = `${UPLOAD_API_BASE}/${objectKey}`;
 		const publicUrl = getPublicUrl(objectKey);
 
 		return { objectKey, uploadUrl, publicUrl };

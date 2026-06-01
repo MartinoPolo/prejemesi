@@ -6,6 +6,8 @@ import {
 	getObject,
 	deleteObject,
 	isR2Available,
+	MAX_FILE_SIZE,
+	UPLOAD_TARGETS,
 } from '$lib/server/storage/r2.js';
 
 /**
@@ -17,9 +19,18 @@ import {
 
 // In-memory fallback store for local development (no persistence across restarts)
 const localDevStore = new Map<string, { body: ArrayBuffer; contentType: string }>();
+const LOCAL_DEV_STORE_MAX_ENTRIES = 50;
+
+function getTargetFromPath(path: string): keyof typeof UPLOAD_TARGETS | null {
+	for (const [target, prefix] of Object.entries(UPLOAD_TARGETS)) {
+		if (path.startsWith(prefix + '/')) {
+			return target as keyof typeof UPLOAD_TARGETS;
+		}
+	}
+	return null;
+}
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
-	// Require authentication
 	if (locals.user == null || locals.session == null) {
 		error(401, 'Authentication required');
 	}
@@ -29,20 +40,49 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		error(400, 'Missing upload path');
 	}
 
+	const target = getTargetFromPath(objectKey);
+	if (!target) {
+		error(400, 'Invalid upload path prefix');
+	}
+
 	const contentType = request.headers.get('content-type') ?? '';
 	if (!isAllowedContentType(contentType)) {
 		error(400, `Invalid content type: ${contentType}`);
 	}
 
-	const body = await request.arrayBuffer();
-	if (body.byteLength === 0) {
-		error(400, 'Empty file body');
+	const contentLength = Number(request.headers.get('content-length') ?? '0');
+	if (contentLength > MAX_FILE_SIZE[target]) {
+		const maxMb = Math.round(MAX_FILE_SIZE[target] / (1024 * 1024));
+		error(400, `File too large. Maximum: ${String(maxMb)}MB`);
 	}
 
-	// Try R2 first, fall back to local dev store
-	const stored = await putObject(objectKey, body, contentType);
-	if (!stored) {
-		// Local dev fallback
+	// Production path: stream directly to R2
+	if (isR2Available()) {
+		if (request.body == null) {
+			error(400, 'Empty file body');
+		}
+		try {
+			await putObject(objectKey, request.body, contentType);
+		} catch {
+			error(502, 'Storage write failed');
+		}
+	} else {
+		// Dev fallback: must buffer for in-memory store
+		let body: ArrayBuffer;
+		try {
+			body = await request.arrayBuffer();
+		} catch {
+			error(400, 'Failed to read request body');
+		}
+		if (body.byteLength === 0) {
+			error(400, 'Empty file body');
+		}
+		if (localDevStore.size >= LOCAL_DEV_STORE_MAX_ENTRIES) {
+			const oldestKey = localDevStore.keys().next().value;
+			if (oldestKey !== undefined) {
+				localDevStore.delete(oldestKey);
+			}
+		}
 		localDevStore.set(objectKey, { body, contentType });
 	}
 
@@ -70,6 +110,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		object.writeHttpMetadata(headers);
 		headers.set('cache-control', 'public, max-age=31536000, immutable');
 		headers.set('etag', object.httpEtag);
+		headers.set('X-Content-Type-Options', 'nosniff');
 
 		return new Response(object.body, { headers });
 	}
@@ -84,6 +125,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		headers: {
 			'content-type': localFile.contentType,
 			'cache-control': 'no-cache',
+			'X-Content-Type-Options': 'nosniff',
 		},
 	});
 };

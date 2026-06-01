@@ -37,6 +37,7 @@
 
 	let displayName = $state(untrack(() => data.profile.name));
 	let avatarUrl = $state<string | null>(untrack(() => data.profile.image));
+	let avatarObjectKey = $state<string | null>(null);
 	let profileSaving = $state(false);
 	let profileSaved = $state(false);
 
@@ -77,13 +78,14 @@
 
 	function handleAvatarUpload(result: UploadResult) {
 		avatarUrl = result.publicUrl;
+		avatarObjectKey = result.objectKey;
 	}
 
 	async function handleSaveProfile() {
 		profileSaving = true;
 		profileSaved = false;
 		try {
-			await updateProfile({ name: displayName, image: avatarUrl });
+			await updateProfile({ name: displayName, image: avatarObjectKey ?? avatarUrl });
 			profileSaved = true;
 			setTimeout(() => {
 				profileSaved = false;
