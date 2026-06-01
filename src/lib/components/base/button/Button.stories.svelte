@@ -72,9 +72,7 @@
 		<div class="flex flex-col gap-10 w-130">
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">Text buttons</p>
-				<div
-					class="grid grid-cols-[9rem_repeat({BUTTON_TEXT_SIZES.length},minmax(0,1fr))] items-center gap-3"
-				>
+				<div class="grid grid-cols-[9rem_repeat(3,minmax(0,1fr))] items-center gap-3">
 					<div></div>
 					{#each BUTTON_TEXT_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
@@ -92,9 +90,7 @@
 
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">Icon-only buttons</p>
-				<div
-					class="grid grid-cols-[9rem_repeat({BUTTON_ICON_SIZES.length},minmax(0,1fr))] items-center gap-3"
-				>
+				<div class="grid grid-cols-[9rem_repeat(2,minmax(0,1fr))] items-center gap-3">
 					<div></div>
 					{#each BUTTON_ICON_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
@@ -114,9 +110,7 @@
 
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">Icon + text</p>
-				<div
-					class="grid grid-cols-[9rem_repeat({BUTTON_TEXT_SIZES.length},minmax(0,1fr))] items-center gap-3"
-				>
+				<div class="grid grid-cols-[9rem_repeat(3,minmax(0,1fr))] items-center gap-3">
 					<div></div>
 					{#each BUTTON_TEXT_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
@@ -136,9 +130,7 @@
 
 			<div class="flex flex-col gap-3">
 				<p class="text-sm font-medium text-muted-foreground">With keyboard shortcuts</p>
-				<div
-					class="grid grid-cols-[9rem_repeat({BUTTON_TEXT_SIZES.length},minmax(0,1fr))] items-center gap-3"
-				>
+				<div class="grid grid-cols-[9rem_repeat(3,minmax(0,1fr))] items-center gap-3">
 					<div></div>
 					{#each BUTTON_TEXT_SIZES as size (size)}
 						<div class="text-center text-xs text-muted-foreground">{size}</div>
