@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -78,8 +79,8 @@
 	const styles = giftDetailModalVariants();
 
 	const isEdit = $derived(mode === 'edit');
-	const title = $derived(isEdit ? 'Upravit darek' : 'Pridat darek');
-	const submitLabel = $derived(isEdit ? 'Ulozit' : 'Pridat darek');
+	const title = $derived(isEdit ? m.gift_edit_title() : m.gift_add_title());
+	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
 	// Reset form when gift changes or modal opens
@@ -116,7 +117,7 @@
 	function validateForm(): boolean {
 		nameError = '';
 		if (name.trim() === '') {
-			nameError = 'Nazev je povinny';
+			nameError = m.gift_name_required();
 			return false;
 		}
 		return true;
@@ -198,19 +199,23 @@
 	<Dialog.Content class={styles.content()} showCloseButton={true}>
 		<Dialog.Title class="sr-only">{title}</Dialog.Title>
 		<Dialog.Description class="sr-only">
-			{isEdit ? 'Formular pro upravu darku' : 'Formular pro pridani noveho darku'}
+			{isEdit ? m.gift_edit_description() : m.gift_add_description()}
 		</Dialog.Description>
 
 		<div class={styles.body()}>
 			<!-- Left column: image -->
 			<div class={styles.imageColumn()}>
 				{#if hasImage}
-					<img src={imageUrl} alt={name || 'Nahled darku'} class={styles.image()} />
+					<img
+						src={imageUrl}
+						alt={name || m.gift_image_preview()}
+						class={styles.image()}
+					/>
 				{:else}
 					<div class={styles.imagePlaceholder()}>
 						<GiftIcon class="size-16 text-muted-foreground/40" />
 						<span class="text-sm font-medium text-muted-foreground/60"
-							>Nahled obrazku</span
+							>{m.gift_image_preview_label()}</span
 						>
 					</div>
 				{/if}
@@ -220,11 +225,11 @@
 			<div class={styles.detailColumn()}>
 				<!-- Name -->
 				<div class={styles.formField()}>
-					<Label for="gift-name">Nazev *</Label>
+					<Label for="gift-name">{m.gift_name_label()}</Label>
 					<Input
 						id="gift-name"
 						bind:value={name}
-						placeholder="Nazev darku"
+						placeholder={m.gift_name_placeholder()}
 						aria-invalid={nameError !== '' ? true : undefined}
 					/>
 					{#if nameError}
@@ -234,25 +239,25 @@
 
 				<!-- Description -->
 				<div class="mt-3 {styles.formField()}">
-					<Label for="gift-description">Popis</Label>
+					<Label for="gift-description">{m.gift_description_label()}</Label>
 					<Textarea
 						id="gift-description"
 						bind:value={description}
-						placeholder="Popis darku (volitelne)"
+						placeholder={m.gift_description_placeholder()}
 						rows={3}
 					/>
 				</div>
 
 				<!-- URL -->
 				<div class="mt-3 {styles.formField()}">
-					<Label for="gift-url">Odkaz</Label>
+					<Label for="gift-url">{m.gift_url_label()}</Label>
 					<Input id="gift-url" bind:value={url} placeholder="https://..." type="url" />
 				</div>
 
 				<!-- Price + Currency -->
 				<div class="mt-3 {styles.formRow()}">
 					<div class={styles.formField()}>
-						<Label for="gift-price">Cena</Label>
+						<Label for="gift-price">{m.gift_price_label()}</Label>
 						<Input
 							id="gift-price"
 							bind:value={price}
@@ -262,7 +267,7 @@
 						/>
 					</div>
 					<div class={styles.formField()}>
-						<Label>Mena</Label>
+						<Label>{m.gift_currency_label()}</Label>
 						<Select.Root type="single" bind:value={currency}>
 							<Select.Trigger class="w-full">
 								{GIFT_CURRENCY_LABELS[currency]}
@@ -282,7 +287,7 @@
 
 				<!-- Image -->
 				<div class="mt-3 {styles.formField()}">
-					<Label>Obrazek</Label>
+					<Label>{m.gift_image_label()}</Label>
 					<div class={styles.imageTabRow()}>
 						<button
 							type="button"
@@ -302,7 +307,7 @@
 							onclick={() => (imageMode = 'upload')}
 						>
 							<UploadIcon class="mr-1 inline size-3" />
-							Nahrat
+							{m.gift_image_upload_tab()}
 						</button>
 					</div>
 					{#if imageMode === 'url'}
@@ -323,7 +328,7 @@
 
 				<!-- Quantity -->
 				<div class="mt-3 {styles.formField()}">
-					<Label for="gift-quantity">Pocet (skryto pri 1)</Label>
+					<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
 					<Input
 						id="gift-quantity"
 						bind:value={quantity}
@@ -336,20 +341,20 @@
 				<!-- Priority -->
 				{#if priorityLevels.length > 0}
 					<div class="mt-3 {styles.formField()}">
-						<Label>Priorita</Label>
+						<Label>{m.gift_priority_label()}</Label>
 						<Select.Root type="single" bind:value={priorityLevelId}>
 							<Select.Trigger class="w-full">
 								{#if priorityLevelId}
 									{priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
-										'Zvolte prioritu'}
+										m.gift_priority_select()}
 								{:else}
-									Bez priority
+									{m.gift_priority_none()}
 								{/if}
 							</Select.Trigger>
 							<Select.Content>
 								<Select.Group>
-									<Select.Item value="" label="Bez priority"
-										>Bez priority</Select.Item
+									<Select.Item value="" label={m.gift_priority_none()}
+										>{m.gift_priority_none()}</Select.Item
 									>
 									{#each priorityLevels as level (level.id)}
 										<Select.Item value={level.id} label={level.label}>
@@ -372,7 +377,7 @@
 						onclick={handleSubmit}
 					>
 						{#if isSubmitting}
-							Ukladam...
+							{m.saving()}
 						{:else}
 							{submitLabel}
 						{/if}
@@ -386,7 +391,7 @@
 								onclick={handleReceived}
 							>
 								<CheckIcon data-icon="inline-start" />
-								{gift.received ? 'Oznacit jako neprijaty' : 'Oznacit jako prijaty'}
+								{gift.received ? m.gift_mark_unreceived() : m.gift_mark_received()}
 							</Button>
 						{/if}
 
@@ -399,11 +404,11 @@
 							>
 								<TrashIcon data-icon="inline-start" />
 								{#if showDeleteConfirm}
-									Opravdu smazat?
+									{m.gift_delete_confirm()}
 								{:else if isDeleting}
-									Mazani...
+									{m.deleting()}
 								{:else}
-									Smazat darek
+									{m.gift_delete()}
 								{/if}
 							</Button>
 						{/if}

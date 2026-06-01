@@ -1,4 +1,6 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import ShareMethodButton from './ShareMethodButton.svelte';
@@ -42,9 +44,9 @@
 
 	const giftCountLabel = $derived.by(() => {
 		if (giftCount === 1) {
-			return '1 prani';
+			return m.wishlist_gift_count_one();
 		}
-		return `${giftCount} prani`;
+		return m.wishlist_gift_count_other({ count: giftCount });
 	});
 
 	// Step indicator state
@@ -100,8 +102,7 @@
 			sharing.goToStep(SHARE_WIZARD_STEPS.success);
 			onshared?.();
 		} catch (thrown) {
-			const message = thrown instanceof Error ? thrown.message : 'Sdileni se nezdarilo';
-			toastError(message);
+			toastError(translateServerError(thrown, m.share_error()));
 		} finally {
 			isSubmitting = false;
 		}
@@ -120,8 +121,8 @@
 
 <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
 	<Dialog.Content class="max-w-[560px] gap-0 overflow-y-auto p-0" showCloseButton={false}>
-		<Dialog.Title class="sr-only">Sdilet seznam prani</Dialog.Title>
-		<Dialog.Description class="sr-only">Pruvodce sdilenim seznamu prani</Dialog.Description>
+		<Dialog.Title class="sr-only">{m.share_dialog_title()}</Dialog.Title>
+		<Dialog.Description class="sr-only">{m.share_dialog_description()}</Dialog.Description>
 
 		<!-- Step Progress Indicator -->
 		<div class={styles.progressBar()}>
@@ -133,7 +134,7 @@
 						1
 					{/if}
 				</div>
-				<span class={getLabelClass(step1State)}>Potvrzeni</span>
+				<span class={getLabelClass(step1State)}>{m.share_step_confirm()}</span>
 			</div>
 			<div
 				class={connector1State === 'done' ? styles.connectorDone() : styles.connector()}
@@ -146,7 +147,7 @@
 						2
 					{/if}
 				</div>
-				<span class={getLabelClass(step2State)}>Sdileni</span>
+				<span class={getLabelClass(step2State)}>{m.share_step_share()}</span>
 			</div>
 			<div
 				class={connector2State === 'done' ? styles.connectorDone() : styles.connector()}
@@ -159,7 +160,7 @@
 						3
 					{/if}
 				</div>
-				<span class={getLabelClass(step3State)}>Hotovo</span>
+				<span class={getLabelClass(step3State)}>{m.share_step_done()}</span>
 			</div>
 		</div>
 
@@ -170,10 +171,9 @@
 					<div class={styles.warnIconWrap()}>
 						<AlertTriangleIcon class="size-9" strokeWidth={1.8} />
 					</div>
-					<div class={styles.confirmTitle()}>Sdilet seznam prani?</div>
+					<div class={styles.confirmTitle()}>{m.share_confirm_title()}</div>
 					<p class={styles.confirmBodyText()}>
-						Po sdileni seznamu uz nebudete moci upravovat ani odstranovani stavajici
-						prani. Budete moci pouze pridavat nova prani.
+						{m.share_confirm_body()}
 					</p>
 				</div>
 
@@ -187,14 +187,14 @@
 						<div class={styles.previewName()}>{wishlistTitle}</div>
 						<div class={styles.previewMeta()}>{giftCountLabel}</div>
 					</div>
-					<span class={styles.previewBadge()}>Nahled</span>
+					<span class={styles.previewBadge()}>{m.share_preview_badge()}</span>
 				</div>
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button intent="outline" onclick={handleClose}>Zrusit</Button>
+					<Button intent="outline" onclick={handleClose}>{m.cancel()}</Button>
 					<Button class="flex-1" disabled={isSubmitting} onclick={handleConfirmShare}>
-						Sdilet seznam
+						{m.share_confirm_button()}
 						<ArrowRightIcon data-icon="inline-end" />
 					</Button>
 				</div>
@@ -204,7 +204,7 @@
 		{:else if step === 'share'}
 			<div class="flex items-center justify-between px-6 pt-4">
 				<div>
-					<div class={styles.shareTitle()}>Sdilet seznam</div>
+					<div class={styles.shareTitle()}>{m.share_title()}</div>
 					<div class={styles.shareSub()}>
 						{wishlistTitle} &middot; {giftCountLabel}
 					</div>
@@ -214,7 +214,7 @@
 			<div class="flex flex-col gap-5 px-6 pb-6 pt-4">
 				<!-- Copy link section -->
 				<div>
-					<div class={styles.sectionEyebrow()}>Odkaz pro navstevniky</div>
+					<div class={styles.sectionEyebrow()}>{m.share_link_eyebrow()}</div>
 					<div class={styles.copyLinkRow()}>
 						<div class={styles.linkInputWrap()}>
 							<span class={styles.linkUrlText()}>
@@ -226,7 +226,7 @@
 						{#if linkCopied}
 							<Button intent="primary" class="h-11 flex-shrink-0" aria-live="polite">
 								<CheckIcon data-icon="inline-start" />
-								Zkopirovano!
+								{m.share_link_copied()}
 							</Button>
 						{:else}
 							<Button
@@ -235,21 +235,21 @@
 								onclick={() => sharing.copyLink()}
 							>
 								<CopyIcon data-icon="inline-start" />
-								Kopirovat
+								{m.share_copy()}
 							</Button>
 						{/if}
 					</div>
 					{#if linkCopied}
 						<div class={styles.copiedLabel()} aria-live="polite">
 							<CheckIcon class="size-2.5" />
-							Odkaz zkopirovany do schranky
+							{m.share_copied()}
 						</div>
 					{/if}
 				</div>
 
 				<!-- Social share buttons -->
 				<div>
-					<div class={styles.sectionEyebrow()}>Sdilet pres</div>
+					<div class={styles.sectionEyebrow()}>{m.share_via_eyebrow()}</div>
 					<div class={styles.socialButtonsList()} role="list">
 						{#each SHARE_PLATFORM_ORDER as platformKey (platformKey)}
 							{@const platform = SHARE_PLATFORM_INFO[platformKey]}
@@ -329,7 +329,9 @@
 
 				<!-- Pre-filled message preview -->
 				<div class={styles.messagePreview()}>
-					<div class={styles.messagePreviewLabel()}>Predvyplnena zprava</div>
+					<div class={styles.messagePreviewLabel()}>
+						{m.share_message_label()}
+					</div>
 					<div class={styles.messagePreviewText()}>
 						{shareMessage}
 						{shareUrlDisplay}
@@ -338,12 +340,12 @@
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button intent="outline" onclick={handleClose}>Zavrit</Button>
+					<Button intent="outline" onclick={handleClose}>{m.close()}</Button>
 					<Button
 						class="flex-1"
 						onclick={() => sharing.goToStep(SHARE_WIZARD_STEPS.success)}
 					>
-						Hotovo
+						{m.share_step_done()}
 						<CheckIcon data-icon="inline-end" />
 					</Button>
 				</div>
@@ -356,10 +358,9 @@
 					<div class={styles.successIconWrap()}>
 						<CircleCheckBigIcon class="size-10" strokeWidth={1.8} />
 					</div>
-					<div class={styles.successTitle()}>Seznam byl sdilen!</div>
+					<div class={styles.successTitle()}>{m.share_success_title()}</div>
 					<p class={styles.successSub()}>
-						{wishlistTitle} je ted dostupny pratelum a rodine pres odkaz
-						<strong>{shareUrlDisplay}</strong>.
+						{m.share_success_body({ title: wishlistTitle, url: shareUrlDisplay })}
 					</p>
 				</div>
 
@@ -367,37 +368,40 @@
 				<div
 					class={styles.permissionsCard()}
 					role="region"
-					aria-label="Prehled povolenych akci"
+					aria-label={m.share_permissions_label()}
 				>
-					<div class={styles.permissionsCardLabel()}>Co muzete od ted delat</div>
+					<div class={styles.permissionsCardLabel()}>{m.share_permissions_label()}</div>
 					<div class={styles.permissionsHeading()}>
-						Od tohoto momentu muzete seznam pouze:
+						{m.share_permissions_heading()}
 					</div>
 					<div class={styles.permissionsList()}>
 						<div class={styles.permissionRow()}>
 							<div class={styles.permissionCheck()} aria-hidden="true">
 								<CheckIcon class="size-2.5" />
 							</div>
-							<span class={styles.permissionText()}>Prohlizet seznam</span>
+							<span class={styles.permissionText()}>{m.share_permissions_view()}</span
+							>
 						</div>
 						<div class={styles.permissionRow()}>
 							<div class={styles.permissionCheck()} aria-hidden="true">
 								<CheckIcon class="size-2.5" />
 							</div>
-							<span class={styles.permissionText()}>Pridavat nova prani</span>
-						</div>
-						<div class={styles.permissionRow()}>
-							<div class={styles.permissionCheck()} aria-hidden="true">
-								<CheckIcon class="size-2.5" />
-							</div>
-							<span class={styles.permissionText()}>Pridavat moderatory</span>
+							<span class={styles.permissionText()}>{m.share_permissions_add()}</span>
 						</div>
 						<div class={styles.permissionRow()}>
 							<div class={styles.permissionCheck()} aria-hidden="true">
 								<CheckIcon class="size-2.5" />
 							</div>
 							<span class={styles.permissionText()}
-								>Sdilet seznam s dalsimi lidmi</span
+								>{m.share_permissions_moderators()}</span
+							>
+						</div>
+						<div class={styles.permissionRow()}>
+							<div class={styles.permissionCheck()} aria-hidden="true">
+								<CheckIcon class="size-2.5" />
+							</div>
+							<span class={styles.permissionText()}
+								>{m.share_permissions_reshare()}</span
 							>
 						</div>
 					</div>
@@ -407,14 +411,14 @@
 							<XIcon class="size-[9px]" />
 						</div>
 						<span class={styles.permissionsWarningText()}>
-							Upravy a odstranovani stavajicich prani nejsou mozne.
+							{m.share_permissions_warning()}
 						</span>
 					</div>
 				</div>
 
 				<!-- Close CTA -->
 				<Button class="w-full" onclick={handleClose}>
-					Hotovo
+					{m.share_step_done()}
 					<CheckIcon data-icon="inline-end" />
 				</Button>
 			</div>

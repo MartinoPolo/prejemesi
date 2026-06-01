@@ -1,5 +1,12 @@
 # Project Instructions
 
+- App is in development — no backwards compatibility is required. When implementing changes, freely delete, replace, or restructure obsolete code and schemas without preservation shims.
+- Before implementation, read `.mpx/CONTEXT.md` (domain language, feature index, constraints) and `.mpx/DECISIONS.md` (settled architectural choices).
+- Always fix unrelated errors you encounter (merge artifacts, stale imports, broken references, prior bugs) — they accumulate if ignored. Commit fixes separately from main work. If a fix fails after two attempts, revert and continue with the main task. Always notify user — both for fixes made and problems left unresolved.
+- Prefer targeted shell reads: `rg -l`, path-scoped `rg`, `git diff --stat`, and `git diff -- <files>`.
+  Inspect a full log only when the tail does not identify the failure.
+- Use sub-agents for broad or third-party exploration when explicitly requested or already required by these instructions. Ask them for concise findings and file paths, not full command output.
+
 ## Stack
 
 - SvelteKit + Vite
@@ -7,6 +14,20 @@
 - Tailwind CSS
 - Drizzle ORM (PostgreSQL, strict mode)
 - Vitest + Playwright
+
+## Cloned OSS Repositories
+
+When debugging or analyzing issues related to third-party libraries, delegate exploration to a sub-agent pointing at the cloned source in `C:\_MP_github_cloned\`
+**Available**: svelte (+sveltekit), bits-ui, shadcn-svelte, storybook, fallow, lucide, tailwindcss
+
+## Svelte
+
+Before finalizing any .svelte or .svelte.ts file, run svelte-autofixer and iterate until no issues remain.
+When editing or creating Svelte code, use Svelte MCP tools (get-documentation, svelte-autofixer) for up-to-date API reference.
+
+## Testing
+
+- When writing tests, always derive expected behavior from requirements (GitHub issue descriptions and comments, `DECISIONS.md`, `CONTEXT.md`, or other docs) — never adapt tests to match the implementation. If a test reveals a bug, report it to the user or fix it immediately.
 
 ## Commands
 

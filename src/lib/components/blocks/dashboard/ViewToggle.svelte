@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import { tv } from 'tailwind-variants';
 	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
@@ -32,11 +33,11 @@
 	const variants = viewToggleVariants();
 </script>
 
-<div class={cn(variants.root(), className)} role="group" aria-label="Zobrazení">
+<div class={cn(variants.root(), className)} role="group" aria-label={m.dashboard_view_label()}>
 	<button
 		type="button"
 		class={viewToggleVariants({ active: value === 'grid' }).button()}
-		aria-label="Mřížka karet"
+		aria-label={m.dashboard_view_grid()}
 		aria-pressed={value === 'grid'}
 		onclick={() => (value = 'grid')}
 	>
@@ -48,7 +49,7 @@
 			viewToggleVariants({ active: value === 'list' }).button(),
 			'border-l border-border',
 		)}
-		aria-label="Seznam"
+		aria-label={m.dashboard_view_list()}
 		aria-pressed={value === 'list'}
 		onclick={() => (value = 'list')}
 	>

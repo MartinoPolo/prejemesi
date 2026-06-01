@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { Switch } from '$lib/components/base/switch/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -39,17 +40,23 @@
 
 <div class="flex flex-col gap-4">
 	<div class="flex flex-col gap-1">
-		<h3 class="text-base font-semibold">Nastaveni upozorneni</h3>
-		<p class="text-sm text-muted-foreground">Zvolte, jak chcete byt informovani.</p>
+		<h3 class="text-base font-semibold">{m.notification_prefs_title()}</h3>
+		<p class="text-sm text-muted-foreground">{m.notification_prefs_description()}</p>
 	</div>
 
 	<Separator />
 
 	<!-- Header row -->
 	<div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 gap-y-0 px-1">
-		<span class="text-xs font-medium text-muted-foreground">Typ upozorneni</span>
-		<span class="w-16 text-center text-xs font-medium text-muted-foreground">V aplikaci</span>
-		<span class="w-16 text-center text-xs font-medium text-muted-foreground">E-mail</span>
+		<span class="text-xs font-medium text-muted-foreground"
+			>{m.notification_prefs_type_column()}</span
+		>
+		<span class="w-16 text-center text-xs font-medium text-muted-foreground"
+			>{m.notification_prefs_inapp_column()}</span
+		>
+		<span class="w-16 text-center text-xs font-medium text-muted-foreground"
+			>{m.notification_prefs_email_column()}</span
+		>
 	</div>
 
 	<Separator />
@@ -57,7 +64,7 @@
 	<!-- Notification type rows -->
 	{#each NOTIFICATION_TYPE_ENTRIES as type (type)}
 		<div class="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 gap-y-0 px-1">
-			<Label class="cursor-default font-normal">{NOTIFICATION_MESSAGES[type]}</Label>
+			<Label class="cursor-default font-normal">{NOTIFICATION_MESSAGES[type]()}</Label>
 			<div class="flex w-16 justify-center">
 				<Switch size="sm" bind:checked={preferences[type].inApp} />
 			</div>
@@ -75,7 +82,7 @@
 
 	<div class="flex justify-end">
 		<Button onclick={handleSave} disabled={isSaving}>
-			{isSaving ? 'Ukladam...' : 'Ulozit nastaveni'}
+			{isSaving ? m.saving() : m.notification_prefs_save()}
 		</Button>
 	</div>
 </div>

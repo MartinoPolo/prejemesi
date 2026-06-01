@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
@@ -29,6 +30,7 @@
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import { untrack } from 'svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import {
 		createGift,
 		updateGift as updateGiftRemote,
@@ -278,10 +280,10 @@
 	async function handleUnfollow() {
 		try {
 			await unfollowWishlist(wishlist.id);
-			toastSuccess('Seznam jste prestali sledovat');
+			toastSuccess(m.toast_unfollowed());
 		} catch (thrown) {
 			console.error('Failed to unfollow:', thrown);
-			toastError('Nepodarilo se prestat sledovat');
+			toastError(m.toast_unfollow_error());
 		}
 	}
 
@@ -309,10 +311,10 @@
 
 			themeContext.commitTheme(theme);
 			themeSheetOpen = false;
-			toastSuccess('Motiv byl ulozen');
+			toastSuccess(m.toast_theme_saved());
 		} catch (thrown) {
 			console.error('Failed to save theme:', thrown);
-			toastError('Nepodarilo se ulozit motiv');
+			toastError(m.toast_theme_save_error());
 		}
 	}
 
@@ -404,11 +406,10 @@
 			await reserveGift(input);
 			reserveModalOpen = false;
 			reservingGift = null;
-			toastSuccess('Darek byl rezervovan');
+			toastSuccess(m.toast_gift_reserved());
 			await refreshGifts();
 		} catch (thrown) {
-			const message = thrown instanceof Error ? thrown.message : 'Rezervace se nezdarila';
-			toastError(message);
+			toastError(translateServerError(thrown));
 		} finally {
 			isReserving = false;
 		}
@@ -448,20 +449,26 @@
 				<Button
 					size="sm"
 					intent="outline"
-					aria-label="Zmenit motiv"
+					aria-label={m.wishlist_detail_change_theme()}
 					onclick={() => (themeSheetOpen = true)}
 				>
 					<PaletteIcon data-icon="inline-start" />
-					Motiv
+					{m.wishlist_detail_theme_button()}
 				</Button>
 			{/if}
 			{#if !isOwner && !isArchived}
-				<Button size="sm" intent="ghost" onclick={handleUnfollow}>Prestat sledovat</Button>
+				<Button size="sm" intent="ghost" onclick={handleUnfollow}
+					>{m.wishlist_detail_unfollow()}</Button
+				>
 			{/if}
 			{#if isOwnerOrModerator && !isArchived}
-				<Button size="sm" aria-label="Pridat darek" onclick={openCreateModal}>
+				<Button
+					size="sm"
+					aria-label={m.wishlist_detail_add_gift_label()}
+					onclick={openCreateModal}
+				>
 					<PlusIcon data-icon="inline-start" />
-					Pridat prani
+					{m.wishlist_detail_add_wish()}
 				</Button>
 			{/if}
 		</div>
@@ -473,38 +480,43 @@
 		{#if isArchived}
 			<EmptyState
 				emoji="🗄️"
-				title="Seznam byl archivovan"
-				description="Tento seznam byl archivovan a je prazdny."
+				title={m.wishlist_detail_archived_empty_title()}
+				description={m.wishlist_detail_archived_empty_description()}
 			/>
 		{:else if isOwner}
 			<EmptyState
 				emoji="🎁"
-				title="Zatim tu nic neni"
-				description="Pridej sva prvni prani a pak seznam sdilej."
+				title={m.wishlist_detail_owner_empty_title()}
+				description={m.wishlist_detail_owner_empty_description()}
 			>
 				{#snippet actions()}
-					<Button aria-label="Pridat prvni prani" onclick={openCreateModal}>
+					<Button
+						aria-label={m.wishlist_detail_add_first_wish_label()}
+						onclick={openCreateModal}
+					>
 						<PlusIcon data-icon="inline-start" />
-						Pridat prvni prani
+						{m.wishlist_detail_add_first_wish()}
 					</Button>
 				{/snippet}
 			</EmptyState>
 		{:else}
 			<EmptyState
 				emoji="🎁"
-				title="Tento seznam zatim nema zadne darky"
-				description="Vlastnik jeste nepridal zadna prani."
+				title={m.wishlist_detail_visitor_empty_title()}
+				description={m.wishlist_detail_visitor_empty_description()}
 			/>
 		{/if}
 	{:else if isFilteredEmpty}
 		<!-- Empty state: filters returned nothing -->
 		<EmptyState
 			emoji="🔍"
-			title="Zadna prani neodpovidaji filtrum"
-			description="Zkuste zmenit nebo zrusit filtry."
+			title={m.wishlist_detail_no_filter_results_title()}
+			description={m.wishlist_detail_no_filter_results_description()}
 		>
 			{#snippet actions()}
-				<Button intent="outline" onclick={clearFilters}>Zrusit filtry</Button>
+				<Button intent="outline" onclick={clearFilters}
+					>{m.wishlist_detail_clear_filters()}</Button
+				>
 			{/snippet}
 		</EmptyState>
 	{:else if viewMode === 'card'}
