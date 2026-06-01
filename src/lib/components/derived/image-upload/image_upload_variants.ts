@@ -50,5 +50,6 @@ export const imageUploadVariants = tv({
 	},
 });
 
+/** @public */
 export type ImageUploadState = keyof typeof imageUploadVariants.variants.state;
 export type ImageUploadSize = keyof typeof imageUploadVariants.variants.size;

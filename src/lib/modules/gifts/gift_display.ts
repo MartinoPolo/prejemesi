@@ -33,7 +33,7 @@ export function extractDomain(url: string | null): string | null {
 	}
 }
 
-/** Priority label display */
+/** @public Priority label display */
 export const PRIORITY_DISPLAY = {
 	Vysoka: {
 		label: () => m.gift_priority_high(),

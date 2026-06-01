@@ -30,5 +30,3 @@ export const giftCardVariants = tv({
 		reserved: false,
 	},
 });
-
-export type GiftCardReserved = keyof typeof giftCardVariants.variants.reserved;

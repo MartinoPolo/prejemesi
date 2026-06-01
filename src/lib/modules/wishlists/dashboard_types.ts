@@ -19,7 +19,7 @@ export interface FollowedWishlist extends WishlistWithOwner {
 	unfollowedAt: Date | null;
 }
 
-/** Sort options for dashboard pages */
+/** @public Sort options for dashboard pages */
 export const SORT_OPTIONS = {
 	lastActivity: 'lastActivity',
 	alphabetical: 'alphabetical',
@@ -36,7 +36,7 @@ export const SORT_LABELS = {
 	eventDate: () => m.dashboard_sort_event_date(),
 } satisfies Record<SortOption, () => string>;
 
-/** View mode for dashboard pages */
+/** @public View mode for dashboard pages */
 export const VIEW_MODES = {
 	grid: 'grid',
 	list: 'list',

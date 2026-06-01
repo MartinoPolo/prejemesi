@@ -9,6 +9,7 @@ import { THEME_PRESETS } from './theme_presets.js';
 type WishlistThemeContext = ReturnType<typeof createWishlistThemeContext>;
 
 const [useWishlistTheme, setWishlistThemeInternal] = createContext<WishlistThemeContext>();
+/** @public */
 export { useWishlistTheme };
 
 export function setWishlistThemeContext(themePreset: string, customThemeColor: string | null) {

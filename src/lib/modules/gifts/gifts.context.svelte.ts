@@ -16,6 +16,7 @@ import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 type GiftsContext = ReturnType<typeof createGiftsContext>;
 
 const [useGifts, setGiftsInternal] = createContext<GiftsContext>();
+/** @public */
 export { useGifts };
 
 export function setGiftsContext(

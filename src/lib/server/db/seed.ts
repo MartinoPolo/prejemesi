@@ -50,12 +50,11 @@ try {
 	/* .env not found — rely on environment */
 }
 
-// eslint-disable-next-line no-secrets/no-secrets -- intentional test credential
 const SEED_PASSWORD = ['password', '123'].join('');
 
 function requireEnv(name: string): string {
 	const value = process.env[name];
-	if (!value) {
+	if (value === undefined || value === '') {
 		throw new Error(`${name} not set. Create a .env file or set the environment variable.`);
 	}
 	return value;

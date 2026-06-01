@@ -2,11 +2,7 @@ import { getRequestEvent } from '$app/server';
 import { env } from '$env/dynamic/private';
 import { UPLOAD_API_BASE } from '$lib/modules/uploads/types.js';
 
-export {
-	ALLOWED_CONTENT_TYPES,
-	isAllowedContentType,
-	type AllowedContentType,
-} from '$lib/modules/uploads/types.js';
+export { isAllowedContentType } from '$lib/modules/uploads/types.js';
 
 /**
  * R2 types extracted from App.Platform to avoid depending on @cloudflare/workers-types globals.
@@ -46,11 +42,7 @@ export const MAX_FILE_SIZE = {
 	avatar: 5 * 1024 * 1024, // 5 MB
 } as const satisfies Record<UploadTarget, number>;
 
-/**
- * Returns the R2 bucket binding from the platform environment.
- * Returns `undefined` when running locally without R2 configured.
- */
-export function getR2Bucket(): PlatformR2Bucket | undefined {
+function getR2Bucket(): PlatformR2Bucket | undefined {
 	try {
 		const event = getRequestEvent();
 		return event?.platform?.env?.R2;

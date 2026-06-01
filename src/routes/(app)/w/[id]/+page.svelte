@@ -77,20 +77,22 @@
 		setWishlistThemeContext(data.wishlist.theme, data.wishlist.customThemeColor),
 	);
 
-	// Wishlist status (reactive, updates after sharing)
-	let wishlistStatus = $state(data.wishlist.status as 'draft' | 'active' | 'archived');
+	// Optimistic overrides — null means "use server data"
+	let statusOverride = $state<'draft' | 'active' | 'archived' | null>(null);
+	const wishlistStatus = $derived(
+		statusOverride ?? (data.wishlist.status as 'draft' | 'active' | 'archived'),
+	);
 
-	// Moderator panel state
 	let moderatorPanelOpen = $state(false);
-	let ownerIsModeratorLocal = $state(data.wishlist.ownerIsModerator);
+	let moderatorOverride = $state<boolean | null>(null);
+	const ownerIsModeratorLocal = $derived(moderatorOverride ?? data.wishlist.ownerIsModerator);
 
 	function handleModeratorsOpened() {
 		moderatorPanelOpen = true;
 	}
 
 	function handleSelfPromoted() {
-		ownerIsModeratorLocal = true;
-		// Refresh gifts to show reservation data for owner
+		moderatorOverride = true;
 		void refreshGifts();
 	}
 
@@ -99,8 +101,7 @@
 	}
 
 	function handleShared() {
-		// Update local status to reflect sharing
-		wishlistStatus = 'active';
+		statusOverride = 'active';
 	}
 
 	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);

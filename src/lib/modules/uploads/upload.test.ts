@@ -57,7 +57,6 @@ class MockXMLHttpRequest {
 	}
 
 	constructor() {
-		 
 		currentMockXhr = this as unknown as MockXhrInstance;
 	}
 }
