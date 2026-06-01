@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import Gift from '@lucide/svelte/icons/gift';
+	import GiftIcon from '@lucide/svelte/icons/gift';
 </script>
 
 <a class="logo" href={resolve('/')} aria-label="Darecky — domovska stranka">
 	<span class="logo-icon-wrap" aria-hidden="true">
-		<Gift class="size-[18px]" />
+		<GiftIcon class="size-[18px]" />
 	</span>
 	<span class="logo-text">
 		darecky<span class="logo-tld">.cz</span>

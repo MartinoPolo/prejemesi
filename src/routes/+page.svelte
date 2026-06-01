@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
-	import DarkModeToggle from '$lib/components/DarkModeToggle.svelte';
+	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import LogoMark from '$lib/components/blocks/navbar/LogoMark.svelte';
-	import Gift from '@lucide/svelte/icons/gift';
-	import Check from '@lucide/svelte/icons/check';
-	import List from '@lucide/svelte/icons/list';
-	import Share2 from '@lucide/svelte/icons/share-2';
-	import Sparkles from '@lucide/svelte/icons/sparkles';
-	import EyeOff from '@lucide/svelte/icons/eye-off';
-	import Palette from '@lucide/svelte/icons/palette';
-	import Heart from '@lucide/svelte/icons/heart';
-	import ArrowDown from '@lucide/svelte/icons/arrow-down';
-	import Lock from '@lucide/svelte/icons/lock';
-	import Link from '@lucide/svelte/icons/link';
-	import ShieldCheck from '@lucide/svelte/icons/shield-check';
-	import UserCheck from '@lucide/svelte/icons/user-check';
+	import GiftIcon from '@lucide/svelte/icons/gift';
+	import CheckIcon from '@lucide/svelte/icons/check';
+	import ListIcon from '@lucide/svelte/icons/list';
+	import Share2Icon from '@lucide/svelte/icons/share-2';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
+	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
+	import PaletteIcon from '@lucide/svelte/icons/palette';
+	import HeartIcon from '@lucide/svelte/icons/heart';
+	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
+	import LockIcon from '@lucide/svelte/icons/lock';
+	import LinkIcon from '@lucide/svelte/icons/link';
+	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
+	import UserCheckIcon from '@lucide/svelte/icons/user-check';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
@@ -66,7 +66,7 @@
 				<span
 					class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
 				>
-					<Check class="size-3" />
+					<CheckIcon class="size-3" />
 					{m.landing_badge_free()}
 				</span>
 				<span
@@ -88,7 +88,7 @@
 
 			<div class="flex flex-wrap items-center gap-4">
 				<Button size="lg" href={resolve('/register')}>
-					<Gift data-icon="inline-start" />
+					<GiftIcon data-icon="inline-start" />
 					{m.landing_hero_cta()}
 				</Button>
 				<a
@@ -96,7 +96,7 @@
 					class="inline-flex items-center gap-1.5 px-2 font-medium text-muted-foreground transition-colors hover:text-foreground"
 				>
 					{m.landing_hero_how()}
-					<ArrowDown class="size-4" />
+					<ArrowDownIcon class="size-4" />
 				</a>
 			</div>
 
@@ -170,7 +170,7 @@
 				aria-hidden="true"
 				style="box-shadow: 0 8px 24px oklch(52.7% 0.154 150deg / 40%)"
 			>
-				<Lock class="mb-2 size-5" />
+				<LockIcon class="mb-2 size-5" />
 				{m.landing_privacy_note()}
 			</div>
 		</div>
@@ -190,7 +190,7 @@
 		<h2 class="section-headline">{m.landing_how_headline()}</h2>
 
 		<div class="how-steps relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-			{#each [{ icon: List, title: m.landing_how_step1_title(), description: m.landing_how_step1_description() }, { icon: Gift, title: m.landing_how_step2_title(), description: m.landing_how_step2_description() }, { icon: Share2, title: m.landing_how_step3_title(), description: m.landing_how_step3_description() }, { icon: Sparkles, title: m.landing_how_step4_title(), description: m.landing_how_step4_description() }] as step, index (step.title)}
+			{#each [{ icon: ListIcon, title: m.landing_how_step1_title(), description: m.landing_how_step1_description() }, { icon: GiftIcon, title: m.landing_how_step2_title(), description: m.landing_how_step2_description() }, { icon: Share2Icon, title: m.landing_how_step3_title(), description: m.landing_how_step3_description() }, { icon: SparklesIcon, title: m.landing_how_step4_title(), description: m.landing_how_step4_description() }] as step, index (step.title)}
 				<div class="flex flex-col items-center gap-4 text-center">
 					<div
 						class="group relative flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-background text-primary transition-all hover:border-primary hover:bg-primary/10"
@@ -233,7 +233,7 @@
 		<div class="flex flex-col gap-5">
 			<div class="feat-number" aria-hidden="true">01</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
-				<EyeOff class="size-3.5" />
+				<EyeOffIcon class="size-3.5" />
 				{m.landing_feat1_eyebrow()}
 			</div>
 			<h2
@@ -247,7 +247,7 @@
 			<ul class="flex flex-col gap-3">
 				{#each [m.landing_feat1_check1(), m.landing_feat1_check2(), m.landing_feat1_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
-						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
+						<CheckIcon class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
 					</li>
 				{/each}
@@ -288,7 +288,7 @@
 				<div
 					class="flex items-center justify-center gap-1.5 p-2 text-xs text-muted-foreground/70"
 				>
-					<Lock class="size-3.5" />
+					<LockIcon class="size-3.5" />
 					{m.landing_feat1_hidden_note()}
 				</div>
 			</div>
@@ -353,7 +353,7 @@
 		<div class="feat-visual order-2 md:order-1">
 			<div class="mb-1 text-sm font-semibold">{m.landing_feat2_link_label()}</div>
 			<div class="flex items-center gap-2 rounded-lg border border-border bg-background p-3">
-				<Link class="size-4 shrink-0 text-muted-foreground/70" />
+				<LinkIcon class="size-4 shrink-0 text-muted-foreground/70" />
 				<span class="flex-1 truncate font-mono text-sm text-primary">
 					darecky.cz/w/martina-vanocni-2026
 				</span>
@@ -377,7 +377,7 @@
 			<div
 				class="flex items-center gap-2 rounded-lg bg-primary/10 p-3 text-sm font-medium text-primary"
 			>
-				<UserCheck class="size-4 shrink-0" />
+				<UserCheckIcon class="size-4 shrink-0" />
 				{m.landing_feat2_no_account()}
 			</div>
 		</div>
@@ -386,7 +386,7 @@
 		<div class="order-1 flex flex-col gap-5 md:order-2">
 			<div class="feat-number" aria-hidden="true">02</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
-				<Share2 class="size-3.5" />
+				<Share2Icon class="size-3.5" />
 				{m.landing_feat2_eyebrow()}
 			</div>
 			<h2
@@ -400,7 +400,7 @@
 			<ul class="flex flex-col gap-3">
 				{#each [m.landing_feat2_check1(), m.landing_feat2_check2(), m.landing_feat2_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
-						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
+						<CheckIcon class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
 					</li>
 				{/each}
@@ -420,7 +420,7 @@
 		<div class="flex flex-col gap-5">
 			<div class="feat-number" aria-hidden="true">03</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
-				<Palette class="size-3.5" />
+				<PaletteIcon class="size-3.5" />
 				{m.landing_feat3_eyebrow()}
 			</div>
 			<h2
@@ -434,7 +434,7 @@
 			<ul class="flex flex-col gap-3">
 				{#each [m.landing_feat3_check1(), m.landing_feat3_check2(), m.landing_feat3_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
-						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
+						<CheckIcon class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
 					</li>
 				{/each}
@@ -484,7 +484,7 @@
 		<!-- Visual first on desktop (reversed) -->
 		<div class="feat-visual order-2 md:order-1">
 			<div class="flex flex-col gap-4">
-				{#each [{ icon: ShieldCheck, title: m.landing_feat4_trust_free_title(), sub: m.landing_feat4_trust_free_sub() }, { icon: EyeOff, title: m.landing_feat4_trust_noads_title(), sub: m.landing_feat4_trust_noads_sub() }, { icon: UserCheck, title: m.landing_feat4_trust_noreg_title(), sub: m.landing_feat4_trust_noreg_sub() }, { icon: Lock, title: m.landing_feat4_trust_surprise_title(), sub: m.landing_feat4_trust_surprise_sub() }] as trust (trust.title)}
+				{#each [{ icon: ShieldCheckIcon, title: m.landing_feat4_trust_free_title(), sub: m.landing_feat4_trust_free_sub() }, { icon: EyeOffIcon, title: m.landing_feat4_trust_noads_title(), sub: m.landing_feat4_trust_noads_sub() }, { icon: UserCheckIcon, title: m.landing_feat4_trust_noreg_title(), sub: m.landing_feat4_trust_noreg_sub() }, { icon: LockIcon, title: m.landing_feat4_trust_surprise_title(), sub: m.landing_feat4_trust_surprise_sub() }] as trust (trust.title)}
 					<div
 						class="flex items-start gap-4 rounded-xl border border-border bg-background p-4 transition-all hover:border-border hover:shadow-md"
 					>
@@ -508,7 +508,7 @@
 		<div class="order-1 flex flex-col gap-5 md:order-2">
 			<div class="feat-number" aria-hidden="true">04</div>
 			<div class="section-eyebrow !mb-0 flex items-center gap-2">
-				<Heart class="size-3.5" />
+				<HeartIcon class="size-3.5" />
 				{m.landing_feat4_eyebrow()}
 			</div>
 			<h2
@@ -522,7 +522,7 @@
 			<ul class="flex flex-col gap-3">
 				{#each [m.landing_feat4_check1(), m.landing_feat4_check2(), m.landing_feat4_check3()] as item (item)}
 					<li class="flex items-start gap-3 leading-relaxed text-muted-foreground">
-						<Check class="mt-0.5 size-[18px] shrink-0 text-primary" />
+						<CheckIcon class="mt-0.5 size-[18px] shrink-0 text-primary" />
 						{item}
 					</li>
 				{/each}
@@ -591,7 +591,7 @@
 			<span
 				class="flex size-6 items-center justify-center rounded-sm bg-primary/10 text-primary"
 			>
-				<Gift class="size-3.5" />
+				<GiftIcon class="size-3.5" />
 			</span>
 			<span>darecky<span class="font-medium opacity-40">.cz</span></span>
 		</a>

@@ -1,27 +1,10 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
-	import { tv } from 'tailwind-variants';
+	import { viewToggleVariants } from './view_toggle_variants.js';
 	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
 	import ListIcon from '@lucide/svelte/icons/list';
 	import type { ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
-
-	const viewToggleVariants = tv({
-		slots: {
-			root: 'flex items-center overflow-hidden rounded-md border border-border bg-card',
-			button: 'flex size-9 items-center justify-center border-none bg-transparent text-muted-foreground transition-colors duration-normal',
-		},
-		variants: {
-			active: {
-				true: {
-					button: 'bg-primary/10 text-primary',
-				},
-				false: {
-					button: 'hover:bg-accent hover:text-foreground',
-				},
-			},
-		},
-	});
 
 	interface ViewToggleProps {
 		value: ViewMode;

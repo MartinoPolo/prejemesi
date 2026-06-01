@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import Gift from '@lucide/svelte/icons/gift';
+	import GiftIcon from '@lucide/svelte/icons/gift';
 	import type { Snippet } from 'svelte';
 
 	interface AuthBrandPanelProps {
@@ -15,7 +15,7 @@
 	<div class="brand-content">
 		<a class="brand-logo" href={resolve('/')} aria-label="Darecky — domovska stranka">
 			<span class="brand-logo-icon" aria-hidden="true">
-				<Gift class="size-[26px]" />
+				<GiftIcon class="size-[26px]" />
 			</span>
 			<span class="brand-logo-wordmark">
 				darecky<span class="brand-logo-tld">.cz</span>

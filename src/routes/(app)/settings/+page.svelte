@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { untrack } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
@@ -12,7 +11,11 @@
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import { authClient } from '$lib/auth_client.js';
-	import { updateProfile, deleteAccount } from '$lib/modules/settings/settings.remote.js';
+	import {
+		getUserProfile,
+		updateProfile,
+		deleteAccount,
+	} from '$lib/modules/settings/settings.remote.js';
 	import { userPrefersMode, setMode } from 'mode-watcher';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
@@ -28,15 +31,14 @@
 
 	type Mode = 'light' | 'dark' | 'system';
 
-	// ── Data from server ─────────────────────────────────────────────────────
+	// ── Data from remote function ────────────────────────────────────────────
 
-	let { data } = $props();
-	let profile = $derived(data.profile);
+	const profile = await getUserProfile();
 
 	// ── Profile state (initialized from server, then user-editable) ────────
 
-	let displayName = $state(untrack(() => data.profile.name));
-	let avatarUrl = $state<string | null>(untrack(() => data.profile.image));
+	let displayName = $state(profile.name);
+	let avatarUrl = $state<string | null>(profile.image);
 	let avatarObjectKey = $state<string | null>(null);
 	let profileSaving = $state(false);
 	let profileSaved = $state(false);

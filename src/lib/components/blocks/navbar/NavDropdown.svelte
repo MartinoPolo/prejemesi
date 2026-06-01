@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { NavDropdownItem } from './navbar_types.js';
@@ -21,7 +21,7 @@
 				<span class="nav-dropdown-title">{m.nav_recent()}</span>
 				<a class="nav-dropdown-view-all" href={viewAllHref}>
 					{m.nav_view_all()}
-					<ArrowRight class="size-3" />
+					<ArrowRightIcon class="size-3" />
 				</a>
 			</div>
 

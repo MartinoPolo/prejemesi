@@ -10,10 +10,10 @@
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import Mail from '@lucide/svelte/icons/mail';
-	import Clock from '@lucide/svelte/icons/clock';
-	import Send from '@lucide/svelte/icons/send';
-	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import MailIcon from '@lucide/svelte/icons/mail';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import SendIcon from '@lucide/svelte/icons/send';
+	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 
 	let email = $state('');
 	let loading = $state(false);
@@ -91,12 +91,12 @@
 	{/snippet}
 	{#snippet features()}
 		<AuthBrandFeature
-			icon={Mail}
+			icon={MailIcon}
 			title={m.auth_feature_no_password_title()}
 			description={m.auth_feature_no_password_description()}
 		/>
 		<AuthBrandFeature
-			icon={Clock}
+			icon={ClockIcon}
 			title={m.auth_feature_valid_15_title()}
 			description={m.auth_feature_valid_15_description()}
 		/>
@@ -107,7 +107,7 @@
 	<AuthFormCard title="" subtitle="">
 		<div class="success-state" role="status" aria-live="polite">
 			<div class="success-icon-wrap" aria-hidden="true">
-				<Mail class="size-9" />
+				<MailIcon class="size-9" />
 			</div>
 			<h2 class="success-title">{m.magic_sent_title()}</h2>
 			<p class="success-body">
@@ -119,7 +119,7 @@
 				{m.magic_sent_spam()}
 			</p>
 			<a href={resolve('/login')} class="success-back" onclick={handleReset}>
-				<ChevronLeft class="size-3.5" />
+				<ChevronLeftIcon class="size-3.5" />
 				{m.back_to_login()}
 			</a>
 		</div>
@@ -156,7 +156,7 @@
 				{#if loading}
 					<span class="spinner"></span>
 				{:else}
-					<Send data-icon="inline-start" />
+					<SendIcon data-icon="inline-start" />
 				{/if}
 				{m.magic_submit()}
 			</Button>
@@ -164,7 +164,7 @@
 
 		<div class="auth-footer">
 			<a href={resolve('/login')}>
-				<ChevronLeft class="inline size-3.5 align-[-2px]" />
+				<ChevronLeftIcon class="inline size-3.5 align-[-2px]" />
 				{m.back_to_login()}
 			</a>
 		</div>
