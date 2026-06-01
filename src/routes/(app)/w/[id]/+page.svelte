@@ -1,24 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/base/button/index.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import * as Sheet from '$lib/components/base/sheet/index.js';
-	import PlusIcon from '@lucide/svelte/icons/plus';
-	import PaletteIcon from '@lucide/svelte/icons/palette';
-	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
-	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
-	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
-	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
-	import GiftListItem from '$lib/components/blocks/gift/GiftListItem.svelte';
-	import GiftCompactRow from '$lib/components/blocks/gift/GiftCompactRow.svelte';
-	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
-	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
-	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
-	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
-	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
-	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
+	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
+	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
+	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
@@ -55,8 +42,8 @@
 		GiftPriorityLevel,
 		CreateGiftInput,
 		UpdateGiftInput,
+		GiftViewMode,
 	} from '$lib/modules/gifts/types.js';
-	import { cn } from '$lib/utils.js';
 
 	let { data } = $props();
 
@@ -89,7 +76,7 @@
 	let role = $state(giftsData.role);
 	let likedGiftIds = $state.raw(userLikedGiftIds);
 
-	// ── Refresh function (replaces invalidate('app:wishlist-data')) ──────────
+	// ── Refresh function ─────────────────────────────────────────────────────
 
 	async function refreshData() {
 		try {
@@ -147,8 +134,8 @@
 	// ── Modal state ──────────────────────────────────────────────────────────
 
 	let moderatorPanelOpen = $state(false);
-	let modalOpen = $state(false);
-	let modalMode = $state<'create' | 'edit'>('create');
+	let giftModalOpen = $state(false);
+	let giftModalMode = $state<'create' | 'edit'>('create');
 	let selectedGift = $state<GiftByRole | null>(null);
 	let priorityLevels = $state.raw<GiftPriorityLevel[]>([]);
 	let isSubmitting = $state(false);
@@ -162,6 +149,12 @@
 
 	let draggedIndex = $state<number | null>(null);
 	let dragOverIndex = $state<number | null>(null);
+
+	// ── Reservation modal state ───────────────────────────────────────────────
+
+	let reserveModalOpen = $state(false);
+	let reservingGift = $state<GiftForVisitor | null>(null);
+	let isReserving = $state(false);
 
 	// ── Theme application via $effect ─────────────────────────────────────────
 
@@ -238,7 +231,7 @@
 		void refreshData();
 	}
 
-	function handleViewModeChange(mode: typeof viewMode) {
+	function handleViewModeChange(mode: GiftViewMode) {
 		giftsContext.viewMode.current = mode;
 	}
 
@@ -256,9 +249,9 @@
 
 	async function openCreateModal() {
 		await loadPriorityLevels();
-		modalMode = 'create';
+		giftModalMode = 'create';
 		selectedGift = null;
-		modalOpen = true;
+		giftModalOpen = true;
 	}
 
 	async function openEditModal(gift: GiftByRole) {
@@ -266,9 +259,9 @@
 			return;
 		}
 		await loadPriorityLevels();
-		modalMode = 'edit';
+		giftModalMode = 'edit';
 		selectedGift = gift;
-		modalOpen = true;
+		giftModalOpen = true;
 	}
 
 	async function loadPriorityLevels() {
@@ -283,7 +276,7 @@
 		isSubmitting = true;
 		try {
 			await createGift(input);
-			modalOpen = false;
+			giftModalOpen = false;
 			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to create gift:', thrown);
@@ -296,7 +289,7 @@
 		isSubmitting = true;
 		try {
 			await updateGiftRemote(input);
-			modalOpen = false;
+			giftModalOpen = false;
 			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to update gift:', thrown);
@@ -309,7 +302,7 @@
 		isDeleting = true;
 		try {
 			await deleteGift(giftId);
-			modalOpen = false;
+			giftModalOpen = false;
 			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to delete gift:', thrown);
@@ -327,8 +320,8 @@
 		}
 	}
 
-	function handleModalClose() {
-		modalOpen = false;
+	function handleGiftModalClose() {
+		giftModalOpen = false;
 		selectedGift = null;
 	}
 
@@ -371,6 +364,12 @@
 		} catch (thrown) {
 			console.error('Failed to save theme:', thrown);
 			toastError(m.toast_theme_save_error());
+		}
+	}
+
+	function handleThemeSheetOpenChange(open: boolean) {
+		if (!open) {
+			themeContext.cancelPreview();
 		}
 	}
 
@@ -442,10 +441,6 @@
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
 
-	let reserveModalOpen = $state(false);
-	let reservingGift = $state<GiftForVisitor | null>(null);
-	let isReserving = $state(false);
-
 	function handleOpenReserveModal(giftItem: GiftForVisitor) {
 		reservingGift = giftItem;
 		reserveModalOpen = true;
@@ -485,7 +480,6 @@
 </script>
 
 <div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
-	<!-- Wishlist Header -->
 	<WishlistHeader
 		title={wishlist.title}
 		ownerName={wishlist.ownerName}
@@ -500,310 +494,80 @@
 		onmoderators={handleModeratorsOpened}
 	/>
 
-	<!-- Toolbar -->
-	<div class="flex flex-wrap items-center gap-3">
-		<GiftViewSwitcher value={viewMode} onchange={handleViewModeChange} />
+	<WishlistDetailToolbar
+		{isOwner}
+		{isArchived}
+		{isOwnerOrModerator}
+		{viewMode}
+		sortOption={giftsContext.sortOption.current}
+		filters={giftsContext.filters.current}
+		{hasActiveFilters}
+		onviewmodechange={handleViewModeChange}
+		onsortchange={handleSortChange}
+		onfilterchange={handleFilterChange}
+		onthemeopen={() => (themeSheetOpen = true)}
+		onunfollow={handleUnfollow}
+		onaddgift={openCreateModal}
+	/>
 
-		<GiftSortFilter
-			sortValue={giftsContext.sortOption.current}
-			filters={giftsContext.filters.current}
-			{hasActiveFilters}
-			onsortchange={handleSortChange}
-			onfilterchange={handleFilterChange}
-		/>
-
-		<div class="ml-auto flex items-center gap-2">
-			{#if isOwner && !isArchived}
-				<Button
-					size="sm"
-					intent="outline"
-					aria-label={m.wishlist_detail_change_theme()}
-					onclick={() => (themeSheetOpen = true)}
-				>
-					<PaletteIcon data-icon="inline-start" />
-					{m.wishlist_detail_theme_button()}
-				</Button>
-			{/if}
-			{#if !isOwner && !isArchived}
-				<Button size="sm" intent="ghost" onclick={handleUnfollow}
-					>{m.wishlist_detail_unfollow()}</Button
-				>
-			{/if}
-			{#if isOwnerOrModerator && !isArchived}
-				<Button
-					size="sm"
-					aria-label={m.wishlist_detail_add_gift_label()}
-					onclick={openCreateModal}
-				>
-					<PlusIcon data-icon="inline-start" />
-					{m.wishlist_detail_add_wish()}
-				</Button>
-			{/if}
-		</div>
-	</div>
-
-	<!-- Gift Display -->
-	{#if isEmpty}
-		<!-- Empty state: no gifts at all -->
-		{#if isArchived}
-			<EmptyState
-				emoji="🗄️"
-				title={m.wishlist_detail_archived_empty_title()}
-				description={m.wishlist_detail_archived_empty_description()}
-			/>
-		{:else if isOwner}
-			<EmptyState
-				emoji="🎁"
-				title={m.wishlist_detail_owner_empty_title()}
-				description={m.wishlist_detail_owner_empty_description()}
-			>
-				{#snippet actions()}
-					<Button
-						aria-label={m.wishlist_detail_add_first_wish_label()}
-						onclick={openCreateModal}
-					>
-						<PlusIcon data-icon="inline-start" />
-						{m.wishlist_detail_add_first_wish()}
-					</Button>
-				{/snippet}
-			</EmptyState>
-		{:else}
-			<EmptyState
-				emoji="🎁"
-				title={m.wishlist_detail_visitor_empty_title()}
-				description={m.wishlist_detail_visitor_empty_description()}
-			/>
-		{/if}
-	{:else if isFilteredEmpty}
-		<!-- Empty state: filters returned nothing -->
-		<EmptyState
-			emoji="🔍"
-			title={m.wishlist_detail_no_filter_results_title()}
-			description={m.wishlist_detail_no_filter_results_description()}
-		>
-			{#snippet actions()}
-				<Button intent="outline" onclick={clearFilters}
-					>{m.wishlist_detail_clear_filters()}</Button
-				>
-			{/snippet}
-		</EmptyState>
-	{:else if viewMode === 'card'}
-		<!-- Card Grid -->
-		<div class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))">
-			{#each displayedGifts as giftItem, index (giftItem.id)}
-				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-				<div
-					class={cn(
-						'relative transition-opacity',
-						isOwnerOrModerator && 'cursor-pointer',
-						draggedIndex === index && 'opacity-40',
-						dragOverIndex === index && 'ring-2 ring-primary ring-offset-2 rounded-xl',
-					)}
-					role={isOwnerOrModerator ? 'button' : undefined}
-					tabindex={isOwnerOrModerator ? 0 : undefined}
-					onclick={() => openEditModal(giftItem)}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							openEditModal(giftItem);
-						}
-					}}
-					draggable={isOwnerOrModerator}
-					ondragstart={(e) => handleDragStart(e, index)}
-					ondragover={(e) => handleDragOver(e, index)}
-					ondragleave={handleDragLeave}
-					ondrop={(e) => handleDrop(e, index)}
-					ondragend={handleDragEnd}
-				>
-					{#if isOwnerOrModerator}
-						<div
-							class="absolute top-2 left-2 z-10 cursor-grab rounded bg-background/80 p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100"
-							style="opacity: 0.6"
-						>
-							<GripVerticalIcon class="size-4 text-muted-foreground" />
-						</div>
-					{/if}
-					<GiftCard
-						gift={giftItem}
-						{role}
-						{isArchived}
-						onreserve={handleOpenReserveModal}
-					/>
-				</div>
-			{/each}
-		</div>
-	{:else if viewMode === 'list'}
-		<!-- List View -->
-		<div class="flex flex-col">
-			{#each displayedGifts as giftItem, index (giftItem.id)}
-				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-				<div
-					class={cn(
-						'relative transition-opacity',
-						isOwnerOrModerator && 'cursor-pointer',
-						draggedIndex === index && 'opacity-40',
-						dragOverIndex === index && 'bg-primary/5',
-					)}
-					role={isOwnerOrModerator ? 'button' : undefined}
-					tabindex={isOwnerOrModerator ? 0 : undefined}
-					onclick={() => openEditModal(giftItem)}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							openEditModal(giftItem);
-						}
-					}}
-					draggable={isOwnerOrModerator}
-					ondragstart={(e) => handleDragStart(e, index)}
-					ondragover={(e) => handleDragOver(e, index)}
-					ondragleave={handleDragLeave}
-					ondrop={(e) => handleDrop(e, index)}
-					ondragend={handleDragEnd}
-				>
-					<GiftListItem
-						gift={giftItem}
-						{role}
-						{isArchived}
-						onreserve={handleOpenReserveModal}
-					/>
-				</div>
-			{/each}
-		</div>
-	{:else}
-		<!-- Compact Table View -->
-		<div class="overflow-x-auto">
-			<table class="w-full">
-				<thead>
-					<tr class="border-b-2 border-border">
-						{#if isOwnerOrModerator}
-							<th class="w-8 px-1"></th>
-						{/if}
-						<th
-							class="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-						>
-							Nazev
-						</th>
-						<th
-							class="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-						>
-							Odkaz
-						</th>
-						<th
-							class="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-						>
-							Cena
-						</th>
-						{#if !isOwner}
-							<th
-								class="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-							>
-								&#9825;
-							</th>
-							<th
-								class="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-							>
-								Akce
-							</th>
-						{/if}
-					</tr>
-				</thead>
-				<tbody>
-					{#each displayedGifts as giftItem (giftItem.id)}
-						<GiftCompactRow
-							gift={giftItem}
-							{role}
-							{isArchived}
-							onclick={() => {
-								if (isOwnerOrModerator) openEditModal(giftItem);
-							}}
-							onreserve={handleOpenReserveModal}
-						/>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{/if}
+	<WishlistGiftDisplay
+		gifts={displayedGifts}
+		{role}
+		{isArchived}
+		{isOwner}
+		{isOwnerOrModerator}
+		{viewMode}
+		{isEmpty}
+		{isFilteredEmpty}
+		{draggedIndex}
+		{dragOverIndex}
+		onedit={openEditModal}
+		onreserve={handleOpenReserveModal}
+		onaddgift={openCreateModal}
+		onclearfilters={clearFilters}
+		ondragstart={handleDragStart}
+		ondragover={handleDragOver}
+		ondragleave={handleDragLeave}
+		ondrop={handleDrop}
+		ondragend={handleDragEnd}
+	/>
 </div>
 
-<!-- Gift Detail Modal -->
-{#if isOwnerOrModerator}
-	<GiftDetailModal
-		bind:open={modalOpen}
-		mode={modalMode}
-		gift={selectedGift}
-		wishlistId={wishlist.id}
-		{priorityLevels}
-		{isOwner}
-		canDelete={canDeleteSelectedGift}
-		{isSubmitting}
-		{isDeleting}
-		oncreate={handleCreate}
-		onupdate={handleUpdate}
-		ondelete={handleDelete}
-		onreceived={handleReceived}
-		onclose={handleModalClose}
-	/>
-{/if}
-
-<!-- Reserve Modal (visitor/moderator only, hidden for owner) -->
-{#if !isOwner}
-	<ReserveModal
-		bind:open={reserveModalOpen}
-		gift={reservingGift}
-		{isAuthenticated}
-		isSubmitting={isReserving}
-		onreserve={handleReserve}
-		onclose={handleReserveModalClose}
-	/>
-{/if}
-
-<!-- Share Wizard (owner only) -->
-{#if isOwner}
-	<ShareWizard
-		wishlistId={wishlist.id}
-		wishlistTitle={wishlist.title}
-		giftCount={totalCount}
-		onshared={handleShared}
-	/>
-{/if}
-
-<!-- Theme Selector Sheet (owner only) -->
-{#if isOwner}
-	<Sheet.Root
-		bind:open={themeSheetOpen}
-		onOpenChange={(open) => {
-			if (open !== true) {
-				themeContext.cancelPreview();
-			}
-		}}
-	>
-		<Sheet.Content side="right" class="w-full sm:max-w-md">
-			<Sheet.Header>
-				<Sheet.Title>Motiv seznamu</Sheet.Title>
-				<Sheet.Description>Zvolte prednastaveny motiv nebo vlastni barvu.</Sheet.Description
-				>
-			</Sheet.Header>
-			<div class="px-4 py-4">
-				<ThemeSelector
-					currentTheme={themeContext.activeTheme.current}
-					onsave={handleThemeSave}
-					oncancel={handleThemeCancel}
-					onpreview={handleThemePreview}
-				/>
-			</div>
-		</Sheet.Content>
-	</Sheet.Root>
-{/if}
-
-<!-- Moderator Panel (owner only) -->
-{#if isOwner}
-	<ModeratorPanel
-		wishlistId={wishlist.id}
-		ownerIsModerator={ownerIsModeratorLocal}
-		bind:open={moderatorPanelOpen}
-		onselfpromoted={handleSelfPromoted}
-	/>
-{/if}
+<WishlistModals
+	{isOwner}
+	{isOwnerOrModerator}
+	{isAuthenticated}
+	wishlistId={wishlist.id}
+	wishlistTitle={wishlist.title}
+	giftCount={totalCount}
+	ownerIsModerator={ownerIsModeratorLocal}
+	bind:giftModalOpen
+	{giftModalMode}
+	{selectedGift}
+	{priorityLevels}
+	{canDeleteSelectedGift}
+	{isSubmitting}
+	{isDeleting}
+	bind:reserveModalOpen
+	{reservingGift}
+	{isReserving}
+	bind:themeSheetOpen
+	activeTheme={themeContext.activeTheme.current}
+	bind:moderatorPanelOpen
+	ongiftmodalclose={handleGiftModalClose}
+	oncreate={handleCreate}
+	onupdate={handleUpdate}
+	ondelete={handleDelete}
+	onreceived={handleReceived}
+	onreservemodalclose={handleReserveModalClose}
+	onreserve={handleReserve}
+	onshared={handleShared}
+	onthemesheetopenchange={handleThemeSheetOpenChange}
+	onthemepreview={handleThemePreview}
+	onthemesave={handleThemeSave}
+	onthemecancel={handleThemeCancel}
+	onmoderatorselfpromoted={handleSelfPromoted}
+/>
 
 <!-- OpenGraph Meta Tags -->
 <svelte:head>

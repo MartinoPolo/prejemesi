@@ -1,0 +1,178 @@
+<script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+	import * as Card from '$lib/components/base/card/index.js';
+	import { Input } from '$lib/components/base/input/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
+	import { Button } from '$lib/components/base/button/index.js';
+	import { authClient } from '$lib/auth_client.js';
+	import ShieldIcon from '@lucide/svelte/icons/shield';
+	import EyeIcon from '@lucide/svelte/icons/eye';
+	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
+
+	let currentPassword = $state('');
+	let newPassword = $state('');
+	let confirmPassword = $state('');
+	let showCurrentPassword = $state(false);
+	let showNewPassword = $state(false);
+	let saving = $state(false);
+	let passwordError = $state('');
+	let passwordSuccess = $state(false);
+
+	async function handleChangePassword() {
+		passwordError = '';
+		passwordSuccess = false;
+
+		if (newPassword.length < 8) {
+			passwordError = m.settings_password_min_length();
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			passwordError = m.settings_password_mismatch();
+			return;
+		}
+
+		saving = true;
+		try {
+			const result = await authClient.changePassword({
+				currentPassword,
+				newPassword,
+			});
+
+			if (result.error) {
+				passwordError = result.error.message ?? m.settings_password_error();
+			} else {
+				passwordSuccess = true;
+				currentPassword = '';
+				newPassword = '';
+				confirmPassword = '';
+				setTimeout(() => {
+					passwordSuccess = false;
+				}, 3000);
+			}
+		} catch {
+			passwordError = m.error_generic();
+		} finally {
+			saving = false;
+		}
+	}
+</script>
+
+<Card.Root>
+	<Card.Header>
+		<div class="flex items-center gap-2">
+			<ShieldIcon class="size-5 text-muted-foreground" />
+			<div>
+				<Card.Title>{m.settings_security_title()}</Card.Title>
+				<Card.Description>{m.settings_security_description()}</Card.Description>
+			</div>
+		</div>
+	</Card.Header>
+	<Card.Content>
+		<div class="flex flex-col gap-4">
+			<!-- Current password -->
+			<div class="flex flex-col gap-2">
+				<Label for="settings-current-password">{m.settings_current_password()}</Label>
+				<div class="relative">
+					<Input
+						id="settings-current-password"
+						type={showCurrentPassword ? 'text' : 'password'}
+						autocomplete="current-password"
+						bind:value={currentPassword}
+						class="pr-11!"
+					/>
+					<button
+						class="password-toggle"
+						type="button"
+						aria-label={showCurrentPassword ? m.hide_password() : m.show_password()}
+						onclick={() => (showCurrentPassword = !showCurrentPassword)}
+						tabindex={-1}
+					>
+						{#if showCurrentPassword}
+							<EyeOffIcon class="size-4" />
+						{:else}
+							<EyeIcon class="size-4" />
+						{/if}
+					</button>
+				</div>
+			</div>
+
+			<!-- New password -->
+			<div class="flex flex-col gap-2">
+				<Label for="settings-new-password">{m.settings_new_password()}</Label>
+				<div class="relative">
+					<Input
+						id="settings-new-password"
+						type={showNewPassword ? 'text' : 'password'}
+						autocomplete="new-password"
+						bind:value={newPassword}
+						class="pr-11!"
+					/>
+					<button
+						class="password-toggle"
+						type="button"
+						aria-label={showNewPassword ? m.hide_password() : m.show_password()}
+						onclick={() => (showNewPassword = !showNewPassword)}
+						tabindex={-1}
+					>
+						{#if showNewPassword}
+							<EyeOffIcon class="size-4" />
+						{:else}
+							<EyeIcon class="size-4" />
+						{/if}
+					</button>
+				</div>
+			</div>
+
+			<!-- Confirm password -->
+			<div class="flex flex-col gap-2">
+				<Label for="settings-confirm-password">{m.settings_confirm_password()}</Label>
+				<Input
+					id="settings-confirm-password"
+					type="password"
+					autocomplete="new-password"
+					bind:value={confirmPassword}
+				/>
+			</div>
+
+			{#if passwordError}
+				<p class="text-sm text-destructive">{passwordError}</p>
+			{/if}
+			{#if passwordSuccess}
+				<p class="text-sm text-status-success">
+					{m.settings_password_changed()}
+				</p>
+			{/if}
+		</div>
+	</Card.Content>
+	<Card.Footer class="flex justify-end">
+		<Button
+			onclick={handleChangePassword}
+			disabled={saving || !currentPassword || !newPassword || !confirmPassword}
+		>
+			{saving ? m.saving() : m.settings_change_password()}
+		</Button>
+	</Card.Footer>
+</Card.Root>
+
+<style>
+	.password-toggle {
+		position: absolute;
+		right: 10px;
+		top: 50%;
+		transform: translateY(-50%);
+		background: none;
+		border: none;
+		color: var(--muted-foreground);
+		cursor: pointer;
+		padding: 4px;
+		display: flex;
+		align-items: center;
+		border-radius: var(--radius-sm);
+		transition: color var(--duration-fast);
+		line-height: 1;
+	}
+
+	.password-toggle:hover {
+		color: var(--foreground);
+	}
+</style>
