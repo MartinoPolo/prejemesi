@@ -10,7 +10,7 @@
 		items: NavDropdownItem[];
 	}
 
-	let { title, viewAllHref, items }: NavDropdownProps = $props();
+	let { title, viewAllHref, items = [] }: NavDropdownProps = $props();
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
