@@ -59,5 +59,10 @@
 	.app-content {
 		flex: 1;
 		overflow: auto;
+		width: 100%;
+		max-width: var(--content-max-width);
+		margin-inline: auto;
+		padding-inline: var(--space-6);
+		padding-block: var(--space-6);
 	}
 </style>
