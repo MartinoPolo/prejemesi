@@ -6,6 +6,7 @@
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import {
 		getFollowedWishlists,
 		unfollowWishlist,
@@ -50,9 +51,9 @@
 		try {
 			await unfollowWishlist(wishlistId);
 			await fetchWishlists();
-			toastSuccess('Seznam jste prestali sledovat');
+			toastSuccess(m.toast_unfollowed());
 		} catch {
-			toastError('Nepodarilo se prestat sledovat');
+			toastError(m.toast_unfollow_error());
 		}
 	}
 
@@ -60,9 +61,9 @@
 		try {
 			await refollowWishlist(wishlistId);
 			await fetchWishlists();
-			toastSuccess('Seznam znovu sledujete');
+			toastSuccess(m.toast_refollowed());
 		} catch {
-			toastError('Nepodarilo se znovu sledovat');
+			toastError(m.toast_refollow_error());
 		}
 	}
 
@@ -101,7 +102,7 @@
 	}
 </script>
 
-<PageHeader title="Sledované">
+<PageHeader title={m.followed_title()}>
 	{#snippet toolbar()}
 		<DashboardToolbar
 			bind:sortValue
@@ -114,12 +115,12 @@
 </PageHeader>
 
 {#if isLoading}
-	<p class="py-12 text-center text-muted-foreground">Načítání...</p>
+	<p class="py-12 text-center text-muted-foreground">{m.followed_loading()}</p>
 {:else if filteredWishlists.length === 0}
 	<EmptyState
 		emoji="👀"
-		title="Nesledujete žádné seznamy"
-		description="Otevřete sdílený odkaz na seznam přání a začněte ho sledovat."
+		title={m.followed_empty_title()}
+		description={m.followed_empty_description()}
 	/>
 {:else if viewMode === 'grid'}
 	<WishlistCardGrid>

@@ -1,5 +1,6 @@
 import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment, moderatorInvite } from '$lib/server/db/moderator.schema.js';
@@ -29,10 +30,10 @@ async function verifyWishlistOwner(userId: string, wishlistId: string) {
 
 	const row = rows[0];
 	if (row === undefined) {
-		error(404, 'Seznam nebyl nalezen');
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 	}
 	if (row.ownerId !== userId) {
-		error(403, 'Pouze vlastnik muze spravovat moderatory');
+		error(403, SERVER_ERROR.ONLY_OWNER_CAN_MANAGE_MODERATORS);
 	}
 
 	return row;
@@ -57,7 +58,7 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 
 		const wishlistRow = wishlistRows[0];
 		if (wishlistRow === undefined) {
-			error(404, 'Seznam nebyl nalezen');
+			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 		}
 
 		const isOwner = wishlistRow.ownerId === currentUser.id;
@@ -77,7 +78,7 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 				.limit(1);
 
 			if (modRows[0] === undefined) {
-				error(403, 'Nemáte přístup');
+				error(403, SERVER_ERROR.ACCESS_DENIED);
 			}
 		}
 
@@ -167,7 +168,7 @@ export const generateModeratorInviteLink = guardedCommand(
 			.returning();
 
 		if (created === undefined) {
-			error(500, 'Nepodařilo se vytvořit pozvánku');
+			error(500, SERVER_ERROR.FAILED_TO_CREATE_INVITE);
 		}
 
 		return {
@@ -194,17 +195,17 @@ export const acceptModeratorInvite = guardedCommand(
 
 		const invite = inviteRows[0];
 		if (invite === undefined) {
-			error(404, 'Pozvánka nebyla nalezena');
+			error(404, SERVER_ERROR.INVITE_NOT_FOUND);
 		}
 
 		// Check if revoked
 		if (invite.revokedAt !== null) {
-			error(400, 'Tato pozvánka byla zrušena');
+			error(400, SERVER_ERROR.INVITE_ALREADY_REVOKED);
 		}
 
 		// Check if already used
 		if (invite.usedAt !== null) {
-			error(400, 'Tato pozvánka již byla použita');
+			error(400, SERVER_ERROR.INVITE_ALREADY_USED);
 		}
 
 		// Verify the wishlist still exists
@@ -216,12 +217,12 @@ export const acceptModeratorInvite = guardedCommand(
 
 		const wishlistRow = wishlistRows[0];
 		if (wishlistRow === undefined) {
-			error(404, 'Seznam nebyl nalezen');
+			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 		}
 
 		// Cannot accept own invite (owner)
 		if (wishlistRow.ownerId === currentUser.id) {
-			error(400, 'Vlastník nemůže přijmout pozvánku na svůj seznam');
+			error(400, SERVER_ERROR.OWNER_CANNOT_ACCEPT_OWN_INVITE);
 		}
 
 		// Check if already a moderator
@@ -238,7 +239,7 @@ export const acceptModeratorInvite = guardedCommand(
 			.limit(1);
 
 		if (existingModRows[0] !== undefined) {
-			error(400, 'Již jste moderátorem tohoto seznamu');
+			error(400, SERVER_ERROR.ALREADY_MODERATOR);
 		}
 
 		// Mark invite as used
@@ -260,7 +261,7 @@ export const acceptModeratorInvite = guardedCommand(
 			.returning();
 
 		if (assignment === undefined) {
-			error(500, 'Nepodařilo se přiřadit moderátora');
+			error(500, SERVER_ERROR.FAILED_TO_ASSIGN_MODERATOR);
 		}
 
 		return {
@@ -287,7 +288,7 @@ export const revokeModeratorInvite = guardedCommand(
 
 		const invite = inviteRows[0];
 		if (invite === undefined) {
-			error(404, 'Pozvánka nebyla nalezena');
+			error(404, SERVER_ERROR.INVITE_NOT_FOUND);
 		}
 
 		// Verify ownership of the wishlist
@@ -295,10 +296,10 @@ export const revokeModeratorInvite = guardedCommand(
 
 		// Check if already used or revoked
 		if (invite.usedAt !== null) {
-			error(400, 'Pozvánka již byla použita');
+			error(400, SERVER_ERROR.INVITE_ALREADY_USED);
 		}
 		if (invite.revokedAt !== null) {
-			error(400, 'Pozvánka již byla zrušena');
+			error(400, SERVER_ERROR.INVITE_ALREADY_REVOKED);
 		}
 
 		// Revoke
@@ -330,7 +331,7 @@ export const removeModerator = guardedCommand(
 
 		const assignment = assignmentRows[0];
 		if (assignment === undefined) {
-			error(404, 'Moderátor nebyl nalezen');
+			error(404, SERVER_ERROR.MODERATOR_NOT_FOUND);
 		}
 
 		// Verify ownership of the wishlist
@@ -354,7 +355,7 @@ export const selfPromoteToModerator = guardedCommand(
 		const wishlistRow = await verifyWishlistOwner(currentUser.id, input.wishlistId);
 
 		if (wishlistRow.ownerIsModerator) {
-			error(400, 'Již vidíte stav rezervací');
+			error(400, SERVER_ERROR.ALREADY_SEEING_RESERVATIONS);
 		}
 
 		// Set the flag

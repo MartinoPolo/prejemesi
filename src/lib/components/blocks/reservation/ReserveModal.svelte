@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
@@ -75,12 +76,12 @@
 		quantityError = '';
 
 		if (!isAuthenticated && anonymousName.trim() === '') {
-			nameError = 'Jmeno je povinne';
+			nameError = m.reserve_name_required();
 			return false;
 		}
 
 		if (quantity < 1 || quantity > availableCount) {
-			quantityError = `Mnozstvi musi byt 1 az ${availableCount}`;
+			quantityError = m.reserve_quantity_error({ max: availableCount });
 			return false;
 		}
 
@@ -114,8 +115,8 @@
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
 	<Dialog.Content class={styles.content()} showCloseButton={true}>
 		<Dialog.Header>
-			<Dialog.Title>Rezervovat darek</Dialog.Title>
-			<Dialog.Description class="sr-only">Formular pro rezervaci darku</Dialog.Description>
+			<Dialog.Title>{m.reserve_title()}</Dialog.Title>
+			<Dialog.Description class="sr-only">{m.reserve_description()}</Dialog.Description>
 		</Dialog.Header>
 
 		{#if gift}
@@ -139,7 +140,10 @@
 						<p class={styles.giftName()}>{gift.name}</p>
 						<p class={styles.giftAvailability()}>
 							{#if showQuantitySelector}
-								Dostupne: {availableCount} z {maxQuantity}
+								{m.gift_available({
+									available: availableCount,
+									total: maxQuantity,
+								})}
 							{:else}
 								{priceDisplay}
 							{/if}
@@ -150,14 +154,14 @@
 				<!-- Quantity selector (only for multi-quantity gifts) -->
 				{#if showQuantitySelector}
 					<div class={styles.formField()}>
-						<Label>Pocet</Label>
+						<Label>{m.reserve_quantity_label()}</Label>
 						<div class={styles.quantityRow()}>
 							<Button
 								size="icon"
 								intent="outline"
 								disabled={quantity <= 1}
 								onclick={decrementQuantity}
-								aria-label="Snizit pocet"
+								aria-label={m.reserve_quantity_decrease()}
 							>
 								<MinusIcon class="size-4" />
 							</Button>
@@ -169,12 +173,12 @@
 								intent="outline"
 								disabled={quantity >= availableCount}
 								onclick={incrementQuantity}
-								aria-label="Zvysit pocet"
+								aria-label={m.reserve_quantity_increase()}
 							>
 								<PlusIcon class="size-4" />
 							</Button>
 							<span class={styles.quantityLabel()}>
-								z {availableCount} dostupnych
+								{m.reserve_quantity_of({ count: availableCount })}
 							</span>
 						</div>
 						{#if quantityError}
@@ -188,11 +192,11 @@
 					<Separator />
 
 					<div class={styles.formField()}>
-						<Label for="reserve-name">Vase jmeno *</Label>
+						<Label for="reserve-name">{m.reserve_name_label()}</Label>
 						<Input
 							id="reserve-name"
 							bind:value={anonymousName}
-							placeholder="Jan Novak"
+							placeholder={m.reserve_name_placeholder()}
 							aria-invalid={nameError !== '' ? true : undefined}
 						/>
 						{#if nameError}
@@ -201,26 +205,26 @@
 					</div>
 
 					<div class={styles.formField()}>
-						<Label for="reserve-email">E-mail (volitelne)</Label>
+						<Label for="reserve-email">{m.reserve_email_label()}</Label>
 						<Input
 							id="reserve-email"
 							bind:value={anonymousEmail}
-							placeholder="jan@email.cz"
+							placeholder={m.reserve_email_placeholder()}
 							type="email"
 						/>
 					</div>
 
 					<div class={styles.authPrompt()}>
 						<p class={styles.authPromptText()}>
-							Pro spravcu rezervaci se muzete prihlasit.
+							{m.reserve_auth_prompt()}
 						</p>
 						<div class={styles.authPromptLinks()}>
 							<a href={resolve('/login')} class="text-primary hover:underline">
-								Prihlasit se
+								{m.reserve_login()}
 							</a>
-							<span class={styles.separator()}>nebo</span>
+							<span class={styles.separator()}>{m.or()}</span>
 							<a href={resolve('/register')} class="text-primary hover:underline">
-								Registrovat
+								{m.reserve_register()}
 							</a>
 						</div>
 					</div>
@@ -228,12 +232,14 @@
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button intent="outline" onclick={() => handleOpenChange(false)}>Zrusit</Button>
+					<Button intent="outline" onclick={() => handleOpenChange(false)}
+						>{m.cancel()}</Button
+					>
 					<Button disabled={isSubmitting} onclick={handleSubmit}>
 						{#if isSubmitting}
-							Rezervuji...
+							{m.reserve_submitting()}
 						{:else}
-							Rezervovat
+							{m.reserve_submit()}
 						{/if}
 					</Button>
 				</div>

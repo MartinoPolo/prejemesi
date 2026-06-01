@@ -1,4 +1,6 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
@@ -56,7 +58,7 @@
 			return null;
 		}
 		try {
-			return new Intl.DateTimeFormat('cs-CZ', {
+			return new Intl.DateTimeFormat(getLocale(), {
 				day: 'numeric',
 				month: 'long',
 				year: 'numeric',
@@ -66,18 +68,15 @@
 		}
 	});
 
-	const statusLabel = $derived(WISHLIST_STATUS_LABELS[status]);
+	const statusLabel = $derived(WISHLIST_STATUS_LABELS[status]());
 
 	const statusBadgeTone = $derived(WISHLIST_STATUS_BADGE_MAP[status]);
 
 	const giftCountLabel = $derived.by(() => {
 		if (giftCount === 1) {
-			return '1 prani';
+			return m.wishlist_gift_count_one();
 		}
-		if (giftCount >= 2 && giftCount <= 4) {
-			return `${giftCount} prani`;
-		}
-		return `${giftCount} prani`;
+		return m.wishlist_gift_count_other({ count: giftCount });
 	});
 </script>
 
@@ -129,15 +128,25 @@
 	{#if isOwnerOrModerator}
 		<div class={styles.actionRow()}>
 			{#if isOwner && !isArchived}
-				<Button size="sm" intent="outline" aria-label="Sdilet seznam" onclick={onshare}>
+				<Button
+					size="sm"
+					intent="outline"
+					aria-label={m.wishlist_share_label()}
+					onclick={onshare}
+				>
 					<ShareIcon data-icon="inline-start" />
-					Sdilet
+					{m.wishlist_share_button()}
 				</Button>
 			{/if}
 			{#if isOwner}
-				<Button size="sm" intent="outline" aria-label="Moderatori" onclick={onmoderators}>
+				<Button
+					size="sm"
+					intent="outline"
+					aria-label={m.wishlist_moderators_label()}
+					onclick={onmoderators}
+				>
 					<UsersIcon data-icon="inline-start" />
-					Moderatori
+					{m.wishlist_moderators_label()}
 				</Button>
 			{/if}
 		</div>
@@ -147,7 +156,7 @@
 	{#if ownerIsModerator}
 		<div class={styles.disclosureBanner()}>
 			<EyeIcon class="size-4 flex-shrink-0" />
-			<span>Vlastnik vidi stav rezervaci tohoto seznamu.</span>
+			<span>{m.wishlist_owner_sees_reservations()}</span>
 		</div>
 	{/if}
 
@@ -155,22 +164,22 @@
 	{#if isArchived}
 		<div class={styles.archivedBanner()}>
 			<ArchiveIcon class="size-4 flex-shrink-0" />
-			<span>Archivovano — seznam je uzavren. Nova rezervace neni mozna.</span>
+			<span>{m.wishlist_archived_banner()}</span>
 		</div>
 	{:else if !isDraft && isOwner}
 		<div class={styles.sharedBanner()}>
 			<LockIcon class="size-4 flex-shrink-0" />
-			<span>Seznam je sdileny — stavajici prani nelze upravovat.</span>
+			<span>{m.wishlist_shared_banner()}</span>
 			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
-				Znovu sdilet
+				{m.wishlist_reshare()}
 			</Button>
 		</div>
 	{:else if isDraft && isOwner}
 		<div class={styles.draftBanner()}>
 			<InfoIcon class="size-4 flex-shrink-0" />
-			<span>Tento seznam jeste nebyl sdilen.</span>
+			<span>{m.wishlist_draft_banner()}</span>
 			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
-				Sdilet seznam
+				{m.wishlist_share_list()}
 			</Button>
 		</div>
 	{/if}

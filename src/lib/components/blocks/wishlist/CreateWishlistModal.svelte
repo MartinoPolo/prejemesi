@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
@@ -22,11 +23,11 @@
 	let errorMessage = $state('');
 
 	const THEME_OPTIONS = [
-		{ value: 'default', label: 'Vychozi' },
-		{ value: 'christmas', label: 'Vanoce' },
-		{ value: 'birthday', label: 'Narozeniny' },
-		{ value: 'fun', label: 'Zabavne' },
-		{ value: 'elegant', label: 'Elegantni' },
+		{ value: 'default', label: () => m.theme_default() },
+		{ value: 'christmas', label: () => m.theme_christmas() },
+		{ value: 'birthday', label: () => m.theme_birthday() },
+		{ value: 'fun', label: () => m.theme_fun() },
+		{ value: 'elegant', label: () => m.theme_elegant() },
 	] as const;
 
 	function resetForm() {
@@ -49,7 +50,7 @@
 
 		const trimmedTitle = title.trim();
 		if (trimmedTitle === '') {
-			errorMessage = 'Nazev je povinny';
+			errorMessage = m.wishlist_name_required();
 			return;
 		}
 
@@ -67,7 +68,7 @@
 			resetForm();
 			await goto(resolve('/(app)/w/[id]', { id: created.shortId }));
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Nepodarilo se vytvorit seznam';
+			errorMessage = error instanceof Error ? error.message : m.wishlist_create_error();
 			isSubmitting = false;
 		}
 	}
@@ -76,24 +77,24 @@
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Novy seznam prani</Dialog.Title>
-			<Dialog.Description>Zadejte nazev a volitelne dalsi udaje.</Dialog.Description>
+			<Dialog.Title>{m.wishlist_create_title()}</Dialog.Title>
+			<Dialog.Description>{m.wishlist_create_description()}</Dialog.Description>
 		</Dialog.Header>
 
 		<form onsubmit={handleSubmit} class="flex flex-col gap-4">
 			<div class="flex flex-col gap-2">
-				<Label for="wishlist-title">Nazev</Label>
+				<Label for="wishlist-title">{m.wishlist_name_label()}</Label>
 				<Input
 					id="wishlist-title"
 					bind:value={title}
-					placeholder="napr. Vanoce 2026"
+					placeholder={m.wishlist_name_placeholder()}
 					required
 					disabled={isSubmitting}
 				/>
 			</div>
 
 			<div class="flex flex-col gap-2">
-				<Label for="wishlist-event-date">Datum udalosti (volitelne)</Label>
+				<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
 				<Input
 					id="wishlist-event-date"
 					type="date"
@@ -103,15 +104,15 @@
 			</div>
 
 			<div class="flex flex-col gap-2">
-				<Label>Tema</Label>
+				<Label>{m.wishlist_theme_label()}</Label>
 				<Select.Root type="single" bind:value={theme}>
 					<Select.Trigger disabled={isSubmitting}>
-						{THEME_OPTIONS.find((o) => o.value === theme)?.label ?? 'Vychozi'}
+						{THEME_OPTIONS.find((o) => o.value === theme)?.label() ?? m.theme_default()}
 					</Select.Trigger>
 					<Select.Content>
 						<Select.Group>
 							{#each THEME_OPTIONS as option (option.value)}
-								<Select.Item value={option.value} label={option.label} />
+								<Select.Item value={option.value} label={option.label()} />
 							{/each}
 						</Select.Group>
 					</Select.Content>
@@ -129,14 +130,14 @@
 					onclick={() => handleOpenChange(false)}
 					disabled={isSubmitting}
 				>
-					Zrusit
+					{m.cancel()}
 				</Button>
 				<Button type="submit" disabled={isSubmitting}>
 					{#if isSubmitting}
 						<Loader class="animate-spin" data-icon="inline-start" />
-						Vytvarim...
+						{m.creating()}
 					{:else}
-						Vytvorit
+						{m.create()}
 					{/if}
 				</Button>
 			</Dialog.Footer>

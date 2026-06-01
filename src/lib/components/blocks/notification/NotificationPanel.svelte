@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { useNotifications } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
@@ -21,11 +22,11 @@
 <div class="flex w-80 flex-col">
 	<!-- Header -->
 	<div class="flex items-center justify-between px-3 pb-2">
-		<h3 class="text-sm font-semibold">Upozorneni</h3>
+		<h3 class="text-sm font-semibold">{m.notification_panel_title()}</h3>
 		{#if ctx.hasUnread.current}
 			<Button intent="ghost" size="sm" onclick={handleMarkAllAsRead}>
 				<CheckCheckIcon data-icon="inline-start" />
-				Oznacit vse
+				{m.notification_mark_all()}
 			</Button>
 		{/if}
 	</div>
@@ -49,7 +50,7 @@
 			<!-- Empty state -->
 			<div class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
 				<BellOffIcon class="size-8 opacity-50" />
-				<p class="text-sm">Zadna upozorneni</p>
+				<p class="text-sm">{m.notification_empty()}</p>
 			</div>
 		{:else}
 			{#each ctx.notifications.current as notification (notification.id)}

@@ -49,7 +49,7 @@ export const THEME_PALETTE_KEYS = [
 export interface ThemePresetDefinition {
 	name: ThemePresetName;
 	emoji: string;
-	label: string;
+	label: () => string;
 	palette: ThemePalette;
 	/** Gradient for preset card preview */
 	gradient: string;

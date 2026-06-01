@@ -227,7 +227,7 @@ describe('acceptModeratorInvite', () => {
 
 		await expect(
 			callAcceptModeratorInvite(regularAuthContext, { token: 'nonexistent-token' }),
-		).rejects.toMatchObject({ status: 404, message: 'Pozvánka nebyla nalezena' });
+		).rejects.toMatchObject({ status: 404, message: 'INVITE_NOT_FOUND' });
 	});
 
 	it('revoked invite → throws 400', async () => {
@@ -236,7 +236,7 @@ describe('acceptModeratorInvite', () => {
 
 		await expect(
 			callAcceptModeratorInvite(regularAuthContext, { token: testInviteToken }),
-		).rejects.toMatchObject({ status: 400, message: 'Tato pozvánka byla zrušena' });
+		).rejects.toMatchObject({ status: 400, message: 'INVITE_ALREADY_REVOKED' });
 	});
 
 	it('already used invite → throws 400', async () => {
@@ -249,7 +249,7 @@ describe('acceptModeratorInvite', () => {
 
 		await expect(
 			callAcceptModeratorInvite(regularAuthContext, { token: testInviteToken }),
-		).rejects.toMatchObject({ status: 400, message: 'Tato pozvánka již byla použita' });
+		).rejects.toMatchObject({ status: 400, message: 'INVITE_ALREADY_USED' });
 	});
 
 	it('owner accepting own invite → throws 400', async () => {
@@ -260,7 +260,7 @@ describe('acceptModeratorInvite', () => {
 			callAcceptModeratorInvite(ownerAuthContext, { token: testInviteToken }),
 		).rejects.toMatchObject({
 			status: 400,
-			message: 'Vlastník nemůže přijmout pozvánku na svůj seznam',
+			message: 'OWNER_CANNOT_ACCEPT_OWN_INVITE',
 		});
 	});
 
@@ -272,7 +272,7 @@ describe('acceptModeratorInvite', () => {
 
 		await expect(
 			callAcceptModeratorInvite(regularAuthContext, { token: testInviteToken }),
-		).rejects.toMatchObject({ status: 400, message: 'Již jste moderátorem tohoto seznamu' });
+		).rejects.toMatchObject({ status: 400, message: 'ALREADY_MODERATOR' });
 	});
 });
 
@@ -301,7 +301,7 @@ describe('revokeModeratorInvite', () => {
 
 		await expect(
 			callRevokeModeratorInvite(ownerAuthContext, { inviteId: testInviteId }),
-		).rejects.toMatchObject({ status: 400, message: 'Pozvánka již byla použita' });
+		).rejects.toMatchObject({ status: 400, message: 'INVITE_ALREADY_USED' });
 	});
 
 	it('already revoked invite → throws 400', async () => {
@@ -311,7 +311,7 @@ describe('revokeModeratorInvite', () => {
 
 		await expect(
 			callRevokeModeratorInvite(ownerAuthContext, { inviteId: testInviteId }),
-		).rejects.toMatchObject({ status: 400, message: 'Pozvánka již byla zrušena' });
+		).rejects.toMatchObject({ status: 400, message: 'INVITE_ALREADY_REVOKED' });
 	});
 });
 
@@ -334,7 +334,7 @@ describe('removeModerator', () => {
 
 		await expect(
 			callRemoveModerator(ownerAuthContext, { assignmentId: 'nonexistent-id' }),
-		).rejects.toMatchObject({ status: 404, message: 'Moderátor nebyl nalezen' });
+		).rejects.toMatchObject({ status: 404, message: 'MODERATOR_NOT_FOUND' });
 	});
 });
 
@@ -358,7 +358,7 @@ describe('selfPromoteToModerator', () => {
 
 		await expect(
 			callSelfPromoteToModerator(ownerAuthContext, { wishlistId: testWishlistId }),
-		).rejects.toMatchObject({ status: 400, message: 'Již vidíte stav rezervací' });
+		).rejects.toMatchObject({ status: 400, message: 'ALREADY_SEEING_RESERVATIONS' });
 	});
 });
 
@@ -423,7 +423,7 @@ describe('getModeratorsForWishlist', () => {
 
 		await expect(
 			callGetModeratorsForWishlist(ownerAuthContext, 'nonexistent-wl'),
-		).rejects.toMatchObject({ status: 404, message: 'Seznam nebyl nalezen' });
+		).rejects.toMatchObject({ status: 404, message: 'WISHLIST_NOT_FOUND' });
 	});
 
 	it('non-owner non-moderator → throws 403', async () => {
@@ -434,6 +434,6 @@ describe('getModeratorsForWishlist', () => {
 
 		await expect(
 			callGetModeratorsForWishlist(regularAuthContext, testWishlistId),
-		).rejects.toMatchObject({ status: 403, message: 'Nemáte přístup' });
+		).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
 	});
 });

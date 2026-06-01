@@ -527,7 +527,7 @@ describe('getReservationsForGift', () => {
 			id: RESERVATION_ID,
 			giftId: GIFT_ID,
 			quantity: 2,
-			displayName: 'Prihlaseny uzivatel',
+			displayName: 'Authenticated user',
 		});
 		expect(result.reservations[1]).toMatchObject({
 			id: 'reservation-2',

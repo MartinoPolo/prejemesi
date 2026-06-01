@@ -97,7 +97,7 @@
 					badgeStyle="subtle"
 					class={cn('text-[11px]', priorityInfo.colorClass)}
 				>
-					{priorityInfo.label}
+					{priorityInfo.label()}
 				</Badge>
 			{/if}
 
