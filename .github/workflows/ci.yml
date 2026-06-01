@@ -20,6 +20,6 @@ jobs:
             - run: pnpm run cf:types
             - run: pnpm exec paraglide-js compile --outdir ./src/lib/paraglide
             - run: pnpm run check:all
-            - run: pnpm run test -- --coverage
             - run: pnpm exec playwright install --with-deps chromium
+            - run: pnpm run test -- --coverage
             - run: pnpm run test:e2e
