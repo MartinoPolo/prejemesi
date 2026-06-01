@@ -18,12 +18,24 @@
 		return canvasElement.querySelector('[data-slot="select-trigger"]') as HTMLElement;
 	}
 
+	function querySelectListbox(canvasElement: HTMLElement): HTMLElement | null {
+		return canvasElement.querySelector('[role="listbox"]');
+	}
+
+	function getSelectListbox(canvasElement: HTMLElement): HTMLElement {
+		const listbox = querySelectListbox(canvasElement);
+		if (listbox == null) {
+			throw new Error('Select listbox not found');
+		}
+		return listbox;
+	}
+
 	const playOpenDropdown = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 		await userEvent.click(trigger);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-		const listbox = document.querySelector('[role="listbox"]');
+		const listbox = getSelectListbox(canvasElement);
 		await expect(listbox).toBeInTheDocument();
 	};
 
@@ -31,8 +43,8 @@
 		const trigger = getSelectTrigger(canvasElement);
 		await userEvent.click(trigger);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-		const listbox = document.querySelector('[role="listbox"]')!;
-		const options = within(listbox as HTMLElement).getAllByRole('option');
+		const listbox = getSelectListbox(canvasElement);
+		const options = within(listbox).getAllByRole('option');
 		await userEvent.click(options[1]);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 		await expect(trigger).toHaveTextContent('Banana');
@@ -44,7 +56,7 @@
 		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
 		await userEvent.keyboard('{Escape}');
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-		await expect(trigger).toHaveTextContent('Select a fruit');
+		await expect(trigger).toHaveTextContent('Select produce');
 	};
 
 	const playDisabledIgnoresClick = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
@@ -55,14 +67,14 @@
 		await waitFor(() => {
 			expect(trigger).toHaveAttribute('aria-expanded', 'false');
 		});
-		await expect(document.querySelector('[role="listbox"]')).not.toBeInTheDocument();
+		await expect(querySelectListbox(canvasElement)).not.toBeInTheDocument();
 	};
 
 	const playClickOutsideCloses = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const trigger = getSelectTrigger(canvasElement);
 		await userEvent.click(trigger);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-		await expect(document.querySelector('[role="listbox"]')).toBeInTheDocument();
+		await expect(getSelectListbox(canvasElement)).toBeInTheDocument();
 		await userEvent.click(canvasElement);
 		await waitFor(() => {
 			expect(trigger).toHaveAttribute('aria-expanded', 'false');
@@ -73,11 +85,11 @@
 		const trigger = getSelectTrigger(canvasElement);
 		await userEvent.click(trigger);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-		const listbox = document.querySelector('[role="listbox"]')!;
+		const listbox = getSelectListbox(canvasElement);
 		await expect(listbox).toBeInTheDocument();
 		await userEvent.keyboard('{ArrowDown}');
 		await waitFor(() => {
-			const options = within(listbox as HTMLElement).getAllByRole('option');
+			const options = within(listbox).getAllByRole('option');
 			const highlighted = options.find(
 				(opt) =>
 					opt.getAttribute('data-highlighted') !== null ||

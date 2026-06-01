@@ -22,14 +22,47 @@
 				typeof window !== 'undefined' &&
 				window.matchMedia('(prefers-color-scheme: dark)').matches),
 	);
+
+	$effect(() => {
+		const rootElement = document.documentElement;
+		const previousColorScheme = rootElement.style.colorScheme;
+		const previousAccentColor = rootElement.getAttribute('data-accent');
+		const previousBackgroundTheme = rootElement.getAttribute('data-bg-theme');
+		const hadDarkClass = rootElement.classList.contains('dark');
+		const hadLightClass = rootElement.classList.contains('light');
+
+		rootElement.classList.toggle('dark', isDark);
+		rootElement.classList.toggle('light', !isDark);
+		rootElement.style.colorScheme = isDark ? 'dark' : 'light';
+		rootElement.setAttribute('data-accent', accentColor);
+
+		if (backgroundTheme === 'default') {
+			rootElement.removeAttribute('data-bg-theme');
+		} else {
+			rootElement.setAttribute('data-bg-theme', backgroundTheme);
+		}
+
+		return () => {
+			rootElement.classList.toggle('dark', hadDarkClass);
+			rootElement.classList.toggle('light', hadLightClass);
+			rootElement.style.colorScheme = previousColorScheme;
+
+			if (previousAccentColor == null) {
+				rootElement.removeAttribute('data-accent');
+			} else {
+				rootElement.setAttribute('data-accent', previousAccentColor);
+			}
+
+			if (previousBackgroundTheme == null) {
+				rootElement.removeAttribute('data-bg-theme');
+			} else {
+				rootElement.setAttribute('data-bg-theme', previousBackgroundTheme);
+			}
+		};
+	});
 </script>
 
-<div
-	class={`min-h-screen bg-background text-foreground ${isDark ? 'dark' : 'light'}`}
-	style:color-scheme={isDark ? 'dark' : 'light'}
-	data-accent={accentColor}
-	data-bg-theme={backgroundTheme !== 'default' ? backgroundTheme : undefined}
->
+<div class="min-h-screen bg-background text-foreground">
 	<div class="flex flex-col gap-4 p-4">
 		<div class="flex flex-wrap items-center gap-4 border-b border-border pb-3">
 			<div class="flex items-center gap-2">

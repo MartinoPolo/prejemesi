@@ -196,14 +196,15 @@ Components live in `src/lib/components/base/`. Use the `cn()` utility from `$lib
 
 ### Component Architecture
 
-Components follow a two-tier structure:
+Components follow a three-tier structure:
 
-| Tier           | Directory                     | Naming                                    | Purpose                                                                   |
-| -------------- | ----------------------------- | ----------------------------------------- | ------------------------------------------------------------------------- |
-| **Primitives** | `src/lib/components/base/`    | kebab-case files, dual PascalCase exports | CLI-managed shadcn-svelte components — do not edit directly               |
-| **Derived**    | `src/lib/components/derived/` | PascalCase files                          | App-level composites that reduce nesting by combining multiple primitives |
+| Tier        | Directory                     | Naming                                      | Purpose                                                     |
+| ----------- | ----------------------------- | ------------------------------------------- | ----------------------------------------------------------- |
+| **Base**    | `src/lib/components/base/`    | folder per component, PascalCase main files | shadcn-svelte primitives and small reusable base components |
+| **Derived** | `src/lib/components/derived/` | PascalCase files                            | reusable app-level composites used across features          |
+| **Blocks**  | `src/lib/components/blocks/`  | PascalCase files                            | feature-level composed UI for routes and workflows          |
 
-Derived components use descriptive PascalCase names that avoid collisions with the `base/` namespace (e.g. `LabeledSelect` instead of `Select`, `SectionCard` instead of `Card`). Inside derived components, import `base/` primitives with their standard namespace import (`import * as Select from '$lib/components/base/select/index.js'`).
+New derived and block components use `tailwind-variants` in separate `*_variants.ts` files with exported variant types and exhaustive arrays where needed. Inside composed components, import `base/` primitives with their standard namespace import (`import * as Select from '$lib/components/base/select/index.js'`).
 
 Standalone components that don't compose multiple primitives (like `DarkModeToggle`) stay at the `src/lib/components/` root.
 
@@ -237,9 +238,9 @@ Reusable reactive primitives in `src/lib/reactivity/`:
 
 ## Context Pattern
 
-Type-safe Svelte context using `setContext` / `getContext`. Context keys are centralized in `src/lib/context/context_key.ts`.
+Type-safe Svelte context uses Svelte 5 `createContext`; do not use manual context keys.
 
-Each context module exports a `set` function (called in the parent layout) and a `get` function (called in child components). See `src/lib/context/showcase_form.context.svelte.ts` for a working example that combines `Persisted`, `StateRaw`, and `Derived`.
+Each context module exports `set*Context()` for the provider and `use*()` for consumers. Context factories compose `Persisted`, `StateRaw`, and `Derived` where needed. See `src/lib/modules/*/*.context.svelte.ts` for current examples.
 
 For SSR of persisted values, use Skeleton placeholders to avoid hydration mismatches.
 
