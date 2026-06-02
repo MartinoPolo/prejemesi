@@ -5,46 +5,13 @@ import {
 	registerViaApi,
 	createAuthenticatedContext,
 } from './fixtures/auth-helpers.js';
+import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-async function createWishlistAndNavigate(page: Page, title: string) {
-	await page.goto('/my-lists');
-	await page.waitForLoadState('networkidle');
-	await page
-		.getByRole('button', { name: /Vytvořit/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: 'Nazev' }).fill(title);
-	await dialog.getByRole('button', { name: 'Vytvorit' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
-	await page.waitForLoadState('networkidle');
-}
-
 async function addGiftAndShare(page: Page, giftName: string) {
-	// Add gift
-	await page
-		.getByRole('button', { name: /Pridat/ })
-		.first()
-		.click();
-	const giftDialog = page.getByRole('dialog');
-	await expect(giftDialog).toBeVisible({ timeout: 5_000 });
-	await giftDialog.getByRole('textbox', { name: /Nazev/i }).fill(giftName);
-	await giftDialog.getByRole('button', { name: 'Pridat darek' }).click();
-	await expect(page.getByText(giftName)).toBeVisible({ timeout: 5_000 });
-
-	// Share wishlist
-	await page
-		.getByRole('button', { name: /Sdilet seznam/ })
-		.first()
-		.click();
-	const shareDialog = page.getByRole('dialog');
-	await expect(shareDialog).toBeVisible({ timeout: 5_000 });
-	await shareDialog.getByRole('button', { name: 'Sdilet seznam' }).click();
-	await expect(shareDialog.getByText('Seznam byl sdilen!')).toBeVisible({ timeout: 5_000 });
-	await shareDialog.getByRole('button', { name: 'Hotovo' }).click();
+	await addGift(page, giftName);
+	await shareWishlist(page);
 }
 
 async function openModeratorPanel(page: Page) {
@@ -170,18 +137,18 @@ test.describe('Moderator system', () => {
 			.click();
 		const reserveDialog = anonymousPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible({ timeout: 5_000 });
-		await reserveDialog
-			.getByRole('textbox', { name: /[Jj]meno|[Nn]ame/ })
-			.fill('Anon Reserver');
+		await reserveDialog.getByRole('textbox', { name: /Vaše jméno/i }).fill('Anon Reserver');
 		await reserveDialog.getByRole('button', { name: /Rezervovat/ }).click();
-		await expect(anonymousPage.getByText(/Rezervovano/)).toBeVisible({ timeout: 5_000 });
+		await expect(anonymousPage.getByText(/Rezervovano/).first()).toBeVisible({
+			timeout: 5_000,
+		});
 		await anonymousContext.close();
 
 		// ── Step 4: moderator can see the reservation status ──────────────────
 		await inviteePage.reload();
 		await inviteePage.waitForLoadState('networkidle');
 		// As a moderator, gift shows as reserved
-		await expect(inviteePage.getByText(/Rezervovano/)).toBeVisible({ timeout: 5_000 });
+		await expect(inviteePage.getByText(/Rezervovano/).first()).toBeVisible({ timeout: 5_000 });
 
 		await inviteeContext.close();
 		await ownerPage.context().close();
@@ -198,15 +165,7 @@ test.describe('Moderator system', () => {
 		await createWishlistAndNavigate(page, 'Self Promote Test');
 
 		// Share wishlist so the banner section is meaningful
-		await page
-			.getByRole('button', { name: /Sdilet seznam/ })
-			.first()
-			.click();
-		const shareDialog = page.getByRole('dialog');
-		await expect(shareDialog).toBeVisible({ timeout: 5_000 });
-		await shareDialog.getByRole('button', { name: 'Sdilet seznam' }).click();
-		await expect(shareDialog.getByText('Seznam byl sdilen!')).toBeVisible({ timeout: 5_000 });
-		await shareDialog.getByRole('button', { name: 'Hotovo' }).click();
+		await shareWishlist(page);
 
 		// Open moderator panel
 		const panel = await openModeratorPanel(page);
@@ -217,20 +176,21 @@ test.describe('Moderator system', () => {
 		});
 		await panel.getByRole('button', { name: /Aktivovat zobrazení/ }).click();
 
-		// Panel closes / state updates — wait for the page to reflect the change
-		await page.waitForLoadState('networkidle');
+		// The panel updates in place (it does not close): the self-promote button is
+		// replaced by the permanent active-disclosure text.
+		await expect(panel.getByText(/Vidíte stav rezervací/)).toBeVisible({ timeout: 5_000 });
+		await expect(panel.getByRole('button', { name: /Aktivovat zobrazení/ })).not.toBeVisible();
 
-		// The permanent disclosure banner "Vlastník vidí stav rezervací" is visible
-		// on the wishlist header — rendered when ownerIsModerator is true
+		// Close the panel and confirm the permanent disclosure banner on the wishlist header
+		// (rendered when ownerIsModerator is true).
+		await page.keyboard.press('Escape');
+		await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0, {
+			timeout: 5_000,
+		});
+		await page.waitForLoadState('networkidle');
 		await expect(page.getByText(/Vlastník vidí stav rezervací/)).toBeVisible({
 			timeout: 5_000,
 		});
-
-		// Reopening the moderator panel should now show the active-disclosure text
-		// instead of the self-promote button
-		const panel2 = await openModeratorPanel(page);
-		await expect(panel2.getByText(/Vidíte stav rezervací/)).toBeVisible({ timeout: 5_000 });
-		await expect(panel2.getByRole('button', { name: /Aktivovat zobrazení/ })).not.toBeVisible();
 
 		await page.context().close();
 	});

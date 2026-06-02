@@ -23,18 +23,24 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 
 	const isOAuthUser = accounts.some((a) => a.providerId !== 'credential');
 
-	// App background theme is a custom column not carried on the session user.
+	// Read profile fields from the DB (source of truth). The session user is cached by
+	// better-auth and goes stale after updateProfile writes directly to the user table,
+	// so reading name/image from the session would show pre-update values after a reload.
 	const rows = await database
-		.select({ appBackgroundTheme: user.appBackgroundTheme })
+		.select({
+			name: user.name,
+			image: user.image,
+			appBackgroundTheme: user.appBackgroundTheme,
+		})
 		.from(user)
 		.where(eq(user.id, authUser.id))
 		.limit(1);
 
 	return {
 		id: authUser.id,
-		name: authUser.name,
+		name: rows[0]?.name ?? authUser.name,
 		email: authUser.email,
-		image: authUser.image ?? null,
+		image: rows[0]?.image ?? null,
 		isOAuthUser,
 		appBackgroundTheme: rows[0]?.appBackgroundTheme ?? 'default',
 	};

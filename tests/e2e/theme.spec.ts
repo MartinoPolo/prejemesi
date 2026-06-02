@@ -1,22 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-
-async function createWishlistAndNavigate(page: Page, title: string) {
-	await page.goto('/my-lists');
-	await page.waitForLoadState('networkidle');
-	await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
-	await page
-		.getByRole('button', { name: /Vytvořit/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: 'Nazev' }).fill(title);
-	await dialog.getByRole('button', { name: 'Vytvorit' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
-	await page.waitForLoadState('networkidle');
-}
+import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
 
 function getThemeButton(page: Page) {
 	return page.getByRole('button', { name: /Změnit motiv|Motiv/ });
@@ -34,12 +19,13 @@ test.describe('Theme change workflow', () => {
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 		await expect(dialog.getByText('Motiv seznamu')).toBeVisible();
 
-		// All 5 presets should be visible
-		await expect(dialog.getByText('Výchozí')).toBeVisible();
-		await expect(dialog.getByText('Vánoce')).toBeVisible();
-		await expect(dialog.getByText('Narozeniny')).toBeVisible();
-		await expect(dialog.getByText('Zábava')).toBeVisible();
-		await expect(dialog.getByText('Elegantní')).toBeVisible();
+		// All 5 presets should be visible (target the preset buttons — "Výchozí" also appears
+		// in the current-theme badge, so a plain text match would be ambiguous).
+		await expect(dialog.getByRole('button', { name: 'Výchozí' })).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Vánoce' })).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Narozeniny' })).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Zábava' })).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Elegantní' })).toBeVisible();
 
 		// Custom color option
 		await expect(dialog.getByText('Vlastní barva')).toBeVisible();
@@ -185,26 +171,9 @@ test.describe('Theme change workflow', () => {
 
 		await createWishlistAndNavigate(ownerPage, 'Theme Visibility');
 
-		// Share the wishlist
-		await ownerPage
-			.getByRole('button', { name: /Pridat/ })
-			.first()
-			.click();
-		let dialog = ownerPage.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 10_000 });
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Test Gift');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
-		await expect(ownerPage.getByText('Test Gift')).toBeVisible({ timeout: 5_000 });
-
-		await ownerPage
-			.getByRole('button', { name: /Sdilet seznam/ })
-			.first()
-			.click();
-		dialog = ownerPage.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		await dialog.getByRole('button', { name: 'Sdilet seznam' }).click();
-		await expect(dialog.getByText('Seznam byl sdilen!')).toBeVisible({ timeout: 5_000 });
-		await dialog.getByRole('button', { name: 'Hotovo' }).click();
+		// Add a gift and share the wishlist
+		await addGift(ownerPage, 'Test Gift');
+		await shareWishlist(ownerPage);
 
 		const wishlistPath = new URL(ownerPage.url()).pathname;
 

@@ -31,7 +31,7 @@ test.describe('Error states and edge cases', () => {
 		await page.waitForLoadState('networkidle');
 
 		// Page heading
-		await expect(page.getByRole('heading', { name: 'Nastavení' })).toBeVisible({
+		await expect(page.getByRole('heading', { name: 'Nastavení', exact: true })).toBeVisible({
 			timeout: 5_000,
 		});
 

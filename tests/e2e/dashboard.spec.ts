@@ -10,7 +10,7 @@ test.describe('Dashboard', () => {
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
-		await expect(page.getByText('Zatím žádné seznamy')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Zatím žádné seznamy' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Vytvořit seznam' })).toBeVisible();
 
 		await page.context().close();
@@ -31,8 +31,8 @@ test.describe('Dashboard', () => {
 
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		await dialog.getByRole('textbox', { name: 'Nazev' }).fill('Vanoce 2026');
-		await dialog.getByRole('button', { name: 'Vytvorit' }).click();
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('Vanoce 2026');
+		await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
 
 		await expect(page.getByRole('heading', { level: 1, name: 'Vanoce 2026' })).toBeVisible({
 			timeout: 10_000,
@@ -48,14 +48,14 @@ test.describe('Dashboard', () => {
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
-		const gridButton = page.getByRole('button', { name: 'Mřížka karet' });
-		const listButton = page.getByRole('button', { name: 'Seznam', exact: true });
+		const gridButton = page.getByRole('radio', { name: 'Mřížka karet' });
+		const listButton = page.getByRole('radio', { name: 'Seznam', exact: true });
 
-		await expect(gridButton).toHaveAttribute('aria-pressed', 'true');
+		await expect(gridButton).toHaveAttribute('aria-checked', 'true');
 
 		await listButton.click();
-		await expect(listButton).toHaveAttribute('aria-pressed', 'true');
-		await expect(gridButton).toHaveAttribute('aria-pressed', 'false');
+		await expect(listButton).toHaveAttribute('aria-checked', 'true');
+		await expect(gridButton).toHaveAttribute('aria-checked', 'false');
 
 		await page.context().close();
 	});

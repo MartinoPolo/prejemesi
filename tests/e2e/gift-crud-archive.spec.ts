@@ -1,52 +1,11 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { createTestUser, TEST_GIFT } from './fixtures/test-data.js';
 import {
 	registerAndGetPage,
 	registerViaApi,
 	createAuthenticatedContext,
 } from './fixtures/auth-helpers.js';
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-async function createWishlistAndNavigate(page: Page, title: string) {
-	await page.goto('/my-lists');
-	await page.waitForLoadState('networkidle');
-	await page
-		.getByRole('button', { name: /Vytvořit/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: 'Nazev' }).fill(title);
-	await dialog.getByRole('button', { name: 'Vytvorit' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
-	await page.waitForLoadState('networkidle');
-}
-
-async function addGift(page: Page, name: string) {
-	await page
-		.getByRole('button', { name: /Pridat/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: /Nazev/i }).fill(name);
-	await dialog.getByRole('button', { name: 'Pridat darek' }).click();
-	await expect(page.getByText(name)).toBeVisible({ timeout: 10_000 });
-}
-
-async function shareWishlist(page: Page) {
-	await page
-		.getByRole('button', { name: /Sdilet seznam/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('button', { name: 'Sdilet seznam' }).click();
-	await expect(dialog.getByText('Seznam byl sdilen!')).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('button', { name: 'Hotovo' }).click();
-	await page.waitForLoadState('networkidle');
-}
+import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
 
 // ── Gift editing (issue #9) ───────────────────────────────────────────────────
 
@@ -69,7 +28,7 @@ test.describe('Gift editing', () => {
 
 		// The modal should be in edit mode — change the name
 		const updatedGiftName = 'Upraveny darek';
-		const nameInput = dialog.getByRole('textbox', { name: /Nazev/i });
+		const nameInput = dialog.getByRole('textbox', { name: 'Název' });
 		await nameInput.clear();
 		await nameInput.fill(updatedGiftName);
 
@@ -96,18 +55,18 @@ test.describe('Gift editing', () => {
 
 		// Create a gift with all fields filled
 		await page
-			.getByRole('button', { name: /Pridat/ })
+			.getByRole('button', { name: /Přidat/ })
 			.first()
 			.click();
 		const createDialog = page.getByRole('dialog');
 		await expect(createDialog).toBeVisible({ timeout: 5_000 });
-		await createDialog.getByRole('textbox', { name: /Nazev/i }).fill('Testovaci polozka');
+		await createDialog.getByRole('textbox', { name: 'Název' }).fill('Testovaci polozka');
 		await createDialog.getByRole('textbox', { name: /Popis/i }).fill('Popis testovaci');
 		await createDialog.locator('#gift-url').fill('https://example.com/item');
 		await createDialog.getByLabel(/Cena/).fill('999');
 		await createDialog.locator('#gift-quantity').clear();
 		await createDialog.locator('#gift-quantity').fill('3');
-		await createDialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 		await expect(page.getByText('Testovaci polozka')).toBeVisible({ timeout: 10_000 });
 
 		// Re-open the gift — edit modal must be pre-populated
@@ -115,7 +74,7 @@ test.describe('Gift editing', () => {
 		const editDialog = page.getByRole('dialog');
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
 
-		await expect(editDialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue(
+		await expect(editDialog.getByRole('textbox', { name: 'Název' })).toHaveValue(
 			'Testovaci polozka',
 		);
 		await expect(editDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue(
@@ -129,12 +88,12 @@ test.describe('Gift editing', () => {
 
 		// Open "Add gift" after editing — form must be empty (no stale data)
 		await page
-			.getByRole('button', { name: /Pridat/ })
+			.getByRole('button', { name: /Přidat/ })
 			.first()
 			.click();
 		const addDialog = page.getByRole('dialog');
 		await expect(addDialog).toBeVisible({ timeout: 5_000 });
-		await expect(addDialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue('');
+		await expect(addDialog.getByRole('textbox', { name: 'Název' })).toHaveValue('');
 		await expect(addDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue('');
 		await expect(addDialog.locator('#gift-url')).toHaveValue('');
 		await expect(addDialog.getByLabel(/Cena/)).toHaveValue('');
@@ -158,7 +117,7 @@ test.describe('Gift editing', () => {
 		await page.getByText('Darek alfa').click();
 		let dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		await expect(dialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue('Darek alfa');
+		await expect(dialog.getByRole('textbox', { name: 'Název' })).toHaveValue('Darek alfa');
 		await dialog.getByRole('button', { name: /Close|Zavřít|Zavrit/i }).click();
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
@@ -166,7 +125,7 @@ test.describe('Gift editing', () => {
 		await page.getByText('Darek beta').click();
 		dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		await expect(dialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue('Darek beta');
+		await expect(dialog.getByRole('textbox', { name: 'Název' })).toHaveValue('Darek beta');
 
 		await page.context().close();
 	});
@@ -228,8 +187,8 @@ test.describe('Edit lock after sharing', () => {
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		// The "Uložit" submit button should not be present (gift is locked)
-		await expect(dialog.getByRole('button', { name: /Uložit|Ulozit/i })).not.toBeVisible();
+		// The "Uložit" submit button is disabled (gift is locked after sharing)
+		await expect(dialog.getByRole('button', { name: /Uložit|Ulozit/i })).toBeDisabled();
 
 		await dialog.getByRole('button', { name: /Close|Zavřít|Zavrit/i }).click();
 

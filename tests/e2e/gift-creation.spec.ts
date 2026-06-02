@@ -2,29 +2,15 @@ import { test, expect, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
+import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-async function createWishlistAndNavigate(page: Page, title: string) {
-	await page.goto('/my-lists');
-	await page.waitForLoadState('networkidle');
-	await page
-		.getByRole('button', { name: /Vytvořit/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: 'Nazev' }).fill(title);
-	await dialog.getByRole('button', { name: 'Vytvorit' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
-	await page.waitForLoadState('networkidle');
-}
-
 async function openAddGiftDialog(page: Page): Promise<ReturnType<Page['getByRole']>> {
 	await page
-		.getByRole('button', { name: /Pridat/ })
+		.getByRole('button', { name: /Přidat/ })
 		.first()
 		.click();
 	const dialog = page.getByRole('dialog');
@@ -42,8 +28,8 @@ test.describe('Gift creation', () => {
 		await createWishlistAndNavigate(page, 'Minimal Gift Test');
 		const dialog = await openAddGiftDialog(page);
 
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Minimální dárek');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('Minimální dárek');
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('Minimální dárek')).toBeVisible({ timeout: 10_000 });
 
@@ -57,11 +43,11 @@ test.describe('Gift creation', () => {
 		await createWishlistAndNavigate(page, 'Full Gift Test');
 		const dialog = await openAddGiftDialog(page);
 
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Plný dárek');
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('Plný dárek');
 		await dialog.getByRole('textbox', { name: /Popis/i }).fill('Testovací popis');
 		await dialog.getByLabel(/Cena/).fill('1500');
 		await dialog.locator('#gift-url').fill('https://example.com/gift');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('Plný dárek')).toBeVisible({ timeout: 10_000 });
 		// Price formatted via Intl.NumberFormat — "1 500 Kč" or similar depending on locale
@@ -77,9 +63,9 @@ test.describe('Gift creation', () => {
 		await createWishlistAndNavigate(page, 'Partial URL Test');
 		const dialog = await openAddGiftDialog(page);
 
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Odkaz bez protokolu');
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('Odkaz bez protokolu');
 		await dialog.locator('#gift-url').fill('seznam.cz/produkt');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		// Should not fail — gift must appear in the list
 		await expect(page.getByText('Odkaz bez protokolu')).toBeVisible({ timeout: 10_000 });
@@ -106,9 +92,9 @@ test.describe('Gift creation', () => {
 		await createWishlistAndNavigate(page, 'HTTP URL Test');
 		const dialog = await openAddGiftDialog(page);
 
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('HTTP odkaz');
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('HTTP odkaz');
 		await dialog.locator('#gift-url').fill('http://example.com');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('HTTP odkaz')).toBeVisible({ timeout: 10_000 });
 
@@ -117,7 +103,9 @@ test.describe('Gift creation', () => {
 		const detailDialog = page.getByRole('dialog');
 		await expect(detailDialog).toBeVisible({ timeout: 5_000 });
 		const urlInput = detailDialog.locator('#gift-url');
-		await expect(urlInput).toHaveValue('http://example.com');
+		// The http:// prefix must be preserved (not double-prefixed to https://http://).
+		// A bare authority may be normalized with a trailing slash (http://example.com/).
+		await expect(urlInput).toHaveValue(/^http:\/\/example\.com\/?$/);
 
 		await page.context().close();
 	});
@@ -161,8 +149,8 @@ test.describe('Gift image upload', () => {
 		await expect(dialog.locator('.text-destructive')).not.toBeVisible();
 
 		// Fill in the gift name and submit
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Dárek s obrázkem');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('Dárek s obrázkem');
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('Dárek s obrázkem')).toBeVisible({ timeout: 10_000 });
 
@@ -180,8 +168,8 @@ test.describe('Gift image upload', () => {
 		await dialog.getByRole('button', { name: /Nahrát/i }).click();
 
 		// Fill name and submit immediately without uploading
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Dárek bez obrázku');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('Dárek bez obrázku');
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		// Creation should succeed
 		await expect(page.getByText('Dárek bez obrázku')).toBeVisible({ timeout: 10_000 });
@@ -201,19 +189,25 @@ test.describe('Gift list refresh after creation', () => {
 
 		// Add first gift
 		let dialog = await openAddGiftDialog(page);
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('První dárek');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
-		await expect(page.getByText('První dárek')).toBeVisible({ timeout: 10_000 });
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('První dárek');
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
+		await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+		await expect(page.getByRole('heading', { name: 'První dárek', level: 3 })).toBeVisible({
+			timeout: 10_000,
+		});
 
 		// Add second gift — no reload between
 		dialog = await openAddGiftDialog(page);
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Druhý dárek');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
-		await expect(page.getByText('Druhý dárek')).toBeVisible({ timeout: 10_000 });
+		await dialog.getByRole('textbox', { name: 'Název' }).fill('Druhý dárek');
+		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
+		await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+		await expect(page.getByRole('heading', { name: 'Druhý dárek', level: 3 })).toBeVisible({
+			timeout: 10_000,
+		});
 
 		// Both gifts must be visible simultaneously without a reload
-		await expect(page.getByText('První dárek')).toBeVisible();
-		await expect(page.getByText('Druhý dárek')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'První dárek', level: 3 })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Druhý dárek', level: 3 })).toBeVisible();
 
 		await page.context().close();
 	});
@@ -228,14 +222,18 @@ test.describe('Gift list refresh after creation', () => {
 
 		for (const giftName of giftNames) {
 			const dialog = await openAddGiftDialog(page);
-			await dialog.getByRole('textbox', { name: /Nazev/i }).fill(giftName);
-			await dialog.getByRole('button', { name: 'Pridat darek' }).click();
-			await expect(page.getByText(giftName)).toBeVisible({ timeout: 10_000 });
+			await dialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
+			await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
+			// Wait for the dialog to close so its input value can't pollute the heading check.
+			await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+			await expect(page.getByRole('heading', { name: giftName, level: 3 })).toBeVisible({
+				timeout: 10_000,
+			});
 		}
 
 		// All three must be visible at the same time
 		for (const giftName of giftNames) {
-			await expect(page.getByText(giftName)).toBeVisible();
+			await expect(page.getByRole('heading', { name: giftName, level: 3 })).toBeVisible();
 		}
 
 		await page.context().close();

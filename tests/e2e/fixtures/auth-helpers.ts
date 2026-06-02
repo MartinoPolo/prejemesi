@@ -12,6 +12,9 @@ export async function registerViaApi(
 	user: TestUser,
 ): Promise<string[]> {
 	const response = await request.post(`${baseURL}/api/auth/sign-up/email`, {
+		// better-auth rejects state-changing requests without an Origin header
+		// (MISSING_OR_NULL_ORIGIN); Playwright's APIRequestContext omits it by default.
+		headers: { Origin: baseURL },
 		data: { name: user.name, email: user.email, password: user.password },
 	});
 
@@ -34,6 +37,7 @@ export async function loginViaApi(
 	user: Pick<TestUser, 'email' | 'password'>,
 ): Promise<string[]> {
 	const response = await request.post(`${baseURL}/api/auth/sign-in/email`, {
+		headers: { Origin: baseURL },
 		data: { email: user.email, password: user.password },
 	});
 

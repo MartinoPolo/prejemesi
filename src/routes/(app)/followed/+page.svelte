@@ -155,7 +155,7 @@
 								handleUnfollow(wishlistItem.id);
 							}}
 						>
-							Prestat sledovat
+							{m.wishlist_detail_unfollow()}
 						</Button>
 					{/if}
 				{/snippet}

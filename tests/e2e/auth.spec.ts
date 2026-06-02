@@ -22,9 +22,9 @@ test.describe('Authentication', () => {
 
 		await page.goto('/login');
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('textbox', { name: 'Email' }).fill(user.email);
+		await page.getByRole('textbox', { name: 'E-mail' }).fill(user.email);
 		await page.getByRole('textbox', { name: 'Heslo' }).fill(user.password);
-		await page.getByRole('button', { name: 'Prihlasit se' }).click();
+		await page.getByRole('button', { name: 'Přihlásit se', exact: true }).click();
 
 		await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible({
 			timeout: 10_000,
@@ -34,9 +34,9 @@ test.describe('Authentication', () => {
 	test('login with invalid credentials shows error', async ({ page }) => {
 		await page.goto('/login');
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('textbox', { name: 'Email' }).fill('nonexistent@test.cz');
+		await page.getByRole('textbox', { name: 'E-mail' }).fill('nonexistent@test.cz');
 		await page.getByRole('textbox', { name: 'Heslo' }).fill('wrongpassword123');
-		await page.getByRole('button', { name: 'Prihlasit se' }).click();
+		await page.getByRole('button', { name: 'Přihlásit se', exact: true }).click();
 
 		await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
 	});

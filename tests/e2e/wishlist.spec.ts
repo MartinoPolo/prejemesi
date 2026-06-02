@@ -1,21 +1,7 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-
-async function createWishlistAndNavigate(page: Page, title: string) {
-	await page.goto('/my-lists');
-	await page.waitForLoadState('networkidle');
-	await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
-	await page.getByRole('button', { name: /Vytvo.it seznam|Vytvorit seznam/ }).click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: /N.zev|Nazev/i }).fill(title);
-	await dialog.getByRole('button', { name: /Vytvo.it|Vytvorit/ }).click();
-	await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible({
-		timeout: 10_000,
-	});
-	await page.waitForLoadState('networkidle');
-}
+import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
 
 test.describe('Wishlist page', () => {
 	test('shows draft banner for unshared wishlist', async ({ browser, request, baseURL }) => {
@@ -38,17 +24,17 @@ test.describe('Wishlist page', () => {
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await createWishlistAndNavigate(page, 'Test Views');
-		const cardBtn = page.getByRole('button', { name: 'Karta' });
-		const listBtn = page.getByRole('button', { name: 'Seznam', exact: true });
-		const compactBtn = page.getByRole('button', { name: 'Kompakt' });
+		const cardBtn = page.getByRole('radio', { name: 'Karta' });
+		const listBtn = page.getByRole('radio', { name: 'Seznam', exact: true });
+		const compactBtn = page.getByRole('radio', { name: 'Kompakt' });
 
-		await expect(cardBtn).toHaveAttribute('aria-pressed', 'true');
+		await expect(cardBtn).toHaveAttribute('aria-checked', 'true');
 
 		await listBtn.click();
-		await expect(listBtn).toHaveAttribute('aria-pressed', 'true');
+		await expect(listBtn).toHaveAttribute('aria-checked', 'true');
 
 		await compactBtn.click();
-		await expect(compactBtn).toHaveAttribute('aria-pressed', 'true');
+		await expect(compactBtn).toHaveAttribute('aria-checked', 'true');
 
 		await page.context().close();
 	});

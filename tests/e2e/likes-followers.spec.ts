@@ -5,43 +5,12 @@ import {
 	registerViaApi,
 	createAuthenticatedContext,
 } from './fixtures/auth-helpers.js';
+import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
 
 async function createSharedWishlistAndNavigate(page: Page, title: string): Promise<string> {
-	await page.goto('/my-lists');
-	await page.waitForLoadState('networkidle');
-	await page
-		.getByRole('button', { name: /Vytvořit/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: 'Nazev' }).fill(title);
-	await dialog.getByRole('button', { name: 'Vytvorit' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
-	await page.waitForLoadState('networkidle');
-
-	// Add a gift
-	await page
-		.getByRole('button', { name: /Pridat/ })
-		.first()
-		.click();
-	const giftDialog = page.getByRole('dialog');
-	await expect(giftDialog).toBeVisible({ timeout: 5_000 });
-	await giftDialog.getByRole('textbox', { name: /Nazev/i }).fill(TEST_GIFT.name);
-	await giftDialog.getByRole('button', { name: 'Pridat darek' }).click();
-	await expect(page.getByText(TEST_GIFT.name)).toBeVisible({ timeout: 10_000 });
-
-	// Share the wishlist
-	await page
-		.getByRole('button', { name: /Sdilet seznam/ })
-		.first()
-		.click();
-	const shareDialog = page.getByRole('dialog');
-	await expect(shareDialog).toBeVisible({ timeout: 5_000 });
-	await shareDialog.getByRole('button', { name: 'Sdilet seznam' }).click();
-	await expect(shareDialog.getByText('Seznam byl sdilen!')).toBeVisible({ timeout: 5_000 });
-	await shareDialog.getByRole('button', { name: 'Hotovo' }).click();
-
+	await createWishlistAndNavigate(page, title);
+	await addGift(page, TEST_GIFT.name);
+	await shareWishlist(page);
 	return new URL(page.url()).pathname;
 }
 
@@ -192,7 +161,9 @@ test.describe('Follower management', () => {
 		await expect(followerPage.getByRole('heading', { name: 'Sledované' })).toBeVisible({
 			timeout: 5_000,
 		});
-		await expect(followerPage.getByText(wishlistTitle)).toBeVisible({ timeout: 5_000 });
+		await expect(
+			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
+		).toBeVisible({ timeout: 5_000 });
 
 		await followerContext.close();
 	});
@@ -228,7 +199,9 @@ test.describe('Follower management', () => {
 		// Unfollow from /followed page
 		await followerPage.goto('/followed');
 		await followerPage.waitForLoadState('networkidle');
-		await expect(followerPage.getByText(wishlistTitle)).toBeVisible({ timeout: 5_000 });
+		await expect(
+			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
+		).toBeVisible({ timeout: 5_000 });
 
 		const wishlistCard = followerPage
 			.getByTestId('wishlist-card')
@@ -236,10 +209,12 @@ test.describe('Follower management', () => {
 			.first();
 
 		// Use the "Prestat sledovat" button inside the card
-		await wishlistCard.getByRole('button', { name: 'Prestat sledovat' }).click();
+		await wishlistCard.getByRole('button', { name: 'Přestat sledovat' }).click();
 
 		// Wishlist should no longer be visible (unfollowed items hidden by default)
-		await expect(followerPage.getByText(wishlistTitle)).not.toBeVisible({ timeout: 5_000 });
+		await expect(
+			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
+		).not.toBeVisible({ timeout: 5_000 });
 
 		await followerContext.close();
 	});
@@ -274,17 +249,24 @@ test.describe('Follower management', () => {
 
 		await followerPage.goto('/followed');
 		await followerPage.waitForLoadState('networkidle');
-		await expect(followerPage.getByText(wishlistTitle)).toBeVisible({ timeout: 5_000 });
+		await expect(
+			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
+		).toBeVisible({ timeout: 5_000 });
 
-		await followerPage.getByRole('button', { name: 'Prestat sledovat' }).first().click();
-		await expect(followerPage.getByText(wishlistTitle)).not.toBeVisible({ timeout: 5_000 });
+		await followerPage.getByRole('button', { name: 'Přestat sledovat' }).first().click();
+		await expect(
+			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
+		).not.toBeVisible({ timeout: 5_000 });
 
-		// Enable "Opuštěné" toggle
-		const toggle = followerPage.getByRole('switch');
+		// Enable "Opuštěné" toggle (the toolbar also has a "show archived" switch, so
+		// target this one by its label).
+		const toggle = followerPage.getByRole('switch', { name: 'Opuštěné' });
 		await toggle.click();
 
 		// Unfollowed wishlist should now be visible again with "Znovu sledovat" button
-		await expect(followerPage.getByText(wishlistTitle)).toBeVisible({ timeout: 5_000 });
+		await expect(
+			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
+		).toBeVisible({ timeout: 5_000 });
 		await expect(
 			followerPage.getByRole('button', { name: 'Znovu sledovat' }).first(),
 		).toBeVisible();
