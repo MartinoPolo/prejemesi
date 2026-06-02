@@ -21,19 +21,25 @@
 		tags: ['autodocs'],
 	});
 
+	// Headless CI chromium runs the play functions under heavy parallel load, where
+	// the default 1000ms waitFor timeout is occasionally exceeded (menu open / focus
+	// settle / highlight propagation). Give interaction assertions generous headroom
+	// so the suite is deterministic rather than timing-dependent.
+	const INTERACTION_TIMEOUT = { timeout: 3000 } as const;
+
 	async function expectMenuClosed(canvasElement: HTMLElement) {
 		await waitFor(() => {
 			const menu = canvasElement.querySelector('[role="menu"]');
 			if (menu) {
 				expect((menu as HTMLElement).dataset.state).toBe('closed');
 			}
-		});
+		}, INTERACTION_TIMEOUT);
 	}
 
 	async function waitForStoryReady() {
 		await waitFor(() => {
 			expect(getComputedStyle(document.body).pointerEvents).not.toBe('none');
-		});
+		}, INTERACTION_TIMEOUT);
 	}
 
 	function findDropdownTrigger(canvasElement: HTMLElement): HTMLElement {
@@ -56,32 +62,50 @@
 		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
-		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
+		await waitFor(
+			() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy(),
+			INTERACTION_TIMEOUT,
+		);
 	};
 
 	const playArrowDownFocusesItems = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
-		trigger.focus();
+		// Re-focus until it sticks: a single focus() can be raced by late event-listener
+		// attachment under CI load, which would drop the first ArrowDown and never open
+		// the menu — the original source of this story's flakiness.
+		await waitFor(() => {
+			trigger.focus();
+			expect(trigger).toHaveFocus();
+		}, INTERACTION_TIMEOUT);
 		await userEvent.keyboard('{ArrowDown}');
-		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
-		await waitFor(() =>
-			expect(
-				canvasElement.querySelectorAll('[role="menuitem"]').length,
-			).toBeGreaterThanOrEqual(2),
+		await waitFor(
+			() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy(),
+			INTERACTION_TIMEOUT,
 		);
-		await waitFor(() =>
-			expect(canvasElement.querySelectorAll('[role="menuitem"]')[0]).toHaveAttribute(
-				'data-highlighted',
-				'',
-			),
+		await waitFor(
+			() =>
+				expect(
+					canvasElement.querySelectorAll('[role="menuitem"]').length,
+				).toBeGreaterThanOrEqual(2),
+			INTERACTION_TIMEOUT,
+		);
+		await waitFor(
+			() =>
+				expect(canvasElement.querySelectorAll('[role="menuitem"]')[0]).toHaveAttribute(
+					'data-highlighted',
+					'',
+				),
+			INTERACTION_TIMEOUT,
 		);
 		await userEvent.keyboard('{ArrowDown}');
-		await waitFor(() =>
-			expect(canvasElement.querySelectorAll('[role="menuitem"]')[1]).toHaveAttribute(
-				'data-highlighted',
-				'',
-			),
+		await waitFor(
+			() =>
+				expect(canvasElement.querySelectorAll('[role="menuitem"]')[1]).toHaveAttribute(
+					'data-highlighted',
+					'',
+				),
+			INTERACTION_TIMEOUT,
 		);
 	};
 
@@ -89,10 +113,16 @@
 		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
-		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
+		await waitFor(
+			() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy(),
+			INTERACTION_TIMEOUT,
+		);
 		await userEvent.keyboard('{ArrowDown}');
 		const firstItem = canvasElement.querySelectorAll('[role="menuitem"]')[0];
-		await waitFor(() => expect(firstItem).toHaveAttribute('data-highlighted', ''));
+		await waitFor(
+			() => expect(firstItem).toHaveAttribute('data-highlighted', ''),
+			INTERACTION_TIMEOUT,
+		);
 		await userEvent.keyboard('{Enter}');
 		await expectMenuClosed(canvasElement);
 	};
@@ -101,7 +131,10 @@
 		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
 		trigger.click();
-		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
+		await waitFor(
+			() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy(),
+			INTERACTION_TIMEOUT,
+		);
 		await userEvent.keyboard('{Escape}');
 		await expectMenuClosed(canvasElement);
 	};
