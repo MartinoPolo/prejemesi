@@ -1,4 +1,5 @@
 import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { appBackgroundThemeEnum } from './enums.js';
 
 export const user = pgTable('user', {
 	id: text('id').primaryKey(),
@@ -6,6 +7,7 @@ export const user = pgTable('user', {
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull().default(false),
 	image: text('image'),
+	appBackgroundTheme: appBackgroundThemeEnum('app_background_theme').notNull().default('default'),
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

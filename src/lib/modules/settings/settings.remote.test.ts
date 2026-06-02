@@ -46,6 +46,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		name: 'u.name',
 		email: 'u.email',
 		image: 'u.image',
+		appBackgroundTheme: 'u.appBackgroundTheme',
 		updatedAt: 'u.updatedAt',
 	},
 	account: { userId: 'a.userId', providerId: 'a.providerId' },
@@ -55,7 +56,12 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...a: unknown[]) => a),
 }));
 
-import { getUserProfile, updateProfile, deleteAccount } from './settings.remote.js';
+import {
+	getUserProfile,
+	updateProfile,
+	updateAppBackgroundTheme,
+	deleteAccount,
+} from './settings.remote.js';
 import { getDb } from '$lib/server/db/index.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -101,7 +107,10 @@ beforeEach(() => {
 describe('getUserProfile', () => {
 	it('returns profile with isOAuthUser=false when only credential accounts', async () => {
 		mockGetDb.mockReturnValue(
-			createMockDb([[{ providerId: 'credential' }, { providerId: 'credential' }]]),
+			createMockDb([
+				[{ providerId: 'credential' }, { providerId: 'credential' }],
+				[{ appBackgroundTheme: 'default' }],
+			]),
 		);
 
 		const result = await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
@@ -114,12 +123,16 @@ describe('getUserProfile', () => {
 			email: testUser.email,
 			image: testUser.image,
 			isOAuthUser: false,
+			appBackgroundTheme: 'default',
 		});
 	});
 
 	it('returns profile with isOAuthUser=true when has Google account', async () => {
 		mockGetDb.mockReturnValue(
-			createMockDb([[{ providerId: 'credential' }, { providerId: 'google' }]]),
+			createMockDb([
+				[{ providerId: 'credential' }, { providerId: 'google' }],
+				[{ appBackgroundTheme: 'twilight' }],
+			]),
 		);
 
 		const result = await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
@@ -132,7 +145,32 @@ describe('getUserProfile', () => {
 			email: testUser.email,
 			image: testUser.image,
 			isOAuthUser: true,
+			appBackgroundTheme: 'twilight',
 		});
+	});
+
+	it('falls back to the default background theme when no user row is returned', async () => {
+		mockGetDb.mockReturnValue(createMockDb([[{ providerId: 'credential' }], []]));
+
+		const result = (await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		)) as { appBackgroundTheme: string };
+
+		expect(result.appBackgroundTheme).toBe('default');
+	});
+});
+
+describe('updateAppBackgroundTheme', () => {
+	it('persists the chosen background theme', async () => {
+		const mockDb = createMockDb([[]]);
+		mockGetDb.mockReturnValue(mockDb);
+
+		await (updateAppBackgroundTheme as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+			{ appBackgroundTheme: 'golden-hour' },
+		);
+
+		expect(mockDb.update).toHaveBeenCalledTimes(1);
 	});
 });
 

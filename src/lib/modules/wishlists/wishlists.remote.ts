@@ -267,12 +267,12 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		updateData['customThemeColor'] = input.customThemeColor;
 	}
 
-	// Images can always be updated
-	if (input.bannerImageKey !== undefined) {
-		updateData['bannerImageKey'] = input.bannerImageKey;
+	// Image assignment + per-slot crop metadata can always be updated
+	if (input.imageKey !== undefined) {
+		updateData['imageKey'] = input.imageKey;
 	}
-	if (input.thumbnailImageKey !== undefined) {
-		updateData['thumbnailImageKey'] = input.thumbnailImageKey;
+	if (input.imageSlots !== undefined) {
+		updateData['imageSlots'] = input.imageSlots;
 	}
 
 	const [updated] = await database

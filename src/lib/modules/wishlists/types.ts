@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import type { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
+import { WishlistImageSlotsSchema, type WishlistImageSlots } from '$lib/modules/images/types.js';
 
 /** Full wishlist row from DB */
 export type Wishlist = typeof wishlist.$inferSelect;
@@ -39,8 +40,8 @@ export interface UpdateWishlistInput {
 	eventDate?: Date | null;
 	theme?: WishlistTheme;
 	customThemeColor?: string | null;
-	bannerImageKey?: string | null;
-	thumbnailImageKey?: string | null;
+	imageKey?: string | null;
+	imageSlots?: WishlistImageSlots | null;
 }
 
 export const UpdateWishlistInputSchema = v.object({
@@ -50,8 +51,8 @@ export const UpdateWishlistInputSchema = v.object({
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
 	customThemeColor: v.optional(v.nullable(v.string())),
-	bannerImageKey: v.optional(v.nullable(v.string())),
-	thumbnailImageKey: v.optional(v.nullable(v.string())),
+	imageKey: v.optional(v.nullable(v.string())),
+	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
 });
 
 /** Viewer's role relative to a wishlist */

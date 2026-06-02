@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import type { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import type { priorityLevel } from '$lib/server/db/wishlist.schema.js';
+import { ImageMetadataSchema, type ImageMetadata } from '$lib/modules/images/types.js';
 
 /** Full gift row from DB */
 export type Gift = typeof gift.$inferSelect;
@@ -24,6 +25,8 @@ export interface GiftForVisitor {
 	price: number | null;
 	currency: string | null;
 	imageUrl: string | null;
+	imageKey: string | null;
+	imageMeta: ImageMetadata | null;
 	quantity: number | null;
 	sortOrder: number;
 	received: boolean;
@@ -45,6 +48,8 @@ export interface GiftForOwner {
 	price: number | null;
 	currency: string | null;
 	imageUrl: string | null;
+	imageKey: string | null;
+	imageMeta: ImageMetadata | null;
 	quantity: number | null;
 	sortOrder: number;
 	received: boolean;
@@ -108,6 +113,7 @@ export interface CreateGiftInput {
 	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
 	imageKey?: string | null;
+	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
 	sortOrder?: number;
@@ -124,6 +130,7 @@ export const CreateGiftInputSchema = v.object({
 	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 	imageUrl: v.optional(v.nullable(v.string())),
 	imageKey: v.optional(v.nullable(v.string())),
+	imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 	priorityLevelId: v.optional(v.nullable(v.string())),
 	sortOrder: v.optional(v.number()),
@@ -139,6 +146,7 @@ export interface UpdateGiftInput {
 	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
 	imageKey?: string | null;
+	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
 }
@@ -152,6 +160,7 @@ export const UpdateGiftInputSchema = v.object({
 	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 	imageUrl: v.optional(v.nullable(v.string())),
 	imageKey: v.optional(v.nullable(v.string())),
+	imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 	priorityLevelId: v.optional(v.nullable(v.string())),
 });

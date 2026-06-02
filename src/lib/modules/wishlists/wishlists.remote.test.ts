@@ -75,8 +75,8 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 		eventDate: 'wishlist.eventDate',
 		theme: 'wishlist.theme',
 		customThemeColor: 'wishlist.customThemeColor',
-		bannerImageKey: 'wishlist.bannerImageKey',
-		thumbnailImageKey: 'wishlist.thumbnailImageKey',
+		imageKey: 'wishlist.imageKey',
+		imageSlots: 'wishlist.imageSlots',
 		archivedAt: 'wishlist.archivedAt',
 	},
 	priorityLevel: {
@@ -210,8 +210,8 @@ function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string
 		eventDate: null,
 		theme: 'default',
 		customThemeColor: null,
-		bannerImageKey: null,
-		thumbnailImageKey: null,
+		imageKey: null,
+		imageSlots: null,
 		ownerIsModerator: false,
 		createdAt: new Date('2024-01-01T00:00:00Z'),
 		updatedAt: new Date('2024-01-01T00:00:00Z'),
@@ -347,6 +347,28 @@ describe('updateWishlist', () => {
 			});
 
 			expect(result).toMatchObject({ id: WISHLIST_ID, title: 'New Title' });
+		});
+	});
+
+	describe('owner can update image assignment + per-slot metadata', () => {
+		it('persists imageKey and imageSlots', async () => {
+			const imageSlots = {
+				card: { fitMode: 'cover-crop', focal: { x: 50, y: 40 } },
+				banner: { fitMode: 'cover-crop', cropRect: { x: 0, y: 0, w: 1, h: 0.5 } },
+			};
+			const updatedRow = makeWishlistRow({ imageKey: 'wishlists/hero.jpg', imageSlots });
+			// DB call 1: wishlist lookup (not shared)
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// DB call 2: update returning
+			mockDbInstance.pushResult([updatedRow]);
+
+			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+				id: WISHLIST_ID,
+				imageKey: 'wishlists/hero.jpg',
+				imageSlots,
+			});
+
+			expect(result).toMatchObject({ imageKey: 'wishlists/hero.jpg', imageSlots });
 		});
 	});
 

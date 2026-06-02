@@ -525,7 +525,7 @@
 		title={wishlist.title}
 		ownerName={wishlist.ownerName}
 		description={wishlist.description}
-		bannerImageKey={wishlist.bannerImageKey}
+		imageKey={wishlist.imageKey}
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
 		{role}
@@ -623,7 +623,7 @@
 		property="og:url"
 		content="{typeof window !== 'undefined' ? window.location.origin : ''}/w/{wishlist.shortId}"
 	/>
-	{#if wishlist.thumbnailImageKey}
-		<meta property="og:image" content={wishlist.thumbnailImageKey} />
+	{#if wishlist.imageKey}
+		<meta property="og:image" content={wishlist.imageKey} />
 	{/if}
 </svelte:head>
