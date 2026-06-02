@@ -136,6 +136,21 @@ describe('toggleLike', () => {
 		});
 	});
 
+	it('throws 400 when the wishlist is archived', async () => {
+		// Query 1: gift found, Query 2: wishlist with status archived
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ ownerId: 'owner-other', status: 'archived' }],
+			]),
+		);
+
+		await expect(callToggleLike(testAuthContext, testInput)).rejects.toMatchObject({
+			status: 400,
+			message: 'CANNOT_LIKE_ON_ARCHIVED',
+		});
+	});
+
 	it('throws 403 when the user is the wishlist owner', async () => {
 		// Query 1: gift found, Query 2: wishlist with same ownerId as user
 		mockGetDb.mockReturnValue(

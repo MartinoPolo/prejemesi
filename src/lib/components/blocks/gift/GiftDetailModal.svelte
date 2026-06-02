@@ -120,6 +120,17 @@
 		return true;
 	}
 
+	function normalizeUrl(raw: string): string | null {
+		const trimmed = raw.trim();
+		if (trimmed === '') {
+			return null;
+		}
+		if (/^https?:\/\//i.test(trimmed)) {
+			return trimmed;
+		}
+		return `https://${trimmed}`;
+	}
+
 	function handleSubmit() {
 		if (!validateForm()) {
 			return;
@@ -129,13 +140,14 @@
 		const quantityStr = String(quantity).trim();
 		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
+		const normalizedUrl = normalizeUrl(url);
 
 		if (mode === 'create') {
 			oncreate?.({
 				wishlistId,
 				name: name.trim(),
 				description: description.trim() || null,
-				url: url.trim() || null,
+				url: normalizedUrl,
 				price: parsedPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
@@ -148,7 +160,7 @@
 				id: gift.id,
 				name: name.trim(),
 				description: description.trim() || null,
-				url: url.trim() || null,
+				url: normalizedUrl,
 				price: parsedPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
@@ -250,7 +262,12 @@
 				<!-- URL -->
 				<div class="mt-3 {styles.formField()}">
 					<Label for="gift-url">{m.gift_url_label()}</Label>
-					<Input id="gift-url" bind:value={url} placeholder="https://..." type="url" />
+					<Input
+						id="gift-url"
+						bind:value={url}
+						placeholder="seznam.cz/produkt"
+						type="text"
+					/>
 				</div>
 
 				<!-- Price + Currency -->

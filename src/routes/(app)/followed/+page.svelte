@@ -24,9 +24,12 @@
 	let wishlistData = $state.raw<FollowedWishlist[]>([]);
 	let isLoading = $state(true);
 
-	async function fetchWishlists() {
+	async function fetchWishlists(refresh = false) {
 		isLoading = true;
 		try {
+			if (refresh) {
+				await getFollowedWishlists().refresh();
+			}
 			wishlistData = await getFollowedWishlists();
 		} catch {
 			wishlistData = [];
@@ -50,7 +53,7 @@
 	async function handleUnfollow(wishlistId: string) {
 		try {
 			await unfollowWishlist(wishlistId);
-			await fetchWishlists();
+			await fetchWishlists(true);
 			toastSuccess(m.toast_unfollowed());
 		} catch {
 			toastError(m.toast_unfollow_error());
@@ -60,7 +63,7 @@
 	async function handleRefollow(wishlistId: string) {
 		try {
 			await refollowWishlist(wishlistId);
-			await fetchWishlists();
+			await fetchWishlists(true);
 			toastSuccess(m.toast_refollowed());
 		} catch {
 			toastError(m.toast_refollow_error());

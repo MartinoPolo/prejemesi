@@ -183,6 +183,8 @@ import {
 	archiveWishlist,
 	createWishlist,
 	followWishlist,
+	unfollowWishlist,
+	refollowWishlist,
 	getWishlistByShortId,
 } from './wishlists.remote.js';
 
@@ -611,6 +613,68 @@ describe('getWishlistByShortId', () => {
 				status: 404,
 				message: 'Wishlist not found',
 			});
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('unfollowWishlist', () => {
+	describe('sets unfollowedAt on the follower record', () => {
+		it('resolves without error when follower record exists', async () => {
+			// DB call 1: update wishlistFollower — row matched and updated
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(unfollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					WISHLIST_ID,
+				),
+			).resolves.not.toThrow();
+		});
+	});
+
+	describe('completes without error even if no follower record exists (no-op update)', () => {
+		it('resolves without error when no matching follower record exists', async () => {
+			// DB call 1: update wishlistFollower — no rows matched (no-op)
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(unfollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					'nonexistent-wishlist',
+				),
+			).resolves.not.toThrow();
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('refollowWishlist', () => {
+	describe('clears unfollowedAt and updates lastVisitedAt', () => {
+		it('resolves without error when follower record exists', async () => {
+			// DB call 1: update wishlistFollower — row matched and updated
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(refollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					WISHLIST_ID,
+				),
+			).resolves.not.toThrow();
+		});
+	});
+
+	describe('completes without error even if no follower record exists (no-op update)', () => {
+		it('resolves without error when no matching follower record exists', async () => {
+			// DB call 1: update wishlistFollower — no rows matched (no-op)
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(refollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					'nonexistent-wishlist',
+				),
+			).resolves.not.toThrow();
 		});
 	});
 });

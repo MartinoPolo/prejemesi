@@ -80,6 +80,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 
 import {
 	acceptModeratorInvite,
+	generateModeratorInviteLink,
 	revokeModeratorInvite,
 	removeModerator,
 	selfPromoteToModerator,
@@ -188,6 +189,12 @@ const callRemoveModerator = (
 	input: { assignmentId: string },
 ) => (removeModerator as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
+const callGenerateModeratorInviteLink = (
+	authContext: typeof ownerAuthContext,
+	input: { wishlistId: string },
+) =>
+	(generateModeratorInviteLink as unknown as (...args: unknown[]) => unknown)(authContext, input);
+
 const callSelfPromoteToModerator = (
 	authContext: typeof ownerAuthContext,
 	input: { wishlistId: string },
@@ -284,6 +291,30 @@ describe('acceptModeratorInvite', () => {
 			callAcceptModeratorInvite(regularAuthContext, { token: testInviteToken }),
 		).rejects.toMatchObject({ status: 400, message: 'ALREADY_MODERATOR' });
 	});
+
+	it('archived wishlist → throws 400', async () => {
+		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
+		// 1: invite found, 2: wishlist found with archived status
+		mockGetDb.mockReturnValue(createMockDb([[pendingInviteRow], [archivedWishlistRow]]));
+
+		await expect(
+			callAcceptModeratorInvite(regularAuthContext, { token: testInviteToken }),
+		).rejects.toMatchObject({ status: 400, message: 'CANNOT_INVITE_ON_ARCHIVED' });
+	});
+});
+
+// ── generateModeratorInviteLink ──────────────────────────────────────────────
+
+describe('generateModeratorInviteLink', () => {
+	it('archived wishlist → throws 400', async () => {
+		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
+		// 1: wishlist lookup (verifyWishlistOwner)
+		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
+
+		await expect(
+			callGenerateModeratorInviteLink(ownerAuthContext, { wishlistId: testWishlistId }),
+		).rejects.toMatchObject({ status: 400, message: 'CANNOT_INVITE_ON_ARCHIVED' });
+	});
 });
 
 // ── revokeModeratorInvite ────────────────────────────────────────────────────
@@ -369,6 +400,16 @@ describe('selfPromoteToModerator', () => {
 		await expect(
 			callSelfPromoteToModerator(ownerAuthContext, { wishlistId: testWishlistId }),
 		).rejects.toMatchObject({ status: 400, message: 'ALREADY_SEEING_RESERVATIONS' });
+	});
+
+	it('archived wishlist → throws 400', async () => {
+		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
+		// 1: wishlist lookup (verifyWishlistOwner)
+		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
+
+		await expect(
+			callSelfPromoteToModerator(ownerAuthContext, { wishlistId: testWishlistId }),
+		).rejects.toMatchObject({ status: 400, message: 'CANNOT_SELF_PROMOTE_ON_ARCHIVED' });
 	});
 });
 

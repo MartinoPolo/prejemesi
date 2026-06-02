@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
-	import * as Sheet from '$lib/components/base/sheet/index.js';
+	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ModeratorListItem from './ModeratorListItem.svelte';
@@ -151,14 +151,14 @@
 	}
 </script>
 
-<Sheet.Root {open} onOpenChange={handleOpenChange}>
-	<Sheet.Content side="right" class="w-full sm:max-w-md">
-		<Sheet.Header>
-			<Sheet.Title>{m.moderator_title()}</Sheet.Title>
-			<Sheet.Description>{m.moderator_description()}</Sheet.Description>
-		</Sheet.Header>
+<Dialog.Root {open} onOpenChange={handleOpenChange}>
+	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-md">
+		<Dialog.Header>
+			<Dialog.Title>{m.moderator_title()}</Dialog.Title>
+			<Dialog.Description>{m.moderator_description()}</Dialog.Description>
+		</Dialog.Header>
 
-		<div class="flex flex-col gap-6 px-4 py-4">
+		<div class="flex flex-col gap-6">
 			<!-- Active moderators -->
 			<div class={styles.section()}>
 				<div class={styles.sectionTitle()}>{m.moderator_active_title()}</div>
@@ -300,5 +300,5 @@
 				</div>
 			{/if}
 		</div>
-	</Sheet.Content>
-</Sheet.Root>
+	</Dialog.Content>
+</Dialog.Root>
