@@ -6,12 +6,12 @@
 
 /* ── moss (default primary is already moss-based; only override accent tokens) ── */
 [data-accent='moss']:not(.dark) {
-	--accent: var(--moss-100);
+	--accent: var(--moss-300);
 	--accent-foreground: var(--moss-800);
 }
 
 [data-accent='moss'].dark {
-	--accent: var(--moss-800);
+	--accent: var(--moss-700);
 	--accent-foreground: var(--moss-100);
 }
 
