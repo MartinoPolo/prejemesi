@@ -9,17 +9,21 @@
 </script>
 
 <Story name="Horizontal">
-	<div class="flex flex-col gap-4">
-		<p class="text-sm">Content above</p>
-		<Separator />
-		<p class="text-sm">Content below</p>
-	</div>
+	{#snippet template()}
+		<div class="flex flex-col gap-4">
+			<p class="text-sm">Content above</p>
+			<Separator />
+			<p class="text-sm">Content below</p>
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="Vertical">
-	<div class="flex h-8 items-center gap-4">
-		<span class="text-sm">Left</span>
-		<Separator orientation="vertical" />
-		<span class="text-sm">Right</span>
-	</div>
+	{#snippet template()}
+		<div class="flex h-8 items-center gap-4">
+			<span class="text-sm">Left</span>
+			<Separator orientation="vertical" />
+			<span class="text-sm">Right</span>
+		</div>
+	{/snippet}
 </Story>

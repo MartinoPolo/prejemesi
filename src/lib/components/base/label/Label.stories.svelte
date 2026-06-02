@@ -9,9 +9,13 @@
 </script>
 
 <Story name="Default">
-	<Label>Label text</Label>
+	{#snippet template()}
+		<Label>Label text</Label>
+	{/snippet}
 </Story>
 
 <Story name="With For">
-	<Label for="input-id">Email address</Label>
+	{#snippet template()}
+		<Label for="input-id">Email address</Label>
+	{/snippet}
 </Story>

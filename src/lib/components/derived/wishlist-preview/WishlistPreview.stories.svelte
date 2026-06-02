@@ -10,19 +10,25 @@
 </script>
 
 <Story name="Default">
-	<div class="w-72">
-		<WishlistPreview emoji="🎁" label="Vánoční přání" />
-	</div>
+	{#snippet template()}
+		<div class="w-72">
+			<WishlistPreview emoji="🎁" label="Vánoční přání" />
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="Birthday">
-	<div class="w-72">
-		<WishlistPreview emoji="🎂" label="Narozeniny" />
-	</div>
+	{#snippet template()}
+		<div class="w-72">
+			<WishlistPreview emoji="🎂" label="Narozeniny" />
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="No label">
-	<div class="w-72">
-		<WishlistPreview emoji="✨" />
-	</div>
+	{#snippet template()}
+		<div class="w-72">
+			<WishlistPreview emoji="✨" />
+		</div>
+	{/snippet}
 </Story>

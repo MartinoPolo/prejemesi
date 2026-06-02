@@ -14,19 +14,35 @@
 </script>
 
 <Story name="All slots (fallback)">
-	<div class="grid w-[28rem] grid-cols-2 gap-3 sm:grid-cols-4">
-		<SlotPreviewCard slot="card" label="Card" src={null} {frame} themeEmoji="🎁" />
-		<SlotPreviewCard slot="thumbnail" label="Thumbnail" src={null} {frame} themeEmoji="🎁" />
-		<SlotPreviewCard slot="banner" label="Header" src={null} {frame} themeEmoji="🎁" />
-		<SlotPreviewCard slot="social" label="Social" src={null} {frame} themeEmoji="🎁" />
-	</div>
+	{#snippet template()}
+		<div class="grid w-[28rem] grid-cols-2 gap-3 sm:grid-cols-4">
+			<SlotPreviewCard slot="card" label="Card" src={null} {frame} themeEmoji="🎁" />
+			<SlotPreviewCard
+				slot="thumbnail"
+				label="Thumbnail"
+				src={null}
+				{frame}
+				themeEmoji="🎁"
+			/>
+			<SlotPreviewCard slot="banner" label="Header" src={null} {frame} themeEmoji="🎁" />
+			<SlotPreviewCard slot="social" label="Social" src={null} {frame} themeEmoji="🎁" />
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="Active selection">
-	<div class="grid w-[28rem] grid-cols-2 gap-3 sm:grid-cols-4">
-		<SlotPreviewCard slot="card" label="Card" src={null} {frame} themeEmoji="🎄" active />
-		<SlotPreviewCard slot="thumbnail" label="Thumbnail" src={null} {frame} themeEmoji="🎄" />
-		<SlotPreviewCard slot="banner" label="Header" src={null} {frame} themeEmoji="🎄" />
-		<SlotPreviewCard slot="social" label="Social" src={null} {frame} themeEmoji="🎄" />
-	</div>
+	{#snippet template()}
+		<div class="grid w-[28rem] grid-cols-2 gap-3 sm:grid-cols-4">
+			<SlotPreviewCard slot="card" label="Card" src={null} {frame} themeEmoji="🎄" active />
+			<SlotPreviewCard
+				slot="thumbnail"
+				label="Thumbnail"
+				src={null}
+				{frame}
+				themeEmoji="🎄"
+			/>
+			<SlotPreviewCard slot="banner" label="Header" src={null} {frame} themeEmoji="🎄" />
+			<SlotPreviewCard slot="social" label="Social" src={null} {frame} themeEmoji="🎄" />
+		</div>
+	{/snippet}
 </Story>

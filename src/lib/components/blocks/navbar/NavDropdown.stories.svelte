@@ -39,21 +39,27 @@
 </script>
 
 <Story name="With Items">
-	<div class="nav-item is-open story-wrapper">
-		<NavDropdown title="Seznamy" viewAllHref="#all" items={sampleItems} />
-	</div>
+	{#snippet template()}
+		<div class="nav-item is-open story-wrapper">
+			<NavDropdown title="Seznamy" viewAllHref="#all" items={sampleItems} />
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="Empty State">
-	<div class="nav-item is-open story-wrapper">
-		<NavDropdown title="Seznamy" viewAllHref="#all" items={[]} />
-	</div>
+	{#snippet template()}
+		<div class="nav-item is-open story-wrapper">
+			<NavDropdown title="Seznamy" viewAllHref="#all" items={[]} />
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="Single Item">
-	<div class="nav-item is-open story-wrapper">
-		<NavDropdown title="Seznamy" viewAllHref="#all" items={[sampleItems[0]]} />
-	</div>
+	{#snippet template()}
+		<div class="nav-item is-open story-wrapper">
+			<NavDropdown title="Seznamy" viewAllHref="#all" items={[sampleItems[0]]} />
+		</div>
+	{/snippet}
 </Story>
 
 <style>
