@@ -17,7 +17,6 @@ import {
 } from './types.js';
 import { normalizeGiftUrl } from './gift_url.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
