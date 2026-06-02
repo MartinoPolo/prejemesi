@@ -29,6 +29,8 @@
 		fitMode?: ImageFitMode;
 		/** Focal point (%) honored in cover-crop. */
 		focal?: Focal;
+		/** Zoom factor (1 = 100%) honored in cover-crop, magnifying toward the focal point. */
+		zoom?: number;
 		/** Extracted/manual dominant color — tier 1 of the fill chain (REQ-3). */
 		fillColor?: string | null;
 		/** Scopes the tier-2 fill to the wishlist or the global surface (REQ-3). */
@@ -51,6 +53,7 @@
 		alt,
 		fitMode = IMAGE_FIT_MODES.auto,
 		focal = { x: 50, y: 50 },
+		zoom = 1,
 		fillColor = null,
 		tokenScope = 'global',
 		fallbackEmoji = '🎁',
@@ -91,6 +94,17 @@
 	);
 
 	const styles = $derived(imageFrameVariants({ fit: effectiveFit, shape, interactive }));
+
+	// cover-crop honors the focal point (object-position) and an optional zoom that
+	// magnifies toward that same point — together they reproduce a saved manual crop.
+	const imageStyle = $derived(
+		effectiveFit === IMAGE_FIT_MODES.coverCrop
+			? `object-position: ${focal.x}% ${focal.y}%;` +
+					(zoom !== 1
+						? ` transform: scale(${zoom}); transform-origin: ${focal.x}% ${focal.y}%;`
+						: '')
+			: undefined,
+	);
 
 	const fallbackText = $derived(alt !== '' ? alt : (fallbackLabel ?? m.image_frame_no_image()));
 
@@ -137,9 +151,7 @@
 		{#if hasSrc}
 			<img
 				class={styles.image()}
-				style={effectiveFit === IMAGE_FIT_MODES.coverCrop
-					? `object-position: ${focal.x}% ${focal.y}%;`
-					: undefined}
+				style={imageStyle}
 				{src}
 				{alt}
 				aria-hidden={alt === '' ? 'true' : undefined}

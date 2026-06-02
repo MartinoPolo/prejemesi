@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import ReservationBadge from '$lib/components/blocks/reservation/ReservationBadge.svelte';
@@ -43,15 +43,12 @@
 	)}
 >
 	<!-- Thumbnail -->
-	<div class="size-16 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
-		{#if gift.imageUrl}
-			<img src={gift.imageUrl} alt={gift.name} class="size-full object-cover" />
-		{:else}
-			<div class="flex size-full items-center justify-center">
-				<GiftIcon class="size-6 text-muted-foreground/40" />
-			</div>
-		{/if}
-	</div>
+	<GiftImage
+		class="size-16 flex-shrink-0 rounded-lg"
+		imageUrl={gift.imageUrl}
+		imageMeta={gift.imageMeta}
+		alt={gift.name}
+	/>
 
 	<!-- Info -->
 	<div class="flex min-w-0 flex-1 flex-col gap-1">
