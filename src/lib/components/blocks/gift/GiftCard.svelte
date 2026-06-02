@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import ReservationBadge from '$lib/components/blocks/reservation/ReservationBadge.svelte';
@@ -42,13 +42,12 @@
 <div class={styles.card()}>
 	<!-- Image area -->
 	<div class={styles.imageArea()}>
-		{#if gift.imageUrl}
-			<img src={gift.imageUrl} alt={gift.name} class={styles.image()} />
-		{:else}
-			<div class={styles.imagePlaceholder()}>
-				<GiftIcon class="size-12 text-muted-foreground/40" />
-			</div>
-		{/if}
+		<GiftImage
+			class="size-full"
+			imageUrl={gift.imageUrl}
+			imageMeta={gift.imageMeta}
+			alt={gift.name}
+		/>
 
 		{#if isVisitorOrModerator && isFullyReserved}
 			<div class={styles.reservedOverlay()}>

@@ -7,6 +7,11 @@
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
+	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
+	import GiftImageCropCanvas from './GiftImageCropCanvas.svelte';
+	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
@@ -28,6 +33,17 @@
 	} from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
+	import {
+		IMAGE_FIT_MODES,
+		IMAGE_TOKEN_SCOPES,
+		type ImageFitMode,
+	} from '$lib/components/derived/image-frame/index.js';
+	import {
+		cropRectToFocalZoom,
+		imageMetaToFrameProps,
+		type ImageCropRect,
+		type ImageMetadata,
+	} from '$lib/modules/images/index.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -74,12 +90,25 @@
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
 
+	// Image presentation metadata (REQ-1/3). The crop rect is the editing representation;
+	// it is converted to the renderer's focal+zoom on save and retained when switching
+	// away from Crop so re-selecting it restores the region.
+	const FULL_CROP: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
+	let fitMode = $state<ImageFitMode>(gift?.imageMeta?.fitMode ?? IMAGE_FIT_MODES.auto);
+	let cropRect = $state<ImageCropRect>({ ...(gift?.imageMeta?.cropRect ?? FULL_CROP) });
+	const bgColor = gift?.imageMeta?.bgColor ?? null;
+
 	const styles = giftDetailModalVariants();
 
 	const isEdit = $derived(mode === 'edit');
 	const isEditLocked = $derived(isEdit && !canEdit);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
+
+	const previewSrc = $derived(imageUrl.trim() !== '' ? imageUrl.trim() : null);
+	const isCropMode = $derived(fitMode === IMAGE_FIT_MODES.coverCrop);
+	const currentImageMeta = $derived(buildImageMeta());
+	const framePreview = $derived(imageMetaToFrameProps(currentImageMeta));
 
 	function validateForm(): boolean {
 		nameError = '';
@@ -101,6 +130,18 @@
 		return `https://${trimmed}`;
 	}
 
+	/** Build persistable image presentation metadata from the current editor state. */
+	function buildImageMeta(): ImageMetadata {
+		const { focal, zoom } = cropRectToFocalZoom(cropRect);
+		return {
+			fitMode,
+			cropRect: { x: cropRect.x, y: cropRect.y, w: cropRect.w, h: cropRect.h },
+			focal,
+			zoom,
+			bgColor,
+		};
+	}
+
 	function handleSubmit() {
 		if (!validateForm()) {
 			return;
@@ -111,6 +152,7 @@
 		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
 		const normalizedUrl = normalizeUrl(url);
+		const imageMeta = hasImage ? buildImageMeta() : null;
 
 		if (mode === 'create') {
 			oncreate?.({
@@ -122,6 +164,7 @@
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
+				imageMeta,
 				quantity: parsedQuantity,
 				priorityLevelId: priorityLevelId || null,
 			});
@@ -135,6 +178,7 @@
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
+				imageMeta,
 				quantity: parsedQuantity,
 				priorityLevelId: priorityLevelId || null,
 			});
@@ -168,10 +212,27 @@
 </script>
 
 <div class={styles.body()}>
-	<!-- Left column: image -->
+	<!-- Left column: image stage (crop canvas in Crop mode, else live renderer preview) -->
 	<div class={styles.imageColumn()}>
-		{#if hasImage}
-			<img src={imageUrl} alt={name || m.gift_image_preview()} class={styles.image()} />
+		{#if hasImage && previewSrc !== null && isCropMode}
+			<div class="flex size-full items-center justify-center p-4">
+				<GiftImageCropCanvas
+					src={previewSrc}
+					alt={name || m.gift_image_preview()}
+					bind:cropRect
+				/>
+			</div>
+		{:else if hasImage}
+			<ImageFrame
+				class="size-full"
+				src={previewSrc}
+				alt={name || m.gift_image_preview()}
+				fitMode={framePreview.fitMode}
+				focal={framePreview.focal}
+				zoom={framePreview.zoom}
+				fillColor={framePreview.fillColor}
+				tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+			/>
 		{:else}
 			<div class={styles.imagePlaceholder()}>
 				<GiftIcon class="size-16 text-muted-foreground/40" />
@@ -293,6 +354,44 @@
 						onUpload={handleImageUpload}
 						onError={handleImageUploadError}
 					/>
+				{/if}
+
+				<!-- Fit-mode controls + live multi-slot previews appear once an image exists (REQ-1/2) -->
+				{#if hasImage}
+					<div class="mt-3 flex flex-col gap-2">
+						<Label>{m.gift_image_fit_label()}</Label>
+						<ToggleGroup.Root
+							type="single"
+							value={fitMode}
+							onValueChange={(value: string) => {
+								if (value !== '') {
+									fitMode = value as ImageFitMode;
+								}
+							}}
+							aria-label={m.gift_image_fit_label()}
+						>
+							<ToggleGroup.Item value={IMAGE_FIT_MODES.auto}>
+								{m.gift_image_fit_auto()}
+							</ToggleGroup.Item>
+							<ToggleGroup.Item value={IMAGE_FIT_MODES.containPadded}>
+								{m.gift_image_fit_contain()}
+							</ToggleGroup.Item>
+							<ToggleGroup.Item value={IMAGE_FIT_MODES.coverCrop}>
+								{m.gift_image_fit_crop()}
+							</ToggleGroup.Item>
+						</ToggleGroup.Root>
+						{#if fitMode === IMAGE_FIT_MODES.auto}
+							<HelpText>{m.gift_image_fit_auto_help()}</HelpText>
+						{/if}
+						<GiftImagePreviewSlots
+							src={previewSrc}
+							alt={name || m.gift_image_preview()}
+							fitMode={framePreview.fitMode}
+							focal={framePreview.focal}
+							zoom={framePreview.zoom}
+							fillColor={framePreview.fillColor}
+						/>
+					</div>
 				{/if}
 			</div>
 

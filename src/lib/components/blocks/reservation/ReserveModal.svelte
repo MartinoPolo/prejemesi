@@ -5,7 +5,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
-	import GiftIcon from '@lucide/svelte/icons/gift';
+	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import MinusIcon from '@lucide/svelte/icons/minus';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { resolve } from '$app/paths';
@@ -118,19 +118,12 @@
 			<div class={styles.body()}>
 				<!-- Gift summary -->
 				<div class={styles.giftSummary()}>
-					<div class={styles.giftImage()}>
-						{#if gift.imageUrl}
-							<img
-								src={gift.imageUrl}
-								alt={gift.name}
-								class={styles.giftImageElement()}
-							/>
-						{:else}
-							<div class={styles.giftImagePlaceholder()}>
-								<GiftIcon class="size-5 text-muted-foreground/40" />
-							</div>
-						{/if}
-					</div>
+					<GiftImage
+						class={styles.giftImage()}
+						imageUrl={gift.imageUrl}
+						imageMeta={gift.imageMeta}
+						alt={gift.name}
+					/>
 					<div class={styles.giftInfo()}>
 						<p class={styles.giftName()}>{gift.name}</p>
 						<p class={styles.giftAvailability()}>
