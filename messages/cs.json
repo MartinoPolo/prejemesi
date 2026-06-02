@@ -456,6 +456,10 @@
 	"theme_elegant": "Elegantní",
 	"theme_custom": "Vlastní",
 
+	"image_frame_no_image": "Bez obrázku",
+	"image_frame_loading": "Načítání obrázku…",
+	"wishlist_preview_label": "Náhled seznamu",
+
 	"followed_title": "Sledované",
 	"followed_loading": "Načítání...",
 	"followed_empty_title": "Nesledujete žádné seznamy",

@@ -127,6 +127,10 @@
 	--wishlist-border-strong: oklch(87% 0.015 107deg);
 	--wishlist-muted: oklch(96.6% 0.005 107deg);
 	--wishlist-muted-fg: oklch(58% 0.031 107deg);
+	--wishlist-preview: oklch(96% 0.03 150deg);
+	--wishlist-page: oklch(98.5% 0.008 150deg);
+	--wishlist-icon: oklch(55% 0.12 150deg);
+	--wishlist-image-frame: oklch(95% 0.012 150deg);
 
 	/* ── shadcn theme ──────────────────────────────────────── */
 	--radius: 0.625rem;
@@ -346,6 +350,10 @@
 	--wishlist-border-strong: oklch(100% 0 0deg / 20%);
 	--wishlist-muted: oklch(25% 0.01 107deg);
 	--wishlist-muted-fg: oklch(72% 0.025 107deg);
+	--wishlist-preview: oklch(26% 0.04 150deg);
+	--wishlist-page: oklch(17% 0.012 150deg);
+	--wishlist-icon: oklch(70% 0.12 150deg);
+	--wishlist-image-frame: oklch(22% 0.016 150deg);
 
 	/* Status (dark) */
 	--status-success: oklch(72% 0.12 145deg);
@@ -471,6 +479,10 @@
 	--color-wishlist-border-strong: var(--wishlist-border-strong);
 	--color-wishlist-muted: var(--wishlist-muted);
 	--color-wishlist-muted-fg: var(--wishlist-muted-fg);
+	--color-wishlist-preview: var(--wishlist-preview);
+	--color-wishlist-page: var(--wishlist-page);
+	--color-wishlist-icon: var(--wishlist-icon);
+	--color-wishlist-image-frame: var(--wishlist-image-frame);
 }
 
 @theme {

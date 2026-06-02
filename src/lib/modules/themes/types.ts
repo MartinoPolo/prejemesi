@@ -29,6 +29,14 @@ export interface ThemePalette {
 	'--wishlist-border-strong': string;
 	'--wishlist-muted': string;
 	'--wishlist-muted-fg': string;
+	/** Wishlist card preview surface (the themed background behind a preview). */
+	'--wishlist-preview': string;
+	/** Wishlist page content background. */
+	'--wishlist-page': string;
+	/** Icon/pattern fill color for fallback (empty/error) image visuals. */
+	'--wishlist-icon': string;
+	/** Image-frame letterbox fill (tier 2 of the background-fill priority chain). */
+	'--wishlist-image-frame': string;
 }
 
 /** All CSS variable keys in a theme palette */
@@ -43,6 +51,10 @@ export const THEME_PALETTE_KEYS = [
 	'--wishlist-border-strong',
 	'--wishlist-muted',
 	'--wishlist-muted-fg',
+	'--wishlist-preview',
+	'--wishlist-page',
+	'--wishlist-icon',
+	'--wishlist-image-frame',
 ] as const satisfies readonly (keyof ThemePalette)[];
 
 /** Metadata for a theme preset (display info + palette) */
