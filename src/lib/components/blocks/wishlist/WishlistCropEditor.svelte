@@ -311,7 +311,7 @@
 	{/if}
 
 	<div class="flex justify-end">
-		<Button disabled={isSaving} onclick={handleSave}>
+		<Button data-testid="wishlist-image-save" disabled={isSaving} onclick={handleSave}>
 			{#if isSaving}
 				{m.saving()}
 			{:else}
