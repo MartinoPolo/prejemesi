@@ -1,6 +1,11 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import { getUserProfile, updateProfile } from '$lib/modules/settings/settings.remote.js';
+	import {
+		getUserProfile,
+		updateProfile,
+		updateAppBackgroundTheme,
+	} from '$lib/modules/settings/settings.remote.js';
+	import type { BackgroundTheme } from '$lib/components/base/theme/types.js';
 	import {
 		SettingsProfileSection,
 		SettingsSecuritySection,
@@ -38,7 +43,11 @@
 
 		<SettingsNotificationsSection />
 
-		<SettingsAppearanceSection />
+		<SettingsAppearanceSection
+			appBackgroundTheme={profile.appBackgroundTheme}
+			onSaveBackgroundTheme={(appBackgroundTheme: BackgroundTheme) =>
+				updateAppBackgroundTheme({ appBackgroundTheme })}
+		/>
 
 		<SettingsDangerSection />
 	</div>
