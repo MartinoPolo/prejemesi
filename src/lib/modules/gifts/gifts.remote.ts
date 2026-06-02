@@ -68,6 +68,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			price: gift.price,
 			currency: gift.currency,
 			imageUrl: gift.imageUrl,
+			imageKey: gift.imageKey,
+			imageMeta: gift.imageMeta,
 			quantity: gift.quantity,
 			sortOrder: gift.sortOrder,
 			received: gift.received,
@@ -91,6 +93,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			price: row.price,
 			currency: row.currency,
 			imageUrl: row.imageUrl,
+			imageKey: row.imageKey,
+			imageMeta: row.imageMeta,
 			quantity: row.quantity,
 			sortOrder: row.sortOrder,
 			received: row.received,
@@ -153,6 +157,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			price: row.price,
 			currency: row.currency,
 			imageUrl: row.imageUrl,
+			imageKey: row.imageKey,
+			imageMeta: row.imageMeta,
 			quantity: row.quantity,
 			sortOrder: row.sortOrder,
 			received: row.received,
@@ -235,6 +241,7 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 			currency: input.currency ?? 'CZK',
 			imageUrl: input.imageUrl ?? null,
 			imageKey: input.imageKey ?? null,
+			imageMeta: input.imageMeta ?? null,
 			quantity: input.quantity ?? 1,
 			priorityLevelId: input.priorityLevelId ?? null,
 			sortOrder: nextSortOrder,
@@ -296,6 +303,9 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	}
 	if (input.imageKey !== undefined) {
 		updateData['imageKey'] = input.imageKey;
+	}
+	if (input.imageMeta !== undefined) {
+		updateData['imageMeta'] = input.imageMeta;
 	}
 	if (input.quantity !== undefined) {
 		updateData['quantity'] = input.quantity;

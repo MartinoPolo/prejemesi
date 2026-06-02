@@ -1,24 +1,15 @@
-import * as v from 'valibot';
 import { eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { account } from '$lib/server/db/auth.schema.js';
 import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
+import {
+	UpdateProfileInputSchema,
+	UpdateAppBackgroundThemeInputSchema,
+	type UserProfile,
+} from './types.js';
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-export interface UserProfile {
-	id: string;
-	name: string;
-	email: string;
-	image: string | null;
-	isOAuthUser: boolean;
-}
-
-const UpdateProfileInputSchema = v.object({
-	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
-	image: v.nullable(v.string()),
-});
+export type { UserProfile } from './types.js';
 
 // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -32,12 +23,20 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 
 	const isOAuthUser = accounts.some((a) => a.providerId !== 'credential');
 
+	// App background theme is a custom column not carried on the session user.
+	const rows = await database
+		.select({ appBackgroundTheme: user.appBackgroundTheme })
+		.from(user)
+		.where(eq(user.id, authUser.id))
+		.limit(1);
+
 	return {
 		id: authUser.id,
 		name: authUser.name,
 		email: authUser.email,
 		image: authUser.image ?? null,
 		isOAuthUser,
+		appBackgroundTheme: rows[0]?.appBackgroundTheme ?? 'default',
 	};
 });
 
@@ -53,6 +52,21 @@ export const updateProfile = guardedCommand(
 			.set({
 				name: input.name,
 				image: input.image,
+				updatedAt: new Date(),
+			})
+			.where(eq(user.id, authUser.id));
+	},
+);
+
+export const updateAppBackgroundTheme = guardedCommand(
+	UpdateAppBackgroundThemeInputSchema,
+	async ({ user: authUser }, input) => {
+		const database = getDb();
+
+		await database
+			.update(user)
+			.set({
+				appBackgroundTheme: input.appBackgroundTheme,
 				updatedAt: new Date(),
 			})
 			.where(eq(user.id, authUser.id));

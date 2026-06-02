@@ -2,6 +2,7 @@ import {
 	boolean,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp,
@@ -11,6 +12,7 @@ import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
 import { wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
 import { generateId } from './id.js';
+import type { WishlistImageSlots } from '$lib/modules/images/types.js';
 
 export function generateShortId(): string {
 	return generateId(8);
@@ -35,8 +37,10 @@ export const wishlist = pgTable(
 		status: wishlistStatusEnum('status').notNull().default('draft'),
 		theme: wishlistThemeEnum('theme').notNull().default('default'),
 		customThemeColor: text('custom_theme_color'),
-		bannerImageKey: text('banner_image_key'),
-		thumbnailImageKey: text('thumbnail_image_key'),
+		// One wishlist image assignment + per-slot crop metadata (REQ-2). Replaces
+		// the obsolete separate banner/thumbnail keys (no compatibility shim kept).
+		imageKey: text('image_key'),
+		imageSlots: jsonb('image_slots').$type<WishlistImageSlots>(),
 		ownerIsModerator: boolean('owner_is_moderator').notNull().default(false),
 		sharedAt: timestamp('shared_at', { withTimezone: true }),
 		archivedAt: timestamp('archived_at', { withTimezone: true }),

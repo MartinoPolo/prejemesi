@@ -2,6 +2,7 @@ import {
 	boolean,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp,
@@ -11,6 +12,7 @@ import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { generateId } from './id.js';
+import type { ImageMetadata } from '$lib/modules/images/types.js';
 
 export const gift = pgTable(
 	'gift',
@@ -31,6 +33,8 @@ export const gift = pgTable(
 		currency: text('currency').default('CZK'),
 		imageUrl: text('image_url'),
 		imageKey: text('image_key'),
+		// Image presentation metadata: fit mode, normalized crop/focal, bg fill (REQ-1).
+		imageMeta: jsonb('image_meta').$type<ImageMetadata>(),
 		quantity: integer('quantity').default(1),
 		sortOrder: integer('sort_order').notNull().default(0),
 		received: boolean('received').notNull().default(false),

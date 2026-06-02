@@ -1,8 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import * as v from 'valibot';
-import { CreateWishlistInputSchema, WISHLIST_THEMES } from './wishlists/types.js';
-import { CreateGiftInputSchema, GIFT_CURRENCY_VALUES } from './gifts/types.js';
+import {
+	CreateWishlistInputSchema,
+	UpdateWishlistInputSchema,
+	WISHLIST_THEMES,
+} from './wishlists/types.js';
+import {
+	CreateGiftInputSchema,
+	UpdateGiftInputSchema,
+	GIFT_CURRENCY_VALUES,
+} from './gifts/types.js';
 import { ReserveGiftInputSchema } from './reservations/types.js';
+import {
+	ImageMetadataSchema,
+	WishlistImageSlotsSchema,
+	IMAGE_FIT_MODE_VALUES,
+} from './images/types.js';
+import { UpdateAppBackgroundThemeInputSchema } from './settings/types.js';
+import { BACKGROUND_THEMES } from '$lib/components/base/theme/types.js';
 
 function parseSuccess(
 	schema: v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>,
@@ -260,5 +275,195 @@ describe('ReserveGiftInputSchema', () => {
 			quantity: 3,
 		});
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('ImageMetadataSchema', () => {
+	it('accepts metadata with only the required fit mode', () => {
+		const result = parseSuccess(ImageMetadataSchema, { fitMode: 'auto' });
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts every valid fit mode', () => {
+		for (const fitMode of IMAGE_FIT_MODE_VALUES) {
+			const result = parseSuccess(ImageMetadataSchema, { fitMode });
+			expect(result.success, `fitMode "${fitMode}" should be valid`).toBe(true);
+		}
+	});
+
+	it('rejects an unknown fit mode', () => {
+		const result = parseSuccess(ImageMetadataSchema, { fitMode: 'stretch' });
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts a fully specified metadata object', () => {
+		const result = parseSuccess(ImageMetadataSchema, {
+			fitMode: 'cover-crop',
+			cropRect: { x: 0.1, y: 0.2, w: 0.5, h: 0.6 },
+			focal: { x: 50, y: 40 },
+			zoom: 2,
+			bgColor: '#ffffff',
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts null cropRect and null bgColor', () => {
+		const result = parseSuccess(ImageMetadataSchema, {
+			fitMode: 'auto',
+			cropRect: null,
+			bgColor: null,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a crop rectangle outside the normalized 0..1 range', () => {
+		const result = parseSuccess(ImageMetadataSchema, {
+			fitMode: 'cover-crop',
+			cropRect: { x: 0, y: 0, w: 1.5, h: 1 },
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a focal point outside the 0..100 percent range', () => {
+		const result = parseSuccess(ImageMetadataSchema, {
+			fitMode: 'cover-crop',
+			focal: { x: 120, y: 50 },
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a zoom factor below the minimum', () => {
+		const result = parseSuccess(ImageMetadataSchema, { fitMode: 'cover-crop', zoom: 0.5 });
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a zoom factor above the maximum', () => {
+		const result = parseSuccess(ImageMetadataSchema, { fitMode: 'cover-crop', zoom: 4 });
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('WishlistImageSlotsSchema', () => {
+	it('accepts an empty slots object', () => {
+		const result = parseSuccess(WishlistImageSlotsSchema, {});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts per-slot metadata for all four slots', () => {
+		const result = parseSuccess(WishlistImageSlotsSchema, {
+			card: { fitMode: 'cover-crop', focal: { x: 50, y: 40 } },
+			thumbnail: { fitMode: 'cover-crop' },
+			banner: { fitMode: 'contain-padded', cropRect: { x: 0, y: 0.1, w: 1, h: 0.5 } },
+			social: { fitMode: 'auto', bgColor: '#0b3d2e' },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a slot carrying invalid metadata', () => {
+		const result = parseSuccess(WishlistImageSlotsSchema, {
+			card: { fitMode: 'bogus' },
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('CreateGiftInputSchema — image metadata', () => {
+	it('accepts a gift with valid image metadata', () => {
+		const result = parseSuccess(CreateGiftInputSchema, {
+			wishlistId: 'wl-1',
+			name: 'Camera',
+			imageKey: 'gifts/camera.jpg',
+			imageMeta: { fitMode: 'cover-crop', focal: { x: 60, y: 40 }, zoom: 1.5 },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts null image metadata', () => {
+		const result = parseSuccess(CreateGiftInputSchema, {
+			wishlistId: 'wl-1',
+			name: 'Camera',
+			imageMeta: null,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects invalid image metadata on a gift', () => {
+		const result = parseSuccess(CreateGiftInputSchema, {
+			wishlistId: 'wl-1',
+			name: 'Camera',
+			imageMeta: { fitMode: 'auto', zoom: 99 },
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
+describe('UpdateGiftInputSchema — image metadata', () => {
+	it('accepts updating only image metadata', () => {
+		const result = parseSuccess(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			imageMeta: { fitMode: 'contain-padded' },
+		});
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('UpdateWishlistInputSchema — image assignment', () => {
+	it('accepts a single image key plus per-slot metadata', () => {
+		const result = parseSuccess(UpdateWishlistInputSchema, {
+			id: 'wl-1',
+			imageKey: 'wishlists/hero.jpg',
+			imageSlots: {
+				card: { fitMode: 'cover-crop' },
+				banner: { fitMode: 'cover-crop', cropRect: { x: 0, y: 0, w: 1, h: 0.5 } },
+			},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts clearing the image (null key and null slots)', () => {
+		const result = parseSuccess(UpdateWishlistInputSchema, {
+			id: 'wl-1',
+			imageKey: null,
+			imageSlots: null,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects invalid per-slot metadata', () => {
+		const result = parseSuccess(UpdateWishlistInputSchema, {
+			id: 'wl-1',
+			imageSlots: { thumbnail: { fitMode: 'auto', focal: { x: -1, y: 0 } } },
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('no longer accepts the removed banner/thumbnail keys as the source of truth', () => {
+		// The obsolete fields are simply ignored (valibot objects drop unknown keys);
+		// the schema must still validate without them present.
+		const result = parseSuccess(UpdateWishlistInputSchema, { id: 'wl-1' });
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('UpdateAppBackgroundThemeInputSchema', () => {
+	it('accepts every supported background theme', () => {
+		for (const theme of BACKGROUND_THEMES) {
+			const result = parseSuccess(UpdateAppBackgroundThemeInputSchema, {
+				appBackgroundTheme: theme,
+			});
+			expect(result.success, `theme "${theme}" should be valid`).toBe(true);
+		}
+	});
+
+	it('rejects an unsupported background theme', () => {
+		const result = parseSuccess(UpdateAppBackgroundThemeInputSchema, {
+			appBackgroundTheme: 'midnight',
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a missing background theme', () => {
+		const result = parseSuccess(UpdateAppBackgroundThemeInputSchema, {});
+		expect(result.success).toBe(false);
 	});
 });

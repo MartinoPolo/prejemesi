@@ -21,7 +21,7 @@
 		title: string;
 		ownerName: string;
 		description: string | null;
-		bannerImageKey: string | null;
+		imageKey: string | null;
 		eventDate: Date | null;
 		status: 'draft' | 'active' | 'archived';
 		role: WishlistRole;
@@ -37,7 +37,7 @@
 		title,
 		ownerName,
 		description,
-		bannerImageKey,
+		imageKey,
 		eventDate,
 		status,
 		role,
@@ -51,7 +51,7 @@
 
 	const styles = wishlistHeaderVariants();
 
-	const hasBanner = $derived(bannerImageKey !== null);
+	const hasBanner = $derived(imageKey !== null);
 	const isOwner = $derived(role === 'owner');
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 	const isArchived = $derived(status === 'archived');
@@ -88,7 +88,7 @@
 <header class={styles.root()}>
 	{#if hasBanner}
 		<!-- Banner with background image -->
-		<div class={styles.bannerArea()} style:background-image="url({bannerImageKey})">
+		<div class={styles.bannerArea()} style:background-image="url({imageKey})">
 			<div class={styles.bannerOverlay()}></div>
 			<div class={styles.contentArea()}>
 				<span class={styles.ownerNameOnBanner()}>{ownerName}</span>

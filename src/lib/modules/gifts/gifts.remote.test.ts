@@ -78,6 +78,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		currency: 'gift.currency',
 		imageUrl: 'gift.imageUrl',
 		imageKey: 'gift.imageKey',
+		imageMeta: 'gift.imageMeta',
 		quantity: 'gift.quantity',
 		sortOrder: 'gift.sortOrder',
 		received: 'gift.received',
@@ -215,6 +216,8 @@ function makeGiftRow(overrides: Record<string, unknown> = {}): Record<string, un
 		price: null,
 		currency: 'CZK',
 		imageUrl: null,
+		imageKey: null,
+		imageMeta: null,
 		quantity: 1,
 		sortOrder: 0,
 		received: false,
@@ -415,6 +418,44 @@ describe('getGiftsByWishlistShortId', () => {
 			expect('reservedCount' in gift).toBe(true);
 		});
 	});
+
+	describe('image metadata is returned to all roles without leaking reservations', () => {
+		const imageMeta = {
+			fitMode: 'cover-crop',
+			cropRect: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+			focal: { x: 50, y: 40 },
+			zoom: 1.5,
+			bgColor: null,
+		};
+
+		it('owner (no self-promote) receives imageKey + imageMeta but no reservation data', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ ownerIsModerator: false })]);
+			mockDbInstance.pushResult([makeGiftRow({ imageKey: 'gifts/cam.jpg', imageMeta })]);
+
+			const result = await callGetGifts(makeOwnerAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForOwner & Partial<GiftForVisitor>;
+			expect(gift.imageKey).toBe('gifts/cam.jpg');
+			expect(gift.imageMeta).toEqual(imageMeta);
+			expect('reservedCount' in gift).toBe(false);
+			expect('likeCount' in gift).toBe(false);
+		});
+
+		it('visitor receives imageKey + imageMeta alongside reservation counts', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ imageKey: 'gifts/cam.jpg', imageMeta })]);
+			mockDbInstance.pushResult([]); // reservation counts
+			mockDbInstance.pushResult([]); // like counts
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.imageKey).toBe('gifts/cam.jpg');
+			expect(gift.imageMeta).toEqual(imageMeta);
+			expect(gift.reservedCount).toBe(0);
+		});
+	});
 });
 
 describe('createGift', () => {
@@ -435,6 +476,22 @@ describe('createGift', () => {
 			const result = await callCreateGift(makeOwnerAuthContext(), createInput);
 
 			expect(result).toMatchObject({ id: 'new-gift-id', name: 'New Gift' });
+		});
+
+		it('persists image metadata on create', async () => {
+			const imageMeta = {
+				fitMode: 'cover-crop',
+				focal: { x: 60, y: 40 },
+				zoom: 1.5,
+			};
+			const inputWithMeta = { ...createInput, imageKey: 'gifts/x.jpg', imageMeta };
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([{ maxSort: 0 }]);
+			mockDbInstance.pushResult([{ id: 'new-gift-id', ...inputWithMeta, sortOrder: 1 }]);
+
+			const result = await callCreateGift(makeOwnerAuthContext(), inputWithMeta);
+
+			expect(result).toMatchObject({ id: 'new-gift-id', imageMeta });
 		});
 	});
 
@@ -486,6 +543,20 @@ describe('updateGift', () => {
 			const result = await callUpdateGift(makeOwnerAuthContext(), updateInput);
 
 			expect(result).toMatchObject({ id: GIFT_ID, name: 'Updated Name' });
+		});
+
+		it('persists updated image metadata', async () => {
+			const imageMeta = { fitMode: 'contain-padded', bgColor: '#222222' };
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, imageMeta }]);
+
+			const result = await callUpdateGift(makeOwnerAuthContext(), {
+				id: GIFT_ID,
+				imageMeta,
+			});
+
+			expect(result).toMatchObject({ id: GIFT_ID, imageMeta });
 		});
 
 		it('owner can update gifts created after sharing date', async () => {
