@@ -5,6 +5,7 @@
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice, extractDomain } from '$lib/modules/gifts/gift_display.js';
+	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 
 	interface GiftCompactRowProps {
@@ -22,6 +23,7 @@
 	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
 
 	const domain = $derived(extractDomain(gift.url));
+	const safeGiftUrl = $derived(normalizeGiftUrl(gift.url));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const showQuantity = $derived((gift.quantity ?? 1) > 1);
 </script>
@@ -54,7 +56,7 @@
 	<td class="px-3 py-1.5">
 		{#if domain}
 			<a
-				href={gift.url ?? '#'}
+				href={safeGiftUrl ?? '#'}
 				target="_blank"
 				rel="external noopener noreferrer"
 				class="inline-flex items-center gap-1 text-xs text-primary"

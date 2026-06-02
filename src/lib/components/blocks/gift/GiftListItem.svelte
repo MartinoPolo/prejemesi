@@ -13,6 +13,7 @@
 		extractDomain,
 		getPriorityDisplay,
 	} from '$lib/modules/gifts/gift_display.js';
+	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 
 	interface GiftListItemProps {
@@ -29,6 +30,7 @@
 	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
 
 	const domain = $derived(extractDomain(gift.url));
+	const safeGiftUrl = $derived(normalizeGiftUrl(gift.url));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const showQuantity = $derived((gift.quantity ?? 1) > 1);
@@ -79,7 +81,7 @@
 
 			{#if domain}
 				<a
-					href={gift.url ?? '#'}
+					href={safeGiftUrl ?? '#'}
 					target="_blank"
 					rel="external noopener noreferrer"
 					class="inline-flex items-center gap-1 text-xs text-primary"
