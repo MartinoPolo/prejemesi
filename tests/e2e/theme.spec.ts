@@ -150,7 +150,7 @@ test.describe('Theme change workflow', () => {
 		await page.context().close();
 	});
 
-	test('theme gradient banner is visible on wishlist page', async ({
+	test('themed wishlist banner is visible on wishlist page', async ({
 		browser,
 		request,
 		baseURL,
@@ -160,8 +160,8 @@ test.describe('Theme change workflow', () => {
 
 		await createWishlistAndNavigate(page, 'Theme Banner');
 
-		// Gradient banner should be visible (default theme has a gradient)
-		const banner = page.getByTestId('theme-gradient-banner');
+		// The header always shows a themed banner (theme-aware fallback hero when no image)
+		const banner = page.getByTestId('wishlist-banner');
 		await expect(banner).toBeVisible({ timeout: 5_000 });
 
 		// Change to Christmas and verify banner stays visible

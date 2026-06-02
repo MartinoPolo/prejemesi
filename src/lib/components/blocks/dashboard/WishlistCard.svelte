@@ -5,6 +5,8 @@
 	import { getThemePreset, type WishlistTheme } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
+	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
+	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import type { Snippet } from 'svelte';
@@ -39,6 +41,8 @@
 
 	const isArchived = $derived(wishlistData.status === 'archived');
 	const theme = $derived(getThemePreset(wishlistData.theme as WishlistTheme));
+	const cardSrc = $derived(wishlistImageUrl(wishlistData.imageKey));
+	const cardFrame = $derived(wishlistSlotToFrameProps(wishlistData.imageSlots, 'card'));
 	const variants = $derived(wishlistCardVariants({ archived: isArchived }));
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
 	const statusDotClass = $derived(STATUS_DOT_CLASSES[wishlistData.status]);
@@ -72,8 +76,15 @@
 	data-testid="wishlist-card"
 >
 	<!-- Banner -->
-	<div class={variants.banner()} style:background={theme.gradient} aria-hidden="true">
-		<span class={variants.bannerEmoji()}>{theme.emoji}</span>
+	<div class={variants.banner()} aria-hidden="true">
+		<div class="absolute inset-0">
+			<WishlistSlotImage
+				src={cardSrc}
+				frame={cardFrame}
+				themeEmoji={theme.emoji}
+				alt={wishlistData.title}
+			/>
+		</div>
 		<div class={variants.bannerOverlay()}></div>
 		<div class={variants.bannerTitle()}>{wishlistData.title}</div>
 		<div class={variants.statusBadge()} aria-label="Stav: {statusLabel}">

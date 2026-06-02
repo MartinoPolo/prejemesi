@@ -1,0 +1,72 @@
+/**
+ * Wishlist per-slot image helpers (REQ-2). A single assigned wishlist image is
+ * cropped independently per consumer slot (dashboard card, list thumbnail, page
+ * banner, social preview); each slot persists its own {@link ImageMetadata}. These
+ * helpers are framework-free so they stay unit-testable in isolation, mirroring the
+ * gift crop helpers in `crop.ts`.
+ */
+
+import { UPLOAD_API_BASE } from '$lib/modules/uploads/types.js';
+import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
+import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
+import {
+	DEFAULT_IMAGE_METADATA,
+	WISHLIST_IMAGE_SLOT_VALUES,
+	type ImageMetadata,
+	type WishlistImageSlot,
+	type WishlistImageSlots,
+} from './types.js';
+
+/**
+ * Per-slot display aspect ratios (CSS `aspect-ratio` strings) used by the crop
+ * editor previews and every consumer surface so framing matches production.
+ */
+export const WISHLIST_SLOT_ASPECT = {
+	card: '3 / 2',
+	thumbnail: '1 / 1',
+	banner: '16 / 6',
+	social: '1.91 / 1',
+} as const satisfies Record<WishlistImageSlot, string>;
+
+/**
+ * Resolve a wishlist image object key to a client-loadable URL. The upload API
+ * route ({@link UPLOAD_API_BASE}) serves stored objects (R2 in production, the
+ * in-memory fallback in dev), so the same-origin path works everywhere without
+ * exposing storage env to the client. Returns null when no image is assigned.
+ */
+export function wishlistImageUrl(imageKey: string | null | undefined): string | null {
+	if (imageKey == null || imageKey === '') {
+		return null;
+	}
+	return `${UPLOAD_API_BASE}/${imageKey}`;
+}
+
+/**
+ * Seed every wishlist slot with centered cover-crop metadata for a freshly
+ * assigned image, so each preview shows a framed result the owner can refine.
+ * Each slot gets an independent object so editing one never mutates another.
+ */
+export function createDefaultWishlistSlots(): WishlistImageSlots {
+	const base: ImageMetadata = {
+		...DEFAULT_IMAGE_METADATA,
+		fitMode: IMAGE_FIT_MODES.coverCrop,
+	};
+	const slots: WishlistImageSlots = {};
+	for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
+		slots[slot] = { ...base, focal: { ...base.focal! } };
+	}
+	return slots;
+}
+
+/**
+ * Map a single slot's persisted metadata onto the props the shared ImageFrame
+ * renderer consumes, falling back to renderer defaults when the slot is unset.
+ * Used by every wishlist image consumer so presentation stays identical across
+ * surfaces.
+ */
+export function wishlistSlotToFrameProps(
+	slots: WishlistImageSlots | null | undefined,
+	slot: WishlistImageSlot,
+): ImageFrameProps {
+	return imageMetaToFrameProps(slots?.[slot] ?? null);
+}

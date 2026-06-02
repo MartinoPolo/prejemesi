@@ -7,3 +7,8 @@ export { default as WishlistGiftCompactTable } from './WishlistGiftCompactTable.
 export { default as WishlistGiftDraggableWrapper } from './WishlistGiftDraggableWrapper.svelte';
 export { default as WishlistEmptyState } from './WishlistEmptyState.svelte';
 export { default as WishlistModals } from './WishlistModals.svelte';
+export { default as WishlistFallbackHero } from './WishlistFallbackHero.svelte';
+export { default as WishlistSlotImage } from './WishlistSlotImage.svelte';
+export { default as SlotPreviewCard } from './SlotPreviewCard.svelte';
+export { default as WishlistCropEditor } from './WishlistCropEditor.svelte';
+export { default as ThemeCardPreview } from './ThemeCardPreview.svelte';
