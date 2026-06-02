@@ -100,11 +100,20 @@ beforeEach(() => {
 });
 
 describe('getUserProfile', () => {
-	it('returns profile with isOAuthUser=false when only credential accounts', async () => {
+	it('returns DB-sourced name/image (source of truth, not the stale session)', async () => {
+		// getUserProfile reads name/image from the user table because the better-auth
+		// session is cached and goes stale after a profile update. The DB values (here
+		// deliberately different from the session) must win so edits persist on reload.
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ providerId: 'credential' }, { providerId: 'credential' }],
-				[{ appBackgroundTheme: 'default' }],
+				[
+					{
+						name: 'Fresh Name',
+						image: 'https://example.com/fresh.jpg',
+						appBackgroundTheme: 'default',
+					},
+				],
 			]),
 		);
 
@@ -114,9 +123,9 @@ describe('getUserProfile', () => {
 
 		expect(result).toEqual({
 			id: testUser.id,
-			name: testUser.name,
+			name: 'Fresh Name',
 			email: testUser.email,
-			image: testUser.image,
+			image: 'https://example.com/fresh.jpg',
 			isOAuthUser: false,
 			appBackgroundTheme: 'default',
 		});
@@ -126,7 +135,7 @@ describe('getUserProfile', () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ providerId: 'credential' }, { providerId: 'google' }],
-				[{ appBackgroundTheme: 'twilight' }],
+				[{ name: testUser.name, image: testUser.image, appBackgroundTheme: 'twilight' }],
 			]),
 		);
 
