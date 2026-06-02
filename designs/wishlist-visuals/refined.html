@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Vzhled seznamu · REFINED (Variant A + zoom)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<!-- refined.html sits one level above variants/, so the structural-token path is ../tokens.css. -->
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── REFINED — base: Variant A (tabbed slot editor) ──────────
+			   Changes vs. variant A:
+			   • token path fixed to ../tokens.css
+			   • zoom slider added under the fit-mode control (cover-crop)
+			   • mouse-wheel over the crop stage zooms (drives slider + %)
+			   • dark-mode --foreground-subtle lifted for legible preview text */
+
+			.theme-light {
+				--background: oklch(0.975 0.006 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.95 0.012 150);
+				--foreground: oklch(0.18 0.012 150);
+				--foreground-muted: oklch(0.46 0.02 150);
+				--foreground-subtle: oklch(0.62 0.014 150);
+				--border: oklch(0.92 0.01 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150);
+				--primary-fg: oklch(0.982 0.018 155);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150);
+			}
+			.theme-dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.195 0.01 140);
+				--surface-2: oklch(0.235 0.013 140);
+				--surface-hover: oklch(0.265 0.016 140);
+				--foreground: oklch(0.97 0.006 150);
+				--foreground-muted: oklch(0.72 0.02 150);
+				/* Lifted from 0.5 → 0.66: variant A's subtle text (rail titles, mini-info
+				   captions, fallback notes, tab ratios) was too dim on dark surfaces. */
+				--foreground-subtle: oklch(0.66 0.018 150);
+				--border: oklch(0.28 0.016 140);
+				--border-strong: oklch(0.36 0.022 140);
+				--primary: oklch(0.62 0.154 150);
+				--primary-fg: oklch(0.14 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(0.62 0.154 150);
+			}
+
+			/* Wishlist theme presets (palette + gradient + emoji) */
+			.wt-default {
+				--wt-primary: oklch(0.527 0.154 150);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.64 0.14 150),
+					oklch(0.72 0.16 145),
+					oklch(0.58 0.12 155)
+				);
+			}
+			.wt-christmas {
+				--wt-primary: oklch(0.5 0.18 25);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.62 0.17 25),
+					oklch(0.66 0.16 145),
+					oklch(0.78 0.13 85)
+				);
+			}
+			.wt-birthday {
+				--wt-primary: oklch(0.58 0.18 330);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.7 0.18 330),
+					oklch(0.66 0.16 290),
+					oklch(0.78 0.13 85)
+				);
+			}
+			.wt-fun {
+				--wt-primary: oklch(0.6 0.16 250);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.7 0.16 250),
+					oklch(0.82 0.17 65),
+					oklch(0.78 0.16 45)
+				);
+			}
+			.wt-elegant {
+				--wt-primary: oklch(0.35 0.05 260);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.48 0.05 260),
+					oklch(0.58 0.06 255),
+					oklch(0.82 0.11 85)
+				);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				background: oklch(0.91 0.01 150);
+				font-family: 'Figtree', system-ui, sans-serif;
+			}
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				color: var(--foreground);
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 15px;
+				line-height: 1.5;
+				-webkit-font-smoothing: antialiased;
+			}
+			.mode-strip {
+				text-align: center;
+				padding: 10px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+			.variant-banner {
+				text-align: center;
+				padding: 14px 0 8px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.5 0.06 150);
+				font-family: 'Figtree', sans-serif;
+			}
+
+			/* Nav */
+			.nav {
+				height: 56px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 24px;
+				border-bottom: 1px solid var(--border);
+				background: color-mix(in oklch, var(--surface) 85%, transparent);
+				backdrop-filter: blur(12px);
+				opacity: 0.92;
+			}
+			.nav-logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.nav-logo span {
+				opacity: 0.4;
+			}
+			.nav-links {
+				display: flex;
+				gap: 2px;
+			}
+			.nav-link {
+				padding: 6px 14px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				border-radius: 8px;
+				text-decoration: none;
+			}
+			.nav-link.is-active {
+				color: var(--primary);
+				background: var(--primary-soft);
+				font-weight: 600;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 2px solid color-mix(in oklch, var(--primary) 28%, transparent);
+			}
+
+			.content {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 24px 56px;
+			}
+
+			/* Breadcrumb + heading + save */
+			.crumb {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				padding: 22px 0 4px;
+			}
+			.crumb b {
+				color: var(--foreground-muted);
+				font-weight: 600;
+			}
+			.head-row {
+				display: flex;
+				align-items: flex-end;
+				justify-content: space-between;
+				gap: 16px;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--border);
+			}
+			.page-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 26px;
+				font-weight: 700;
+				letter-spacing: -0.02em;
+			}
+			.page-sub {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-top: 3px;
+			}
+
+			/* Settings layout: section nav + body */
+			.settings-grid {
+				display: grid;
+				grid-template-columns: 188px 1fr;
+				gap: 28px;
+				margin-top: 24px;
+			}
+			.sec-nav {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+				position: sticky;
+				top: 16px;
+				align-self: start;
+			}
+			.sec-nav a {
+				padding: 8px 12px;
+				border-radius: 8px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				text-decoration: none;
+			}
+			.sec-nav a.is-active {
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 600;
+			}
+			.sec-nav .muted {
+				opacity: 0.55;
+			}
+
+			/* Buttons */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				font-family: 'Figtree', sans-serif;
+				font-weight: 600;
+				font-size: 13px;
+				padding: 0 14px;
+				height: 36px;
+				border-radius: 8px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				white-space: nowrap;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.12);
+			}
+			.btn-secondary {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+			}
+			.btn-ghost:hover {
+				background: var(--surface-2);
+			}
+			.btn-sm {
+				height: 30px;
+				padding: 0 10px;
+				font-size: 12px;
+			}
+			.btn-danger {
+				background: transparent;
+				color: var(--status-danger);
+				border-color: transparent;
+			}
+
+			/* Section card */
+			.panel {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 16px;
+				overflow: hidden;
+			}
+			.panel + .panel {
+				margin-top: 20px;
+			}
+			.panel-head {
+				padding: 16px 20px;
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.panel-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 15px;
+				font-weight: 700;
+			}
+			.panel-hint {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				margin-top: 2px;
+			}
+			.panel-body {
+				padding: 20px;
+			}
+
+			/* Editor split: stage + rail */
+			.editor {
+				display: grid;
+				grid-template-columns: 1fr 320px;
+				gap: 24px;
+			}
+
+			/* Tabs */
+			.tabs {
+				display: flex;
+				gap: 4px;
+				padding: 4px;
+				background: var(--surface-2);
+				border-radius: 10px;
+				margin-bottom: 16px;
+			}
+			.tab {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 2px;
+				padding: 8px 6px;
+				border-radius: 7px;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				cursor: pointer;
+				border: none;
+				background: transparent;
+			}
+			.tab .ratio {
+				font-size: 10px;
+				font-weight: 500;
+				color: var(--foreground-subtle);
+			}
+			.tab.is-active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.1);
+			}
+
+			/* Crop stage */
+			.stage {
+				position: relative;
+				border-radius: 12px;
+				overflow: hidden;
+				background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%)
+					50% / 22px 22px;
+				border: 1px solid var(--border);
+				aspect-ratio: 3 / 2;
+			}
+			.stage.is-zoomable {
+				cursor: zoom-in;
+			}
+			.stage-img {
+				position: absolute;
+				inset: 0;
+				background-size: cover;
+				background-position: center 38%;
+				transform-origin: 56% 38%; /* anchored on the focal point */
+				transition: transform 0.08s linear;
+			}
+			.stage-img.demo {
+				background-image:
+					linear-gradient(
+						120deg,
+						oklch(0.62 0.13 250),
+						oklch(0.7 0.12 200) 45%,
+						oklch(0.8 0.1 150)
+					),
+					radial-gradient(circle at 60% 35%, oklch(0.95 0.04 90 / 0.85), transparent 40%);
+				background-blend-mode: screen;
+			}
+			.crop-frame {
+				position: absolute;
+				inset: 8% 6%;
+				border: 2px solid oklch(1 0 0 / 0.9);
+				box-shadow: 0 0 0 9999px oklch(0 0 0 / 0.35);
+				border-radius: 4px;
+				pointer-events: none;
+			}
+			.crop-handle {
+				position: absolute;
+				width: 10px;
+				height: 10px;
+				background: oklch(1 0 0);
+				border-radius: 2px;
+			}
+			.crop-handle.tl {
+				top: -5px;
+				left: -5px;
+			}
+			.crop-handle.tr {
+				top: -5px;
+				right: -5px;
+			}
+			.crop-handle.bl {
+				bottom: -5px;
+				left: -5px;
+			}
+			.crop-handle.br {
+				bottom: -5px;
+				right: -5px;
+			}
+			.focal {
+				position: absolute;
+				top: 38%;
+				left: 56%;
+				width: 26px;
+				height: 26px;
+				transform: translate(-50%, -50%);
+				border: 2px solid oklch(1 0 0);
+				border-radius: 50%;
+				box-shadow: 0 0 0 2px oklch(0 0 0 / 0.4);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: grab;
+			}
+			.focal::after {
+				content: '';
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: oklch(1 0 0);
+			}
+
+			/* Fit-mode toggle */
+			.fitmode {
+				display: flex;
+				gap: 4px;
+				margin-top: 14px;
+				padding: 4px;
+				background: var(--surface-2);
+				border-radius: 9px;
+			}
+			.fitmode button {
+				flex: 1;
+				padding: 7px;
+				border-radius: 6px;
+				border: none;
+				background: transparent;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.fitmode button.is-active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+			}
+
+			/* Zoom slider (cover-crop only) — adapted from Variant B */
+			.zoom-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 12px;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+			.zoom-row .zoom-icon {
+				flex-shrink: 0;
+				color: var(--foreground-subtle);
+			}
+			.zoom-row label {
+				font-weight: 600;
+				white-space: nowrap;
+			}
+			.zoom-track {
+				flex: 1;
+				height: 4px;
+				border-radius: 999px;
+				background: var(--surface-2);
+				position: relative;
+				cursor: pointer;
+			}
+			.zoom-fill {
+				position: absolute;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				border-radius: 999px;
+				background: var(--primary);
+				width: 10%;
+			}
+			.zoom-knob {
+				position: absolute;
+				top: 50%;
+				left: 10%;
+				width: 14px;
+				height: 14px;
+				border-radius: 50%;
+				background: var(--primary);
+				transform: translate(-50%, -50%);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.2);
+				cursor: grab;
+			}
+			.zoom-knob:active {
+				cursor: grabbing;
+			}
+			.zoom-knob:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.zoom-pct {
+				width: 42px;
+				text-align: right;
+				font-variant-numeric: tabular-nums;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.zoom-row.is-disabled {
+				opacity: 0.5;
+				pointer-events: none;
+			}
+
+			.stage-meta {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-top: 14px;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+
+			/* Rail */
+			.rail-title {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 10px;
+			}
+
+			/* Mini slot previews (all four) */
+			.mini-list {
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+			.mini {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				padding: 8px;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				background: var(--surface);
+			}
+			.mini.is-active {
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px var(--primary-soft);
+			}
+			.mini-frame {
+				flex-shrink: 0;
+				border-radius: 6px;
+				overflow: hidden;
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.62 0.13 250),
+					oklch(0.7 0.12 200) 45%,
+					oklch(0.8 0.1 150)
+				);
+				background-size: cover;
+				background-position: center 38%;
+			}
+			.mini-card {
+				width: 60px;
+				height: 40px;
+			}
+			.mini-thumb {
+				width: 40px;
+				height: 40px;
+			}
+			.mini-banner {
+				width: 84px;
+				height: 24px;
+			}
+			.mini-social {
+				width: 64px;
+				height: 34px;
+			}
+			.mini-info b {
+				display: block;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.mini-info span {
+				font-size: 11px;
+				color: var(--foreground-muted);
+			}
+
+			.divider {
+				height: 1px;
+				background: var(--border);
+				margin: 18px 0;
+			}
+
+			/* Theme presets */
+			.preset-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 8px;
+			}
+			.preset {
+				border: 2px solid var(--border);
+				border-radius: 12px;
+				padding: 8px;
+				background: transparent;
+				cursor: pointer;
+				text-align: left;
+			}
+			.preset.is-selected {
+				border-color: var(--primary);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.1);
+			}
+			.preset .swatch {
+				height: 26px;
+				border-radius: 7px;
+				margin-bottom: 6px;
+			}
+			.preset .plabel {
+				font-size: 11px;
+				font-weight: 600;
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				color: var(--foreground);
+			}
+			.custom-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 12px;
+				padding: 10px;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+			}
+			.color-chip {
+				width: 34px;
+				height: 34px;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				background: oklch(0.6 0.16 250);
+			}
+			.color-val {
+				font-family: ui-monospace, monospace;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+
+			/* Realistic card preview */
+			.card-preview {
+				border-radius: 14px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				box-shadow: 0 4px 14px oklch(0 0 0 / 0.08);
+			}
+			.cp-hero {
+				height: 118px;
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.62 0.13 250),
+					oklch(0.7 0.12 200) 45%,
+					oklch(0.8 0.1 150)
+				);
+				background-size: cover;
+				background-position: center 38%;
+				position: relative;
+			}
+			.cp-status {
+				position: absolute;
+				top: 8px;
+				left: 8px;
+				font-size: 10px;
+				font-weight: 700;
+				padding: 3px 8px;
+				border-radius: 999px;
+				background: color-mix(in oklch, var(--reserved) 90%, white);
+				color: white;
+			}
+			.cp-body {
+				padding: 12px 14px 14px;
+			}
+			.cp-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 15px;
+				font-weight: 700;
+			}
+			.cp-meta {
+				display: flex;
+				gap: 8px;
+				margin-top: 6px;
+				font-size: 11px;
+				color: var(--foreground-muted);
+				align-items: center;
+			}
+			.cp-pill {
+				font-size: 10px;
+				font-weight: 700;
+				padding: 2px 8px;
+				border-radius: 999px;
+				background: color-mix(in oklch, var(--wt-primary) 15%, transparent);
+				color: var(--wt-primary);
+			}
+
+			/* Fallback (no-image) hero */
+			.fallback-hero {
+				background: var(--wt-grad);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 46px;
+			}
+			.fallback-note {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-top: 10px;
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+
+			.tag {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 11px;
+				font-weight: 600;
+				padding: 3px 9px;
+				border-radius: 999px;
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+		</style>
+	</head>
+	<body>
+		<p class="variant-banner">
+			Refined — Variant A + zoom slider · scroll-to-zoom · dark-mode contrast fix
+		</p>
+
+		<!-- ════════════ LIGHT MODE ════════════ -->
+		<div class="page theme-light">
+			<div class="mode-strip">Light Mode — s obrázkem</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="avatar">M</div>
+			</nav>
+
+			<div class="content">
+				<div class="crumb">Moje seznamy / <b>Vánoce 2026</b> / Nastavení vzhledu</div>
+				<div class="head-row">
+					<div>
+						<div class="page-title">Vzhled seznamu</div>
+						<div class="page-sub">
+							Přiřaďte obrázek, ořízněte jej pro každé místo a vyberte motiv.
+						</div>
+					</div>
+					<button class="btn btn-primary">Uložit změny</button>
+				</div>
+
+				<div class="settings-grid">
+					<nav class="sec-nav">
+						<a href="#" class="muted">Základní údaje</a>
+						<a href="#" class="is-active">Vzhled</a>
+						<a href="#" class="muted">Sdílení</a>
+						<a href="#" class="muted">Moderátoři</a>
+						<a href="#" class="muted">Nebezpečná zóna</a>
+					</nav>
+
+					<div>
+						<!-- IMAGE ASSIGNMENT -->
+						<div class="panel">
+							<div class="panel-head">
+								<div>
+									<div class="panel-title">Obrázek seznamu</div>
+									<div class="panel-hint">
+										Jeden obrázek pro celý seznam — ořez nastavíte níže.
+									</div>
+								</div>
+								<div style="display: flex; gap: 8px">
+									<button class="btn btn-secondary btn-sm">
+										Nahradit obrázek
+									</button>
+									<button class="btn btn-danger btn-sm">Odebrat</button>
+								</div>
+							</div>
+							<div
+								class="panel-body"
+								style="display: flex; align-items: center; gap: 16px"
+							>
+								<div
+									style="
+										width: 96px;
+										height: 64px;
+										border-radius: 10px;
+										background-image: linear-gradient(
+											120deg,
+											oklch(0.62 0.13 250),
+											oklch(0.7 0.12 200) 45%,
+											oklch(0.8 0.1 150)
+										);
+										background-size: cover;
+									"
+								></div>
+								<div>
+									<div style="font-weight: 600; font-size: 14px">
+										zima-stromek.jpg
+									</div>
+									<div style="font-size: 12px; color: var(--foreground-subtle)">
+										2048 × 1365 · 1,4 MB · WebP
+									</div>
+								</div>
+								<span class="tag" style="margin-left: auto">✓ Nahráno</span>
+							</div>
+						</div>
+
+						<!-- TABBED CROP EDITOR -->
+						<div class="panel">
+							<div class="panel-head">
+								<div>
+									<div class="panel-title">Ořez podle místa</div>
+									<div class="panel-hint">
+										Vyberte místo a upravte výřez. Náhled vlevo, všechna místa
+										vpravo.
+									</div>
+								</div>
+							</div>
+							<div class="panel-body">
+								<div class="editor">
+									<!-- Stage -->
+									<div>
+										<div class="tabs" role="tablist">
+											<button class="tab is-active">
+												Karta<span class="ratio">3:2</span>
+											</button>
+											<button class="tab">
+												Miniatura<span class="ratio">1:1</span>
+											</button>
+											<button class="tab">
+												Záhlaví<span class="ratio">4:1</span>
+											</button>
+											<button class="tab">
+												Sdílení<span class="ratio">1.91:1</span>
+											</button>
+										</div>
+										<div
+											class="stage is-zoomable"
+											id="cropStage"
+											title="Kolečkem myši přiblížíte výřez"
+										>
+											<div class="stage-img demo" id="stageImg"></div>
+											<div class="crop-frame">
+												<span class="crop-handle tl"></span>
+												<span class="crop-handle tr"></span>
+												<span class="crop-handle bl"></span>
+												<span class="crop-handle br"></span>
+											</div>
+											<div class="focal" title="Záchytný bod"></div>
+										</div>
+										<div class="fitmode" id="fitmode">
+											<button data-mode="auto">Automaticky</button>
+											<button data-mode="contain">S okrajem</button>
+											<button class="is-active" data-mode="cover">
+												Vyplnit (ořez)
+											</button>
+										</div>
+
+										<!-- Zoom slider — active in cover-crop; wheel over stage also zooms -->
+										<div class="zoom-row" id="zoomRow">
+											<svg
+												class="zoom-icon"
+												width="15"
+												height="15"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<circle cx="11" cy="11" r="7" />
+												<path d="M21 21l-4.3-4.3M11 8v6M8 11h6" />
+											</svg>
+											<label for="zoomKnob">Přiblížení</label>
+											<div class="zoom-track" id="zoomTrack">
+												<span class="zoom-fill" id="zoomFill"></span>
+												<span
+													class="zoom-knob"
+													id="zoomKnob"
+													role="slider"
+													tabindex="0"
+													aria-label="Přiblížení výřezu"
+													aria-valuemin="100"
+													aria-valuemax="300"
+													aria-valuenow="100"
+												></span>
+											</div>
+											<span class="zoom-pct" id="zoomPct">100 %</span>
+										</div>
+
+										<div class="stage-meta">
+											<span class="tag">Karta nástěnky · 3:2</span>
+											<span
+												>Táhněte za záchytný bod nebo kolečkem myši
+												přibližte.</span
+											>
+										</div>
+									</div>
+
+									<!-- Rail: all slot previews + theme -->
+									<div>
+										<div class="rail-title">Všechna místa</div>
+										<div class="mini-list">
+											<div class="mini is-active">
+												<div class="mini-frame mini-card"></div>
+												<div class="mini-info">
+													<b>Karta nástěnky</b
+													><span>3:2 · dashboard</span>
+												</div>
+											</div>
+											<div class="mini">
+												<div class="mini-frame mini-thumb"></div>
+												<div class="mini-info">
+													<b>Miniatura</b><span>1:1 · seznam řádků</span>
+												</div>
+											</div>
+											<div class="mini">
+												<div class="mini-frame mini-banner"></div>
+												<div class="mini-info">
+													<b>Záhlaví</b
+													><span>široké · stránka seznamu</span>
+												</div>
+											</div>
+											<div class="mini">
+												<div class="mini-frame mini-social"></div>
+												<div class="mini-info">
+													<b>Sdílení</b><span>1.91:1 · odkaz</span>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- THEME + CARD PREVIEW -->
+						<div class="panel">
+							<div class="panel-head">
+								<div>
+									<div class="panel-title">Motiv a náhled karty</div>
+									<div class="panel-hint">
+										Barvy se použijí na akcenty. Náhled ukazuje skutečnou kartu.
+									</div>
+								</div>
+							</div>
+							<div class="panel-body">
+								<div class="editor">
+									<div>
+										<div class="preset-grid">
+											<button class="preset is-selected wt-christmas">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎄 Vánoce</div>
+											</button>
+											<button class="preset wt-default">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎁 Výchozí</div>
+											</button>
+											<button class="preset wt-birthday">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎂 Narozeniny</div>
+											</button>
+											<button class="preset wt-fun">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎉 Zábava</div>
+											</button>
+											<button class="preset wt-elegant">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">💍 Elegantní</div>
+											</button>
+											<button
+												class="preset"
+												style="
+													display: flex;
+													align-items: center;
+													justify-content: center;
+												"
+											>
+												<div class="plabel">＋ Vlastní</div>
+											</button>
+										</div>
+										<div class="custom-row">
+											<div class="color-chip"></div>
+											<div>
+												<div style="font-size: 12px; font-weight: 600">
+													Vlastní barva
+												</div>
+												<div class="color-val">oklch(0.60 0.16 250)</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- Realistic card preview (with image) -->
+									<div class="wt-christmas">
+										<div class="rail-title">Náhled karty</div>
+										<div class="card-preview">
+											<div class="cp-hero">
+												<span class="cp-status">Sdíleno</span>
+											</div>
+											<div class="cp-body">
+												<div class="cp-title">Vánoce 2026</div>
+												<div class="cp-meta">
+													<span class="cp-pill">🎄 Vánoce</span>
+													<span>8 přání · 25. 12.</span>
+												</div>
+											</div>
+										</div>
+										<div class="fallback-note">
+											Náhled odráží vybraný motiv i ořez obrázku.
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════ DARK MODE ════════════ -->
+		<div class="page theme-dark">
+			<div class="mode-strip">Dark Mode — bez obrázku (fallback)</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="avatar">M</div>
+			</nav>
+
+			<div class="content">
+				<div class="crumb">Moje seznamy / <b>Narozeniny — Petr</b> / Nastavení vzhledu</div>
+				<div class="head-row">
+					<div>
+						<div class="page-title">Vzhled seznamu</div>
+						<div class="page-sub">
+							Bez obrázku — použije se motivové pozadí a velké emoji.
+						</div>
+					</div>
+					<button class="btn btn-primary">Uložit změny</button>
+				</div>
+
+				<div class="settings-grid">
+					<nav class="sec-nav">
+						<a href="#" class="muted">Základní údaje</a>
+						<a href="#" class="is-active">Vzhled</a>
+						<a href="#" class="muted">Sdílení</a>
+						<a href="#" class="muted">Moderátoři</a>
+						<a href="#" class="muted">Nebezpečná zóna</a>
+					</nav>
+
+					<div>
+						<!-- IMAGE ASSIGNMENT — empty -->
+						<div class="panel">
+							<div class="panel-head">
+								<div>
+									<div class="panel-title">Obrázek seznamu</div>
+									<div class="panel-hint">
+										Volitelné. Bez obrázku se použije motivové pozadí.
+									</div>
+								</div>
+							</div>
+							<div class="panel-body">
+								<div
+									style="
+										border: 2px dashed var(--border-strong);
+										border-radius: 12px;
+										padding: 28px;
+										text-align: center;
+										color: var(--foreground-muted);
+									"
+								>
+									<div style="font-size: 28px; margin-bottom: 6px">⬆️</div>
+									<div
+										style="
+											font-size: 14px;
+											font-weight: 600;
+											color: var(--foreground);
+										"
+									>
+										Přetáhněte obrázek sem nebo
+										<span style="color: var(--primary)">vyberte soubor</span>
+									</div>
+									<div
+										style="
+											font-size: 12px;
+											color: var(--foreground-subtle);
+											margin-top: 4px;
+										"
+									>
+										JPG, PNG nebo WebP, max 5 MB
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- CROP EDITOR — fallback across slots -->
+						<div class="panel">
+							<div class="panel-head">
+								<div>
+									<div class="panel-title">Ořez podle místa</div>
+									<div class="panel-hint">
+										Bez obrázku se ve všech místech zobrazí motivové pozadí +
+										emoji.
+									</div>
+								</div>
+							</div>
+							<div class="panel-body">
+								<div class="editor">
+									<div class="wt-birthday">
+										<div class="tabs">
+											<button class="tab is-active">
+												Karta<span class="ratio">3:2</span>
+											</button>
+											<button class="tab">
+												Miniatura<span class="ratio">1:1</span>
+											</button>
+											<button class="tab">
+												Záhlaví<span class="ratio">4:1</span>
+											</button>
+											<button class="tab">
+												Sdílení<span class="ratio">1.91:1</span>
+											</button>
+										</div>
+										<div class="stage fallback-hero" style="font-size: 88px">
+											🎂
+										</div>
+										<!-- Zoom disabled while no image is assigned -->
+										<div class="zoom-row is-disabled">
+											<svg
+												class="zoom-icon"
+												width="15"
+												height="15"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<circle cx="11" cy="11" r="7" />
+												<path d="M21 21l-4.3-4.3M11 8v6M8 11h6" />
+											</svg>
+											<label>Přiblížení</label>
+											<div class="zoom-track">
+												<span class="zoom-fill"></span
+												><span class="zoom-knob"></span>
+											</div>
+											<span class="zoom-pct">—</span>
+										</div>
+										<div class="stage-meta">
+											<span class="tag">Motivové pozadí · Narozeniny</span>
+											<span
+												>Záchytný bod a přiblížení se zpřístupní po nahrání
+												obrázku.</span
+											>
+										</div>
+									</div>
+									<div class="wt-birthday">
+										<div class="rail-title">Všechna místa (fallback)</div>
+										<div class="mini-list">
+											<div class="mini is-active">
+												<div
+													class="mini-frame mini-card fallback-hero"
+													style="
+														font-size: 20px;
+														background: var(--wt-grad);
+													"
+												>
+													🎂
+												</div>
+												<div class="mini-info">
+													<b>Karta nástěnky</b><span>3:2 · motiv</span>
+												</div>
+											</div>
+											<div class="mini">
+												<div
+													class="mini-frame mini-thumb fallback-hero"
+													style="
+														font-size: 18px;
+														background: var(--wt-grad);
+													"
+												>
+													🎂
+												</div>
+												<div class="mini-info">
+													<b>Miniatura</b><span>1:1 · motiv</span>
+												</div>
+											</div>
+											<div class="mini">
+												<div
+													class="mini-frame mini-banner fallback-hero"
+													style="
+														font-size: 14px;
+														background: var(--wt-grad);
+													"
+												>
+													🎂
+												</div>
+												<div class="mini-info">
+													<b>Záhlaví</b><span>široké · motiv</span>
+												</div>
+											</div>
+											<div class="mini">
+												<div
+													class="mini-frame mini-social fallback-hero"
+													style="
+														font-size: 16px;
+														background: var(--wt-grad);
+													"
+												>
+													🎂
+												</div>
+												<div class="mini-info">
+													<b>Sdílení</b><span>1.91:1 · motiv</span>
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- THEME + CARD PREVIEW — fallback -->
+						<div class="panel">
+							<div class="panel-head">
+								<div>
+									<div class="panel-title">Motiv a náhled karty</div>
+									<div class="panel-hint">
+										Náhled bez obrázku — motivové pozadí + emoji.
+									</div>
+								</div>
+							</div>
+							<div class="panel-body">
+								<div class="editor">
+									<div>
+										<div class="preset-grid">
+											<button class="preset wt-default">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎁 Výchozí</div>
+											</button>
+											<button class="preset wt-christmas">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎄 Vánoce</div>
+											</button>
+											<button class="preset is-selected wt-birthday">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎂 Narozeniny</div>
+											</button>
+											<button class="preset wt-fun">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">🎉 Zábava</div>
+											</button>
+											<button class="preset wt-elegant">
+												<div
+													class="swatch"
+													style="background: var(--wt-grad)"
+												></div>
+												<div class="plabel">💍 Elegantní</div>
+											</button>
+											<button
+												class="preset"
+												style="
+													display: flex;
+													align-items: center;
+													justify-content: center;
+												"
+											>
+												<div class="plabel">＋ Vlastní</div>
+											</button>
+										</div>
+									</div>
+									<div class="wt-birthday">
+										<div class="rail-title">Náhled karty</div>
+										<div class="card-preview">
+											<div
+												class="cp-hero fallback-hero"
+												style="font-size: 40px"
+											>
+												🎂
+											</div>
+											<div class="cp-body">
+												<div class="cp-title">Narozeniny — Petr</div>
+												<div class="cp-meta">
+													<span class="cp-pill">🎂 Narozeniny</span>
+													<span>5 přání · 15. 3.</span>
+												</div>
+											</div>
+										</div>
+										<div class="fallback-note">
+											Čitelné i v tmavém režimu pro všechny motivy.
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			// ── Zoom: mouse wheel over the crop stage + draggable slider knob ──
+			// Range 100–300 %. In the real build this maps to the #34 cover-crop scale
+			// and persists into the per-slot crop metadata (#35).
+			(function () {
+				const MIN = 100;
+				const MAX = 300;
+				let zoom = 100;
+
+				const stage = document.getElementById('cropStage');
+				const img = document.getElementById('stageImg');
+				const track = document.getElementById('zoomTrack');
+				const knob = document.getElementById('zoomKnob');
+				const fill = document.getElementById('zoomFill');
+				const pct = document.getElementById('zoomPct');
+
+				function clamp(v) {
+					return Math.min(MAX, Math.max(MIN, v));
+				}
+				function render() {
+					const ratio = (zoom - MIN) / (MAX - MIN); // 0..1
+					img.style.transform = 'scale(' + (zoom / 100).toFixed(3) + ')';
+					knob.style.left = ratio * 100 + '%';
+					fill.style.width = ratio * 100 + '%';
+					pct.textContent = Math.round(zoom) + ' %';
+					knob.setAttribute('aria-valuenow', String(Math.round(zoom)));
+				}
+
+				// Wheel over the stage zooms (prevent page scroll while hovering the crop).
+				stage.addEventListener(
+					'wheel',
+					function (e) {
+						e.preventDefault();
+						zoom = clamp(zoom + (e.deltaY < 0 ? 6 : -6));
+						render();
+					},
+					{ passive: false },
+				);
+
+				// Click / drag on the track sets zoom from pointer position.
+				function setFromPointer(clientX) {
+					const r = track.getBoundingClientRect();
+					const ratio = clamp(((clientX - r.left) / r.width) * (MAX - MIN) + MIN);
+					zoom = ratio;
+					render();
+				}
+				let dragging = false;
+				track.addEventListener('pointerdown', function (e) {
+					dragging = true;
+					knob.setPointerCapture?.(e.pointerId);
+					setFromPointer(e.clientX);
+				});
+				window.addEventListener('pointermove', function (e) {
+					if (dragging) setFromPointer(e.clientX);
+				});
+				window.addEventListener('pointerup', function () {
+					dragging = false;
+				});
+
+				// Keyboard on the knob (a11y).
+				knob.addEventListener('keydown', function (e) {
+					if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+						zoom = clamp(zoom + 5);
+						render();
+						e.preventDefault();
+					} else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+						zoom = clamp(zoom - 5);
+						render();
+						e.preventDefault();
+					}
+				});
+
+				// Fit-mode: zoom only applies to cover-crop; disable otherwise.
+				const fitmode = document.getElementById('fitmode');
+				const zoomRow = document.getElementById('zoomRow');
+				fitmode.querySelectorAll('button').forEach(function (b) {
+					b.addEventListener('click', function () {
+						fitmode
+							.querySelectorAll('button')
+							.forEach((x) => x.classList.remove('is-active'));
+						b.classList.add('is-active');
+						zoomRow.classList.toggle('is-disabled', b.dataset.mode !== 'cover');
+					});
+				});
+
+				render();
+			})();
+		</script>
+	</body>
+</html>

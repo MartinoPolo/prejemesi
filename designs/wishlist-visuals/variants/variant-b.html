@@ -1,0 +1,1152 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Vzhled seznamu · Variant B: Side-by-side live previews</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			/* ── VARIANT B: SIDE-BY-SIDE LIVE PREVIEWS ───────────────
+			   Left: single crop stage with a slot selector.
+			   Right: ALL four slot previews rendered simultaneously
+			   at true scale, updating live. Theme picker + realistic
+			   card preview span the full width below.                */
+
+			.theme-light {
+				--background: oklch(0.975 0.006 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.95 0.012 150);
+				--foreground: oklch(0.18 0.012 150);
+				--foreground-muted: oklch(0.46 0.02 150);
+				--foreground-subtle: oklch(0.62 0.014 150);
+				--border: oklch(0.92 0.01 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150);
+				--primary-fg: oklch(0.982 0.018 155);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150);
+			}
+			.theme-dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.195 0.01 140);
+				--surface-2: oklch(0.235 0.013 140);
+				--surface-hover: oklch(0.265 0.016 140);
+				--foreground: oklch(0.97 0.006 150);
+				--foreground-muted: oklch(0.68 0.018 150);
+				--foreground-subtle: oklch(0.5 0.014 150);
+				--border: oklch(0.28 0.016 140);
+				--border-strong: oklch(0.36 0.022 140);
+				--primary: oklch(0.62 0.154 150);
+				--primary-fg: oklch(0.14 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(0.62 0.154 150);
+			}
+
+			.wt-default {
+				--wt-primary: oklch(0.527 0.154 150);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.64 0.14 150),
+					oklch(0.72 0.16 145),
+					oklch(0.58 0.12 155)
+				);
+			}
+			.wt-christmas {
+				--wt-primary: oklch(0.5 0.18 25);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.62 0.17 25),
+					oklch(0.66 0.16 145),
+					oklch(0.78 0.13 85)
+				);
+			}
+			.wt-birthday {
+				--wt-primary: oklch(0.58 0.18 330);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.7 0.18 330),
+					oklch(0.66 0.16 290),
+					oklch(0.78 0.13 85)
+				);
+			}
+			.wt-fun {
+				--wt-primary: oklch(0.6 0.16 250);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.7 0.16 250),
+					oklch(0.82 0.17 65),
+					oklch(0.78 0.16 45)
+				);
+			}
+			.wt-elegant {
+				--wt-primary: oklch(0.35 0.05 260);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.48 0.05 260),
+					oklch(0.58 0.06 255),
+					oklch(0.82 0.11 85)
+				);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				background: oklch(0.91 0.01 150);
+				font-family: 'Figtree', system-ui, sans-serif;
+			}
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				color: var(--foreground);
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 15px;
+				line-height: 1.5;
+				-webkit-font-smoothing: antialiased;
+			}
+			.mode-strip {
+				text-align: center;
+				padding: 10px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+			.variant-banner {
+				text-align: center;
+				padding: 14px 0 8px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.5 0.06 150);
+			}
+
+			.nav {
+				height: 56px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 24px;
+				border-bottom: 1px solid var(--border);
+				background: color-mix(in oklch, var(--surface) 85%, transparent);
+				backdrop-filter: blur(12px);
+				opacity: 0.92;
+			}
+			.nav-logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.nav-logo span {
+				opacity: 0.4;
+			}
+			.nav-links {
+				display: flex;
+				gap: 2px;
+			}
+			.nav-link {
+				padding: 6px 14px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				border-radius: 8px;
+				text-decoration: none;
+			}
+			.nav-link.is-active {
+				color: var(--primary);
+				background: var(--primary-soft);
+				font-weight: 600;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 2px solid color-mix(in oklch, var(--primary) 28%, transparent);
+			}
+
+			.content {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 24px 56px;
+			}
+			.crumb {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				padding: 22px 0 4px;
+			}
+			.crumb b {
+				color: var(--foreground-muted);
+				font-weight: 600;
+			}
+			.head-row {
+				display: flex;
+				align-items: flex-end;
+				justify-content: space-between;
+				gap: 16px;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--border);
+			}
+			.page-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 26px;
+				font-weight: 700;
+				letter-spacing: -0.02em;
+			}
+			.page-sub {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-top: 3px;
+			}
+			.sec-tabs {
+				display: flex;
+				gap: 4px;
+				margin: 18px 0 22px;
+				border-bottom: 1px solid var(--border);
+			}
+			.sec-tab {
+				padding: 9px 14px;
+				font-size: 13px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				border-bottom: 2px solid transparent;
+				margin-bottom: -1px;
+				text-decoration: none;
+			}
+			.sec-tab.is-active {
+				color: var(--primary);
+				border-bottom-color: var(--primary);
+			}
+			.sec-tab.muted {
+				opacity: 0.5;
+			}
+
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				font-weight: 600;
+				font-size: 13px;
+				padding: 0 14px;
+				height: 36px;
+				border-radius: 8px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				white-space: nowrap;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.12);
+			}
+			.btn-secondary {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-sm {
+				height: 30px;
+				padding: 0 10px;
+				font-size: 12px;
+			}
+			.btn-danger {
+				background: transparent;
+				color: var(--status-danger);
+			}
+
+			.panel {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 16px;
+				overflow: hidden;
+			}
+			.panel + .panel {
+				margin-top: 20px;
+			}
+			.panel-head {
+				padding: 16px 20px;
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.panel-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 15px;
+				font-weight: 700;
+			}
+			.panel-hint {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				margin-top: 2px;
+			}
+			.panel-body {
+				padding: 20px;
+			}
+
+			/* Two-up: stage left, all previews right */
+			.twoup {
+				display: grid;
+				grid-template-columns: 1fr 360px;
+				gap: 24px;
+			}
+
+			/* Slot chips */
+			.slot-chips {
+				display: flex;
+				gap: 6px;
+				margin-bottom: 14px;
+				flex-wrap: wrap;
+			}
+			.slot-chip {
+				padding: 6px 11px;
+				border-radius: 999px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.slot-chip.is-active {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border-color: color-mix(in oklch, var(--primary) 30%, transparent);
+			}
+
+			.stage {
+				position: relative;
+				border-radius: 12px;
+				overflow: hidden;
+				background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%)
+					50% / 22px 22px;
+				border: 1px solid var(--border);
+				aspect-ratio: 16 / 10;
+			}
+			.stage-img {
+				position: absolute;
+				inset: 0;
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.66 0.13 30),
+					oklch(0.74 0.12 60) 50%,
+					oklch(0.82 0.1 95)
+				);
+				background-size: cover;
+				background-position: center 40%;
+			}
+			.crop-frame {
+				position: absolute;
+				inset: 10% 22%;
+				border: 2px solid oklch(1 0 0 / 0.92);
+				box-shadow: 0 0 0 9999px oklch(0 0 0 / 0.38);
+				border-radius: 4px;
+			}
+			.crop-handle {
+				position: absolute;
+				width: 10px;
+				height: 10px;
+				background: oklch(1 0 0);
+				border-radius: 2px;
+			}
+			.crop-handle.tl {
+				top: -5px;
+				left: -5px;
+			}
+			.crop-handle.tr {
+				top: -5px;
+				right: -5px;
+			}
+			.crop-handle.bl {
+				bottom: -5px;
+				left: -5px;
+			}
+			.crop-handle.br {
+				bottom: -5px;
+				right: -5px;
+			}
+			.focal {
+				position: absolute;
+				top: 40%;
+				left: 50%;
+				width: 26px;
+				height: 26px;
+				transform: translate(-50%, -50%);
+				border: 2px solid oklch(1 0 0);
+				border-radius: 50%;
+				box-shadow: 0 0 0 2px oklch(0 0 0 / 0.4);
+				cursor: grab;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.focal::after {
+				content: '';
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: oklch(1 0 0);
+			}
+			.fitmode {
+				display: flex;
+				gap: 4px;
+				margin-top: 14px;
+				padding: 4px;
+				background: var(--surface-2);
+				border-radius: 9px;
+			}
+			.fitmode button {
+				flex: 1;
+				padding: 7px;
+				border-radius: 6px;
+				border: none;
+				background: transparent;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.fitmode button.is-active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+			}
+			.zoom-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 14px;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+			.zoom-track {
+				flex: 1;
+				height: 4px;
+				border-radius: 999px;
+				background: var(--surface-2);
+				position: relative;
+			}
+			.zoom-knob {
+				position: absolute;
+				top: 50%;
+				left: 42%;
+				width: 14px;
+				height: 14px;
+				border-radius: 50%;
+				background: var(--primary);
+				transform: translate(-50%, -50%);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.2);
+			}
+
+			/* Right: ALL previews stacked at true scale */
+			.previews-title {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 12px;
+			}
+			.pv {
+				margin-bottom: 18px;
+			}
+			.pv-label {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				margin-bottom: 6px;
+			}
+			.pv-label .r {
+				color: var(--foreground-subtle);
+				font-weight: 500;
+			}
+			.frame {
+				border-radius: 8px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.66 0.13 30),
+					oklch(0.74 0.12 60) 50%,
+					oklch(0.82 0.1 95)
+				);
+				background-size: cover;
+				background-position: center 40%;
+			}
+			.frame-card {
+				width: 100%;
+				aspect-ratio: 3 / 2;
+				position: relative;
+			}
+			.frame-thumb {
+				width: 52px;
+				height: 52px;
+			}
+			.frame-banner {
+				width: 100%;
+				aspect-ratio: 4 / 1;
+			}
+			.frame-social {
+				width: 100%;
+				aspect-ratio: 1.91 / 1;
+				position: relative;
+			}
+			.thumb-row {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.thumb-row .lbl {
+				font-size: 12px;
+			}
+			.thumb-row .lbl b {
+				display: block;
+				font-weight: 600;
+			}
+			.thumb-row .lbl span {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+			.og-overlay {
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				padding: 8px 10px;
+				background: linear-gradient(to top, oklch(0 0 0 / 0.6), transparent);
+				color: white;
+				font-size: 11px;
+				font-weight: 600;
+			}
+			.og-overlay small {
+				display: block;
+				font-weight: 400;
+				opacity: 0.85;
+				font-size: 10px;
+			}
+
+			/* Theme row full-width */
+			.theme-grid {
+				display: grid;
+				grid-template-columns: 1.4fr 1fr;
+				gap: 28px;
+			}
+			.preset-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 10px;
+			}
+			.preset {
+				border: 2px solid var(--border);
+				border-radius: 12px;
+				padding: 9px;
+				background: transparent;
+				cursor: pointer;
+				text-align: left;
+			}
+			.preset.is-selected {
+				border-color: var(--primary);
+			}
+			.preset .swatch {
+				height: 30px;
+				border-radius: 8px;
+				margin-bottom: 7px;
+			}
+			.preset .plabel {
+				font-size: 12px;
+				font-weight: 600;
+				display: flex;
+				align-items: center;
+				gap: 5px;
+			}
+			.custom-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 12px;
+				padding: 10px;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+			}
+			.color-chip {
+				width: 34px;
+				height: 34px;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				background: oklch(0.62 0.16 30);
+			}
+			.color-val {
+				font-family: ui-monospace, monospace;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+
+			.card-preview {
+				border-radius: 14px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				box-shadow: 0 4px 14px oklch(0 0 0 / 0.08);
+			}
+			.cp-hero {
+				height: 130px;
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.66 0.13 30),
+					oklch(0.74 0.12 60) 50%,
+					oklch(0.82 0.1 95)
+				);
+				background-size: cover;
+				background-position: center 40%;
+				position: relative;
+			}
+			.cp-status {
+				position: absolute;
+				top: 8px;
+				left: 8px;
+				font-size: 10px;
+				font-weight: 700;
+				padding: 3px 8px;
+				border-radius: 999px;
+				background: color-mix(in oklch, var(--reserved) 90%, white);
+				color: white;
+			}
+			.cp-body {
+				padding: 13px 15px 15px;
+			}
+			.cp-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 16px;
+				font-weight: 700;
+			}
+			.cp-meta {
+				display: flex;
+				gap: 8px;
+				margin-top: 7px;
+				font-size: 12px;
+				color: var(--foreground-muted);
+				align-items: center;
+			}
+			.cp-pill {
+				font-size: 10px;
+				font-weight: 700;
+				padding: 2px 8px;
+				border-radius: 999px;
+				background: color-mix(in oklch, var(--wt-primary) 15%, transparent);
+				color: var(--wt-primary);
+			}
+			.fallback-hero {
+				background: var(--wt-grad);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.note {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				margin-top: 10px;
+			}
+			.tag {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 11px;
+				font-weight: 600;
+				padding: 3px 9px;
+				border-radius: 999px;
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+		</style>
+	</head>
+	<body>
+		<p class="variant-banner">Variant B — Side-by-side live previews</p>
+
+		<!-- ════════════ LIGHT MODE ════════════ -->
+		<div class="page theme-light">
+			<div class="mode-strip">Light Mode</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="avatar">M</div>
+			</nav>
+
+			<div class="content">
+				<div class="crumb">Moje seznamy / <b>Narozeniny — Petr</b> / Nastavení vzhledu</div>
+				<div class="head-row">
+					<div>
+						<div class="page-title">Vzhled seznamu</div>
+						<div class="page-sub">
+							Upravte výřez vlevo — všechna místa se aktualizují vpravo.
+						</div>
+					</div>
+					<button class="btn btn-primary">Uložit změny</button>
+				</div>
+
+				<div class="sec-tabs">
+					<a href="#" class="sec-tab muted">Základní údaje</a>
+					<a href="#" class="sec-tab is-active">Vzhled</a>
+					<a href="#" class="sec-tab muted">Sdílení</a>
+					<a href="#" class="sec-tab muted">Moderátoři</a>
+					<a href="#" class="sec-tab muted">Nebezpečná zóna</a>
+				</div>
+
+				<!-- IMAGE + CROP with simultaneous previews -->
+				<div class="panel">
+					<div class="panel-head">
+						<div>
+							<div class="panel-title">Obrázek a ořez</div>
+							<div class="panel-hint">
+								Jeden obrázek, čtyři výřezy. Náhledy vpravo ukazují skutečný
+								výsledek.
+							</div>
+						</div>
+						<div style="display: flex; gap: 8px">
+							<button class="btn btn-secondary btn-sm">Nahradit</button>
+							<button class="btn btn-danger btn-sm">Odebrat</button>
+						</div>
+					</div>
+					<div class="panel-body">
+						<div class="twoup">
+							<!-- Left: stage -->
+							<div>
+								<div class="slot-chips">
+									<span class="slot-chip is-active">Karta · 3:2</span>
+									<span class="slot-chip">Miniatura · 1:1</span>
+									<span class="slot-chip">Záhlaví · 4:1</span>
+									<span class="slot-chip">Sdílení · 1.91:1</span>
+								</div>
+								<div class="stage">
+									<div class="stage-img"></div>
+									<div class="crop-frame">
+										<span class="crop-handle tl"></span>
+										<span class="crop-handle tr"></span>
+										<span class="crop-handle bl"></span>
+										<span class="crop-handle br"></span>
+									</div>
+									<div class="focal"></div>
+								</div>
+								<div class="fitmode">
+									<button>Automaticky</button>
+									<button>S okrajem</button>
+									<button class="is-active">Vyplnit (ořez)</button>
+								</div>
+								<div class="zoom-row">
+									<span>Přiblížení</span>
+									<div class="zoom-track"><span class="zoom-knob"></span></div>
+									<span>120 %</span>
+								</div>
+							</div>
+
+							<!-- Right: all four previews live -->
+							<div>
+								<div class="previews-title">Živé náhledy všech míst</div>
+
+								<div class="pv">
+									<div class="pv-label">
+										Karta nástěnky <span class="r">3:2</span>
+									</div>
+									<div class="frame frame-card"></div>
+								</div>
+
+								<div class="pv">
+									<div class="pv-label">
+										Miniatura v seznamu <span class="r">1:1 · 52 px</span>
+									</div>
+									<div class="thumb-row">
+										<div class="frame frame-thumb"></div>
+										<div class="lbl">
+											<b>Narozeniny — Petr</b><span>5 přání · 15. 3.</span>
+										</div>
+									</div>
+								</div>
+
+								<div class="pv">
+									<div class="pv-label">
+										Záhlaví stránky <span class="r">široké · 4:1</span>
+									</div>
+									<div class="frame frame-banner"></div>
+								</div>
+
+								<div class="pv" style="margin-bottom: 0">
+									<div class="pv-label">
+										Náhled sdílení (OG) <span class="r">1.91:1</span>
+									</div>
+									<div class="frame frame-social">
+										<div class="og-overlay">
+											Narozeniny — Petr <small>darecky.cz · 5 přání</small>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- THEME + realistic card preview -->
+				<div class="panel">
+					<div class="panel-head">
+						<div>
+							<div class="panel-title">Motiv seznamu</div>
+							<div class="panel-hint">
+								Skutečný náhled karty místo tenké barevné linky.
+							</div>
+						</div>
+					</div>
+					<div class="panel-body">
+						<div class="theme-grid">
+							<div>
+								<div class="preset-grid">
+									<button class="preset is-selected wt-birthday">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎂 Narozeniny</div>
+									</button>
+									<button class="preset wt-default">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎁 Výchozí</div>
+									</button>
+									<button class="preset wt-christmas">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎄 Vánoce</div>
+									</button>
+									<button class="preset wt-fun">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎉 Zábava</div>
+									</button>
+									<button class="preset wt-elegant">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">💍 Elegantní</div>
+									</button>
+									<button
+										class="preset"
+										style="
+											display: flex;
+											align-items: center;
+											justify-content: center;
+										"
+									>
+										<div class="plabel">＋ Vlastní barva</div>
+									</button>
+								</div>
+								<div class="custom-row">
+									<div class="color-chip"></div>
+									<div>
+										<div style="font-size: 12px; font-weight: 600">
+											Vlastní barva
+										</div>
+										<div class="color-val">oklch(0.62 0.16 30)</div>
+									</div>
+									<button
+										class="btn btn-secondary btn-sm"
+										style="margin-left: auto"
+									>
+										Vybrat
+									</button>
+								</div>
+							</div>
+							<div class="wt-birthday">
+								<div class="previews-title">Náhled karty</div>
+								<div class="card-preview">
+									<div class="cp-hero">
+										<span class="cp-status">Sdíleno</span>
+									</div>
+									<div class="cp-body">
+										<div class="cp-title">Narozeniny — Petr</div>
+										<div class="cp-meta">
+											<span class="cp-pill">🎂 Narozeniny</span>
+											<span>5 přání · 15. 3. 2027</span>
+										</div>
+									</div>
+								</div>
+								<div class="note">
+									Akcenty používají motivovou barvu; text drží kontrast tokenů.
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════ DARK MODE — fallback (no image) ════════════ -->
+		<div class="page theme-dark">
+			<div class="mode-strip">Dark Mode — bez obrázku (fallback)</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="avatar">M</div>
+			</nav>
+
+			<div class="content">
+				<div class="crumb">
+					Moje seznamy / <b>Svatba Jana &amp; Tomáš</b> / Nastavení vzhledu
+				</div>
+				<div class="head-row">
+					<div>
+						<div class="page-title">Vzhled seznamu</div>
+						<div class="page-sub">
+							Bez obrázku — motivové pozadí + velké emoji na všech místech.
+						</div>
+					</div>
+					<button class="btn btn-primary">Uložit změny</button>
+				</div>
+
+				<div class="sec-tabs">
+					<a href="#" class="sec-tab muted">Základní údaje</a>
+					<a href="#" class="sec-tab is-active">Vzhled</a>
+					<a href="#" class="sec-tab muted">Sdílení</a>
+					<a href="#" class="sec-tab muted">Moderátoři</a>
+					<a href="#" class="sec-tab muted">Nebezpečná zóna</a>
+				</div>
+
+				<div class="panel">
+					<div class="panel-head">
+						<div>
+							<div class="panel-title">Obrázek a ořez</div>
+							<div class="panel-hint">Volitelné — bez obrázku se použije motiv.</div>
+						</div>
+					</div>
+					<div class="panel-body">
+						<div class="twoup">
+							<!-- Left: empty drop zone -->
+							<div>
+								<div
+									style="
+										border: 2px dashed var(--border-strong);
+										border-radius: 12px;
+										padding: 40px 28px;
+										text-align: center;
+										color: var(--foreground-muted);
+										aspect-ratio: 16 / 10;
+										display: flex;
+										flex-direction: column;
+										align-items: center;
+										justify-content: center;
+									"
+								>
+									<div style="font-size: 32px; margin-bottom: 8px">⬆️</div>
+									<div
+										style="
+											font-size: 14px;
+											font-weight: 600;
+											color: var(--foreground);
+										"
+									>
+										Přetáhněte obrázek sem nebo
+										<span style="color: var(--primary)">vyberte soubor</span>
+									</div>
+									<div
+										style="
+											font-size: 12px;
+											color: var(--foreground-subtle);
+											margin-top: 4px;
+										"
+									>
+										JPG, PNG nebo WebP, max 5 MB
+									</div>
+								</div>
+								<div class="zoom-row" style="opacity: 0.5">
+									<span>Přiblížení</span>
+									<div class="zoom-track"><span class="zoom-knob"></span></div>
+									<span>—</span>
+								</div>
+							</div>
+
+							<!-- Right: fallback previews -->
+							<div class="wt-elegant">
+								<div class="previews-title">Živé náhledy (motiv Elegantní)</div>
+
+								<div class="pv">
+									<div class="pv-label">
+										Karta nástěnky <span class="r">3:2</span>
+									</div>
+									<div
+										class="frame frame-card fallback-hero"
+										style="background: var(--wt-grad); font-size: 42px"
+									>
+										💍
+									</div>
+								</div>
+								<div class="pv">
+									<div class="pv-label">
+										Miniatura v seznamu <span class="r">1:1 · 52 px</span>
+									</div>
+									<div class="thumb-row">
+										<div
+											class="frame frame-thumb fallback-hero"
+											style="background: var(--wt-grad); font-size: 22px"
+										>
+											💍
+										</div>
+										<div class="lbl">
+											<b>Svatba Jana &amp; Tomáš</b><span>12 přání</span>
+										</div>
+									</div>
+								</div>
+								<div class="pv">
+									<div class="pv-label">
+										Záhlaví stránky <span class="r">4:1</span>
+									</div>
+									<div
+										class="frame frame-banner fallback-hero"
+										style="background: var(--wt-grad); font-size: 30px"
+									>
+										💍
+									</div>
+								</div>
+								<div class="pv" style="margin-bottom: 0">
+									<div class="pv-label">
+										Náhled sdílení (OG) <span class="r">1.91:1</span>
+									</div>
+									<div
+										class="frame frame-social fallback-hero"
+										style="background: var(--wt-grad); font-size: 40px"
+									>
+										💍
+										<div class="og-overlay">
+											Svatba Jana &amp; Tomáš
+											<small>darecky.cz · 12 přání</small>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="panel">
+					<div class="panel-head">
+						<div>
+							<div class="panel-title">Motiv seznamu</div>
+							<div class="panel-hint">
+								Náhled bez obrázku — motivové pozadí + emoji.
+							</div>
+						</div>
+					</div>
+					<div class="panel-body">
+						<div class="theme-grid">
+							<div>
+								<div class="preset-grid">
+									<button class="preset wt-default">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎁 Výchozí</div>
+									</button>
+									<button class="preset wt-christmas">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎄 Vánoce</div>
+									</button>
+									<button class="preset wt-birthday">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎂 Narozeniny</div>
+									</button>
+									<button class="preset wt-fun">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">🎉 Zábava</div>
+									</button>
+									<button class="preset is-selected wt-elegant">
+										<div
+											class="swatch"
+											style="background: var(--wt-grad)"
+										></div>
+										<div class="plabel">💍 Elegantní</div>
+									</button>
+									<button
+										class="preset"
+										style="
+											display: flex;
+											align-items: center;
+											justify-content: center;
+										"
+									>
+										<div class="plabel">＋ Vlastní barva</div>
+									</button>
+								</div>
+							</div>
+							<div class="wt-elegant">
+								<div class="previews-title">Náhled karty</div>
+								<div class="card-preview">
+									<div class="cp-hero fallback-hero" style="font-size: 46px">
+										💍
+									</div>
+									<div class="cp-body">
+										<div class="cp-title">Svatba Jana &amp; Tomáš</div>
+										<div class="cp-meta">
+											<span class="cp-pill">💍 Elegantní</span>
+											<span>12 přání · 12. 6. 2027</span>
+										</div>
+									</div>
+								</div>
+								<div class="note">
+									Motivové pozadí i emoji zůstávají čitelné v tmavém režimu.
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Image Frame Foundation — Variant B: Spec Sheet</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			.theme-light {
+				--background: oklch(98.6% 0.004 250deg);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(96.5% 0.006 250deg);
+				--surface-3: oklch(93.5% 0.008 250deg);
+				--foreground: oklch(17% 0.012 250deg);
+				--foreground-muted: oklch(46% 0.016 250deg);
+				--foreground-subtle: oklch(57% 0.014 250deg);
+				--border: oklch(91% 0.01 250deg);
+				--border-strong: oklch(83% 0.016 250deg);
+				--primary: oklch(52.7% 0.154 150deg);
+				--primary-soft: oklch(93% 0.045 150deg);
+				--ring: oklch(52.7% 0.154 150deg);
+				--wishlist-surface: oklch(98.5% 0.005 150deg);
+				--wishlist-preview: oklch(96% 0.03 150deg);
+				--wishlist-page: oklch(98.5% 0.008 150deg);
+				--wishlist-icon: oklch(55% 0.12 150deg);
+				--wishlist-image-frame: oklch(95% 0.012 150deg);
+			}
+			.theme-dark {
+				--background: oklch(15.3% 0.006 250deg);
+				--surface: oklch(20% 0.01 250deg);
+				--surface-2: oklch(24% 0.012 250deg);
+				--surface-3: oklch(27% 0.014 250deg);
+				--foreground: oklch(96% 0.006 250deg);
+				--foreground-muted: oklch(73% 0.016 250deg);
+				--foreground-subtle: oklch(60% 0.014 250deg);
+				--border: oklch(29% 0.014 250deg);
+				--border-strong: oklch(38% 0.02 250deg);
+				--primary: oklch(62% 0.154 150deg);
+				--primary-soft: oklch(28% 0.055 150deg);
+				--ring: oklch(62% 0.154 150deg);
+				--wishlist-surface: oklch(20% 0.01 150deg);
+				--wishlist-preview: oklch(26% 0.04 150deg);
+				--wishlist-page: oklch(17% 0.012 150deg);
+				--wishlist-icon: oklch(70% 0.12 150deg);
+				--wishlist-image-frame: oklch(22% 0.016 150deg);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: 'Figtree', system-ui, sans-serif;
+				-webkit-font-smoothing: antialiased;
+				background: var(--background, oklch(98.6% 0.004 250deg));
+			}
+
+			.variant-eyebrow {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: oklch(1 0 0);
+				background: oklch(52.7% 0.154 150deg);
+				padding: 10px 20px;
+				text-align: center;
+			}
+
+			.doc {
+				background: var(--background);
+				color: var(--foreground);
+				max-width: 920px;
+				margin: 0 auto;
+				padding: 48px 40px 80px;
+			}
+			.doc-title {
+				font-family: 'Noto Sans', sans-serif;
+				font-size: 32px;
+				font-weight: 800;
+				letter-spacing: -0.02em;
+				margin-bottom: 8px;
+			}
+			.doc-lede {
+				font-size: 15px;
+				color: var(--foreground-muted);
+				line-height: 1.6;
+				max-width: 64ch;
+				margin-bottom: 8px;
+			}
+			.doc-meta {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				margin-bottom: 36px;
+			}
+			.doc-meta code {
+				font-family: ui-monospace, monospace;
+				background: var(--surface-2);
+				padding: 1px 6px;
+				border-radius: 4px;
+				color: var(--primary);
+			}
+
+			.block {
+				margin-bottom: 44px;
+			}
+			.block > h2 {
+				font-family: 'Noto Sans', sans-serif;
+				font-size: 13px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: 4px;
+			}
+			.block > .h-main {
+				font-family: 'Noto Sans', sans-serif;
+				font-size: 22px;
+				font-weight: 700;
+				letter-spacing: -0.01em;
+				margin-bottom: 8px;
+			}
+			.block > p {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				line-height: 1.6;
+				max-width: 64ch;
+				margin-bottom: 18px;
+			}
+
+			.frame {
+				position: relative;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				background: var(--surface-2);
+			}
+			.frame .fit-chip {
+				position: absolute;
+				top: 8px;
+				left: 8px;
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				padding: 3px 8px;
+				border-radius: 9999px;
+				background: oklch(0 0 0 / 0.55);
+				color: oklch(1 0 0);
+			}
+			.img-sim {
+				width: 100%;
+				height: 100%;
+			}
+			.sim-headphones {
+				background:
+					radial-gradient(
+						circle at 38% 42%,
+						oklch(72% 0.04 250deg) 0 13%,
+						transparent 14%
+					),
+					radial-gradient(
+						circle at 62% 42%,
+						oklch(72% 0.04 250deg) 0 13%,
+						transparent 14%
+					),
+					linear-gradient(135deg, oklch(45% 0.03 250deg), oklch(28% 0.02 250deg));
+			}
+			.sim-tall {
+				background: linear-gradient(180deg, oklch(70% 0.13 25deg), oklch(55% 0.1 200deg));
+			}
+			.sim-wide {
+				background: linear-gradient(90deg, oklch(72% 0.1 200deg), oklch(74% 0.13 90deg));
+			}
+			.sim-tiny {
+				background: conic-gradient(
+					from 45deg,
+					oklch(70% 0.15 30deg),
+					oklch(70% 0.15 150deg),
+					oklch(70% 0.15 270deg),
+					oklch(70% 0.15 30deg)
+				);
+			}
+			.center {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			/* fit-mode trio: same source, big frames */
+			.trio {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 16px;
+			}
+			.trio .frame {
+				height: 150px;
+			}
+			.spec-cap {
+				margin-top: 8px;
+				font-size: 12px;
+			}
+			.spec-cap .nm {
+				font-weight: 700;
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+			}
+			.spec-cap .dsc {
+				color: var(--foreground-subtle);
+				display: block;
+				font-size: 11px;
+				margin-top: 2px;
+			}
+
+			/* annotated fill-priority diagram (horizontal flow) */
+			.flow {
+				display: flex;
+				align-items: stretch;
+				gap: 0;
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				overflow: hidden;
+				background: var(--surface);
+			}
+			.flow-step {
+				flex: 1;
+				padding: 18px 16px;
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+				position: relative;
+				border-right: 1px solid var(--border);
+			}
+			.flow-step:last-child {
+				border-right: none;
+			}
+			.flow-step .tier {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+			}
+			.flow-step .sw {
+				height: 44px;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+			}
+			.flow-step .nm {
+				font-size: 12px;
+				font-weight: 700;
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+			}
+			.flow-step .dsc {
+				font-size: 11px;
+				color: var(--foreground-muted);
+				line-height: 1.45;
+			}
+			.flow-step .arrow {
+				position: absolute;
+				right: -9px;
+				top: 50%;
+				transform: translateY(-50%);
+				z-index: 2;
+				width: 18px;
+				height: 18px;
+				background: var(--surface);
+				border: 1px solid var(--border-strong);
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				color: var(--foreground-muted);
+			}
+			.flow-step.win {
+				background: var(--primary-soft);
+			}
+			.flow-step.win .tier {
+				color: var(--primary);
+			}
+			.flow-step .win-tag {
+				font-size: 10px;
+				font-weight: 700;
+				color: var(--primary);
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+			}
+			.sw-extracted {
+				background: oklch(58% 0.13 25deg);
+			}
+			.sw-wishlist {
+				background: var(--wishlist-image-frame);
+			}
+			.sw-global {
+				background: var(--surface-2);
+			}
+
+			/* slot map table */
+			table.slots {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 12px;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				overflow: hidden;
+			}
+			table.slots th,
+			table.slots td {
+				text-align: left;
+				padding: 10px 14px;
+				border-bottom: 1px solid var(--border);
+			}
+			table.slots th {
+				background: var(--surface-2);
+				font-size: 10px;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				font-weight: 700;
+			}
+			table.slots td {
+				color: var(--foreground-muted);
+			}
+			table.slots td:first-child {
+				color: var(--foreground);
+				font-weight: 600;
+			}
+			table.slots td code {
+				font-family: ui-monospace, monospace;
+				color: var(--primary);
+				font-size: 11px;
+			}
+			table.slots tr:last-child td {
+				border-bottom: none;
+			}
+			.slot-mini {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				background: var(--wishlist-surface);
+				border: 1px solid var(--border);
+				color: var(--wishlist-icon);
+				font-size: 14px;
+			}
+
+			/* states row + extreme ratios */
+			.row4 {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 14px;
+			}
+			.row4 .frame {
+				height: 120px;
+			}
+			.ph {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				width: 100%;
+				height: 100%;
+				background: var(--wishlist-surface);
+			}
+			.ph .emoji {
+				font-size: 38px;
+				line-height: 1;
+			}
+			.ph .emoji.iconified {
+				color: var(--wishlist-icon);
+			}
+			.ph .lbl {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+			.skel {
+				width: 100%;
+				height: 100%;
+				position: relative;
+				background: var(--wishlist-image-frame);
+			}
+			.skel::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(
+					90deg,
+					transparent,
+					color-mix(in oklch, var(--foreground) 8%, transparent),
+					transparent
+				);
+				background-size: 200% 100%;
+				animation: dk-shimmer 1.4s linear infinite;
+			}
+			.cap {
+				margin-top: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.cap small {
+				display: block;
+				font-weight: 400;
+				color: var(--foreground-subtle);
+			}
+
+			/* dark mode mirror strip */
+			.dark-strip {
+				margin-top: 14px;
+				padding: 18px;
+				border-radius: 12px;
+				border: 1px solid var(--border-strong);
+			}
+			.dark-strip .strip-label {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 12px;
+			}
+
+			/* token table */
+			.token-grid {
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: 12px;
+			}
+			.token-card {
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				padding: 14px;
+				background: var(--surface);
+				display: flex;
+				gap: 12px;
+				align-items: center;
+			}
+			.token-card .tsw {
+				width: 36px;
+				height: 36px;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				flex-shrink: 0;
+			}
+			.token-card .tnm {
+				font-size: 12px;
+				font-weight: 700;
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+			}
+			.token-card .tdsc {
+				font-size: 11px;
+				color: var(--foreground-muted);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="variant-eyebrow">Variant B — Spec Sheet · Image Frame Foundation (#34)</div>
+		<div class="doc theme-light dk-root">
+			<div class="doc-title">ImageFrame</div>
+			<p class="doc-lede">
+				Sdílený renderer pro každou pevnou obrazovou schránku v Darecky. Jeden primitiv pro
+				kartu dárku, detail, avatar i banner — token-aware, s pevným pořadím výplně a
+				fallbackem podle tématu.
+			</p>
+			<p class="doc-meta">
+				Tier: <code>derived/</code> · Source of truth:
+				<code>image_frame_variants.ts</code> · fitMode
+				<code>auto · contain-padded · cover-crop</code>
+			</p>
+
+			<!-- Fit modes -->
+			<div class="block">
+				<h2>REQ-1 · REQ-2</h2>
+				<div class="h-main">Tři režimy zarovnání</div>
+				<p>
+					Stejný zdrojový obrázek, stejná schránka 4:3. Jediná proměnná je prop
+					<code>fitMode</code>. Renderer nikdy nemění vnější rozměry schránky — řídí jen,
+					co se děje uvnitř.
+				</p>
+				<div class="trio">
+					<div>
+						<div class="frame">
+							<span class="fit-chip">auto</span>
+							<div class="img-sim sim-headphones"></div>
+						</div>
+						<div class="spec-cap">
+							<span class="nm">auto</span>
+							<span class="dsc">normální poměr → cover; extrémní → contain</span>
+						</div>
+					</div>
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">contain-padded</span>
+							<div
+								class="img-sim sim-headphones"
+								style="width: 72%; height: 80%"
+							></div>
+						</div>
+						<div class="spec-cap">
+							<span class="nm">contain-padded</span>
+							<span class="dsc">celý obrázek vždy viditelný + výplň okrajů</span>
+						</div>
+					</div>
+					<div>
+						<div class="frame">
+							<span class="fit-chip">cover-crop</span>
+							<div class="img-sim sim-headphones" style="object-fit: cover"></div>
+						</div>
+						<div class="spec-cap">
+							<span class="nm">cover-crop</span>
+							<span class="dsc">vyplní, ořízne přebytek, ctí focal point</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Fill priority flow -->
+			<div class="block">
+				<h2>REQ-3</h2>
+				<div class="h-main">Priorita výplně pozadí</div>
+				<p>
+					Když je potřeba výplň (letterbox v contain-padded, načítání, průhledné PNG),
+					rozhodne se barva v <strong>pevném pořadí</strong> — první dostupná vrstva
+					vyhrává.
+				</p>
+				<div class="flow">
+					<div class="flow-step win">
+						<div class="tier">Tier 1</div>
+						<div class="sw sw-extracted"></div>
+						<div class="nm">extracted color</div>
+						<div class="dsc">
+							dominantní barva z nahraného obrázku (ruční override možný)
+						</div>
+						<div class="win-tag">✓ Vyhrává, pokud existuje</div>
+						<span class="arrow">→</span>
+					</div>
+					<div class="flow-step">
+						<div class="tier">Tier 2</div>
+						<div class="sw sw-wishlist"></div>
+						<div class="nm">--wishlist-image-frame</div>
+						<div class="dsc">identita seznamu → --wishlist-surface</div>
+						<span class="arrow">→</span>
+					</div>
+					<div class="flow-step">
+						<div class="tier">Tier 3</div>
+						<div class="sw sw-global"></div>
+						<div class="nm">--surface-2</div>
+						<div class="dsc">globální neutrál — zaručený koncový fallback</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Slot map -->
+			<div class="block">
+				<h2>One renderer, many slots</h2>
+				<div class="h-main">Mapa schránek</div>
+				<p>Tentýž primitiv obsluhuje všechny pevné obrazové schránky napříč aplikací.</p>
+				<table class="slots">
+					<thead>
+						<tr>
+							<th>Slot</th>
+							<th>Schránka</th>
+							<th>Výchozí fit</th>
+							<th>Zdroj tokenu</th>
+							<th style="text-align: center">Náhled</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>Karta dárku</td>
+							<td>160px × auto</td>
+							<td><code>auto</code></td>
+							<td>global</td>
+							<td style="text-align: center">
+								<span
+									class="slot-mini"
+									style="width: 40px; height: 26px; border-radius: 6px"
+									>🎁</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Detail dárku</td>
+							<td>280px × ≥320px</td>
+							<td><code>auto</code></td>
+							<td>wishlist</td>
+							<td style="text-align: center">
+								<span
+									class="slot-mini"
+									style="width: 26px; height: 32px; border-radius: 6px"
+									>🎁</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Rezervační modal</td>
+							<td>96px čtverec</td>
+							<td><code>cover-crop</code></td>
+							<td>wishlist</td>
+							<td style="text-align: center">
+								<span
+									class="slot-mini"
+									style="width: 28px; height: 28px; border-radius: 6px"
+									>🎁</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Banner seznamu</td>
+							<td>16:9</td>
+							<td><code>cover-crop</code></td>
+							<td>wishlist</td>
+							<td style="text-align: center">
+								<span
+									class="slot-mini"
+									style="width: 44px; height: 25px; border-radius: 6px"
+									>🎂</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Avatar profilu</td>
+							<td>kruh 40–96px</td>
+							<td><code>cover-crop</code></td>
+							<td>global</td>
+							<td style="text-align: center">
+								<span
+									class="slot-mini"
+									style="width: 30px; height: 30px; border-radius: 50%"
+									>🙂</span
+								>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Extreme ratios -->
+			<div class="block">
+				<h2>Acceptance criterion</h2>
+				<div class="h-main">Extrémní poměry stran</div>
+				<p>
+					Velmi vysoký, velmi široký a maličký obrázek ve stejné schránce.
+					<code>auto</code> je obsáhne — důležitý obsah se nikdy neořízne pryč.
+				</p>
+				<div class="row4">
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">9:21</span>
+							<div class="img-sim sim-tall" style="width: 36%; height: 100%"></div>
+						</div>
+						<div class="cap">Vysoký plakát<small>auto → contain</small></div>
+					</div>
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">32:9</span>
+							<div class="img-sim sim-wide" style="width: 100%; height: 32%"></div>
+						</div>
+						<div class="cap">Panorama<small>auto → contain</small></div>
+					</div>
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">48px</span>
+							<div
+								class="img-sim sim-tiny"
+								style="width: 48px; height: 48px; border-radius: 8px"
+							></div>
+						</div>
+						<div class="cap">
+							Maličká ikona<small>auto → contain, bez upscale</small>
+						</div>
+					</div>
+					<div>
+						<div class="frame">
+							<span class="fit-chip">4:3</span>
+							<div class="img-sim sim-headphones"></div>
+						</div>
+						<div class="cap">Normální poměr<small>auto → cover</small></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- States -->
+			<div class="block">
+				<h2>REQ-2 · REQ-4</h2>
+				<div class="h-main">Stavy</div>
+				<p>
+					Načítání, prázdný stav (fallback) a chyba. Chyba degraduje na fallback, ne na
+					rozbitou ikonu.
+				</p>
+				<div class="row4">
+					<div>
+						<div class="frame"><div class="skel"></div></div>
+						<div class="cap">Načítání<small>skeleton shimmer</small></div>
+					</div>
+					<div>
+						<div class="frame">
+							<div class="ph">
+								<span class="emoji iconified">🎁</span
+								><span class="lbl">Bez obrázku</span>
+							</div>
+						</div>
+						<div class="cap">Prázdný stav<small>emoji v --wishlist-icon</small></div>
+					</div>
+					<div>
+						<div class="frame">
+							<div class="ph"><span class="emoji iconified">🎂</span></div>
+						</div>
+						<div class="cap">Chyba URL<small>→ stejný fallback</small></div>
+					</div>
+					<div>
+						<div class="frame fit-cover">
+							<div class="img-sim sim-headphones" style="object-fit: cover"></div>
+						</div>
+						<div class="cap">Načteno<small>cover-crop</small></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tokens -->
+			<div class="block">
+				<h2>REQ-4 · REQ-5</h2>
+				<div class="h-main">Nové tematické tokeny</div>
+				<p>
+					Wishlist-scoped tokeny odvozené z primární barvy v OKLCH. Oddělené odpovědnosti:
+					pozadí aplikace ≠ identita seznamu ≠ výplň rámu.
+				</p>
+				<div class="token-grid">
+					<div class="token-card">
+						<span class="tsw" style="background: var(--wishlist-preview)"></span>
+						<div>
+							<div class="tnm">--wishlist-preview</div>
+							<div class="tdsc">plocha náhledové karty seznamu</div>
+						</div>
+					</div>
+					<div class="token-card">
+						<span class="tsw" style="background: var(--wishlist-page)"></span>
+						<div>
+							<div class="tnm">--wishlist-page</div>
+							<div class="tdsc">pozadí obsahu stránky seznamu</div>
+						</div>
+					</div>
+					<div class="token-card">
+						<span class="tsw" style="background: var(--wishlist-icon)"></span>
+						<div>
+							<div class="tnm">--wishlist-icon</div>
+							<div class="tdsc">barva ikony/patternu fallbacku</div>
+						</div>
+					</div>
+					<div class="token-card">
+						<span class="tsw" style="background: var(--wishlist-image-frame)"></span>
+						<div>
+							<div class="tnm">--wishlist-image-frame</div>
+							<div class="tdsc">výplň letterboxu (Tier 2)</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Dark mode mirror -->
+			<div class="block">
+				<h2>REQ-5</h2>
+				<div class="h-main">Světlý + tmavý režim</div>
+				<p>
+					Stejné specimeny v tmavém režimu pod presetem (Narozeniny / rose) a vlastní
+					OKLCH barvou. Tokeny jsou dark-mode-safe.
+				</p>
+				<div class="dark-strip theme-dark dk-root" style="background: var(--background)">
+					<div class="strip-label">Tmavý režim — preset &amp; vlastní paleta</div>
+					<div class="row4">
+						<div>
+							<div class="frame fit-cover">
+								<div class="img-sim sim-headphones" style="object-fit: cover"></div>
+							</div>
+							<div class="cap" style="color: var(--foreground)">
+								auto / cover<small>tmavý</small>
+							</div>
+						</div>
+						<div>
+							<div
+								class="frame center"
+								style="background: var(--wishlist-image-frame)"
+							>
+								<div
+									class="img-sim sim-tall"
+									style="width: 36%; height: 100%"
+								></div>
+							</div>
+							<div class="cap" style="color: var(--foreground)">
+								contain + výplň<small>tmavý frame token</small>
+							</div>
+						</div>
+						<div
+							style="
+								--wishlist-surface: oklch(26% 0.06 15deg);
+								--wishlist-icon: oklch(72% 0.15 15deg);
+							"
+						>
+							<div class="frame">
+								<div class="ph"><span class="emoji iconified">🎂</span></div>
+							</div>
+							<div class="cap" style="color: var(--foreground)">
+								Preset · Narozeniny<small>rose, tmavě bezpečné</small>
+							</div>
+						</div>
+						<div
+							style="
+								--wishlist-surface: oklch(26% 0.06 275deg);
+								--wishlist-icon: oklch(70% 0.13 275deg);
+							"
+						>
+							<div class="frame">
+								<div class="ph"><span class="emoji iconified">✨</span></div>
+							</div>
+							<div class="cap" style="color: var(--foreground)">
+								Vlastní · OKLCH 275°<small>odvozeno</small>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

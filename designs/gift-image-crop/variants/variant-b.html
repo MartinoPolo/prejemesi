@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Image Crop: VARIANT B (Inline form panel)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			:root {
+				--background: oklch(0.988 0.004 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.967 0.001 286);
+				--surface-3: oklch(0.966 0.005 106);
+				--surface-hover: oklch(0.948 0.012 150);
+				--foreground: oklch(0.153 0.006 107);
+				--foreground-muted: oklch(0.58 0.031 107);
+				--foreground-subtle: oklch(0.5 0.012 107);
+				--border: oklch(0.93 0.007 106);
+				--border-strong: oklch(0.815 0.018 107);
+				--primary: oklch(0.527 0.154 150);
+				--primary-foreground: oklch(0.982 0.018 156);
+				--primary-soft: oklch(0.92 0.03 150);
+				--ring: oklch(0.527 0.154 150);
+				--muted: oklch(0.966 0.005 106);
+				--status-info: oklch(0.66 0.105 220);
+				--status-danger: oklch(0.62 0.2 25);
+				--wishlist-surface: oklch(0.985 0.005 150);
+				--shadow-modal: 0 24px 56px oklch(0 0 0 / 0.28), 0 8px 16px oklch(0 0 0 / 0.12);
+			}
+			.dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.228 0.013 107);
+				--surface-2: oklch(0.274 0.006 286);
+				--surface-3: oklch(0.286 0.016 107);
+				--surface-hover: oklch(0.32 0.012 150);
+				--foreground: oklch(0.988 0.003 106);
+				--foreground-muted: oklch(0.737 0.021 106);
+				--foreground-subtle: oklch(0.55 0.012 107);
+				--border: oklch(1 0 0 / 0.1);
+				--border-strong: oklch(0.35 0.015 107);
+				--primary: oklch(0.57 0.155 151);
+				--primary-foreground: oklch(0.982 0.018 156);
+				--primary-soft: oklch(0.25 0.04 150);
+				--ring: oklch(0.58 0.031 107);
+				--muted: oklch(0.286 0.016 107);
+				--status-info: oklch(0.72 0.095 220);
+				--status-danger: oklch(0.68 0.18 25);
+				--wishlist-surface: oklch(0.2 0.01 150);
+				--shadow-modal: 0 24px 56px oklch(0 0 0 / 0.5), 0 8px 16px oklch(0 0 0 / 0.3);
+			}
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: 'Figtree', system-ui, sans-serif;
+				background: var(--background);
+				color: var(--foreground);
+				-webkit-font-smoothing: antialiased;
+				min-height: 100vh;
+			}
+			.eyebrow-bar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 10px 24px;
+				background: var(--primary-soft);
+				border-bottom: 1px solid var(--border);
+			}
+			.eyebrow {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.theme-toggle {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--primary);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 9999px;
+				padding: 4px 12px;
+				cursor: pointer;
+			}
+			.backdrop {
+				min-height: calc(100vh - 44px);
+				background:
+					radial-gradient(circle at 30% 20%, oklch(0.92 0.03 150 / 0.5), transparent 60%),
+					var(--background);
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 40px 24px;
+			}
+			.backdrop::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: oklch(0 0 0 / 0.45);
+				backdrop-filter: blur(6px);
+			}
+			.modal {
+				position: relative;
+				z-index: 1;
+				width: 100%;
+				max-width: 900px;
+				background: var(--surface);
+				border-radius: 20px;
+				box-shadow: var(--shadow-modal);
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				max-height: 90dvh;
+			}
+			.modal-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 18px 22px 14px;
+				border-bottom: 1px solid var(--border);
+			}
+			.modal-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 17px;
+				font-weight: 700;
+				letter-spacing: -0.01em;
+			}
+			.modal-close {
+				width: 32px;
+				height: 32px;
+				border-radius: 9999px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				font-size: 16px;
+			}
+			.modal-body {
+				display: grid;
+				grid-template-columns: 40% 60%;
+				min-height: 0;
+				overflow: hidden;
+			}
+
+			/* LEFT: large detail-modal hero (also the 3:4 detail slot, live) */
+			.hero-col {
+				position: relative;
+				background: var(--wishlist-surface);
+				border-right: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				overflow: hidden;
+			}
+			.hero-img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+			.hero-tag {
+				position: absolute;
+				bottom: 12px;
+				left: 12px;
+				font-size: 10.5px;
+				font-weight: 600;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--foreground);
+				background: oklch(1 0 0 / 0.82);
+				border: 1px solid var(--border);
+				border-radius: 9999px;
+				padding: 4px 10px;
+			}
+			.dark .hero-tag {
+				background: oklch(0.2 0.01 150 / 0.82);
+			}
+
+			/* RIGHT: form with inline image-presentation panel */
+			.form-col {
+				display: flex;
+				flex-direction: column;
+				padding: 18px 22px;
+				overflow-y: auto;
+				gap: 14px;
+			}
+			.field {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.field-row {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+			}
+			.lbl {
+				font-size: 13px;
+				font-weight: 500;
+			}
+			.inp,
+			.ta,
+			.sel {
+				font-family: inherit;
+				font-size: 13px;
+				height: 34px;
+				padding: 0 11px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				color: var(--foreground);
+				width: 100%;
+			}
+			.ta {
+				height: auto;
+				padding: 8px 11px;
+				resize: none;
+			}
+			.image-tabs {
+				display: flex;
+				gap: 4px;
+			}
+			.img-tab {
+				font-size: 12px;
+				font-weight: 600;
+				padding: 6px 12px;
+				border-radius: 8px;
+				border: none;
+				cursor: pointer;
+				background: var(--muted);
+				color: var(--foreground-muted);
+			}
+			.img-tab.active {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+
+			/* Inline presentation panel */
+			.present-panel {
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				background: var(--surface-3);
+				padding: 12px;
+				display: flex;
+				flex-direction: column;
+				gap: 11px;
+			}
+			.panel-title {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+			}
+			.segmented {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 4px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 9px;
+				padding: 3px;
+			}
+			.seg {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 5px;
+				padding: 7px 4px;
+				border-radius: 7px;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: none;
+				cursor: pointer;
+			}
+			.seg .seg-icon {
+				width: 15px;
+				height: 15px;
+			}
+			.seg[aria-pressed='true'] {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+
+			/* Inline crop strip: small canvas + previews side by side */
+			.edit-grid {
+				display: grid;
+				grid-template-columns: 1.3fr 1fr;
+				gap: 12px;
+				align-items: start;
+			}
+			.crop-canvas {
+				position: relative;
+				border-radius: 10px;
+				overflow: hidden;
+				aspect-ratio: 4 / 3;
+				background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%)
+					0 / 18px 18px;
+			}
+			.crop-img {
+				width: 100%;
+				height: 100%;
+				object-fit: contain;
+				display: block;
+			}
+			.crop-rect {
+				position: absolute;
+				top: 12%;
+				left: 14%;
+				width: 64%;
+				height: 72%;
+				box-shadow: 0 0 0 9999px oklch(0 0 0 / 0.5);
+				border: 2px solid var(--primary-foreground);
+				outline: 1px solid var(--primary);
+			}
+			.crop-rect .gv,
+			.crop-rect .gh {
+				position: absolute;
+				background: oklch(1 0 0 / 0.35);
+			}
+			.crop-rect .gv {
+				top: 0;
+				bottom: 0;
+				width: 1px;
+			}
+			.crop-rect .gv.a {
+				left: 33.3%;
+			}
+			.crop-rect .gv.b {
+				left: 66.6%;
+			}
+			.crop-rect .gh {
+				left: 0;
+				right: 0;
+				height: 1px;
+			}
+			.crop-rect .gh.a {
+				top: 33.3%;
+			}
+			.crop-rect .gh.b {
+				top: 66.6%;
+			}
+			.handle {
+				position: absolute;
+				width: 11px;
+				height: 11px;
+				background: var(--primary-foreground);
+				border: 2px solid var(--primary);
+				border-radius: 3px;
+			}
+			.handle.tl {
+				top: -6px;
+				left: -6px;
+			}
+			.handle.tr {
+				top: -6px;
+				right: -6px;
+			}
+			.handle.bl {
+				bottom: -6px;
+				left: -6px;
+			}
+			.handle.br {
+				bottom: -6px;
+				right: -6px;
+			}
+
+			/* Preview 2x2 mini-grid */
+			.pv-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+			}
+			.pv {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				align-items: center;
+			}
+			.pv-frame {
+				border-radius: 7px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: var(--wishlist-surface);
+				width: 100%;
+			}
+			.pv-frame img {
+				width: 100%;
+				height: 100%;
+				display: block;
+				object-fit: cover;
+			}
+			.pv-card {
+				aspect-ratio: 3 / 2;
+			}
+			.pv-detail {
+				aspect-ratio: 3 / 4;
+			}
+			.pv-list,
+			.pv-res {
+				aspect-ratio: 1 / 1;
+			}
+			.pv-cap {
+				font-size: 10px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+			}
+			.help-note {
+				font-size: 11.5px;
+				color: var(--foreground-muted);
+				line-height: 1.4;
+				display: flex;
+				gap: 6px;
+				align-items: flex-start;
+			}
+			.help-note .dot {
+				flex-shrink: 0;
+				width: 15px;
+				height: 15px;
+				border-radius: 9999px;
+				background: color-mix(in oklch, var(--status-info) 18%, transparent);
+				color: var(--status-info);
+				font-size: 10px;
+				font-weight: 700;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin-top: 1px;
+			}
+			.crop-actions {
+				display: flex;
+				justify-content: flex-end;
+			}
+			.btn-ghost {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 5px 11px;
+				cursor: pointer;
+			}
+			.sep {
+				height: 1px;
+				background: var(--border);
+				border: none;
+				margin: 2px 0;
+			}
+			.actions {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				margin-top: auto;
+			}
+			.btn {
+				height: 38px;
+				border-radius: 8px;
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				border: 1px solid transparent;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+			.btn-outline {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-danger {
+				background: transparent;
+				color: var(--status-danger);
+				border-color: color-mix(in oklch, var(--status-danger) 30%, transparent);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="eyebrow-bar">
+			<span class="eyebrow">Variant B — Inline presentation panel in form</span>
+			<button class="theme-toggle" onclick="document.body.classList.toggle('dark')">
+				Toggle light / dark
+			</button>
+		</div>
+
+		<div class="backdrop">
+			<div class="modal">
+				<div class="modal-head">
+					<span class="modal-title">Upravit dárek</span>
+					<button class="modal-close" aria-label="Zavřít">×</button>
+				</div>
+
+				<div class="modal-body">
+					<!-- LEFT: live detail-modal hero (the 3:4 slot at full size) -->
+					<div class="hero-col">
+						<img
+							class="hero-img"
+							src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80"
+							alt="Náhled detailu dárku"
+						/>
+						<span class="hero-tag">Detail — živý náhled</span>
+					</div>
+
+					<!-- RIGHT: form -->
+					<div class="form-col">
+						<div class="field">
+							<label class="lbl">Název dárku</label>
+							<input class="inp" value="Keramický hrnek ručně dělaný" />
+						</div>
+						<div class="field">
+							<label class="lbl">Popis</label>
+							<textarea class="ta" rows="2">
+Pastelově modrý hrnek z lokální dílny, 350 ml.</textarea
+							>
+						</div>
+						<div class="field-row">
+							<div class="field">
+								<label class="lbl">Cena</label>
+								<input class="inp" value="490" />
+							</div>
+							<div class="field">
+								<label class="lbl">Měna</label>
+								<select class="sel">
+									<option>CZK</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="field">
+							<label class="lbl">Obrázek</label>
+							<div class="image-tabs">
+								<button class="img-tab active">URL</button>
+								<button class="img-tab">Nahrát</button>
+							</div>
+							<input
+								class="inp"
+								value="https://images.unsplash.com/photo-1523275..."
+							/>
+						</div>
+
+						<!-- Inline image-presentation panel -->
+						<div class="present-panel">
+							<span class="panel-title">Zobrazení obrázku</span>
+							<div
+								class="segmented"
+								role="group"
+								aria-label="Režim zobrazení obrázku"
+							>
+								<button class="seg" aria-pressed="false">
+									<svg
+										class="seg-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<circle cx="12" cy="12" r="9" />
+										<path d="M3 12h18M12 3v18" />
+									</svg>
+									Auto
+								</button>
+								<button class="seg" aria-pressed="false">
+									<svg
+										class="seg-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<rect x="3" y="5" width="18" height="14" rx="2" />
+										<path d="M3 9h18" />
+									</svg>
+									Celý
+								</button>
+								<button class="seg" aria-pressed="true">
+									<svg
+										class="seg-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M6 2v14a2 2 0 0 0 2 2h14" />
+										<path d="M2 6h14a2 2 0 0 1 2 2v14" />
+									</svg>
+									Ořez
+								</button>
+							</div>
+
+							<div class="edit-grid">
+								<div class="crop-canvas">
+									<img
+										class="crop-img"
+										src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80"
+										alt="Ořez"
+									/>
+									<div class="crop-rect">
+										<span class="gv a"></span><span class="gv b"></span>
+										<span class="gh a"></span><span class="gh b"></span>
+										<span class="handle tl"></span
+										><span class="handle tr"></span>
+										<span class="handle bl"></span
+										><span class="handle br"></span>
+									</div>
+								</div>
+
+								<div class="pv-grid">
+									<div class="pv">
+										<div class="pv-frame pv-card">
+											<img
+												src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=240&q=80"
+												alt=""
+											/>
+										</div>
+										<span class="pv-cap">Karta</span>
+									</div>
+									<div class="pv">
+										<div class="pv-frame pv-detail">
+											<img
+												src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=240&q=80"
+												alt=""
+											/>
+										</div>
+										<span class="pv-cap">Detail</span>
+									</div>
+									<div class="pv">
+										<div class="pv-frame pv-list">
+											<img
+												src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=160&q=80"
+												alt=""
+											/>
+										</div>
+										<span class="pv-cap">Seznam</span>
+									</div>
+									<div class="pv">
+										<div class="pv-frame pv-res">
+											<img
+												src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=160&q=80"
+												alt=""
+											/>
+										</div>
+										<span class="pv-cap">Rezervace</span>
+									</div>
+								</div>
+							</div>
+
+							<div class="help-note">
+								<span class="dot">i</span>
+								<span
+									>Auto ponechá celý produkt viditelný u extrémně vysokých či
+									širokých obrázků.</span
+								>
+							</div>
+							<div class="crop-actions">
+								<button class="btn-ghost">Obnovit ořez</button>
+							</div>
+						</div>
+
+						<hr class="sep" />
+						<div class="actions">
+							<button class="btn btn-primary">Uložit</button>
+							<button class="btn btn-outline">Označit jako obdržené</button>
+							<button class="btn btn-danger">Smazat</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Image Crop: VARIANT C (Tabbed Edit / Preview)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			:root {
+				--background: oklch(0.988 0.004 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.967 0.001 286);
+				--surface-3: oklch(0.966 0.005 106);
+				--surface-hover: oklch(0.948 0.012 150);
+				--foreground: oklch(0.153 0.006 107);
+				--foreground-muted: oklch(0.58 0.031 107);
+				--foreground-subtle: oklch(0.5 0.012 107);
+				--border: oklch(0.93 0.007 106);
+				--border-strong: oklch(0.815 0.018 107);
+				--primary: oklch(0.527 0.154 150);
+				--primary-foreground: oklch(0.982 0.018 156);
+				--primary-soft: oklch(0.92 0.03 150);
+				--ring: oklch(0.527 0.154 150);
+				--muted: oklch(0.966 0.005 106);
+				--status-info: oklch(0.66 0.105 220);
+				--status-danger: oklch(0.62 0.2 25);
+				--wishlist-surface: oklch(0.985 0.005 150);
+				--wishlist-fill: oklch(0.935 0.048 150);
+				--shadow-modal: 0 24px 56px oklch(0 0 0 / 0.28), 0 8px 16px oklch(0 0 0 / 0.12);
+			}
+			.dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.228 0.013 107);
+				--surface-2: oklch(0.274 0.006 286);
+				--surface-3: oklch(0.286 0.016 107);
+				--surface-hover: oklch(0.32 0.012 150);
+				--foreground: oklch(0.988 0.003 106);
+				--foreground-muted: oklch(0.737 0.021 106);
+				--foreground-subtle: oklch(0.55 0.012 107);
+				--border: oklch(1 0 0 / 0.1);
+				--border-strong: oklch(0.35 0.015 107);
+				--primary: oklch(0.57 0.155 151);
+				--primary-foreground: oklch(0.982 0.018 156);
+				--primary-soft: oklch(0.25 0.04 150);
+				--ring: oklch(0.58 0.031 107);
+				--muted: oklch(0.286 0.016 107);
+				--status-info: oklch(0.72 0.095 220);
+				--status-danger: oklch(0.68 0.18 25);
+				--wishlist-surface: oklch(0.2 0.01 150);
+				--wishlist-fill: oklch(0.25 0.04 150);
+				--shadow-modal: 0 24px 56px oklch(0 0 0 / 0.5), 0 8px 16px oklch(0 0 0 / 0.3);
+			}
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: 'Figtree', system-ui, sans-serif;
+				background: var(--background);
+				color: var(--foreground);
+				-webkit-font-smoothing: antialiased;
+				min-height: 100vh;
+			}
+			.eyebrow-bar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 10px 24px;
+				background: var(--primary-soft);
+				border-bottom: 1px solid var(--border);
+			}
+			.eyebrow {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.theme-toggle {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--primary);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 9999px;
+				padding: 4px 12px;
+				cursor: pointer;
+			}
+			.backdrop {
+				min-height: calc(100vh - 44px);
+				background:
+					radial-gradient(circle at 30% 20%, oklch(0.92 0.03 150 / 0.5), transparent 60%),
+					var(--background);
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 40px 24px;
+			}
+			.backdrop::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: oklch(0 0 0 / 0.45);
+				backdrop-filter: blur(6px);
+			}
+			.modal {
+				position: relative;
+				z-index: 1;
+				width: 100%;
+				max-width: 900px;
+				background: var(--surface);
+				border-radius: 20px;
+				box-shadow: var(--shadow-modal);
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				max-height: 90dvh;
+			}
+			.modal-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 18px 22px 14px;
+				border-bottom: 1px solid var(--border);
+			}
+			.modal-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 17px;
+				font-weight: 700;
+				letter-spacing: -0.01em;
+			}
+			.modal-close {
+				width: 32px;
+				height: 32px;
+				border-radius: 9999px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				font-size: 16px;
+			}
+			.modal-body {
+				display: grid;
+				grid-template-columns: 50% 50%;
+				min-height: 0;
+				overflow: hidden;
+			}
+
+			/* LEFT: tabbed image workspace */
+			.work-col {
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+				padding: 18px;
+				background: var(--surface-3);
+				border-right: 1px solid var(--border);
+				overflow-y: auto;
+			}
+
+			/* Fit segmented control */
+			.segmented {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 4px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				padding: 4px;
+			}
+			.seg {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				padding: 8px 6px;
+				border-radius: 7px;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: none;
+				cursor: pointer;
+			}
+			.seg .seg-icon {
+				width: 16px;
+				height: 16px;
+			}
+			.seg[aria-pressed='true'] {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+
+			/* Edit / Preview tab switch */
+			.tabs {
+				display: flex;
+				gap: 2px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 9px;
+				padding: 3px;
+			}
+			.tab {
+				flex: 1;
+				padding: 6px;
+				border-radius: 6px;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: none;
+				cursor: pointer;
+			}
+			.tab.active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+			}
+
+			/* Edit tab — crop canvas */
+			.crop-canvas {
+				position: relative;
+				border-radius: 12px;
+				overflow: hidden;
+				aspect-ratio: 1 / 1;
+				background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%)
+					0 / 22px 22px;
+			}
+			.crop-img {
+				width: 100%;
+				height: 100%;
+				object-fit: contain;
+				display: block;
+			}
+			.crop-rect {
+				position: absolute;
+				top: 15%;
+				left: 15%;
+				width: 60%;
+				height: 68%;
+				box-shadow: 0 0 0 9999px oklch(0 0 0 / 0.5);
+				border: 2px solid var(--primary-foreground);
+				outline: 1px solid var(--primary);
+			}
+			.crop-rect .gv,
+			.crop-rect .gh {
+				position: absolute;
+				background: oklch(1 0 0 / 0.35);
+			}
+			.crop-rect .gv {
+				top: 0;
+				bottom: 0;
+				width: 1px;
+			}
+			.crop-rect .gv.a {
+				left: 33.3%;
+			}
+			.crop-rect .gv.b {
+				left: 66.6%;
+			}
+			.crop-rect .gh {
+				left: 0;
+				right: 0;
+				height: 1px;
+			}
+			.crop-rect .gh.a {
+				top: 33.3%;
+			}
+			.crop-rect .gh.b {
+				top: 66.6%;
+			}
+			.handle {
+				position: absolute;
+				width: 12px;
+				height: 12px;
+				background: var(--primary-foreground);
+				border: 2px solid var(--primary);
+				border-radius: 3px;
+			}
+			.handle.tl {
+				top: -7px;
+				left: -7px;
+			}
+			.handle.tr {
+				top: -7px;
+				right: -7px;
+			}
+			.handle.bl {
+				bottom: -7px;
+				left: -7px;
+			}
+			.handle.br {
+				bottom: -7px;
+				right: -7px;
+			}
+
+			/* Preview tab — all 4 slots large with bg-fill */
+			.preview-tab {
+				display: grid;
+				grid-template-columns: 1.4fr 1fr;
+				grid-template-rows: auto auto;
+				gap: 12px;
+			}
+			.pv {
+				display: flex;
+				flex-direction: column;
+				gap: 5px;
+			}
+			.pv-frame {
+				border-radius: 9px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: var(--wishlist-fill);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.pv-frame img {
+				width: 100%;
+				height: 100%;
+				display: block;
+				object-fit: cover;
+			}
+			.pv-frame.fit img {
+				object-fit: contain;
+			}
+			.pv-card {
+				aspect-ratio: 3 / 2;
+				grid-column: 1;
+			}
+			.pv-detail {
+				aspect-ratio: 3 / 4;
+				grid-column: 2;
+				grid-row: 1 / 3;
+			}
+			.pv-list {
+				aspect-ratio: 1 / 1;
+				width: 86px;
+			}
+			.pv-res {
+				aspect-ratio: 1 / 1;
+				width: 64px;
+			}
+			.pv-squares {
+				display: flex;
+				gap: 12px;
+				align-items: flex-end;
+				grid-column: 1;
+			}
+			.pv-cap {
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+			}
+			.pv-cap small {
+				color: var(--foreground-subtle);
+				font-weight: 500;
+			}
+
+			.help-note {
+				font-size: 12px;
+				color: var(--foreground-muted);
+				line-height: 1.4;
+				display: flex;
+				gap: 6px;
+				align-items: flex-start;
+			}
+			.help-note .dot {
+				flex-shrink: 0;
+				width: 16px;
+				height: 16px;
+				border-radius: 9999px;
+				background: color-mix(in oklch, var(--status-info) 18%, transparent);
+				color: var(--status-info);
+				font-size: 11px;
+				font-weight: 700;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin-top: 1px;
+			}
+			.work-toolbar {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				gap: 8px;
+			}
+			.btn-ghost {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 6px 12px;
+				cursor: pointer;
+			}
+
+			/* RIGHT: form */
+			.form-col {
+				display: flex;
+				flex-direction: column;
+				padding: 20px 22px;
+				overflow-y: auto;
+				gap: 14px;
+			}
+			.field {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.field-row {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+			}
+			.lbl {
+				font-size: 13px;
+				font-weight: 500;
+			}
+			.inp,
+			.ta,
+			.sel {
+				font-family: inherit;
+				font-size: 13px;
+				height: 34px;
+				padding: 0 11px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				color: var(--foreground);
+				width: 100%;
+			}
+			.ta {
+				height: auto;
+				padding: 8px 11px;
+				resize: none;
+			}
+			.image-tabs {
+				display: flex;
+				gap: 4px;
+			}
+			.img-tab {
+				font-size: 12px;
+				font-weight: 600;
+				padding: 6px 12px;
+				border-radius: 8px;
+				border: none;
+				cursor: pointer;
+				background: var(--muted);
+				color: var(--foreground-muted);
+			}
+			.img-tab.active {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+			.sep {
+				height: 1px;
+				background: var(--border);
+				border: none;
+				margin: 4px 0;
+			}
+			.actions {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				margin-top: auto;
+			}
+			.btn {
+				height: 38px;
+				border-radius: 8px;
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				border: 1px solid transparent;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+			.btn-outline {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-danger {
+				background: transparent;
+				color: var(--status-danger);
+				border-color: color-mix(in oklch, var(--status-danger) 30%, transparent);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="eyebrow-bar">
+			<span class="eyebrow">Variant C — Tabbed Edit / Preview workspace</span>
+			<button class="theme-toggle" onclick="document.body.classList.toggle('dark')">
+				Toggle light / dark
+			</button>
+		</div>
+
+		<div class="backdrop">
+			<div class="modal">
+				<div class="modal-head">
+					<span class="modal-title">Upravit dárek</span>
+					<button class="modal-close" aria-label="Zavřít">×</button>
+				</div>
+
+				<div class="modal-body">
+					<!-- LEFT: tabbed workspace -->
+					<div class="work-col">
+						<div class="segmented" role="group" aria-label="Režim zobrazení obrázku">
+							<button class="seg" aria-pressed="false">
+								<svg
+									class="seg-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<circle cx="12" cy="12" r="9" />
+									<path d="M3 12h18M12 3v18" />
+								</svg>
+								Automaticky
+							</button>
+							<button class="seg" aria-pressed="false">
+								<svg
+									class="seg-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<rect x="3" y="5" width="18" height="14" rx="2" />
+									<path d="M3 9h18" />
+								</svg>
+								Celý obrázek
+							</button>
+							<button class="seg" aria-pressed="true">
+								<svg
+									class="seg-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path d="M6 2v14a2 2 0 0 0 2 2h14" />
+									<path d="M2 6h14a2 2 0 0 1 2 2v14" />
+								</svg>
+								Oříznout
+							</button>
+						</div>
+
+						<div class="tabs" role="tablist">
+							<button class="tab active" role="tab">Úprava ořezu</button>
+							<button class="tab" role="tab">Náhledy (4)</button>
+						</div>
+
+						<!-- Edit tab (active) -->
+						<div class="crop-canvas">
+							<img
+								class="crop-img"
+								src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80"
+								alt="Ořez obrázku"
+							/>
+							<div class="crop-rect">
+								<span class="gv a"></span><span class="gv b"></span>
+								<span class="gh a"></span><span class="gh b"></span>
+								<span class="handle tl"></span><span class="handle tr"></span>
+								<span class="handle bl"></span><span class="handle br"></span>
+							</div>
+						</div>
+
+						<div class="work-toolbar">
+							<div class="help-note">
+								<span class="dot">i</span>
+								<span
+									>Tažením upravíte ořez; přepněte na „Náhledy" a uvidíte všechny
+									čtyři výřezy.</span
+								>
+							</div>
+							<button class="btn-ghost">Obnovit</button>
+						</div>
+
+						<!-- Preview tab (inactive — shown stacked below for the mockup) -->
+						<div class="tabs" role="tablist" style="margin-top: 4px">
+							<button class="tab" role="tab">Úprava ořezu</button>
+							<button class="tab active" role="tab">Náhledy (4)</button>
+						</div>
+						<div class="preview-tab">
+							<div class="pv pv-card-wrap" style="grid-column: 1">
+								<div class="pv-frame pv-card">
+									<img
+										src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&q=80"
+										alt=""
+									/>
+								</div>
+								<span class="pv-cap">Karta dárku <small>3:2</small></span>
+							</div>
+							<div class="pv" style="grid-column: 2; grid-row: 1 / 3">
+								<div class="pv-frame pv-detail" style="flex: 1">
+									<img
+										src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&q=80"
+										alt=""
+									/>
+								</div>
+								<span class="pv-cap">Detail <small>3:4</small></span>
+							</div>
+							<div class="pv-squares">
+								<div class="pv">
+									<div class="pv-frame pv-list">
+										<img
+											src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=180&q=80"
+											alt=""
+										/>
+									</div>
+									<span class="pv-cap">Seznam <small>1:1</small></span>
+								</div>
+								<div class="pv">
+									<div class="pv-frame pv-res">
+										<img
+											src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=160&q=80"
+											alt=""
+										/>
+									</div>
+									<span class="pv-cap">Rezervace <small>1:1</small></span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- RIGHT: form -->
+					<div class="form-col">
+						<div class="field">
+							<label class="lbl">Název dárku</label>
+							<input class="inp" value="Keramický hrnek ručně dělaný" />
+						</div>
+						<div class="field">
+							<label class="lbl">Popis</label>
+							<textarea class="ta" rows="2">
+Pastelově modrý hrnek z lokální dílny, 350 ml.</textarea
+							>
+						</div>
+						<div class="field">
+							<label class="lbl">Odkaz</label>
+							<input class="inp" value="alza.cz/hrnek" />
+						</div>
+						<div class="field-row">
+							<div class="field">
+								<label class="lbl">Cena</label>
+								<input class="inp" value="490" />
+							</div>
+							<div class="field">
+								<label class="lbl">Měna</label>
+								<select class="sel">
+									<option>CZK</option>
+								</select>
+							</div>
+						</div>
+						<div class="field">
+							<label class="lbl">Obrázek</label>
+							<div class="image-tabs">
+								<button class="img-tab active">URL</button>
+								<button class="img-tab">Nahrát</button>
+							</div>
+							<input
+								class="inp"
+								value="https://images.unsplash.com/photo-1523275..."
+							/>
+						</div>
+						<hr class="sep" />
+						<div class="actions">
+							<button class="btn btn-primary">Uložit</button>
+							<button class="btn btn-outline">Označit jako obdržené</button>
+							<button class="btn btn-danger">Smazat</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

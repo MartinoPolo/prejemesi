@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Image Frame Foundation — Variant C: Storybook Canvas</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			/* light + dark token scopes */
+			.theme-light {
+				--background: oklch(98.6% 0.004 250deg);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(96.5% 0.006 250deg);
+				--surface-3: oklch(93.5% 0.008 250deg);
+				--canvas: oklch(96% 0.005 250deg);
+				--foreground: oklch(17% 0.012 250deg);
+				--foreground-muted: oklch(46% 0.016 250deg);
+				--foreground-subtle: oklch(57% 0.014 250deg);
+				--border: oklch(91% 0.01 250deg);
+				--border-strong: oklch(83% 0.016 250deg);
+				--primary: oklch(52.7% 0.154 150deg);
+				--primary-soft: oklch(93% 0.045 150deg);
+				--ring: oklch(52.7% 0.154 150deg);
+				--wishlist-surface: oklch(98.5% 0.005 150deg);
+				--wishlist-preview: oklch(96% 0.03 150deg);
+				--wishlist-page: oklch(98.5% 0.008 150deg);
+				--wishlist-icon: oklch(55% 0.12 150deg);
+				--wishlist-image-frame: oklch(95% 0.012 150deg);
+			}
+			.theme-dark {
+				--background: oklch(15.3% 0.006 250deg);
+				--surface: oklch(20% 0.01 250deg);
+				--surface-2: oklch(24% 0.012 250deg);
+				--surface-3: oklch(27% 0.014 250deg);
+				--canvas: oklch(18% 0.008 250deg);
+				--foreground: oklch(96% 0.006 250deg);
+				--foreground-muted: oklch(73% 0.016 250deg);
+				--foreground-subtle: oklch(60% 0.014 250deg);
+				--border: oklch(29% 0.014 250deg);
+				--border-strong: oklch(38% 0.02 250deg);
+				--primary: oklch(62% 0.154 150deg);
+				--primary-soft: oklch(28% 0.055 150deg);
+				--ring: oklch(62% 0.154 150deg);
+				--wishlist-surface: oklch(20% 0.01 150deg);
+				--wishlist-preview: oklch(26% 0.04 150deg);
+				--wishlist-page: oklch(17% 0.012 150deg);
+				--wishlist-icon: oklch(70% 0.12 150deg);
+				--wishlist-image-frame: oklch(22% 0.016 150deg);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: 'Figtree', system-ui, sans-serif;
+				-webkit-font-smoothing: antialiased;
+			}
+			.variant-eyebrow {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: oklch(1 0 0);
+				background: oklch(52.7% 0.154 150deg);
+				padding: 10px 20px;
+				text-align: center;
+			}
+
+			.shell {
+				display: grid;
+				grid-template-columns: 280px 1fr;
+				min-height: calc(100vh - 38px);
+				background: var(--background);
+				color: var(--foreground);
+			}
+
+			/* ── controls sidebar ── */
+			.controls {
+				border-right: 1px solid var(--border);
+				background: var(--surface);
+				padding: 22px 20px;
+				display: flex;
+				flex-direction: column;
+				gap: 24px;
+			}
+			.sb-title {
+				font-family: 'Noto Sans', sans-serif;
+				font-size: 16px;
+				font-weight: 800;
+				letter-spacing: -0.01em;
+			}
+			.sb-sub {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				margin-top: 2px;
+			}
+			.control-group h3 {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 8px;
+			}
+			.seg {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+			}
+			.seg.horiz {
+				flex-direction: row;
+			}
+			.opt {
+				flex: 1;
+				font-size: 12px;
+				font-weight: 600;
+				padding: 8px 10px;
+				border-radius: 8px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				text-align: left;
+			}
+			.opt.active {
+				border-color: var(--primary);
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+			.opt .k {
+				margin-left: auto;
+				font-family: ui-monospace, monospace;
+				font-size: 10px;
+				opacity: 0.7;
+			}
+			.opt .sw {
+				width: 16px;
+				height: 16px;
+				border-radius: 4px;
+				border: 1px solid var(--border-strong);
+			}
+			.note {
+				font-size: 11px;
+				color: var(--foreground-muted);
+				line-height: 1.5;
+				padding: 10px 12px;
+				background: var(--surface-2);
+				border-radius: 8px;
+				border: 1px solid var(--border);
+			}
+			.note code {
+				font-family: ui-monospace, monospace;
+				color: var(--primary);
+			}
+
+			/* ── canvas ── */
+			.canvas {
+				background: var(--canvas);
+				padding: 28px;
+				overflow: auto;
+			}
+			.canvas-head {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-bottom: 4px;
+			}
+			.tabs {
+				display: flex;
+				gap: 2px;
+				background: var(--surface-2);
+				border-radius: 9px;
+				padding: 3px;
+			}
+			.tab {
+				font-size: 12px;
+				font-weight: 600;
+				padding: 6px 14px;
+				border-radius: 7px;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.tab.active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: var(--shadow-sm, 0 1px 2px oklch(20% 0.01 90deg / 6%));
+			}
+			.canvas-head .crumb {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				margin-left: auto;
+			}
+			.canvas-head .crumb b {
+				color: var(--foreground);
+			}
+
+			/* hero specimen — reacts to controls (cover, tier-1 extracted) */
+			.hero {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				padding: 24px;
+				margin: 16px 0 24px;
+			}
+			.hero-grid {
+				display: grid;
+				grid-template-columns: 300px 1fr;
+				gap: 24px;
+				align-items: center;
+			}
+			.frame {
+				position: relative;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				background: var(--surface-2);
+			}
+			.frame .fit-chip {
+				position: absolute;
+				top: 10px;
+				left: 10px;
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				padding: 4px 9px;
+				border-radius: 9999px;
+				background: oklch(0 0 0 / 0.55);
+				color: oklch(1 0 0);
+			}
+			.hero .frame {
+				height: 240px;
+			}
+			.img-sim {
+				width: 100%;
+				height: 100%;
+			}
+			.sim-headphones {
+				background:
+					radial-gradient(
+						circle at 38% 42%,
+						oklch(72% 0.04 250deg) 0 13%,
+						transparent 14%
+					),
+					radial-gradient(
+						circle at 62% 42%,
+						oklch(72% 0.04 250deg) 0 13%,
+						transparent 14%
+					),
+					linear-gradient(135deg, oklch(45% 0.03 250deg), oklch(28% 0.02 250deg));
+			}
+			.sim-tall {
+				background: linear-gradient(180deg, oklch(70% 0.13 25deg), oklch(55% 0.1 200deg));
+			}
+			.sim-wide {
+				background: linear-gradient(90deg, oklch(72% 0.1 200deg), oklch(74% 0.13 90deg));
+			}
+			.sim-tiny {
+				background: conic-gradient(
+					from 45deg,
+					oklch(70% 0.15 30deg),
+					oklch(70% 0.15 150deg),
+					oklch(70% 0.15 270deg),
+					oklch(70% 0.15 30deg)
+				);
+			}
+			.center {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.fit-cover .img-sim {
+				object-fit: cover;
+			}
+
+			.hero-meta .hm-title {
+				font-family: 'Noto Sans', sans-serif;
+				font-size: 18px;
+				font-weight: 700;
+				margin-bottom: 6px;
+			}
+			.hero-meta p {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				line-height: 1.55;
+				margin-bottom: 14px;
+				max-width: 48ch;
+			}
+			.kv {
+				display: grid;
+				grid-template-columns: auto 1fr;
+				gap: 6px 14px;
+				font-size: 12px;
+			}
+			.kv .k {
+				color: var(--foreground-subtle);
+			}
+			.kv .v {
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+				font-weight: 600;
+			}
+			.kv .v .pill {
+				background: var(--primary-soft);
+				color: var(--primary);
+				padding: 1px 7px;
+				border-radius: 9999px;
+				font-size: 11px;
+			}
+
+			.section-label {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin: 24px 0 12px;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.section-label::after {
+				content: '';
+				flex: 1;
+				height: 1px;
+				background: var(--border);
+			}
+
+			.gallery {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 14px;
+			}
+			.gallery .frame {
+				height: 130px;
+			}
+			.tile-cap {
+				margin-top: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.tile-cap small {
+				display: block;
+				font-weight: 400;
+				color: var(--foreground-subtle);
+			}
+			.ph {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				width: 100%;
+				height: 100%;
+				background: var(--wishlist-surface);
+			}
+			.ph .emoji {
+				font-size: 38px;
+				line-height: 1;
+			}
+			.ph .emoji.iconified {
+				color: var(--wishlist-icon);
+			}
+			.ph .lbl {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+			.skel {
+				width: 100%;
+				height: 100%;
+				position: relative;
+				background: var(--wishlist-image-frame);
+			}
+			.skel::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(
+					90deg,
+					transparent,
+					color-mix(in oklch, var(--foreground) 8%, transparent),
+					transparent
+				);
+				background-size: 200% 100%;
+				animation: dk-shimmer 1.4s linear infinite;
+			}
+
+			/* fill priority mini ladder in sidebar-canvas */
+			.fill-ladder {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 10px;
+			}
+			.fill-step {
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				padding: 12px;
+				background: var(--surface);
+				position: relative;
+			}
+			.fill-step.active {
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px var(--primary-soft);
+			}
+			.fill-step .sw {
+				height: 38px;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				margin-bottom: 8px;
+			}
+			.fill-step .t {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+			}
+			.fill-step.active .t {
+				color: var(--primary);
+			}
+			.fill-step .n {
+				font-size: 12px;
+				font-weight: 700;
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+			}
+			.fill-step .d {
+				font-size: 11px;
+				color: var(--foreground-muted);
+				margin-top: 2px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="variant-eyebrow">
+			Variant C — Storybook Canvas · Image Frame Foundation (#34)
+		</div>
+		<div class="shell theme-light dk-root">
+			<!-- ── Controls ── -->
+			<aside class="controls">
+				<div>
+					<div class="sb-title">ImageFrame</div>
+					<div class="sb-sub">Derived · image_frame_variants.ts</div>
+				</div>
+
+				<div class="control-group">
+					<h3>Fit mode</h3>
+					<div class="seg">
+						<button class="opt active">auto <span class="k">A</span></button>
+						<button class="opt">contain-padded <span class="k">C</span></button>
+						<button class="opt">cover-crop <span class="k">V</span></button>
+					</div>
+				</div>
+
+				<div class="control-group">
+					<h3>Background fill tier</h3>
+					<div class="seg">
+						<button class="opt active">
+							<span class="sw" style="background: oklch(58% 0.13 25deg)"></span> 1 ·
+							extracted
+						</button>
+						<button class="opt">
+							<span class="sw" style="background: var(--wishlist-image-frame)"></span>
+							2 · wishlist
+						</button>
+						<button class="opt">
+							<span class="sw" style="background: var(--surface-2)"></span> 3 · global
+						</button>
+					</div>
+				</div>
+
+				<div class="control-group">
+					<h3>Wishlist palette</h3>
+					<div class="seg">
+						<button class="opt active">
+							<span class="sw" style="background: oklch(52.7% 0.154 150deg)"></span>
+							Default (moss)
+						</button>
+						<button class="opt">
+							<span class="sw" style="background: oklch(64% 0.155 15deg)"></span>
+							Preset · Narozeniny
+						</button>
+						<button class="opt">
+							<span class="sw" style="background: oklch(54% 0.14 275deg)"></span>
+							Vlastní OKLCH
+						</button>
+					</div>
+				</div>
+
+				<div class="control-group">
+					<h3>Color mode</h3>
+					<div class="seg horiz">
+						<button class="opt active" style="justify-content: center">☀︎ Light</button>
+						<button class="opt" style="justify-content: center">☾ Dark</button>
+					</div>
+				</div>
+
+				<div class="note">
+					Renderer řídí jen vnitřek pevné schránky. <code>auto</code> obsáhne extrémní
+					poměry, jinak vyplní jako cover. Výplň se řeší prioritou extracted → wishlist →
+					global.
+				</div>
+			</aside>
+
+			<!-- ── Canvas ── -->
+			<main class="canvas">
+				<div class="canvas-head">
+					<div class="tabs">
+						<span class="tab active">Canvas</span>
+						<span class="tab">Docs</span>
+					</div>
+					<span class="crumb">Stories / Derived / <b>ImageFrame</b></span>
+				</div>
+
+				<!-- HERO specimen reflecting current controls -->
+				<div class="hero">
+					<div class="hero-grid">
+						<div class="frame fit-cover">
+							<span class="fit-chip">auto · cover</span>
+							<div class="img-sim sim-headphones"></div>
+						</div>
+						<div class="hero-meta">
+							<div class="hm-title">Sluchátka Sony WH-1000XM5</div>
+							<p>
+								Aktivní specimen reaguje na ovládací prvky vlevo. Tady: režim
+								<b>auto</b> u obrázku s normálním poměrem → vyplní jako cover; výplň
+								by se použila z extrahované barvy (Tier 1).
+							</p>
+							<div class="kv">
+								<span class="k">fitMode</span
+								><span class="v"><span class="pill">auto</span></span>
+								<span class="k">resolvedFit</span><span class="v">cover-crop</span>
+								<span class="k">focal</span><span class="v">50% 50%</span>
+								<span class="k">fill</span><span class="v">Tier 1 · extracted</span>
+								<span class="k">tokenScope</span><span class="v">wishlist</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Fit mode comparison -->
+				<div class="section-label">Režimy zarovnání — stejný zdroj</div>
+				<div class="gallery">
+					<div>
+						<div class="frame fit-cover">
+							<span class="fit-chip">auto</span>
+							<div class="img-sim sim-headphones"></div>
+						</div>
+						<div class="tile-cap">auto<small>normální → cover</small></div>
+					</div>
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">contain</span>
+							<div
+								class="img-sim sim-headphones"
+								style="width: 72%; height: 80%"
+							></div>
+						</div>
+						<div class="tile-cap">contain-padded<small>celý + výplň</small></div>
+					</div>
+					<div>
+						<div class="frame fit-cover">
+							<span class="fit-chip">cover</span>
+							<div class="img-sim sim-headphones"></div>
+						</div>
+						<div class="tile-cap">cover-crop<small>focal 50/50</small></div>
+					</div>
+					<div>
+						<div class="frame fit-cover">
+							<span class="fit-chip">cover · focal</span>
+							<div
+								class="img-sim sim-headphones"
+								style="object-position: 20% 80%"
+							></div>
+						</div>
+						<div class="tile-cap">cover-crop<small>focal 20/80</small></div>
+					</div>
+				</div>
+
+				<!-- Extreme ratios -->
+				<div class="section-label">Extrémní poměry stran — auto je obsáhne</div>
+				<div class="gallery">
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">9:21</span>
+							<div class="img-sim sim-tall" style="width: 36%; height: 100%"></div>
+						</div>
+						<div class="tile-cap">Vysoký plakát<small>auto → contain</small></div>
+					</div>
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">32:9</span>
+							<div class="img-sim sim-wide" style="width: 100%; height: 32%"></div>
+						</div>
+						<div class="tile-cap">Panorama<small>auto → contain</small></div>
+					</div>
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">48px</span>
+							<div
+								class="img-sim sim-tiny"
+								style="width: 48px; height: 48px; border-radius: 8px"
+							></div>
+						</div>
+						<div class="tile-cap">Maličká ikona<small>bez upscale</small></div>
+					</div>
+					<div>
+						<div class="frame fit-cover">
+							<span class="fit-chip">4:3</span>
+							<div class="img-sim sim-headphones"></div>
+						</div>
+						<div class="tile-cap">Normální<small>auto → cover</small></div>
+					</div>
+				</div>
+
+				<!-- Fill priority -->
+				<div class="section-label">Priorita výplně — první dostupná vrstva vyhrává</div>
+				<div class="fill-ladder">
+					<div class="fill-step active">
+						<div class="sw" style="background: oklch(58% 0.13 25deg)"></div>
+						<div class="t">Tier 1 · aktivní</div>
+						<div class="n">extracted color</div>
+						<div class="d">vzorek z nahraného obrázku</div>
+					</div>
+					<div class="fill-step">
+						<div class="sw" style="background: var(--wishlist-image-frame)"></div>
+						<div class="t">Tier 2</div>
+						<div class="n">--wishlist-image-frame</div>
+						<div class="d">→ --wishlist-surface</div>
+					</div>
+					<div class="fill-step">
+						<div class="sw" style="background: var(--surface-2)"></div>
+						<div class="t">Tier 3</div>
+						<div class="n">--surface-2</div>
+						<div class="d">globální koncový fallback</div>
+					</div>
+				</div>
+
+				<!-- States + palettes -->
+				<div class="section-label">Stavy &amp; fallback (preset / vlastní paleta)</div>
+				<div class="gallery">
+					<div>
+						<div class="frame"><div class="skel"></div></div>
+						<div class="tile-cap">Načítání<small>skeleton</small></div>
+					</div>
+					<div>
+						<div class="frame">
+							<div class="ph">
+								<span class="emoji iconified">🎁</span
+								><span class="lbl">Bez obrázku</span>
+							</div>
+						</div>
+						<div class="tile-cap">Prázdný<small>--wishlist-icon</small></div>
+					</div>
+					<div
+						style="
+							--wishlist-surface: oklch(96% 0.05 15deg);
+							--wishlist-icon: oklch(58% 0.16 15deg);
+						"
+					>
+						<div class="frame">
+							<div class="ph"><span class="emoji iconified">🎂</span></div>
+						</div>
+						<div class="tile-cap">Preset · Narozeniny<small>rose fallback</small></div>
+					</div>
+					<div
+						style="
+							--wishlist-surface: oklch(96% 0.05 275deg);
+							--wishlist-icon: oklch(56% 0.14 275deg);
+						"
+					>
+						<div class="frame">
+							<div class="ph"><span class="emoji iconified">✨</span></div>
+						</div>
+						<div class="tile-cap">Vlastní · OKLCH 275°<small>odvozeno</small></div>
+					</div>
+				</div>
+
+				<!-- Dark mode panel -->
+				<div class="section-label">Tmavý režim — tytéž stavy</div>
+				<div
+					class="gallery theme-dark dk-root"
+					style="
+						background: var(--background);
+						padding: 16px;
+						border-radius: 12px;
+						border: 1px solid var(--border-strong);
+					"
+				>
+					<div>
+						<div class="frame fit-cover">
+							<span class="fit-chip">auto</span>
+							<div class="img-sim sim-headphones"></div>
+						</div>
+						<div class="tile-cap" style="color: var(--foreground)">
+							auto / cover<small>tmavý</small>
+						</div>
+					</div>
+					<div>
+						<div class="frame center" style="background: var(--wishlist-image-frame)">
+							<span class="fit-chip">contain</span>
+							<div class="img-sim sim-tall" style="width: 36%; height: 100%"></div>
+						</div>
+						<div class="tile-cap" style="color: var(--foreground)">
+							contain + výplň<small>frame token (dark)</small>
+						</div>
+					</div>
+					<div>
+						<div class="frame">
+							<div class="ph"><span class="emoji iconified">🎁</span></div>
+						</div>
+						<div class="tile-cap" style="color: var(--foreground)">
+							Fallback<small>icon kontrast OK</small>
+						</div>
+					</div>
+					<div
+						style="
+							--wishlist-surface: oklch(26% 0.06 275deg);
+							--wishlist-icon: oklch(70% 0.13 275deg);
+						"
+					>
+						<div class="frame">
+							<div class="ph"><span class="emoji iconified">✨</span></div>
+						</div>
+						<div class="tile-cap" style="color: var(--foreground)">
+							Vlastní · OKLCH<small>dark-safe</small>
+						</div>
+					</div>
+				</div>
+			</main>
+		</div>
+	</body>
+</html>

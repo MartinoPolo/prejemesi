@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Image Crop: REFINED (Variant A)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<!-- Structural tokens (typography/spacing/radii/shadows/motion). refined.html sits one level
+		     above variants/, so the path is ../tokens.css. Color palettes are inlined below because
+		     tokens.css intentionally does NOT own colors (they live in per-theme files / src/app.css). -->
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Light theme (sage) — mirrors src/app.css resolved values ── */
+			:root {
+				--background: oklch(0.988 0.004 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.967 0.001 286);
+				--surface-3: oklch(0.966 0.005 106);
+				--surface-hover: oklch(0.948 0.012 150);
+				--foreground: oklch(0.153 0.006 107);
+				--foreground-muted: oklch(0.58 0.031 107);
+				--foreground-subtle: oklch(0.5 0.012 107);
+				--border: oklch(0.93 0.007 106);
+				--border-strong: oklch(0.815 0.018 107);
+				--primary: oklch(0.527 0.154 150);
+				--primary-foreground: oklch(0.982 0.018 156);
+				--primary-soft: oklch(0.92 0.03 150);
+				--ring: oklch(0.527 0.154 150);
+				--muted: oklch(0.966 0.005 106);
+				--status-info: oklch(0.66 0.105 220);
+				--status-danger: oklch(0.62 0.2 25);
+				--wishlist-surface: oklch(0.985 0.005 150);
+				--wishlist-primary: oklch(0.527 0.154 150);
+				/* Tier-1 bg-fill: dominant color "extracted" from the sample image (warm ceramic) */
+				--extracted-fill: oklch(0.9 0.045 78);
+				/* The real sample photo (same image Variant A used). One URL drives every
+				   surface: .stage-photo and each .pv-frame .ph slot read background-image:
+				   var(--src-img), so the stage preview and all four tiles show the real image. */
+				--src-img: url('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80');
+				/* Skeleton shimmer: base + a brand-tinted shine. color-mix re-resolves per
+				   theme (both --primary and --surface-2 differ light vs dark), so the sweep
+				   stays clearly visible in both. */
+				--skeleton-base: var(--surface-2);
+				--skeleton-shine: color-mix(in oklch, var(--primary) 28%, var(--surface-2));
+				--shadow-modal: 0 24px 56px oklch(0 0 0 / 0.28), 0 8px 16px oklch(0 0 0 / 0.12);
+			}
+			.dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.228 0.013 107);
+				--surface-2: oklch(0.274 0.006 286);
+				--surface-3: oklch(0.286 0.016 107);
+				--surface-hover: oklch(0.32 0.012 150);
+				--foreground: oklch(0.988 0.003 106);
+				--foreground-muted: oklch(0.737 0.021 106);
+				--foreground-subtle: oklch(0.55 0.012 107);
+				--border: oklch(1 0 0 / 0.1);
+				--border-strong: oklch(0.35 0.015 107);
+				--primary: oklch(0.57 0.155 151);
+				--primary-foreground: oklch(0.982 0.018 156);
+				--primary-soft: oklch(0.25 0.04 150);
+				--ring: oklch(0.58 0.031 107);
+				--muted: oklch(0.286 0.016 107);
+				--wishlist-surface: oklch(0.2 0.01 150);
+				--wishlist-primary: oklch(0.57 0.155 150);
+				--extracted-fill: oklch(0.34 0.045 78);
+				/* Re-resolve the skeleton tokens against the dark palette. var() inside a
+				   custom property substitutes where the property is DECLARED; .dark lives on
+				   <body>, so without these overrides the tokens keep their :root (light)
+				   values and the shimmer renders near-white on the dark stage. */
+				--skeleton-base: var(--surface-2);
+				--skeleton-shine: color-mix(in oklch, var(--primary) 30%, var(--surface-2));
+				--shadow-modal: 0 24px 56px oklch(0 0 0 / 0.5), 0 8px 16px oklch(0 0 0 / 0.3);
+			}
+
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: var(--font-sans, 'Figtree', system-ui, sans-serif);
+				background: var(--background);
+				color: var(--foreground);
+				-webkit-font-smoothing: antialiased;
+				min-height: 100vh;
+			}
+
+			/* ── Eyebrow + controls bar ── */
+			.eyebrow-bar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 16px;
+				flex-wrap: wrap;
+				padding: 10px 24px;
+				background: var(--primary-soft);
+				border-bottom: 1px solid var(--border);
+			}
+			.eyebrow {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.bar-controls {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+			/* State switcher (mockup-only chrome, not part of the product) */
+			.state-switch {
+				display: flex;
+				gap: 2px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 9999px;
+				padding: 3px;
+			}
+			.state-switch button {
+				font-size: 11.5px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: none;
+				border-radius: 9999px;
+				padding: 4px 11px;
+				cursor: pointer;
+			}
+			.state-switch button[aria-pressed='true'] {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+			.theme-toggle {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--primary);
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 9999px;
+				padding: 5px 13px;
+				cursor: pointer;
+			}
+
+			/* ── Dimmed wishlist backdrop ── */
+			.backdrop {
+				min-height: calc(100vh - 52px);
+				background:
+					radial-gradient(circle at 30% 20%, oklch(0.92 0.03 150 / 0.5), transparent 60%),
+					var(--background);
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 40px 24px;
+			}
+			.backdrop::before {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: oklch(0 0 0 / 0.45);
+				backdrop-filter: blur(6px);
+			}
+
+			/* ── Modal shell (parent-provided chrome — shown faithfully) ── */
+			.modal {
+				position: relative;
+				z-index: 1;
+				width: 100%;
+				max-width: 900px;
+				background: var(--surface);
+				border-radius: 20px;
+				box-shadow: var(--shadow-modal);
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				max-height: 90dvh;
+			}
+			.modal-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 18px 22px 14px;
+				border-bottom: 1px solid var(--border);
+			}
+			.modal-title {
+				font-family: var(--font-heading, 'Noto Sans', system-ui, sans-serif);
+				font-size: 17px;
+				font-weight: 700;
+				letter-spacing: -0.01em;
+			}
+			.modal-close {
+				width: 32px;
+				height: 32px;
+				border-radius: 9999px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				font-size: 16px;
+			}
+
+			.modal-body {
+				display: grid;
+				grid-template-columns: 52% 48%;
+				min-height: 0;
+				overflow: hidden;
+			}
+
+			/* ── LEFT: image stage ── */
+			.stage-col {
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+				padding: 18px;
+				background: var(--surface-3);
+				border-right: 1px solid var(--border);
+				overflow-y: auto;
+			}
+
+			/* Segmented fit control (ToggleGroup, single-select) */
+			.segmented {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 4px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				padding: 4px;
+			}
+			.seg {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 3px;
+				padding: 8px 6px;
+				border-radius: 7px;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: none;
+				cursor: pointer;
+				text-align: center;
+				transition:
+					background var(--duration-normal, 0.18s) var(--ease-standard, ease),
+					color var(--duration-normal, 0.18s) var(--ease-standard, ease);
+			}
+			.seg .seg-icon {
+				width: 18px;
+				height: 18px;
+				opacity: 0.85;
+			}
+			.seg:focus-visible {
+				outline: var(--focus-ring-width, 2px) solid var(--ring);
+				outline-offset: 2px;
+			}
+			.seg[aria-pressed='true'] {
+				background: var(--primary);
+				color: var(--primary-foreground);
+				box-shadow: 0 1px 2px oklch(0 0 0 / 0.12);
+			}
+			.segmented[data-disabled='true'] {
+				opacity: 0.45;
+				pointer-events: none;
+			}
+
+			/* Stage surface — holds crop canvas / fit preview / skeleton / empty per state */
+			.stage {
+				position: relative;
+				border-radius: 12px;
+				overflow: hidden;
+				aspect-ratio: 4 / 3;
+				background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%)
+					0 / 22px 22px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			/* The source photo as it sits on the stage (full, contained) */
+			.stage-photo {
+				width: 100%;
+				height: 100%;
+				background-image: var(--src-img);
+				background-repeat: no-repeat;
+				background-position: center;
+				background-size: contain;
+			}
+			/* Crop overlay (Crop mode) */
+			.crop-rect {
+				position: absolute;
+				top: 14%;
+				left: 16%;
+				width: 60%;
+				height: 70%;
+				box-shadow: 0 0 0 9999px oklch(0 0 0 / 0.5);
+				border: 2px solid var(--primary-foreground);
+				outline: 1px solid var(--primary);
+			}
+			.grid-v,
+			.grid-h {
+				position: absolute;
+				background: oklch(1 0 0 / 0.35);
+			}
+			.grid-v {
+				top: 0;
+				bottom: 0;
+				width: 1px;
+			}
+			.grid-v.v1 {
+				left: 33.33%;
+			}
+			.grid-v.v2 {
+				left: 66.66%;
+			}
+			.grid-h {
+				left: 0;
+				right: 0;
+				height: 1px;
+			}
+			.grid-h.h1 {
+				top: 33.33%;
+			}
+			.grid-h.h2 {
+				top: 66.66%;
+			}
+			.handle {
+				position: absolute;
+				width: 12px;
+				height: 12px;
+				background: var(--primary-foreground);
+				border: 2px solid var(--primary);
+				border-radius: 3px;
+			}
+			.handle.tl {
+				top: -7px;
+				left: -7px;
+			}
+			.handle.tr {
+				top: -7px;
+				right: -7px;
+			}
+			.handle.bl {
+				bottom: -7px;
+				left: -7px;
+			}
+			.handle.br {
+				bottom: -7px;
+				right: -7px;
+			}
+
+			/* Empty state on stage — mirrors the real ImageUpload dropzone
+				   (src/lib/components/derived/image-upload): a dashed-border drop target
+				   with click/drag affordance, NOT the checkerboard crop surface. Fills the
+				   stage so the empty state reads as "drop an image here". */
+			.stage-empty {
+				position: absolute;
+				inset: 0;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 12px;
+				border: 2px dashed color-mix(in oklch, var(--foreground-muted) 25%, transparent);
+				border-radius: 12px;
+				background: var(--surface);
+				color: var(--foreground-muted);
+				text-align: center;
+				padding: 0 28px;
+				cursor: pointer;
+				transition:
+					border-color var(--duration-normal, 0.18s) var(--ease-standard, ease),
+					background var(--duration-normal, 0.18s) var(--ease-standard, ease);
+			}
+			.stage-empty:hover {
+				border-color: color-mix(in oklch, var(--primary) 50%, transparent);
+				background: color-mix(in oklch, var(--surface-hover) 60%, var(--surface));
+			}
+			.stage-empty svg {
+				width: 32px;
+				height: 32px;
+				color: var(--foreground-muted);
+			}
+			.stage-empty .t {
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+			}
+			.stage-empty .s {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				max-width: 30ch;
+			}
+
+			/* Skeleton shimmer (loading) — slow, smooth sweep with a brand-tinted
+				   highlight so the motion reads clearly (the old 1.3s grey sweep was too
+				   fast and nearly invisible). */
+			.skeleton {
+				background: linear-gradient(
+					100deg,
+					var(--skeleton-base) 38%,
+					var(--skeleton-shine) 50%,
+					var(--skeleton-base) 62%
+				);
+				background-size: 260% 100%;
+				animation: shimmer 2.4s var(--ease-in-out, ease-in-out) infinite;
+			}
+			@keyframes shimmer {
+				from {
+					background-position: 160% 0;
+				}
+				to {
+					background-position: -60% 0;
+				}
+			}
+
+			/* Toolbar under stage (reset crop + chips) */
+			.stage-toolbar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 8px;
+				min-height: 30px;
+			}
+			.help-note {
+				font-size: 12px;
+				color: var(--foreground-muted);
+				line-height: 1.4;
+				display: flex;
+				gap: 6px;
+				align-items: flex-start;
+			}
+			.help-note .dot {
+				flex-shrink: 0;
+				width: 16px;
+				height: 16px;
+				border-radius: 9999px;
+				background: color-mix(in oklch, var(--status-info) 18%, transparent);
+				color: var(--status-info);
+				font-size: 11px;
+				font-weight: 700;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				margin-top: 1px;
+			}
+			.fill-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: 9999px;
+				padding: 3px 9px 3px 7px;
+			}
+			.fill-chip .sw {
+				width: 12px;
+				height: 12px;
+				border-radius: 4px;
+				border: 1px solid var(--border-strong);
+			}
+			.btn-ghost {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: transparent;
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 6px 12px;
+				cursor: pointer;
+			}
+			.btn-ghost:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+			.btn-ghost:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			/* Preview strip — 4 real consumer ratios */
+			.strip-label {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+			}
+			.preview-strip {
+				display: flex;
+				gap: 12px;
+				align-items: flex-end;
+			}
+			.pv {
+				display: flex;
+				flex-direction: column;
+				gap: 5px;
+			}
+			/* The fixed-aspect slot. Its background IS the bg-fill (priority chain) shown behind padding. */
+			.pv-frame {
+				border-radius: 8px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: var(--fill, var(--wishlist-surface));
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			/* cover-crop: image fills the slot, positioned at the shared crop focal point */
+			.pv-frame[data-fit='cover'] .ph {
+				position: absolute;
+				inset: 0;
+				background-image: var(--src-img);
+				background-repeat: no-repeat;
+				background-size: cover;
+				background-position: 50% 36%; /* shared normalized crop focal — same across all slots */
+			}
+			/* contain-padded: whole image visible at its intrinsic 3:4 ratio; bg-fill shows around it */
+			.pv-frame[data-fit='contain'] .ph {
+				aspect-ratio: 3 / 4;
+				max-width: 100%;
+				max-height: 100%;
+				background-image: var(--src-img);
+				background-repeat: no-repeat;
+				background-size: contain;
+				background-position: center;
+			}
+			/* Loading: a skeleton tile fills its slot and shows ONLY the shimmer. This
+				   rule sits after (and ties specificity with) the cover/contain rules so its
+				   gradient wins — otherwise the real photo would paint through while loading. */
+			.pv-frame .ph.skeleton {
+				position: absolute;
+				inset: 0;
+				aspect-ratio: auto;
+				max-width: none;
+				max-height: none;
+				background-image: linear-gradient(
+					100deg,
+					var(--skeleton-base) 38%,
+					var(--skeleton-shine) 50%,
+					var(--skeleton-base) 62%
+				);
+			}
+			.pv-card {
+				width: 138px;
+				aspect-ratio: 3 / 2;
+			}
+			.pv-detail {
+				width: 84px;
+				aspect-ratio: 3 / 4;
+			}
+			.pv-list {
+				width: 56px;
+				aspect-ratio: 1 / 1;
+			}
+			.pv-res {
+				width: 44px;
+				aspect-ratio: 1 / 1;
+			}
+			.pv-cap {
+				font-size: 10.5px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				text-align: center;
+			}
+			.pv-cap small {
+				display: block;
+				font-size: 9.5px;
+				font-weight: 500;
+				color: var(--foreground-subtle);
+			}
+			.previews-hidden {
+				display: none;
+			}
+
+			/* ── RIGHT: form (preserved exactly as today) ── */
+			.form-col {
+				display: flex;
+				flex-direction: column;
+				padding: 20px 22px;
+				overflow-y: auto;
+				gap: 14px;
+			}
+			.field {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.field-row {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+			}
+			.lbl {
+				font-size: 13px;
+				font-weight: 500;
+			}
+			.inp,
+			.ta,
+			.sel {
+				font-family: inherit;
+				font-size: 13px;
+				height: 34px;
+				padding: 0 11px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				color: var(--foreground);
+				width: 100%;
+			}
+			.ta {
+				height: auto;
+				padding: 8px 11px;
+				resize: none;
+			}
+			.image-tabs {
+				display: flex;
+				gap: 4px;
+			}
+			.img-tab {
+				font-size: 12px;
+				font-weight: 600;
+				padding: 6px 12px;
+				border-radius: 8px;
+				border: none;
+				cursor: pointer;
+				background: var(--muted);
+				color: var(--foreground-muted);
+			}
+			.img-tab.active {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+			.sep {
+				height: 1px;
+				background: var(--border);
+				border: none;
+				margin: 4px 0;
+			}
+			.actions {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				margin-top: auto;
+			}
+			.btn {
+				height: 38px;
+				border-radius: 8px;
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				border: 1px solid transparent;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-foreground);
+			}
+			.btn-primary:disabled {
+				opacity: 0.6;
+				cursor: not-allowed;
+			}
+			.btn-outline {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-danger {
+				background: transparent;
+				color: var(--status-danger);
+				border-color: color-mix(in oklch, var(--status-danger) 30%, transparent);
+			}
+			.spinner {
+				width: 14px;
+				height: 14px;
+				border-radius: 9999px;
+				border: 2px solid color-mix(in oklch, var(--primary-foreground) 40%, transparent);
+				border-top-color: var(--primary-foreground);
+				animation: spin 0.7s linear infinite;
+			}
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+
+			@media (max-width: 720px) {
+				.modal-body {
+					grid-template-columns: 1fr;
+				}
+				.preview-strip {
+					flex-wrap: wrap;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="eyebrow-bar">
+			<span class="eyebrow">Refined — Variant A · stage + preview strip · all states</span>
+			<div class="bar-controls">
+				<div class="state-switch" role="group" aria-label="Náhled stavů (pouze mockup)">
+					<button data-state="auto" aria-pressed="true">Auto</button>
+					<button data-state="contain" aria-pressed="false">Celý</button>
+					<button data-state="crop" aria-pressed="false">Ořez</button>
+					<button data-state="loading" aria-pressed="false">Načítání</button>
+					<button data-state="external" aria-pressed="false">Externí URL</button>
+					<button data-state="empty" aria-pressed="false">Prázdné</button>
+				</div>
+				<button class="theme-toggle" onclick="document.body.classList.toggle('dark')">
+					Světlý / tmavý
+				</button>
+			</div>
+		</div>
+
+		<div class="backdrop">
+			<div class="modal">
+				<div class="modal-head">
+					<span class="modal-title">Upravit dárek</span>
+					<button class="modal-close" aria-label="Zavřít">×</button>
+				</div>
+
+				<div class="modal-body">
+					<!-- LEFT: image stage -->
+					<div class="stage-col">
+						<!-- Fit-mode segmented control (ToggleGroup) -->
+						<div
+							class="segmented"
+							role="group"
+							aria-label="Režim zobrazení obrázku"
+							id="segmented"
+						>
+							<button class="seg" data-mode="auto" aria-pressed="true">
+								<svg
+									class="seg-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path d="M3 12h18M12 3v18" />
+									<circle cx="12" cy="12" r="9" />
+								</svg>
+								Automaticky
+							</button>
+							<button class="seg" data-mode="contain" aria-pressed="false">
+								<svg
+									class="seg-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<rect x="3" y="5" width="18" height="14" rx="2" />
+									<path d="M3 9h18" />
+								</svg>
+								Celý obrázek
+							</button>
+							<button class="seg" data-mode="crop" aria-pressed="false">
+								<svg
+									class="seg-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path d="M6 2v14a2 2 0 0 0 2 2h14" />
+									<path d="M2 6h14a2 2 0 0 1 2 2v14" />
+								</svg>
+								Oříznout
+							</button>
+						</div>
+
+						<!-- Stage surface (content swapped per state) -->
+						<div class="stage" id="stage"></div>
+
+						<!-- Toolbar: reset crop + bg-fill chip / helper -->
+						<div class="stage-toolbar" id="stageToolbar"></div>
+
+						<!-- Preview strip: 4 real consumer ratios -->
+						<span class="strip-label" id="stripLabel">Náhled napříč zobrazeními</span>
+						<div class="preview-strip" id="previewStrip">
+							<div class="pv">
+								<div class="pv-frame pv-card" data-fit="cover">
+									<div class="ph"></div>
+								</div>
+								<span class="pv-cap">Karta dárku<small>3:2</small></span>
+							</div>
+							<div class="pv">
+								<div class="pv-frame pv-detail" data-fit="cover">
+									<div class="ph"></div>
+								</div>
+								<span class="pv-cap">Detail<small>3:4</small></span>
+							</div>
+							<div class="pv">
+								<div class="pv-frame pv-list" data-fit="cover">
+									<div class="ph"></div>
+								</div>
+								<span class="pv-cap">Seznam<small>1:1</small></span>
+							</div>
+							<div class="pv">
+								<div class="pv-frame pv-res" data-fit="cover">
+									<div class="ph"></div>
+								</div>
+								<span class="pv-cap">Rezervace<small>1:1</small></span>
+							</div>
+						</div>
+					</div>
+
+					<!-- RIGHT: preserved form -->
+					<div class="form-col">
+						<div class="field">
+							<label class="lbl" for="f-name">Název dárku</label>
+							<input class="inp" id="f-name" value="Keramický hrnek ručně dělaný" />
+						</div>
+						<div class="field">
+							<label class="lbl" for="f-desc">Popis</label>
+							<textarea class="ta" id="f-desc" rows="2">
+Pastelově modrý hrnek z lokální dílny, 350 ml.</textarea
+							>
+						</div>
+						<div class="field">
+							<label class="lbl" for="f-url">Odkaz</label>
+							<input class="inp" id="f-url" value="alza.cz/hrnek" />
+						</div>
+						<div class="field-row">
+							<div class="field">
+								<label class="lbl" for="f-price">Cena</label>
+								<input class="inp" id="f-price" value="490" />
+							</div>
+							<div class="field">
+								<label class="lbl" for="f-cur">Měna</label>
+								<select class="sel" id="f-cur">
+									<option>CZK</option>
+								</select>
+							</div>
+						</div>
+						<div class="field">
+							<label class="lbl">Obrázek</label>
+							<div class="image-tabs">
+								<button class="img-tab active">URL</button>
+								<button class="img-tab">Nahrát</button>
+							</div>
+							<input
+								class="inp"
+								id="f-img"
+								value="https://images.unsplash.com/photo-1523275..."
+							/>
+						</div>
+						<hr class="sep" />
+						<div class="actions" id="actions">
+							<button class="btn btn-primary">Uložit</button>
+							<button class="btn btn-outline">Označit jako obdržené</button>
+							<button class="btn btn-danger">Smazat</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			// ── Mockup state driver ─────────────────────────────────────────────
+			// Demonstrates every brief state (§4) without leaving the Variant A shell.
+			// In the real Svelte build these states are derived from fitMode + image
+			// load status + cropRect; here a switcher fakes them for review.
+			const stage = document.getElementById('stage');
+			const toolbar = document.getElementById('stageToolbar');
+			const strip = document.getElementById('previewStrip');
+			const stripLabel = document.getElementById('stripLabel');
+			const segmented = document.getElementById('segmented');
+			const segs = [...segmented.querySelectorAll('.seg')];
+			const frames = [...strip.querySelectorAll('.pv-frame')];
+			const actions = document.getElementById('actions');
+
+			const CROP_CANVAS = `
+				<div class="stage-photo"></div>
+				<div class="crop-rect">
+					<span class="grid-v v1"></span><span class="grid-v v2"></span>
+					<span class="grid-h h1"></span><span class="grid-h h2"></span>
+					<span class="handle tl"></span><span class="handle tr"></span>
+					<span class="handle bl"></span><span class="handle br"></span>
+				</div>`;
+
+			const FIT_PREVIEW = `<div class="stage-photo"></div>`;
+
+			const SKELETON_STAGE = `<div class="skeleton" style="position:absolute;inset:0;"></div>`;
+
+			const EMPTY_STAGE = `
+				<div class="stage-empty" role="button" tabindex="0" aria-label="Nahrát obrázek">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+						<polyline points="17 8 12 3 7 8" />
+						<line x1="12" y1="3" x2="12" y2="15" />
+					</svg>
+					<span class="t">Přetáhněte obrázek sem nebo klikněte pro výběr</span>
+					<span class="s">Přidejte obrázek přes URL nebo nahrání — možnosti zobrazení se objeví poté.</span>
+				</div>`;
+
+			const AUTO_HELP = `
+				<div class="help-note">
+					<span class="dot">i</span>
+					<span>Automatický režim ponechá celý produkt viditelný u velmi vysokých nebo širokých obrázků.</span>
+				</div>`;
+
+			function fillChip(label, color) {
+				return `<span class="fill-chip"><span class="sw" style="background:${color}"></span>${label}</span>`;
+			}
+
+			// Per-state config: which fit each of the 4 slots uses + the bg-fill var + chrome.
+			// Slots order: [card 3:2, detail 3:4, list 1:1, res 1:1]
+			const STATES = {
+				auto: {
+					mode: 'auto',
+					// Auto bias (REQ-4): keep whole product on the extreme-vs-slot card (contain),
+					// clean fill where the ratio is close (detail≈3:4 native, squares).
+					fits: ['contain', 'cover', 'cover', 'cover'],
+					fill: 'var(--extracted-fill)',
+					stage: FIT_PREVIEW,
+					toolbar:
+						AUTO_HELP + fillChip('Výplň: barva z obrázku', 'var(--extracted-fill)'),
+					reset: false,
+				},
+				contain: {
+					mode: 'contain',
+					fits: ['contain', 'contain', 'contain', 'contain'],
+					fill: 'var(--extracted-fill)',
+					stage: FIT_PREVIEW,
+					toolbar:
+						`<div class="help-note"><span class="dot">i</span><span>Celý obrázek je vždy vidět; okolní místo vyplní barva pozadí.</span></div>` +
+						fillChip('Výplň: barva z obrázku', 'var(--extracted-fill)'),
+					reset: false,
+				},
+				crop: {
+					mode: 'crop',
+					fits: ['cover', 'cover', 'cover', 'cover'],
+					fill: 'var(--extracted-fill)',
+					stage: CROP_CANVAS,
+					toolbar:
+						`<div class="help-note"><span class="dot">i</span><span>Jeden ořez se použije ve všech zobrazeních (sdílený výřez).</span></div>` +
+						`<button class="btn-ghost">Obnovit ořez</button>`,
+					reset: true,
+				},
+				loading: {
+					mode: 'auto',
+					fits: ['skeleton', 'skeleton', 'skeleton', 'skeleton'],
+					fill: 'var(--surface-2)',
+					stage: SKELETON_STAGE,
+					toolbar: `<div class="help-note"><span class="dot">i</span><span>Načítání obrázku a zjišťování dominantní barvy…</span></div>`,
+					reset: false,
+				},
+				external: {
+					mode: 'contain',
+					fits: ['contain', 'contain', 'contain', 'contain'],
+					// External URL → no color extraction → fall back to wishlist theme token.
+					fill: 'var(--wishlist-surface)',
+					stage: FIT_PREVIEW,
+					toolbar:
+						`<div class="help-note"><span class="dot">i</span><span>Externí URL: bez extrakce barvy — pozadí se vezme z motivu seznamu.</span></div>` +
+						fillChip('Výplň: token motivu', 'var(--wishlist-surface)'),
+					reset: false,
+				},
+				empty: {
+					mode: null,
+					fits: null,
+					fill: null,
+					stage: EMPTY_STAGE,
+					toolbar: '',
+					reset: false,
+				},
+			};
+
+			function applyState(name) {
+				const s = STATES[name];
+
+				// Stage content
+				stage.innerHTML = s.stage;
+
+				// Toolbar
+				toolbar.innerHTML = s.toolbar;
+
+				// Segmented control: active mode + disabled when empty
+				segmented.dataset.disabled = s.mode === null ? 'true' : 'false';
+				segs.forEach((b) =>
+					b.setAttribute('aria-pressed', String(b.dataset.mode === s.mode)),
+				);
+
+				// Preview strip: hide entirely in empty state, else set per-slot fit + fill
+				if (!s.fits) {
+					strip.classList.add('previews-hidden');
+					stripLabel.classList.add('previews-hidden');
+				} else {
+					strip.classList.remove('previews-hidden');
+					stripLabel.classList.remove('previews-hidden');
+					frames.forEach((f, i) => {
+						const fit = s.fits[i];
+						if (fit === 'skeleton') {
+							f.dataset.fit = 'cover';
+							f.firstElementChild.className = 'ph skeleton';
+							f.style.background = 'var(--surface-2)';
+						} else {
+							f.dataset.fit = fit;
+							f.firstElementChild.className = 'ph';
+							f.style.background = s.fill;
+						}
+					});
+				}
+
+				// Save button: 'Saving…' only conceptually; keep enabled here.
+				actions.firstElementChild.disabled = false;
+			}
+
+			// State switcher wiring
+			document.querySelectorAll('.state-switch button').forEach((b) => {
+				b.addEventListener('click', () => {
+					document
+						.querySelectorAll('.state-switch button')
+						.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+					applyState(b.dataset.state);
+				});
+			});
+
+			// Clicking a fit segment also drives the matching state (auto/contain/crop)
+			segs.forEach((b) => {
+				b.addEventListener('click', () => {
+					const mode = b.dataset.mode;
+					document
+						.querySelectorAll('.state-switch button')
+						.forEach((x) =>
+							x.setAttribute('aria-pressed', String(x.dataset.state === mode)),
+						);
+					applyState(mode);
+				});
+			});
+
+			applyState('auto');
+		</script>
+	</body>
+</html>

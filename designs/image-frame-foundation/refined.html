@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Image Frame Foundation — Refined (Variant B)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<!-- Structural tokens: typography, spacing, radii, shadows, motion -->
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Inlined color palette (light + dark)
+			   Source of truth: src/app.css per-theme blocks.
+			   New tokens (--wishlist-preview, --wishlist-page, --wishlist-icon,
+			   --wishlist-image-frame) are proposed values not yet in tokens.css. ── */
+			.theme-light {
+				--background: oklch(98.6% 0.004 250deg);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(96.5% 0.006 250deg);
+				--surface-3: oklch(93.5% 0.008 250deg);
+				--surface-hover: oklch(95% 0.007 250deg);
+				--foreground: oklch(17% 0.012 250deg);
+				--foreground-muted: oklch(46% 0.016 250deg);
+				--foreground-subtle: oklch(57% 0.014 250deg);
+				--border: oklch(91% 0.01 250deg);
+				--border-strong: oklch(83% 0.016 250deg);
+				--primary: oklch(52.7% 0.154 150deg);
+				--primary-fg: oklch(99% 0 0);
+				--primary-soft: oklch(93% 0.045 150deg);
+				--ring: oklch(52.7% 0.154 150deg);
+				/* wishlist tokens */
+				--wishlist-surface: oklch(98.5% 0.005 150deg);
+				--wishlist-preview: oklch(96% 0.03 150deg);
+				--wishlist-page: oklch(98.5% 0.008 150deg);
+				--wishlist-icon: oklch(55% 0.12 150deg);
+				--wishlist-image-frame: oklch(95% 0.012 150deg);
+			}
+			.theme-dark {
+				--background: oklch(15.3% 0.006 250deg);
+				--surface: oklch(20% 0.01 250deg);
+				--surface-2: oklch(24% 0.012 250deg);
+				--surface-3: oklch(27% 0.014 250deg);
+				--surface-hover: oklch(26% 0.013 250deg);
+				--foreground: oklch(96% 0.006 250deg);
+				--foreground-muted: oklch(73% 0.016 250deg);
+				--foreground-subtle: oklch(60% 0.014 250deg);
+				--border: oklch(29% 0.014 250deg);
+				--border-strong: oklch(38% 0.02 250deg);
+				--primary: oklch(62% 0.154 150deg);
+				--primary-fg: oklch(15% 0.02 150deg);
+				--primary-soft: oklch(28% 0.055 150deg);
+				--ring: oklch(62% 0.154 150deg);
+				/* wishlist tokens */
+				--wishlist-surface: oklch(20% 0.01 150deg);
+				--wishlist-preview: oklch(26% 0.04 150deg);
+				--wishlist-page: oklch(17% 0.012 150deg);
+				--wishlist-icon: oklch(70% 0.12 150deg);
+				--wishlist-image-frame: oklch(22% 0.016 150deg);
+			}
+
+			/* ── Document shell ─── */
+			body {
+				font-family: var(--font-sans);
+				-webkit-font-smoothing: antialiased;
+				background: oklch(91% 0.005 250deg);
+				margin: 0;
+				padding: 0;
+			}
+
+			.page-eyebrow {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: oklch(1 0 0);
+				background: oklch(52.7% 0.154 150deg);
+				padding: 10px 20px;
+				text-align: center;
+			}
+
+			.doc {
+				max-width: 960px;
+				margin: 0 auto;
+				padding: var(--space-12) var(--space-10) var(--space-20);
+			}
+			.doc-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-3xl);
+				font-weight: var(--weight-bold);
+				letter-spacing: var(--tracking-tight);
+				margin-bottom: var(--space-2);
+				color: var(--foreground);
+			}
+			.doc-lede {
+				font-size: var(--text-base);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+				max-width: 64ch;
+				margin-bottom: var(--space-2);
+			}
+			.doc-meta {
+				font-size: var(--text-xs);
+				color: var(--foreground-subtle);
+				margin-bottom: var(--space-8);
+			}
+			.doc-meta code {
+				font-family: ui-monospace, monospace;
+				background: var(--surface-2);
+				padding: 1px 6px;
+				border-radius: var(--radius-xs);
+				color: var(--primary);
+			}
+
+			/* ── Section blocks ─── */
+			.block {
+				margin-bottom: var(--space-12);
+			}
+			.block-eyebrow {
+				font-size: var(--text-xs);
+				font-weight: 700;
+				letter-spacing: var(--tracking-wider);
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: var(--space-1);
+			}
+			.block-title {
+				font-family: var(--font-heading);
+				font-size: var(--text-xl);
+				font-weight: var(--weight-semibold);
+				letter-spacing: var(--tracking-snug);
+				margin-bottom: var(--space-2);
+				color: var(--foreground);
+			}
+			.block-desc {
+				font-size: var(--text-sm);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+				max-width: 64ch;
+				margin-bottom: var(--space-5);
+			}
+
+			/* ── ImageFrame primitive ─── */
+			.image-frame {
+				position: relative;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				background: var(--surface-2);
+				/* focus-visible ring on interactive frames */
+			}
+			.image-frame:focus-visible {
+				outline: var(--focus-ring-width) solid var(--ring);
+				outline-offset: var(--focus-ring-offset);
+			}
+			/* fit-mode chip overlay */
+			.fit-chip {
+				position: absolute;
+				top: var(--space-2);
+				left: var(--space-2);
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				padding: 3px var(--space-2);
+				border-radius: var(--radius-full);
+				background: oklch(0 0 0 / 0.55);
+				color: oklch(1 0 0);
+				z-index: 2;
+				pointer-events: none;
+			}
+			/* image simulations */
+			.img-sim {
+				width: 100%;
+				height: 100%;
+				display: block;
+			}
+			.img-sim-headphones {
+				background:
+					radial-gradient(
+						circle at 38% 42%,
+						oklch(72% 0.04 250deg) 0 13%,
+						transparent 14%
+					),
+					radial-gradient(
+						circle at 62% 42%,
+						oklch(72% 0.04 250deg) 0 13%,
+						transparent 14%
+					),
+					linear-gradient(135deg, oklch(45% 0.03 250deg), oklch(28% 0.02 250deg));
+			}
+			.img-sim-book {
+				background: linear-gradient(
+					160deg,
+					oklch(72% 0.13 25deg) 0%,
+					oklch(58% 0.1 35deg) 50%,
+					oklch(44% 0.08 25deg) 100%
+				);
+			}
+			.img-sim-candle {
+				background:
+					radial-gradient(
+						ellipse at 50% 20%,
+						oklch(88% 0.18 75deg) 0%,
+						oklch(78% 0.2 65deg) 20%,
+						transparent 40%
+					),
+					linear-gradient(180deg, oklch(45% 0.08 40deg), oklch(30% 0.05 40deg));
+			}
+			.img-sim-tall {
+				background: linear-gradient(180deg, oklch(70% 0.13 25deg), oklch(55% 0.1 200deg));
+			}
+			.img-sim-wide {
+				background: linear-gradient(90deg, oklch(72% 0.1 200deg), oklch(74% 0.13 90deg));
+			}
+			.img-sim-tiny {
+				background: conic-gradient(
+					from 45deg,
+					oklch(70% 0.15 30deg),
+					oklch(70% 0.15 150deg),
+					oklch(70% 0.15 270deg),
+					oklch(70% 0.15 30deg)
+				);
+			}
+			/* frame fill helpers */
+			.frame-fill-center {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			/* ── Loading skeleton ─── */
+			.skeleton {
+				width: 100%;
+				height: 100%;
+				position: relative;
+				background: var(--wishlist-image-frame);
+			}
+			.skeleton::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(
+					90deg,
+					transparent,
+					color-mix(in oklch, var(--foreground) 8%, transparent),
+					transparent
+				);
+				background-size: 200% 100%;
+				animation: dk-shimmer 1.4s linear infinite;
+			}
+			/* extracted-color skeleton variant */
+			.skeleton-extracted {
+				background: oklch(58% 0.13 25deg);
+			}
+
+			/* ── Empty / error fallback ─── */
+			.fallback {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: var(--space-2);
+				width: 100%;
+				height: 100%;
+				background: var(--wishlist-surface);
+			}
+			.fallback-icon {
+				font-size: 38px;
+				line-height: 1;
+				color: var(--wishlist-icon);
+			}
+			.fallback-label {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+
+			/* ── Fit mode trio ─── */
+			.trio {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: var(--space-4);
+			}
+			.trio .image-frame {
+				height: 150px;
+			}
+			.specimen-cap {
+				margin-top: var(--space-2);
+				font-size: var(--text-xs);
+			}
+			.specimen-cap .cap-name {
+				font-weight: 700;
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+			}
+			.specimen-cap .cap-desc {
+				color: var(--foreground-subtle);
+				display: block;
+				font-size: 11px;
+				margin-top: 2px;
+			}
+
+			/* ── Fill priority flow ─── */
+			.flow {
+				display: flex;
+				align-items: stretch;
+				gap: 0;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				overflow: hidden;
+				background: var(--surface);
+			}
+			.flow-step {
+				flex: 1;
+				padding: var(--space-5) var(--space-4);
+				display: flex;
+				flex-direction: column;
+				gap: var(--space-3);
+				position: relative;
+				border-right: 1px solid var(--border);
+			}
+			.flow-step:last-child {
+				border-right: none;
+			}
+			.flow-step .fs-tier {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+			}
+			.flow-step .fs-swatch {
+				height: 44px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border-strong);
+			}
+			.flow-step .fs-name {
+				font-size: var(--text-xs);
+				font-weight: 700;
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+			}
+			.flow-step .fs-desc {
+				font-size: 11px;
+				color: var(--foreground-muted);
+				line-height: var(--leading-normal);
+			}
+			.flow-step .fs-arrow {
+				position: absolute;
+				right: -9px;
+				top: 50%;
+				transform: translateY(-50%);
+				z-index: 2;
+				width: 18px;
+				height: 18px;
+				background: var(--surface);
+				border: 1px solid var(--border-strong);
+				border-radius: var(--radius-full);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				color: var(--foreground-muted);
+				/* aria-hidden on the element itself */
+			}
+			.flow-step.flow-step-win {
+				background: var(--primary-soft);
+			}
+			.flow-step.flow-step-win .fs-tier {
+				color: var(--primary);
+			}
+			.flow-step .fs-win-tag {
+				font-size: 10px;
+				font-weight: 700;
+				color: var(--primary);
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+			}
+			.swatch-extracted {
+				background: oklch(58% 0.13 25deg);
+			}
+			.swatch-wishlist {
+				background: var(--wishlist-image-frame);
+			}
+			.swatch-global {
+				background: var(--surface-2);
+			}
+
+			/* live fill-tier specimens */
+			.fill-tier-row {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: var(--space-4);
+				margin-top: var(--space-4);
+			}
+			.fill-tier-row .image-frame {
+				height: 120px;
+			}
+			.fill-tier-badge {
+				margin-top: var(--space-2);
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 22px;
+				padding: 0 var(--space-3);
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				border-radius: var(--radius-full);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				background: var(--surface-2);
+			}
+			.fill-tier-badge.tier-1 {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border-color: color-mix(in oklch, var(--primary) 25%, transparent);
+			}
+			.fill-tier-badge.tier-2 {
+				background: color-mix(in oklch, var(--wishlist-icon) 14%, transparent);
+				color: var(--wishlist-icon);
+				border-color: color-mix(in oklch, var(--wishlist-icon) 28%, transparent);
+			}
+
+			/* ── Slot map table ─── */
+			table.slots {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: var(--text-xs);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				overflow: hidden;
+			}
+			table.slots th,
+			table.slots td {
+				text-align: left;
+				padding: 10px var(--space-4);
+				border-bottom: 1px solid var(--border);
+			}
+			table.slots th {
+				background: var(--surface-2);
+				font-size: 10px;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				font-weight: 700;
+			}
+			table.slots td {
+				color: var(--foreground-muted);
+			}
+			table.slots td:first-child {
+				color: var(--foreground);
+				font-weight: 600;
+			}
+			table.slots td code {
+				font-family: ui-monospace, monospace;
+				color: var(--primary);
+				font-size: 11px;
+			}
+			table.slots tr:last-child td {
+				border-bottom: none;
+			}
+			.slot-thumb {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				background: var(--wishlist-surface);
+				border: 1px solid var(--border);
+				color: var(--wishlist-icon);
+				font-size: 14px;
+				border-radius: var(--radius-sm);
+			}
+
+			/* ── Extreme ratios + states rows ─── */
+			.row4 {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: var(--space-4);
+			}
+			.row4 .image-frame {
+				height: 120px;
+			}
+			.cap-label {
+				margin-top: var(--space-2);
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.cap-label small {
+				display: block;
+				font-weight: 400;
+				color: var(--foreground-subtle);
+			}
+
+			/* ── States section: focus ring demo ─── */
+			.states-grid {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: var(--space-4);
+			}
+			.states-grid .image-frame {
+				height: 120px;
+			}
+			/* forced focus-visible appearance for doc purposes */
+			.image-frame.focus-demo {
+				outline: var(--focus-ring-width) solid var(--ring);
+				outline-offset: var(--focus-ring-offset);
+			}
+
+			/* ── Token reference grid ─── */
+			.token-grid {
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: var(--space-3);
+			}
+			.token-card {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				padding: var(--space-4);
+				background: var(--surface);
+				display: flex;
+				gap: var(--space-3);
+				align-items: center;
+			}
+			.token-swatch {
+				width: 36px;
+				height: 36px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border-strong);
+				flex-shrink: 0;
+			}
+			.token-name {
+				font-size: var(--text-xs);
+				font-weight: 700;
+				font-family: ui-monospace, monospace;
+				color: var(--foreground);
+			}
+			.token-desc {
+				font-size: 11px;
+				color: var(--foreground-muted);
+			}
+
+			/* ── Dark mode mirror strip ─── */
+			.dark-strip {
+				margin-top: var(--space-4);
+				padding: var(--space-5);
+				border-radius: var(--radius-lg);
+				border: 1px solid var(--border-strong);
+			}
+			.dark-strip .strip-label {
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: var(--space-3);
+			}
+
+			/* ── A11y note callout ─── */
+			.a11y-note {
+				display: flex;
+				gap: var(--space-3);
+				align-items: flex-start;
+				background: var(--primary-soft);
+				border: 1px solid color-mix(in oklch, var(--primary) 25%, transparent);
+				border-radius: var(--radius-md);
+				padding: var(--space-4);
+				margin-bottom: var(--space-5);
+			}
+			.a11y-note-icon {
+				font-size: 18px;
+				line-height: 1;
+				flex-shrink: 0;
+				color: var(--primary);
+			}
+			.a11y-note-body {
+				font-size: var(--text-xs);
+				color: var(--foreground-muted);
+				line-height: var(--leading-relaxed);
+			}
+			.a11y-note-body strong {
+				color: var(--primary);
+			}
+
+			/* ── Section divider ─── */
+			.section-divider {
+				height: 1px;
+				background: var(--border);
+				border: none;
+				margin: var(--space-8) 0;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ── Page eyebrow ─────────────────────────────────────────── -->
+		<div class="page-eyebrow" role="banner">
+			Refined — Variant B + full state coverage · ImageFrame Foundation (#34)
+		</div>
+
+		<!-- ── Main gallery (light mode) ──────────────────────────────── -->
+		<div class="doc theme-light dk-root">
+			<h1 class="doc-title">ImageFrame</h1>
+			<p class="doc-lede">
+				Sdílený renderer pro každou pevnou obrazovou schránku v Darecky. Jeden primitiv pro
+				kartu dárku, detail, avatar i banner — token-aware, s pevným pořadím výplně a
+				fallbackem podle tématu.
+			</p>
+			<p class="doc-meta">
+				Tier: <code>derived/</code> · Source of truth:
+				<code>image_frame_variants.ts</code> · fitMode: <code>auto</code> /
+				<code>contain-padded</code> / <code>cover-crop</code>
+			</p>
+
+			<!-- A11y callout -->
+			<div class="a11y-note" role="note" aria-label="Přístupnost">
+				<span class="a11y-note-icon" aria-hidden="true">♿</span>
+				<div class="a11y-note-body">
+					<strong>Přístupnost:</strong> Každý <code>&lt;img&gt;</code> dostane smysluplné
+					<code>alt</code>. Prázdný stav (emoji fallback) má <code>aria-label</code> a
+					<code>role="img"</code>. Focus-visible ring používá <code>--ring</code> +
+					<code>--focus-ring-width</code> — nikdy jen barvu. Kontrast ikony na pozadí
+					splňuje WCAG AA v obou módech.
+				</div>
+			</div>
+
+			<!-- ────────────────────────────────────────────────────────
+			     SECTION 1: Tři režimy zarovnání (REQ-1, REQ-2)
+			     ──────────────────────────────────────────────────────── -->
+			<div class="block">
+				<div class="block-eyebrow">REQ-1 · REQ-2</div>
+				<h2 class="block-title">Tři režimy zarovnání</h2>
+				<p class="block-desc">
+					Stejný zdrojový obrázek (Sony sluchátka), stejná schránka 4:3. Jediná proměnná
+					je prop <code>fitMode</code>. Renderer nikdy nemění vnější rozměry schránky.
+				</p>
+				<div class="trio" role="list" aria-label="Ukázky fit režimů">
+					<!-- auto -->
+					<div role="listitem">
+						<div class="image-frame" aria-label="Obrázek sluchátek, režim auto">
+							<span class="fit-chip" aria-hidden="true">auto</span>
+							<div
+								class="img-sim img-sim-headphones"
+								role="img"
+								aria-label="Sony sluchátka – auto (cover)"
+							></div>
+						</div>
+						<div class="specimen-cap">
+							<span class="cap-name">auto</span>
+							<span class="cap-desc">normální poměr → cover; extrémní → contain</span>
+						</div>
+					</div>
+					<!-- contain-padded -->
+					<div role="listitem">
+						<div
+							class="image-frame frame-fill-center"
+							style="background: var(--wishlist-image-frame)"
+							aria-label="Obrázek sluchátek, režim contain-padded"
+						>
+							<span class="fit-chip" aria-hidden="true">contain-padded</span>
+							<div
+								class="img-sim img-sim-headphones"
+								style="width: 72%; height: 80%"
+								role="img"
+								aria-label="Sony sluchátka – celý obrázek vždy viditelný"
+							></div>
+						</div>
+						<div class="specimen-cap">
+							<span class="cap-name">contain-padded</span>
+							<span class="cap-desc">celý obrázek vždy viditelný + výplň okrajů</span>
+						</div>
+					</div>
+					<!-- cover-crop -->
+					<div role="listitem">
+						<div class="image-frame" aria-label="Obrázek sluchátek, režim cover-crop">
+							<span class="fit-chip" aria-hidden="true">cover-crop</span>
+							<div
+								class="img-sim img-sim-headphones"
+								style="object-fit: cover"
+								role="img"
+								aria-label="Sony sluchátka – vyplní a ořízne přebytek"
+							></div>
+						</div>
+						<div class="specimen-cap">
+							<span class="cap-name">cover-crop</span>
+							<span class="cap-desc">vyplní, ořízne přebytek, ctí focal point</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<hr class="section-divider" />
+
+			<!-- ────────────────────────────────────────────────────────
+			     SECTION 2: Priorita výplně pozadí (REQ-3)
+			     ──────────────────────────────────────────────────────── -->
+			<div class="block">
+				<div class="block-eyebrow">REQ-3</div>
+				<h2 class="block-title">Priorita výplně pozadí</h2>
+				<p class="block-desc">
+					Když je potřeba výplň (letterbox v contain-padded, načítání, průhledné PNG),
+					barva se rozhodne v <strong>pevném pořadí</strong> — první dostupná vrstva
+					vyhrává.
+				</p>
+
+				<!-- 3-step arrow diagram -->
+				<div
+					class="flow"
+					role="list"
+					aria-label="Priorita výplně: Tier 1 → Tier 2 → Tier 3"
+				>
+					<!-- Tier 1 -->
+					<div class="flow-step flow-step-win" role="listitem">
+						<div class="fs-tier">Tier 1</div>
+						<div
+							class="fs-swatch swatch-extracted"
+							role="img"
+							aria-label="Ukázka: extrahovaná barva obrázku – teplá oranžová"
+						></div>
+						<div class="fs-name">extracted color</div>
+						<div class="fs-desc">
+							dominantní barva z nahraného obrázku (ruční override možný)
+						</div>
+						<div class="fs-win-tag" aria-label="Vyhrává, pokud existuje">
+							✓ Vyhrává, pokud existuje
+						</div>
+						<span class="fs-arrow" aria-hidden="true">→</span>
+					</div>
+					<!-- Tier 2 -->
+					<div class="flow-step" role="listitem">
+						<div class="fs-tier">Tier 2</div>
+						<div
+							class="fs-swatch swatch-wishlist"
+							role="img"
+							aria-label="Ukázka: token --wishlist-image-frame"
+						></div>
+						<div class="fs-name">--wishlist-image-frame</div>
+						<div class="fs-desc">identita seznamu → fallback na --wishlist-surface</div>
+						<span class="fs-arrow" aria-hidden="true">→</span>
+					</div>
+					<!-- Tier 3 -->
+					<div class="flow-step" role="listitem">
+						<div class="fs-tier">Tier 3</div>
+						<div
+							class="fs-swatch swatch-global"
+							role="img"
+							aria-label="Ukázka: token --surface-2 – neutrální šedá"
+						></div>
+						<div class="fs-name">--surface-2</div>
+						<div class="fs-desc">globální neutrál — zaručený koncový fallback</div>
+					</div>
+				</div>
+
+				<!-- Live fill-tier specimens -->
+				<div class="fill-tier-row" role="list" aria-label="Živé ukázky všech tří tier">
+					<!-- Tier 1: extracted color skeleton -->
+					<div role="listitem">
+						<div
+							class="image-frame"
+							style="background: oklch(58% 0.13 25deg)"
+							aria-label="Načítání – extrahovaná barva (teplá)"
+						>
+							<span class="fit-chip" aria-hidden="true">Tier 1</span>
+							<div
+								class="skeleton skeleton-extracted"
+								aria-label="Skeleton shimmer"
+								role="status"
+							></div>
+						</div>
+						<div class="fill-tier-badge tier-1" aria-label="Tier 1: extracted color">
+							Tier 1 — extracted color
+						</div>
+					</div>
+					<!-- Tier 2: wishlist token -->
+					<div role="listitem">
+						<div
+							class="image-frame frame-fill-center"
+							style="background: var(--wishlist-image-frame)"
+							aria-label="Contain-padded – výplň wishlist tokenem"
+						>
+							<span class="fit-chip" aria-hidden="true">Tier 2</span>
+							<div
+								class="img-sim img-sim-headphones"
+								style="width: 72%; height: 80%"
+								role="img"
+								aria-label="Sony sluchátka, contain-padded"
+							></div>
+						</div>
+						<div class="fill-tier-badge tier-2" aria-label="Tier 2: wishlist token">
+							Tier 2 — --wishlist-image-frame
+						</div>
+					</div>
+					<!-- Tier 3: global surface-2 -->
+					<div role="listitem">
+						<div
+							class="image-frame frame-fill-center"
+							style="background: var(--surface-2)"
+							aria-label="Contain-padded – výplň globálním fallbackem"
+						>
+							<span class="fit-chip" aria-hidden="true">Tier 3</span>
+							<div
+								class="img-sim img-sim-headphones"
+								style="width: 72%; height: 80%"
+								role="img"
+								aria-label="Sony sluchátka, fallback na surface-2"
+							></div>
+						</div>
+						<div class="fill-tier-badge" aria-label="Tier 3: global surface-2">
+							Tier 3 — --surface-2
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<hr class="section-divider" />
+
+			<!-- ────────────────────────────────────────────────────────
+			     SECTION 3: Mapa schránek (One renderer, many slots)
+			     ──────────────────────────────────────────────────────── -->
+			<div class="block">
+				<div class="block-eyebrow">One renderer, many slots</div>
+				<h2 class="block-title">Mapa schránek</h2>
+				<p class="block-desc">
+					Tentýž primitiv obsluhuje všechny pevné obrazové schránky napříč aplikací.
+				</p>
+				<table class="slots" role="table" aria-label="Mapa slotů ImageFrame">
+					<thead>
+						<tr>
+							<th scope="col">Slot</th>
+							<th scope="col">Schránka</th>
+							<th scope="col">Výchozí fit</th>
+							<th scope="col">Zdroj tokenu</th>
+							<th scope="col" style="text-align: center">Náhled</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>Karta dárku</td>
+							<td>160px × auto</td>
+							<td><code>auto</code></td>
+							<td>global</td>
+							<td style="text-align: center">
+								<span
+									class="slot-thumb"
+									style="width: 40px; height: 26px"
+									aria-label="Náhled: karta dárku"
+									>🎁</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Detail dárku</td>
+							<td>280px × ≥320px</td>
+							<td><code>auto</code></td>
+							<td>wishlist</td>
+							<td style="text-align: center">
+								<span
+									class="slot-thumb"
+									style="width: 26px; height: 32px"
+									aria-label="Náhled: detail dárku"
+									>🎁</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Rezervační modal</td>
+							<td>96px čtverec</td>
+							<td><code>cover-crop</code></td>
+							<td>wishlist</td>
+							<td style="text-align: center">
+								<span
+									class="slot-thumb"
+									style="width: 28px; height: 28px"
+									aria-label="Náhled: rezervační modal"
+									>🎁</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Banner seznamu</td>
+							<td>16:9</td>
+							<td><code>cover-crop</code></td>
+							<td>wishlist</td>
+							<td style="text-align: center">
+								<span
+									class="slot-thumb"
+									style="width: 44px; height: 25px"
+									aria-label="Náhled: banner seznamu"
+									>🎂</span
+								>
+							</td>
+						</tr>
+						<tr>
+							<td>Avatar profilu</td>
+							<td>kruh 40–96px</td>
+							<td><code>cover-crop</code></td>
+							<td>global</td>
+							<td style="text-align: center">
+								<span
+									class="slot-thumb"
+									style="
+										width: 30px;
+										height: 30px;
+										border-radius: var(--radius-full);
+									"
+									aria-label="Náhled: avatar profilu"
+									>🙂</span
+								>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+
+			<hr class="section-divider" />
+
+			<!-- ────────────────────────────────────────────────────────
+			     SECTION 4: Extrémní poměry stran (REQ-2)
+			     ──────────────────────────────────────────────────────── -->
+			<div class="block">
+				<div class="block-eyebrow">Acceptance criterion · REQ-2</div>
+				<h2 class="block-title">Extrémní poměry stran</h2>
+				<p class="block-desc">
+					Velmi vysoký (9:21 plakát), velmi široký (32:9 panorama) a maličký (48×48 ikona)
+					obrázek ve stejné schránce. Režim <code>auto</code> je obsáhne — důležitý obsah
+					se nikdy neořízne.
+				</p>
+				<div class="row4" role="list" aria-label="Extrémní poměry stran">
+					<!-- Tall poster 9:21 -->
+					<div role="listitem">
+						<div
+							class="image-frame frame-fill-center"
+							style="background: var(--wishlist-image-frame)"
+							aria-label="Panoramatický plakát 9:21, auto → contain"
+						>
+							<span class="fit-chip" aria-hidden="true">9:21</span>
+							<div
+								class="img-sim img-sim-tall"
+								style="width: 36%; height: 100%"
+								role="img"
+								aria-label="Vysoký plakát – celý obrázek viditelný"
+							></div>
+						</div>
+						<div class="cap-label">Vysoký plakát<small>auto → contain</small></div>
+					</div>
+					<!-- Wide panorama 32:9 -->
+					<div role="listitem">
+						<div
+							class="image-frame frame-fill-center"
+							style="background: var(--wishlist-image-frame)"
+							aria-label="Panorama 32:9, auto → contain"
+						>
+							<span class="fit-chip" aria-hidden="true">32:9</span>
+							<div
+								class="img-sim img-sim-wide"
+								style="width: 100%; height: 32%"
+								role="img"
+								aria-label="Panorama – celý obrázek viditelný"
+							></div>
+						</div>
+						<div class="cap-label">Panorama<small>auto → contain</small></div>
+					</div>
+					<!-- Tiny icon 48px -->
+					<div role="listitem">
+						<div
+							class="image-frame frame-fill-center"
+							style="background: var(--wishlist-image-frame)"
+							aria-label="Maličká ikona 48px, auto → contain, bez upscale"
+						>
+							<span class="fit-chip" aria-hidden="true">48px</span>
+							<div
+								class="img-sim img-sim-tiny"
+								style="width: 48px; height: 48px; border-radius: var(--radius-md)"
+								role="img"
+								aria-label="Maličká ikona – bez upscale"
+							></div>
+						</div>
+						<div class="cap-label">
+							Maličká ikona<small>auto → contain, bez upscale</small>
+						</div>
+					</div>
+					<!-- Normal 4:3 -->
+					<div role="listitem">
+						<div class="image-frame" aria-label="Normální poměr 4:3, auto → cover">
+							<span class="fit-chip" aria-hidden="true">4:3</span>
+							<div
+								class="img-sim img-sim-headphones"
+								role="img"
+								aria-label="Sony sluchátka – normální poměr, cover"
+							></div>
+						</div>
+						<div class="cap-label">Normální poměr<small>auto → cover</small></div>
+					</div>
+				</div>
+			</div>
+
+			<hr class="section-divider" />
+
+			<!-- ────────────────────────────────────────────────────────
+			     SECTION 5: Všechny stavy (REQ-2, REQ-4)
+			     ──────────────────────────────────────────────────────── -->
+			<div class="block">
+				<div class="block-eyebrow">REQ-2 · REQ-4 · States</div>
+				<h2 class="block-title">Stavy</h2>
+				<p class="block-desc">
+					Načítání (skeleton shimmer), prázdný stav (fallback emoji) a chyba. Chyba
+					degraduje na fallback — nikdy na rozbitou ikonu. Focus-visible ring demonstruje
+					klávesovou navigaci.
+				</p>
+				<div class="states-grid" role="list" aria-label="Stavy ImageFrame">
+					<!-- Loading skeleton -->
+					<div role="listitem">
+						<div class="image-frame" aria-label="Načítání">
+							<div
+								class="skeleton"
+								role="status"
+								aria-label="Načítání obrázku…"
+							></div>
+						</div>
+						<div class="cap-label">Načítání<small>skeleton shimmer</small></div>
+					</div>
+					<!-- Empty state -->
+					<div role="listitem">
+						<div class="image-frame" aria-label="Bez obrázku">
+							<div
+								class="fallback"
+								role="img"
+								aria-label="Bez obrázku – prázdný stav"
+							>
+								<span class="fallback-icon" aria-hidden="true">🎁</span>
+								<span class="fallback-label">Bez obrázku</span>
+							</div>
+						</div>
+						<div class="cap-label">
+							Prázdný stav<small>emoji v --wishlist-icon</small>
+						</div>
+					</div>
+					<!-- Error state (same as fallback) -->
+					<div role="listitem">
+						<div class="image-frame" aria-label="Chybný URL – fallback">
+							<div
+								class="fallback"
+								role="img"
+								aria-label="Obrázek se nepodařilo načíst – záložní zobrazení"
+							>
+								<span class="fallback-icon" aria-hidden="true">🎂</span>
+							</div>
+						</div>
+						<div class="cap-label">Chyba URL<small>→ stejný fallback</small></div>
+					</div>
+					<!-- Loaded (focus ring demo) -->
+					<div role="listitem">
+						<div
+							class="image-frame focus-demo"
+							tabindex="0"
+							aria-label="Sony sluchátka – načteno, focus-visible ring"
+						>
+							<div
+								class="img-sim img-sim-headphones"
+								style="object-fit: cover"
+								role="img"
+								aria-label="Sony sluchátka – loaded cover-crop"
+							></div>
+						</div>
+						<div class="cap-label">
+							Načteno + focus ring<small>cover-crop, focusable</small>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<hr class="section-divider" />
+
+			<!-- ────────────────────────────────────────────────────────
+			     SECTION 6: Nové tematické tokeny (REQ-4, REQ-5)
+			     ──────────────────────────────────────────────────────── -->
+			<div class="block">
+				<div class="block-eyebrow">REQ-4 · REQ-5 · Tokens</div>
+				<h2 class="block-title">Nové tematické tokeny</h2>
+				<p class="block-desc">
+					Wishlist-scoped tokeny odvozené z primární barvy v OKLCH. Oddělené odpovědnosti:
+					pozadí aplikace ≠ identita seznamu ≠ výplň rámu.
+				</p>
+				<div class="token-grid" role="list" aria-label="Nové wishlist tokeny">
+					<div class="token-card" role="listitem">
+						<span
+							class="token-swatch"
+							style="background: var(--wishlist-preview)"
+							role="img"
+							aria-label="Barva tokenu --wishlist-preview"
+						></span>
+						<div>
+							<div class="token-name">--wishlist-preview</div>
+							<div class="token-desc">plocha náhledové karty seznamu</div>
+						</div>
+					</div>
+					<div class="token-card" role="listitem">
+						<span
+							class="token-swatch"
+							style="background: var(--wishlist-page)"
+							role="img"
+							aria-label="Barva tokenu --wishlist-page"
+						></span>
+						<div>
+							<div class="token-name">--wishlist-page</div>
+							<div class="token-desc">pozadí obsahu stránky seznamu</div>
+						</div>
+					</div>
+					<div class="token-card" role="listitem">
+						<span
+							class="token-swatch"
+							style="background: var(--wishlist-icon)"
+							role="img"
+							aria-label="Barva tokenu --wishlist-icon"
+						></span>
+						<div>
+							<div class="token-name">--wishlist-icon</div>
+							<div class="token-desc">barva ikony/patternu fallbacku</div>
+						</div>
+					</div>
+					<div class="token-card" role="listitem">
+						<span
+							class="token-swatch"
+							style="background: var(--wishlist-image-frame)"
+							role="img"
+							aria-label="Barva tokenu --wishlist-image-frame"
+						></span>
+						<div>
+							<div class="token-name">--wishlist-image-frame</div>
+							<div class="token-desc">výplň letterboxu (Tier 2)</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<hr class="section-divider" />
+
+			<!-- ────────────────────────────────────────────────────────
+			     SECTION 7: Světlý + tmavý režim (REQ-5)
+			     ──────────────────────────────────────────────────────── -->
+			<div class="block">
+				<div class="block-eyebrow">REQ-5 · Light + Dark</div>
+				<h2 class="block-title">Světlý + tmavý režim</h2>
+				<p class="block-desc">
+					Stejné specimeny v tmavém režimu pod presetem (Narozeniny/rose) a vlastní OKLCH
+					barvou. Tokeny jsou dark-mode-safe — kontrast ikony na pozadí splňuje WCAG AA.
+				</p>
+
+				<!-- Dark strip -->
+				<div
+					class="dark-strip theme-dark dk-root"
+					style="background: var(--background)"
+					aria-label="Tmavý režim — specimeny"
+				>
+					<div class="strip-label" aria-hidden="true">
+						Tmavý režim — preset &amp; vlastní paleta
+					</div>
+					<div class="row4" role="list" aria-label="Tmavý režim: všechny stavy">
+						<!-- auto / cover -->
+						<div role="listitem">
+							<div
+								class="image-frame"
+								aria-label="Sony sluchátka – auto/cover, tmavý"
+							>
+								<div
+									class="img-sim img-sim-headphones"
+									style="object-fit: cover"
+									role="img"
+									aria-label="Sony sluchátka"
+								></div>
+							</div>
+							<div class="cap-label" style="color: var(--foreground)">
+								auto / cover<small>tmavý</small>
+							</div>
+						</div>
+						<!-- contain + fill -->
+						<div role="listitem">
+							<div
+								class="image-frame frame-fill-center"
+								style="background: var(--wishlist-image-frame)"
+								aria-label="Contain + výplň wishlist tokenem, tmavý"
+							>
+								<div
+									class="img-sim img-sim-tall"
+									style="width: 36%; height: 100%"
+									role="img"
+									aria-label="Vysoký plakát, contain-padded"
+								></div>
+							</div>
+							<div class="cap-label" style="color: var(--foreground)">
+								contain + výplň<small>tmavý frame token</small>
+							</div>
+						</div>
+						<!-- Preset: Birthday/rose -->
+						<div
+							role="listitem"
+							style="
+								--wishlist-surface: oklch(26% 0.06 15deg);
+								--wishlist-icon: oklch(72% 0.15 15deg);
+							"
+						>
+							<div class="image-frame" aria-label="Preset Narozeniny, tmavý">
+								<div
+									class="fallback"
+									role="img"
+									aria-label="Bez obrázku – preset Narozeniny"
+								>
+									<span class="fallback-icon" aria-hidden="true">🎂</span>
+								</div>
+							</div>
+							<div class="cap-label" style="color: var(--foreground)">
+								Preset · Narozeniny<small>rose, tmavě bezpečné</small>
+							</div>
+						</div>
+						<!-- Custom: OKLCH 275° -->
+						<div
+							role="listitem"
+							style="
+								--wishlist-surface: oklch(26% 0.06 275deg);
+								--wishlist-icon: oklch(70% 0.13 275deg);
+							"
+						>
+							<div class="image-frame" aria-label="Vlastní paleta OKLCH 275°, tmavý">
+								<div
+									class="fallback"
+									role="img"
+									aria-label="Bez obrázku – vlastní paleta"
+								>
+									<span class="fallback-icon" aria-hidden="true">✨</span>
+								</div>
+							</div>
+							<div class="cap-label" style="color: var(--foreground)">
+								Vlastní · OKLCH 275°<small>odvozeno</small>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- end .doc.theme-light -->
+	</body>
+</html>

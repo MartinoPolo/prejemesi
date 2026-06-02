@@ -1,0 +1,1261 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Vzhled seznamu · Variant C: Stacked wizard</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			/* ── VARIANT C: STACKED WIZARD ───────────────────────────
+			   Vertical numbered steps top→bottom:
+			   1 Obrázek → 2 Ořezy (slot grid) → 3 Motiv → 4 Náhled.
+			   Full-width sections, a sticky step rail on the left.   */
+
+			.theme-light {
+				--background: oklch(0.975 0.006 150);
+				--surface: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 150);
+				--surface-hover: oklch(0.95 0.012 150);
+				--foreground: oklch(0.18 0.012 150);
+				--foreground-muted: oklch(0.46 0.02 150);
+				--foreground-subtle: oklch(0.62 0.014 150);
+				--border: oklch(0.92 0.01 150);
+				--border-strong: oklch(0.86 0.018 150);
+				--primary: oklch(0.527 0.154 150);
+				--primary-fg: oklch(0.982 0.018 155);
+				--primary-soft: oklch(0.935 0.048 150);
+				--ring: oklch(0.527 0.154 150);
+			}
+			.theme-dark {
+				--background: oklch(0.153 0.006 107);
+				--surface: oklch(0.195 0.01 140);
+				--surface-2: oklch(0.235 0.013 140);
+				--surface-hover: oklch(0.265 0.016 140);
+				--foreground: oklch(0.97 0.006 150);
+				--foreground-muted: oklch(0.68 0.018 150);
+				--foreground-subtle: oklch(0.5 0.014 150);
+				--border: oklch(0.28 0.016 140);
+				--border-strong: oklch(0.36 0.022 140);
+				--primary: oklch(0.62 0.154 150);
+				--primary-fg: oklch(0.14 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(0.62 0.154 150);
+			}
+
+			.wt-default {
+				--wt-primary: oklch(0.527 0.154 150);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.64 0.14 150),
+					oklch(0.72 0.16 145),
+					oklch(0.58 0.12 155)
+				);
+			}
+			.wt-christmas {
+				--wt-primary: oklch(0.5 0.18 25);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.62 0.17 25),
+					oklch(0.66 0.16 145),
+					oklch(0.78 0.13 85)
+				);
+			}
+			.wt-birthday {
+				--wt-primary: oklch(0.58 0.18 330);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.7 0.18 330),
+					oklch(0.66 0.16 290),
+					oklch(0.78 0.13 85)
+				);
+			}
+			.wt-fun {
+				--wt-primary: oklch(0.6 0.16 250);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.7 0.16 250),
+					oklch(0.82 0.17 65),
+					oklch(0.78 0.16 45)
+				);
+			}
+			.wt-elegant {
+				--wt-primary: oklch(0.35 0.05 260);
+				--wt-grad: linear-gradient(
+					145deg,
+					oklch(0.48 0.05 260),
+					oklch(0.58 0.06 255),
+					oklch(0.82 0.11 85)
+				);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				background: oklch(0.91 0.01 150);
+				font-family: 'Figtree', system-ui, sans-serif;
+			}
+			.page {
+				min-height: 100vh;
+				background: var(--background);
+				color: var(--foreground);
+				font-family: 'Figtree', system-ui, sans-serif;
+				font-size: 15px;
+				line-height: 1.5;
+				-webkit-font-smoothing: antialiased;
+			}
+			.mode-strip {
+				text-align: center;
+				padding: 10px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				border-bottom: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+			.variant-banner {
+				text-align: center;
+				padding: 14px 0 8px;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: oklch(0.5 0.06 150);
+			}
+
+			.nav {
+				height: 56px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0 24px;
+				border-bottom: 1px solid var(--border);
+				background: color-mix(in oklch, var(--surface) 85%, transparent);
+				backdrop-filter: blur(12px);
+				opacity: 0.92;
+			}
+			.nav-logo {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-weight: 700;
+				font-size: 20px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.nav-logo span {
+				opacity: 0.4;
+			}
+			.nav-links {
+				display: flex;
+				gap: 2px;
+			}
+			.nav-link {
+				padding: 6px 14px;
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-muted);
+				border-radius: 8px;
+				text-decoration: none;
+			}
+			.nav-link.is-active {
+				color: var(--primary);
+				background: var(--primary-soft);
+				font-weight: 600;
+			}
+			.avatar {
+				width: 34px;
+				height: 34px;
+				border-radius: 9999px;
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 14px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border: 2px solid color-mix(in oklch, var(--primary) 28%, transparent);
+			}
+
+			.content {
+				max-width: 1080px;
+				margin: 0 auto;
+				padding: 0 24px 64px;
+			}
+			.crumb {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				padding: 22px 0 4px;
+			}
+			.crumb b {
+				color: var(--foreground-muted);
+				font-weight: 600;
+			}
+			.head-row {
+				display: flex;
+				align-items: flex-end;
+				justify-content: space-between;
+				gap: 16px;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--border);
+			}
+			.page-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 26px;
+				font-weight: 700;
+				letter-spacing: -0.02em;
+			}
+			.page-sub {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-top: 3px;
+			}
+
+			/* Wizard layout: step rail + steps */
+			.wizard {
+				display: grid;
+				grid-template-columns: 196px 1fr;
+				gap: 32px;
+				margin-top: 24px;
+			}
+			.step-rail {
+				position: sticky;
+				top: 16px;
+				align-self: start;
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+			}
+			.step-link {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				padding: 9px 10px;
+				border-radius: 9px;
+				text-decoration: none;
+				color: var(--foreground-muted);
+			}
+			.step-link.is-active {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				color: var(--foreground);
+			}
+			.step-num {
+				width: 22px;
+				height: 22px;
+				border-radius: 50%;
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				font-size: 11px;
+				font-weight: 700;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+			}
+			.step-link.done .step-num {
+				background: var(--primary);
+				color: var(--primary-fg);
+			}
+			.step-link.is-active .step-num {
+				background: var(--primary);
+				color: var(--primary-fg);
+			}
+			.step-link b {
+				font-size: 13px;
+				font-weight: 600;
+			}
+			.rail-sib {
+				margin-top: 14px;
+				padding-top: 12px;
+				border-top: 1px solid var(--border);
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+			}
+			.rail-sib a {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				text-decoration: none;
+				padding: 5px 10px;
+				opacity: 0.7;
+			}
+
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				font-weight: 600;
+				font-size: 13px;
+				padding: 0 14px;
+				height: 36px;
+				border-radius: 8px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				white-space: nowrap;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: 0 1px 3px oklch(0 0 0 / 0.12);
+			}
+			.btn-secondary {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border);
+			}
+			.btn-sm {
+				height: 30px;
+				padding: 0 10px;
+				font-size: 12px;
+			}
+			.btn-danger {
+				background: transparent;
+				color: var(--status-danger);
+			}
+
+			/* Step card */
+			.step {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 16px;
+				padding: 22px;
+				margin-bottom: 18px;
+			}
+			.step-head {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-bottom: 16px;
+			}
+			.step-badge {
+				width: 26px;
+				height: 26px;
+				border-radius: 50%;
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-size: 12px;
+				font-weight: 700;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.step-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 16px;
+				font-weight: 700;
+			}
+			.step-hint {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+			}
+
+			/* Step 1: image */
+			.img-current {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+			}
+			.img-thumb {
+				width: 120px;
+				height: 80px;
+				border-radius: 10px;
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.6 0.14 150),
+					oklch(0.72 0.13 130) 55%,
+					oklch(0.82 0.1 110)
+				);
+				background-size: cover;
+			}
+			.dropzone {
+				border: 2px dashed var(--border-strong);
+				border-radius: 12px;
+				padding: 30px;
+				text-align: center;
+				color: var(--foreground-muted);
+			}
+
+			/* Step 2: slot grid */
+			.slot-grid {
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: 16px;
+			}
+			.slot {
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				padding: 14px;
+				background: var(--surface-2);
+			}
+			.slot.is-active {
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px var(--primary-soft);
+				background: var(--surface);
+			}
+			.slot-top {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 10px;
+			}
+			.slot-name {
+				font-size: 13px;
+				font-weight: 700;
+			}
+			.slot-ratio {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				font-weight: 600;
+			}
+			.slot-stage {
+				position: relative;
+				border-radius: 9px;
+				overflow: hidden;
+				background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%)
+					50% / 16px 16px;
+				border: 1px solid var(--border);
+			}
+			.slot-img {
+				position: absolute;
+				inset: 0;
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.6 0.14 150),
+					oklch(0.72 0.13 130) 55%,
+					oklch(0.82 0.1 110)
+				);
+				background-size: cover;
+				background-position: center 40%;
+			}
+			.aspect-32 {
+				aspect-ratio: 3 / 2;
+			}
+			.aspect-11 {
+				aspect-ratio: 1 / 1;
+			}
+			.aspect-banner {
+				aspect-ratio: 4 / 1;
+			}
+			.aspect-social {
+				aspect-ratio: 1.91 / 1;
+			}
+			.focal {
+				position: absolute;
+				top: 40%;
+				left: 52%;
+				width: 22px;
+				height: 22px;
+				transform: translate(-50%, -50%);
+				border: 2px solid oklch(1 0 0);
+				border-radius: 50%;
+				box-shadow: 0 0 0 2px oklch(0 0 0 / 0.4);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: grab;
+			}
+			.focal::after {
+				content: '';
+				width: 5px;
+				height: 5px;
+				border-radius: 50%;
+				background: oklch(1 0 0);
+			}
+			.fitmode {
+				display: flex;
+				gap: 4px;
+				margin-top: 10px;
+				padding: 3px;
+				background: var(--surface-2);
+				border-radius: 8px;
+			}
+			.slot.is-active .fitmode {
+				background: var(--surface-2);
+			}
+			.fitmode button {
+				flex: 1;
+				padding: 6px;
+				border-radius: 5px;
+				border: none;
+				background: transparent;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.fitmode button.is-active {
+				background: var(--surface);
+				color: var(--foreground);
+				box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+			}
+			.og-overlay {
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				padding: 7px 9px;
+				background: linear-gradient(to top, oklch(0 0 0 / 0.6), transparent);
+				color: white;
+				font-size: 11px;
+				font-weight: 600;
+			}
+			.og-overlay small {
+				display: block;
+				font-weight: 400;
+				opacity: 0.85;
+				font-size: 10px;
+			}
+
+			/* Step 3: theme */
+			.preset-grid {
+				display: grid;
+				grid-template-columns: repeat(6, 1fr);
+				gap: 10px;
+			}
+			.preset {
+				border: 2px solid var(--border);
+				border-radius: 12px;
+				padding: 9px;
+				background: transparent;
+				cursor: pointer;
+				text-align: left;
+			}
+			.preset.is-selected {
+				border-color: var(--primary);
+			}
+			.preset .swatch {
+				height: 30px;
+				border-radius: 8px;
+				margin-bottom: 7px;
+			}
+			.preset .plabel {
+				font-size: 11px;
+				font-weight: 600;
+				display: flex;
+				align-items: center;
+				gap: 4px;
+			}
+			.custom-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-top: 14px;
+				padding: 10px;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				max-width: 360px;
+			}
+			.color-chip {
+				width: 34px;
+				height: 34px;
+				border-radius: 8px;
+				border: 1px solid var(--border-strong);
+				background: oklch(0.6 0.16 250);
+			}
+			.color-val {
+				font-family: ui-monospace, monospace;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+
+			/* Step 4: previews row */
+			.preview-row {
+				display: grid;
+				grid-template-columns: 1.1fr 0.9fr;
+				gap: 20px;
+				align-items: start;
+			}
+			.card-preview {
+				border-radius: 14px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				box-shadow: 0 4px 14px oklch(0 0 0 / 0.08);
+			}
+			.cp-hero {
+				height: 150px;
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.6 0.14 150),
+					oklch(0.72 0.13 130) 55%,
+					oklch(0.82 0.1 110)
+				);
+				background-size: cover;
+				background-position: center 40%;
+				position: relative;
+			}
+			.cp-status {
+				position: absolute;
+				top: 8px;
+				left: 8px;
+				font-size: 10px;
+				font-weight: 700;
+				padding: 3px 8px;
+				border-radius: 999px;
+				background: color-mix(in oklch, var(--reserved) 90%, white);
+				color: white;
+			}
+			.cp-body {
+				padding: 14px 16px 16px;
+			}
+			.cp-title {
+				font-family: 'Noto Sans', system-ui, sans-serif;
+				font-size: 17px;
+				font-weight: 700;
+			}
+			.cp-meta {
+				display: flex;
+				gap: 8px;
+				margin-top: 7px;
+				font-size: 12px;
+				color: var(--foreground-muted);
+				align-items: center;
+			}
+			.cp-pill {
+				font-size: 10px;
+				font-weight: 700;
+				padding: 2px 8px;
+				border-radius: 999px;
+				background: color-mix(in oklch, var(--wt-primary) 15%, transparent);
+				color: var(--wt-primary);
+			}
+			.side-previews {
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+			}
+			.sp {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.sp .frame {
+				border-radius: 7px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background-image: linear-gradient(
+					120deg,
+					oklch(0.6 0.14 150),
+					oklch(0.72 0.13 130) 55%,
+					oklch(0.82 0.1 110)
+				);
+				background-size: cover;
+				background-position: center 40%;
+				flex-shrink: 0;
+			}
+			.f-thumb {
+				width: 48px;
+				height: 48px;
+			}
+			.f-banner {
+				width: 130px;
+				height: 33px;
+			}
+			.f-social {
+				width: 96px;
+				height: 50px;
+			}
+			.sp .lbl b {
+				display: block;
+				font-size: 12px;
+				font-weight: 600;
+			}
+			.sp .lbl span {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+			.fallback-hero {
+				background: var(--wt-grad);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.note {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				margin-top: 12px;
+			}
+			.tag {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 11px;
+				font-weight: 600;
+				padding: 3px 9px;
+				border-radius: 999px;
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				border: 1px solid var(--border);
+			}
+		</style>
+	</head>
+	<body>
+		<p class="variant-banner">Variant C — Stacked wizard</p>
+
+		<!-- ════════════ LIGHT MODE ════════════ -->
+		<div class="page theme-light">
+			<div class="mode-strip">Light Mode</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="avatar">M</div>
+			</nav>
+
+			<div class="content">
+				<div class="crumb">Moje seznamy / <b>Vánoce 2026</b> / Nastavení vzhledu</div>
+				<div class="head-row">
+					<div>
+						<div class="page-title">Vzhled seznamu</div>
+						<div class="page-sub">
+							Projděte kroky shora dolů: obrázek, ořezy, motiv a náhled.
+						</div>
+					</div>
+					<button class="btn btn-primary">Uložit změny</button>
+				</div>
+
+				<div class="wizard">
+					<!-- Step rail -->
+					<nav class="step-rail">
+						<a href="#" class="step-link done"
+							><span class="step-num">✓</span><b>Obrázek</b></a
+						>
+						<a href="#" class="step-link is-active"
+							><span class="step-num">2</span><b>Ořezy</b></a
+						>
+						<a href="#" class="step-link"
+							><span class="step-num">3</span><b>Motiv</b></a
+						>
+						<a href="#" class="step-link"
+							><span class="step-num">4</span><b>Náhled</b></a
+						>
+						<div class="rail-sib">
+							<a href="#">Základní údaje</a>
+							<a href="#">Sdílení</a>
+							<a href="#">Moderátoři</a>
+							<a href="#">Nebezpečná zóna</a>
+						</div>
+					</nav>
+
+					<div>
+						<!-- STEP 1: IMAGE -->
+						<div class="step">
+							<div class="step-head">
+								<span class="step-badge">1</span>
+								<div>
+									<div class="step-title">Obrázek seznamu</div>
+									<div class="step-hint">
+										Jeden obrázek pro celý seznam. Volitelné.
+									</div>
+								</div>
+							</div>
+							<div class="img-current">
+								<div class="img-thumb"></div>
+								<div>
+									<div style="font-weight: 600; font-size: 14px">
+										zima-stromek.jpg
+									</div>
+									<div style="font-size: 12px; color: var(--foreground-subtle)">
+										2048 × 1365 · 1,4 MB · WebP
+									</div>
+								</div>
+								<div style="margin-left: auto; display: flex; gap: 8px">
+									<button class="btn btn-secondary btn-sm">Nahradit</button>
+									<button class="btn btn-danger btn-sm">Odebrat</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- STEP 2: CROPS (slot grid) -->
+						<div class="step">
+							<div class="step-head">
+								<span class="step-badge">2</span>
+								<div>
+									<div class="step-title">Ořezy podle místa</div>
+									<div class="step-hint">
+										Upravte výřez pro každé místo. Aktivní místo zvýrazněno.
+									</div>
+								</div>
+							</div>
+							<div class="slot-grid">
+								<!-- Card -->
+								<div class="slot is-active">
+									<div class="slot-top">
+										<span class="slot-name">Karta nástěnky</span
+										><span class="slot-ratio">3:2</span>
+									</div>
+									<div class="slot-stage aspect-32">
+										<div class="slot-img"></div>
+										<div class="focal"></div>
+									</div>
+									<div class="fitmode">
+										<button>Auto</button>
+										<button>S okrajem</button>
+										<button class="is-active">Vyplnit</button>
+									</div>
+								</div>
+								<!-- Thumb -->
+								<div class="slot">
+									<div class="slot-top">
+										<span class="slot-name">Miniatura</span
+										><span class="slot-ratio">1:1 · 52 px</span>
+									</div>
+									<div class="slot-stage aspect-11">
+										<div class="slot-img"></div>
+										<div class="focal" style="left: 50%"></div>
+									</div>
+									<div class="fitmode">
+										<button>Auto</button>
+										<button>S okrajem</button>
+										<button class="is-active">Vyplnit</button>
+									</div>
+								</div>
+								<!-- Banner -->
+								<div class="slot">
+									<div class="slot-top">
+										<span class="slot-name">Záhlaví / banner</span
+										><span class="slot-ratio">4:1</span>
+									</div>
+									<div class="slot-stage aspect-banner">
+										<div class="slot-img"></div>
+										<div class="focal" style="top: 50%; left: 48%"></div>
+									</div>
+									<div class="fitmode">
+										<button>Auto</button>
+										<button class="is-active">S okrajem</button>
+										<button>Vyplnit</button>
+									</div>
+								</div>
+								<!-- Social -->
+								<div class="slot">
+									<div class="slot-top">
+										<span class="slot-name">Sdílení (OG)</span
+										><span class="slot-ratio">1.91:1</span>
+									</div>
+									<div class="slot-stage aspect-social">
+										<div class="slot-img"></div>
+										<div class="og-overlay">
+											Vánoce 2026 <small>darecky.cz · 8 přání</small>
+										</div>
+									</div>
+									<div class="fitmode">
+										<button>Auto</button>
+										<button>S okrajem</button>
+										<button class="is-active">Vyplnit</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- STEP 3: THEME -->
+						<div class="step">
+							<div class="step-head">
+								<span class="step-badge">3</span>
+								<div>
+									<div class="step-title">Motiv</div>
+									<div class="step-hint">
+										Barvy akcentů. Lze měnit i po sdílení.
+									</div>
+								</div>
+							</div>
+							<div class="preset-grid">
+								<button class="preset is-selected wt-christmas">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎄 Vánoce</div>
+								</button>
+								<button class="preset wt-default">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎁 Výchozí</div>
+								</button>
+								<button class="preset wt-birthday">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎂 Naroz.</div>
+								</button>
+								<button class="preset wt-fun">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎉 Zábava</div>
+								</button>
+								<button class="preset wt-elegant">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">💍 Elegant.</div>
+								</button>
+								<button
+									class="preset"
+									style="
+										display: flex;
+										align-items: center;
+										justify-content: center;
+									"
+								>
+									<div class="plabel">＋ Vlastní</div>
+								</button>
+							</div>
+							<div class="custom-row">
+								<div class="color-chip"></div>
+								<div>
+									<div style="font-size: 12px; font-weight: 600">
+										Vlastní barva
+									</div>
+									<div class="color-val">oklch(0.60 0.16 250)</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- STEP 4: PREVIEW -->
+						<div class="step wt-christmas">
+							<div class="step-head">
+								<span class="step-badge" style="background: var(--primary)">4</span>
+								<div>
+									<div class="step-title">Náhled výsledku</div>
+									<div class="step-hint">
+										Skutečná karta + ostatní místa s vaším ořezem.
+									</div>
+								</div>
+							</div>
+							<div class="preview-row">
+								<div>
+									<div class="card-preview">
+										<div class="cp-hero">
+											<span class="cp-status">Sdíleno</span>
+										</div>
+										<div class="cp-body">
+											<div class="cp-title">Vánoce 2026</div>
+											<div class="cp-meta">
+												<span class="cp-pill">🎄 Vánoce</span>
+												<span>8 přání · 25. 12. 2026</span>
+											</div>
+										</div>
+									</div>
+									<div class="note">
+										Karta nástěnky — přesně jak ji uvidí návštěvníci.
+									</div>
+								</div>
+								<div class="side-previews">
+									<div class="sp">
+										<div class="frame f-thumb"></div>
+										<div class="lbl">
+											<b>Miniatura</b><span>seznam řádků · 1:1</span>
+										</div>
+									</div>
+									<div class="sp">
+										<div class="frame f-banner"></div>
+										<div class="lbl">
+											<b>Záhlaví</b><span>stránka seznamu · 4:1</span>
+										</div>
+									</div>
+									<div class="sp">
+										<div class="frame f-social" style="position: relative">
+											<div
+												class="og-overlay"
+												style="font-size: 9px; padding: 4px 6px"
+											>
+												Vánoce 2026
+											</div>
+										</div>
+										<div class="lbl">
+											<b>Sdílení</b><span>odkaz · 1.91:1</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════ DARK MODE — fallback ════════════ -->
+		<div class="page theme-dark">
+			<div class="mode-strip">Dark Mode — bez obrázku (fallback)</div>
+
+			<nav class="nav">
+				<div class="nav-logo">darecky<span>.cz</span></div>
+				<div class="nav-links">
+					<a class="nav-link is-active" href="#">Moje seznamy</a>
+					<a class="nav-link" href="#">Spravované</a>
+					<a class="nav-link" href="#">Sledované</a>
+				</div>
+				<div class="avatar">M</div>
+			</nav>
+
+			<div class="content">
+				<div class="crumb">
+					Moje seznamy / <b>Wish list pro kolegy</b> / Nastavení vzhledu
+				</div>
+				<div class="head-row">
+					<div>
+						<div class="page-title">Vzhled seznamu</div>
+						<div class="page-sub">
+							Bez obrázku — motivové pozadí + velké emoji ve všech krocích.
+						</div>
+					</div>
+					<button class="btn btn-primary">Uložit změny</button>
+				</div>
+
+				<div class="wizard">
+					<nav class="step-rail">
+						<a href="#" class="step-link is-active"
+							><span class="step-num">1</span><b>Obrázek</b></a
+						>
+						<a href="#" class="step-link"
+							><span class="step-num">2</span><b>Ořezy</b></a
+						>
+						<a href="#" class="step-link"
+							><span class="step-num">3</span><b>Motiv</b></a
+						>
+						<a href="#" class="step-link"
+							><span class="step-num">4</span><b>Náhled</b></a
+						>
+						<div class="rail-sib">
+							<a href="#">Základní údaje</a>
+							<a href="#">Sdílení</a>
+							<a href="#">Moderátoři</a>
+							<a href="#">Nebezpečná zóna</a>
+						</div>
+					</nav>
+
+					<div>
+						<!-- STEP 1: empty -->
+						<div class="step">
+							<div class="step-head">
+								<span class="step-badge">1</span>
+								<div>
+									<div class="step-title">Obrázek seznamu</div>
+									<div class="step-hint">
+										Volitelné — bez obrázku se použije motiv.
+									</div>
+								</div>
+							</div>
+							<div class="dropzone">
+								<div style="font-size: 30px; margin-bottom: 6px">⬆️</div>
+								<div
+									style="
+										font-size: 14px;
+										font-weight: 600;
+										color: var(--foreground);
+									"
+								>
+									Přetáhněte obrázek sem nebo
+									<span style="color: var(--primary)">vyberte soubor</span>
+								</div>
+								<div
+									style="
+										font-size: 12px;
+										color: var(--foreground-subtle);
+										margin-top: 4px;
+									"
+								>
+									JPG, PNG nebo WebP, max 5 MB
+								</div>
+							</div>
+						</div>
+
+						<!-- STEP 2: fallback slot grid -->
+						<div class="step wt-fun">
+							<div class="step-head">
+								<span class="step-badge">2</span>
+								<div>
+									<div class="step-title">Ořezy podle místa</div>
+									<div class="step-hint">
+										Bez obrázku — všechna místa zobrazí motiv + emoji.
+									</div>
+								</div>
+							</div>
+							<div class="slot-grid">
+								<div class="slot">
+									<div class="slot-top">
+										<span class="slot-name">Karta nástěnky</span
+										><span class="slot-ratio">3:2</span>
+									</div>
+									<div
+										class="slot-stage aspect-32 fallback-hero"
+										style="font-size: 44px"
+									>
+										🎉
+									</div>
+								</div>
+								<div class="slot">
+									<div class="slot-top">
+										<span class="slot-name">Miniatura</span
+										><span class="slot-ratio">1:1</span>
+									</div>
+									<div
+										class="slot-stage aspect-11 fallback-hero"
+										style="font-size: 34px"
+									>
+										🎉
+									</div>
+								</div>
+								<div class="slot">
+									<div class="slot-top">
+										<span class="slot-name">Záhlaví / banner</span
+										><span class="slot-ratio">4:1</span>
+									</div>
+									<div
+										class="slot-stage aspect-banner fallback-hero"
+										style="font-size: 30px"
+									>
+										🎉
+									</div>
+								</div>
+								<div class="slot">
+									<div class="slot-top">
+										<span class="slot-name">Sdílení (OG)</span
+										><span class="slot-ratio">1.91:1</span>
+									</div>
+									<div
+										class="slot-stage aspect-social fallback-hero"
+										style="font-size: 38px; position: relative"
+									>
+										🎉
+										<div class="og-overlay">
+											Wish list pro kolegy
+											<small>darecky.cz · 15 přání</small>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- STEP 3: theme -->
+						<div class="step">
+							<div class="step-head">
+								<span class="step-badge">3</span>
+								<div>
+									<div class="step-title">Motiv</div>
+									<div class="step-hint">
+										Barvy akcentů a motivové pozadí fallbacku.
+									</div>
+								</div>
+							</div>
+							<div class="preset-grid">
+								<button class="preset wt-default">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎁 Výchozí</div>
+								</button>
+								<button class="preset wt-christmas">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎄 Vánoce</div>
+								</button>
+								<button class="preset wt-birthday">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎂 Naroz.</div>
+								</button>
+								<button class="preset is-selected wt-fun">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">🎉 Zábava</div>
+								</button>
+								<button class="preset wt-elegant">
+									<div class="swatch" style="background: var(--wt-grad)"></div>
+									<div class="plabel">💍 Elegant.</div>
+								</button>
+								<button
+									class="preset"
+									style="
+										display: flex;
+										align-items: center;
+										justify-content: center;
+									"
+								>
+									<div class="plabel">＋ Vlastní</div>
+								</button>
+							</div>
+						</div>
+
+						<!-- STEP 4: fallback preview -->
+						<div class="step wt-fun">
+							<div class="step-head">
+								<span class="step-badge" style="background: var(--primary)">4</span>
+								<div>
+									<div class="step-title">Náhled výsledku</div>
+									<div class="step-hint">
+										Bez obrázku — motivové pozadí + emoji, čitelné v tmavém
+										režimu.
+									</div>
+								</div>
+							</div>
+							<div class="preview-row">
+								<div>
+									<div class="card-preview">
+										<div class="cp-hero fallback-hero" style="font-size: 50px">
+											🎉
+										</div>
+										<div class="cp-body">
+											<div class="cp-title">Wish list pro kolegy</div>
+											<div class="cp-meta">
+												<span class="cp-pill">🎉 Zábava</span>
+												<span>15 přání · aktivní</span>
+											</div>
+										</div>
+									</div>
+									<div class="note">
+										Motivové pozadí + emoji místo ploché výplně.
+									</div>
+								</div>
+								<div class="side-previews">
+									<div class="sp">
+										<div
+											class="frame f-thumb fallback-hero"
+											style="background: var(--wt-grad); font-size: 22px"
+										>
+											🎉
+										</div>
+										<div class="lbl">
+											<b>Miniatura</b><span>seznam řádků · 1:1</span>
+										</div>
+									</div>
+									<div class="sp">
+										<div
+											class="frame f-banner fallback-hero"
+											style="background: var(--wt-grad); font-size: 18px"
+										>
+											🎉
+										</div>
+										<div class="lbl">
+											<b>Záhlaví</b><span>stránka seznamu · 4:1</span>
+										</div>
+									</div>
+									<div class="sp">
+										<div
+											class="frame f-social fallback-hero"
+											style="
+												background: var(--wt-grad);
+												font-size: 24px;
+												position: relative;
+											"
+										>
+											🎉
+											<div
+												class="og-overlay"
+												style="font-size: 9px; padding: 4px 6px"
+											>
+												Kolegové
+											</div>
+										</div>
+										<div class="lbl">
+											<b>Sdílení</b><span>odkaz · 1.91:1</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
