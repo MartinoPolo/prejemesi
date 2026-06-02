@@ -67,6 +67,33 @@
 	import ItalicIcon from '@lucide/svelte/icons/italic';
 </script>
 
+<Story name="All Variants">
+	{#snippet template(args: ToggleProps)}
+		<div class="flex flex-col gap-6">
+			{#each TOGGLE_INTENTS as intent (intent)}
+				<div class="flex flex-col gap-2">
+					<span class="text-xs font-medium text-foreground-subtle">{intent}</span>
+					<div class="flex items-center gap-3">
+						{#each TOGGLE_SIZES as size (size)}
+							<div class="flex flex-col items-center gap-1">
+								<span class="text-[10px] text-foreground-subtle">{size}</span>
+								<Toggle {...args} {intent} {size} aria-label="Bold">
+									{#if size === 'icon' || size === 'icon-sm'}
+										<BoldIcon data-icon="inline-start" />
+									{:else}
+										<BoldIcon data-icon="inline-start" />
+										Bold
+									{/if}
+								</Toggle>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/snippet}
+</Story>
+
 <Story name="Off [play: click toggles on]" play={playClickTogglesOn}>
 	{#snippet template(args: ToggleProps)}
 		<Toggle {...args} aria-label="Toggle bold">
@@ -154,32 +181,5 @@
 		<Toggle {...args} size="icon" aria-label="Toggle italic">
 			<ItalicIcon data-icon="inline-start" />
 		</Toggle>
-	{/snippet}
-</Story>
-
-<Story name="All Variants">
-	{#snippet template(args: ToggleProps)}
-		<div class="flex flex-col gap-6">
-			{#each TOGGLE_INTENTS as intent (intent)}
-				<div class="flex flex-col gap-2">
-					<span class="text-xs font-medium text-foreground-subtle">{intent}</span>
-					<div class="flex items-center gap-3">
-						{#each TOGGLE_SIZES as size (size)}
-							<div class="flex flex-col items-center gap-1">
-								<span class="text-[10px] text-foreground-subtle">{size}</span>
-								<Toggle {...args} {intent} {size} aria-label="Bold">
-									{#if size === 'icon' || size === 'icon-sm'}
-										<BoldIcon data-icon="inline-start" />
-									{:else}
-										<BoldIcon data-icon="inline-start" />
-										Bold
-									{/if}
-								</Toggle>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/each}
-		</div>
 	{/snippet}
 </Story>

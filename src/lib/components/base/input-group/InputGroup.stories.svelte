@@ -4,10 +4,10 @@
 	import InputGroupRoot from './input-group.svelte';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import MailIcon from '@lucide/svelte/icons/mail';
-	import LinkIcon from '@lucide/svelte/icons/link';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import SendIcon from '@lucide/svelte/icons/send';
+	import LockIcon from '@lucide/svelte/icons/lock';
 
 	const { Story } = defineMeta({
 		title: 'Base/InputGroup',
@@ -16,163 +16,159 @@
 	});
 </script>
 
-<Story name="With Icon Prefix">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Addon align="inline-start">
-				<SearchIcon />
-			</InputGroup.Addon>
-			<InputGroup.Input placeholder="Search..." />
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="With Icon Suffix">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Input placeholder="Enter URL" />
-			<InputGroup.Addon align="inline-end">
-				<LinkIcon />
-			</InputGroup.Addon>
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="With Text Prefix">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Addon align="inline-start">
-				<InputGroup.Text>https://</InputGroup.Text>
-			</InputGroup.Addon>
-			<InputGroup.Input placeholder="example.com" />
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="With Button Suffix">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Addon align="inline-start">
-				<MailIcon />
-			</InputGroup.Addon>
-			<InputGroup.Input placeholder="Enter email" type="email" />
-			<InputGroup.Addon align="inline-end">
-				<InputGroup.Button intent="primary" size="xs">Subscribe</InputGroup.Button>
-			</InputGroup.Addon>
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="With Icon Button">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Input placeholder="Copy this text" value="https://example.com/path" />
-			<InputGroup.Addon align="inline-end">
-				<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Copy">
-					<CopyIcon />
-				</InputGroup.Button>
-			</InputGroup.Addon>
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="With Both Addons">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Addon align="inline-start">
-				<EyeIcon />
-			</InputGroup.Addon>
-			<InputGroup.Input placeholder="Password" type="password" />
-			<InputGroup.Addon align="inline-end">
-				<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Toggle visibility">
-					<EyeIcon />
-				</InputGroup.Button>
-			</InputGroup.Addon>
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="With Textarea">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Textarea placeholder="Write a message..." />
-			<InputGroup.Addon align="inline-end">
-				<InputGroup.Button intent="primary" size="icon-xs" aria-label="Send">
-					<SendIcon />
-				</InputGroup.Button>
-			</InputGroup.Addon>
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="Block Start Addon">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Addon align="block-start">
-				<InputGroup.Text>Label above</InputGroup.Text>
-			</InputGroup.Addon>
-			<InputGroup.Input placeholder="Input with block-start addon" />
-		</InputGroup.Root>
-	</div>
-</Story>
-
-<Story name="Block End Addon">
-	<div class="w-80">
-		<InputGroup.Root>
-			<InputGroup.Input placeholder="Input with block-end addon" />
-			<InputGroup.Addon align="block-end">
-				<InputGroup.Text>Helper text below</InputGroup.Text>
-			</InputGroup.Addon>
-		</InputGroup.Root>
-	</div>
-</Story>
-
 <Story name="All Variants">
-	<div class="flex flex-col gap-6 w-96">
-		<div>
-			<p class="mb-2 text-sm font-medium text-muted-foreground">Icon prefix</p>
+	{#snippet template()}
+		<div class="flex w-96 flex-col gap-6">
+			<div class="flex flex-col gap-2">
+				<p class="text-muted-foreground text-sm">Search bar</p>
+				<InputGroup.Root>
+					<InputGroup.Addon align="inline-start">
+						<SearchIcon />
+					</InputGroup.Addon>
+					<InputGroup.Input placeholder="Search wishlists..." />
+				</InputGroup.Root>
+			</div>
+
+			<div class="flex flex-col gap-2">
+				<p class="text-muted-foreground text-sm">Copy-to-clipboard URL</p>
+				<InputGroup.Root>
+					<InputGroup.Input value="https://darecky.app/w/birthday" readonly />
+					<InputGroup.Addon align="inline-end">
+						<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Copy">
+							<CopyIcon />
+						</InputGroup.Button>
+					</InputGroup.Addon>
+				</InputGroup.Root>
+			</div>
+
+			<div class="flex flex-col gap-2">
+				<p class="text-muted-foreground text-sm">Email subscribe</p>
+				<InputGroup.Root>
+					<InputGroup.Addon align="inline-start">
+						<MailIcon />
+					</InputGroup.Addon>
+					<InputGroup.Input type="email" placeholder="you@example.com" />
+					<InputGroup.Addon align="inline-end">
+						<InputGroup.Button intent="primary" size="xs">Subscribe</InputGroup.Button>
+					</InputGroup.Addon>
+				</InputGroup.Root>
+			</div>
+
+			<div class="flex flex-col gap-2">
+				<p class="text-muted-foreground text-sm">Password with visibility toggle</p>
+				<InputGroup.Root>
+					<InputGroup.Addon align="inline-start">
+						<LockIcon />
+					</InputGroup.Addon>
+					<InputGroup.Input type="password" value="hunter2" />
+					<InputGroup.Addon align="inline-end">
+						<InputGroup.Button
+							intent="ghost"
+							size="icon-xs"
+							aria-label="Toggle visibility"
+						>
+							<EyeIcon />
+						</InputGroup.Button>
+					</InputGroup.Addon>
+				</InputGroup.Root>
+			</div>
+
+			<div class="flex flex-col gap-2">
+				<p class="text-muted-foreground text-sm">Chat composer</p>
+				<InputGroup.Root>
+					<InputGroup.Textarea placeholder="Write a message..." />
+					<InputGroup.Addon align="inline-end">
+						<InputGroup.Button intent="primary" size="icon-xs" aria-label="Send">
+							<SendIcon />
+						</InputGroup.Button>
+					</InputGroup.Addon>
+				</InputGroup.Root>
+			</div>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Search Field">
+	{#snippet template()}
+		<div class="w-80">
 			<InputGroup.Root>
 				<InputGroup.Addon align="inline-start">
 					<SearchIcon />
 				</InputGroup.Addon>
-				<InputGroup.Input placeholder="Search..." />
+				<InputGroup.Input placeholder="Search wishlists..." />
 			</InputGroup.Root>
 		</div>
+	{/snippet}
+</Story>
 
-		<div>
-			<p class="mb-2 text-sm font-medium text-muted-foreground">
-				Text prefix + button suffix
-			</p>
+<Story name="URL With Copy Button">
+	{#snippet template()}
+		<div class="w-80">
 			<InputGroup.Root>
-				<InputGroup.Addon align="inline-start">
-					<InputGroup.Text>https://</InputGroup.Text>
-				</InputGroup.Addon>
-				<InputGroup.Input placeholder="example.com" />
+				<InputGroup.Input value="https://darecky.app/w/birthday" readonly />
 				<InputGroup.Addon align="inline-end">
-					<InputGroup.Button intent="primary" size="xs">Go</InputGroup.Button>
-				</InputGroup.Addon>
-			</InputGroup.Root>
-		</div>
-
-		<div>
-			<p class="mb-2 text-sm font-medium text-muted-foreground">
-				Icon prefix + icon button suffix
-			</p>
-			<InputGroup.Root>
-				<InputGroup.Addon align="inline-start">
-					<MailIcon />
-				</InputGroup.Addon>
-				<InputGroup.Input placeholder="Email address" />
-				<InputGroup.Addon align="inline-end">
-					<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Send">
-						<SendIcon />
+					<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Copy">
+						<CopyIcon />
 					</InputGroup.Button>
 				</InputGroup.Addon>
 			</InputGroup.Root>
 		</div>
+	{/snippet}
+</Story>
 
-		<div>
-			<p class="mb-2 text-sm font-medium text-muted-foreground">With textarea</p>
+<Story name="Email Subscribe">
+	{#snippet template()}
+		<div class="w-80">
+			<InputGroup.Root>
+				<InputGroup.Addon align="inline-start">
+					<MailIcon />
+				</InputGroup.Addon>
+				<InputGroup.Input type="email" placeholder="you@example.com" />
+				<InputGroup.Addon align="inline-end">
+					<InputGroup.Button intent="primary" size="xs">Subscribe</InputGroup.Button>
+				</InputGroup.Addon>
+			</InputGroup.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Password With Visibility Toggle">
+	{#snippet template()}
+		<div class="w-80">
+			<InputGroup.Root>
+				<InputGroup.Addon align="inline-start">
+					<LockIcon />
+				</InputGroup.Addon>
+				<InputGroup.Input type="password" value="hunter2" />
+				<InputGroup.Addon align="inline-end">
+					<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Toggle visibility">
+						<EyeIcon />
+					</InputGroup.Button>
+				</InputGroup.Addon>
+			</InputGroup.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Amount With Currency">
+	{#snippet template()}
+		<div class="w-80">
+			<InputGroup.Root>
+				<InputGroup.Addon align="inline-start">
+					<InputGroup.Text>$</InputGroup.Text>
+				</InputGroup.Addon>
+				<InputGroup.Input placeholder="0.00" inputmode="decimal" />
+				<InputGroup.Addon align="inline-end">
+					<InputGroup.Text>USD</InputGroup.Text>
+				</InputGroup.Addon>
+			</InputGroup.Root>
+		</div>
+	{/snippet}
+</Story>
+
+<Story name="Chat Composer">
+	{#snippet template()}
+		<div class="w-80">
 			<InputGroup.Root>
 				<InputGroup.Textarea placeholder="Write a message..." />
 				<InputGroup.Addon align="inline-end">
@@ -182,18 +178,18 @@
 				</InputGroup.Addon>
 			</InputGroup.Root>
 		</div>
+	{/snippet}
+</Story>
 
-		<div>
-			<p class="mb-2 text-sm font-medium text-muted-foreground">Block addons</p>
+<Story name="URL Prefix">
+	{#snippet template()}
+		<div class="w-80">
 			<InputGroup.Root>
-				<InputGroup.Addon align="block-start">
-					<InputGroup.Text>Title</InputGroup.Text>
+				<InputGroup.Addon align="inline-start">
+					<InputGroup.Text>https://</InputGroup.Text>
 				</InputGroup.Addon>
-				<InputGroup.Input placeholder="Enter value" />
-				<InputGroup.Addon align="block-end">
-					<InputGroup.Text>Description text below</InputGroup.Text>
-				</InputGroup.Addon>
+				<InputGroup.Input value="example.com" />
 			</InputGroup.Root>
 		</div>
-	</div>
+	{/snippet}
 </Story>

@@ -97,6 +97,51 @@
 	import AlignRightIcon from '@lucide/svelte/icons/align-right';
 </script>
 
+<Story name="All Variants">
+	{#snippet template(args: Record<string, unknown>)}
+		<div class="flex flex-col gap-6">
+			{#each TOGGLE_INTENTS as intent (intent)}
+				<div class="flex flex-col gap-2">
+					<span class="text-xs font-medium text-foreground-subtle">{intent}</span>
+					<div class="flex flex-col gap-3">
+						{#each TOGGLE_SIZES as size (size)}
+							<div class="flex items-center gap-2">
+								<span class="w-12 text-[10px] text-foreground-subtle">{size}</span>
+								<ToggleGroup.Root
+									{...args}
+									type="single"
+									value="center"
+									{intent}
+									{size}
+								>
+									<ToggleGroup.Item value="left" aria-label="Align left">
+										<AlignLeftIcon data-icon="inline-start" />
+										{#if size !== 'icon' && size !== 'icon-sm'}
+											Left
+										{/if}
+									</ToggleGroup.Item>
+									<ToggleGroup.Item value="center" aria-label="Align center">
+										<AlignCenterIcon data-icon="inline-start" />
+										{#if size !== 'icon' && size !== 'icon-sm'}
+											Center
+										{/if}
+									</ToggleGroup.Item>
+									<ToggleGroup.Item value="right" aria-label="Align right">
+										<AlignRightIcon data-icon="inline-start" />
+										{#if size !== 'icon' && size !== 'icon-sm'}
+											Right
+										{/if}
+									</ToggleGroup.Item>
+								</ToggleGroup.Root>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/snippet}
+</Story>
+
 <Story name="Single Select [play: single select]" play={playSingleSelect}>
 	{#snippet template(args: Record<string, unknown>)}
 		<ToggleGroup.Root type="single" value="left" {...args}>
@@ -205,50 +250,5 @@
 				<AlignRightIcon data-icon="inline-start" />
 			</ToggleGroup.Item>
 		</ToggleGroup.Root>
-	{/snippet}
-</Story>
-
-<Story name="All Variants">
-	{#snippet template(args: Record<string, unknown>)}
-		<div class="flex flex-col gap-6">
-			{#each TOGGLE_INTENTS as intent (intent)}
-				<div class="flex flex-col gap-2">
-					<span class="text-xs font-medium text-foreground-subtle">{intent}</span>
-					<div class="flex flex-col gap-3">
-						{#each TOGGLE_SIZES as size (size)}
-							<div class="flex items-center gap-2">
-								<span class="w-12 text-[10px] text-foreground-subtle">{size}</span>
-								<ToggleGroup.Root
-									{...args}
-									type="single"
-									value="center"
-									{intent}
-									{size}
-								>
-									<ToggleGroup.Item value="left" aria-label="Align left">
-										<AlignLeftIcon data-icon="inline-start" />
-										{#if size !== 'icon' && size !== 'icon-sm'}
-											Left
-										{/if}
-									</ToggleGroup.Item>
-									<ToggleGroup.Item value="center" aria-label="Align center">
-										<AlignCenterIcon data-icon="inline-start" />
-										{#if size !== 'icon' && size !== 'icon-sm'}
-											Center
-										{/if}
-									</ToggleGroup.Item>
-									<ToggleGroup.Item value="right" aria-label="Align right">
-										<AlignRightIcon data-icon="inline-start" />
-										{#if size !== 'icon' && size !== 'icon-sm'}
-											Right
-										{/if}
-									</ToggleGroup.Item>
-								</ToggleGroup.Root>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/each}
-		</div>
 	{/snippet}
 </Story>
