@@ -81,6 +81,11 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+	/* Declares the page light by default. Drives the CSS light-dark() function
+	   used by per-wishlist palettes (see toModeAwarePalette) so applied themes
+	   pick their light values; .dark flips this to dark. */
+	color-scheme: light;
+
 	/* ── Spacing (4px base) ────────────────────────────────── */
 	--space-1: 4px;
 	--space-2: 8px;
@@ -291,6 +296,10 @@
 }
 
 .dark {
+	/* Flips computed color-scheme to dark so per-wishlist palette light-dark()
+	   values resolve to their dark variant (and native controls follow suit). */
+	color-scheme: dark;
+
 	--background: oklch(15.3% 0.006 107.1deg);
 	--foreground: oklch(98.8% 0.003 106.5deg);
 	--card: oklch(22.8% 0.013 107.4deg);

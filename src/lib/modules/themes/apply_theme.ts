@@ -1,20 +1,22 @@
 import type { ThemePalette, WishlistTheme } from './types.js';
 import { isCustomTheme, THEME_PALETTE_KEYS } from './types.js';
 import { THEME_PRESETS } from './theme_presets.js';
-import { deriveOklchPalette } from './oklch_palette.js';
+import { deriveOklchPalette, toModeAwarePalette } from './oklch_palette.js';
 
 /**
- * Resolve a WishlistTheme to a ThemePalette.
- * For presets: looks up the predefined palette.
- * For custom: derives palette from the OKLCH base color.
+ * Resolve a WishlistTheme to a mode-aware ThemePalette.
+ * For presets: looks up the predefined (light) palette.
+ * For custom: derives the (light) palette from the OKLCH base color.
+ * In both cases the light palette is wrapped into `light-dark()` values so the
+ * applied theme renders dark surfaces in dark mode (and live-updates on toggle).
  * Returns null if the custom color is invalid.
  */
 export function resolveThemePalette(theme: WishlistTheme): ThemePalette | null {
 	if (isCustomTheme(theme)) {
-		return deriveOklchPalette(theme.color);
+		const light = deriveOklchPalette(theme.color);
+		return light === null ? null : toModeAwarePalette(light);
 	}
-	const preset = THEME_PRESETS[theme];
-	return preset.palette;
+	return toModeAwarePalette(THEME_PRESETS[theme].palette);
 }
 
 /**
