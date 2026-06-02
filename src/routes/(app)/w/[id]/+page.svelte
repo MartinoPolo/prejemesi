@@ -101,9 +101,6 @@
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
 	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
 	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
-	// og:image points at the source image: crawlers fetch a static URL, and server-side
-	// cropping for the social slot is out of scope (the social-slot crop is previewed in-app only).
-	const ogImage = $derived(wishlistImageUrl(wishlist.imageKey));
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
@@ -645,10 +642,16 @@
 		property="og:url"
 		content="{typeof window !== 'undefined' ? window.location.origin : ''}/w/{wishlist.shortId}"
 	/>
-	{#if ogImage}
+	<!-- og:image points at the source image: crawlers fetch a static URL, and server-side
+	     cropping for the social slot is out of scope (the social-slot crop is previewed in-app only).
+	     Resolved inline (not via a $derived) so the value is read after the top-level await populates
+	     `wishlist` — a memoized SSR derived evaluates against the pre-await undefined wishlist. -->
+	{#if wishlist.imageKey}
 		<meta
 			property="og:image"
-			content="{typeof window !== 'undefined' ? window.location.origin : ''}{ogImage}"
+			content="{typeof window !== 'undefined' ? window.location.origin : ''}{wishlistImageUrl(
+				wishlist.imageKey,
+			)}"
 		/>
 	{/if}
 </svelte:head>
