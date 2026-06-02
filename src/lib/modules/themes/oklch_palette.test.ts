@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { deriveOklchPalette, parseOklch } from './oklch_palette.js';
+import { deriveOklchPalette, parseOklch, toModeAwarePalette } from './oklch_palette.js';
 import { THEME_PRESETS } from './theme_presets.js';
+import type { ThemePalette } from './types.js';
 
 /** Token keys introduced by the image-frame foundation (issue #34). */
 const IMAGE_FRAME_TOKEN_KEYS = [
@@ -69,5 +70,73 @@ describe('deriveOklchPalette — image-frame tokens', () => {
 
 	it('returns null for an invalid base color', () => {
 		expect(deriveOklchPalette('not-a-color')).toBeNull();
+	});
+});
+
+describe('toModeAwarePalette — dark-mode safety', () => {
+	/** Extract the dark (second) argument of a `light-dark(<light>, <dark>)` value. */
+	function darkArg(value: string): string | null {
+		const match = value.match(/^light-dark\((.+?),\s*(.+)\)$/);
+		return match === null ? null : match[2];
+	}
+
+	/** Surface/background tokens that must darken in dark mode (per app.css `.dark`). */
+	const darkSurfaceKeys = [
+		'--wishlist-surface',
+		'--wishlist-surface-hover',
+		'--wishlist-muted',
+		'--wishlist-preview',
+		'--wishlist-page',
+		'--wishlist-image-frame',
+	] as const satisfies readonly (keyof ThemePalette)[];
+
+	const lightPreset = THEME_PRESETS.christmas.palette;
+	const modeAware = toModeAwarePalette(lightPreset);
+
+	it('darkens every surface token to a low-lightness variant (not the light value)', () => {
+		for (const key of darkSurfaceKeys) {
+			const dark = parseOklch(darkArg(modeAware[key]) ?? '');
+			const light = parseOklch(lightPreset[key]);
+			expect(dark, `${key} has a parseable dark variant`).not.toBeNull();
+			expect(light).not.toBeNull();
+			// Dark surface must be substantially darker than the light surface.
+			expect(dark?.lightness, `${key} darkens`).toBeLessThan(0.35);
+			expect(dark?.lightness).toBeLessThan(light?.lightness ?? 0);
+		}
+	});
+
+	it('lightens the foreground-on-dark tokens (icon, muted-fg) for contrast on dark surfaces', () => {
+		for (const key of ['--wishlist-icon', '--wishlist-muted-fg'] as const) {
+			const dark = parseOklch(darkArg(modeAware[key]) ?? '');
+			expect(dark?.lightness, `${key} is light enough for dark bg`).toBeGreaterThan(0.65);
+		}
+	});
+
+	it('uses white-alpha borders in dark mode (hue-independent separators)', () => {
+		expect(darkArg(modeAware['--wishlist-border'])).toBe('oklch(1 0 0 / 12%)');
+		expect(darkArg(modeAware['--wishlist-border-strong'])).toBe('oklch(1 0 0 / 20%)');
+	});
+
+	it('leaves brand/foreground tokens unchanged (emitted unwrapped)', () => {
+		for (const key of [
+			'--wishlist-primary',
+			'--wishlist-accent',
+			'--wishlist-primary-fg',
+		] as const) {
+			expect(modeAware[key]).toBe(lightPreset[key]);
+		}
+	});
+
+	it('preserves the light value as the first light-dark() argument', () => {
+		const value = modeAware['--wishlist-surface'];
+		expect(value.startsWith(`light-dark(${lightPreset['--wishlist-surface']},`)).toBe(true);
+	});
+
+	it('applies equally to a derived custom palette', () => {
+		const custom = deriveOklchPalette('oklch(0.54 0.14 275)');
+		expect(custom).not.toBeNull();
+		const aware = toModeAwarePalette(custom ?? ({} as ThemePalette));
+		const darkSurface = parseOklch(darkArg(aware['--wishlist-surface']) ?? '');
+		expect(darkSurface?.lightness).toBeLessThan(0.35);
 	});
 });

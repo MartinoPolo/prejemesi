@@ -1,4 +1,5 @@
 import type { ThemePalette } from './types.js';
+import { THEME_PALETTE_KEYS } from './types.js';
 
 interface OklchComponents {
 	lightness: number;
@@ -165,6 +166,73 @@ export function deriveOklchPalette(baseColor: string): ThemePalette | null {
 		'--wishlist-icon': formatOklch(icon),
 		'--wishlist-image-frame': formatOklch(imageFrame),
 	};
+}
+
+/**
+ * Fixed dark-mode lightness per surface/background token. Mirrors the `.dark`
+ * `--wishlist-*` defaults in app.css so a per-wishlist palette darkens to the
+ * same target as the global tokens. Hue + chroma are carried over from the
+ * light value (keeping the theme's identity); only lightness is remapped.
+ * Foreground/brand tokens (primary, accent, *-fg) are absent → left unchanged.
+ */
+const DARK_LIGHTNESS: Partial<Record<keyof ThemePalette, number>> = {
+	'--wishlist-surface': 0.2,
+	'--wishlist-surface-hover': 0.24,
+	'--wishlist-muted': 0.25,
+	'--wishlist-muted-fg': 0.72,
+	'--wishlist-preview': 0.26,
+	'--wishlist-page': 0.17,
+	'--wishlist-icon': 0.7,
+	'--wishlist-image-frame': 0.22,
+};
+
+/**
+ * Tokens whose dark variant is a fixed value rather than a lightness remap.
+ * Borders use white-alpha in dark mode (mirrors app.css `.dark`) so they read
+ * as subtle separators on dark surfaces regardless of the theme hue.
+ */
+const DARK_FIXED: Partial<Record<keyof ThemePalette, string>> = {
+	'--wishlist-border': 'oklch(1 0 0 / 12%)',
+	'--wishlist-border-strong': 'oklch(1 0 0 / 20%)',
+};
+
+/** Produce the dark-mode value for a single palette token from its light value. */
+function toDarkValue(key: keyof ThemePalette, lightValue: string): string {
+	const fixed = DARK_FIXED[key];
+	if (fixed !== undefined) {
+		return fixed;
+	}
+	const targetLightness = DARK_LIGHTNESS[key];
+	if (targetLightness === undefined) {
+		return lightValue;
+	}
+	const parsed = parseOklch(lightValue);
+	if (parsed === null) {
+		return lightValue;
+	}
+	return formatOklch({ ...parsed, lightness: targetLightness });
+}
+
+/**
+ * Wrap a light-only palette into mode-aware values using the CSS `light-dark()`
+ * function. Each token becomes `light-dark(<light>, <dark>)`, so the same
+ * applied inline style resolves to the correct surface in both modes and
+ * live-updates when the `.dark` class (and thus computed `color-scheme`)
+ * toggles — no re-apply needed. Tokens whose dark value equals the light value
+ * are emitted unwrapped to keep output minimal.
+ *
+ * Requires `color-scheme: light`/`dark` to be set on `:root`/`.dark` (app.css)
+ * — `light-dark()` keys off the computed `color-scheme`, not the `.dark` class.
+ */
+export function toModeAwarePalette(light: ThemePalette): ThemePalette {
+	const result = {} as Record<keyof ThemePalette, string>;
+	for (const key of THEME_PALETTE_KEYS) {
+		const lightValue = light[key];
+		const darkValue = toDarkValue(key, lightValue);
+		result[key] =
+			darkValue === lightValue ? lightValue : `light-dark(${lightValue}, ${darkValue})`;
+	}
+	return result;
 }
 
 /**
