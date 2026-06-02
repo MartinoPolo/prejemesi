@@ -38,10 +38,42 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_cannot_cancel_anonymous_reservation(),
 
 	[SERVER_ERROR.OWNER_CANNOT_LIKE_OWN_GIFTS]: () => m.server_error_owner_cannot_like_own_gifts(),
+
+	[SERVER_ERROR.FAILED_TO_CREATE_GIFT]: () => m.server_error_failed_to_create_gift(),
+	[SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING]: () => m.server_error_cannot_edit_after_sharing(),
+	[SERVER_ERROR.CANNOT_DELETE_AFTER_SHARING]: () => m.server_error_cannot_delete_after_sharing(),
+	[SERVER_ERROR.CANNOT_DELETE_RESERVED_GIFT]: () => m.server_error_cannot_delete_reserved_gift(),
+	[SERVER_ERROR.ONLY_OWNER_CAN_MARK_RECEIVED]: () =>
+		m.server_error_only_owner_can_mark_received(),
 };
 
+/**
+ * Extracts the error message from a thrown value. Handles both plain `Error`
+ * instances and SvelteKit `HttpError` objects (which are not `Error` instances
+ * but carry the message under `.body.message`).
+ */
+function extractMessage(thrown: unknown): string | null {
+	if (thrown instanceof Error) {
+		return thrown.message;
+	}
+	if (typeof thrown === 'object' && thrown !== null) {
+		const body = (thrown as { body?: unknown }).body;
+		if (typeof body === 'object' && body !== null) {
+			const bodyMessage = (body as { message?: unknown }).message;
+			if (typeof bodyMessage === 'string') {
+				return bodyMessage;
+			}
+		}
+		const message = (thrown as { message?: unknown }).message;
+		if (typeof message === 'string') {
+			return message;
+		}
+	}
+	return null;
+}
+
 export function translateServerError(thrown: unknown, fallback?: string): string {
-	const message = thrown instanceof Error ? thrown.message : null;
+	const message = extractMessage(thrown);
 	if (message === null) {
 		return fallback ?? m.error_generic();
 	}

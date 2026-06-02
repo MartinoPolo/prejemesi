@@ -505,6 +505,9 @@
 	"landing_hero_section_label": "Main section",
 
 	"toast_gift_reserved": "Gift has been reserved",
+	"toast_gift_created": "Gift added",
+	"toast_gift_updated": "Gift saved",
+	"toast_gift_deleted": "Gift removed",
 	"toast_reservation_error": "Reservation failed",
 	"toast_unfollowed": "You stopped following the list",
 	"toast_unfollow_error": "Failed to stop following",
@@ -538,5 +541,10 @@
 	"server_error_cannot_cancel_others_reservation": "You cannot cancel someone else's reservation",
 	"server_error_anonymous_cannot_cancel_reservations": "Anonymous users cannot cancel reservations",
 	"server_error_cannot_cancel_anonymous_reservation": "You cannot cancel an anonymous reservation",
-	"server_error_owner_cannot_like_own_gifts": "The owner cannot like their own gifts"
+	"server_error_owner_cannot_like_own_gifts": "The owner cannot like their own gifts",
+	"server_error_failed_to_create_gift": "Failed to create gift",
+	"server_error_cannot_edit_after_sharing": "Existing gifts can't be edited after the list has been shared. You can still add new gifts.",
+	"server_error_cannot_delete_after_sharing": "Existing gifts can't be removed after the list has been shared.",
+	"server_error_cannot_delete_reserved_gift": "This gift can't be removed because it has been reserved.",
+	"server_error_only_owner_can_mark_received": "Only the owner can mark gifts as received"
 }

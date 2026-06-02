@@ -392,7 +392,7 @@ describe('getGiftsByWishlistShortId', () => {
 
 			await expect(callGetGifts(null, 'nonexistent')).rejects.toMatchObject({
 				status: 404,
-				message: 'Wishlist not found',
+				message: 'WISHLIST_NOT_FOUND',
 			});
 		});
 	});
@@ -512,7 +512,7 @@ describe('updateGift', () => {
 			await expect(callUpdateGift(makeOwnerAuthContext(), updateInput)).rejects.toMatchObject(
 				{
 					status: 403,
-					message: expect.stringContaining('Cannot edit existing gifts'),
+					message: 'CANNOT_EDIT_AFTER_SHARING',
 				},
 			);
 		});
@@ -563,7 +563,7 @@ describe('deleteGift', () => {
 
 			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
 				status: 403,
-				message: expect.stringContaining('Cannot delete existing gifts'),
+				message: 'CANNOT_DELETE_AFTER_SHARING',
 			});
 		});
 	});
@@ -579,7 +579,7 @@ describe('deleteGift', () => {
 
 			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
 				status: 400,
-				message: expect.stringContaining('Cannot delete a reserved gift'),
+				message: 'CANNOT_DELETE_RESERVED_GIFT',
 			});
 		});
 	});
@@ -593,7 +593,7 @@ describe('deleteGift', () => {
 				callDeleteGift(makeOwnerAuthContext(), 'ghost-gift'),
 			).rejects.toMatchObject({
 				status: 404,
-				message: 'Gift not found',
+				message: 'GIFT_NOT_FOUND',
 			});
 		});
 	});
@@ -628,7 +628,7 @@ describe('markGiftReceived', () => {
 				callMarkReceived(makeVisitorAuthContext(), markInput),
 			).rejects.toMatchObject({
 				status: 403,
-				message: expect.stringContaining('Only the owner'),
+				message: 'ONLY_OWNER_CAN_MARK_RECEIVED',
 			});
 		});
 	});

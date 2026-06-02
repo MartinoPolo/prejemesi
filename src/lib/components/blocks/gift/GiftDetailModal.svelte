@@ -16,6 +16,7 @@
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
 		isOwner?: boolean;
+		canEdit?: boolean;
 		canDelete?: boolean;
 		isSubmitting?: boolean;
 		isDeleting?: boolean;
@@ -33,6 +34,7 @@
 		wishlistId,
 		priorityLevels,
 		isOwner = false,
+		canEdit = true,
 		canDelete = true,
 		isSubmitting = false,
 		isDeleting = false,
@@ -68,6 +70,7 @@
 			{wishlistId}
 			{priorityLevels}
 			{isOwner}
+			{canEdit}
 			{canDelete}
 			{isSubmitting}
 			{isDeleting}
