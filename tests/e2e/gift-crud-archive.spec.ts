@@ -83,6 +83,93 @@ test.describe('Gift editing', () => {
 
 		await page.context().close();
 	});
+
+	test('edit modal pre-populates all fields from the gift', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('gift-prepop');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+
+		await createWishlistAndNavigate(page, 'Pre-populate Test');
+
+		// Create a gift with all fields filled
+		await page
+			.getByRole('button', { name: /Pridat/ })
+			.first()
+			.click();
+		const createDialog = page.getByRole('dialog');
+		await expect(createDialog).toBeVisible({ timeout: 5_000 });
+		await createDialog.getByRole('textbox', { name: /Nazev/i }).fill('Testovaci polozka');
+		await createDialog.getByRole('textbox', { name: /Popis/i }).fill('Popis testovaci');
+		await createDialog.locator('#gift-url').fill('https://example.com/item');
+		await createDialog.getByLabel(/Cena/).fill('999');
+		await createDialog.locator('#gift-quantity').clear();
+		await createDialog.locator('#gift-quantity').fill('3');
+		await createDialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await expect(page.getByText('Testovaci polozka')).toBeVisible({ timeout: 10_000 });
+
+		// Re-open the gift — edit modal must be pre-populated
+		await page.getByText('Testovaci polozka').click();
+		const editDialog = page.getByRole('dialog');
+		await expect(editDialog).toBeVisible({ timeout: 5_000 });
+
+		await expect(editDialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue(
+			'Testovaci polozka',
+		);
+		await expect(editDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue(
+			'Popis testovaci',
+		);
+		await expect(editDialog.locator('#gift-url')).toHaveValue('https://example.com/item');
+		await expect(editDialog.getByLabel(/Cena/)).toHaveValue('999');
+		await expect(editDialog.locator('#gift-quantity')).toHaveValue('3');
+
+		await editDialog.getByRole('button', { name: /Close|Zavřít|Zavrit/i }).click();
+
+		// Open "Add gift" after editing — form must be empty (no stale data)
+		await page
+			.getByRole('button', { name: /Pridat/ })
+			.first()
+			.click();
+		const addDialog = page.getByRole('dialog');
+		await expect(addDialog).toBeVisible({ timeout: 5_000 });
+		await expect(addDialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue('');
+		await expect(addDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue('');
+		await expect(addDialog.locator('#gift-url')).toHaveValue('');
+		await expect(addDialog.getByLabel(/Cena/)).toHaveValue('');
+
+		await page.context().close();
+	});
+
+	test('switching between two gifts shows correct data each time', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('gift-switch');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+
+		await createWishlistAndNavigate(page, 'Switch Gift Test');
+		await addGift(page, 'Darek alfa');
+		await addGift(page, 'Darek beta');
+
+		// Open first gift
+		await page.getByText('Darek alfa').click();
+		let dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		await expect(dialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue('Darek alfa');
+		await dialog.getByRole('button', { name: /Close|Zavřít|Zavrit/i }).click();
+		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+
+		// Open second gift — must show its data, not the first gift's
+		await page.getByText('Darek beta').click();
+		dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		await expect(dialog.getByRole('textbox', { name: /Nazev/i })).toHaveValue('Darek beta');
+
+		await page.context().close();
+	});
 });
 
 // ── Gift deletion (issue #9) ──────────────────────────────────────────────────
