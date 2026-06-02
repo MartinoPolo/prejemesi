@@ -27,6 +27,7 @@
 		return 'U';
 	});
 
+	// svelte-ignore state_referenced_locally (intentional initial seed; the count is owned/updated by the notifications context thereafter)
 	setNotificationsContext(data.unreadNotificationCount);
 </script>
 

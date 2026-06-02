@@ -61,13 +61,22 @@
 		onreceived,
 	}: Props = $props();
 
+	// Intentional one-time seed from the `gift` prop: this form edits a local copy and Dialog.Content
+	// unmounts on close, so the form remounts (re-seeding) each time it opens for a new gift.
+	// svelte-ignore state_referenced_locally
 	let name = $state(gift?.name ?? '');
+	// svelte-ignore state_referenced_locally
 	let description = $state(gift?.description ?? '');
+	// svelte-ignore state_referenced_locally
 	let url = $state(gift?.url ?? '');
+	// svelte-ignore state_referenced_locally
 	let price = $state(gift?.price != null ? String(gift.price) : '');
+	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
+	// svelte-ignore state_referenced_locally
 	let imageUrl = $state(gift?.imageUrl ?? '');
 	let imageKey = $state('');
+	// svelte-ignore state_referenced_locally
 	let quantity = $state(String(gift?.quantity ?? 1));
 	let priorityLevelId = $state('');
 	let imageMode = $state<'url' | 'upload'>('url');

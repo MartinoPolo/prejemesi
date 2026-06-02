@@ -25,6 +25,7 @@
 		isSaving = false,
 	}: NotificationPreferencesFormProps = $props();
 
+	// svelte-ignore state_referenced_locally (intentional one-time seed: form edits a local copy; parent remounts per entity)
 	let preferences = $state<NotificationPreferences>({ ...initialPreferences });
 
 	const NOTIFICATION_TYPE_ENTRIES = Object.values(NOTIFICATION_TYPE);

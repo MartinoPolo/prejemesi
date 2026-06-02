@@ -96,10 +96,14 @@
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
-	const [wishlistData, giftsData] = await Promise.all([
-		getWishlistByShortId(shortId),
-		getGiftsByWishlistShortId(shortId),
-	]);
+	// Initial fetch reads `shortId` once at component creation. SvelteKit reuses this
+	// component across /w/[id] param changes, so this top-level await never re-runs — the
+	// `$effect` below detects shortId changes and calls refreshData(). Snapshot is intentional.
+	// svelte-ignore state_referenced_locally
+	const wishlistDataPromise = getWishlistByShortId(shortId);
+	// svelte-ignore state_referenced_locally
+	const giftsDataPromise = getGiftsByWishlistShortId(shortId);
+	const [wishlistData, giftsData] = await Promise.all([wishlistDataPromise, giftsDataPromise]);
 
 	wishlist = wishlistData;
 	gifts = giftsData.gifts;
@@ -183,6 +187,7 @@
 
 	// ── Re-fetch on route param change ───────────────────────────────────────
 
+	// svelte-ignore state_referenced_locally (intentional baseline snapshot for the change-detection effect below)
 	let lastLoadedId = shortId;
 
 	$effect(() => {
