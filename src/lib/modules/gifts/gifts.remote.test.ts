@@ -90,8 +90,10 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 	reservation: {
 		id: 'reservation.id',
 		giftId: 'reservation.giftId',
+		userId: 'reservation.userId',
 		quantity: 'reservation.quantity',
 		deletedAt: 'reservation.deletedAt',
+		createdAt: 'reservation.createdAt',
 	},
 	giftLike: {
 		id: 'giftLike.id',
@@ -381,6 +383,35 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.reservedCount).toBe(0);
 			expect(gift.likeCount).toBe(0);
 			expect(gift.isFullyReserved).toBe(false);
+		});
+
+		it('sets myReservationId to the current user active reservation for that gift', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
+			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 1 }]); // reservation counts
+			mockDbInstance.pushResult([]); // like counts
+			// my active reservations for these gifts
+			mockDbInstance.pushResult([{ id: 'res-mine', giftId: GIFT_ID }]);
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.myReservationId).toBe('res-mine');
+		});
+
+		it('sets myReservationId to null when the current user has no reservation', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
+			mockDbInstance.pushResult([]); // reservation counts
+			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // my reservations: none
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.myReservationId).toBeNull();
 		});
 	});
 

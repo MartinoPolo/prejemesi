@@ -553,6 +553,7 @@
 	"landing_hero_section_label": "Hlavní sekce",
 
 	"toast_gift_reserved": "Dárek byl rezervován",
+	"toast_gift_unreserved": "Rezervace zrušena",
 	"toast_gift_created": "Dárek přidán",
 	"toast_gift_updated": "Dárek uložen",
 	"toast_gift_deleted": "Dárek odebrán",

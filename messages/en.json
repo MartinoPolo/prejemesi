@@ -553,6 +553,7 @@
 	"landing_hero_section_label": "Main section",
 
 	"toast_gift_reserved": "Gift has been reserved",
+	"toast_gift_unreserved": "Reservation cancelled",
 	"toast_gift_created": "Gift added",
 	"toast_gift_updated": "Gift saved",
 	"toast_gift_deleted": "Gift removed",

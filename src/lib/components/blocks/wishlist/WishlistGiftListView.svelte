@@ -13,6 +13,7 @@
 		dragOverIndex: number | null;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
+		onunreserve: (gift: GiftForVisitor) => void;
 		ondragstart: (event: DragEvent, index: number) => void;
 		ondragover: (event: DragEvent, index: number) => void;
 		ondragleave: () => void;
@@ -29,6 +30,7 @@
 		dragOverIndex,
 		onedit,
 		onreserve,
+		onunreserve,
 		ondragstart,
 		ondragover,
 		ondragleave,
@@ -52,7 +54,7 @@
 			ondrop={(e) => ondrop(e, index)}
 			{ondragend}
 		>
-			<GiftListItem gift={giftItem} {role} {isArchived} {onreserve} />
+			<GiftListItem gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
 		</WishlistGiftDraggableWrapper>
 	{/each}
 </div>

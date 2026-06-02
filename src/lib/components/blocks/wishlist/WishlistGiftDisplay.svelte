@@ -19,6 +19,7 @@
 		dragOverIndex: number | null;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
+		onunreserve: (gift: GiftForVisitor) => void;
 		onaddgift: () => void;
 		onclearfilters: () => void;
 		ondragstart: (event: DragEvent, index: number) => void;
@@ -41,6 +42,7 @@
 		dragOverIndex,
 		onedit,
 		onreserve,
+		onunreserve,
 		onaddgift,
 		onclearfilters,
 		ondragstart,
@@ -63,6 +65,7 @@
 		{dragOverIndex}
 		{onedit}
 		{onreserve}
+		{onunreserve}
 		{ondragstart}
 		{ondragover}
 		{ondragleave}
@@ -79,6 +82,7 @@
 		{dragOverIndex}
 		{onedit}
 		{onreserve}
+		{onunreserve}
 		{ondragstart}
 		{ondragover}
 		{ondragleave}
@@ -94,5 +98,6 @@
 		{isOwnerOrModerator}
 		{onedit}
 		{onreserve}
+		{onunreserve}
 	/>
 {/if}
