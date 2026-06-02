@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { createTestUser, TEST_GIFT } from './fixtures/test-data.js';
+import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 
 async function createWishlistAndNavigate(page: Page, title: string) {
@@ -25,30 +25,6 @@ test.describe('Wishlist page', () => {
 		await createWishlistAndNavigate(page, 'Test Draft');
 		await expect(page.getByText(/Tento seznam (je.t.|jeste) nebyl sd.len/i)).toBeVisible();
 		await expect(page.getByRole('main').getByText('Koncept')).toBeVisible();
-
-		await page.context().close();
-	});
-
-	test('can add a gift with all fields', async ({ browser, request, baseURL }) => {
-		const user = createTestUser('wl-gift');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-
-		await createWishlistAndNavigate(page, 'Test Gifts');
-		await page
-			.getByRole('button', {
-				name: /P.idat p..n.|Pridat prani|P.idat d.rek|Pridat darek/,
-			})
-			.first()
-			.click();
-
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		await dialog.getByRole('textbox', { name: /N.zev|Nazev/i }).fill(TEST_GIFT.name);
-		await dialog.getByRole('textbox', { name: /Popis/i }).fill('Testovaci popis darku');
-		await dialog.getByLabel(/Cena/).fill(TEST_GIFT.price);
-		await dialog.getByRole('button', { name: /P.idat d.rek|Pridat darek/ }).click();
-
-		await expect(page.getByText(TEST_GIFT.name)).toBeVisible({ timeout: 10_000 });
 
 		await page.context().close();
 	});

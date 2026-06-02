@@ -405,6 +405,7 @@
 	"moderator_invite_description": "Vygenerujte odkaz a pošlete ho osobě, kterou chcete přidat jako moderátora.",
 	"moderator_generating": "Generuji...",
 	"moderator_generate_invite": "Generovat pozvánku",
+	"moderator_copy_link": "Kopírovat odkaz",
 	"moderator_pending_title": "Čekající pozvánky ({count})",
 	"moderator_revoke_invite": "Zrušit pozvánku",
 	"moderator_reservations_title": "Zobrazení rezervací",

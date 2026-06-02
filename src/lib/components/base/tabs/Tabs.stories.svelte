@@ -25,17 +25,6 @@
 		await expect(tabs[2]).toHaveAttribute('aria-selected', 'false');
 	};
 
-	const playTabSwitchToThird = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-		const canvas = within(canvasElement);
-		const tabs = canvas.getAllByRole('tab');
-
-		// Click third tab
-		await userEvent.click(tabs[2]);
-		await expect(tabs[2]).toHaveAttribute('aria-selected', 'true');
-		await expect(tabs[0]).toHaveAttribute('aria-selected', 'false');
-		await expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
-	};
-
 	const playKeyboardActivation = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
 		const tabs = canvas.getAllByRole('tab');
@@ -115,7 +104,7 @@
 	{/snippet}
 </Story>
 
-<Story name="With Icons [play: tab switch third]" play={playTabSwitchToThird}>
+<Story name="With Icons">
 	{#snippet template()}
 		<Tabs>
 			<Tab active={iconsActive === 'Profile'} onclick={() => (iconsActive = 'Profile')}

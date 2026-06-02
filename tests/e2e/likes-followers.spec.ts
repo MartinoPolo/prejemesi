@@ -231,19 +231,12 @@ test.describe('Follower management', () => {
 		await expect(followerPage.getByText(wishlistTitle)).toBeVisible({ timeout: 5_000 });
 
 		const wishlistCard = followerPage
-			.locator('[data-testid="wishlist-card"], article, li')
+			.getByTestId('wishlist-card')
 			.filter({ hasText: wishlistTitle })
 			.first();
 
-		// Use the "Prestat sledovat" button inside the card if scoped, otherwise use first match
-		const unfollowButton = wishlistCard.getByRole('button', { name: 'Prestat sledovat' });
-		const unfollowButtonFallback = followerPage
-			.getByRole('button', { name: 'Prestat sledovat' })
-			.first();
-
-		const buttonToClick =
-			(await unfollowButton.count()) > 0 ? unfollowButton : unfollowButtonFallback;
-		await buttonToClick.click();
+		// Use the "Prestat sledovat" button inside the card
+		await wishlistCard.getByRole('button', { name: 'Prestat sledovat' }).click();
 
 		// Wishlist should no longer be visible (unfollowed items hidden by default)
 		await expect(followerPage.getByText(wishlistTitle)).not.toBeVisible({ timeout: 5_000 });

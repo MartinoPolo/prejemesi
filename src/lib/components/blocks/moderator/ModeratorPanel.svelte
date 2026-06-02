@@ -192,12 +192,15 @@
 					<div class="flex items-center gap-2">
 						<div
 							class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
+							data-testid="invite-link"
 						>
 							{window.location.origin}{generatedInvitePath}
 						</div>
 						<Button
 							size="sm"
 							intent={linkCopied ? 'primary' : 'outline'}
+							aria-label={m.moderator_copy_link()}
+							data-testid="copy-invite-link"
 							onclick={handleCopyLink}
 						>
 							{#if linkCopied}

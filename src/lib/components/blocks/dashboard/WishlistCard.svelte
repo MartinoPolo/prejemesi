@@ -69,6 +69,7 @@
 	href={resolve('/(app)/w/[id]', { id: wishlistData.shortId })}
 	class={cn(variants.root(), className)}
 	aria-label={wishlistData.title}
+	data-testid="wishlist-card"
 >
 	<!-- Banner -->
 	<div class={variants.banner()} style:background={theme.gradient} aria-hidden="true">

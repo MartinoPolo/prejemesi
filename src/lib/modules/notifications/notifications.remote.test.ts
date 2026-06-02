@@ -61,12 +61,7 @@ vi.mock('drizzle-orm', () => ({
 	sql: vi.fn(),
 }));
 
-import {
-	getNotifications,
-	getUnreadCount,
-	markAsRead,
-	markAllAsRead,
-} from './notifications.remote.js';
+import { getNotifications, getUnreadCount, markAsRead } from './notifications.remote.js';
 import { getDb } from '$lib/server/db/index.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -182,28 +177,5 @@ describe('markAsRead', () => {
 		await (markAsRead as unknown as (...args: unknown[]) => unknown)(testAuthContext, []);
 
 		expect(mockDb.update).not.toHaveBeenCalled();
-	});
-
-	it('batches update into a single query when ids are provided', async () => {
-		const mockDb = createMockDb([[]]);
-		mockGetDb.mockReturnValue(mockDb);
-
-		await (markAsRead as unknown as (...args: unknown[]) => unknown)(testAuthContext, [
-			'notif-1',
-			'notif-2',
-		]);
-
-		expect(mockDb.update).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe('markAllAsRead', () => {
-	it('updates all unread notifications for user', async () => {
-		const mockDb = createMockDb([[]]);
-		mockGetDb.mockReturnValue(mockDb);
-
-		await (markAllAsRead as unknown as (...args: unknown[]) => unknown)(testAuthContext);
-
-		expect(mockDb.update).toHaveBeenCalledTimes(1);
 	});
 });

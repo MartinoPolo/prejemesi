@@ -63,7 +63,7 @@ async function generateInviteLink(page: Page): Promise<string> {
 	await panel.getByRole('button', { name: /Generovat pozvánku/ }).click();
 
 	// Link element appears in the panel — grab the full URL shown
-	const linkBox = panel.locator('div.font-mono');
+	const linkBox = panel.getByTestId('invite-link');
 	await expect(linkBox).toBeVisible({ timeout: 5_000 });
 	const inviteUrl = (await linkBox.textContent()) ?? '';
 	return inviteUrl.trim();
@@ -103,13 +103,13 @@ test.describe('Moderator system', () => {
 		await panel.getByRole('button', { name: /Generovat pozvánku/ }).click();
 
 		// A monospace link box with the invite URL appears
-		const linkBox = panel.locator('div.font-mono');
+		const linkBox = panel.getByTestId('invite-link');
 		await expect(linkBox).toBeVisible({ timeout: 5_000 });
 		const generatedUrl = (await linkBox.textContent()) ?? '';
 		expect(generatedUrl.trim()).toContain('/invite/');
 
 		// A copy button also becomes visible
-		await expect(panel.getByRole('button', { name: '', exact: false }).last()).toBeVisible();
+		await expect(panel.getByTestId('copy-invite-link')).toBeVisible();
 
 		await page.context().close();
 	});

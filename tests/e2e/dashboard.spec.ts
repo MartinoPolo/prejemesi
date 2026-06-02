@@ -3,10 +3,9 @@ import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 
 test.describe('Dashboard', () => {
-	test('shows empty state for new user', async ({ browser, request }) => {
+	test('shows empty state for new user', async ({ browser, request, baseURL }) => {
 		const user = createTestUser('dash-empty');
-		const baseURL = 'http://localhost:5173';
-		const page = await registerAndGetPage(browser, request, baseURL, user);
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');
@@ -17,10 +16,13 @@ test.describe('Dashboard', () => {
 		await page.context().close();
 	});
 
-	test('create wishlist via modal and see it on dashboard', async ({ browser, request }) => {
+	test('create wishlist via modal and see it on dashboard', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
 		const user = createTestUser('dash-create');
-		const baseURL = 'http://localhost:5173';
-		const page = await registerAndGetPage(browser, request, baseURL, user);
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');
@@ -39,10 +41,9 @@ test.describe('Dashboard', () => {
 		await page.context().close();
 	});
 
-	test('view mode switcher works', async ({ browser, request }) => {
+	test('view mode switcher works', async ({ browser, request, baseURL }) => {
 		const user = createTestUser('dash-views');
-		const baseURL = 'http://localhost:5173';
-		const page = await registerAndGetPage(browser, request, baseURL, user);
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');

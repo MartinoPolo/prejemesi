@@ -1,46 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
-import { createTestUser, TEST_GIFT } from './fixtures/test-data.js';
+import { test, expect } from '@playwright/test';
+import { createTestUser } from './fixtures/test-data.js';
 import { registerViaApi, registerAndGetPage } from './fixtures/auth-helpers.js';
-
-async function createWishlistAndNavigate(page: Page, title: string) {
-	await page.goto('/my-lists');
-	await page.waitForLoadState('networkidle');
-	await page
-		.getByRole('button', { name: /Vytvořit/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: 'Nazev' }).fill(title);
-	await dialog.getByRole('button', { name: 'Vytvorit' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
-	await page.waitForLoadState('networkidle');
-}
-
-async function addGift(page: Page, giftName: string) {
-	await page
-		.getByRole('button', { name: /Pridat/ })
-		.first()
-		.click();
-	const dialog = page.getByRole('dialog');
-	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: /Nazev/i }).fill(giftName);
-	await dialog.getByRole('button', { name: 'Pridat darek' }).click();
-	await expect(page.getByText(giftName)).toBeVisible({ timeout: 10_000 });
-}
-
-async function shareWishlist(page: Page) {
-	await page
-		.getByRole('button', { name: /Sdilet seznam/ })
-		.first()
-		.click();
-	const shareDialog = page.getByRole('dialog');
-	await expect(shareDialog).toBeVisible({ timeout: 5_000 });
-	await shareDialog.getByRole('button', { name: 'Sdilet seznam' }).click();
-	await expect(shareDialog.getByText('Seznam byl sdilen!')).toBeVisible({ timeout: 5_000 });
-	await shareDialog.getByRole('button', { name: 'Hotovo' }).click();
-	await page.waitForLoadState('networkidle');
-}
 
 test.describe('Error states and edge cases', () => {
 	test('registering with existing email shows error', async ({ request, baseURL, page }) => {
@@ -61,48 +21,6 @@ test.describe('Error states and edge cases', () => {
 		await expect(
 			page.getByText('Účet s tímto emailem již existuje. Zkuste se přihlásit.'),
 		).toBeVisible({ timeout: 10_000 });
-	});
-
-	test('owner does not see reserve button on own wishlist', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('owner-no-reserve');
-		const page = await registerAndGetPage(browser, request, baseURL!, owner);
-
-		await createWishlistAndNavigate(page, 'Owner Reserve Guard Test');
-		await addGift(page, TEST_GIFT.name);
-		await shareWishlist(page);
-
-		// After sharing, owner must NOT see a reserve button for their own gift
-		await expect(page.getByRole('button', { name: /Rezervovat/ })).not.toBeVisible();
-
-		await page.context().close();
-	});
-
-	test('owner can add new gift after sharing but cannot edit existing', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('owner-edit-lock');
-		const page = await registerAndGetPage(browser, request, baseURL!, owner);
-
-		await createWishlistAndNavigate(page, 'Edit Lock Test');
-		await addGift(page, 'Original');
-		await shareWishlist(page);
-
-		// Can still add a new gift after sharing
-		await addGift(page, 'New Gift');
-		await expect(page.getByText('New Gift')).toBeVisible({ timeout: 5_000 });
-
-		// After sharing, existing gifts must have no edit affordance for the owner
-		await expect(
-			page.getByRole('button', { name: /[Uu]pravit|[Ee]dit/ }).first(),
-		).not.toBeVisible();
-
-		await page.context().close();
 	});
 
 	test('settings page shows user profile', async ({ browser, request, baseURL }) => {

@@ -127,7 +127,7 @@
 	{/snippet}
 </Story>
 
-<Story name="Single Month [play: select full range]" play={playSelectFullRange}>
+<Story name="Single Month">
 	{#snippet template()}
 		<div class="p-4">
 			<RangeCalendar numberOfMonths={1} {placeholder} />

@@ -58,7 +58,8 @@
 		await expect(triggers[1]).toBeDisabled();
 		await expect(triggers[2]).toHaveAttribute('data-state', 'closed');
 
-		// Disabled trigger should not be clickable (pointer-events: none)
+		// Clicking the disabled trigger must not change any item's state
+		await userEvent.click(triggers[1], { pointerEventsCheck: 0 });
 		await expect(triggers[1]).toHaveAttribute('data-state', 'closed');
 
 		// First item should still be expanded

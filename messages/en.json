@@ -405,6 +405,7 @@
 	"moderator_invite_description": "Generate a link and send it to the person you want to add as a moderator.",
 	"moderator_generating": "Generating...",
 	"moderator_generate_invite": "Generate invite",
+	"moderator_copy_link": "Copy link",
 	"moderator_pending_title": "Pending invites ({count})",
 	"moderator_revoke_invite": "Revoke invite",
 	"moderator_reservations_title": "Reservation visibility",

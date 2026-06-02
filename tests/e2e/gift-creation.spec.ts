@@ -1,6 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
+
+const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -146,7 +149,7 @@ test.describe('Gift image upload', () => {
 			{ timeout: 15_000 },
 		);
 
-		await fileInput.setInputFiles('C:\\Users\\snapy\\Desktop\\low poly trees\\trees.jpg');
+		await fileInput.setInputFiles(SAMPLE_IMAGE_PATH);
 
 		// Wait for upload to complete (PUT 201 response)
 		await uploadResponsePromise;

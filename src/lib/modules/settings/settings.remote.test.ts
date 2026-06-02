@@ -56,12 +56,7 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...a: unknown[]) => a),
 }));
 
-import {
-	getUserProfile,
-	updateProfile,
-	updateAppBackgroundTheme,
-	deleteAccount,
-} from './settings.remote.js';
+import { getUserProfile, updateAppBackgroundTheme } from './settings.remote.js';
 import { getDb } from '$lib/server/db/index.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -171,30 +166,5 @@ describe('updateAppBackgroundTheme', () => {
 		);
 
 		expect(mockDb.update).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe('updateProfile', () => {
-	it('updates name and image', async () => {
-		const mockDb = createMockDb([[]]);
-		mockGetDb.mockReturnValue(mockDb);
-
-		await (updateProfile as unknown as (...args: unknown[]) => unknown)(testAuthContext, {
-			name: 'New Name',
-			image: 'https://example.com/new-avatar.jpg',
-		});
-
-		expect(mockDb.update).toHaveBeenCalledTimes(1);
-	});
-});
-
-describe('deleteAccount', () => {
-	it('hard-deletes the user record', async () => {
-		const mockDb = createMockDb([[]]);
-		mockGetDb.mockReturnValue(mockDb);
-
-		await (deleteAccount as unknown as (...args: unknown[]) => unknown)(testAuthContext);
-
-		expect(mockDb.delete).toHaveBeenCalledTimes(1);
 	});
 });

@@ -641,29 +641,15 @@ describe('getWishlistByShortId', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('unfollowWishlist', () => {
-	describe('sets unfollowedAt on the follower record', () => {
-		it('resolves without error when follower record exists', async () => {
-			// DB call 1: update wishlistFollower — row matched and updated
+	describe('sets unfollowedAt on the follower record (no-op when no record matches)', () => {
+		it('resolves without error regardless of whether a follower record matched', async () => {
+			// DB call 1: update wishlistFollower — resolves whether or not a row matched
 			mockDbInstance.pushResult([]);
 
 			await expect(
 				(unfollowWishlist as unknown as (...args: unknown[]) => unknown)(
 					makeOtherAuthContext(),
 					WISHLIST_ID,
-				),
-			).resolves.not.toThrow();
-		});
-	});
-
-	describe('completes without error even if no follower record exists (no-op update)', () => {
-		it('resolves without error when no matching follower record exists', async () => {
-			// DB call 1: update wishlistFollower — no rows matched (no-op)
-			mockDbInstance.pushResult([]);
-
-			await expect(
-				(unfollowWishlist as unknown as (...args: unknown[]) => unknown)(
-					makeOtherAuthContext(),
-					'nonexistent-wishlist',
 				),
 			).resolves.not.toThrow();
 		});
@@ -672,29 +658,15 @@ describe('unfollowWishlist', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('refollowWishlist', () => {
-	describe('clears unfollowedAt and updates lastVisitedAt', () => {
-		it('resolves without error when follower record exists', async () => {
-			// DB call 1: update wishlistFollower — row matched and updated
+	describe('clears unfollowedAt and updates lastVisitedAt (no-op when no record matches)', () => {
+		it('resolves without error regardless of whether a follower record matched', async () => {
+			// DB call 1: update wishlistFollower — resolves whether or not a row matched
 			mockDbInstance.pushResult([]);
 
 			await expect(
 				(refollowWishlist as unknown as (...args: unknown[]) => unknown)(
 					makeOtherAuthContext(),
 					WISHLIST_ID,
-				),
-			).resolves.not.toThrow();
-		});
-	});
-
-	describe('completes without error even if no follower record exists (no-op update)', () => {
-		it('resolves without error when no matching follower record exists', async () => {
-			// DB call 1: update wishlistFollower — no rows matched (no-op)
-			mockDbInstance.pushResult([]);
-
-			await expect(
-				(refollowWishlist as unknown as (...args: unknown[]) => unknown)(
-					makeOtherAuthContext(),
-					'nonexistent-wishlist',
 				),
 			).resolves.not.toThrow();
 		});

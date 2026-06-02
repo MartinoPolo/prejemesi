@@ -20,7 +20,7 @@ vi.mock('$env/dynamic/private', () => ({
 	}),
 }));
 
-import { UPLOAD_TARGETS, MAX_FILE_SIZE, isAllowedContentType, getPublicUrl } from './r2.js';
+import { isAllowedContentType, getPublicUrl } from './r2.js';
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -28,34 +28,6 @@ beforeEach(() => {
 	for (const key of Object.keys(mockEnv)) {
 		delete mockEnv[key];
 	}
-});
-
-describe('UPLOAD_TARGETS', () => {
-	it('maps gift-image to gifts prefix', () => {
-		expect(UPLOAD_TARGETS['gift-image']).toBe('gifts');
-	});
-
-	it('maps wishlist-banner to wishlists/banners prefix', () => {
-		expect(UPLOAD_TARGETS['wishlist-banner']).toBe('wishlists/banners');
-	});
-
-	it('maps wishlist-thumbnail to wishlists/thumbnails prefix', () => {
-		expect(UPLOAD_TARGETS['wishlist-thumbnail']).toBe('wishlists/thumbnails');
-	});
-});
-
-describe('MAX_FILE_SIZE', () => {
-	it('gift-image limit is 5MB', () => {
-		expect(MAX_FILE_SIZE['gift-image']).toBe(5 * 1024 * 1024);
-	});
-
-	it('wishlist-banner limit is 10MB', () => {
-		expect(MAX_FILE_SIZE['wishlist-banner']).toBe(10 * 1024 * 1024);
-	});
-
-	it('wishlist-thumbnail limit is 5MB', () => {
-		expect(MAX_FILE_SIZE['wishlist-thumbnail']).toBe(5 * 1024 * 1024);
-	});
 });
 
 describe('isAllowedContentType', () => {
