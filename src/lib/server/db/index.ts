@@ -39,3 +39,12 @@ export function getDb() {
 	clientCache.set(connectionString, db);
 	return db;
 }
+
+/**
+ * Closes all cached postgres-js connections. Intended for test teardown so the
+ * pooled client does not keep the process (or vitest) alive after the suite ends.
+ */
+export async function closeDb(): Promise<void> {
+	await Promise.all([...clientCache.values()].map((db) => db.$client.end()));
+	clientCache.clear();
+}

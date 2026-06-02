@@ -14,6 +14,12 @@ import {
 } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
+// ── Executor types ───────────────────────────────────────────────────────────
+
+type Database = ReturnType<typeof getDb>;
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+type DbExecutor = Database | Transaction;
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 async function getGiftWithWishlist(giftId: string) {
@@ -37,10 +43,8 @@ async function getGiftWithWishlist(giftId: string) {
 	return row;
 }
 
-async function getActiveReservedCount(giftId: string): Promise<number> {
-	const database = getDb();
-
-	const result = await database
+async function getActiveReservedCount(giftId: string, executor: DbExecutor): Promise<number> {
+	const result = await executor
 		.select({
 			totalQuantity: sql<number>`COALESCE(SUM(${reservation.quantity}), 0)`,
 		})
@@ -86,7 +90,7 @@ async function determineRole(
 
 export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authContext, input) => {
 	const database = getDb();
-	const { gift: giftRow, wishlist: wishlistRow } = await getGiftWithWishlist(input.giftId);
+	const { wishlist: wishlistRow } = await getGiftWithWishlist(input.giftId);
 
 	// Cannot reserve on archived wishlists
 	if (wishlistRow.status === 'archived') {
@@ -106,33 +110,53 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 	}
 
 	// Validate quantity
-	const maxQuantity = giftRow.quantity ?? 1;
 	const requestedQuantity = input.quantity;
-
 	if (requestedQuantity < 1) {
 		error(400, SERVER_ERROR.QUANTITY_MUST_BE_AT_LEAST_ONE);
 	}
 
-	const currentReserved = await getActiveReservedCount(input.giftId);
-	const available = maxQuantity - currentReserved;
+	// Capacity enforcement must be atomic to prevent overbooking under concurrency.
+	// Lock the gift row (SELECT ... FOR UPDATE) so concurrent reservations for the
+	// same gift serialize: each request recounts active reservations under the lock
+	// before inserting.
+	const created = await database.transaction(async (tx) => {
+		const [lockedGift] = await tx
+			.select({ quantity: gift.quantity })
+			.from(gift)
+			.where(and(eq(gift.id, input.giftId), isNull(gift.deletedAt)))
+			.for('update')
+			.limit(1);
 
-	if (requestedQuantity > available) {
-		error(400, encodeServerError(SERVER_ERROR.NOT_ENOUGH_AVAILABLE, { available }));
-	}
+		if (lockedGift === undefined) {
+			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
+		}
 
-	const [created] = await database
-		.insert(reservation)
-		.values({
-			giftId: input.giftId,
-			userId: authContext?.user.id ?? null,
-			anonymousName: authContext === null ? input.anonymousName!.trim() : null,
-			anonymousEmail:
-				authContext === null && input.anonymousEmail != null && input.anonymousEmail !== ''
-					? input.anonymousEmail.trim()
-					: null,
-			quantity: requestedQuantity,
-		})
-		.returning();
+		const maxQuantity = lockedGift.quantity ?? 1;
+		const currentReserved = await getActiveReservedCount(input.giftId, tx);
+		const available = maxQuantity - currentReserved;
+
+		if (requestedQuantity > available) {
+			error(400, encodeServerError(SERVER_ERROR.NOT_ENOUGH_AVAILABLE, { available }));
+		}
+
+		const [row] = await tx
+			.insert(reservation)
+			.values({
+				giftId: input.giftId,
+				userId: authContext?.user.id ?? null,
+				anonymousName: authContext === null ? input.anonymousName!.trim() : null,
+				anonymousEmail:
+					authContext === null &&
+					input.anonymousEmail != null &&
+					input.anonymousEmail !== ''
+						? input.anonymousEmail.trim()
+						: null,
+				quantity: requestedQuantity,
+			})
+			.returning();
+
+		return row;
+	});
 
 	if (created === undefined) {
 		error(500, SERVER_ERROR.RESERVATION_FAILED);

@@ -118,6 +118,7 @@ function createMultiQueryChain(...resultsQueue: unknown[][]) {
 		'orderBy',
 		'groupBy',
 		'as',
+		'for',
 		'insert',
 		'values',
 		'update',
@@ -131,6 +132,10 @@ function createMultiQueryChain(...resultsQueue: unknown[][]) {
 
 	// .returning() terminates insert chains — pops from queue
 	chain['returning'] = vi.fn(() => Promise.resolve(queue.shift() ?? []));
+
+	// transaction(cb) invokes the callback with the SAME chain so its queue
+	// serves the in-transaction queries (locked gift select → count → insert).
+	chain['transaction'] = vi.fn((cb: (tx: unknown) => unknown) => cb(chain));
 
 	// Make the chain awaitable — each top-level await pops from queue
 	// oxlint-ignore-next-line no-thenable -- intentional: mock must be thenable to simulate Drizzle's await behavior
@@ -174,23 +179,26 @@ describe('reserveGift', () => {
 		vi.resetAllMocks();
 	});
 
-	// In reserveGift, getDb() is called once at line 88 and stored as `database`.
-	// That same `database` reference is later used for the INSERT (.returning()).
-	// getGiftWithWishlist and getActiveReservedCount each make their own getDb() calls.
-	// So mock order: call #1 = insertDb (reused), call #2 = wishlistDb, call #3 = countDb.
+	// reserveGift now enforces capacity atomically inside database.transaction():
+	//   - getDb() call #1 = `database`; used for database.transaction(cb). The mocked
+	//     transaction invokes cb with the SAME chain, whose queue serves the in-tx
+	//     queries in order: locked gift select (.for('update')) → active count → insert.
+	//   - getDb() call #2 = getGiftWithWishlist's own getDb() (wishlist row).
+	//   - getActiveReservedCount no longer calls getDb() — it runs on the passed tx.
 
 	it('authenticated visitor can reserve a gift — returns { id }', async () => {
-		// Call #1: stored as `database`, used later for INSERT — needs returning() result
-		const insertDb = createMultiQueryChain([{ id: RESERVATION_ID }]);
+		// Call #1: `database` — transaction queue: locked gift, count, insert.returning()
+		const database = createMultiQueryChain(
+			[{ quantity: 5 }],
+			[{ totalQuantity: 0 }],
+			[{ id: RESERVATION_ID }],
+		);
 		// Call #2: getGiftWithWishlist query
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
-		// Call #3: getActiveReservedCount query
-		const countDb = createChain([{ totalQuantity: 0 }]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(countDb as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		const result = await (reserveGift as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeVisitorUser),
@@ -200,14 +208,43 @@ describe('reserveGift', () => {
 		expect(result).toEqual({ id: RESERVATION_ID });
 	});
 
+	// CI-level regression guard for the atomic structure. The real proof that
+	// concurrent reservations cannot overbook lives in reservations.race.test.ts
+	// (real DB) — but those skip in CI, so this asserts the transaction + row lock
+	// are still present, catching their accidental removal.
+	it('capacity check runs inside a transaction that locks the gift row (FOR UPDATE)', async () => {
+		const database = createMultiQueryChain(
+			[{ quantity: 5 }],
+			[{ totalQuantity: 0 }],
+			[{ id: RESERVATION_ID }],
+		);
+		const wishlistDb = createChain([makeActiveWishlistRow()]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+
+		await (reserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeVisitorUser),
+			validInput,
+		);
+
+		const txChain = database as unknown as Record<string, ReturnType<typeof vi.fn>>;
+
+		// The capacity check + insert run inside database.transaction(...).
+		expect(txChain['transaction']).toHaveBeenCalledTimes(1);
+		// The gift row is locked with FOR UPDATE so concurrent reservations serialize.
+		expect(txChain['for']).toHaveBeenCalledWith('update');
+	});
+
 	it('owner cannot reserve their own gift — throws 403', async () => {
-		// Call #1: insertDb (never used — throws before insert)
-		const insertDb = createChain([]);
+		// Call #1: `database` — transaction never reached (throws on pre-check)
+		const database = createChain([]);
 		// Call #2: wishlist lookup
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
@@ -223,11 +260,11 @@ describe('reserveGift', () => {
 			...makeActiveWishlistRow(),
 			wishlist: { ...makeActiveWishlistRow().wishlist, status: 'archived' },
 		};
-		const insertDb = createChain([]);
+		const database = createChain([]);
 		const wishlistDb = createChain([archivedRow]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
@@ -239,11 +276,11 @@ describe('reserveGift', () => {
 	});
 
 	it('anonymous user without a name — throws 400', async () => {
-		const insertDb = createChain([]);
+		const database = createChain([]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
@@ -255,11 +292,11 @@ describe('reserveGift', () => {
 	});
 
 	it('anonymous user with only whitespace name — throws 400', async () => {
-		const insertDb = createChain([]);
+		const database = createChain([]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
@@ -271,11 +308,11 @@ describe('reserveGift', () => {
 	});
 
 	it('quantity less than 1 — throws 400', async () => {
-		const insertDb = createChain([]);
+		const database = createChain([]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
@@ -287,15 +324,14 @@ describe('reserveGift', () => {
 	});
 
 	it('over-reservation rejected — throws 400', async () => {
-		// Gift has quantity 5, all 5 already reserved — available = 0
-		const insertDb = createChain([]);
+		// Gift has quantity 5, all 5 already reserved under the lock — available = 0.
+		// Transaction queue: locked gift (quantity 5), count (5). Insert never reached.
+		const database = createMultiQueryChain([{ quantity: 5 }], [{ totalQuantity: 5 }]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
-		const countDb = createChain([{ totalQuantity: 5 }]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(countDb as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
 			(reserveGift as (...args: unknown[]) => unknown)(makeAuthContext(fakeVisitorUser), {
@@ -306,14 +342,16 @@ describe('reserveGift', () => {
 	});
 
 	it('anonymous user with valid name can reserve — returns { id }', async () => {
-		const insertDb = createMultiQueryChain([{ id: RESERVATION_ID }]);
+		const database = createMultiQueryChain(
+			[{ quantity: 5 }],
+			[{ totalQuantity: 0 }],
+			[{ id: RESERVATION_ID }],
+		);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
-		const countDb = createChain([{ totalQuantity: 0 }]);
 
 		mockGetDb
-			.mockReturnValueOnce(insertDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(countDb as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
 
 		const result = await (reserveGift as (...args: unknown[]) => unknown)(null, {
 			...validInput,
