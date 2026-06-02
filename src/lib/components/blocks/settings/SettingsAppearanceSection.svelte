@@ -5,6 +5,8 @@
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
+	import BackgroundThemeChooser from './BackgroundThemeChooser.svelte';
+	import type { BackgroundTheme } from '$lib/components/base/theme/types.js';
 	import { userPrefersMode, setMode } from 'mode-watcher';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SunIcon from '@lucide/svelte/icons/sun';
@@ -12,6 +14,15 @@
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
 
 	type Mode = 'light' | 'dark' | 'system';
+
+	interface SettingsAppearanceSectionProps {
+		/** Persisted app background theme preference (REQ-2). */
+		appBackgroundTheme: BackgroundTheme;
+		/** Persists the chosen background theme (REQ-2). */
+		onSaveBackgroundTheme: (theme: BackgroundTheme) => Promise<void>;
+	}
+
+	let { appBackgroundTheme, onSaveBackgroundTheme }: SettingsAppearanceSectionProps = $props();
 
 	const currentMode = $derived((userPrefersMode.current ?? 'system') as Mode);
 
@@ -56,6 +67,11 @@
 					</ToggleGroup.Item>
 				</ToggleGroup.Root>
 			</div>
+
+			<Separator />
+
+			<!-- Background theme (REQ-1) — independent from color mode (REQ-5) -->
+			<BackgroundThemeChooser value={appBackgroundTheme} onSave={onSaveBackgroundTheme} />
 
 			<Separator />
 
