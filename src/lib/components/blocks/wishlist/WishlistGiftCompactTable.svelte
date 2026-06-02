@@ -11,6 +11,7 @@
 		isOwnerOrModerator: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
+		onunreserve: (gift: GiftForVisitor) => void;
 	}
 
 	let {
@@ -21,6 +22,7 @@
 		isOwnerOrModerator,
 		onedit,
 		onreserve,
+		onunreserve,
 	}: WishlistGiftCompactTableProps = $props();
 </script>
 
@@ -70,6 +72,7 @@
 						if (isOwnerOrModerator) onedit(giftItem);
 					}}
 					{onreserve}
+					{onunreserve}
 				/>
 			{/each}
 		</tbody>

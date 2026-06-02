@@ -21,9 +21,10 @@
 		role: WishlistRole;
 		isArchived?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false, onreserve }: GiftListItemProps = $props();
+	let { gift, role, isArchived = false, onreserve, onunreserve }: GiftListItemProps = $props();
 
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
@@ -111,7 +112,7 @@
 		<div class="flex flex-shrink-0 items-center gap-2">
 			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
 
-			<ReserveButton gift={visitorGift} {isArchived} {onreserve} />
+			<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
 		</div>
 	{/if}
 </div>
