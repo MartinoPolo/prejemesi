@@ -116,6 +116,39 @@ export function deriveOklchPalette(baseColor: string): ThemePalette | null {
 		hue,
 	};
 
+	// Preview: themed card preview surface — a noticeable light tint of the primary
+	const preview: OklchComponents = {
+		lightness: 0.96,
+		chroma: clamp(chroma * 0.22, 0.015, 0.05),
+		hue,
+	};
+
+	// Page: very light page background tint, subtler than the preview
+	const page: OklchComponents = {
+		lightness: 0.985,
+		chroma: clamp(chroma * 0.06, 0.004, 0.012),
+		hue,
+	};
+
+	// Icon/pattern fill for fallback visuals. Lightness is normalized to a fixed
+	// mid value (per the brief: "icon = primary @ ~55% L") — deliberately
+	// independent of the base color's lightness so the icon always keeps WCAG AA
+	// contrast on the light surface, whether the user picks a very light or very
+	// dark base. Only the hue and (scaled) chroma carry the base color's identity.
+	const iconLightness = 0.55;
+	const icon: OklchComponents = {
+		lightness: iconLightness,
+		chroma: clamp(chroma * 0.8, 0.06, 0.16),
+		hue,
+	};
+
+	// Image-frame letterbox fill: light, very low chroma neutral-warm tint
+	const imageFrame: OklchComponents = {
+		lightness: 0.95,
+		chroma: clamp(chroma * 0.08, 0.004, 0.018),
+		hue,
+	};
+
 	return {
 		'--wishlist-primary': formatOklch(primary),
 		'--wishlist-primary-fg': primaryFg,
@@ -127,6 +160,10 @@ export function deriveOklchPalette(baseColor: string): ThemePalette | null {
 		'--wishlist-border-strong': formatOklch(borderStrong),
 		'--wishlist-muted': formatOklch(muted),
 		'--wishlist-muted-fg': formatOklch(mutedFg),
+		'--wishlist-preview': formatOklch(preview),
+		'--wishlist-page': formatOklch(page),
+		'--wishlist-icon': formatOklch(icon),
+		'--wishlist-image-frame': formatOklch(imageFrame),
 	};
 }
 

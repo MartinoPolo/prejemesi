@@ -12,6 +12,10 @@ const DEFAULT_PALETTE: ThemePalette = {
 	'--wishlist-border-strong': 'oklch(0.87 0.015 107)',
 	'--wishlist-muted': 'oklch(0.966 0.005 107)',
 	'--wishlist-muted-fg': 'oklch(0.58 0.031 107)',
+	'--wishlist-preview': 'oklch(0.96 0.03 150)',
+	'--wishlist-page': 'oklch(0.985 0.008 150)',
+	'--wishlist-icon': 'oklch(0.55 0.12 150)',
+	'--wishlist-image-frame': 'oklch(0.95 0.012 150)',
 };
 
 const CHRISTMAS_PALETTE: ThemePalette = {
@@ -25,6 +29,10 @@ const CHRISTMAS_PALETTE: ThemePalette = {
 	'--wishlist-border-strong': 'oklch(0.85 0.04 25)',
 	'--wishlist-muted': 'oklch(0.965 0.01 25)',
 	'--wishlist-muted-fg': 'oklch(0.55 0.06 25)',
+	'--wishlist-preview': 'oklch(0.96 0.035 25)',
+	'--wishlist-page': 'oklch(0.985 0.01 25)',
+	'--wishlist-icon': 'oklch(0.52 0.16 25)',
+	'--wishlist-image-frame': 'oklch(0.95 0.014 25)',
 };
 
 const BIRTHDAY_PALETTE: ThemePalette = {
@@ -38,6 +46,10 @@ const BIRTHDAY_PALETTE: ThemePalette = {
 	'--wishlist-border-strong': 'oklch(0.85 0.05 330)',
 	'--wishlist-muted': 'oklch(0.965 0.012 330)',
 	'--wishlist-muted-fg': 'oklch(0.55 0.07 330)',
+	'--wishlist-preview': 'oklch(0.96 0.04 330)',
+	'--wishlist-page': 'oklch(0.985 0.012 330)',
+	'--wishlist-icon': 'oklch(0.56 0.16 330)',
+	'--wishlist-image-frame': 'oklch(0.95 0.016 330)',
 };
 
 const FUN_PALETTE: ThemePalette = {
@@ -51,6 +63,10 @@ const FUN_PALETTE: ThemePalette = {
 	'--wishlist-border-strong': 'oklch(0.85 0.04 250)',
 	'--wishlist-muted': 'oklch(0.965 0.01 250)',
 	'--wishlist-muted-fg': 'oklch(0.55 0.06 250)',
+	'--wishlist-preview': 'oklch(0.96 0.035 250)',
+	'--wishlist-page': 'oklch(0.985 0.01 250)',
+	'--wishlist-icon': 'oklch(0.58 0.15 250)',
+	'--wishlist-image-frame': 'oklch(0.95 0.014 250)',
 };
 
 const ELEGANT_PALETTE: ThemePalette = {
@@ -64,6 +80,10 @@ const ELEGANT_PALETTE: ThemePalette = {
 	'--wishlist-border-strong': 'oklch(0.82 0.03 85)',
 	'--wishlist-muted': 'oklch(0.955 0.008 85)',
 	'--wishlist-muted-fg': 'oklch(0.50 0.04 260)',
+	'--wishlist-preview': 'oklch(0.955 0.012 85)',
+	'--wishlist-page': 'oklch(0.98 0.006 85)',
+	'--wishlist-icon': 'oklch(0.50 0.05 260)',
+	'--wishlist-image-frame': 'oklch(0.95 0.008 85)',
 };
 
 export const THEME_PRESETS = {

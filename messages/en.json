@@ -456,6 +456,10 @@
 	"theme_elegant": "Elegant",
 	"theme_custom": "Custom",
 
+	"image_frame_no_image": "No image",
+	"image_frame_loading": "Loading image…",
+	"wishlist_preview_label": "Wishlist preview",
+
 	"followed_title": "Followed",
 	"followed_loading": "Loading...",
 	"followed_empty_title": "You don't follow any lists",
