@@ -14,10 +14,25 @@
 		cropRect: ImageCropRect;
 		/** Notified whenever the rectangle changes (drag, resize, reset). */
 		onchange?: (rect: ImageCropRect) => void;
+		/** Accessible label for the draggable crop region (defaults to the gift wording). */
+		regionLabel?: string;
+		/** Hint shown beneath the stage (defaults to the gift wording). */
+		hint?: string;
+		/** Reset-button label (defaults to the gift wording). */
+		resetLabel?: string;
 		class?: string;
 	}
 
-	let { src, alt, cropRect = $bindable(), onchange, class: className }: Props = $props();
+	let {
+		src,
+		alt,
+		cropRect = $bindable(),
+		onchange,
+		regionLabel = m.gift_image_crop_region_label(),
+		hint = m.gift_image_crop_hint(),
+		resetLabel = m.gift_image_crop_reset(),
+		class: className,
+	}: Props = $props();
 
 	const FULL_FRAME: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
 	const MIN_SIZE = 0.05;
@@ -182,7 +197,7 @@
 			<div
 				role="button"
 				tabindex="0"
-				aria-label={m.gift_image_crop_region_label()}
+				aria-label={regionLabel}
 				class="absolute cursor-move outline-2 outline-white/90 focus-visible:outline-ring"
 				style="left: {cropRect.x * 100}%; top: {cropRect.y * 100}%; width: {cropRect.w *
 					100}%; height: {cropRect.h * 100}%;"
@@ -212,10 +227,10 @@
 	</div>
 
 	<div class="flex items-center justify-between gap-2">
-		<span class="text-xs text-foreground-subtle">{m.gift_image_crop_hint()}</span>
+		<span class="text-xs text-foreground-subtle">{hint}</span>
 		<Button intent="ghost" size="sm" disabled={isFullFrame} onclick={reset}>
 			<RotateCcwIcon data-icon="inline-start" />
-			{m.gift_image_crop_reset()}
+			{resetLabel}
 		</Button>
 	</div>
 </div>

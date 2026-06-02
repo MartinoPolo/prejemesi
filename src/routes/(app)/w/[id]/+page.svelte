@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -25,6 +27,11 @@
 	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
+	import {
+		getThemePreset,
+		type WishlistTheme as DashboardWishlistTheme,
+	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { wishlistImageUrl } from '$lib/modules/images/index.js';
 	import { untrack } from 'svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
@@ -93,6 +100,10 @@
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
 	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
+	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+	// og:image points at the source image: crawlers fetch a static URL, and server-side
+	// cropping for the social slot is out of scope (the social-slot crop is previewed in-app only).
+	const ogImage = $derived(wishlistImageUrl(wishlist.imageKey));
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
@@ -250,6 +261,10 @@
 
 	function handleShareOpened() {
 		sharingContext.openWizard();
+	}
+
+	function handleAppearanceOpened() {
+		void goto(resolve('/(app)/w/[id]/settings', { id: shortId }));
 	}
 
 	function handleShared() {
@@ -531,12 +546,13 @@
 		ownerName={wishlist.ownerName}
 		description={wishlist.description}
 		imageKey={wishlist.imageKey}
+		imageSlots={wishlist.imageSlots}
+		{themeEmoji}
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
 		{role}
 		giftCount={totalCount}
 		ownerIsModerator={ownerIsModeratorLocal}
-		themeGradient={themeContext.effectiveGradient.current}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
@@ -554,6 +570,7 @@
 		onsortchange={handleSortChange}
 		onfilterchange={handleFilterChange}
 		onthemeopen={() => (themeDialogOpen = true)}
+		onappearance={handleAppearanceOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
 	/>
@@ -628,7 +645,10 @@
 		property="og:url"
 		content="{typeof window !== 'undefined' ? window.location.origin : ''}/w/{wishlist.shortId}"
 	/>
-	{#if wishlist.imageKey}
-		<meta property="og:image" content={wishlist.imageKey} />
+	{#if ogImage}
+		<meta
+			property="og:image"
+			content="{typeof window !== 'undefined' ? window.location.origin : ''}{ogImage}"
+		/>
 	{/if}
 </svelte:head>

@@ -7,6 +7,7 @@
 	import { THEME_PRESETS, THEME_PRESET_LIST } from '$lib/modules/themes/theme_presets.js';
 	import { hexToOklch, deriveOklchPalette } from '$lib/modules/themes/oklch_palette.js';
 	import ThemePresetCard from './ThemePresetCard.svelte';
+	import ThemeCardPreview from '$lib/components/blocks/wishlist/ThemeCardPreview.svelte';
 	import { themeSelectorVariants } from './theme_selector_variants.js';
 
 	interface ThemeSelectorProps {
@@ -50,6 +51,14 @@
 		selectedPreset !== 'custom' || (customOklch !== null && customPaletteValid),
 	);
 
+	// Realistic card preview reflecting the current selection (replaces the thin strip).
+	const previewEmoji = $derived(
+		selectedPreset === 'custom' ? '✨' : THEME_PRESETS[selectedPreset].emoji,
+	);
+	const previewLabel = $derived(
+		selectedPreset === 'custom' ? m.theme_custom() : THEME_PRESETS[selectedPreset].label(),
+	);
+
 	function handlePresetSelect(presetName: ThemePresetName) {
 		selectedPreset = presetName;
 		onpreview?.(presetName);
@@ -80,6 +89,14 @@
 </script>
 
 <div class={styles.root()}>
+	<!-- Realistic card preview of the selected theme (REQ-4) -->
+	<ThemeCardPreview
+		theme={selectedTheme}
+		emoji={previewEmoji}
+		themeLabel={previewLabel}
+		class="mx-auto w-full max-w-[240px]"
+	/>
+
 	<!-- Preset grid -->
 	<div class={styles.presetGrid()}>
 		{#each THEME_PRESET_LIST as presetName (presetName)}

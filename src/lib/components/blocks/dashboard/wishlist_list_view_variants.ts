@@ -8,7 +8,6 @@ export const wishlistListViewVariants = tv({
 			'relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg',
 		bannerMiniOverlay:
 			'pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-black/30 dark:from-black/5 dark:to-black/40',
-		bannerMiniEmoji: 'select-none text-lg opacity-75 dark:opacity-55',
 		info: 'flex min-w-0 flex-1 flex-col gap-0.5',
 		title: 'truncate text-sm font-semibold text-foreground',
 		subtitle: 'truncate text-xs text-muted-foreground',

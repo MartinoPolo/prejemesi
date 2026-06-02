@@ -6,6 +6,8 @@
 	import { getThemePreset, type WishlistTheme } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
+	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
+	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 
 	interface WishlistListItem {
@@ -30,13 +32,22 @@
 		{@const theme = getThemePreset(item.wishlist.theme as WishlistTheme)}
 		{@const isArchived = item.wishlist.status === 'archived'}
 		{@const rowVariants = wishlistListViewVariants({ archived: isArchived })}
+		{@const thumbSrc = wishlistImageUrl(item.wishlist.imageKey)}
+		{@const thumbFrame = wishlistSlotToFrameProps(item.wishlist.imageSlots, 'thumbnail')}
 		<a
 			href={resolve('/(app)/w/[id]', { id: item.wishlist.shortId })}
 			class={rowVariants.row()}
 			aria-label={item.wishlist.title}
 		>
-			<div class={rowVariants.bannerMini()} style:background={theme.gradient}>
-				<span class={rowVariants.bannerMiniEmoji()}>{theme.emoji}</span>
+			<div class={rowVariants.bannerMini()}>
+				<div class="absolute inset-0">
+					<WishlistSlotImage
+						src={thumbSrc}
+						frame={thumbFrame}
+						themeEmoji={theme.emoji}
+						alt={item.wishlist.title}
+					/>
+				</div>
 				<div class={rowVariants.bannerMiniOverlay()}></div>
 			</div>
 

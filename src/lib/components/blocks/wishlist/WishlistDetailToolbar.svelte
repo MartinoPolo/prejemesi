@@ -4,6 +4,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
+	import ImageIcon from '@lucide/svelte/icons/image';
 	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
@@ -20,6 +21,7 @@
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
 		onthemeopen: () => void;
+		onappearance: () => void;
 		onunfollow: () => void;
 		onaddgift: () => void;
 	}
@@ -36,6 +38,7 @@
 		onsortchange,
 		onfilterchange,
 		onthemeopen,
+		onappearance,
 		onunfollow,
 		onaddgift,
 	}: WishlistDetailToolbarProps = $props();
@@ -62,6 +65,16 @@
 					onclick={onthemeopen}
 				>
 					<PaletteIcon />
+				</Button>
+			</SimpleTooltip>
+			<SimpleTooltip text={m.wishlist_detail_edit_appearance()}>
+				<Button
+					size="icon-sm"
+					intent="outline"
+					aria-label={m.wishlist_detail_edit_appearance()}
+					onclick={onappearance}
+				>
+					<ImageIcon />
 				</Button>
 			</SimpleTooltip>
 		{/if}

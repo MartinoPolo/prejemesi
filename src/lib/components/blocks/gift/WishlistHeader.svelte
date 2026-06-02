@@ -15,6 +15,9 @@
 		WISHLIST_STATUS_LABELS,
 		WISHLIST_STATUS_BADGE_MAP,
 	} from '$lib/modules/wishlists/dashboard_types.js';
+	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
+	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
+	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
 
 	interface WishlistHeaderProps {
@@ -22,12 +25,14 @@
 		ownerName: string;
 		description: string | null;
 		imageKey: string | null;
+		imageSlots: WishlistImageSlots | null;
+		/** Theme-derived emoji for the no-image fallback hero (REQ-3). */
+		themeEmoji: string;
 		eventDate: Date | null;
 		status: 'draft' | 'active' | 'archived';
 		role: WishlistRole;
 		giftCount: number;
 		ownerIsModerator: boolean;
-		themeGradient?: string;
 		onshare?: () => void;
 		onmoderators?: () => void;
 		onarchive?: () => void;
@@ -38,12 +43,13 @@
 		ownerName,
 		description,
 		imageKey,
+		imageSlots,
+		themeEmoji,
 		eventDate,
 		status,
 		role,
 		giftCount,
 		ownerIsModerator,
-		themeGradient,
 		onshare,
 		onmoderators,
 		onarchive,
@@ -51,7 +57,10 @@
 
 	const styles = wishlistHeaderVariants();
 
-	const hasBanner = $derived(imageKey !== null);
+	// Banner always renders the themed surface: the assigned image (cropped for the
+	// banner slot) when present, otherwise the theme-aware fallback hero (REQ-3/4).
+	const bannerSrc = $derived(wishlistImageUrl(imageKey));
+	const bannerFrame = $derived(wishlistSlotToFrameProps(imageSlots, 'banner'));
 	const isOwner = $derived(role === 'owner');
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 	const isArchived = $derived(status === 'archived');
@@ -86,46 +95,19 @@
 </script>
 
 <header class={styles.root()}>
-	{#if hasBanner}
-		<!-- Banner with background image -->
-		<div class={styles.bannerArea()} style:background-image="url({imageKey})">
-			<div class={styles.bannerOverlay()}></div>
-			<div class={styles.contentArea()}>
-				<span class={styles.ownerNameOnBanner()}>{ownerName}</span>
-				<h1 class={styles.titleOnBanner()}>{title}</h1>
-				{#if description}
-					<p class={styles.descriptionOnBanner()}>{description}</p>
-				{/if}
-				<div class={styles.metaRowOnBanner()}>
-					<Badge tone={statusBadgeTone}>{statusLabel}</Badge>
-					<span>{giftCountLabel}</span>
-					{#if formattedDate}
-						<span class="inline-flex items-center gap-1">
-							<CalendarIcon class="size-3.5" />
-							{formattedDate}
-						</span>
-					{/if}
-				</div>
-			</div>
+	<!-- Themed banner: assigned image (banner-slot crop) or theme-aware fallback hero -->
+	<div class="{styles.bannerArea()} min-h-48 overflow-hidden" data-testid="wishlist-banner">
+		<div class="absolute inset-0">
+			<WishlistSlotImage src={bannerSrc} frame={bannerFrame} {themeEmoji} alt={title} />
 		</div>
-	{:else}
-		<!-- Theme gradient strip -->
-		{#if themeGradient}
-			<div
-				class="h-3 w-full rounded-full"
-				style:background={themeGradient}
-				data-testid="theme-gradient-banner"
-			></div>
-		{/if}
-
-		<!-- No banner — standard header -->
+		<div class={styles.bannerOverlay()}></div>
 		<div class={styles.contentArea()}>
-			<span class={styles.ownerName()}>{ownerName}</span>
-			<h1 class={styles.title()}>{title}</h1>
+			<span class={styles.ownerNameOnBanner()}>{ownerName}</span>
+			<h1 class={styles.titleOnBanner()}>{title}</h1>
 			{#if description}
-				<p class={styles.description()}>{description}</p>
+				<p class={styles.descriptionOnBanner()}>{description}</p>
 			{/if}
-			<div class={styles.metaRow()}>
+			<div class={styles.metaRowOnBanner()}>
 				<Badge tone={statusBadgeTone}>{statusLabel}</Badge>
 				<span>{giftCountLabel}</span>
 				{#if formattedDate}
@@ -136,7 +118,7 @@
 				{/if}
 			</div>
 		</div>
-	{/if}
+	</div>
 
 	<!-- Action buttons -->
 	{#if isOwnerOrModerator}
