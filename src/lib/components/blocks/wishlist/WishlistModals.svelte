@@ -28,6 +28,7 @@
 		giftModalMode: 'create' | 'edit';
 		selectedGift: GiftByRole | null;
 		priorityLevels: GiftPriorityLevel[];
+		canEditSelectedGift: boolean;
 		canDeleteSelectedGift: boolean;
 		isSubmitting: boolean;
 		isDeleting: boolean;
@@ -68,6 +69,7 @@
 		giftModalMode,
 		selectedGift,
 		priorityLevels,
+		canEditSelectedGift,
 		canDeleteSelectedGift,
 		isSubmitting,
 		isDeleting,
@@ -102,6 +104,7 @@
 		{wishlistId}
 		{priorityLevels}
 		{isOwner}
+		canEdit={canEditSelectedGift}
 		canDelete={canDeleteSelectedGift}
 		{isSubmitting}
 		{isDeleting}

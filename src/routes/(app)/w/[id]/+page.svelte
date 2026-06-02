@@ -297,9 +297,10 @@
 		try {
 			await createGift(input);
 			giftModalOpen = false;
+			toastSuccess(m.toast_gift_created());
 			await refreshData();
 		} catch (thrown) {
-			console.error('Failed to create gift:', thrown);
+			toastError(translateServerError(thrown));
 		} finally {
 			isSubmitting = false;
 		}
@@ -310,9 +311,10 @@
 		try {
 			await updateGiftRemote(input);
 			giftModalOpen = false;
+			toastSuccess(m.toast_gift_updated());
 			await refreshData();
 		} catch (thrown) {
-			console.error('Failed to update gift:', thrown);
+			toastError(translateServerError(thrown));
 		} finally {
 			isSubmitting = false;
 		}
@@ -323,9 +325,10 @@
 		try {
 			await deleteGift(giftId);
 			giftModalOpen = false;
+			toastSuccess(m.toast_gift_deleted());
 			await refreshData();
 		} catch (thrown) {
-			console.error('Failed to delete gift:', thrown);
+			toastError(translateServerError(thrown));
 		} finally {
 			isDeleting = false;
 		}
@@ -336,7 +339,7 @@
 			await markGiftReceived({ giftId, received });
 			await refreshData();
 		} catch (thrown) {
-			console.error('Failed to toggle received:', thrown);
+			toastError(translateServerError(thrown));
 		}
 	}
 
@@ -585,6 +588,7 @@
 	{giftModalMode}
 	{selectedGift}
 	{priorityLevels}
+	{canEditSelectedGift}
 	{canDeleteSelectedGift}
 	{isSubmitting}
 	{isDeleting}

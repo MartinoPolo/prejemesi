@@ -13,12 +13,16 @@ type PlatformR2Bucket = NonNullable<App.Platform['env']>['R2'];
 interface R2StoredObject {
 	readonly key: string;
 	readonly size: number;
-	readonly etag: string;
 	readonly httpEtag: string;
-	get body(): ReadableStream;
-	writeHttpMetadata(headers: Headers): void;
+	readonly httpMetadata?: { contentType?: string };
 	arrayBuffer(): Promise<ArrayBuffer>;
-	text(): Promise<string>;
+}
+
+/** A fully-buffered object ready to be served over HTTP. */
+export interface ServableObject {
+	body: ArrayBuffer;
+	contentType: string;
+	etag: string;
 }
 
 /**
@@ -93,15 +97,30 @@ export async function putObject(
 }
 
 /**
- * Gets an object from R2 storage. Returns `null` if not found or R2 is unavailable.
+ * Gets an object from R2 storage as a fully-buffered, HTTP-servable value.
+ * Returns `null` if not found or R2 is unavailable.
+ *
+ * The body is read into an ArrayBuffer rather than streamed: in local dev,
+ * `getPlatformProxy` cannot stream R2 bodies or serialize `writeHttpMetadata`
+ * across the worker proxy boundary. Buffering is acceptable for images
+ * (≤10 MB) and behaves identically in production.
  */
-export async function getObject(key: string): Promise<R2StoredObject | null> {
+export async function getObject(key: string): Promise<ServableObject | null> {
 	const bucket = getR2Bucket();
 	if (bucket == null) {
 		return null;
 	}
 
-	return bucket.get(key) as Promise<R2StoredObject | null>;
+	const object = (await bucket.get(key)) as R2StoredObject | null;
+	if (object == null) {
+		return null;
+	}
+
+	return {
+		body: await object.arrayBuffer(),
+		contentType: object.httpMetadata?.contentType ?? 'application/octet-stream',
+		etag: object.httpEtag,
+	};
 }
 
 /**

@@ -65,7 +65,9 @@ function validateTokenBinding(
 	}
 }
 
-// In-memory fallback store for local development (no persistence across restarts)
+// In-memory store used only when no R2 binding is configured (e.g. plain
+// `node` runs without wrangler). Local dev and production both use R2, which
+// persists across restarts. Not persistent — entries are lost on restart.
 const localDevStore = new Map<string, { body: ArrayBuffer; contentType: string }>();
 const LOCAL_DEV_STORE_MAX_ENTRIES = 50;
 
@@ -107,7 +109,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		error(400, `File too large. Maximum: ${String(maxMb)}MB`);
 	}
 
-	// Buffer body first — needed for dev fallback, acceptable for images (max 10 MB)
 	let body: ArrayBuffer;
 	try {
 		body = await request.arrayBuffer();
@@ -118,30 +119,28 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		error(400, 'Empty file body');
 	}
 
-	// Try R2 first
 	if (isR2Available()) {
 		try {
 			await putObject(objectKey, body, contentType);
 		} catch {
-			// R2 binding exists but write failed — dev store fallback below handles it
+			error(500, 'Failed to store upload');
 		}
-	}
-
-	// Always write to dev store as a fallback — miniflare's R2 put() may
-	// appear to succeed but not persist, causing GET to 404
-	if (localDevStore.size >= LOCAL_DEV_STORE_MAX_ENTRIES) {
-		const oldestKey = localDevStore.keys().next().value;
-		if (oldestKey !== undefined) {
-			localDevStore.delete(oldestKey);
+	} else {
+		// No R2 binding — keep the file in memory so uploads work in this session.
+		if (localDevStore.size >= LOCAL_DEV_STORE_MAX_ENTRIES) {
+			const oldestKey = localDevStore.keys().next().value;
+			if (oldestKey !== undefined) {
+				localDevStore.delete(oldestKey);
+			}
 		}
+		localDevStore.set(objectKey, { body, contentType });
 	}
-	localDevStore.set(objectKey, { body, contentType });
 
 	return json({ objectKey }, { status: 201 });
 };
 
 /**
- * GET handler — serves files from R2 (or local dev store).
+ * GET handler — serves files from R2 (or the in-memory fallback store).
  * Used as the public URL fallback when R2_PUBLIC_URL is not set.
  */
 export const GET: RequestHandler = async ({ params }) => {
@@ -150,24 +149,21 @@ export const GET: RequestHandler = async ({ params }) => {
 		error(400, 'Missing path');
 	}
 
-	// Try R2 first, fall back to dev store if unavailable or read fails
 	if (isR2Available()) {
-		try {
-			const object = await getObject(objectKey);
-			if (object) {
-				const headers = new Headers();
-				object.writeHttpMetadata(headers);
-				headers.set('cache-control', 'public, max-age=31536000, immutable');
-				headers.set('etag', object.httpEtag);
-				headers.set('X-Content-Type-Options', 'nosniff');
-				return new Response(object.body, { headers });
-			}
-		} catch {
-			// R2 binding exists but read failed — fall through to dev store
+		const object = await getObject(objectKey);
+		if (object) {
+			return new Response(object.body, {
+				headers: {
+					'content-type': object.contentType,
+					'cache-control': 'public, max-age=31536000, immutable',
+					etag: object.etag,
+					'X-Content-Type-Options': 'nosniff',
+				},
+			});
 		}
 	}
 
-	// Local dev fallback
+	// In-memory fallback (no R2 binding configured)
 	const localFile = localDevStore.get(objectKey);
 	if (!localFile) {
 		error(404, 'File not found');
@@ -195,16 +191,13 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const tokenPayload = await extractAndVerifyToken(request);
 	validateTokenBinding(tokenPayload, locals.user.id, objectKey);
 
-	let deletedFromR2 = false;
 	if (isR2Available()) {
 		try {
 			await deleteObject(objectKey);
-			deletedFromR2 = true;
 		} catch {
-			// R2 binding exists but delete failed — fall through
+			// Best-effort delete — the object may already be gone
 		}
-	}
-	if (!deletedFromR2) {
+	} else {
 		localDevStore.delete(objectKey);
 	}
 

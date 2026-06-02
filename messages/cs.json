@@ -501,6 +501,9 @@
 	"landing_hero_section_label": "Hlavní sekce",
 
 	"toast_gift_reserved": "Dárek byl rezervován",
+	"toast_gift_created": "Dárek přidán",
+	"toast_gift_updated": "Dárek uložen",
+	"toast_gift_deleted": "Dárek odebrán",
 	"toast_reservation_error": "Rezervace se nezdařila",
 	"toast_unfollowed": "Přestali jste sledovat seznam",
 	"toast_unfollow_error": "Nepodařilo se přestat sledovat",
@@ -534,5 +537,10 @@
 	"server_error_cannot_cancel_others_reservation": "Nemůžete zrušit cizí rezervaci",
 	"server_error_anonymous_cannot_cancel_reservations": "Anonymní uživatelé nemohou rušit rezervace",
 	"server_error_cannot_cancel_anonymous_reservation": "Nemůžete zrušit anonymní rezervaci",
-	"server_error_owner_cannot_like_own_gifts": "Vlastník nemůže lajkovat své dárky"
+	"server_error_owner_cannot_like_own_gifts": "Vlastník nemůže lajkovat své dárky",
+	"server_error_failed_to_create_gift": "Nepodařilo se vytvořit dárek",
+	"server_error_cannot_edit_after_sharing": "Stávající dárky nelze po sdílení seznamu upravovat. Můžete přidávat pouze nové dárky.",
+	"server_error_cannot_delete_after_sharing": "Stávající dárky nelze po sdílení seznamu odebrat.",
+	"server_error_cannot_delete_reserved_gift": "Tento dárek nelze odebrat, protože je rezervovaný.",
+	"server_error_only_owner_can_mark_received": "Pouze vlastník může označit dárky jako přijaté"
 }

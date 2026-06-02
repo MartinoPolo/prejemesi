@@ -7,11 +7,13 @@
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
+	import LockIcon from '@lucide/svelte/icons/lock';
 	import {
 		giftDetailModalVariants,
 		type GiftDetailModalMode,
@@ -33,6 +35,7 @@
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
 		isOwner: boolean;
+		canEdit: boolean;
 		canDelete: boolean;
 		isSubmitting: boolean;
 		isDeleting: boolean;
@@ -48,6 +51,7 @@
 		wishlistId,
 		priorityLevels,
 		isOwner,
+		canEdit,
 		canDelete,
 		isSubmitting,
 		isDeleting,
@@ -73,6 +77,7 @@
 	const styles = giftDetailModalVariants();
 
 	const isEdit = $derived(mode === 'edit');
+	const isEditLocked = $derived(isEdit && !canEdit);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
@@ -179,143 +184,169 @@
 
 	<!-- Right column: form -->
 	<div class={styles.detailColumn()}>
-		<!-- Name -->
-		<div class={styles.formField()}>
-			<Label for="gift-name">{m.gift_name_label()}</Label>
-			<Input
-				id="gift-name"
-				bind:value={name}
-				placeholder={m.gift_name_placeholder()}
-				aria-invalid={nameError !== '' ? true : undefined}
-			/>
-			{#if nameError}
-				<span class="text-xs text-destructive">{nameError}</span>
-			{/if}
-		</div>
-
-		<!-- Description -->
-		<div class="mt-3 {styles.formField()}">
-			<Label for="gift-description">{m.gift_description_label()}</Label>
-			<Textarea
-				id="gift-description"
-				bind:value={description}
-				placeholder={m.gift_description_placeholder()}
-				rows={3}
-			/>
-		</div>
-
-		<!-- URL -->
-		<div class="mt-3 {styles.formField()}">
-			<Label for="gift-url">{m.gift_url_label()}</Label>
-			<Input id="gift-url" bind:value={url} placeholder="alza.cz/darek" type="text" />
-		</div>
-
-		<!-- Price + Currency -->
-		<div class="mt-3 {styles.formRow()}">
-			<div class={styles.formField()}>
-				<Label for="gift-price">{m.gift_price_label()}</Label>
-				<Input id="gift-price" bind:value={price} placeholder="0" type="number" min="0" />
-			</div>
-			<div class={styles.formField()}>
-				<Label>{m.gift_currency_label()}</Label>
-				<Select.Root type="single" bind:value={currency}>
-					<Select.Trigger class="w-full">
-						{GIFT_CURRENCY_LABELS[currency]}
-					</Select.Trigger>
-					<Select.Content>
-						<Select.Group>
-							{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
-								<Select.Item value={val} label={GIFT_CURRENCY_LABELS[val]}>
-									{GIFT_CURRENCY_LABELS[val]}
-								</Select.Item>
-							{/each}
-						</Select.Group>
-					</Select.Content>
-				</Select.Root>
-			</div>
-		</div>
-
-		<!-- Image -->
-		<div class="mt-3 {styles.formField()}">
-			<Label>{m.gift_image_label()}</Label>
-			<div class={styles.imageTabRow()}>
-				<button
-					type="button"
-					class={giftDetailModalVariants({
-						imageTabActive: imageMode === 'url',
-					}).imageTab()}
-					onclick={() => (imageMode = 'url')}
-				>
-					<LinkIcon class="mr-1 inline size-3" />
-					URL
-				</button>
-				<button
-					type="button"
-					class={giftDetailModalVariants({
-						imageTabActive: imageMode === 'upload',
-					}).imageTab()}
-					onclick={() => (imageMode = 'upload')}
-				>
-					<UploadIcon class="mr-1 inline size-3" />
-					{m.gift_image_upload_tab()}
-				</button>
-			</div>
-			{#if imageMode === 'url'}
-				<Input
-					bind:value={imageUrl}
-					placeholder="https://example.com/image.jpg"
-					type="url"
-				/>
-			{:else}
-				<ImageUpload
-					target="gift-image"
-					size="small"
-					onUpload={handleImageUpload}
-					onError={handleImageUploadError}
-				/>
-			{/if}
-		</div>
-
-		<!-- Quantity -->
-		<div class="mt-3 {styles.formField()}">
-			<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
-			<Input id="gift-quantity" bind:value={quantity} type="number" min="1" placeholder="1" />
-		</div>
-
-		<!-- Priority -->
-		{#if priorityLevels.length > 0}
-			<div class="mt-3 {styles.formField()}">
-				<Label>{m.gift_priority_label()}</Label>
-				<Select.Root type="single" bind:value={priorityLevelId}>
-					<Select.Trigger class="w-full">
-						{#if priorityLevelId}
-							{priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
-								m.gift_priority_select()}
-						{:else}
-							{m.gift_priority_none()}
-						{/if}
-					</Select.Trigger>
-					<Select.Content>
-						<Select.Group>
-							<Select.Item value="" label={m.gift_priority_none()}
-								>{m.gift_priority_none()}</Select.Item
-							>
-							{#each priorityLevels as level (level.id)}
-								<Select.Item value={level.id} label={level.label}>
-									{level.label}
-								</Select.Item>
-							{/each}
-						</Select.Group>
-					</Select.Content>
-				</Select.Root>
-			</div>
+		{#if isEditLocked}
+			<Alert.Root tone="warning" class="mb-3">
+				<LockIcon />
+				<Alert.Description>{m.server_error_cannot_edit_after_sharing()}</Alert.Description>
+			</Alert.Root>
 		{/if}
+
+		<!-- Editable fields are disabled once the list is shared (existing gifts) -->
+		<fieldset class="contents" disabled={isEditLocked}>
+			<!-- Name -->
+			<div class={styles.formField()}>
+				<Label for="gift-name">{m.gift_name_label()}</Label>
+				<Input
+					id="gift-name"
+					bind:value={name}
+					placeholder={m.gift_name_placeholder()}
+					aria-invalid={nameError !== '' ? true : undefined}
+				/>
+				{#if nameError}
+					<span class="text-xs text-destructive">{nameError}</span>
+				{/if}
+			</div>
+
+			<!-- Description -->
+			<div class="mt-3 {styles.formField()}">
+				<Label for="gift-description">{m.gift_description_label()}</Label>
+				<Textarea
+					id="gift-description"
+					bind:value={description}
+					placeholder={m.gift_description_placeholder()}
+					rows={3}
+				/>
+			</div>
+
+			<!-- URL -->
+			<div class="mt-3 {styles.formField()}">
+				<Label for="gift-url">{m.gift_url_label()}</Label>
+				<Input id="gift-url" bind:value={url} placeholder="alza.cz/darek" type="text" />
+			</div>
+
+			<!-- Price + Currency -->
+			<div class="mt-3 {styles.formRow()}">
+				<div class={styles.formField()}>
+					<Label for="gift-price">{m.gift_price_label()}</Label>
+					<Input
+						id="gift-price"
+						bind:value={price}
+						placeholder="0"
+						type="number"
+						min="0"
+					/>
+				</div>
+				<div class={styles.formField()}>
+					<Label>{m.gift_currency_label()}</Label>
+					<Select.Root type="single" bind:value={currency}>
+						<Select.Trigger class="w-full">
+							{GIFT_CURRENCY_LABELS[currency]}
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Group>
+								{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
+									<Select.Item value={val} label={GIFT_CURRENCY_LABELS[val]}>
+										{GIFT_CURRENCY_LABELS[val]}
+									</Select.Item>
+								{/each}
+							</Select.Group>
+						</Select.Content>
+					</Select.Root>
+				</div>
+			</div>
+
+			<!-- Image -->
+			<div class="mt-3 {styles.formField()}">
+				<Label>{m.gift_image_label()}</Label>
+				<div class={styles.imageTabRow()}>
+					<button
+						type="button"
+						class={giftDetailModalVariants({
+							imageTabActive: imageMode === 'url',
+						}).imageTab()}
+						onclick={() => (imageMode = 'url')}
+					>
+						<LinkIcon class="mr-1 inline size-3" />
+						URL
+					</button>
+					<button
+						type="button"
+						class={giftDetailModalVariants({
+							imageTabActive: imageMode === 'upload',
+						}).imageTab()}
+						onclick={() => (imageMode = 'upload')}
+					>
+						<UploadIcon class="mr-1 inline size-3" />
+						{m.gift_image_upload_tab()}
+					</button>
+				</div>
+				{#if imageMode === 'url'}
+					<Input
+						bind:value={imageUrl}
+						placeholder="https://example.com/image.jpg"
+						type="url"
+					/>
+				{:else}
+					<ImageUpload
+						target="gift-image"
+						size="small"
+						onUpload={handleImageUpload}
+						onError={handleImageUploadError}
+					/>
+				{/if}
+			</div>
+
+			<!-- Quantity -->
+			<div class="mt-3 {styles.formField()}">
+				<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
+				<Input
+					id="gift-quantity"
+					bind:value={quantity}
+					type="number"
+					min="1"
+					placeholder="1"
+				/>
+			</div>
+
+			<!-- Priority -->
+			{#if priorityLevels.length > 0}
+				<div class="mt-3 {styles.formField()}">
+					<Label>{m.gift_priority_label()}</Label>
+					<Select.Root type="single" bind:value={priorityLevelId}>
+						<Select.Trigger class="w-full">
+							{#if priorityLevelId}
+								{priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
+									m.gift_priority_select()}
+							{:else}
+								{m.gift_priority_none()}
+							{/if}
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Group>
+								<Select.Item value="" label={m.gift_priority_none()}
+									>{m.gift_priority_none()}</Select.Item
+								>
+								{#each priorityLevels as level (level.id)}
+									<Select.Item value={level.id} label={level.label}>
+										{level.label}
+									</Select.Item>
+								{/each}
+							</Select.Group>
+						</Select.Content>
+					</Select.Root>
+				</div>
+			{/if}
+		</fieldset>
 
 		<Separator class="my-4" />
 
 		<!-- Actions -->
 		<div class={styles.formActions()}>
-			<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
+			<Button
+				class={styles.submitButton()}
+				disabled={isSubmitting || isEditLocked}
+				onclick={handleSubmit}
+			>
 				{#if isSubmitting}
 					{m.saving()}
 				{:else}

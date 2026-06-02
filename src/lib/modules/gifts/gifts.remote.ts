@@ -15,6 +15,7 @@ import {
 	type GiftForVisitor,
 } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
@@ -28,7 +29,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 
 	const wishlistRow = wishlistRows[0];
 	if (wishlistRow === undefined) {
-		error(404, 'Wishlist not found');
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 	}
 
 	// Determine role
@@ -183,7 +184,7 @@ async function verifyOwnerOrModerator(
 
 	const wishlistRow = rows[0];
 	if (wishlistRow === undefined) {
-		error(404, 'Wishlist not found');
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 	}
 
 	if (wishlistRow.ownerId === userId) {
@@ -206,7 +207,7 @@ async function verifyOwnerOrModerator(
 		return { role: 'moderator', wishlistRow };
 	}
 
-	error(403, 'Not authorized');
+	error(403, SERVER_ERROR.ACCESS_DENIED);
 }
 
 // ── Commands ────────────────────────────────────────────────────────────────
@@ -241,7 +242,7 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 		.returning();
 
 	if (created === undefined) {
-		error(500, 'Failed to create gift');
+		error(500, SERVER_ERROR.FAILED_TO_CREATE_GIFT);
 	}
 
 	return created;
@@ -259,7 +260,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 
 	const giftRow = giftRows[0];
 	if (giftRow === undefined) {
-		error(404, 'Gift not found');
+		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
 
 	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
@@ -269,7 +270,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	if (role === 'owner' && isShared) {
 		// Check if this gift was created before sharing
 		if (giftRow.createdAt <= wishlistRow.sharedAt!) {
-			error(403, 'Cannot edit existing gifts after sharing the wishlist');
+			error(403, SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING);
 		}
 	}
 
@@ -324,7 +325,7 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 
 	const giftRow = giftRows[0];
 	if (giftRow === undefined) {
-		error(404, 'Gift not found');
+		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
 
 	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
@@ -333,7 +334,7 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 	const isShared = wishlistRow.sharedAt !== null;
 	if (role === 'owner' && isShared) {
 		if (giftRow.createdAt <= wishlistRow.sharedAt!) {
-			error(403, 'Cannot delete existing gifts after sharing the wishlist');
+			error(403, SERVER_ERROR.CANNOT_DELETE_AFTER_SHARING);
 		}
 	}
 
@@ -345,7 +346,7 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 		.limit(1);
 
 	if (reservationRows[0] !== undefined) {
-		error(400, 'Cannot delete a reserved gift');
+		error(400, SERVER_ERROR.CANNOT_DELETE_RESERVED_GIFT);
 	}
 
 	// Soft delete
@@ -373,7 +374,7 @@ export const reorderGifts = guardedCommand(
 
 		const firstGift = firstGiftRows[0];
 		if (firstGift === undefined) {
-			error(404, 'Gift not found');
+			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 		}
 
 		await verifyOwnerOrModerator(user.id, firstGift.wishlistId);
@@ -401,7 +402,7 @@ export const markGiftReceived = guardedCommand(
 
 		const giftRow = giftRows[0];
 		if (giftRow === undefined) {
-			error(404, 'Gift not found');
+			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 		}
 
 		// Only owner can mark as received
@@ -413,10 +414,10 @@ export const markGiftReceived = guardedCommand(
 
 		const wishlistRow = wishlistRows[0];
 		if (wishlistRow === undefined) {
-			error(404, 'Wishlist not found');
+			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 		}
 		if (wishlistRow.ownerId !== user.id) {
-			error(403, 'Only the owner can mark gifts as received');
+			error(403, SERVER_ERROR.ONLY_OWNER_CAN_MARK_RECEIVED);
 		}
 
 		const [updated] = await database
