@@ -26,7 +26,7 @@ export function getDb() {
 	}
 
 	const cached = clientCache.get(connectionString);
-	if (cached) {
+	if (cached !== undefined) {
 		return cached;
 	}
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { deriveOklchPalette, parseOklch, toModeAwarePalette } from './oklch_palette.js';
-import { THEME_PRESETS } from './theme_presets.js';
-import type { ThemePalette } from './types.js';
+import { THEME_PRESETS, THEME_PRESET_LIST } from './theme_presets.js';
+import { THEME_PALETTE_KEYS, THEME_PRESET_NAMES, type ThemePalette } from './types.js';
 
 /** Token keys introduced by the image-frame foundation (issue #34). */
 const IMAGE_FRAME_TOKEN_KEYS = [
@@ -19,6 +19,44 @@ describe('THEME_PRESETS palettes', () => {
 				expect(value, `${preset.name} ${key}`).toBeDefined();
 				expect(parseOklch(value), `${preset.name} ${key} parseable`).not.toBeNull();
 			}
+		}
+	});
+
+	// REQ-2: preset token completeness. The ThemePalette interface enforces the
+	// presence of every key at compile time, but token *values* are typed `string`
+	// — a malformed/empty OKLCH string would compile yet break rendering. This guards
+	// the full palette of all presets, not just the four image-frame tokens above.
+	it('defines a complete palette (all 14 tokens) for every preset', () => {
+		for (const preset of Object.values(THEME_PRESETS)) {
+			const keys = Object.keys(preset.palette).sort();
+			expect(keys, `${preset.name} key set`).toEqual([...THEME_PALETTE_KEYS].sort());
+		}
+	});
+
+	it('defines a valid, parseable OKLCH value for every token of every preset', () => {
+		for (const preset of Object.values(THEME_PRESETS)) {
+			for (const key of THEME_PALETTE_KEYS) {
+				const value = preset.palette[key];
+				expect(value, `${preset.name} ${key} present`).toBeTruthy();
+				expect(parseOklch(value), `${preset.name} ${key} parseable`).not.toBeNull();
+			}
+		}
+	});
+
+	it('defines a non-empty preview gradient for every preset', () => {
+		for (const preset of Object.values(THEME_PRESETS)) {
+			expect(preset.gradient, `${preset.name} gradient`).toContain('gradient');
+		}
+	});
+
+	it('exposes every preset name exactly once in the ordered preset list', () => {
+		const expected = Object.values(THEME_PRESET_NAMES).sort();
+		expect([...THEME_PRESET_LIST].sort()).toEqual(expected);
+		// No duplicates in the render order.
+		expect(new Set(THEME_PRESET_LIST).size).toBe(THEME_PRESET_LIST.length);
+		// Every listed name resolves to a defined preset definition.
+		for (const name of THEME_PRESET_LIST) {
+			expect(THEME_PRESETS[name], `${name} defined`).toBeDefined();
 		}
 	});
 });

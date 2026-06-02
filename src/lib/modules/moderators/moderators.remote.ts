@@ -350,7 +350,7 @@ export const selfPromoteToModerator = guardedCommand(
 		if (wishlistRow.status === 'archived') {
 			error(400, SERVER_ERROR.CANNOT_SELF_PROMOTE_ON_ARCHIVED);
 		}
-		if (wishlistRow.ownerIsModerator) {
+		if (wishlistRow.ownerIsModerator === true) {
 			error(400, SERVER_ERROR.ALREADY_SEEING_RESERVATIONS);
 		}
 
