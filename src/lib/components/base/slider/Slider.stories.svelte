@@ -10,19 +10,25 @@
 </script>
 
 <Story name="Default">
-	<div class="w-64">
-		<Slider value={50} min={0} max={100} step={1} aria-label="Value" />
-	</div>
+	{#snippet template()}
+		<div class="w-64">
+			<Slider value={50} min={0} max={100} step={1} aria-label="Value" />
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="Zoom range">
-	<div class="w-64">
-		<Slider value={150} min={100} max={300} step={5} aria-label="Zoom" />
-	</div>
+	{#snippet template()}
+		<div class="w-64">
+			<Slider value={150} min={100} max={300} step={5} aria-label="Zoom" />
+		</div>
+	{/snippet}
 </Story>
 
 <Story name="Disabled">
-	<div class="w-64">
-		<Slider value={100} min={100} max={300} step={5} disabled aria-label="Zoom" />
-	</div>
+	{#snippet template()}
+		<div class="w-64">
+			<Slider value={100} min={100} max={300} step={5} disabled aria-label="Zoom" />
+		</div>
+	{/snippet}
 </Story>

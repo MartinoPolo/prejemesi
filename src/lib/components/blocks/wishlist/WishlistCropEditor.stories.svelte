@@ -12,13 +12,15 @@
 </script>
 
 <Story name="No image (upload)">
-	<div class="max-w-2xl">
-		<WishlistCropEditor
-			imageKey={null}
-			imageSlots={null}
-			themeEmoji="🎁"
-			title="Sample wishlist"
-			onsave={noop}
-		/>
-	</div>
+	{#snippet template()}
+		<div class="max-w-2xl">
+			<WishlistCropEditor
+				imageKey={null}
+				imageSlots={null}
+				themeEmoji="🎁"
+				title="Sample wishlist"
+				onsave={noop}
+			/>
+		</div>
+	{/snippet}
 </Story>

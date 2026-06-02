@@ -10,22 +10,26 @@
 	});
 </script>
 
-<Story name="Default theme">
-	<ThemeCardPreview
-		theme="default"
-		emoji="🎁"
-		themeLabel="Default"
-		title="Sample wishlist"
-		class="w-60"
-	/>
+<Story name="All presets">
+	{#snippet template()}
+		<div class="flex flex-wrap gap-4">
+			<ThemeCardPreview theme="default" emoji="🎁" themeLabel="Default" class="w-52" />
+			<ThemeCardPreview theme="christmas" emoji="🎄" themeLabel="Christmas" class="w-52" />
+			<ThemeCardPreview theme="birthday" emoji="🎂" themeLabel="Birthday" class="w-52" />
+			<ThemeCardPreview theme="fun" emoji="🎉" themeLabel="Fun" class="w-52" />
+			<ThemeCardPreview theme="elegant" emoji="💍" themeLabel="Elegant" class="w-52" />
+		</div>
+	{/snippet}
 </Story>
 
-<Story name="All presets">
-	<div class="flex flex-wrap gap-4">
-		<ThemeCardPreview theme="default" emoji="🎁" themeLabel="Default" class="w-52" />
-		<ThemeCardPreview theme="christmas" emoji="🎄" themeLabel="Christmas" class="w-52" />
-		<ThemeCardPreview theme="birthday" emoji="🎂" themeLabel="Birthday" class="w-52" />
-		<ThemeCardPreview theme="fun" emoji="🎉" themeLabel="Fun" class="w-52" />
-		<ThemeCardPreview theme="elegant" emoji="💍" themeLabel="Elegant" class="w-52" />
-	</div>
+<Story name="Default theme">
+	{#snippet template()}
+		<ThemeCardPreview
+			theme="default"
+			emoji="🎁"
+			themeLabel="Default"
+			title="Sample wishlist"
+			class="w-60"
+		/>
+	{/snippet}
 </Story>

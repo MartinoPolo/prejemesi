@@ -15,36 +15,42 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 </script>
 
-<Story name="Default">
-	<PageHeader title="Moje seznamy" />
+<Story name="All Sizes">
+	{#snippet template()}
+		<div class="flex flex-col gap-6">
+			<div>
+				<p class="mb-2 text-xs text-muted-foreground">sm</p>
+				<PageHeader title="Moje seznamy" size="sm" />
+			</div>
+			<div>
+				<p class="mb-2 text-xs text-muted-foreground">md</p>
+				<PageHeader title="Moje seznamy" size="md" />
+			</div>
+			<div>
+				<p class="mb-2 text-xs text-muted-foreground">lg</p>
+				<PageHeader title="Moje seznamy" size="lg" />
+			</div>
+		</div>
+	{/snippet}
 </Story>
 
-<Story name="All Sizes">
-	<div class="flex flex-col gap-6">
-		<div>
-			<p class="mb-2 text-xs text-muted-foreground">sm</p>
-			<PageHeader title="Moje seznamy" size="sm" />
-		</div>
-		<div>
-			<p class="mb-2 text-xs text-muted-foreground">md</p>
-			<PageHeader title="Moje seznamy" size="md" />
-		</div>
-		<div>
-			<p class="mb-2 text-xs text-muted-foreground">lg</p>
-			<PageHeader title="Moje seznamy" size="lg" />
-		</div>
-	</div>
+<Story name="Default">
+	{#snippet template()}
+		<PageHeader title="Moje seznamy" />
+	{/snippet}
 </Story>
 
 <Story name="With Toolbar">
-	<PageHeader title="Moje seznamy" size="md">
-		{#snippet toolbar()}
-			<Button intent="ghost" size="icon-sm" aria-label="Settings"
-				><SettingsIcon data-icon /></Button
-			>
-			<Button intent="primary" size="sm"
-				><PlusIcon data-icon="inline-start" /> Vytvorit</Button
-			>
-		{/snippet}
-	</PageHeader>
+	{#snippet template()}
+		<PageHeader title="Moje seznamy" size="md">
+			{#snippet toolbar()}
+				<Button intent="ghost" size="icon-sm" aria-label="Settings"
+					><SettingsIcon data-icon /></Button
+				>
+				<Button intent="primary" size="sm"
+					><PlusIcon data-icon="inline-start" /> Vytvorit</Button
+				>
+			{/snippet}
+		</PageHeader>
+	{/snippet}
 </Story>
