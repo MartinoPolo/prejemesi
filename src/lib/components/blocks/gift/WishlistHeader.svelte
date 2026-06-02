@@ -29,6 +29,7 @@
 		ownerIsModerator: boolean;
 		onshare?: () => void;
 		onmoderators?: () => void;
+		onarchive?: () => void;
 	}
 
 	let {
@@ -43,6 +44,7 @@
 		ownerIsModerator,
 		onshare,
 		onmoderators,
+		onarchive,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -52,6 +54,15 @@
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 	const isArchived = $derived(status === 'archived');
 	const isDraft = $derived(status === 'draft');
+	const isEventDatePast = $derived.by(() => {
+		if (eventDate === null) {
+			return false;
+		}
+		const millisecondsPerDay = 86_400_000;
+		const todayDay = Math.floor(Date.now() / millisecondsPerDay);
+		const eventDay = Math.floor(eventDate.getTime() / millisecondsPerDay);
+		return eventDay < todayDay;
+	});
 
 	const formattedDate = $derived.by(() => {
 		if (eventDate === null) {
@@ -149,6 +160,17 @@
 					{m.wishlist_moderators_label()}
 				</Button>
 			{/if}
+			{#if isOwner && !isArchived}
+				<Button
+					size="sm"
+					intent="outline"
+					aria-label={m.wishlist_archive_label()}
+					onclick={onarchive}
+				>
+					<ArchiveIcon data-icon="inline-start" />
+					{m.wishlist_archive_button()}
+				</Button>
+			{/if}
 		</div>
 	{/if}
 
@@ -180,6 +202,16 @@
 			<span>{m.wishlist_draft_banner()}</span>
 			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
 				{m.wishlist_share_list()}
+			</Button>
+		</div>
+	{/if}
+
+	{#if isOwner && !isArchived && isEventDatePast}
+		<div class={styles.archivedBanner()}>
+			<ArchiveIcon class="size-4 flex-shrink-0" />
+			<span>{m.wishlist_archive_prompt()}</span>
+			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onarchive}>
+				{m.wishlist_archive_button()}
 			</Button>
 		</div>
 	{/if}

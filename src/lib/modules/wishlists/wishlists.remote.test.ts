@@ -128,12 +128,14 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 
 interface MockDb {
 	db: Record<string | symbol, unknown>;
+	calls: { method: string; args: unknown[] }[];
 	pushResult: (result: unknown[]) => void;
 	reset: () => void;
 }
 
 function createMockDb(): MockDb {
 	const results: unknown[][] = [];
+	const calls: { method: string; args: unknown[] }[] = [];
 	const indexRef = { value: 0 };
 
 	const chain: Record<string | symbol, unknown> = new Proxy(
@@ -145,16 +147,28 @@ function createMockDb(): MockDb {
 					indexRef.value++;
 					return (resolve: (value: unknown) => void) => resolve(result);
 				}
-				return vi.fn(() => chain);
+				if (prop === 'transaction') {
+					return vi.fn((callback: (transaction: typeof chain) => unknown) =>
+						callback(chain),
+					);
+				}
+				return vi.fn((...args: unknown[]) => {
+					if (typeof prop === 'string') {
+						calls.push({ method: prop, args });
+					}
+					return chain;
+				});
 			},
 		},
 	);
 
 	return {
 		db: chain,
+		calls,
 		pushResult: (result: unknown[]) => results.push(result),
 		reset: () => {
 			results.length = 0;
+			calls.length = 0;
 			indexRef.value = 0;
 		},
 	};
@@ -383,6 +397,22 @@ describe('updateWishlist', () => {
 			expect(result).toMatchObject({ id: WISHLIST_ID });
 		});
 	});
+
+	describe('archived wishlist is read-only', () => {
+		it('rejects updates after archive', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(
+				callUpdateWishlist(makeOwnerAuthContext(), {
+					id: WISHLIST_ID,
+					description: 'Updated description',
+				}),
+			).rejects.toMatchObject({
+				status: 400,
+				message: 'Cannot modify an archived wishlist',
+			});
+		});
+	});
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -419,18 +449,59 @@ describe('archiveWishlist', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('createWishlist', () => {
 	describe('creates wishlist with default priority levels', () => {
-		it('returns the created wishlist row after inserting default priority levels', async () => {
+		it('creates the wishlist with trimmed title, optional event date, and theme', async () => {
 			const createdRow = makeWishlistRow({ id: 'new-wishlist-id', title: 'My Birthday' });
 			// DB call 1: insert wishlist returning
 			mockDbInstance.pushResult([createdRow]);
 			// DB call 2: insert default priority levels (no returning needed)
 			mockDbInstance.pushResult([]);
 
+			const eventDate = new Date('2026-12-24T00:00:00Z');
 			const result = await callCreateWishlist(makeOwnerAuthContext(), {
-				title: 'My Birthday',
+				title: '  My Birthday  ',
+				eventDate,
+				theme: 'christmas',
 			});
 
 			expect(result).toMatchObject({ id: 'new-wishlist-id', title: 'My Birthday' });
+
+			const wishlistInsertValues = mockDbInstance.calls
+				.filter((call) => call.method === 'values')
+				.at(0)?.args[0] as { eventDate: Date; theme: string; title: string };
+			expect(wishlistInsertValues).toMatchObject({
+				title: 'My Birthday',
+				eventDate,
+				theme: 'christmas',
+			});
+		});
+
+		it('inserts exactly the required default priority levels for the created wishlist', async () => {
+			const createdRow = makeWishlistRow({ id: 'new-wishlist-id', title: 'My Birthday' });
+			mockDbInstance.pushResult([createdRow]);
+			mockDbInstance.pushResult([]);
+
+			await callCreateWishlist(makeOwnerAuthContext(), {
+				title: 'My Birthday',
+			});
+
+			const priorityInsertValues = mockDbInstance.calls
+				.filter((call) => call.method === 'values')
+				.at(1)?.args[0];
+			expect(priorityInsertValues).toEqual([
+				{ wishlistId: 'new-wishlist-id', label: 'Vysoka', sortOrder: 1 },
+				{ wishlistId: 'new-wishlist-id', label: 'Stredni', sortOrder: 2 },
+				{ wishlistId: 'new-wishlist-id', label: 'Nizka', sortOrder: 3 },
+			]);
+		});
+
+		it('rejects blank titles before inserting', async () => {
+			await expect(
+				callCreateWishlist(makeOwnerAuthContext(), { title: '   ' }),
+			).rejects.toMatchObject({
+				status: 400,
+				message: 'Wishlist title is required',
+			});
+			expect(mockDbInstance.calls).toHaveLength(0);
 		});
 	});
 });

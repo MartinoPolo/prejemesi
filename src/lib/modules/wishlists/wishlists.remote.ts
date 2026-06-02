@@ -15,6 +15,34 @@ import {
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist } from './dashboard_types.js';
 
+const VALID_WISHLIST_THEMES = new Set([
+	'default',
+	'christmas',
+	'birthday',
+	'fun',
+	'elegant',
+	'custom',
+]);
+
+function validateCreateWishlistInput(input: CreateWishlistInput) {
+	const title = input.title.trim();
+	if (title === '') {
+		error(400, 'Wishlist title is required');
+	}
+
+	const eventDate = input.eventDate ?? null;
+	if (eventDate !== null && (!(eventDate instanceof Date) || Number.isNaN(eventDate.getTime()))) {
+		error(400, 'Invalid event date');
+	}
+
+	const theme = input.theme ?? 'default';
+	if (!VALID_WISHLIST_THEMES.has(theme)) {
+		error(400, 'Invalid wishlist theme');
+	}
+
+	return { title, eventDate, theme };
+}
+
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export const getMyWishlists = guardedQuery(async ({ user }) => {
@@ -188,31 +216,33 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 
 export const createWishlist = guardedCommand(async ({ user }, input: CreateWishlistInput) => {
 	const database = getDb();
+	const validatedInput = validateCreateWishlistInput(input);
 
-	const [created] = await database
-		.insert(wishlist)
-		.values({
-			ownerId: user.id,
-			title: input.title,
-			eventDate: input.eventDate ?? null,
-			theme: input.theme ?? 'default',
-		})
-		.returning();
+	return database.transaction(async (transaction) => {
+		const [created] = await transaction
+			.insert(wishlist)
+			.values({
+				ownerId: user.id,
+				title: validatedInput.title,
+				eventDate: validatedInput.eventDate,
+				theme: validatedInput.theme,
+			})
+			.returning();
 
-	if (created === undefined) {
-		error(500, 'Failed to create wishlist');
-	}
+		if (created === undefined) {
+			error(500, 'Failed to create wishlist');
+		}
 
-	// Auto-create default priority levels
-	await database.insert(priorityLevel).values(
-		DEFAULT_PRIORITY_LEVELS.map((level) => ({
-			wishlistId: created.id,
-			label: level.label,
-			sortOrder: level.sortOrder,
-		})),
-	);
+		await transaction.insert(priorityLevel).values(
+			DEFAULT_PRIORITY_LEVELS.map((level) => ({
+				wishlistId: created.id,
+				label: level.label,
+				sortOrder: level.sortOrder,
+			})),
+		);
 
-	return created;
+		return created;
+	});
 });
 
 export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishlistInput) => {
@@ -231,6 +261,9 @@ export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishl
 	}
 	if (row.ownerId !== user.id) {
 		error(403, 'Not authorized');
+	}
+	if (row.status === 'archived') {
+		error(400, 'Cannot modify an archived wishlist');
 	}
 
 	// Edit lock: if shared, only allow limited field updates

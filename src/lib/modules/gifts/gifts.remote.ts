@@ -5,6 +5,7 @@ import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { normalizeGiftUrl } from './gift_url.js';
 import type {
 	GiftForOwner,
 	GiftForVisitor,
@@ -213,11 +214,18 @@ async function verifyOwnerOrModerator(
 	error(403, 'Not authorized');
 }
 
+function assertWishlistMutable(wishlistRow: typeof wishlist.$inferSelect) {
+	if (wishlistRow.status === 'archived') {
+		error(400, 'Cannot modify an archived wishlist');
+	}
+}
+
 // ── Commands ────────────────────────────────────────────────────────────────
 
 export const createGift = guardedCommand(async ({ user }, input: CreateGiftInput) => {
 	const database = getDb();
-	await verifyOwnerOrModerator(user.id, input.wishlistId);
+	const { wishlistRow } = await verifyOwnerOrModerator(user.id, input.wishlistId);
+	assertWishlistMutable(wishlistRow);
 
 	// Determine sortOrder: place at the end
 	const maxSortRows = await database
@@ -233,7 +241,7 @@ export const createGift = guardedCommand(async ({ user }, input: CreateGiftInput
 			wishlistId: input.wishlistId,
 			name: input.name,
 			description: input.description ?? null,
-			url: input.url ?? null,
+			url: normalizeGiftUrl(input.url),
 			price: input.price ?? null,
 			currency: input.currency ?? 'CZK',
 			imageUrl: input.imageUrl ?? null,
@@ -267,6 +275,7 @@ export const updateGift = guardedCommand(async ({ user }, input: UpdateGiftInput
 	}
 
 	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
+	assertWishlistMutable(wishlistRow);
 
 	// Edit lock: owner cannot edit existing gifts after sharing
 	const isShared = wishlistRow.sharedAt !== null;
@@ -286,7 +295,7 @@ export const updateGift = guardedCommand(async ({ user }, input: UpdateGiftInput
 		updateData['description'] = input.description;
 	}
 	if (input.url !== undefined) {
-		updateData['url'] = input.url;
+		updateData['url'] = normalizeGiftUrl(input.url);
 	}
 	if (input.price !== undefined) {
 		updateData['price'] = input.price;
@@ -332,6 +341,7 @@ export const deleteGift = guardedCommand(async ({ user }, giftId: string) => {
 	}
 
 	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
+	assertWishlistMutable(wishlistRow);
 
 	// Edit lock: owner cannot delete existing gifts after sharing
 	const isShared = wishlistRow.sharedAt !== null;
@@ -378,14 +388,34 @@ export const reorderGifts = guardedCommand(async ({ user }, items: ReorderGiftIt
 		error(404, 'Gift not found');
 	}
 
-	await verifyOwnerOrModerator(user.id, firstGift.wishlistId);
+	const { wishlistRow } = await verifyOwnerOrModerator(user.id, firstGift.wishlistId);
+	assertWishlistMutable(wishlistRow);
+
+	const uniqueGiftIds = [...new Set(items.map((item) => item.id))];
+	const reorderedGiftRows = await database
+		.select({ id: gift.id, wishlistId: gift.wishlistId })
+		.from(gift)
+		.where(and(inArray(gift.id, uniqueGiftIds), isNull(gift.deletedAt)));
+
+	if (
+		reorderedGiftRows.length !== uniqueGiftIds.length ||
+		reorderedGiftRows.some((row) => row.wishlistId !== firstGift.wishlistId)
+	) {
+		error(403, 'Cannot reorder gifts from another wishlist');
+	}
 
 	// Batch update sortOrder
 	for (const item of items) {
 		await database
 			.update(gift)
 			.set({ sortOrder: item.sortOrder, updatedAt: new Date() })
-			.where(and(eq(gift.id, item.id), isNull(gift.deletedAt)));
+			.where(
+				and(
+					eq(gift.id, item.id),
+					eq(gift.wishlistId, firstGift.wishlistId),
+					isNull(gift.deletedAt),
+				),
+			);
 	}
 });
 
@@ -415,6 +445,7 @@ export const markGiftReceived = guardedCommand(
 		if (wishlistRow === undefined) {
 			error(404, 'Wishlist not found');
 		}
+		assertWishlistMutable(wishlistRow);
 		if (wishlistRow.ownerId !== user.id) {
 			error(403, 'Only the owner can mark gifts as received');
 		}

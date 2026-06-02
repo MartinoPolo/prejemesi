@@ -103,6 +103,7 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 		ownerId: 'wishlist.ownerId',
 		ownerIsModerator: 'wishlist.ownerIsModerator',
 		sharedAt: 'wishlist.sharedAt',
+		status: 'wishlist.status',
 		deletedAt: 'wishlist.deletedAt',
 	},
 	priorityLevel: {
@@ -126,12 +127,14 @@ vi.mock('$lib/server/db/moderator.schema.js', () => ({
 
 interface MockDb {
 	db: unknown;
+	calls: { method: string; args: unknown[] }[];
 	pushResult: (result: unknown[]) => void;
 	reset: () => void;
 }
 
 function createMockDb(): MockDb {
 	const results: unknown[][] = [];
+	const calls: { method: string; args: unknown[] }[] = [];
 	const indexRef = { value: 0 };
 
 	const chain: Record<string | symbol, unknown> = new Proxy(
@@ -143,16 +146,23 @@ function createMockDb(): MockDb {
 					indexRef.value++;
 					return (resolve: (value: unknown[]) => unknown) => resolve(result);
 				}
-				return vi.fn(() => chain);
+				return vi.fn((...args: unknown[]) => {
+					if (typeof prop === 'string') {
+						calls.push({ method: prop, args });
+					}
+					return chain;
+				});
 			},
 		},
 	);
 
 	return {
 		db: chain,
+		calls,
 		pushResult: (result: unknown[]) => results.push(result),
 		reset: () => {
 			results.length = 0;
+			calls.length = 0;
 			indexRef.value = 0;
 		},
 	};
@@ -173,6 +183,7 @@ import {
 	createGift,
 	updateGift,
 	deleteGift,
+	reorderGifts,
 	markGiftReceived,
 } from './gifts.remote.js';
 import type { GiftForOwner, GiftForVisitor } from './types.js';
@@ -197,6 +208,7 @@ function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string
 		ownerId: OWNER_ID,
 		ownerIsModerator: false,
 		sharedAt: null,
+		status: 'draft',
 		deletedAt: null,
 		title: 'Test Wishlist',
 		...overrides,
@@ -254,6 +266,10 @@ type UpdateGiftHandler = (
 ) => Promise<unknown>;
 
 type DeleteGiftHandler = (authContext: { user: { id: string } }, giftId: string) => Promise<void>;
+type ReorderGiftsHandler = (
+	authContext: { user: { id: string } },
+	items: { id: string; sortOrder: number }[],
+) => Promise<void>;
 
 type MarkReceivedHandler = (
 	authContext: { user: { id: string } },
@@ -264,6 +280,7 @@ const callGetGifts = getGiftsByWishlistShortId as unknown as GetGiftsHandler;
 const callCreateGift = createGift as unknown as CreateGiftHandler;
 const callUpdateGift = updateGift as unknown as UpdateGiftHandler;
 const callDeleteGift = deleteGift as unknown as DeleteGiftHandler;
+const callReorderGifts = reorderGifts as unknown as ReorderGiftsHandler;
 const callMarkReceived = markGiftReceived as unknown as MarkReceivedHandler;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -434,6 +451,22 @@ describe('createGift', () => {
 
 			expect(result).toMatchObject({ id: 'new-gift-id', name: 'New Gift' });
 		});
+
+		it('stores only normalized http or https gift URLs', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([{ maxSort: 0 }]);
+			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
+
+			await callCreateGift(makeOwnerAuthContext(), {
+				...createInput,
+				url: ' javascript://example.com/%0Aalert(1)',
+			});
+
+			const giftInsertValues = mockDbInstance.calls
+				.filter((call) => call.method === 'values')
+				.at(0)?.args[0] as { url: string | null };
+			expect(giftInsertValues.url).toBeNull();
+		});
 	});
 
 	describe('moderator can create a gift', () => {
@@ -467,6 +500,19 @@ describe('createGift', () => {
 			});
 		});
 	});
+
+	describe('archived wishlist', () => {
+		it('rejects creating gifts on archived wishlists', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(callCreateGift(makeOwnerAuthContext(), createInput)).rejects.toMatchObject(
+				{
+					status: 400,
+					message: 'Cannot modify an archived wishlist',
+				},
+			);
+		});
+	});
 });
 
 describe('updateGift', () => {
@@ -497,6 +543,34 @@ describe('updateGift', () => {
 			const result = await callUpdateGift(makeOwnerAuthContext(), updateInput);
 
 			expect(result).toMatchObject({ id: GIFT_ID });
+		});
+
+		it('normalizes updated gift URLs before persisting', async () => {
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, url: 'https://example.com/path' }]);
+
+			await callUpdateGift(makeOwnerAuthContext(), {
+				id: GIFT_ID,
+				url: ' https://example.com/path ',
+			});
+
+			const updateSetValues = mockDbInstance.calls
+				.filter((call) => call.method === 'set')
+				.at(0)?.args[0] as { url: string | null };
+			expect(updateSetValues.url).toBe('https://example.com/path');
+		});
+
+		it('rejects updates on archived wishlists', async () => {
+			mockDbInstance.pushResult([makeGiftRow()]);
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(callUpdateGift(makeOwnerAuthContext(), updateInput)).rejects.toMatchObject(
+				{
+					status: 400,
+					message: 'Cannot modify an archived wishlist',
+				},
+			);
 		});
 	});
 
@@ -595,6 +669,51 @@ describe('deleteGift', () => {
 			});
 		});
 	});
+
+	describe('archived wishlist', () => {
+		it('rejects deleting gifts from archived wishlists', async () => {
+			mockDbInstance.pushResult([makeGiftRow()]);
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
+				status: 400,
+				message: 'Cannot modify an archived wishlist',
+			});
+		});
+	});
+});
+
+describe('reorderGifts', () => {
+	it('rejects cross-wishlist reorder items', async () => {
+		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([
+			{ id: GIFT_ID, wishlistId: WISHLIST_ID },
+			{ id: 'gift-from-other-wishlist', wishlistId: 'other-wishlist' },
+		]);
+
+		await expect(
+			callReorderGifts(makeOwnerAuthContext(), [
+				{ id: GIFT_ID, sortOrder: 0 },
+				{ id: 'gift-from-other-wishlist', sortOrder: 1 },
+			]),
+		).rejects.toMatchObject({
+			status: 403,
+			message: 'Cannot reorder gifts from another wishlist',
+		});
+	});
+
+	it('rejects reorders on archived wishlists', async () => {
+		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
+		mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+		await expect(
+			callReorderGifts(makeOwnerAuthContext(), [{ id: GIFT_ID, sortOrder: 0 }]),
+		).rejects.toMatchObject({
+			status: 400,
+			message: 'Cannot modify an archived wishlist',
+		});
+	});
 });
 
 describe('markGiftReceived', () => {
@@ -628,6 +747,20 @@ describe('markGiftReceived', () => {
 				status: 403,
 				message: expect.stringContaining('Only the owner'),
 			});
+		});
+	});
+
+	describe('archived wishlist', () => {
+		it('rejects marking gifts as received on archived wishlists', async () => {
+			mockDbInstance.pushResult([makeGiftRow()]);
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(callMarkReceived(makeOwnerAuthContext(), markInput)).rejects.toMatchObject(
+				{
+					status: 400,
+					message: 'Cannot modify an archived wishlist',
+				},
+			);
 		});
 	});
 });

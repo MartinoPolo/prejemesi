@@ -1,5 +1,6 @@
 import * as m from '$lib/paraglide/messages.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
+import { extractGiftUrlDomain } from './gift_url.js';
 
 /** Format price with currency symbol */
 export function formatPrice(price: number | null, currency: string | null): string {
@@ -22,15 +23,7 @@ export function formatPrice(price: number | null, currency: string | null): stri
 
 /** Extract domain from URL for display */
 export function extractDomain(url: string | null): string | null {
-	if (url === null || url === '') {
-		return null;
-	}
-	try {
-		const parsed = new URL(url);
-		return parsed.hostname.replace(/^www\./, '');
-	} catch {
-		return null;
-	}
+	return extractGiftUrlDomain(url);
 }
 
 /** @public Priority label display */

@@ -29,9 +29,11 @@
 	import {
 		getWishlistByShortId,
 		updateWishlist,
+		archiveWishlist,
 		unfollowWishlist,
 		followWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
@@ -66,6 +68,56 @@
 	const initialUser = untrack(() => data.user);
 	const isAuthenticated = $derived(data.user !== null);
 
+	type WishlistPageWishlist = Awaited<ReturnType<typeof getWishlistByShortId>>;
+
+	const initialWishlist: WishlistPageWishlist = {
+		id: '',
+		shortId,
+		ownerId: '',
+		title: '',
+		description: null,
+		eventDate: null,
+		status: 'draft',
+		theme: 'default',
+		customThemeColor: null,
+		bannerImageKey: null,
+		thumbnailImageKey: null,
+		ownerIsModerator: false,
+		sharedAt: null,
+		archivedAt: null,
+		deletedAt: null,
+		createdAt: new Date(0),
+		updatedAt: new Date(0),
+		ownerName: '',
+		role: 'visitor',
+	};
+
+	let wishlist = $state<WishlistPageWishlist>(initialWishlist);
+	let gifts = $state<GiftByRole[]>([]);
+	let role = $state<WishlistRole>('visitor');
+	let likedGiftIds = $state.raw<string[]>([]);
+
+	const giftsContext = untrack(() =>
+		setGiftsContext(
+			() => gifts,
+			() => role,
+			() => wishlist.status === 'archived',
+		),
+	);
+
+	untrack(() => setLikesContext(() => likedGiftIds));
+
+	const sharingContext = untrack(() =>
+		setSharingContext(
+			() => wishlist.shortId,
+			() => wishlist.sharedAt !== null,
+		),
+	);
+
+	const themeContext = untrack(() =>
+		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
+	);
+
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
 	const [wishlistData, giftsData] = await Promise.all([
@@ -73,21 +125,17 @@
 		getGiftsByWishlistShortId(shortId),
 	]);
 
-	let userLikedGiftIds: string[] = [];
+	wishlist = wishlistData;
+	gifts = giftsData.gifts;
+	role = giftsData.role;
+
 	if (initialUser !== null) {
 		try {
-			userLikedGiftIds = await getUserLikesForWishlist();
+			likedGiftIds = await getUserLikesForWishlist();
 		} catch {
 			// Guarded calls may fail for unauthenticated users — ignore
 		}
 	}
-
-	// ── Reactive state (initialized from remote data) ───────────────────────
-
-	let wishlist = $state(wishlistData);
-	let gifts = $state(giftsData.gifts);
-	let role = $state(giftsData.role);
-	let likedGiftIds = $state.raw(userLikedGiftIds);
 
 	// ── Refresh function (replaces invalidate('app:wishlist-data')) ──────────
 
@@ -120,31 +168,6 @@
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
 	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
-
-	// ── Context setup ────────────────────────────────────────────────────────
-
-	const giftsContext = untrack(() =>
-		setGiftsContext(
-			() => gifts,
-			() => role,
-			() => wishlist.status === 'archived',
-		),
-	);
-
-	untrack(() => setLikesContext(() => likedGiftIds));
-
-	const sharingContext = untrack(() =>
-		setSharingContext(
-			() => wishlist.shortId,
-			() => wishlist.sharedAt !== null,
-		),
-	);
-
-	const themeContext = untrack(() =>
-		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
-	);
-
-	// ── Modal state ──────────────────────────────────────────────────────────
 
 	let moderatorPanelOpen = $state(false);
 	let modalOpen = $state(false);
@@ -236,6 +259,21 @@
 
 	function handleShared() {
 		void refreshData();
+	}
+
+	async function handleArchive() {
+		if (typeof window !== 'undefined' && !window.confirm(m.wishlist_archive_confirm())) {
+			return;
+		}
+
+		try {
+			await archiveWishlist(wishlist.id);
+			await refreshData();
+			toastSuccess(m.toast_wishlist_archived());
+		} catch (thrown) {
+			console.error('Failed to archive wishlist:', thrown);
+			toastError(m.toast_wishlist_archive_error());
+		}
 	}
 
 	function handleViewModeChange(mode: typeof viewMode) {
@@ -498,6 +536,7 @@
 		ownerIsModerator={ownerIsModeratorLocal}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
+		onarchive={handleArchive}
 	/>
 
 	<!-- Toolbar -->
