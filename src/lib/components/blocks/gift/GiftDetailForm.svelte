@@ -73,7 +73,6 @@
 	const styles = giftDetailModalVariants();
 
 	const isEdit = $derived(mode === 'edit');
-	const title = $derived(isEdit ? m.gift_edit_title() : m.gift_add_title());
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
