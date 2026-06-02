@@ -165,7 +165,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	// In-memory fallback (no R2 binding configured)
 	const localFile = localDevStore.get(objectKey);
-	if (!localFile) {
+	if (localFile === undefined) {
 		error(404, 'File not found');
 	}
 

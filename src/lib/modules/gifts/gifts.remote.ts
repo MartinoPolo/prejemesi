@@ -83,7 +83,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 		.where(and(eq(gift.wishlistId, wishlistRow.id), isNull(gift.deletedAt)))
 		.orderBy(gift.sortOrder);
 
-	if (role === 'owner' && !wishlistRow.ownerIsModerator) {
+	if (role === 'owner' && wishlistRow.ownerIsModerator === false) {
 		// Owner without self-promote: no reservation data, no like counts
 		const ownerGifts: GiftForOwner[] = giftRows.map((row) => ({
 			id: row.id,
@@ -408,7 +408,7 @@ export const reorderGifts = guardedCommand(
 
 		if (
 			reorderedGiftRows.length !== uniqueGiftIds.length ||
-			reorderedGiftRows.some((row) => row.wishlistId !== firstGift.wishlistId)
+			reorderedGiftRows.some((row) => row.wishlistId !== firstGift.wishlistId) === true
 		) {
 			error(403, 'Cannot reorder gifts from another wishlist');
 		}
