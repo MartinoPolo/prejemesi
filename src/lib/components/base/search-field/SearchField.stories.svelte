@@ -49,7 +49,7 @@
 </script>
 
 <script lang="ts">
-	import type { SearchFieldProps } from './search_field_variants.js';
+	import type { SearchFieldProps } from './search_field_types.js';
 	import TreesIcon from '@lucide/svelte/icons/trees';
 	import GitBranchIcon from '@lucide/svelte/icons/git-branch';
 	import CornerDownLeftIcon from '@lucide/svelte/icons/corner-down-left';

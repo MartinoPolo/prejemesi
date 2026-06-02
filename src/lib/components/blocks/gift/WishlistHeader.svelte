@@ -27,6 +27,7 @@
 		role: WishlistRole;
 		giftCount: number;
 		ownerIsModerator: boolean;
+		themeGradient?: string;
 		onshare?: () => void;
 		onmoderators?: () => void;
 		onarchive?: () => void;
@@ -42,6 +43,7 @@
 		role,
 		giftCount,
 		ownerIsModerator,
+		themeGradient,
 		onshare,
 		onmoderators,
 		onarchive,
@@ -54,15 +56,7 @@
 	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
 	const isArchived = $derived(status === 'archived');
 	const isDraft = $derived(status === 'draft');
-	const isEventDatePast = $derived.by(() => {
-		if (eventDate === null) {
-			return false;
-		}
-		const millisecondsPerDay = 86_400_000;
-		const todayDay = Math.floor(Date.now() / millisecondsPerDay);
-		const eventDay = Math.floor(eventDate.getTime() / millisecondsPerDay);
-		return eventDay < todayDay;
-	});
+	const isEventPast = $derived(eventDate !== null && new Date(eventDate) < new Date());
 
 	const formattedDate = $derived.by(() => {
 		if (eventDate === null) {
@@ -115,6 +109,15 @@
 			</div>
 		</div>
 	{:else}
+		<!-- Theme gradient strip -->
+		{#if themeGradient}
+			<div
+				class="h-3 w-full rounded-full"
+				style:background={themeGradient}
+				data-testid="theme-gradient-banner"
+			></div>
+		{/if}
+
 		<!-- No banner — standard header -->
 		<div class={styles.contentArea()}>
 			<span class={styles.ownerName()}>{ownerName}</span>
@@ -188,6 +191,14 @@
 			<ArchiveIcon class="size-4 flex-shrink-0" />
 			<span>{m.wishlist_archived_banner()}</span>
 		</div>
+	{:else if isOwner && isEventPast}
+		<div class={styles.archivedBanner()}>
+			<ArchiveIcon class="size-4 flex-shrink-0" />
+			<span>{m.wishlist_archive_event_passed()}</span>
+			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onarchive}>
+				{m.wishlist_archive_button()}
+			</Button>
+		</div>
 	{:else if !isDraft && isOwner}
 		<div class={styles.sharedBanner()}>
 			<LockIcon class="size-4 flex-shrink-0" />
@@ -202,16 +213,6 @@
 			<span>{m.wishlist_draft_banner()}</span>
 			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
 				{m.wishlist_share_list()}
-			</Button>
-		</div>
-	{/if}
-
-	{#if isOwner && !isArchived && isEventDatePast}
-		<div class={styles.archivedBanner()}>
-			<ArchiveIcon class="size-4 flex-shrink-0" />
-			<span>{m.wishlist_archive_prompt()}</span>
-			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onarchive}>
-				{m.wishlist_archive_button()}
 			</Button>
 		</div>
 	{/if}

@@ -5,17 +5,13 @@ import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { guardedCommand, guardedQuery } from '$lib/server/remote.js';
-import type { ToggleLikeInput, ToggleLikeResult } from './types.js';
+import { ToggleLikeInputSchema, type ToggleLikeResult } from './types.js';
 
-/**
- * Toggle like on a gift. Insert or soft-delete.
- * Owner of the wishlist CANNOT like their own gifts.
- */
 export const toggleLike = guardedCommand(
-	async ({ user }, input: ToggleLikeInput): Promise<ToggleLikeResult> => {
+	ToggleLikeInputSchema,
+	async ({ user }, input): Promise<ToggleLikeResult> => {
 		const database = getDb();
 
-		// Find the gift and its wishlist
 		const giftRows = await database
 			.select({
 				id: gift.id,
@@ -30,22 +26,23 @@ export const toggleLike = guardedCommand(
 			error(404, 'Gift not found');
 		}
 
-		// Check if user is the owner — owners cannot like their own gifts
 		const wishlistRows = await database
-			.select({ ownerId: wishlist.ownerId })
+			.select({ ownerId: wishlist.ownerId, status: wishlist.status })
 			.from(wishlist)
-			.where(eq(wishlist.id, giftRow.wishlistId))
+			.where(and(eq(wishlist.id, giftRow.wishlistId), isNull(wishlist.deletedAt)))
 			.limit(1);
 
 		const wishlistRow = wishlistRows[0];
 		if (wishlistRow === undefined) {
 			error(404, 'Wishlist not found');
 		}
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_LIKE_ON_ARCHIVED);
+		}
 		if (wishlistRow.ownerId === user.id) {
 			error(403, SERVER_ERROR.OWNER_CANNOT_LIKE_OWN_GIFTS);
 		}
 
-		// Check for existing like (active or soft-deleted)
 		const existingLikes = await database
 			.select()
 			.from(giftLike)
@@ -56,27 +53,23 @@ export const toggleLike = guardedCommand(
 
 		if (existingLike !== undefined) {
 			if (existingLike.deletedAt === null) {
-				// Currently liked — soft-delete (unlike)
 				await database
 					.update(giftLike)
 					.set({ deletedAt: new Date() })
 					.where(eq(giftLike.id, existingLike.id));
 			} else {
-				// Previously unliked — re-activate
 				await database
 					.update(giftLike)
 					.set({ deletedAt: null })
 					.where(eq(giftLike.id, existingLike.id));
 			}
 		} else {
-			// No existing record — create new like
 			await database.insert(giftLike).values({
 				giftId: input.giftId,
 				userId: user.id,
 			});
 		}
 
-		// Get updated like count
 		const countResult = await database
 			.select({ count: drizzleCount() })
 			.from(giftLike)
@@ -84,20 +77,12 @@ export const toggleLike = guardedCommand(
 
 		const likeCount = Number(countResult[0]?.count ?? 0);
 
-		// Determine new liked state
-		const liked =
-			existingLike === undefined
-				? true // new like
-				: existingLike.deletedAt !== null; // was deleted, now re-activated
+		const liked = existingLike === undefined ? true : existingLike.deletedAt !== null;
 
 		return { liked, likeCount };
 	},
 );
 
-/**
- * Get all giftIds the current user has liked (for a specific wishlist).
- * Used to hydrate like state on page load.
- */
 export const getUserLikesForWishlist = guardedQuery(async ({ user }) => {
 	const database = getDb();
 

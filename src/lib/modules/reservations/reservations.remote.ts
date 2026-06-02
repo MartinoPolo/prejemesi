@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_error_codes.js';
@@ -6,7 +7,11 @@ import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { publicQuery, publicCommand } from '$lib/server/remote.js';
-import type { ReserveGiftInput, UnreserveInput, ReservationForModerator } from './types.js';
+import {
+	ReserveGiftInputSchema,
+	UnreserveInputSchema,
+	type ReservationForModerator,
+} from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -79,13 +84,7 @@ async function determineRole(
 
 // ── Commands ───────────────────────────────────────────────────────────────
 
-/**
- * Reserve a gift. Supports both authenticated and anonymous users.
- * Anonymous: anonymousName required, anonymousEmail optional.
- * Owner of the wishlist CANNOT reserve their own gifts.
- * Cannot reserve on archived wishlists.
- */
-export const reserveGift = publicCommand(async (authContext, input: ReserveGiftInput) => {
+export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authContext, input) => {
 	const database = getDb();
 	const { gift: giftRow, wishlist: wishlistRow } = await getGiftWithWishlist(input.giftId);
 
@@ -142,11 +141,7 @@ export const reserveGift = publicCommand(async (authContext, input: ReserveGiftI
 	return { id: created.id };
 });
 
-/**
- * Unreserve a gift. Only the person who reserved can unreserve.
- * Authenticated: match userId. Anonymous: not supported (would need token).
- */
-export const unreserveGift = publicCommand(async (authContext, input: UnreserveInput) => {
+export const unreserveGift = publicCommand(UnreserveInputSchema, async (authContext, input) => {
 	const database = getDb();
 
 	const rows = await database
@@ -168,7 +163,6 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
 		}
 	} else {
 		// Anonymous reservation — only moderators can unreserve on behalf
-		// For now, anonymous users cannot unreserve (no token mechanism)
 		if (authContext === null) {
 			error(403, SERVER_ERROR.ANONYMOUS_CANNOT_CANCEL_RESERVATIONS);
 		}
@@ -183,11 +177,7 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
 			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 		}
 
-		const role = await determineRole(
-			authContext.user.id,
-			'', // not owner (we already know it's not an owner reservation)
-			giftRow[0].wishlistId,
-		);
+		const role = await determineRole(authContext.user.id, '', giftRow[0].wishlistId);
 
 		if (role !== 'moderator') {
 			error(403, SERVER_ERROR.CANNOT_CANCEL_ANONYMOUS_RESERVATION);
@@ -203,13 +193,7 @@ export const unreserveGift = publicCommand(async (authContext, input: UnreserveI
 	return { success: true };
 });
 
-/**
- * Get reservations for a gift.
- * Owner: returns EMPTY array (owner never sees reservation data).
- * Moderator: returns full details.
- * Visitor: returns empty (visitors see counts via gifts, not individual reservations).
- */
-export const getReservationsForGift = publicQuery(async (authContext, giftId: string) => {
+export const getReservationsForGift = publicQuery(v.string(), async (authContext, giftId) => {
 	const wishlistRow = (await getGiftWithWishlist(giftId)).wishlist;
 
 	const userId = authContext?.user.id ?? null;
@@ -244,11 +228,7 @@ export const getReservationsForGift = publicQuery(async (authContext, giftId: st
 	return { reservations, role };
 });
 
-/**
- * Get the current user's reservations for a specific gift.
- * Used to show "you already reserved X" and enable unreserve.
- */
-export const getMyReservationsForGift = publicQuery(async (authContext, giftId: string) => {
+export const getMyReservationsForGift = publicQuery(v.string(), async (authContext, giftId) => {
 	if (authContext === null) {
 		return [];
 	}

@@ -80,8 +80,6 @@
 </script>
 
 <div class={styles.root()}>
-	<p class={styles.title()}>{m.theme_title()}</p>
-
 	<!-- Preset grid -->
 	<div class={styles.presetGrid()}>
 		{#each THEME_PRESET_LIST as presetName (presetName)}

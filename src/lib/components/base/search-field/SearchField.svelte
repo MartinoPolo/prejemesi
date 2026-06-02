@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils.js';
 	import { inputVariants } from '$lib/components/base/input/input_variants.js';
 	import SearchIcon from '@lucide/svelte/icons/search';
-	import type { SearchFieldProps } from './search_field_variants.js';
+	import type { SearchFieldProps } from './search_field_types.js';
 
 	let {
 		ref = $bindable(null),

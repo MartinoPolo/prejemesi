@@ -21,12 +21,12 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
+	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
 	}),
-	guardedQueryWithArgs: vi.fn((handler: (...args: unknown[]) => unknown) => {
+	guardedQueryWithArgs: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
@@ -80,6 +80,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 
 import {
 	acceptModeratorInvite,
+	generateModeratorInviteLink,
 	revokeModeratorInvite,
 	removeModerator,
 	selfPromoteToModerator,
@@ -117,6 +118,15 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 		insert: vi.fn(() => createChain()),
 		update: vi.fn(() => createChain()),
 		delete: vi.fn(() => createChain()),
+		transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+			const txProxy = {
+				select: vi.fn(() => createChain()),
+				insert: vi.fn(() => createChain()),
+				update: vi.fn(() => createChain()),
+				delete: vi.fn(() => createChain()),
+			};
+			return callback(txProxy);
+		}),
 	} as unknown as ReturnType<typeof getDb>;
 }
 
@@ -138,6 +148,7 @@ const activeWishlistRow = {
 	ownerId: ownerUser.id,
 	shortId: 'short-abc',
 	title: 'Test List',
+	status: 'active',
 	ownerIsModerator: false,
 	deletedAt: null,
 };
@@ -177,6 +188,12 @@ const callRemoveModerator = (
 	authContext: typeof ownerAuthContext,
 	input: { assignmentId: string },
 ) => (removeModerator as unknown as (...args: unknown[]) => unknown)(authContext, input);
+
+const callGenerateModeratorInviteLink = (
+	authContext: typeof ownerAuthContext,
+	input: { wishlistId: string },
+) =>
+	(generateModeratorInviteLink as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callSelfPromoteToModerator = (
 	authContext: typeof ownerAuthContext,
@@ -274,6 +291,30 @@ describe('acceptModeratorInvite', () => {
 			callAcceptModeratorInvite(regularAuthContext, { token: testInviteToken }),
 		).rejects.toMatchObject({ status: 400, message: 'ALREADY_MODERATOR' });
 	});
+
+	it('archived wishlist → throws 400', async () => {
+		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
+		// 1: invite found, 2: wishlist found with archived status
+		mockGetDb.mockReturnValue(createMockDb([[pendingInviteRow], [archivedWishlistRow]]));
+
+		await expect(
+			callAcceptModeratorInvite(regularAuthContext, { token: testInviteToken }),
+		).rejects.toMatchObject({ status: 400, message: 'CANNOT_INVITE_ON_ARCHIVED' });
+	});
+});
+
+// ── generateModeratorInviteLink ──────────────────────────────────────────────
+
+describe('generateModeratorInviteLink', () => {
+	it('archived wishlist → throws 400', async () => {
+		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
+		// 1: wishlist lookup (verifyWishlistOwner)
+		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
+
+		await expect(
+			callGenerateModeratorInviteLink(ownerAuthContext, { wishlistId: testWishlistId }),
+		).rejects.toMatchObject({ status: 400, message: 'CANNOT_INVITE_ON_ARCHIVED' });
+	});
 });
 
 // ── revokeModeratorInvite ────────────────────────────────────────────────────
@@ -359,6 +400,16 @@ describe('selfPromoteToModerator', () => {
 		await expect(
 			callSelfPromoteToModerator(ownerAuthContext, { wishlistId: testWishlistId }),
 		).rejects.toMatchObject({ status: 400, message: 'ALREADY_SEEING_RESERVATIONS' });
+	});
+
+	it('archived wishlist → throws 400', async () => {
+		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
+		// 1: wishlist lookup (verifyWishlistOwner)
+		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
+
+		await expect(
+			callSelfPromoteToModerator(ownerAuthContext, { wishlistId: testWishlistId }),
+		).rejects.toMatchObject({ status: 400, message: 'CANNOT_SELF_PROMOTE_ON_ARCHIVED' });
 	});
 });
 

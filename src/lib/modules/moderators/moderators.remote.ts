@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { eq, and, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -6,15 +7,15 @@ import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment, moderatorInvite } from '$lib/server/db/moderator.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
-import type {
-	GenerateInviteInput,
-	AcceptInviteInput,
-	RevokeInviteInput,
-	RemoveModeratorInput,
-	SelfPromoteInput,
-	ModeratorsData,
-	ModeratorWithUser,
-	PendingInvite,
+import {
+	GenerateInviteInputSchema,
+	AcceptInviteInputSchema,
+	RevokeInviteInputSchema,
+	RemoveModeratorInputSchema,
+	SelfPromoteInputSchema,
+	type ModeratorsData,
+	type ModeratorWithUser,
+	type PendingInvite,
 } from './types.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -41,12 +42,9 @@ async function verifyWishlistOwner(userId: string, wishlistId: string) {
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
-/**
- * Get moderators and pending invites for a wishlist.
- * Accessible by owner and moderators.
- */
 export const getModeratorsForWishlist = guardedQueryWithArgs(
-	async ({ user: currentUser }, wishlistId: string): Promise<ModeratorsData> => {
+	v.string(),
+	async ({ user: currentUser }, wishlistId): Promise<ModeratorsData> => {
 		const database = getDb();
 
 		// Verify the wishlist exists and user has access
@@ -149,14 +147,15 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 
-/**
- * Generate a moderator invite link. Owner only.
- * Creates a token stored in DB and returns the invite URL path.
- */
 export const generateModeratorInviteLink = guardedCommand(
-	async ({ user: currentUser }, input: GenerateInviteInput) => {
+	GenerateInviteInputSchema,
+	async ({ user: currentUser }, input) => {
 		const database = getDb();
 		const wishlistRow = await verifyWishlistOwner(currentUser.id, input.wishlistId);
+
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED);
+		}
 
 		// Create invite record (token is auto-generated via $defaultFn)
 		const [created] = await database
@@ -178,12 +177,9 @@ export const generateModeratorInviteLink = guardedCommand(
 	},
 );
 
-/**
- * Accept a moderator invite. Authenticated user clicks invite link.
- * Validates token, creates moderator assignment.
- */
 export const acceptModeratorInvite = guardedCommand(
-	async ({ user: currentUser }, input: AcceptInviteInput) => {
+	AcceptInviteInputSchema,
+	async ({ user: currentUser }, input) => {
 		const database = getDb();
 
 		// Find the invite
@@ -220,6 +216,10 @@ export const acceptModeratorInvite = guardedCommand(
 			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
 		}
 
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED);
+		}
+
 		// Cannot accept own invite (owner)
 		if (wishlistRow.ownerId === currentUser.id) {
 			error(400, SERVER_ERROR.OWNER_CANNOT_ACCEPT_OWN_INVITE);
@@ -242,41 +242,39 @@ export const acceptModeratorInvite = guardedCommand(
 			error(400, SERVER_ERROR.ALREADY_MODERATOR);
 		}
 
-		// Mark invite as used
-		await database
-			.update(moderatorInvite)
-			.set({
-				usedByUserId: currentUser.id,
-				usedAt: new Date(),
-			})
-			.where(eq(moderatorInvite.id, invite.id));
+		return database.transaction(async (tx) => {
+			await tx
+				.update(moderatorInvite)
+				.set({
+					usedByUserId: currentUser.id,
+					usedAt: new Date(),
+				})
+				.where(eq(moderatorInvite.id, invite.id));
 
-		// Create moderator assignment
-		const [assignment] = await database
-			.insert(moderatorAssignment)
-			.values({
+			const [assignment] = await tx
+				.insert(moderatorAssignment)
+				.values({
+					wishlistId: invite.wishlistId,
+					userId: currentUser.id,
+				})
+				.returning();
+
+			if (assignment === undefined) {
+				error(500, SERVER_ERROR.FAILED_TO_ASSIGN_MODERATOR);
+			}
+
+			return {
 				wishlistId: invite.wishlistId,
-				userId: currentUser.id,
-			})
-			.returning();
-
-		if (assignment === undefined) {
-			error(500, SERVER_ERROR.FAILED_TO_ASSIGN_MODERATOR);
-		}
-
-		return {
-			wishlistId: invite.wishlistId,
-			wishlistShortId: wishlistRow.shortId,
-			wishlistTitle: wishlistRow.title,
-		};
+				wishlistShortId: wishlistRow.shortId,
+				wishlistTitle: wishlistRow.title,
+			};
+		});
 	},
 );
 
-/**
- * Revoke a pending moderator invite. Owner only.
- */
 export const revokeModeratorInvite = guardedCommand(
-	async ({ user: currentUser }, input: RevokeInviteInput) => {
+	RevokeInviteInputSchema,
+	async ({ user: currentUser }, input) => {
 		const database = getDb();
 
 		// Find the invite
@@ -310,11 +308,9 @@ export const revokeModeratorInvite = guardedCommand(
 	},
 );
 
-/**
- * Remove an existing moderator. Owner only.
- */
 export const removeModerator = guardedCommand(
-	async ({ user: currentUser }, input: RemoveModeratorInput) => {
+	RemoveModeratorInputSchema,
+	async ({ user: currentUser }, input) => {
 		const database = getDb();
 
 		// Find the assignment
@@ -345,15 +341,15 @@ export const removeModerator = guardedCommand(
 	},
 );
 
-/**
- * Owner self-promotes to moderator (sees full reservation state).
- * Sets ownerIsModerator flag on the wishlist.
- */
 export const selfPromoteToModerator = guardedCommand(
-	async ({ user: currentUser }, input: SelfPromoteInput) => {
+	SelfPromoteInputSchema,
+	async ({ user: currentUser }, input) => {
 		const database = getDb();
 		const wishlistRow = await verifyWishlistOwner(currentUser.id, input.wishlistId);
 
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_SELF_PROMOTE_ON_ARCHIVED);
+		}
 		if (wishlistRow.ownerIsModerator) {
 			error(400, SERVER_ERROR.ALREADY_SEEING_RESERVATIONS);
 		}
@@ -366,8 +362,6 @@ export const selfPromoteToModerator = guardedCommand(
 				updatedAt: new Date(),
 			})
 			.where(eq(wishlist.id, input.wishlistId));
-
-		// TODO: Send notification to all visitors/followers
 
 		return { success: true };
 	},

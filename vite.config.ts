@@ -21,20 +21,23 @@ const gitBranch = (() => {
 
 const dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+const isVitest = process.env.VITEST === 'true';
 
 export default defineConfig({
 	server: {
 		open: true,
-		warmup: {
-			clientFiles: [
-				'./src/routes/(app)/my-lists/+page.svelte',
-				'./src/routes/(app)/moderated/+page.svelte',
-				'./src/routes/(app)/followed/+page.svelte',
-				'./src/routes/(app)/settings/+page.svelte',
-				'./src/routes/(auth)/login/+page.svelte',
-				'./src/routes/(auth)/register/+page.svelte',
-			],
-		},
+		warmup: isVitest
+			? undefined
+			: {
+					clientFiles: [
+						'./src/routes/(app)/my-lists/+page.svelte',
+						'./src/routes/(app)/moderated/+page.svelte',
+						'./src/routes/(app)/followed/+page.svelte',
+						'./src/routes/(app)/settings/+page.svelte',
+						'./src/routes/(auth)/login/+page.svelte',
+						'./src/routes/(auth)/register/+page.svelte',
+					],
+				},
 	},
 	define: {
 		// Exposed as __GIT_BRANCH__ global; consumed in +layout.svelte to prefix tab titles.
@@ -65,6 +68,14 @@ export default defineConfig({
 			requireAssertions: true,
 		},
 		coverage: {
+			include: [
+				'src/lib/modules/**/*.remote.ts',
+				'src/lib/modules/gifts/gift_url.ts',
+				'src/lib/modules/uploads/upload.ts',
+				'src/lib/server/remote.ts',
+				'src/lib/server/crypto/**/*.ts',
+			],
+			exclude: ['**/*.test.ts', '**/*.stories.svelte'],
 			thresholds: {
 				statements: 80,
 				branches: 80,

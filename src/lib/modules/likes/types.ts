@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import type { giftLike } from '$lib/server/db/gift.schema.js';
 
 /** Full gift like row from DB */
@@ -7,6 +8,10 @@ export type GiftLike = typeof giftLike.$inferSelect;
 export interface ToggleLikeInput {
 	giftId: string;
 }
+
+export const ToggleLikeInputSchema = v.object({
+	giftId: v.string(),
+});
 
 /** Result of toggling a like */
 export interface ToggleLikeResult {

@@ -61,7 +61,7 @@
 				class={cn('relative size-8', hasActiveFilters && 'border-primary')}
 				aria-label={m.gift_sort_filter_label()}
 			>
-				<FilterIcon class="size-4" />
+				<FilterIcon />
 				{#if hasActiveFilters}
 					<span
 						class="absolute -top-1 -right-1 size-2.5 rounded-full bg-primary"

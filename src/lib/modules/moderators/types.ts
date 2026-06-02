@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import type { moderatorAssignment, moderatorInvite } from '$lib/server/db/moderator.schema.js';
 
 /** Full moderator assignment row from DB */
@@ -29,25 +30,45 @@ export interface GenerateInviteInput {
 	wishlistId: string;
 }
 
+export const GenerateInviteInputSchema = v.object({
+	wishlistId: v.string(),
+});
+
 /** Input for accepting an invite */
 export interface AcceptInviteInput {
 	token: string;
 }
+
+export const AcceptInviteInputSchema = v.object({
+	token: v.string(),
+});
 
 /** Input for revoking an invite */
 export interface RevokeInviteInput {
 	inviteId: string;
 }
 
+export const RevokeInviteInputSchema = v.object({
+	inviteId: v.string(),
+});
+
 /** Input for removing a moderator */
 export interface RemoveModeratorInput {
 	assignmentId: string;
 }
 
+export const RemoveModeratorInputSchema = v.object({
+	assignmentId: v.string(),
+});
+
 /** Input for self-promoting to moderator */
 export interface SelfPromoteInput {
 	wishlistId: string;
 }
+
+export const SelfPromoteInputSchema = v.object({
+	wishlistId: v.string(),
+});
 
 /** Result of getting moderators for a wishlist */
 export interface ModeratorsData {

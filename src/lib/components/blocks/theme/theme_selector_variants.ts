@@ -3,7 +3,6 @@ import { tv } from 'tailwind-variants';
 export const themeSelectorVariants = tv({
 	slots: {
 		root: 'flex flex-col gap-4',
-		title: 'font-heading text-lg font-semibold text-foreground',
 		presetGrid: 'grid grid-cols-2 gap-3 sm:grid-cols-3',
 		customSection: 'flex flex-col gap-3 rounded-lg border border-border p-4',
 		customLabel: 'text-sm font-medium text-foreground',
@@ -17,7 +16,7 @@ export const themeSelectorVariants = tv({
 
 export const themePresetCardVariants = tv({
 	slots: {
-		root: 'group relative flex cursor-pointer flex-col gap-2 rounded-xl border-2 p-3 transition-all hover:shadow-md',
+		root: 'group relative flex cursor-pointer flex-col gap-2 rounded-xl border-2 bg-transparent p-3 text-left outline-none transition-all hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:scale-[0.97]',
 		swatchRow: 'flex h-8 overflow-hidden rounded-lg',
 		swatch: 'flex-1',
 		labelRow: 'flex items-center gap-1.5',

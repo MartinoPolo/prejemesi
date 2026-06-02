@@ -21,7 +21,7 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) => {
+	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
 		return wrapped;
@@ -133,6 +133,21 @@ describe('toggleLike', () => {
 		await expect(callToggleLike(testAuthContext, testInput)).rejects.toMatchObject({
 			status: 404,
 			message: 'Wishlist not found',
+		});
+	});
+
+	it('throws 400 when the wishlist is archived', async () => {
+		// Query 1: gift found, Query 2: wishlist with status archived
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ ownerId: 'owner-other', status: 'archived' }],
+			]),
+		);
+
+		await expect(callToggleLike(testAuthContext, testInput)).rejects.toMatchObject({
+			status: 400,
+			message: 'CANNOT_LIKE_ON_ARCHIVED',
 		});
 	});
 

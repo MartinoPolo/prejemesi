@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { guardedCommand } from '$lib/server/remote.js';
@@ -27,16 +28,16 @@ function getExtensionFromContentType(contentType: string): string {
 	return extensionMap[contentType] ?? 'bin';
 }
 
-/**
- * Server command that authorizes an upload and returns the upload endpoint + object key.
- * The client then uploads the file directly to the returned URL.
- */
-interface AuthorizeUploadInput {
-	target: string;
-	fileName: string;
-	contentType: string;
-	fileSize: number;
-}
+const AuthorizeUploadInputSchema = v.object({
+	target: v.string(),
+	fileName: v.string(),
+	contentType: v.string(),
+	fileSize: v.number(),
+});
+
+const AuthorizeDeleteInputSchema = v.object({
+	objectKey: v.string(),
+});
 
 function getAuthSigningKey(): string {
 	const key = env.AUTH_SECRET;
@@ -47,7 +48,8 @@ function getAuthSigningKey(): string {
 }
 
 export const authorizeUpload = guardedCommand(
-	async (authContext, input: AuthorizeUploadInput): Promise<UploadAuthorization> => {
+	AuthorizeUploadInputSchema,
+	async (authContext, input): Promise<UploadAuthorization> => {
 		if (!isUploadTarget(input.target)) {
 			error(400, `Invalid upload target: ${input.target}`);
 		}
@@ -86,12 +88,9 @@ export const authorizeUpload = guardedCommand(
 	},
 );
 
-interface AuthorizeDeleteInput {
-	objectKey: string;
-}
-
 export const authorizeDelete = guardedCommand(
-	async (authContext, input: AuthorizeDeleteInput): Promise<DeleteAuthorization> => {
+	AuthorizeDeleteInputSchema,
+	async (authContext, input): Promise<DeleteAuthorization> => {
 		if (typeof input.objectKey !== 'string' || input.objectKey === '') {
 			error(400, 'Missing object key');
 		}

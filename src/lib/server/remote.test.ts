@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import * as v from 'valibot';
 import type { User, Session } from 'better-auth';
 
 vi.mock('$app/server', () => ({
@@ -81,7 +82,9 @@ describe('guardedQueryWithArgs', () => {
 	it('passes auth context and arg to handler when authenticated', () => {
 		setupAuthenticatedEvent();
 		const handler = vi.fn(() => 'result-with-args');
-		const wrappedQuery = guardedQueryWithArgs(handler) as (arg: unknown) => unknown;
+		const wrappedQuery = guardedQueryWithArgs(v.unknown(), handler) as (
+			arg: unknown,
+		) => unknown;
 
 		const result = wrappedQuery({ page: 1 });
 
@@ -92,7 +95,9 @@ describe('guardedQueryWithArgs', () => {
 	it('throws 401 when unauthenticated', () => {
 		setupUnauthenticatedEvent();
 		const handler = vi.fn();
-		const wrappedQuery = guardedQueryWithArgs(handler) as (arg: unknown) => unknown;
+		const wrappedQuery = guardedQueryWithArgs(v.unknown(), handler) as (
+			arg: unknown,
+		) => unknown;
 
 		expect(() => wrappedQuery({ page: 1 })).toThrowError(
 			expect.objectContaining({ status: 401 }),
@@ -105,7 +110,7 @@ describe('publicQuery', () => {
 	it('passes AuthContext to handler when authenticated', () => {
 		setupAuthenticatedEvent();
 		const handler = vi.fn(() => 'public-auth-result');
-		const wrappedQuery = publicQuery(handler) as (arg: unknown) => unknown;
+		const wrappedQuery = publicQuery(v.unknown(), handler) as (arg: unknown) => unknown;
 
 		const result = wrappedQuery('some-arg');
 
@@ -116,7 +121,7 @@ describe('publicQuery', () => {
 	it('passes null as authContext when unauthenticated', () => {
 		setupUnauthenticatedEvent();
 		const handler = vi.fn(() => 'public-anon-result');
-		const wrappedQuery = publicQuery(handler) as (arg: unknown) => unknown;
+		const wrappedQuery = publicQuery(v.unknown(), handler) as (arg: unknown) => unknown;
 
 		const result = wrappedQuery('some-arg');
 
@@ -129,7 +134,7 @@ describe('guardedCommand', () => {
 	it('calls handler with auth context and arg when authenticated', () => {
 		setupAuthenticatedEvent();
 		const handler = vi.fn(() => 'command-result');
-		const wrappedCommand = guardedCommand(handler) as (arg: unknown) => unknown;
+		const wrappedCommand = guardedCommand(v.unknown(), handler) as (arg: unknown) => unknown;
 
 		const result = wrappedCommand({ action: 'create' });
 
@@ -143,7 +148,7 @@ describe('guardedCommand', () => {
 	it('throws 401 when unauthenticated', () => {
 		setupUnauthenticatedEvent();
 		const handler = vi.fn();
-		const wrappedCommand = guardedCommand(handler) as (arg: unknown) => unknown;
+		const wrappedCommand = guardedCommand(v.unknown(), handler) as (arg: unknown) => unknown;
 
 		expect(() => wrappedCommand({ action: 'create' })).toThrowError(
 			expect.objectContaining({ status: 401 }),
@@ -178,7 +183,7 @@ describe('publicCommand', () => {
 	it('passes AuthContext to handler when authenticated', () => {
 		setupAuthenticatedEvent();
 		const handler = vi.fn(() => 'public-cmd-auth-result');
-		const wrappedCommand = publicCommand(handler) as (arg: unknown) => unknown;
+		const wrappedCommand = publicCommand(v.unknown(), handler) as (arg: unknown) => unknown;
 
 		const result = wrappedCommand({ data: 'value' });
 
@@ -192,7 +197,7 @@ describe('publicCommand', () => {
 	it('passes null as authContext when unauthenticated', () => {
 		setupUnauthenticatedEvent();
 		const handler = vi.fn(() => 'public-cmd-anon-result');
-		const wrappedCommand = publicCommand(handler) as (arg: unknown) => unknown;
+		const wrappedCommand = publicCommand(v.unknown(), handler) as (arg: unknown) => unknown;
 
 		const result = wrappedCommand({ data: 'value' });
 

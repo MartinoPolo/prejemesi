@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import type { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import type { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 
@@ -104,13 +105,29 @@ export interface CreateGiftInput {
 	description?: string | null;
 	url?: string | null;
 	price?: number | null;
-	currency?: string | null;
+	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
 	imageKey?: string | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
 	sortOrder?: number;
 }
+
+export const GIFT_CURRENCY_VALUES = Object.values(GIFT_CURRENCIES);
+
+export const CreateGiftInputSchema = v.object({
+	wishlistId: v.string(),
+	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
+	description: v.optional(v.nullable(v.string())),
+	url: v.optional(v.nullable(v.pipe(v.string(), v.url()))),
+	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+	imageUrl: v.optional(v.nullable(v.string())),
+	imageKey: v.optional(v.nullable(v.string())),
+	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
+	priorityLevelId: v.optional(v.nullable(v.string())),
+	sortOrder: v.optional(v.number()),
+});
 
 /** Input for updating an existing gift */
 export interface UpdateGiftInput {
@@ -119,15 +136,38 @@ export interface UpdateGiftInput {
 	description?: string | null;
 	url?: string | null;
 	price?: number | null;
-	currency?: string | null;
+	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
 	imageKey?: string | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
 }
 
+export const UpdateGiftInputSchema = v.object({
+	id: v.string(),
+	name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
+	description: v.optional(v.nullable(v.string())),
+	url: v.optional(v.nullable(v.pipe(v.string(), v.url()))),
+	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+	imageUrl: v.optional(v.nullable(v.string())),
+	imageKey: v.optional(v.nullable(v.string())),
+	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
+	priorityLevelId: v.optional(v.nullable(v.string())),
+});
+
 /** Input for reordering gifts */
 export interface ReorderGiftItem {
 	id: string;
 	sortOrder: number;
 }
+
+export const ReorderGiftItemSchema = v.object({
+	id: v.string(),
+	sortOrder: v.number(),
+});
+
+export const MarkGiftReceivedInputSchema = v.object({
+	giftId: v.string(),
+	received: v.boolean(),
+});

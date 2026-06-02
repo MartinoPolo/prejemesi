@@ -6,7 +6,7 @@
 		togglePressedVariants,
 		TOGGLE_INTENT_TO_BUTTON_INTENT,
 	} from '../toggle/toggle_variants.js';
-	import type { ToggleGroupItemProps } from './toggle_group_variants.js';
+	import type { ToggleGroupItemProps } from './toggle_group_types.js';
 	import { useToggleGroup } from './toggle_group.context.svelte.js';
 
 	let {

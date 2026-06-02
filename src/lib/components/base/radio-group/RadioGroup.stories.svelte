@@ -108,7 +108,7 @@
 </script>
 
 <script lang="ts">
-	import type { RadioGroupProps } from './radio_group_variants.js';
+	import type { RadioGroupProps } from './radio_group_types.js';
 	import StoryKeyboardHints from '$lib/storybook/StoryKeyboardHints.svelte';
 	import KeyboardHint from '$lib/storybook/KeyboardHint.svelte';
 </script>

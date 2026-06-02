@@ -3,7 +3,7 @@
 	import ListIcon from '@lucide/svelte/icons/list';
 	import TableIcon from '@lucide/svelte/icons/table';
 	import { GIFT_VIEW_MODES, type GiftViewMode } from '$lib/modules/gifts/types.js';
-	import { cn } from '$lib/utils.js';
+	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 
 	interface GiftViewSwitcherProps {
 		value: GiftViewMode;
@@ -19,25 +19,19 @@
 	] as const;
 </script>
 
-<div
-	class="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5"
-	role="group"
+<ToggleGroup.Root
+	type="single"
+	{value}
+	onValueChange={(newValue) => {
+		if (newValue !== '') onchange(newValue as GiftViewMode);
+	}}
+	intent="default"
+	size="icon"
 	aria-label="Zobrazeni"
 >
 	{#each modes as mode (mode.key)}
-		{@const isActive = value === mode.key}
-		<button
-			type="button"
-			class={cn(
-				'inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-all',
-				isActive && 'bg-background text-foreground shadow-sm',
-				!isActive && 'hover:text-foreground',
-			)}
-			aria-pressed={isActive}
-			aria-label={mode.label}
-			onclick={() => onchange(mode.key)}
-		>
-			<mode.icon class="size-4" />
-		</button>
+		<ToggleGroup.Item value={mode.key} aria-label={mode.label}>
+			<mode.icon />
+		</ToggleGroup.Item>
 	{/each}
-</div>
+</ToggleGroup.Root>

@@ -40,7 +40,8 @@
 		"mode-watcher": "^1.1.0",
 		"nanoid": "^5.1.11",
 		"postgres": "^3.4.8",
-		"svelte-sonner": "^1.1.1"
+		"svelte-sonner": "^1.1.1",
+		"valibot": "^1.4.1"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.22",
@@ -52,6 +53,7 @@
 		"@internationalized/date": "^3.12.0",
 		"@lucide/svelte": "^1.17.0",
 		"@playwright/test": "^1.58.2",
+		"@standard-schema/spec": "^1.1.0",
 		"@storybook/addon-a11y": "^10.3.3",
 		"@storybook/addon-docs": "^10.3.3",
 		"@storybook/addon-svelte-csf": "^5.1.2",

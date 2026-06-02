@@ -25,8 +25,8 @@ export const buttonVariants = tv({
 			sm: 'h-(--size-control-sm) px-2.25 text-(length:--text-sm) rounded-sm [&_[data-icon]]:size-3.5',
 			md: 'h-(--size-control-md) px-3 text-(length:--text-md) [&_[data-icon]]:size-4',
 			lg: 'h-(--size-control-lg) px-4 text-(length:--text-base) [&_[data-icon]]:size-4',
-			icon: 'size-(--size-control-md) p-0 [&_[data-icon]]:size-4',
-			'icon-sm': 'size-(--size-control-sm) p-0 [&_[data-icon]]:size-3.5',
+			icon: 'size-(--size-control-md) p-0 [&_svg]:size-4',
+			'icon-sm': 'size-(--size-control-sm) p-0 [&_svg]:size-3.5',
 		},
 	},
 	defaultVariants: {

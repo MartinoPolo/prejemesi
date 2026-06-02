@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
@@ -6,42 +7,15 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
-	type CreateWishlistInput,
-	type UpdateWishlistInput,
+	CreateWishlistInputSchema,
+	UpdateWishlistInputSchema,
 	type WishlistRole,
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist } from './dashboard_types.js';
-
-const VALID_WISHLIST_THEMES = new Set([
-	'default',
-	'christmas',
-	'birthday',
-	'fun',
-	'elegant',
-	'custom',
-]);
-
-function validateCreateWishlistInput(input: CreateWishlistInput) {
-	const title = input.title.trim();
-	if (title === '') {
-		error(400, 'Wishlist title is required');
-	}
-
-	const eventDate = input.eventDate ?? null;
-	if (eventDate !== null && (!(eventDate instanceof Date) || Number.isNaN(eventDate.getTime()))) {
-		error(400, 'Invalid event date');
-	}
-
-	const theme = input.theme ?? 'default';
-	if (!VALID_WISHLIST_THEMES.has(theme)) {
-		error(400, 'Invalid wishlist theme');
-	}
-
-	return { title, eventDate, theme };
-}
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -54,7 +28,7 @@ export const getMyWishlists = guardedQuery(async ({ user }) => {
 		.orderBy(wishlist.createdAt);
 });
 
-export const getWishlistByShortId = publicQuery(async (authContext, shortId: string) => {
+export const getWishlistByShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
 
 	const rows = await database
@@ -214,18 +188,17 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 
-export const createWishlist = guardedCommand(async ({ user }, input: CreateWishlistInput) => {
+export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({ user }, input) => {
 	const database = getDb();
-	const validatedInput = validateCreateWishlistInput(input);
 
-	return database.transaction(async (transaction) => {
-		const [created] = await transaction
+	return database.transaction(async (tx) => {
+		const [created] = await tx
 			.insert(wishlist)
 			.values({
 				ownerId: user.id,
-				title: validatedInput.title,
-				eventDate: validatedInput.eventDate,
-				theme: validatedInput.theme,
+				title: input.title,
+				eventDate: input.eventDate ?? null,
+				theme: input.theme ?? 'default',
 			})
 			.returning();
 
@@ -233,7 +206,7 @@ export const createWishlist = guardedCommand(async ({ user }, input: CreateWishl
 			error(500, 'Failed to create wishlist');
 		}
 
-		await transaction.insert(priorityLevel).values(
+		await tx.insert(priorityLevel).values(
 			DEFAULT_PRIORITY_LEVELS.map((level) => ({
 				wishlistId: created.id,
 				label: level.label,
@@ -245,7 +218,7 @@ export const createWishlist = guardedCommand(async ({ user }, input: CreateWishl
 	});
 });
 
-export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishlistInput) => {
+export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
 	// Verify ownership
@@ -263,7 +236,7 @@ export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishl
 		error(403, 'Not authorized');
 	}
 	if (row.status === 'archived') {
-		error(400, 'Cannot modify an archived wishlist');
+		error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
 	}
 
 	// Edit lock: if shared, only allow limited field updates
@@ -311,7 +284,7 @@ export const updateWishlist = guardedCommand(async ({ user }, input: UpdateWishl
 	return updated;
 });
 
-export const archiveWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	const existing = await database
@@ -341,7 +314,7 @@ export const archiveWishlist = guardedCommand(async ({ user }, wishlistId: strin
 	return archived;
 });
 
-export const deleteWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	const existing = await database
@@ -370,11 +343,7 @@ export const deleteWishlist = guardedCommand(async ({ user }, wishlistId: string
 
 // ── Follower Commands ──────────────────────────────────────────────────────
 
-/**
- * Auto-follow a wishlist on first visit.
- * No-op if user is the owner or already following.
- */
-export const followWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const followWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	// Verify wishlist exists
@@ -429,10 +398,7 @@ export const followWishlist = guardedCommand(async ({ user }, wishlistId: string
 	return { followed: true, alreadyFollowing: false };
 });
 
-/**
- * Unfollow a wishlist. Sets unfollowedAt timestamp.
- */
-export const unfollowWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const unfollowWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	await database
@@ -443,10 +409,7 @@ export const unfollowWishlist = guardedCommand(async ({ user }, wishlistId: stri
 		);
 });
 
-/**
- * Re-follow a previously unfollowed wishlist. Clears unfollowedAt.
- */
-export const refollowWishlist = guardedCommand(async ({ user }, wishlistId: string) => {
+export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
 	await database

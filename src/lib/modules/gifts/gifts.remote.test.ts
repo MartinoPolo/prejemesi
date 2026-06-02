@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 // ── Suppress SvelteKit's remote-function validator injected by the Vite transform
 vi.mock('@sveltejs/kit/internal', () => ({
@@ -29,14 +30,16 @@ function wrapWithRemoteMarker(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
-	publicQuery: vi.fn((handler: (...args: unknown[]) => unknown) => wrapWithRemoteMarker(handler)),
-	publicCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	publicQuery: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
-	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
-	guardedQueryWithArgs: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
+		wrapWithRemoteMarker(handler),
+	),
+	guardedQueryWithArgs: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
 	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
@@ -508,7 +511,7 @@ describe('createGift', () => {
 			await expect(callCreateGift(makeOwnerAuthContext(), createInput)).rejects.toMatchObject(
 				{
 					status: 400,
-					message: 'Cannot modify an archived wishlist',
+					message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
 				},
 			);
 		});
@@ -568,7 +571,7 @@ describe('updateGift', () => {
 			await expect(callUpdateGift(makeOwnerAuthContext(), updateInput)).rejects.toMatchObject(
 				{
 					status: 400,
-					message: 'Cannot modify an archived wishlist',
+					message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
 				},
 			);
 		});
@@ -677,7 +680,7 @@ describe('deleteGift', () => {
 
 			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
 				status: 400,
-				message: 'Cannot modify an archived wishlist',
+				message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
 			});
 		});
 	});
@@ -711,7 +714,7 @@ describe('reorderGifts', () => {
 			callReorderGifts(makeOwnerAuthContext(), [{ id: GIFT_ID, sortOrder: 0 }]),
 		).rejects.toMatchObject({
 			status: 400,
-			message: 'Cannot modify an archived wishlist',
+			message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
 		});
 	});
 });
@@ -758,7 +761,7 @@ describe('markGiftReceived', () => {
 			await expect(callMarkReceived(makeOwnerAuthContext(), markInput)).rejects.toMatchObject(
 				{
 					status: 400,
-					message: 'Cannot modify an archived wishlist',
+					message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
 				},
 			);
 		});

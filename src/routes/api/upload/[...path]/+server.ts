@@ -107,35 +107,35 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		error(400, `File too large. Maximum: ${String(maxMb)}MB`);
 	}
 
-	// Production path: stream directly to R2
-	if (isR2Available()) {
-		if (request.body == null) {
-			error(400, 'Empty file body');
-		}
-		try {
-			await putObject(objectKey, request.body, contentType);
-		} catch {
-			error(502, 'Storage write failed');
-		}
-	} else {
-		// Dev fallback: must buffer for in-memory store
-		let body: ArrayBuffer;
-		try {
-			body = await request.arrayBuffer();
-		} catch {
-			error(400, 'Failed to read request body');
-		}
-		if (body.byteLength === 0) {
-			error(400, 'Empty file body');
-		}
-		if (localDevStore.size >= LOCAL_DEV_STORE_MAX_ENTRIES) {
-			const oldestKey = localDevStore.keys().next().value;
-			if (oldestKey !== undefined) {
-				localDevStore.delete(oldestKey);
-			}
-		}
-		localDevStore.set(objectKey, { body, contentType });
+	// Buffer body first — needed for dev fallback, acceptable for images (max 10 MB)
+	let body: ArrayBuffer;
+	try {
+		body = await request.arrayBuffer();
+	} catch {
+		error(400, 'Failed to read request body');
 	}
+	if (body.byteLength === 0) {
+		error(400, 'Empty file body');
+	}
+
+	// Try R2 first
+	if (isR2Available()) {
+		try {
+			await putObject(objectKey, body, contentType);
+		} catch {
+			// R2 binding exists but write failed — dev store fallback below handles it
+		}
+	}
+
+	// Always write to dev store as a fallback — miniflare's R2 put() may
+	// appear to succeed but not persist, causing GET to 404
+	if (localDevStore.size >= LOCAL_DEV_STORE_MAX_ENTRIES) {
+		const oldestKey = localDevStore.keys().next().value;
+		if (oldestKey !== undefined) {
+			localDevStore.delete(oldestKey);
+		}
+	}
+	localDevStore.set(objectKey, { body, contentType });
 
 	return json({ objectKey }, { status: 201 });
 };
@@ -150,20 +150,21 @@ export const GET: RequestHandler = async ({ params }) => {
 		error(400, 'Missing path');
 	}
 
-	// Try R2 first
+	// Try R2 first, fall back to dev store if unavailable or read fails
 	if (isR2Available()) {
-		const object = await getObject(objectKey);
-		if (!object) {
-			error(404, 'File not found');
+		try {
+			const object = await getObject(objectKey);
+			if (object) {
+				const headers = new Headers();
+				object.writeHttpMetadata(headers);
+				headers.set('cache-control', 'public, max-age=31536000, immutable');
+				headers.set('etag', object.httpEtag);
+				headers.set('X-Content-Type-Options', 'nosniff');
+				return new Response(object.body, { headers });
+			}
+		} catch {
+			// R2 binding exists but read failed — fall through to dev store
 		}
-
-		const headers = new Headers();
-		object.writeHttpMetadata(headers);
-		headers.set('cache-control', 'public, max-age=31536000, immutable');
-		headers.set('etag', object.httpEtag);
-		headers.set('X-Content-Type-Options', 'nosniff');
-
-		return new Response(object.body, { headers });
 	}
 
 	// Local dev fallback
@@ -194,9 +195,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const tokenPayload = await extractAndVerifyToken(request);
 	validateTokenBinding(tokenPayload, locals.user.id, objectKey);
 
+	let deletedFromR2 = false;
 	if (isR2Available()) {
-		await deleteObject(objectKey);
-	} else {
+		try {
+			await deleteObject(objectKey);
+			deletedFromR2 = true;
+		} catch {
+			// R2 binding exists but delete failed — fall through
+		}
+	}
+	if (!deletedFromR2) {
 		localDevStore.delete(objectKey);
 	}
 

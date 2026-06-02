@@ -158,7 +158,7 @@
 								onclick={decrementQuantity}
 								aria-label={m.reserve_quantity_decrease()}
 							>
-								<MinusIcon class="size-4" />
+								<MinusIcon />
 							</Button>
 							<span class="min-w-[3ch] text-center text-lg font-semibold">
 								{quantity}
@@ -170,7 +170,7 @@
 								onclick={incrementQuantity}
 								aria-label={m.reserve_quantity_increase()}
 							>
-								<PlusIcon class="size-4" />
+								<PlusIcon />
 							</Button>
 							<span class={styles.quantityLabel()}>
 								{m.reserve_quantity_of({ count: availableCount })}

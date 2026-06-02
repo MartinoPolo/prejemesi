@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
-	import type { PopoverItemProps } from './popover_variants.js';
+	import type { PopoverItemProps } from './popover_types.js';
 
 	let {
 		ref = $bindable<HTMLDivElement | null>(null),

@@ -218,8 +218,7 @@
 		top: 0;
 		z-index: var(--z-sticky);
 		height: var(--nav-height);
-		background: oklch(from var(--background) l c h / 92%);
-		backdrop-filter: blur(12px);
+		background: var(--background);
 		border-bottom: 1px solid var(--border);
 		display: flex;
 		align-items: center;
@@ -291,7 +290,8 @@
 	}
 
 	.nav-link.is-active:hover {
-		background: oklch(from var(--primary) l c h / 8%);
+		background: oklch(from var(--primary) l c h / 10%);
+		color: var(--foreground);
 	}
 
 	.nav-item:hover :global(.nav-chevron) {

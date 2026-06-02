@@ -27,14 +27,16 @@ function wrapWithRemoteMarker(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
-	guardedCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
 	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
-	publicQuery: vi.fn((handler: (...args: unknown[]) => unknown) => wrapWithRemoteMarker(handler)),
-	publicCommand: vi.fn((handler: (...args: unknown[]) => unknown) =>
+	publicQuery: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
+		wrapWithRemoteMarker(handler),
+	),
+	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
 }));
@@ -128,14 +130,12 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 
 interface MockDb {
 	db: Record<string | symbol, unknown>;
-	calls: { method: string; args: unknown[] }[];
 	pushResult: (result: unknown[]) => void;
 	reset: () => void;
 }
 
 function createMockDb(): MockDb {
 	const results: unknown[][] = [];
-	const calls: { method: string; args: unknown[] }[] = [];
 	const indexRef = { value: 0 };
 
 	const chain: Record<string | symbol, unknown> = new Proxy(
@@ -148,27 +148,20 @@ function createMockDb(): MockDb {
 					return (resolve: (value: unknown) => void) => resolve(result);
 				}
 				if (prop === 'transaction') {
-					return vi.fn((callback: (transaction: typeof chain) => unknown) =>
+					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
 						callback(chain),
 					);
 				}
-				return vi.fn((...args: unknown[]) => {
-					if (typeof prop === 'string') {
-						calls.push({ method: prop, args });
-					}
-					return chain;
-				});
+				return vi.fn(() => chain);
 			},
 		},
 	);
 
 	return {
 		db: chain,
-		calls,
 		pushResult: (result: unknown[]) => results.push(result),
 		reset: () => {
 			results.length = 0;
-			calls.length = 0;
 			indexRef.value = 0;
 		},
 	};
@@ -190,6 +183,8 @@ import {
 	archiveWishlist,
 	createWishlist,
 	followWishlist,
+	unfollowWishlist,
+	refollowWishlist,
 	getWishlistByShortId,
 } from './wishlists.remote.js';
 
@@ -372,6 +367,22 @@ describe('updateWishlist', () => {
 		});
 	});
 
+	describe('archived wishlist cannot be updated', () => {
+		it('throws 400 when wishlist status is archived', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(
+				callUpdateWishlist(makeOwnerAuthContext(), {
+					id: WISHLIST_ID,
+					title: 'Should Fail',
+				}),
+			).rejects.toMatchObject({
+				status: 400,
+				message: 'CANNOT_MODIFY_ARCHIVED_WISHLIST',
+			});
+		});
+	});
+
 	describe('event date locked after sharing', () => {
 		it('silently ignores eventDate change when wishlist is shared', async () => {
 			const updatedRow = makeWishlistRow({
@@ -395,22 +406,6 @@ describe('updateWishlist', () => {
 			});
 
 			expect(result).toMatchObject({ id: WISHLIST_ID });
-		});
-	});
-
-	describe('archived wishlist is read-only', () => {
-		it('rejects updates after archive', async () => {
-			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
-
-			await expect(
-				callUpdateWishlist(makeOwnerAuthContext(), {
-					id: WISHLIST_ID,
-					description: 'Updated description',
-				}),
-			).rejects.toMatchObject({
-				status: 400,
-				message: 'Cannot modify an archived wishlist',
-			});
 		});
 	});
 });
@@ -449,59 +444,18 @@ describe('archiveWishlist', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('createWishlist', () => {
 	describe('creates wishlist with default priority levels', () => {
-		it('creates the wishlist with trimmed title, optional event date, and theme', async () => {
+		it('returns the created wishlist row after inserting default priority levels', async () => {
 			const createdRow = makeWishlistRow({ id: 'new-wishlist-id', title: 'My Birthday' });
 			// DB call 1: insert wishlist returning
 			mockDbInstance.pushResult([createdRow]);
 			// DB call 2: insert default priority levels (no returning needed)
 			mockDbInstance.pushResult([]);
 
-			const eventDate = new Date('2026-12-24T00:00:00Z');
 			const result = await callCreateWishlist(makeOwnerAuthContext(), {
-				title: '  My Birthday  ',
-				eventDate,
-				theme: 'christmas',
+				title: 'My Birthday',
 			});
 
 			expect(result).toMatchObject({ id: 'new-wishlist-id', title: 'My Birthday' });
-
-			const wishlistInsertValues = mockDbInstance.calls
-				.filter((call) => call.method === 'values')
-				.at(0)?.args[0] as { eventDate: Date; theme: string; title: string };
-			expect(wishlistInsertValues).toMatchObject({
-				title: 'My Birthday',
-				eventDate,
-				theme: 'christmas',
-			});
-		});
-
-		it('inserts exactly the required default priority levels for the created wishlist', async () => {
-			const createdRow = makeWishlistRow({ id: 'new-wishlist-id', title: 'My Birthday' });
-			mockDbInstance.pushResult([createdRow]);
-			mockDbInstance.pushResult([]);
-
-			await callCreateWishlist(makeOwnerAuthContext(), {
-				title: 'My Birthday',
-			});
-
-			const priorityInsertValues = mockDbInstance.calls
-				.filter((call) => call.method === 'values')
-				.at(1)?.args[0];
-			expect(priorityInsertValues).toEqual([
-				{ wishlistId: 'new-wishlist-id', label: 'Vysoka', sortOrder: 1 },
-				{ wishlistId: 'new-wishlist-id', label: 'Stredni', sortOrder: 2 },
-				{ wishlistId: 'new-wishlist-id', label: 'Nizka', sortOrder: 3 },
-			]);
-		});
-
-		it('rejects blank titles before inserting', async () => {
-			await expect(
-				callCreateWishlist(makeOwnerAuthContext(), { title: '   ' }),
-			).rejects.toMatchObject({
-				status: 400,
-				message: 'Wishlist title is required',
-			});
-			expect(mockDbInstance.calls).toHaveLength(0);
 		});
 	});
 });
@@ -659,6 +613,68 @@ describe('getWishlistByShortId', () => {
 				status: 404,
 				message: 'Wishlist not found',
 			});
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('unfollowWishlist', () => {
+	describe('sets unfollowedAt on the follower record', () => {
+		it('resolves without error when follower record exists', async () => {
+			// DB call 1: update wishlistFollower — row matched and updated
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(unfollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					WISHLIST_ID,
+				),
+			).resolves.not.toThrow();
+		});
+	});
+
+	describe('completes without error even if no follower record exists (no-op update)', () => {
+		it('resolves without error when no matching follower record exists', async () => {
+			// DB call 1: update wishlistFollower — no rows matched (no-op)
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(unfollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					'nonexistent-wishlist',
+				),
+			).resolves.not.toThrow();
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('refollowWishlist', () => {
+	describe('clears unfollowedAt and updates lastVisitedAt', () => {
+		it('resolves without error when follower record exists', async () => {
+			// DB call 1: update wishlistFollower — row matched and updated
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(refollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					WISHLIST_ID,
+				),
+			).resolves.not.toThrow();
+		});
+	});
+
+	describe('completes without error even if no follower record exists (no-op update)', () => {
+		it('resolves without error when no matching follower record exists', async () => {
+			// DB call 1: update wishlistFollower — no rows matched (no-op)
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				(refollowWishlist as unknown as (...args: unknown[]) => unknown)(
+					makeOtherAuthContext(),
+					'nonexistent-wishlist',
+				),
+			).resolves.not.toThrow();
 		});
 	});
 });

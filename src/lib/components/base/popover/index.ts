@@ -24,4 +24,4 @@ export {
 	Label as PopoverLabel,
 	Divider as PopoverDivider,
 };
-export type { PopoverItemProps } from './popover_variants.js';
+export type { PopoverItemProps } from './popover_types.js';
