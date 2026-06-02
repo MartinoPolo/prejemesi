@@ -17,6 +17,7 @@ export default [
 			'.storybook',
 			'storybook-static',
 			'build',
+			'coverage',
 			'node_modules',
 			'src/lib/paraglide',
 			'**/*.config.*',

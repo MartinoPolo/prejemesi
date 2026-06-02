@@ -6,15 +6,14 @@ async function createWishlistAndNavigate(page: Page, title: string) {
 	await page.goto('/my-lists');
 	await page.waitForLoadState('networkidle');
 	await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
-	await page
-		.getByRole('button', { name: /Vytvořit/ })
-		.first()
-		.click();
+	await page.getByRole('button', { name: /Vytvo.it seznam|Vytvorit seznam/ }).click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
-	await dialog.getByRole('textbox', { name: 'Nazev' }).fill(title);
-	await dialog.getByRole('button', { name: 'Vytvorit' }).click();
-	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
+	await dialog.getByRole('textbox', { name: /N.zev|Nazev/i }).fill(title);
+	await dialog.getByRole('button', { name: /Vytvo.it|Vytvorit/ }).click();
+	await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible({
+		timeout: 10_000,
+	});
 	await page.waitForLoadState('networkidle');
 }
 
@@ -24,7 +23,7 @@ test.describe('Wishlist page', () => {
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await createWishlistAndNavigate(page, 'Test Draft');
-		await expect(page.getByText('Tento seznam jeste nebyl sdilen')).toBeVisible();
+		await expect(page.getByText(/Tento seznam (je.t.|jeste) nebyl sd.len/i)).toBeVisible();
 		await expect(page.getByRole('main').getByText('Koncept')).toBeVisible();
 
 		await page.context().close();
@@ -36,16 +35,18 @@ test.describe('Wishlist page', () => {
 
 		await createWishlistAndNavigate(page, 'Test Gifts');
 		await page
-			.getByRole('button', { name: /Pridat/ })
+			.getByRole('button', {
+				name: /P.idat p..n.|Pridat prani|P.idat d.rek|Pridat darek/,
+			})
 			.first()
 			.click();
 
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill(TEST_GIFT.name);
+		await dialog.getByRole('textbox', { name: /N.zev|Nazev/i }).fill(TEST_GIFT.name);
 		await dialog.getByRole('textbox', { name: /Popis/i }).fill('Testovaci popis darku');
 		await dialog.getByLabel(/Cena/).fill(TEST_GIFT.price);
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('button', { name: /P.idat d.rek|Pridat darek/ }).click();
 
 		await expect(page.getByText(TEST_GIFT.name)).toBeVisible({ timeout: 10_000 });
 
@@ -82,34 +83,33 @@ test.describe('Wishlist page', () => {
 
 		await createWishlistAndNavigate(page, 'Test Share');
 
-		// Add a gift first (required before sharing in some UIs)
 		await page
-			.getByRole('button', { name: /Pridat/ })
+			.getByRole('button', {
+				name: /P.idat p..n.|Pridat prani|P.idat d.rek|Pridat darek/,
+			})
 			.first()
 			.click();
 		let dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 10_000 });
-		await dialog.getByRole('textbox', { name: /Nazev/i }).fill('Share Test Gift');
-		await dialog.getByRole('button', { name: 'Pridat darek' }).click();
+		await dialog.getByRole('textbox', { name: /N.zev|Nazev/i }).fill('Share Test Gift');
+		await dialog.getByRole('button', { name: /P.idat d.rek|Pridat darek/ }).click();
 		await expect(page.getByText('Share Test Gift')).toBeVisible({ timeout: 5_000 });
 
-		// Start sharing
 		await page
-			.getByRole('button', { name: /Sdilet seznam/ })
+			.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ })
 			.first()
 			.click();
 		dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		// Step 1: confirm
-		await dialog.getByRole('button', { name: 'Sdilet seznam' }).click();
+		await dialog.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ }).click();
 
-		// Step 3: success
-		await expect(dialog.getByText('Seznam byl sdilen!')).toBeVisible({ timeout: 5_000 });
+		await expect(dialog.getByText(/Seznam byl sd.len!/i)).toBeVisible({ timeout: 5_000 });
 		await dialog.getByRole('button', { name: 'Hotovo' }).click();
 
-		// After sharing, status should change
-		await expect(page.getByRole('main').getByText('Sdíleno')).toBeVisible({ timeout: 5_000 });
+		await expect(page.getByRole('main').getByText(/Sd.leno|Sdileno/)).toBeVisible({
+			timeout: 5_000,
+		});
 
 		await page.context().close();
 	});

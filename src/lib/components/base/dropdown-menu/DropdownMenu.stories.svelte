@@ -62,14 +62,27 @@
 	const playArrowDownFocusesItems = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		await waitForStoryReady();
 		const trigger = findDropdownTrigger(canvasElement);
-		trigger.click();
+		trigger.focus();
+		await userEvent.keyboard('{ArrowDown}');
 		await waitFor(() => expect(canvasElement.querySelector('[role="menu"]')).toBeTruthy());
-		const items = canvasElement.querySelectorAll('[role="menuitem"]');
-		await expect(items.length).toBeGreaterThanOrEqual(2);
+		await waitFor(() =>
+			expect(
+				canvasElement.querySelectorAll('[role="menuitem"]').length,
+			).toBeGreaterThanOrEqual(2),
+		);
+		await waitFor(() =>
+			expect(canvasElement.querySelectorAll('[role="menuitem"]')[0]).toHaveAttribute(
+				'data-highlighted',
+				'',
+			),
+		);
 		await userEvent.keyboard('{ArrowDown}');
-		await waitFor(() => expect(items[0]).toHaveAttribute('data-highlighted', ''));
-		await userEvent.keyboard('{ArrowDown}');
-		await waitFor(() => expect(items[1]).toHaveAttribute('data-highlighted', ''));
+		await waitFor(() =>
+			expect(canvasElement.querySelectorAll('[role="menuitem"]')[1]).toHaveAttribute(
+				'data-highlighted',
+				'',
+			),
+		);
 	};
 
 	const playEnterSelectsItem = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
