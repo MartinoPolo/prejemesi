@@ -103,8 +103,11 @@
 	// it is converted to the renderer's focal+zoom on save and retained when switching
 	// away from Crop so re-selecting it restores the region.
 	const FULL_CROP: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
+	// svelte-ignore state_referenced_locally
 	let fitMode = $state<ImageFitMode>(gift?.imageMeta?.fitMode ?? IMAGE_FIT_MODES.auto);
+	// svelte-ignore state_referenced_locally
 	let cropRect = $state<ImageCropRect>({ ...(gift?.imageMeta?.cropRect ?? FULL_CROP) });
+	// svelte-ignore state_referenced_locally
 	const bgColor = gift?.imageMeta?.bgColor ?? null;
 
 	const styles = giftDetailModalVariants();
