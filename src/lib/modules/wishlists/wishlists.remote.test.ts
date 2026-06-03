@@ -131,12 +131,15 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 interface MockDb {
 	db: Record<string | symbol, unknown>;
 	pushResult: (result: unknown[]) => void;
+	/** Payload passed to the most recent `.set(...)` call (e.g. drizzle update data). */
+	lastSetPayload: () => Record<string, unknown> | undefined;
 	reset: () => void;
 }
 
 function createMockDb(): MockDb {
 	const results: unknown[][] = [];
 	const indexRef = { value: 0 };
+	const setPayloads: Record<string, unknown>[] = [];
 
 	const chain: Record<string | symbol, unknown> = new Proxy(
 		{},
@@ -152,6 +155,12 @@ function createMockDb(): MockDb {
 						callback(chain),
 					);
 				}
+				if (prop === 'set') {
+					return vi.fn((payload: Record<string, unknown>) => {
+						setPayloads.push(payload);
+						return chain;
+					});
+				}
 				return vi.fn(() => chain);
 			},
 		},
@@ -160,9 +169,11 @@ function createMockDb(): MockDb {
 	return {
 		db: chain,
 		pushResult: (result: unknown[]) => results.push(result),
+		lastSetPayload: () => setPayloads[setPayloads.length - 1],
 		reset: () => {
 			results.length = 0;
 			indexRef.value = 0;
+			setPayloads.length = 0;
 		},
 	};
 }
@@ -369,6 +380,48 @@ describe('updateWishlist', () => {
 			});
 
 			expect(result).toMatchObject({ imageKey: 'wishlists/hero.jpg', imageSlots });
+		});
+	});
+
+	describe('owner can update description on an unshared wishlist', () => {
+		it('returns updated wishlist row with new description', async () => {
+			const updatedRow = makeWishlistRow({ description: 'A festive list' });
+			// DB call 1: wishlist lookup (not shared)
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// DB call 2: update returning
+			mockDbInstance.pushResult([updatedRow]);
+
+			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+				id: WISHLIST_ID,
+				description: 'A festive list',
+			});
+
+			// The description must actually be written to the update payload, not just
+			// echoed by the mock return value.
+			expect(mockDbInstance.lastSetPayload()).toMatchObject({
+				description: 'A festive list',
+			});
+			expect(result).toMatchObject({ id: WISHLIST_ID, description: 'A festive list' });
+		});
+	});
+
+	describe('owner can update event date on an unshared wishlist', () => {
+		it('returns updated wishlist row with new event date', async () => {
+			const eventDate = new Date('2026-12-24T00:00:00Z');
+			const updatedRow = makeWishlistRow({ eventDate });
+			// DB call 1: wishlist lookup (not shared)
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			// DB call 2: update returning
+			mockDbInstance.pushResult([updatedRow]);
+
+			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+				id: WISHLIST_ID,
+				eventDate,
+			});
+
+			// The event date must reach the update payload on an unshared wishlist.
+			expect(mockDbInstance.lastSetPayload()).toMatchObject({ eventDate });
+			expect(result).toMatchObject({ id: WISHLIST_ID, eventDate });
 		});
 	});
 

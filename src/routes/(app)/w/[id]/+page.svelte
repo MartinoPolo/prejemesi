@@ -25,7 +25,7 @@
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
-	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
+	import { reserveGift, unreserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -527,6 +527,19 @@
 		}
 	}
 
+	async function handleUnreserve(giftItem: GiftForVisitor) {
+		if (giftItem.myReservationId === null) {
+			return;
+		}
+		try {
+			await unreserveGift({ reservationId: giftItem.myReservationId });
+			toastSuccess(m.toast_gift_unreserved());
+			await refreshData();
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		}
+	}
+
 	// ── Lifecycle: auto-follow on mount ───────────────────────────────────────
 
 	onMount(async () => {
@@ -588,6 +601,7 @@
 		{dragOverIndex}
 		onedit={openEditModal}
 		onreserve={handleOpenReserveModal}
+		onunreserve={handleUnreserve}
 		onaddgift={openCreateModal}
 		onclearfilters={clearFilters}
 		ondragstart={handleDragStart}

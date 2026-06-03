@@ -7,27 +7,50 @@
 		isArchived?: boolean;
 		size?: 'md' | 'sm';
 		onreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, isArchived = false, size = 'sm', onreserve }: ReserveButtonProps = $props();
+	let {
+		gift,
+		isArchived = false,
+		size = 'sm',
+		onreserve,
+		onunreserve,
+	}: ReserveButtonProps = $props();
 
+	const hasMyReservation = $derived(gift.myReservationId !== null);
 	const isFullyReserved = $derived(gift.isFullyReserved);
 
-	function handleClick(event: MouseEvent) {
+	function handleReserveClick(event: MouseEvent) {
 		event.stopPropagation();
 		if (!isFullyReserved && !isArchived) {
 			onreserve?.(gift);
 		}
 	}
+
+	function handleUnreserveClick(event: MouseEvent) {
+		event.stopPropagation();
+		onunreserve?.(gift);
+	}
 </script>
 
-{#if !isArchived}
+{#if hasMyReservation}
+	<!-- Current user holds a reservation — allow cancelling (even on archived lists) -->
+	<Button
+		{size}
+		intent="outline"
+		aria-label="Zrušit rezervaci {gift.name}"
+		onclick={handleUnreserveClick}
+	>
+		Zrušit rezervaci
+	</Button>
+{:else if !isArchived}
 	<Button
 		{size}
 		intent={isFullyReserved ? 'outline' : 'primary'}
 		disabled={isFullyReserved}
 		aria-label="Rezervovat {gift.name}"
-		onclick={handleClick}
+		onclick={handleReserveClick}
 	>
 		{#if isFullyReserved}
 			Rezervovano
