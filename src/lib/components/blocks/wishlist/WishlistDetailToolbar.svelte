@@ -3,9 +3,9 @@
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import ImageIcon from '@lucide/svelte/icons/image';
-	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
@@ -25,7 +25,7 @@
 		onappearance: () => void;
 		onunfollow: () => void;
 		onaddgift: () => void;
-		onimport?: () => void;
+		onbatchadd: () => void;
 	}
 
 	let {
@@ -43,7 +43,7 @@
 		onappearance,
 		onunfollow,
 		onaddgift,
-		onimport,
+		onbatchadd,
 	}: WishlistDetailToolbarProps = $props();
 </script>
 
@@ -87,18 +87,16 @@
 			>
 		{/if}
 		{#if isOwnerOrModerator && !isArchived}
-			{#if onimport}
-				<SimpleTooltip text={m.import_wizard_title()}>
-					<Button
-						size="icon-sm"
-						intent="outline"
-						aria-label={m.import_wizard_title()}
-						onclick={onimport}
-					>
-						<FileUpIcon />
-					</Button>
-				</SimpleTooltip>
-			{/if}
+			<SimpleTooltip text={m.batch_add_toolbar_label()}>
+				<Button
+					size="icon-sm"
+					intent="outline"
+					aria-label={m.batch_add_toolbar_label()}
+					onclick={onbatchadd}
+				>
+					<ListPlusIcon />
+				</Button>
+			</SimpleTooltip>
 			<Button size="sm" aria-label={m.wishlist_detail_add_gift_label()} onclick={onaddgift}>
 				<PlusIcon data-icon="inline-start" />
 				{m.wishlist_detail_add_wish()}

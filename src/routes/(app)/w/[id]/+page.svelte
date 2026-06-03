@@ -8,7 +8,6 @@
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
-	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
@@ -45,12 +44,14 @@
 		markGiftReceived,
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
+	import { importGifts } from '$lib/modules/import/import.remote.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
 		GiftForVisitor,
 		GiftByRole,
 		GiftPriorityLevel,
+		GiftDraftInput,
 		CreateGiftInput,
 		UpdateGiftInput,
 		GiftViewMode,
@@ -164,16 +165,14 @@
 	let isSubmitting = $state(false);
 	let isDeleting = $state(false);
 
+	// ── Batch add dialog state ───────────────────────────────────────────────
+
+	let batchAddDialogOpen = $state(false);
+	let isBatchSubmitting = $state(false);
+
 	// ── Theme selector dialog state ──────────────────────────────────────────
 
 	let themeDialogOpen = $state(false);
-
-	// ── Import wizard state ──────────────────────────────────────────────────
-
-	let importWizardOpen = $state(false);
-	const existingGiftsForImport = $derived(
-		gifts.map((g) => ({ name: g.name, links: g.links ?? [] })),
-	);
 
 	// ── Drag-and-drop state ──────────────────────────────────────────────────
 
@@ -385,6 +384,30 @@
 		}
 	}
 
+	// ── Batch add handlers ───────────────────────────────────────────────────
+
+	function openBatchAddDialog() {
+		batchAddDialogOpen = true;
+	}
+
+	async function handleBatchSubmit(drafts: GiftDraftInput[]) {
+		isBatchSubmitting = true;
+		try {
+			const created = await importGifts({ wishlistId: wishlist.id, gifts: drafts });
+			batchAddDialogOpen = false;
+			toastSuccess(m.toast_batch_add_success({ count: created.length }));
+			await refreshData();
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		} finally {
+			isBatchSubmitting = false;
+		}
+	}
+
+	function handleBatchDialogOpenChange(open: boolean) {
+		batchAddDialogOpen = open;
+	}
+
 	// ── Archive handler ───────────────────────────────────────────────────────
 
 	async function handleArchive() {
@@ -594,7 +617,7 @@
 		onappearance={handleAppearanceOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
-		onimport={() => (importWizardOpen = true)}
+		onbatchadd={openBatchAddDialog}
 	/>
 
 	<WishlistGiftDisplay
@@ -642,6 +665,8 @@
 	{isReserving}
 	bind:themeDialogOpen
 	activeTheme={themeContext.activeTheme.current}
+	bind:batchAddDialogOpen
+	{isBatchSubmitting}
 	bind:moderatorPanelOpen
 	ongiftmodalclose={handleGiftModalClose}
 	oncreate={handleCreate}
@@ -656,17 +681,9 @@
 	onthemesave={handleThemeSave}
 	onthemecancel={handleThemeCancel}
 	onmoderatorselfpromoted={handleSelfPromoted}
+	onbatchsubmit={handleBatchSubmit}
+	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
-
-{#if isOwnerOrModerator && !isArchived}
-	<ImportWizard
-		bind:open={importWizardOpen}
-		mode={WIZARD_MODE.append}
-		wishlistId={wishlist.id}
-		wishlistTitle={wishlist.title}
-		existingGifts={existingGiftsForImport}
-	/>
-{/if}
 
 <!-- OpenGraph Meta Tags -->
 <svelte:head>

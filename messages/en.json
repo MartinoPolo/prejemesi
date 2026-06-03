@@ -668,6 +668,12 @@
 	"draft_grid_dialog_submit": "Add gifts",
 	"draft_grid_dialog_cancel": "Cancel",
 
+	"batch_add_dialog_subtitle": "Add gifts to wishlist \"{wishlistTitle}\"",
+	"batch_add_submit_pending": "Adding...",
+	"batch_add_hint_enabled": "{count} valid rows to add",
+	"batch_add_toolbar_label": "Batch add gifts",
+	"toast_batch_add_success": "Added {count} gifts",
+
 	"import_wizard_title": "Import gifts",
 	"import_wizard_subtitle_new": "New list from spreadsheet",
 	"import_wizard_subtitle_append": "Add gifts from spreadsheet",

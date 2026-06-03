@@ -668,6 +668,12 @@
 	"draft_grid_dialog_submit": "Přidat dárky",
 	"draft_grid_dialog_cancel": "Zrušit",
 
+	"batch_add_dialog_subtitle": "Přidejte dárky do seznamu „{wishlistTitle}“",
+	"batch_add_submit_pending": "Přidávám…",
+	"batch_add_hint_enabled": "{count} k přidání",
+	"batch_add_toolbar_label": "Hromadně přidat dárky",
+	"toast_batch_add_success": "Přidáno {count} dárků",
+
 	"import_wizard_title": "Importovat dárky",
 	"import_wizard_subtitle_new": "Nový seznam z tabulky",
 	"import_wizard_subtitle_append": "Přidat dárky z tabulky",
