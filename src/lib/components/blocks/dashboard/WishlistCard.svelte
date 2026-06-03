@@ -2,7 +2,10 @@
 	import { cn } from '$lib/utils.js';
 	import { resolve } from '$app/paths';
 	import { wishlistCardVariants, STATUS_DOT_CLASSES } from './wishlist_card_variants.js';
-	import { getThemePreset, type WishlistTheme } from '$lib/modules/wishlists/wishlist_theme.js';
+	import {
+		getThemePreset,
+		type DashboardWishlistTheme,
+	} from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
@@ -40,7 +43,7 @@
 	}: WishlistCardProps = $props();
 
 	const isArchived = $derived(wishlistData.status === 'archived');
-	const theme = $derived(getThemePreset(wishlistData.theme as WishlistTheme));
+	const theme = $derived(getThemePreset(wishlistData.theme as DashboardWishlistTheme));
 	const cardSrc = $derived(wishlistImageUrl(wishlistData.imageKey));
 	const cardFrame = $derived(wishlistSlotToFrameProps(wishlistData.imageSlots, 'card'));
 	const variants = $derived(wishlistCardVariants({ archived: isArchived }));

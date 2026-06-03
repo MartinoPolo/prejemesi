@@ -25,6 +25,7 @@
 		WISHLIST_IMAGE_SLOT_VALUES,
 		WISHLIST_SLOT_ASPECT,
 		FULL_CROP_RECT,
+		createDefaultWishlistSlots,
 		cropRectToFocalZoom,
 		cropStateToImageMeta,
 		focalZoomToCropRect,
@@ -58,16 +59,13 @@
 	}
 
 	function initSlots(saved: WishlistImageSlots | null): Record<WishlistImageSlot, SlotEditState> {
+		// Unset slots fall back to the shared default seed so the seeding logic lives
+		// in one place (createDefaultWishlistSlots); the same focal→cropRect conversion
+		// then derives the editor's crop-rect source of truth for every slot.
+		const defaults = createDefaultWishlistSlots();
 		const result = {} as Record<WishlistImageSlot, SlotEditState>;
 		for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
-			const meta = saved?.[slot];
-			if (meta === undefined) {
-				result[slot] = {
-					fitMode: IMAGE_FIT_MODES.coverCrop,
-					cropRect: { ...FULL_CROP_RECT },
-				};
-				continue;
-			}
+			const meta = saved?.[slot] ?? defaults[slot]!;
 			let cropRect: ImageCropRect;
 			if (meta.cropRect != null) {
 				cropRect = { ...meta.cropRect };
@@ -215,9 +213,7 @@
 						src={imageUrl!}
 						alt={title}
 						bind:cropRect={slotState[activeSlot].cropRect}
-						regionLabel={m.wishlist_image_crop_region_label()}
 						hint={m.wishlist_image_crop_hint()}
-						resetLabel={m.wishlist_image_crop_reset()}
 					/>
 				</div>
 			{:else}

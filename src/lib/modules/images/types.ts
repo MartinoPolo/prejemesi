@@ -48,14 +48,14 @@ export interface ImageMetadata {
 const NormalizedSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(1));
 const PercentSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(100));
 
-export const ImageCropRectSchema = v.object({
+const ImageCropRectSchema = v.object({
 	x: NormalizedSchema,
 	y: NormalizedSchema,
 	w: NormalizedSchema,
 	h: NormalizedSchema,
 });
 
-export const ImageFocalPointSchema = v.object({
+const ImageFocalPointSchema = v.object({
 	x: PercentSchema,
 	y: PercentSchema,
 });

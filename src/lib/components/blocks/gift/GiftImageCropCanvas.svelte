@@ -53,7 +53,12 @@
 
 	let stageEl = $state<HTMLDivElement | null>(null);
 	let naturalRatio = $state<number | null>(null);
+	let loadFailed = $state(false);
 	let dragging = $state(false);
+
+	// Without a measured natural ratio the crop coords can't map to image space, and a
+	// broken source must not leave draggable handles over a broken-image glyph.
+	const isReady = $derived(!loadFailed && naturalRatio !== null);
 
 	// drag bookkeeping (plain, non-reactive — only read inside pointer handlers)
 	let mode: DragMode = 'move';
@@ -81,8 +86,14 @@
 	function handleImageLoad(event: Event) {
 		const img = event.currentTarget as HTMLImageElement;
 		if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+			loadFailed = false;
 			naturalRatio = img.naturalWidth / img.naturalHeight;
 		}
+	}
+
+	function handleImageError() {
+		loadFailed = true;
+		naturalRatio = null;
 	}
 
 	function beginDrag(event: PointerEvent, dragMode: DragMode) {
@@ -180,53 +191,64 @@
 				{alt}
 				class="pointer-events-none size-full object-cover"
 				onload={handleImageLoad}
+				onerror={handleImageError}
 			/>
 
-			<!-- Dimmed mask outside the crop region -->
-			<div
-				class="pointer-events-none absolute inset-0 bg-black/55"
-				style="clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, {cropRect.x *
-					100}% {cropRect.y * 100}%, {cropRect.x * 100}% {(cropRect.y + cropRect.h) *
-					100}%, {(cropRect.x + cropRect.w) * 100}% {(cropRect.y + cropRect.h) *
-					100}%, {(cropRect.x + cropRect.w) * 100}% {cropRect.y * 100}%, {cropRect.x *
-					100}% {cropRect.y * 100}%);"
-			></div>
+			{#if loadFailed}
+				<!-- A broken source must not leave draggable handles over a broken-image
+				     glyph; show an inert placeholder instead. -->
+				<div
+					class="pointer-events-none absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-foreground-subtle"
+				>
+					{m.gift_image_crop_load_error()}
+				</div>
+			{:else if isReady}
+				<!-- Dimmed mask outside the crop region -->
+				<div
+					class="pointer-events-none absolute inset-0 bg-black/55"
+					style="clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, {cropRect.x *
+						100}% {cropRect.y * 100}%, {cropRect.x * 100}% {(cropRect.y + cropRect.h) *
+						100}%, {(cropRect.x + cropRect.w) * 100}% {(cropRect.y + cropRect.h) *
+						100}%, {(cropRect.x + cropRect.w) * 100}% {cropRect.y * 100}%, {cropRect.x *
+						100}% {cropRect.y * 100}%);"
+				></div>
 
-			<!-- Crop rectangle: draggable body + rule-of-thirds grid + handles.
+				<!-- Crop rectangle: draggable body + rule-of-thirds grid + handles.
 			     Accessibility exception (issue #50, closed NOT_PLANNED): this region is
 			     pointer-only. Keyboard move/resize and removing the nested interactive
 			     handles were deliberately deferred — an accepted, documented WCAG 2.1.1
 			     gap pending reprioritization (see .mpx/DECISIONS.md / PHASE_END_PRD_33.md).
 			     The region stays focusable for discoverability. -->
-			<div
-				role="button"
-				tabindex="0"
-				aria-label={regionLabel}
-				class="absolute cursor-move outline-2 outline-white/90 focus-visible:outline-ring"
-				style="left: {cropRect.x * 100}%; top: {cropRect.y * 100}%; width: {cropRect.w *
-					100}%; height: {cropRect.h * 100}%;"
-				onpointerdown={(event) => beginDrag(event, 'move')}
-			>
-				<div class="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
-					{#each GRID_CELLS as cell (cell)}
-						<div class="border border-white/25"></div>
+				<div
+					role="button"
+					tabindex="0"
+					aria-label={regionLabel}
+					class="absolute cursor-move outline-2 outline-white/90 focus-visible:outline-ring"
+					style="left: {cropRect.x * 100}%; top: {cropRect.y * 100}%; width: {cropRect.w *
+						100}%; height: {cropRect.h * 100}%;"
+					onpointerdown={(event) => beginDrag(event, 'move')}
+				>
+					<div class="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
+						{#each GRID_CELLS as cell (cell)}
+							<div class="border border-white/25"></div>
+						{/each}
+					</div>
+					{#each HANDLES as handle (handle.id)}
+						<button
+							type="button"
+							aria-label={handle.id}
+							class={cn(
+								'absolute size-3 rounded-full bg-white shadow outline-1 outline-black/40',
+								handle.class,
+							)}
+							onpointerdown={(event) => {
+								event.stopPropagation();
+								beginDrag(event, handle.id);
+							}}
+						></button>
 					{/each}
 				</div>
-				{#each HANDLES as handle (handle.id)}
-					<button
-						type="button"
-						aria-label={handle.id}
-						class={cn(
-							'absolute size-3 rounded-full bg-white shadow outline-1 outline-black/40',
-							handle.class,
-						)}
-						onpointerdown={(event) => {
-							event.stopPropagation();
-							beginDrag(event, handle.id);
-						}}
-					></button>
-				{/each}
-			</div>
+			{/if}
 		</div>
 	</div>
 
