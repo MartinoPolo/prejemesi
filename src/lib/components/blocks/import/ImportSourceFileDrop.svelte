@@ -1,0 +1,130 @@
+<script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+	import { parseTabular } from '$lib/modules/import/index.js';
+	import { MAX_IMPORT_BYTES } from './import_limits.js';
+	import UploadIcon from '@lucide/svelte/icons/upload';
+
+	interface ImportSourceFileDropProps {
+		onparsed: (result: { rows: string[][]; filename: string }) => void;
+		onerror: (message: string) => void;
+		disabled: boolean;
+	}
+
+	let { onparsed, onerror, disabled }: ImportSourceFileDropProps = $props();
+
+	let isDragOver = $state(false);
+	let fileInputRef = $state<HTMLInputElement | null>(null);
+
+	function handleFile(file: File) {
+		if (disabled) {
+			return;
+		}
+
+		const extension = file.name.toLowerCase();
+		if (!extension.endsWith('.csv') && !extension.endsWith('.tsv')) {
+			onerror(m.import_wizard_error_invalid_file());
+			return;
+		}
+
+		if (file.size > MAX_IMPORT_BYTES) {
+			onerror(m.import_wizard_error_too_large());
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = () => {
+			try {
+				const text = reader.result as string;
+				const parsed = parseTabular(text);
+				if (parsed.rows.length === 0) {
+					onerror(m.import_wizard_error_no_data());
+					return;
+				}
+				onparsed({ rows: parsed.rows, filename: file.name });
+			} catch {
+				onerror(m.import_wizard_error_parse_failed());
+			}
+		};
+		reader.onerror = () => {
+			onerror(m.import_wizard_error_parse_failed());
+		};
+		reader.readAsText(file);
+	}
+
+	function handleDrop(event: DragEvent) {
+		event.preventDefault();
+		isDragOver = false;
+		if (disabled) {
+			return;
+		}
+
+		const file = event.dataTransfer?.files[0];
+		if (file) {
+			handleFile(file);
+		}
+	}
+
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault();
+		if (!disabled) {
+			isDragOver = true;
+		}
+	}
+
+	function handleDragLeave() {
+		isDragOver = false;
+	}
+
+	function handleClick() {
+		if (!disabled) {
+			fileInputRef?.click();
+		}
+	}
+
+	function handleInputChange(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (file) {
+			handleFile(file);
+		}
+		// Reset so re-selecting the same file triggers change
+		input.value = '';
+	}
+</script>
+
+<button
+	type="button"
+	class="border-border-strong hover:border-primary/50 hover:bg-primary/5 flex w-full flex-col items-center gap-3 rounded-lg border-2 border-dashed px-6 py-10 transition-colors {isDragOver
+		? 'border-primary bg-primary/5'
+		: ''} {disabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'}"
+	ondrop={handleDrop}
+	ondragover={handleDragOver}
+	ondragleave={handleDragLeave}
+	onclick={handleClick}
+	{disabled}
+>
+	<div class="text-muted-foreground">
+		<UploadIcon class="size-8" />
+	</div>
+	<div class="text-center">
+		<p class="text-foreground text-sm font-medium">{m.import_wizard_file_drop_label()}</p>
+		<p class="text-muted-foreground text-xs">{m.import_wizard_file_drop_or_click()}</p>
+	</div>
+	<div class="flex gap-2">
+		<span class="bg-surface-2 text-muted-foreground rounded-md px-2 py-0.5 text-xs font-medium">
+			.CSV
+		</span>
+		<span class="bg-surface-2 text-muted-foreground rounded-md px-2 py-0.5 text-xs font-medium">
+			.TSV
+		</span>
+	</div>
+</button>
+
+<input
+	bind:this={fileInputRef}
+	type="file"
+	accept=".csv,.tsv"
+	class="hidden"
+	onchange={handleInputChange}
+	{disabled}
+/>

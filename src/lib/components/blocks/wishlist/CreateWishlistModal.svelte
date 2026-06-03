@@ -7,15 +7,18 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Separator } from '$lib/components/base/separator/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 
 	interface CreateWishlistModalProps {
 		open: boolean;
+		onimport?: () => void;
 	}
 
-	let { open = $bindable(false) }: CreateWishlistModalProps = $props();
+	let { open = $bindable(false), onimport }: CreateWishlistModalProps = $props();
 
 	let title = $state('');
 	let eventDate = $state('');
@@ -126,6 +129,27 @@
 
 			{#if errorMessage !== ''}
 				<p class="text-destructive text-sm">{errorMessage}</p>
+			{/if}
+
+			{#if onimport}
+				<Separator class="my-1" />
+				<div class="flex items-center gap-2">
+					<span class="text-muted-foreground text-sm">{m.or()}</span>
+					<Button
+						type="button"
+						intent="ghost"
+						size="sm"
+						disabled={isSubmitting}
+						onclick={() => {
+							open = false;
+							resetForm();
+							onimport();
+						}}
+					>
+						<FileUpIcon data-icon="inline-start" />
+						{m.import_wizard_title()}
+					</Button>
+				</div>
 			{/if}
 
 			<Dialog.Footer>
