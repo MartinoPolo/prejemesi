@@ -7,12 +7,11 @@
  */
 
 import { UPLOAD_API_BASE } from '$lib/modules/uploads/types.js';
-import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
+import { IMAGE_FIT_MODES } from './fit_modes.js';
 import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
 import {
 	DEFAULT_IMAGE_METADATA,
 	WISHLIST_IMAGE_SLOT_VALUES,
-	type ImageMetadata,
 	type WishlistImageSlot,
 	type WishlistImageSlots,
 } from './types.js';
@@ -47,13 +46,14 @@ export function wishlistImageUrl(imageKey: string | null | undefined): string | 
  * Each slot gets an independent object so editing one never mutates another.
  */
 export function createDefaultWishlistSlots(): WishlistImageSlots {
-	const base: ImageMetadata = {
-		...DEFAULT_IMAGE_METADATA,
-		fitMode: IMAGE_FIT_MODES.coverCrop,
-	};
 	const slots: WishlistImageSlots = {};
 	for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
-		slots[slot] = { ...base, focal: { ...base.focal! } };
+		// Each slot gets independent objects so editing one never mutates another.
+		slots[slot] = {
+			...DEFAULT_IMAGE_METADATA,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			focal: { ...DEFAULT_IMAGE_METADATA.focal },
+		};
 	}
 	return slots;
 }

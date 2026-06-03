@@ -39,10 +39,11 @@
 		type ImageFitMode,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
-		cropRectToFocalZoom,
+		cropStateToImageMeta,
 		imageMetaToFrameProps,
+		FULL_CROP_RECT,
+		IMAGE_FIT_MODE_VALUES,
 		type ImageCropRect,
-		type ImageMetadata,
 	} from '$lib/modules/images/index.js';
 
 	interface Props {
@@ -102,11 +103,10 @@
 	// Image presentation metadata (REQ-1/3). The crop rect is the editing representation;
 	// it is converted to the renderer's focal+zoom on save and retained when switching
 	// away from Crop so re-selecting it restores the region.
-	const FULL_CROP: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
 	// svelte-ignore state_referenced_locally
 	let fitMode = $state<ImageFitMode>(gift?.imageMeta?.fitMode ?? IMAGE_FIT_MODES.auto);
 	// svelte-ignore state_referenced_locally
-	let cropRect = $state<ImageCropRect>({ ...(gift?.imageMeta?.cropRect ?? FULL_CROP) });
+	let cropRect = $state<ImageCropRect>({ ...(gift?.imageMeta?.cropRect ?? FULL_CROP_RECT) });
 	// svelte-ignore state_referenced_locally
 	const bgColor = gift?.imageMeta?.bgColor ?? null;
 
@@ -119,7 +119,7 @@
 
 	const previewSrc = $derived(imageUrl.trim() !== '' ? imageUrl.trim() : null);
 	const isCropMode = $derived(fitMode === IMAGE_FIT_MODES.coverCrop);
-	const currentImageMeta = $derived(buildImageMeta());
+	const currentImageMeta = $derived(cropStateToImageMeta(fitMode, cropRect, bgColor));
 	const framePreview = $derived(imageMetaToFrameProps(currentImageMeta));
 
 	function validateForm(): boolean {
@@ -142,18 +142,6 @@
 		return `https://${trimmed}`;
 	}
 
-	/** Build persistable image presentation metadata from the current editor state. */
-	function buildImageMeta(): ImageMetadata {
-		const { focal, zoom } = cropRectToFocalZoom(cropRect);
-		return {
-			fitMode,
-			cropRect: { x: cropRect.x, y: cropRect.y, w: cropRect.w, h: cropRect.h },
-			focal,
-			zoom,
-			bgColor,
-		};
-	}
-
 	function handleSubmit() {
 		if (!validateForm()) {
 			return;
@@ -164,7 +152,7 @@
 		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
 		const normalizedUrl = normalizeUrl(url);
-		const imageMeta = hasImage ? buildImageMeta() : null;
+		const imageMeta = hasImage ? currentImageMeta : null;
 
 		if (mode === 'create') {
 			oncreate?.({
@@ -376,7 +364,7 @@
 							type="single"
 							value={fitMode}
 							onValueChange={(value: string) => {
-								if (value !== '') {
+								if (IMAGE_FIT_MODE_VALUES.includes(value as ImageFitMode)) {
 									fitMode = value as ImageFitMode;
 								}
 							}}
@@ -398,10 +386,7 @@
 						<GiftImagePreviewSlots
 							src={previewSrc}
 							alt={name || m.gift_image_preview()}
-							fitMode={framePreview.fitMode}
-							focal={framePreview.focal}
-							zoom={framePreview.zoom}
-							fillColor={framePreview.fillColor}
+							frame={framePreview}
 						/>
 					</div>
 				{/if}

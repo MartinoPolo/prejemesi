@@ -30,24 +30,31 @@ const backgroundThemeHandle: Handle = async ({ event, resolve }) => {
 	let bgTheme: BackgroundTheme = DEFAULT_BACKGROUND_THEME;
 
 	if (event.locals.user != null && isDatabaseConfigured()) {
-		const { getDb } = await import('$lib/server/db/index.js');
-		const { user } = await import('$lib/server/db/auth.schema.js');
-		const { eq } = await import('drizzle-orm');
+		try {
+			const { getDb } = await import('$lib/server/db/index.js');
+			const { user } = await import('$lib/server/db/auth.schema.js');
+			const { eq } = await import('drizzle-orm');
 
-		const rows = await getDb()
-			.select({ appBackgroundTheme: user.appBackgroundTheme })
-			.from(user)
-			.where(eq(user.id, event.locals.user.id))
-			.limit(1);
+			const rows = await getDb()
+				.select({ appBackgroundTheme: user.appBackgroundTheme })
+				.from(user)
+				.where(eq(user.id, event.locals.user.id))
+				.limit(1);
 
-		const stored = rows[0]?.appBackgroundTheme;
-		if (stored != null) {
-			bgTheme = stored;
+			const stored = rows[0]?.appBackgroundTheme;
+			if (stored != null) {
+				bgTheme = stored;
+			}
+		} catch (err) {
+			console.error(
+				'[backgroundThemeHandle] failed to read app background theme, using default',
+				err,
+			);
 		}
 	}
 
 	return resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('%app.bgTheme%', bgTheme),
+		transformPageChunk: ({ html }) => html.replaceAll('%app.bgTheme%', bgTheme),
 	});
 };
 

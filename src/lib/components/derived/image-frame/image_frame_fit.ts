@@ -1,16 +1,13 @@
 /**
  * Pure presentation logic for the ImageFrame primitive: fit-mode resolution and
  * background-fill priority. Kept framework-free so it is unit-testable in isolation.
+ * Fit modes are owned by the `images` domain module and re-exported here so the
+ * component barrel keeps a single import surface.
  */
 
-/** Canonical image fit modes (REQ-1). */
-export const IMAGE_FIT_MODES = {
-	auto: 'auto',
-	containPadded: 'contain-padded',
-	coverCrop: 'cover-crop',
-} as const;
+import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/modules/images/fit_modes.js';
 
-export type ImageFitMode = (typeof IMAGE_FIT_MODES)[keyof typeof IMAGE_FIT_MODES];
+export { IMAGE_FIT_MODES, type ImageFitMode };
 
 /** Concrete fit applied to the rendered image once `auto` has been resolved. */
 export type ResolvedImageFit =

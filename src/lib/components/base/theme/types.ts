@@ -14,12 +14,13 @@ export const ACCENT_COLORS = [
 ] as const;
 export type AccentColor = (typeof ACCENT_COLORS)[number];
 
-export const BACKGROUND_THEMES = ['default', 'golden-hour', 'twilight'] as const;
-export type BackgroundTheme = (typeof BACKGROUND_THEMES)[number];
-
-export function isBackgroundTheme(value: unknown): value is BackgroundTheme {
-	return typeof value === 'string' && (BACKGROUND_THEMES as readonly string[]).includes(value);
-}
+// Background theme values are owned by the settings domain module; re-exported here
+// so existing component-side consumers keep a single theme import surface.
+export {
+	BACKGROUND_THEMES,
+	type BackgroundTheme,
+	isBackgroundTheme,
+} from '$lib/modules/settings/types.js';
 
 export const THEME_MODES = ['light', 'dark', 'system'] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];

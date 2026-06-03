@@ -19,7 +19,10 @@
 		getModeratedWishlists,
 		getFollowedWishlists,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
-	import { getThemePreset, type WishlistTheme } from '$lib/modules/wishlists/wishlist_theme.js';
+	import {
+		getThemePreset,
+		type DashboardWishlistTheme,
+	} from '$lib/modules/wishlists/wishlist_theme.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import type {
 		ModeratedWishlist,
@@ -80,7 +83,7 @@
 	);
 
 	function wishlistToDropdownItem(wishlistRecord: Wishlist): NavDropdownItem {
-		const theme = getThemePreset(wishlistRecord.theme as WishlistTheme);
+		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const badge = STATUS_BADGE[wishlistRecord.status];
 		return {
 			name: wishlistRecord.title,
@@ -93,7 +96,7 @@
 	}
 
 	function moderatedToDropdownItem(wishlistRecord: ModeratedWishlist): NavDropdownItem {
-		const theme = getThemePreset(wishlistRecord.theme as WishlistTheme);
+		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		return {
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,
@@ -105,7 +108,7 @@
 	}
 
 	function followedToDropdownItem(wishlistRecord: FollowedWishlist): NavDropdownItem {
-		const theme = getThemePreset(wishlistRecord.theme as WishlistTheme);
+		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		return {
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,

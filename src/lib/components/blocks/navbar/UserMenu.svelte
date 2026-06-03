@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import { authClient } from '$lib/auth_client.js';
@@ -39,7 +40,13 @@
 				aria-label={m.nav_user_menu({ name: userName })}
 			>
 				{#if userImage}
-					<img src={userImage} alt={userName} class="size-8 rounded-full object-cover" />
+					<ImageFrame
+						src={userImage}
+						alt={userName}
+						shape="circle"
+						fitMode="cover-crop"
+						class="size-8"
+					/>
 				{:else}
 					<span
 						class="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
