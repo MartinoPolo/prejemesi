@@ -85,7 +85,7 @@
 	// svelte-ignore state_referenced_locally
 	let description = $state(gift?.description ?? '');
 	// svelte-ignore state_referenced_locally
-	let url = $state(gift?.url ?? '');
+	let url = $state(gift?.links[0]?.url ?? '');
 	// svelte-ignore state_referenced_locally
 	let price = $state(gift?.price != null ? String(gift.price) : '');
 	// svelte-ignore state_referenced_locally
@@ -152,6 +152,9 @@
 		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
 		const normalizedUrl = normalizeUrl(url);
+		// Single-input editing surface for now: maps to/from the primary link (links[0]).
+		// Multi-link editing UI lands in a later issue.
+		const links = normalizedUrl !== null ? [{ url: normalizedUrl }] : [];
 		const imageMeta = hasImage ? currentImageMeta : null;
 
 		if (mode === 'create') {
@@ -159,7 +162,7 @@
 				wishlistId,
 				name: name.trim(),
 				description: description.trim() || null,
-				url: normalizedUrl,
+				links,
 				price: parsedPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
@@ -173,7 +176,7 @@
 				id: gift.id,
 				name: name.trim(),
 				description: description.trim() || null,
-				url: normalizedUrl,
+				links,
 				price: parsedPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
