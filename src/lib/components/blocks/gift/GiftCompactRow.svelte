@@ -4,8 +4,8 @@
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, extractDomain } from '$lib/modules/gifts/gift_display.js';
-	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
+	import { formatPrice, extractGiftDomain } from '$lib/modules/gifts/gift_display.js';
+	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 
 	interface GiftCompactRowProps {
@@ -30,8 +30,9 @@
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
 	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
 
-	const domain = $derived(extractDomain(gift.url));
-	const safeGiftUrl = $derived(normalizeGiftUrl(gift.url));
+	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
+	const domain = $derived(extractGiftDomain(gift.links));
+	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const showQuantity = $derived((gift.quantity ?? 1) > 1);
 </script>

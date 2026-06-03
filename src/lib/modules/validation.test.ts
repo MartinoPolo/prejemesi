@@ -108,32 +108,45 @@ describe('CreateGiftInputSchema', () => {
 		expect(result.issues).toBeDefined();
 	});
 
-	it('rejects invalid URL format', () => {
+	it('rejects a link with an invalid URL format', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',
 			name: 'Nice Book',
-			url: 'not-a-url',
+			links: [{ url: 'not-a-url' }],
 		});
 		expect(result.success).toBe(false);
 		expect(result.issues).toBeDefined();
 	});
 
-	it('accepts valid URL', () => {
+	it('accepts links with valid URLs and optional labels', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',
 			name: 'Nice Book',
-			url: 'https://example.com/product',
+			links: [
+				{ url: 'https://example.com/product' },
+				{ url: 'https://other.example.com/product', label: 'Alternative' },
+			],
 		});
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts null URL', () => {
+	it('accepts null links', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',
 			name: 'Nice Book',
-			url: null,
+			links: null,
 		});
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects more than 10 links', () => {
+		const result = parseSuccess(CreateGiftInputSchema, {
+			wishlistId: 'wl-1',
+			name: 'Nice Book',
+			links: Array.from({ length: 11 }, (_, i) => ({ url: `https://example.com/${i}` })),
+		});
+		expect(result.success).toBe(false);
+		expect(result.issues).toBeDefined();
 	});
 
 	it('rejects negative price', () => {
