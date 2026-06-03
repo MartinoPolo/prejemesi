@@ -15,7 +15,7 @@ import {
 	type GiftForOwner,
 	type GiftForVisitor,
 } from './types.js';
-import { normalizeGiftUrl } from './gift_url.js';
+import { normalizeGiftLinks } from './gift_url.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
@@ -65,7 +65,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			wishlistId: gift.wishlistId,
 			name: gift.name,
 			description: gift.description,
-			url: gift.url,
+			links: gift.links,
 			price: gift.price,
 			currency: gift.currency,
 			imageUrl: gift.imageUrl,
@@ -90,7 +90,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			wishlistId: row.wishlistId,
 			name: row.name,
 			description: row.description,
-			url: row.url,
+			links: row.links,
 			price: row.price,
 			currency: row.currency,
 			imageUrl: row.imageUrl,
@@ -178,7 +178,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			wishlistId: row.wishlistId,
 			name: row.name,
 			description: row.description,
-			url: row.url,
+			links: row.links,
 			price: row.price,
 			currency: row.currency,
 			imageUrl: row.imageUrl,
@@ -269,7 +269,7 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 			wishlistId: input.wishlistId,
 			name: input.name,
 			description: input.description ?? null,
-			url: normalizeGiftUrl(input.url),
+			links: normalizeGiftLinks(input.links),
 			price: input.price ?? null,
 			currency: input.currency ?? 'CZK',
 			imageUrl: input.imageUrl ?? null,
@@ -323,8 +323,8 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	if (input.description !== undefined) {
 		updateData['description'] = input.description;
 	}
-	if (input.url !== undefined) {
-		updateData['url'] = normalizeGiftUrl(input.url);
+	if (input.links !== undefined) {
+		updateData['links'] = normalizeGiftLinks(input.links);
 	}
 	if (input.price !== undefined) {
 		updateData['price'] = input.price;

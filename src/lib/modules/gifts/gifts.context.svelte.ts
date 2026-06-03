@@ -76,7 +76,7 @@ function createGiftsContext(
 			});
 		}
 		if (currentFilters.withLinkOnly) {
-			result = result.filter((giftItem) => giftItem.url !== null && giftItem.url !== '');
+			result = result.filter((giftItem) => giftItem.links.length > 0);
 		}
 
 		const currentSort = sortOption.current;

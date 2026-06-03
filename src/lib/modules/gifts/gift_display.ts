@@ -1,6 +1,7 @@
 import * as m from '$lib/paraglide/messages.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
-import { extractGiftUrlDomain } from './gift_url.js';
+import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
+import type { GiftLink } from './types.js';
 
 /** Format price with currency symbol */
 export function formatPrice(price: number | null, currency: string | null): string {
@@ -21,9 +22,9 @@ export function formatPrice(price: number | null, currency: string | null): stri
 	}
 }
 
-/** Extract domain from URL for display */
-export function extractDomain(url: string | null): string | null {
-	return extractGiftUrlDomain(url);
+/** Extract the display domain of a gift's primary link (`links[0]`). */
+export function extractGiftDomain(links: readonly GiftLink[] | null | undefined): string | null {
+	return extractGiftUrlDomain(getPrimaryGiftLink(links)?.url ?? null);
 }
 
 /** @public Priority label display */

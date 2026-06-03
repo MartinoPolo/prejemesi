@@ -13,6 +13,7 @@ import { user } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { generateId } from './id.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
+import type { GiftLink } from '$lib/modules/gifts/types.js';
 
 export const gift = pgTable(
 	'gift',
@@ -28,7 +29,11 @@ export const gift = pgTable(
 		}),
 		name: text('name').notNull(),
 		description: text('description'),
-		url: text('url'),
+		// Up to 10 purchase links; links[0] is primary (drives the domain chip / OG / "Bez odkazu").
+		links: jsonb('links')
+			.$type<GiftLink[]>()
+			.notNull()
+			.default(sql`'[]'::jsonb`),
 		price: integer('price'),
 		currency: text('currency').default('CZK'),
 		imageUrl: text('image_url'),

@@ -15,13 +15,30 @@ export type GiftLike = typeof giftLike.$inferSelect;
 /** Priority level row from DB */
 export type GiftPriorityLevel = typeof priorityLevel.$inferSelect;
 
+/** Maximum number of links a gift can carry. `links[0]` is the primary link. */
+export const MAX_GIFT_LINKS = 10;
+
+/** A single purchase link on a gift. `label` defaults to the URL's domain when absent. */
+export interface GiftLink {
+	url: string;
+	label?: string;
+}
+
+const GiftLinkSchema = v.object({
+	url: v.pipe(v.string(), v.url()),
+	label: v.optional(v.string()),
+});
+
+/** Up to {@link MAX_GIFT_LINKS} links; order is significant (index 0 = primary). */
+const GiftLinksSchema = v.pipe(v.array(GiftLinkSchema), v.maxLength(MAX_GIFT_LINKS));
+
 /** Gift with computed fields for visitor/moderator view */
 export interface GiftForVisitor {
 	id: string;
 	wishlistId: string;
 	name: string;
 	description: string | null;
-	url: string | null;
+	links: GiftLink[];
 	price: number | null;
 	currency: string | null;
 	imageUrl: string | null;
@@ -46,7 +63,7 @@ export interface GiftForOwner {
 	wishlistId: string;
 	name: string;
 	description: string | null;
-	url: string | null;
+	links: GiftLink[];
 	price: number | null;
 	currency: string | null;
 	imageUrl: string | null;
@@ -110,7 +127,7 @@ export interface CreateGiftInput {
 	wishlistId: string;
 	name: string;
 	description?: string | null;
-	url?: string | null;
+	links?: GiftLink[] | null;
 	price?: number | null;
 	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
@@ -127,7 +144,7 @@ export const CreateGiftInputSchema = v.object({
 	wishlistId: v.string(),
 	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 	description: v.optional(v.nullable(v.string())),
-	url: v.optional(v.nullable(v.pipe(v.string(), v.url()))),
+	links: v.optional(v.nullable(GiftLinksSchema)),
 	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
 	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 	imageUrl: v.optional(v.nullable(v.string())),
@@ -143,7 +160,7 @@ export interface UpdateGiftInput {
 	id: string;
 	name?: string;
 	description?: string | null;
-	url?: string | null;
+	links?: GiftLink[] | null;
 	price?: number | null;
 	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
@@ -157,7 +174,7 @@ export const UpdateGiftInputSchema = v.object({
 	id: v.string(),
 	name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
 	description: v.optional(v.nullable(v.string())),
-	url: v.optional(v.nullable(v.pipe(v.string(), v.url()))),
+	links: v.optional(v.nullable(GiftLinksSchema)),
 	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
 	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 	imageUrl: v.optional(v.nullable(v.string())),

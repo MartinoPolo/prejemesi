@@ -74,7 +74,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		wishlistId: 'gift.wishlistId',
 		name: 'gift.name',
 		description: 'gift.description',
-		url: 'gift.url',
+		links: 'gift.links',
 		price: 'gift.price',
 		currency: 'gift.currency',
 		imageUrl: 'gift.imageUrl',
@@ -227,7 +227,7 @@ function makeGiftRow(overrides: Record<string, unknown> = {}): Record<string, un
 		wishlistId: WISHLIST_ID,
 		name: 'Test Gift',
 		description: null,
-		url: null,
+		links: [],
 		price: null,
 		currency: 'CZK',
 		imageUrl: null,
@@ -505,6 +505,37 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.reservedCount).toBe(0);
 		});
 	});
+
+	describe('gift links are returned to all roles', () => {
+		const links = [
+			{ url: 'https://www.alza.cz/playstation-5' },
+			{ url: 'https://www.datart.cz/playstation-5', label: 'Datart' },
+		];
+
+		it('owner (no self-promote) receives the full links array', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ ownerIsModerator: false })]);
+			mockDbInstance.pushResult([makeGiftRow({ links })]);
+
+			const result = await callGetGifts(makeOwnerAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForOwner;
+			expect(gift.links).toEqual(links);
+		});
+
+		it('visitor receives the full links array alongside reservation counts', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ links })]);
+			mockDbInstance.pushResult([]); // reservation counts
+			mockDbInstance.pushResult([]); // like counts
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.links).toEqual(links);
+			expect(gift.reservedCount).toBe(0);
+		});
+	});
 });
 
 describe('createGift', () => {
@@ -543,20 +574,49 @@ describe('createGift', () => {
 			expect(result).toMatchObject({ id: 'new-gift-id', imageMeta });
 		});
 
-		it('stores only normalized http or https gift URLs', async () => {
+		it('drops links whose URL is not http or https when storing', async () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			mockDbInstance.pushResult([{ maxSort: 0 }]);
 			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
 
 			await callCreateGift(makeOwnerAuthContext(), {
 				...createInput,
-				url: ' javascript://example.com/%0Aalert(1)',
+				links: [
+					{ url: ' javascript://example.com/%0Aalert(1)' },
+					{ url: 'https://example.com/ok' },
+				],
 			});
 
 			const giftInsertValues = mockDbInstance.calls
 				.filter((call) => call.method === 'values')
-				.at(0)?.args[0] as { url: string | null };
-			expect(giftInsertValues.url).toBeNull();
+				.at(0)?.args[0] as { links: { url: string; label?: string }[] };
+			expect(giftInsertValues.links).toEqual([{ url: 'https://example.com/ok' }]);
+		});
+
+		it('stores up to 10 links and drops the rest, preserving order and labels', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([{ maxSort: 0 }]);
+			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
+
+			const inputLinks = Array.from({ length: 12 }, (_, i) => ({
+				url: `https://example.com/${i}`,
+				label: `Shop ${i}`,
+			}));
+
+			await callCreateGift(makeOwnerAuthContext(), { ...createInput, links: inputLinks });
+
+			const giftInsertValues = mockDbInstance.calls
+				.filter((call) => call.method === 'values')
+				.at(0)?.args[0] as { links: { url: string; label?: string }[] };
+			expect(giftInsertValues.links).toHaveLength(10);
+			expect(giftInsertValues.links[0]).toEqual({
+				url: 'https://example.com/0',
+				label: 'Shop 0',
+			});
+			expect(giftInsertValues.links[9]).toEqual({
+				url: 'https://example.com/9',
+				label: 'Shop 9',
+			});
 		});
 	});
 
@@ -650,20 +710,22 @@ describe('updateGift', () => {
 			expect(result).toMatchObject({ id: GIFT_ID });
 		});
 
-		it('normalizes updated gift URLs before persisting', async () => {
+		it('normalizes updated gift links before persisting', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
-			mockDbInstance.pushResult([{ id: GIFT_ID, url: 'https://example.com/path' }]);
+			mockDbInstance.pushResult([
+				{ id: GIFT_ID, links: [{ url: 'https://example.com/path' }] },
+			]);
 
 			await callUpdateGift(makeOwnerAuthContext(), {
 				id: GIFT_ID,
-				url: ' https://example.com/path ',
+				links: [{ url: ' https://example.com/path ' }],
 			});
 
 			const updateSetValues = mockDbInstance.calls
 				.filter((call) => call.method === 'set')
-				.at(0)?.args[0] as { url: string | null };
-			expect(updateSetValues.url).toBe('https://example.com/path');
+				.at(0)?.args[0] as { links: { url: string; label?: string }[] };
+			expect(updateSetValues.links).toEqual([{ url: 'https://example.com/path' }]);
 		});
 
 		it('rejects updates on archived wishlists', async () => {

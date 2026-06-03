@@ -1,0 +1,110 @@
+import { describe, it, expect } from 'vitest';
+import {
+	normalizeGiftUrl,
+	extractGiftUrlDomain,
+	normalizeGiftLinks,
+	getPrimaryGiftLink,
+} from './gift_url.js';
+import { extractGiftDomain } from './gift_display.js';
+import { MAX_GIFT_LINKS } from './types.js';
+
+describe('normalizeGiftUrl', () => {
+	it('returns null for null, undefined, and blank input', () => {
+		expect(normalizeGiftUrl(null)).toBeNull();
+		expect(normalizeGiftUrl(undefined)).toBeNull();
+		expect(normalizeGiftUrl('   ')).toBeNull();
+	});
+
+	it('rejects non-http(s) protocols', () => {
+		expect(normalizeGiftUrl(' javascript://example.com/%0Aalert(1)')).toBeNull();
+		expect(normalizeGiftUrl('ftp://example.com/file')).toBeNull();
+	});
+
+	it('trims and normalizes valid http(s) URLs', () => {
+		expect(normalizeGiftUrl(' https://example.com/path ')).toBe('https://example.com/path');
+	});
+});
+
+describe('extractGiftUrlDomain', () => {
+	it('strips the www prefix and returns the hostname', () => {
+		expect(extractGiftUrlDomain('https://www.alza.cz/playstation-5')).toBe('alza.cz');
+	});
+
+	it('returns null for invalid URLs', () => {
+		expect(extractGiftUrlDomain('not a url')).toBeNull();
+	});
+});
+
+describe('normalizeGiftLinks', () => {
+	it('returns an empty array for null or undefined', () => {
+		expect(normalizeGiftLinks(null)).toEqual([]);
+		expect(normalizeGiftLinks(undefined)).toEqual([]);
+	});
+
+	it('drops links whose URL is not valid http(s)', () => {
+		const result = normalizeGiftLinks([
+			{ url: 'javascript://evil' },
+			{ url: 'https://example.com/ok' },
+			{ url: '   ' },
+		]);
+		expect(result).toEqual([{ url: 'https://example.com/ok' }]);
+	});
+
+	it('preserves order so links[0] stays primary', () => {
+		const result = normalizeGiftLinks([
+			{ url: 'https://a.example.com' },
+			{ url: 'https://b.example.com' },
+		]);
+		expect(result.map((l) => l.url)).toEqual([
+			'https://a.example.com/',
+			'https://b.example.com/',
+		]);
+	});
+
+	it('trims labels and drops empty ones', () => {
+		const result = normalizeGiftLinks([
+			{ url: 'https://example.com/1', label: '  Alza  ' },
+			{ url: 'https://example.com/2', label: '   ' },
+		]);
+		expect(result).toEqual([
+			{ url: 'https://example.com/1', label: 'Alza' },
+			{ url: 'https://example.com/2' },
+		]);
+	});
+
+	it('caps the list at MAX_GIFT_LINKS', () => {
+		const input = Array.from({ length: MAX_GIFT_LINKS + 5 }, (_, i) => ({
+			url: `https://example.com/${i}`,
+		}));
+		expect(normalizeGiftLinks(input)).toHaveLength(MAX_GIFT_LINKS);
+	});
+});
+
+describe('getPrimaryGiftLink', () => {
+	it('returns links[0] when present', () => {
+		const link = { url: 'https://example.com' };
+		expect(getPrimaryGiftLink([link, { url: 'https://other.com' }])).toBe(link);
+	});
+
+	it('returns null for empty, null, or undefined', () => {
+		expect(getPrimaryGiftLink([])).toBeNull();
+		expect(getPrimaryGiftLink(null)).toBeNull();
+		expect(getPrimaryGiftLink(undefined)).toBeNull();
+	});
+});
+
+describe('extractGiftDomain', () => {
+	it('returns the primary link domain', () => {
+		expect(
+			extractGiftDomain([
+				{ url: 'https://www.alza.cz/x' },
+				{ url: 'https://www.datart.cz/x' },
+			]),
+		).toBe('alza.cz');
+	});
+
+	it('returns null when there are no links', () => {
+		expect(extractGiftDomain([])).toBeNull();
+		expect(extractGiftDomain(null)).toBeNull();
+	});
+});
