@@ -116,6 +116,9 @@ export const GIFT_CURRENCIES = {
 
 export type GiftCurrency = (typeof GIFT_CURRENCIES)[keyof typeof GIFT_CURRENCIES];
 
+/** Default currency for new/parsed gifts when none is detected. */
+export const DEFAULT_GIFT_CURRENCY: GiftCurrency = GIFT_CURRENCIES.CZK;
+
 export const GIFT_CURRENCY_LABELS = {
 	CZK: 'CZK (Kc)',
 	EUR: 'EUR',
