@@ -192,6 +192,7 @@
 	--status-warning: oklch(77% 0.155 75deg);
 	--status-danger: oklch(62% 0.205 25deg);
 	--status-info: oklch(66% 0.105 220deg);
+	--status-dup: oklch(72% 0.175 68deg);
 
 	/* Domain colors */
 	--reserved: oklch(62% 0.13 145deg);
@@ -369,6 +370,7 @@
 	--status-warning: oklch(82% 0.14 75deg);
 	--status-danger: oklch(68% 0.18 25deg);
 	--status-info: oklch(72% 0.095 220deg);
+	--status-dup: oklch(76% 0.165 68deg);
 
 	/* Domain colors (dark) */
 	--reserved: oklch(68% 0.12 145deg);
@@ -438,6 +440,7 @@
 	--color-status-warning: var(--status-warning);
 	--color-status-danger: var(--status-danger);
 	--color-status-info: var(--status-info);
+	--color-status-dup: var(--status-dup);
 	--color-reserved: var(--reserved);
 	--color-liked: var(--liked);
 	--color-archived: var(--archived);
