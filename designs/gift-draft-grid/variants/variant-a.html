@@ -164,8 +164,20 @@
 				position: relative;
 			}
 			.cell.gutter {
+				align-items: flex-start;
 				justify-content: center;
 				border-right: 1px solid var(--border);
+			}
+			/* center gutter content within the first control-height band so
+			   the row checkbox aligns with the top input / first link box */
+			.cell.gutter > .check-hit {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-height: var(--size-control-md);
+			}
+			.cell.gutter > .icon-btn {
+				margin-top: calc((var(--size-control-md) - 32px) / 2);
 			}
 			.cell.last {
 				border-right: none;
@@ -243,7 +255,7 @@
 			}
 			.row-excluded .cell-input,
 			.row-excluded .price-input,
-			.row-excluded .link-chip,
+			.row-excluded .link-a,
 			.row-excluded .currency-sel {
 				color: var(--foreground-subtle);
 				opacity: 0.72;
@@ -350,115 +362,127 @@
 				font-weight: 500;
 				color: var(--invalid-border);
 			}
-			.name-link-hint {
-				padding: 0 10px 2px;
-				font-size: 11px;
-				color: var(--foreground-subtle);
+			/* ── Links cell — unified editable-link inputs ──────────── */
+			.links-stack {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+				align-items: stretch;
 			}
-			.name-link-hint a {
+			.link-mini {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				background: var(--surface);
+				border: 1px solid var(--border-strong);
+				border-radius: var(--radius-md);
+				padding: 7px 8px 7px 11px;
+				min-height: var(--size-control-md);
+				cursor: text;
+			}
+			.link-mini:hover {
+				border-color: var(--primary);
+			}
+			.link-mini:focus-within {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 18%, transparent);
+			}
+			.link-a {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				font-size: var(--text-sm);
+				font-weight: 500;
 				color: var(--primary);
-				font-weight: 600;
+				text-decoration: none;
+				flex: 1;
+				min-width: 0;
+				border-radius: var(--radius-sm);
+			}
+			.link-a:hover {
+				color: var(--foreground);
 				text-decoration: underline;
 				text-underline-offset: 2px;
 			}
-
-			/* ── Links cell (inline chips) ──────────────────────────── */
-			.links-cell {
-				flex-wrap: wrap;
-				gap: 5px;
-				padding: 6px 10px;
+			.link-a:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
 			}
-			.link-chip {
-				display: inline-flex;
-				align-items: center;
-				gap: 4px;
-				height: 24px;
-				max-width: 100%;
-				padding: 0 7px 0 8px;
-				font-size: 12px;
-				font-weight: 500;
-				color: var(--foreground);
-				background: var(--surface-2);
-				border: 1px solid var(--border);
-				border-radius: var(--radius-sm);
-				text-decoration: none;
-				white-space: nowrap;
-				transition:
-					background var(--duration-fast),
-					border-color var(--duration-fast);
-			}
-			.link-chip:hover {
-				background: var(--surface-hover);
-				border-color: var(--primary);
-				color: var(--primary);
-			}
-			.link-chip:focus-visible {
-				outline: 2px solid var(--ring);
-				outline-offset: 1px;
-			}
-			.link-chip.primary {
-				border-color: color-mix(in oklch, var(--primary) 40%, var(--border));
-			}
-			.link-chip svg {
+			.link-a svg {
 				flex: none;
-				opacity: 0.7;
 			}
-			.link-chip .chip-host {
+			.link-a .domain {
 				overflow: hidden;
 				text-overflow: ellipsis;
+				white-space: nowrap;
 			}
-			.chip-remove {
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				width: 14px;
-				height: 14px;
+			.link-a.is-primary::after {
+				content: 'hlavní';
+				font-size: 10px;
+				font-weight: 600;
+				letter-spacing: 0.03em;
+				color: var(--primary);
+				background: var(--primary-soft);
+				border: 1px solid color-mix(in oklch, var(--primary) 25%, transparent);
+				border-radius: var(--radius-full);
+				padding: 1px 7px;
+				flex: none;
+			}
+			.link-remove {
+				flex: none;
+				width: 24px;
+				height: 24px;
+				display: grid;
+				place-items: center;
 				border: none;
 				background: transparent;
 				color: var(--foreground-subtle);
-				border-radius: var(--radius-full);
+				border-radius: var(--radius-sm);
 				cursor: pointer;
-				margin-left: 1px;
 			}
-			.chip-remove:hover {
-				background: var(--destructive);
-				color: var(--primary-fg);
+			.link-remove:hover {
+				background: color-mix(in oklch, var(--destructive) 14%, transparent);
+				color: var(--destructive);
 			}
-			.link-only .name-link-hint a {
-				font-size: 12px;
+			.link-remove:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 1px;
 			}
 			.add-link {
 				display: inline-flex;
 				align-items: center;
-				gap: 4px;
-				height: 24px;
-				min-width: 32px;
-				padding: 0 8px;
-				font-size: 12px;
+				gap: 6px;
+				align-self: flex-start;
+				font-size: var(--text-sm);
 				font-weight: 600;
 				color: var(--primary);
 				background: transparent;
-				border: 1px dashed color-mix(in oklch, var(--primary) 45%, var(--border));
-				border-radius: var(--radius-sm);
+				border: 1px dashed color-mix(in oklch, var(--primary) 40%, var(--border-strong));
+				border-radius: var(--radius-md);
+				padding: 8px 12px;
+				min-height: var(--size-control-md);
+				white-space: nowrap;
 				cursor: pointer;
-				transition:
-					background var(--duration-fast),
-					border-color var(--duration-fast);
 			}
 			.add-link:hover {
 				background: var(--primary-soft);
+				border-color: var(--primary);
 			}
 			.add-link:active {
-				transform: scale(0.95);
+				transform: scale(0.97);
 			}
 			.add-link:focus-visible {
-				outline: 2px solid var(--ring);
-				outline-offset: 1px;
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
 			}
 			.add-link:disabled {
 				opacity: 0.45;
 				cursor: not-allowed;
 				border-style: solid;
+			}
+			.add-link:disabled:hover {
+				background: transparent;
+				border-color: var(--border-strong);
 			}
 
 			/* ── Cena cell ──────────────────────────────────────────── */
@@ -1005,11 +1029,6 @@
 				height: 44px;
 				flex: none;
 			}
-			.m-links {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 6px;
-			}
 			.m-price-row {
 				display: flex;
 				gap: 8px;
@@ -1147,37 +1166,58 @@
 										aria-label="Poznámka"
 									/>
 								</div>
-								<div class="cell links-cell">
-									<a
-										class="link-chip primary"
-										href="https://www.alza.cz"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">alza.cz</span>
-										<button
-											class="chip-remove"
-											aria-label="Odebrat odkaz"
-											title="Odebrat odkaz"
-										>
-											×
+								<div class="cell">
+									<div class="links-stack">
+										<div class="link-mini">
+											<a
+												class="link-a is-primary"
+												href="https://www.alza.cz"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">alza.cz</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz alza.cz"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<button class="add-link" type="button">
+											<svg
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											+ odkaz
 										</button>
-									</a>
-									<button class="add-link" title="+ odkaz">+ odkaz</button>
+									</div>
 								</div>
 								<div class="cell price-cell">
 									<input
@@ -1258,15 +1298,6 @@
 										</svg>
 										Zadejte název
 									</span>
-									<span class="name-link-hint"
-										>Otevři odkaz a pojmenuj:
-										<a
-											href="https://www.lidl.cz"
-											target="_blank"
-											rel="noopener noreferrer"
-											>lidl.cz ↗</a
-										></span
-									>
 								</div>
 								<div class="cell">
 									<input
@@ -1276,33 +1307,58 @@
 										aria-label="Poznámka"
 									/>
 								</div>
-								<div class="cell links-cell">
-									<a
-										class="link-chip primary"
-										href="https://www.lidl.cz"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">lidl.cz</span>
-										<button class="chip-remove" aria-label="Odebrat odkaz">
-											×
+								<div class="cell">
+									<div class="links-stack">
+										<div class="link-mini">
+											<a
+												class="link-a is-primary"
+												href="https://www.lidl.cz"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">lidl.cz</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz lidl.cz"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<button class="add-link" type="button">
+											<svg
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											+ odkaz
 										</button>
-									</a>
-									<button class="add-link">+ odkaz</button>
+									</div>
 								</div>
 								<div class="cell price-cell">
 									<input
@@ -1393,33 +1449,58 @@
 										aria-label="Poznámka"
 									/>
 								</div>
-								<div class="cell links-cell">
-									<a
-										class="link-chip primary"
-										href="https://www.heureka.cz"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">heureka.cz</span>
-										<button class="chip-remove" aria-label="Odebrat odkaz">
-											×
+								<div class="cell">
+									<div class="links-stack">
+										<div class="link-mini">
+											<a
+												class="link-a is-primary"
+												href="https://www.heureka.cz"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">heureka.cz</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz heureka.cz"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<button class="add-link" type="button">
+											<svg
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											+ odkaz
 										</button>
-									</a>
-									<button class="add-link">+ odkaz</button>
+									</div>
 								</div>
 								<div class="cell price-cell">
 									<input
@@ -1486,33 +1567,58 @@
 										aria-label="Poznámka"
 									/>
 								</div>
-								<div class="cell links-cell">
-									<a
-										class="link-chip primary"
-										href="https://www.knihy-dobrovsky.cz"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">knihy-dobrovsky.cz</span>
-										<button class="chip-remove" aria-label="Odebrat odkaz">
-											×
+								<div class="cell">
+									<div class="links-stack">
+										<div class="link-mini">
+											<a
+												class="link-a is-primary"
+												href="https://www.knihy-dobrovsky.cz"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">knihy-dobrovsky.cz</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz knihy-dobrovsky.cz"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<button class="add-link" type="button">
+											<svg
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											+ odkaz
 										</button>
-									</a>
-									<button class="add-link">+ odkaz</button>
+									</div>
 								</div>
 								<div class="cell price-cell">
 									<input
@@ -1589,15 +1695,6 @@
 										</svg>
 										Zadejte název
 									</span>
-									<span class="name-link-hint"
-										>Otevři a pojmenuj:
-										<a
-											href="https://www.ikea.com"
-											target="_blank"
-											rel="noopener noreferrer"
-											>ikea.com ↗</a
-										></span
-									>
 								</div>
 								<div class="cell">
 									<input
@@ -1607,33 +1704,58 @@
 										aria-label="Poznámka"
 									/>
 								</div>
-								<div class="cell links-cell">
-									<a
-										class="link-chip primary"
-										href="https://www.ikea.com"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">ikea.com</span>
-										<button class="chip-remove" aria-label="Odebrat odkaz">
-											×
+								<div class="cell">
+									<div class="links-stack">
+										<div class="link-mini">
+											<a
+												class="link-a is-primary"
+												href="https://www.ikea.com"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">ikea.com</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz ikea.com"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<button class="add-link" type="button">
+											<svg
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											+ odkaz
 										</button>
-									</a>
-									<button class="add-link">+ odkaz</button>
+									</div>
 								</div>
 								<div class="cell price-cell">
 									<input
@@ -1701,58 +1823,94 @@
 										aria-label="Poznámka"
 									/>
 								</div>
-								<div class="cell links-cell">
-									<a
-										class="link-chip primary"
-										href="https://www.alza.cz"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">alza.cz</span>
-										<button class="chip-remove" aria-label="Odebrat odkaz">
-											×
+								<div class="cell">
+									<div class="links-stack">
+										<div class="link-mini">
+											<a
+												class="link-a is-primary"
+												href="https://www.alza.cz"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">alza.cz</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz alza.cz"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<div class="link-mini">
+											<a
+												class="link-a"
+												href="https://www.heureka.cz"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">heureka.cz</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz heureka.cz"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<button class="add-link" type="button">
+											<svg
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											+ odkaz
 										</button>
-									</a>
-									<a
-										class="link-chip"
-										href="https://www.heureka.cz"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">heureka.cz</span>
-										<button class="chip-remove" aria-label="Odebrat odkaz">
-											×
-										</button>
-									</a>
-									<button class="add-link" title="+ odkaz">+ odkaz</button>
+									</div>
 								</div>
 								<div class="cell price-cell">
 									<input
@@ -1826,33 +1984,58 @@
 										aria-label="Poznámka"
 									/>
 								</div>
-								<div class="cell links-cell">
-									<a
-										class="link-chip primary"
-										href="https://www.alza.cz"
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										<svg
-											width="11"
-											height="11"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2.5"
-										>
-											<path
-												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-											/>
-											<polyline points="15 3 21 3 21 9" />
-											<line x1="10" y1="14" x2="21" y2="3" />
-										</svg>
-										<span class="chip-host">alza.cz</span>
-										<button class="chip-remove" aria-label="Odebrat odkaz">
-											×
+								<div class="cell">
+									<div class="links-stack">
+										<div class="link-mini">
+											<a
+												class="link-a is-primary"
+												href="https://www.alza.cz"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M7 17 17 7M9 7h8v8" />
+												</svg>
+												<span class="domain">alza.cz</span>
+											</a>
+											<button
+												class="link-remove"
+												type="button"
+												aria-label="Odebrat odkaz alza.cz"
+											>
+												<svg
+													width="14"
+													height="14"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 6l12 12M18 6 6 18" />
+												</svg>
+											</button>
+										</div>
+										<button class="add-link" type="button">
+											<svg
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											+ odkaz
 										</button>
-									</a>
-									<button class="add-link">+ odkaz</button>
+									</div>
 								</div>
 								<div class="cell price-cell">
 									<input
@@ -2095,10 +2278,22 @@
 														aria-label="Poznámka"
 													/>
 												</div>
-												<div class="cell links-cell">
-													<button class="add-link" title="+ odkaz">
-														+ odkaz
-													</button>
+												<div class="cell">
+													<div class="links-stack">
+														<button class="add-link" type="button">
+															<svg
+																width="14"
+																height="14"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="2"
+															>
+																<path d="M12 5v14M5 12h14" />
+															</svg>
+															+ odkaz
+														</button>
+													</div>
 												</div>
 												<div class="cell price-cell">
 													<input
@@ -2241,31 +2436,56 @@
 						<label class="m-label">Poznámka</label>
 						<input class="m-field" value="Velikost 42–44, šedá" aria-label="Poznámka" />
 						<label class="m-label">Odkazy</label>
-						<div class="m-links">
-							<a
-								class="link-chip primary"
-								href="https://www.alza.cz"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
+						<div class="links-stack">
+							<div class="link-mini">
+								<a
+									class="link-a is-primary"
+									href="https://www.alza.cz"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M7 17 17 7M9 7h8v8" />
+									</svg>
+									<span class="domain">alza.cz</span>
+								</a>
+								<button
+									class="link-remove"
+									type="button"
+									aria-label="Odebrat odkaz alza.cz"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M6 6l12 12M18 6 6 18" />
+									</svg>
+								</button>
+							</div>
+							<button class="add-link" type="button">
 								<svg
-									width="11"
-									height="11"
+									width="14"
+									height="14"
 									viewBox="0 0 24 24"
 									fill="none"
 									stroke="currentColor"
-									stroke-width="2.5"
+									stroke-width="2"
 								>
-									<path
-										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-									/>
-									<polyline points="15 3 21 3 21 9" />
-									<line x1="10" y1="14" x2="21" y2="3" />
+									<path d="M12 5v14M5 12h14" />
 								</svg>
-								<span class="chip-host">alza.cz</span>
-								<button class="chip-remove" aria-label="Odebrat odkaz">×</button>
-							</a>
-							<button class="add-link" style="height: 28px">+ odkaz</button>
+								+ odkaz
+							</button>
 						</div>
 						<label class="m-label">Cena</label>
 						<div class="m-price-row">
@@ -2332,41 +2552,59 @@
 								<line x1="12" y1="8" x2="12" y2="12" />
 								<line x1="12" y1="16" x2="12.01" y2="16" />
 							</svg>
-							Zadejte název — otevři
-							<a
-								href="https://www.ikea.com"
-								target="_blank"
-								rel="noopener noreferrer"
-								style="color: var(--primary); font-weight: 600"
-								>ikea.com ↗</a
-							>
+							Zadejte název
 						</div>
 						<label class="m-label">Odkazy</label>
-						<div class="m-links">
-							<a
-								class="link-chip primary"
-								href="https://www.ikea.com"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
+						<div class="links-stack">
+							<div class="link-mini">
+								<a
+									class="link-a is-primary"
+									href="https://www.ikea.com"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M7 17 17 7M9 7h8v8" />
+									</svg>
+									<span class="domain">ikea.com</span>
+								</a>
+								<button
+									class="link-remove"
+									type="button"
+									aria-label="Odebrat odkaz ikea.com"
+								>
+									<svg
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path d="M6 6l12 12M18 6 6 18" />
+									</svg>
+								</button>
+							</div>
+							<button class="add-link" type="button">
 								<svg
-									width="11"
-									height="11"
+									width="14"
+									height="14"
 									viewBox="0 0 24 24"
 									fill="none"
 									stroke="currentColor"
-									stroke-width="2.5"
+									stroke-width="2"
 								>
-									<path
-										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-									/>
-									<polyline points="15 3 21 3 21 9" />
-									<line x1="10" y1="14" x2="21" y2="3" />
+									<path d="M12 5v14M5 12h14" />
 								</svg>
-								<span class="chip-host">ikea.com</span>
-								<button class="chip-remove" aria-label="Odebrat odkaz">×</button>
-							</a>
-							<button class="add-link" style="height: 28px">+ odkaz</button>
+								+ odkaz
+							</button>
 						</div>
 						<label class="m-label">Cena</label>
 						<div class="m-price-row">

@@ -1,5 +1,10 @@
 # Design Brief — Gift Draft Grid
 
+> **Status**: Refined (Variant B)
+> **Refined mockup**: `designs/gift-draft-grid/refined.html`
+> **Summary**: `designs/gift-draft-grid/SUMMARY.md`
+> **Refinements**: detached card-like bulk bar, single header select-all, ghost "+ odkaz" (de-duplicated plus), multiline resizable Poznámka, whole-card color status (green ready / orange duplicate / red error)
+
 > **Status**: Design phase
 > **Source**: DECISIONS.md "Bulk gift entry via large dialog", "CSV / Google Sheets import via 3-step wizard", "Multiple links per gift", "Name-based enrichment deferred; blank names stay blank", "Metadata enrichment: per-item, progressive, offloaded". CONTEXT.md domain terms "Gift draft", "Draft grid".
 > **Delivery**: Phase 1 (grid + batch-add dialog, no enrichment) · Phase 1b (multi-link data model) · Phase 2 (✨ enrich placeholder activates) · Phase 3 (name search — out of scope here).
@@ -52,7 +57,7 @@ There is no per-row URL routing — this is a local editing surface, not a navig
 | --------------------- | --------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Select                | row selection                                       | `base/checkbox`                                                            | Per-row include/exclude. Header cell hosts select-all tri-state.                                                                                                                                                                                              |
 | **Název**             | `draft.name` (required)                             | `base/input` `state`                                                       | Blank = invalid (highlighted + helper text). The naming affordance is the row's clickable link.                                                                                                                                                               |
-| **Poznámka**          | `draft.description`                                 | `base/input` / `base/textarea`                                             | Free text; optional. Single-line input acceptable, auto-grow optional (design freedom).                                                                                                                                                                       |
+| **Poznámka**          | `draft.description`                                 | `base/textarea`                                                            | Free text; optional. **Settled: multiline `base/textarea`** — `resize: vertical` + `field-sizing: content`. Rows top-align so growing the note grows the whole card.                                                                                          |
 | **Odkazy**            | `draft.links: {url,label?}[]` (max 10)              | composed link cell                                                         | Each link is a **clickable chip/row opening in a new tab** (`target="_blank" rel="noopener"`). A **"+ odkaz"** control adds links up to 10; each link is removable. `links[0]` is primary. Empty state shows a single add affordance, no "Bez odkazu" filler. |
 | **Cena**              | `draft.price` (int, whole units) + `draft.currency` | `base/input-group` (numeric `base/input` + small `base/select`)            | Currency default **CZK**, options CZK/EUR/USD. Whole units only. Both optional.                                                                                                                                                                               |
 | _Phase 2 placeholder_ | per-row enrich                                      | ✨ `base/button` `intent="ghost"` icon (`Sparkles`) + per-row enrich state | **Placeholder only** in this brief — reserve the slot and the per-row state visuals; provider/internals are out of scope (§ 11).                                                                                                                              |
@@ -63,18 +68,24 @@ There is no per-row URL routing — this is a local editing surface, not a navig
 | Item                   | Where shown                          | Notes                                                                                                             |
 | ---------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | Invalid-name marker    | Název cell                           | `state` highlight + `base/help-text` "Zadejte název" (or inline icon + tooltip in compact layouts).               |
-| "možný duplikát" badge | row (Název cell or row leading edge) | `base/badge` `tone` — **import context only**. Row stays toggleable; badge is informational, never auto-excludes. |
+| "možný duplikát" badge | Název cell + **whole-card orange tint** | `base/badge` (orange `--status-dup`) — **import context only**. Settled: the whole card tints orange (`is-duplicate`) as the at-a-glance status; the badge is the non-color cue. Row stays toggleable; never auto-excludes. Single duplicate tier (no yellow). |
 | Quantity               | not a column in v1 grid              | Quantity defaults to 1; per-row quantity editing is deferred to the single-gift modal (§ 11).                     |
 | Priority / Image       | not in grid                          | Set later per gift in the gift modal (§ 11).                                                                      |
 
 ### Bulk action bar (visible when ≥ 1 row selected)
 
-| Action              | Control                                   | Notes                                     |
-| ------------------- | ----------------------------------------- | ----------------------------------------- |
-| Selected count      | text                                      | e.g. "Vybráno 5".                         |
-| Select all / none   | header checkbox (tri-state)               | Indeterminate when partial.               |
-| Smazat vybrané      | `base/button` `intent="danger"`/`outline` | Deletes selected rows.                    |
-| ✨ Obohatit vybrané | `base/button` (Phase 2 placeholder)       | Reserve slot; disabled/absent in Phase 1. |
+**Settled: the bulk bar is a detached card** — rounded corners, padding, full border, soft shadow,
+side margins; floats (sticky) above the grid rather than a full-bleed strip welded to the header.
+It carries **no select-all checkbox** — there is exactly one global select-all, the tri-state
+checkbox in the **grid header** (desktop), column-aligned with the per-row checkboxes. (Mobile has
+no header row, so the detached mobile bulk card keeps the lone select-all there.)
+
+| Action              | Control                                   | Notes                                                            |
+| ------------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| Selected count      | text                                      | e.g. "Vybráno 5".                                                |
+| Select all / none   | **grid-header checkbox only** (tri-state) | Indeterminate when partial. Not duplicated in the bulk bar.      |
+| Smazat vybrané      | `base/button` `intent="danger"`           | Deletes selected rows.                                           |
+| ✨ Obohatit vybrané | `base/button` `intent="ghost"` (Phase 2)  | Reserve slot; disabled in Phase 1.                               |
 
 ### Role / context gating
 
@@ -96,9 +107,9 @@ Row-level states:
 | State                         | Trigger                                                               | Visual change                                                                                                                     |
 | ----------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | **Empty (batch)**             | Batch dialog opened                                                   | One blank row + "Přidat řádek" affordance; commit disabled                                                                        |
-| **Valid**                     | Row has a non-blank name, selected                                    | Normal row; counts toward commit; checkbox checked                                                                                |
-| **Invalid (blank name)**      | Selected row with empty Název                                         | Název cell `state` highlight + helper "Zadejte název"; excluded from commit count; row's link emphasised as the naming affordance |
-| **Possible-duplicate**        | Import row matches existing gift by normalized name OR link host+path | "možný duplikát" `badge` on row; still toggleable; not auto-deselected                                                            |
+| **Valid**                     | Row has a non-blank name, selected                                    | **Whole card tints green** (`is-ready`); counts toward commit; checkbox checked                                                   |
+| **Invalid (blank name)**      | Selected row with empty Název                                         | **Whole card tints red** (`is-error`) + Název `state` highlight + helper "Zadejte název"; excluded from commit count. Pristine batch starter row stays neutral until touched. |
+| **Possible-duplicate**        | Import row matches existing gift by normalized name OR link host+path | **Whole card tints orange** (`is-duplicate`) + "možný duplikát" `badge`; still toggleable; not auto-deselected. Single tier (no yellow).                                       |
 | **Excluded (deselected)**     | User unchecks the row                                                 | Row dimmed/muted; not committed; remains editable                                                                                 |
 | **Editing**                   | Field focused                                                         | Active field `state` focus ring; row subtly raised/active                                                                         |
 | **Enriching** _(Phase 2)_     | ✨ fired for the row                                                  | Per-row progress/shimmer on enrich-target fields (image/price/title); other fields stay editable                                  |
@@ -208,9 +219,9 @@ Canonical source is `src/app.css` (design reference: `designs/tokens.css`). Neve
 - **Row model on desktop:** true table-grid vs. card-per-row vs. spreadsheet-dense — and exactly how the mobile stacked-card collapse looks.
 - **Virtualization** strategy (windowing vs. plain scroll) for the ~200-row case.
 - **Links cell treatment:** inline chips, stacked mini-rows, or a popover/expander for rows with many links; how "+ odkaz" and per-link remove are placed; whether the optional `label` is editable inline or defaults to the domain.
-- **Validation presentation:** persistent helper text under the field vs. inline icon + tooltip in dense rows; whether invalid rows also get a leading-edge marker.
-- **"možný duplikát" placement:** badge in the Název cell, a leading-edge stripe, or a row affordance with a tooltip explaining the match (name vs. link).
-- **Bulk bar position** (sticky top vs. bottom) and whether it overlays or pushes content.
+- **Validation presentation:** _Settled_ — whole-card red tint (`is-error`) + persistent helper text "Zadejte název". No leading-edge stripe.
+- **"možný duplikát" placement:** _Settled_ — whole-card orange tint (`is-duplicate`) + badge in the Název cell. Single tier (no yellow); precedence error > duplicate > ready.
+- **Bulk bar position:** _Settled_ — detached card-like bar, sticky to the top, pushes content. Carries no select-all (header owns the single tri-state).
 - **Select-all scope** semantics surfacing (all vs. all-valid vs. visible) if virtualized.
 - **Add-row affordance** style in batch mode (footer button, trailing ghost row, or both) and keyboard flow (Enter/Tab to add).
 - **Currency control** form (compact select vs. segmented) within the Cena `input-group`.

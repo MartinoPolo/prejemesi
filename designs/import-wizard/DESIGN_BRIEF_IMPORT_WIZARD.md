@@ -1,5 +1,10 @@
 # Design Brief — CSV / Google Sheets Import Wizard
 
+> **Status**: Refined (Variant A)
+> **Refined mockup**: `designs/import-wizard/refined.html`
+> **Summary**: `designs/import-wizard/SUMMARY.md`
+> **Refinements**: icon source-method tabs (File / Table / Google, no numbers); clarified internal scrolling with sticky heads + token-themed scrollbars; expanded append dedup step with long, asymmetric lists (16 imported vs 26 existing); removed the in-grid "Reprezentativní náhled" preview label so the grid top-aligns with the existing-items panel.
+
 **Component:** `ImportWizard` (`src/lib/components/blocks/import/`)
 **Date:** 2026-06-03
 **Status:** Design phase
