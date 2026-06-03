@@ -2,15 +2,15 @@ import * as v from 'valibot';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
-import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
+import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
+import { seedNewWishlist } from './wishlist_create.js';
 import {
-	DEFAULT_PRIORITY_LEVELS,
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
 	type WishlistRole,
@@ -190,32 +190,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 
 export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({ user }, input) => {
 	const database = getDb();
-
-	return database.transaction(async (tx) => {
-		const [created] = await tx
-			.insert(wishlist)
-			.values({
-				ownerId: user.id,
-				title: input.title,
-				eventDate: input.eventDate ?? null,
-				theme: input.theme ?? 'default',
-			})
-			.returning();
-
-		if (created === undefined) {
-			error(500, 'Failed to create wishlist');
-		}
-
-		await tx.insert(priorityLevel).values(
-			DEFAULT_PRIORITY_LEVELS.map((level) => ({
-				wishlistId: created.id,
-				label: level.label,
-				sortOrder: level.sortOrder,
-			})),
-		);
-
-		return created;
-	});
+	return database.transaction((tx) => seedNewWishlist(tx, user.id, input));
 });
 
 export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {

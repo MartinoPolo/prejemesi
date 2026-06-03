@@ -35,13 +35,164 @@ vi.mock('@sveltejs/kit', () => ({
 	}),
 }));
 
-const { fetchGoogleSheetCsv } = await import('./import.remote.js');
+// ── Mock drizzle-orm — used only as where-clause builders; no-ops are fine ──
+vi.mock('drizzle-orm', () => ({
+	eq: vi.fn((...args: unknown[]) => args),
+	and: vi.fn((...args: unknown[]) => args),
+	isNull: vi.fn((arg: unknown) => arg),
+	sql: vi.fn(() => ({ as: vi.fn(() => ({})) })),
+}));
+
+vi.mock('$lib/server/db/gift.schema.js', () => ({
+	gift: {
+		id: 'gift.id',
+		wishlistId: 'gift.wishlistId',
+		name: 'gift.name',
+		sortOrder: 'gift.sortOrder',
+		deletedAt: 'gift.deletedAt',
+	},
+}));
+
+vi.mock('$lib/server/db/wishlist.schema.js', () => ({
+	wishlist: {
+		id: 'wishlist.id',
+		ownerId: 'wishlist.ownerId',
+		status: 'wishlist.status',
+		deletedAt: 'wishlist.deletedAt',
+	},
+	priorityLevel: {
+		id: 'priorityLevel.id',
+		wishlistId: 'priorityLevel.wishlistId',
+		label: 'priorityLevel.label',
+		sortOrder: 'priorityLevel.sortOrder',
+	},
+}));
+
+vi.mock('$lib/server/db/moderator.schema.js', () => ({
+	moderatorAssignment: {
+		id: 'moderatorAssignment.id',
+		wishlistId: 'moderatorAssignment.wishlistId',
+		userId: 'moderatorAssignment.userId',
+		deletedAt: 'moderatorAssignment.deletedAt',
+	},
+}));
+
+// ── DB mock helper — sequential `then` results, transaction + call tracking ──
+
+interface MockDb {
+	db: Record<string | symbol, unknown>;
+	calls: { method: string; args: unknown[] }[];
+	pushResult: (result: unknown[]) => void;
+	reset: () => void;
+}
+
+function createMockDb(): MockDb {
+	const results: unknown[][] = [];
+	const calls: { method: string; args: unknown[] }[] = [];
+	const indexRef = { value: 0 };
+
+	const chain: Record<string | symbol, unknown> = new Proxy(
+		{},
+		{
+			get(_target, prop) {
+				if (prop === 'then') {
+					const result = results[indexRef.value] ?? [];
+					indexRef.value++;
+					return (resolve: (value: unknown[]) => unknown) => resolve(result);
+				}
+				if (prop === 'transaction') {
+					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+						calls.push({ method: 'transaction', args: [] });
+						return callback(chain);
+					});
+				}
+				return vi.fn((...args: unknown[]) => {
+					if (typeof prop === 'string') {
+						calls.push({ method: prop, args });
+					}
+					return chain;
+				});
+			},
+		},
+	);
+
+	return {
+		db: chain,
+		calls,
+		pushResult: (result: unknown[]) => results.push(result),
+		reset: () => {
+			results.length = 0;
+			calls.length = 0;
+			indexRef.value = 0;
+		},
+	};
+}
+
+const mockDbInstance = createMockDb();
+
+vi.mock('$lib/server/db/index.js', () => ({
+	getDb: vi.fn(() => mockDbInstance.db),
+}));
+
+// ── Import the module under test (after all mocks are set up) ────────────────
+
+const { fetchGoogleSheetCsv, importGifts, createWishlistFromImport } =
+	await import('./import.remote.js');
 
 // The mocked guardedCommand returns the raw (authContext, arg) handler; cast to it.
 type FetchHandler = (authContext: { user: { id: string } }, link: string) => Promise<string>;
 const callFetch = fetchGoogleSheetCsv as unknown as FetchHandler;
 
-const AUTH = { user: { id: 'u1' }, session: {} };
+type ImportGiftsHandler = (
+	authContext: { user: { id: string } },
+	input: { wishlistId: string; gifts: unknown[] },
+) => Promise<unknown[]>;
+const callImportGifts = importGifts as unknown as ImportGiftsHandler;
+
+type CreateFromImportHandler = (
+	authContext: { user: { id: string } },
+	input: Record<string, unknown>,
+) => Promise<unknown>;
+const callCreateFromImport = createWishlistFromImport as unknown as CreateFromImportHandler;
+
+const OWNER_ID = 'user-owner';
+const MODERATOR_ID = 'user-moderator';
+const VISITOR_ID = 'user-visitor';
+const WISHLIST_ID = 'wishlist-1';
+
+const AUTH = { user: { id: OWNER_ID }, session: {} };
+
+function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+	return {
+		id: WISHLIST_ID,
+		ownerId: OWNER_ID,
+		status: 'draft',
+		deletedAt: null,
+		...overrides,
+	};
+}
+
+/** The array passed to the gift `.insert(...).values([...])` call (rows carry `links`). */
+function giftInsertRows(): { name: string; sortOrder: number; links: unknown[] }[] | undefined {
+	const valuesCall = mockDbInstance.calls.find(
+		(call) =>
+			call.method === 'values' &&
+			Array.isArray(call.args[0]) &&
+			(call.args[0] as Record<string, unknown>[])[0] !== undefined &&
+			'links' in (call.args[0] as Record<string, unknown>[])[0],
+	);
+	return valuesCall?.args[0] as
+		| { name: string; sortOrder: number; links: unknown[] }[]
+		| undefined;
+}
+
+/** Whether the command opened a DB transaction (atomicity guarantee). */
+function transactionOpened(): boolean {
+	return mockDbInstance.calls.some((call) => call.method === 'transaction');
+}
+
+const draftA = { name: 'Boty', description: null, links: [], price: null, currency: 'CZK' };
+const draftB = { name: 'Kniha', description: null, links: [], price: null, currency: 'CZK' };
 
 function mockFetchResponse(options: {
 	status?: number;
@@ -67,6 +218,7 @@ function mockFetchResponse(options: {
 }
 
 beforeEach(() => {
+	mockDbInstance.reset();
 	vi.clearAllMocks();
 });
 
@@ -144,5 +296,192 @@ describe('fetchGoogleSheetCsv', () => {
 		await expect(
 			callFetch(AUTH, 'https://docs.google.com/spreadsheets/d/ABC/edit'),
 		).rejects.toThrow(SERVER_ERROR.SHEETS_FETCH_FAILED);
+	});
+});
+
+describe('importGifts', () => {
+	it('appends gifts atomically with sequential sortOrder continuing from the current max', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]); // verifyOwnerOrModerator: wishlist (owner)
+		mockDbInstance.pushResult([{ maxSort: 4 }]); // max sortOrder
+		mockDbInstance.pushResult([
+			{ id: 'g5', sortOrder: 5 },
+			{ id: 'g6', sortOrder: 6 },
+		]); // insert returning
+
+		const result = await callImportGifts(AUTH, {
+			wishlistId: WISHLIST_ID,
+			gifts: [draftA, draftB],
+		});
+
+		expect(transactionOpened()).toBe(true);
+		const rows = giftInsertRows();
+		expect(rows).toBeDefined();
+		expect(rows!.map((r) => r.sortOrder)).toEqual([5, 6]);
+		expect(rows!.map((r) => r.name)).toEqual(['Boty', 'Kniha']);
+		expect(result).toHaveLength(2);
+	});
+
+	it('starts sortOrder at 0 for an empty wishlist (COALESCE -1)', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
+
+		await callImportGifts(AUTH, { wishlistId: WISHLIST_ID, gifts: [draftA] });
+
+		expect(giftInsertRows()!.map((r) => r.sortOrder)).toEqual([0]);
+	});
+
+	it('lets a moderator append gifts', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ ownerId: 'someone-else' })]); // not owner
+		mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]); // moderator check
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
+
+		const result = await callImportGifts(
+			{ user: { id: MODERATOR_ID } },
+			{ wishlistId: WISHLIST_ID, gifts: [draftA] },
+		);
+
+		expect(result).toHaveLength(1);
+	});
+
+	it('normalizes links, dropping non-http(s) URLs on insert', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
+
+		await callImportGifts(AUTH, {
+			wishlistId: WISHLIST_ID,
+			gifts: [
+				{
+					...draftA,
+					links: [
+						{ url: ' javascript://example.com/%0Aalert(1)' },
+						{ url: 'https://example.com/ok' },
+					],
+				},
+			],
+		});
+
+		expect(giftInsertRows()![0].links).toEqual([{ url: 'https://example.com/ok' }]);
+	});
+
+	it('throws 403 when the caller is neither owner nor moderator', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ ownerId: 'someone-else' })]);
+		mockDbInstance.pushResult([]); // moderator check empty
+
+		await expect(
+			callImportGifts(
+				{ user: { id: VISITOR_ID } },
+				{ wishlistId: WISHLIST_ID, gifts: [draftA] },
+			),
+		).rejects.toMatchObject({ status: 403, message: SERVER_ERROR.ACCESS_DENIED });
+	});
+
+	it('rejects appending to an archived wishlist', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+		await expect(
+			callImportGifts(AUTH, { wishlistId: WISHLIST_ID, gifts: [draftA] }),
+		).rejects.toMatchObject({
+			status: 400,
+			message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
+		});
+	});
+
+	it('throws 404 when the wishlist does not exist', async () => {
+		mockDbInstance.pushResult([]); // wishlist lookup empty
+
+		await expect(
+			callImportGifts(AUTH, { wishlistId: 'ghost', gifts: [draftA] }),
+		).rejects.toMatchObject({ status: 404, message: SERVER_ERROR.WISHLIST_NOT_FOUND });
+	});
+
+	it('returns [] and inserts nothing when the draft list is empty', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]); // auth check still runs
+
+		const result = await callImportGifts(AUTH, { wishlistId: WISHLIST_ID, gifts: [] });
+
+		expect(result).toEqual([]);
+		expect(giftInsertRows()).toBeUndefined();
+	});
+});
+
+describe('createWishlistFromImport', () => {
+	it('creates the wishlist, default priority levels, and gifts (sortOrder from 0) atomically', async () => {
+		const createdWishlist = {
+			id: 'new-wl',
+			ownerId: OWNER_ID,
+			title: 'My List',
+			shortId: 'sh',
+		};
+		mockDbInstance.pushResult([createdWishlist]); // insert wishlist returning
+		mockDbInstance.pushResult([]); // insert priority levels
+		mockDbInstance.pushResult([]); // insert gifts
+
+		const result = await callCreateFromImport(AUTH, {
+			title: 'My List',
+			gifts: [draftA, draftB],
+		});
+
+		expect(result).toMatchObject({ id: 'new-wl', title: 'My List' });
+		expect(transactionOpened()).toBe(true);
+
+		// Wishlist owned by caller.
+		const wishlistValues = mockDbInstance.calls.find(
+			(c) => c.method === 'values' && !Array.isArray(c.args[0]),
+		)?.args[0] as Record<string, unknown>;
+		expect(wishlistValues).toBeDefined();
+		expect(wishlistValues).toMatchObject({ ownerId: OWNER_ID, title: 'My List' });
+
+		// Default priority levels inserted (array of rows with `label`).
+		const priorityValues = mockDbInstance.calls.find(
+			(c) =>
+				c.method === 'values' &&
+				Array.isArray(c.args[0]) &&
+				'label' in ((c.args[0] as Record<string, unknown>[])[0] ?? {}),
+		)?.args[0];
+		expect(priorityValues).toBeDefined();
+
+		// Gifts seeded with sequential sortOrder from 0, scoped to the new wishlist.
+		const rows = giftInsertRows();
+		expect(rows).toBeDefined();
+		expect(rows!.map((r) => r.sortOrder)).toEqual([0, 1]);
+		expect(rows!.map((r) => r.name)).toEqual(['Boty', 'Kniha']);
+	});
+
+	it('defaults the theme to "default" when none is provided', async () => {
+		mockDbInstance.pushResult([{ id: 'new-wl' }]);
+		mockDbInstance.pushResult([]);
+
+		await callCreateFromImport(AUTH, { title: 'My List', gifts: [] });
+
+		const wishlistValues = mockDbInstance.calls.find(
+			(c) => c.method === 'values' && !Array.isArray(c.args[0]),
+		)?.args[0] as Record<string, unknown>;
+		expect(wishlistValues).toMatchObject({ theme: 'default' });
+	});
+
+	it('creates the wishlist and priority levels but no gifts when the draft list is empty', async () => {
+		mockDbInstance.pushResult([{ id: 'new-wl', ownerId: OWNER_ID }]);
+		mockDbInstance.pushResult([]); // priority levels
+
+		const result = await callCreateFromImport(AUTH, { title: 'Empty', gifts: [] });
+
+		expect(result).toMatchObject({ id: 'new-wl' });
+		expect(giftInsertRows()).toBeUndefined();
+	});
+
+	it('normalizes seeded gift links', async () => {
+		mockDbInstance.pushResult([{ id: 'new-wl', ownerId: OWNER_ID }]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+
+		await callCreateFromImport(AUTH, {
+			title: 'My List',
+			gifts: [{ ...draftB, links: [{ url: 'not a url' }, { url: 'https://example.com/x' }] }],
+		});
+
+		expect(giftInsertRows()![0].links).toEqual([{ url: 'https://example.com/x' }]);
 	});
 });

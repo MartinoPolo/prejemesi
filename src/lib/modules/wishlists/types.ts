@@ -19,6 +19,9 @@ export const WISHLIST_THEMES = [
 
 export type WishlistTheme = (typeof WISHLIST_THEMES)[number];
 
+/** Default theme applied to a wishlist when none is chosen. */
+export const DEFAULT_WISHLIST_THEME: WishlistTheme = 'default';
+
 /** Input for creating a new wishlist */
 export interface CreateWishlistInput {
 	title: string;

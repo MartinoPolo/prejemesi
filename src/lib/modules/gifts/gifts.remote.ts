@@ -6,6 +6,10 @@ import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import {
+	verifyOwnerOrModerator,
+	assertWishlistMutable,
+} from '$lib/modules/wishlists/wishlist_access.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	CreateGiftInputSchema,
@@ -199,54 +203,6 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 
 	return { role, gifts: visitorGifts } as const;
 });
-
-// ── Helper: verify owner or moderator role for a wishlist ───────────────────
-
-async function verifyOwnerOrModerator(
-	userId: string,
-	wishlistId: string,
-): Promise<{ role: WishlistRole; wishlistRow: typeof wishlist.$inferSelect }> {
-	const database = getDb();
-
-	const rows = await database
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
-		.limit(1);
-
-	const wishlistRow = rows[0];
-	if (wishlistRow === undefined) {
-		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-	}
-
-	if (wishlistRow.ownerId === userId) {
-		return { role: 'owner', wishlistRow };
-	}
-
-	const modRows = await database
-		.select()
-		.from(moderatorAssignment)
-		.where(
-			and(
-				eq(moderatorAssignment.wishlistId, wishlistId),
-				eq(moderatorAssignment.userId, userId),
-				isNull(moderatorAssignment.deletedAt),
-			),
-		)
-		.limit(1);
-
-	if (modRows[0] !== undefined) {
-		return { role: 'moderator', wishlistRow };
-	}
-
-	error(403, SERVER_ERROR.ACCESS_DENIED);
-}
-
-function assertWishlistMutable(wishlistRow: typeof wishlist.$inferSelect) {
-	if (wishlistRow.status === 'archived') {
-		error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
-	}
-}
 
 // ── Commands ────────────────────────────────────────────────────────────────
 
