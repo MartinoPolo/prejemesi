@@ -1,0 +1,2797 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Draft Grid — Variant A: Spreadsheet Dense</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			/* ── Theme blocks (verbatim from brief) ─────────────────── */
+			.theme-light {
+				--background: oklch(0.985 0.006 145);
+				--surface: oklch(1 0 0);
+				--card: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 145);
+				--surface-3: oklch(0.95 0.012 145);
+				--surface-hover: oklch(0.96 0.01 145);
+				--muted: oklch(0.965 0.008 145);
+				--foreground: oklch(0.17 0.012 150);
+				--foreground-muted: oklch(0.45 0.025 150);
+				--muted-foreground: oklch(0.45 0.025 150);
+				--foreground-subtle: oklch(0.62 0.018 150);
+				--border: oklch(0.92 0.012 145);
+				--border-strong: oklch(0.86 0.02 145);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.2% 0.018 155.826deg);
+				--primary-soft: oklch(0.93 0.045 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--invalid-border: oklch(0.55 0.2 25);
+				--invalid-ring: oklch(0.55 0.2 25);
+				--destructive: oklch(0.55 0.2 25);
+				--status-danger: oklch(0.55 0.2 25);
+				--status-warning: oklch(0.72 0.15 75);
+				--status-info: oklch(0.6 0.12 230);
+				--status-success: oklch(0.62 0.13 145);
+			}
+			.theme-dark {
+				--background: oklch(0.15 0.01 150);
+				--surface: oklch(0.19 0.014 150);
+				--card: oklch(0.19 0.014 150);
+				--surface-2: oklch(0.23 0.016 150);
+				--surface-3: oklch(0.27 0.018 150);
+				--surface-hover: oklch(0.25 0.016 150);
+				--muted: oklch(0.23 0.016 150);
+				--foreground: oklch(0.96 0.008 145);
+				--foreground-muted: oklch(0.68 0.02 145);
+				--muted-foreground: oklch(0.68 0.02 145);
+				--foreground-subtle: oklch(0.5 0.016 145);
+				--border: oklch(0.28 0.016 150);
+				--border-strong: oklch(0.36 0.02 150);
+				--primary: oklch(62% 0.154 150.069deg);
+				--primary-fg: oklch(0.13 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(62% 0.154 150.069deg);
+				--invalid-border: oklch(0.6 0.19 25);
+				--invalid-ring: oklch(0.6 0.19 25);
+				--destructive: oklch(0.6 0.19 25);
+				--status-danger: oklch(0.6 0.19 25);
+				--status-warning: oklch(0.75 0.14 75);
+				--status-info: oklch(0.66 0.12 230);
+				--status-success: oklch(0.62 0.13 145);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: var(--font-sans);
+				-webkit-font-smoothing: antialiased;
+				background: oklch(0.93 0.008 145);
+			}
+
+			/* ── Demo scaffolding ───────────────────────────────────── */
+			.section {
+				padding: 28px 24px 40px;
+				background: var(--background);
+				color: var(--foreground);
+				border-bottom: 2px solid var(--border-strong);
+			}
+			.section-head {
+				max-width: 1240px;
+				margin: 0 auto 18px;
+			}
+			.eyebrow {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.09em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.section-title {
+				font-family: var(--font-heading);
+				font-size: 22px;
+				font-weight: 700;
+				letter-spacing: -0.02em;
+				line-height: 1.15;
+				margin-top: 4px;
+			}
+			.section-desc {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-top: 4px;
+				max-width: 760px;
+			}
+			.state-label {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				font-size: 10.5px;
+				font-weight: 600;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-full);
+				padding: 3px 9px;
+			}
+			.shell {
+				max-width: 1240px;
+				margin: 0 auto;
+			}
+
+			/* ══ THE GRID ═══════════════════════════════════════════ */
+			.grid-frame {
+				background: var(--surface);
+				border: 1px solid var(--border-strong);
+				border-radius: var(--radius-lg);
+				overflow: hidden;
+				box-shadow: var(--shadow-sm);
+			}
+			.grid-scroll {
+				max-height: 460px;
+				overflow: auto;
+				position: relative;
+			}
+			.grid-table {
+				display: grid;
+				/* sel · Název · Poznámka · Odkazy · Cena · ✨ · remove */
+				grid-template-columns: 40px minmax(180px, 1.4fr) minmax(160px, 1.2fr) minmax(
+						190px,
+						1fr
+					) 152px 40px 40px;
+				min-width: 940px;
+			}
+			.grow,
+			.hrow {
+				display: contents;
+			}
+			.cell {
+				border-bottom: 1px solid var(--border);
+				border-right: 1px solid var(--border);
+				padding: 0;
+				min-height: 38px;
+				display: flex;
+				align-items: center;
+				position: relative;
+			}
+			.cell.gutter {
+				justify-content: center;
+				border-right: 1px solid var(--border);
+			}
+			.cell.last {
+				border-right: none;
+			}
+
+			/* ── Sticky header ──────────────────────────────────────── */
+			.hcell {
+				position: sticky;
+				top: 0;
+				z-index: 30;
+				background: var(--surface-3);
+				border-bottom: 2px solid var(--border-strong);
+				border-right: 1px solid var(--border-strong);
+				min-height: 38px;
+				display: flex;
+				align-items: center;
+				padding: 0 10px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+				color: var(--foreground-muted);
+			}
+			.hcell.gutter {
+				justify-content: center;
+				padding: 0;
+			}
+			.hcell.last {
+				border-right: none;
+			}
+
+			/* ── Cell field (borderless, reveals border on focus) ──── */
+			.cell-input {
+				font-family: var(--font-sans);
+				font-size: 13px;
+				color: var(--foreground);
+				background: transparent;
+				border: 1.5px solid transparent;
+				border-radius: var(--radius-sm);
+				width: 100%;
+				height: 100%;
+				min-height: 38px;
+				padding: 0 10px;
+				outline: none;
+				transition:
+					border-color var(--duration-fast),
+					box-shadow var(--duration-fast),
+					background var(--duration-fast);
+			}
+			.cell-input::placeholder {
+				color: var(--foreground-subtle);
+			}
+			.cell-input:hover {
+				background: var(--surface-hover);
+			}
+			.cell-input:focus {
+				background: var(--surface);
+				border-color: var(--ring);
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 22%, transparent);
+				position: relative;
+				z-index: 5;
+			}
+			.cell-input.invalid {
+				border-color: var(--invalid-border);
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--invalid-ring) 18%, transparent);
+				background: color-mix(in oklch, var(--invalid-border) 7%, transparent);
+			}
+			.cell-input.invalid:focus {
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--invalid-ring) 32%, transparent);
+			}
+
+			/* ── Row tints / states ─────────────────────────────────── */
+			.row-selected .cell {
+				background: color-mix(in oklch, var(--primary-soft) 55%, transparent);
+			}
+			.row-excluded .cell-input,
+			.row-excluded .price-input,
+			.row-excluded .link-chip,
+			.row-excluded .currency-sel {
+				color: var(--foreground-subtle);
+				opacity: 0.72;
+			}
+			.row-excluded .cell {
+				background: var(--surface-2);
+			}
+			.row-editing .cell {
+				background: color-mix(in oklch, var(--ring) 5%, transparent);
+			}
+
+			/* ── Checkbox ───────────────────────────────────────────── */
+			.checkbox {
+				appearance: none;
+				width: 18px;
+				height: 18px;
+				border: 1.5px solid var(--border-strong);
+				border-radius: var(--radius-xs);
+				background: var(--surface);
+				cursor: pointer;
+				position: relative;
+				flex: none;
+				transition:
+					background var(--duration-fast),
+					border-color var(--duration-fast);
+			}
+			.checkbox:hover {
+				border-color: var(--primary);
+			}
+			.checkbox:focus-visible {
+				outline: var(--focus-ring-width) solid var(--ring);
+				outline-offset: 2px;
+			}
+			.checkbox:checked,
+			.checkbox.indeterminate {
+				background: var(--primary);
+				border-color: var(--primary);
+			}
+			.checkbox:checked::after {
+				content: '';
+				position: absolute;
+				left: 5px;
+				top: 1.5px;
+				width: 4px;
+				height: 9px;
+				border: solid var(--primary-fg);
+				border-width: 0 2px 2px 0;
+				transform: rotate(45deg);
+			}
+			.checkbox.indeterminate::after {
+				content: '';
+				position: absolute;
+				left: 3px;
+				top: 7px;
+				width: 10px;
+				height: 2px;
+				background: var(--primary-fg);
+				border-radius: 1px;
+			}
+			.check-hit {
+				width: 34px;
+				height: 34px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+			}
+
+			/* ── Název cell extras ──────────────────────────────────── */
+			.name-cell {
+				flex-direction: column;
+				align-items: stretch;
+				justify-content: center;
+				gap: 0;
+				padding: 4px 0;
+			}
+			.name-badges {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				padding: 2px 10px 4px;
+				flex-wrap: wrap;
+			}
+			.dup-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 20px;
+				padding: 0 8px;
+				font-size: 11px;
+				font-weight: 600;
+				border-radius: var(--radius-full);
+				background: color-mix(in oklch, var(--status-warning) 18%, transparent);
+				color: color-mix(in oklch, var(--status-warning) 70%, var(--foreground));
+				border: 1px solid color-mix(in oklch, var(--status-warning) 45%, transparent);
+				white-space: nowrap;
+			}
+			.help-text {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				padding: 0 10px 2px;
+				font-size: 11px;
+				font-weight: 500;
+				color: var(--invalid-border);
+			}
+			.name-link-hint {
+				padding: 0 10px 2px;
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+			.name-link-hint a {
+				color: var(--primary);
+				font-weight: 600;
+				text-decoration: underline;
+				text-underline-offset: 2px;
+			}
+
+			/* ── Links cell (inline chips) ──────────────────────────── */
+			.links-cell {
+				flex-wrap: wrap;
+				gap: 5px;
+				padding: 6px 10px;
+			}
+			.link-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 24px;
+				max-width: 100%;
+				padding: 0 7px 0 8px;
+				font-size: 12px;
+				font-weight: 500;
+				color: var(--foreground);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-sm);
+				text-decoration: none;
+				white-space: nowrap;
+				transition:
+					background var(--duration-fast),
+					border-color var(--duration-fast);
+			}
+			.link-chip:hover {
+				background: var(--surface-hover);
+				border-color: var(--primary);
+				color: var(--primary);
+			}
+			.link-chip:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 1px;
+			}
+			.link-chip.primary {
+				border-color: color-mix(in oklch, var(--primary) 40%, var(--border));
+			}
+			.link-chip svg {
+				flex: none;
+				opacity: 0.7;
+			}
+			.link-chip .chip-host {
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.chip-remove {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 14px;
+				height: 14px;
+				border: none;
+				background: transparent;
+				color: var(--foreground-subtle);
+				border-radius: var(--radius-full);
+				cursor: pointer;
+				margin-left: 1px;
+			}
+			.chip-remove:hover {
+				background: var(--destructive);
+				color: var(--primary-fg);
+			}
+			.link-only .name-link-hint a {
+				font-size: 12px;
+			}
+			.add-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 24px;
+				min-width: 32px;
+				padding: 0 8px;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--primary);
+				background: transparent;
+				border: 1px dashed color-mix(in oklch, var(--primary) 45%, var(--border));
+				border-radius: var(--radius-sm);
+				cursor: pointer;
+				transition:
+					background var(--duration-fast),
+					border-color var(--duration-fast);
+			}
+			.add-link:hover {
+				background: var(--primary-soft);
+			}
+			.add-link:active {
+				transform: scale(0.95);
+			}
+			.add-link:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 1px;
+			}
+			.add-link:disabled {
+				opacity: 0.45;
+				cursor: not-allowed;
+				border-style: solid;
+			}
+
+			/* ── Cena cell ──────────────────────────────────────────── */
+			.price-cell {
+				padding: 4px 8px;
+				gap: 4px;
+			}
+			.price-input {
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-variant-numeric: tabular-nums;
+				text-align: right;
+				color: var(--foreground);
+				background: transparent;
+				border: 1.5px solid transparent;
+				border-radius: var(--radius-sm);
+				width: 100%;
+				height: 30px;
+				padding: 0 6px;
+				outline: none;
+				transition:
+					border-color var(--duration-fast),
+					box-shadow var(--duration-fast);
+			}
+			.price-input::placeholder {
+				color: var(--foreground-subtle);
+			}
+			.price-input:hover {
+				background: var(--surface-hover);
+			}
+			.price-input:focus {
+				background: var(--surface);
+				border-color: var(--ring);
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 22%, transparent);
+			}
+			.currency-sel {
+				font-family: var(--font-sans);
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-sm);
+				height: 30px;
+				padding: 0 4px;
+				cursor: pointer;
+				flex: none;
+			}
+			.currency-sel:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 1px;
+			}
+
+			/* ── ✨ enrich + remove gutters ─────────────────────────── */
+			.icon-btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 32px;
+				height: 32px;
+				border: 1px solid transparent;
+				background: transparent;
+				color: var(--foreground-subtle);
+				border-radius: var(--radius-sm);
+				cursor: pointer;
+				transition:
+					background var(--duration-fast),
+					color var(--duration-fast);
+			}
+			.icon-btn:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+			.icon-btn:active {
+				transform: scale(0.92);
+			}
+			.icon-btn:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 1px;
+			}
+			.icon-btn.danger:hover {
+				background: color-mix(in oklch, var(--destructive) 14%, transparent);
+				color: var(--destructive);
+			}
+			.icon-btn.enrich {
+				color: color-mix(in oklch, var(--primary) 70%, var(--foreground-subtle));
+			}
+			.icon-btn:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+			.icon-btn:disabled:hover {
+				background: transparent;
+				color: var(--foreground-subtle);
+			}
+
+			/* ── Trailing add-row ghost row (batch) ─────────────────── */
+			.add-row {
+				grid-column: 1 / -1;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				min-height: 40px;
+				padding: 0 12px;
+				background: var(--surface);
+				border-bottom: 1px solid var(--border);
+				color: var(--primary);
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				border: none;
+				border-bottom: 1px solid var(--border);
+				width: 100%;
+				text-align: left;
+				transition: background var(--duration-fast);
+			}
+			.add-row:hover {
+				background: var(--primary-soft);
+			}
+			.add-row:active {
+				background: color-mix(in oklch, var(--primary-soft) 70%, var(--border));
+			}
+			.add-row:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: -2px;
+			}
+			.kbd {
+				display: inline-flex;
+				align-items: center;
+				height: 18px;
+				padding: 0 5px;
+				font-size: 10px;
+				font-weight: 600;
+				font-family: var(--font-sans);
+				color: var(--foreground-muted);
+				background: var(--surface-2);
+				border: 1px solid var(--border-strong);
+				border-radius: var(--radius-xs);
+				margin-left: auto;
+			}
+
+			/* ── Bulk action bar (sticky bottom) ────────────────────── */
+			.bulk-bar {
+				position: sticky;
+				bottom: 0;
+				z-index: 30;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 9px 14px;
+				background: var(--surface-3);
+				border-top: 2px solid var(--border-strong);
+			}
+			.bulk-count {
+				font-size: 13px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.bulk-spacer {
+				flex: 1;
+			}
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				font-family: var(--font-sans);
+				font-weight: 600;
+				font-size: 13px;
+				line-height: 1;
+				height: 34px;
+				padding: 0 13px;
+				border-radius: var(--radius-md);
+				border: 1px solid transparent;
+				cursor: pointer;
+				white-space: nowrap;
+				transition:
+					background var(--duration-fast),
+					border-color var(--duration-fast),
+					filter var(--duration-fast);
+			}
+			.btn:active {
+				transform: scale(0.97);
+			}
+			.btn:focus-visible {
+				outline: var(--focus-ring-width) solid var(--ring);
+				outline-offset: 2px;
+			}
+			.btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: var(--shadow-sm);
+			}
+			.btn-primary:not(:disabled):hover {
+				filter: brightness(1.08);
+			}
+			.btn-primary:not(:disabled):active {
+				filter: brightness(0.95);
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+				border-color: var(--border-strong);
+			}
+			.btn-ghost:not(:disabled):hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+				border-color: var(--foreground-subtle);
+			}
+			.btn-ghost:not(:disabled):active {
+				background: var(--surface-2);
+			}
+			.btn-danger {
+				background: transparent;
+				color: var(--destructive);
+				border-color: color-mix(in oklch, var(--destructive) 45%, var(--border));
+			}
+			.btn-danger:not(:disabled):hover {
+				background: color-mix(in oklch, var(--destructive) 12%, transparent);
+				border-color: var(--destructive);
+			}
+			.btn-danger:not(:disabled):active {
+				background: color-mix(in oklch, var(--destructive) 20%, transparent);
+			}
+
+			/* ── Wizard footer / commit ─────────────────────────────── */
+			.wizard-footer {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				margin-top: 14px;
+				padding: 14px 16px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+			}
+			.footer-helper {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+			.footer-helper.ok {
+				color: var(--status-success);
+			}
+			.footer-helper svg {
+				flex: none;
+			}
+			.footer-spacer {
+				flex: 1;
+			}
+
+			/* ── Batch dialog host ──────────────────────────────────── */
+			.stage {
+				position: relative;
+				min-height: 620px;
+				border-radius: var(--radius-lg);
+				overflow: hidden;
+				border: 1px solid var(--border-strong);
+			}
+			.stage-bg {
+				position: absolute;
+				inset: 0;
+				background: var(--background);
+				padding: 24px;
+				filter: blur(3px);
+				opacity: 0.65;
+				pointer-events: none;
+			}
+			.bg-toolbar {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+				margin-bottom: 16px;
+			}
+			.bg-pill {
+				height: 34px;
+				border-radius: var(--radius-md);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+			}
+			.bg-grid {
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 12px;
+			}
+			.bg-card2 {
+				height: 150px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+			}
+			.dialog-backdrop {
+				position: absolute;
+				inset: 0;
+				background: oklch(0.12 0.01 150 / 0.5);
+				backdrop-filter: blur(2px);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 24px;
+				z-index: 50;
+			}
+			.dialog {
+				background: var(--surface);
+				border: 1px solid var(--border-strong);
+				border-radius: var(--radius-xl);
+				box-shadow: var(--shadow-xl);
+				width: 100%;
+				max-width: 1100px;
+				max-height: 90%;
+				display: flex;
+				flex-direction: column;
+				overflow: hidden;
+			}
+			.dialog-head {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 16px 18px;
+				border-bottom: 1px solid var(--border);
+			}
+			.dialog-title {
+				font-family: var(--font-heading);
+				font-size: 19px;
+				font-weight: 700;
+				letter-spacing: -0.02em;
+				line-height: 1.15;
+			}
+			.dialog-sub {
+				font-size: 12.5px;
+				color: var(--foreground-muted);
+				margin-top: 2px;
+			}
+			.dialog-close {
+				margin-left: auto;
+				width: 36px;
+				height: 36px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				border-radius: var(--radius-md);
+				cursor: pointer;
+				transition:
+					background var(--duration-fast),
+					color var(--duration-fast);
+			}
+			.dialog-close:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+			.dialog-close:focus-visible {
+				outline: var(--focus-ring-width) solid var(--ring);
+				outline-offset: 2px;
+			}
+			.dialog-body {
+				padding: 16px 18px;
+				overflow: auto;
+			}
+			.dialog-foot {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 14px 18px;
+				border-top: 1px solid var(--border);
+				background: var(--surface-2);
+			}
+
+			/* ── Phase-2 enrich micro-states ────────────────────────── */
+			.enrich-states {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 16px;
+				margin-top: 4px;
+			}
+			.enrich-demo {
+				flex: 1 1 220px;
+				min-width: 220px;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				padding: 12px;
+				background: var(--surface);
+			}
+			.enrich-demo h4 {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 8px;
+			}
+			.shimmer-line {
+				height: 30px;
+				border-radius: var(--radius-sm);
+				background: linear-gradient(
+					90deg,
+					var(--surface-2) 25%,
+					var(--surface-hover) 50%,
+					var(--surface-2) 75%
+				);
+				background-size: 200% 100%;
+				animation: dk-shimmer 1.2s linear infinite;
+			}
+			.enriched-flash {
+				height: 30px;
+				border-radius: var(--radius-sm);
+				display: flex;
+				align-items: center;
+				padding: 0 10px;
+				font-size: 13px;
+				color: var(--foreground);
+				background: color-mix(in oklch, var(--status-success) 12%, var(--surface));
+				border: 1px solid color-mix(in oklch, var(--status-success) 35%, transparent);
+			}
+			.doplneno {
+				margin-left: auto;
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--status-success);
+			}
+			.enrich-fail {
+				height: 30px;
+				border-radius: var(--radius-sm);
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 0 10px;
+				font-size: 13px;
+				color: var(--foreground);
+				background: color-mix(in oklch, var(--destructive) 8%, var(--surface));
+				border: 1px solid color-mix(in oklch, var(--destructive) 30%, transparent);
+			}
+			.retry-btn {
+				margin-left: auto;
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--destructive);
+				background: transparent;
+				border: 1px solid color-mix(in oklch, var(--destructive) 40%, var(--border));
+				border-radius: var(--radius-sm);
+				height: 22px;
+				padding: 0 7px;
+				cursor: pointer;
+			}
+			.retry-btn:hover {
+				background: color-mix(in oklch, var(--destructive) 12%, transparent);
+			}
+			.enrich-slot-pulse {
+				color: var(--primary);
+			}
+
+			/* ══ MOBILE STACKED CARDS ═══════════════════════════════ */
+			.phone {
+				width: 375px;
+				max-width: 100%;
+				margin: 0 auto;
+				border: 1px solid var(--border-strong);
+				border-radius: var(--radius-xl);
+				overflow: hidden;
+				background: var(--background);
+				box-shadow: var(--shadow-md);
+			}
+			.phone-scroll {
+				max-height: 560px;
+				overflow: auto;
+				padding: 12px 12px 70px;
+				position: relative;
+			}
+			.draft-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				padding: 12px;
+				margin-bottom: 10px;
+			}
+			.draft-card.sel {
+				border-color: color-mix(in oklch, var(--primary) 50%, var(--border));
+				background: color-mix(in oklch, var(--primary-soft) 35%, var(--surface));
+			}
+			.draft-card.excl {
+				opacity: 0.7;
+			}
+			.card-top {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-bottom: 10px;
+			}
+			.card-check {
+				width: 44px;
+				height: 44px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				flex: none;
+			}
+			.card-mname {
+				flex: 1;
+			}
+			.m-field {
+				display: block;
+				width: 100%;
+				font-family: var(--font-sans);
+				font-size: 14px;
+				color: var(--foreground);
+				background: var(--surface);
+				border: 1.5px solid var(--border);
+				border-radius: var(--radius-md);
+				min-height: 44px;
+				padding: 10px 12px;
+				outline: none;
+			}
+			.m-field:focus {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 20%, transparent);
+			}
+			.m-field.invalid {
+				border-color: var(--invalid-border);
+			}
+			.m-label {
+				display: block;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin: 10px 0 4px;
+			}
+			.m-remove {
+				width: 44px;
+				height: 44px;
+				flex: none;
+			}
+			.m-links {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+			}
+			.m-price-row {
+				display: flex;
+				gap: 8px;
+			}
+			.m-price-row .m-field {
+				flex: 1;
+			}
+			.m-currency {
+				width: 84px;
+				flex: none;
+				font-weight: 600;
+			}
+			.m-help {
+				font-size: 12px;
+				color: var(--invalid-border);
+				margin-top: 5px;
+				display: flex;
+				align-items: center;
+				gap: 5px;
+			}
+			.mobile-bulk {
+				position: sticky;
+				bottom: 0;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				padding: 10px 12px;
+				background: var(--surface-3);
+				border-top: 2px solid var(--border-strong);
+				margin: 0 -12px -70px;
+			}
+
+			/* dual panel light/dark side-by-side */
+			.dual {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+			}
+			.dual > div {
+				padding: 24px;
+				min-height: 100%;
+			}
+			.dual .theme-light {
+				background: var(--background);
+			}
+			.dual .theme-dark {
+				background: var(--background);
+			}
+			.mini-title {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 12px;
+			}
+
+			@media (max-width: 760px) {
+				.dual {
+					grid-template-columns: 1fr;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ════════════════ INTRO ════════════════ -->
+		<section class="section theme-light">
+			<div class="section-head">
+				<div class="eyebrow">Variant A — Spreadsheet Dense</div>
+				<div class="section-title">Gift Draft Grid</div>
+				<p class="section-desc">
+					True data-grid feel: thin compact rows, crisp 1px column rules, sticky header,
+					borderless cells that reveal their border on focus. Bulk bar pinned to the
+					bottom of the grid viewport. Rendered in both hosts (Import Review + Batch
+					dialog), all row states, light + dark, plus a 375px mobile stacked-card preview.
+				</p>
+			</div>
+		</section>
+
+		<!-- ════════════════ HOST A — IMPORT REVIEW GRID ════════════════ -->
+		<section class="section theme-light">
+			<div class="section-head">
+				<div class="eyebrow">Host A — Import Wizard · Review step</div>
+				<div class="section-title">Import Review Grid</div>
+				<p class="section-desc">
+					Rows pre-filled from a parsed CSV. Column-mapping lives in the wizard header
+					(not the grid). Tri-state select-all in sticky header; "možný duplikát" badges
+					shown.
+				</p>
+			</div>
+			<div class="shell">
+				<div class="grid-frame">
+					<div class="grid-scroll">
+						<div class="grid-table">
+							<!-- ── Sticky header ── -->
+							<div class="hrow">
+								<div class="hcell gutter" title="Vybrat vše">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox indeterminate"
+											aria-label="Vybrat vše"
+									/></span>
+								</div>
+								<div class="hcell">Název</div>
+								<div class="hcell">Poznámka</div>
+								<div class="hcell">Odkazy</div>
+								<div class="hcell">Cena</div>
+								<div class="hcell gutter" title="Obohatit (Fáze 2)">✨</div>
+								<div class="hcell gutter last"></div>
+							</div>
+
+							<!-- ── (a) valid selected row ── -->
+							<div class="grow row-selected">
+								<div class="cell gutter">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox"
+											checked
+											aria-label="Vybrat řádek"
+									/></span>
+									<span class="state-label" style="display: none"></span>
+								</div>
+								<div class="cell name-cell">
+									<input
+										class="cell-input"
+										value="Ponožky z merino vlny"
+										aria-label="Název"
+									/>
+								</div>
+								<div class="cell">
+									<input
+										class="cell-input"
+										value="Velikost 42–44, šedá"
+										aria-label="Poznámka"
+									/>
+								</div>
+								<div class="cell links-cell">
+									<a
+										class="link-chip primary"
+										href="https://www.alza.cz"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">alza.cz</span>
+										<button
+											class="chip-remove"
+											aria-label="Odebrat odkaz"
+											title="Odebrat odkaz"
+										>
+											×
+										</button>
+									</a>
+									<button class="add-link" title="+ odkaz">+ odkaz</button>
+								</div>
+								<div class="cell price-cell">
+									<input
+										class="price-input"
+										inputmode="numeric"
+										value="349"
+										aria-label="Cena"
+									/>
+									<select class="currency-sel" aria-label="Měna">
+										<option>CZK</option>
+										<option>EUR</option>
+										<option>USD</option>
+									</select>
+								</div>
+								<div class="cell gutter">
+									<button
+										class="icon-btn enrich"
+										disabled
+										title="Obohatit — Fáze 2"
+									>
+										✨
+									</button>
+								</div>
+								<div class="cell gutter last">
+									<button
+										class="icon-btn danger"
+										aria-label="Smazat řádek"
+										title="Smazat řádek"
+									>
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+
+							<!-- ── (b) INVALID blank-name row ── -->
+							<div class="grow row-selected">
+								<div class="cell gutter">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox"
+											checked
+											aria-label="Vybrat řádek"
+									/></span>
+								</div>
+								<div class="cell name-cell">
+									<input
+										class="cell-input invalid"
+										placeholder="Zadejte název"
+										value=""
+										aria-label="Název"
+										aria-invalid="true"
+									/>
+									<span class="help-text">
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.2"
+										>
+											<circle cx="12" cy="12" r="10" />
+											<line x1="12" y1="8" x2="12" y2="12" />
+											<line x1="12" y1="16" x2="12.01" y2="16" />
+										</svg>
+										Zadejte název
+									</span>
+									<span class="name-link-hint"
+										>Otevři odkaz a pojmenuj:
+										<a
+											href="https://www.lidl.cz"
+											target="_blank"
+											rel="noopener noreferrer"
+											>lidl.cz ↗</a
+										></span
+									>
+								</div>
+								<div class="cell">
+									<input
+										class="cell-input"
+										value=""
+										placeholder="—"
+										aria-label="Poznámka"
+									/>
+								</div>
+								<div class="cell links-cell">
+									<a
+										class="link-chip primary"
+										href="https://www.lidl.cz"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">lidl.cz</span>
+										<button class="chip-remove" aria-label="Odebrat odkaz">
+											×
+										</button>
+									</a>
+									<button class="add-link">+ odkaz</button>
+								</div>
+								<div class="cell price-cell">
+									<input
+										class="price-input"
+										inputmode="numeric"
+										value=""
+										placeholder="—"
+										aria-label="Cena"
+									/>
+									<select class="currency-sel" aria-label="Měna">
+										<option>CZK</option>
+										<option>EUR</option>
+										<option>USD</option>
+									</select>
+								</div>
+								<div class="cell gutter">
+									<button
+										class="icon-btn enrich"
+										disabled
+										title="Obohatit — Fáze 2"
+									>
+										✨
+									</button>
+								</div>
+								<div class="cell gutter last">
+									<button class="icon-btn danger" aria-label="Smazat řádek">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+
+							<!-- ── (c) possible-duplicate row ── -->
+							<div class="grow row-selected">
+								<div class="cell gutter">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox"
+											checked
+											aria-label="Vybrat řádek"
+									/></span>
+								</div>
+								<div class="cell name-cell">
+									<input
+										class="cell-input"
+										value="Hrnek s motivem hor"
+										aria-label="Název"
+									/>
+									<div class="name-badges">
+										<span
+											class="dup-badge"
+											title="Shoda s existujícím dárkem podle názvu"
+										>
+											<svg
+												width="11"
+												height="11"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.4"
+											>
+												<path
+													d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+												/>
+												<line x1="12" y1="9" x2="12" y2="13" />
+												<line x1="12" y1="17" x2="12.01" y2="17" />
+											</svg>
+											možný duplikát
+										</span>
+									</div>
+								</div>
+								<div class="cell">
+									<input
+										class="cell-input"
+										value="Keramický, 350 ml"
+										aria-label="Poznámka"
+									/>
+								</div>
+								<div class="cell links-cell">
+									<a
+										class="link-chip primary"
+										href="https://www.heureka.cz"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">heureka.cz</span>
+										<button class="chip-remove" aria-label="Odebrat odkaz">
+											×
+										</button>
+									</a>
+									<button class="add-link">+ odkaz</button>
+								</div>
+								<div class="cell price-cell">
+									<input
+										class="price-input"
+										inputmode="numeric"
+										value="249"
+										aria-label="Cena"
+									/>
+									<select class="currency-sel" aria-label="Měna">
+										<option>CZK</option>
+										<option>EUR</option>
+										<option>USD</option>
+									</select>
+								</div>
+								<div class="cell gutter">
+									<button
+										class="icon-btn enrich"
+										disabled
+										title="Obohatit — Fáze 2"
+									>
+										✨
+									</button>
+								</div>
+								<div class="cell gutter last">
+									<button class="icon-btn danger" aria-label="Smazat řádek">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+
+							<!-- ── (d) excluded / deselected row (dimmed, editable) ── -->
+							<div class="grow row-excluded">
+								<div class="cell gutter">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox"
+											aria-label="Vybrat řádek"
+									/></span>
+								</div>
+								<div class="cell name-cell">
+									<input
+										class="cell-input"
+										value="Kniha Atomové návyky"
+										aria-label="Název"
+									/>
+								</div>
+								<div class="cell">
+									<input
+										class="cell-input"
+										value="James Clear, brožovaná"
+										aria-label="Poznámka"
+									/>
+								</div>
+								<div class="cell links-cell">
+									<a
+										class="link-chip primary"
+										href="https://www.knihy-dobrovsky.cz"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">knihy-dobrovsky.cz</span>
+										<button class="chip-remove" aria-label="Odebrat odkaz">
+											×
+										</button>
+									</a>
+									<button class="add-link">+ odkaz</button>
+								</div>
+								<div class="cell price-cell">
+									<input
+										class="price-input"
+										inputmode="numeric"
+										value="299"
+										aria-label="Cena"
+									/>
+									<select class="currency-sel" aria-label="Měna">
+										<option>CZK</option>
+										<option>EUR</option>
+										<option>USD</option>
+									</select>
+								</div>
+								<div class="cell gutter">
+									<button
+										class="icon-btn enrich"
+										disabled
+										title="Obohatit — Fáze 2"
+									>
+										✨
+									</button>
+								</div>
+								<div class="cell gutter last">
+									<button class="icon-btn danger" aria-label="Smazat řádek">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+
+							<!-- ── (e) link-only row (blank name, link is naming affordance) ── -->
+							<div class="grow row-selected link-only">
+								<div class="cell gutter">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox"
+											checked
+											aria-label="Vybrat řádek"
+									/></span>
+								</div>
+								<div class="cell name-cell">
+									<input
+										class="cell-input invalid"
+										placeholder="Zadejte název"
+										value=""
+										aria-label="Název"
+										aria-invalid="true"
+									/>
+									<span class="help-text">
+										<svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.2"
+										>
+											<circle cx="12" cy="12" r="10" />
+											<line x1="12" y1="8" x2="12" y2="12" />
+											<line x1="12" y1="16" x2="12.01" y2="16" />
+										</svg>
+										Zadejte název
+									</span>
+									<span class="name-link-hint"
+										>Otevři a pojmenuj:
+										<a
+											href="https://www.ikea.com"
+											target="_blank"
+											rel="noopener noreferrer"
+											>ikea.com ↗</a
+										></span
+									>
+								</div>
+								<div class="cell">
+									<input
+										class="cell-input"
+										value=""
+										placeholder="—"
+										aria-label="Poznámka"
+									/>
+								</div>
+								<div class="cell links-cell">
+									<a
+										class="link-chip primary"
+										href="https://www.ikea.com"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">ikea.com</span>
+										<button class="chip-remove" aria-label="Odebrat odkaz">
+											×
+										</button>
+									</a>
+									<button class="add-link">+ odkaz</button>
+								</div>
+								<div class="cell price-cell">
+									<input
+										class="price-input"
+										inputmode="numeric"
+										value="599"
+										aria-label="Cena"
+									/>
+									<select class="currency-sel" aria-label="Měna">
+										<option>CZK</option>
+										<option>EUR</option>
+										<option>USD</option>
+									</select>
+								</div>
+								<div class="cell gutter">
+									<button
+										class="icon-btn enrich"
+										disabled
+										title="Obohatit — Fáze 2"
+									>
+										✨
+									</button>
+								</div>
+								<div class="cell gutter last">
+									<button class="icon-btn danger" aria-label="Smazat řádek">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+
+							<!-- ── (f) row with MULTIPLE links + "+ odkaz" ── -->
+							<div class="grow row-selected">
+								<div class="cell gutter">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox"
+											checked
+											aria-label="Vybrat řádek"
+									/></span>
+								</div>
+								<div class="cell name-cell">
+									<input
+										class="cell-input"
+										value="Konvice na čaj"
+										aria-label="Název"
+									/>
+								</div>
+								<div class="cell">
+									<input
+										class="cell-input"
+										value="Skleněná, 1,2 l, s filtrem"
+										aria-label="Poznámka"
+									/>
+								</div>
+								<div class="cell links-cell">
+									<a
+										class="link-chip primary"
+										href="https://www.alza.cz"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">alza.cz</span>
+										<button class="chip-remove" aria-label="Odebrat odkaz">
+											×
+										</button>
+									</a>
+									<a
+										class="link-chip"
+										href="https://www.heureka.cz"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">heureka.cz</span>
+										<button class="chip-remove" aria-label="Odebrat odkaz">
+											×
+										</button>
+									</a>
+									<button class="add-link" title="+ odkaz">+ odkaz</button>
+								</div>
+								<div class="cell price-cell">
+									<input
+										class="price-input"
+										inputmode="numeric"
+										value="890"
+										aria-label="Cena"
+									/>
+									<select class="currency-sel" aria-label="Měna">
+										<option>CZK</option>
+										<option>EUR</option>
+										<option>USD</option>
+									</select>
+								</div>
+								<div class="cell gutter">
+									<button
+										class="icon-btn enrich"
+										disabled
+										title="Obohatit — Fáze 2"
+									>
+										✨
+									</button>
+								</div>
+								<div class="cell gutter last">
+									<button class="icon-btn danger" aria-label="Smazat řádek">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+
+							<!-- ── (g) editing / focused row (focus ring shown) ── -->
+							<div class="grow row-selected row-editing">
+								<div class="cell gutter">
+									<span class="check-hit"
+										><input
+											type="checkbox"
+											class="checkbox"
+											checked
+											aria-label="Vybrat řádek"
+									/></span>
+								</div>
+								<div class="cell name-cell">
+									<input
+										class="cell-input"
+										value="Lego Orchidej"
+										aria-label="Název"
+										style="
+											border-color: var(--ring);
+											box-shadow: 0 0 0 2px
+												color-mix(in oklch, var(--ring) 22%, transparent);
+											background: var(--surface);
+										"
+									/>
+								</div>
+								<div class="cell">
+									<input
+										class="cell-input"
+										value="Sada 10311, umělé květiny"
+										aria-label="Poznámka"
+									/>
+								</div>
+								<div class="cell links-cell">
+									<a
+										class="link-chip primary"
+										href="https://www.alza.cz"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.5"
+										>
+											<path
+												d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+											/>
+											<polyline points="15 3 21 3 21 9" />
+											<line x1="10" y1="14" x2="21" y2="3" />
+										</svg>
+										<span class="chip-host">alza.cz</span>
+										<button class="chip-remove" aria-label="Odebrat odkaz">
+											×
+										</button>
+									</a>
+									<button class="add-link">+ odkaz</button>
+								</div>
+								<div class="cell price-cell">
+									<input
+										class="price-input"
+										inputmode="numeric"
+										value="1499"
+										aria-label="Cena"
+									/>
+									<select class="currency-sel" aria-label="Měna">
+										<option>CZK</option>
+										<option>EUR</option>
+										<option>USD</option>
+									</select>
+								</div>
+								<div class="cell gutter">
+									<button
+										class="icon-btn enrich"
+										disabled
+										title="Obohatit — Fáze 2"
+									>
+										✨
+									</button>
+								</div>
+								<div class="cell gutter last">
+									<button class="icon-btn danger" aria-label="Smazat řádek">
+										<svg
+											width="15"
+											height="15"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<polyline points="3 6 5 6 21 6" />
+											<path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/>
+										</svg>
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- ── Sticky bulk action bar (bottom of grid viewport) ── -->
+						<div class="bulk-bar">
+							<span class="check-hit"
+								><input
+									type="checkbox"
+									class="checkbox indeterminate"
+									aria-label="Vybrat vše"
+							/></span>
+							<span class="bulk-count">Vybráno 5</span>
+							<span class="bulk-spacer"></span>
+							<button class="btn btn-danger">
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<polyline points="3 6 5 6 21 6" />
+									<path
+										d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+									/>
+								</svg>
+								Smazat vybrané
+							</button>
+							<button class="btn btn-ghost" disabled title="Fáze 2">
+								✨ Obohatit vybrané
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- ── Wizard footer: commit-DISABLED ── -->
+				<div class="state-label" style="margin: 16px 0 6px">
+					Stav · commit zakázán (0 platných vybraných)
+				</div>
+				<div class="wizard-footer">
+					<span class="footer-helper">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<line x1="12" y1="8" x2="12" y2="12" />
+							<line x1="12" y1="16" x2="12.01" y2="16" />
+						</svg>
+						Vyberte alespoň jeden platný řádek
+					</span>
+					<span class="footer-spacer"></span>
+					<button class="btn btn-ghost">Zrušit</button>
+					<button class="btn btn-primary" disabled>Pokračovat</button>
+				</div>
+
+				<!-- ── Wizard footer: commit-ENABLED ── -->
+				<div class="state-label" style="margin: 16px 0 6px">
+					Stav · commit povolen (≥ 1 platný vybraný)
+				</div>
+				<div class="wizard-footer">
+					<span class="footer-helper ok">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.2"
+						>
+							<path d="M20 6 9 17l-5-5" />
+						</svg>
+						5 platných řádků připraveno k přidání
+					</span>
+					<span class="footer-spacer"></span>
+					<button class="btn btn-ghost">Zrušit</button>
+					<button class="btn btn-primary">
+						Pokračovat
+						<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2.2"
+						>
+							<line x1="5" y1="12" x2="19" y2="12" />
+							<polyline points="12 5 19 12 12 19" />
+						</svg>
+					</button>
+				</div>
+			</div>
+		</section>
+
+		<!-- ════════════════ HOST B — BATCH-ADD DIALOG ════════════════ -->
+		<section class="section theme-light">
+			<div class="section-head">
+				<div class="eyebrow">Host B — Standalone dialog</div>
+				<div class="section-title">"Hromadně přidat dárky" — batch dialog</div>
+				<p class="section-desc">
+					Wide dialog over the blurred wishlist page. Empty state = one blank row +
+					"Přidat řádek" affordance. No "možný duplikát" badges (manual entry, nothing to
+					dedup). Footer commit = "Přidat dárky".
+				</p>
+			</div>
+			<div class="shell">
+				<div class="stage theme-light">
+					<!-- blurred page behind -->
+					<div class="stage-bg">
+						<div class="bg-toolbar">
+							<div class="bg-pill" style="width: 220px"></div>
+							<div style="flex: 1"></div>
+							<div class="bg-pill" style="width: 150px"></div>
+							<div class="bg-pill" style="width: 170px"></div>
+						</div>
+						<div class="bg-grid">
+							<div class="bg-card2"></div>
+							<div class="bg-card2"></div>
+							<div class="bg-card2"></div>
+							<div class="bg-card2"></div>
+						</div>
+					</div>
+
+					<!-- dialog -->
+					<div class="dialog-backdrop">
+						<div
+							class="dialog"
+							role="dialog"
+							aria-modal="true"
+							aria-label="Hromadně přidat dárky"
+						>
+							<div class="dialog-head">
+								<div>
+									<div class="dialog-title">Hromadně přidat dárky</div>
+									<div class="dialog-sub">
+										Přidejte více dárků najednou — jeden řádek = jeden dárek.
+									</div>
+								</div>
+								<button class="dialog-close" aria-label="Zavřít">
+									<svg
+										width="18"
+										height="18"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.2"
+									>
+										<line x1="18" y1="6" x2="6" y2="18" />
+										<line x1="6" y1="6" x2="18" y2="18" />
+									</svg>
+								</button>
+							</div>
+							<div class="dialog-body">
+								<div class="grid-frame">
+									<div class="grid-scroll" style="max-height: 300px">
+										<div class="grid-table">
+											<div class="hrow">
+												<div class="hcell gutter">
+													<span class="check-hit"
+														><input
+															type="checkbox"
+															class="checkbox"
+															aria-label="Vybrat vše"
+													/></span>
+												</div>
+												<div class="hcell">Název</div>
+												<div class="hcell">Poznámka</div>
+												<div class="hcell">Odkazy</div>
+												<div class="hcell">Cena</div>
+												<div class="hcell gutter">✨</div>
+												<div class="hcell gutter last"></div>
+											</div>
+
+											<!-- empty state: one blank row -->
+											<div class="grow">
+												<div class="cell gutter">
+													<span class="check-hit"
+														><input
+															type="checkbox"
+															class="checkbox"
+															aria-label="Vybrat řádek"
+													/></span>
+												</div>
+												<div class="cell name-cell">
+													<input
+														class="cell-input"
+														placeholder="Zadejte název"
+														aria-label="Název"
+													/>
+												</div>
+												<div class="cell">
+													<input
+														class="cell-input"
+														placeholder="—"
+														aria-label="Poznámka"
+													/>
+												</div>
+												<div class="cell links-cell">
+													<button class="add-link" title="+ odkaz">
+														+ odkaz
+													</button>
+												</div>
+												<div class="cell price-cell">
+													<input
+														class="price-input"
+														inputmode="numeric"
+														placeholder="—"
+														aria-label="Cena"
+													/>
+													<select class="currency-sel" aria-label="Měna">
+														<option>CZK</option>
+														<option>EUR</option>
+														<option>USD</option>
+													</select>
+												</div>
+												<div class="cell gutter">
+													<button
+														class="icon-btn enrich"
+														disabled
+														title="Obohatit — Fáze 2"
+													>
+														✨
+													</button>
+												</div>
+												<div class="cell gutter last">
+													<button
+														class="icon-btn danger"
+														aria-label="Smazat řádek"
+													>
+														<svg
+															width="15"
+															height="15"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="2"
+														>
+															<polyline points="3 6 5 6 21 6" />
+															<path
+																d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+															/>
+														</svg>
+													</button>
+												</div>
+											</div>
+
+											<!-- trailing add-row affordance + keyboard hint -->
+											<button class="add-row" type="button">
+												<svg
+													width="16"
+													height="16"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2.2"
+												>
+													<line x1="12" y1="5" x2="12" y2="19" />
+													<line x1="5" y1="12" x2="19" y2="12" />
+												</svg>
+												Přidat řádek
+												<span class="kbd">Enter</span>
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="dialog-foot">
+								<span class="footer-helper">
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<circle cx="12" cy="12" r="10" />
+										<line x1="12" y1="8" x2="12" y2="12" />
+										<line x1="12" y1="16" x2="12.01" y2="16" />
+									</svg>
+									Vyberte alespoň jeden platný řádek
+								</span>
+								<span class="footer-spacer"></span>
+								<button class="btn btn-ghost">Zrušit</button>
+								<button class="btn btn-primary" disabled>Přidat dárky</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ════════════════ MOBILE STACKED CARDS (375px) ════════════════ -->
+		<section class="section theme-light">
+			<div class="section-head">
+				<div class="eyebrow">Mobile · &lt; 600px stacked-card collapse</div>
+				<div class="section-title">Mobile draft cards — 375px preview</div>
+				<p class="section-desc">
+					Columns are unusable narrow → each draft becomes a card (name, note, links + "+
+					odkaz", price + currency, select toggle, remove). Compact sticky bulk bar at the
+					bottom.
+				</p>
+			</div>
+			<div class="phone theme-light">
+				<div class="phone-scroll">
+					<!-- valid selected -->
+					<div class="draft-card sel">
+						<div class="card-top">
+							<span class="card-check"
+								><input
+									type="checkbox"
+									class="checkbox"
+									checked
+									aria-label="Vybrat dárek"
+							/></span>
+							<input
+								class="m-field card-mname"
+								value="Ponožky z merino vlny"
+								aria-label="Název"
+							/>
+							<span
+								class="m-remove icon-btn danger"
+								role="button"
+								aria-label="Smazat"
+							>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<polyline points="3 6 5 6 21 6" />
+									<path
+										d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+									/>
+								</svg>
+							</span>
+						</div>
+						<label class="m-label">Poznámka</label>
+						<input class="m-field" value="Velikost 42–44, šedá" aria-label="Poznámka" />
+						<label class="m-label">Odkazy</label>
+						<div class="m-links">
+							<a
+								class="link-chip primary"
+								href="https://www.alza.cz"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								<span class="chip-host">alza.cz</span>
+								<button class="chip-remove" aria-label="Odebrat odkaz">×</button>
+							</a>
+							<button class="add-link" style="height: 28px">+ odkaz</button>
+						</div>
+						<label class="m-label">Cena</label>
+						<div class="m-price-row">
+							<input
+								class="m-field"
+								inputmode="numeric"
+								value="349"
+								aria-label="Cena"
+							/>
+							<select class="m-field m-currency" aria-label="Měna">
+								<option>CZK</option>
+								<option>EUR</option>
+								<option>USD</option>
+							</select>
+						</div>
+					</div>
+
+					<!-- invalid blank-name link-only -->
+					<div class="draft-card sel">
+						<div class="card-top">
+							<span class="card-check"
+								><input
+									type="checkbox"
+									class="checkbox"
+									checked
+									aria-label="Vybrat dárek"
+							/></span>
+							<input
+								class="m-field card-mname invalid"
+								placeholder="Zadejte název"
+								aria-label="Název"
+								aria-invalid="true"
+							/>
+							<span
+								class="m-remove icon-btn danger"
+								role="button"
+								aria-label="Smazat"
+							>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<polyline points="3 6 5 6 21 6" />
+									<path
+										d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+									/>
+								</svg>
+							</span>
+						</div>
+						<div class="m-help">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.2"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<line x1="12" y1="8" x2="12" y2="12" />
+								<line x1="12" y1="16" x2="12.01" y2="16" />
+							</svg>
+							Zadejte název — otevři
+							<a
+								href="https://www.ikea.com"
+								target="_blank"
+								rel="noopener noreferrer"
+								style="color: var(--primary); font-weight: 600"
+								>ikea.com ↗</a
+							>
+						</div>
+						<label class="m-label">Odkazy</label>
+						<div class="m-links">
+							<a
+								class="link-chip primary"
+								href="https://www.ikea.com"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path
+										d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+									/>
+									<polyline points="15 3 21 3 21 9" />
+									<line x1="10" y1="14" x2="21" y2="3" />
+								</svg>
+								<span class="chip-host">ikea.com</span>
+								<button class="chip-remove" aria-label="Odebrat odkaz">×</button>
+							</a>
+							<button class="add-link" style="height: 28px">+ odkaz</button>
+						</div>
+						<label class="m-label">Cena</label>
+						<div class="m-price-row">
+							<input
+								class="m-field"
+								inputmode="numeric"
+								value="599"
+								aria-label="Cena"
+							/>
+							<select class="m-field m-currency" aria-label="Měna">
+								<option>CZK</option>
+								<option>EUR</option>
+								<option>USD</option>
+							</select>
+						</div>
+					</div>
+
+					<!-- excluded / deselected -->
+					<div class="draft-card excl">
+						<div class="card-top">
+							<span class="card-check"
+								><input type="checkbox" class="checkbox" aria-label="Vybrat dárek"
+							/></span>
+							<input
+								class="m-field card-mname"
+								value="Kniha Atomové návyky"
+								aria-label="Název"
+							/>
+							<span
+								class="m-remove icon-btn danger"
+								role="button"
+								aria-label="Smazat"
+							>
+								<svg
+									width="18"
+									height="18"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<polyline points="3 6 5 6 21 6" />
+									<path
+										d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+									/>
+								</svg>
+							</span>
+						</div>
+						<label class="m-label">Cena</label>
+						<div class="m-price-row">
+							<input
+								class="m-field"
+								inputmode="numeric"
+								value="299"
+								aria-label="Cena"
+							/>
+							<select class="m-field m-currency" aria-label="Měna">
+								<option>CZK</option>
+								<option>EUR</option>
+								<option>USD</option>
+							</select>
+						</div>
+					</div>
+
+					<!-- mobile bulk bar -->
+					<div class="mobile-bulk">
+						<span class="bulk-count">Vybráno 2</span>
+						<span class="bulk-spacer"></span>
+						<button class="btn btn-danger btn-sm" style="height: 38px">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<polyline points="3 6 5 6 21 6" />
+								<path
+									d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+								/>
+							</svg>
+							Smazat vybrané
+						</button>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ════════════════ PHASE-2 ENRICH PLACEHOLDER ════════════════ -->
+		<section class="section theme-light">
+			<div class="section-head">
+				<div class="eyebrow">Phase 2 · placeholder framing only</div>
+				<div class="section-title">✨ Enrich — reserved per-row slot & micro-states</div>
+				<p class="section-desc">
+					The per-row ✨ slot stays ghost + disabled in Phase 1. When activated (Phase 2),
+					enrich-target fields show a shimmer, then settle to "doplněno", with a
+					non-blocking retry on failure. Row stays editable throughout.
+				</p>
+			</div>
+			<div class="shell">
+				<div class="enrich-states">
+					<div class="enrich-demo">
+						<h4>Slot (Fáze 1 — disabled)</h4>
+						<button class="icon-btn enrich" disabled title="Obohatit — Fáze 2">
+							✨
+						</button>
+						<span class="dk-small" style="margin-left: 8px">rezervováno</span>
+					</div>
+					<div class="enrich-demo">
+						<h4>Enriching (shimmer)</h4>
+						<div class="shimmer-line"></div>
+					</div>
+					<div class="enrich-demo">
+						<h4>Enriched (doplněno)</h4>
+						<div class="enriched-flash">
+							1 299 Kč
+							<span class="doplneno">
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
+									<path d="M20 6 9 17l-5-5" />
+								</svg>
+								doplněno
+							</span>
+						</div>
+					</div>
+					<div class="enrich-demo">
+						<h4>Enrich-failed (retry)</h4>
+						<div class="enrich-fail">
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2.2"
+								style="color: var(--destructive)"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<line x1="12" y1="8" x2="12" y2="12" />
+								<line x1="12" y1="16" x2="12.01" y2="16" />
+							</svg>
+							Nepodařilo se
+							<button class="retry-btn">
+								<svg
+									width="11"
+									height="11"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.4"
+								>
+									<polyline points="23 4 23 10 17 10" />
+									<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+								</svg>
+								Zkusit znovu
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ════════════════ LIGHT / DARK DUAL PANEL ════════════════ -->
+		<section style="border-bottom: none; padding: 0">
+			<div class="dual">
+				<!-- LIGHT -->
+				<div class="theme-light">
+					<div class="mini-title">Light — header + 3 rows + bulk bar</div>
+					<div class="grid-frame">
+						<div class="grid-scroll" style="max-height: none; overflow: visible">
+							<div
+								class="grid-table"
+								style="min-width: 0; grid-template-columns: 36px 1.4fr 1fr 38px"
+							>
+								<div class="hrow">
+									<div class="hcell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox indeterminate"
+												aria-label="Vybrat vše"
+										/></span>
+									</div>
+									<div class="hcell">Název</div>
+									<div class="hcell">Cena</div>
+									<div class="hcell gutter last"></div>
+								</div>
+								<div class="grow row-selected">
+									<div class="cell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox"
+												checked
+												aria-label="Vybrat"
+										/></span>
+									</div>
+									<div class="cell name-cell">
+										<input
+											class="cell-input"
+											value="Ponožky z merino vlny"
+											aria-label="Název"
+										/>
+									</div>
+									<div class="cell price-cell">
+										<input
+											class="price-input"
+											value="349"
+											aria-label="Cena"
+										/><select class="currency-sel">
+											<option>CZK</option>
+										</select>
+									</div>
+									<div class="cell gutter last">
+										<button class="icon-btn danger" aria-label="Smazat">
+											×
+										</button>
+									</div>
+								</div>
+								<div class="grow row-selected">
+									<div class="cell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox"
+												checked
+												aria-label="Vybrat"
+										/></span>
+									</div>
+									<div class="cell name-cell">
+										<input
+											class="cell-input invalid"
+											placeholder="Zadejte název"
+											aria-label="Název"
+										/><span class="help-text">Zadejte název</span>
+									</div>
+									<div class="cell price-cell">
+										<input
+											class="price-input"
+											placeholder="—"
+											aria-label="Cena"
+										/><select class="currency-sel">
+											<option>CZK</option>
+										</select>
+									</div>
+									<div class="cell gutter last">
+										<button class="icon-btn danger" aria-label="Smazat">
+											×
+										</button>
+									</div>
+								</div>
+								<div class="grow row-excluded">
+									<div class="cell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox"
+												aria-label="Vybrat"
+										/></span>
+									</div>
+									<div class="cell name-cell">
+										<input
+											class="cell-input"
+											value="Lego Orchidej"
+											aria-label="Název"
+										/>
+									</div>
+									<div class="cell price-cell">
+										<input
+											class="price-input"
+											value="1499"
+											aria-label="Cena"
+										/><select class="currency-sel">
+											<option>CZK</option>
+										</select>
+									</div>
+									<div class="cell gutter last">
+										<button class="icon-btn danger" aria-label="Smazat">
+											×
+										</button>
+									</div>
+								</div>
+							</div>
+							<div class="bulk-bar" style="position: static">
+								<span class="bulk-count">Vybráno 2</span>
+								<span class="bulk-spacer"></span>
+								<button class="btn btn-danger">Smazat vybrané</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- DARK -->
+				<div class="theme-dark">
+					<div class="mini-title">Dark — header + 3 rows + bulk bar</div>
+					<div class="grid-frame">
+						<div class="grid-scroll" style="max-height: none; overflow: visible">
+							<div
+								class="grid-table"
+								style="min-width: 0; grid-template-columns: 36px 1.4fr 1fr 38px"
+							>
+								<div class="hrow">
+									<div class="hcell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox indeterminate"
+												aria-label="Vybrat vše"
+										/></span>
+									</div>
+									<div class="hcell">Název</div>
+									<div class="hcell">Cena</div>
+									<div class="hcell gutter last"></div>
+								</div>
+								<div class="grow row-selected">
+									<div class="cell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox"
+												checked
+												aria-label="Vybrat"
+										/></span>
+									</div>
+									<div class="cell name-cell">
+										<input
+											class="cell-input"
+											value="Konvice na čaj"
+											aria-label="Název"
+										/>
+									</div>
+									<div class="cell price-cell">
+										<input
+											class="price-input"
+											value="890"
+											aria-label="Cena"
+										/><select class="currency-sel">
+											<option>CZK</option>
+										</select>
+									</div>
+									<div class="cell gutter last">
+										<button class="icon-btn danger" aria-label="Smazat">
+											×
+										</button>
+									</div>
+								</div>
+								<div class="grow row-selected">
+									<div class="cell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox"
+												checked
+												aria-label="Vybrat"
+										/></span>
+									</div>
+									<div class="cell name-cell">
+										<input
+											class="cell-input invalid"
+											placeholder="Zadejte název"
+											aria-label="Název"
+										/><span class="help-text">Zadejte název</span>
+									</div>
+									<div class="cell price-cell">
+										<input
+											class="price-input"
+											placeholder="—"
+											aria-label="Cena"
+										/><select class="currency-sel">
+											<option>CZK</option>
+										</select>
+									</div>
+									<div class="cell gutter last">
+										<button class="icon-btn danger" aria-label="Smazat">
+											×
+										</button>
+									</div>
+								</div>
+								<div class="grow row-excluded">
+									<div class="cell gutter">
+										<span class="check-hit"
+											><input
+												type="checkbox"
+												class="checkbox"
+												aria-label="Vybrat"
+										/></span>
+									</div>
+									<div class="cell name-cell">
+										<input
+											class="cell-input"
+											value="Hrnek s motivem hor"
+											aria-label="Název"
+										/>
+									</div>
+									<div class="cell price-cell">
+										<input
+											class="price-input"
+											value="249"
+											aria-label="Cena"
+										/><select class="currency-sel">
+											<option>CZK</option>
+										</select>
+									</div>
+									<div class="cell gutter last">
+										<button class="icon-btn danger" aria-label="Smazat">
+											×
+										</button>
+									</div>
+								</div>
+							</div>
+							<div class="bulk-bar" style="position: static">
+								<span class="bulk-count">Vybráno 2</span>
+								<span class="bulk-spacer"></span>
+								<button class="btn btn-danger">Smazat vybrané</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+	</body>
+</html>

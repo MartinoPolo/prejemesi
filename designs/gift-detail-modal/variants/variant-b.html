@@ -1,0 +1,2979 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Detail Modal v2 — Variant B: Header-driven</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			/* ── Theme blocks (paste verbatim from brief) ───────────── */
+			.theme-light {
+				--background: oklch(0.985 0.006 145);
+				--surface: oklch(1 0 0);
+				--card: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 145);
+				--surface-3: oklch(0.95 0.012 145);
+				--surface-hover: oklch(0.95 0.012 145);
+				--muted: oklch(0.965 0.008 145);
+				--foreground: oklch(0.17 0.012 150);
+				--foreground-muted: oklch(0.45 0.025 150);
+				--muted-foreground: oklch(0.45 0.025 150);
+				--foreground-subtle: oklch(0.62 0.018 150);
+				--border: oklch(0.92 0.012 145);
+				--border-strong: oklch(0.86 0.02 145);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.2% 0.018 155.826deg);
+				--primary-soft: oklch(0.93 0.045 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--status-danger: oklch(0.55 0.2 25);
+				--destructive: oklch(0.55 0.2 25);
+				--status-warning: oklch(0.72 0.15 75);
+				--status-success: oklch(0.62 0.13 145);
+			}
+			.theme-dark {
+				--background: oklch(0.15 0.01 150);
+				--surface: oklch(0.19 0.014 150);
+				--card: oklch(0.19 0.014 150);
+				--surface-2: oklch(0.23 0.016 150);
+				--surface-3: oklch(0.27 0.018 150);
+				--surface-hover: oklch(0.27 0.018 150);
+				--muted: oklch(0.23 0.016 150);
+				--foreground: oklch(0.96 0.008 145);
+				--foreground-muted: oklch(0.68 0.02 145);
+				--muted-foreground: oklch(0.68 0.02 145);
+				--foreground-subtle: oklch(0.5 0.016 145);
+				--border: oklch(0.28 0.016 150);
+				--border-strong: oklch(0.36 0.02 150);
+				--primary: oklch(62% 0.154 150.069deg);
+				--primary-fg: oklch(0.13 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(62% 0.154 150.069deg);
+				--status-danger: oklch(0.6 0.19 25);
+				--destructive: oklch(0.6 0.19 25);
+				--status-warning: oklch(0.75 0.14 75);
+				--status-success: oklch(0.62 0.13 145);
+			}
+
+			/* ── Page chrome ────────────────────────────────────────── */
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: var(--font-sans);
+				-webkit-font-smoothing: antialiased;
+				background: oklch(0.93 0.008 150);
+			}
+			.theme-dark body,
+			.page.theme-dark {
+				background: oklch(0.1 0.008 150);
+			}
+
+			.eyebrow {
+				text-align: center;
+				padding: 14px 24px 4px;
+				font-family: var(--font-heading);
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.eyebrow-desc {
+				text-align: center;
+				padding: 0 24px 18px;
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+
+			.page {
+				min-height: 100vh;
+				padding-bottom: 48px;
+			}
+			.theme-light.page {
+				background: oklch(0.93 0.008 150);
+			}
+			.theme-dark.page {
+				background: oklch(0.1 0.008 150);
+			}
+
+			.state-label {
+				max-width: 940px;
+				margin: 40px auto 12px;
+				padding: 0 24px;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.state-label .num {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				min-width: 26px;
+				height: 26px;
+				padding: 0 7px;
+				border-radius: var(--radius-full);
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-size: 12px;
+				font-weight: 700;
+			}
+			.state-label h3 {
+				font-family: var(--font-heading);
+				font-size: 16px;
+				font-weight: 700;
+				color: var(--foreground);
+				letter-spacing: -0.02em;
+			}
+			.state-label p {
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+
+			/* ── Stage with blurred wishlist behind modal ───────────── */
+			.stage {
+				max-width: 940px;
+				margin: 0 auto;
+				padding: 0 20px;
+			}
+			.stage-inner {
+				position: relative;
+				border-radius: 24px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: var(--background);
+			}
+			.wishlist-bg {
+				position: absolute;
+				inset: 0;
+				padding: 24px 28px;
+				filter: blur(3px);
+				opacity: 0.85;
+				pointer-events: none;
+			}
+			.wishlist-nav {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--border);
+				margin-bottom: 18px;
+			}
+			.wishlist-logo {
+				font-family: var(--font-heading);
+				font-weight: 700;
+				font-size: 18px;
+				color: var(--primary);
+				letter-spacing: -0.02em;
+			}
+			.wishlist-avatar {
+				width: 32px;
+				height: 32px;
+				border-radius: 50%;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 13px;
+			}
+			.wishlist-cards {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 12px;
+			}
+			.bg-card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				height: 150px;
+				overflow: hidden;
+			}
+			.bg-card-img {
+				height: 92px;
+			}
+			.bg-card-body {
+				padding: 8px 10px;
+			}
+			.bg-card-name {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.bg-card-price {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				margin-top: 4px;
+			}
+
+			.backdrop {
+				position: relative;
+				background: oklch(0 0 0 / 0.5);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 36px 24px;
+			}
+
+			/* ── Modal shell (v1 frame) ─────────────────────────────── */
+			.modal {
+				background: var(--surface);
+				border-radius: 20px;
+				box-shadow:
+					0 24px 56px oklch(0 0 0 / 0.32),
+					0 8px 16px oklch(0 0 0 / 0.14);
+				width: 100%;
+				max-width: 900px;
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				position: relative;
+			}
+			.theme-dark .modal {
+				border: 1px solid var(--border);
+			}
+			.modal-close {
+				position: absolute;
+				top: 14px;
+				right: 14px;
+				width: 44px;
+				height: 44px;
+				border-radius: 50%;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				z-index: 12;
+				transition: all 150ms var(--ease-standard);
+			}
+			.modal-close:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+			.modal-close:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			.modal-body {
+				display: grid;
+				grid-template-columns: 45% 55%;
+			}
+
+			/* ── Left column: image w/ tabs (edit) ──────────────────── */
+			.image-col {
+				position: relative;
+				background: var(--surface-2);
+				display: flex;
+				flex-direction: column;
+				border-right: 1px solid var(--border);
+			}
+			.image-tabs {
+				display: flex;
+				gap: 4px;
+				padding: 14px 14px 0;
+			}
+			.image-tab {
+				flex: 1;
+				height: 34px;
+				border-radius: 8px 8px 0 0;
+				border: 1px solid var(--border);
+				border-bottom: none;
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				font-size: 12px;
+				font-weight: 600;
+				font-family: var(--font-sans);
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+			}
+			.image-tab.active {
+				background: var(--surface);
+				color: var(--foreground);
+				border-color: var(--border-strong);
+			}
+			.image-stage {
+				position: relative;
+				flex: 1;
+				min-height: 300px;
+				margin: 0 14px 14px;
+				border: 1px solid var(--border-strong);
+				border-top: none;
+				border-radius: 0 0 10px 10px;
+				background: linear-gradient(145deg, var(--surface-2), var(--surface-3));
+				overflow: hidden;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.image-real {
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(135deg, oklch(0.82 0.07 150), oklch(0.62 0.13 150));
+				display: flex;
+				align-items: flex-end;
+				padding: 14px;
+			}
+			.image-real .chip {
+				font-size: 11px;
+				font-weight: 600;
+				color: oklch(1 0 0);
+				background: oklch(0 0 0 / 0.4);
+				padding: 3px 8px;
+				border-radius: 6px;
+				backdrop-filter: blur(4px);
+			}
+			.image-placeholder {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 10px;
+				color: var(--foreground-subtle);
+			}
+			.image-placeholder svg {
+				opacity: 0.4;
+			}
+			.image-placeholder span {
+				font-size: 12px;
+				font-weight: 600;
+				letter-spacing: 0.04em;
+			}
+			.fit-toggle {
+				display: flex;
+				gap: 6px;
+				padding: 0 14px 14px;
+			}
+			.fit-pill {
+				flex: 1;
+				height: 30px;
+				border-radius: 8px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				font-size: 11px;
+				font-weight: 600;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 5px;
+			}
+			.fit-pill.active {
+				border-color: var(--primary);
+				color: var(--primary);
+				background: var(--primary-soft);
+			}
+
+			/* skeleton over image stage (enrich loading) */
+			.skeleton {
+				position: relative;
+				overflow: hidden;
+				background: var(--surface-3);
+			}
+			.skeleton::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.18), transparent);
+				background-size: 200% 100%;
+				animation: dk-shimmer 1.4s infinite;
+			}
+			.theme-dark .skeleton::after {
+				background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.08), transparent);
+				background-size: 200% 100%;
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.skeleton::after {
+					animation: none;
+				}
+			}
+
+			/* ── Right column: form ─────────────────────────────────── */
+			.form-col {
+				display: flex;
+				flex-direction: column;
+				max-height: 560px;
+				overflow-y: auto;
+				padding: 20px 24px 8px;
+			}
+
+			.edit-eyebrow {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 12px;
+			}
+
+			.field {
+				margin-bottom: 16px;
+			}
+			.field-label {
+				display: block;
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-muted);
+				margin-bottom: 6px;
+			}
+			.input {
+				font-family: var(--font-sans);
+				font-size: 14px;
+				height: 42px;
+				padding: 0 12px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				color: var(--foreground);
+				width: 100%;
+				outline: none;
+				transition:
+					border-color 150ms,
+					box-shadow 150ms;
+			}
+			.input::placeholder {
+				color: var(--foreground-subtle);
+			}
+			.input:focus {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 20%, transparent);
+			}
+			.input.filled {
+				background: var(--surface);
+			}
+			textarea.input {
+				height: auto;
+				padding: 10px 12px;
+				line-height: 1.5;
+				resize: vertical;
+			}
+
+			/* highlight on enriched fields */
+			.enriched {
+				border-color: color-mix(in oklch, var(--status-success) 55%, transparent);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-success) 18%, transparent);
+				background: color-mix(in oklch, var(--status-success) 7%, var(--surface));
+			}
+			.enriched-tag {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--status-success);
+				margin-left: 8px;
+			}
+
+			/* ── LINK EDITOR ────────────────────────────────────────── */
+			.links-header {
+				display: flex;
+				align-items: flex-start;
+				justify-content: space-between;
+				gap: 12px;
+				margin-bottom: 12px;
+			}
+			.links-title {
+				display: flex;
+				flex-direction: column;
+				gap: 3px;
+			}
+			.links-title .lt-main {
+				font-size: 13px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.links-title .lt-sub {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+
+			/* enrich control — lives in form header (header-driven) */
+			.enrich-cluster {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-end;
+				gap: 6px;
+			}
+			.enrich-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				height: 38px;
+				min-height: 38px;
+				padding: 0 14px;
+				border-radius: 9px;
+				border: 1px solid color-mix(in oklch, var(--primary) 40%, var(--border));
+				background: var(--surface);
+				color: var(--primary);
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 150ms var(--ease-standard);
+				white-space: nowrap;
+			}
+			.enrich-btn .spark {
+				color: var(--primary);
+			}
+			.enrich-btn:hover {
+				background: var(--primary-soft);
+				border-color: var(--primary);
+			}
+			.enrich-btn:active {
+				transform: scale(0.97);
+			}
+			.enrich-btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.enrich-btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				color: var(--foreground-subtle);
+				border-color: var(--border);
+				background: var(--surface-2);
+			}
+			.enrich-btn.is-loading {
+				color: var(--foreground-muted);
+				cursor: progress;
+			}
+			.spinner {
+				width: 14px;
+				height: 14px;
+				border-radius: 50%;
+				border: 2px solid color-mix(in oklch, var(--primary) 30%, transparent);
+				border-top-color: var(--primary);
+				animation: dk-spin 0.7s linear infinite;
+			}
+			@keyframes dk-spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.spinner {
+					animation: none;
+				}
+			}
+			.enrich-hint {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				max-width: 180px;
+				text-align: right;
+				line-height: 1.35;
+			}
+
+			/* overwrite global toggle on enrich control */
+			.overwrite-toggle {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				font-size: 11px;
+				color: var(--foreground-muted);
+				cursor: pointer;
+				user-select: none;
+			}
+			.switch {
+				position: relative;
+				width: 32px;
+				height: 18px;
+				border-radius: 9999px;
+				background: var(--surface-3);
+				border: 1px solid var(--border-strong);
+				transition: background 150ms;
+				flex-shrink: 0;
+			}
+			.switch::after {
+				content: '';
+				position: absolute;
+				top: 1px;
+				left: 1px;
+				width: 14px;
+				height: 14px;
+				border-radius: 50%;
+				background: var(--surface);
+				box-shadow: 0 1px 2px oklch(0 0 0 / 0.3);
+				transition: transform 150ms var(--ease-out);
+			}
+			.overwrite-toggle.on .switch {
+				background: var(--primary);
+				border-color: var(--primary);
+			}
+			.overwrite-toggle.on .switch::after {
+				transform: translateX(14px);
+			}
+			.overwrite-toggle:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+				border-radius: 6px;
+			}
+
+			/* link rows */
+			.links-list {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+			}
+			.link-row {
+				position: relative;
+				display: grid;
+				grid-template-columns: 28px 1fr 96px 36px;
+				align-items: start;
+				gap: 8px;
+				padding: 8px 8px 8px 6px;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				background: var(--surface);
+			}
+			/* primary row = leading star + left accent stripe */
+			.link-row.is-primary {
+				border-color: color-mix(in oklch, var(--primary) 35%, var(--border));
+				background: color-mix(in oklch, var(--primary) 4%, var(--surface));
+			}
+			.link-row.is-primary::before {
+				content: '';
+				position: absolute;
+				left: 0;
+				top: 8px;
+				bottom: 8px;
+				width: 3px;
+				border-radius: 3px;
+				background: var(--primary);
+			}
+			.row-handle {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 2px;
+				padding-top: 8px;
+			}
+			.drag-grip {
+				width: 28px;
+				height: 28px;
+				border-radius: 7px;
+				border: none;
+				background: transparent;
+				color: var(--foreground-subtle);
+				cursor: grab;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				touch-action: none;
+			}
+			.drag-grip:hover {
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+			}
+			.drag-grip:active {
+				cursor: grabbing;
+			}
+			.drag-grip:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 1px;
+			}
+			.primary-star {
+				color: var(--primary);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				height: 16px;
+			}
+			.row-fields {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.row-url-wrap {
+				position: relative;
+			}
+			.row-url {
+				height: 38px;
+				font-size: 13px;
+			}
+			.row-label {
+				height: 38px;
+				font-size: 13px;
+			}
+			.label-cell {
+				display: flex;
+				align-items: flex-start;
+			}
+			.label-cell .row-label {
+				width: 100%;
+			}
+			.row-remove {
+				width: 36px;
+				height: 36px;
+				margin-top: 1px;
+				border-radius: 8px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-subtle);
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition: all 150ms;
+			}
+			.row-remove:hover {
+				border-color: color-mix(in oklch, var(--destructive) 50%, transparent);
+				color: var(--destructive);
+				background: color-mix(in oklch, var(--destructive) 8%, var(--surface));
+			}
+			.row-remove:active {
+				transform: scale(0.94);
+			}
+			.row-remove:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.row-remove:disabled {
+				opacity: 0.4;
+				cursor: not-allowed;
+			}
+
+			.primary-tag {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+
+			/* row validation */
+			.input.invalid {
+				border-color: var(--destructive);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--destructive) 18%, transparent);
+			}
+			.row-error {
+				display: flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 11px;
+				font-weight: 500;
+				color: var(--destructive);
+				margin-top: 1px;
+			}
+
+			.links-foot {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-top: 10px;
+			}
+			.add-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				height: 40px;
+				padding: 0 14px;
+				border-radius: 9px;
+				border: 1px dashed var(--border-strong);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 150ms;
+			}
+			.add-link:hover {
+				border-color: var(--primary);
+				color: var(--primary);
+				background: var(--primary-soft);
+			}
+			.add-link:active {
+				transform: scale(0.98);
+			}
+			.add-link:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.add-link:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				border-color: var(--border);
+				color: var(--foreground-subtle);
+				background: var(--surface-2);
+			}
+			.cap-counter {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-subtle);
+				font-variant-numeric: tabular-nums;
+			}
+			.cap-counter.at-cap {
+				color: var(--destructive);
+			}
+			.cap-hint {
+				font-size: 11px;
+				color: var(--destructive);
+				margin-top: 6px;
+				display: flex;
+				align-items: center;
+				gap: 5px;
+			}
+
+			.empty-links {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 12px;
+				padding: 18px;
+				border: 1px dashed var(--border-strong);
+				border-radius: 10px;
+				background: var(--surface-2);
+			}
+			.empty-links .no-link {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+				display: flex;
+				align-items: center;
+				gap: 7px;
+			}
+
+			.keyboard-note {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				margin-top: 8px;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+
+			/* enrich result lines */
+			.enrich-result {
+				margin-top: 12px;
+				padding: 10px 12px;
+				border-radius: 9px;
+				font-size: 12px;
+				line-height: 1.4;
+				display: flex;
+				align-items: flex-start;
+				gap: 8px;
+			}
+			.enrich-result.partial {
+				background: color-mix(in oklch, var(--status-warning) 12%, var(--surface));
+				border: 1px solid color-mix(in oklch, var(--status-warning) 35%, transparent);
+				color: var(--foreground);
+			}
+			.enrich-result.partial .ic {
+				color: var(--status-warning);
+			}
+			.enrich-result.failed {
+				background: color-mix(in oklch, var(--destructive) 10%, var(--surface));
+				border: 1px solid color-mix(in oklch, var(--destructive) 35%, transparent);
+				color: var(--foreground);
+				align-items: center;
+				justify-content: space-between;
+			}
+			.enrich-result.failed .left {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.enrich-result.failed .ic {
+				color: var(--destructive);
+			}
+			.retry-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 30px;
+				padding: 0 10px;
+				border-radius: 7px;
+				border: 1px solid var(--destructive);
+				background: transparent;
+				color: var(--destructive);
+				font-family: var(--font-sans);
+				font-size: 12px;
+				font-weight: 600;
+				cursor: pointer;
+				white-space: nowrap;
+			}
+			.retry-btn:hover {
+				background: color-mix(in oklch, var(--destructive) 10%, transparent);
+			}
+			.retry-btn:active {
+				transform: scale(0.96);
+			}
+			.retry-btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* edit-lock fieldset */
+			fieldset.lock-set {
+				border: none;
+				padding: 0;
+				margin: 0;
+				min-width: 0;
+			}
+			fieldset.lock-set[disabled] {
+				opacity: 0.55;
+			}
+			fieldset.lock-set[disabled] .enrich-btn,
+			fieldset.lock-set[disabled] .add-link,
+			fieldset.lock-set[disabled] .drag-grip,
+			fieldset.lock-set[disabled] .row-remove,
+			fieldset.lock-set[disabled] .input {
+				pointer-events: none;
+			}
+			.lock-banner {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 10px 12px;
+				border-radius: 9px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				font-size: 12px;
+				margin-bottom: 14px;
+			}
+			.lock-banner svg {
+				color: var(--foreground-subtle);
+			}
+
+			/* ── Footer ─────────────────────────────────────────────── */
+			.modal-footer {
+				padding: 14px 24px;
+				border-top: 1px solid var(--border);
+				background: var(--surface);
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.footer-spacer {
+				flex: 1;
+			}
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				font-family: var(--font-sans);
+				font-weight: 600;
+				font-size: 14px;
+				line-height: 1;
+				padding: 0 20px;
+				height: 44px;
+				border-radius: 10px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				transition: all 150ms var(--ease-standard);
+				white-space: nowrap;
+			}
+			.btn:active {
+				transform: scale(0.97);
+			}
+			.btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: var(--shadow-sm);
+			}
+			.btn-primary:hover {
+				filter: brightness(1.08);
+			}
+			.btn-primary:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				filter: none;
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+				border-color: var(--border);
+			}
+			.btn-ghost:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+				border-color: var(--border-strong);
+			}
+			.btn-ghost:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+
+			/* ── VIEW MODE link list ────────────────────────────────── */
+			.view-name {
+				font-family: var(--font-heading);
+				font-size: 22px;
+				font-weight: 700;
+				color: var(--foreground);
+				letter-spacing: -0.02em;
+				line-height: 1.15;
+				margin-bottom: 10px;
+			}
+			.view-price {
+				font-size: 20px;
+				font-weight: 700;
+				color: var(--primary);
+				margin-bottom: 16px;
+			}
+			.view-links {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+			}
+			.view-link {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				padding: 11px 13px;
+				border-radius: 10px;
+				border: 1px solid var(--border);
+				background: var(--surface-2);
+				text-decoration: none;
+				color: var(--foreground-muted);
+				transition: all 150ms;
+			}
+			.view-link:hover {
+				border-color: var(--primary);
+				color: var(--primary);
+				background: var(--primary-soft);
+			}
+			.view-link:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.view-link.primary {
+				border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 600;
+			}
+			.view-link .vl-icon {
+				flex-shrink: 0;
+			}
+			.view-link .vl-text {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				gap: 1px;
+			}
+			.view-link .vl-label {
+				font-size: 14px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.view-link.primary .vl-label {
+				color: var(--primary);
+			}
+			.view-link .vl-domain {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+			.view-link .vl-arrow {
+				color: inherit;
+				opacity: 0.7;
+			}
+			.view-empty {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+				padding: 11px 13px;
+				border: 1px dashed var(--border);
+				border-radius: 10px;
+				background: var(--surface-2);
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			/* ── Responsive: stack label under URL <480px ───────────── */
+			@media (max-width: 480px) {
+				.modal-body {
+					grid-template-columns: 1fr;
+				}
+				.image-col {
+					border-right: none;
+					border-bottom: 1px solid var(--border);
+				}
+				.link-row {
+					grid-template-columns: 28px 1fr 36px;
+				}
+				.label-cell {
+					grid-column: 2 / 3;
+				}
+				.links-header {
+					flex-direction: column;
+					align-items: stretch;
+				}
+				.enrich-cluster {
+					align-items: stretch;
+				}
+				.enrich-hint {
+					max-width: none;
+					text-align: left;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ════════════════════════════ LIGHT PAGE ════════════════════════════ -->
+		<div class="page theme-light dk-root">
+			<div class="eyebrow">Variant B — Header-driven</div>
+			<div class="eyebrow-desc">
+				Enrich ✨ a overwrite-toggle žijí v hlavičce formuláře nad seznamem; řádky zůstávají
+				klidné, primární odkaz vede oko levým pruhem a hvězdou.
+			</div>
+
+			<!-- ───── STATE 1: EDIT — 3 link rows + header enrich ───── -->
+			<div class="state-label">
+				<span class="num">1</span>
+				<div>
+					<h3>Režim úprav — 3 odkazy, enrich v hlavičce</h3>
+					<p>
+						URL + volitelný štítek. Řádek 0 je primární (hvězda + pruh). Počítadlo 3 /
+						10.
+					</p>
+				</div>
+			</div>
+			<div class="stage">
+				<div class="stage-inner">
+					<div class="wishlist-bg" aria-hidden="true">
+						<div class="wishlist-nav">
+							<span class="wishlist-logo">Darecky</span>
+							<span class="wishlist-avatar">M</span>
+						</div>
+						<div class="wishlist-cards">
+							<div class="bg-card">
+								<div
+									class="bg-card-img"
+									style="
+										background: linear-gradient(
+											135deg,
+											oklch(0.82 0.07 150),
+											oklch(0.62 0.13 150)
+										);
+									"
+								></div>
+								<div class="bg-card-body">
+									<div class="bg-card-name">Sluchátka Sony WH-1000XM5</div>
+									<div class="bg-card-price">7 490 Kč</div>
+								</div>
+							</div>
+							<div class="bg-card" style="opacity: 0.5">
+								<div class="bg-card-img" style="background: var(--surface-2)"></div>
+								<div class="bg-card-body">
+									<div class="bg-card-name">Kniha kuchařka</div>
+									<div class="bg-card-price">490 Kč</div>
+								</div>
+							</div>
+							<div class="bg-card" style="opacity: 0.5">
+								<div class="bg-card-img" style="background: var(--surface-2)"></div>
+								<div class="bg-card-body">
+									<div class="bg-card-name">Konvice</div>
+									<div class="bg-card-price">1 290 Kč</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="backdrop">
+						<div class="modal" role="dialog" aria-modal="true" aria-label="Upravit dar">
+							<button class="modal-close" aria-label="Zavřít">
+								<svg
+									width="18"
+									height="18"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.2"
+									viewBox="0 0 24 24"
+								>
+									<path d="M18 6 6 18M6 6l12 12" />
+								</svg>
+							</button>
+							<div class="modal-body">
+								<!-- image col -->
+								<div class="image-col">
+									<div class="image-tabs">
+										<button class="image-tab active">
+											<svg
+												width="13"
+												height="13"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+												/>
+												<path
+													d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+												/>
+											</svg>
+											URL
+										</button>
+										<button class="image-tab">
+											<svg
+												width="13"
+												height="13"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+												/>
+												<polyline points="17 8 12 3 7 8" />
+												<line x1="12" y1="3" x2="12" y2="15" />
+											</svg>
+											Nahrát
+										</button>
+									</div>
+									<div class="image-stage">
+										<div class="image-real">
+											<span class="chip">Náhled · ořez 4:3</span>
+										</div>
+									</div>
+									<div class="fit-toggle">
+										<button class="fit-pill active">Vyplnit</button>
+										<button class="fit-pill">Přizpůsobit</button>
+									</div>
+								</div>
+
+								<!-- form col -->
+								<div class="form-col">
+									<div class="edit-eyebrow">Upravit dar</div>
+
+									<div class="field">
+										<label class="field-label" for="n1">Název</label>
+										<input
+											id="n1"
+											class="input filled"
+											value="Sluchátka Sony WH-1000XM5"
+										/>
+									</div>
+									<div class="field">
+										<label class="field-label" for="p1">Cena</label>
+										<input id="p1" class="input filled" value="7 490 Kč" />
+									</div>
+
+									<!-- LINK EDITOR with header-driven enrich -->
+									<div class="links-header">
+										<div class="links-title">
+											<span class="lt-main">Odkazy</span>
+											<span class="lt-sub">První odkaz je primární</span>
+										</div>
+										<div class="enrich-cluster">
+											<button class="enrich-btn">
+												<svg
+													class="spark"
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+													/>
+												</svg>
+												Načíst metadata
+											</button>
+											<button
+												class="overwrite-toggle"
+												role="switch"
+												aria-checked="false"
+											>
+												<span class="switch"></span>
+												Přepsat vyplněná pole
+											</button>
+										</div>
+									</div>
+
+									<div class="links-list">
+										<!-- primary row -->
+										<div class="link-row is-primary">
+											<div class="row-handle">
+												<button
+													class="drag-grip"
+													aria-label="Přesunout odkaz"
+												>
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<circle cx="9" cy="6" r="1.6" />
+														<circle cx="15" cy="6" r="1.6" />
+														<circle cx="9" cy="12" r="1.6" />
+														<circle cx="15" cy="12" r="1.6" />
+														<circle cx="9" cy="18" r="1.6" />
+														<circle cx="15" cy="18" r="1.6" />
+													</svg>
+												</button>
+												<span class="primary-star" title="Hlavní">
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+														/>
+													</svg>
+												</span>
+											</div>
+											<div class="row-fields">
+												<div class="row-url-wrap">
+													<input
+														class="input row-url filled"
+														value="https://www.alza.cz/sony-wh-1000xm5"
+													/>
+												</div>
+												<span class="primary-tag">
+													<svg
+														width="10"
+														height="10"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+														/>
+													</svg>
+													Hlavní
+												</span>
+											</div>
+											<div class="label-cell">
+												<input
+													class="input row-label filled"
+													value="Alza"
+													placeholder="alza.cz"
+												/>
+											</div>
+											<button class="row-remove" aria-label="Odebrat odkaz">
+												<svg
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+													/>
+												</svg>
+											</button>
+										</div>
+
+										<!-- row 2 -->
+										<div class="link-row">
+											<div class="row-handle">
+												<button
+													class="drag-grip"
+													aria-label="Přesunout odkaz"
+												>
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<circle cx="9" cy="6" r="1.6" />
+														<circle cx="15" cy="6" r="1.6" />
+														<circle cx="9" cy="12" r="1.6" />
+														<circle cx="15" cy="12" r="1.6" />
+														<circle cx="9" cy="18" r="1.6" />
+														<circle cx="15" cy="18" r="1.6" />
+													</svg>
+												</button>
+											</div>
+											<div class="row-fields">
+												<div class="row-url-wrap">
+													<input
+														class="input row-url filled"
+														value="https://www.heureka.cz/sony-wh-1000xm5"
+													/>
+												</div>
+											</div>
+											<div class="label-cell">
+												<input
+													class="input row-label"
+													value=""
+													placeholder="heureka.cz"
+												/>
+											</div>
+											<button class="row-remove" aria-label="Odebrat odkaz">
+												<svg
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+													/>
+												</svg>
+											</button>
+										</div>
+
+										<!-- row 3 -->
+										<div class="link-row">
+											<div class="row-handle">
+												<button
+													class="drag-grip"
+													aria-label="Přesunout odkaz"
+												>
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<circle cx="9" cy="6" r="1.6" />
+														<circle cx="15" cy="6" r="1.6" />
+														<circle cx="9" cy="12" r="1.6" />
+														<circle cx="15" cy="12" r="1.6" />
+														<circle cx="9" cy="18" r="1.6" />
+														<circle cx="15" cy="18" r="1.6" />
+													</svg>
+												</button>
+											</div>
+											<div class="row-fields">
+												<div class="row-url-wrap">
+													<input
+														class="input row-url filled"
+														value="https://www.datart.cz/sony-wh-1000xm5"
+													/>
+												</div>
+											</div>
+											<div class="label-cell">
+												<input
+													class="input row-label filled"
+													value="Datart"
+													placeholder="datart.cz"
+												/>
+											</div>
+											<button class="row-remove" aria-label="Odebrat odkaz">
+												<svg
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+													/>
+												</svg>
+											</button>
+										</div>
+									</div>
+
+									<div class="links-foot">
+										<button class="add-link">
+											<svg
+												width="15"
+												height="15"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.2"
+												viewBox="0 0 24 24"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											Přidat odkaz
+										</button>
+										<span class="cap-counter">3 / 10</span>
+									</div>
+									<div class="keyboard-note">
+										<svg
+											width="12"
+											height="12"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											viewBox="0 0 24 24"
+										>
+											<rect x="2" y="6" width="20" height="12" rx="2" />
+										</svg>
+										Přetáhněte úchyt nebo použijte šipky pro změnu pořadí
+									</div>
+								</div>
+							</div>
+							<div class="modal-footer">
+								<button class="btn btn-ghost">Zrušit</button>
+								<div class="footer-spacer"></div>
+								<button class="btn btn-primary">Uložit</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───── STATE 2: AT CAP 10 / 10 ───── -->
+			<div class="state-label">
+				<span class="num">2</span>
+				<div>
+					<h3>Strop dosažen — 10 / 10</h3>
+					<p>„Přidat odkaz" zakázáno, počítadlo červené, hint „Maximálně 10 odkazů".</p>
+				</div>
+			</div>
+			<div class="stage">
+				<div class="stage-inner">
+					<div class="backdrop" style="background: var(--surface-2); padding: 24px">
+						<div
+							class="modal"
+							style="max-width: 460px"
+							role="group"
+							aria-label="Strop odkazů"
+						>
+							<div style="padding: 20px 24px">
+								<div class="links-header">
+									<div class="links-title">
+										<span class="lt-main">Odkazy</span>
+										<span class="lt-sub">První odkaz je primární</span>
+									</div>
+									<div class="enrich-cluster">
+										<button class="enrich-btn">
+											<svg
+												class="spark"
+												width="15"
+												height="15"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+												/>
+											</svg>
+											Načíst metadata
+										</button>
+									</div>
+								</div>
+								<div class="links-list">
+									<div class="link-row is-primary">
+										<div class="row-handle">
+											<button class="drag-grip" aria-label="Přesunout odkaz">
+												<svg
+													width="14"
+													height="14"
+													fill="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<circle cx="9" cy="6" r="1.6" />
+													<circle cx="15" cy="6" r="1.6" />
+													<circle cx="9" cy="12" r="1.6" />
+													<circle cx="15" cy="12" r="1.6" />
+													<circle cx="9" cy="18" r="1.6" />
+													<circle cx="15" cy="18" r="1.6" />
+												</svg>
+											</button>
+											<span class="primary-star"
+												><svg
+													width="14"
+													height="14"
+													fill="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+													/></svg
+											></span>
+										</div>
+										<div class="row-fields">
+											<input
+												class="input row-url filled"
+												value="https://www.alza.cz/sony-wh-1000xm5"
+											/>
+											<span class="primary-tag"
+												><svg
+													width="10"
+													height="10"
+													fill="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+													/>
+												</svg>
+												Hlavní</span
+											>
+										</div>
+										<div class="label-cell">
+											<input
+												class="input row-label filled"
+												value="Alza"
+												placeholder="alza.cz"
+											/>
+										</div>
+										<button class="row-remove" aria-label="Odebrat odkaz">
+											<svg
+												width="15"
+												height="15"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+												/>
+											</svg>
+										</button>
+									</div>
+									<div
+										class="link-row"
+										style="
+											opacity: 0.85;
+											text-align: center;
+											justify-content: center;
+										"
+									>
+										<div></div>
+										<div class="row-fields" style="text-align: center">
+											<span
+												style="
+													font-size: 12px;
+													color: var(--foreground-subtle);
+												"
+												>… dalších 8 odkazů …</span
+											>
+										</div>
+										<div></div>
+										<div></div>
+									</div>
+								</div>
+								<div class="links-foot">
+									<button class="add-link" disabled>
+										<svg
+											width="15"
+											height="15"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.2"
+											viewBox="0 0 24 24"
+										>
+											<path d="M12 5v14M5 12h14" />
+										</svg>
+										Přidat odkaz
+									</button>
+									<span class="cap-counter at-cap">10 / 10</span>
+								</div>
+								<div class="cap-hint">
+									<svg
+										width="13"
+										height="13"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<circle cx="12" cy="12" r="10" />
+										<line x1="12" y1="8" x2="12" y2="12" />
+										<line x1="12" y1="16" x2="12.01" y2="16" />
+									</svg>
+									Maximálně 10 odkazů
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───── STATE 3: INVALID + DUPLICATE ───── -->
+			<div class="state-label">
+				<span class="num">3</span>
+				<div>
+					<h3>Chyby validace — neplatná & duplicitní</h3>
+					<p>„Neplatná adresa" a „Tento odkaz už je v seznamu".</p>
+				</div>
+			</div>
+			<div class="stage">
+				<div class="stage-inner">
+					<div class="backdrop" style="background: var(--surface-2); padding: 24px">
+						<div
+							class="modal"
+							style="max-width: 460px"
+							role="group"
+							aria-label="Chyby odkazů"
+						>
+							<div style="padding: 20px 24px">
+								<div class="links-list">
+									<div class="link-row is-primary">
+										<div class="row-handle">
+											<button class="drag-grip" aria-label="Přesunout odkaz">
+												<svg
+													width="14"
+													height="14"
+													fill="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<circle cx="9" cy="6" r="1.6" />
+													<circle cx="15" cy="6" r="1.6" />
+													<circle cx="9" cy="12" r="1.6" />
+													<circle cx="15" cy="12" r="1.6" />
+													<circle cx="9" cy="18" r="1.6" />
+													<circle cx="15" cy="18" r="1.6" />
+												</svg>
+											</button>
+											<span class="primary-star"
+												><svg
+													width="14"
+													height="14"
+													fill="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+													/></svg
+											></span>
+										</div>
+										<div class="row-fields">
+											<input
+												class="input row-url invalid"
+												value="htp:/alza"
+												aria-invalid="true"
+											/>
+											<span class="row-error"
+												><svg
+													width="12"
+													height="12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<circle cx="12" cy="12" r="10" />
+													<line x1="12" y1="8" x2="12" y2="12" />
+													<line x1="12" y1="16" x2="12.01" y2="16" />
+												</svg>
+												Neplatná adresa</span
+											>
+										</div>
+										<div class="label-cell">
+											<input class="input row-label" placeholder="alza.cz" />
+										</div>
+										<button class="row-remove" aria-label="Odebrat odkaz">
+											<svg
+												width="15"
+												height="15"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+												/>
+											</svg>
+										</button>
+									</div>
+									<div class="link-row">
+										<div class="row-handle">
+											<button class="drag-grip" aria-label="Přesunout odkaz">
+												<svg
+													width="14"
+													height="14"
+													fill="currentColor"
+													viewBox="0 0 24 24"
+												>
+													<circle cx="9" cy="6" r="1.6" />
+													<circle cx="15" cy="6" r="1.6" />
+													<circle cx="9" cy="12" r="1.6" />
+													<circle cx="15" cy="12" r="1.6" />
+													<circle cx="9" cy="18" r="1.6" />
+													<circle cx="15" cy="18" r="1.6" />
+												</svg>
+											</button>
+										</div>
+										<div class="row-fields">
+											<input
+												class="input row-url invalid"
+												value="https://www.heureka.cz/sony-wh-1000xm5"
+												aria-invalid="true"
+											/>
+											<span class="row-error"
+												><svg
+													width="12"
+													height="12"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<circle cx="12" cy="12" r="10" />
+													<line x1="12" y1="8" x2="12" y2="12" />
+													<line x1="12" y1="16" x2="12.01" y2="16" />
+												</svg>
+												Tento odkaz už je v seznamu</span
+											>
+										</div>
+										<div class="label-cell">
+											<input
+												class="input row-label"
+												placeholder="heureka.cz"
+											/>
+										</div>
+										<button class="row-remove" aria-label="Odebrat odkaz">
+											<svg
+												width="15"
+												height="15"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+												/>
+											</svg>
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───── STATE 4: EMPTY ───── -->
+			<div class="state-label">
+				<span class="num">4</span>
+				<div>
+					<h3>Bez odkazů — prázdný stav</h3>
+					<p>„Bez odkazu" + osamocené „Přidat odkaz".</p>
+				</div>
+			</div>
+			<div class="stage">
+				<div class="stage-inner">
+					<div class="backdrop" style="background: var(--surface-2); padding: 24px">
+						<div
+							class="modal"
+							style="max-width: 460px"
+							role="group"
+							aria-label="Bez odkazů"
+						>
+							<div style="padding: 20px 24px">
+								<div class="links-header">
+									<div class="links-title">
+										<span class="lt-main">Odkazy</span>
+										<span class="lt-sub">První odkaz je primární</span>
+									</div>
+									<div class="enrich-cluster">
+										<button class="enrich-btn" disabled>
+											<svg
+												class="spark"
+												width="15"
+												height="15"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+												/>
+											</svg>
+											Načíst metadata
+										</button>
+										<span class="enrich-hint"
+											>Přidejte alespoň jeden odkaz pro načtení metadat.</span
+										>
+									</div>
+								</div>
+								<div class="empty-links">
+									<span class="no-link">
+										<svg
+											width="15"
+											height="15"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											viewBox="0 0 24 24"
+										>
+											<path
+												d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+											/>
+											<path
+												d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+											/>
+										</svg>
+										Bez odkazu
+									</span>
+									<button class="add-link">
+										<svg
+											width="15"
+											height="15"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.2"
+											viewBox="0 0 24 24"
+										>
+											<path d="M12 5v14M5 12h14" />
+										</svg>
+										Přidat odkaz
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───── STATE 5: EDIT-LOCK ───── -->
+			<div class="state-label">
+				<span class="num">5</span>
+				<div>
+					<h3>Zámek úprav — sdílený seznam</h3>
+					<p>Editor uvnitř disabled fieldsetu se zamyká spolu s formulářem.</p>
+				</div>
+			</div>
+			<div class="stage">
+				<div class="stage-inner">
+					<div class="backdrop" style="background: var(--surface-2); padding: 24px">
+						<div
+							class="modal"
+							style="max-width: 460px"
+							role="group"
+							aria-label="Zamčené úpravy"
+						>
+							<fieldset class="lock-set" disabled aria-disabled="true">
+								<div style="padding: 20px 24px">
+									<div class="lock-banner">
+										<svg
+											width="14"
+											height="14"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											viewBox="0 0 24 24"
+										>
+											<rect x="3" y="11" width="18" height="11" rx="2" />
+											<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+										</svg>
+										Seznam je sdílený — úpravy odkazů jsou uzamčeny.
+									</div>
+									<div class="links-header">
+										<div class="links-title">
+											<span class="lt-main">Odkazy</span>
+										</div>
+										<div class="enrich-cluster">
+											<button class="enrich-btn" disabled>
+												<svg
+													class="spark"
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+													/>
+												</svg>
+												Načíst metadata
+											</button>
+										</div>
+									</div>
+									<div class="links-list">
+										<div class="link-row is-primary">
+											<div class="row-handle">
+												<button
+													class="drag-grip"
+													aria-label="Přesunout odkaz"
+													disabled
+												>
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<circle cx="9" cy="6" r="1.6" />
+														<circle cx="15" cy="6" r="1.6" />
+														<circle cx="9" cy="12" r="1.6" />
+														<circle cx="15" cy="12" r="1.6" />
+														<circle cx="9" cy="18" r="1.6" />
+														<circle cx="15" cy="18" r="1.6" />
+													</svg>
+												</button>
+												<span class="primary-star"
+													><svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+														/></svg
+												></span>
+											</div>
+											<div class="row-fields">
+												<input
+													class="input row-url filled"
+													value="https://www.alza.cz/sony-wh-1000xm5"
+													disabled
+												/>
+											</div>
+											<div class="label-cell">
+												<input
+													class="input row-label filled"
+													value="Alza"
+													disabled
+												/>
+											</div>
+											<button
+												class="row-remove"
+												aria-label="Odebrat odkaz"
+												disabled
+											>
+												<svg
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+													/>
+												</svg>
+											</button>
+										</div>
+									</div>
+								</div>
+							</fieldset>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───── ENRICH STATES ───── -->
+			<div class="state-label">
+				<span class="num">6</span>
+				<div>
+					<h3>Enrich ✨ — stavy načítání</h3>
+					<p>idle · loading · success · partial · failed · overwrite zapnuto.</p>
+				</div>
+			</div>
+			<div class="stage" style="max-width: 940px">
+				<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+					<!-- idle (enabled) -->
+					<div class="dk-card" style="padding: 16px; background: var(--surface)">
+						<div class="edit-eyebrow">Enrich — idle (≥1 odkaz)</div>
+						<div class="enrich-cluster" style="align-items: flex-start">
+							<button class="enrich-btn">
+								<svg
+									class="spark"
+									width="15"
+									height="15"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+								>
+									<path
+										d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+									/>
+								</svg>
+								Načíst metadata
+							</button>
+							<button class="overwrite-toggle" role="switch" aria-checked="false">
+								<span class="switch"></span>
+								Přepsat vyplněná pole
+							</button>
+						</div>
+					</div>
+
+					<!-- overwrite ON -->
+					<div class="dk-card" style="padding: 16px; background: var(--surface)">
+						<div class="edit-eyebrow">Enrich — overwrite zapnuto</div>
+						<div class="enrich-cluster" style="align-items: flex-start">
+							<button class="enrich-btn">
+								<svg
+									class="spark"
+									width="15"
+									height="15"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+								>
+									<path
+										d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+									/>
+								</svg>
+								Načíst metadata
+							</button>
+							<button class="overwrite-toggle on" role="switch" aria-checked="true">
+								<span class="switch"></span>
+								Přepsat vyplněná pole
+							</button>
+						</div>
+						<p
+							style="
+								font-size: 11px;
+								color: var(--foreground-subtle);
+								margin-top: 8px;
+							"
+						>
+							Vyplní i pole, která už mají hodnotu.
+						</p>
+					</div>
+
+					<!-- loading -->
+					<div class="dk-card" style="padding: 16px; background: var(--surface)">
+						<div class="edit-eyebrow">Enrich — loading</div>
+						<button class="enrich-btn is-loading" disabled aria-busy="true">
+							<span class="spinner"></span>
+							Načíst metadata
+						</button>
+						<div
+							style="
+								margin-top: 12px;
+								display: flex;
+								flex-direction: column;
+								gap: 8px;
+							"
+						>
+							<div class="skeleton" style="height: 100px; border-radius: 8px"></div>
+							<div class="skeleton" style="height: 38px; border-radius: 8px"></div>
+							<div
+								class="skeleton"
+								style="height: 38px; width: 60%; border-radius: 8px"
+							></div>
+						</div>
+						<p
+							style="
+								font-size: 11px;
+								color: var(--foreground-subtle);
+								margin-top: 8px;
+							"
+						>
+							Načítám obrázek, cenu a název…
+						</p>
+					</div>
+
+					<!-- success -->
+					<div class="dk-card" style="padding: 16px; background: var(--surface)">
+						<div class="edit-eyebrow">Enrich — success</div>
+						<div class="field" style="margin-bottom: 10px">
+							<label class="field-label"
+								>Název
+								<span class="enriched-tag"
+									><svg
+										width="11"
+										height="11"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										viewBox="0 0 24 24"
+									>
+										<polyline points="20 6 9 17 4 12" />
+									</svg>
+									načteno</span
+								></label
+							>
+							<input class="input enriched" value="Sluchátka Sony WH-1000XM5" />
+						</div>
+						<div class="field" style="margin-bottom: 0">
+							<label class="field-label"
+								>Cena
+								<span class="enriched-tag"
+									><svg
+										width="11"
+										height="11"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										viewBox="0 0 24 24"
+									>
+										<polyline points="20 6 9 17 4 12" />
+									</svg>
+									načteno</span
+								></label
+							>
+							<input class="input enriched" value="7 490 Kč" />
+						</div>
+					</div>
+
+					<!-- partial -->
+					<div class="dk-card" style="padding: 16px; background: var(--surface)">
+						<div class="edit-eyebrow">Enrich — partial</div>
+						<div class="field" style="margin-bottom: 10px">
+							<label class="field-label"
+								>Název
+								<span class="enriched-tag"
+									><svg
+										width="11"
+										height="11"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.5"
+										viewBox="0 0 24 24"
+									>
+										<polyline points="20 6 9 17 4 12" />
+									</svg>
+									načteno</span
+								></label
+							>
+							<input class="input enriched" value="Sluchátka Sony WH-1000XM5" />
+						</div>
+						<div class="enrich-result partial">
+							<svg
+								class="ic"
+								width="15"
+								height="15"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								viewBox="0 0 24 24"
+								style="flex-shrink: 0"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<line x1="12" y1="8" x2="12" y2="12" />
+								<line x1="12" y1="16" x2="12.01" y2="16" />
+							</svg>
+							<span>Cena nebyla nalezena — doplňte ji prosím ručně.</span>
+						</div>
+					</div>
+
+					<!-- failed -->
+					<div class="dk-card" style="padding: 16px; background: var(--surface)">
+						<div class="edit-eyebrow">Enrich — failed</div>
+						<div class="enrich-result failed">
+							<span class="left">
+								<svg
+									class="ic"
+									width="15"
+									height="15"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+									style="flex-shrink: 0"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<line x1="15" y1="9" x2="9" y2="15" />
+									<line x1="9" y1="9" x2="15" y2="15" />
+								</svg>
+								Metadata se nepodařilo načíst
+							</span>
+							<button class="retry-btn">
+								<svg
+									width="12"
+									height="12"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+								>
+									<path d="M23 4v6h-6" />
+									<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+								</svg>
+								Zkusit znovu
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───── VIEW MODE ───── -->
+			<div class="state-label">
+				<span class="num">7</span>
+				<div>
+					<h3>Režim zobrazení — stohované odkazy</h3>
+					<p>Klikatelné odkazy, primární první, + prázdný stav „Bez odkazu".</p>
+				</div>
+			</div>
+			<div class="stage" style="max-width: 940px">
+				<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+					<div class="dk-card" style="padding: 20px; background: var(--surface)">
+						<h2 class="view-name">Sluchátka Sony WH-1000XM5</h2>
+						<div class="view-price">7 490 Kč</div>
+						<div class="view-links">
+							<a href="#" class="view-link primary">
+								<span class="vl-icon"
+									><svg
+										width="18"
+										height="18"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+								></span>
+								<span class="vl-text"
+									><span class="vl-label">Alza</span
+									><span class="vl-domain">alza.cz</span></span
+								>
+								<span class="vl-arrow"
+									><svg
+										width="15"
+										height="15"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path d="M7 17 17 7M7 7h10v10" /></svg
+								></span>
+							</a>
+							<a href="#" class="view-link">
+								<span class="vl-icon"
+									><svg
+										width="18"
+										height="18"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+								></span>
+								<span class="vl-text"
+									><span class="vl-label">heureka.cz</span
+									><span class="vl-domain">heureka.cz</span></span
+								>
+								<span class="vl-arrow"
+									><svg
+										width="15"
+										height="15"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path d="M7 17 17 7M7 7h10v10" /></svg
+								></span>
+							</a>
+							<a href="#" class="view-link">
+								<span class="vl-icon"
+									><svg
+										width="18"
+										height="18"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+								></span>
+								<span class="vl-text"
+									><span class="vl-label">Datart</span
+									><span class="vl-domain">datart.cz</span></span
+								>
+								<span class="vl-arrow"
+									><svg
+										width="15"
+										height="15"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path d="M7 17 17 7M7 7h10v10" /></svg
+								></span>
+							</a>
+						</div>
+					</div>
+					<div class="dk-card" style="padding: 20px; background: var(--surface)">
+						<h2 class="view-name">Dárkový poukaz</h2>
+						<div class="view-price">1 000 Kč</div>
+						<div class="view-empty">
+							<svg
+								width="15"
+								height="15"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								viewBox="0 0 24 24"
+							>
+								<path
+									d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+								/>
+								<path
+									d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+								/>
+							</svg>
+							Bez odkazu
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════════════════════ DARK PAGE ════════════════════════════ -->
+		<div class="page theme-dark dk-root">
+			<div class="eyebrow">Variant B — Header-driven · Tmavý režim</div>
+			<div class="eyebrow-desc">
+				Stejný editor v tmavém režimu — enrich v hlavičce subordinovaný tlačítku Uložit;
+				elevované karty světlejší než podklad bez těžkých stínů.
+			</div>
+
+			<div class="state-label">
+				<span class="num">D</span>
+				<div>
+					<h3>Režim úprav — tmavý (3 odkazy + enrich + view)</h3>
+					<p>Primární pruh, drag úchyt, overwrite-toggle a stohované odkazy.</p>
+				</div>
+			</div>
+			<div class="stage">
+				<div class="stage-inner">
+					<div class="wishlist-bg" aria-hidden="true">
+						<div class="wishlist-nav">
+							<span class="wishlist-logo">Darecky</span>
+							<span class="wishlist-avatar">M</span>
+						</div>
+						<div class="wishlist-cards">
+							<div class="bg-card">
+								<div
+									class="bg-card-img"
+									style="
+										background: linear-gradient(
+											135deg,
+											oklch(0.4 0.08 150),
+											oklch(0.3 0.06 150)
+										);
+									"
+								></div>
+								<div class="bg-card-body">
+									<div class="bg-card-name">Sluchátka Sony WH-1000XM5</div>
+									<div class="bg-card-price">7 490 Kč</div>
+								</div>
+							</div>
+							<div class="bg-card" style="opacity: 0.5">
+								<div class="bg-card-img" style="background: var(--surface-2)"></div>
+								<div class="bg-card-body">
+									<div class="bg-card-name">Kniha kuchařka</div>
+									<div class="bg-card-price">490 Kč</div>
+								</div>
+							</div>
+							<div class="bg-card" style="opacity: 0.5">
+								<div class="bg-card-img" style="background: var(--surface-2)"></div>
+								<div class="bg-card-body">
+									<div class="bg-card-name">Konvice</div>
+									<div class="bg-card-price">1 290 Kč</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="backdrop">
+						<div class="modal" role="dialog" aria-modal="true" aria-label="Upravit dar">
+							<button class="modal-close" aria-label="Zavřít">
+								<svg
+									width="18"
+									height="18"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.2"
+									viewBox="0 0 24 24"
+								>
+									<path d="M18 6 6 18M6 6l12 12" />
+								</svg>
+							</button>
+							<div class="modal-body">
+								<div class="image-col">
+									<div class="image-tabs">
+										<button class="image-tab active">
+											<svg
+												width="13"
+												height="13"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+												/>
+												<path
+													d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+												/>
+											</svg>
+											URL
+										</button>
+										<button class="image-tab">
+											<svg
+												width="13"
+												height="13"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+												viewBox="0 0 24 24"
+											>
+												<path
+													d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+												/>
+												<polyline points="17 8 12 3 7 8" />
+												<line x1="12" y1="3" x2="12" y2="15" />
+											</svg>
+											Nahrát
+										</button>
+									</div>
+									<div class="image-stage">
+										<div class="image-real">
+											<span class="chip">Náhled · ořez 4:3</span>
+										</div>
+									</div>
+									<div class="fit-toggle">
+										<button class="fit-pill active">Vyplnit</button>
+										<button class="fit-pill">Přizpůsobit</button>
+									</div>
+								</div>
+								<div class="form-col">
+									<div class="edit-eyebrow">Upravit dar</div>
+									<div class="field">
+										<label class="field-label" for="n2">Název</label>
+										<input
+											id="n2"
+											class="input filled"
+											value="Sluchátka Sony WH-1000XM5"
+										/>
+									</div>
+									<div class="field">
+										<label class="field-label" for="p2">Cena</label>
+										<input id="p2" class="input filled" value="7 490 Kč" />
+									</div>
+									<div class="links-header">
+										<div class="links-title">
+											<span class="lt-main">Odkazy</span>
+											<span class="lt-sub">První odkaz je primární</span>
+										</div>
+										<div class="enrich-cluster">
+											<button class="enrich-btn">
+												<svg
+													class="spark"
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+													/>
+												</svg>
+												Načíst metadata
+											</button>
+											<button
+												class="overwrite-toggle on"
+												role="switch"
+												aria-checked="true"
+											>
+												<span class="switch"></span>
+												Přepsat vyplněná pole
+											</button>
+										</div>
+									</div>
+									<div class="links-list">
+										<div class="link-row is-primary">
+											<div class="row-handle">
+												<button
+													class="drag-grip"
+													aria-label="Přesunout odkaz"
+												>
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<circle cx="9" cy="6" r="1.6" />
+														<circle cx="15" cy="6" r="1.6" />
+														<circle cx="9" cy="12" r="1.6" />
+														<circle cx="15" cy="12" r="1.6" />
+														<circle cx="9" cy="18" r="1.6" />
+														<circle cx="15" cy="18" r="1.6" />
+													</svg>
+												</button>
+												<span class="primary-star"
+													><svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+														/></svg
+												></span>
+											</div>
+											<div class="row-fields">
+												<input
+													class="input row-url filled"
+													value="https://www.alza.cz/sony-wh-1000xm5"
+												/>
+												<span class="primary-tag"
+													><svg
+														width="10"
+														height="10"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<path
+															d="m12 2 3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"
+														/>
+													</svg>
+													Hlavní</span
+												>
+											</div>
+											<div class="label-cell">
+												<input
+													class="input row-label filled"
+													value="Alza"
+													placeholder="alza.cz"
+												/>
+											</div>
+											<button class="row-remove" aria-label="Odebrat odkaz">
+												<svg
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+													/>
+												</svg>
+											</button>
+										</div>
+										<div class="link-row">
+											<div class="row-handle">
+												<button
+													class="drag-grip"
+													aria-label="Přesunout odkaz"
+												>
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<circle cx="9" cy="6" r="1.6" />
+														<circle cx="15" cy="6" r="1.6" />
+														<circle cx="9" cy="12" r="1.6" />
+														<circle cx="15" cy="12" r="1.6" />
+														<circle cx="9" cy="18" r="1.6" />
+														<circle cx="15" cy="18" r="1.6" />
+													</svg>
+												</button>
+											</div>
+											<div class="row-fields">
+												<input
+													class="input row-url filled"
+													value="https://www.heureka.cz/sony-wh-1000xm5"
+												/>
+											</div>
+											<div class="label-cell">
+												<input
+													class="input row-label"
+													placeholder="heureka.cz"
+												/>
+											</div>
+											<button class="row-remove" aria-label="Odebrat odkaz">
+												<svg
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+													/>
+												</svg>
+											</button>
+										</div>
+										<div class="link-row">
+											<div class="row-handle">
+												<button
+													class="drag-grip"
+													aria-label="Přesunout odkaz"
+												>
+													<svg
+														width="14"
+														height="14"
+														fill="currentColor"
+														viewBox="0 0 24 24"
+													>
+														<circle cx="9" cy="6" r="1.6" />
+														<circle cx="15" cy="6" r="1.6" />
+														<circle cx="9" cy="12" r="1.6" />
+														<circle cx="15" cy="12" r="1.6" />
+														<circle cx="9" cy="18" r="1.6" />
+														<circle cx="15" cy="18" r="1.6" />
+													</svg>
+												</button>
+											</div>
+											<div class="row-fields">
+												<input
+													class="input row-url filled"
+													value="https://www.datart.cz/sony-wh-1000xm5"
+												/>
+											</div>
+											<div class="label-cell">
+												<input
+													class="input row-label filled"
+													value="Datart"
+													placeholder="datart.cz"
+												/>
+											</div>
+											<button class="row-remove" aria-label="Odebrat odkaz">
+												<svg
+													width="15"
+													height="15"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+													viewBox="0 0 24 24"
+												>
+													<path
+														d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+													/>
+												</svg>
+											</button>
+										</div>
+									</div>
+									<div class="links-foot">
+										<button class="add-link">
+											<svg
+												width="15"
+												height="15"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2.2"
+												viewBox="0 0 24 24"
+											>
+												<path d="M12 5v14M5 12h14" />
+											</svg>
+											Přidat odkaz
+										</button>
+										<span class="cap-counter">3 / 10</span>
+									</div>
+									<!-- partial result inline -->
+									<div class="enrich-result partial">
+										<svg
+											class="ic"
+											width="15"
+											height="15"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											viewBox="0 0 24 24"
+											style="flex-shrink: 0"
+										>
+											<circle cx="12" cy="12" r="10" />
+											<line x1="12" y1="8" x2="12" y2="12" />
+											<line x1="12" y1="16" x2="12.01" y2="16" />
+										</svg>
+										<span>Cena nebyla nalezena — doplňte ji prosím ručně.</span>
+									</div>
+								</div>
+							</div>
+							<div class="modal-footer">
+								<button class="btn btn-ghost">Zrušit</button>
+								<div class="footer-spacer"></div>
+								<button class="btn btn-primary">Uložit</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- dark view mode + failed -->
+			<div class="state-label">
+				<span class="num">D</span>
+				<div>
+					<h3>Tmavý — view mode + enrich failed</h3>
+					<p>Stohované odkazy a chybový stav „Zkusit znovu".</p>
+				</div>
+			</div>
+			<div class="stage" style="max-width: 940px">
+				<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+					<div
+						class="dk-card"
+						style="
+							padding: 20px;
+							background: var(--surface);
+							border-color: var(--border);
+						"
+					>
+						<h2 class="view-name">Sluchátka Sony WH-1000XM5</h2>
+						<div class="view-price">7 490 Kč</div>
+						<div class="view-links">
+							<a href="#" class="view-link primary">
+								<span class="vl-icon"
+									><svg
+										width="18"
+										height="18"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+								></span>
+								<span class="vl-text"
+									><span class="vl-label">Alza</span
+									><span class="vl-domain">alza.cz</span></span
+								>
+								<span class="vl-arrow"
+									><svg
+										width="15"
+										height="15"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path d="M7 17 17 7M7 7h10v10" /></svg
+								></span>
+							</a>
+							<a href="#" class="view-link">
+								<span class="vl-icon"
+									><svg
+										width="18"
+										height="18"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path
+											d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+										/>
+										<polyline points="15 3 21 3 21 9" />
+										<line x1="10" y1="14" x2="21" y2="3" /></svg
+								></span>
+								<span class="vl-text"
+									><span class="vl-label">Datart</span
+									><span class="vl-domain">datart.cz</span></span
+								>
+								<span class="vl-arrow"
+									><svg
+										width="15"
+										height="15"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										viewBox="0 0 24 24"
+									>
+										<path d="M7 17 17 7M7 7h10v10" /></svg
+								></span>
+							</a>
+						</div>
+					</div>
+					<div
+						class="dk-card"
+						style="
+							padding: 20px;
+							background: var(--surface);
+							border-color: var(--border);
+						"
+					>
+						<div class="edit-eyebrow">Enrich — failed (tmavý)</div>
+						<button class="enrich-btn" style="margin-bottom: 12px">
+							<svg
+								class="spark"
+								width="15"
+								height="15"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								viewBox="0 0 24 24"
+							>
+								<path
+									d="m12 3-1.9 5.8L4 12l6.1 1.2L12 21l1.9-5.8L20 12l-6.1-1.2z"
+								/>
+							</svg>
+							Načíst metadata
+						</button>
+						<div class="enrich-result failed">
+							<span class="left">
+								<svg
+									class="ic"
+									width="15"
+									height="15"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+									style="flex-shrink: 0"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<line x1="15" y1="9" x2="9" y2="15" />
+									<line x1="9" y1="9" x2="15" y2="15" />
+								</svg>
+								Metadata se nepodařilo načíst
+							</span>
+							<button class="retry-btn">
+								<svg
+									width="12"
+									height="12"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+								>
+									<path d="M23 4v6h-6" />
+									<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+								</svg>
+								Zkusit znovu
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

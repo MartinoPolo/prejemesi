@@ -16,6 +16,10 @@ Darecky ("dárečky" = presents in Czech) is a shareable wishlist web app where 
 **Sharing** — Distributing a wishlist link; locks the owner from editing/removing existing gifts.
 **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
 **Unfollowed** — A wishlist the user was previously invited to / followed but has since unfollowed. Tracked for re-discovery via toggle on the Sledované page.
+**Gift draft** — An unsaved, editable gift row (name, notes, link(s), price) in the import or batch grid, before it is committed as a real Gift.
+**Draft grid** — The editable multi-row table that powers both the import Review step and batch gift entry; each row is a Gift draft.
+**Enrichment** — Auto-filling a gift's image / price / title from its link (and, in a later phase, by searching for it by name).
+**Import wizard** — The 3-step Source → Review → Confirm flow that turns a pasted/uploaded CSV or Google Sheet into gifts.
 
 _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with time), "bookmark" for Like, "claim" for Reservation.
 
@@ -54,6 +58,10 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | Social features (group gifting, cost splitting)                                | Planned | v2          |
 | Gift categories/tags                                                           | Planned | v2          |
 | Auto-suggest products (AI/price comparison APIs)                               | Planned | v2          |
+| CSV / Google Sheets import (3-step wizard)                                     | Planned | v1.x        |
+| Bulk gift entry (shared draft grid, large dialog)                              | Planned | v1.x        |
+| Gift metadata enrichment (link → image/price/title)                            | Planned | v1.x        |
+| Multiple links per gift (max 10)                                               | Planned | v1.x        |
 
 ## Key Constraints
 
@@ -78,3 +86,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - English URL slugs. Supported currencies: CZK (default), EUR, USD.
 - V1 is a single release — all 16 core features ship together.
 - `src/app.css` is the canonical design token source. `designs/tokens.css` is design reference only.
+- Import: CSV/Google-Sheets import creates gifts via a 3-step wizard (Source → editable draft grid with smart column detection + dedup → Confirm), with two entry points (new wishlist / append). Inputs: file upload, paste-cells, paste Sheets link (server fetch). No Google OAuth. Limits 200 rows / 1 MB. PapaParse for parsing.
+- Gifts can carry up to 10 links (`links` jsonb array; `links[0]` is primary). Replaces the single `url` column.
+- Piece-count / reservation display on gift cards is role-conditional — the owner sees the piece count only, never the reserved count.
+- Metadata enrichment (image/price/title from a link) is per-item and progressive via an external metadata API (free tier, callable client-side). Name-based product search is best-effort and deferred.

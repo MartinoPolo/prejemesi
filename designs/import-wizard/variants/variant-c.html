@@ -1,0 +1,3077 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Import Wizard — Variant C: Segmented Progress / Append-focus</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			/* ── Sage theme (primary from app.css) ─────────────────── */
+			.theme-light {
+				--background: oklch(0.985 0.006 145);
+				--surface: oklch(1 0 0);
+				--card: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 145);
+				--surface-3: oklch(0.95 0.012 145);
+				--surface-hover: oklch(0.96 0.01 145);
+				--muted: oklch(0.965 0.008 145);
+				--foreground: oklch(0.17 0.012 150);
+				--foreground-muted: oklch(0.45 0.025 150);
+				--muted-foreground: oklch(0.45 0.025 150);
+				--foreground-subtle: oklch(0.62 0.018 150);
+				--border: oklch(0.92 0.012 145);
+				--border-strong: oklch(0.86 0.02 145);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.2% 0.018 155.826deg);
+				--primary-soft: oklch(0.93 0.045 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--destructive: oklch(0.55 0.2 25);
+				--status-danger: oklch(0.55 0.2 25);
+				--status-warning: oklch(0.72 0.15 75);
+				--status-success: oklch(0.62 0.13 145);
+			}
+			.theme-dark {
+				--background: oklch(0.15 0.01 150);
+				--surface: oklch(0.19 0.014 150);
+				--card: oklch(0.19 0.014 150);
+				--surface-2: oklch(0.23 0.016 150);
+				--surface-3: oklch(0.27 0.018 150);
+				--surface-hover: oklch(0.25 0.016 150);
+				--muted: oklch(0.23 0.016 150);
+				--foreground: oklch(0.96 0.008 145);
+				--foreground-muted: oklch(0.68 0.02 145);
+				--muted-foreground: oklch(0.68 0.02 145);
+				--foreground-subtle: oklch(0.5 0.016 145);
+				--border: oklch(0.28 0.016 150);
+				--border-strong: oklch(0.36 0.02 150);
+				--primary: oklch(62% 0.154 150.069deg);
+				--primary-fg: oklch(0.13 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(62% 0.154 150.069deg);
+				--destructive: oklch(0.6 0.19 25);
+				--status-danger: oklch(0.6 0.19 25);
+				--status-warning: oklch(0.75 0.14 75);
+				--status-success: oklch(0.62 0.13 145);
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				font-family: var(--font-sans);
+				background: var(--background);
+				color: var(--foreground);
+				-webkit-font-smoothing: antialiased;
+				text-rendering: optimizeLegibility;
+			}
+
+			/* ── Page scaffold (section gallery) ───────────────────── */
+			.page-head {
+				background: var(--background);
+				color: var(--foreground);
+				padding: 40px 32px 24px;
+				border-bottom: 1px solid var(--border);
+			}
+			.page-head .eyebrow {
+				font-family: var(--font-sans);
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.page-head h1 {
+				font-family: var(--font-heading);
+				font-size: 28px;
+				font-weight: 700;
+				letter-spacing: -0.025em;
+				line-height: 1.15;
+				margin-top: 8px;
+			}
+			.page-head p {
+				color: var(--foreground-muted);
+				font-size: 15px;
+				margin-top: 8px;
+				max-width: 70ch;
+			}
+
+			.section-label {
+				font-family: var(--font-sans);
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				padding: 36px 32px 12px;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.section-label::after {
+				content: '';
+				flex: 1;
+				height: 1px;
+				background: var(--border);
+			}
+
+			.theme-light.page,
+			.theme-dark.page {
+				background: var(--background);
+				padding-bottom: 24px;
+			}
+
+			/* ── Modal-over-blurred-page staging ───────────────────── */
+			.stage {
+				position: relative;
+				margin: 0 auto;
+				padding: 28px 24px 40px;
+				display: flex;
+				justify-content: center;
+			}
+			.stage-bg {
+				position: absolute;
+				inset: 16px 24px;
+				border-radius: var(--radius-xl);
+				background:
+					linear-gradient(135deg, var(--surface-2), var(--surface-3)), var(--surface-2);
+				overflow: hidden;
+				filter: blur(3px) saturate(0.92);
+				opacity: 0.55;
+			}
+			.stage-bg-grid {
+				position: absolute;
+				inset: 0;
+				padding: 28px;
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 14px;
+			}
+			.stage-bg-card {
+				height: 120px;
+				border-radius: var(--radius-lg);
+				background: var(--surface);
+				border: 1px solid var(--border);
+			}
+
+			/* ── Modal shell ───────────────────────────────────────── */
+			.modal {
+				position: relative;
+				z-index: 2;
+				width: 100%;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-2xl);
+				box-shadow: var(--shadow-xl);
+				display: flex;
+				flex-direction: column;
+				max-height: 90vh;
+				overflow: hidden;
+			}
+			.modal.w-narrow {
+				max-width: 680px;
+			}
+			.modal.w-wide {
+				max-width: min(1100px, 92vw);
+			}
+
+			/* ── Modal header w/ segmented progress ────────────────── */
+			.m-head {
+				padding: 18px 20px 16px;
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				flex-direction: column;
+				gap: 14px;
+			}
+			.m-head-top {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+			}
+			.m-title {
+				font-family: var(--font-heading);
+				font-size: 20px;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+				line-height: 1.15;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.m-title .dot {
+				width: 9px;
+				height: 9px;
+				border-radius: var(--radius-full);
+				background: var(--primary);
+			}
+			.m-close {
+				flex: none;
+				width: 44px;
+				height: 44px;
+				border-radius: var(--radius-md);
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.m-close:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+				border-color: var(--border-strong);
+			}
+			.m-close:active {
+				transform: scale(0.94);
+			}
+			.m-close:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* Segmented progress bar */
+			.seg {
+				display: flex;
+				gap: 6px;
+			}
+			.seg-item {
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.seg-bar {
+				height: 6px;
+				border-radius: var(--radius-full);
+				background: var(--surface-3);
+				overflow: hidden;
+				position: relative;
+			}
+			.seg-bar > i {
+				position: absolute;
+				inset: 0;
+				width: 0;
+				background: var(--primary);
+				border-radius: var(--radius-full);
+				transition: width var(--duration-slow) var(--ease-standard);
+			}
+			.seg-item.done .seg-bar > i {
+				width: 100%;
+			}
+			.seg-item.active .seg-bar > i {
+				width: 100%;
+			}
+			.seg-item.upcoming .seg-bar > i {
+				width: 0;
+			}
+			.seg-meta {
+				display: flex;
+				align-items: center;
+				gap: 7px;
+				font-size: 12px;
+			}
+			.seg-num {
+				width: 18px;
+				height: 18px;
+				border-radius: var(--radius-full);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 10px;
+				font-weight: 700;
+				background: var(--surface-3);
+				color: var(--foreground-subtle);
+			}
+			.seg-item.active .seg-num {
+				background: var(--primary);
+				color: var(--primary-fg);
+			}
+			.seg-item.done .seg-num {
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+			.seg-name {
+				font-weight: 600;
+				color: var(--foreground-subtle);
+				letter-spacing: -0.01em;
+			}
+			.seg-item.active .seg-name {
+				color: var(--foreground);
+			}
+			.seg-item.done .seg-name {
+				color: var(--foreground-muted);
+			}
+
+			/* ── Body & footer ─────────────────────────────────────── */
+			.m-body {
+				padding: 20px;
+				overflow: auto;
+				flex: 1;
+			}
+			.m-foot {
+				padding: 14px 20px;
+				border-top: 1px solid var(--border);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+				background: var(--surface);
+			}
+			.m-foot-spacer {
+				flex: 1;
+			}
+
+			/* ── Buttons ───────────────────────────────────────────── */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				font-family: var(--font-sans);
+				font-weight: 600;
+				font-size: 14px;
+				line-height: 1;
+				padding: 0 18px;
+				min-height: 44px;
+				border-radius: var(--radius-md);
+				border: 1px solid transparent;
+				cursor: pointer;
+				transition: all var(--duration-normal) var(--ease-standard);
+				white-space: nowrap;
+				text-decoration: none;
+			}
+			.btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.btn:active {
+				transform: scale(0.97);
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: var(--shadow-sm);
+			}
+			.btn-primary:hover {
+				filter: brightness(1.08);
+			}
+			.btn-primary:active {
+				filter: brightness(0.96);
+			}
+			.btn-primary:disabled {
+				background: var(--surface-3);
+				color: var(--foreground-subtle);
+				box-shadow: none;
+				cursor: not-allowed;
+				transform: none;
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+				border-color: transparent;
+			}
+			.btn-ghost:hover {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.btn-ghost:active {
+				background: var(--surface-3);
+			}
+			.btn-ghost:disabled {
+				color: var(--foreground-subtle);
+				cursor: not-allowed;
+			}
+			.btn-outline {
+				background: transparent;
+				color: var(--foreground);
+				border-color: var(--border-strong);
+			}
+			.btn-outline:hover {
+				background: var(--surface-2);
+				border-color: var(--primary);
+				color: var(--primary);
+			}
+			.btn-outline:active {
+				background: var(--surface-3);
+			}
+			.btn-outline:disabled {
+				color: var(--foreground-subtle);
+				border-color: var(--border);
+				cursor: not-allowed;
+			}
+			.btn[hidden] {
+				display: none;
+			}
+			.btn-sm {
+				min-height: 36px;
+				padding: 0 12px;
+				font-size: 13px;
+			}
+
+			/* ── Trigger context cluster ───────────────────────────── */
+			.trigger-row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 12px;
+				padding: 8px 32px 4px;
+				align-items: center;
+			}
+			.trigger-note {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+			}
+
+			/* ── Toggle group (source methods) ─────────────────────── */
+			.toggle-group {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 6px;
+				padding: 5px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+			}
+			.toggle-btn {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				min-height: 44px;
+				padding: 0 12px;
+				border-radius: var(--radius-md);
+				border: 1px solid transparent;
+				background: transparent;
+				color: var(--foreground-muted);
+				font-family: var(--font-sans);
+				font-weight: 600;
+				font-size: 13px;
+				cursor: pointer;
+				transition: all var(--duration-normal) var(--ease-standard);
+			}
+			.toggle-btn:hover {
+				color: var(--foreground);
+				background: var(--surface);
+			}
+			.toggle-btn:active {
+				transform: scale(0.98);
+			}
+			.toggle-btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.toggle-btn[aria-pressed='true'] {
+				background: var(--surface);
+				color: var(--primary);
+				border-color: var(--border);
+				box-shadow: var(--shadow-sm);
+			}
+
+			.helper {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				line-height: 1.5;
+				margin-top: 10px;
+			}
+			.limit-note {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				margin-top: 12px;
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+			}
+
+			/* ── Drop zone ─────────────────────────────────────────── */
+			.dropzone {
+				margin-top: 14px;
+				border: 1.5px dashed var(--border-strong);
+				border-radius: var(--radius-lg);
+				background: var(--surface-2);
+				padding: 36px 20px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 10px;
+				text-align: center;
+				transition: all var(--duration-normal) var(--ease-standard);
+				cursor: pointer;
+			}
+			.dropzone:hover {
+				border-color: var(--primary);
+				background: var(--primary-soft);
+			}
+			.dropzone .dz-icon {
+				color: var(--primary);
+			}
+			.dropzone .dz-title {
+				font-weight: 600;
+				font-size: 15px;
+			}
+			.dropzone .dz-sub {
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+
+			.textarea {
+				margin-top: 14px;
+				width: 100%;
+				min-height: 150px;
+				resize: vertical;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				background: var(--surface);
+				color: var(--foreground);
+				font-family: 'Noto Sans', monospace;
+				font-size: 13px;
+				line-height: 1.6;
+				padding: 12px 14px;
+				outline: none;
+				transition: all var(--duration-normal);
+			}
+			.textarea:focus {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 20%, transparent);
+			}
+
+			.input {
+				flex: 1;
+				min-height: 44px;
+				padding: 0 14px;
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				background: var(--surface);
+				color: var(--foreground);
+				font-family: var(--font-sans);
+				font-size: 14px;
+				outline: none;
+				transition: all var(--duration-normal);
+			}
+			.input::placeholder {
+				color: var(--foreground-subtle);
+			}
+			.input:focus {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 20%, transparent);
+			}
+			.link-row {
+				display: flex;
+				gap: 8px;
+				margin-top: 14px;
+			}
+
+			/* ── Alerts ────────────────────────────────────────────── */
+			.alert {
+				display: flex;
+				gap: 12px;
+				padding: 12px 14px;
+				border-radius: var(--radius-md);
+				border: 1px solid;
+				font-size: 13px;
+				line-height: 1.5;
+				margin-top: 14px;
+			}
+			.alert .a-icon {
+				flex: none;
+				margin-top: 1px;
+			}
+			.alert strong {
+				font-weight: 600;
+				display: block;
+				margin-bottom: 2px;
+			}
+			.alert-danger {
+				background: color-mix(in oklch, var(--status-danger) 9%, var(--surface));
+				border-color: color-mix(in oklch, var(--status-danger) 32%, transparent);
+				color: color-mix(in oklch, var(--status-danger) 88%, var(--foreground));
+			}
+			.alert-danger .a-icon {
+				color: var(--status-danger);
+			}
+			.alert-warning {
+				background: color-mix(in oklch, var(--status-warning) 13%, var(--surface));
+				border-color: color-mix(in oklch, var(--status-warning) 38%, transparent);
+				color: color-mix(in oklch, var(--status-warning) 70%, var(--foreground));
+			}
+			.alert-warning .a-icon {
+				color: var(--status-warning);
+			}
+			.alert-success {
+				background: color-mix(in oklch, var(--status-success) 12%, var(--surface));
+				border-color: color-mix(in oklch, var(--status-success) 34%, transparent);
+				color: color-mix(in oklch, var(--status-success) 80%, var(--foreground));
+			}
+			.alert-success .a-icon {
+				color: var(--status-success);
+			}
+
+			.spinner {
+				width: 16px;
+				height: 16px;
+				border-radius: 50%;
+				border: 2px solid color-mix(in oklch, var(--primary) 30%, transparent);
+				border-top-color: var(--primary);
+				animation: spin 0.7s linear infinite;
+				flex: none;
+			}
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+
+			/* ── Review: destination + mapping + grid + panel ──────── */
+			.dest-bar {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				flex-wrap: wrap;
+				padding: 12px 14px;
+				background: var(--primary-soft);
+				border: 1px solid color-mix(in oklch, var(--primary) 22%, transparent);
+				border-radius: var(--radius-md);
+				margin-bottom: 16px;
+			}
+			.dest-bar .d-label {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.dest-bar .d-name {
+				font-family: var(--font-heading);
+				font-weight: 600;
+				font-size: 16px;
+				letter-spacing: -0.01em;
+				color: var(--foreground);
+			}
+
+			.label {
+				display: block;
+				font-size: 13px;
+				font-weight: 600;
+				margin-bottom: 6px;
+			}
+			.title-field {
+				margin-bottom: 16px;
+			}
+
+			.review-cols {
+				display: grid;
+				grid-template-columns: 1fr 300px;
+				gap: 16px;
+				align-items: start;
+			}
+			@media (max-width: 900px) {
+				.review-cols {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			.mapping-bar {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+				padding: 10px 12px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md) var(--radius-md) 0 0;
+				border-bottom: none;
+				font-size: 12px;
+				color: var(--foreground-muted);
+			}
+			.skip-pill {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 3px 9px;
+				border-radius: var(--radius-full);
+				background: color-mix(in oklch, var(--status-warning) 16%, var(--surface));
+				color: color-mix(in oklch, var(--status-warning) 70%, var(--foreground));
+				font-weight: 600;
+				font-size: 11px;
+			}
+
+			.grid-wrap {
+				border: 1px solid var(--border);
+				border-radius: 0 0 var(--radius-md) var(--radius-md);
+				overflow: hidden;
+			}
+			.grid-scroll {
+				overflow-x: auto;
+			}
+			table.grid {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 13px;
+				min-width: 560px;
+			}
+			table.grid thead th {
+				background: var(--surface-2);
+				text-align: left;
+				padding: 0;
+				border-bottom: 1px solid var(--border);
+				position: sticky;
+				top: 0;
+			}
+			.role-select {
+				width: 100%;
+				min-height: 38px;
+				padding: 0 10px;
+				border: none;
+				border-right: 1px solid var(--border);
+				background: var(--surface-2);
+				color: var(--foreground);
+				font-family: var(--font-sans);
+				font-weight: 600;
+				font-size: 12px;
+				cursor: pointer;
+				outline: none;
+				appearance: none;
+				background-image:
+					linear-gradient(45deg, transparent 50%, var(--foreground-subtle) 50%),
+					linear-gradient(135deg, var(--foreground-subtle) 50%, transparent 50%);
+				background-position:
+					calc(100% - 15px) 16px,
+					calc(100% - 10px) 16px;
+				background-size:
+					5px 5px,
+					5px 5px;
+				background-repeat: no-repeat;
+			}
+			.role-select:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: -2px;
+			}
+			.th-check {
+				width: 40px;
+				padding: 0 0 0 12px !important;
+			}
+			table.grid tbody td {
+				padding: 9px 10px;
+				border-bottom: 1px solid var(--border);
+				vertical-align: middle;
+			}
+			table.grid tbody tr:last-child td {
+				border-bottom: none;
+			}
+			table.grid tbody tr:hover {
+				background: var(--surface-2);
+			}
+			.cell-name {
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.cell-note {
+				color: var(--foreground-muted);
+			}
+			.cell-link {
+				color: var(--primary);
+				text-decoration: none;
+				font-size: 12px;
+			}
+			.cell-link:hover {
+				text-decoration: underline;
+			}
+			.cell-price {
+				font-variant-numeric: tabular-nums;
+				color: var(--foreground);
+			}
+			.row-dup {
+				background: color-mix(in oklch, var(--status-warning) 7%, transparent);
+			}
+			.row-dup:hover {
+				background: color-mix(in oklch, var(--status-warning) 12%, transparent) !important;
+			}
+			.dup-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				padding: 2px 8px;
+				border-radius: var(--radius-full);
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0.02em;
+				background: color-mix(in oklch, var(--status-warning) 18%, var(--surface));
+				color: color-mix(in oklch, var(--status-warning) 68%, var(--foreground));
+				border: 1px solid color-mix(in oklch, var(--status-warning) 36%, transparent);
+				white-space: nowrap;
+			}
+			.cb {
+				width: 18px;
+				height: 18px;
+				border-radius: 5px;
+				border: 1.5px solid var(--border-strong);
+				background: var(--surface);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				color: var(--primary-fg);
+				transition: all var(--duration-fast);
+			}
+			.cb.on {
+				background: var(--primary);
+				border-color: var(--primary);
+			}
+			.cb.off svg {
+				display: none;
+			}
+
+			/* Existing items comparison panel */
+			.exist-panel {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-md);
+				overflow: hidden;
+				background: var(--surface);
+			}
+			.exist-head {
+				padding: 10px 12px;
+				background: var(--surface-2);
+				border-bottom: 1px solid var(--border);
+			}
+			.exist-head .e-title {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--foreground-muted);
+			}
+			.exist-head .e-sub {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				margin-top: 2px;
+			}
+			.exist-list {
+				display: flex;
+				flex-direction: column;
+			}
+			.exist-item {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+				padding: 9px 12px;
+				border-bottom: 1px solid var(--border);
+			}
+			.exist-item:last-child {
+				border-bottom: none;
+			}
+			.exist-item.match {
+				background: color-mix(in oklch, var(--status-warning) 9%, transparent);
+				box-shadow: inset 3px 0 0 var(--status-warning);
+			}
+			.exist-name {
+				font-size: 13px;
+				font-weight: 600;
+			}
+			.exist-host {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+			}
+
+			.sel-summary {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+				margin-top: 14px;
+				font-size: 13px;
+			}
+			.count-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 4px 12px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 13px;
+			}
+			.hint-muted {
+				color: var(--foreground-subtle);
+			}
+			.hint-error {
+				color: var(--status-danger);
+				font-weight: 600;
+			}
+
+			.variant-tag {
+				display: inline-block;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				padding: 3px 10px;
+				border-radius: var(--radius-full);
+				margin: 0 0 12px 32px;
+			}
+
+			/* ── Confirm step ──────────────────────────────────────── */
+			.confirm-card {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+				background: var(--surface-2);
+				padding: 20px;
+			}
+			.confirm-summary {
+				font-family: var(--font-heading);
+				font-size: 18px;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+				line-height: 1.3;
+			}
+			.confirm-summary b {
+				color: var(--primary);
+			}
+			.confirm-sub {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-top: 6px;
+			}
+
+			.progress-track {
+				margin-top: 14px;
+				height: 8px;
+				border-radius: var(--radius-full);
+				background: var(--surface-3);
+				overflow: hidden;
+			}
+			.progress-track > i {
+				display: block;
+				height: 100%;
+				width: 62%;
+				background: var(--primary);
+				border-radius: var(--radius-full);
+			}
+			.commit-status {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				margin-top: 10px;
+				font-size: 13px;
+				color: var(--foreground-muted);
+				font-weight: 600;
+			}
+
+			.success-wrap {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				text-align: center;
+				gap: 12px;
+				padding: 12px;
+			}
+			.success-ring {
+				width: 56px;
+				height: 56px;
+				border-radius: var(--radius-full);
+				background: color-mix(in oklch, var(--status-success) 16%, var(--surface));
+				color: var(--status-success);
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.success-title {
+				font-family: var(--font-heading);
+				font-size: 18px;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+			}
+
+			/* ── Mobile sheet frame ────────────────────────────────── */
+			.phone-row {
+				display: flex;
+				gap: 32px;
+				flex-wrap: wrap;
+				padding: 8px 32px 8px;
+			}
+			.phone {
+				width: 375px;
+				max-width: 100%;
+				height: 760px;
+				border-radius: 36px;
+				border: 10px solid color-mix(in oklch, var(--foreground) 80%, var(--background));
+				background: var(--background);
+				overflow: hidden;
+				box-shadow: var(--shadow-xl);
+				display: flex;
+				flex-direction: column;
+				position: relative;
+			}
+			.phone-notch {
+				position: absolute;
+				top: 0;
+				left: 50%;
+				transform: translateX(-50%);
+				width: 120px;
+				height: 22px;
+				background: color-mix(in oklch, var(--foreground) 80%, var(--background));
+				border-radius: 0 0 14px 14px;
+				z-index: 5;
+			}
+			.sheet {
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+				background: var(--surface);
+			}
+			.sheet-head {
+				padding: 26px 16px 12px;
+				border-bottom: 1px solid var(--border);
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+			}
+			.sheet-top {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.sheet-title {
+				font-family: var(--font-heading);
+				font-size: 17px;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+			}
+			.sheet-body {
+				flex: 1;
+				overflow: auto;
+				padding: 16px;
+			}
+			.sheet-foot {
+				padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+				border-top: 1px solid var(--border);
+				display: flex;
+				gap: 10px;
+			}
+			.sheet-foot .btn {
+				flex: 1;
+			}
+			.toggle-stack {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+				padding: 5px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg);
+			}
+			.toggle-stack .toggle-btn {
+				justify-content: flex-start;
+			}
+
+			@media (max-width: 760px) {
+				.modal.w-wide,
+				.modal.w-narrow {
+					max-width: 100%;
+				}
+				.toggle-group {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			.icon {
+				width: 18px;
+				height: 18px;
+				flex: none;
+			}
+			.icon-sm {
+				width: 15px;
+				height: 15px;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ════════════════════════ LIGHT ════════════════════════ -->
+		<div class="theme-light page">
+			<header class="page-head">
+				<div class="eyebrow">Variant C — Segmented Progress / Append-focus</div>
+				<h1>Importovat dárky — průvodce importem</h1>
+				<p>
+					Kompaktní průvodce optimalizovaný pro migraci sdílených tabulek: segmentový
+					ukazatel postupu v hlavičce, přepínač tří zdrojů nad jedním panelem a krok
+					Kontrola, kde porovnání s existujícími dárky a odhalování duplikátů hraje hlavní
+					roli.
+				</p>
+			</header>
+
+			<!-- Entry-point triggers -->
+			<div class="section-label">Vstupní body (kontext)</div>
+			<div class="trigger-row">
+				<button class="btn btn-outline">
+					<svg
+						class="icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+						<path d="M12 12v9" />
+						<path d="m16 16-4-4-4 4" />
+					</svg>
+					Importovat
+				</button>
+				<span class="trigger-note">— vedle navbar „Vytvořit" (nový seznam z importu)</span>
+			</div>
+			<div class="trigger-row">
+				<button class="btn btn-outline btn-sm">
+					<svg
+						class="icon-sm"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+						<path d="M12 12v9" />
+						<path d="m16 16-4-4-4 4" />
+					</svg>
+					Importovat
+				</button>
+				<span class="trigger-note"
+					>— v nástrojové liště seznamu, vedle „Přidat přání" (připojit k tomuto
+					seznamu)</span
+				>
+			</div>
+
+			<!-- ───────── STEP 1 — ZDROJ (file, empty) ───────── -->
+			<div class="section-label">Krok 1 — Zdroj · Nahrát soubor (výchozí, prázdné)</div>
+			<div class="stage">
+				<div class="stage-bg">
+					<div class="stage-bg-grid">
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+					</div>
+				</div>
+				<div class="modal w-narrow">
+					<div class="m-head">
+						<div class="m-head-top">
+							<div class="m-title"><span class="dot"></span>Importovat dárky</div>
+							<button class="m-close" aria-label="Zavřít">
+								<svg
+									class="icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M18 6 6 18M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+						<div class="seg">
+							<div class="seg-item active">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">1</span
+									><span class="seg-name">Zdroj</span>
+								</div>
+							</div>
+							<div class="seg-item upcoming">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">2</span
+									><span class="seg-name">Kontrola</span>
+								</div>
+							</div>
+							<div class="seg-item upcoming">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">3</span
+									><span class="seg-name">Potvrzení</span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="m-body">
+						<div class="toggle-group" role="group" aria-label="Zdroj dat">
+							<button class="toggle-btn" aria-pressed="true">
+								<svg
+									class="icon-sm"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+									/>
+									<path d="M14 2v6h6" />
+								</svg>
+								Nahrát soubor
+							</button>
+							<button class="toggle-btn" aria-pressed="false">
+								<svg
+									class="icon-sm"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<rect width="8" height="4" x="8" y="2" rx="1" />
+									<path
+										d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+									/>
+								</svg>
+								Vložit buňky
+							</button>
+							<button class="toggle-btn" aria-pressed="false">
+								<svg
+									class="icon-sm"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+									/>
+									<path
+										d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+									/>
+								</svg>
+								Odkaz na Tabulky Google
+							</button>
+						</div>
+						<div class="dropzone">
+							<svg
+								class="icon dz-icon"
+								style="width: 32px; height: 32px"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path
+									d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"
+								/>
+								<path d="M12 12v9" />
+								<path d="m16 16-4-4-4 4" />
+							</svg>
+							<div class="dz-title">Přetáhněte soubor .csv nebo .tsv</div>
+							<div class="dz-sub">nebo klikněte pro výběr</div>
+						</div>
+						<div class="limit-note">
+							<svg
+								class="icon-sm"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="10" />
+								<path d="M12 16v-4M12 8h.01" />
+							</svg>
+							Max 200 řádků / 1 MB
+						</div>
+					</div>
+					<div class="m-foot">
+						<button class="btn btn-ghost" hidden>Zpět</button>
+						<div class="m-foot-spacer"></div>
+						<button class="btn btn-ghost">Zrušit</button>
+						<button class="btn btn-primary" disabled>Pokračovat</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───────── STEP 1 — paste & sheets-link methods ───────── -->
+			<div class="section-label">
+				Krok 1 — Zdroj · „Vložit buňky" a „Odkaz na Tabulky Google"
+			</div>
+			<div class="stage" style="gap: 24px; flex-wrap: wrap">
+				<div
+					style="
+						position: relative;
+						z-index: 2;
+						flex: 1;
+						min-width: 320px;
+						max-width: 520px;
+					"
+				>
+					<div class="modal w-narrow">
+						<div class="m-head">
+							<div class="m-head-top">
+								<div class="m-title"><span class="dot"></span>Importovat dárky</div>
+								<button class="m-close" aria-label="Zavřít">
+									<svg
+										class="icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M18 6 6 18M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+							<div class="seg">
+								<div class="seg-item active">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">1</span
+										><span class="seg-name">Zdroj</span>
+									</div>
+								</div>
+								<div class="seg-item upcoming">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">2</span
+										><span class="seg-name">Kontrola</span>
+									</div>
+								</div>
+								<div class="seg-item upcoming">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">3</span
+										><span class="seg-name">Potvrzení</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="m-body">
+							<div class="toggle-group" role="group" aria-label="Zdroj dat">
+								<button class="toggle-btn" aria-pressed="false">
+									Nahrát soubor
+								</button>
+								<button class="toggle-btn" aria-pressed="true">Vložit buňky</button>
+								<button class="toggle-btn" aria-pressed="false">
+									Odkaz na Tabulky
+								</button>
+							</div>
+							<textarea
+								class="textarea"
+								placeholder="Ponožky z merino vlny	Vel. 42	alza.cz/...
+Kniha Atomové návyky		heureka.cz/...
+Hrnek s motivem hor		lidl.cz/..."
+							>
+Ponožky z merino vlny	Vel. 42–44	https://www.alza.cz/...
+Kniha Atomové návyky	Pevná vazba	https://www.heureka.cz/...
+Hrnek s motivem hor		https://www.lidl.cz/...</textarea
+							>
+							<p class="helper">
+								Zkopírujte rozsah buněk z Excelu nebo Tabulek Google a vložte je sem
+								(Ctrl+V).
+							</p>
+							<div class="limit-note">
+								<svg
+									class="icon-sm"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<path d="M12 16v-4M12 8h.01" /></svg
+								>Max 200 řádků / 1 MB
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost" hidden>Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary">Pokračovat</button>
+						</div>
+					</div>
+				</div>
+				<div
+					style="
+						position: relative;
+						z-index: 2;
+						flex: 1;
+						min-width: 320px;
+						max-width: 520px;
+					"
+				>
+					<div class="modal w-narrow">
+						<div class="m-head">
+							<div class="m-head-top">
+								<div class="m-title"><span class="dot"></span>Importovat dárky</div>
+								<button class="m-close" aria-label="Zavřít">
+									<svg
+										class="icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M18 6 6 18M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+							<div class="seg">
+								<div class="seg-item active">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">1</span
+										><span class="seg-name">Zdroj</span>
+									</div>
+								</div>
+								<div class="seg-item upcoming">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">2</span
+										><span class="seg-name">Kontrola</span>
+									</div>
+								</div>
+								<div class="seg-item upcoming">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">3</span
+										><span class="seg-name">Potvrzení</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="m-body">
+							<div class="toggle-group" role="group" aria-label="Zdroj dat">
+								<button class="toggle-btn" aria-pressed="false">
+									Nahrát soubor
+								</button>
+								<button class="toggle-btn" aria-pressed="false">
+									Vložit buňky
+								</button>
+								<button class="toggle-btn" aria-pressed="true">
+									Odkaz na Tabulky
+								</button>
+							</div>
+							<div class="link-row">
+								<input
+									class="input"
+									type="url"
+									placeholder="https://docs.google.com/spreadsheets/d/..."
+									value="https://docs.google.com/spreadsheets/d/1aB.../edit"
+								/>
+								<button class="btn btn-outline">Načíst</button>
+							</div>
+							<p class="helper">
+								Vložte odkaz na sdílenou nebo publikovanou tabulku Google. Tabulka
+								musí být přístupná přes odkaz.
+							</p>
+							<div class="limit-note">
+								<svg
+									class="icon-sm"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<path d="M12 16v-4M12 8h.01" /></svg
+								>Max 200 řádků / 1 MB
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost" hidden>Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary" disabled>Pokračovat</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───────── STEP 1 — error / state instances ───────── -->
+			<div class="section-label">Krok 1 — Zdroj · stavy a chyby</div>
+			<div
+				style="
+					padding: 0 32px;
+					display: grid;
+					grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+					gap: 16px;
+				"
+			>
+				<div>
+					<div class="variant-tag" style="margin-left: 0">Načítání (parsing)</div>
+					<div
+						class="alert"
+						style="
+							background: var(--surface-2);
+							border-color: var(--border);
+							color: var(--foreground-muted);
+						"
+					>
+						<span class="spinner a-icon"></span>
+						<div>
+							<strong style="color: var(--foreground)">Načítám data…</strong
+							>Zpracovávám soubor, vstup je dočasně uzamčen.
+						</div>
+					</div>
+				</div>
+				<div>
+					<div class="variant-tag" style="margin-left: 0">Chyba čtení (danger)</div>
+					<div class="alert alert-danger">
+						<svg
+							class="icon a-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<path d="M12 8v4M12 16h.01" />
+						</svg>
+						<div>
+							<strong>Soubor se nepodařilo načíst.</strong>Zkontrolujte formát
+							(CSV/TSV).
+						</div>
+					</div>
+				</div>
+				<div>
+					<div class="variant-tag" style="margin-left: 0">
+						Prázdné po parsování (warning)
+					</div>
+					<div class="alert alert-warning">
+						<svg
+							class="icon a-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path
+								d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+							/>
+							<path d="M12 9v4M12 17h.01" />
+						</svg>
+						<div>
+							<strong>Nenašli jsme žádné řádky k importu.</strong>Zkontrolujte, že
+							tabulka obsahuje data.
+						</div>
+					</div>
+				</div>
+				<div>
+					<div class="variant-tag" style="margin-left: 0">Soukromá tabulka (danger)</div>
+					<div class="alert alert-danger">
+						<svg
+							class="icon a-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<rect width="18" height="11" x="3" y="11" rx="2" />
+							<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+						</svg>
+						<div>
+							<strong>Tabulka není veřejně přístupná.</strong>Nastavte sdílení na
+							„Kdokoli s odkazem" nebo vložte publikovaný CSV odkaz.
+						</div>
+					</div>
+				</div>
+				<div>
+					<div class="variant-tag" style="margin-left: 0">Překročen limit (danger)</div>
+					<div class="alert alert-danger">
+						<svg
+							class="icon a-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<path d="M12 8v4M12 16h.01" />
+						</svg>
+						<div><strong>Příliš velký soubor.</strong>Max 200 řádků / 1 MB.</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───────── STEP 2 — KONTROLA (append focus) ───────── -->
+			<div class="section-label">
+				Krok 2 — Kontrola · připojení k „Vánoce 2026" (duplikáty v hlavní roli)
+			</div>
+			<div class="stage">
+				<div class="stage-bg">
+					<div class="stage-bg-grid">
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+					</div>
+				</div>
+				<div class="modal w-wide">
+					<div class="m-head">
+						<div class="m-head-top">
+							<div class="m-title"><span class="dot"></span>Importovat dárky</div>
+							<button class="m-close" aria-label="Zavřít">
+								<svg
+									class="icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M18 6 6 18M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+						<div class="seg">
+							<div class="seg-item done">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">✓</span
+									><span class="seg-name">Zdroj</span>
+								</div>
+							</div>
+							<div class="seg-item active">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">2</span
+									><span class="seg-name">Kontrola</span>
+								</div>
+							</div>
+							<div class="seg-item upcoming">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">3</span
+									><span class="seg-name">Potvrzení</span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="m-body">
+						<div class="dest-bar">
+							<span class="d-label">Připojit do</span>
+							<span class="d-name">Vánoce 2026</span>
+							<div style="flex: 1"></div>
+							<span class="dup-badge"
+								><svg
+									class="icon-sm"
+									style="width: 12px; height: 12px"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+									/>
+									<path d="M12 9v4M12 17h.01" /></svg
+								>2 možné duplikáty</span
+							>
+						</div>
+
+						<div class="review-cols">
+							<!-- LEFT: mapping + grid -->
+							<div>
+								<div class="mapping-bar">
+									<span
+										>Hlavička:
+										<strong style="color: var(--foreground)"
+											>řádek 3</strong
+										></span
+									>
+									<span class="skip-pill"
+										><svg
+											style="width: 11px; height: 11px"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
+											<path d="M18 6 6 18M6 6l12 12" /></svg
+										>Přeskočeno 2 řádky</span
+									>
+									<div style="flex: 1"></div>
+									<span class="hint-muted"
+										>Role sloupců nastaveny chytrým rozpoznáním</span
+									>
+								</div>
+								<div class="grid-wrap">
+									<div class="grid-scroll">
+										<table class="grid">
+											<thead>
+												<tr>
+													<th class="th-check">
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</th>
+													<th>
+														<select
+															class="role-select"
+															aria-label="Role sloupce 1"
+														>
+															<option>Název</option>
+															<option>Poznámka</option>
+															<option>Odkaz</option>
+															<option>Cena</option>
+															<option>Stav</option>
+															<option>Ignorovat</option>
+														</select>
+													</th>
+													<th>
+														<select
+															class="role-select"
+															aria-label="Role sloupce 2"
+														>
+															<option>Poznámka</option>
+															<option>Název</option>
+															<option>Odkaz</option>
+															<option>Cena</option>
+															<option>Stav</option>
+															<option>Ignorovat</option>
+														</select>
+													</th>
+													<th>
+														<select
+															class="role-select"
+															aria-label="Role sloupce 3"
+														>
+															<option>Odkaz</option>
+															<option>Název</option>
+															<option>Poznámka</option>
+															<option>Cena</option>
+															<option>Stav</option>
+															<option>Ignorovat</option>
+														</select>
+													</th>
+													<th>
+														<select
+															class="role-select"
+															aria-label="Role sloupce 4"
+															style="border-right: none"
+														>
+															<option>Stav</option>
+															<option>Cena</option>
+															<option>Ignorovat</option>
+														</select>
+													</th>
+												</tr>
+											</thead>
+											<tbody>
+												<tr class="row-dup">
+													<td>
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</td>
+													<td class="cell-name">
+														Ponožky z merino vlny
+														<span class="dup-badge"
+															>možný duplikát</span
+														>
+													</td>
+													<td class="cell-note">Vel. 42–44</td>
+													<td>
+														<a class="cell-link" href="#">↗ alza.cz</a>
+													</td>
+													<td class="cell-price">—</td>
+												</tr>
+												<tr>
+													<td>
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</td>
+													<td class="cell-name">Kniha Atomové návyky</td>
+													<td class="cell-note">Pevná vazba</td>
+													<td>
+														<a class="cell-link" href="#"
+															>↗ heureka.cz</a
+														>
+													</td>
+													<td class="cell-price">349 Kč</td>
+												</tr>
+												<tr class="row-dup">
+													<td>
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</td>
+													<td class="cell-name">
+														Hrnek s motivem hor
+														<span class="dup-badge"
+															>možný duplikát</span
+														>
+													</td>
+													<td class="cell-note">—</td>
+													<td>
+														<a class="cell-link" href="#">↗ lidl.cz</a>
+													</td>
+													<td class="cell-price">—</td>
+												</tr>
+												<tr>
+													<td>
+														<span class="cb off"
+															><svg viewBox="0 0 24 24">
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</td>
+													<td class="cell-name">Zahradní rukavice</td>
+													<td class="cell-note">vel. M</td>
+													<td>
+														<a class="cell-link" href="#">↗ alza.cz</a>
+													</td>
+													<td class="cell-price">199 Kč</td>
+												</tr>
+											</tbody>
+										</table>
+									</div>
+								</div>
+								<div class="sel-summary">
+									<span class="count-badge">Vybráno 21 z 24 řádků</span>
+									<span class="hint-muted">Odznačené řádky se nepřidají.</span>
+								</div>
+							</div>
+
+							<!-- RIGHT: existing items comparison -->
+							<aside class="exist-panel" aria-label="Existující dárky v seznamu">
+								<div class="exist-head">
+									<div class="e-title">Už v seznamu</div>
+									<div class="e-sub">Vánoce 2026 · pro porovnání duplikátů</div>
+								</div>
+								<div class="exist-list">
+									<div class="exist-item match">
+										<span class="exist-name">Ponožky merino</span
+										><span class="exist-host">alza.cz · možná shoda</span>
+									</div>
+									<div class="exist-item match">
+										<span class="exist-name">Hrnek s horami</span
+										><span class="exist-host">lidl.cz · možná shoda</span>
+									</div>
+									<div class="exist-item">
+										<span class="exist-name">Bezdrátová sluchátka</span
+										><span class="exist-host">alza.cz</span>
+									</div>
+									<div class="exist-item">
+										<span class="exist-name">Stolní hra Carcassonne</span
+										><span class="exist-host">heureka.cz</span>
+									</div>
+									<div class="exist-item">
+										<span class="exist-name">Termoska 0,5 l</span
+										><span class="exist-host">lidl.cz</span>
+									</div>
+								</div>
+							</aside>
+						</div>
+					</div>
+					<div class="m-foot">
+						<button class="btn btn-ghost">Zpět</button>
+						<div class="m-foot-spacer"></div>
+						<button class="btn btn-ghost">Zrušit</button>
+						<button class="btn btn-primary">Pokračovat</button>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───────── STEP 2 — new-list title variant + no-selection ───────── -->
+			<div class="section-label">
+				Krok 2 — Kontrola · varianta nového seznamu „Dárky Rosie" + stav bez výběru
+			</div>
+			<div class="stage" style="gap: 24px; flex-wrap: wrap">
+				<div
+					style="
+						position: relative;
+						z-index: 2;
+						flex: 1;
+						min-width: 340px;
+						max-width: 540px;
+					"
+				>
+					<div class="variant-tag" style="margin-left: 0">Nový seznam — pole názvu</div>
+					<div class="modal w-narrow">
+						<div class="m-body" style="padding-top: 18px">
+							<div class="title-field">
+								<label class="label" for="rosie">Název seznamu</label>
+								<input
+									class="input"
+									id="rosie"
+									value="Dárky Rosie"
+									style="min-height: 44px; width: 100%"
+								/>
+								<p class="helper" style="margin-top: 6px">
+									Předvyplněno z názvu souboru — volně upravitelné.
+								</p>
+							</div>
+							<div
+								class="mapping-bar"
+								style="border-radius: var(--radius-md) var(--radius-md) 0 0"
+							>
+								<span
+									>Hlavička:
+									<strong style="color: var(--foreground)">řádek 3</strong></span
+								>
+								<span class="skip-pill">Přeskočeno 2 řádky</span>
+							</div>
+							<div class="grid-wrap">
+								<div class="grid-scroll">
+									<table class="grid" style="min-width: 380px">
+										<tbody>
+											<tr>
+												<td style="width: 36px">
+													<span class="cb on"
+														><svg
+															style="width: 12px; height: 12px"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="3"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+														>
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name">Ponožky z merino vlny</td>
+												<td><a class="cell-link" href="#">↗ alza.cz</a></td>
+											</tr>
+											<tr>
+												<td>
+													<span class="cb on"
+														><svg
+															style="width: 12px; height: 12px"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="3"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+														>
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name">Kniha Atomové návyky</td>
+												<td>
+													<a class="cell-link" href="#">↗ heureka.cz</a>
+												</td>
+											</tr>
+											<tr>
+												<td>
+													<span class="cb on"
+														><svg
+															style="width: 12px; height: 12px"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="3"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+														>
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name">Hrnek s motivem hor</td>
+												<td><a class="cell-link" href="#">↗ lidl.cz</a></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+							<div class="sel-summary">
+								<span class="count-badge">Vybráno 21 z 24 řádků</span>
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost">Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary">Pokračovat</button>
+						</div>
+					</div>
+				</div>
+				<div
+					style="
+						position: relative;
+						z-index: 2;
+						flex: 1;
+						min-width: 340px;
+						max-width: 540px;
+					"
+				>
+					<div class="variant-tag" style="margin-left: 0">
+						Žádný řádek nevybrán — zablokováno
+					</div>
+					<div class="modal w-narrow">
+						<div class="m-body" style="padding-top: 18px">
+							<div class="grid-wrap" style="border-radius: var(--radius-md)">
+								<div class="grid-scroll">
+									<table class="grid" style="min-width: 380px">
+										<tbody>
+											<tr>
+												<td style="width: 36px">
+													<span class="cb off"
+														><svg viewBox="0 0 24 24">
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name" style="opacity: 0.6">
+													Ponožky z merino vlny
+												</td>
+												<td><a class="cell-link" href="#">↗ alza.cz</a></td>
+											</tr>
+											<tr>
+												<td>
+													<span class="cb off"
+														><svg viewBox="0 0 24 24">
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name" style="opacity: 0.6">
+													Kniha Atomové návyky
+												</td>
+												<td>
+													<a class="cell-link" href="#">↗ heureka.cz</a>
+												</td>
+											</tr>
+											<tr>
+												<td>
+													<span class="cb off"
+														><svg viewBox="0 0 24 24">
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name" style="opacity: 0.6">
+													Hrnek s motivem hor
+												</td>
+												<td><a class="cell-link" href="#">↗ lidl.cz</a></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+							<div class="sel-summary">
+								<span class="hint-error">Vyberte alespoň jeden řádek.</span>
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost">Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary" disabled>Pokračovat</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───────── STEP 3 — POTVRZENÍ ───────── -->
+			<div class="section-label">
+				Krok 3 — Potvrzení · append + duplikáty / nový seznam / commit / úspěch / chyba
+			</div>
+			<div
+				class="stage"
+				style="
+					display: grid;
+					grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+					gap: 20px;
+					justify-items: stretch;
+				"
+			>
+				<!-- append + dup caveat -->
+				<div style="position: relative; z-index: 2">
+					<div class="variant-tag" style="margin-left: 0">
+						Připojení + upozornění na duplikáty
+					</div>
+					<div class="modal w-narrow">
+						<div class="m-head">
+							<div class="m-head-top">
+								<div class="m-title"><span class="dot"></span>Importovat dárky</div>
+								<button class="m-close" aria-label="Zavřít">
+									<svg
+										class="icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M18 6 6 18M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+							<div class="seg">
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Zdroj</span>
+									</div>
+								</div>
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Kontrola</span>
+									</div>
+								</div>
+								<div class="seg-item active">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">3</span
+										><span class="seg-name">Potvrzení</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="m-body">
+							<div class="confirm-card">
+								<div class="confirm-summary">
+									Přidat <b>8 dárků</b> do <b>Vánoce 2026</b>.
+								</div>
+								<div class="confirm-sub">
+									Vytvoří se pouze vybrané platné řádky.
+								</div>
+							</div>
+							<div class="alert alert-warning">
+								<svg
+									class="icon a-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+									/>
+									<path d="M12 9v4M12 17h.01" />
+								</svg>
+								<div>
+									<strong>2 z nich jsou možné duplikáty.</strong>Zkontrolujte je v
+									kroku Kontrola, nebo pokračujte.
+								</div>
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost">Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary">Přidat dárky</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- new list summary -->
+				<div style="position: relative; z-index: 2">
+					<div class="variant-tag" style="margin-left: 0">Nový seznam — souhrn</div>
+					<div class="modal w-narrow">
+						<div class="m-body" style="padding-top: 18px">
+							<div class="confirm-card">
+								<div class="confirm-summary">
+									Vytvořit seznam <b>Dárky Rosie</b> s <b>21 dárky</b>.
+								</div>
+								<div class="confirm-sub">
+									Nový seznam bude vytvořen s vybranými řádky.
+								</div>
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost">Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary">Vytvořit seznam</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- committing -->
+				<div style="position: relative; z-index: 2">
+					<div class="variant-tag" style="margin-left: 0">Probíhá import (commit)</div>
+					<div class="modal w-narrow">
+						<div class="m-body" style="padding-top: 18px">
+							<div class="confirm-card">
+								<div class="confirm-summary">
+									Přidat <b>8 dárků</b> do <b>Vánoce 2026</b>.
+								</div>
+								<div class="progress-track"><i></i></div>
+								<div class="commit-status">
+									<span class="spinner"></span>Importuji…
+								</div>
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost" disabled>Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost" disabled>Zrušit</button
+							><button class="btn btn-primary" disabled>
+								<span
+									class="spinner"
+									style="
+										border-top-color: var(--primary-fg);
+										border-color: color-mix(
+											in oklch,
+											var(--primary-fg) 40%,
+											transparent
+										);
+									"
+								></span
+								>Importuji…
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- success -->
+				<div style="position: relative; z-index: 2">
+					<div class="variant-tag" style="margin-left: 0">Hotovo (úspěch)</div>
+					<div class="modal w-narrow">
+						<div class="m-head">
+							<div class="m-head-top">
+								<div class="m-title"><span class="dot"></span>Importovat dárky</div>
+								<button class="m-close" aria-label="Zavřít">
+									<svg
+										class="icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M18 6 6 18M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+							<div class="seg">
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Zdroj</span>
+									</div>
+								</div>
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Kontrola</span>
+									</div>
+								</div>
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Potvrzení</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="m-body">
+							<div class="success-wrap">
+								<span class="success-ring"
+									><svg
+										style="width: 28px; height: 28px"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.4"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M20 6 9 17l-5-5" /></svg
+								></span>
+								<div class="success-title">Hotovo — přidáno 21 dárků.</div>
+								<a class="btn btn-primary" href="#">Otevřít seznam →</a>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- commit error -->
+				<div style="position: relative; z-index: 2">
+					<div class="variant-tag" style="margin-left: 0">Chyba importu — opakovat</div>
+					<div class="modal w-narrow">
+						<div class="m-body" style="padding-top: 18px">
+							<div class="alert alert-danger">
+								<svg
+									class="icon a-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<path d="M12 8v4M12 16h.01" />
+								</svg>
+								<div>
+									<strong>Import se nezdařil.</strong>Vaše výběry zůstaly
+									zachovány. Zkuste to znovu.
+								</div>
+							</div>
+						</div>
+						<div class="m-foot">
+							<button class="btn btn-ghost">Zpět</button>
+							<div class="m-foot-spacer"></div>
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary">Zkusit znovu</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ───────── MOBILE SHEET ───────── -->
+			<div class="section-label">Mobil (375px) — celoobrazovkový sheet, první třída</div>
+			<div class="phone-row">
+				<!-- mobile step 1 -->
+				<div class="phone">
+					<div class="phone-notch"></div>
+					<div class="sheet">
+						<div class="sheet-head">
+							<div class="sheet-top">
+								<div class="sheet-title">Importovat dárky</div>
+								<button
+									class="m-close"
+									aria-label="Zavřít"
+									style="width: 44px; height: 44px"
+								>
+									<svg
+										class="icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M18 6 6 18M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+							<div class="seg">
+								<div class="seg-item active">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">1</span
+										><span class="seg-name">Zdroj</span>
+									</div>
+								</div>
+								<div class="seg-item upcoming">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">2</span
+										><span class="seg-name">Kontrola</span>
+									</div>
+								</div>
+								<div class="seg-item upcoming">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">3</span
+										><span class="seg-name">Potvrzení</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="sheet-body">
+							<div class="toggle-stack" role="group" aria-label="Zdroj dat">
+								<button class="toggle-btn" aria-pressed="true">
+									Nahrát soubor
+								</button>
+								<button class="toggle-btn" aria-pressed="false">
+									Vložit buňky
+								</button>
+								<button class="toggle-btn" aria-pressed="false">
+									Odkaz na Tabulky Google
+								</button>
+							</div>
+							<div class="dropzone">
+								<svg
+									class="dz-icon"
+									style="width: 30px; height: 30px"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.6"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path
+										d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"
+									/>
+									<path d="M12 12v9" />
+									<path d="m16 16-4-4-4 4" />
+								</svg>
+								<div class="dz-title" style="font-size: 14px">
+									Přetáhněte .csv / .tsv
+								</div>
+								<div class="dz-sub">nebo klikněte pro výběr</div>
+							</div>
+							<div class="limit-note">
+								<svg
+									class="icon-sm"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<circle cx="12" cy="12" r="10" />
+									<path d="M12 16v-4M12 8h.01" /></svg
+								>Max 200 řádků / 1 MB
+							</div>
+						</div>
+						<div class="sheet-foot">
+							<button class="btn btn-ghost">Zrušit</button
+							><button class="btn btn-primary" disabled>Pokračovat</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- mobile step 2 review (append, dup, mapping stacked, grid scrolls) -->
+				<div class="phone">
+					<div class="phone-notch"></div>
+					<div class="sheet">
+						<div class="sheet-head">
+							<div class="sheet-top">
+								<div class="sheet-title">Importovat dárky</div>
+								<button
+									class="m-close"
+									aria-label="Zavřít"
+									style="width: 44px; height: 44px"
+								>
+									<svg
+										class="icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M18 6 6 18M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+							<div class="seg">
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Zdroj</span>
+									</div>
+								</div>
+								<div class="seg-item active">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">2</span
+										><span class="seg-name">Kontrola</span>
+									</div>
+								</div>
+								<div class="seg-item upcoming">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">3</span
+										><span class="seg-name">Potvrzení</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="sheet-body">
+							<div class="dest-bar" style="margin-bottom: 12px">
+								<span class="d-label">Připojit do</span
+								><span class="d-name">Vánoce 2026</span>
+							</div>
+							<div
+								class="mapping-bar"
+								style="border-radius: var(--radius-md) var(--radius-md) 0 0"
+							>
+								<span
+									>Hlavička:
+									<strong style="color: var(--foreground)">řádek 3</strong></span
+								><span class="skip-pill">Přeskočeno 2 řádky</span>
+							</div>
+							<div class="grid-wrap">
+								<div class="grid-scroll">
+									<table class="grid" style="min-width: 480px">
+										<tbody>
+											<tr class="row-dup">
+												<td style="width: 34px">
+													<span class="cb on"
+														><svg
+															style="width: 12px; height: 12px"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="3"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+														>
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name">
+													Ponožky z merino vlny<br /><span
+														class="dup-badge"
+														>možný duplikát</span
+													>
+												</td>
+												<td><a class="cell-link" href="#">↗ alza.cz</a></td>
+											</tr>
+											<tr>
+												<td>
+													<span class="cb on"
+														><svg
+															style="width: 12px; height: 12px"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="3"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+														>
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name">Kniha Atomové návyky</td>
+												<td>
+													<a class="cell-link" href="#">↗ heureka.cz</a>
+												</td>
+											</tr>
+											<tr class="row-dup">
+												<td>
+													<span class="cb on"
+														><svg
+															style="width: 12px; height: 12px"
+															viewBox="0 0 24 24"
+															fill="none"
+															stroke="currentColor"
+															stroke-width="3"
+															stroke-linecap="round"
+															stroke-linejoin="round"
+														>
+															<path d="M20 6 9 17l-5-5" /></svg
+													></span>
+												</td>
+												<td class="cell-name">
+													Hrnek s motivem hor<br /><span class="dup-badge"
+														>možný duplikát</span
+													>
+												</td>
+												<td><a class="cell-link" href="#">↗ lidl.cz</a></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</div>
+							<div class="sel-summary">
+								<span class="count-badge">Vybráno 21 z 24 řádků</span>
+							</div>
+							<details style="margin-top: 12px">
+								<summary
+									style="
+										cursor: pointer;
+										font-size: 13px;
+										font-weight: 600;
+										color: var(--foreground-muted);
+									"
+								>
+									Už v seznamu (pro porovnání)
+								</summary>
+								<div class="exist-panel" style="margin-top: 8px">
+									<div class="exist-list">
+										<div class="exist-item match">
+											<span class="exist-name">Ponožky merino</span
+											><span class="exist-host">alza.cz · možná shoda</span>
+										</div>
+										<div class="exist-item match">
+											<span class="exist-name">Hrnek s horami</span
+											><span class="exist-host">lidl.cz · možná shoda</span>
+										</div>
+										<div class="exist-item">
+											<span class="exist-name">Termoska 0,5 l</span
+											><span class="exist-host">lidl.cz</span>
+										</div>
+									</div>
+								</div>
+							</details>
+						</div>
+						<div class="sheet-foot">
+							<button class="btn btn-ghost">Zpět</button
+							><button class="btn btn-primary">Pokračovat</button>
+						</div>
+					</div>
+				</div>
+
+				<!-- mobile step 3 success -->
+				<div class="phone">
+					<div class="phone-notch"></div>
+					<div class="sheet">
+						<div class="sheet-head">
+							<div class="sheet-top">
+								<div class="sheet-title">Importovat dárky</div>
+								<button
+									class="m-close"
+									aria-label="Zavřít"
+									style="width: 44px; height: 44px"
+								>
+									<svg
+										class="icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M18 6 6 18M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+							<div class="seg">
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Zdroj</span>
+									</div>
+								</div>
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Kontrola</span>
+									</div>
+								</div>
+								<div class="seg-item done">
+									<div class="seg-bar"><i></i></div>
+									<div class="seg-meta">
+										<span class="seg-num">✓</span
+										><span class="seg-name">Potvrzení</span>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div
+							class="sheet-body"
+							style="display: flex; align-items: center; justify-content: center"
+						>
+							<div class="success-wrap">
+								<span class="success-ring"
+									><svg
+										style="width: 28px; height: 28px"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.4"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M20 6 9 17l-5-5" /></svg
+								></span>
+								<div class="success-title">Hotovo — přidáno 21 dárků.</div>
+							</div>
+						</div>
+						<div class="sheet-foot">
+							<a class="btn btn-primary" href="#" style="flex: 1">Otevřít seznam →</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ════════════════════════ DARK ════════════════════════ -->
+		<div class="theme-dark page" style="border-top: 4px solid var(--primary)">
+			<header class="page-head">
+				<div class="eyebrow">
+					Variant C — Segmented Progress / Append-focus · tmavý režim
+				</div>
+				<h1>Importovat dárky — tmavý režim</h1>
+				<p>
+					Stejný průvodce v tmavém režimu: vyvýšené karty jsou světlejší než pozadí
+					(hloubka bez těžkých stínů), sage zelená drží plnění postupu i hlavní CTA.
+				</p>
+			</header>
+
+			<div class="section-label">Krok 2 — Kontrola (tmavý, append + duplikáty)</div>
+			<div class="stage">
+				<div class="stage-bg">
+					<div class="stage-bg-grid">
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+						<div class="stage-bg-card"></div>
+					</div>
+				</div>
+				<div class="modal w-wide">
+					<div class="m-head">
+						<div class="m-head-top">
+							<div class="m-title"><span class="dot"></span>Importovat dárky</div>
+							<button class="m-close" aria-label="Zavřít">
+								<svg
+									class="icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M18 6 6 18M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+						<div class="seg">
+							<div class="seg-item done">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">✓</span
+									><span class="seg-name">Zdroj</span>
+								</div>
+							</div>
+							<div class="seg-item active">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">2</span
+									><span class="seg-name">Kontrola</span>
+								</div>
+							</div>
+							<div class="seg-item upcoming">
+								<div class="seg-bar"><i></i></div>
+								<div class="seg-meta">
+									<span class="seg-num">3</span
+									><span class="seg-name">Potvrzení</span>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="m-body">
+						<div class="dest-bar">
+							<span class="d-label">Připojit do</span
+							><span class="d-name">Vánoce 2026</span>
+							<div style="flex: 1"></div>
+							<span class="dup-badge">2 možné duplikáty</span>
+						</div>
+						<div class="review-cols">
+							<div>
+								<div class="mapping-bar">
+									<span
+										>Hlavička:
+										<strong style="color: var(--foreground)"
+											>řádek 3</strong
+										></span
+									><span class="skip-pill">Přeskočeno 2 řádky</span>
+									<div style="flex: 1"></div>
+									<span class="hint-muted">Role nastaveny automaticky</span>
+								</div>
+								<div class="grid-wrap">
+									<div class="grid-scroll">
+										<table class="grid">
+											<thead>
+												<tr>
+													<th class="th-check">
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</th>
+													<th>
+														<select class="role-select">
+															<option>Název</option>
+															<option>Poznámka</option>
+															<option>Odkaz</option>
+															<option>Cena</option>
+															<option>Stav</option>
+															<option>Ignorovat</option>
+														</select>
+													</th>
+													<th>
+														<select class="role-select">
+															<option>Poznámka</option>
+															<option>Název</option>
+														</select>
+													</th>
+													<th>
+														<select
+															class="role-select"
+															style="border-right: none"
+														>
+															<option>Odkaz</option>
+															<option>Cena</option>
+														</select>
+													</th>
+												</tr>
+											</thead>
+											<tbody>
+												<tr class="row-dup">
+													<td>
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</td>
+													<td class="cell-name">
+														Ponožky z merino vlny
+														<span class="dup-badge"
+															>možný duplikát</span
+														>
+													</td>
+													<td class="cell-note">Vel. 42–44</td>
+													<td>
+														<a class="cell-link" href="#">↗ alza.cz</a>
+													</td>
+												</tr>
+												<tr>
+													<td>
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</td>
+													<td class="cell-name">Kniha Atomové návyky</td>
+													<td class="cell-note">Pevná vazba</td>
+													<td>
+														<a class="cell-link" href="#"
+															>↗ heureka.cz</a
+														>
+													</td>
+												</tr>
+												<tr class="row-dup">
+													<td>
+														<span class="cb on"
+															><svg
+																style="width: 12px; height: 12px"
+																viewBox="0 0 24 24"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="3"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+															>
+																<path d="M20 6 9 17l-5-5" /></svg
+														></span>
+													</td>
+													<td class="cell-name">
+														Hrnek s motivem hor
+														<span class="dup-badge"
+															>možný duplikát</span
+														>
+													</td>
+													<td class="cell-note">—</td>
+													<td>
+														<a class="cell-link" href="#">↗ lidl.cz</a>
+													</td>
+												</tr>
+											</tbody>
+										</table>
+									</div>
+								</div>
+								<div class="sel-summary">
+									<span class="count-badge">Vybráno 21 z 24 řádků</span
+									><span class="hint-muted">Odznačené řádky se nepřidají.</span>
+								</div>
+							</div>
+							<aside class="exist-panel">
+								<div class="exist-head">
+									<div class="e-title">Už v seznamu</div>
+									<div class="e-sub">Vánoce 2026 · porovnání</div>
+								</div>
+								<div class="exist-list">
+									<div class="exist-item match">
+										<span class="exist-name">Ponožky merino</span
+										><span class="exist-host">alza.cz · možná shoda</span>
+									</div>
+									<div class="exist-item match">
+										<span class="exist-name">Hrnek s horami</span
+										><span class="exist-host">lidl.cz · možná shoda</span>
+									</div>
+									<div class="exist-item">
+										<span class="exist-name">Bezdrátová sluchátka</span
+										><span class="exist-host">alza.cz</span>
+									</div>
+									<div class="exist-item">
+										<span class="exist-name">Termoska 0,5 l</span
+										><span class="exist-host">lidl.cz</span>
+									</div>
+								</div>
+							</aside>
+						</div>
+					</div>
+					<div class="m-foot">
+						<button class="btn btn-ghost">Zpět</button>
+						<div class="m-foot-spacer"></div>
+						<button class="btn btn-ghost">Zrušit</button
+						><button class="btn btn-primary">Pokračovat</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="section-label">Krok 1 chyby + Krok 3 úspěch (tmavý)</div>
+			<div
+				class="stage"
+				style="
+					display: grid;
+					grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+					gap: 20px;
+					justify-items: stretch;
+				"
+			>
+				<div style="position: relative; z-index: 2">
+					<div class="variant-tag" style="margin-left: 0">Soukromá tabulka (danger)</div>
+					<div class="modal w-narrow">
+						<div class="m-body" style="padding-top: 18px">
+							<div class="alert alert-danger">
+								<svg
+									class="icon a-icon"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<rect width="18" height="11" x="3" y="11" rx="2" />
+									<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+								</svg>
+								<div>
+									<strong>Tabulka není veřejně přístupná.</strong>Nastavte sdílení
+									na „Kdokoli s odkazem" nebo vložte publikovaný CSV odkaz.
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div style="position: relative; z-index: 2">
+					<div class="variant-tag" style="margin-left: 0">Hotovo (úspěch)</div>
+					<div class="modal w-narrow">
+						<div class="m-body" style="padding-top: 18px">
+							<div class="success-wrap">
+								<span class="success-ring"
+									><svg
+										style="width: 28px; height: 28px"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2.4"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M20 6 9 17l-5-5" /></svg
+								></span>
+								<div class="success-title">Hotovo — přidáno 21 dárků.</div>
+								<a class="btn btn-primary" href="#">Otevřít seznam →</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="height: 24px"></div>
+		</div>
+	</body>
+</html>

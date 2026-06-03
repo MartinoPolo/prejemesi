@@ -1,0 +1,2099 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Card v2 — Variant C: Soft & Friendly</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			/* ── Sage theme — light (source of truth) ───────────────── */
+			.theme-light {
+				--background: oklch(0.985 0.006 145);
+				--surface: oklch(1 0 0);
+				--card: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 145);
+				--surface-3: oklch(0.95 0.012 145);
+				--surface-hover: oklch(0.95 0.012 145);
+				--muted: oklch(0.965 0.008 145);
+				--foreground: oklch(0.17 0.012 150);
+				--foreground-muted: oklch(0.45 0.025 150);
+				--muted-foreground: oklch(0.45 0.025 150);
+				--foreground-subtle: oklch(0.62 0.018 150);
+				--border: oklch(0.92 0.012 145);
+				--border-strong: oklch(0.86 0.02 145);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.2% 0.018 155.826deg);
+				--primary-soft: oklch(0.93 0.045 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--status-danger: oklch(0.55 0.2 25);
+				--status-warning: oklch(0.72 0.15 75);
+				--status-success: oklch(0.62 0.13 145);
+				--color-reserved: oklch(0.62 0.13 145);
+				--color-liked: oklch(0.64 0.18 15);
+				--priority-high-bg: oklch(0.92 0.06 25);
+				--priority-high-fg: oklch(0.45 0.15 25);
+				--priority-mid-bg: oklch(0.93 0.05 75);
+				--priority-mid-fg: oklch(0.5 0.12 75);
+			}
+			.theme-dark {
+				--background: oklch(0.15 0.01 150);
+				--surface: oklch(0.19 0.014 150);
+				--card: oklch(0.19 0.014 150);
+				--surface-2: oklch(0.23 0.016 150);
+				--surface-3: oklch(0.27 0.018 150);
+				--surface-hover: oklch(0.27 0.018 150);
+				--muted: oklch(0.23 0.016 150);
+				--foreground: oklch(0.96 0.008 145);
+				--foreground-muted: oklch(0.68 0.02 145);
+				--muted-foreground: oklch(0.68 0.02 145);
+				--foreground-subtle: oklch(0.5 0.016 145);
+				--border: oklch(0.28 0.016 150);
+				--border-strong: oklch(0.36 0.02 150);
+				--primary: oklch(62% 0.154 150.069deg);
+				--primary-fg: oklch(0.13 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(62% 0.154 150.069deg);
+				--status-danger: oklch(0.6 0.19 25);
+				--status-warning: oklch(0.75 0.14 75);
+				--status-success: oklch(0.62 0.13 145);
+				--color-reserved: oklch(0.62 0.13 145);
+				--color-liked: oklch(0.64 0.18 15);
+				--priority-high-bg: oklch(0.32 0.08 25);
+				--priority-high-fg: oklch(0.85 0.1 25);
+				--priority-mid-bg: oklch(0.33 0.07 75);
+				--priority-mid-fg: oklch(0.85 0.09 75);
+			}
+
+			/* ── Reset & page scaffold ──────────────────────────────── */
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: var(--font-sans);
+				-webkit-font-smoothing: antialiased;
+				text-rendering: optimizeLegibility;
+			}
+			.panel {
+				background: var(--background);
+				color: var(--foreground);
+				padding: 48px 32px 80px;
+				min-height: 100vh;
+			}
+			.panel-head {
+				max-width: 1180px;
+				margin: 0 auto 40px;
+			}
+			.eyebrow {
+				display: inline-block;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--primary);
+				background: var(--primary-soft);
+				padding: 6px 14px;
+				border-radius: var(--radius-full);
+				margin-bottom: 14px;
+			}
+			.panel-title {
+				font-family: var(--font-heading);
+				font-size: 30px;
+				font-weight: 700;
+				letter-spacing: -0.025em;
+				line-height: 1.12;
+				color: var(--foreground);
+			}
+			.panel-desc {
+				margin-top: 8px;
+				font-size: 15px;
+				color: var(--foreground-muted);
+				max-width: 640px;
+				line-height: 1.5;
+			}
+			.section {
+				max-width: 1180px;
+				margin: 0 auto;
+			}
+			.section-label {
+				font-family: var(--font-heading);
+				font-size: 17px;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+				color: var(--foreground);
+				margin: 48px 0 6px;
+				padding-bottom: 10px;
+				border-bottom: 1.5px solid var(--border);
+			}
+			.section-note {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+				margin-bottom: 24px;
+			}
+			.case-label {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 12px;
+			}
+			.card-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+				gap: 24px;
+				align-items: start;
+			}
+			.case {
+				min-width: 0;
+			}
+
+			/* ── CARD MODE — soft & friendly ────────────────────────── */
+			.gcard {
+				position: relative;
+				background: var(--card);
+				border-radius: var(--radius-2xl); /* 20px — large, friendly */
+				box-shadow:
+					0 6px 24px oklch(0.5 0.05 150 / 0.07),
+					0 1px 3px oklch(0.5 0.05 150 / 0.05);
+				overflow: hidden;
+				cursor: pointer;
+				transition:
+					box-shadow var(--duration-normal) var(--ease-standard),
+					transform var(--duration-normal) var(--ease-standard);
+			}
+			.theme-dark .gcard {
+				background: var(--surface);
+				box-shadow: none;
+				outline: 1px solid var(--border);
+			}
+			.gcard:hover {
+				box-shadow:
+					0 14px 36px oklch(0.5 0.05 150 / 0.12),
+					0 2px 6px oklch(0.5 0.05 150 / 0.06);
+				transform: translateY(-3px);
+			}
+			.theme-dark .gcard:hover {
+				background: var(--surface-2);
+				outline-color: var(--border-strong);
+			}
+			.gcard:focus-visible {
+				outline: var(--focus-ring-width) solid var(--ring);
+				outline-offset: 3px;
+			}
+
+			.gcard-img {
+				position: relative;
+				height: 160px;
+				width: 100%;
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				overflow: hidden;
+			}
+			.gcard-img img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+			}
+			/* friendly themed emoji fallback — charming & prominent */
+			.gcard-fallback {
+				background: radial-gradient(
+					circle at 50% 38%,
+					var(--primary-soft),
+					color-mix(in oklch, var(--primary-soft) 70%, var(--surface-3))
+				);
+			}
+			.gcard-fallback .emoji {
+				font-size: 56px;
+				line-height: 1;
+				filter: drop-shadow(0 4px 8px oklch(0.4 0.06 150 / 0.18));
+			}
+
+			/* image overlay badges (top-right) */
+			.img-badge {
+				position: absolute;
+				top: 12px;
+				right: 12px;
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 28px;
+				padding: 0 12px;
+				border-radius: var(--radius-full);
+				font-size: 12px;
+				font-weight: 600;
+				backdrop-filter: blur(6px);
+				z-index: 3;
+			}
+			.img-badge-received {
+				background: color-mix(in oklch, var(--status-success) 88%, transparent);
+				color: oklch(0.99 0.01 150);
+			}
+
+			/* fully reserved — softly blurred image + centered pill */
+			.gcard.is-full .gcard-img img {
+				filter: blur(2px) saturate(0.8);
+				transform: scale(1.04);
+			}
+			.gcard.is-full .gcard-img::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(
+					to bottom,
+					oklch(0.55 0.06 150 / 0.28),
+					oklch(0.45 0.05 150 / 0.42)
+				);
+				z-index: 1;
+			}
+			.reserved-pill {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				z-index: 4;
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				padding: 9px 18px;
+				border-radius: var(--radius-full);
+				background: color-mix(in oklch, var(--color-reserved) 92%, transparent);
+				color: oklch(0.99 0.01 150);
+				font-size: 13px;
+				font-weight: 700;
+				letter-spacing: 0.01em;
+				box-shadow: 0 4px 16px oklch(0.3 0.04 150 / 0.3);
+			}
+			.gcard.is-full {
+				opacity: 0.78;
+			}
+
+			/* drag handle (owner draft) — hover reveal */
+			.drag-handle {
+				position: absolute;
+				top: 12px;
+				left: 12px;
+				z-index: 3;
+				width: 30px;
+				height: 30px;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: var(--radius-full);
+				background: color-mix(in oklch, var(--surface) 82%, transparent);
+				backdrop-filter: blur(6px);
+				color: var(--foreground-muted);
+				opacity: 0;
+				transition: opacity var(--duration-normal);
+				cursor: grab;
+			}
+			.gcard:hover .drag-handle {
+				opacity: 1;
+			}
+			.drag-handle:active {
+				cursor: grabbing;
+			}
+
+			.gcard-body {
+				padding: 16px;
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+			.gcard-name {
+				font-family: var(--font-heading);
+				font-size: 15px;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+				line-height: 1.25;
+				color: var(--foreground);
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
+			.gcard-count {
+				font-size: 14px;
+				color: var(--foreground-muted);
+				font-weight: 500;
+			}
+			.gcard-count .reserved {
+				color: var(--color-reserved);
+				font-weight: 600;
+			}
+			.gcard-count .sep {
+				color: var(--foreground-subtle);
+				margin: 0 2px;
+			}
+
+			.gcard-meta {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+			}
+			.gcard-price {
+				font-size: 17px;
+				font-weight: 700;
+				color: var(--primary);
+				letter-spacing: -0.01em;
+			}
+			.gcard-price.is-empty {
+				font-size: 14px;
+				font-weight: 500;
+				color: var(--foreground-subtle);
+			}
+			.priority {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				height: 24px;
+				padding: 0 11px;
+				border-radius: var(--radius-full);
+				font-size: 12px;
+				font-weight: 600;
+			}
+			.priority-high {
+				background: var(--priority-high-bg);
+				color: var(--priority-high-fg);
+			}
+			.priority-mid {
+				background: var(--priority-mid-bg);
+				color: var(--priority-mid-fg);
+			}
+			.priority-low {
+				background: var(--muted);
+				color: var(--muted-foreground);
+			}
+
+			/* links — soft rounded pill chips, sage tint on hover */
+			.gcard-links {
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+				margin-top: 2px;
+			}
+			.link-chip {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 8px 12px;
+				border-radius: var(--radius-full);
+				background: var(--surface-2);
+				color: var(--foreground-muted);
+				font-size: 12px;
+				font-weight: 500;
+				text-decoration: none;
+				transition:
+					background var(--duration-normal),
+					color var(--duration-normal);
+				min-width: 0;
+			}
+			.link-chip .ico {
+				flex: none;
+				color: var(--foreground-subtle);
+				transition: color var(--duration-normal);
+			}
+			.link-chip .domain {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.link-chip.primary {
+				background: var(--primary-soft);
+				color: var(--primary);
+				font-weight: 600;
+			}
+			.link-chip.primary .ico {
+				color: var(--primary);
+			}
+			.link-chip:hover {
+				background: color-mix(in oklch, var(--primary-soft) 70%, var(--surface-2));
+				color: var(--primary);
+			}
+			.link-chip:hover .ico {
+				color: var(--primary);
+			}
+			.link-chip.primary:hover {
+				background: color-mix(in oklch, var(--primary) 18%, var(--primary-soft));
+			}
+			.link-chip:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.link-more {
+				justify-content: center;
+				background: transparent;
+				color: var(--primary);
+				font-weight: 600;
+			}
+			.link-more:hover {
+				background: var(--primary-soft);
+			}
+			.link-none {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				padding: 6px 2px;
+				font-style: italic;
+			}
+
+			/* footer (visitor/moderator only) */
+			.gcard-footer {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 10px;
+				margin-top: 4px;
+				padding-top: 14px;
+				border-top: 1px solid var(--border);
+			}
+			.like-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				border: none;
+				background: transparent;
+				color: var(--foreground-subtle);
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				padding: 6px 8px;
+				border-radius: var(--radius-full);
+				transition:
+					color var(--duration-normal),
+					background var(--duration-normal);
+			}
+			.like-btn:hover {
+				color: var(--color-liked);
+				background: color-mix(in oklch, var(--color-liked) 10%, transparent);
+			}
+			.like-btn:active {
+				transform: scale(0.94);
+			}
+			.like-btn:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.like-btn.is-liked {
+				color: var(--color-liked);
+			}
+			.like-btn.is-liked svg {
+				fill: var(--color-liked);
+			}
+
+			.reserve-btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				height: 38px;
+				padding: 0 18px;
+				border-radius: var(--radius-full);
+				border: 1.5px solid transparent;
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				transition:
+					filter var(--duration-normal),
+					background var(--duration-normal),
+					transform var(--duration-fast);
+				box-shadow: 0 2px 8px oklch(0.5 0.1 150 / 0.18);
+			}
+			.reserve-btn:hover {
+				filter: brightness(1.08);
+			}
+			.reserve-btn:active {
+				transform: scale(0.96);
+			}
+			.reserve-btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.reserve-btn:disabled,
+			.reserve-btn.is-disabled {
+				background: var(--surface-2);
+				color: var(--foreground-subtle);
+				box-shadow: none;
+				border-color: var(--border);
+				cursor: not-allowed;
+				filter: none;
+				transform: none;
+			}
+
+			/* skeleton */
+			.skel {
+				background: linear-gradient(
+					90deg,
+					var(--surface-2) 25%,
+					var(--surface-3) 50%,
+					var(--surface-2) 75%
+				);
+				background-size: 200% 100%;
+				animation: dk-shimmer 1.4s ease-in-out infinite;
+				border-radius: var(--radius-full);
+			}
+			.skel-img {
+				height: 160px;
+				border-radius: 0;
+			}
+			.skel-line {
+				height: 13px;
+			}
+
+			/* ── LIST MODE ──────────────────────────────────────────── */
+			.list-wrap {
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+			}
+			.lrow {
+				display: grid;
+				grid-template-columns: 64px 1fr auto;
+				gap: 16px;
+				align-items: center;
+				background: var(--card);
+				border-radius: var(--radius-xl);
+				padding: 12px 16px;
+				box-shadow: 0 4px 16px oklch(0.5 0.05 150 / 0.06);
+				cursor: pointer;
+				transition:
+					box-shadow var(--duration-normal),
+					transform var(--duration-normal);
+			}
+			.theme-dark .lrow {
+				box-shadow: none;
+				outline: 1px solid var(--border);
+			}
+			.lrow:hover {
+				box-shadow: 0 8px 24px oklch(0.5 0.05 150 / 0.1);
+				transform: translateY(-1px);
+			}
+			.lrow.is-full {
+				opacity: 0.78;
+			}
+			.lthumb {
+				width: 64px;
+				height: 64px;
+				border-radius: var(--radius-lg);
+				background: var(--primary-soft);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				overflow: hidden;
+				flex: none;
+			}
+			.lthumb img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+			.lthumb .emoji {
+				font-size: 28px;
+			}
+			.linfo {
+				min-width: 0;
+			}
+			.lname {
+				font-family: var(--font-heading);
+				font-size: 15px;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+				color: var(--foreground);
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.lname .count {
+				color: var(--foreground-muted);
+				font-weight: 500;
+				font-family: var(--font-sans);
+			}
+			.lname .reserved {
+				color: var(--color-reserved);
+				font-weight: 600;
+				font-family: var(--font-sans);
+			}
+			.lmeta {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-top: 4px;
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				flex-wrap: wrap;
+			}
+			.lmeta .price {
+				color: var(--primary);
+				font-weight: 700;
+				font-size: 13px;
+			}
+			.lmeta .dot {
+				opacity: 0.5;
+			}
+			.lmeta .link-inline {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				color: var(--primary);
+				text-decoration: none;
+				font-weight: 600;
+				padding: 2px 8px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+			}
+			.lmeta .link-inline:hover {
+				filter: brightness(0.96);
+			}
+			.lactions {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex: none;
+			}
+
+			/* ── COMPACT MODE — table ───────────────────────────────── */
+			.ctable-wrap {
+				background: var(--card);
+				border-radius: var(--radius-xl);
+				overflow: hidden;
+				box-shadow: 0 4px 16px oklch(0.5 0.05 150 / 0.06);
+			}
+			.theme-dark .ctable-wrap {
+				box-shadow: none;
+				outline: 1px solid var(--border);
+			}
+			table.ctable {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 13px;
+			}
+			.ctable thead th {
+				text-align: left;
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				padding: 12px 16px;
+				background: var(--surface-2);
+			}
+			.ctable th.col-c,
+			.ctable td.col-c {
+				text-align: center;
+			}
+			.ctable th.col-r,
+			.ctable td.col-r {
+				text-align: right;
+			}
+			.ctable tbody td {
+				padding: 11px 16px;
+				border-top: 1px solid var(--border);
+				color: var(--foreground);
+				vertical-align: middle;
+			}
+			.ctable tbody tr {
+				cursor: pointer;
+				transition: background var(--duration-fast);
+			}
+			.ctable tbody tr:hover {
+				background: var(--surface-2);
+			}
+			.ctable tbody tr.is-full {
+				opacity: 0.65;
+			}
+			.ctable .cname {
+				font-family: var(--font-heading);
+				font-weight: 600;
+				letter-spacing: -0.01em;
+			}
+			.ctable .cname .count {
+				color: var(--foreground-muted);
+				font-weight: 500;
+				font-family: var(--font-sans);
+			}
+			.ctable .clink {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				color: var(--primary);
+				text-decoration: none;
+				font-weight: 600;
+				padding: 3px 9px;
+				border-radius: var(--radius-full);
+				background: var(--primary-soft);
+			}
+			.ctable .clink:hover {
+				filter: brightness(0.96);
+			}
+			.ctable .clink-none {
+				color: var(--foreground-subtle);
+				font-style: italic;
+			}
+			.ctable .cmore {
+				font-size: 11px;
+				color: var(--foreground-subtle);
+				margin-left: 4px;
+			}
+			.ctable .cprice {
+				color: var(--primary);
+				font-weight: 700;
+			}
+			.ctable .cprice.empty {
+				color: var(--foreground-subtle);
+				font-weight: 500;
+				font-style: italic;
+			}
+			.ctable .reserved-text {
+				color: var(--color-reserved);
+				font-weight: 600;
+				font-size: 12px;
+			}
+			.heart-mini {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				color: var(--foreground-subtle);
+				font-weight: 600;
+				cursor: pointer;
+			}
+			.heart-mini.is-liked {
+				color: var(--color-liked);
+			}
+			.heart-mini.is-liked svg {
+				fill: var(--color-liked);
+			}
+			.creserve {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				height: 30px;
+				padding: 0 14px;
+				border-radius: var(--radius-full);
+				border: none;
+				background: var(--primary);
+				color: var(--primary-fg);
+				font-family: var(--font-sans);
+				font-size: 12px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: filter var(--duration-normal);
+			}
+			.creserve:hover {
+				filter: brightness(1.08);
+			}
+			.creserve:active {
+				transform: scale(0.96);
+			}
+			.creserve:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* dual panel split */
+			.dual {
+				display: grid;
+				grid-template-columns: 1fr;
+			}
+
+			@media (min-width: 376px) {
+			}
+			@media (max-width: 480px) {
+				.card-grid {
+					grid-template-columns: 1fr;
+				}
+				.panel {
+					padding: 32px 16px 64px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="dual">
+			<!-- ═══════════════════ LIGHT PANEL ═══════════════════ -->
+			<main class="theme-light panel">
+				<header class="panel-head">
+					<span class="eyebrow">Variant C — Soft &amp; Friendly</span>
+					<h1 class="panel-title">Gift Card v2 — měkká, oblá, přívětivá</h1>
+					<p class="panel-desc">
+						Velké rádiusy, jemné sage-tónované povrchy a difúzní stíny. Odkazy jako oblé
+						pilulky, hravý 🎁 fallback a centrovaná rezervační pilulka na rozmazaném
+						obrázku.
+					</p>
+				</header>
+
+				<!-- ───────── CARD MODE ───────── -->
+				<section class="section">
+					<h2 class="section-label">Card mode</h2>
+					<p class="section-note">
+						Hlavní povrch nástěnky přání. Všechny stavy podle role.
+					</p>
+					<div class="card-grid">
+						<!-- 1. OWNER default — CORE INVARIANT: piece count only -->
+						<div class="case">
+							<p class="case-label">1 · Vlastník (výchozí) — pouze počet kusů</p>
+							<article
+								class="gcard"
+								tabindex="0"
+								aria-label="Sluchátka Sony WH-1000XM5"
+							>
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=560&q=70"
+										alt="Sluchátka Sony WH-1000XM5"
+									/>
+									<span class="drag-handle" aria-label="Přesunout">
+										<svg
+											width="16"
+											height="16"
+											viewBox="0 0 24 24"
+											fill="currentColor"
+										>
+											<circle cx="9" cy="6" r="1.6" />
+											<circle cx="15" cy="6" r="1.6" />
+											<circle cx="9" cy="12" r="1.6" />
+											<circle cx="15" cy="12" r="1.6" />
+											<circle cx="9" cy="18" r="1.6" />
+											<circle cx="15" cy="18" r="1.6" />
+										</svg>
+									</span>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Sluchátka Sony WH-1000XM5</h3>
+									<span class="gcard-count">3 kusy</span>
+									<div class="gcard-meta">
+										<span class="gcard-price">8 990 Kč</span>
+										<span class="priority priority-high">Vysoká</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">alza.cz</span></a
+										>
+										<a class="link-chip" href="#" onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">heureka.cz</span></a
+										>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 2. Visitor available -->
+						<div class="case">
+							<p class="case-label">2 · Návštěvník — dostupné</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1481833761820-0509d3217039?w=560&q=70"
+										alt="Ponožky z merino vlny"
+									/>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Ponožky z merino vlny</h3>
+									<span class="gcard-count">3 kusy</span>
+									<div class="gcard-meta">
+										<span class="gcard-price">349 Kč</span>
+										<span class="priority priority-low">Nízká</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">lidl.cz</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button
+											class="like-btn"
+											aria-label="Oblíbit Ponožky z merino vlny"
+										>
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>4
+										</button>
+										<button
+											class="reserve-btn"
+											aria-label="Rezervovat Ponožky z merino vlny"
+										>
+											Rezervovat
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 3. Visitor partial -->
+						<div class="case">
+							<p class="case-label">3 · Návštěvník — částečně rezervováno</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=560&q=70"
+										alt="Lego Botanická kolekce — Orchidej"
+									/>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Lego Botanická kolekce — Orchidej</h3>
+									<span class="gcard-count"
+										>3 kusy <span class="sep">·</span>
+										<span class="reserved">1 rezervováno</span></span
+									>
+									<div class="gcard-meta">
+										<span class="gcard-price">1 299 Kč</span>
+										<span class="priority priority-mid">Střední</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">lego.com</span></a
+										>
+										<a class="link-chip" href="#" onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">alza.cz</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn is-liked" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>12
+										</button>
+										<button class="reserve-btn" aria-label="Rezervovat">
+											Rezervovat
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 4. Visitor fully reserved -->
+						<div class="case">
+							<p class="case-label">4 · Návštěvník — plně rezervováno</p>
+							<article class="gcard is-full" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=560&q=70"
+										alt="Kávovar DeLonghi Magnifica"
+									/>
+									<span class="reserved-pill"
+										><svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.4"
+										>
+											<path d="M20 6 9 17l-5-5" /></svg
+										>Rezervováno</span
+									>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Kávovar DeLonghi Magnifica</h3>
+									<span class="gcard-count"
+										>5 kusů <span class="sep">·</span>
+										<span class="reserved">plně rezervováno</span></span
+									>
+									<div class="gcard-meta">
+										<span class="gcard-price">9 490 Kč</span>
+										<span class="priority priority-high">Vysoká</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">alza.cz</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>7
+										</button>
+										<button
+											class="reserve-btn is-disabled"
+											disabled
+											aria-label="Plně rezervováno"
+										>
+											Rezervováno
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 5. Moderator -->
+						<div class="case">
+							<p class="case-label">5 · Moderátor — bez tlačítka Rezervovat</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=560&q=70"
+										alt="Kniha Atomové návyky"
+									/>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Kniha Atomové návyky</h3>
+									<span class="gcard-count"
+										>4 kusy <span class="sep">·</span>
+										<span class="reserved">2 rezervováno</span></span
+									>
+									<div class="gcard-meta">
+										<span class="gcard-price">329 Kč</span>
+										<span class="priority priority-mid">Střední</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">heureka.cz</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>9
+										</button>
+										<span
+											style="
+												font-size: 12px;
+												color: var(--foreground-subtle);
+												font-weight: 600;
+											"
+											>Moderátor</span
+										>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 6. Received -->
+						<div class="case">
+							<p class="case-label">6 · Obdrženo</p>
+							<article class="gcard" tabindex="0" style="filter: saturate(0.85)">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=560&q=70"
+										alt="Konvice na čaj Bredemeijer"
+									/>
+									<span class="img-badge img-badge-received"
+										><svg
+											width="13"
+											height="13"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.6"
+										>
+											<path d="M20 6 9 17l-5-5" /></svg
+										>Obdrženo</span
+									>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Konvice na čaj Bredemeijer</h3>
+									<span class="gcard-count">1 kus</span>
+									<div class="gcard-meta">
+										<span class="gcard-price">1 190 Kč</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">ikea.com</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>3
+										</button>
+										<button
+											class="reserve-btn is-disabled"
+											disabled
+											aria-label="Obdrženo"
+										>
+											Obdrženo
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 7. No-image fallback -->
+						<div class="case">
+							<p class="case-label">7 · Bez obrázku — 🎁 fallback</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img gcard-fallback">
+									<span class="emoji" role="img" aria-label="Dárek">🎁</span>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Dárkový poukaz do knihkupectví</h3>
+									<span class="gcard-count">2 kusy</span>
+									<div class="gcard-meta">
+										<span class="gcard-price">500 Kč</span>
+										<span class="priority priority-low">Nízká</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">heureka.cz</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>1
+										</button>
+										<button class="reserve-btn" aria-label="Rezervovat">
+											Rezervovat
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 8. qty 1 -->
+						<div class="case">
+							<p class="case-label">8 · Množství 1 → „1 kus“</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=560&q=70"
+										alt="Lego Botanická kolekce — Orchidej"
+									/>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Lego Botanická kolekce — Orchidej</h3>
+									<span class="gcard-count">1 kus</span>
+									<div class="gcard-meta">
+										<span class="gcard-price">1 299 Kč</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">lego.com</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>5
+										</button>
+										<button class="reserve-btn" aria-label="Rezervovat">
+											Rezervovat
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 9. Multi-link overflow + long domain -->
+						<div class="case">
+							<p class="case-label">9 · Více odkazů — 3 viditelné + „+2 další“</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=560&q=70"
+										alt="Sluchátka Sony WH-1000XM5"
+									/>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Sluchátka Sony WH-1000XM5</h3>
+									<span class="gcard-count">2 kusy</span>
+									<div class="gcard-meta">
+										<span class="gcard-price">8 990 Kč</span>
+										<span class="priority priority-high">Vysoká</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">alza.cz</span></a
+										>
+										<a class="link-chip" href="#" onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">heureka.cz</span></a
+										>
+										<a
+											class="link-chip"
+											href="#"
+											onclick="return false;"
+											title="https://darkove-predmety-eshop.example.cz/sluchatka-sony"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain"
+												>darkove-predmety-eshop.example.cz</span
+											></a
+										>
+										<button class="link-chip link-more" onclick="return false;">
+											+2 další
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 10. Price empty + Bez odkazu -->
+						<div class="case">
+							<p class="case-label">10 · Cena neuvedena · Bez odkazu</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img gcard-fallback">
+									<span class="emoji" role="img" aria-label="Dárek">🎁</span>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Překvapení — nech se obdarovat</h3>
+									<span class="gcard-count">1 kus</span>
+									<div class="gcard-meta">
+										<span class="gcard-price is-empty">Cena neuvedena</span>
+									</div>
+									<div class="gcard-links">
+										<span class="link-none">Bez odkazu</span>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>0
+										</button>
+										<button class="reserve-btn" aria-label="Rezervovat">
+											Rezervovat
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- 11. Skeleton -->
+						<div class="case">
+							<p class="case-label">11 · Skeleton (načítání)</p>
+							<article class="gcard" aria-hidden="true">
+								<div class="gcard-img">
+									<div
+										class="skel skel-img"
+										style="width: 100%; height: 100%"
+									></div>
+								</div>
+								<div class="gcard-body">
+									<div class="skel skel-line" style="width: 80%"></div>
+									<div
+										class="skel skel-line"
+										style="width: 40%; height: 11px"
+									></div>
+									<div
+										class="skel skel-line"
+										style="width: 30%; height: 15px; margin-top: 4px"
+									></div>
+									<div class="gcard-links" style="margin-top: 6px">
+										<div class="skel" style="height: 30px; width: 100%"></div>
+										<div class="skel" style="height: 30px; width: 70%"></div>
+									</div>
+									<div class="gcard-footer">
+										<div class="skel" style="height: 18px; width: 40px"></div>
+										<div class="skel" style="height: 34px; width: 96px"></div>
+									</div>
+								</div>
+							</article>
+						</div>
+					</div>
+				</section>
+
+				<!-- ───────── LIST MODE ───────── -->
+				<section class="section">
+					<h2 class="section-label">List mode</h2>
+					<p class="section-note">
+						64px náhled · 1fr info · akce. Plně rezervovaný řádek ztlumen.
+					</p>
+					<div class="list-wrap">
+						<div class="lrow">
+							<div class="lthumb">
+								<img
+									src="https://images.unsplash.com/photo-1481833761820-0509d3217039?w=160&q=70"
+									alt=""
+								/>
+							</div>
+							<div class="linfo">
+								<div class="lname">
+									Ponožky z merino vlny <span class="count">3 kusy</span>
+								</div>
+								<div class="lmeta">
+									<span class="price">349 Kč</span><span class="dot">·</span>
+									<a class="link-inline" href="#" onclick="return false;"
+										><svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path d="M7 17 17 7M9 7h8v8" /></svg
+										>lidl.cz</a
+									><span class="dot">·</span>
+									<span
+										class="priority priority-low"
+										style="height: 20px; font-size: 11px"
+										>Nízká</span
+									>
+								</div>
+							</div>
+							<div class="lactions">
+								<button class="like-btn" aria-label="Oblíbit">
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+										/></svg
+									>4
+								</button>
+								<button class="reserve-btn" aria-label="Rezervovat">
+									Rezervovat
+								</button>
+							</div>
+						</div>
+
+						<div class="lrow">
+							<div class="lthumb">
+								<img
+									src="https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=160&q=70"
+									alt=""
+								/>
+							</div>
+							<div class="linfo">
+								<div class="lname">
+									Lego Botanická kolekce — Orchidej
+									<span class="count">3 kusy</span>
+									<span class="reserved">· 1 rezervováno</span>
+								</div>
+								<div class="lmeta">
+									<span class="price">1 299 Kč</span><span class="dot">·</span>
+									<a class="link-inline" href="#" onclick="return false;"
+										><svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path d="M7 17 17 7M9 7h8v8" /></svg
+										>lego.com</a
+									>
+									<span class="cmore" style="color: var(--foreground-subtle)"
+										>+1</span
+									><span class="dot">·</span>
+									<span
+										class="priority priority-mid"
+										style="height: 20px; font-size: 11px"
+										>Střední</span
+									>
+								</div>
+							</div>
+							<div class="lactions">
+								<button class="like-btn is-liked" aria-label="Oblíbit">
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="currentColor"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+										/></svg
+									>12
+								</button>
+								<button class="reserve-btn" aria-label="Rezervovat">
+									Rezervovat
+								</button>
+							</div>
+						</div>
+
+						<div class="lrow is-full">
+							<div class="lthumb">
+								<img
+									src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=160&q=70"
+									alt=""
+								/>
+							</div>
+							<div class="linfo">
+								<div class="lname">
+									Kávovar DeLonghi Magnifica <span class="count">5 kusů</span>
+									<span class="reserved">· plně rezervováno</span>
+								</div>
+								<div class="lmeta">
+									<span class="price">9 490 Kč</span><span class="dot">·</span>
+									<a class="link-inline" href="#" onclick="return false;"
+										><svg
+											width="11"
+											height="11"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path d="M7 17 17 7M9 7h8v8" /></svg
+										>alza.cz</a
+									><span class="dot">·</span>
+									<span
+										class="priority priority-high"
+										style="height: 20px; font-size: 11px"
+										>Vysoká</span
+									>
+								</div>
+							</div>
+							<div class="lactions">
+								<button class="like-btn" aria-label="Oblíbit">
+									<svg
+										width="16"
+										height="16"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+										/></svg
+									>7
+								</button>
+								<button
+									class="reserve-btn is-disabled"
+									disabled
+									aria-label="Plně rezervováno"
+								>
+									Rezervováno
+								</button>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<!-- ───────── COMPACT MODE ───────── -->
+				<section class="section">
+					<h2 class="section-label">Compact mode</h2>
+					<p class="section-note">
+						Tabulka bez obrázků. Počet kusů skrytý při množství 1.
+					</p>
+					<div class="ctable-wrap">
+						<table class="ctable">
+							<thead>
+								<tr>
+									<th>Název</th>
+									<th>Odkaz</th>
+									<th class="col-r">Cena</th>
+									<th class="col-c">♡</th>
+									<th class="col-r">Akce</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="cname">
+										Ponožky z merino vlny <span class="count">3 kusy</span>
+									</td>
+									<td>
+										<a class="clink" href="#" onclick="return false;"
+											><svg
+												width="11"
+												height="11"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											>lidl.cz</a
+										>
+									</td>
+									<td class="col-r cprice">349 Kč</td>
+									<td class="col-c"><span class="heart-mini">4</span></td>
+									<td class="col-r">
+										<button class="creserve">Rezervovat</button>
+									</td>
+								</tr>
+								<tr>
+									<td class="cname">
+										Lego Botanická kolekce — Orchidej
+										<span class="count">3 kusy · 1 rezervováno</span>
+									</td>
+									<td>
+										<a class="clink" href="#" onclick="return false;"
+											><svg
+												width="11"
+												height="11"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											>lego.com</a
+										><span class="cmore">+1</span>
+									</td>
+									<td class="col-r cprice">1 299 Kč</td>
+									<td class="col-c">
+										<span class="heart-mini is-liked"
+											><svg
+												width="13"
+												height="13"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>12</span
+										>
+									</td>
+									<td class="col-r">
+										<button class="creserve">Rezervovat</button>
+									</td>
+								</tr>
+								<tr>
+									<td class="cname">Konvice na čaj Bredemeijer</td>
+									<td><span class="clink-none">Bez odkazu</span></td>
+									<td class="col-r cprice empty">Cena neuvedena</td>
+									<td class="col-c"><span class="heart-mini">3</span></td>
+									<td class="col-r">
+										<button class="creserve">Rezervovat</button>
+									</td>
+								</tr>
+								<tr class="is-full">
+									<td class="cname">
+										Kávovar DeLonghi Magnifica <span class="count">5 kusů</span>
+									</td>
+									<td>
+										<a class="clink" href="#" onclick="return false;"
+											><svg
+												width="11"
+												height="11"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											>alza.cz</a
+										>
+									</td>
+									<td class="col-r cprice">9 490 Kč</td>
+									<td class="col-c"><span class="heart-mini">7</span></td>
+									<td class="col-r">
+										<span class="reserved-text">Rezervováno</span>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+			</main>
+
+			<!-- ═══════════════════ DARK PANEL ═══════════════════ -->
+			<section class="theme-dark panel">
+				<header class="panel-head">
+					<span class="eyebrow">Variant C — Dark</span>
+					<h1 class="panel-title">Tmavý režim — povrchy elevací, ne stíny</h1>
+					<p class="panel-desc">
+						Stejné komponenty v tmavém režimu. Hloubka přes světlejší elevované povrchy
+						(card světlejší než pozadí), bez těžkých stínů.
+					</p>
+				</header>
+
+				<section class="section">
+					<h2 class="section-label">Card mode — výběr stavů</h2>
+					<div class="card-grid">
+						<!-- visitor available -->
+						<div class="case">
+							<p class="case-label">Návštěvník — dostupné</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1481833761820-0509d3217039?w=560&q=70"
+										alt="Ponožky z merino vlny"
+									/>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Ponožky z merino vlny</h3>
+									<span class="gcard-count">3 kusy</span>
+									<div class="gcard-meta">
+										<span class="gcard-price">349 Kč</span>
+										<span class="priority priority-low">Nízká</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">lidl.cz</span></a
+										>
+										<a class="link-chip" href="#" onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">heureka.cz</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>4
+										</button>
+										<button class="reserve-btn" aria-label="Rezervovat">
+											Rezervovat
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- fully reserved -->
+						<div class="case">
+							<p class="case-label">Plně rezervováno</p>
+							<article class="gcard is-full" tabindex="0">
+								<div class="gcard-img">
+									<img
+										src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=560&q=70"
+										alt="Kávovar DeLonghi Magnifica"
+									/>
+									<span class="reserved-pill"
+										><svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2.4"
+										>
+											<path d="M20 6 9 17l-5-5" /></svg
+										>Rezervováno</span
+									>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Kávovar DeLonghi Magnifica</h3>
+									<span class="gcard-count"
+										>5 kusů <span class="sep">·</span>
+										<span class="reserved">plně rezervováno</span></span
+									>
+									<div class="gcard-meta">
+										<span class="gcard-price">9 490 Kč</span>
+										<span class="priority priority-high">Vysoká</span>
+									</div>
+									<div class="gcard-links">
+										<a
+											class="link-chip primary"
+											href="#"
+											onclick="return false;"
+											><svg
+												class="ico"
+												width="14"
+												height="14"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											><span class="domain">alza.cz</span></a
+										>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>7
+										</button>
+										<button
+											class="reserve-btn is-disabled"
+											disabled
+											aria-label="Plně rezervováno"
+										>
+											Rezervováno
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<!-- no image fallback -->
+						<div class="case">
+							<p class="case-label">Bez obrázku — 🎁</p>
+							<article class="gcard" tabindex="0">
+								<div class="gcard-img gcard-fallback">
+									<span class="emoji" role="img" aria-label="Dárek">🎁</span>
+								</div>
+								<div class="gcard-body">
+									<h3 class="gcard-name">Dárkový poukaz do knihkupectví</h3>
+									<span class="gcard-count"
+										>2 kusy <span class="sep">·</span>
+										<span class="reserved">1 rezervováno</span></span
+									>
+									<div class="gcard-meta">
+										<span class="gcard-price is-empty">Cena neuvedena</span>
+									</div>
+									<div class="gcard-links">
+										<span class="link-none">Bez odkazu</span>
+									</div>
+									<div class="gcard-footer">
+										<button class="like-btn is-liked" aria-label="Oblíbit">
+											<svg
+												width="17"
+												height="17"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path
+													d="M12 21s-7-4.6-9.3-8.5C1 9.5 2.4 6 5.6 6c2 0 3.2 1.3 4.4 2.8C11.2 7.3 12.4 6 14.4 6c3.2 0 4.6 3.5 2.9 6.5C19 16.4 12 21 12 21Z"
+												/></svg
+											>2
+										</button>
+										<button class="reserve-btn" aria-label="Rezervovat">
+											Rezervovat
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+					</div>
+
+					<h2 class="section-label">Compact mode — tmavý</h2>
+					<div class="ctable-wrap">
+						<table class="ctable">
+							<thead>
+								<tr>
+									<th>Název</th>
+									<th>Odkaz</th>
+									<th class="col-r">Cena</th>
+									<th class="col-c">♡</th>
+									<th class="col-r">Akce</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td class="cname">
+										Sluchátka Sony WH-1000XM5 <span class="count">2 kusy</span>
+									</td>
+									<td>
+										<a class="clink" href="#" onclick="return false;"
+											><svg
+												width="11"
+												height="11"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											>alza.cz</a
+										><span class="cmore">+2</span>
+									</td>
+									<td class="col-r cprice">8 990 Kč</td>
+									<td class="col-c"><span class="heart-mini">9</span></td>
+									<td class="col-r">
+										<button class="creserve">Rezervovat</button>
+									</td>
+								</tr>
+								<tr class="is-full">
+									<td class="cname">
+										Kávovar DeLonghi Magnifica <span class="count">5 kusů</span>
+									</td>
+									<td>
+										<a class="clink" href="#" onclick="return false;"
+											><svg
+												width="11"
+												height="11"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
+												<path d="M7 17 17 7M9 7h8v8" /></svg
+											>alza.cz</a
+										>
+									</td>
+									<td class="col-r cprice">9 490 Kč</td>
+									<td class="col-c"><span class="heart-mini">7</span></td>
+									<td class="col-r">
+										<span class="reserved-text">Rezervováno</span>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+			</section>
+		</div>
+	</body>
+</html>

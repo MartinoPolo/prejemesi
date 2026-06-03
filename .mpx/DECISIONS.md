@@ -649,3 +649,68 @@ Decided: 2026-05-31
 What: Keep Darecky's styling and UX features (scroll buttons, size prop, bold focus, cursor-default, dark mode destructive). Add GK's structural improvements (state prop on Select trigger, SubContent defaults on DropdownMenu, destructive shortcut coloring). Create comprehensive stories with play tests from GK.
 Why: Darecky's UX decisions (bold focus, OS-convention cursor) are better. GK's structural completeness (error states, proper defaults, testing) fills gaps.
 Rejected: Taking either project's version wholesale (both have genuine strengths the other lacks).
+
+## Import, Bulk Entry & Enrichment
+
+### CSV / Google Sheets import via 3-step wizard
+
+Decided: 2026-06-03
+What: Import builds gifts through a shared wizard — Source (upload .csv/.tsv · paste cells · paste Google Sheets link) → Review (editable draft grid with smart column detection + manual role override, auto-skipped preamble/footer rows, per-row select/deselect, "možný duplikát" badges matched by normalized name OR link host+path) → Confirm. Two entry points reuse it: create-new-wishlist (title pre-filled from filename, editable) and append-to-existing. Parsing via PapaParse.
+Why: One robust core covers clean exports (near-zero effort) and messy sheets (manual grid fixes). Family lists are small; a wizard makes the suggested gifts reviewable and dedupable before commit.
+Rejected: Manual-only column mapping (tedious for clean files); a single cramped modal; a bespoke parser for one messy sheet's section-headers / alternate-link rows (the editable grid covers it).
+
+### Import input methods; no Google OAuth
+
+Decided: 2026-06-03
+What: File upload (.csv/.tsv), paste-cells (textarea with HTML-table-aware paste + TSV/CSV fallback — copying a range from Excel/Sheets pastes as parseable TSV), and paste a Google Sheets share/published link (server converts to `export?format=csv` and fetches server-side; a private sheet or a Google Docs link yields a friendly error). Limits: 200 rows, 1 MB.
+Why: Covers already-exported files + the lowest-friction "direct from Sheets". Server-side fetch avoids CORS; OAuth + Drive Picker is disproportionate for a family app and paste-cells already handles private sheets with zero auth.
+Rejected: OAuth + Drive Picker (heavy: GCP app, consent-screen verification, API keys); Google Docs (non-tabular).
+
+### Taken/"Vybráno" column and cell color ignored on import
+
+Decided: 2026-06-03
+What: Import creates gifts only. Any reservation/"taken" column is ignored; the owner instead deselects unwanted rows in the wizard. Cell background color (file #3's "taken" signal) is dropped by CSV export and is not supported.
+Why: Preserves owner-never-sees-reservations and yields a clean list for re-claiming in-app. CSV cannot carry color.
+Rejected: Importing taken rows as anonymous reservations (revisit only if mid-gifting migration is requested); mark-received (wrong semantics — "taken by a gifter" ≠ "owner received it").
+
+### Multiple links per gift
+
+Decided: 2026-06-03
+What: Replace `gift.url` with `gift.links: { url, label? }[]` (jsonb), max 10 per gift. `links[0]` is primary (drives the domain chip, OG tags, "Bez odkazu"). Label optional, defaults to the domain. Reservations and likes remain per-gift.
+Why: Real wishlists offer alternatives ("nebo tohle"). jsonb matches the existing imageMeta/imageSlots pattern and avoids a join on every gift fetch. App is in development → no back-compat shim.
+Rejected: Separate `giftLink` table (join per fetch, heavier); keeping a single `url` (too limiting).
+
+### Gift card: piece count beside title (role-conditional), links stacked at bottom
+
+Decided: 2026-06-03
+What: Piece count moves next to the title in a larger, muted style ("3 kusy"). The reserved portion is appended only for visitor/moderator ("3 kusy · 1 rezervováno"); the owner sees the piece count alone. Multiple links render stacked at the card bottom. Replaces the corner "x3" badge. Czech pluralization (kus/kusy/kusů) via Paraglide.
+Why: Clearer than a badge, scales to multi-link, and keeps the owner-surprise invariant intact.
+Rejected: The "x3" corner badge (cramped, doesn't scale to multi-link); showing the reserved count to the owner (breaks the core invariant).
+
+### Metadata enrichment: per-item, progressive, offloaded
+
+Decided: 2026-06-03
+What: Gift drafts (and the single-gift modal) get a ✨ enrich action that fills image/price/title from a link. Each enrich is its OWN remote request, fired throttled from the browser, so each gets a fresh Cloudflare budget (free tier: 50 subrequests + 10 ms CPU per request — HTML parsing must NOT run in-Worker). Provider: a metadata API (Microlink free 50/day, callable client-side) behind an `enrichLink()` abstraction, with a DIY OG/JSON-LD fallback for plain sites. Available in the import grid, batch-add dialog, and single-gift modal.
+Why: Progressive "cards fill in one by one" UX; stays in the free tier; offloads JS-rendering, bot-bypass, and parsing. (Reliability caveat: Alza actively blocks bots and Heureka links are aggregator pages, so quality varies; the provider's free daily quota — not Cloudflare — is the real ceiling.)
+Rejected: Batch-scraping N pages in one Worker request (blows the 10 ms CPU limit); parsing HTML in-Worker; MCP servers (they run in the dev/agent environment, never in the production Worker serving end-users).
+
+### Name-based enrichment deferred; blank names stay blank
+
+Decided: 2026-06-03
+What: Enriching link-less items by searching Alza/Heureka by name is a later, best-effort phase that presents candidate matches for the user to confirm — never silent auto-fill. Import rows with no name stay blank; their links are rendered clickable in the grid so the user opens them and types the name manually.
+Why: No official product API + active bot protection make name→product matching unreliable and ambiguous.
+Rejected: Silent name→product auto-fill; auto-filling the name from the URL domain (user rejected — prefers blank + clickable link).
+
+### Bulk gift entry via large dialog
+
+Decided: 2026-06-03
+What: A standalone "batch add gifts" action opens a large dialog hosting the same editable draft grid as the import Review step (starting empty, manual rows) plus enrichment.
+Why: The single-gift modal is too cramped for an N-row grid; reuse the import grid primitive.
+Rejected: A dedicated full-width route (user prefers a dialog); extending the single-gift modal.
+
+### Delivery phasing
+
+Decided: 2026-06-03
+What: Phase 1 — import core (parse → editable draft grid → dedup → commit; no enrichment). Phase 1b — multiple-links data model + card/modal display, plus the **manual-only batch-add dialog shell** (empty grid → `importGifts`; the draft-grid primitive already exists, so manual batch entry ships now). Phase 2 — enrichment (import grid, the batch-add dialog's ✨ action, single-gift modal). Phase 3 — name-based search (optional).
+Why: Ship the robust headline import first; keep enrichment's external-quota and scraping-reliability risk off the critical path.
+Rejected: Enrichment inside V1 proper (couples a robust import to fragile scraping).
