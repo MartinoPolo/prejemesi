@@ -413,19 +413,28 @@ export const reorderGifts = guardedCommand(
 			error(403, 'Cannot reorder gifts from another wishlist');
 		}
 
-		// Batch update sortOrder
-		for (const item of items) {
-			await database
-				.update(gift)
-				.set({ sortOrder: item.sortOrder, updatedAt: new Date() })
-				.where(
-					and(
-						eq(gift.id, item.id),
-						eq(gift.wishlistId, firstGift.wishlistId),
-						isNull(gift.deletedAt),
+		// Batch update sortOrder in a single CASE WHEN statement
+		const now = new Date();
+		const sortOrderCase = sql.join(
+			items.map((item) => sql`WHEN ${gift.id} = ${item.id} THEN ${item.sortOrder}`),
+			sql` `,
+		);
+		await database
+			.update(gift)
+			.set({
+				sortOrder: sql`CASE ${sortOrderCase} END`,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					inArray(
+						gift.id,
+						items.map((item) => item.id),
 					),
-				);
-		}
+					eq(gift.wishlistId, firstGift.wishlistId),
+					isNull(gift.deletedAt),
+				),
+			);
 	},
 );
 
