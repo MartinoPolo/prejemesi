@@ -603,5 +603,9 @@
 	"server_error_cannot_edit_after_sharing": "Stávající dárky nelze po sdílení seznamu upravovat. Můžete přidávat pouze nové dárky.",
 	"server_error_cannot_delete_after_sharing": "Stávající dárky nelze po sdílení seznamu odebrat.",
 	"server_error_cannot_delete_reserved_gift": "Tento dárek nelze odebrat, protože je rezervovaný.",
-	"server_error_only_owner_can_mark_received": "Pouze vlastník může označit dárky jako přijaté"
+	"server_error_only_owner_can_mark_received": "Pouze vlastník může označit dárky jako přijaté",
+	"server_error_sheets_link_invalid": "Tohle nevypadá jako odkaz na Tabulky Google. Vložte odkaz na tabulku Google Sheets.",
+	"server_error_sheets_link_not_a_sheet": "Tento odkaz nevede na Tabulky Google. Importovat lze jen tabulky — ne Dokumenty, Prezentace ani Formuláře.",
+	"server_error_sheets_private": "Tato tabulka není veřejně přístupná. Nastavte sdílení na „Kdokoli s odkazem“ nebo vložte publikovaný CSV odkaz.",
+	"server_error_sheets_fetch_failed": "Tabulku se nepodařilo načíst. Zkuste to prosím znovu."
 }

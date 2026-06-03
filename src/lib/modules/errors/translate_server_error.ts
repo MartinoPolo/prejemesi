@@ -45,6 +45,11 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.CANNOT_DELETE_RESERVED_GIFT]: () => m.server_error_cannot_delete_reserved_gift(),
 	[SERVER_ERROR.ONLY_OWNER_CAN_MARK_RECEIVED]: () =>
 		m.server_error_only_owner_can_mark_received(),
+
+	[SERVER_ERROR.SHEETS_LINK_INVALID]: () => m.server_error_sheets_link_invalid(),
+	[SERVER_ERROR.SHEETS_LINK_NOT_A_SHEET]: () => m.server_error_sheets_link_not_a_sheet(),
+	[SERVER_ERROR.SHEETS_PRIVATE]: () => m.server_error_sheets_private(),
+	[SERVER_ERROR.SHEETS_FETCH_FAILED]: () => m.server_error_sheets_fetch_failed(),
 };
 
 /**
