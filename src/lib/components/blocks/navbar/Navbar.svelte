@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
+	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
@@ -12,6 +13,7 @@
 	import MobileNav from './MobileNav.svelte';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
@@ -135,6 +137,7 @@
 	]);
 
 	let isCreateModalOpen = $state(false);
+	let isImportWizardOpen = $state(false);
 </script>
 
 <header class="topbar">
@@ -173,6 +176,26 @@
 	<!-- Right controls -->
 	<div class="nav-right">
 		{#if user}
+			<!-- Import CTA -->
+			<Button
+				intent="outline"
+				size="md"
+				class="hidden md:inline-flex"
+				onclick={() => (isImportWizardOpen = true)}
+			>
+				<FileUpIcon data-icon="inline-start" />
+				{m.import_wizard_title()}
+			</Button>
+			<Button
+				intent="outline"
+				size="icon"
+				class="md:hidden"
+				aria-label={m.import_wizard_title()}
+				onclick={() => (isImportWizardOpen = true)}
+			>
+				<FileUpIcon />
+			</Button>
+
 			<!-- Create CTA -->
 			<Button
 				intent="primary"
@@ -201,7 +224,11 @@
 </header>
 
 {#if user}
-	<CreateWishlistModal bind:open={isCreateModalOpen} />
+	<CreateWishlistModal
+		bind:open={isCreateModalOpen}
+		onimport={() => (isImportWizardOpen = true)}
+	/>
+	<ImportWizard bind:open={isImportWizardOpen} mode={WIZARD_MODE.newList} />
 {/if}
 
 <style>
