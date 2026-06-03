@@ -120,7 +120,7 @@ export type GiftCurrency = (typeof GIFT_CURRENCIES)[keyof typeof GIFT_CURRENCIES
 export const DEFAULT_GIFT_CURRENCY: GiftCurrency = GIFT_CURRENCIES.CZK;
 
 export const GIFT_CURRENCY_LABELS = {
-	CZK: 'CZK (Kc)',
+	CZK: 'CZK (Kč)',
 	EUR: 'EUR',
 	USD: 'USD',
 } as const satisfies Record<GiftCurrency, string>;
