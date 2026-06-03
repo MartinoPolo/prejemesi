@@ -1,5 +1,10 @@
 # Design Brief — Gift Card v2
 
+> **Status**: Refined (Variant C)
+> **Refined mockup**: `designs/gift-card-v2/refined.html`
+> **Summary**: `designs/gift-card-v2/SUMMARY.md`
+> **Refinements**: priority badge reads "Priorita · {level}" — a leading uppercase "Priorita" eyebrow precedes the colour-coded level word so it can't be read as price/size/importance (colour is secondary reinforcement only); links restyled to Variant A's subtle ghost rows on hairline dividers (no chip background); the whole gift image is the drag trigger (six-dot handle stays a hover-revealed hint, grab/grabbing cursor); cards in a grid row share the tallest card's height (link list bottom-aligned so rows line up).
+
 > **Status**: Design phase — supersedes the current `GiftCard` / `GiftListItem` / `GiftCompactRow` trio
 > **Replaces**: corner `×3` quantity badge, single-link row (`gift.url`), `gift_card_variants.ts` slots
 > **Related**: `designs/wishlist-page/DESIGN_BRIEF_WISHLIST_PAGE.md` (§4 Gift Card Anatomy), `designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md`
@@ -42,14 +47,14 @@ The card lives inside the wishlist page gift collection (`grid-template-columns:
 
 ### 3.1 Always shown (all roles)
 
-| Element             | Source                                    | Notes                                                                                                            |
-| ------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Banner image        | `gift.imageUrl` + `gift.imageMeta` (crop) | 160px tall, `derived/image-frame` honoring focal/zoom crop; themed placeholder fallback                          |
-| Name                | `gift.name`                               | Semibold, `font-heading`, 2-line clamp                                                                           |
-| **Piece count**     | `gift.quantity` (default 1)               | **Inline after the name**, larger + muted. Czech plural: 1 kus / 2 kusy / 5 kusů                                 |
-| Price               | `gift.price` + `gift.currency`            | Bold, primary (sage green). "Cena neuvedena" muted when null                                                     |
-| Priority badge      | `gift.priorityLabel`                      | Vysoká (red) / Střední (amber) / Nízká (muted). Omitted when null                                                |
-| **Links (stacked)** | `gift.links[]` (jsonb, max 10)            | Each: external-link icon + domain label, `links[0]` primary. "Bez odkazu" muted when empty. Overflow capped (§9) |
+| Element             | Source                                    | Notes                                                                                                                                                                                                                                                                                      |
+| ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Banner image        | `gift.imageUrl` + `gift.imageMeta` (crop) | 160px tall, `derived/image-frame` honoring focal/zoom crop; themed placeholder fallback                                                                                                                                                                                                    |
+| Name                | `gift.name`                               | Semibold, `font-heading`, 2-line clamp                                                                                                                                                                                                                                                     |
+| **Piece count**     | `gift.quantity` (default 1)               | **Inline after the name**, larger + muted. Czech plural: 1 kus / 2 kusy / 5 kusů                                                                                                                                                                                                           |
+| Price               | `gift.price` + `gift.currency`            | Bold, primary (sage green). "Cena neuvedena" muted when null                                                                                                                                                                                                                               |
+| Priority badge      | `gift.priorityLabel`                      | Renders as **"Priorita · {level}"** — a leading uppercase "Priorita" eyebrow precedes the colour-coded level word (Vysoká red / Střední amber / Nízká muted) so the level can't be read as price/size/importance. Colour is secondary reinforcement; convey level via text too (WCAG). Eyebrow is a new Paraglide key (do not hard-code). Omitted when null. |
+| **Links (stacked)** | `gift.links[]` (jsonb, max 10)            | Each: external-link icon + domain label, `links[0]` primary. "Bez odkazu" muted when empty. Overflow capped (§9)                                                                                                                                                                           |
 
 ### 3.2 Role-gated content
 
