@@ -13,6 +13,7 @@
 	import GiftImageCropCanvas from './GiftImageCropCanvas.svelte';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import * as Alert from '$lib/components/base/alert/index.js';
+	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -28,6 +29,7 @@
 		GIFT_CURRENCY_LABELS,
 		type GiftCurrency,
 		type GiftByRole,
+		type GiftLink,
 		type CreateGiftInput,
 		type UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
@@ -85,7 +87,7 @@
 	// svelte-ignore state_referenced_locally
 	let description = $state(gift?.description ?? '');
 	// svelte-ignore state_referenced_locally
-	let url = $state(gift?.links[0]?.url ?? '');
+	let links = $state<GiftLink[]>(gift?.links ?? []);
 	// svelte-ignore state_referenced_locally
 	let price = $state(gift?.price != null ? String(gift.price) : '');
 	// svelte-ignore state_referenced_locally
@@ -151,10 +153,12 @@
 		const quantityStr = String(quantity).trim();
 		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
-		const normalizedUrl = normalizeUrl(url);
-		// Single-input editing surface for now: maps to/from the primary link (links[0]).
-		// Multi-link editing UI lands in a later issue.
-		const links = normalizedUrl !== null ? [{ url: normalizedUrl }] : [];
+		const normalizedLinks: GiftLink[] = links
+			.filter((l) => l.url.trim() !== '')
+			.map((l) => ({
+				url: normalizeUrl(l.url) ?? l.url,
+				...(l.label != null && l.label.trim() !== '' ? { label: l.label.trim() } : {}),
+			}));
 		const imageMeta = hasImage ? currentImageMeta : null;
 
 		if (mode === 'create') {
@@ -162,7 +166,7 @@
 				wishlistId,
 				name: name.trim(),
 				description: description.trim() || null,
-				links,
+				links: normalizedLinks,
 				price: parsedPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
@@ -176,7 +180,7 @@
 				id: gift.id,
 				name: name.trim(),
 				description: description.trim() || null,
-				links,
+				links: normalizedLinks,
 				price: parsedPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
@@ -282,10 +286,13 @@
 				/>
 			</div>
 
-			<!-- URL -->
+			<!-- Links -->
 			<div class="mt-3 {styles.formField()}">
-				<Label for="gift-url">{m.gift_url_label()}</Label>
-				<Input id="gift-url" bind:value={url} placeholder="alza.cz/darek" type="text" />
+				<GiftLinkEditor
+					{links}
+					disabled={isEditLocked}
+					onlinkschange={(updated) => (links = updated)}
+				/>
 			</div>
 
 			<!-- Price + Currency -->

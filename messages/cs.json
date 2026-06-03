@@ -21,6 +21,7 @@
 	"or": "nebo",
 	"profile": "Profil",
 	"deleting": "Mazání...",
+
 	"landing_meta_title": "Darecky — Sdílejte svá přání",
 	"landing_meta_description": "Vytvořte si přehledný seznam přání a sdílejte ho s rodinou a přáteli. Nikdy neuvidíte, kdo co rezervoval — překvapení je zachováno.",
 	"landing_og_title": "Darecky — Sdílejte svá přání",
@@ -123,6 +124,7 @@
 	"landing_footer_nav_label": "Navigace zápatí",
 	"landing_footer_create_account": "Vytvořit účet",
 	"landing_footer_homepage": "Darecky — domovská stránka",
+
 	"auth_tagline_login": "Sdílejte přání,<br>zachovejte překvapení",
 	"auth_tagline_register": "Začněte vytvářet<br>seznamy přání",
 	"auth_tagline_reset": "Obnovte přístup<br>ke svému účtu",
@@ -151,6 +153,7 @@
 	"auth_feature_valid_15_title": "Platný 15 minut",
 	"auth_feature_valid_15_description": "Bezpečný jednorázový odkaz",
 	"auth_divider_or": "nebo",
+
 	"login_title": "Přihlašte se",
 	"login_subtitle": "Vítejte zpět v Darecky",
 	"login_error_credentials": "Nesprávný email nebo heslo. Zkontrolujte zadané údaje a zkuste to znovu.",
@@ -160,6 +163,7 @@
 	"login_magic_link": "Přihlásit se odkazem",
 	"login_no_account": "Nemáte účet?",
 	"login_signup_link": "Zaregistrujte se",
+
 	"register_title": "Vytvořte si účet",
 	"register_subtitle": "Začněte vytvářet seznamy přání",
 	"register_name_label": "Jméno",
@@ -177,6 +181,7 @@
 	"register_google": "Registrovat přes Google",
 	"register_has_account": "Již máte účet?",
 	"register_login_link": "Přihlašte se",
+
 	"reset_request_title": "Obnova hesla",
 	"reset_request_subtitle": "Zadejte svůj email pro obnovu hesla",
 	"reset_request_submit": "Odeslat odkaz pro obnovu",
@@ -193,6 +198,7 @@
 	"reset_success_link": "Přejít na přihlášení",
 	"reset_token_missing": "Chybí token pro obnovu hesla. Použijte odkaz z emailu.",
 	"reset_set_error": "Nepodařilo se nastavit nové heslo. Odkaz mohl vypršet — zkuste požádat o nový.",
+
 	"magic_title": "Přihlášení odkazem",
 	"magic_subtitle": "Pošleme vám přihlašovací odkaz na email",
 	"magic_submit": "Odeslat přihlašovací odkaz",
@@ -201,6 +207,7 @@
 	"magic_sent_body": "Odkaz odeslán na <strong>{email}</strong>. Platnost <strong>15 minut</strong>.",
 	"magic_sent_check": "Zkontrolujte svou emailovou schránku.",
 	"magic_sent_spam": "Pokud email nepřijde, podívejte se do spamu.",
+
 	"settings_page_title": "Nastavení | Darecky",
 	"settings_title": "Nastavení",
 	"settings_subtitle": "Spravujte svůj profil, zabezpečení a předvolby",
@@ -250,6 +257,7 @@
 	"settings_delete_confirm_title": "Opravdu chcete smazat účet?",
 	"settings_delete_confirm_description": "Tato akce je nevratná. Všechna vaše data, seznamy a přání budou trvale smazána.",
 	"settings_delete_confirm_button": "Ano, smazat účet",
+
 	"nav_main_label": "Hlavní navigace",
 	"nav_my_lists": "Moje seznamy",
 	"nav_moderated": "Spravované",
@@ -264,6 +272,7 @@
 	"nav_no_lists": "Zatím žádné seznamy",
 	"nav_available_count": "{count} volných",
 	"nav_default_user": "Uživatel",
+
 	"dashboard_my_lists_title": "Moje seznamy",
 	"dashboard_empty_title": "Zatím žádné seznamy",
 	"dashboard_empty_description": "Vytvořte svůj první seznam přání a začněte přidávat dárky.",
@@ -281,6 +290,7 @@
 	"dashboard_status_draft": "Koncept",
 	"dashboard_status_shared": "Sdíleno",
 	"dashboard_status_archived": "Archivováno",
+
 	"wishlist_create_title": "Nový seznam přání",
 	"wishlist_create_description": "Zadejte název a volitelně další údaje.",
 	"wishlist_name_label": "Název",
@@ -306,6 +316,7 @@
 	"wishlist_archive_confirm_description": "Archivované seznamy jsou jen ke čtení. Nové rezervace nebudou možné. Tuto akci nelze vrátit.",
 	"wishlist_archive_confirm_action": "Archivovat",
 	"wishlist_archive_event_passed": "Datum události již uplynulo. Chcete tento seznam archivovat?",
+
 	"gift_sort_owner_order": "Pořadí vlastníka",
 	"gift_sort_priority": "Priorita",
 	"gift_sort_price_asc": "Cena (vzestupně)",
@@ -361,6 +372,7 @@
 	"gift_delete": "Smazat dárek",
 	"gift_delete_confirm": "Opravdu smazat?",
 	"gift_available": "Dostupné: {available} z {total}",
+
 	"reserve_title": "Rezervovat dárek",
 	"reserve_description": "Formulář pro rezervaci dárku",
 	"reserve_quantity_label": "Počet",
@@ -378,6 +390,7 @@
 	"reserve_register": "Registrovat",
 	"reserve_submitting": "Rezervuji...",
 	"reserve_submit": "Rezervovat",
+
 	"share_dialog_title": "Sdílet seznam přání",
 	"share_dialog_description": "Průvodce sdílením seznamu přání",
 	"share_step_confirm": "Potvrzení",
@@ -406,6 +419,7 @@
 	"share_permissions_moderators": "Přidávat moderátory",
 	"share_permissions_reshare": "Sdílet seznam s dalšími lidmi",
 	"share_permissions_warning": "Úpravy a odstraňování stávajících přání nejsou možné.",
+
 	"moderator_title": "Moderátoři",
 	"moderator_description": "Spravujte moderátory vašeho seznamu přání.",
 	"moderator_active_title": "Aktivní moderátoři",
@@ -434,6 +448,7 @@
 	"moderator_error_revoke": "Nepodařilo se zrušit pozvánku",
 	"moderator_error_remove": "Nepodařilo se odebrat moderátora",
 	"moderator_error_activate": "Nepodařilo se aktivovat zobrazení",
+
 	"notification_bell_label": "Upozornění ({count} nepřečtených)",
 	"notification_bell_sr": "Upozornění",
 	"notification_panel_title": "Upozornění",
@@ -452,6 +467,7 @@
 	"notification_type_new_gift": "Nový dárek na seznamu",
 	"notification_type_reserved": "Dárek byl rezervován",
 	"notification_type_moderator_invited": "Pozvánka ke správě seznamu",
+
 	"theme_title": "Motiv seznamu",
 	"theme_custom_color": "Vlastní barva",
 	"theme_selected": "Vybráno",
@@ -464,9 +480,11 @@
 	"theme_fun": "Zábava",
 	"theme_elegant": "Elegantní",
 	"theme_custom": "Vlastní",
+
 	"image_frame_no_image": "Bez obrázku",
 	"image_frame_loading": "Načítání obrázku…",
 	"wishlist_preview_label": "Náhled seznamu",
+
 	"followed_title": "Sledované",
 	"followed_loading": "Načítání...",
 	"followed_empty_title": "Nesledujete žádné seznamy",
@@ -475,6 +493,7 @@
 	"moderated_loading": "Načítání...",
 	"moderated_empty_title": "Nespravujete žádné seznamy",
 	"moderated_empty_description": "Až vás někdo přidá jako správce svého seznamu, zobrazí se zde.",
+
 	"invite_page_title": "Pozvánka — {title} — Darecky",
 	"invite_accepted_title": "Pozvánka přijata!",
 	"invite_error_title": "Chyba",
@@ -490,6 +509,7 @@
 	"invite_back_to_list": "Zpět na seznam",
 	"invite_toast_accepted": "Pozvánka byla přijata!",
 	"invite_error_generic": "Nepodařilo se přijmout pozvánku",
+
 	"wishlist_detail_change_theme": "Změnit motiv",
 	"wishlist_detail_edit_appearance": "Upravit vzhled",
 	"wishlist_detail_theme_button": "Motiv",
@@ -537,7 +557,9 @@
 	"wishlist_detail_no_filter_results_title": "Žádná přání neodpovídají filtrům",
 	"wishlist_detail_no_filter_results_description": "Zkuste změnit nebo zrušit filtry.",
 	"wishlist_detail_clear_filters": "Zrušit filtry",
+
 	"landing_hero_section_label": "Hlavní sekce",
+
 	"toast_gift_reserved": "Dárek byl rezervován",
 	"toast_gift_unreserved": "Rezervace zrušena",
 	"toast_gift_created": "Dárek přidán",
@@ -552,6 +574,7 @@
 	"toast_refollow_error": "Nepodařilo se znovu sledovat",
 	"toast_wishlist_archived": "Seznam byl archivován",
 	"toast_wishlist_archive_error": "Nepodařilo se archivovat seznam",
+
 	"server_error_wishlist_not_found": "Seznam nebyl nalezen",
 	"server_error_only_owner_can_manage_moderators": "Pouze vlastník může spravovat moderátory",
 	"server_error_access_denied": "Nemáte přístup",
@@ -585,11 +608,27 @@
 	"server_error_sheets_link_not_a_sheet": "Tento odkaz nevede na Tabulky Google. Importovat lze jen tabulky — ne Dokumenty, Prezentace ani Formuláře.",
 	"server_error_sheets_private": "Tato tabulka není veřejně přístupná. Nastavte sdílení na „Kdokoli s odkazem“ nebo vložte publikovaný CSV odkaz.",
 	"server_error_sheets_fetch_failed": "Tabulku se nepodařilo načíst. Zkuste to prosím znovu.",
-	"batch_add_dialog_subtitle": "Přidejte dárky do seznamu „{wishlistTitle}“",
-	"batch_add_submit_pending": "Přidávám…",
-	"batch_add_hint_enabled": "{count} k přidání",
-	"batch_add_toolbar_label": "Hromadně přidat dárky",
-	"toast_batch_add_success": "Přidáno {count} dárků",
+
+	"gift_piece_count_one": "1 kus",
+	"gift_piece_count_few": "{count} kusy",
+	"gift_piece_count_other": "{count} kusů",
+	"gift_reserved_count": "{count} rezervováno",
+	"gift_reserved_fully": "plně rezervováno",
+	"gift_link_overflow": "+{count} další",
+	"gift_link_none": "Bez odkazu",
+	"gift_link_add": "Přidat odkaz",
+	"gift_link_remove": "Odebrat odkaz",
+	"gift_link_label_placeholder": "Popisek (volitelné)",
+	"gift_link_max_reached": "Maximálně 10 odkazů",
+	"gift_link_primary": "Hlavní odkaz",
+	"gift_link_invalid_url": "Neplatná adresa",
+	"gift_link_duplicate_url": "Tento odkaz už je v seznamu",
+	"gift_link_cap_counter": "{current} / {max}",
+	"gift_enrich_placeholder": "Načíst metadata",
+	"gift_priority_eyebrow": "Priorita",
+	"gift_reserved_overlay": "Rezervováno",
+	"gift_received_badge": "Přijato",
+
 	"draft_grid_col_name": "Název",
 	"draft_grid_col_note": "Poznámka",
 	"draft_grid_col_links": "Odkazy",
@@ -628,6 +667,13 @@
 	"draft_grid_dialog_subtitle": "Přidejte více dárků najednou — každý řádek je jeden dárek.",
 	"draft_grid_dialog_submit": "Přidat dárky",
 	"draft_grid_dialog_cancel": "Zrušit",
+
+	"batch_add_dialog_subtitle": "Přidejte dárky do seznamu „{wishlistTitle}“",
+	"batch_add_submit_pending": "Přidávám…",
+	"batch_add_hint_enabled": "{count} k přidání",
+	"batch_add_toolbar_label": "Hromadně přidat dárky",
+	"toast_batch_add_success": "Přidáno {count} dárků",
+
 	"import_wizard_title": "Importovat dárky",
 	"import_wizard_subtitle_new": "Nový seznam z tabulky",
 	"import_wizard_subtitle_append": "Přidat dárky z tabulky",

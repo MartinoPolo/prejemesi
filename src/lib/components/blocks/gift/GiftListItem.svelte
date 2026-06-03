@@ -1,11 +1,12 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
+	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
-	import ReservationBadge from '$lib/components/blocks/reservation/ReservationBadge.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -29,13 +30,13 @@
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
 	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
+	const reservedCount = $derived(visitorGift?.reservedCount ?? 0);
 
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
-	const showQuantity = $derived((gift.quantity ?? 1) > 1);
 </script>
 
 <div
@@ -54,17 +55,15 @@
 
 	<!-- Info -->
 	<div class="flex min-w-0 flex-1 flex-col gap-1">
-		<div class="flex items-center gap-2">
+		<div class="flex items-baseline gap-2">
 			<h3 class="truncate font-heading text-base font-semibold text-foreground">
 				{gift.name}
-				{#if showQuantity}
-					<span class="text-sm font-normal text-muted-foreground">x{gift.quantity}</span>
-				{/if}
 			</h3>
+			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} />
 			{#if gift.received}
 				<Badge tone="neutral" class="gap-1 text-[11px]">
 					<CheckIcon class="size-2.5" />
-					Prijato
+					{m.gift_received_badge()}
 				</Badge>
 			{/if}
 		</div>
@@ -84,12 +83,18 @@
 					target="_blank"
 					rel="external noopener noreferrer"
 					class="inline-flex items-center gap-1 text-xs text-primary"
+					onclick={(e: MouseEvent) => e.stopPropagation()}
 				>
 					<ExternalLinkIcon class="size-3" />
 					{domain}
 				</a>
+				{#if gift.links.length > 1}
+					<span class="text-xs text-muted-foreground"
+						>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span
+					>
+				{/if}
 			{:else}
-				<span class="text-xs text-muted-foreground">Bez odkazu</span>
+				<span class="text-xs text-muted-foreground">{m.gift_link_none()}</span>
 			{/if}
 
 			{#if priorityInfo}
@@ -100,10 +105,6 @@
 				>
 					{priorityInfo.label()}
 				</Badge>
-			{/if}
-
-			{#if visitorGift}
-				<ReservationBadge gift={visitorGift} />
 			{/if}
 		</div>
 	</div>
