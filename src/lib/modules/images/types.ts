@@ -1,5 +1,7 @@
 import * as v from 'valibot';
-import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/components/derived/image-frame/index.js';
+import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
+
+export { IMAGE_FIT_MODES, type ImageFitMode };
 
 /**
  * Persisted image presentation metadata shared by gift images (REQ-1) and

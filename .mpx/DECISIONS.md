@@ -156,12 +156,18 @@ Rejected: All by email (too noisy), all in-app only (critical events missed by i
 
 ## Data & Storage
 
-### Separate banner and thumbnail uploads per wishlist
+### ~~Separate banner and thumbnail uploads per wishlist~~ (superseded)
 
-Decided: 2026-05-29
-What: Owner uploads a hero banner (wishlist page) and a thumbnail (dashboard cards) separately. Theme presets provide default illustrations that the owner can override.
-Why: Different aspect ratios serve different contexts (wide banner vs square thumbnail). Defaults reduce friction for users who don't want to upload.
-Rejected: Auto-crop from single upload (poor results for extreme aspect ratios), no images (bland).
+Decided: 2026-05-29 — **Superseded 2026-06-02** by "Single image_key + image_slots per wishlist" below.
+~~What: Owner uploads a hero banner (wishlist page) and a thumbnail (dashboard cards) separately.~~
+Replaced because: separate `banner_image_key` / `thumbnail_image_key` columns were removed; wishlists now use a single `image_key` with per-slot crop metadata in `image_slots` JSON.
+
+### Single image_key + image_slots per wishlist (replaces separate banner/thumbnail)
+
+Decided: 2026-06-02
+What: Wishlists store one uploaded image (`image_key`) plus a JSON `image_slots` column that holds independent crop metadata for each named slot (`card`, `thumbnail`, `banner`, `social`). `banner_image_key` and `thumbnail_image_key` columns are removed.
+Why: A single upload with per-slot cropping covers all display contexts without requiring the owner to manage multiple files. Each slot's crop is fully independent, so banner and card framings can differ.
+Rejected: Keeping separate upload columns (upload friction, storage duplication).
 
 ### Gift images: URL + upload
 
@@ -649,3 +655,55 @@ Decided: 2026-05-31
 What: Keep Darecky's styling and UX features (scroll buttons, size prop, bold focus, cursor-default, dark mode destructive). Add GK's structural improvements (state prop on Select trigger, SubContent defaults on DropdownMenu, destructive shortcut coloring). Create comprehensive stories with play tests from GK.
 Why: Darecky's UX decisions (bold focus, OS-convention cursor) are better. GK's structural completeness (error states, proper defaults, testing) fills gaps.
 Rejected: Taking either project's version wholesale (both have genuine strengths the other lacks).
+
+## Image Fitting & Cropping
+
+### Single shared ImageFrame renderer for all image presentation
+
+Decided: 2026-06-02
+What: One `ImageFrame` component handles all fixed-size image boxes across gifts, wishlist cards, and avatars. It accepts a fit mode and focal-point crop and applies them consistently.
+Why: Avoids divergent crop/fit behavior across surfaces; one place to update rendering logic.
+Rejected: Parallel per-surface image components (drift risk, duplicated crop logic).
+
+### Focal point + zoom as canonical crop representation; cropRect persisted for editor restore only
+
+Decided: 2026-06-02
+What: The persisted crop value for any image slot is `{ x, y, zoom }` (focal point in percent + zoom ≥ 1). A normalized `cropRect` (0–1) is also persisted alongside it, but solely so the crop editor can restore the exact region the user drew. Only focal point + zoom is used for rendering.
+Why: Focal point + zoom is resolution- and aspect-ratio-independent — it produces correct framing regardless of which slot ratio is being rendered. A raw cropRect breaks when rendered at a different aspect ratio.
+Rejected: Persisting cropRect only (breaks rendering at different slot aspect ratios).
+
+### One-crop-all-slots for gifts; independent per-slot crops for wishlists
+
+Decided: 2026-06-02
+What: A gift's `image_meta` stores a single crop (focal point + zoom) applied to all display surfaces. Wishlists use `image_slots` with independent crop metadata per named slot (`card`, `thumbnail`, `banner`, `social`).
+Why: Gift surfaces (card thumbnail, detail modal) share the same framing — one crop is sufficient. Wishlist slots have very different aspect ratios and need distinct framings.
+Rejected: Per-slot crops for gifts (unnecessary complexity), single crop for wishlist slots (poor results across divergent aspect ratios).
+
+### Separated token responsibilities: bg-theme / wishlist tokens / frame-fill
+
+Decided: 2026-06-02
+What: Three distinct token layers — `data-bg-theme` attribute controls app-shell background tint; `--wishlist-*` tokens express wishlist color identity on the wishlist page; `--frame-fill` controls the background behind letterboxed images. Each is set and scoped independently.
+Why: Each concern is independently themeable and must not leak into the others (e.g., wishlist accent color must not affect the app shell).
+Rejected: Shared token namespace (cross-contamination between app shell and wishlist themes).
+
+### App background theme applied server-side via data-bg-theme on <html>
+
+Decided: 2026-06-02
+What: The user's `app_background_theme` preference (`default` / `golden-hour` / `twilight`) is read in `hooks.server.ts` and written as a `data-bg-theme` attribute on `<html>` before the first byte is sent.
+Why: Setting it server-side eliminates flash-of-wrong-theme on first paint — the correct theme is present in the initial HTML.
+Rejected: Client-only `onMount` application (causes visible flash of the default theme on load).
+
+### Native <input type=range> instead of bits-ui Slider for crop zoom control
+
+Decided: 2026-06-02
+What: The zoom slider in the crop editor uses a plain `<input type="range">` styled with Tailwind, not the bits-ui `Slider` component.
+Why: bits-ui Slider threw a runtime error on single-value usage — its internal `ticksPropsArr` reads `value` as an array, which crashes when a scalar is passed. Native range input has no such issue and is sufficient for a single continuous value.
+Rejected: bits-ui Slider (runtime crash on scalar value), patching bits-ui (not worth the maintenance overhead for this use case).
+
+### Accepted a11y exception: gift crop canvas is pointer-only (WCAG 2.1.1)
+
+Decided: 2026-06-03
+What: `GiftImageCropCanvas` exposes a focusable `role="button"` crop region driven only by pointer events, with resize handles nested inside it. Keyboard move/resize and resolving the nested-interactive structure are deliberately NOT implemented. Issue #50, which scoped this work, was closed NOT_PLANNED.
+Why: Keyboard crop operation was deprioritized for v1; the gap was reviewed and consciously accepted rather than silently shipped. Documented here and inline in the component so it is not mistaken for an oversight.
+Rejected: Implementing keyboard nudge/resize now (deferred); silently leaving it undocumented (would read as a bug).
+Revisit: If the crop editor becomes a primary owner workflow or an accessibility audit requires AA, reopen #50 and implement keyboard operation + fix the nested-interactive handles.

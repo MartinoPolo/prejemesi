@@ -535,6 +535,7 @@
 	"theme_preview_sample_title": "Ukázkový seznam",
 	"toast_wishlist_image_saved": "Obrázek seznamu byl uložen",
 	"toast_wishlist_image_save_error": "Nepodařilo se uložit obrázek seznamu",
+	"toast_wishlist_image_upload_error": "Nepodařilo se nahrát obrázek seznamu",
 	"wishlist_detail_unfollow": "Přestat sledovat",
 	"wishlist_detail_add_gift_label": "Přidat dárek",
 	"wishlist_detail_add_wish": "Přidat přání",

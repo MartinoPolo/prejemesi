@@ -14,11 +14,7 @@
 		type ImageFrameShape,
 		type ImageFrameResolvedFit,
 	} from './image_frame_variants.js';
-
-	interface Focal {
-		x: number;
-		y: number;
-	}
+	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
 
 	interface Props {
 		/** Image source. Null/empty renders the themed fallback. */
@@ -28,7 +24,7 @@
 		/** Fit strategy for the box (REQ-1). */
 		fitMode?: ImageFitMode;
 		/** Focal point (%) honored in cover-crop. */
-		focal?: Focal;
+		focal?: ImageFocalPoint;
 		/** Zoom factor (1 = 100%) honored in cover-crop, magnifying toward the focal point. */
 		zoom?: number;
 		/** Extracted/manual dominant color — tier 1 of the fill chain (REQ-3). */

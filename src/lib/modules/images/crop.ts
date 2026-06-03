@@ -1,13 +1,14 @@
 /**
- * Pure conversion helpers between the editor's crop rectangle and the renderer's
+ * Pure conversion helpers between an editor's crop rectangle and the renderer's
  * focal-point + zoom contract (#34 ImageFrame honors `focal` + `zoom`, not a raw
- * crop rect). A single normalized crop is reused across every consumer slot — each
- * slot derives its own visible window from the shared focal/zoom via object-fit
- * cover, so one crop applies everywhere ("one crop, all slots"). Kept framework-free
+ * crop rect). For a gift, a single normalized crop is reused across every consumer
+ * slot — each slot derives its visible window from the shared focal/zoom via
+ * object-fit cover ("one crop, all slots"). Wishlist images instead persist
+ * independent crop metadata per slot (see `wishlist_slots.ts`). Kept framework-free
  * so it is unit-testable in isolation.
  */
 
-import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/components/derived/image-frame/index.js';
+import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
 import {
 	IMAGE_ZOOM_MIN,
 	IMAGE_ZOOM_MAX,
@@ -17,6 +18,9 @@ import {
 } from './types.js';
 
 const CENTERED_FOCAL: ImageFocalPoint = { x: 50, y: 50 };
+
+/** Identity crop rectangle — the full image, no cropping applied. */
+export const FULL_CROP_RECT: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
 
 function clampZoom(zoom: number): number {
 	if (!Number.isFinite(zoom)) {
@@ -60,6 +64,26 @@ export function focalZoomToCropRect(focal: ImageFocalPoint, zoom: number): Image
 		y: clampOrigin(focal.y / 100),
 		w: size,
 		h: size,
+	};
+}
+
+/**
+ * Assemble persistable {@link ImageMetadata} from an editor's fit mode + crop
+ * rectangle, deriving the renderer's focal + zoom. Shared by the gift and wishlist
+ * crop editors so the persisted shape stays identical across both surfaces.
+ */
+export function cropStateToImageMeta(
+	fitMode: ImageFitMode,
+	cropRect: ImageCropRect,
+	bgColor: string | null = null,
+): ImageMetadata {
+	const { focal, zoom } = cropRectToFocalZoom(cropRect);
+	return {
+		fitMode,
+		cropRect: { x: cropRect.x, y: cropRect.y, w: cropRect.w, h: cropRect.h },
+		focal,
+		zoom,
+		bgColor,
 	};
 }
 

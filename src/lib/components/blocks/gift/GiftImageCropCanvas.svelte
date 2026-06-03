@@ -3,7 +3,7 @@
 	import { cn } from '$lib/utils.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
-	import type { ImageCropRect } from '$lib/modules/images/index.js';
+	import { FULL_CROP_RECT, type ImageCropRect } from '$lib/modules/images/index.js';
 
 	interface Props {
 		/** Source image displayed beneath the crop rectangle. */
@@ -34,7 +34,6 @@
 		class: className,
 	}: Props = $props();
 
-	const FULL_FRAME: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
 	const MIN_SIZE = 0.05;
 	/** Drag handles: corners resize both axes, edges resize one (REQ-3). */
 	const HANDLES = [
@@ -58,7 +57,7 @@
 
 	// drag bookkeeping (plain, non-reactive — only read inside pointer handlers)
 	let mode: DragMode = 'move';
-	let startRect: ImageCropRect = FULL_FRAME;
+	let startRect: ImageCropRect = FULL_CROP_RECT;
 	let startPointer = { x: 0, y: 0 };
 
 	// Stage matches the image's natural ratio so crop coords map 1:1 to image space
@@ -141,7 +140,7 @@
 	}
 
 	function reset() {
-		emit({ ...FULL_FRAME });
+		emit({ ...FULL_CROP_RECT });
 	}
 
 	const isFullFrame = $derived(
@@ -193,7 +192,12 @@
 					100}% {cropRect.y * 100}%);"
 			></div>
 
-			<!-- Crop rectangle: draggable body + rule-of-thirds grid + handles -->
+			<!-- Crop rectangle: draggable body + rule-of-thirds grid + handles.
+			     Accessibility exception (issue #50, closed NOT_PLANNED): this region is
+			     pointer-only. Keyboard move/resize and removing the nested interactive
+			     handles were deliberately deferred — an accepted, documented WCAG 2.1.1
+			     gap pending reprioritization (see .mpx/DECISIONS.md / PHASE_END_PRD_33.md).
+			     The region stays focusable for discoverability. -->
 			<div
 				role="button"
 				tabindex="0"

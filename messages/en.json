@@ -535,6 +535,7 @@
 	"theme_preview_sample_title": "Sample wishlist",
 	"toast_wishlist_image_saved": "Wishlist image saved",
 	"toast_wishlist_image_save_error": "Failed to save wishlist image",
+	"toast_wishlist_image_upload_error": "Failed to upload wishlist image",
 	"wishlist_detail_unfollow": "Stop following",
 	"wishlist_detail_add_gift_label": "Add gift",
 	"wishlist_detail_add_wish": "Add wish",

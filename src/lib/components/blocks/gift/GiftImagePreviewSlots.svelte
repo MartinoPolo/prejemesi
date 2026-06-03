@@ -4,25 +4,17 @@
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
 		IMAGE_TOKEN_SCOPES,
-		type ImageFitMode,
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
-
-	interface Focal {
-		x: number;
-		y: number;
-	}
+	import type { ImageFrameProps } from '$lib/modules/images/index.js';
 
 	interface Props {
 		/** Source image — null renders the themed fallback in every tile. */
 		src: string | null;
 		/** Accessible description shared by every tile. */
 		alt: string;
-		fitMode: ImageFitMode;
-		focal: Focal;
-		zoom: number;
-		/** Tier-1 background fill behind any letterboxing. */
-		fillColor?: string | null;
+		/** Renderer presentation props (fit/focal/zoom/fill) shared by every tile. */
+		frame: ImageFrameProps;
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
@@ -32,10 +24,7 @@
 	let {
 		src,
 		alt,
-		fitMode,
-		focal,
-		zoom,
-		fillColor = null,
+		frame,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		loading = false,
 		class: className,
@@ -72,10 +61,10 @@
 					class={cn('w-full', slot.aspect)}
 					{src}
 					{alt}
-					{fitMode}
-					{focal}
-					{zoom}
-					{fillColor}
+					fitMode={frame.fitMode}
+					focal={frame.focal}
+					zoom={frame.zoom}
+					fillColor={frame.fillColor}
 					{tokenScope}
 					{loading}
 				/>
