@@ -71,6 +71,9 @@ export default defineConfig({
 			include: [
 				'src/lib/modules/**/*.remote.ts',
 				'src/lib/modules/gifts/gift_url.ts',
+				'src/lib/modules/import/parse_tabular.ts',
+				'src/lib/modules/import/detect_columns.ts',
+				'src/lib/modules/import/sheets_link.ts',
 				'src/lib/modules/uploads/upload.ts',
 				'src/lib/server/remote.ts',
 				'src/lib/server/crypto/**/*.ts',

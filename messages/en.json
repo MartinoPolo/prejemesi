@@ -603,5 +603,9 @@
 	"server_error_cannot_edit_after_sharing": "Existing gifts can't be edited after the list has been shared. You can still add new gifts.",
 	"server_error_cannot_delete_after_sharing": "Existing gifts can't be removed after the list has been shared.",
 	"server_error_cannot_delete_reserved_gift": "This gift can't be removed because it has been reserved.",
-	"server_error_only_owner_can_mark_received": "Only the owner can mark gifts as received"
+	"server_error_only_owner_can_mark_received": "Only the owner can mark gifts as received",
+	"server_error_sheets_link_invalid": "This doesn't look like a Google Sheets link. Paste a link to a Google spreadsheet.",
+	"server_error_sheets_link_not_a_sheet": "This link isn't a Google Sheet. Only spreadsheets can be imported — not Docs, Slides, or Forms.",
+	"server_error_sheets_private": "This sheet isn't publicly accessible. Set sharing to \"Anyone with the link\" or paste a published CSV link.",
+	"server_error_sheets_fetch_failed": "We couldn't load this sheet. Please try again."
 }
