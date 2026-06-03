@@ -186,6 +186,6 @@
 		{wishlistTitle}
 		isSubmitting={isBatchSubmitting}
 		onsubmit={onbatchsubmit}
-		onopenchange={onbatchdialogopenchange}
+		onOpenChange={onbatchdialogopenchange}
 	/>
 {/if}

@@ -1,57 +1,50 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftGrid from './GiftDraftGrid.svelte';
-	import {
-		createBlankRow,
-		getValidSelectedCount,
-		isDirty,
-		toGiftDraftInputs,
-		type GridDraftRow,
-	} from './gift_draft_grid.js';
-	import type { GiftDraftInput } from '$lib/modules/gifts/types.js';
+	import { DRAFT_GRID_CONTEXT, type DraftGridChange } from './gift_draft_grid_model.js';
 
-	interface GiftDraftDialogProps {
+	interface Props {
 		open: boolean;
-		wishlistTitle: string;
+		wishlistTitle?: string;
 		isSubmitting?: boolean;
-		onsubmit: (drafts: GiftDraftInput[]) => void;
-		onopenchange: (open: boolean) => void;
+		onsubmit?: (drafts: GiftDraft[]) => void;
+		oncancel?: () => void;
+		onOpenChange?: (open: boolean) => void;
 	}
 
 	let {
-		open = $bindable(),
-		wishlistTitle,
+		open = $bindable(false),
+		wishlistTitle = '',
 		isSubmitting = false,
 		onsubmit,
-		onopenchange,
-	}: GiftDraftDialogProps = $props();
+		oncancel,
+		onOpenChange,
+	}: Props = $props();
 
-	let rows = $state<GridDraftRow[]>([createBlankRow()]);
+	let drafts = $state<GiftDraft[]>([]);
+	let validCount = $state(0);
+	let gridKey = $state(0);
 
-	const validCount = $derived(getValidSelectedCount(rows));
-	const canSubmit = $derived(validCount > 0 && !isSubmitting);
-
-	$effect(() => {
-		if (!open) {
-			resetGrid();
-		}
-	});
-
-	function handleRowsChange(nextRows: GridDraftRow[]) {
-		rows = nextRows;
+	function handleChange(change: DraftGridChange) {
+		drafts = change.drafts;
+		validCount = change.validCount;
 	}
 
 	function handleSubmit() {
-		rows = rows.map((r) => ({ ...r, touched: true }));
-
-		const drafts = toGiftDraftInputs(rows);
-		if (drafts.length === 0) {
+		if (validCount === 0) {
 			return;
 		}
+		onsubmit?.(drafts);
+	}
 
-		onsubmit(drafts);
+	function handleCancel() {
+		oncancel?.();
+		open = false;
 	}
 
 	function handleOpenChange(next: boolean | undefined) {
@@ -59,57 +52,66 @@
 		if (isSubmitting) {
 			return;
 		}
-		if (!nextValue && isDirty(rows)) {
-			const confirmed = confirm(m.batch_add_discard_message());
-			if (!confirmed) {
-				return;
-			}
+		onOpenChange?.(nextValue);
+		if (!nextValue) {
+			open = false;
+			resetState();
 		}
-		open = nextValue;
-		onopenchange(nextValue);
 	}
 
-	function handleCancel() {
-		handleOpenChange(false);
-	}
-
-	function resetGrid() {
-		rows = [createBlankRow()];
+	function resetState() {
+		untrack(() => {
+			gridKey++;
+			drafts = [];
+			validCount = 0;
+		});
 	}
 </script>
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content class="flex max-h-[90dvh] max-w-[1100px] flex-col">
-		<Dialog.Header>
-			<Dialog.Title class="font-heading text-lg">{m.batch_add_dialog_title()}</Dialog.Title>
-			<Dialog.Description>
-				{m.batch_add_dialog_subtitle({ wishlistTitle })}
-			</Dialog.Description>
+	<Dialog.Content
+		class="flex max-h-[90dvh] w-full max-w-[1100px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1100px]"
+	>
+		<Dialog.Header class="border-b border-border px-6 py-5 text-left">
+			<Dialog.Title class="font-heading text-xl font-bold tracking-tight">
+				{m.draft_grid_dialog_title()}
+			</Dialog.Title>
+			<p class="mt-1 text-xs text-foreground-muted">
+				{#if wishlistTitle}
+					{m.batch_add_dialog_subtitle({ wishlistTitle })}
+				{:else}
+					{m.draft_grid_dialog_subtitle()}
+				{/if}
+			</p>
 		</Dialog.Header>
 
-		<!-- Scrollable body -->
-		<div class="flex-1 overflow-y-auto px-1 py-3">
-			<GiftDraftGrid {rows} onrowschange={handleRowsChange} />
+		<div class="min-h-0 flex-1 overflow-auto px-4 py-4">
+			{#key gridKey}
+				<GiftDraftGrid context={DRAFT_GRID_CONTEXT.batch} onchange={handleChange} />
+			{/key}
 		</div>
 
-		<!-- Pinned footer -->
-		<Dialog.Footer class="flex items-center gap-3 border-t pt-3">
-			<span class="text-muted-foreground mr-auto text-xs">
-				{#if canSubmit}
+		<Dialog.Footer class="flex flex-wrap items-center gap-4 border-t border-border px-6 py-4">
+			{#if validCount === 0 && !isSubmitting}
+				<HelpText state="error" class="m-0">{m.draft_grid_commit_hint_blocking()}</HelpText>
+			{:else if validCount > 0}
+				<span class="text-xs text-foreground-muted">
 					{m.batch_add_hint_enabled({ count: validCount })}
-				{:else}
-					{m.batch_add_hint_disabled()}
-				{/if}
-			</span>
-
+				</span>
+			{/if}
+			<div class="flex-1"></div>
 			<Button intent="ghost" onclick={handleCancel} disabled={isSubmitting}>
-				{m.cancel()}
+				{m.draft_grid_dialog_cancel()}
 			</Button>
-			<Button disabled={!canSubmit} onclick={handleSubmit}>
+			<Button
+				intent="primary"
+				disabled={validCount === 0 || isSubmitting}
+				onclick={handleSubmit}
+			>
 				{#if isSubmitting}
 					{m.batch_add_submit_pending()}
 				{:else}
-					{m.batch_add_submit()}
+					{m.draft_grid_dialog_submit()}
 				{/if}
 			</Button>
 		</Dialog.Footer>

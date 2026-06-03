@@ -1,75 +1,61 @@
 <script lang="ts">
-	import { Input } from '$lib/components/base/input/index.js';
+	import * as InputGroup from '$lib/components/base/input-group/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
+	import { GIFT_CURRENCY_VALUES, type GiftCurrency } from '$lib/modules/gifts/types.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import {
-		GIFT_CURRENCIES,
-		GIFT_CURRENCY_LABELS,
-		type GiftCurrency,
-	} from '$lib/modules/gifts/types.js';
 
-	interface GiftDraftPriceCellProps {
-		price: number | null;
+	interface Props {
+		/** Raw price text (whole units only; parsed to an integer by the host). */
+		price: string;
+		/** Currency code — defaults to CZK upstream. */
 		currency: GiftCurrency;
-		disabled?: boolean;
-		onpricechange: (price: number | null) => void;
-		oncurrencychange: (currency: GiftCurrency) => void;
+		/** Write a new raw price back to the row. */
+		onPriceInput: (value: string) => void;
+		/** Write a new currency back to the row. */
+		onCurrencyChange: (value: GiftCurrency) => void;
 	}
 
-	let {
-		price,
-		currency,
-		disabled = false,
-		onpricechange,
-		oncurrencychange,
-	}: GiftDraftPriceCellProps = $props();
+	let { price, currency, onPriceInput, onCurrencyChange }: Props = $props();
 
-	const displayPrice = $derived(price !== null ? String(price) : '');
-
-	function handlePriceInput(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const raw = target.value.trim();
-		if (raw === '') {
-			onpricechange(null);
-			return;
-		}
-		const parsed = Number(raw);
-		if (!Number.isNaN(parsed) && parsed >= 0) {
-			onpricechange(Math.round(parsed));
-		}
+	function isCurrency(value: string): value is GiftCurrency {
+		return (GIFT_CURRENCY_VALUES as readonly string[]).includes(value);
 	}
 </script>
 
-<div class="flex items-center gap-1">
-	<Input
-		type="number"
-		value={displayPrice}
-		placeholder={m.batch_add_price_placeholder()}
-		class="h-7 min-w-0 flex-1 text-right text-xs"
-		min="0"
-		{disabled}
-		oninput={handlePriceInput}
+<InputGroup.Root class="h-(--size-control-md)">
+	<InputGroup.Input
+		type="text"
+		inputmode="numeric"
+		value={price}
+		oninput={(event) => onPriceInput(event.currentTarget.value)}
+		placeholder={m.draft_grid_price_placeholder()}
+		aria-label={m.draft_grid_col_price()}
+		class="text-right"
 	/>
-	<Select.Root
-		type="single"
-		value={currency}
-		onValueChange={(value) => {
-			if (value !== undefined && value !== '') {
-				oncurrencychange(value as GiftCurrency);
-			}
-		}}
-	>
-		<Select.Trigger class="h-7 w-[72px] shrink-0 px-2 text-xs" {disabled}>
-			{currency}
-		</Select.Trigger>
-		<Select.Content>
-			<Select.Group>
-				{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
-					<Select.Item value={val} label={GIFT_CURRENCY_LABELS[val]}>
-						{GIFT_CURRENCY_LABELS[val]}
-					</Select.Item>
-				{/each}
-			</Select.Group>
-		</Select.Content>
-	</Select.Root>
-</div>
+	<InputGroup.Addon align="inline-end" class="p-0">
+		<Select.Root
+			type="single"
+			value={currency}
+			onValueChange={(value) => {
+				if (isCurrency(value)) {
+					onCurrencyChange(value);
+				}
+			}}
+		>
+			<Select.Trigger
+				size="sm"
+				aria-label={m.draft_grid_currency_label()}
+				class="h-full rounded-none border-0 border-l border-border-strong bg-surface-2 text-xs font-semibold text-foreground-muted shadow-none"
+			>
+				{currency}
+			</Select.Trigger>
+			<Select.Content>
+				<Select.Group>
+					{#each GIFT_CURRENCY_VALUES as code (code)}
+						<Select.Item value={code} label={code}>{code}</Select.Item>
+					{/each}
+				</Select.Group>
+			</Select.Content>
+		</Select.Root>
+	</InputGroup.Addon>
+</InputGroup.Root>
