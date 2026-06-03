@@ -8,6 +8,7 @@
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
+	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
@@ -166,6 +167,13 @@
 	// ── Theme selector dialog state ──────────────────────────────────────────
 
 	let themeDialogOpen = $state(false);
+
+	// ── Import wizard state ──────────────────────────────────────────────────
+
+	let importWizardOpen = $state(false);
+	const existingGiftsForImport = $derived(
+		gifts.map((g) => ({ name: g.name, links: g.links ?? [] })),
+	);
 
 	// ── Drag-and-drop state ──────────────────────────────────────────────────
 
@@ -586,6 +594,7 @@
 		onappearance={handleAppearanceOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
+		onimport={() => (importWizardOpen = true)}
 	/>
 
 	<WishlistGiftDisplay
@@ -648,6 +657,16 @@
 	onthemecancel={handleThemeCancel}
 	onmoderatorselfpromoted={handleSelfPromoted}
 />
+
+{#if isOwnerOrModerator && !isArchived}
+	<ImportWizard
+		bind:open={importWizardOpen}
+		mode={WIZARD_MODE.append}
+		wishlistId={wishlist.id}
+		wishlistTitle={wishlist.title}
+		existingGifts={existingGiftsForImport}
+	/>
+{/if}
 
 <!-- OpenGraph Meta Tags -->
 <svelte:head>

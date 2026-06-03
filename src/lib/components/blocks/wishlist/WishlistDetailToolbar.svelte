@@ -5,6 +5,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import ImageIcon from '@lucide/svelte/icons/image';
+	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
@@ -24,6 +25,7 @@
 		onappearance: () => void;
 		onunfollow: () => void;
 		onaddgift: () => void;
+		onimport?: () => void;
 	}
 
 	let {
@@ -41,6 +43,7 @@
 		onappearance,
 		onunfollow,
 		onaddgift,
+		onimport,
 	}: WishlistDetailToolbarProps = $props();
 </script>
 
@@ -84,6 +87,18 @@
 			>
 		{/if}
 		{#if isOwnerOrModerator && !isArchived}
+			{#if onimport}
+				<SimpleTooltip text={m.import_wizard_title()}>
+					<Button
+						size="icon-sm"
+						intent="outline"
+						aria-label={m.import_wizard_title()}
+						onclick={onimport}
+					>
+						<FileUpIcon />
+					</Button>
+				</SimpleTooltip>
+			{/if}
 			<Button size="sm" aria-label={m.wishlist_detail_add_gift_label()} onclick={onaddgift}>
 				<PlusIcon data-icon="inline-start" />
 				{m.wishlist_detail_add_wish()}
