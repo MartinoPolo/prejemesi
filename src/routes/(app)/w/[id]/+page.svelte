@@ -44,12 +44,14 @@
 		markGiftReceived,
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
+	import { importGifts } from '$lib/modules/import/import.remote.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
 		GiftForVisitor,
 		GiftByRole,
 		GiftPriorityLevel,
+		GiftDraftInput,
 		CreateGiftInput,
 		UpdateGiftInput,
 		GiftViewMode,
@@ -162,6 +164,11 @@
 	let priorityLevels = $state.raw<GiftPriorityLevel[]>([]);
 	let isSubmitting = $state(false);
 	let isDeleting = $state(false);
+
+	// ── Batch add dialog state ───────────────────────────────────────────────
+
+	let batchAddDialogOpen = $state(false);
+	let isBatchSubmitting = $state(false);
 
 	// ── Theme selector dialog state ──────────────────────────────────────────
 
@@ -377,6 +384,30 @@
 		}
 	}
 
+	// ── Batch add handlers ───────────────────────────────────────────────────
+
+	function openBatchAddDialog() {
+		batchAddDialogOpen = true;
+	}
+
+	async function handleBatchSubmit(drafts: GiftDraftInput[]) {
+		isBatchSubmitting = true;
+		try {
+			const created = await importGifts({ wishlistId: wishlist.id, gifts: drafts });
+			batchAddDialogOpen = false;
+			toastSuccess(m.toast_batch_add_success({ count: created.length }));
+			await refreshData();
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		} finally {
+			isBatchSubmitting = false;
+		}
+	}
+
+	function handleBatchDialogOpenChange(open: boolean) {
+		batchAddDialogOpen = open;
+	}
+
 	// ── Archive handler ───────────────────────────────────────────────────────
 
 	async function handleArchive() {
@@ -586,6 +617,7 @@
 		onappearance={handleAppearanceOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
+		onbatchadd={openBatchAddDialog}
 	/>
 
 	<WishlistGiftDisplay
@@ -633,6 +665,8 @@
 	{isReserving}
 	bind:themeDialogOpen
 	activeTheme={themeContext.activeTheme.current}
+	bind:batchAddDialogOpen
+	{isBatchSubmitting}
 	bind:moderatorPanelOpen
 	ongiftmodalclose={handleGiftModalClose}
 	oncreate={handleCreate}
@@ -647,6 +681,8 @@
 	onthemesave={handleThemeSave}
 	onthemecancel={handleThemeCancel}
 	onmoderatorselfpromoted={handleSelfPromoted}
+	onbatchsubmit={handleBatchSubmit}
+	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
 
 <!-- OpenGraph Meta Tags -->

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
+	import { GiftDraftDialog } from '$lib/components/blocks/gift-draft-grid/index.js';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
 	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
@@ -9,6 +10,7 @@
 		GiftByRole,
 		GiftForVisitor,
 		GiftPriorityLevel,
+		GiftDraftInput,
 		CreateGiftInput,
 		UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
@@ -39,6 +41,9 @@
 		// Theme dialog
 		themeDialogOpen: boolean;
 		activeTheme: WishlistTheme;
+		// Batch add dialog
+		batchAddDialogOpen: boolean;
+		isBatchSubmitting: boolean;
 		// Moderator panel
 		moderatorPanelOpen: boolean;
 		// Callbacks
@@ -55,6 +60,8 @@
 		onthemesave: (theme: WishlistTheme) => void;
 		onthemecancel: () => void;
 		onmoderatorselfpromoted: () => void;
+		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
+		onbatchdialogopenchange: (open: boolean) => void;
 	}
 
 	let {
@@ -78,6 +85,8 @@
 		isReserving,
 		themeDialogOpen = $bindable(),
 		activeTheme,
+		batchAddDialogOpen = $bindable(),
+		isBatchSubmitting,
 		moderatorPanelOpen = $bindable(),
 		ongiftmodalclose,
 		oncreate,
@@ -92,6 +101,8 @@
 		onthemesave,
 		onthemecancel,
 		onmoderatorselfpromoted,
+		onbatchsubmit,
+		onbatchdialogopenchange,
 	}: WishlistModalsProps = $props();
 </script>
 
@@ -165,5 +176,16 @@
 		{ownerIsModerator}
 		bind:open={moderatorPanelOpen}
 		onselfpromoted={onmoderatorselfpromoted}
+	/>
+{/if}
+
+<!-- Batch Add Gifts Dialog (owner/moderator only) -->
+{#if isOwnerOrModerator}
+	<GiftDraftDialog
+		bind:open={batchAddDialogOpen}
+		{wishlistTitle}
+		isSubmitting={isBatchSubmitting}
+		onsubmit={onbatchsubmit}
+		onopenchange={onbatchdialogopenchange}
 	/>
 {/if}
