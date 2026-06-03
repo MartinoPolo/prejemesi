@@ -9,6 +9,7 @@
 	import { Label } from '$lib/components/base/label/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
+	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 
 	interface CreateWishlistModalProps {
 		open: boolean;
@@ -63,6 +64,10 @@
 				eventDate: eventDate !== '' ? new Date(eventDate) : null,
 				theme: theme as 'default' | 'christmas' | 'birthday' | 'fun' | 'elegant',
 			});
+
+			// Refresh dashboard caches so the new wishlist appears on /my-lists and the navbar
+			// "recent" dropdowns without a manual reload.
+			await refreshWishlistDashboards();
 
 			open = false;
 			resetForm();

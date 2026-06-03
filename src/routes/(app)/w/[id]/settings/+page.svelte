@@ -14,6 +14,7 @@
 		getWishlistByShortId,
 		updateWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import {
 		getThemePreset,
 		type WishlistTheme as DashboardWishlistTheme,
@@ -40,6 +41,7 @@
 	async function refresh() {
 		await getWishlistByShortId(shortId).refresh();
 		wishlist = await getWishlistByShortId(shortId);
+		await refreshWishlistDashboards();
 	}
 
 	async function handleImageSave(next: {

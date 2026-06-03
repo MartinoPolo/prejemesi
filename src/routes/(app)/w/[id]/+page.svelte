@@ -22,6 +22,7 @@
 		unfollowWishlist,
 		followWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import { reserveGift } from '$lib/modules/reservations/reservations.remote.js';
@@ -146,6 +147,7 @@
 					// ignore
 				}
 			}
+			await refreshWishlistDashboards();
 		} catch (thrown) {
 			console.error('Failed to refresh wishlist data:', thrown);
 		}
@@ -419,6 +421,7 @@
 			themeContext.cancelPreview();
 			themeDialogOpen = false;
 			toastSuccess(m.toast_theme_saved());
+			await refreshWishlistDashboards();
 		} catch (thrown) {
 			console.error('Failed to save theme:', thrown);
 			toastError(m.toast_theme_save_error());
