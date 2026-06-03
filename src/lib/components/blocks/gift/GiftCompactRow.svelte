@@ -1,5 +1,7 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
@@ -29,12 +31,12 @@
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
 	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
+	const reservedCount = $derived(visitorGift?.reservedCount ?? 0);
 
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
-	const showQuantity = $derived((gift.quantity ?? 1) > 1);
 </script>
 
 <tr
@@ -56,9 +58,7 @@
 	<td class="px-3 py-1.5">
 		<span class="text-sm font-medium text-foreground">
 			{gift.name}
-			{#if showQuantity}
-				<span class="text-muted-foreground">x{gift.quantity}</span>
-			{/if}
+			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 		</span>
 	</td>
 
@@ -69,12 +69,18 @@
 				target="_blank"
 				rel="external noopener noreferrer"
 				class="inline-flex items-center gap-1 text-xs text-primary"
+				onclick={(e: MouseEvent) => e.stopPropagation()}
 			>
 				<ExternalLinkIcon class="size-3" />
 				{domain}
 			</a>
+			{#if gift.links.length > 1}
+				<span class="text-xs text-muted-foreground"
+					>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span
+				>
+			{/if}
 		{:else}
-			<span class="text-xs text-muted-foreground">Bez odkazu</span>
+			<span class="text-xs text-muted-foreground">{m.gift_link_none()}</span>
 		{/if}
 	</td>
 

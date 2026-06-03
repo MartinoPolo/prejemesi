@@ -1,19 +1,15 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
-	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
+	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
+	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
-	import ReservationBadge from '$lib/components/blocks/reservation/ReservationBadge.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import {
-		formatPrice,
-		extractGiftDomain,
-		getPriorityDisplay,
-	} from '$lib/modules/gifts/gift_display.js';
-	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
+	import { formatPrice, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 
 	interface GiftCardProps {
@@ -30,15 +26,12 @@
 
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
 	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
+	const reservedCount = $derived(visitorGift?.reservedCount ?? 0);
 
 	const styles = $derived(giftCardVariants({ reserved: isFullyReserved }));
 
-	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
-	const domain = $derived(extractGiftDomain(gift.links));
-	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
-	const showQuantity = $derived((gift.quantity ?? 1) > 1);
 </script>
 
 <div class={styles.card()}>
@@ -59,7 +52,7 @@
 					class="bg-reserved/15 text-reserved gap-1 border-reserved/25"
 				>
 					<CheckIcon class="size-3" />
-					Rezervovano
+					{m.gift_reserved_overlay()}
 				</Badge>
 			</div>
 		{/if}
@@ -68,7 +61,7 @@
 			<div class="absolute top-2 right-2">
 				<Badge tone="neutral" class="gap-1">
 					<CheckIcon class="size-3" />
-					Prijato
+					{m.gift_received_badge()}
 				</Badge>
 			</div>
 		{/if}
@@ -76,7 +69,11 @@
 
 	<!-- Body -->
 	<div class={styles.body()}>
-		<h3 class={styles.name()}>{gift.name}</h3>
+		<!-- Name + piece count -->
+		<div class={styles.nameRow()}>
+			<h3 class={styles.name()}>{gift.name}</h3>
+			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} />
+		</div>
 
 		{#if gift.price !== null}
 			<span class={styles.price()}>{priceDisplay}</span>
@@ -84,35 +81,21 @@
 			<span class={styles.priceEmpty()}>{priceDisplay}</span>
 		{/if}
 
-		{#if domain}
-			<a
-				href={safeGiftUrl ?? '#'}
-				target="_blank"
-				rel="external noopener noreferrer"
-				class={styles.linkRow()}
-			>
-				<ExternalLinkIcon class="size-3" />
-				{domain}
-			</a>
-		{:else}
-			<span class={styles.linkEmpty()}>Bez odkazu</span>
-		{/if}
-
-		<!-- Badges row -->
-		<div class={styles.badgeRow()}>
-			{#if priorityInfo}
+		<!-- Priority eyebrow -->
+		{#if priorityInfo}
+			<div class={styles.priorityEyebrow()}>
 				<Badge tone="neutral" badgeStyle="subtle" class={priorityInfo.colorClass}>
+					<span class="text-[10px] uppercase opacity-60">{m.gift_priority_eyebrow()}</span
+					>
+					<span class="opacity-40"> &middot; </span>
 					{priorityInfo.label()}
 				</Badge>
-			{/if}
+			</div>
+		{/if}
 
-			{#if showQuantity}
-				<span class={styles.quantityBadge()}>x{gift.quantity}</span>
-			{/if}
-
-			{#if visitorGift && !isFullyReserved}
-				<ReservationBadge gift={visitorGift} />
-			{/if}
+		<!-- Links -->
+		<div class={styles.linkList()}>
+			<GiftLinkList links={gift.links} maxVisible={3} />
 		</div>
 	</div>
 
@@ -120,10 +103,7 @@
 	{#if isVisitorOrModerator && visitorGift}
 		<div class={styles.footer()}>
 			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
-
-			{#if visitorGift}
-				<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
-			{/if}
+			<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
 		</div>
 	{/if}
 </div>
