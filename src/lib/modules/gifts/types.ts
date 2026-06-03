@@ -158,6 +158,21 @@ export const CreateGiftInputSchema = v.object({
 	sortOrder: v.optional(v.number()),
 });
 
+/**
+ * Wire shape of one import/batch draft committed into a real gift. Mirrors the
+ * editable {@link GiftDraft} grid row minus DB-managed fields (wishlist, image,
+ * quantity, priority, sortOrder). `name` is required; everything else optional.
+ */
+export const GiftDraftInputSchema = v.object({
+	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
+	description: v.optional(v.nullable(v.string())),
+	links: v.optional(v.nullable(GiftLinksSchema)),
+	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+});
+
+export type GiftDraftInput = v.InferOutput<typeof GiftDraftInputSchema>;
+
 /** Input for updating an existing gift */
 export interface UpdateGiftInput {
 	id: string;

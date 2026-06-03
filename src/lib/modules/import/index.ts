@@ -15,3 +15,9 @@ export {
 	type SheetsLinkResult,
 	type SheetsResponseVerdict,
 } from './sheets_link.js';
+export {
+	ImportGiftsInputSchema,
+	CreateWishlistFromImportInputSchema,
+	type ImportGiftsInput,
+	type CreateWishlistFromImportInput,
+} from './import_types.js';
