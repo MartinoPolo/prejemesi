@@ -14,9 +14,17 @@
 		isArchived?: boolean;
 		onclick?: () => void;
 		onreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false, onclick, onreserve }: GiftCompactRowProps = $props();
+	let {
+		gift,
+		role,
+		isArchived = false,
+		onclick,
+		onreserve,
+		onunreserve,
+	}: GiftCompactRowProps = $props();
 
 	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
 	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
@@ -88,10 +96,16 @@
 		</td>
 
 		<td class="px-3 py-1.5 text-right">
-			{#if isFullyReserved}
+			{#if isFullyReserved && visitorGift.myReservationId === null}
 				<span class="text-xs font-medium text-reserved">Rezervovano</span>
-			{:else if visitorGift}
-				<ReserveButton gift={visitorGift} {isArchived} size="sm" {onreserve} />
+			{:else}
+				<ReserveButton
+					gift={visitorGift}
+					{isArchived}
+					size="sm"
+					{onreserve}
+					{onunreserve}
+				/>
 			{/if}
 		</td>
 	{/if}

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
@@ -54,9 +53,31 @@
 		archived: { label: m.dashboard_status_archived(), variant: 'draft' },
 	};
 
-	let myListsItems = $state<NavDropdownItem[]>([]);
-	let moderatedItems = $state<NavDropdownItem[]>([]);
-	let followedItems = $state<NavDropdownItem[]>([]);
+	const myListsQuery = $derived(user ? getMyWishlists() : null);
+	const myListsItems = $derived<NavDropdownItem[]>(
+		(myListsQuery?.current ?? [])
+			.filter((w) => w.status !== 'archived')
+			.slice(-MAX_DROPDOWN_ITEMS)
+			.reverse()
+			.map(wishlistToDropdownItem),
+	);
+
+	const moderatedQuery = $derived(user ? getModeratedWishlists() : null);
+	const moderatedItems = $derived<NavDropdownItem[]>(
+		(moderatedQuery?.current ?? [])
+			.slice(-MAX_DROPDOWN_ITEMS)
+			.reverse()
+			.map(moderatedToDropdownItem),
+	);
+
+	const followedQuery = $derived(user ? getFollowedWishlists() : null);
+	const followedItems = $derived<NavDropdownItem[]>(
+		(followedQuery?.current ?? [])
+			.filter((w) => w.unfollowedAt === null)
+			.slice(-MAX_DROPDOWN_ITEMS)
+			.reverse()
+			.map(followedToDropdownItem),
+	);
 
 	function wishlistToDropdownItem(wishlistRecord: Wishlist): NavDropdownItem {
 		const theme = getThemePreset(wishlistRecord.theme as WishlistTheme);
@@ -111,38 +132,6 @@
 	]);
 
 	let isCreateModalOpen = $state(false);
-
-	onMount(async () => {
-		if (!user) {
-			return;
-		}
-		const [myLists, moderated, followed] = await Promise.allSettled([
-			getMyWishlists(),
-			getModeratedWishlists(),
-			getFollowedWishlists(),
-		]);
-
-		if (myLists.status === 'fulfilled') {
-			myListsItems = myLists.value
-				.filter((w) => w.status !== 'archived')
-				.slice(-MAX_DROPDOWN_ITEMS)
-				.reverse()
-				.map(wishlistToDropdownItem);
-		}
-		if (moderated.status === 'fulfilled') {
-			moderatedItems = moderated.value
-				.slice(-MAX_DROPDOWN_ITEMS)
-				.reverse()
-				.map(moderatedToDropdownItem);
-		}
-		if (followed.status === 'fulfilled') {
-			followedItems = followed.value
-				.filter((w) => w.unfollowedAt === null)
-				.slice(-MAX_DROPDOWN_ITEMS)
-				.reverse()
-				.map(followedToDropdownItem);
-		}
-	});
 </script>
 
 <header class="topbar">

@@ -21,7 +21,9 @@ test('warmup: compile all route modules', async ({ page, request, browser }) => 
 
 	await authPage.goto('/my-lists');
 	await authPage.waitForLoadState('networkidle');
-	await expect(authPage.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
+	// Locale-agnostic: the app serves cs at `/` and en at `/en` (base locale en), so a
+	// fresh context's default locale can be either — match both rather than pinning cs.
+	await expect(authPage.getByRole('heading', { name: /Moje seznamy|My lists/ })).toBeVisible();
 
 	await ctx.close();
 });

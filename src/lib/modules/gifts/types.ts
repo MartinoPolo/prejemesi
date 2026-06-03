@@ -36,6 +36,8 @@ export interface GiftForVisitor {
 	likeCount: number;
 	reservedCount: number;
 	isFullyReserved: boolean;
+	/** Active reservation id held by the current authenticated user for this gift, or null. */
+	myReservationId: string | null;
 }
 
 /** Gift for owner view — no reservation data */

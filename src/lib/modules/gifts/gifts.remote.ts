@@ -146,6 +146,30 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 		}
 	}
 
+	// Batch fetch the current user's active reservation per gift (powers the unreserve UI).
+	// Anonymous reservations are excluded — only authenticated users can self-cancel.
+	const myReservationIds = new Map<string, string>();
+	if (giftIds.length > 0 && authContext !== null) {
+		const myRows = await database
+			.select({ id: reservation.id, giftId: reservation.giftId })
+			.from(reservation)
+			.where(
+				and(
+					inArray(reservation.giftId, giftIds),
+					eq(reservation.userId, authContext.user.id),
+					isNull(reservation.deletedAt),
+				),
+			)
+			.orderBy(reservation.createdAt);
+
+		for (const row of myRows) {
+			// Keep the earliest active reservation per gift
+			if (!myReservationIds.has(row.giftId)) {
+				myReservationIds.set(row.giftId, row.id);
+			}
+		}
+	}
+
 	const visitorGifts: GiftForVisitor[] = giftRows.map((row) => {
 		const qty = row.quantity ?? 1;
 		const reserved = reservationCounts.get(row.id) ?? 0;
@@ -169,6 +193,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			likeCount: likeCounts.get(row.id) ?? 0,
 			reservedCount: reserved,
 			isFullyReserved: reserved >= qty,
+			myReservationId: myReservationIds.get(row.id) ?? null,
 		};
 	});
 
