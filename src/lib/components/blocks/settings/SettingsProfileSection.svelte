@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
+	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import { untrack } from 'svelte';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
@@ -77,10 +78,12 @@
 				<Label>{m.settings_avatar_label()}</Label>
 				<div class="flex items-center gap-4">
 					{#if avatarUrl}
-						<img
+						<ImageFrame
 							src={avatarUrl}
 							alt={displayName}
-							class="size-16 rounded-full object-cover"
+							shape="circle"
+							fitMode="cover-crop"
+							class="size-16"
 						/>
 					{:else}
 						<span

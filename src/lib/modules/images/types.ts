@@ -1,5 +1,7 @@
 import * as v from 'valibot';
-import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/components/derived/image-frame/index.js';
+import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
+
+export { IMAGE_FIT_MODES, type ImageFitMode };
 
 /**
  * Persisted image presentation metadata shared by gift images (REQ-1) and
@@ -46,14 +48,14 @@ export interface ImageMetadata {
 const NormalizedSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(1));
 const PercentSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(100));
 
-export const ImageCropRectSchema = v.object({
+const ImageCropRectSchema = v.object({
 	x: NormalizedSchema,
 	y: NormalizedSchema,
 	w: NormalizedSchema,
 	h: NormalizedSchema,
 });
 
-export const ImageFocalPointSchema = v.object({
+const ImageFocalPointSchema = v.object({
 	x: PercentSchema,
 	y: PercentSchema,
 });

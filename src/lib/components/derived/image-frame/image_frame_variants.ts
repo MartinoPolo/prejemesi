@@ -1,6 +1,4 @@
 import { tv } from 'tailwind-variants';
-import { asExhaustiveArray } from '$lib/utils/variants.js';
-import { IMAGE_FIT_MODES, type ImageFitMode } from './image_frame_fit.js';
 
 export const imageFrameVariants = tv({
 	slots: {
@@ -39,15 +37,3 @@ export const imageFrameVariants = tv({
 export type ImageFrameResolvedFit = keyof typeof imageFrameVariants.variants.fit;
 
 export type ImageFrameShape = keyof typeof imageFrameVariants.variants.shape;
-
-export const IMAGE_FRAME_SHAPES = asExhaustiveArray<ImageFrameShape>()([
-	'square',
-	'circle',
-] as const);
-
-/** All selectable fit modes exposed to consumers (includes `auto`). */
-export const IMAGE_FRAME_FIT_MODES = asExhaustiveArray<ImageFitMode>()([
-	IMAGE_FIT_MODES.auto,
-	IMAGE_FIT_MODES.containPadded,
-	IMAGE_FIT_MODES.coverCrop,
-] as const);

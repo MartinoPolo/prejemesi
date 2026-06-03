@@ -3,10 +3,11 @@ import { THEME_PRESETS } from '$lib/modules/themes/theme_presets.js';
 import type { ThemePresetName } from '$lib/modules/themes/types.js';
 
 /**
- * Type alias for backward compatibility with dashboard cards.
- * Includes 'custom' because the DB enum includes it.
+ * Theme identifier for dashboard cards. Named distinctly from the `themes`
+ * module's `WishlistTheme` to avoid a collision at import sites. Includes
+ * 'custom' because the DB enum includes it.
  */
-export type WishlistTheme = ThemePresetName | 'custom';
+export type DashboardWishlistTheme = ThemePresetName | 'custom';
 
 interface ThemePresetDisplay {
 	emoji: string;
@@ -15,7 +16,7 @@ interface ThemePresetDisplay {
 }
 
 /** Get display info for a theme preset. Used by dashboard cards. */
-export function getThemePreset(theme: WishlistTheme): ThemePresetDisplay {
+export function getThemePreset(theme: DashboardWishlistTheme): ThemePresetDisplay {
 	if (theme === 'custom') {
 		return {
 			emoji: '✨',

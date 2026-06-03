@@ -30,7 +30,7 @@
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		getThemePreset,
-		type WishlistTheme as DashboardWishlistTheme,
+		type DashboardWishlistTheme,
 	} from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistImageUrl } from '$lib/modules/images/index.js';
 	import { untrack } from 'svelte';

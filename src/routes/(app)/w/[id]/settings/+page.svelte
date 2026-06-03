@@ -21,7 +21,7 @@
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import {
 		getThemePreset,
-		type WishlistTheme as DashboardWishlistTheme,
+		type DashboardWishlistTheme,
 	} from '$lib/modules/wishlists/wishlist_theme.js';
 	import {
 		isCustomTheme,

@@ -182,10 +182,15 @@ src/
       auth.ts                # BetterAuth server config
       db/
         schema.ts            # Drizzle schema (auth, wishlist, gift, moderator, follower, notification)
+                             #   gift.image_meta — fit mode + focal-point crop (one crop for all surfaces)
+                             #   wishlist.image_key + image_slots — single upload + per-slot crop JSON
+                             #     (replaced banner_image_key / thumbnail_image_key)
+                             #   user.app_background_theme — default | golden-hour | twilight
         seed.ts              # Idempotent test-data seeder
   routes/
     (auth)/                  # login, register, magic-link, reset-password (split-screen layout)
     (app)/                   # my-lists, moderated, followed, settings, w/[id] (app shell)
+                             #   w/[id]/settings — owner-only wishlist appearance (image, theme, per-slot crop)
     +page.svelte             # Landing page
 messages/                    # Translation files (cs.json, en.json)
 tests/e2e/                   # Playwright E2E tests

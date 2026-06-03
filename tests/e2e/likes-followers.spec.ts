@@ -36,7 +36,7 @@ test.describe('Like system', () => {
 		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible();
 
 		const likeButton = visitorPage.getByRole('button', {
-			name: new RegExp(`Pridat do oblibenych: ${TEST_GIFT.name}`, 'i'),
+			name: new RegExp(`P.idat do obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 		});
 		await expect(likeButton).toBeVisible();
 		await expect(likeButton).toHaveAttribute('aria-pressed', 'false');
@@ -45,18 +45,18 @@ test.describe('Like system', () => {
 		await likeButton.click();
 		await expect(
 			visitorPage.getByRole('button', {
-				name: new RegExp(`Odebrat z oblibenych: ${TEST_GIFT.name}`, 'i'),
+				name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 			}),
 		).toBeVisible({ timeout: 5_000 });
 
 		// Unlike the gift
 		const unlikeButton = visitorPage.getByRole('button', {
-			name: new RegExp(`Odebrat z oblibenych: ${TEST_GIFT.name}`, 'i'),
+			name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 		});
 		await unlikeButton.click();
 		await expect(
 			visitorPage.getByRole('button', {
-				name: new RegExp(`Pridat do oblibenych: ${TEST_GIFT.name}`, 'i'),
+				name: new RegExp(`P.idat do obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 			}),
 		).toBeVisible({ timeout: 5_000 });
 
@@ -87,18 +87,18 @@ test.describe('Like system', () => {
 
 		// Like the gift — count should appear (1)
 		const likeButton = visitorPage.getByRole('button', {
-			name: new RegExp(`Pridat do oblibenych: ${TEST_GIFT.name}`, 'i'),
+			name: new RegExp(`P.idat do obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 		});
 		await likeButton.click();
 		await expect(
 			visitorPage.getByRole('button', {
-				name: new RegExp(`Odebrat z oblibenych: ${TEST_GIFT.name}`, 'i'),
+				name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 			}),
 		).toBeVisible({ timeout: 5_000 });
 
 		// The like button should now show the count "1"
 		const likedButton = visitorPage.getByRole('button', {
-			name: new RegExp(`Odebrat z oblibenych: ${TEST_GIFT.name}`, 'i'),
+			name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 		});
 		await expect(likedButton.getByText('1')).toBeVisible();
 
@@ -117,7 +117,7 @@ test.describe('Like system', () => {
 
 		// Owner should not see any like buttons
 		const likeButtons = ownerPage.getByRole('button', {
-			name: new RegExp(`(Pridat|Odebrat) (do|z) oblibenych`, 'i'),
+			name: new RegExp(`(P.idat|Odebrat) (do|z) obl.ben.ch`, 'i'),
 		});
 		await expect(likeButtons).toHaveCount(0);
 

@@ -13,6 +13,15 @@ Darecky ("dárečky" = presents in Czech) is a shareable wishlist web app where 
 **Reservation** — A claim on one or more units of a gift by a visitor; prevents duplicate buying.
 **Like** — A persistent interest indicator on a gift; triggers notification if someone else reserves it.
 **Theme** — A per-wishlist visual preset (Christmas, Birthday, Fun, Elegant, Default/Custom) defining colors and default illustrations.
+**ImageFrame** — The single shared image renderer used for all fixed-size image boxes (gift cards, wishlist cards, avatars). Handles fit mode and focal-point crop consistently across surfaces.
+**Fit mode** — One of three rendering modes for an ImageFrame: `auto` (browser default), `contain-padded` (letterboxed, shows frame fill), or `cover-crop` (fills frame, clipped by focal point + zoom).
+**Focal point** — A persisted `{ x, y, zoom }` triple (x/y in percent 0–100, zoom ≥ 1) that is the canonical crop representation consumed by the renderer. Resolution- and aspect-ratio-independent.
+**Crop rect** — A normalized 0–1 editing rectangle persisted alongside focal point so the crop editor can restore the exact region the user drew. Not used for rendering — focal point is.
+**Image slot** — A named display position on a wishlist: `card`, `thumbnail`, `banner`, or `social`. Each slot carries its own independent crop metadata (`image_slots` JSON column).
+**App background theme** — A per-user tint applied to the app shell: `default`, `golden-hour`, or `twilight`. Set via `data-bg-theme` on `<html>`, applied server-side to avoid flash-of-wrong-theme.
+**Wishlist theme tokens** — The `--wishlist-*` CSS custom properties that express a wishlist's color identity (primary, accent, surface). Scoped to the wishlist page; must not leak into the app shell.
+**Image-frame fill** — The `--frame-fill` background color shown behind letterboxed images. Resolved from a priority chain: slot-specific override → wishlist theme surface → global fallback.
+**OKLCH palette** — The color-derivation strategy for custom wishlist themes: one input color produces a harmonious full palette via OKLCH lightness/chroma adjustments, computed client-side for live preview.
 **Sharing** — Distributing a wishlist link; locks the owner from editing/removing existing gifts.
 **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
 **Unfollowed** — A wishlist the user was previously invited to / followed but has since unfollowed. Tracked for re-discovery via toggle on the Sledované page.
@@ -35,33 +44,33 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 
 ## Core Features
 
-| Feature                                                                        | Status  | Version     |
-| ------------------------------------------------------------------------------ | ------- | ----------- |
-| Authentication (email/password, Google, magic link)                            | Planned | v1 (PRD #1) |
-| Anonymous visitor mode (display name + optional email)                         | Planned | v1          |
-| Wishlist CRUD (create, edit, archive)                                          | Planned | v1          |
-| Gift management (add, edit, remove, reorder via drag-and-drop)                 | Planned | v1          |
-| Role system (owner, moderator, visitor)                                        | Planned | v1          |
-| Reservation system (reserve/unreserve, quantity support)                       | Planned | v1          |
-| Like system (persistent interest indicator)                                    | Planned | v1          |
-| Sharing (visitor links, moderator invite links, social buttons)                | Planned | v1          |
-| Notification system (email critical, in-app batched)                           | Planned | v1          |
-| Three nav pages (Moje seznamy / Spravované / Sledované, no Dashboard)          | Planned | v1          |
-| Theming (5 presets + custom, dark/light/system mode)                           | Planned | v1          |
-| i18n (Czech primary, English secondary)                                        | Planned | v1          |
-| Profile & settings (name, email, avatar, notification prefs)                   | Planned | v1          |
-| Owner surprise protection (no reservation visibility, edit lock after sharing) | Planned | v1          |
-| Mark gift as received                                                          | Planned | v1          |
-| Comments on gifts                                                              | Planned | v2          |
-| Mobile app + push notifications                                                | Planned | v2          |
-| Price tracking / price drop alerts                                             | Planned | v2          |
-| Social features (group gifting, cost splitting)                                | Planned | v2          |
-| Gift categories/tags                                                           | Planned | v2          |
-| Auto-suggest products (AI/price comparison APIs)                               | Planned | v2          |
-| CSV / Google Sheets import (3-step wizard)                                     | Planned | v1.x        |
-| Bulk gift entry (shared draft grid, large dialog)                              | Planned | v1.x        |
-| Gift metadata enrichment (link → image/price/title)                            | Planned | v1.x        |
-| Multiple links per gift (max 10)                                               | Planned | v1.x        |
+| Feature                                                                        | Status      | Version     |
+| ------------------------------------------------------------------------------ | ----------- | ----------- |
+| Authentication (email/password, Google, magic link)                            | Planned     | v1 (PRD #1) |
+| Anonymous visitor mode (display name + optional email)                         | Planned     | v1          |
+| Wishlist CRUD (create, edit, archive)                                          | Planned     | v1          |
+| Gift management (add, edit, remove, reorder, image fit/crop)                   | In Progress | v1          |
+| Role system (owner, moderator, visitor)                                        | Planned     | v1          |
+| Reservation system (reserve/unreserve, quantity support)                       | Planned     | v1          |
+| Like system (persistent interest indicator)                                    | Planned     | v1          |
+| Sharing (visitor links, moderator invite links, social buttons)                | Planned     | v1          |
+| Notification system (email critical, in-app batched)                           | Planned     | v1          |
+| Three nav pages (Moje seznamy / Spravované / Sledované, no Dashboard)          | Planned     | v1          |
+| Theming (wishlist themes + app background theme + token separation)            | In Progress | v1          |
+| i18n (Czech primary, English secondary)                                        | Planned     | v1          |
+| Profile & settings (name, email, avatar, notification prefs, appearance theme) | In Progress | v1          |
+| Owner surprise protection (no reservation visibility, edit lock after sharing) | Planned     | v1          |
+| Mark gift as received                                                          | Planned     | v1          |
+| Comments on gifts                                                              | Planned     | v2          |
+| Mobile app + push notifications                                                | Planned     | v2          |
+| Price tracking / price drop alerts                                             | Planned     | v2          |
+| Social features (group gifting, cost splitting)                                | Planned     | v2          |
+| Gift categories/tags                                                           | Planned     | v2          |
+| Auto-suggest products (AI/price comparison APIs)                               | Planned     | v2          |
+| CSV / Google Sheets import (3-step wizard)                                     | Planned     | v1.x        |
+| Bulk gift entry (shared draft grid, large dialog)                              | Planned     | v1.x        |
+| Gift metadata enrichment (link → image/price/title)                            | Planned     | v1.x        |
+| Multiple links per gift (max 10)                                               | Planned     | v1.x        |
 
 ## Key Constraints
 

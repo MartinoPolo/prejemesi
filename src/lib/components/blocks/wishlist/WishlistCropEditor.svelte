@@ -14,15 +14,20 @@
 		type ImageFitMode,
 	} from '$lib/components/derived/image-frame/index.js';
 	import SlotPreviewCard from './SlotPreviewCard.svelte';
+	import { toastError } from '$lib/components/base/toast/index.js';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
 		IMAGE_ZOOM_MIN,
 		IMAGE_ZOOM_MAX,
+		IMAGE_FIT_MODE_VALUES,
 		WISHLIST_IMAGE_SLOT_VALUES,
 		WISHLIST_SLOT_ASPECT,
+		FULL_CROP_RECT,
+		createDefaultWishlistSlots,
 		cropRectToFocalZoom,
+		cropStateToImageMeta,
 		focalZoomToCropRect,
 		imageMetaToFrameProps,
 		wishlistImageUrl,
@@ -47,8 +52,6 @@
 
 	let { imageKey, imageSlots, themeEmoji, title, isSaving = false, onsave }: Props = $props();
 
-	const FULL_CROP: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
-
 	/** Per-slot editing state: the crop rectangle is the source of truth; focal+zoom derive from it. */
 	interface SlotEditState {
 		fitMode: ImageFitMode;
@@ -56,20 +59,20 @@
 	}
 
 	function initSlots(saved: WishlistImageSlots | null): Record<WishlistImageSlot, SlotEditState> {
+		// Unset slots fall back to the shared default seed so the seeding logic lives
+		// in one place (createDefaultWishlistSlots); the same focal→cropRect conversion
+		// then derives the editor's crop-rect source of truth for every slot.
+		const defaults = createDefaultWishlistSlots();
 		const result = {} as Record<WishlistImageSlot, SlotEditState>;
 		for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
-			const meta = saved?.[slot];
-			if (meta === undefined) {
-				result[slot] = { fitMode: IMAGE_FIT_MODES.coverCrop, cropRect: { ...FULL_CROP } };
-				continue;
-			}
+			const meta = saved?.[slot] ?? defaults[slot]!;
 			let cropRect: ImageCropRect;
 			if (meta.cropRect != null) {
 				cropRect = { ...meta.cropRect };
 			} else if (meta.focal !== undefined && meta.zoom !== undefined) {
 				cropRect = focalZoomToCropRect(meta.focal, meta.zoom);
 			} else {
-				cropRect = { ...FULL_CROP };
+				cropRect = { ...FULL_CROP_RECT };
 			}
 			result[slot] = { fitMode: meta.fitMode, cropRect };
 		}
@@ -98,14 +101,7 @@
 
 	function slotMeta(slot: WishlistImageSlot): ImageMetadata {
 		const state = slotState[slot];
-		const { focal, zoom } = cropRectToFocalZoom(state.cropRect);
-		return {
-			fitMode: state.fitMode,
-			cropRect: { ...state.cropRect },
-			focal,
-			zoom,
-			bgColor: null,
-		};
+		return cropStateToImageMeta(state.fitMode, state.cropRect);
 	}
 
 	function buildSlots(): WishlistImageSlots {
@@ -126,6 +122,7 @@
 
 	function handleUploadError(uploadError: Error) {
 		console.error('Wishlist image upload failed:', uploadError.message);
+		toastError(m.toast_wishlist_image_upload_error());
 	}
 
 	function handleRemove() {
@@ -134,16 +131,16 @@
 	}
 
 	function setFitMode(value: string) {
-		if (value !== '') {
+		if (IMAGE_FIT_MODE_VALUES.includes(value as ImageFitMode)) {
 			slotState[activeSlot].fitMode = value as ImageFitMode;
 		}
 	}
 
 	/** Slider/wheel zoom resizes the crop around its current centre (cover-crop only). */
 	function setZoom(zoom: number) {
-		const clamped = Math.min(Math.max(zoom, IMAGE_ZOOM_MIN), IMAGE_ZOOM_MAX);
+		// focalZoomToCropRect clamps the zoom to [IMAGE_ZOOM_MIN, IMAGE_ZOOM_MAX] internally.
 		const { focal } = cropRectToFocalZoom(slotState[activeSlot].cropRect);
-		slotState[activeSlot].cropRect = focalZoomToCropRect(focal, clamped);
+		slotState[activeSlot].cropRect = focalZoomToCropRect(focal, zoom);
 	}
 
 	function handleZoomChange(value: number) {
@@ -216,9 +213,7 @@
 						src={imageUrl!}
 						alt={title}
 						bind:cropRect={slotState[activeSlot].cropRect}
-						regionLabel={m.wishlist_image_crop_region_label()}
 						hint={m.wishlist_image_crop_hint()}
-						resetLabel={m.wishlist_image_crop_reset()}
 					/>
 				</div>
 			{:else}
@@ -266,8 +261,9 @@
 				{/if}
 			</div>
 
-			<!-- Zoom (cover-crop only) -->
-			<div class="flex flex-col gap-2" aria-disabled={!isCropMode}>
+			<!-- Zoom (cover-crop only). The Slider itself carries `disabled` for a11y;
+			     a non-inherited aria-disabled on this wrapper had no effect. -->
+			<div class="flex flex-col gap-2">
 				<div class="flex items-center justify-between">
 					<Label>{m.wishlist_image_zoom_label()}</Label>
 					<span class="text-xs tabular-nums text-foreground-subtle">

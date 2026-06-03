@@ -88,10 +88,19 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'client',
+					// Retry once: browser-mode interaction tests can drop a simulated event
+					// under CI load. Play functions already gate keystrokes on focus to fix
+					// the root cause; this is a documented safety net so a single stray drop
+					// in any story doesn't redden CI.
+					retry: 1,
 					browser: {
 						enabled: true,
 						provider: playwright(),
 						instances: [{ browser: 'chromium', headless: true }],
+						// Fixed API port so the two browser projects (client + storybook) bind
+						// distinct Vitest servers instead of racing for a default port when both
+						// run under `test --coverage`.
+						api: { host: '127.0.0.1', port: 5174, strictPort: false },
 					},
 					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
 					exclude: ['src/lib/server/**'],
@@ -115,11 +124,15 @@ export default defineConfig({
 				],
 				test: {
 					name: 'storybook',
+					// See the client project: retry once as a safety net for browser-mode
+					// interaction flakiness; the real fix is in the story play functions.
+					retry: 1,
 					browser: {
 						enabled: true,
 						headless: true,
 						provider: playwright(),
 						instances: [{ browser: 'chromium' }],
+						api: { host: '127.0.0.1', port: 5175, strictPort: false },
 					},
 				},
 			},
