@@ -10,9 +10,9 @@
 		GiftByRole,
 		GiftForVisitor,
 		GiftPriorityLevel,
-		GiftDraftInput,
 		CreateGiftInput,
 		UpdateGiftInput,
+		GiftDraftInput,
 	} from '$lib/modules/gifts/types.js';
 	import type { WishlistTheme } from '$lib/modules/themes/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
