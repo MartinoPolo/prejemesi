@@ -1,0 +1,224 @@
+<script lang="ts">
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import { onMount } from 'svelte';
+	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import { cn } from '$lib/utils.js';
+	import {
+		findDuplicates,
+		validateDraft,
+		type GiftDraft,
+	} from '$lib/modules/gifts/gift_draft.js';
+	import {
+		deriveRowStatus,
+		headerSelectionState,
+		isRowCommittable,
+		type RowStatus,
+	} from '$lib/modules/gifts/draft_grid.js';
+	import * as m from '$lib/paraglide/messages.js';
+	import GiftDraftRow from './GiftDraftRow.svelte';
+	import GiftDraftBulkBar from './GiftDraftBulkBar.svelte';
+	import { DRAFT_GRID_COLUMNS, DRAFT_COL_LABEL_CLASS } from './gift_draft_grid_variants.js';
+	import {
+		DRAFT_GRID_CONTEXT,
+		createDraftGridRow,
+		rowToDraft,
+		type DraftGridChange,
+		type DraftGridContext,
+		type DraftGridRow,
+		type ExistingGiftRef,
+	} from './gift_draft_grid_model.js';
+
+	interface Props {
+		context?: DraftGridContext;
+		/** Seed rows (import host pre-fills from a parse). */
+		initialRows?: GiftDraft[];
+		/** Existing gifts to flag possible duplicates against (import context only). */
+		existingGifts?: ExistingGiftRef[];
+		/** Show the trailing "+ Přidat řádek" affordance. Defaults to batch context. */
+		allowAddRow?: boolean;
+		/** Show the status legend above the grid. Defaults to import context. */
+		showLegend?: boolean;
+		/** Emitted on every edit/selection change with the committable draft set. */
+		onchange?: (change: DraftGridChange) => void;
+		class?: string;
+	}
+
+	let {
+		context = DRAFT_GRID_CONTEXT.batch,
+		initialRows,
+		existingGifts = [],
+		allowAddRow,
+		showLegend,
+		onchange,
+		class: className,
+	}: Props = $props();
+
+	const showAddRow = $derived(allowAddRow ?? context === DRAFT_GRID_CONTEXT.batch);
+	const showStatusLegend = $derived(showLegend ?? context === DRAFT_GRID_CONTEXT.import);
+
+	let rows = $state<DraftGridRow[]>(seedRows());
+
+	const selectedCount = $derived(rows.filter((row) => row.selected).length);
+	const headerState = $derived(headerSelectionState(rows));
+
+	function seedRows(): DraftGridRow[] {
+		if (initialRows && initialRows.length > 0) {
+			// Pre-filled rows carry data → validate immediately (not pristine).
+			return initialRows.map((draft) => createDraftGridRow(draft, { pristine: false }));
+		}
+		if (context === DRAFT_GRID_CONTEXT.batch) {
+			return [createDraftGridRow(undefined, { pristine: true })];
+		}
+		return [];
+	}
+
+	/** A row is a possible duplicate only in import context, while not dismissed. */
+	function rowIsDuplicate(row: DraftGridRow): boolean {
+		if (
+			context !== DRAFT_GRID_CONTEXT.import ||
+			row.dismissedDuplicate ||
+			existingGifts.length === 0
+		) {
+			return false;
+		}
+		return findDuplicates(rowToDraft(row), existingGifts).length > 0;
+	}
+
+	function rowStatus(row: DraftGridRow): RowStatus {
+		return deriveRowStatus({
+			name: row.name,
+			isDuplicate: rowIsDuplicate(row),
+			pristine: row.pristine,
+		});
+	}
+
+	function emit() {
+		const drafts = rows
+			.filter(isRowCommittable)
+			.map((row) => validateDraft(rowToDraft(row)).normalized);
+		onchange?.({ drafts, validCount: drafts.length });
+	}
+
+	function selectAll(checked: boolean) {
+		for (const row of rows) {
+			row.selected = checked;
+		}
+		emit();
+	}
+
+	function addRow() {
+		rows.push(createDraftGridRow(undefined, { pristine: true }));
+		emit();
+	}
+
+	function removeRow(id: string) {
+		rows = rows.filter((row) => row.id !== id);
+		emit();
+	}
+
+	function bulkDelete() {
+		rows = rows.filter((row) => !row.selected);
+		emit();
+	}
+
+	function dismissDuplicate(row: DraftGridRow) {
+		row.dismissedDuplicate = true;
+		emit();
+	}
+
+	// Emit once after mount so hosts (e.g. the batch dialog footer) get the initial
+	// draft set + validity without waiting for the first user interaction.
+	onMount(emit);
+</script>
+
+<div class={cn('flex flex-col', className)}>
+	{#if showStatusLegend}
+		<div
+			class="mb-4 flex flex-wrap gap-4 rounded-lg border border-border bg-surface px-4 py-3 text-xs text-foreground-muted"
+			aria-hidden="true"
+		>
+			<span class="inline-flex items-center gap-2 font-semibold">
+				<span
+					class="size-3.5 rounded-xs border-[1.5px] border-[color-mix(in_oklab,var(--status-success)_55%,var(--border))] bg-[color-mix(in_oklab,var(--status-success)_16%,var(--surface))]"
+				></span>
+				{m.draft_grid_legend_ready()}
+			</span>
+			<span class="inline-flex items-center gap-2 font-semibold">
+				<span
+					class="size-3.5 rounded-xs border-[1.5px] border-[color-mix(in_oklab,var(--status-dup)_62%,var(--border))] bg-[color-mix(in_oklab,var(--status-dup)_20%,var(--surface))]"
+				></span>
+				{m.draft_grid_legend_duplicate()}
+			</span>
+			<span class="inline-flex items-center gap-2 font-semibold">
+				<span
+					class="size-3.5 rounded-xs border-[1.5px] border-[color-mix(in_oklab,var(--status-danger)_60%,var(--border))] bg-[color-mix(in_oklab,var(--status-danger)_15%,var(--surface))]"
+				></span>
+				{m.draft_grid_legend_error()}
+			</span>
+		</div>
+	{/if}
+
+	{#if selectedCount > 0}
+		<GiftDraftBulkBar
+			{selectedCount}
+			selectAllState={headerState}
+			onselectall={selectAll}
+			ondelete={bulkDelete}
+		/>
+	{/if}
+
+	<div class="max-h-[560px] overflow-auto rounded-lg border border-border bg-background">
+		<!-- Sticky header (desktop only) — hosts the single global select-all -->
+		<div
+			class={cn(
+				'sticky top-0 z-20 hidden border-b border-border-strong bg-surface-3 px-[29px] py-3',
+				DRAFT_GRID_COLUMNS,
+			)}
+		>
+			<span class="flex items-center justify-center">
+				<Checkbox
+					checked={headerState === 'all'}
+					indeterminate={headerState === 'some'}
+					onCheckedChange={selectAll}
+					aria-label={m.draft_grid_select_all()}
+				/>
+			</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_name()}</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_note()}</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_links()}</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_price()}</span>
+			<span
+				class={cn(DRAFT_COL_LABEL_CLASS, 'text-center')}
+				title={m.draft_grid_col_enrich()}
+			>
+				✨
+			</span>
+			<span class="text-center">
+				<span class="sr-only">{m.draft_grid_remove_row()}</span>
+			</span>
+		</div>
+
+		<div class="flex flex-col gap-2 p-2">
+			{#each rows as row (row.id)}
+				<GiftDraftRow
+					{row}
+					status={rowStatus(row)}
+					onchange={emit}
+					ondelete={() => removeRow(row.id)}
+					ondismissduplicate={() => dismissDuplicate(row)}
+				/>
+			{/each}
+
+			{#if showAddRow}
+				<button
+					type="button"
+					onclick={addRow}
+					class="flex w-full items-center justify-center gap-2.5 rounded-lg border-[1.5px] border-dashed border-border-strong px-4 py-4 text-sm font-semibold text-foreground-muted transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+				>
+					<PlusIcon class="size-4" aria-hidden="true" />
+					{m.draft_grid_add_row()}
+				</button>
+			{/if}
+		</div>
+	</div>
+</div>
