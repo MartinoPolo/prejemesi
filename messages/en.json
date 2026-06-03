@@ -607,5 +607,25 @@
 	"server_error_sheets_link_invalid": "This doesn't look like a Google Sheets link. Paste a link to a Google spreadsheet.",
 	"server_error_sheets_link_not_a_sheet": "This link isn't a Google Sheet. Only spreadsheets can be imported — not Docs, Slides, or Forms.",
 	"server_error_sheets_private": "This sheet isn't publicly accessible. Set sharing to \"Anyone with the link\" or paste a published CSV link.",
-	"server_error_sheets_fetch_failed": "We couldn't load this sheet. Please try again."
+	"server_error_sheets_fetch_failed": "We couldn't load this sheet. Please try again.",
+
+	"gift_piece_count_one": "1 piece",
+	"gift_piece_count_few": "{count} pieces",
+	"gift_piece_count_other": "{count} pieces",
+	"gift_reserved_count": "{count} reserved",
+	"gift_reserved_fully": "fully reserved",
+	"gift_link_overflow": "+{count} more",
+	"gift_link_none": "No link",
+	"gift_link_add": "Add link",
+	"gift_link_remove": "Remove link",
+	"gift_link_label_placeholder": "Label (optional)",
+	"gift_link_max_reached": "Maximum 10 links",
+	"gift_link_primary": "Primary link",
+	"gift_link_invalid_url": "Invalid URL",
+	"gift_link_duplicate_url": "This link is already in the list",
+	"gift_link_cap_counter": "{current} / {max}",
+	"gift_enrich_placeholder": "Load metadata",
+	"gift_priority_eyebrow": "Priority",
+	"gift_reserved_overlay": "Reserved",
+	"gift_received_badge": "Received"
 }

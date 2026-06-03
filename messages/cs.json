@@ -607,5 +607,25 @@
 	"server_error_sheets_link_invalid": "Tohle nevypadá jako odkaz na Tabulky Google. Vložte odkaz na tabulku Google Sheets.",
 	"server_error_sheets_link_not_a_sheet": "Tento odkaz nevede na Tabulky Google. Importovat lze jen tabulky — ne Dokumenty, Prezentace ani Formuláře.",
 	"server_error_sheets_private": "Tato tabulka není veřejně přístupná. Nastavte sdílení na „Kdokoli s odkazem“ nebo vložte publikovaný CSV odkaz.",
-	"server_error_sheets_fetch_failed": "Tabulku se nepodařilo načíst. Zkuste to prosím znovu."
+	"server_error_sheets_fetch_failed": "Tabulku se nepodařilo načíst. Zkuste to prosím znovu.",
+
+	"gift_piece_count_one": "1 kus",
+	"gift_piece_count_few": "{count} kusy",
+	"gift_piece_count_other": "{count} kusů",
+	"gift_reserved_count": "{count} rezervováno",
+	"gift_reserved_fully": "plně rezervováno",
+	"gift_link_overflow": "+{count} další",
+	"gift_link_none": "Bez odkazu",
+	"gift_link_add": "Přidat odkaz",
+	"gift_link_remove": "Odebrat odkaz",
+	"gift_link_label_placeholder": "Popisek (volitelné)",
+	"gift_link_max_reached": "Maximálně 10 odkazů",
+	"gift_link_primary": "Hlavní odkaz",
+	"gift_link_invalid_url": "Neplatná adresa",
+	"gift_link_duplicate_url": "Tento odkaz už je v seznamu",
+	"gift_link_cap_counter": "{current} / {max}",
+	"gift_enrich_placeholder": "Načíst metadata",
+	"gift_priority_eyebrow": "Priorita",
+	"gift_reserved_overlay": "Rezervováno",
+	"gift_received_badge": "Přijato"
 }
