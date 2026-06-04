@@ -25,7 +25,7 @@ export const getMyWishlists = guardedQuery(async ({ user }) => {
 		.select()
 		.from(wishlist)
 		.where(and(eq(wishlist.ownerId, user.id), isNull(wishlist.deletedAt)))
-		.orderBy(wishlist.createdAt);
+		.orderBy(wishlist.updatedAt);
 });
 
 export const getWishlistByShortId = publicQuery(v.string(), async (authContext, shortId) => {

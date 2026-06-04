@@ -271,6 +271,9 @@
 	"nav_view_all": "Zobrazit vše",
 	"nav_no_lists": "Zatím žádné seznamy",
 	"nav_available_count": "{count} volných",
+	"nav_footer_new_list": "Nový seznam",
+	"nav_footer_reserved_stats": "{reserved}/{total} dárků rezervováno",
+	"nav_footer_available_stats": "{count} dárků volných",
 	"nav_default_user": "Uživatel",
 
 	"dashboard_my_lists_title": "Moje seznamy",

@@ -271,6 +271,9 @@
 	"nav_view_all": "View all",
 	"nav_no_lists": "No lists yet",
 	"nav_available_count": "{count} available",
+	"nav_footer_new_list": "New list",
+	"nav_footer_reserved_stats": "{reserved}/{total} gifts reserved",
+	"nav_footer_available_stats": "{count} gifts available",
 	"nav_default_user": "User",
 
 	"dashboard_my_lists_title": "My lists",

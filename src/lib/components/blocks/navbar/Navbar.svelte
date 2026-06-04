@@ -14,6 +14,7 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
+	import GiftIcon from '@lucide/svelte/icons/gift';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
@@ -47,7 +48,7 @@
 		userImage = null,
 	}: NavbarProps = $props();
 
-	const MAX_DROPDOWN_ITEMS = 3;
+	const MAX_DROPDOWN_ITEMS = 5;
 
 	const STATUS_BADGE: Record<
 		Wishlist['status'],
@@ -59,29 +60,29 @@
 	};
 
 	const myListsQuery = $derived(user ? getMyWishlists() : null);
+	const myListsFiltered = $derived(
+		(myListsQuery?.current ?? []).filter((w) => w.status !== 'archived'),
+	);
 	const myListsItems = $derived<NavDropdownItem[]>(
-		(myListsQuery?.current ?? [])
-			.filter((w) => w.status !== 'archived')
-			.slice(-MAX_DROPDOWN_ITEMS)
-			.reverse()
-			.map(wishlistToDropdownItem),
+		myListsFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(wishlistToDropdownItem),
 	);
 
 	const moderatedQuery = $derived(user ? getModeratedWishlists() : null);
+	const moderatedFiltered = $derived(
+		(moderatedQuery?.current ?? []).filter((w) => w.status !== 'archived'),
+	);
 	const moderatedItems = $derived<NavDropdownItem[]>(
-		(moderatedQuery?.current ?? [])
-			.slice(-MAX_DROPDOWN_ITEMS)
-			.reverse()
-			.map(moderatedToDropdownItem),
+		moderatedFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(moderatedToDropdownItem),
 	);
 
 	const followedQuery = $derived(user ? getFollowedWishlists() : null);
+	const followedFiltered = $derived(
+		(followedQuery?.current ?? []).filter(
+			(w) => w.unfollowedAt === null && w.status !== 'archived',
+		),
+	);
 	const followedItems = $derived<NavDropdownItem[]>(
-		(followedQuery?.current ?? [])
-			.filter((w) => w.unfollowedAt === null)
-			.slice(-MAX_DROPDOWN_ITEMS)
-			.reverse()
-			.map(followedToDropdownItem),
+		followedFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(followedToDropdownItem),
 	);
 
 	function wishlistToDropdownItem(wishlistRecord: Wishlist): NavDropdownItem {
@@ -136,6 +137,21 @@
 		followedItems,
 	]);
 
+	const navDropdownTotalCounts = $derived([
+		myListsFiltered.length,
+		moderatedFiltered.length,
+		followedFiltered.length,
+	]);
+
+	const moderatedStats = $derived({
+		reserved: moderatedFiltered.reduce((sum, w) => sum + w.reservedGifts, 0),
+		total: moderatedFiltered.reduce((sum, w) => sum + w.totalGifts, 0),
+	});
+
+	const followedAvailableTotal = $derived(
+		followedFiltered.reduce((sum, w) => sum + w.availableGifts, 0),
+	);
+
 	let isCreateModalOpen = $state(false);
 	let isImportWizardOpen = $state(false);
 </script>
@@ -167,7 +183,35 @@
 						title={link.label}
 						viewAllHref={link.href}
 						items={navDropdownItems[i]}
-					/>
+						totalCount={navDropdownTotalCounts[i]}
+					>
+						{#snippet footer()}
+							{#if i === 0}
+								<button
+									class="nav-dropdown-create"
+									onclick={() => (isCreateModalOpen = true)}
+								>
+									<PlusIcon class="size-3.5" />
+									{m.nav_footer_new_list()}
+								</button>
+							{:else if i === 1}
+								<span class="nav-dropdown-stats">
+									<GiftIcon class="size-3.5" />
+									{m.nav_footer_reserved_stats({
+										reserved: moderatedStats.reserved,
+										total: moderatedStats.total,
+									})}
+								</span>
+							{:else}
+								<span class="nav-dropdown-stats">
+									<GiftIcon class="size-3.5" />
+									{m.nav_footer_available_stats({
+										count: followedAvailableTotal,
+									})}
+								</span>
+							{/if}
+						{/snippet}
+					</NavDropdown>
 				</div>
 			{/each}
 		</nav>
@@ -323,6 +367,33 @@
 		flex-shrink: 0;
 		width: 14px;
 		height: 14px;
+	}
+
+	/* Dropdown footer variants */
+	.nav-dropdown-create {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		color: var(--primary);
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		font-family: var(--font-sans);
+	}
+
+	.nav-dropdown-create:hover {
+		text-decoration: underline;
+	}
+
+	.nav-dropdown-stats {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-size: var(--text-sm);
+		color: var(--muted-foreground);
 	}
 
 	/* Right side controls */

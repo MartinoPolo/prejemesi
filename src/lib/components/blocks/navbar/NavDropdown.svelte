@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -8,9 +9,11 @@
 		title: string;
 		viewAllHref: string;
 		items: NavDropdownItem[];
+		totalCount?: number;
+		footer?: Snippet;
 	}
 
-	let { title, viewAllHref, items = [] }: NavDropdownProps = $props();
+	let { title, viewAllHref, items = [], totalCount, footer }: NavDropdownProps = $props();
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -21,6 +24,9 @@
 				<span class="nav-dropdown-title">{m.nav_recent()}</span>
 				<a class="nav-dropdown-view-all" href={viewAllHref}>
 					{m.nav_view_all()}
+					{#if totalCount !== undefined}
+						<span class="nav-dropdown-count">({totalCount})</span>
+					{/if}
 					<ArrowRightIcon class="size-3" />
 				</a>
 			</div>
@@ -49,9 +55,11 @@
 			</div>
 		{/if}
 
-		<div class="nav-dropdown-footer">
-			<a class="nav-dropdown-footer-link" href={viewAllHref}>{m.nav_view_all()}</a>
-		</div>
+		{#if footer}
+			<div class="nav-dropdown-footer">
+				{@render footer()}
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -116,6 +124,11 @@
 		text-decoration: underline;
 	}
 
+	.nav-dropdown-count {
+		color: var(--muted-foreground);
+		font-weight: var(--weight-normal);
+	}
+
 	.nav-dropdown-item {
 		display: flex;
 		align-items: center;
@@ -168,17 +181,7 @@
 	.nav-dropdown-footer {
 		padding: var(--space-2) var(--space-4) var(--space-3);
 		border-top: 1px solid var(--border);
-	}
-
-	.nav-dropdown-footer-link {
 		font-size: var(--text-sm);
-		color: var(--primary);
-		text-decoration: none;
-		font-weight: var(--weight-medium);
-	}
-
-	.nav-dropdown-footer-link:hover {
-		text-decoration: underline;
 	}
 
 	.nav-dropdown-empty {
