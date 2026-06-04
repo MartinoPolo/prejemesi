@@ -22,7 +22,7 @@
 	}
 </script>
 
-<InputGroup.Root class="h-(--size-control-md)">
+<InputGroup.Root class="h-(--size-control-md) bg-surface">
 	<InputGroup.Input
 		type="text"
 		inputmode="numeric"

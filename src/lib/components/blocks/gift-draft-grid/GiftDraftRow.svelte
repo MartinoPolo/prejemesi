@@ -34,7 +34,7 @@
 		ondismissduplicate: () => void;
 	}
 
-	let { row, status, onchange, ondelete, ondismissduplicate }: Props = $props();
+	let { row = $bindable(), status, onchange, ondelete, ondismissduplicate }: Props = $props();
 
 	let editing = $state(false);
 
@@ -165,7 +165,7 @@
 		<span class={cn(DRAFT_COL_LABEL_CLASS, 'md:hidden')}>
 			{m.draft_grid_col_links()}
 		</span>
-		<GiftDraftLinksCell links={row.links} onchange={markTouched} />
+		<GiftDraftLinksCell bind:links={row.links} onchange={markTouched} />
 	</div>
 
 	<!-- Cena (col 5) -->

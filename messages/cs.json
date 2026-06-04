@@ -647,6 +647,7 @@
 	"draft_grid_link_limit": "Dosažen limit 10 odkazů",
 	"draft_grid_link_primary": "hlavní",
 	"draft_grid_link_url_placeholder": "https://…",
+	"draft_grid_link_url_invalid": "Neplatná URL — odkaz nebude uložen",
 	"draft_grid_remove_link": "Odebrat odkaz {label}",
 	"draft_grid_open_link": "Otevřít odkaz {label}",
 	"draft_grid_remove_row": "Odebrat řádek",

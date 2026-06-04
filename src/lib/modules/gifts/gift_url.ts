@@ -1,5 +1,8 @@
 import { MAX_GIFT_LINKS, type GiftLink } from './types.js';
 
+/** A valid hostname has only alphanumeric labels separated by dots, with at least one dot. */
+const VALID_HOSTNAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
 export function normalizeGiftUrl(url: string | null | undefined): string | null {
 	if (url === null || url === undefined) {
 		return null;
@@ -10,9 +13,15 @@ export function normalizeGiftUrl(url: string | null | undefined): string | null 
 		return null;
 	}
 
+	const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmedUrl);
+	const withProtocol = hasScheme ? trimmedUrl : `https://${trimmedUrl}`;
+
 	try {
-		const parsedUrl = new URL(trimmedUrl);
+		const parsedUrl = new URL(withProtocol);
 		if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+			return null;
+		}
+		if (!VALID_HOSTNAME_RE.test(parsedUrl.hostname)) {
 			return null;
 		}
 		return parsedUrl.toString();

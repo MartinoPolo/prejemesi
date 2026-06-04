@@ -1,10 +1,13 @@
 <script lang="ts">
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { cn } from '$lib/utils.js';
+	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { MAX_GIFT_LINKS, type GiftLink } from '$lib/modules/gifts/types.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { DRAFT_DESTRUCTIVE_HOVER_CLASS } from './gift_draft_grid_variants.js';
@@ -16,7 +19,7 @@
 		onchange?: () => void;
 	}
 
-	let { links, onchange }: Props = $props();
+	let { links = $bindable(), onchange }: Props = $props();
 
 	const atLimit = $derived(links.length >= MAX_GIFT_LINKS);
 
@@ -46,6 +49,10 @@
 		return link.url.trim() === '' ? m.draft_grid_col_links() : link.url;
 	}
 
+	function isInvalidUrl(url: string): boolean {
+		return url.trim() !== '' && normalizeGiftUrl(url) === null;
+	}
+
 	function editLink(link: GiftLink, url: string) {
 		link.url = url;
 		onchange?.();
@@ -68,49 +75,72 @@
 <div class="flex flex-col gap-1.5">
 	{#each links as link, index (link)}
 		{@const href = hrefOf(link.url)}
-		<div
-			class="flex min-h-(--size-control-md) items-center gap-2 rounded-md border border-border-strong bg-surface py-1.5 pr-2 pl-2 focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_18%,transparent)]"
-		>
-			{#if href !== null}
-				<a
-					{href}
-					target="_blank"
-					rel="external noopener noreferrer"
-					class="flex size-6 flex-none place-items-center rounded-sm text-primary transition-colors hover:text-foreground focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-ring"
-					aria-label={m.draft_grid_open_link({ label: labelOf(link) })}
-				>
-					<ExternalLinkIcon class="size-3.5" aria-hidden="true" />
-				</a>
-			{:else}
-				<span class="flex size-6 flex-none place-items-center text-foreground-subtle">
-					<ExternalLinkIcon class="size-3.5" aria-hidden="true" />
-				</span>
-			{/if}
-			<Input
-				type="url"
-				inputmode="url"
-				value={link.url}
-				oninput={(event) => editLink(link, event.currentTarget.value)}
-				placeholder={m.draft_grid_link_url_placeholder()}
-				aria-label={`${m.draft_grid_col_links()} ${index + 1}`}
-				class="h-auto min-h-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
-			/>
-			{#if index === 0}
-				<span
-					class="flex-none rounded-full border border-[color-mix(in_oklch,var(--primary)_25%,transparent)] bg-primary-soft px-1.5 py-px text-[10px] font-semibold text-primary"
-				>
-					{m.draft_grid_link_primary()}
-				</span>
-			{/if}
-			<Button
-				intent="ghost"
-				size="icon-sm"
-				class={cn('size-6 flex-none text-foreground-subtle', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
-				onclick={() => removeLink(index)}
-				aria-label={m.draft_grid_remove_link({ label: labelOf(link) })}
+		{@const invalid = isInvalidUrl(link.url)}
+		<div class="flex flex-col gap-1">
+			<div
+				class={cn(
+					'flex min-h-(--size-control-md) items-center gap-2 rounded-md border bg-surface py-1.5 pr-2 pl-2',
+					invalid
+						? 'border-status-danger shadow-[0_0_0_3px_color-mix(in_oklch,var(--status-danger)_18%,transparent)]'
+						: 'border-border-strong focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_18%,transparent)]',
+				)}
 			>
-				<XIcon class="size-3.5" aria-hidden="true" />
-			</Button>
+				{#if href !== null}
+					<a
+						{href}
+						target="_blank"
+						rel="external noopener noreferrer"
+						class="flex size-6 flex-none place-items-center rounded-sm text-primary transition-colors hover:text-foreground focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-ring"
+						aria-label={m.draft_grid_open_link({ label: labelOf(link) })}
+					>
+						<ExternalLinkIcon class="size-3.5" aria-hidden="true" />
+					</a>
+				{:else}
+					<span
+						class={cn(
+							'flex size-6 flex-none place-items-center',
+							invalid ? 'text-status-danger' : 'text-foreground-subtle',
+						)}
+					>
+						<ExternalLinkIcon class="size-3.5" aria-hidden="true" />
+					</span>
+				{/if}
+				<Input
+					type="url"
+					inputmode="url"
+					value={link.url}
+					oninput={(event) => editLink(link, event.currentTarget.value)}
+					placeholder={m.draft_grid_link_url_placeholder()}
+					aria-label={`${m.draft_grid_col_links()} ${index + 1}`}
+					aria-invalid={invalid}
+					class="h-auto min-h-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+				/>
+				{#if index === 0}
+					<span
+						class="flex-none rounded-full border border-[color-mix(in_oklch,var(--primary)_25%,transparent)] bg-primary-soft px-1.5 py-px text-[10px] font-semibold text-primary"
+					>
+						{m.draft_grid_link_primary()}
+					</span>
+				{/if}
+				<Button
+					intent="ghost"
+					size="icon-sm"
+					class={cn(
+						'size-6 flex-none text-foreground-subtle',
+						DRAFT_DESTRUCTIVE_HOVER_CLASS,
+					)}
+					onclick={() => removeLink(index)}
+					aria-label={m.draft_grid_remove_link({ label: labelOf(link) })}
+				>
+					<XIcon class="size-3.5" aria-hidden="true" />
+				</Button>
+			</div>
+			{#if invalid}
+				<HelpText state="error">
+					<CircleAlertIcon class="size-3.5" aria-hidden="true" />
+					{m.draft_grid_link_url_invalid()}
+				</HelpText>
+			{/if}
 		</div>
 	{/each}
 

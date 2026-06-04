@@ -199,9 +199,9 @@
 		</div>
 
 		<div class="flex flex-col gap-2 p-2">
-			{#each rows as row (row.id)}
+			{#each rows as row, index (row.id)}
 				<GiftDraftRow
-					{row}
+					bind:row={rows[index]}
 					status={rowStatus(row)}
 					onchange={emit}
 					ondelete={() => removeRow(row.id)}

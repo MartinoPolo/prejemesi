@@ -647,6 +647,7 @@
 	"draft_grid_link_limit": "Limit of 10 links reached",
 	"draft_grid_link_primary": "primary",
 	"draft_grid_link_url_placeholder": "https://…",
+	"draft_grid_link_url_invalid": "Invalid URL — this link will not be saved",
 	"draft_grid_remove_link": "Remove link {label}",
 	"draft_grid_open_link": "Open link {label}",
 	"draft_grid_remove_row": "Remove row",
