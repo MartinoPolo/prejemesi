@@ -1,11 +1,16 @@
 # Design Brief — Gift Detail Modal v2 (Multi-link + Enrichment)
 
+> **Status**: Refined (Variant A + C cherry-picks)
+> **Refined mockup**: `designs/gift-detail-modal/refined-v2.html`
+> **Summary**: `designs/gift-detail-modal/SUMMARY-v2.md`
+> **Refinements**: C link editor container, "Zobrazení:" label prefix, C compact footer, C enrich bar
+
 > **Layers on:** `designs/gift-detail-modal/DESIGN_BRIEF_GIFT_DETAIL_MODAL.md` (v1).
 > This brief documents **only the deltas** v2 adds to the modal's **edit mode**. Everything not mentioned here is **unchanged from v1** — read v1 first. Where v1 and v2 conflict (e.g. the single-URL field), v2 wins.
 
 **Component:** `GiftDetailModal` / `GiftDetailForm` (`src/lib/components/blocks/gift/`)
 **Date:** 2026-06-03
-**Status:** Design phase — v2 deltas
+**Status:** Refined — v2 deltas
 
 ---
 

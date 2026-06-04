@@ -1,0 +1,1963 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Darecky — Gift Detail Modal v2 — REFINED (Variant A + C links/footer/enrich)</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Noto+Sans:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../tokens.css" />
+		<style>
+			/* ── Theme blocks ──────────────────────────────────────── */
+			.theme-light {
+				--background: oklch(0.985 0.006 145);
+				--surface: oklch(1 0 0);
+				--card: oklch(1 0 0);
+				--surface-2: oklch(0.965 0.008 145);
+				--surface-3: oklch(0.95 0.012 145);
+				--surface-hover: oklch(0.95 0.012 145);
+				--muted: oklch(0.965 0.008 145);
+				--foreground: oklch(0.17 0.012 150);
+				--foreground-muted: oklch(0.45 0.025 150);
+				--muted-foreground: oklch(0.45 0.025 150);
+				--foreground-subtle: oklch(0.62 0.018 150);
+				--border: oklch(0.92 0.012 145);
+				--border-strong: oklch(0.86 0.02 145);
+				--primary: oklch(52.7% 0.154 150.069deg);
+				--primary-fg: oklch(98.2% 0.018 155.826deg);
+				--primary-soft: oklch(0.93 0.045 150);
+				--ring: oklch(52.7% 0.154 150.069deg);
+				--status-danger: oklch(0.55 0.2 25);
+				--destructive: oklch(0.55 0.2 25);
+				--status-warning: oklch(0.72 0.15 75);
+				--status-success: oklch(0.62 0.13 145);
+			}
+			.theme-dark {
+				--background: oklch(0.15 0.01 150);
+				--surface: oklch(0.19 0.014 150);
+				--card: oklch(0.19 0.014 150);
+				--surface-2: oklch(0.23 0.016 150);
+				--surface-3: oklch(0.27 0.018 150);
+				--surface-hover: oklch(0.27 0.018 150);
+				--muted: oklch(0.23 0.016 150);
+				--foreground: oklch(0.96 0.008 145);
+				--foreground-muted: oklch(0.68 0.02 145);
+				--muted-foreground: oklch(0.68 0.02 145);
+				--foreground-subtle: oklch(0.5 0.016 145);
+				--border: oklch(0.28 0.016 150);
+				--border-strong: oklch(0.36 0.02 150);
+				--primary: oklch(62% 0.154 150.069deg);
+				--primary-fg: oklch(0.13 0.012 150);
+				--primary-soft: oklch(0.28 0.055 150);
+				--ring: oklch(62% 0.154 150.069deg);
+				--status-danger: oklch(0.6 0.19 25);
+				--destructive: oklch(0.6 0.19 25);
+				--status-warning: oklch(0.75 0.14 75);
+				--status-success: oklch(0.62 0.13 145);
+			}
+
+			/* ── Reset ─────────────────────────────────────────────── */
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			body {
+				font-family: var(--font-sans);
+				-webkit-font-smoothing: antialiased;
+			}
+
+			/* ── Demo scaffold ─────────────────────────────────────── */
+			.demo-row {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+			}
+			@media (max-width: 980px) {
+				.demo-row {
+					grid-template-columns: 1fr;
+				}
+			}
+			.demo-panel {
+				min-height: 100vh;
+				position: relative;
+				background: var(--background);
+				color: var(--foreground);
+				padding: 40px 0 64px;
+			}
+			.panel-label {
+				position: sticky;
+				top: 0;
+				text-align: center;
+				padding: 6px;
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				background: var(--primary);
+				color: var(--primary-fg);
+				z-index: 100;
+			}
+			.eyebrow-wrap {
+				text-align: center;
+				padding: 22px 20px 8px;
+			}
+			.eyebrow {
+				font-family: var(--font-heading);
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--primary);
+			}
+			.eyebrow-desc {
+				margin-top: 6px;
+				font-size: 13px;
+				color: var(--foreground-muted);
+			}
+			.section {
+				max-width: 940px;
+				margin: 0 auto;
+				padding: 28px 20px 0;
+			}
+			.section-title {
+				font-family: var(--font-heading);
+				font-size: 18px;
+				font-weight: 700;
+				letter-spacing: -0.02em;
+				line-height: 1.15;
+				color: var(--foreground);
+				margin: 40px 0 4px;
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+			.section-title::before {
+				content: '';
+				width: 4px;
+				height: 18px;
+				border-radius: 4px;
+				background: var(--primary);
+			}
+			.section-sub {
+				font-size: 13px;
+				color: var(--foreground-muted);
+				margin-bottom: 16px;
+			}
+			.instance-grid {
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: 16px;
+			}
+			@media (max-width: 720px) {
+				.instance-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+			.instance {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				padding: 16px;
+			}
+			.instance-label {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--foreground-subtle);
+				margin-bottom: 12px;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+
+			/* ── Modal frame (from Variant A) ──────────────────────── */
+			.modal-stage {
+				position: relative;
+				max-width: 940px;
+				margin: 0 auto;
+				padding: 0 20px;
+			}
+			.backdrop {
+				background: oklch(0 0 0 / 0.5);
+				backdrop-filter: blur(3px);
+				border-radius: 22px;
+				padding: 28px;
+				background-image:
+					radial-gradient(120% 120% at 0% 0%, oklch(0.6 0.1 150 / 0.18), transparent 60%),
+					radial-gradient(120% 120% at 100% 100%, oklch(0.5 0.12 150 / 0.16), transparent 55%);
+			}
+			.modal {
+				background: var(--surface);
+				border-radius: 20px;
+				box-shadow:
+					0 24px 56px oklch(0 0 0 / 0.32),
+					0 8px 16px oklch(0 0 0 / 0.14);
+				width: 100%;
+				max-width: 900px;
+				margin: 0 auto;
+				overflow: hidden;
+				display: flex;
+				flex-direction: column;
+				position: relative;
+			}
+			.modal-body {
+				display: grid;
+				grid-template-columns: 45% 55%;
+				overflow: hidden;
+			}
+			@media (max-width: 720px) {
+				.modal-body {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			/* Left image column (Variant A) */
+			.image-col {
+				position: relative;
+				background: var(--surface-2);
+				min-height: 460px;
+				display: flex;
+				flex-direction: column;
+			}
+			.image-stage {
+				flex: 1;
+				min-height: 280px;
+				background: linear-gradient(145deg, var(--surface-2) 0%, var(--border) 100%);
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 12px;
+				color: var(--foreground-subtle);
+				position: relative;
+			}
+			.image-stage svg {
+				opacity: 0.4;
+			}
+			.image-stage-cap {
+				font-size: 12px;
+				letter-spacing: 0.04em;
+				font-weight: 600;
+			}
+			.image-tabs {
+				display: flex;
+				gap: 6px;
+				padding: 12px;
+				border-top: 1px solid var(--border);
+				background: var(--surface);
+			}
+			.image-tab {
+				flex: 1;
+				height: 36px;
+				border-radius: 8px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-muted);
+				font-size: 13px;
+				font-weight: 600;
+				font-family: var(--font-sans);
+				cursor: pointer;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+			}
+			.image-tab[aria-selected='true'] {
+				background: var(--primary-soft);
+				color: var(--primary);
+				border-color: color-mix(in oklch, var(--primary) 30%, transparent);
+			}
+			.fit-toggle {
+				position: absolute;
+				bottom: 12px;
+				right: 12px;
+				display: flex;
+				gap: 4px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 3px;
+			}
+			.fit-chip {
+				font-size: 11px;
+				font-weight: 600;
+				padding: 4px 8px;
+				border-radius: 6px;
+				color: var(--foreground-muted);
+				cursor: pointer;
+			}
+			.fit-chip.is-on {
+				background: var(--surface-2);
+				color: var(--foreground);
+			}
+			.modal-close {
+				position: absolute;
+				top: 14px;
+				right: 14px;
+				width: 44px;
+				height: 44px;
+				border-radius: 50%;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				z-index: 10;
+				transition: all 150ms ease;
+			}
+			.modal-close:hover {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+			.modal-close:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* Right form column (Variant A base) */
+			.form-col {
+				display: flex;
+				flex-direction: column;
+				overflow-y: auto;
+				padding: 28px 28px 0;
+				max-height: 78vh;
+			}
+			.edit-eyebrow {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin-bottom: 6px;
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.field {
+				margin-bottom: 16px;
+			}
+			.field-label {
+				display: block;
+				font-size: 12px;
+				font-weight: 600;
+				letter-spacing: 0.02em;
+				color: var(--foreground-muted);
+				margin-bottom: 6px;
+			}
+			.input {
+				font-family: var(--font-sans);
+				font-size: 13px;
+				height: 40px;
+				padding: 0 12px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				color: var(--foreground);
+				width: 100%;
+				outline: none;
+				transition:
+					border-color 150ms,
+					box-shadow 150ms;
+			}
+			.input::placeholder {
+				color: var(--foreground-subtle);
+			}
+			.input:focus {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 20%, transparent);
+			}
+			.input[aria-invalid='true'] {
+				border-color: var(--destructive);
+				box-shadow: 0 0 0 3px color-mix(in oklch, var(--destructive) 18%, transparent);
+			}
+			textarea.input {
+				height: auto;
+				padding: 10px 12px;
+				resize: vertical;
+				line-height: 1.5;
+			}
+
+			/* ══════════════════════════════════════════════════════════
+			   LINK EDITOR — Variant C compact stacked container
+			   with labeled second row (Zobrazení: domain)
+			   ══════════════════════════════════════════════════════════ */
+			.link-editor {
+				border: 1px solid var(--border);
+				border-radius: var(--radius-lg, 12px);
+				background: var(--surface-2);
+				overflow: hidden;
+			}
+			.link-editor-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 10px 12px;
+				border-bottom: 1px solid var(--border);
+				background: var(--surface);
+			}
+			.link-editor-title {
+				font-size: 12px;
+				font-weight: 700;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				color: var(--foreground-muted);
+			}
+			.link-counter {
+				font-size: 12px;
+				font-weight: 600;
+				color: var(--foreground-subtle);
+				font-variant-numeric: tabular-nums;
+			}
+			.link-counter.is-cap {
+				color: var(--status-warning);
+			}
+
+			.link-rows {
+				display: flex;
+				flex-direction: column;
+			}
+
+			/* Single link row — compact stacked */
+			.link-row {
+				position: relative;
+				display: grid;
+				grid-template-columns: 28px 1fr auto;
+				align-items: stretch;
+				gap: 8px;
+				padding: 10px 12px 10px 14px;
+				border-bottom: 1px solid var(--border);
+			}
+			.link-row:last-child {
+				border-bottom: none;
+			}
+			.link-row.is-primary {
+				background: color-mix(in oklch, var(--primary) 5%, var(--surface-2));
+			}
+			.link-row.is-primary::before {
+				content: '';
+				position: absolute;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				width: 3px;
+				background: var(--primary);
+			}
+
+			/* Reorder column */
+			.link-reorder {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+				align-items: center;
+				justify-content: center;
+			}
+			.reorder-btn {
+				width: 26px;
+				height: 18px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 4px;
+				border: none;
+				background: transparent;
+				color: var(--foreground-subtle);
+				cursor: pointer;
+			}
+			.reorder-btn:hover:not(:disabled) {
+				background: var(--surface-hover);
+				color: var(--foreground);
+			}
+			.reorder-btn:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 1px;
+			}
+			.reorder-btn:disabled {
+				opacity: 0.3;
+				cursor: not-allowed;
+			}
+			.reorder-grip {
+				color: var(--foreground-subtle);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			/* Stacked fields: URL on top, label below */
+			.link-fields {
+				display: flex;
+				flex-direction: column;
+				min-width: 0;
+			}
+			.link-input-wrap {
+				position: relative;
+				display: flex;
+				align-items: center;
+			}
+			.link-url {
+				width: 100%;
+				height: 36px;
+				padding: 0 36px 0 10px;
+				border: 1px solid var(--border);
+				border-radius: 8px 8px 0 0;
+				background: var(--surface);
+				color: var(--foreground);
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-weight: 500;
+				outline: none;
+				transition:
+					border-color 150ms,
+					box-shadow 150ms;
+			}
+			.link-url:focus {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 28%, transparent);
+				position: relative;
+				z-index: 2;
+			}
+			.link-url::placeholder {
+				color: var(--foreground-subtle);
+			}
+			.link-url.is-invalid {
+				border-color: var(--destructive);
+			}
+
+			/* Label row — styled as a clickable link (like gift card rows)
+			   In edit mode: editable inline input that also navigates on click
+			   outside the text. Primary row = green, secondary = gray. */
+			.link-label-row {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				border: 1px solid var(--border);
+				border-top: none;
+				border-radius: 0 0 8px 8px;
+				background: transparent;
+				overflow: hidden;
+				padding: 0 10px;
+				height: 32px;
+				text-decoration: none;
+				color: var(--foreground-muted);
+				font-size: 12px;
+				font-weight: 500;
+				cursor: text;
+				transition:
+					border-color 150ms,
+					box-shadow 150ms,
+					color 150ms;
+			}
+			.link-label-row:focus-within {
+				border-color: var(--ring);
+				box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 28%, transparent);
+				position: relative;
+				z-index: 2;
+			}
+			.is-primary .link-label-row {
+				color: var(--primary);
+				font-weight: 600;
+			}
+			.link-label-row:hover {
+				color: var(--primary);
+			}
+			.link-label-icon {
+				flex-shrink: 0;
+				color: inherit;
+				opacity: 0.7;
+			}
+			.is-primary .link-label-icon {
+				opacity: 1;
+				color: var(--primary);
+			}
+			.link-label-row:hover .link-label-icon {
+				opacity: 1;
+				color: var(--primary);
+			}
+			.link-label-input {
+				flex: 1;
+				height: 100%;
+				padding: 0;
+				border: none;
+				background: transparent;
+				color: inherit;
+				font-family: var(--font-sans);
+				font-size: inherit;
+				font-weight: inherit;
+				outline: none;
+				text-decoration: underline;
+				text-underline-offset: 2px;
+				text-decoration-color: color-mix(in oklch, currentColor 35%, transparent);
+				cursor: text;
+				min-width: 0;
+			}
+			.link-label-input::placeholder {
+				color: var(--foreground-subtle);
+				text-decoration: underline;
+				text-underline-offset: 2px;
+				text-decoration-color: color-mix(in oklch, var(--foreground-subtle) 35%, transparent);
+			}
+			.link-label-input:focus {
+				text-decoration: none;
+				cursor: text;
+			}
+			.link-label-link {
+				flex-shrink: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 22px;
+				height: 22px;
+				border-radius: 4px;
+				color: inherit;
+				opacity: 0;
+				cursor: pointer;
+				transition: opacity 150ms, background 150ms;
+				text-decoration: none;
+			}
+			.link-label-row:hover .link-label-link {
+				opacity: 0.7;
+			}
+			.link-label-link:hover {
+				opacity: 1 !important;
+				background: var(--primary-soft);
+				color: var(--primary);
+			}
+			.link-label-link:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 1px;
+				opacity: 1;
+			}
+
+			/* Per-row enrich icon */
+			.row-enrich {
+				position: absolute;
+				right: 6px;
+				top: 50%;
+				transform: translateY(-50%);
+				width: 26px;
+				height: 26px;
+				border-radius: 6px;
+				border: 1px solid transparent;
+				background: transparent;
+				color: var(--primary);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+			}
+			.row-enrich:hover {
+				background: var(--primary-soft);
+			}
+			.row-enrich:focus-visible {
+				outline: 2px solid var(--ring);
+				outline-offset: 1px;
+			}
+
+			/* Remove button */
+			.link-actions {
+				display: flex;
+				align-items: flex-start;
+				padding-top: 2px;
+			}
+			.row-remove {
+				width: 30px;
+				height: 30px;
+				border-radius: 8px;
+				border: 1px solid var(--border);
+				background: var(--surface);
+				color: var(--foreground-subtle);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				transition: all 150ms ease;
+			}
+			.row-remove:hover {
+				border-color: var(--destructive);
+				color: var(--destructive);
+				background: color-mix(in oklch, var(--destructive) 8%, var(--surface));
+			}
+			.row-remove:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* Per-row validation */
+			.row-error {
+				grid-column: 2 / 3;
+				display: flex;
+				align-items: center;
+				gap: 5px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--destructive);
+				margin-top: 4px;
+			}
+
+			/* Editor footer: add + hint */
+			.link-editor-foot {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 10px;
+				padding: 10px 12px;
+				border-top: 1px solid var(--border);
+				background: var(--surface);
+			}
+			.add-link-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				height: 34px;
+				padding: 0 14px;
+				border-radius: 8px;
+				border: 1px dashed var(--border-strong);
+				background: transparent;
+				color: var(--primary);
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 150ms ease;
+			}
+			.add-link-btn:hover:not(:disabled) {
+				border-color: var(--primary);
+				background: var(--primary-soft);
+			}
+			.add-link-btn:active:not(:disabled) {
+				transform: scale(0.97);
+			}
+			.add-link-btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+				color: var(--foreground-subtle);
+				border-color: var(--border);
+			}
+			.add-link-btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.cap-hint {
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--foreground-subtle);
+			}
+			.cap-hint.is-warn {
+				color: var(--status-warning);
+			}
+
+			/* Empty state */
+			.link-empty {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 10px;
+				padding: 22px 16px;
+				text-align: center;
+			}
+			.link-empty-text {
+				font-size: 13px;
+				font-weight: 500;
+				color: var(--foreground-subtle);
+			}
+
+			/* ══════════════════════════════════════════════════════════
+			   ENRICH BAR — Variant C style (separated, with hint)
+			   ══════════════════════════════════════════════════════════ */
+			.enrich-bar {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin: 16px 0;
+				padding: 12px;
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				background: var(--surface-2);
+			}
+			.enrich-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+				height: 38px;
+				padding: 0 14px;
+				border-radius: 9px;
+				border: 1px solid color-mix(in oklch, var(--primary) 35%, var(--border));
+				background: var(--surface);
+				color: var(--primary);
+				font-family: var(--font-sans);
+				font-size: 13px;
+				font-weight: 600;
+				cursor: pointer;
+				transition: all 150ms ease;
+				flex-shrink: 0;
+			}
+			.enrich-btn:hover:not(:disabled) {
+				background: var(--primary-soft);
+			}
+			.enrich-btn:active:not(:disabled) {
+				transform: scale(0.97);
+			}
+			.enrich-btn:disabled {
+				opacity: 0.55;
+				cursor: not-allowed;
+			}
+			.enrich-btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.enrich-hint {
+				font-size: 12px;
+				color: var(--foreground-subtle);
+				line-height: 1.4;
+			}
+			.spinner {
+				width: 15px;
+				height: 15px;
+				border: 2px solid color-mix(in oklch, var(--primary) 30%, transparent);
+				border-top-color: var(--primary);
+				border-radius: 50%;
+				animation: spin 0.7s linear infinite;
+			}
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.spinner {
+					animation: none;
+				}
+			}
+
+			/* Skeletons */
+			.skeleton {
+				background: linear-gradient(
+					90deg,
+					var(--surface-3) 25%,
+					var(--surface-2) 50%,
+					var(--surface-3) 75%
+				);
+				background-size: 200% 100%;
+				animation: shimmer 1.4s ease-in-out infinite;
+				border-radius: 8px;
+			}
+			@keyframes shimmer {
+				to {
+					background-position: -200% 0;
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.skeleton {
+					animation: none;
+				}
+			}
+
+			/* Success highlight */
+			.highlight-success {
+				animation: hl 1600ms var(--ease-out, ease-out);
+			}
+			@keyframes hl {
+				0% {
+					box-shadow: 0 0 0 3px color-mix(in oklch, var(--status-success) 45%, transparent);
+					background: color-mix(in oklch, var(--status-success) 12%, var(--surface));
+				}
+				100% {
+					box-shadow: 0 0 0 0 transparent;
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.highlight-success {
+					animation: none;
+					box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-success) 40%, transparent);
+				}
+			}
+
+			/* Enrich alerts */
+			.enrich-alert {
+				display: flex;
+				align-items: flex-start;
+				gap: 9px;
+				padding: 11px 13px;
+				border-radius: 8px;
+				font-size: 12.5px;
+				margin: 12px 0;
+			}
+			.enrich-alert-icon {
+				flex-shrink: 0;
+				margin-top: 1px;
+			}
+			.enrich-alert.is-error {
+				background: color-mix(in oklch, var(--destructive) 10%, var(--surface));
+				border: 1px solid color-mix(in oklch, var(--destructive) 30%, transparent);
+				color: var(--foreground);
+			}
+			.enrich-alert.is-error .enrich-alert-icon {
+				color: var(--destructive);
+			}
+			.enrich-alert.is-success {
+				background: color-mix(in oklch, var(--status-success) 12%, var(--surface));
+				border: 1px solid color-mix(in oklch, var(--status-success) 30%, transparent);
+				color: var(--foreground);
+			}
+			.enrich-alert.is-success .enrich-alert-icon {
+				color: var(--status-success);
+			}
+			.enrich-alert.is-warning {
+				background: color-mix(in oklch, var(--status-warning) 14%, var(--surface));
+				border: 1px solid color-mix(in oklch, var(--status-warning) 32%, transparent);
+				color: var(--foreground);
+			}
+			.enrich-alert.is-warning .enrich-alert-icon {
+				color: var(--status-warning);
+			}
+			.enrich-alert-body {
+				flex: 1;
+			}
+			.enrich-alert-title {
+				font-weight: 700;
+			}
+			.enrich-alert-msg {
+				color: var(--foreground-muted);
+				margin-top: 2px;
+			}
+			.retry-btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				margin-top: 8px;
+				height: 30px;
+				padding: 0 11px;
+				border-radius: 6px;
+				border: 1px solid var(--destructive);
+				background: transparent;
+				color: var(--destructive);
+				font-family: var(--font-sans);
+				font-size: 12px;
+				font-weight: 600;
+				cursor: pointer;
+			}
+			.retry-btn:hover {
+				background: color-mix(in oklch, var(--destructive) 10%, transparent);
+			}
+			.retry-btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+
+			/* Field hint */
+			.field-hint {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				font-size: 11px;
+				font-weight: 600;
+				color: var(--status-warning);
+				margin-top: 4px;
+			}
+
+			/* Overwrite summary */
+			.overwrite-panel {
+				border: 1px solid color-mix(in oklch, var(--status-warning) 40%, var(--border));
+				border-radius: 12px;
+				background: color-mix(in oklch, var(--status-warning) 8%, var(--surface));
+				padding: 14px;
+				margin: 12px 0;
+			}
+			.overwrite-head {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-bottom: 10px;
+			}
+			.overwrite-title {
+				font-size: 13px;
+				font-weight: 700;
+				color: var(--foreground);
+			}
+			.overwrite-list {
+				list-style: none;
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+				margin-bottom: 12px;
+			}
+			.overwrite-item {
+				display: grid;
+				grid-template-columns: 70px 1fr auto 1fr;
+				align-items: center;
+				gap: 8px;
+				font-size: 12px;
+				padding: 6px 8px;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 6px;
+			}
+			.ow-field {
+				font-weight: 700;
+				color: var(--foreground-muted);
+			}
+			.ow-old {
+				color: var(--foreground-subtle);
+				text-decoration: line-through;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.ow-arrow {
+				color: var(--status-warning);
+			}
+			.ow-new {
+				color: var(--foreground);
+				font-weight: 600;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.overwrite-actions {
+				display: flex;
+				gap: 8px;
+			}
+
+			/* Edit-lock fieldset */
+			fieldset.edit-lock {
+				border: none;
+				min-width: 0;
+				padding: 0;
+				margin: 0;
+			}
+			fieldset.edit-lock[disabled] {
+				opacity: 0.6;
+			}
+			.lock-banner {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 10px 13px;
+				border-radius: 8px;
+				background: var(--surface-2);
+				border: 1px solid var(--border);
+				color: var(--foreground-muted);
+				font-size: 12.5px;
+				font-weight: 600;
+				margin-bottom: 14px;
+			}
+
+			/* ══════════════════════════════════════════════════════════
+			   FOOTER — Variant C style (right-aligned compact buttons)
+			   ══════════════════════════════════════════════════════════ */
+			.modal-footer {
+				display: flex;
+				align-items: center;
+				justify-content: flex-end;
+				gap: 10px;
+				padding: 16px 28px;
+				border-top: 1px solid var(--border);
+				background: var(--surface);
+			}
+			.footer-note {
+				margin-right: auto;
+				font-size: 12px;
+				color: var(--foreground-subtle);
+			}
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 7px;
+				font-family: var(--font-sans);
+				font-weight: 600;
+				font-size: 14px;
+				line-height: 1;
+				padding: 0 16px;
+				height: 40px;
+				border-radius: 10px;
+				border: 1px solid transparent;
+				cursor: pointer;
+				transition: all 150ms ease;
+				white-space: nowrap;
+			}
+			.btn:active {
+				transform: scale(0.97);
+			}
+			.btn:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: 2px;
+			}
+			.btn-primary {
+				background: var(--primary);
+				color: var(--primary-fg);
+				box-shadow: var(--shadow-sm);
+			}
+			.btn-primary:hover:not(:disabled) {
+				filter: brightness(1.08);
+			}
+			.btn-primary:disabled {
+				opacity: 0.55;
+				cursor: not-allowed;
+				filter: none;
+			}
+			.btn-ghost {
+				background: transparent;
+				color: var(--foreground-muted);
+				border-color: var(--border);
+			}
+			.btn-ghost:hover:not(:disabled) {
+				background: var(--surface-2);
+				color: var(--foreground);
+				border-color: var(--border-strong);
+			}
+			.btn-ghost:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+			.btn-sm {
+				height: 32px;
+				font-size: 12.5px;
+				padding: 0 12px;
+			}
+
+			/* View-mode links */
+			.view-links {
+				display: flex;
+				flex-direction: column;
+				gap: 0;
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				overflow: hidden;
+				margin-bottom: 16px;
+			}
+			.view-link {
+				position: relative;
+				display: flex;
+				align-items: center;
+				gap: 9px;
+				padding: 11px 13px;
+				text-decoration: none;
+				color: var(--foreground);
+				border-bottom: 1px solid var(--border);
+				transition: background 150ms ease;
+			}
+			.view-link:last-child {
+				border-bottom: none;
+			}
+			.view-link:hover {
+				background: var(--surface-2);
+			}
+			.view-link:focus-visible {
+				outline: 3px solid var(--ring);
+				outline-offset: -3px;
+			}
+			.view-link.is-primary {
+				background: color-mix(in oklch, var(--primary) 5%, var(--surface));
+			}
+			.view-link.is-primary::before {
+				content: '';
+				position: absolute;
+				left: 0;
+				top: 0;
+				bottom: 0;
+				width: 3px;
+				background: var(--primary);
+			}
+			.view-link-icon {
+				color: var(--primary);
+				flex-shrink: 0;
+			}
+			.view-link-body {
+				flex: 1;
+				min-width: 0;
+			}
+			.view-link-label {
+				font-size: 13.5px;
+				font-weight: 600;
+				color: var(--foreground);
+			}
+			.view-link.is-secondary .view-link-label {
+				font-weight: 500;
+				color: var(--foreground-muted);
+			}
+			.view-link-domain {
+				font-size: 11.5px;
+				color: var(--foreground-subtle);
+			}
+			.view-empty {
+				font-size: 13px;
+				color: var(--foreground-subtle);
+				padding: 14px 13px;
+				border: 1px dashed var(--border-strong);
+				border-radius: 12px;
+				margin-bottom: 16px;
+			}
+
+			/* Responsive */
+			@media (max-width: 480px) {
+				.enrich-bar {
+					flex-direction: column;
+					align-items: stretch;
+				}
+				.enrich-btn {
+					justify-content: center;
+				}
+				.overwrite-item {
+					grid-template-columns: 1fr;
+					gap: 2px;
+				}
+				.ow-arrow {
+					display: none;
+				}
+				.modal-footer {
+					flex-wrap: wrap;
+				}
+				.footer-note {
+					width: 100%;
+					margin-bottom: 6px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="demo-row">
+			<!-- ═══════════════════════ LIGHT PANEL ═══════════════════════ -->
+			<div class="demo-panel theme-light dk-root">
+				<div class="panel-label">Světlý režim — Refined (A + C links/footer/enrich)</div>
+
+				<div class="eyebrow-wrap">
+					<div class="eyebrow">REFINED — Variant A + links/footer/enrich z C</div>
+					<div class="eyebrow-desc">
+						Základ varianty A s kompaktním link editorem z C (URL nad štítkem
+						s prefixem „Zobrazení:"), kompaktním footrem (Zrušit + Uložit vpravo)
+						a odděleným enrich barem z C.
+					</div>
+				</div>
+
+				<!-- ───── MAIN RENDER: full edit-mode modal ───── -->
+				<div class="section">
+					<div class="section-title">Režim úprav — kompletní modal (3 odkazy)</div>
+					<div class="section-sub">
+						Kompaktní stacked link editor (C) v rámci layoutu varianty A.
+						Footer: Zrušit + Uložit vpravo, poznámka vlevo. Enrich bar oddělený pod editorem.
+					</div>
+				</div>
+				<div class="modal-stage">
+					<div class="backdrop">
+						<div class="modal" role="dialog" aria-label="Detail daru — úpravy">
+							<button class="modal-close" aria-label="Zavřít">
+								<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+							</button>
+							<div class="modal-body">
+								<!-- LEFT: image -->
+								<div class="image-col">
+									<div class="image-stage">
+										<svg width="64" height="64" viewBox="0 0 72 72" fill="none">
+											<rect x="8" y="22" width="56" height="38" rx="4" fill="currentColor" opacity="0.15"/>
+											<path d="M24 38a8 8 0 0 1 16 0 8 8 0 0 1-16 0z" fill="currentColor" opacity="0.25"/>
+											<rect x="28" y="12" width="16" height="10" rx="8" fill="currentColor" opacity="0.2"/>
+										</svg>
+										<span class="image-stage-cap">Náhled obrázku</span>
+										<div class="fit-toggle">
+											<span class="fit-chip is-on">Vyplnit</span>
+											<span class="fit-chip">Přizpůsobit</span>
+										</div>
+									</div>
+									<div class="image-tabs">
+										<button class="image-tab" aria-selected="true">URL</button>
+										<button class="image-tab" aria-selected="false">Nahrát</button>
+									</div>
+								</div>
+
+								<!-- RIGHT: form -->
+								<div class="form-col">
+									<div class="edit-eyebrow">
+										<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+										Úprava daru
+									</div>
+									<input class="input" style="font-size:16px;font-weight:600;height:44px;margin-bottom:16px" value="Sluchátka Sony WH-1000XM5" aria-label="Název daru"/>
+
+									<div class="field">
+										<label class="field-label">Cena</label>
+										<input class="input" value="7 490 Kč"/>
+									</div>
+
+									<div class="field">
+										<label class="field-label">Popis</label>
+										<textarea class="input" rows="2">Bezdrátová sluchátka s aktivním potlačením hluku. Preferuji černou barvu (verze WH‑1000XM5).</textarea>
+									</div>
+
+									<!-- ───── LINK EDITOR (Variant C container) ───── -->
+									<div class="field">
+										<label class="field-label" id="links-lbl">Odkazy</label>
+										<div class="link-editor" role="group" aria-labelledby="links-lbl">
+											<div class="link-editor-head">
+												<span class="link-editor-title">Odkazy na obchody</span>
+												<span class="link-counter" aria-label="3 z 10 odkazů">3 / 10</span>
+											</div>
+
+											<div class="link-rows">
+												<!-- Row 0: PRIMARY -->
+												<div class="link-row is-primary">
+													<div class="link-reorder">
+														<button class="reorder-btn" type="button" aria-label="Posunout nahoru" disabled>
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+														</button>
+														<span class="reorder-grip" aria-hidden="true">
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+														</span>
+														<button class="reorder-btn" type="button" aria-label="Posunout dolů">
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+														</button>
+													</div>
+													<div class="link-fields">
+														<div class="link-input-wrap">
+															<input class="link-url" type="url" value="https://www.alza.cz/sony-wh-1000xm5" aria-label="Adresa hlavního odkazu"/>
+															<button class="row-enrich" type="button" aria-label="Načíst metadata z tohoto odkazu" title="Načíst metadata">
+																<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/><path d="M18 14l.7 1.8L20.5 16.5 18.7 17.2 18 19l-.7-1.8L15.5 16.5 17.3 15.8 18 14Z"/></svg>
+															</button>
+														</div>
+														<div class="link-label-row">
+															<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+															<input class="link-label-input" type="text" value="Alza" placeholder="alza.cz" aria-label="Zobrazovaný popisek hlavního odkazu"/>
+														</div>
+													</div>
+													<div class="link-actions">
+														<button class="row-remove" type="button" aria-label="Odebrat odkaz Alza">
+															<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+														</button>
+													</div>
+												</div>
+
+												<!-- Row 1 -->
+												<div class="link-row">
+													<div class="link-reorder">
+														<button class="reorder-btn" type="button" aria-label="Posunout nahoru">
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+														</button>
+														<span class="reorder-grip" aria-hidden="true">
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+														</span>
+														<button class="reorder-btn" type="button" aria-label="Posunout dolů">
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+														</button>
+													</div>
+													<div class="link-fields">
+														<div class="link-input-wrap">
+															<input class="link-url" type="url" value="https://www.heureka.cz/sony-wh-1000xm5/" aria-label="Adresa odkazu 2"/>
+															<button class="row-enrich" type="button" aria-label="Načíst metadata z tohoto odkazu" title="Načíst metadata">
+																<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/></svg>
+															</button>
+														</div>
+														<div class="link-label-row">
+															<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+															<input class="link-label-input" type="text" value="" placeholder="heureka.cz" aria-label="Zobrazovaný popisek odkazu 2"/>
+														</div>
+													</div>
+													<div class="link-actions">
+														<button class="row-remove" type="button" aria-label="Odebrat odkaz heureka.cz">
+															<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+														</button>
+													</div>
+												</div>
+
+												<!-- Row 2 -->
+												<div class="link-row">
+													<div class="link-reorder">
+														<button class="reorder-btn" type="button" aria-label="Posunout nahoru">
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+														</button>
+														<span class="reorder-grip" aria-hidden="true">
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+														</span>
+														<button class="reorder-btn" type="button" aria-label="Posunout dolů" disabled>
+															<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+														</button>
+													</div>
+													<div class="link-fields">
+														<div class="link-input-wrap">
+															<input class="link-url" type="url" value="https://www.datart.cz/sony-wh1000xm5.html" aria-label="Adresa odkazu 3"/>
+															<button class="row-enrich" type="button" aria-label="Načíst metadata z tohoto odkazu" title="Načíst metadata">
+																<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/></svg>
+															</button>
+														</div>
+														<div class="link-label-row">
+															<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+															<input class="link-label-input" type="text" value="Datart" placeholder="datart.cz" aria-label="Zobrazovaný popisek odkazu 3"/>
+														</div>
+													</div>
+													<div class="link-actions">
+														<button class="row-remove" type="button" aria-label="Odebrat odkaz Datart">
+															<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+														</button>
+													</div>
+												</div>
+											</div>
+
+											<div class="link-editor-foot">
+												<button class="add-link-btn" type="button">
+													<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+													Přidat odkaz
+												</button>
+												<span class="cap-hint">Hlavní = první odkaz</span>
+											</div>
+										</div>
+									</div>
+
+									<!-- ───── ENRICH BAR (Variant C) ───── -->
+									<div class="enrich-bar">
+										<button class="enrich-btn" type="button">
+											<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/><path d="M18 14l.7 1.8L20.5 16.5 18.7 17.2 18 19l-.7-1.8L15.5 16.5 17.3 15.8 18 14Z"/></svg>
+											Načíst metadata
+										</button>
+										<span class="enrich-hint">Doplní obrázek, cenu a název z hlavního odkazu. Vyplněná pole nepřepíše bez potvrzení.</span>
+									</div>
+								</div>
+							</div>
+
+							<!-- FOOTER: Variant C — right-aligned compact buttons -->
+							<div class="modal-footer">
+								<span class="footer-note">Načtení metadat je doplněk — uloží se až tlačítkem Uložit.</span>
+								<button class="btn btn-ghost" type="button">Zrušit</button>
+								<button class="btn btn-primary" type="button">
+									<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+									Uložit
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- ───── LINK EDITOR SUB-STATES ───── -->
+				<div class="section">
+					<div class="section-title">Editor odkazů — dílčí stavy</div>
+					<div class="instance-grid">
+						<!-- At cap -->
+						<div class="instance">
+							<div class="instance-label">Strop 10/10 — „Přidat" zakázáno</div>
+							<div class="link-editor" role="group" aria-label="Odkazy — limit">
+								<div class="link-editor-head">
+									<span class="link-editor-title">Odkazy na obchody</span>
+									<span class="link-counter is-cap">10 / 10</span>
+								</div>
+								<div class="link-rows">
+									<div class="link-row is-primary">
+										<div class="link-reorder">
+											<button class="reorder-btn" disabled><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+											<span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+											<button class="reorder-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+										</div>
+										<div class="link-fields">
+											<div class="link-input-wrap">
+												<input class="link-url" value="https://www.alza.cz/sony-wh-1000xm5"/>
+											</div>
+											<div class="link-label-row">
+												<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+												<input class="link-label-input" value="Alza" placeholder="alza.cz"/>
+											</div>
+										</div>
+										<div class="link-actions">
+											<button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+										</div>
+									</div>
+									<div style="padding:8px 12px;font-size:11px;color:var(--foreground-subtle);text-align:center;font-style:italic;border-bottom:1px solid var(--border)">… dalších 8 odkazů …</div>
+									<div class="link-row">
+										<div class="link-reorder">
+											<button class="reorder-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+											<span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+											<button class="reorder-btn" disabled><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+										</div>
+										<div class="link-fields">
+											<div class="link-input-wrap"><input class="link-url" value="https://www.kasa.cz/sluchatka-sony"/></div>
+											<div class="link-label-row">
+												<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+												<input class="link-label-input" value="" placeholder="kasa.cz"/>
+											</div>
+										</div>
+										<div class="link-actions">
+											<button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+										</div>
+									</div>
+								</div>
+								<div class="link-editor-foot">
+									<button class="add-link-btn" disabled>
+										<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+										Přidat odkaz
+									</button>
+									<span class="cap-hint is-warn">Maximálně 10 odkazů</span>
+								</div>
+							</div>
+						</div>
+
+						<!-- Invalid + duplicate -->
+						<div class="instance">
+							<div class="instance-label">Neplatná adresa + duplicita</div>
+							<div class="link-editor" role="group">
+								<div class="link-editor-head">
+									<span class="link-editor-title">Odkazy na obchody</span>
+									<span class="link-counter">3 / 10</span>
+								</div>
+								<div class="link-rows">
+									<div class="link-row is-primary">
+										<div class="link-reorder"><span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span></div>
+										<div class="link-fields">
+											<div class="link-input-wrap"><input class="link-url is-invalid" value="htps:/alza" aria-invalid="true"/></div>
+											<div class="link-label-row">
+												<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+												<input class="link-label-input" value="" placeholder="odkaz.cz"/>
+											</div>
+										</div>
+										<div class="link-actions"><button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div>
+										<p class="row-error">
+											<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+											Neplatná adresa
+										</p>
+									</div>
+									<div class="link-row">
+										<div class="link-reorder"><span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span></div>
+										<div class="link-fields">
+											<div class="link-input-wrap"><input class="link-url is-invalid" value="https://www.heureka.cz/sony-wh-1000xm5/" aria-invalid="true"/></div>
+											<div class="link-label-row">
+												<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+												<input class="link-label-input" value="" placeholder="heureka.cz"/>
+											</div>
+										</div>
+										<div class="link-actions"><button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div>
+										<p class="row-error">
+											<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+											Tento odkaz už je v seznamu
+										</p>
+									</div>
+								</div>
+								<div class="link-editor-foot">
+									<button class="add-link-btn">
+										<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+										Přidat odkaz
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Empty -->
+						<div class="instance">
+							<div class="instance-label">Prázdný stav</div>
+							<div class="link-editor" role="group">
+								<div class="link-editor-head">
+									<span class="link-editor-title">Odkazy na obchody</span>
+									<span class="link-counter">0 / 10</span>
+								</div>
+								<div class="link-empty">
+									<svg width="28" height="28" fill="none" stroke="var(--foreground-subtle)" stroke-width="1.6" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+									<span class="link-empty-text">Bez odkazu</span>
+									<button class="add-link-btn">
+										<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+										Přidat odkaz
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Edit-lock -->
+						<div class="instance">
+							<div class="instance-label">Zámek úprav (sdílený seznam)</div>
+							<fieldset class="edit-lock" disabled>
+								<div class="lock-banner">
+									<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+									Seznam je sdílený — úpravy odkazů jsou uzamčeny.
+								</div>
+								<div class="link-editor" role="group">
+									<div class="link-editor-head">
+										<span class="link-editor-title">Odkazy na obchody</span>
+										<span class="link-counter">2 / 10</span>
+									</div>
+									<div class="link-rows">
+										<div class="link-row is-primary">
+											<div class="link-reorder"><span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span></div>
+											<div class="link-fields">
+												<div class="link-input-wrap"><input class="link-url" value="https://www.alza.cz/sony-wh-1000xm5"/></div>
+												<div class="link-label-row">
+													<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+													<input class="link-label-input" value="Alza" placeholder="alza.cz"/>
+												</div>
+											</div>
+											<div class="link-actions"><button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div>
+										</div>
+										<div class="link-row">
+											<div class="link-reorder"><span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span></div>
+											<div class="link-fields">
+												<div class="link-input-wrap"><input class="link-url" value="https://www.datart.cz/sony-wh1000xm5.html"/></div>
+												<div class="link-label-row">
+													<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+													<input class="link-label-input" value="Datart" placeholder="datart.cz"/>
+												</div>
+											</div>
+											<div class="link-actions"><button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div>
+										</div>
+									</div>
+									<div class="link-editor-foot">
+										<button class="add-link-btn">
+											<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+											Přidat odkaz
+										</button>
+									</div>
+								</div>
+							</fieldset>
+						</div>
+					</div>
+				</div>
+
+				<!-- ───── ENRICH STATES ───── -->
+				<div class="section">
+					<div class="section-title">Načtení metadat — stavy</div>
+					<div class="instance-grid">
+						<!-- Idle -->
+						<div class="instance">
+							<div class="instance-label">Klidový stav (idle)</div>
+							<div class="enrich-bar">
+								<button class="enrich-btn" type="button">
+									<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/></svg>
+									Načíst metadata
+								</button>
+								<span class="enrich-hint">Připraveno — z hlavního odkazu (alza.cz).</span>
+							</div>
+						</div>
+
+						<!-- Loading -->
+						<div class="instance" aria-busy="true">
+							<div class="instance-label">Načítání (spinner + skeleton)</div>
+							<div class="enrich-bar">
+								<button class="enrich-btn" disabled aria-busy="true">
+									<span class="spinner" aria-hidden="true"></span>
+									Načíst metadata
+								</button>
+								<span class="enrich-hint" role="status" aria-live="polite">Načítám metadata…</span>
+							</div>
+							<div class="field" style="margin-top:12px">
+								<span class="field-label">Název</span>
+								<div class="skeleton" style="height:28px;width:80%" aria-hidden="true"></div>
+							</div>
+							<div class="field">
+								<span class="field-label">Cena</span>
+								<div class="skeleton" style="height:40px" aria-hidden="true"></div>
+							</div>
+							<div class="field">
+								<span class="field-label">Obrázek</span>
+								<div class="skeleton" style="height:120px" aria-hidden="true"></div>
+							</div>
+						</div>
+
+						<!-- Success -->
+						<div class="instance">
+							<div class="instance-label">Úspěch (vyplněno + zvýrazněno)</div>
+							<div class="enrich-alert is-success" role="status" aria-live="polite">
+								<span class="enrich-alert-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+								<div class="enrich-alert-body">
+									<div class="enrich-alert-title">Metadata načtena</div>
+									<div class="enrich-alert-msg">Doplněn název, cena i obrázek.</div>
+								</div>
+							</div>
+							<div class="field">
+								<span class="field-label">Název</span>
+								<input class="input highlight-success" value="Sony WH-1000XM5 černá" readonly/>
+							</div>
+							<div class="field" style="margin-bottom:0">
+								<span class="field-label">Cena</span>
+								<input class="input highlight-success" value="7 490 Kč" readonly/>
+							</div>
+						</div>
+
+						<!-- Partial -->
+						<div class="instance">
+							<div class="instance-label">Částečně — cena nenalezena</div>
+							<div class="enrich-alert is-warning" role="status" aria-live="polite">
+								<span class="enrich-alert-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+								<div class="enrich-alert-body">
+									<div class="enrich-alert-title">Část metadat se nenačetla</div>
+									<div class="enrich-alert-msg">Doplněn název a obrázek.</div>
+								</div>
+							</div>
+							<div class="field">
+								<span class="field-label">Název</span>
+								<input class="input highlight-success" value="Sony WH-1000XM5 černá" readonly/>
+							</div>
+							<div class="field" style="margin-bottom:0">
+								<span class="field-label">Cena</span>
+								<input class="input" value="" placeholder="—"/>
+								<span class="field-hint">
+									<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+									Cena nebyla nalezena
+								</span>
+							</div>
+						</div>
+
+						<!-- Failed -->
+						<div class="instance">
+							<div class="instance-label">Selhání (Zkusit znovu)</div>
+							<div class="enrich-alert is-error" role="alert">
+								<span class="enrich-alert-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+								<div class="enrich-alert-body">
+									<div class="enrich-alert-title">Metadata se nepodařilo načíst</div>
+									<div class="enrich-alert-msg">Web odkazu neodpověděl. Vyplněná pole zůstala beze změny.</div>
+									<button class="retry-btn" type="button">
+										<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+										Zkusit znovu
+									</button>
+								</div>
+							</div>
+						</div>
+
+						<!-- Overwrite confirm -->
+						<div class="instance">
+							<div class="instance-label">Souhrnné potvrzení přepisu</div>
+							<div class="overwrite-panel" role="alertdialog">
+								<div class="overwrite-head">
+									<svg width="16" height="16" fill="none" stroke="var(--status-warning)" stroke-width="2.2" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+									<span class="overwrite-title">Přepsat vyplněná pole?</span>
+								</div>
+								<ul class="overwrite-list">
+									<li class="overwrite-item">
+										<span class="ow-field">Název</span>
+										<span class="ow-old">Sluchátka Sony</span>
+										<span class="ow-arrow" aria-hidden="true">&rarr;</span>
+										<span class="ow-new">Sluchátka Sony WH-1000XM5</span>
+									</li>
+									<li class="overwrite-item">
+										<span class="ow-field">Cena</span>
+										<span class="ow-old">7 990 Kč</span>
+										<span class="ow-arrow" aria-hidden="true">&rarr;</span>
+										<span class="ow-new">7 490 Kč</span>
+									</li>
+								</ul>
+								<div class="overwrite-actions">
+									<button class="btn btn-primary btn-sm" type="button">Přepsat</button>
+									<button class="btn btn-ghost btn-sm" type="button">Ponechat</button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- ───── VIEW MODE ───── -->
+				<div class="section">
+					<div class="section-title">Zobrazení — seznam odkazů</div>
+					<div class="instance-grid">
+						<div class="instance">
+							<div class="instance-label">Stohovaný seznam (hlavní první)</div>
+							<div class="view-links">
+								<a href="#" class="view-link is-primary" onclick="return false">
+									<span class="view-link-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+									<span class="view-link-body">
+										<span class="view-link-label">Alza</span>
+										<span class="view-link-domain">alza.cz · hlavní</span>
+									</span>
+								</a>
+								<a href="#" class="view-link is-secondary" onclick="return false">
+									<span class="view-link-icon" style="color:var(--foreground-subtle)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+									<span class="view-link-body">
+										<span class="view-link-label">heureka.cz</span>
+									</span>
+								</a>
+								<a href="#" class="view-link is-secondary" onclick="return false">
+									<span class="view-link-icon" style="color:var(--foreground-subtle)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+									<span class="view-link-body">
+										<span class="view-link-label">Datart</span>
+										<span class="view-link-domain">datart.cz</span>
+									</span>
+								</a>
+							</div>
+						</div>
+						<div class="instance">
+							<div class="instance-label">Prázdné zobrazení</div>
+							<div class="view-empty">Bez odkazu</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- ═══════════════════════ DARK PANEL ═══════════════════════ -->
+			<div class="demo-panel theme-dark dk-root">
+				<div class="panel-label">Tmavý režim — Refined (A + C links/footer/enrich)</div>
+
+				<div class="eyebrow-wrap">
+					<div class="eyebrow">REFINED — Variant A + C (tmavý)</div>
+					<div class="eyebrow-desc">Tmavá varianta: kompaktní stacked link editor, footer vpravo, oddělený enrich.</div>
+				</div>
+
+				<!-- compact dark modal -->
+				<div class="modal-stage">
+					<div class="backdrop">
+						<div class="modal" role="dialog" aria-label="Detail daru — úpravy">
+							<button class="modal-close" aria-label="Zavřít">
+								<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+							</button>
+							<div class="modal-body">
+								<div class="image-col">
+									<div class="image-stage">
+										<svg width="64" height="64" viewBox="0 0 72 72" fill="none">
+											<rect x="8" y="22" width="56" height="38" rx="4" fill="currentColor" opacity="0.2"/>
+											<path d="M24 38a8 8 0 0 1 16 0 8 8 0 0 1-16 0z" fill="currentColor" opacity="0.3"/>
+										</svg>
+										<span class="image-stage-cap">Náhled obrázku</span>
+										<div class="fit-toggle">
+											<span class="fit-chip is-on">Vyplnit</span>
+											<span class="fit-chip">Přizpůsobit</span>
+										</div>
+									</div>
+									<div class="image-tabs">
+										<button class="image-tab" aria-selected="true">URL</button>
+										<button class="image-tab" aria-selected="false">Nahrát</button>
+									</div>
+								</div>
+								<div class="form-col">
+									<div class="edit-eyebrow">Úprava daru</div>
+									<input class="input" style="font-size:16px;font-weight:600;height:44px;margin-bottom:16px" value="Sluchátka Sony WH-1000XM5" aria-label="Název daru"/>
+									<div class="field">
+										<label class="field-label">Cena</label>
+										<input class="input" value="7 490 Kč"/>
+									</div>
+
+									<!-- Link editor -->
+									<div class="field">
+										<label class="field-label">Odkazy</label>
+										<div class="link-editor" role="group">
+											<div class="link-editor-head">
+												<span class="link-editor-title">Odkazy na obchody</span>
+												<span class="link-counter">2 / 10</span>
+											</div>
+											<div class="link-rows">
+												<div class="link-row is-primary">
+													<div class="link-reorder">
+														<button class="reorder-btn" disabled><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+														<span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+														<button class="reorder-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+													</div>
+													<div class="link-fields">
+														<div class="link-input-wrap">
+															<input class="link-url" value="https://www.alza.cz/sony-wh-1000xm5"/>
+															<button class="row-enrich" type="button" title="Načíst metadata">
+																<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/></svg>
+															</button>
+														</div>
+														<div class="link-label-row">
+															<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+															<input class="link-label-input" value="Alza" placeholder="alza.cz"/>
+														</div>
+													</div>
+													<div class="link-actions">
+														<button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+													</div>
+												</div>
+												<div class="link-row">
+													<div class="link-reorder">
+														<button class="reorder-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></button>
+														<span class="reorder-grip" aria-hidden="true"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg></span>
+														<button class="reorder-btn" disabled><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+													</div>
+													<div class="link-fields">
+														<div class="link-input-wrap">
+															<input class="link-url" value="https://www.datart.cz/sony-wh1000xm5.html"/>
+															<button class="row-enrich" type="button" title="Načíst metadata">
+																<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/></svg>
+															</button>
+														</div>
+														<div class="link-label-row">
+															<svg class="link-label-icon" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+															<input class="link-label-input" value="" placeholder="datart.cz"/>
+														</div>
+													</div>
+													<div class="link-actions">
+														<button class="row-remove"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+													</div>
+												</div>
+											</div>
+											<div class="link-editor-foot">
+												<button class="add-link-btn">
+													<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+													Přidat odkaz
+												</button>
+												<span class="cap-hint">Hlavní = první odkaz</span>
+											</div>
+										</div>
+									</div>
+
+									<!-- Enrich bar -->
+									<div class="enrich-bar">
+										<button class="enrich-btn" type="button">
+											<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9 13.8 10.8 12 15.5 10.2 10.8 5.5 9 10.2 7.7 12 3Z"/><path d="M18 14l.7 1.8L20.5 16.5 18.7 17.2 18 19l-.7-1.8L15.5 16.5 17.3 15.8 18 14Z"/></svg>
+											Načíst metadata
+										</button>
+										<span class="enrich-hint">Doplní obrázek, cenu a název z hlavního odkazu.</span>
+									</div>
+								</div>
+							</div>
+							<div class="modal-footer">
+								<span class="footer-note">Načtení metadat je doplněk — uloží se až tlačítkem Uložit.</span>
+								<button class="btn btn-ghost" type="button">Zrušit</button>
+								<button class="btn btn-primary" type="button">
+									<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+									Uložit
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Dark sub-states -->
+				<div class="section">
+					<div class="section-title">Stavy enrich &amp; zobrazení (tmavé)</div>
+					<div class="instance-grid">
+						<div class="instance" aria-busy="true">
+							<div class="instance-label">Načítání</div>
+							<div class="enrich-bar">
+								<button class="enrich-btn" disabled><span class="spinner"></span> Načíst metadata</button>
+								<span class="enrich-hint" role="status" aria-live="polite">Načítám z alza.cz…</span>
+							</div>
+							<div style="margin-top:12px">
+								<div class="skeleton" style="height:120px" aria-hidden="true"></div>
+								<div class="skeleton" style="height:40px;margin-top:8px" aria-hidden="true"></div>
+							</div>
+						</div>
+						<div class="instance">
+							<div class="instance-label">Selhání</div>
+							<div class="enrich-alert is-error" role="alert">
+								<span class="enrich-alert-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+								<div class="enrich-alert-body">
+									<div class="enrich-alert-title">Metadata se nepodařilo načíst</div>
+									<div class="enrich-alert-msg">Web odkazu neodpověděl.</div>
+									<button class="retry-btn" type="button">
+										<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+										Zkusit znovu
+									</button>
+								</div>
+							</div>
+						</div>
+						<div class="instance">
+							<div class="instance-label">Zobrazení odkazů</div>
+							<div class="view-links">
+								<a href="#" class="view-link is-primary" onclick="return false">
+									<span class="view-link-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+									<span class="view-link-body">
+										<span class="view-link-label">Alza</span>
+										<span class="view-link-domain">alza.cz · hlavní</span>
+									</span>
+								</a>
+								<a href="#" class="view-link is-secondary" onclick="return false">
+									<span class="view-link-icon" style="color:var(--foreground-subtle)"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+									<span class="view-link-body"><span class="view-link-label">datart.cz</span></span>
+								</a>
+							</div>
+						</div>
+						<div class="instance">
+							<div class="instance-label">Prázdné zobrazení</div>
+							<div class="view-empty">Bez odkazu</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
