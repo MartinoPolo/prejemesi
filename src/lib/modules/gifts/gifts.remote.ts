@@ -397,13 +397,13 @@ export const reorderGifts = guardedCommand(
 		// Batch update sortOrder in a single CASE WHEN statement
 		const now = new Date();
 		const sortOrderCase = sql.join(
-			items.map((item) => sql`WHEN ${gift.id} = ${item.id} THEN ${item.sortOrder}`),
+			items.map((item) => sql`WHEN ${gift.id} = ${item.id} THEN ${item.sortOrder}::integer`),
 			sql` `,
 		);
 		await database
 			.update(gift)
 			.set({
-				sortOrder: sql`CASE ${sortOrderCase} END`,
+				sortOrder: sql<number>`CASE ${sortOrderCase} END`,
 				updatedAt: now,
 			})
 			.where(
