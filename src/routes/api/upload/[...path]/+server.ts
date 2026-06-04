@@ -10,6 +10,8 @@
  * - Content-type and size validation happens server-side before storage
  * - Simpler client code — PUT to a same-origin URL
  */
+import { readFile } from 'node:fs/promises';
+import { resolve, normalize } from 'node:path';
 import { error, json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types.js';
@@ -165,17 +167,37 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	// In-memory fallback (no R2 binding configured)
 	const localFile = localDevStore.get(objectKey);
-	if (localFile === undefined) {
-		error(404, 'File not found');
+	if (localFile !== undefined) {
+		return new Response(localFile.body, {
+			headers: {
+				'content-type': localFile.contentType,
+				'cache-control': 'no-cache',
+				'X-Content-Type-Options': 'nosniff',
+			},
+		});
 	}
 
-	return new Response(localFile.body, {
-		headers: {
-			'content-type': localFile.contentType,
-			'cache-control': 'no-cache',
-			'X-Content-Type-Options': 'nosniff',
-		},
-	});
+	// Filesystem fallback — seed images downloaded by `pnpm db:seed`
+	try {
+		const seedRoot = resolve(process.cwd(), '.seed-uploads');
+		const seedPath = resolve(seedRoot, normalize(objectKey));
+		if (!seedPath.startsWith(seedRoot)) {
+			error(403, 'Invalid path');
+		}
+		const body = await readFile(seedPath);
+		const ext = objectKey.split('.').pop()?.toLowerCase();
+		const contentType =
+			ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+		return new Response(body, {
+			headers: {
+				'content-type': contentType,
+				'cache-control': 'no-cache',
+				'X-Content-Type-Options': 'nosniff',
+			},
+		});
+	} catch {
+		error(404, 'File not found');
+	}
 };
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {

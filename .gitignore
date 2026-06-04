@@ -75,5 +75,8 @@ worker-configuration.d.ts
 # Backup folders
 **/backup/
 
+# Seed image cache (downloaded by pnpm db:seed)
+.seed-uploads/
+
 # Local convention
 *.local.*

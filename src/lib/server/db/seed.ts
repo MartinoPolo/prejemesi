@@ -11,7 +11,8 @@
  *   tomas@test.cz   — Tomáš Černý     (mostly inactive, 2 wishlists)
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { sql } from 'drizzle-orm';
@@ -61,6 +62,78 @@ function requireEnv(name: string): string {
 }
 
 const DATABASE_URL: string = requireEnv('DATABASE_URL');
+
+// ---------------------------------------------------------------------------
+// Seed images — fetched from Unsplash on first seed, cached in .seed-uploads/
+// ---------------------------------------------------------------------------
+const SEED_UPLOAD_DIR = join(process.cwd(), '.seed-uploads');
+
+const SEED_IMAGES: Record<string, string> = {
+	// Wishlists
+	'seed/wl-xmas2026.jpg':
+		'https://images.unsplash.com/photo-1765194493212-874b062ff31a?w=800&q=80',
+	'seed/wl-bday.jpg': 'https://images.unsplash.com/photo-1531956531700-dc0ee0f1f9a5?w=800&q=80',
+	'seed/wl-svatek.jpg': 'https://images.unsplash.com/photo-1775138386053-5766c8c10e85?w=800&q=80',
+	'seed/wl-knihy.jpg': 'https://images.unsplash.com/photo-1747913647304-9f298ff28ff4?w=800&q=80',
+	// Gifts
+	'seed/g-ps5.jpg': 'https://images.unsplash.com/photo-1622297845775-5ff3fef71d13?w=800&q=80',
+	'seed/g-bunda.jpg': 'https://images.unsplash.com/photo-1487793433179-ce0b55eda342?w=800&q=80',
+	'seed/g-sapiens.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
+	'seed/g-sony.jpg': 'https://images.unsplash.com/photo-1621208587196-0b2a7d2aeb03?w=800&q=80',
+	'seed/g-batoh.jpg': 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80',
+	'seed/g-kytara.jpg': 'https://images.unsplash.com/photo-1589131626349-2799f057b43a?w=800&q=80',
+	'seed/g-parfem.jpg': 'https://images.unsplash.com/photo-1583545889266-55be2d76c6c5?w=800&q=80',
+	'seed/g-catan.jpg': 'https://images.unsplash.com/photo-1606733847546-db8546099013?w=800&q=80',
+	'seed/g-kindle.jpg': 'https://images.unsplash.com/photo-1455541504462-57ebb2a9cec1?w=800&q=80',
+	'seed/g-puzzle.jpg': 'https://images.unsplash.com/photo-1494059980473-813e73ee784b?w=800&q=80',
+	'seed/g-svicka.jpg': 'https://images.unsplash.com/photo-1574266742257-41460b7992ee?w=800&q=80',
+	'seed/g-kabelka.jpg': 'https://images.unsplash.com/photo-1683921470299-b8f0f3331657?w=800&q=80',
+	'seed/g-satek.jpg': 'https://images.unsplash.com/photo-1753807971479-5a51e1445b78?w=800&q=80',
+	'seed/g-lego.jpg': 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=800&q=80',
+	'seed/g-lampicka.jpg': 'https://images.unsplash.com/photo-1547091267-6b2be403a763?w=800&q=80',
+	'seed/g-mixer.jpg': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80',
+	'seed/g-monstera.jpg':
+		'https://images.unsplash.com/photo-1503149779833-1de50ebe5f8a?w=800&q=80',
+	'seed/g-dune.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
+	'seed/g-1984.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
+};
+
+async function downloadSeedImages(): Promise<void> {
+	const entries = Object.entries(SEED_IMAGES);
+	let downloaded = 0;
+	let cached = 0;
+
+	for (const [objectKey, url] of entries) {
+		const filePath = join(SEED_UPLOAD_DIR, objectKey);
+		if (existsSync(filePath)) {
+			cached++;
+			continue;
+		}
+		try {
+			const response = await fetch(url, { redirect: 'follow' });
+			if (!response.ok) {
+				console.warn(`  ⚠ Failed to fetch ${objectKey}: HTTP ${String(response.status)}`);
+				continue;
+			}
+			const buffer = Buffer.from(await response.arrayBuffer());
+			mkdirSync(dirname(filePath), { recursive: true });
+			writeFileSync(filePath, buffer);
+			downloaded++;
+		} catch (fetchError) {
+			console.warn(`  ⚠ Failed to download ${objectKey}:`, fetchError);
+		}
+	}
+
+	console.log(
+		`  ${String(downloaded)} downloaded, ${String(cached)} cached, ${String(entries.length)} total`,
+	);
+}
+
+const SEED_IMAGE_META = { fitMode: 'auto' as const, focal: { x: 50, y: 50 }, zoom: 1 };
+
+function giftImage(key: string) {
+	return { imageKey: key, imageUrl: `/api/upload/${key}`, imageMeta: SEED_IMAGE_META };
+}
 
 // ---------------------------------------------------------------------------
 // ID constants — deterministic, prefixed for easy cleanup
@@ -242,17 +315,12 @@ async function seed() {
 				status: 'active',
 				theme: 'christmas',
 				sharedAt: d('2026-11-15T10:00:00Z'),
-				imageKey: 'seed/wishlist-xmas2026.jpg',
+				imageKey: 'seed/wl-xmas2026.jpg',
 				imageSlots: {
 					card: { fitMode: 'cover-crop', focal: { x: 50, y: 40 }, zoom: 1 },
 					thumbnail: { fitMode: 'cover-crop', focal: { x: 50, y: 50 }, zoom: 1 },
-					banner: {
-						fitMode: 'cover-crop',
-						cropRect: { x: 0, y: 0.1, w: 1, h: 0.5 },
-						focal: { x: 50, y: 30 },
-						zoom: 1,
-					},
-					social: { fitMode: 'contain-padded', bgColor: '#0b3d2e' },
+					banner: { fitMode: 'cover-crop', focal: { x: 50, y: 30 }, zoom: 1 },
+					social: { fitMode: 'contain-padded' },
 				},
 				createdAt: d('2026-11-01T09:00:00Z'),
 				updatedAt: d('2026-11-20T14:00:00Z'),
@@ -268,6 +336,13 @@ async function seed() {
 				status: 'active',
 				theme: 'birthday',
 				sharedAt: d('2026-02-01T08:00:00Z'),
+				imageKey: 'seed/wl-bday.jpg',
+				imageSlots: {
+					card: { fitMode: 'cover-crop', focal: { x: 50, y: 45 }, zoom: 1 },
+					thumbnail: { fitMode: 'cover-crop', focal: { x: 50, y: 50 }, zoom: 1 },
+					banner: { fitMode: 'cover-crop', focal: { x: 50, y: 35 }, zoom: 1 },
+					social: { fitMode: 'contain-padded' },
+				},
 				createdAt: d('2026-01-20T11:00:00Z'),
 				updatedAt: d('2026-03-10T15:00:00Z'),
 			},
@@ -307,6 +382,13 @@ async function seed() {
 				status: 'active',
 				theme: 'elegant',
 				sharedAt: d('2026-04-10T09:00:00Z'),
+				imageKey: 'seed/wl-svatek.jpg',
+				imageSlots: {
+					card: { fitMode: 'cover-crop', focal: { x: 50, y: 50 }, zoom: 1 },
+					thumbnail: { fitMode: 'cover-crop', focal: { x: 50, y: 50 }, zoom: 1 },
+					banner: { fitMode: 'cover-crop', focal: { x: 50, y: 40 }, zoom: 1 },
+					social: { fitMode: 'contain-padded' },
+				},
 				createdAt: d('2026-04-05T10:00:00Z'),
 				updatedAt: d('2026-04-15T11:00:00Z'),
 			},
@@ -361,6 +443,13 @@ async function seed() {
 				theme: 'custom',
 				customThemeColor: '#4A90D9',
 				sharedAt: d('2026-03-10T09:00:00Z'),
+				imageKey: 'seed/wl-knihy.jpg',
+				imageSlots: {
+					card: { fitMode: 'cover-crop', focal: { x: 50, y: 50 }, zoom: 1 },
+					thumbnail: { fitMode: 'cover-crop', focal: { x: 50, y: 50 }, zoom: 1 },
+					banner: { fitMode: 'cover-crop', focal: { x: 50, y: 45 }, zoom: 1 },
+					social: { fitMode: 'contain-padded' },
+				},
 				createdAt: d('2026-03-01T11:00:00Z'),
 				updatedAt: d('2026-04-20T15:00:00Z'),
 			},
@@ -409,14 +498,7 @@ async function seed() {
 				],
 				price: 13990,
 				currency: 'CZK',
-				imageKey: 'seed/gift-ps5.jpg',
-				imageMeta: {
-					fitMode: 'cover-crop',
-					cropRect: { x: 0.05, y: 0.05, w: 0.9, h: 0.9 },
-					focal: { x: 50, y: 45 },
-					zoom: 1.2,
-					bgColor: null,
-				},
+				...giftImage('seed/g-ps5.jpg'),
 				sortOrder: 0,
 			},
 			{
@@ -428,6 +510,7 @@ async function seed() {
 				links: [{ url: 'https://www.sportisimo.cz/north-face' }],
 				price: 4500,
 				currency: 'CZK',
+				...giftImage('seed/g-bunda.jpg'),
 				sortOrder: 1,
 			},
 			{
@@ -438,6 +521,7 @@ async function seed() {
 				links: [{ url: 'https://www.kosmas.cz/sapiens' }],
 				price: 399,
 				currency: 'CZK',
+				...giftImage('seed/g-sapiens.jpg'),
 				sortOrder: 2,
 			},
 			{
@@ -449,6 +533,7 @@ async function seed() {
 				links: [{ url: 'https://www.datart.cz/sony-wh1000xm5' }],
 				price: 7990,
 				currency: 'CZK',
+				...giftImage('seed/g-sony.jpg'),
 				sortOrder: 3,
 			},
 			{
@@ -480,6 +565,7 @@ async function seed() {
 				links: [{ url: 'https://www.alza.cz/osprey-batoh' }],
 				price: 1200,
 				currency: 'CZK',
+				...giftImage('seed/g-batoh.jpg'),
 				sortOrder: 6,
 			},
 			{
@@ -503,6 +589,7 @@ async function seed() {
 				links: [{ url: 'https://www.muziker.cz/fender-player' }],
 				price: 15000,
 				currency: 'CZK',
+				...giftImage('seed/g-kytara.jpg'),
 				sortOrder: 0,
 			},
 			{
@@ -524,6 +611,7 @@ async function seed() {
 				links: [{ url: 'https://www.notino.cz/dior-sauvage' }],
 				price: 1800,
 				currency: 'CZK',
+				...giftImage('seed/g-parfem.jpg'),
 				sortOrder: 2,
 			},
 			{
@@ -534,6 +622,7 @@ async function seed() {
 				links: [{ url: 'https://www.bambule.cz/catan' }],
 				price: 890,
 				currency: 'CZK',
+				...giftImage('seed/g-catan.jpg'),
 				sortOrder: 3,
 			},
 			{
@@ -583,6 +672,7 @@ async function seed() {
 				name: 'Kindle Paperwhite',
 				price: 3490,
 				currency: 'CZK',
+				...giftImage('seed/g-kindle.jpg'),
 				sortOrder: 0,
 				received: true,
 			},
@@ -603,6 +693,7 @@ async function seed() {
 				name: 'Puzzle 1000 dílků — Starý Prahu',
 				price: 450,
 				currency: 'CZK',
+				...giftImage('seed/g-puzzle.jpg'),
 				sortOrder: 2,
 				received: true,
 			},
@@ -623,6 +714,7 @@ async function seed() {
 				name: 'Svíčka Yankee Candle',
 				price: 550,
 				currency: 'CZK',
+				...giftImage('seed/g-svicka.jpg'),
 				sortOrder: 4,
 				received: true,
 			},
@@ -646,6 +738,7 @@ async function seed() {
 				links: [{ url: 'https://www.zalando.cz/coach-kabelka' }],
 				price: 120,
 				currency: 'EUR',
+				...giftImage('seed/g-kabelka.jpg'),
 				sortOrder: 0,
 			},
 			{
@@ -655,6 +748,7 @@ async function seed() {
 				name: 'Šátek Burberry',
 				price: 90,
 				currency: 'EUR',
+				...giftImage('seed/g-satek.jpg'),
 				sortOrder: 1,
 			},
 			{
@@ -686,6 +780,7 @@ async function seed() {
 				name: 'LEGO City Hasičská stanice',
 				price: 1500,
 				currency: 'CZK',
+				...giftImage('seed/g-lego.jpg'),
 				sortOrder: 0,
 			},
 			{
@@ -704,6 +799,7 @@ async function seed() {
 				name: 'Noční lampička — hvězdná projekce',
 				price: 600,
 				currency: 'CZK',
+				...giftImage('seed/g-lampicka.jpg'),
 				sortOrder: 2,
 			},
 
@@ -734,6 +830,7 @@ async function seed() {
 				name: 'Mixér KitchenAid',
 				price: 8990,
 				currency: 'CZK',
+				...giftImage('seed/g-mixer.jpg'),
 				sortOrder: 0,
 				received: true,
 			},
@@ -752,6 +849,7 @@ async function seed() {
 				name: 'Rostlina Monstera',
 				price: 450,
 				currency: 'CZK',
+				...giftImage('seed/g-monstera.jpg'),
 				sortOrder: 2,
 				received: true,
 			},
@@ -765,6 +863,7 @@ async function seed() {
 				links: [{ url: 'https://www.kosmas.cz/dune' }],
 				price: 350,
 				currency: 'CZK',
+				...giftImage('seed/g-dune.jpg'),
 				sortOrder: 0,
 			},
 			{
@@ -775,6 +874,7 @@ async function seed() {
 				links: [{ url: 'https://www.kosmas.cz/1984' }],
 				price: 280,
 				currency: 'CZK',
+				...giftImage('seed/g-1984.jpg'),
 				sortOrder: 1,
 			},
 			{
@@ -1039,6 +1139,9 @@ async function seed() {
 				createdAt: d('2026-04-15T11:00:00Z'),
 			},
 		]);
+
+		console.log('Downloading seed images...');
+		await downloadSeedImages();
 
 		console.log('');
 		console.log('Seed complete! Test accounts:');

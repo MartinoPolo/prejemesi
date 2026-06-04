@@ -108,16 +108,36 @@
 		interactive ? { role: 'button', tabindex: 0, 'aria-label': alt || fallbackText } : {},
 	);
 
-	function handleLoad(event: Event) {
-		const img = event.currentTarget as HTMLImageElement;
+	function markLoaded(img: HTMLImageElement) {
 		if (src !== null && img.naturalWidth > 0 && img.naturalHeight > 0) {
 			measured = { src, ratio: img.naturalWidth / img.naturalHeight };
 		}
 		loadedSrc = src;
 	}
 
-	function handleError() {
-		erroredSrc = src;
+	// A cached or SSR-rendered image can finish loading in the gap between the server
+	// paint and client hydration, so framework-wired `onload`/`onerror` handlers (added
+	// during hydration) may miss the event entirely and leave the skeleton stuck. This
+	// attachment registers its listeners the moment the element mounts and reconciles
+	// the already-`complete` case, closing that race.
+	function trackImageLoad(img: HTMLImageElement) {
+		const onLoad = () => markLoaded(img);
+		const onError = () => {
+			erroredSrc = src;
+		};
+		if (img.complete) {
+			if (img.naturalWidth > 0) {
+				onLoad();
+			} else {
+				onError();
+			}
+		}
+		img.addEventListener('load', onLoad);
+		img.addEventListener('error', onError);
+		return () => {
+			img.removeEventListener('load', onLoad);
+			img.removeEventListener('error', onError);
+		};
 	}
 </script>
 
@@ -146,13 +166,12 @@
 		{/if}
 		{#if hasSrc}
 			<img
+				{@attach trackImageLoad}
 				class={styles.image()}
 				style={imageStyle}
 				{src}
 				{alt}
 				aria-hidden={alt === '' ? 'true' : undefined}
-				onload={handleLoad}
-				onerror={handleError}
 			/>
 		{/if}
 	{/if}
