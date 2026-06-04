@@ -39,7 +39,10 @@
 	}: WishlistGiftCardGridProps = $props();
 </script>
 
-<div class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))">
+<div
+	class="grid items-stretch gap-5"
+	style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))"
+>
 	{#each gifts as giftItem, index (giftItem.id)}
 		<WishlistGiftDraggableWrapper
 			{index}
