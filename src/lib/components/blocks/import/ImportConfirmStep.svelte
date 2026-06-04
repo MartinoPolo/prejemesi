@@ -24,6 +24,7 @@
 		duplicateCount: number;
 		oncommit: () => Promise<{ shortId: string }>;
 		commitStatus: CommitStatus;
+		suppressNavigation?: boolean;
 	}
 
 	let {
@@ -34,6 +35,7 @@
 		duplicateCount,
 		oncommit,
 		commitStatus,
+		suppressNavigation = false,
 	}: ImportConfirmStepProps = $props();
 
 	let resultShortId = $state<string | null>(null);
@@ -64,7 +66,7 @@
 			<p class="text-foreground text-center text-sm">
 				{m.import_wizard_success({ count: giftCount })}
 			</p>
-			{#if resultShortId}
+			{#if resultShortId !== null && !suppressNavigation}
 				<Button intent="primary" href={resolve('/(app)/w/[id]', { id: resultShortId })}>
 					{m.import_wizard_success_open()}
 					<ArrowRightIcon data-icon="inline-end" />

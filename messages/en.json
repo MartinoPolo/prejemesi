@@ -676,6 +676,7 @@
 	"batch_add_submit_pending": "Adding...",
 	"batch_add_hint_enabled": "{count} valid rows to add",
 	"batch_add_toolbar_label": "Batch add gifts",
+	"import_toolbar_label": "Import from spreadsheet",
 	"toast_batch_add_success": "Added {count} gifts",
 
 	"import_wizard_title": "Import gifts",

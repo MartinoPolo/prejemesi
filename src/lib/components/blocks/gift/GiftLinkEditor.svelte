@@ -6,6 +6,7 @@
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import GiftLinkRow from './GiftLinkRow.svelte';
 	import { MAX_GIFT_LINKS, type GiftLink } from '$lib/modules/gifts/types.js';
+	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 
 	interface GiftLinkEditorProps {
 		links: GiftLink[];
@@ -63,6 +64,16 @@
 		updated[index] = { ...updated[index], label: label || undefined };
 		onlinkschange(updated);
 	}
+
+	function urlError(url: string): string | undefined {
+		if (url.trim() === '') {
+			return undefined;
+		}
+		if (normalizeGiftUrl(url) === null) {
+			return m.draft_grid_link_url_invalid();
+		}
+		return undefined;
+	}
 </script>
 
 <div class="flex flex-col gap-2">
@@ -87,6 +98,7 @@
 					isOnly={links.length === 1}
 					canMoveUp={index > 0}
 					canMoveDown={index < links.length - 1}
+					urlError={urlError(link.url)}
 					{disabled}
 					onurlchange={(url: string) => updateUrl(index, url)}
 					onlabelchange={(label: string) => updateLabel(index, label)}
