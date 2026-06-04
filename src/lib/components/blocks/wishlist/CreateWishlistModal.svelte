@@ -12,6 +12,7 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
+	import { WISHLIST_THEMES } from '$lib/modules/wishlists/types.js';
 
 	interface CreateWishlistModalProps {
 		open: boolean;
@@ -26,13 +27,18 @@
 	let isSubmitting = $state(false);
 	let errorMessage = $state('');
 
-	const THEME_OPTIONS = [
-		{ value: 'default', label: () => m.theme_default() },
-		{ value: 'christmas', label: () => m.theme_christmas() },
-		{ value: 'birthday', label: () => m.theme_birthday() },
-		{ value: 'fun', label: () => m.theme_fun() },
-		{ value: 'elegant', label: () => m.theme_elegant() },
-	] as const;
+	const THEME_LABELS: Record<string, () => string> = {
+		default: () => m.theme_default(),
+		christmas: () => m.theme_christmas(),
+		birthday: () => m.theme_birthday(),
+		fun: () => m.theme_fun(),
+		elegant: () => m.theme_elegant(),
+	};
+
+	const THEME_OPTIONS = WISHLIST_THEMES.filter((t) => t !== 'custom').map((t) => ({
+		value: t,
+		label: THEME_LABELS[t] ?? (() => t),
+	}));
 
 	function resetForm() {
 		title = '';

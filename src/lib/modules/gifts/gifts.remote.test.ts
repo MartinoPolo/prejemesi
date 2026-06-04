@@ -866,7 +866,7 @@ describe('reorderGifts', () => {
 			]),
 		).rejects.toMatchObject({
 			status: 403,
-			message: 'Cannot reorder gifts from another wishlist',
+			message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH,
 		});
 	});
 

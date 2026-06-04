@@ -134,13 +134,17 @@
 
 	async function refreshData() {
 		try {
-			// SvelteKit caches query results by arguments — .refresh() forces a re-fetch
+			// SvelteKit caches query results by arguments — .refresh() invalidates the cache,
+			// then we re-fetch to get the updated values
 			await Promise.all([
 				getWishlistByShortId(shortId).refresh(),
 				getGiftsByWishlistShortId(shortId).refresh(),
 			]);
-			wishlist = await getWishlistByShortId(shortId);
-			const freshGifts = await getGiftsByWishlistShortId(shortId);
+			const [freshWishlist, freshGifts] = await Promise.all([
+				getWishlistByShortId(shortId),
+				getGiftsByWishlistShortId(shortId),
+			]);
+			wishlist = freshWishlist;
 			gifts = freshGifts.gifts;
 			role = freshGifts.role;
 			if (isAuthenticated) {

@@ -29,6 +29,9 @@ Darecky ("dárečky" = presents in Czech) is a shareable wishlist web app where 
 **Draft grid** — The editable multi-row table that powers both the import Review step and batch gift entry; each row is a Gift draft.
 **Enrichment** — Auto-filling a gift's image / price / title from its link (and, in a later phase, by searching for it by name).
 **Import wizard** — The 3-step Source → Review → Confirm flow that turns a pasted/uploaded CSV or Google Sheet into gifts.
+**Batch add** — Adding multiple gifts at once via the shared draft grid (distinct from the import wizard, which sources data externally).
+**Piece count** — The number of pieces (quantity) for a gift, displayed on gift cards in a role-conditional way (owner sees count only, never reserved count).
+**Multi-link** — Multiple URLs attached to a single gift (up to 10); `links[0]` is treated as the primary link.
 
 _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with time), "bookmark" for Like, "claim" for Reservation.
 
@@ -67,10 +70,10 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | Social features (group gifting, cost splitting)                                | Planned     | v2          |
 | Gift categories/tags                                                           | Planned     | v2          |
 | Auto-suggest products (AI/price comparison APIs)                               | Planned     | v2          |
-| CSV / Google Sheets import (3-step wizard)                                     | Planned     | v1.x        |
-| Bulk gift entry (shared draft grid, large dialog)                              | Planned     | v1.x        |
+| CSV / Google Sheets import (3-step wizard)                                     | Done        | v1.x        |
+| Bulk gift entry (shared draft grid, large dialog)                              | Done        | v1.x        |
 | Gift metadata enrichment (link → image/price/title)                            | Planned     | v1.x        |
-| Multiple links per gift (max 10)                                               | Planned     | v1.x        |
+| Multiple links per gift (max 10)                                               | Done        | v1.x        |
 
 ## Key Constraints
 

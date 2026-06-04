@@ -32,8 +32,8 @@ const GiftLinkSchema = v.object({
 /** Up to {@link MAX_GIFT_LINKS} links; order is significant (index 0 = primary). */
 const GiftLinksSchema = v.pipe(v.array(GiftLinkSchema), v.maxLength(MAX_GIFT_LINKS));
 
-/** Gift with computed fields for visitor/moderator view */
-export interface GiftForVisitor {
+/** Shared fields present in every gift view regardless of role. */
+export interface GiftBase {
 	id: string;
 	wishlistId: string;
 	name: string;
@@ -50,6 +50,10 @@ export interface GiftForVisitor {
 	createdAt: Date;
 	priorityLabel: string | null;
 	prioritySortOrder: number | null;
+}
+
+/** Gift with computed fields for visitor/moderator view */
+export interface GiftForVisitor extends GiftBase {
 	likeCount: number;
 	reservedCount: number;
 	isFullyReserved: boolean;
@@ -58,24 +62,7 @@ export interface GiftForVisitor {
 }
 
 /** Gift for owner view — no reservation data */
-export interface GiftForOwner {
-	id: string;
-	wishlistId: string;
-	name: string;
-	description: string | null;
-	links: GiftLink[];
-	price: number | null;
-	currency: string | null;
-	imageUrl: string | null;
-	imageKey: string | null;
-	imageMeta: ImageMetadata | null;
-	quantity: number | null;
-	sortOrder: number;
-	received: boolean;
-	createdAt: Date;
-	priorityLabel: string | null;
-	prioritySortOrder: number | null;
-}
+export type GiftForOwner = GiftBase;
 
 /** Union type for gift based on role */
 export type GiftByRole = GiftForVisitor | GiftForOwner;

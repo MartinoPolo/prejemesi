@@ -18,7 +18,7 @@ export const ROW_STATUS = {
 
 export type RowStatus = (typeof ROW_STATUS)[keyof typeof ROW_STATUS];
 
-export interface DraftRowStatusInput {
+interface DraftRowStatusInput {
 	name: string;
 	isDuplicate: boolean;
 	/** A pristine row was never touched (untouched batch starter) — stays neutral while blank. */

@@ -603,6 +603,8 @@
 	"server_error_cannot_cancel_anonymous_reservation": "Nemůžete zrušit anonymní rezervaci",
 	"server_error_owner_cannot_like_own_gifts": "Vlastník nemůže lajkovat své dárky",
 	"server_error_failed_to_create_gift": "Nepodařilo se vytvořit dárek",
+	"server_error_failed_to_create_wishlist": "Nepodařilo se vytvořit seznam přání",
+	"server_error_cannot_modify_archived_wishlist": "Tento seznam přání je archivovaný a nelze ho upravovat",
 	"server_error_cannot_edit_after_sharing": "Stávající dárky nelze po sdílení seznamu upravovat. Můžete přidávat pouze nové dárky.",
 	"server_error_cannot_delete_after_sharing": "Stávající dárky nelze po sdílení seznamu odebrat.",
 	"server_error_cannot_delete_reserved_gift": "Tento dárek nelze odebrat, protože je rezervovaný.",

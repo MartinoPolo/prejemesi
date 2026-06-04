@@ -8,7 +8,10 @@ surprise intact.
 ## How It Works
 
 - **Create a wishlist** for an occasion, add gifts (name, link, price, image, priority, quantity), pick a
-  theme, and arrange them in your preferred order.
+  theme, and arrange them in your preferred order. Add gifts one at a time, **batch-add** multiple rows at
+  once, or use the **import wizard** (CSV upload, paste cells, or Google Sheets link) for a 3-step
+  Source → Review → Confirm flow. Each gift can carry up to 10 links (**multi-link**); the first is
+  treated as the primary.
 - **Share a link.** Anyone with the link can view and reserve gifts — no account required to reserve
   (anonymous visitors just provide a display name). Logged-in visitors auto-follow the list.
 - **Reserve & like.** Visitors reserve gifts (with quantity support) to prevent duplicate buying, and
@@ -177,12 +180,14 @@ src/
     modules/                 # domain modules — each owns types, remote fns, context, public API
       wishlists/  gifts/  reservations/  likes/  moderators/
       sharing/    themes/ notifications/  uploads/  settings/  errors/
+      import/                # import wizard — CSV/Google Sheets → draft grid → gifts
     reactivity/              # reactive primitives (StateRaw, Derived, Persisted)
     server/
       auth.ts                # BetterAuth server config
       db/
         schema.ts            # Drizzle schema (auth, wishlist, gift, moderator, follower, notification)
                              #   gift.image_meta — fit mode + focal-point crop (one crop for all surfaces)
+                             #   gift.links — jsonb array of up to 10 URLs; links[0] is primary (replaces url)
                              #   wishlist.image_key + image_slots — single upload + per-slot crop JSON
                              #     (replaced banner_image_key / thumbnail_image_key)
                              #   user.app_background_theme — default | golden-hour | twilight

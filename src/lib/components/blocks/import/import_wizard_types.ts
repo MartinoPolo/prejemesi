@@ -1,4 +1,5 @@
 import type { ColumnRole } from '$lib/modules/import/detect_columns.js';
+import * as m from '$lib/paraglide/messages.js';
 
 export const WIZARD_STEP = {
 	source: 'source',
@@ -50,15 +51,14 @@ export type CommitStatus = (typeof COMMIT_STATUS)[keyof typeof COMMIT_STATUS];
 /** Options for the column-role Select dropdowns in the review step. */
 export interface ColumnRoleOption {
 	value: ColumnRole;
-	/** i18n message key for the label. */
-	labelKey: string;
+	label: () => string;
 }
 
 export const COLUMN_ROLE_OPTIONS: readonly ColumnRoleOption[] = [
-	{ value: 'name', labelKey: 'import_wizard_role_name' },
-	{ value: 'notes', labelKey: 'import_wizard_role_notes' },
-	{ value: 'url', labelKey: 'import_wizard_role_url' },
-	{ value: 'price', labelKey: 'import_wizard_role_price' },
-	{ value: 'bool', labelKey: 'import_wizard_role_bool' },
-	{ value: 'ignore', labelKey: 'import_wizard_role_ignore' },
-] as const;
+	{ value: 'name', label: () => m.import_wizard_role_name() },
+	{ value: 'notes', label: () => m.import_wizard_role_notes() },
+	{ value: 'url', label: () => m.import_wizard_role_url() },
+	{ value: 'price', label: () => m.import_wizard_role_price() },
+	{ value: 'bool', label: () => m.import_wizard_role_bool() },
+	{ value: 'ignore', label: () => m.import_wizard_role_ignore() },
+];

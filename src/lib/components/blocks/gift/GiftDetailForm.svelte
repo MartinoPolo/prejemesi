@@ -47,7 +47,7 @@
 		IMAGE_FIT_MODE_VALUES,
 		type ImageCropRect,
 	} from '$lib/modules/images/index.js';
-	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
+	import { normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -143,12 +143,7 @@
 		const quantityStr = String(quantity).trim();
 		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
-		const normalizedLinks: GiftLink[] = links
-			.filter((l) => l.url.trim() !== '')
-			.map((l) => ({
-				url: normalizeGiftUrl(l.url) ?? l.url,
-				...(l.label != null && l.label.trim() !== '' ? { label: l.label.trim() } : {}),
-			}));
+		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
 
 		if (mode === 'create') {
