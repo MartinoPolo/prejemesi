@@ -27,16 +27,22 @@
 		open: boolean;
 		mode: WizardMode;
 		wishlistId?: string;
+		wishlistShortId?: string;
 		wishlistTitle?: string;
 		existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+		suppressNavigation?: boolean;
+		onsuccess?: () => void;
 	}
 
 	let {
 		open = $bindable(false),
 		mode,
 		wishlistId,
+		wishlistShortId,
 		wishlistTitle,
 		existingGifts = [],
+		suppressNavigation = false,
+		onsuccess,
 	}: ImportWizardProps = $props();
 
 	let currentStep = $state<WizardStep>(WIZARD_STEP.source);
@@ -108,6 +114,7 @@
 					gifts: draftsForCommit,
 				});
 				commitStatus = COMMIT_STATUS.success;
+				onsuccess?.();
 				return { shortId: result.shortId };
 			} else {
 				await importGifts({
@@ -115,7 +122,8 @@
 					gifts: draftsForCommit,
 				});
 				commitStatus = COMMIT_STATUS.success;
-				return { shortId: wishlistId! };
+				onsuccess?.();
+				return { shortId: wishlistShortId ?? wishlistId! };
 			}
 		} catch {
 			commitStatus = COMMIT_STATUS.error;
@@ -252,6 +260,7 @@
 					{duplicateCount}
 					oncommit={handleCommit}
 					{commitStatus}
+					{suppressNavigation}
 				/>
 			{/if}
 		</div>

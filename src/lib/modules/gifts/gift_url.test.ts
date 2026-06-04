@@ -23,6 +23,30 @@ describe('normalizeGiftUrl', () => {
 	it('trims and normalizes valid http(s) URLs', () => {
 		expect(normalizeGiftUrl(' https://example.com/path ')).toBe('https://example.com/path');
 	});
+
+	it('prepends https:// for bare domain with TLD', () => {
+		expect(normalizeGiftUrl('alza.cz')).toBe('https://alza.cz/');
+	});
+
+	it('prepends https:// for bare domain with path', () => {
+		expect(normalizeGiftUrl('www.example.com/path')).toBe('https://www.example.com/path');
+	});
+
+	it('rejects single word without a dot (not a valid hostname)', () => {
+		expect(normalizeGiftUrl('example')).toBeNull();
+	});
+
+	it('rejects localhost (no dot in hostname)', () => {
+		expect(normalizeGiftUrl('localhost')).toBeNull();
+	});
+
+	it('rejects ftp scheme (non-http not blindly prepended)', () => {
+		expect(normalizeGiftUrl('ftp://evil.com')).toBeNull();
+	});
+
+	it('normalizes bare domain with path (alza.cz/product)', () => {
+		expect(normalizeGiftUrl('alza.cz/product')).toBe('https://alza.cz/product');
+	});
 });
 
 describe('extractGiftUrlDomain', () => {

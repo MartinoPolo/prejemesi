@@ -676,6 +676,7 @@
 	"batch_add_submit_pending": "Přidávám…",
 	"batch_add_hint_enabled": "{count} k přidání",
 	"batch_add_toolbar_label": "Hromadně přidat dárky",
+	"import_toolbar_label": "Importovat z tabulky",
 	"toast_batch_add_success": "Přidáno {count} dárků",
 
 	"import_wizard_title": "Importovat dárky",

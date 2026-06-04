@@ -47,6 +47,7 @@
 		IMAGE_FIT_MODE_VALUES,
 		type ImageCropRect,
 	} from '$lib/modules/images/index.js';
+	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -133,17 +134,6 @@
 		return true;
 	}
 
-	function normalizeUrl(raw: string): string | null {
-		const trimmed = raw.trim();
-		if (trimmed === '') {
-			return null;
-		}
-		if (/^https?:\/\//i.test(trimmed)) {
-			return trimmed;
-		}
-		return `https://${trimmed}`;
-	}
-
 	function handleSubmit() {
 		if (!validateForm()) {
 			return;
@@ -156,7 +146,7 @@
 		const normalizedLinks: GiftLink[] = links
 			.filter((l) => l.url.trim() !== '')
 			.map((l) => ({
-				url: normalizeUrl(l.url) ?? l.url,
+				url: normalizeGiftUrl(l.url) ?? l.url,
 				...(l.label != null && l.label.trim() !== '' ? { label: l.label.trim() } : {}),
 			}));
 		const imageMeta = hasImage ? currentImageMeta : null;

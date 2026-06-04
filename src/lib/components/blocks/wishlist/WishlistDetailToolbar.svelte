@@ -4,6 +4,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
+	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import ImageIcon from '@lucide/svelte/icons/image';
 	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
@@ -26,6 +27,7 @@
 		onunfollow: () => void;
 		onaddgift: () => void;
 		onbatchadd: () => void;
+		onimport: () => void;
 	}
 
 	let {
@@ -44,6 +46,7 @@
 		onunfollow,
 		onaddgift,
 		onbatchadd,
+		onimport,
 	}: WishlistDetailToolbarProps = $props();
 </script>
 
@@ -87,6 +90,16 @@
 			>
 		{/if}
 		{#if isOwnerOrModerator && !isArchived}
+			<SimpleTooltip text={m.import_toolbar_label()}>
+				<Button
+					size="icon-sm"
+					intent="outline"
+					aria-label={m.import_toolbar_label()}
+					onclick={onimport}
+				>
+					<FileUpIcon />
+				</Button>
+			</SimpleTooltip>
 			<SimpleTooltip text={m.batch_add_toolbar_label()}>
 				<Button
 					size="icon-sm"

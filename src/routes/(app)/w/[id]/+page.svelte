@@ -8,6 +8,8 @@
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
+	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
+	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
@@ -169,6 +171,10 @@
 
 	let batchAddDialogOpen = $state(false);
 	let isBatchSubmitting = $state(false);
+
+	// ── Import wizard state ──────────────────────────────────────────────────
+
+	let importWizardOpen = $state(false);
 
 	// ── Theme selector dialog state ──────────────────────────────────────────
 
@@ -382,6 +388,20 @@
 			console.error('Failed to unfollow:', thrown);
 			toastError(m.toast_unfollow_error());
 		}
+	}
+
+	// ── Import wizard handlers ───────────────────────────────────────────────
+
+	const importExistingGifts = $derived(
+		gifts.map((gift) => ({ name: gift.name, links: gift.links ?? [] })),
+	);
+
+	function openImportWizard() {
+		importWizardOpen = true;
+	}
+
+	async function handleImportSuccess() {
+		await refreshData();
 	}
 
 	// ── Batch add handlers ───────────────────────────────────────────────────
@@ -618,6 +638,7 @@
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
 		onbatchadd={openBatchAddDialog}
+		onimport={openImportWizard}
 	/>
 
 	<WishlistGiftDisplay
@@ -684,6 +705,19 @@
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
+
+{#if isOwnerOrModerator}
+	<ImportWizard
+		bind:open={importWizardOpen}
+		mode={WIZARD_MODE.append}
+		wishlistId={wishlist.id}
+		wishlistShortId={wishlist.shortId}
+		wishlistTitle={wishlist.title}
+		existingGifts={importExistingGifts}
+		suppressNavigation
+		onsuccess={handleImportSuccess}
+	/>
+{/if}
 
 <!-- OpenGraph Meta Tags -->
 <svelte:head>

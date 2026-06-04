@@ -3,8 +3,6 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
-	import { Checkbox } from '$lib/components/base/checkbox/index.js';
-	import { Badge } from '$lib/components/base/badge/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { detectColumns, type DetectedColumn } from '$lib/modules/import/detect_columns.js';
@@ -12,6 +10,11 @@
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 	import ImportColumnMapping from './ImportColumnMapping.svelte';
 	import ImportExistingItemsPanel from './ImportExistingItemsPanel.svelte';
+	import GiftDraftGrid from '$lib/components/blocks/gift-draft-grid/GiftDraftGrid.svelte';
+	import {
+		DRAFT_GRID_CONTEXT,
+		type DraftGridChange,
+	} from '$lib/components/blocks/gift-draft-grid/gift_draft_grid_model.js';
 	import { buildDraftRows } from './import_draft_builder.js';
 	import { deriveWishlistTitle } from './import_title_derivation.js';
 	import { WIZARD_MODE, type WizardMode } from './import_wizard_types.js';
@@ -59,48 +62,33 @@
 	// Build drafts from data rows + column mapping
 	const drafts = $derived(buildDraftRows(dataRows, columns));
 
-	// Row selection (all selected by default) — reset when row count changes
-	let lastRowCount = $state(-1);
-	const selectedRows = new SvelteSet<number>();
-
-	$effect(() => {
-		const length = dataRows.length;
-		if (length !== lastRowCount) {
-			lastRowCount = length;
-			selectedRows.clear();
-			for (let i = 0; i < length; i++) {
-				selectedRows.add(i);
-			}
-		}
-	});
-
 	// Check if name column is mapped
 	const hasNameColumn = $derived(columns.some((col) => col.role === 'name'));
 
-	// Selected drafts
-	const selectedDrafts = $derived(drafts.filter((_, index) => selectedRows.has(index)));
+	// Grid change tracking
+	let gridDrafts = $state<GiftDraft[]>([]);
+	let gridValidCount = $state(0);
 
-	// Duplicate detection for append mode
-	const duplicateNames = $derived.by(() => {
-		if (mode !== WIZARD_MODE.append || existingGifts.length === 0) {
-			return new SvelteSet<string>();
-		}
-		const matched = new SvelteSet<string>();
-		for (const draft of selectedDrafts) {
-			const dupes = findDuplicates(draft, existingGifts);
-			if (dupes.length > 0) {
-				matched.add(draft.name);
-			}
-		}
-		return matched;
-	});
+	function handleGridChange(change: DraftGridChange) {
+		gridDrafts = change.drafts;
+		gridValidCount = change.validCount;
+	}
 
+	// Forward gate: name column mapped AND >= 1 valid row from the grid
+	const canProceed = $derived(hasNameColumn && gridValidCount > 0);
+
+	// Skipped rows info
+	const skippedCount = $derived(
+		detectionResult.skippedPreambleRows + detectionResult.skippedFooterRows,
+	);
+
+	// Matched existing names for the side panel (append mode)
 	const matchedExistingNames = $derived.by(() => {
 		if (mode !== WIZARD_MODE.append || existingGifts.length === 0) {
 			return new SvelteSet<string>();
 		}
 		const matched = new SvelteSet<string>();
-		for (const draft of selectedDrafts) {
+		for (const draft of gridDrafts) {
 			const dupes = findDuplicates(draft, existingGifts);
 			for (const dupe of dupes) {
 				matched.add(dupe.name);
@@ -109,25 +97,11 @@
 		return matched;
 	});
 
-	// Skipped rows info
-	const skippedCount = $derived(
-		detectionResult.skippedPreambleRows + detectionResult.skippedFooterRows,
-	);
-
-	// Valid selected count (name not empty)
-	const validSelectedCount = $derived(
-		selectedDrafts.filter((draft) => draft.name.trim() !== '').length,
-	);
-
-	// Forward gate: name column mapped AND >= 1 valid row selected
-	const canProceed = $derived(hasNameColumn && validSelectedCount > 0);
-
-	// Emit ready state whenever selection or title changes
+	// Emit ready state whenever grid drafts or title changes
 	$effect(() => {
 		if (canProceed) {
-			const validDrafts = selectedDrafts.filter((draft) => draft.name.trim() !== '');
 			onready({
-				drafts: validDrafts,
+				drafts: gridDrafts,
 				title: mode === WIZARD_MODE.newList ? title : undefined,
 			});
 		}
@@ -135,24 +109,6 @@
 
 	function handleColumnChange(updatedColumns: DetectedColumn[]) {
 		columnOverrides = updatedColumns;
-	}
-
-	function toggleRow(index: number) {
-		if (selectedRows.has(index)) {
-			selectedRows.delete(index);
-		} else {
-			selectedRows.add(index);
-		}
-	}
-
-	function toggleAll() {
-		if (selectedRows.size === dataRows.length) {
-			selectedRows.clear();
-		} else {
-			for (let i = 0; i < dataRows.length; i++) {
-				selectedRows.add(i);
-			}
-		}
 	}
 </script>
 
@@ -185,8 +141,8 @@
 		<div class="flex items-center justify-between">
 			<HelpText>
 				{m.import_wizard_selected_count({
-					selected: selectedRows.size,
-					total: dataRows.length,
+					selected: gridValidCount,
+					total: drafts.length,
 				})}
 			</HelpText>
 			{#if skippedCount > 0}
@@ -196,64 +152,14 @@
 			{/if}
 		</div>
 
-		<!-- Data grid -->
-		<div class="border-border max-h-[384px] overflow-auto rounded-lg border">
-			<table class="w-full text-sm">
-				<thead class="bg-surface-2 sticky top-0 z-10">
-					<tr>
-						<th class="w-10 px-2 py-2">
-							<Checkbox
-								checked={selectedRows.size === dataRows.length}
-								indeterminate={selectedRows.size > 0 &&
-									selectedRows.size < dataRows.length}
-								onCheckedChange={toggleAll}
-							/>
-						</th>
-						{#each columns as column (column.index)}
-							<th
-								class="text-muted-foreground px-3 py-2 text-left text-xs font-medium"
-							>
-								{column.headerLabel ?? `Col ${column.index + 1}`}
-							</th>
-						{/each}
-					</tr>
-				</thead>
-				<tbody>
-					{#each dataRows as row, rowIndex (rowIndex)}
-						{@const draft = drafts[rowIndex]}
-						{@const isSelected = selectedRows.has(rowIndex)}
-						{@const isDuplicate =
-							mode === WIZARD_MODE.append &&
-							draft !== undefined &&
-							duplicateNames.has(draft.name)}
-						<tr
-							class="border-border border-t transition-colors {isSelected
-								? 'bg-background'
-								: 'bg-surface-2/50 opacity-60'}"
-						>
-							<td class="px-2 py-1.5">
-								<Checkbox
-									checked={isSelected}
-									onCheckedChange={() => toggleRow(rowIndex)}
-								/>
-							</td>
-							{#each columns as column (column.index)}
-								<td class="max-w-[200px] truncate px-3 py-1.5">
-									{row[column.index] ?? ''}
-								</td>
-							{/each}
-							{#if isDuplicate}
-								<td class="px-2 py-1.5">
-									<Badge tone="warning" size="compact">
-										{m.import_wizard_possible_duplicate()}
-									</Badge>
-								</td>
-							{/if}
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+		<!-- Editable draft grid -->
+		<GiftDraftGrid
+			context={DRAFT_GRID_CONTEXT.import}
+			initialRows={drafts}
+			{existingGifts}
+			allowAddRow={false}
+			onchange={handleGridChange}
+		/>
 	</div>
 
 	<!-- Existing items panel (append mode) -->
