@@ -26,6 +26,9 @@ const isVitest = process.env.VITEST === 'true';
 export default defineConfig({
 	server: {
 		open: true,
+		watch: {
+			ignored: ['**/.mpx/**', './*.html'],
+		},
 		warmup: isVitest
 			? undefined
 			: {
