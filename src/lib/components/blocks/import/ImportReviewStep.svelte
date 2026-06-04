@@ -12,13 +12,14 @@
 	import ImportColumnMapping from './ImportColumnMapping.svelte';
 	import ImportExistingItemsPanel from './ImportExistingItemsPanel.svelte';
 	import GiftDraftGrid from '$lib/components/blocks/gift-draft-grid/GiftDraftGrid.svelte';
+	import GiftDraftStatusLegend from '$lib/components/blocks/gift-draft-grid/GiftDraftStatusLegend.svelte';
 	import {
 		DRAFT_GRID_CONTEXT,
 		type DraftGridChange,
 	} from '$lib/components/blocks/gift-draft-grid/gift_draft_grid_model.js';
 	import { buildDraftRows } from '$lib/modules/import/import_draft_builder.js';
 	import { deriveWishlistTitle } from '$lib/modules/import/import_title_derivation.js';
-	import { WIZARD_MODE, type WizardMode } from './import_wizard_types.js';
+	import { WIZARD_MODE, normalizeColumnRoles, type WizardMode } from './import_wizard_types.js';
 	import AlertCircleIcon from '@lucide/svelte/icons/circle-alert';
 
 	interface ImportReviewStepProps {
@@ -40,9 +41,10 @@
 	// Column detection — derived from props so it stays reactive
 	const detectionResult = $derived(detectColumns(parsedRows));
 
-	// Mutable column overrides (user can remap roles)
+	// Mutable column overrides (user can remap roles). Normalized so a single-use
+	// role never appears on two columns (the field-oriented mapping shows one).
 	let columnOverrides = $state<DetectedColumn[] | null>(null);
-	const columns = $derived(columnOverrides ?? detectionResult.columns);
+	const columns = $derived(normalizeColumnRoles(columnOverrides ?? detectionResult.columns));
 
 	// Title for new-list mode — initialized once from props (component remounts on each dialog open).
 	// untrack prevents Svelte from treating props as reactive dependencies of the $state initializer.
@@ -57,6 +59,11 @@
 
 	// Build drafts from data rows + column mapping
 	const drafts = $derived(buildDraftRows(dataRows, columns));
+
+	// GiftDraftGrid seeds its internal rows from initialRows once at mount. Remapping
+	// columns re-derives `drafts`, so this signature changes and remounts the grid,
+	// rebuilding it from the new mapping (in-grid edits are intentionally reset).
+	const mappingKey = $derived(columns.map((col) => `${col.index}:${col.role}`).join('|'));
 
 	// Check if name column is mapped
 	const hasNameColumn = $derived(columns.some((col) => col.role === 'name'));
@@ -110,7 +117,7 @@
 
 <div class="flex gap-4">
 	<!-- Main content -->
-	<div class="flex min-w-0 flex-1 flex-col gap-4">
+	<div class="flex min-w-0 flex-1 flex-col gap-3">
 		<!-- Title field (new-list mode only) -->
 		{#if mode === WIZARD_MODE.newList}
 			<div class="flex flex-col gap-1.5">
@@ -122,8 +129,22 @@
 			</div>
 		{/if}
 
-		<!-- Column mapping bar -->
-		<ImportColumnMapping {columns} onchange={handleColumnChange} />
+		<!-- Column mapping bar: title + status legend share one compact header,
+		     keeping the legend off its own vertical band (saves height). -->
+		<div class="border-border bg-surface-2 flex flex-col gap-3 rounded-lg border p-4">
+			<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+				<div class="flex flex-col gap-0.5">
+					<span class="text-foreground text-sm font-semibold">
+						{m.import_wizard_mapping_title()}
+					</span>
+					<span class="text-muted-foreground text-xs">
+						{m.import_wizard_mapping_help()}
+					</span>
+				</div>
+				<GiftDraftStatusLegend compact />
+			</div>
+			<ImportColumnMapping {columns} onchange={handleColumnChange} />
+		</div>
 
 		<!-- Name column required warning -->
 		{#if !hasNameColumn}
@@ -148,14 +169,18 @@
 			{/if}
 		</div>
 
-		<!-- Editable draft grid -->
-		<GiftDraftGrid
-			context={DRAFT_GRID_CONTEXT.import}
-			initialRows={drafts}
-			{existingGifts}
-			allowAddRow={false}
-			onchange={handleGridChange}
-		/>
+		<!-- Editable draft grid — renders full height; the whole dialog body scrolls.
+		     Keyed on the mapping so a remap rebuilds the grid from the new columns. -->
+		{#key mappingKey}
+			<GiftDraftGrid
+				context={DRAFT_GRID_CONTEXT.import}
+				initialRows={drafts}
+				{existingGifts}
+				allowAddRow={false}
+				showLegend={false}
+				onchange={handleGridChange}
+			/>
+		{/key}
 	</div>
 
 	<!-- Existing items panel (append mode) — large screens inline -->

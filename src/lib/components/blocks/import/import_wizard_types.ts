@@ -1,4 +1,5 @@
-import type { ColumnRole } from '$lib/modules/import/detect_columns.js';
+import type { ColumnRole, DetectedColumn } from '$lib/modules/import/detect_columns.js';
+import { COLUMN_ROLE } from '$lib/modules/import/detect_columns.js';
 import * as m from '$lib/paraglide/messages.js';
 
 export const WIZARD_STEP = {
@@ -48,17 +49,75 @@ export const COMMIT_STATUS = {
 
 export type CommitStatus = (typeof COMMIT_STATUS)[keyof typeof COMMIT_STATUS];
 
-/** Options for the column-role Select dropdowns in the review step. */
-export interface ColumnRoleOption {
-	value: ColumnRole;
+/** A target gift field, shown as one row in the column mapping. */
+export interface MappingFieldDef {
+	/** The column role a source column takes when assigned to this field. */
+	role: ColumnRole;
 	label: () => string;
+	/** Whether several source columns may feed this field (links aggregate into an array). */
+	multi: boolean;
+	required: boolean;
 }
 
-export const COLUMN_ROLE_OPTIONS: readonly ColumnRoleOption[] = [
-	{ value: 'name', label: () => m.import_wizard_role_name() },
-	{ value: 'notes', label: () => m.import_wizard_role_notes() },
-	{ value: 'url', label: () => m.import_wizard_role_url() },
-	{ value: 'price', label: () => m.import_wizard_role_price() },
-	{ value: 'bool', label: () => m.import_wizard_role_bool() },
-	{ value: 'ignore', label: () => m.import_wizard_role_ignore() },
+/**
+ * The mapping is field-oriented: one row per destination gift field, each
+ * picking the source column(s) that fill it. Fields are fixed (the gift schema),
+ * so the layout never widens with the spreadsheet. `bool`/`ignore` are not fields
+ * — columns assigned to neither field are simply left out of the import.
+ */
+export const MAPPING_FIELDS: readonly MappingFieldDef[] = [
+	{
+		role: COLUMN_ROLE.name,
+		label: () => m.import_wizard_role_name(),
+		multi: false,
+		required: true,
+	},
+	{
+		role: COLUMN_ROLE.notes,
+		label: () => m.import_wizard_role_notes(),
+		multi: false,
+		required: false,
+	},
+	{
+		role: COLUMN_ROLE.url,
+		label: () => m.import_wizard_role_url(),
+		multi: true,
+		required: false,
+	},
+	{
+		role: COLUMN_ROLE.price,
+		label: () => m.import_wizard_role_price(),
+		multi: false,
+		required: false,
+	},
 ];
+
+/**
+ * Roles that fill exactly one draft field. buildDraftRows is last-write-wins for
+ * these, so two columns sharing one can't be shown by a single-select field.
+ */
+const SINGLE_USE_COLUMN_ROLES: ReadonlySet<ColumnRole> = new Set([
+	COLUMN_ROLE.name,
+	COLUMN_ROLE.notes,
+	COLUMN_ROLE.price,
+]);
+
+/**
+ * Reconcile detected roles with the single-field mapping: detection may assign a
+ * single-use role (e.g. `notes`) to several columns, which buildDraftRows would
+ * silently collapse. Keep the first such column and demote the rest to `ignore`
+ * so the displayed mapping matches exactly what gets imported.
+ */
+export function normalizeColumnRoles(columns: readonly DetectedColumn[]): DetectedColumn[] {
+	const taken = new Set<ColumnRole>();
+	return columns.map((column) => {
+		if (!SINGLE_USE_COLUMN_ROLES.has(column.role)) {
+			return column;
+		}
+		if (taken.has(column.role)) {
+			return { ...column, role: COLUMN_ROLE.ignore };
+		}
+		taken.add(column.role);
+		return column;
+	});
+}

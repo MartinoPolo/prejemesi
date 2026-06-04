@@ -17,6 +17,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftRow from './GiftDraftRow.svelte';
 	import GiftDraftBulkBar from './GiftDraftBulkBar.svelte';
+	import GiftDraftStatusLegend from './GiftDraftStatusLegend.svelte';
 	import { DRAFT_GRID_COLUMNS, DRAFT_COL_LABEL_CLASS } from './gift_draft_grid_variants.js';
 	import {
 		DRAFT_GRID_CONTEXT,
@@ -55,6 +56,7 @@
 
 	const showAddRow = $derived(allowAddRow ?? context === DRAFT_GRID_CONTEXT.batch);
 	const showStatusLegend = $derived(showLegend ?? context === DRAFT_GRID_CONTEXT.import);
+	const isImport = $derived(context === DRAFT_GRID_CONTEXT.import);
 
 	let rows = $state<DraftGridRow[]>(seedRows());
 
@@ -131,31 +133,9 @@
 	onMount(emit);
 </script>
 
-<div class={cn('flex flex-col', className)}>
+<div class={cn('flex min-h-0 flex-col', className)}>
 	{#if showStatusLegend}
-		<div
-			class="mb-4 flex flex-wrap gap-4 rounded-lg border border-border bg-surface px-4 py-3 text-xs text-foreground-muted"
-			aria-hidden="true"
-		>
-			<span class="inline-flex items-center gap-2 font-semibold">
-				<span
-					class="size-3.5 rounded-xs border-[1.5px] border-[color-mix(in_oklab,var(--status-success)_55%,var(--border))] bg-[color-mix(in_oklab,var(--status-success)_16%,var(--surface))]"
-				></span>
-				{m.draft_grid_legend_ready()}
-			</span>
-			<span class="inline-flex items-center gap-2 font-semibold">
-				<span
-					class="size-3.5 rounded-xs border-[1.5px] border-[color-mix(in_oklab,var(--status-dup)_62%,var(--border))] bg-[color-mix(in_oklab,var(--status-dup)_20%,var(--surface))]"
-				></span>
-				{m.draft_grid_legend_duplicate()}
-			</span>
-			<span class="inline-flex items-center gap-2 font-semibold">
-				<span
-					class="size-3.5 rounded-xs border-[1.5px] border-[color-mix(in_oklab,var(--status-danger)_60%,var(--border))] bg-[color-mix(in_oklab,var(--status-danger)_15%,var(--surface))]"
-				></span>
-				{m.draft_grid_legend_error()}
-			</span>
-		</div>
+		<GiftDraftStatusLegend class="mb-4" />
 	{/if}
 
 	{#if selectedCount > 0}
@@ -164,10 +144,19 @@
 			selectAllState={headerState}
 			onselectall={selectAll}
 			ondelete={bulkDelete}
+			sticky={!isImport}
 		/>
 	{/if}
 
-	<div class="max-h-[560px] overflow-auto rounded-lg border border-border bg-background">
+	<!-- Import: the table renders full height and the whole dialog scrolls (the grid
+	     header stays sticky against the dialog's scroll container). Batch keeps its
+	     own bounded scroll so the surrounding dialog stays compact. -->
+	<div
+		class={cn(
+			'rounded-lg border border-border bg-background',
+			isImport ? 'overflow-clip' : 'max-h-[560px] overflow-auto',
+		)}
+	>
 		<!-- Sticky header (desktop only) — hosts the single global select-all -->
 		<div
 			class={cn(
@@ -192,8 +181,6 @@
 				title={m.draft_grid_col_enrich()}
 			>
 				✨
-			</span>
-			<span class="text-center">
 				<span class="sr-only">{m.draft_grid_remove_row()}</span>
 			</span>
 		</div>

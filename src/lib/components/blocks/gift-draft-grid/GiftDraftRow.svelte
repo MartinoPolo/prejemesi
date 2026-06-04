@@ -187,8 +187,8 @@
 		/>
 	</div>
 
-	<!-- Desktop enrich placeholder (col 6) -->
-	<div class="hidden md:flex md:justify-center md:pt-1">
+	<!-- Desktop enrich + remove actions (col 6, sharing one tight track) -->
+	<div class="hidden md:flex md:items-start md:gap-0.5 md:pt-1">
 		<Button
 			intent="ghost"
 			size="icon-sm"
@@ -198,10 +198,6 @@
 		>
 			<SparklesIcon aria-hidden="true" />
 		</Button>
-	</div>
-
-	<!-- Desktop remove (col 7) -->
-	<div class="hidden md:flex md:justify-center md:pt-1">
 		<Button
 			intent="ghost"
 			size="icon-sm"

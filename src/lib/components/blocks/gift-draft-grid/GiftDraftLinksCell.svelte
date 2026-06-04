@@ -53,6 +53,11 @@
 		return url.trim() !== '' && normalizeGiftUrl(url) === null;
 	}
 
+	/** Hide the noisy protocol prefix in the field so the meaningful part of the URL stays visible. */
+	function displayUrl(url: string): string {
+		return url.replace(/^https?:\/\//i, '');
+	}
+
 	function editLink(link: GiftLink, url: string) {
 		link.url = url;
 		onchange?.();
@@ -79,7 +84,7 @@
 		<div class="flex flex-col gap-1">
 			<div
 				class={cn(
-					'flex min-h-(--size-control-md) items-center gap-2 rounded-md border bg-surface py-1.5 pr-2 pl-2',
+					'flex min-h-(--size-control-md) items-center gap-1 rounded-md border bg-surface py-1.5 pr-2 pl-2',
 					invalid
 						? 'border-status-danger shadow-[0_0_0_3px_color-mix(in_oklch,var(--status-danger)_18%,transparent)]'
 						: 'border-border-strong focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_18%,transparent)]',
@@ -108,20 +113,13 @@
 				<Input
 					type="url"
 					inputmode="url"
-					value={link.url}
+					value={displayUrl(link.url)}
 					oninput={(event) => editLink(link, event.currentTarget.value)}
 					placeholder={m.draft_grid_link_url_placeholder()}
 					aria-label={`${m.draft_grid_col_links()} ${index + 1}`}
 					aria-invalid={invalid}
 					class="h-auto min-h-0 flex-1 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
 				/>
-				{#if index === 0}
-					<span
-						class="flex-none rounded-full border border-[color-mix(in_oklch,var(--primary)_25%,transparent)] bg-primary-soft px-1.5 py-px text-[10px] font-semibold text-primary"
-					>
-						{m.draft_grid_link_primary()}
-					</span>
-				{/if}
 				<Button
 					intent="ghost"
 					size="icon-sm"

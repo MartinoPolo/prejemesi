@@ -71,10 +71,17 @@
 	// Step index for the stepper
 	const currentStepIndex = $derived(WIZARD_STEPS.indexOf(currentStep));
 
-	// Dialog width based on step
-	const dialogWidth = $derived(
-		currentStep === WIZARD_STEP.review ? 'max-w-[1040px]' : 'max-w-[680px]',
-	);
+	// Dialog width based on step. The review step holds the table-like draft grid;
+	// append mode adds a ~280px existing-items side panel, so it needs extra room.
+	// NOTE: the sm: prefix is required — Dialog.Content's base class sets `sm:max-w-lg`,
+	// and only a same-breakpoint `sm:` override is deduped past it by tailwind-merge.
+	// Below sm the base `max-w-[calc(100%-2rem)]` keeps the dialog viewport-bound.
+	const dialogWidth = $derived.by(() => {
+		if (currentStep !== WIZARD_STEP.review) {
+			return 'sm:max-w-[680px]';
+		}
+		return mode === WIZARD_MODE.append ? 'sm:max-w-[1320px]' : 'sm:max-w-[1100px]';
+	});
 
 	// Duplicate count for confirm step
 	const duplicateCount = $derived.by(() => {
@@ -185,7 +192,7 @@
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content
-		class="{dialogWidth} gap-0 overflow-hidden p-0 transition-[max-width] duration-200"
+		class="{dialogWidth} flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 transition-[max-width] duration-200"
 		showCloseButton={false}
 	>
 		<Dialog.Title class="sr-only">{m.import_wizard_title()}</Dialog.Title>
@@ -250,8 +257,9 @@
 
 		<Separator />
 
-		<!-- Step content -->
-		<div class="overflow-y-auto px-6 py-5" style="max-height: calc(80vh - 160px);">
+		<!-- Step content. Flex column so the review step's grid can fill the remaining
+		     height and own the only vertical scrollbar; short steps still scroll here. -->
+		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">
 			{#if currentStep === WIZARD_STEP.source}
 				<ImportSourceStep onparsed={handleSourceParsed} />
 			{:else if currentStep === WIZARD_STEP.review}

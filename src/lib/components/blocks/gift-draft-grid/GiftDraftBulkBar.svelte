@@ -4,6 +4,7 @@
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { HeaderSelectionState } from '$lib/modules/gifts/draft_grid.js';
+	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -15,17 +16,26 @@
 		onselectall: (checked: boolean) => void;
 		/** Delete every selected row. */
 		ondelete: () => void;
+		/**
+		 * Pin the bar to the top while scrolling. Disable when the surrounding
+		 * surface already has a sticky grid header in the same scroll container
+		 * (two stickies at the top would overlap).
+		 */
+		sticky?: boolean;
 	}
 
-	let { selectedCount, selectAllState, onselectall, ondelete }: Props = $props();
+	let { selectedCount, selectAllState, onselectall, ondelete, sticky = true }: Props = $props();
 </script>
 
-<!-- Detached, card-like sticky bulk bar. On desktop the single global select-all
+<!-- Detached, card-like bulk bar. On desktop the single global select-all
      lives in the grid header; on mobile (no header) it lives here. -->
 <div
 	role="region"
 	aria-label={m.draft_grid_bulk_region()}
-	class="sticky top-2 z-(--z-sticky) m-3 flex flex-wrap items-center gap-3 rounded-lg border border-[color-mix(in_oklch,var(--primary)_30%,transparent)] bg-primary-soft px-4 py-3 shadow-sm"
+	class={cn(
+		'mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-[color-mix(in_oklch,var(--primary)_30%,transparent)] bg-primary-soft px-3 py-2.5 shadow-sm',
+		sticky && 'sticky top-2 z-(--z-sticky)',
+	)}
 >
 	<span class="md:hidden">
 		<Checkbox
