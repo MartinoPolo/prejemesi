@@ -603,6 +603,8 @@
 	"server_error_cannot_cancel_anonymous_reservation": "You cannot cancel an anonymous reservation",
 	"server_error_owner_cannot_like_own_gifts": "The owner cannot like their own gifts",
 	"server_error_failed_to_create_gift": "Failed to create gift",
+	"server_error_failed_to_create_wishlist": "Failed to create wishlist",
+	"server_error_cannot_modify_archived_wishlist": "This wishlist is archived and cannot be modified",
 	"server_error_cannot_edit_after_sharing": "Existing gifts can't be edited after the list has been shared. You can still add new gifts.",
 	"server_error_cannot_delete_after_sharing": "Existing gifts can't be removed after the list has been shared.",
 	"server_error_cannot_delete_reserved_gift": "This gift can't be removed because it has been reserved.",

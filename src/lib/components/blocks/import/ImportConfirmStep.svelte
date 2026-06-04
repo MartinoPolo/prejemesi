@@ -39,6 +39,7 @@
 	}: ImportConfirmStepProps = $props();
 
 	let resultShortId = $state<string | null>(null);
+	let submitting = $state(false);
 
 	const displayTitle = $derived(mode === WIZARD_MODE.newList ? title : wishlistTitle);
 	const giftCount = $derived(selectedDrafts.length);
@@ -47,11 +48,14 @@
 	const isError = $derived(commitStatus === COMMIT_STATUS.error);
 
 	async function handleCommit() {
+		submitting = true;
 		try {
 			const result = await oncommit();
 			resultShortId = result.shortId;
 		} catch {
 			// Error state handled by parent via commitStatus
+		} finally {
+			submitting = false;
 		}
 	}
 </script>
@@ -111,7 +115,7 @@
 
 		<!-- Commit button -->
 		{#if !isCommitting}
-			<Button onclick={handleCommit} disabled={isCommitting} class="w-full">
+			<Button onclick={handleCommit} disabled={submitting || isCommitting} class="w-full">
 				{#if mode === WIZARD_MODE.newList}
 					{m.import_wizard_commit_new()}
 				{:else}
@@ -122,7 +126,12 @@
 
 		<!-- Retry button on error -->
 		{#if isError}
-			<Button intent="outline" onclick={handleCommit} class="w-full">
+			<Button
+				intent="outline"
+				onclick={handleCommit}
+				disabled={submitting || isCommitting}
+				class="w-full"
+			>
 				{m.import_wizard_retry()}
 			</Button>
 		{/if}

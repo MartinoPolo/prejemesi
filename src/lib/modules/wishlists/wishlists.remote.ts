@@ -10,6 +10,7 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
 import { seedNewWishlist } from './wishlist_create.js';
+import { resolveWishlistRole } from './wishlist_access.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
@@ -47,28 +48,7 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 	}
 
 	// Determine role
-	let role: WishlistRole = 'visitor';
-	if (authContext !== null) {
-		if (authContext.user.id === row.wishlist.ownerId) {
-			role = 'owner';
-		} else {
-			const modRows = await database
-				.select()
-				.from(moderatorAssignment)
-				.where(
-					and(
-						eq(moderatorAssignment.wishlistId, row.wishlist.id),
-						eq(moderatorAssignment.userId, authContext.user.id),
-						isNull(moderatorAssignment.deletedAt),
-					),
-				)
-				.limit(1);
-
-			if (modRows[0] !== undefined) {
-				role = 'moderator';
-			}
-		}
-	}
+	const role: WishlistRole = await resolveWishlistRole(authContext, row.wishlist);
 
 	return { ...row.wishlist, ownerName: row.ownerName, role } as const;
 });

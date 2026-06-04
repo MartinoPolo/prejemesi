@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { SvelteSet } from 'svelte/reactivity';
+	import { untrack } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
@@ -15,8 +16,8 @@
 		DRAFT_GRID_CONTEXT,
 		type DraftGridChange,
 	} from '$lib/components/blocks/gift-draft-grid/gift_draft_grid_model.js';
-	import { buildDraftRows } from './import_draft_builder.js';
-	import { deriveWishlistTitle } from './import_title_derivation.js';
+	import { buildDraftRows } from '$lib/modules/import/import_draft_builder.js';
+	import { deriveWishlistTitle } from '$lib/modules/import/import_title_derivation.js';
 	import { WIZARD_MODE, type WizardMode } from './import_wizard_types.js';
 	import AlertCircleIcon from '@lucide/svelte/icons/circle-alert';
 
@@ -43,16 +44,11 @@
 	let columnOverrides = $state<DetectedColumn[] | null>(null);
 	const columns = $derived(columnOverrides ?? detectionResult.columns);
 
-	// Title for new-list mode
-	let title = $state('');
-
-	// Initialize title once on mount
-	$effect(() => {
-		// Only set once — when title is still empty and we have a filename
-		if (title === '' && mode === WIZARD_MODE.newList) {
-			title = deriveWishlistTitle(filename ?? '');
-		}
-	});
+	// Title for new-list mode — initialized once from props (component remounts on each dialog open).
+	// untrack prevents Svelte from treating props as reactive dependencies of the $state initializer.
+	let title = $state(
+		untrack(() => (mode === WIZARD_MODE.newList ? deriveWishlistTitle(filename ?? '') : '')),
+	);
 
 	// Data rows (respecting detection boundaries)
 	const dataRows = $derived(
@@ -162,10 +158,10 @@
 		/>
 	</div>
 
-	<!-- Existing items panel (append mode) -->
+	<!-- Existing items panel (append mode) — large screens inline -->
 	{#if mode === WIZARD_MODE.append && existingGifts.length > 0}
 		<div class="hidden shrink-0 lg:block">
-			<ImportExistingItemsPanel {existingGifts} matchedNames={matchedExistingNames} />
+			{@render existingPanel()}
 		</div>
 	{/if}
 </div>
@@ -173,6 +169,10 @@
 <!-- Existing items below on small screens (append mode) -->
 {#if mode === WIZARD_MODE.append && existingGifts.length > 0}
 	<div class="mt-4 lg:hidden">
-		<ImportExistingItemsPanel {existingGifts} matchedNames={matchedExistingNames} />
+		{@render existingPanel()}
 	</div>
 {/if}
+
+{#snippet existingPanel()}
+	<ImportExistingItemsPanel {existingGifts} matchedNames={matchedExistingNames} />
+{/snippet}

@@ -10,6 +10,7 @@
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
+	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 
 	interface GiftCardProps {
@@ -22,11 +23,9 @@
 
 	let { gift, role, isArchived = false, onreserve, onunreserve }: GiftCardProps = $props();
 
-	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
-
-	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
-	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
-	const reservedCount = $derived(visitorGift?.reservedCount ?? 0);
+	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
+		deriveGiftDisplayState(gift, role),
+	);
 
 	const styles = $derived(giftCardVariants({ reserved: isFullyReserved }));
 

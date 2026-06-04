@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { parseTabular } from '$lib/modules/import/index.js';
-	import { MAX_IMPORT_BYTES } from './import_limits.js';
+	import { MAX_IMPORT_BYTES } from '$lib/modules/import/import_limits.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 
 	interface ImportSourceFileDropProps {

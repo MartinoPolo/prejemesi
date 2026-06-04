@@ -46,6 +46,10 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.ONLY_OWNER_CAN_MARK_RECEIVED]: () =>
 		m.server_error_only_owner_can_mark_received(),
 
+	[SERVER_ERROR.FAILED_TO_CREATE_WISHLIST]: () => m.server_error_failed_to_create_wishlist(),
+	[SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST]: () =>
+		m.server_error_cannot_modify_archived_wishlist(),
+
 	[SERVER_ERROR.SHEETS_LINK_INVALID]: () => m.server_error_sheets_link_invalid(),
 	[SERVER_ERROR.SHEETS_LINK_NOT_A_SHEET]: () => m.server_error_sheets_link_not_a_sheet(),
 	[SERVER_ERROR.SHEETS_PRIVATE]: () => m.server_error_sheets_private(),
@@ -100,5 +104,5 @@ export function translateServerError(thrown: unknown, fallback?: string): string
 		return translator();
 	}
 
-	return message;
+	return fallback ?? m.error_generic();
 }

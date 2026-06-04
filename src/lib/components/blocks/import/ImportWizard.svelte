@@ -12,7 +12,6 @@
 		WIZARD_MODE,
 		COMMIT_STATUS,
 		type WizardStep,
-		type WizardMode,
 		type CommitStatus,
 	} from './import_wizard_types.js';
 	import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
@@ -23,27 +22,44 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import XIcon from '@lucide/svelte/icons/x';
 
-	interface ImportWizardProps {
-		open: boolean;
-		mode: WizardMode;
-		wishlistId?: string;
-		wishlistShortId?: string;
-		wishlistTitle?: string;
-		existingGifts?: Array<{ name: string; links: GiftLink[] }>;
-		suppressNavigation?: boolean;
-		onsuccess?: () => void;
-	}
+	/**
+	 * Props modeled as a discriminated union so callers cannot pass wishlistId
+	 * without mode='append' or omit it when mode='append'. The internal
+	 * destructuring uses the wider InternalProps type to satisfy $bindable.
+	 */
+	type ImportWizardProps =
+		| {
+				open: boolean;
+				mode: typeof WIZARD_MODE.newList;
+				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+				suppressNavigation?: boolean;
+				onsuccess?: () => void;
+		  }
+		| {
+				open: boolean;
+				mode: typeof WIZARD_MODE.append;
+				wishlistId: string;
+				wishlistShortId?: string;
+				wishlistTitle?: string;
+				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+				suppressNavigation?: boolean;
+				onsuccess?: () => void;
+		  };
 
 	let {
 		open = $bindable(false),
 		mode,
-		wishlistId,
-		wishlistShortId,
-		wishlistTitle,
 		existingGifts = [],
 		suppressNavigation = false,
 		onsuccess,
-	}: ImportWizardProps = $props();
+		wishlistId,
+		wishlistShortId,
+		wishlistTitle,
+	}: ImportWizardProps & {
+		wishlistId?: string;
+		wishlistShortId?: string;
+		wishlistTitle?: string;
+	} = $props();
 
 	let currentStep = $state<WizardStep>(WIZARD_STEP.source);
 	let parsedRows = $state<string[][]>([]);
@@ -100,30 +116,25 @@
 	async function handleCommit(): Promise<{ shortId: string }> {
 		commitStatus = COMMIT_STATUS.committing;
 		try {
-			const draftsForCommit = selectedDrafts.map((draft) => ({
-				name: draft.name,
-				description: draft.description,
-				links: draft.links,
-				price: draft.price,
-				currency: draft.currency,
-			}));
-
 			if (mode === WIZARD_MODE.newList) {
 				const result = await createWishlistFromImport({
 					title: reviewTitle ?? 'Import',
-					gifts: draftsForCommit,
+					gifts: selectedDrafts,
 				});
 				commitStatus = COMMIT_STATUS.success;
 				onsuccess?.();
 				return { shortId: result.shortId };
 			} else {
+				if (wishlistId == null) {
+					throw new Error('wishlistId is required in append mode');
+				}
 				await importGifts({
-					wishlistId: wishlistId!,
-					gifts: draftsForCommit,
+					wishlistId,
+					gifts: selectedDrafts,
 				});
 				commitStatus = COMMIT_STATUS.success;
 				onsuccess?.();
-				return { shortId: wishlistShortId ?? wishlistId! };
+				return { shortId: wishlistShortId ?? wishlistId };
 			}
 		} catch {
 			commitStatus = COMMIT_STATUS.error;

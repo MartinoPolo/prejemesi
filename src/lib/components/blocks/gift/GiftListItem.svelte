@@ -14,6 +14,7 @@
 		extractGiftDomain,
 		getPriorityDisplay,
 	} from '$lib/modules/gifts/gift_display.js';
+	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 
@@ -27,10 +28,9 @@
 
 	let { gift, role, isArchived = false, onreserve, onunreserve }: GiftListItemProps = $props();
 
-	const isVisitorOrModerator = $derived(role === 'visitor' || role === 'moderator');
-	const visitorGift = $derived(isVisitorOrModerator ? (gift as GiftForVisitor) : null);
-	const isFullyReserved = $derived(visitorGift?.isFullyReserved ?? false);
-	const reservedCount = $derived(visitorGift?.reservedCount ?? 0);
+	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
+		deriveGiftDisplayState(gift, role),
+	);
 
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));

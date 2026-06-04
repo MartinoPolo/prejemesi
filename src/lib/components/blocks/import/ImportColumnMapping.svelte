@@ -1,5 +1,4 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import type { DetectedColumn, ColumnRole } from '$lib/modules/import/detect_columns.js';
 	import { COLUMN_ROLE_OPTIONS } from './import_wizard_types.js';
@@ -11,17 +10,8 @@
 
 	let { columns, onchange }: ImportColumnMappingProps = $props();
 
-	const ROLE_LABELS: Record<string, () => string> = {
-		import_wizard_role_name: () => m.import_wizard_role_name(),
-		import_wizard_role_notes: () => m.import_wizard_role_notes(),
-		import_wizard_role_url: () => m.import_wizard_role_url(),
-		import_wizard_role_price: () => m.import_wizard_role_price(),
-		import_wizard_role_bool: () => m.import_wizard_role_bool(),
-		import_wizard_role_ignore: () => m.import_wizard_role_ignore(),
-	};
-
-	function getRoleLabel(labelKey: string): string {
-		return ROLE_LABELS[labelKey]?.() ?? labelKey;
+	function getRoleLabel(role: ColumnRole): string {
+		return COLUMN_ROLE_OPTIONS.find((opt) => opt.value === role)?.label() ?? role;
 	}
 
 	function handleRoleChange(columnIndex: number, newRole: ColumnRole) {
@@ -50,16 +40,13 @@
 				}}
 			>
 				<Select.Trigger size="sm" class={column.role === 'name' ? 'border-primary' : ''}>
-					{getRoleLabel(
-						COLUMN_ROLE_OPTIONS.find((opt) => opt.value === column.role)?.labelKey ??
-							'',
-					)}
+					{getRoleLabel(column.role)}
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Group>
 						{#each COLUMN_ROLE_OPTIONS as option (option.value)}
-							<Select.Item value={option.value} label={getRoleLabel(option.labelKey)}>
-								{getRoleLabel(option.labelKey)}
+							<Select.Item value={option.value} label={option.label()}>
+								{option.label()}
 							</Select.Item>
 						{/each}
 					</Select.Group>

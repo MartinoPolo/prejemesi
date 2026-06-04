@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDraftRows } from './import_draft_builder.js';
+import { buildDraftRows } from '$lib/modules/import/import_draft_builder.js';
 import { detectColumns } from '$lib/modules/import/detect_columns.js';
 import {
 	createDraftGridRow,

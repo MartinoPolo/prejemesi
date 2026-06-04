@@ -41,8 +41,16 @@ export const fetchGoogleSheetCsv = guardedCommand(SheetLinkSchema, async (_authC
 		response = await fetch(built.target.exportUrl, {
 			redirect: 'follow',
 			headers: { accept: 'text/csv,text/plain' },
+			signal: AbortSignal.timeout(15_000),
 		});
-	} catch {
+	} catch (err) {
+		if (
+			typeof err === 'object' &&
+			err !== null &&
+			(err as { name?: string }).name === 'TimeoutError'
+		) {
+			error(504, SERVER_ERROR.SHEETS_FETCH_FAILED);
+		}
 		error(502, SERVER_ERROR.SHEETS_FETCH_FAILED);
 	}
 
@@ -52,8 +60,9 @@ export const fetchGoogleSheetCsv = guardedCommand(SheetLinkSchema, async (_authC
 		error(status, verdict.code);
 	}
 
-	const declaredLength = Number(response.headers.get('content-length') ?? '0');
-	if (declaredLength > MAX_SHEET_BYTES) {
+	const contentLength = response.headers.get('content-length');
+	const declaredLength = contentLength !== null ? Number(contentLength) : null;
+	if (declaredLength !== null && declaredLength > MAX_SHEET_BYTES) {
 		error(502, SERVER_ERROR.SHEETS_FETCH_FAILED);
 	}
 

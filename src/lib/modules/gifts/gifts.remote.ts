@@ -4,11 +4,11 @@ import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
-import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
 import {
 	verifyOwnerOrModerator,
 	assertWishlistMutable,
+	resolveWishlistRole,
 } from '$lib/modules/wishlists/wishlist_access.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
@@ -16,6 +16,7 @@ import {
 	UpdateGiftInputSchema,
 	ReorderGiftItemSchema,
 	MarkGiftReceivedInputSchema,
+	DEFAULT_GIFT_CURRENCY,
 	type GiftForOwner,
 	type GiftForVisitor,
 } from './types.js';
@@ -38,29 +39,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 	}
 
 	// Determine role
-	let role: WishlistRole = 'visitor';
-	if (authContext !== null) {
-		if (authContext.user.id === wishlistRow.ownerId) {
-			role = 'owner';
-		} else {
-			// Check moderator assignment
-			const modRows = await database
-				.select()
-				.from(moderatorAssignment)
-				.where(
-					and(
-						eq(moderatorAssignment.wishlistId, wishlistRow.id),
-						eq(moderatorAssignment.userId, authContext.user.id),
-						isNull(moderatorAssignment.deletedAt),
-					),
-				)
-				.limit(1);
-
-			if (modRows[0] !== undefined) {
-				role = 'moderator';
-			}
-		}
-	}
+	const role: WishlistRole = await resolveWishlistRole(authContext, wishlistRow);
 
 	// Fetch gifts with priority info
 	const giftRows = await database
@@ -227,7 +206,7 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 			description: input.description ?? null,
 			links: normalizeGiftLinks(input.links),
 			price: input.price ?? null,
-			currency: input.currency ?? 'CZK',
+			currency: input.currency ?? DEFAULT_GIFT_CURRENCY,
 			imageUrl: input.imageUrl ?? null,
 			imageKey: input.imageKey ?? null,
 			imageMeta: input.imageMeta ?? null,
@@ -271,37 +250,37 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		}
 	}
 
-	const updateData: Record<string, unknown> = { updatedAt: new Date() };
+	const updateData: Partial<typeof gift.$inferInsert> = { updatedAt: new Date() };
 
 	if (input.name !== undefined) {
-		updateData['name'] = input.name;
+		updateData.name = input.name;
 	}
 	if (input.description !== undefined) {
-		updateData['description'] = input.description;
+		updateData.description = input.description;
 	}
 	if (input.links !== undefined) {
-		updateData['links'] = normalizeGiftLinks(input.links);
+		updateData.links = normalizeGiftLinks(input.links);
 	}
 	if (input.price !== undefined) {
-		updateData['price'] = input.price;
+		updateData.price = input.price;
 	}
 	if (input.currency !== undefined) {
-		updateData['currency'] = input.currency;
+		updateData.currency = input.currency;
 	}
 	if (input.imageUrl !== undefined) {
-		updateData['imageUrl'] = input.imageUrl;
+		updateData.imageUrl = input.imageUrl;
 	}
 	if (input.imageKey !== undefined) {
-		updateData['imageKey'] = input.imageKey;
+		updateData.imageKey = input.imageKey;
 	}
 	if (input.imageMeta !== undefined) {
-		updateData['imageMeta'] = input.imageMeta;
+		updateData.imageMeta = input.imageMeta;
 	}
 	if (input.quantity !== undefined) {
-		updateData['quantity'] = input.quantity;
+		updateData.quantity = input.quantity;
 	}
 	if (input.priorityLevelId !== undefined) {
-		updateData['priorityLevelId'] = input.priorityLevelId;
+		updateData.priorityLevelId = input.priorityLevelId;
 	}
 
 	const [updated] = await database
@@ -391,7 +370,7 @@ export const reorderGifts = guardedCommand(
 			reorderedGiftRows.length !== uniqueGiftIds.length ||
 			reorderedGiftRows.some((row) => row.wishlistId !== firstGift.wishlistId) === true
 		) {
-			error(403, 'Cannot reorder gifts from another wishlist');
+			error(403, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
 		}
 
 		// Batch update sortOrder in a single CASE WHEN statement

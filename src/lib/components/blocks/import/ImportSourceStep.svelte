@@ -7,7 +7,7 @@
 	import ImportSourcePaste from './ImportSourcePaste.svelte';
 	import ImportSourceSheetLink from './ImportSourceSheetLink.svelte';
 	import GoogleSheetsIcon from './GoogleSheetsIcon.svelte';
-	import { validateImportLimits } from './import_limits.js';
+	import { validateImportLimits } from '$lib/modules/import/import_limits.js';
 	import {
 		SOURCE_METHOD,
 		PARSE_STATUS,
