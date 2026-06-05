@@ -106,7 +106,9 @@ test.describe('Wishlist settings — non-image editing', () => {
 		// Archiving triggers a native confirm() dialog — auto-accept it.
 		page.on('dialog', (dialog) => void dialog.accept());
 		await page.getByRole('button', { name: 'Archivovat seznam' }).click();
-		await expect(page.getByText('Seznam byl archivován')).toBeVisible({ timeout: 10_000 });
+		await expect(
+			page.locator('[data-sonner-toast]').filter({ hasText: 'Seznam byl archivován' }),
+		).toBeVisible({ timeout: 10_000 });
 
 		// The settings page surfaces a read-only notice and hides the edit form.
 		await page.goto(`/w/${shortId}/settings`);

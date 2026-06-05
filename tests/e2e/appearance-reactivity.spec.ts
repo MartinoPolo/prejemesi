@@ -155,11 +155,8 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 		const uploaded = waitForUpload(page);
 		await fileInput.setInputFiles(SAMPLE_IMAGE_PATH);
 		await uploaded;
-		// First "Uložit"/"Save" is the image card's save (the theme card's button is "Uložit motiv").
-		await page
-			.getByRole('button', { name: /^(Uložit|Save)$/ })
-			.first()
-			.click();
+		// Image card save (page also has a details "Uložit" button before it, so target by test id).
+		await page.getByTestId('wishlist-image-save').click();
 		await expect(page.getByText(/Obrázek seznamu byl uložen|Wishlist image saved/)).toBeVisible(
 			{
 				timeout: 10_000,

@@ -52,6 +52,7 @@
 			value={link.url}
 			placeholder="alza.cz/darek"
 			type="text"
+			data-testid="gift-link-url"
 			{disabled}
 			aria-invalid={urlError != null && urlError !== '' ? true : undefined}
 			oninput={(e: Event) => onurlchange((e.target as HTMLInputElement).value)}

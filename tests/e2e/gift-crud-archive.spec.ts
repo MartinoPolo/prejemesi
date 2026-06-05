@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator } from '@playwright/test';
 import { createTestUser, TEST_GIFT } from './fixtures/test-data.js';
 import {
 	registerAndGetPage,
@@ -6,6 +6,15 @@ import {
 	createAuthenticatedContext,
 } from './fixtures/auth-helpers.js';
 import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
+
+// Reveals (if needed) and fills the first URL input in the multi-link editor.
+async function fillGiftUrl(dialog: Locator, url: string) {
+	const urlInput = dialog.getByTestId('gift-link-url').first();
+	if (!(await urlInput.isVisible().catch(() => false))) {
+		await dialog.getByRole('button', { name: /Přidat odkaz|Add link/ }).click();
+	}
+	await urlInput.fill(url);
+}
 
 // ── Gift editing (issue #9) ───────────────────────────────────────────────────
 
@@ -62,7 +71,7 @@ test.describe('Gift editing', () => {
 		await expect(createDialog).toBeVisible({ timeout: 5_000 });
 		await createDialog.getByRole('textbox', { name: 'Název' }).fill('Testovaci polozka');
 		await createDialog.getByRole('textbox', { name: /Popis/i }).fill('Popis testovaci');
-		await createDialog.locator('#gift-url').fill('https://example.com/item');
+		await fillGiftUrl(createDialog, 'https://example.com/item');
 		await createDialog.getByLabel(/Cena/).fill('999');
 		await createDialog.locator('#gift-quantity').clear();
 		await createDialog.locator('#gift-quantity').fill('3');
@@ -77,10 +86,13 @@ test.describe('Gift editing', () => {
 		await expect(editDialog.getByRole('textbox', { name: 'Název' })).toHaveValue(
 			'Testovaci polozka',
 		);
-		await expect(editDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue(
+		// Use exact name — the link-row label input ("Popisek …") also matches a loose /Popis/i.
+		await expect(editDialog.getByRole('textbox', { name: 'Popis', exact: true })).toHaveValue(
 			'Popis testovaci',
 		);
-		await expect(editDialog.locator('#gift-url')).toHaveValue('https://example.com/item');
+		await expect(editDialog.getByTestId('gift-link-url').first()).toHaveValue(
+			'https://example.com/item',
+		);
 		await expect(editDialog.getByLabel(/Cena/)).toHaveValue('999');
 		await expect(editDialog.locator('#gift-quantity')).toHaveValue('3');
 
@@ -95,7 +107,8 @@ test.describe('Gift editing', () => {
 		await expect(addDialog).toBeVisible({ timeout: 5_000 });
 		await expect(addDialog.getByRole('textbox', { name: 'Název' })).toHaveValue('');
 		await expect(addDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue('');
-		await expect(addDialog.locator('#gift-url')).toHaveValue('');
+		// The new-gift link editor starts empty — it shows the empty state, not a URL input.
+		await expect(addDialog.getByText(/Bez odkazu|No link/).first()).toBeVisible();
 		await expect(addDialog.getByLabel(/Cena/)).toHaveValue('');
 
 		await page.context().close();

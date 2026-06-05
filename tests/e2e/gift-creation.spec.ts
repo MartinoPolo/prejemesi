@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -16,6 +16,15 @@ async function openAddGiftDialog(page: Page): Promise<ReturnType<Page['getByRole
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
 	return dialog;
+}
+
+// Reveals (if needed) and fills the first URL input in the multi-link editor.
+async function fillGiftUrl(dialog: Locator, url: string) {
+	const urlInput = dialog.getByTestId('gift-link-url').first();
+	if (!(await urlInput.isVisible().catch(() => false))) {
+		await dialog.getByRole('button', { name: /Přidat odkaz|Add link/ }).click();
+	}
+	await urlInput.fill(url);
 }
 
 // ── Gift creation ─────────────────────────────────────────────────────────────
@@ -46,7 +55,7 @@ test.describe('Gift creation', () => {
 		await dialog.getByRole('textbox', { name: 'Název' }).fill('Plný dárek');
 		await dialog.getByRole('textbox', { name: /Popis/i }).fill('Testovací popis');
 		await dialog.getByLabel(/Cena/).fill('1500');
-		await dialog.locator('#gift-url').fill('https://example.com/gift');
+		await fillGiftUrl(dialog, 'https://example.com/gift');
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('Plný dárek')).toBeVisible({ timeout: 10_000 });
@@ -64,7 +73,7 @@ test.describe('Gift creation', () => {
 		const dialog = await openAddGiftDialog(page);
 
 		await dialog.getByRole('textbox', { name: 'Název' }).fill('Odkaz bez protokolu');
-		await dialog.locator('#gift-url').fill('seznam.cz/produkt');
+		await fillGiftUrl(dialog, 'seznam.cz/produkt');
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		// Should not fail — gift must appear in the list
@@ -75,8 +84,9 @@ test.describe('Gift creation', () => {
 		const detailDialog = page.getByRole('dialog');
 		await expect(detailDialog).toBeVisible({ timeout: 5_000 });
 		// The URL field should contain the normalized https:// value
-		const urlInput = detailDialog.locator('#gift-url');
-		await expect(urlInput).toHaveValue('https://seznam.cz/produkt');
+		await expect(detailDialog.getByTestId('gift-link-url').first()).toHaveValue(
+			'https://seznam.cz/produkt',
+		);
 
 		await page.context().close();
 	});
@@ -93,7 +103,7 @@ test.describe('Gift creation', () => {
 		const dialog = await openAddGiftDialog(page);
 
 		await dialog.getByRole('textbox', { name: 'Název' }).fill('HTTP odkaz');
-		await dialog.locator('#gift-url').fill('http://example.com');
+		await fillGiftUrl(dialog, 'http://example.com');
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('HTTP odkaz')).toBeVisible({ timeout: 10_000 });
@@ -102,10 +112,11 @@ test.describe('Gift creation', () => {
 		await page.getByText('HTTP odkaz').click();
 		const detailDialog = page.getByRole('dialog');
 		await expect(detailDialog).toBeVisible({ timeout: 5_000 });
-		const urlInput = detailDialog.locator('#gift-url');
 		// The http:// prefix must be preserved (not double-prefixed to https://http://).
 		// A bare authority may be normalized with a trailing slash (http://example.com/).
-		await expect(urlInput).toHaveValue(/^http:\/\/example\.com\/?$/);
+		await expect(detailDialog.getByTestId('gift-link-url').first()).toHaveValue(
+			/^http:\/\/example\.com\/?$/,
+		);
 
 		await page.context().close();
 	});
