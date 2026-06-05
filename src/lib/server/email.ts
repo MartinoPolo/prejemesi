@@ -1,0 +1,95 @@
+import { env } from '$env/dynamic/private';
+import { Resend } from 'resend';
+
+/**
+ * Email sending wrapper around Resend.
+ *
+ * Optional service: when `RESEND_API_KEY` is unset (e.g. local dev without a
+ * Resend account), sends are logged to the console instead of dispatched —
+ * mirroring the R2 storage fallback. Configure `RESEND_API_KEY` and
+ * `EMAIL_FROM` in `.env` to send for real.
+ */
+
+/** Sandbox sender that works without a verified domain. */
+const DEFAULT_FROM = 'Darecky <onboarding@resend.dev>';
+
+interface SendEmailParams {
+	readonly to: string;
+	readonly subject: string;
+	readonly html: string;
+	/** Prevents duplicate sends on retry. Use a stable per-event key. */
+	readonly idempotencyKey?: string;
+}
+
+let client: Resend | undefined;
+
+function getClient(): Resend | undefined {
+	if (env.RESEND_API_KEY === undefined || env.RESEND_API_KEY === '') {
+		return undefined;
+	}
+	client ??= new Resend(env.RESEND_API_KEY);
+	return client;
+}
+
+function getFrom(): string {
+	return env.EMAIL_FROM !== undefined && env.EMAIL_FROM !== '' ? env.EMAIL_FROM : DEFAULT_FROM;
+}
+
+/**
+ * Sends a transactional email. Throws on dispatch failure so callers can react;
+ * no-ops (logging only) when no API key is configured.
+ */
+export async function sendEmail({
+	to,
+	subject,
+	html,
+	idempotencyKey,
+}: SendEmailParams): Promise<void> {
+	const resend = getClient();
+
+	if (resend === undefined) {
+		console.log(`[Email] (not sent — RESEND_API_KEY unset) to=${to} subject="${subject}"`);
+		return;
+	}
+
+	const { data, error } = await resend.emails.send(
+		{ from: getFrom(), to, subject, html },
+		idempotencyKey !== undefined ? { idempotencyKey } : {},
+	);
+
+	if (error !== null) {
+		throw new Error(`[Email] Failed to send "${subject}" to ${to}: ${error.message}`);
+	}
+
+	console.log(`[Email] Sent "${subject}" to ${to} (id=${data?.id})`);
+}
+
+/**
+ * Renders a minimal action email (heading + body text + a call-to-action button).
+ * Shared across auth flows and notification emails to keep markup consistent.
+ */
+export function renderActionEmail(params: {
+	readonly heading: string;
+	readonly body: string;
+	readonly buttonLabel: string;
+	readonly url: string;
+}): string {
+	const { heading, body, buttonLabel, url } = params;
+	return `<!doctype html>
+<html>
+  <body style="margin:0;padding:24px;background:#f6f6f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr><td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:32px;">
+          <tr><td>
+            <h1 style="margin:0 0 16px;font-size:20px;">${heading}</h1>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#444;">${body}</p>
+            <a href="${url}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">${buttonLabel}</a>
+            <p style="margin:24px 0 0;font-size:13px;color:#888;">Or copy this link into your browser:<br><span style="word-break:break-all;">${url}</span></p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+}

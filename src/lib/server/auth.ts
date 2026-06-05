@@ -5,10 +5,19 @@ import { magicLink } from 'better-auth/plugins/magic-link';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from './db/index.js';
+import { sendEmail, renderActionEmail } from './email.js';
+
+// Dev: Vite picks the next free port (5174, 5175, …) when 5173 is taken.
+// better-auth rejects sign-in when the request Origin doesn't match baseURL,
+// so trust the default port plus the next 10 fallbacks during development.
+const devTrustedOrigins = import.meta.env.DEV
+	? Array.from({ length: 11 }, (_, i) => `http://localhost:${5173 + i}`)
+	: [];
 
 export const auth = betterAuth({
 	baseURL: env.ORIGIN ?? 'http://localhost:5173',
 	secret: env.AUTH_SECRET,
+	trustedOrigins: devTrustedOrigins,
 
 	database: drizzleAdapter(getDb(), { provider: 'pg' }),
 
@@ -20,8 +29,16 @@ export const auth = betterAuth({
 		requireEmailVerification: false, // set to true in production
 		resetPasswordTokenExpiresIn: 3600,
 		sendResetPassword: async ({ user, url }) => {
-			// TODO: replace with your email service (e.g. Resend, SendGrid, Postmark)
-			console.log(`[Auth] Password reset for ${user.email}: ${url}`);
+			await sendEmail({
+				to: user.email,
+				subject: 'Reset your Darecky password',
+				html: renderActionEmail({
+					heading: 'Reset your password',
+					body: 'We received a request to reset your password. This link expires in 1 hour.',
+					buttonLabel: 'Reset password',
+					url,
+				}),
+			});
 		},
 	},
 
@@ -30,8 +47,16 @@ export const auth = betterAuth({
 		autoSignInAfterVerification: true,
 		expiresIn: 3600,
 		sendVerificationEmail: async ({ user, url }) => {
-			// TODO: replace with your email service
-			console.log(`[Auth] Verification email for ${user.email}: ${url}`);
+			await sendEmail({
+				to: user.email,
+				subject: 'Verify your Darecky email',
+				html: renderActionEmail({
+					heading: 'Confirm your email',
+					body: 'Please confirm your email address to finish setting up your account. This link expires in 1 hour.',
+					buttonLabel: 'Verify email',
+					url,
+				}),
+			});
 		},
 	},
 
@@ -56,8 +81,16 @@ export const auth = betterAuth({
 		sveltekitCookies(getRequestEvent),
 		magicLink({
 			sendMagicLink: async ({ email, url }) => {
-				// TODO: replace with your email service (e.g. Resend, SendGrid, Postmark)
-				console.log(`[Auth] Magic link for ${email}: ${url}`);
+				await sendEmail({
+					to: email,
+					subject: 'Your Darecky sign-in link',
+					html: renderActionEmail({
+						heading: 'Sign in to Darecky',
+						body: 'Click the button below to sign in. This link expires shortly and can only be used once.',
+						buttonLabel: 'Sign in',
+						url,
+					}),
+				});
 			},
 		}),
 	],
