@@ -7,16 +7,19 @@
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
+	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { getMyWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import FileUpIcon from '@lucide/svelte/icons/file-up';
 
 	let sortValue = $state<SortOption>('lastActivity');
 	let viewMode = $state<ViewMode>('grid');
 	let showArchived = $state(false);
 	let isCreateModalOpen = $state(false);
+	let isImportWizardOpen = $state(false);
 
 	const allWishlists = await getMyWishlists();
 
@@ -76,6 +79,10 @@
 				<PlusIcon data-icon="inline-start" />
 				{m.dashboard_create_list()}
 			</Button>
+			<Button intent="outline" onclick={() => (isImportWizardOpen = true)}>
+				<FileUpIcon data-icon="inline-start" />
+				{m.import_wizard_title()}
+			</Button>
 		{/snippet}
 	</EmptyState>
 {:else if viewMode === 'grid'}
@@ -89,3 +96,4 @@
 {/if}
 
 <CreateWishlistModal bind:open={isCreateModalOpen} />
+<ImportWizard bind:open={isImportWizardOpen} mode={WIZARD_MODE.newList} />
