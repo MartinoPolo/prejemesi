@@ -81,6 +81,30 @@ function extractMessage(thrown: unknown): string | null {
 	return null;
 }
 
+/**
+ * Extracts the {@link SERVER_ERROR} code from a thrown value (handling both
+ * plain-code messages and JSON-encoded `{ code, ...params }` messages), or null
+ * if the thrown value carries no recognisable code. Lets callers branch on a
+ * specific server error (e.g. show a tailored message) without re-parsing.
+ */
+export function getServerErrorCode(thrown: unknown): string | null {
+	const message = extractMessage(thrown);
+	if (message === null) {
+		return null;
+	}
+	if (message.startsWith('{')) {
+		try {
+			const parsed = JSON.parse(message) as Record<string, unknown>;
+			if (typeof parsed.code === 'string') {
+				return parsed.code;
+			}
+		} catch {
+			// Not valid JSON — fall through
+		}
+	}
+	return message;
+}
+
 export function translateServerError(thrown: unknown, fallback?: string): string {
 	const message = extractMessage(thrown);
 	if (message === null) {

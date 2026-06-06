@@ -391,6 +391,8 @@
 	"reserve_auth_prompt": "Pro správu rezervací se můžete přihlásit.",
 	"reserve_login": "Přihlásit se",
 	"reserve_register": "Registrovat",
+	"like_auth_prompt_title": "Přihlaste se",
+	"like_auth_prompt_description": "Pro přidání dárku mezi oblíbené se přihlaste nebo zaregistrujte.",
 	"reserve_submitting": "Rezervuji...",
 	"reserve_submit": "Rezervovat",
 
@@ -565,6 +567,7 @@
 
 	"toast_gift_reserved": "Dárek byl rezervován",
 	"toast_gift_unreserved": "Rezervace zrušena",
+	"toast_gift_just_reserved": "Tento dárek právě rezervoval někdo jiný.",
 	"toast_gift_created": "Dárek přidán",
 	"toast_gift_updated": "Dárek uložen",
 	"toast_gift_deleted": "Dárek odebrán",

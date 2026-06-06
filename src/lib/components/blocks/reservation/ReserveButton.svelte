@@ -38,7 +38,7 @@
 	<!-- Current user holds a reservation — allow cancelling (even on archived lists) -->
 	<Button
 		{size}
-		intent="outline"
+		intent="danger"
 		aria-label="Zrušit rezervaci {gift.name}"
 		onclick={handleUnreserveClick}
 	>

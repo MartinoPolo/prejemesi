@@ -66,6 +66,10 @@ export const reservation = pgTable(
 		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
 		anonymousName: text('anonymous_name'),
 		anonymousEmail: text('anonymous_email'),
+		// Per-browser capability token for anonymous reservations. Lets an anonymous
+		// visitor recognise and cancel their own reservation (matched against the
+		// httpOnly `darecky_anon_id` cookie). Null for authenticated reservations.
+		anonymousVisitorId: text('anonymous_visitor_id'),
 		quantity: integer('quantity').notNull().default(1),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -76,6 +80,9 @@ export const reservation = pgTable(
 			.where(sql`${table.deletedAt} IS NULL`),
 		userActiveIdx: index('reservation_user_active_idx')
 			.on(table.userId)
+			.where(sql`${table.deletedAt} IS NULL`),
+		anonVisitorActiveIdx: index('reservation_anon_visitor_active_idx')
+			.on(table.anonymousVisitorId)
 			.where(sql`${table.deletedAt} IS NULL`),
 	}),
 );

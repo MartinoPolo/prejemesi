@@ -5,6 +5,7 @@ import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { getAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import {
 	verifyOwnerOrModerator,
 	assertWishlistMutable,
@@ -129,26 +130,40 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 		}
 	}
 
-	// Batch fetch the current user's active reservation per gift (powers the unreserve UI).
-	// Anonymous reservations are excluded — only authenticated users can self-cancel.
+	// Batch fetch the current visitor's active reservation per gift (powers the unreserve UI).
+	// Authenticated visitors match by userId; anonymous visitors match by their per-browser
+	// capability cookie against reservation.anonymousVisitorId.
 	const myReservationIds = new Map<string, string>();
-	if (giftIds.length > 0 && authContext !== null) {
-		const myRows = await database
-			.select({ id: reservation.id, giftId: reservation.giftId })
-			.from(reservation)
-			.where(
-				and(
-					inArray(reservation.giftId, giftIds),
-					eq(reservation.userId, authContext.user.id),
-					isNull(reservation.deletedAt),
-				),
-			)
-			.orderBy(reservation.createdAt);
+	if (giftIds.length > 0) {
+		const anonVisitorId = authContext === null ? getAnonVisitorId() : null;
+		const ownershipFilter =
+			authContext !== null
+				? eq(reservation.userId, authContext.user.id)
+				: anonVisitorId !== null
+					? and(
+							isNull(reservation.userId),
+							eq(reservation.anonymousVisitorId, anonVisitorId),
+						)
+					: null;
 
-		for (const row of myRows) {
-			// Keep the earliest active reservation per gift
-			if (!myReservationIds.has(row.giftId)) {
-				myReservationIds.set(row.giftId, row.id);
+		if (ownershipFilter !== undefined && ownershipFilter !== null) {
+			const myRows = await database
+				.select({ id: reservation.id, giftId: reservation.giftId })
+				.from(reservation)
+				.where(
+					and(
+						inArray(reservation.giftId, giftIds),
+						ownershipFilter,
+						isNull(reservation.deletedAt),
+					),
+				)
+				.orderBy(reservation.createdAt);
+
+			for (const row of myRows) {
+				// Keep the earliest active reservation per gift
+				if (!myReservationIds.has(row.giftId)) {
+					myReservationIds.set(row.giftId, row.id);
+				}
 			}
 		}
 	}

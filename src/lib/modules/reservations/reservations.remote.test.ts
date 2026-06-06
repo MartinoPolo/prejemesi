@@ -68,6 +68,7 @@ vi.mock('drizzle-orm', () => ({
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { getDb } from '$lib/server/db/index.js';
+import { getRequestEvent } from '$app/server';
 import {
 	reserveGift,
 	unreserveGift,
@@ -79,6 +80,14 @@ import type { ReserveGiftInput, UnreserveInput } from './types.js';
 // ── Test helpers ─────────────────────────────────────────────────────────────
 
 const mockGetDb = vi.mocked(getDb);
+const mockGetRequestEvent = vi.mocked(getRequestEvent);
+
+/** Stub getRequestEvent so the anon-visitor helper reads `cookieValue` from the cookie. */
+function mockAnonCookie(cookieValue: string | undefined) {
+	mockGetRequestEvent.mockReturnValue({
+		cookies: { get: () => cookieValue },
+	} as unknown as ReturnType<typeof getRequestEvent>);
+}
 
 const OWNER_ID = 'user-owner';
 const VISITOR_ID = 'user-visitor';
@@ -411,19 +420,62 @@ describe('unreserveGift', () => {
 		).rejects.toMatchObject({ status: 403 });
 	});
 
-	it('anonymous user cannot unreserve — throws 403', async () => {
-		// Anonymous reservation (userId is null) — throws because authContext is null
-		const database = createChain([
-			{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null },
-		]);
-
+	it('anonymous visitor with the matching cookie can unreserve their own reservation', async () => {
+		// Anonymous reservation whose anonymousVisitorId matches the visitor's cookie.
+		const database = createMultiQueryChain(
+			[
+				{
+					id: RESERVATION_ID,
+					giftId: GIFT_ID,
+					userId: null,
+					anonymousVisitorId: 'anon-token-1',
+					deletedAt: null,
+				},
+			],
+			[], // update result (unused)
+		);
 		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockAnonCookie('anon-token-1');
+
+		const result = await (unreserveGift as (...args: unknown[]) => unknown)(null, validInput);
+
+		expect(result).toEqual({ success: true });
+	});
+
+	it('anonymous visitor with a mismatched cookie cannot unreserve — throws 403', async () => {
+		const database = createChain([
+			{
+				id: RESERVATION_ID,
+				giftId: GIFT_ID,
+				userId: null,
+				anonymousVisitorId: 'anon-token-1',
+				deletedAt: null,
+			},
+		]);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockAnonCookie('a-different-token');
 
 		await expect(
 			(unreserveGift as (...args: unknown[]) => unknown)(null, validInput),
-		).rejects.toMatchObject({
-			status: 403,
-		});
+		).rejects.toMatchObject({ status: 403 });
+	});
+
+	it('anonymous visitor without any cookie cannot unreserve — throws 403', async () => {
+		const database = createChain([
+			{
+				id: RESERVATION_ID,
+				giftId: GIFT_ID,
+				userId: null,
+				anonymousVisitorId: 'anon-token-1',
+				deletedAt: null,
+			},
+		]);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockAnonCookie(undefined);
+
+		await expect(
+			(unreserveGift as (...args: unknown[]) => unknown)(null, validInput),
+		).rejects.toMatchObject({ status: 403 });
 	});
 
 	it('moderator can unreserve an anonymous reservation — returns { success: true }', async () => {

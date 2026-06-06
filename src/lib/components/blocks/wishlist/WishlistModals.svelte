@@ -6,6 +6,7 @@
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
 	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
 	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
+	import LoginPromptDialog from '$lib/components/blocks/auth/LoginPromptDialog.svelte';
 	import type {
 		GiftByRole,
 		GiftForVisitor,
@@ -46,6 +47,8 @@
 		isBatchSubmitting: boolean;
 		// Moderator panel
 		moderatorPanelOpen: boolean;
+		// Login prompt (anonymous like attempt)
+		authPromptOpen: boolean;
 		// Callbacks
 		ongiftmodalclose: () => void;
 		oncreate: (input: CreateGiftInput) => void;
@@ -88,6 +91,7 @@
 		batchAddDialogOpen = $bindable(),
 		isBatchSubmitting,
 		moderatorPanelOpen = $bindable(),
+		authPromptOpen = $bindable(),
 		ongiftmodalclose,
 		oncreate,
 		onupdate,
@@ -189,3 +193,6 @@
 		onOpenChange={onbatchdialogopenchange}
 	/>
 {/if}
+
+<!-- Login prompt (shown when an anonymous visitor taps the like heart) -->
+<LoginPromptDialog bind:open={authPromptOpen} />

@@ -391,6 +391,8 @@
 	"reserve_auth_prompt": "For reservation management, you can log in.",
 	"reserve_login": "Log in",
 	"reserve_register": "Register",
+	"like_auth_prompt_title": "Sign in",
+	"like_auth_prompt_description": "Sign in or register to add gifts to your favorites.",
 	"reserve_submitting": "Reserving...",
 	"reserve_submit": "Reserve",
 
@@ -565,6 +567,7 @@
 
 	"toast_gift_reserved": "Gift has been reserved",
 	"toast_gift_unreserved": "Reservation cancelled",
+	"toast_gift_just_reserved": "Someone else just reserved this gift.",
 	"toast_gift_created": "Gift added",
 	"toast_gift_updated": "Gift saved",
 	"toast_gift_deleted": "Gift removed",

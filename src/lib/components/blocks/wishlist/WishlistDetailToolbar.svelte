@@ -15,6 +15,7 @@
 		isOwner: boolean;
 		isArchived: boolean;
 		isOwnerOrModerator: boolean;
+		isAuthenticated: boolean;
 		viewMode: GiftViewMode;
 		sortOption: GiftSortOption;
 		filters: GiftFilters;
@@ -34,6 +35,7 @@
 		isOwner,
 		isArchived,
 		isOwnerOrModerator,
+		isAuthenticated,
 		viewMode,
 		sortOption,
 		filters,
@@ -84,7 +86,7 @@
 				</Button>
 			</SimpleTooltip>
 		{/if}
-		{#if !isOwner && !isArchived}
+		{#if !isOwner && !isArchived && isAuthenticated}
 			<Button size="sm" intent="ghost" onclick={onunfollow}
 				>{m.wishlist_detail_unfollow()}</Button
 			>

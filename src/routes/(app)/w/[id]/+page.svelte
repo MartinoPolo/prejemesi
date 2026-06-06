@@ -37,7 +37,11 @@
 	import { wishlistImageUrl } from '$lib/modules/images/index.js';
 	import { untrack } from 'svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
-	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
+	import {
+		translateServerError,
+		getServerErrorCode,
+	} from '$lib/modules/errors/translate_server_error.js';
+	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 	import {
 		createGift,
 		updateGift as updateGiftRemote,
@@ -74,6 +78,9 @@
 	let role = $state<WishlistRole>('visitor');
 	let likedGiftIds = $state.raw<string[]>([]);
 
+	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
+	let authPromptOpen = $state(false);
+
 	// ── Context setup (must be synchronous — before any await) ───────────────
 
 	const giftsContext = untrack(() =>
@@ -84,7 +91,15 @@
 		),
 	);
 
-	untrack(() => setLikesContext(() => likedGiftIds));
+	untrack(() =>
+		setLikesContext(
+			() => likedGiftIds,
+			() => isAuthenticated,
+			() => {
+				authPromptOpen = true;
+			},
+		),
+	);
 
 	const sharingContext = untrack(() =>
 		setSharingContext(
@@ -576,7 +591,17 @@
 			toastSuccess(m.toast_gift_reserved());
 			await refreshData();
 		} catch (thrown) {
-			toastError(translateServerError(thrown));
+			// Lost the race: someone reserved the last unit between page load and submit.
+			// Rather than a generic "not enough available" error, sync the real state and
+			// tell the visitor what actually happened.
+			if (getServerErrorCode(thrown) === SERVER_ERROR.NOT_ENOUGH_AVAILABLE) {
+				reserveModalOpen = false;
+				reservingGift = null;
+				await refreshData();
+				toastError(m.toast_gift_just_reserved());
+			} else {
+				toastError(translateServerError(thrown));
+			}
 		} finally {
 			isReserving = false;
 		}
@@ -630,6 +655,7 @@
 		{isOwner}
 		{isArchived}
 		{isOwnerOrModerator}
+		{isAuthenticated}
 		{viewMode}
 		sortOption={giftsContext.sortOption.current}
 		filters={giftsContext.filters.current}
@@ -693,6 +719,7 @@
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
 	bind:moderatorPanelOpen
+	bind:authPromptOpen
 	ongiftmodalclose={handleGiftModalClose}
 	oncreate={handleCreate}
 	onupdate={handleUpdate}

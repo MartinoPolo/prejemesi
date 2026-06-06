@@ -27,6 +27,13 @@
 		event.stopPropagation();
 		event.preventDefault();
 
+		// Likes require an account (they drive notifications). Prompt anonymous
+		// visitors to log in instead of firing a request that would 401.
+		if (!likesContext.isAuthenticated()) {
+			likesContext.requireAuth();
+			return;
+		}
+
 		// Optimistic update
 		const wasLiked = liked;
 		const previousCount = displayCount;

@@ -7,13 +7,21 @@ type LikesContext = ReturnType<typeof createLikesContext>;
 const [useLikes, setLikesInternal] = createContext<LikesContext>();
 export { useLikes };
 
-export function setLikesContext(getLikedIds: () => string[]) {
-	const context = createLikesContext(getLikedIds);
+export function setLikesContext(
+	getLikedIds: () => string[],
+	isAuthenticated: () => boolean,
+	onRequireAuth: () => void,
+) {
+	const context = createLikesContext(getLikedIds, isAuthenticated, onRequireAuth);
 	setLikesInternal(context);
 	return context;
 }
 
-function createLikesContext(getLikedIds: () => string[]) {
+function createLikesContext(
+	getLikedIds: () => string[],
+	isAuthenticated: () => boolean,
+	onRequireAuth: () => void,
+) {
 	const baseLikedIds = new Derived(() => new Set(getLikedIds()));
 	const overrides = new SvelteMap<string, boolean>();
 
@@ -42,5 +50,9 @@ function createLikesContext(getLikedIds: () => string[]) {
 		isLiked,
 		optimisticToggle,
 		revertToggle,
+		/** Whether the current visitor is logged in (likes require an account). */
+		isAuthenticated,
+		/** Invoked when an anonymous visitor attempts to like — prompts them to log in. */
+		requireAuth: onRequireAuth,
 	};
 }

@@ -7,6 +7,7 @@ import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { publicQuery, publicCommand } from '$lib/server/remote.js';
+import { getAnonVisitorId, getOrCreateAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import {
 	ReserveGiftInputSchema,
 	UnreserveInputSchema,
@@ -115,6 +116,10 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		error(400, SERVER_ERROR.QUANTITY_MUST_BE_AT_LEAST_ONE);
 	}
 
+	// Anonymous reservations get a per-browser capability token (cookie) so the
+	// visitor can later recognise and cancel their own reservation.
+	const anonymousVisitorId = authContext === null ? getOrCreateAnonVisitorId() : null;
+
 	// Capacity enforcement must be atomic to prevent overbooking under concurrency.
 	// Lock the gift row (SELECT ... FOR UPDATE) so concurrent reservations for the
 	// same gift serialize: each request recounts active reservations under the lock
@@ -151,6 +156,7 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 					input.anonymousEmail !== ''
 						? input.anonymousEmail.trim()
 						: null,
+				anonymousVisitorId,
 				quantity: requestedQuantity,
 			})
 			.returning();
@@ -179,18 +185,25 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 		error(404, SERVER_ERROR.RESERVATION_NOT_FOUND);
 	}
 
-	// Check authorization: only the reserver can unreserve
+	// Check authorization: only the reserver (or a moderator) can unreserve
 	if (reservationRow.userId !== null) {
 		// Authenticated reservation — must match userId
 		if (authContext === null || authContext.user.id !== reservationRow.userId) {
 			error(403, SERVER_ERROR.CANNOT_CANCEL_OTHERS_RESERVATION);
 		}
-	} else {
-		// Anonymous reservation — only moderators can unreserve on behalf
-		if (authContext === null) {
+	} else if (authContext === null) {
+		// Anonymous reservation cancelled by an anonymous visitor — only the original
+		// reserver may, proven by holding the matching per-browser capability cookie.
+		const anonVisitorId = getAnonVisitorId();
+		if (
+			anonVisitorId === null ||
+			reservationRow.anonymousVisitorId === null ||
+			reservationRow.anonymousVisitorId !== anonVisitorId
+		) {
 			error(403, SERVER_ERROR.ANONYMOUS_CANNOT_CANCEL_RESERVATIONS);
 		}
-		// Check if authenticated user is moderator for this wishlist
+	} else {
+		// Anonymous reservation cancelled by an authenticated user — must be a moderator.
 		const giftRow = await database
 			.select({ wishlistId: gift.wishlistId })
 			.from(gift)
