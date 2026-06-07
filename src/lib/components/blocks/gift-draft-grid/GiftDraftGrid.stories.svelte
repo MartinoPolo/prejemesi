@@ -91,8 +91,10 @@
 		const linkInput = canvas.getByLabelText(LINK_1_LABEL);
 		await expect(linkInput).toBeInTheDocument();
 
+		// The full URL is stored, but the field intentionally hides the protocol prefix
+		// (GiftDraftLinksCell.displayUrl) so the meaningful part of the URL stays visible.
 		await userEvent.type(linkInput, 'https://www.alza.cz');
-		await expect(linkInput).toHaveValue('https://www.alza.cz');
+		await expect(linkInput).toHaveValue('www.alza.cz');
 
 		await userEvent.click(canvas.getByRole('button', { name: REMOVE_LINK }));
 		await expect(canvas.queryByLabelText(LINK_1_LABEL)).not.toBeInTheDocument();
