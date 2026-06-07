@@ -41,6 +41,7 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 
 	[SERVER_ERROR.FAILED_TO_CREATE_GIFT]: () => m.server_error_failed_to_create_gift(),
 	[SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING]: () => m.server_error_cannot_edit_after_sharing(),
+	[SERVER_ERROR.QUANTITY_CANNOT_BE_LOWERED]: () => m.server_error_quantity_cannot_be_lowered(),
 	[SERVER_ERROR.CANNOT_DELETE_AFTER_SHARING]: () => m.server_error_cannot_delete_after_sharing(),
 	[SERVER_ERROR.CANNOT_DELETE_RESERVED_GIFT]: () => m.server_error_cannot_delete_reserved_gift(),
 	[SERVER_ERROR.ONLY_OWNER_CAN_MARK_RECEIVED]: () =>

@@ -17,6 +17,8 @@
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
+	import GiftEditedBadge from './GiftEditedBadge.svelte';
+	import GiftDescription from './GiftDescription.svelte';
 
 	interface GiftListItemProps {
 		gift: GiftByRole;
@@ -66,6 +68,7 @@
 					{m.gift_received_badge()}
 				</Badge>
 			{/if}
+			<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />
 		</div>
 
 		<div class="flex flex-wrap items-center gap-2 text-sm">
@@ -107,6 +110,10 @@
 				</Badge>
 			{/if}
 		</div>
+		<GiftDescription
+			description={gift.description}
+			descriptionAppends={gift.descriptionAppends}
+		/>
 	</div>
 
 	<!-- Actions -->

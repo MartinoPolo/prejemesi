@@ -13,7 +13,7 @@ import { user } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { generateId } from './id.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
-import type { GiftLink } from '$lib/modules/gifts/types.js';
+import type { GiftLink, DescriptionAppend } from '$lib/modules/gifts/types.js';
 
 export const gift = pgTable(
 	'gift',
@@ -29,6 +29,15 @@ export const gift = pgTable(
 		}),
 		name: text('name').notNull(),
 		description: text('description'),
+		// Post-share description edits accrue here as immutable, timestamped segments rendered as
+		// accent-colored appends (REQ-4). The frozen base stays in `description`.
+		descriptionAppends: jsonb('description_appends')
+			.$type<DescriptionAppend[]>()
+			.notNull()
+			.default(sql`'[]'::jsonb`),
+		// Set on the first post-share field edit; drives the "Upraveno po sdílení" transparency badge
+		// (REQ-6). Never set by reorder/mark-received.
+		editedAfterShareAt: timestamp('edited_after_share_at', { withTimezone: true }),
 		// Up to 10 purchase links; links[0] is primary (drives the domain chip / OG / "Bez odkazu").
 		links: jsonb('links')
 			.$type<GiftLink[]>()

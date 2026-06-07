@@ -24,6 +24,12 @@ export interface GiftLink {
 	label?: string;
 }
 
+/** One immutable, timestamped post-share description segment (REQ-4). */
+export interface DescriptionAppend {
+	text: string;
+	addedAt: string; // ISO timestamp
+}
+
 const GiftLinkSchema = v.object({
 	url: v.pipe(v.string(), v.url()),
 	label: v.optional(v.string()),
@@ -38,6 +44,8 @@ export interface GiftBase {
 	wishlistId: string;
 	name: string;
 	description: string | null;
+	descriptionAppends: DescriptionAppend[];
+	editedAfterShareAt: Date | null;
 	links: GiftLink[];
 	price: number | null;
 	currency: string | null;

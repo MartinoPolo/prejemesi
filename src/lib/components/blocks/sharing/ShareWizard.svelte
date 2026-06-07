@@ -391,6 +391,13 @@
 							<div class={styles.permissionCheck()} aria-hidden="true">
 								<CheckIcon class="size-2.5" />
 							</div>
+							<span class={styles.permissionText()}>{m.share_permissions_edit()}</span
+							>
+						</div>
+						<div class={styles.permissionRow()}>
+							<div class={styles.permissionCheck()} aria-hidden="true">
+								<CheckIcon class="size-2.5" />
+							</div>
 							<span class={styles.permissionText()}
 								>{m.share_permissions_moderators()}</span
 							>
