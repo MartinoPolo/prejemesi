@@ -1,5 +1,6 @@
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { normalizeGiftLinks } from './gift_url.js';
+import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import type { DescriptionAppend, GiftLink, UpdateGiftInput } from './types.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 
@@ -66,8 +67,43 @@ export function computePreShareOwnerEdit(
 		}
 	}
 
+	// A per-segment description edit/delete is only valid within that segment's own grace window
+	// (REQ-3). Validate before building any updateData so the rejection short-circuits.
+	if (input.descriptionAppendEdit !== undefined) {
+		const target = current.descriptionAppends[input.descriptionAppendEdit.index];
+		if (target === undefined) {
+			return {
+				rejection: { status: 404, code: SERVER_ERROR.DESCRIPTION_APPEND_NOT_FOUND },
+				updateData: {},
+				changed: false,
+			};
+		}
+		if (!isWithinGraceWindow(target.addedAt, now)) {
+			return {
+				rejection: { status: 403, code: SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING },
+				updateData: {},
+				changed: false,
+			};
+		}
+	}
+
 	const updateData: Record<string, unknown> = {};
 	let changed = false;
+
+	// Per-segment edit/delete (within its window, already validated above). Editing resets the
+	// segment's addedAt — re-opening its window (debounce). A blank/null text deletes the segment.
+	// Takes precedence over a new-segment append: the two are mutually exclusive.
+	if (input.descriptionAppendEdit !== undefined) {
+		const { index, text } = input.descriptionAppendEdit;
+		const trimmed = text?.trim() ?? '';
+		updateData.descriptionAppends =
+			trimmed === ''
+				? current.descriptionAppends.filter((_, i) => i !== index)
+				: current.descriptionAppends.map((append, i) =>
+						i === index ? { text: trimmed, addedAt: now.toISOString() } : append,
+					);
+		changed = true;
+	}
 
 	// quantity (already known >= current when provided)
 	if (input.quantity !== undefined && input.quantity !== null) {
@@ -77,8 +113,12 @@ export function computePreShareOwnerEdit(
 		}
 	}
 
-	// description append engine
-	if (typeof input.description === 'string' && input.description.trim() !== '') {
+	// description append engine (skipped when a per-segment edit is supplied — mutually exclusive)
+	if (
+		input.descriptionAppendEdit === undefined &&
+		typeof input.description === 'string' &&
+		input.description.trim() !== ''
+	) {
 		if (isBlank(current.description)) {
 			// Empty-at-share edge: the frozen base is empty, so fill it directly (no append).
 			updateData.description = input.description;

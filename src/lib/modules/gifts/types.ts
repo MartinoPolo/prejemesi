@@ -168,11 +168,23 @@ export const GiftDraftInputSchema = v.object({
 
 export type GiftDraftInput = v.InferOutput<typeof GiftDraftInputSchema>;
 
+/**
+ * Edit or delete one existing description append by index, within that segment's own grace
+ * window (issue #83). `text: null` (or blank) deletes the segment; a non-blank `text` replaces it
+ * and resets its `addedAt` (re-opening the segment's window). Mutually exclusive with appending a
+ * new segment via {@link UpdateGiftInput.description}.
+ */
+export interface DescriptionAppendEdit {
+	index: number;
+	text: string | null;
+}
+
 /** Input for updating an existing gift */
 export interface UpdateGiftInput {
 	id: string;
 	name?: string;
 	description?: string | null;
+	descriptionAppendEdit?: DescriptionAppendEdit;
 	links?: GiftLink[] | null;
 	price?: number | null;
 	currency?: GiftCurrency | null;
@@ -187,6 +199,12 @@ export const UpdateGiftInputSchema = v.object({
 	id: v.string(),
 	name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
 	description: v.optional(v.nullable(v.string())),
+	descriptionAppendEdit: v.optional(
+		v.object({
+			index: v.pipe(v.number(), v.integer(), v.minValue(0)),
+			text: v.nullable(v.string()),
+		}),
+	),
 	links: v.optional(v.nullable(GiftLinksSchema)),
 	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
 	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),

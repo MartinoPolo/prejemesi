@@ -33,6 +33,10 @@
 		priorityLevels: GiftPriorityLevel[];
 		postShareLocked: boolean;
 		canDeleteSelectedGift: boolean;
+		/** When the selected gift's share grace window closes (issue #83), or null when none. */
+		graceExpiresAt: Date | null;
+		/** Reactive "now" from the page clock that keeps the grace countdown live. */
+		graceNow: Date;
 		isSubmitting: boolean;
 		isDeleting: boolean;
 		// Reserve modal
@@ -81,6 +85,8 @@
 		priorityLevels,
 		postShareLocked,
 		canDeleteSelectedGift,
+		graceExpiresAt,
+		graceNow,
 		isSubmitting,
 		isDeleting,
 		reserveModalOpen = $bindable(),
@@ -121,6 +127,8 @@
 		{isOwner}
 		{postShareLocked}
 		canDelete={canDeleteSelectedGift}
+		{graceExpiresAt}
+		{graceNow}
 		{isSubmitting}
 		{isDeleting}
 		{oncreate}

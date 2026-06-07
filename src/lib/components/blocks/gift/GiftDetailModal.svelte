@@ -18,6 +18,8 @@
 		isOwner?: boolean;
 		postShareLocked?: boolean;
 		canDelete?: boolean;
+		graceExpiresAt?: Date | null;
+		graceNow?: Date;
 		isSubmitting?: boolean;
 		isDeleting?: boolean;
 		oncreate?: (input: CreateGiftInput) => void;
@@ -36,6 +38,8 @@
 		isOwner = false,
 		postShareLocked = false,
 		canDelete = true,
+		graceExpiresAt = null,
+		graceNow = new Date(),
 		isSubmitting = false,
 		isDeleting = false,
 		oncreate,
@@ -72,6 +76,8 @@
 			{isOwner}
 			{postShareLocked}
 			{canDelete}
+			{graceExpiresAt}
+			{graceNow}
 			{isSubmitting}
 			{isDeleting}
 			{oncreate}

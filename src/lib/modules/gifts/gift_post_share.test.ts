@@ -192,6 +192,110 @@ describe('computePreShareOwnerEdit', () => {
 		});
 	});
 
+	describe('descriptionAppendEdit (per-segment grace window, issue #83)', () => {
+		const WITHIN = NOW.toISOString(); // addedAt == now → window open
+		const STALE = new Date(NOW.getTime() - 3 * 60 * 1000).toISOString(); // 3 min ago → closed
+
+		it('replaces a segment text within its window and resets its addedAt', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({
+					description: 'Original',
+					descriptionAppends: [
+						{ text: 'old note', addedAt: WITHIN },
+						{ text: 'keep me', addedAt: STALE },
+					],
+				}),
+				makeInput({ descriptionAppendEdit: { index: 0, text: 'fixed note' } }),
+				NOW,
+			);
+			expect(outcome.rejection).toBeNull();
+			expect(outcome.updateData.descriptionAppends).toEqual([
+				{ text: 'fixed note', addedAt: NOW.toISOString() },
+				{ text: 'keep me', addedAt: STALE },
+			]);
+			expect(outcome.changed).toBe(true);
+		});
+
+		it('deletes a segment within its window when text is null', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({
+					description: 'Original',
+					descriptionAppends: [
+						{ text: 'first', addedAt: STALE },
+						{ text: 'remove me', addedAt: WITHIN },
+					],
+				}),
+				makeInput({ descriptionAppendEdit: { index: 1, text: null } }),
+				NOW,
+			);
+			expect(outcome.rejection).toBeNull();
+			expect(outcome.updateData.descriptionAppends).toEqual([
+				{ text: 'first', addedAt: STALE },
+			]);
+			expect(outcome.changed).toBe(true);
+		});
+
+		it('deletes a segment when text is blank/whitespace', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({
+					description: 'Original',
+					descriptionAppends: [{ text: 'remove me', addedAt: WITHIN }],
+				}),
+				makeInput({ descriptionAppendEdit: { index: 0, text: '   ' } }),
+				NOW,
+			);
+			expect(outcome.updateData.descriptionAppends).toEqual([]);
+			expect(outcome.changed).toBe(true);
+		});
+
+		it('rejects 403 when editing a segment past its own window', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({
+					description: 'Original',
+					descriptionAppends: [{ text: 'frozen note', addedAt: STALE }],
+				}),
+				makeInput({ descriptionAppendEdit: { index: 0, text: 'too late' } }),
+				NOW,
+			);
+			expect(outcome.rejection).toEqual({ status: 403, code: 'CANNOT_EDIT_AFTER_SHARING' });
+			expect(outcome.updateData).toEqual({});
+		});
+
+		it('rejects 404 DESCRIPTION_APPEND_NOT_FOUND for an out-of-range index', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({
+					description: 'Original',
+					descriptionAppends: [{ text: 'only one', addedAt: WITHIN }],
+				}),
+				makeInput({ descriptionAppendEdit: { index: 5, text: 'nope' } }),
+				NOW,
+			);
+			expect(outcome.rejection).toEqual({
+				status: 404,
+				code: 'DESCRIPTION_APPEND_NOT_FOUND',
+			});
+		});
+
+		it('ignores a new-segment append when an append edit is also supplied', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({
+					description: 'Original',
+					descriptionAppends: [{ text: 'editable', addedAt: WITHIN }],
+				}),
+				makeInput({
+					description: 'should be ignored',
+					descriptionAppendEdit: { index: 0, text: 'edited' },
+				}),
+				NOW,
+			);
+			const appends = outcome.updateData.descriptionAppends as {
+				text: string;
+				addedAt: string;
+			}[];
+			expect(appends).toEqual([{ text: 'edited', addedAt: NOW.toISOString() }]);
+		});
+	});
+
 	describe('image / links / price / currency / priority', () => {
 		it('detects price change', () => {
 			const outcome = computePreShareOwnerEdit(

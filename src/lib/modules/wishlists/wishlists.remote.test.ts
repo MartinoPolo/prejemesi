@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 // ── Suppress SvelteKit's remote-function validator injected by the Vite transform
 vi.mock('@sveltejs/kit/internal', () => ({
@@ -66,6 +66,7 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 		shortId: 'wishlist.shortId',
 		status: 'wishlist.status',
 		sharedAt: 'wishlist.sharedAt',
+		eventDateEditedAt: 'wishlist.eventDateEditedAt',
 		deletedAt: 'wishlist.deletedAt',
 		createdAt: 'wishlist.createdAt',
 		updatedAt: 'wishlist.updatedAt',
@@ -216,6 +217,7 @@ function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string
 		description: null,
 		status: 'draft',
 		sharedAt: null,
+		eventDateEditedAt: null,
 		deletedAt: null,
 		archivedAt: null,
 		eventDate: null,
@@ -455,6 +457,80 @@ describe('updateWishlist', () => {
 				status: 400,
 				message: 'CANNOT_MODIFY_ARCHIVED_WISHLIST',
 			});
+		});
+	});
+
+	describe('event date grace window (issue #83)', () => {
+		const nowFake = new Date('2024-03-01T12:00:00.000Z');
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(nowFake);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('allows editing the event date while the window is open and bumps the debounce timestamp', async () => {
+			const newDate = new Date('2026-12-24T00:00:00Z');
+			// shared 60s ago, never re-edited → window open
+			mockDbInstance.pushResult([
+				makeWishlistRow({
+					sharedAt: new Date(nowFake.getTime() - 60_000),
+					eventDateEditedAt: null,
+					status: 'active',
+				}),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ eventDate: newDate })]);
+
+			await callUpdateWishlist(makeOwnerAuthContext(), {
+				id: WISHLIST_ID,
+				eventDate: newDate,
+			});
+
+			const payload = mockDbInstance.lastSetPayload();
+			expect(payload).toMatchObject({ eventDate: newDate });
+			expect(payload?.eventDateEditedAt).toBeInstanceOf(Date);
+		});
+
+		it('keeps the window open via a recent eventDateEditedAt even when sharedAt is old (debounce)', async () => {
+			const newDate = new Date('2026-12-24T00:00:00Z');
+			mockDbInstance.pushResult([
+				makeWishlistRow({
+					sharedAt: new Date(nowFake.getTime() - 10 * 60_000), // shared 10 min ago
+					eventDateEditedAt: new Date(nowFake.getTime() - 30_000), // last date edit 30s ago
+					status: 'active',
+				}),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ eventDate: newDate })]);
+
+			await callUpdateWishlist(makeOwnerAuthContext(), {
+				id: WISHLIST_ID,
+				eventDate: newDate,
+			});
+
+			expect(mockDbInstance.lastSetPayload()).toMatchObject({ eventDate: newDate });
+		});
+
+		it('drops the event date once the window has closed (stale client cannot bypass server)', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({
+					sharedAt: new Date(nowFake.getTime() - 3 * 60_000), // shared 3 min ago → closed
+					eventDateEditedAt: null,
+					status: 'active',
+				}),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow()]);
+
+			await callUpdateWishlist(makeOwnerAuthContext(), {
+				id: WISHLIST_ID,
+				eventDate: new Date('2026-12-24T00:00:00Z'),
+			});
+
+			const payload = mockDbInstance.lastSetPayload();
+			expect(payload && 'eventDate' in payload).toBe(false);
+			expect(payload && 'eventDateEditedAt' in payload).toBe(false);
 		});
 	});
 
