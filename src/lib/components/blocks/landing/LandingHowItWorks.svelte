@@ -19,7 +19,7 @@
 			{#each [{ icon: ListIcon, title: m.landing_how_step1_title(), description: m.landing_how_step1_description() }, { icon: GiftIcon, title: m.landing_how_step2_title(), description: m.landing_how_step2_description() }, { icon: Share2Icon, title: m.landing_how_step3_title(), description: m.landing_how_step3_description() }, { icon: SparklesIcon, title: m.landing_how_step4_title(), description: m.landing_how_step4_description() }] as step, index (step.title)}
 				<div class="flex flex-col items-center gap-4 text-center">
 					<div
-						class="group relative flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-background text-primary transition-all hover:border-primary hover:bg-primary/10"
+						class="group relative flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-background text-primary transition-all hover:border-primary hover:bg-[color-mix(in_oklab,var(--primary)_10%,var(--background))]"
 					>
 						<span
 							class="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground"

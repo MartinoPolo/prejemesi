@@ -22,7 +22,9 @@ Darecky ("dárečky" = presents in Czech) is a shareable wishlist web app where 
 **Wishlist theme tokens** — The `--wishlist-*` CSS custom properties that express a wishlist's color identity (primary, accent, surface). Scoped to the wishlist page; must not leak into the app shell.
 **Image-frame fill** — The `--frame-fill` background color shown behind letterboxed images. Resolved from a priority chain: slot-specific override → wishlist theme surface → global fallback.
 **OKLCH palette** — The color-derivation strategy for custom wishlist themes: one input color produces a harmonious full palette via OKLCH lightness/chroma adjustments, computed client-side for live preview.
-**Sharing** — Distributing a wishlist link; locks the owner from editing/removing existing gifts.
+**Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). See Post-share editing.
+**Post-share grace window** — A 2-minute debounced window after any read-only transition (sharing, a description append, the event-date lock) during which the change is fully reversible; the timer resets on each edit.
+**Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter.
 **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
 **Unfollowed** — A wishlist the user was previously invited to / followed but has since unfollowed. Tracked for re-discovery via toggle on the Sledované page.
 **Gift draft** — An unsaved, editable gift row (name, notes, link(s), price) in the import or batch grid, before it is committed as a real Gift.
@@ -47,38 +49,38 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 
 ## Core Features
 
-| Feature                                                                           | Status      | Version     |
-| --------------------------------------------------------------------------------- | ----------- | ----------- |
-| Authentication (email/password, Google, magic link)                               | Planned     | v1 (PRD #1) |
-| Anonymous visitor mode (display name + optional email)                            | Planned     | v1          |
-| Wishlist CRUD (create, edit, archive)                                             | Planned     | v1          |
-| Gift management (add, edit, remove, reorder, image fit/crop)                      | In Progress | v1          |
-| Role system (owner, moderator, visitor)                                           | Planned     | v1          |
-| Reservation system (reserve/unreserve, quantity support)                          | Planned     | v1          |
-| Like system (persistent interest indicator)                                       | Planned     | v1          |
-| Sharing (visitor links, moderator invite links, social buttons)                   | Planned     | v1          |
-| Notification system (email critical, in-app batched)                              | Planned     | v1          |
-| Three nav pages (Moje seznamy / Spravované / Sledované, no Dashboard)             | Planned     | v1          |
-| Theming (wishlist themes + app background theme + token separation)               | In Progress | v1          |
-| i18n (Czech primary, English secondary)                                           | Planned     | v1          |
-| Profile & settings (name, email, avatar, notification prefs, appearance theme)    | In Progress | v1          |
-| Owner surprise protection (no reservation visibility, per-field post-share rules) | Planned     | v1          |
-| Mark gift as received                                                             | Planned     | v1          |
-| Comments on gifts                                                                 | Planned     | v2          |
-| Mobile app + push notifications                                                   | Planned     | v2          |
-| Price tracking / price drop alerts                                                | Planned     | v2          |
-| Social features (group gifting, cost splitting)                                   | Planned     | v2          |
-| Gift categories/tags                                                              | Planned     | v2          |
-| Auto-suggest products (AI/price comparison APIs)                                  | Planned     | v2          |
-| CSV / Google Sheets import (3-step wizard)                                        | Done        | v1.x        |
-| Bulk gift entry (shared draft grid, large dialog)                                 | Done        | v1.x        |
-| Gift metadata enrichment (link → image/price/title)                               | Planned     | v1.x        |
-| Multiple links per gift (max 10)                                                  | Done        | v1.x        |
+| Feature                                                                        | Status      | Version     |
+| ------------------------------------------------------------------------------ | ----------- | ----------- |
+| Authentication (email/password, Google, magic link)                            | Planned     | v1 (PRD #1) |
+| Anonymous visitor mode (display name + optional email)                         | Planned     | v1          |
+| Wishlist CRUD (create, edit, archive)                                          | Planned     | v1          |
+| Gift management (add, edit, remove, reorder, image fit/crop)                   | In Progress | v1          |
+| Role system (owner, moderator, visitor)                                        | Planned     | v1          |
+| Reservation system (reserve/unreserve, quantity support)                       | Planned     | v1          |
+| Like system (persistent interest indicator)                                    | Planned     | v1          |
+| Sharing (visitor links, moderator invite links, social buttons)                | Planned     | v1          |
+| Notification system (email critical, in-app batched)                           | Planned     | v1          |
+| Three nav pages (Moje seznamy / Spravované / Sledované, no Dashboard)          | Planned     | v1          |
+| Theming (wishlist themes + app background theme + token separation)            | In Progress | v1          |
+| i18n (Czech primary, English secondary)                                        | Planned     | v1          |
+| Profile & settings (name, email, avatar, notification prefs, appearance theme) | In Progress | v1          |
+| Owner surprise protection (no reservation visibility, post-share edit rules)   | Planned     | v1          |
+| Mark gift as received                                                          | Planned     | v1          |
+| Comments on gifts                                                              | Planned     | v2          |
+| Mobile app + push notifications                                                | Planned     | v2          |
+| Price tracking / price drop alerts                                             | Planned     | v2          |
+| Social features (group gifting, cost splitting)                                | Planned     | v2          |
+| Gift categories/tags                                                           | Planned     | v2          |
+| Auto-suggest products (AI/price comparison APIs)                               | Planned     | v2          |
+| CSV / Google Sheets import (3-step wizard)                                     | Done        | v1.x        |
+| Bulk gift entry (shared draft grid, large dialog)                              | Done        | v1.x        |
+| Gift metadata enrichment (link → image/price/title)                            | Planned     | v1.x        |
+| Multiple links per gift (max 10)                                               | Done        | v1.x        |
 
 ## Key Constraints
 
 - Owner NEVER sees reservation state — this is the core product invariant. Enforced at API level (strip data) + UI level (don't render).
-- After sharing, owner editing of pre-share gifts follows per-field rules (not a blanket lock): `name` frozen + delete blocked; image/links/price/currency/priority freely editable; quantity raise-only; description append-only (frozen base + dated accent appends, or fills the main field if empty at share). All rules apply uniformly regardless of reservation state (never leak it). Post-share edits set `editedAfterShareAt` (drives the "Upraveno po sdílení" badge for all visitors) and send no notification.
+- After sharing, the owner can edit existing gifts' presentation/info fields (image, links, price, priority) + append to the description, and raise (never lower) quantity; `name` is frozen and delete is blocked. Edits apply uniformly to all gifts (never reservation-conditional) and are surfaced via an "Upraveno po sdílení" badge. A 2-min debounced grace window after sharing allows full edit/undo.
 - Reserved gifts cannot be removed by moderators — must contact gifter first.
 - Editing a reserved gift by moderator notifies the gifter (email if known).
 - Owner self-promoting to moderator triggers notification to all visitors.

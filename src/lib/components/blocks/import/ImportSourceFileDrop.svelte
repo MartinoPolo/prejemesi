@@ -94,7 +94,7 @@
 
 <button
 	type="button"
-	class="border-border-strong hover:border-primary/50 hover:bg-primary/5 flex w-full flex-col items-center gap-3 rounded-lg border-2 border-dashed px-6 py-10 transition-colors {isDragOver
+	class="border-border-strong hover:border-primary/50 hover:bg-primary/5 flex h-full w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-6 transition-colors {isDragOver
 		? 'border-primary bg-primary/5'
 		: ''} {disabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'}"
 	ondrop={handleDrop}

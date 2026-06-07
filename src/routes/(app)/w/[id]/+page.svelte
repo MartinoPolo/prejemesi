@@ -301,7 +301,8 @@
 	}
 
 	function handleEditImage() {
-		// Path is resolve()-d; the #image hash is a deep-link the settings page reads (page.url.hash).
+		// resolve() handles the route; the #image fragment cannot be expressed through it,
+		// so the rule (which only accepts a bare resolve() call for goto) is disabled here.
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		void goto(`${resolve('/(app)/w/[id]/settings', { id: shortId })}#image`);
 	}
