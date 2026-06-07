@@ -22,7 +22,9 @@ Darecky ("dárečky" = presents in Czech) is a shareable wishlist web app where 
 **Wishlist theme tokens** — The `--wishlist-*` CSS custom properties that express a wishlist's color identity (primary, accent, surface). Scoped to the wishlist page; must not leak into the app shell.
 **Image-frame fill** — The `--frame-fill` background color shown behind letterboxed images. Resolved from a priority chain: slot-specific override → wishlist theme surface → global fallback.
 **OKLCH palette** — The color-derivation strategy for custom wishlist themes: one input color produces a harmonious full palette via OKLCH lightness/chroma adjustments, computed client-side for live preview.
-**Sharing** — Distributing a wishlist link; locks the owner from editing/removing existing gifts.
+**Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). See Post-share editing.
+**Post-share grace window** — A 2-minute debounced window after any read-only transition (sharing, a description append, the event-date lock) during which the change is fully reversible; the timer resets on each edit.
+**Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter.
 **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
 **Unfollowed** — A wishlist the user was previously invited to / followed but has since unfollowed. Tracked for re-discovery via toggle on the Sledované page.
 **Gift draft** — An unsaved, editable gift row (name, notes, link(s), price) in the import or batch grid, before it is committed as a real Gift.
@@ -62,7 +64,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | Theming (wishlist themes + app background theme + token separation)            | In Progress | v1          |
 | i18n (Czech primary, English secondary)                                        | Planned     | v1          |
 | Profile & settings (name, email, avatar, notification prefs, appearance theme) | In Progress | v1          |
-| Owner surprise protection (no reservation visibility, edit lock after sharing) | Planned     | v1          |
+| Owner surprise protection (no reservation visibility, post-share edit rules)   | Planned     | v1          |
 | Mark gift as received                                                          | Planned     | v1          |
 | Comments on gifts                                                              | Planned     | v2          |
 | Mobile app + push notifications                                                | Planned     | v2          |
@@ -78,7 +80,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 ## Key Constraints
 
 - Owner NEVER sees reservation state — this is the core product invariant. Enforced at API level (strip data) + UI level (don't render).
-- Owner cannot edit/remove gifts after sharing; can only add new ones.
+- After sharing, the owner can edit existing gifts' presentation/info fields (image, links, price, priority) + append to the description, and raise (never lower) quantity; `name` is frozen and delete is blocked. Edits apply uniformly to all gifts (never reservation-conditional) and are surfaced via an "Upraveno po sdílení" badge. A 2-min debounced grace window after sharing allows full edit/undo.
 - Reserved gifts cannot be removed by moderators — must contact gifter first.
 - Editing a reserved gift by moderator notifies the gifter (email if known).
 - Owner self-promoting to moderator triggers notification to all visitors.

@@ -13,10 +13,38 @@ Rejected: Partial visibility (e.g., showing counts but not names) — still leak
 
 ### Sharing locks owner editing
 
-Decided: 2026-05-29
+Decided: 2026-05-29 — **Revised 2026-06-07** by "Post-share editing: per-field" below (blanket lock → per-field).
 What: Once a wishlist is shared, the owner can only add new gifts. Edit and remove are locked for existing gifts.
 Why: Prevents the owner from accidentally removing a reserved gift or inferring reservation state from blocked actions.
 Rejected: Soft-delete approach (owner thinks they removed it but it persists) — too deceptive, confusing edge cases.
+
+### Post-share editing: per-field, name is the identity anchor
+
+Decided: 2026-06-07 (revises "Sharing locks owner editing")
+What: After sharing, the owner can still edit existing gifts' presentation/info fields — image (add/replace/remove/recrop), links (add/edit/remove), price/currency, priority, and description (append-only, see below). `name` is frozen — it is the gift's identity, what the gifter reserved against. Delete stays blocked. `quantity` is raise-only relative to its current value (never lowered). Unlocked fields are editable for ALL pre-share gifts uniformly — never conditional on reservation state.
+Why: Owners legitimately need to add/fix an image, add alternative links, correct a price, or clarify details after sharing — none of these change what was reserved (the name). Uniform per-field unlock keeps the no-inference invariant intact. Lowering quantity is forbidden because clamping it to the reserved count would itself leak that count.
+Rejected: Blanket lock (too rigid); reservation-conditional editing (leaks reservation state); editable name (gifter mismatch); quantity lowered with silent server clamp (the clamp leaks the reserved count); raise-only relative to reserved count rather than current value (same leak).
+
+### Append-only description after sharing
+
+Decided: 2026-06-07
+What: At share time the existing `description` freezes (read-only). Post-share clarifications are added as immutable appended segments (`{ text, addedAt }`), rendered in an accent color with their date. The gifter always sees the original text they reserved against plus what changed since. If `description` was empty at share time, the first post-share text goes into the main field instead (nothing to preserve). Segments cannot be edited/deleted afterward — except within the grace window below.
+Why: Description is the field a gifter actually relies on; preserving the original + showing additions transparently protects them without forbidding clarification.
+Rejected: Free editing with just an "edited" badge (loses the original the gifter relied on); structured revision history (over-engineered).
+
+### Post-share grace window: 2-min debounced reversibility
+
+Decided: 2026-06-07
+What: Every transition to read-only is fully reversible for 2 minutes after the LAST edit to that thing (debounced — the timer resets on each edit; continued editing keeps it open, then it freezes 2 min after the last change). Applies to (a) sharing itself — during the window the owner has full edit incl. `name` + delete, as if unshared — (b) each appended description segment, and (c) the wishlist event date. A countdown communicates the remaining time.
+Why: Owners share, then immediately spot a typo or the wrong item. A short debounced window allows last-minute corrections / undoing a premature lock without a separate undo flow.
+Rejected: Hard lock at the instant of sharing (no recovery from a premature share); fixed non-debounced window (cuts an owner off mid-correction).
+
+### Post-share edit transparency: uniform indicators, no notification
+
+Decided: 2026-06-07
+What: Edits made after sharing are surfaced to ALL visitors uniformly (never reservation-conditional): a per-gift "Upraveno po sdílení" badge driven by a dedicated `editedAfterShareAt` timestamp (not `updatedAt`, which reorder/mark-received also bump), plus the accent-colored description appends. No push/email notification fires — the scaffolded `RESERVED_GIFT_EDITED` type stays unused for owner edits. Per-field markers (e.g. price old→new) deferred.
+Why: Gifters should notice a gift changed, but a notification per edit is noise; uniform visual indicators leak nothing and the owner sees identical UI whether or not the gift is reserved.
+Rejected: Reservation-conditional indicators (inference leak); notifying gifters on every owner edit (noise); per-field diffs now (deferred).
 
 ### Single reservation state (no "bought" step)
 
