@@ -41,7 +41,8 @@
 		aria-invalid={hasError ? true : undefined}
 		aria-describedby={errorDescribedById}
 		{disabled}
-		class="{hasError ? 'border-destructive! ring-destructive/20! ring-3!' : ''} pr-11!"
+		state={hasError ? 'error' : 'default'}
+		class="pr-11!"
 	/>
 	<button
 		class="password-toggle"

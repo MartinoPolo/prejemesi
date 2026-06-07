@@ -82,7 +82,7 @@
 					aria-invalid={emailError ? true : undefined}
 					aria-describedby={emailError ? 'reset-email-error' : undefined}
 					disabled={loading}
-					class={emailError ? 'border-destructive! ring-destructive/20! ring-3!' : ''}
+					state={emailError ? 'error' : 'default'}
 				/>
 			</AuthFormField>
 		</div>

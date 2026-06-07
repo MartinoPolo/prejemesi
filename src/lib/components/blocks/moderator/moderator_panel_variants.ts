@@ -18,10 +18,10 @@ export const moderatorPanelVariants = tv({
 		inviteToken: 'flex-1 truncate font-mono text-xs text-muted-foreground',
 		inviteDate: 'text-xs text-muted-foreground',
 		selfPromoteWarning:
-			'flex flex-col gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200',
+			'flex flex-col gap-2 rounded-lg border border-[color-mix(in_oklch,var(--status-warning)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-warning)_12%,transparent)] p-4 text-sm text-[color-mix(in_oklch,var(--status-warning)_70%,var(--foreground))]',
 		selfPromoteTitle: 'font-medium',
 		selfPromoteDescription: 'text-xs',
 		disclosureBanner:
-			'flex items-center gap-2 rounded-lg border border-blue-500/25 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200',
+			'flex items-center gap-2 rounded-lg border border-[color-mix(in_oklch,var(--status-info)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-info)_12%,transparent)] px-4 py-3 text-sm text-status-info',
 	},
 });

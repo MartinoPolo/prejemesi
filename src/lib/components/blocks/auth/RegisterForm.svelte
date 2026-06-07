@@ -135,7 +135,7 @@
 				aria-invalid={nameError ? true : undefined}
 				aria-describedby={nameError ? 'reg-name-error' : undefined}
 				disabled={loading}
-				class={nameError ? 'border-destructive! ring-destructive/20! ring-3!' : ''}
+				state={nameError ? 'error' : 'default'}
 			/>
 		</AuthFormField>
 
@@ -150,7 +150,7 @@
 				aria-invalid={emailError ? true : undefined}
 				aria-describedby={emailError ? 'reg-email-error' : undefined}
 				disabled={loading}
-				class={emailError ? 'border-destructive! ring-destructive/20! ring-3!' : ''}
+				state={emailError ? 'error' : 'default'}
 			/>
 		</AuthFormField>
 

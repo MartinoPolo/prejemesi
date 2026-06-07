@@ -62,36 +62,34 @@
 			<div class="flex shrink-0 items-center gap-0.5">
 				<Button
 					intent="ghost"
-					size="sm"
-					class="size-7 p-0"
+					size="icon-sm"
 					onclick={onmoveup}
 					aria-label="Move up"
 					disabled={!canMoveUp || disabled}
 				>
-					<ArrowUpIcon class="size-3.5" />
+					<ArrowUpIcon />
 				</Button>
 				<Button
 					intent="ghost"
-					size="sm"
-					class="size-7 p-0"
+					size="icon-sm"
 					onclick={onmovedown}
 					aria-label="Move down"
 					disabled={!canMoveDown || disabled}
 				>
-					<ArrowDownIcon class="size-3.5" />
+					<ArrowDownIcon />
 				</Button>
 			</div>
 		{/if}
 
 		<Button
 			intent="ghost"
-			size="sm"
-			class="size-7 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+			size="icon-sm"
+			class="shrink-0 text-muted-foreground hover:text-destructive"
 			{disabled}
 			onclick={onremove}
 			aria-label={m.gift_link_remove()}
 		>
-			<XIcon class="size-3.5" />
+			<XIcon />
 		</Button>
 	</div>
 

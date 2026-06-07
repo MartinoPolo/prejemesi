@@ -12,11 +12,11 @@ export const wishlistHeaderVariants = tv({
 		metaRowOnBanner: 'flex flex-wrap items-center gap-3 text-sm text-white/70',
 		actionRow: 'flex items-center gap-2',
 		archivedBanner:
-			'flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200',
+			'flex items-center gap-2 rounded-lg border border-[color-mix(in_oklch,var(--status-warning)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-warning)_12%,transparent)] px-4 py-3 text-sm text-[color-mix(in_oklch,var(--status-warning)_70%,var(--foreground))]',
 		sharedBanner:
-			'flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200',
+			'flex items-center gap-2 rounded-lg border border-[color-mix(in_oklch,var(--status-warning)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-warning)_12%,transparent)] px-4 py-3 text-sm text-[color-mix(in_oklch,var(--status-warning)_70%,var(--foreground))]',
 		draftBanner:
-			'flex items-center gap-2 rounded-lg border border-blue-500/25 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200',
+			'flex items-center gap-2 rounded-lg border border-[color-mix(in_oklch,var(--status-info)_30%,transparent)] bg-[color-mix(in_oklch,var(--status-info)_12%,transparent)] px-4 py-3 text-sm text-status-info',
 		disclosureBanner:
 			'flex items-center gap-2 rounded-lg border border-purple-500/25 bg-purple-500/10 px-4 py-3 text-sm text-purple-800 dark:text-purple-200',
 	},
