@@ -299,6 +299,9 @@
 	}
 
 	function handleEditImage() {
+		// resolve() handles the route; the #image fragment cannot be expressed through it,
+		// so the rule (which only accepts a bare resolve() call for goto) is disabled here.
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		void goto(`${resolve('/(app)/w/[id]/settings', { id: shortId })}#image`);
 	}
 
