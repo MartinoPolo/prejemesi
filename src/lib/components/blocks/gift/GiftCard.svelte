@@ -12,6 +12,8 @@
 	import { formatPrice, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { giftCardVariants } from './gift_card_variants.js';
+	import GiftEditedBadge from './GiftEditedBadge.svelte';
+	import GiftDescription from './GiftDescription.svelte';
 
 	interface GiftCardProps {
 		gift: GiftByRole;
@@ -74,6 +76,8 @@
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} />
 		</div>
 
+		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />
+
 		{#if gift.price !== null}
 			<span class={styles.price()}>{priceDisplay}</span>
 		{:else}
@@ -96,6 +100,12 @@
 		<div class={styles.linkList()}>
 			<GiftLinkList links={gift.links} maxVisible={3} />
 		</div>
+
+		<GiftDescription
+			description={gift.description}
+			descriptionAppends={gift.descriptionAppends}
+			class="mt-1"
+		/>
 	</div>
 
 	<!-- Footer: like + reserve (visitor/moderator only) -->

@@ -12,8 +12,8 @@
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import GiftImageCropCanvas from './GiftImageCropCanvas.svelte';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
-	import * as Alert from '$lib/components/base/alert/index.js';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
+	import GiftDescription from './GiftDescription.svelte';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -55,7 +55,7 @@
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
 		isOwner: boolean;
-		canEdit: boolean;
+		postShareLocked: boolean;
 		canDelete: boolean;
 		isSubmitting: boolean;
 		isDeleting: boolean;
@@ -71,7 +71,7 @@
 		wishlistId,
 		priorityLevels,
 		isOwner,
-		canEdit,
+		postShareLocked,
 		canDelete,
 		isSubmitting,
 		isDeleting,
@@ -115,8 +115,14 @@
 
 	const styles = giftDetailModalVariants();
 
+	let descriptionAppendText = $state('');
+
 	const isEdit = $derived(mode === 'edit');
-	const isEditLocked = $derived(isEdit && !canEdit);
+	const locked = $derived(isEdit && postShareLocked);
+	// Reads the local seeded `description` copy (not the `gift` prop) so the frozen/append
+	// branch stays self-contained and never re-toggles from a reactive prop change.
+	const descriptionFrozen = $derived(locked && description.trim() !== '');
+	const currentQuantity = $derived(gift?.quantity ?? 1);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
@@ -161,10 +167,13 @@
 				priorityLevelId: priorityLevelId || null,
 			});
 		} else if (mode === 'edit' && gift !== null) {
+			const descriptionPayload = descriptionFrozen
+				? descriptionAppendText.trim() || null
+				: description.trim() || null;
 			onupdate?.({
 				id: gift.id,
 				name: name.trim(),
-				description: description.trim() || null,
+				description: descriptionPayload,
 				links: normalizedLinks,
 				price: parsedPrice,
 				currency,
@@ -237,15 +246,7 @@
 
 	<!-- Right column: form -->
 	<div class={styles.detailColumn()}>
-		{#if isEditLocked}
-			<Alert.Root tone="warning" class="mb-3">
-				<LockIcon />
-				<Alert.Description>{m.server_error_cannot_edit_after_sharing()}</Alert.Description>
-			</Alert.Root>
-		{/if}
-
-		<!-- Editable fields are disabled once the list is shared (existing gifts) -->
-		<fieldset class="contents" disabled={isEditLocked}>
+		<fieldset class="contents">
 			<!-- Name -->
 			<div class={styles.formField()}>
 				<Label for="gift-name">{m.gift_name_label()}</Label>
@@ -253,31 +254,45 @@
 					id="gift-name"
 					bind:value={name}
 					placeholder={m.gift_name_placeholder()}
+					disabled={locked}
 					aria-invalid={nameError !== '' ? true : undefined}
 				/>
 				{#if nameError}
 					<span class="text-xs text-destructive">{nameError}</span>
 				{/if}
+				{#if locked}
+					<HelpText>
+						<LockIcon class="size-3" />
+						{m.gift_name_frozen_hint()}
+					</HelpText>
+				{/if}
 			</div>
 
 			<!-- Description -->
 			<div class="mt-3 {styles.formField()}">
-				<Label for="gift-description">{m.gift_description_label()}</Label>
-				<Textarea
-					id="gift-description"
-					bind:value={description}
-					placeholder={m.gift_description_placeholder()}
-					rows={3}
-				/>
+				{#if descriptionFrozen}
+					<Label>{m.gift_description_label()}</Label>
+					<GiftDescription
+						description={gift?.description ?? null}
+						descriptionAppends={gift?.descriptionAppends ?? []}
+					/>
+					<Label class="mt-2">{m.gift_description_add_note_label()}</Label>
+					<Textarea bind:value={descriptionAppendText} rows={2} />
+					<HelpText>{m.gift_description_add_note_help()}</HelpText>
+				{:else}
+					<Label for="gift-description">{m.gift_description_label()}</Label>
+					<Textarea
+						id="gift-description"
+						bind:value={description}
+						placeholder={m.gift_description_placeholder()}
+						rows={3}
+					/>
+				{/if}
 			</div>
 
 			<!-- Links -->
 			<div class="mt-3 {styles.formField()}">
-				<GiftLinkEditor
-					{links}
-					disabled={isEditLocked}
-					onlinkschange={(updated) => (links = updated)}
-				/>
+				<GiftLinkEditor {links} onlinkschange={(updated) => (links = updated)} />
 			</div>
 
 			<!-- Price + Currency -->
@@ -394,9 +409,12 @@
 					id="gift-quantity"
 					bind:value={quantity}
 					type="number"
-					min="1"
+					min={locked ? String(currentQuantity) : '1'}
 					placeholder="1"
 				/>
+				{#if locked}
+					<HelpText>{m.gift_quantity_frozen_help()}</HelpText>
+				{/if}
 			</div>
 
 			<!-- Priority -->
@@ -433,11 +451,7 @@
 
 		<!-- Actions -->
 		<div class={styles.formActions()}>
-			<Button
-				class={styles.submitButton()}
-				disabled={isSubmitting || isEditLocked}
-				onclick={handleSubmit}
-			>
+			<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
 				{#if isSubmitting}
 					{m.saving()}
 				{:else}

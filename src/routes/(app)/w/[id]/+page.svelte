@@ -251,28 +251,30 @@
 
 	// ── Computed: can user edit/delete the selected gift? ────────────────────
 
-	const canEditSelectedGift = $derived.by(() => {
+	// True when the owner is editing a gift that existed at share time — name frozen,
+	// delete blocked, quantity raise-only, description append-only (issue #82).
+	const postShareLockSelectedGift = $derived.by(() => {
 		if (selectedGift === null) {
 			return false;
 		}
 		if (isModerator) {
-			return true;
+			return false;
 		}
-		if (isOwner) {
-			if (wishlist.sharedAt !== null) {
-				return new Date(selectedGift.createdAt) > new Date(wishlist.sharedAt);
-			}
-			return true;
+		if (isOwner && wishlist.sharedAt !== null) {
+			return new Date(selectedGift.createdAt) <= new Date(wishlist.sharedAt);
 		}
 		return false;
 	});
 
 	const canDeleteSelectedGift = $derived.by(() => {
-		if (!canEditSelectedGift) {
+		if (selectedGift === null) {
 			return false;
 		}
+		if (postShareLockSelectedGift) {
+			return false; // delete stays blocked post-share
+		}
 		if (
-			'reservedCount' in selectedGift! &&
+			'reservedCount' in selectedGift &&
 			(selectedGift as { reservedCount: number }).reservedCount > 0
 		) {
 			return false;
@@ -299,6 +301,8 @@
 	}
 
 	function handleEditImage() {
+		// Path is resolve()-d; the #image hash is a deep-link the settings page reads (page.url.hash).
+		// eslint-disable-next-line svelte/no-navigation-without-resolve
 		void goto(`${resolve('/(app)/w/[id]/settings', { id: shortId })}#image`);
 	}
 
@@ -712,7 +716,7 @@
 	{giftModalMode}
 	{selectedGift}
 	{priorityLevels}
-	{canEditSelectedGift}
+	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
 	{isSubmitting}
 	{isDeleting}

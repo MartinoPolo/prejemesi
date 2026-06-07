@@ -22,6 +22,7 @@ import {
 	type GiftForVisitor,
 } from './types.js';
 import { normalizeGiftLinks } from './gift_url.js';
+import { computePreShareOwnerEdit, jsonChanged } from './gift_post_share.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
@@ -49,6 +50,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			wishlistId: gift.wishlistId,
 			name: gift.name,
 			description: gift.description,
+			descriptionAppends: gift.descriptionAppends,
+			editedAfterShareAt: gift.editedAfterShareAt,
 			links: gift.links,
 			price: gift.price,
 			currency: gift.currency,
@@ -74,6 +77,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			wishlistId: row.wishlistId,
 			name: row.name,
 			description: row.description,
+			descriptionAppends: row.descriptionAppends,
+			editedAfterShareAt: row.editedAfterShareAt,
 			links: row.links,
 			price: row.price,
 			currency: row.currency,
@@ -176,6 +181,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			wishlistId: row.wishlistId,
 			name: row.name,
 			description: row.description,
+			descriptionAppends: row.descriptionAppends,
+			editedAfterShareAt: row.editedAfterShareAt,
 			links: row.links,
 			price: row.price,
 			currency: row.currency,
@@ -256,46 +263,88 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
 	assertWishlistMutable(wishlistRow);
 
-	// Edit lock: owner cannot edit existing gifts after sharing
+	const now = new Date();
 	const isShared = wishlistRow.sharedAt !== null;
-	if (role === 'owner' && isShared) {
-		// Check if this gift was created before sharing
-		if (giftRow.createdAt <= wishlistRow.sharedAt!) {
-			error(403, SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING);
+	// An owner editing a gift that existed at share time follows the per-field rules (REQ-4/5):
+	// name is locked, quantity may only rise, description edits accrue as appends. Moderators and
+	// owners editing post-share-created gifts fall through to the full per-field write below.
+	const isPreShareOwnerEdit =
+		role === 'owner' && isShared && giftRow.createdAt <= wishlistRow.sharedAt!;
+
+	if (isPreShareOwnerEdit) {
+		const outcome = computePreShareOwnerEdit(giftRow, input, now);
+		if (outcome.rejection !== null) {
+			error(outcome.rejection.status, outcome.rejection.code);
 		}
+
+		const updateData: Partial<typeof gift.$inferInsert> = {
+			...outcome.updateData,
+			updatedAt: now,
+		};
+		if (outcome.changed) {
+			updateData.editedAfterShareAt = now;
+		}
+
+		const [updated] = await database
+			.update(gift)
+			.set(updateData)
+			.where(eq(gift.id, input.id))
+			.returning();
+
+		return updated;
 	}
 
-	const updateData: Partial<typeof gift.$inferInsert> = { updatedAt: new Date() };
+	const updateData: Partial<typeof gift.$inferInsert> = { updatedAt: now };
+	let didChange = false;
 
-	if (input.name !== undefined) {
+	if (input.name !== undefined && input.name !== giftRow.name) {
 		updateData.name = input.name;
+		didChange = true;
 	}
-	if (input.description !== undefined) {
+	if (input.description !== undefined && input.description !== giftRow.description) {
 		updateData.description = input.description;
+		didChange = true;
 	}
 	if (input.links !== undefined) {
-		updateData.links = normalizeGiftLinks(input.links);
+		const normalized = normalizeGiftLinks(input.links);
+		if (jsonChanged(normalized, giftRow.links)) {
+			updateData.links = normalized;
+			didChange = true;
+		}
 	}
-	if (input.price !== undefined) {
+	if (input.price !== undefined && input.price !== giftRow.price) {
 		updateData.price = input.price;
+		didChange = true;
 	}
-	if (input.currency !== undefined) {
+	if (input.currency !== undefined && input.currency !== giftRow.currency) {
 		updateData.currency = input.currency;
+		didChange = true;
 	}
-	if (input.imageUrl !== undefined) {
+	if (input.imageUrl !== undefined && input.imageUrl !== giftRow.imageUrl) {
 		updateData.imageUrl = input.imageUrl;
+		didChange = true;
 	}
-	if (input.imageKey !== undefined) {
+	if (input.imageKey !== undefined && input.imageKey !== giftRow.imageKey) {
 		updateData.imageKey = input.imageKey;
+		didChange = true;
 	}
-	if (input.imageMeta !== undefined) {
+	if (input.imageMeta !== undefined && jsonChanged(input.imageMeta, giftRow.imageMeta)) {
 		updateData.imageMeta = input.imageMeta;
+		didChange = true;
 	}
-	if (input.quantity !== undefined) {
+	if (input.quantity !== undefined && input.quantity !== giftRow.quantity) {
 		updateData.quantity = input.quantity;
+		didChange = true;
 	}
-	if (input.priorityLevelId !== undefined) {
+	if (input.priorityLevelId !== undefined && input.priorityLevelId !== giftRow.priorityLevelId) {
 		updateData.priorityLevelId = input.priorityLevelId;
+		didChange = true;
+	}
+
+	// Transparency: any post-share edit (moderator, or owner on a post-share-created gift) that
+	// actually changes a field flags the gift as edited after sharing (REQ-6).
+	if (isShared && didChange) {
+		updateData.editedAfterShareAt = now;
 	}
 
 	const [updated] = await database

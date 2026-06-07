@@ -57,6 +57,15 @@ export function getPriorityDisplay(
 	return null;
 }
 
+/** Format an ISO timestamp from a description append as a short locale date. */
+export function formatAppendDate(iso: string): string {
+	return new Intl.DateTimeFormat(getLocale(), {
+		day: 'numeric',
+		month: 'numeric',
+		year: 'numeric',
+	}).format(new Date(iso));
+}
+
 /** Select Czech plural category for count. */
 export function czechPluralCategory(count: number): 'one' | 'few' | 'other' {
 	if (count === 1) {
