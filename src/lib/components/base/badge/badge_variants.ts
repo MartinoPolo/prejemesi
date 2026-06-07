@@ -16,7 +16,7 @@ export const badgeVariants = tv({
 			info: 'bg-[color-mix(in_oklch,var(--status-info)_14%,transparent)] text-status-info border-[color-mix(in_oklch,var(--status-info)_30%,transparent)]',
 			primary:
 				'bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-primary border-[color-mix(in_oklch,var(--primary)_30%,transparent)]',
-			accent: 'bg-[color-mix(in_oklch,var(--accent)_16%,transparent)] text-[color-mix(in_oklch,var(--accent)_70%,var(--foreground))] border-[color-mix(in_oklch,var(--accent)_32%,transparent)]',
+			accent: 'bg-accent text-accent-foreground border-[color-mix(in_oklab,var(--accent-foreground)_20%,transparent)]',
 		},
 		badgeStyle: {
 			outlined: '',
@@ -38,7 +38,7 @@ export const badgeVariants = tv({
 		{ badgeStyle: 'solid', tone: 'danger', class: 'bg-status-danger text-white' },
 		{ badgeStyle: 'solid', tone: 'info', class: 'bg-status-info text-white' },
 		{ badgeStyle: 'solid', tone: 'primary', class: 'bg-primary text-primary-foreground' },
-		{ badgeStyle: 'solid', tone: 'accent', class: 'bg-accent text-white' },
+		{ badgeStyle: 'solid', tone: 'accent', class: 'bg-accent-foreground text-accent' },
 		{ badgeStyle: 'solid', tone: 'neutral', class: 'bg-foreground-muted text-background' },
 	],
 	defaultVariants: {

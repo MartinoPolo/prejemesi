@@ -285,6 +285,7 @@
 	"dashboard_sort_alphabetical": "Abecedně",
 	"dashboard_sort_date_created": "Datum vytvoření",
 	"dashboard_sort_event_date": "Datum události",
+	"date_picker_placeholder": "Vyberte datum",
 	"dashboard_view_label": "Zobrazení",
 	"dashboard_view_grid": "Mřížka karet",
 	"dashboard_view_list": "Seznam",

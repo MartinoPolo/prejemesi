@@ -14,13 +14,13 @@ export const imageUploadVariants = tv({
 	variants: {
 		state: {
 			idle: {
-				root: 'cursor-pointer border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/50',
+				root: 'cursor-pointer border-muted-foreground/25 hover:border-primary/50 hover:bg-surface-hover',
 			},
 			dragover: {
-				root: 'border-primary bg-accent/50',
+				root: 'border-primary bg-primary/10',
 			},
 			uploading: {
-				root: 'cursor-not-allowed border-primary/30 bg-accent/25',
+				root: 'cursor-not-allowed border-primary/30 bg-primary/5',
 			},
 			complete: {
 				root: 'border-primary/50',

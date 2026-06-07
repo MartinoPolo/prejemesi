@@ -285,6 +285,7 @@
 	"dashboard_sort_alphabetical": "Alphabetical",
 	"dashboard_sort_date_created": "Date created",
 	"dashboard_sort_event_date": "Event date",
+	"date_picker_placeholder": "Pick a date",
 	"dashboard_view_label": "View",
 	"dashboard_view_grid": "Card grid",
 	"dashboard_view_list": "List",

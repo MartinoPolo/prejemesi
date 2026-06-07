@@ -17,5 +17,5 @@ td.range-calendar-cell:has([data-highlighted]):not(:has(+ td [data-highlighted])
 
 /* Forward hover: range-start cell bg when followed by highlighted cells */
 td.range-calendar-cell:has([data-range-start][data-highlighted]):has(+ td [data-highlighted]) {
-	background-color: color-mix(in oklab, var(--accent) 15%, transparent);
+	background-color: color-mix(in oklab, var(--primary) 10%, transparent);
 }

@@ -3,7 +3,7 @@ import { tv } from 'tailwind-variants';
 export const wishlistListViewVariants = tv({
 	slots: {
 		root: 'flex flex-col divide-y divide-border rounded-xl border border-border bg-card',
-		row: 'group/row flex items-center gap-4 px-4 py-3 transition-colors duration-normal hover:bg-accent/50',
+		row: 'group/row flex items-center gap-4 px-4 py-3 transition-colors duration-normal hover:bg-surface-hover',
 		bannerMini:
 			'relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg',
 		bannerMiniOverlay:

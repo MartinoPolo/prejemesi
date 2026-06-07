@@ -7,6 +7,7 @@
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
@@ -30,16 +31,13 @@
 	} from '$lib/modules/themes/types.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 
-	/** Format a stored event date as a `yyyy-mm-dd` string for `<input type="date">`. */
-	function toDateInputValue(value: Date | string | null): string {
+	/** Normalize a stored event date to a `Date` for the `DatePicker`, or `null` when unset/invalid. */
+	function toEventDate(value: Date | string | null): Date | null {
 		if (value === null) {
-			return '';
+			return null;
 		}
 		const date = value instanceof Date ? value : new Date(value);
-		if (Number.isNaN(date.getTime())) {
-			return '';
-		}
-		return date.toISOString().slice(0, 10);
+		return Number.isNaN(date.getTime()) ? null : date;
 	}
 
 	const shortId = $derived(page.params.id!);
@@ -56,7 +54,7 @@
 
 	let detailsTitle = $state(initial.title);
 	let detailsDescription = $state(initial.description ?? '');
-	let detailsEventDate = $state(toDateInputValue(initial.eventDate));
+	let detailsEventDate = $state(toEventDate(initial.eventDate));
 	let detailsError = $state('');
 	let savingDetails = $state(false);
 	let savingImage = $state(false);
@@ -85,15 +83,13 @@
 				title: trimmedTitle,
 				description: trimmedDescription === '' ? null : trimmedDescription,
 				// Event date is locked once the wishlist is shared (server drops it silently).
-				...(isShared
-					? {}
-					: { eventDate: detailsEventDate === '' ? null : new Date(detailsEventDate) }),
+				...(isShared ? {} : { eventDate: detailsEventDate }),
 			});
 			await refresh();
 			// Re-seed the form from the canonical server values (server trims/normalizes).
 			detailsTitle = wishlist.title;
 			detailsDescription = wishlist.description ?? '';
-			detailsEventDate = toDateInputValue(wishlist.eventDate);
+			detailsEventDate = toEventDate(wishlist.eventDate);
 			toastSuccess(m.toast_wishlist_details_saved());
 		} catch (thrown) {
 			console.error('Failed to save wishlist details:', thrown);
@@ -201,9 +197,8 @@
 
 					<div class="flex flex-col gap-2">
 						<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
-						<Input
+						<DatePicker
 							id="wishlist-event-date"
-							type="date"
 							bind:value={detailsEventDate}
 							disabled={savingDetails || isShared}
 						/>

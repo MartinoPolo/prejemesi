@@ -6,6 +6,7 @@
 	import * as Select from '$lib/components/base/select/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
@@ -22,7 +23,7 @@
 	let { open = $bindable(false), onimport }: CreateWishlistModalProps = $props();
 
 	let title = $state('');
-	let eventDate = $state('');
+	let eventDate = $state<Date | null>(null);
 	let theme = $state<string>('default');
 	let isSubmitting = $state(false);
 	let errorMessage = $state('');
@@ -42,7 +43,7 @@
 
 	function resetForm() {
 		title = '';
-		eventDate = '';
+		eventDate = null;
 		theme = 'default';
 		errorMessage = '';
 		isSubmitting = false;
@@ -70,7 +71,7 @@
 		try {
 			const created = await createWishlist({
 				title: trimmedTitle,
-				eventDate: eventDate !== '' ? new Date(eventDate) : null,
+				eventDate,
 				theme: theme as 'default' | 'christmas' | 'birthday' | 'fun' | 'elegant',
 			});
 
@@ -109,9 +110,8 @@
 
 			<div class="flex flex-col gap-2">
 				<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
-				<Input
+				<DatePicker
 					id="wishlist-event-date"
-					type="date"
 					bind:value={eventDate}
 					disabled={isSubmitting}
 				/>
