@@ -20,6 +20,8 @@
 		updateWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
+	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
+	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import {
 		getThemePreset,
 		type DashboardWishlistTheme,
@@ -45,6 +47,33 @@
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isShared = $derived(wishlist.sharedAt !== null);
 	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+
+	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
+	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back
+	// to `sharedAt` until the first in-window edit. The countdown re-locks the field live at zero.
+	let eventDateClockNow = $state(new Date());
+	const eventDateGraceExpiresAt = $derived(
+		isShared ? graceWindowExpiresAt(wishlist.eventDateEditedAt ?? wishlist.sharedAt) : null,
+	);
+	const eventDateEditable = $derived(
+		!isShared ||
+			(eventDateGraceExpiresAt !== null &&
+				eventDateClockNow.getTime() < eventDateGraceExpiresAt.getTime()),
+	);
+	$effect(() => {
+		if (eventDateGraceExpiresAt === null) {
+			return;
+		}
+		const expiry = eventDateGraceExpiresAt.getTime();
+		eventDateClockNow = new Date();
+		const id = setInterval(() => {
+			eventDateClockNow = new Date();
+			if (eventDateClockNow.getTime() >= expiry) {
+				clearInterval(id); // window closed — the field has already re-locked
+			}
+		}, 1000);
+		return () => clearInterval(id);
+	});
 
 	let detailsTitle = $state(initial.title);
 	let detailsDescription = $state(initial.description ?? '');
@@ -76,8 +105,9 @@
 				id: wishlist.id,
 				title: trimmedTitle,
 				description: trimmedDescription === '' ? null : trimmedDescription,
-				// Event date is locked once the wishlist is shared (server drops it silently).
-				...(isShared ? {} : { eventDate: detailsEventDate }),
+				// Event date stays editable within the post-share grace window; the server is the
+				// authority and drops it once the window has closed (issue #83).
+				...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
 			});
 			await refresh();
 			// Re-seed the form from the canonical server values (server trims/normalizes).
@@ -192,9 +222,15 @@
 						<DatePicker
 							id="wishlist-event-date"
 							bind:value={detailsEventDate}
-							disabled={savingDetails || isShared}
+							disabled={savingDetails || !eventDateEditable}
 						/>
-						{#if isShared}
+						{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
+							<GraceCountdown
+								expiresAt={eventDateGraceExpiresAt}
+								now={eventDateClockNow}
+								message={m.wishlist_event_date_grace_hint}
+							/>
+						{:else if isShared}
 							<p class="text-sm text-muted-foreground">
 								{m.wishlist_event_date_locked_hint()}
 							</p>

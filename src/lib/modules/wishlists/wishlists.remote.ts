@@ -9,6 +9,7 @@ import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
+import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { seedNewWishlist } from './wishlist_create.js';
 import { resolveWishlistRole } from './wishlist_access.js';
 import {
@@ -195,9 +196,10 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 	}
 
 	// Edit lock: if shared, only allow limited field updates
+	const now = new Date();
 	const isShared = row.sharedAt !== null;
 
-	const updateData: Record<string, unknown> = { updatedAt: new Date() };
+	const updateData: Record<string, unknown> = { updatedAt: now };
 
 	// Title and description can always be updated
 	if (input.title !== undefined) {
@@ -207,10 +209,16 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		updateData['description'] = input.description;
 	}
 
-	// Event date is locked after sharing
-	if (!isShared) {
-		if (input.eventDate !== undefined) {
-			updateData['eventDate'] = input.eventDate;
+	// Event date locks at share time, but stays editable within the debounced 2-min grace window
+	// (REQ-4). The window resets on each in-window edit, so it is keyed off `eventDateEditedAt`
+	// (the last edit) and falls back to `sharedAt` until then. Stale clients past the window are
+	// rejected here — the server is the authority (REQ-6).
+	const eventDateGraceOpen =
+		isShared && isWithinGraceWindow(row.eventDateEditedAt ?? row.sharedAt, now);
+	if (input.eventDate !== undefined && (!isShared || eventDateGraceOpen)) {
+		updateData['eventDate'] = input.eventDate;
+		if (isShared) {
+			updateData['eventDateEditedAt'] = now;
 		}
 	}
 

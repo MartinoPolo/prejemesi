@@ -51,6 +51,7 @@
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
+	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -251,27 +252,59 @@
 
 	// ── Computed: can user edit/delete the selected gift? ────────────────────
 
-	// True when the owner is editing a gift that existed at share time — name frozen,
-	// delete blocked, quantity raise-only, description append-only (issue #82).
-	const postShareLockSelectedGift = $derived.by(() => {
-		if (selectedGift === null) {
-			return false;
+	// Ticking clock driving the live grace countdown + re-lock (issue #83); seeded now, advanced by
+	// the effect below while the modal is open.
+	let graceClockNow = $state(new Date());
+
+	// The selected gift's share grace window: a pre-share gift on a shared list is fully editable
+	// again (name + delete) for 2 min after the last post-share edit. `editedAfterShareAt` drives
+	// the debounce, falling back to `sharedAt` until the first edit. Non-null ONLY when the gift is
+	// subject to the #82 post-share rules (owner, not moderator, shared, created at/before share) —
+	// so it doubles as the "is this gift post-share-locked?" predicate below.
+	const selectedGiftGraceExpiresAt = $derived.by(() => {
+		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
+			return null;
 		}
-		if (isModerator) {
-			return false;
+		if (new Date(selectedGift.createdAt) > new Date(wishlist.sharedAt)) {
+			return null;
 		}
-		if (isOwner && wishlist.sharedAt !== null) {
-			return new Date(selectedGift.createdAt) <= new Date(wishlist.sharedAt);
-		}
-		return false;
+		return graceWindowExpiresAt(selectedGift.editedAfterShareAt ?? wishlist.sharedAt);
 	});
+	const isSelectedGiftWithinGrace = $derived(
+		selectedGiftGraceExpiresAt !== null &&
+			graceClockNow.getTime() < selectedGiftGraceExpiresAt.getTime(),
+	);
+
+	// Advance the clock once per second while the modal is open; self-stops once the window closes
+	// and is torn down when the modal closes (no timer leak).
+	$effect(() => {
+		if (!giftModalOpen || selectedGiftGraceExpiresAt === null) {
+			return;
+		}
+		const expiry = selectedGiftGraceExpiresAt.getTime();
+		graceClockNow = new Date();
+		const id = setInterval(() => {
+			graceClockNow = new Date();
+			if (graceClockNow.getTime() >= expiry) {
+				clearInterval(id); // window closed — the lock has already flipped
+			}
+		}, 1000);
+		return () => clearInterval(id);
+	});
+
+	// Post-share-locked ⇔ the gift is subject to #82 rules AND its grace window has closed. Within
+	// the window this is false, restoring full edit; it flips back to true live when the countdown
+	// elapses (name frozen, delete blocked, quantity raise-only, description append-only).
+	const postShareLockSelectedGift = $derived(
+		selectedGiftGraceExpiresAt !== null && !isSelectedGiftWithinGrace,
+	);
 
 	const canDeleteSelectedGift = $derived.by(() => {
 		if (selectedGift === null) {
 			return false;
 		}
 		if (postShareLockSelectedGift) {
-			return false; // delete stays blocked post-share
+			return false; // delete stays blocked once the grace window closes
 		}
 		if (
 			'reservedCount' in selectedGift &&
@@ -719,6 +752,8 @@
 	{priorityLevels}
 	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
+	graceExpiresAt={isSelectedGiftWithinGrace ? selectedGiftGraceExpiresAt : null}
+	graceNow={graceClockNow}
 	{isSubmitting}
 	{isDeleting}
 	bind:reserveModalOpen

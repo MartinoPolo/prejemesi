@@ -13,13 +13,16 @@
 	import GiftImageCropCanvas from './GiftImageCropCanvas.svelte';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
-	import GiftDescription from './GiftDescription.svelte';
+	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import LockIcon from '@lucide/svelte/icons/lock';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import { formatAppendDate } from '$lib/modules/gifts/gift_display.js';
+	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
 		giftDetailModalVariants,
 		type GiftDetailModalMode,
@@ -57,6 +60,10 @@
 		isOwner: boolean;
 		postShareLocked: boolean;
 		canDelete: boolean;
+		/** When the share grace window closes (issue #83), or null when none is active. */
+		graceExpiresAt?: Date | null;
+		/** Reactive "now" from the page clock that keeps the grace countdown live. */
+		graceNow?: Date;
 		isSubmitting: boolean;
 		isDeleting: boolean;
 		oncreate?: (input: CreateGiftInput) => void;
@@ -73,6 +80,8 @@
 		isOwner,
 		postShareLocked,
 		canDelete,
+		graceExpiresAt = null,
+		graceNow = new Date(),
 		isSubmitting,
 		isDeleting,
 		oncreate,
@@ -117,8 +126,16 @@
 
 	let descriptionAppendText = $state('');
 
+	// Per-segment append edit (issue #83): the index currently being edited inline, and its draft.
+	let editingAppendIndex = $state<number | null>(null);
+	let editingAppendText = $state('');
+
 	const isEdit = $derived(mode === 'edit');
 	const locked = $derived(isEdit && postShareLocked);
+	// Active share grace window (full edit + delete restored): shown as a live countdown banner.
+	const graceActive = $derived(
+		isEdit && graceExpiresAt !== null && graceNow.getTime() < graceExpiresAt.getTime(),
+	);
 	// Reads the local seeded `description` copy (not the `gift` prop) so the frozen/append
 	// branch stays self-contained and never re-toggles from a reactive prop change.
 	const descriptionFrozen = $derived(locked && description.trim() !== '');
@@ -186,6 +203,33 @@
 		}
 	}
 
+	function startEditAppend(index: number, text: string) {
+		editingAppendIndex = index;
+		editingAppendText = text;
+	}
+
+	function cancelEditAppend() {
+		editingAppendIndex = null;
+		editingAppendText = '';
+	}
+
+	function saveEditAppend(index: number) {
+		if (gift === null || editingAppendText.trim() === '') {
+			return;
+		}
+		onupdate?.({
+			id: gift.id,
+			descriptionAppendEdit: { index, text: editingAppendText.trim() },
+		});
+		cancelEditAppend();
+	}
+
+	function deleteAppend(index: number) {
+		if (gift !== null) {
+			onupdate?.({ id: gift.id, descriptionAppendEdit: { index, text: null } });
+		}
+	}
+
 	function handleDelete() {
 		if (!showDeleteConfirm) {
 			showDeleteConfirm = true;
@@ -246,6 +290,16 @@
 
 	<!-- Right column: form -->
 	<div class={styles.detailColumn()}>
+		<!-- Share grace window (issue #83): full edit + delete are temporarily restored. -->
+		{#if graceActive && graceExpiresAt !== null}
+			<div class="mb-3">
+				<GraceCountdown
+					expiresAt={graceExpiresAt}
+					now={graceNow}
+					message={m.gift_grace_hint}
+				/>
+			</div>
+		{/if}
 		<fieldset class="contents">
 			<!-- Name -->
 			<div class={styles.formField()}>
@@ -272,10 +326,60 @@
 			<div class="mt-3 {styles.formField()}">
 				{#if descriptionFrozen}
 					<Label>{m.gift_description_label()}</Label>
-					<GiftDescription
-						description={gift?.description ?? null}
-						descriptionAppends={gift?.descriptionAppends ?? []}
-					/>
+					<!-- Frozen base the gifter reserved against (read-only). -->
+					{#if (gift?.description ?? '').trim() !== ''}
+						<p class="text-sm whitespace-pre-line text-muted-foreground">
+							{gift?.description}
+						</p>
+					{/if}
+					<!-- Appended segments: each is editable/deletable only within its own grace window. -->
+					{#each gift?.descriptionAppends ?? [] as append, i (`${append.addedAt}:${i}`)}
+						{#if editingAppendIndex === i}
+							<div class="flex flex-col gap-2">
+								<Textarea bind:value={editingAppendText} rows={2} />
+								<div class="flex gap-2">
+									<Button
+										size="sm"
+										onclick={() => saveEditAppend(i)}
+										disabled={editingAppendText.trim() === ''}
+									>
+										{m.save()}
+									</Button>
+									<Button size="sm" intent="ghost" onclick={cancelEditAppend}>
+										{m.cancel()}
+									</Button>
+								</div>
+							</div>
+						{:else}
+							<div class="flex items-start justify-between gap-2">
+								<div class="text-sm whitespace-pre-line text-wishlist-accent">
+									<span class="text-xs opacity-70"
+										>{formatAppendDate(append.addedAt)} —
+									</span>{append.text}
+								</div>
+								{#if isWithinGraceWindow(append.addedAt, graceNow)}
+									<div class="flex shrink-0 gap-1">
+										<Button
+											size="icon-sm"
+											intent="ghost"
+											aria-label={m.gift_description_append_edit_aria()}
+											onclick={() => startEditAppend(i, append.text)}
+										>
+											<PencilIcon />
+										</Button>
+										<Button
+											size="icon-sm"
+											intent="ghost"
+											aria-label={m.gift_description_append_delete_aria()}
+											onclick={() => deleteAppend(i)}
+										>
+											<TrashIcon />
+										</Button>
+									</div>
+								{/if}
+							</div>
+						{/if}
+					{/each}
 					<Label class="mt-2">{m.gift_description_add_note_label()}</Label>
 					<Textarea bind:value={descriptionAppendText} rows={2} />
 					<HelpText>{m.gift_description_add_note_help()}</HelpText>
