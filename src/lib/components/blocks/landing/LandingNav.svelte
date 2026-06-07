@@ -14,6 +14,6 @@
 	<div class="flex items-center gap-2">
 		<DarkModeToggle />
 		<Button intent="ghost" href={resolve('/login')}>{m.landing_login()}</Button>
-		<Button href={resolve('/register')}>{m.landing_get_started()}</Button>
+		<Button href={resolve('/register')}>{m.register()}</Button>
 	</div>
 </nav>

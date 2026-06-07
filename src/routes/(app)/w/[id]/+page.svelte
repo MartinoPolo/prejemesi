@@ -294,8 +294,12 @@
 		sharingContext.openWizard();
 	}
 
-	function handleAppearanceOpened() {
+	function handleSettingsOpened() {
 		void goto(resolve('/(app)/w/[id]/settings', { id: shortId }));
+	}
+
+	function handleEditImage() {
+		void goto(`${resolve('/(app)/w/[id]/settings', { id: shortId })}#image`);
 	}
 
 	function handleShared() {
@@ -649,6 +653,7 @@
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
+		oneditimage={handleEditImage}
 	/>
 
 	<WishlistDetailToolbar
@@ -664,7 +669,7 @@
 		onsortchange={handleSortChange}
 		onfilterchange={handleFilterChange}
 		onthemeopen={() => (themeDialogOpen = true)}
-		onappearance={handleAppearanceOpened}
+		onsettings={handleSettingsOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
 		onbatchadd={openBatchAddDialog}

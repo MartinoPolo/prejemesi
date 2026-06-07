@@ -14,6 +14,9 @@
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { WISHLIST_THEMES } from '$lib/modules/wishlists/types.js';
+	import { THEME_PRESETS } from '$lib/modules/themes/theme_presets.js';
+	import type { ThemePresetName } from '$lib/modules/themes/types.js';
+	import ThemeCardPreview from '$lib/components/blocks/wishlist/ThemeCardPreview.svelte';
 
 	interface CreateWishlistModalProps {
 		open: boolean;
@@ -27,6 +30,8 @@
 	let theme = $state<string>('default');
 	let isSubmitting = $state(false);
 	let errorMessage = $state('');
+
+	const themePreview = $derived(THEME_PRESETS[theme as ThemePresetName] ?? THEME_PRESETS.default);
 
 	const THEME_LABELS: Record<string, () => string> = {
 		default: () => m.theme_default(),
@@ -131,6 +136,12 @@
 						</Select.Group>
 					</Select.Content>
 				</Select.Root>
+				<ThemeCardPreview
+					theme={theme as ThemePresetName}
+					emoji={themePreview.emoji}
+					themeLabel={themePreview.label()}
+					class="mx-auto mt-1 w-full max-w-[220px]"
+				/>
 			</div>
 
 			{#if errorMessage !== ''}

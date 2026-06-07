@@ -6,7 +6,7 @@
 	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
-	import ImageIcon from '@lucide/svelte/icons/image';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
@@ -24,7 +24,7 @@
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
 		onthemeopen: () => void;
-		onappearance: () => void;
+		onsettings: () => void;
 		onunfollow: () => void;
 		onaddgift: () => void;
 		onbatchadd: () => void;
@@ -44,7 +44,7 @@
 		onsortchange,
 		onfilterchange,
 		onthemeopen,
-		onappearance,
+		onsettings,
 		onunfollow,
 		onaddgift,
 		onbatchadd,
@@ -67,7 +67,7 @@
 		{#if isOwner && !isArchived}
 			<SimpleTooltip text={m.wishlist_detail_change_theme()}>
 				<Button
-					size="icon-sm"
+					size="icon"
 					intent="outline"
 					aria-label={m.wishlist_detail_change_theme()}
 					onclick={onthemeopen}
@@ -75,14 +75,14 @@
 					<PaletteIcon />
 				</Button>
 			</SimpleTooltip>
-			<SimpleTooltip text={m.wishlist_detail_edit_appearance()}>
+			<SimpleTooltip text={m.wishlist_settings_title()}>
 				<Button
-					size="icon-sm"
+					size="icon"
 					intent="outline"
-					aria-label={m.wishlist_detail_edit_appearance()}
-					onclick={onappearance}
+					aria-label={m.wishlist_settings_title()}
+					onclick={onsettings}
 				>
-					<ImageIcon />
+					<SettingsIcon />
 				</Button>
 			</SimpleTooltip>
 		{/if}
@@ -94,7 +94,7 @@
 		{#if isOwnerOrModerator && !isArchived}
 			<SimpleTooltip text={m.import_toolbar_label()}>
 				<Button
-					size="icon-sm"
+					size="icon"
 					intent="outline"
 					aria-label={m.import_toolbar_label()}
 					onclick={onimport}
@@ -104,7 +104,7 @@
 			</SimpleTooltip>
 			<SimpleTooltip text={m.batch_add_toolbar_label()}>
 				<Button
-					size="icon-sm"
+					size="icon"
 					intent="outline"
 					aria-label={m.batch_add_toolbar_label()}
 					onclick={onbatchadd}
@@ -112,7 +112,7 @@
 					<ListPlusIcon />
 				</Button>
 			</SimpleTooltip>
-			<Button size="sm" aria-label={m.wishlist_detail_add_gift_label()} onclick={onaddgift}>
+			<Button size="md" aria-label={m.wishlist_detail_add_gift_label()} onclick={onaddgift}>
 				<PlusIcon data-icon="inline-start" />
 				{m.wishlist_detail_add_wish()}
 			</Button>

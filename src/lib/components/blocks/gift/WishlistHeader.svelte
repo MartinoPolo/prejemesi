@@ -4,6 +4,7 @@
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import ShareIcon from '@lucide/svelte/icons/share-2';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
@@ -36,6 +37,7 @@
 		onshare?: () => void;
 		onmoderators?: () => void;
 		onarchive?: () => void;
+		oneditimage?: () => void;
 	}
 
 	let {
@@ -53,6 +55,7 @@
 		onshare,
 		onmoderators,
 		onarchive,
+		oneditimage,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -101,6 +104,18 @@
 			<WishlistSlotImage src={bannerSrc} frame={bannerFrame} {themeEmoji} alt={title} />
 		</div>
 		<div class={styles.bannerOverlay()}></div>
+		{#if isOwner && !isArchived}
+			<Button
+				size="sm"
+				intent="outline"
+				class={styles.editImageButton()}
+				aria-label={m.wishlist_edit_image_label()}
+				onclick={oneditimage}
+			>
+				<PencilIcon data-icon="inline-start" />
+				{m.wishlist_edit_image_label()}
+			</Button>
+		{/if}
 		<div class={styles.contentArea()}>
 			<span class={styles.ownerNameOnBanner()}>{ownerName}</span>
 			<h1 class={styles.titleOnBanner()}>{title}</h1>

@@ -3,7 +3,9 @@ import { tv } from 'tailwind-variants';
 export const wishlistHeaderVariants = tv({
 	slots: {
 		root: 'flex flex-col gap-4',
-		bannerArea: 'relative flex flex-col justify-end gap-3 rounded-xl px-6 py-6',
+		bannerArea: 'group relative flex flex-col justify-end gap-3 rounded-xl px-6 py-6',
+		editImageButton:
+			'absolute right-4 top-4 z-10 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
 		bannerOverlay: 'absolute inset-0 rounded-xl bg-gradient-to-t from-black/60 to-black/10',
 		contentArea: 'relative flex flex-col gap-1',
 		ownerNameOnBanner: 'font-heading text-2xl font-bold text-white',

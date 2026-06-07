@@ -77,8 +77,10 @@ test.describe('Wishlist settings — non-image editing', () => {
 			timeout: 10_000,
 		});
 
-		// The owner-only settings/appearance action must not be visible to a visitor.
-		await expect(visitorPage.getByRole('button', { name: 'Upravit vzhled' })).not.toBeVisible();
+		// The owner-only settings action must not be visible to a visitor.
+		await expect(
+			visitorPage.getByRole('button', { name: 'Nastavení seznamu' }),
+		).not.toBeVisible();
 
 		// Direct navigation to the settings URL shows the owner-only notice, not the edit form.
 		await visitorPage.goto(`/w/${shortId}/settings`);

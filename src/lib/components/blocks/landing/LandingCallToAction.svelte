@@ -27,7 +27,7 @@
 		</p>
 		<div class="flex flex-wrap justify-center gap-4">
 			<Button size="lg" href={resolve('/register')} class="min-w-[220px]">
-				{m.landing_get_started()}
+				{m.register()}
 			</Button>
 			<Button intent="secondary" size="lg" href={resolve('/login')}
 				>{m.landing_login()}</Button

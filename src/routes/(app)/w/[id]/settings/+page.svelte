@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, tick } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -14,7 +15,6 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import { WishlistCropEditor } from '$lib/components/blocks/wishlist/index.js';
-	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
 	import {
 		getWishlistByShortId,
 		updateWishlist,
@@ -24,11 +24,6 @@
 		getThemePreset,
 		type DashboardWishlistTheme,
 	} from '$lib/modules/wishlists/wishlist_theme.js';
-	import {
-		isCustomTheme,
-		toWishlistTheme,
-		type WishlistTheme,
-	} from '$lib/modules/themes/types.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 
 	/** Normalize a stored event date to a `Date` for the `DatePicker`, or `null` when unset/invalid. */
@@ -50,7 +45,6 @@
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isShared = $derived(wishlist.sharedAt !== null);
 	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
-	const currentTheme = $derived(toWishlistTheme(wishlist.theme, wishlist.customThemeColor));
 
 	let detailsTitle = $state(initial.title);
 	let detailsDescription = $state(initial.description ?? '');
@@ -120,22 +114,20 @@
 		}
 	}
 
-	async function handleThemeSave(theme: WishlistTheme) {
-		try {
-			const themePreset = isCustomTheme(theme) ? 'custom' : theme;
-			const customThemeColor = isCustomTheme(theme) ? theme.color : null;
-			await updateWishlist({ id: wishlist.id, theme: themePreset, customThemeColor });
-			await refresh();
-			toastSuccess(m.toast_theme_saved());
-		} catch (thrown) {
-			console.error('Failed to save theme:', thrown);
-			toastError(m.toast_theme_save_error());
-		}
-	}
-
 	function goBack() {
 		void goto(resolve('/(app)/w/[id]', { id: shortId }));
 	}
+
+	// Deep link from the wishlist banner's hover "Edit image" button lands on #image.
+	// The async load resolves before this component mounts, so the native hash scroll
+	// misses the (not-yet-rendered) target — scroll it into view manually after render.
+	onMount(async () => {
+		if (page.url.hash !== '#image') {
+			return;
+		}
+		await tick();
+		document.getElementById('image')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	});
 </script>
 
 <svelte:head>
@@ -225,7 +217,7 @@
 			</Card.Content>
 		</Card.Root>
 
-		<Card.Root>
+		<Card.Root id="image" class="scroll-mt-6">
 			<Card.Header>
 				<Card.Title>{m.wishlist_settings_image_section()}</Card.Title>
 				<Card.Description>{m.wishlist_settings_image_hint()}</Card.Description>
@@ -239,16 +231,6 @@
 					isSaving={savingImage}
 					onsave={handleImageSave}
 				/>
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>{m.wishlist_settings_theme_section()}</Card.Title>
-				<Card.Description>{m.wishlist_settings_theme_hint()}</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<ThemeSelector {currentTheme} onsave={handleThemeSave} oncancel={goBack} />
 			</Card.Content>
 		</Card.Root>
 	{/if}
