@@ -86,18 +86,28 @@
 		</ToggleGroup.Item>
 	</ToggleGroup.Root>
 
-	<!-- Source sub-component -->
-	{#if sourceMethod === SOURCE_METHOD.file}
-		<ImportSourceFileDrop onparsed={handleParsed} onerror={handleError} disabled={isDisabled} />
-	{:else if sourceMethod === SOURCE_METHOD.paste}
-		<ImportSourcePaste onparsed={handleParsed} onerror={handleError} disabled={isDisabled} />
-	{:else if sourceMethod === SOURCE_METHOD.sheets}
-		<ImportSourceSheetLink
-			onparsed={handleParsed}
-			onerror={handleError}
-			disabled={isDisabled}
-		/>
-	{/if}
+	<!-- Source sub-component — fixed height so the dialog does not jump between methods -->
+	<div class="flex h-48">
+		{#if sourceMethod === SOURCE_METHOD.file}
+			<ImportSourceFileDrop
+				onparsed={handleParsed}
+				onerror={handleError}
+				disabled={isDisabled}
+			/>
+		{:else if sourceMethod === SOURCE_METHOD.paste}
+			<ImportSourcePaste
+				onparsed={handleParsed}
+				onerror={handleError}
+				disabled={isDisabled}
+			/>
+		{:else if sourceMethod === SOURCE_METHOD.sheets}
+			<ImportSourceSheetLink
+				onparsed={handleParsed}
+				onerror={handleError}
+				disabled={isDisabled}
+			/>
+		{/if}
+	</div>
 
 	<!-- Error message -->
 	{#if errorMessage}

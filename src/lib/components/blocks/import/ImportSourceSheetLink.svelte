@@ -58,7 +58,7 @@
 	}
 </script>
 
-<div class="flex gap-2">
+<div class="flex h-full w-full items-center gap-2">
 	<div class="flex-1">
 		<Input
 			type="url"
