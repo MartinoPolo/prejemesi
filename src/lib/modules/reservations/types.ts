@@ -36,3 +36,14 @@ export interface UnreserveInput {
 export const UnreserveInputSchema = v.object({
 	reservationId: v.string(),
 });
+
+/** Input for toggling a reservation's gifter-private "bought" marker */
+export interface SetReservationPurchasedInput {
+	reservationId: string;
+	purchased: boolean;
+}
+
+export const SetReservationPurchasedInputSchema = v.object({
+	reservationId: v.string(),
+	purchased: v.boolean(),
+});

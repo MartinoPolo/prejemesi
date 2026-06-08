@@ -80,6 +80,9 @@ export const reservation = pgTable(
 		// httpOnly `darecky_anon_id` cookie). Null for authenticated reservations.
 		anonymousVisitorId: text('anonymous_visitor_id'),
 		quantity: integer('quantity').notNull().default(1),
+		// Gifter-private "I already bought this" marker. Optional self-tracking flag set by the
+		// authenticated reserver; never exposed to the wishlist owner. Null = reserved-not-bought.
+		purchasedAt: timestamp('purchased_at', { withTimezone: true }),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	},

@@ -7,6 +7,7 @@
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
+	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
@@ -112,6 +113,7 @@
 	{#if isVisitorOrModerator && visitorGift}
 		<div class={styles.footer()}>
 			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
+			<PurchasedToggle gift={visitorGift} />
 			<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
 		</div>
 	{/if}

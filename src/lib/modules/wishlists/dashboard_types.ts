@@ -6,17 +6,50 @@ export interface WishlistWithOwner extends Wishlist {
 	ownerName: string;
 }
 
+/** Owner's own wishlist with gift count (no reservation data — owner invariant) */
+export interface MyWishlist extends Wishlist {
+	totalGifts: number;
+}
+
 /** Moderated wishlist with reservation progress */
 export interface ModeratedWishlist extends WishlistWithOwner {
 	totalGifts: number;
 	reservedGifts: number;
 }
 
-/** Followed wishlist with available gifts and own reservations */
+/** Followed wishlist with available gifts and own reservation/purchase progress */
 export interface FollowedWishlist extends WishlistWithOwner {
 	availableGifts: number;
 	myReservations: number;
+	myPurchased: number;
 	unfollowedAt: Date | null;
+}
+
+/**
+ * Gifter-relative resolution state of a followed list:
+ * - `open` — nothing reserved yet; the gifter still owes a gift (action needed)
+ * - `reserved` — gift(s) claimed; covered, though not all marked bought
+ * - `bought` — every reservation marked bought; fully done
+ *
+ * "Bought" is an optional self-tracking signal — most users rest at `reserved`, which is
+ * treated as resolved for sorting/dimming. We never nag non-buyers.
+ */
+export const FOLLOWED_LIST_STATE = {
+	open: 'open',
+	reserved: 'reserved',
+	bought: 'bought',
+} as const;
+
+export type FollowedListState = (typeof FOLLOWED_LIST_STATE)[keyof typeof FOLLOWED_LIST_STATE];
+
+export function followedListState(wishlist: FollowedWishlist): FollowedListState {
+	if (wishlist.myReservations === 0) {
+		return FOLLOWED_LIST_STATE.open;
+	}
+	if (wishlist.myPurchased >= wishlist.myReservations) {
+		return FOLLOWED_LIST_STATE.bought;
+	}
+	return FOLLOWED_LIST_STATE.reserved;
 }
 
 /** @public Sort options for dashboard pages */

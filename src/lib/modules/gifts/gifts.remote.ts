@@ -139,7 +139,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 	// Batch fetch the current visitor's active reservation per gift (powers the unreserve UI).
 	// Authenticated visitors match by userId; anonymous visitors match by their per-browser
 	// capability cookie against reservation.anonymousVisitorId.
-	const myReservationIds = new Map<string, string>();
+	const myReservations = new Map<string, { id: string; purchasedAt: Date | null }>();
 	if (giftIds.length > 0) {
 		const anonVisitorId = authContext === null ? getAnonVisitorId() : null;
 		const ownershipFilter =
@@ -154,7 +154,11 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 
 		if (ownershipFilter !== undefined && ownershipFilter !== null) {
 			const myRows = await database
-				.select({ id: reservation.id, giftId: reservation.giftId })
+				.select({
+					id: reservation.id,
+					giftId: reservation.giftId,
+					purchasedAt: reservation.purchasedAt,
+				})
 				.from(reservation)
 				.where(
 					and(
@@ -167,8 +171,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 
 			for (const row of myRows) {
 				// Keep the earliest active reservation per gift
-				if (!myReservationIds.has(row.giftId)) {
-					myReservationIds.set(row.giftId, row.id);
+				if (!myReservations.has(row.giftId)) {
+					myReservations.set(row.giftId, { id: row.id, purchasedAt: row.purchasedAt });
 				}
 			}
 		}
@@ -199,7 +203,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			likeCount: likeCounts.get(row.id) ?? 0,
 			reservedCount: reserved,
 			isFullyReserved: reserved >= qty,
-			myReservationId: myReservationIds.get(row.id) ?? null,
+			myReservationId: myReservations.get(row.id)?.id ?? null,
+			myReservationPurchasedAt: myReservations.get(row.id)?.purchasedAt ?? null,
 		};
 	});
 

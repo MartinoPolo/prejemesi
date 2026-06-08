@@ -59,4 +59,4 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 | eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                       |
 | tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list        |
 
-Seed includes 9 wishlists, 38 gifts, 21 reservations, 10 likes, moderator assignments, followers (incl. unfollowed), and notifications. All seed IDs are prefixed `seed-` for easy identification/cleanup.
+Seed includes 13 wishlists, 47 gifts, 24 reservations (2 marked bought/purchased), 10 likes, moderator assignments, followers (incl. unfollowed), and notifications. Martin follows 6 active lists spanning all gifter states — open (Petr, Eva), reserved (Jana svátek, Tomáš knihy), bought (Jana Vánoce, Tomáš chata) — to exercise the Sledované dropdown sections + truncation. All seed IDs are prefixed `seed-` for easy identification/cleanup.

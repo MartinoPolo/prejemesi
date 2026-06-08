@@ -7,6 +7,7 @@
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
+	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -120,6 +121,8 @@
 	{#if isVisitorOrModerator && visitorGift}
 		<div class="flex flex-shrink-0 items-center gap-2">
 			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
+
+			<PurchasedToggle gift={visitorGift} />
 
 			<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
 		</div>

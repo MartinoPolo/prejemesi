@@ -6,11 +6,12 @@ import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
-import { publicQuery, publicCommand } from '$lib/server/remote.js';
+import { publicQuery, publicCommand, guardedCommand } from '$lib/server/remote.js';
 import { getAnonVisitorId, getOrCreateAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import {
 	ReserveGiftInputSchema,
 	UnreserveInputSchema,
+	SetReservationPurchasedInputSchema,
 	type ReservationForModerator,
 } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -229,6 +230,41 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 
 	return { success: true };
 });
+
+/**
+ * Toggle the gifter-private "I bought this" marker on the caller's own reservation. Optional
+ * self-tracking only — never surfaced to the wishlist owner. Authenticated reservations only
+ * (anonymous visitors have no persistent identity to track against).
+ */
+export const setReservationPurchased = guardedCommand(
+	SetReservationPurchasedInputSchema,
+	async (authContext, input) => {
+		const database = getDb();
+
+		const rows = await database
+			.select({ id: reservation.id, userId: reservation.userId })
+			.from(reservation)
+			.where(and(eq(reservation.id, input.reservationId), isNull(reservation.deletedAt)))
+			.limit(1);
+
+		const reservationRow = rows[0];
+		if (reservationRow === undefined) {
+			error(404, SERVER_ERROR.RESERVATION_NOT_FOUND);
+		}
+
+		// Only the reserver may mark their own reservation as bought.
+		if (reservationRow.userId !== authContext.user.id) {
+			error(403, SERVER_ERROR.CANNOT_CANCEL_OTHERS_RESERVATION);
+		}
+
+		await database
+			.update(reservation)
+			.set({ purchasedAt: input.purchased ? new Date() : null })
+			.where(eq(reservation.id, input.reservationId));
+
+		return { purchased: input.purchased };
+	},
+);
 
 export const getReservationsForGift = publicQuery(v.string(), async (authContext, giftId) => {
 	const wishlistRow = (await getGiftWithWishlist(giftId)).wishlist;

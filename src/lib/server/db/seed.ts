@@ -156,6 +156,11 @@ const WL_DETSKY = 'seed-wl-detsky';
 const WL_JBDAY = 'seed-wl-jbday';
 const WL_BYT = 'seed-wl-byt';
 const WL_KNIHY = 'seed-wl-knihy';
+// Lists Martin follows — give his "Sledované" dropdown the full open/reserved/bought spread.
+const WL_PBDAY = 'seed-wl-pbday'; // Petr — Martin: open
+const WL_KUCHYNE = 'seed-wl-kuchyne'; // Eva — Martin: open
+const WL_JXMAS = 'seed-wl-jxmas'; // Jana — Martin: bought
+const WL_CHATA = 'seed-wl-chata'; // Tomáš — Martin: bought
 
 // Priority level suffix helpers
 const plId = (wl: string, level: 'h' | 'm' | 'l') => `seed-pl-${wl}-${level}`;
@@ -199,6 +204,16 @@ const G_DUNE = 'seed-g-dune';
 const G_1984 = 'seed-g-1984';
 const G_HAILMARY = 'seed-g-hailmary';
 const G_SAPIENS2 = 'seed-g-sapiens2';
+// Gifts on the lists Martin follows (Petr/Eva/Jana/Tomáš)
+const G_DRON = 'seed-g-dron';
+const G_WHISKEY = 'seed-g-whiskey';
+const G_HODINKY = 'seed-g-hodinky';
+const G_PANEV = 'seed-g-panev';
+const G_NOZE = 'seed-g-noze';
+const G_KASMIR = 'seed-g-kasmir';
+const G_DECKY = 'seed-g-decky';
+const G_GRIL = 'seed-g-gril';
+const G_SEKERA = 'seed-g-sekera';
 
 // Date helper
 const d = (iso: string) => new Date(iso);
@@ -453,6 +468,62 @@ async function seed() {
 				createdAt: d('2026-03-01T11:00:00Z'),
 				updatedAt: d('2026-04-20T15:00:00Z'),
 			},
+			// Petr — active, birthday. Martin follows, reserves nothing → OPEN.
+			{
+				id: WL_PBDAY,
+				shortId: 'petrbday',
+				ownerId: PETR,
+				title: 'Petrovy narozeniny',
+				description: 'Třicítka se blíží!',
+				eventDate: d('2026-07-15T00:00:00Z'),
+				status: 'active',
+				theme: 'birthday',
+				sharedAt: d('2026-05-20T09:00:00Z'),
+				createdAt: d('2026-05-18T11:00:00Z'),
+				updatedAt: d('2026-06-05T15:00:00Z'),
+			},
+			// Eva — active, fun. Martin follows, reserves nothing → OPEN.
+			{
+				id: WL_KUCHYNE,
+				shortId: 'kuchyne1',
+				ownerId: EVA,
+				title: 'Vybavení kuchyně',
+				description: 'Stěhujeme se — pomozte nám zařídit kuchyni.',
+				eventDate: d('2026-09-01T00:00:00Z'),
+				status: 'active',
+				theme: 'fun',
+				sharedAt: d('2026-05-25T09:00:00Z'),
+				createdAt: d('2026-05-22T11:00:00Z'),
+				updatedAt: d('2026-06-02T15:00:00Z'),
+			},
+			// Jana — active, christmas. Martin reserves + marks bought → BOUGHT.
+			{
+				id: WL_JXMAS,
+				shortId: 'janaxm26',
+				ownerId: JANA,
+				title: 'Janiny Vánoce 2026',
+				description: 'Letošní přání pod stromeček',
+				eventDate: d('2026-12-24T00:00:00Z'),
+				status: 'active',
+				theme: 'christmas',
+				sharedAt: d('2026-05-15T09:00:00Z'),
+				createdAt: d('2026-05-12T11:00:00Z'),
+				updatedAt: d('2026-05-30T15:00:00Z'),
+			},
+			// Tomáš — active, default, event soon (countdown). Martin reserves + bought → BOUGHT.
+			{
+				id: WL_CHATA,
+				shortId: 'chatatom',
+				ownerId: TOMAS,
+				title: 'Na chatu',
+				description: 'Vychytávky na víkendovou chalupu',
+				eventDate: d('2026-06-20T00:00:00Z'),
+				status: 'active',
+				theme: 'default',
+				sharedAt: d('2026-05-28T09:00:00Z'),
+				createdAt: d('2026-05-26T11:00:00Z'),
+				updatedAt: d('2026-06-06T15:00:00Z'),
+			},
 		]);
 
 		// ---------------------------------------------------------------
@@ -469,6 +540,10 @@ async function seed() {
 			WL_JBDAY,
 			WL_BYT,
 			WL_KNIHY,
+			WL_PBDAY,
+			WL_KUCHYNE,
+			WL_JXMAS,
+			WL_CHATA,
 		];
 		const priorityRows = allWishlists.flatMap((wlId) => {
 			const short = wlId.replace('seed-wl-', '');
@@ -897,6 +972,95 @@ async function seed() {
 				currency: 'CZK',
 				sortOrder: 3,
 			},
+
+			// --- Petrovy narozeniny / Petr (3 gifts, 2 free) ---
+			{
+				id: G_DRON,
+				wishlistId: WL_PBDAY,
+				priorityLevelId: plId('pbday', 'h'),
+				name: 'Dron DJI Mini 4',
+				price: 12990,
+				currency: 'CZK',
+				sortOrder: 0,
+			},
+			{
+				id: G_HODINKY,
+				wishlistId: WL_PBDAY,
+				priorityLevelId: plId('pbday', 'm'),
+				name: 'Chytré hodinky Garmin',
+				price: 8500,
+				currency: 'CZK',
+				sortOrder: 1,
+			},
+			{
+				id: G_WHISKEY,
+				wishlistId: WL_PBDAY,
+				priorityLevelId: plId('pbday', 'l'),
+				name: 'Lahev single malt whisky',
+				price: 1500,
+				currency: 'CZK',
+				sortOrder: 2,
+			},
+
+			// --- Vybavení kuchyně / Eva (2 gifts, both free) ---
+			{
+				id: G_PANEV,
+				wishlistId: WL_KUCHYNE,
+				priorityLevelId: plId('kuchyne', 'h'),
+				name: 'Litinová pánev Le Creuset',
+				price: 3200,
+				currency: 'CZK',
+				sortOrder: 0,
+			},
+			{
+				id: G_NOZE,
+				wishlistId: WL_KUCHYNE,
+				priorityLevelId: plId('kuchyne', 'm'),
+				name: 'Sada kuchyňských nožů',
+				price: 2400,
+				currency: 'CZK',
+				sortOrder: 1,
+			},
+
+			// --- Janiny Vánoce 2026 / Jana (2 gifts) ---
+			{
+				id: G_KASMIR,
+				wishlistId: WL_JXMAS,
+				priorityLevelId: plId('jxmas', 'h'),
+				name: 'Kašmírový svetr',
+				price: 2900,
+				currency: 'CZK',
+				sortOrder: 0,
+			},
+			{
+				id: G_DECKY,
+				wishlistId: WL_JXMAS,
+				priorityLevelId: plId('jxmas', 'l'),
+				name: 'Hřejivá deka',
+				price: 800,
+				currency: 'CZK',
+				sortOrder: 1,
+			},
+
+			// --- Na chatu / Tomáš (2 gifts) ---
+			{
+				id: G_GRIL,
+				wishlistId: WL_CHATA,
+				priorityLevelId: plId('chata', 'h'),
+				name: 'Přenosný gril Weber',
+				price: 4500,
+				currency: 'CZK',
+				sortOrder: 0,
+			},
+			{
+				id: G_SEKERA,
+				wishlistId: WL_CHATA,
+				priorityLevelId: plId('chata', 'l'),
+				name: 'Štípací sekera Fiskars',
+				price: 950,
+				currency: 'CZK',
+				sortOrder: 1,
+			},
 		]);
 
 		// ---------------------------------------------------------------
@@ -951,9 +1115,28 @@ async function seed() {
 			{ id: 'seed-r-18', giftId: G_RUCNIKY, userId: PETR, quantity: 1 },
 			{ id: 'seed-r-19', giftId: G_MONSTERA, userId: EVA, quantity: 1 },
 
-			// Tomáš — Knihy 2026
+			// Tomáš — Knihy 2026 (Martin's reservation here stays unbought → "reserved")
 			{ id: 'seed-r-20', giftId: G_DUNE, userId: MARTIN, quantity: 1 },
 			{ id: 'seed-r-21', giftId: G_1984, userId: JANA, quantity: 1 },
+
+			// Petrovy narozeniny — Eva reserves one (Martin reserves nothing → list stays "open")
+			{ id: 'seed-r-22', giftId: G_HODINKY, userId: EVA, quantity: 1 },
+
+			// Martin's bought lists: he reserved AND marked purchased → "bought" section.
+			{
+				id: 'seed-r-23',
+				giftId: G_KASMIR,
+				userId: MARTIN,
+				quantity: 1,
+				purchasedAt: d('2026-06-01T10:00:00Z'),
+			},
+			{
+				id: 'seed-r-24',
+				giftId: G_GRIL,
+				userId: MARTIN,
+				quantity: 1,
+				purchasedAt: d('2026-06-05T14:00:00Z'),
+			},
 		]);
 
 		// ---------------------------------------------------------------
@@ -1046,6 +1229,14 @@ async function seed() {
 			// Jana — Minulé narozeniny (archived)
 			{ wishlistId: WL_JBDAY, userId: MARTIN, createdAt: d('2025-06-02T10:00:00Z') },
 			{ wishlistId: WL_JBDAY, userId: EVA, createdAt: d('2025-06-05T12:00:00Z') },
+
+			// Martin's followed spread — open (Petr, Eva), bought (Jana, Tomáš).
+			// Combined with WL_SVATEK + WL_KNIHY (reserved), this gives all three sections + truncation.
+			{ wishlistId: WL_PBDAY, userId: MARTIN, createdAt: d('2026-05-21T10:00:00Z') },
+			{ wishlistId: WL_PBDAY, userId: EVA, createdAt: d('2026-05-22T11:00:00Z') },
+			{ wishlistId: WL_KUCHYNE, userId: MARTIN, createdAt: d('2026-05-26T10:00:00Z') },
+			{ wishlistId: WL_JXMAS, userId: MARTIN, createdAt: d('2026-05-16T10:00:00Z') },
+			{ wishlistId: WL_CHATA, userId: MARTIN, createdAt: d('2026-05-29T10:00:00Z') },
 		]);
 
 		// ---------------------------------------------------------------

@@ -26,10 +26,14 @@
 		getThemePreset,
 		type DashboardWishlistTheme,
 	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
-	import type {
-		ModeratedWishlist,
-		FollowedWishlist,
+	import {
+		followedListState,
+		FOLLOWED_LIST_STATE,
+		type ModeratedWishlist,
+		type FollowedWishlist,
+		type MyWishlist,
 	} from '$lib/modules/wishlists/dashboard_types.js';
 
 	interface NavbarProps {
@@ -81,16 +85,28 @@
 			(w) => w.unfollowedAt === null && w.status !== 'archived',
 		),
 	);
+	// Recency-desc first (query returns updatedAt asc), then a stable sort surfaces action-needed
+	// lists; slice last so open lists claim the limited slots before resolved ones.
 	const followedItems = $derived<NavDropdownItem[]>(
-		followedFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(followedToDropdownItem),
+		[...followedFiltered]
+			.reverse()
+			.sort(
+				(a, b) =>
+					FOLLOWED_STATE_RANK[followedListState(a)] -
+					FOLLOWED_STATE_RANK[followedListState(b)],
+			)
+			.slice(0, MAX_DROPDOWN_ITEMS)
+			.map(followedToDropdownItem),
 	);
 
-	function wishlistToDropdownItem(wishlistRecord: Wishlist): NavDropdownItem {
+	function wishlistToDropdownItem(wishlistRecord: MyWishlist): NavDropdownItem {
 		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const badge = STATUS_BADGE[wishlistRecord.status];
+		// Owner invariant: gift count + event countdown only — never reservation data.
 		return {
 			name: wishlistRecord.title,
-			meta: theme.label,
+			meta: m.nav_gift_count({ count: wishlistRecord.totalGifts }),
+			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
 			badgeLabel: badge.label,
@@ -103,6 +119,7 @@
 		return {
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,
+			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
 			badgeLabel: `${wishlistRecord.reservedGifts}/${wishlistRecord.totalGifts}`,
@@ -112,11 +129,33 @@
 
 	function followedToDropdownItem(wishlistRecord: FollowedWishlist): NavDropdownItem {
 		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
+		const state = followedListState(wishlistRecord);
 		return {
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,
+			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
+			...followedBadge(wishlistRecord, state),
+			resolution: state === FOLLOWED_LIST_STATE.open ? undefined : state,
+		};
+	}
+
+	/** Badge reflects the gifter's progress: available to claim → reserved count → done. */
+	function followedBadge(
+		wishlistRecord: FollowedWishlist,
+		state: ReturnType<typeof followedListState>,
+	): Pick<NavDropdownItem, 'badgeLabel' | 'badgeVariant'> {
+		if (state === FOLLOWED_LIST_STATE.bought) {
+			return { badgeLabel: m.nav_done_badge(), badgeVariant: 'draft' };
+		}
+		if (state === FOLLOWED_LIST_STATE.reserved) {
+			return {
+				badgeLabel: m.nav_reserved_badge({ count: wishlistRecord.myReservations }),
+				badgeVariant: 'draft',
+			};
+		}
+		return {
 			badgeLabel:
 				wishlistRecord.availableGifts > 0
 					? m.nav_available_count({ count: wishlistRecord.availableGifts })
@@ -124,6 +163,13 @@
 			badgeVariant: 'shared',
 		};
 	}
+
+	/** Action-needed first (open → reserved → bought); recency within each group. */
+	const FOLLOWED_STATE_RANK: Record<ReturnType<typeof followedListState>, number> = {
+		[FOLLOWED_LIST_STATE.open]: 0,
+		[FOLLOWED_LIST_STATE.reserved]: 1,
+		[FOLLOWED_LIST_STATE.bought]: 2,
+	};
 
 	const NAV_LINKS = [
 		{ label: m.nav_my_lists(), href: resolve('/(app)/my-lists') },
@@ -148,8 +194,10 @@
 		total: moderatedFiltered.reduce((sum, w) => sum + w.totalGifts, 0),
 	});
 
-	const followedAvailableTotal = $derived(
-		followedFiltered.reduce((sum, w) => sum + w.availableGifts, 0),
+	// How many followed lists still need a gift (gifter hasn't reserved anything yet). Drives the
+	// footer nudge — counts only "open" lists, so users who never mark "bought" are never nagged.
+	const followedOpenCount = $derived(
+		followedFiltered.filter((w) => followedListState(w) === FOLLOWED_LIST_STATE.open).length,
 	);
 
 	let isCreateModalOpen = $state(false);
@@ -184,6 +232,7 @@
 						viewAllHref={link.href}
 						items={navDropdownItems[i]}
 						totalCount={navDropdownTotalCounts[i]}
+						grouped={i === 2}
 					>
 						{#snippet footer()}
 							{#if i === 0}
@@ -205,9 +254,9 @@
 							{:else}
 								<span class="nav-dropdown-stats">
 									<GiftIcon class="size-3.5" />
-									{m.nav_footer_available_stats({
-										count: followedAvailableTotal,
-									})}
+									{followedOpenCount > 0
+										? m.nav_footer_lists_need_gift({ count: followedOpenCount })
+										: m.nav_footer_all_sorted()}
 								</span>
 							{/if}
 						{/snippet}

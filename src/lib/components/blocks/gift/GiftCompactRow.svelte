@@ -4,6 +4,7 @@
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
+	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { formatPrice, extractGiftDomain } from '$lib/modules/gifts/gift_display.js';
@@ -105,17 +106,22 @@
 		</td>
 
 		<td class="px-3 py-1.5 text-right">
-			{#if isFullyReserved && visitorGift.myReservationId === null}
-				<span class="text-xs font-medium text-reserved">{m.gift_reserved_overlay()}</span>
-			{:else}
-				<ReserveButton
-					gift={visitorGift}
-					{isArchived}
-					size="sm"
-					{onreserve}
-					{onunreserve}
-				/>
-			{/if}
+			<div class="flex items-center justify-end gap-1.5">
+				<PurchasedToggle gift={visitorGift} size="sm" />
+				{#if isFullyReserved && visitorGift.myReservationId === null}
+					<span class="text-xs font-medium text-reserved"
+						>{m.gift_reserved_overlay()}</span
+					>
+				{:else}
+					<ReserveButton
+						gift={visitorGift}
+						{isArchived}
+						size="sm"
+						{onreserve}
+						{onunreserve}
+					/>
+				{/if}
+			</div>
 		</td>
 	{/if}
 </tr>

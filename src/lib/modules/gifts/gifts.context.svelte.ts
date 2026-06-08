@@ -23,8 +23,9 @@ export function setGiftsContext(
 	getGifts: () => GiftByRole[],
 	getRole: () => WishlistRole,
 	getIsArchived: () => boolean,
+	getIsAuthenticated: () => boolean,
 ) {
-	const context = createGiftsContext(getGifts, getRole, getIsArchived);
+	const context = createGiftsContext(getGifts, getRole, getIsArchived, getIsAuthenticated);
 	setGiftsInternal(context);
 	return context;
 }
@@ -39,10 +40,12 @@ function createGiftsContext(
 	getGifts: () => GiftByRole[],
 	getRole: () => WishlistRole,
 	getIsArchived: () => boolean,
+	getIsAuthenticated: () => boolean,
 ) {
 	const gifts = new Derived(getGifts);
 	const viewerRole = new Derived(getRole);
 	const archived = new Derived(getIsArchived);
+	const isAuthenticated = new Derived(getIsAuthenticated);
 
 	const reorderOverride = new StateRaw<GiftByRole[] | null>(null);
 	const effectiveGifts = new Derived<GiftByRole[]>(
@@ -130,6 +133,7 @@ function createGiftsContext(
 		effectiveGifts,
 		viewerRole,
 		archived,
+		isAuthenticated,
 		viewMode,
 		sortOption,
 		filters,

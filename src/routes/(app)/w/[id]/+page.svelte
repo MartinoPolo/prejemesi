@@ -89,6 +89,7 @@
 			() => gifts,
 			() => role,
 			() => wishlist.status === 'archived',
+			() => isAuthenticated,
 		),
 	);
 

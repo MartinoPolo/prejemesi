@@ -17,17 +17,39 @@ import {
 	UpdateWishlistInputSchema,
 	type WishlistRole,
 } from './types.js';
-import type { ModeratedWishlist, FollowedWishlist } from './dashboard_types.js';
+import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export const getMyWishlists = guardedQuery(async ({ user }) => {
 	const database = getDb();
-	return database
-		.select()
+
+	const totalGiftsSubquery = database
+		.select({
+			wishlistId: gift.wishlistId,
+			count: sql<number>`count(*)`.as('total_gifts'),
+		})
+		.from(gift)
+		.where(isNull(gift.deletedAt))
+		.groupBy(gift.wishlistId)
+		.as('my_total_gifts_sq');
+
+	const rows = await database
+		.select({
+			wishlist: wishlist,
+			totalGifts: sql<number>`coalesce(${totalGiftsSubquery.count}, 0)`,
+		})
 		.from(wishlist)
+		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
 		.where(and(eq(wishlist.ownerId, user.id), isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
+
+	return rows.map(
+		(row): MyWishlist => ({
+			...row.wishlist,
+			totalGifts: Number(row.totalGifts),
+		}),
+	);
 });
 
 export const getWishlistByShortId = publicQuery(v.string(), async (authContext, shortId) => {
@@ -127,6 +149,10 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 		.select({
 			wishlistId: gift.wishlistId,
 			count: sql<number>`count(*)`.as('my_reservations'),
+			purchasedCount:
+				sql<number>`count(*) filter (where ${reservation.purchasedAt} is not null)`.as(
+					'my_purchased',
+				),
 		})
 		.from(reservation)
 		.innerJoin(gift, eq(reservation.giftId, gift.id))
@@ -146,6 +172,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 			ownerName: user.name,
 			availableGifts: sql<number>`coalesce(${availableGiftsSubquery.count}, 0)`,
 			myReservations: sql<number>`coalesce(${myReservationsSubquery.count}, 0)`,
+			myPurchased: sql<number>`coalesce(${myReservationsSubquery.purchasedCount}, 0)`,
 			unfollowedAt: wishlistFollower.unfollowedAt,
 		})
 		.from(wishlistFollower)
@@ -162,6 +189,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 			ownerName: row.ownerName,
 			availableGifts: Number(row.availableGifts),
 			myReservations: Number(row.myReservations),
+			myPurchased: Number(row.myPurchased),
 			unfollowedAt: row.unfollowedAt,
 		}),
 	);

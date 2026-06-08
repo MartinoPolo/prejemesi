@@ -67,6 +67,8 @@ export interface GiftForVisitor extends GiftBase {
 	isFullyReserved: boolean;
 	/** Active reservation id held by the current authenticated user for this gift, or null. */
 	myReservationId: string | null;
+	/** When the current user marked their reservation as bought (gifter-private), or null. */
+	myReservationPurchasedAt: Date | null;
 }
 
 /** Gift for owner view — no reservation data */
