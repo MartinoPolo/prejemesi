@@ -7,7 +7,7 @@
 
 ## Purpose
 
-The App Shell is the persistent layout chrome that wraps every authenticated page in Darecky. It provides global orientation (which app, which user), primary navigation between the three dashboard views, and access to transient UI (notifications, user menu, dark mode toggle). It never competes with page content — it recedes when content is active.
+The App Shell is the persistent layout chrome that wraps every authenticated page in Přejeme si. It provides global orientation (which app, which user), primary navigation between the three dashboard views, and access to transient UI (notifications, user menu, dark mode toggle). It never competes with page content — it recedes when content is active.
 
 ---
 
@@ -152,7 +152,7 @@ From `tokens.css` and `app.css`:
 
 - Czech text first — all labels in Czech
 - No English fallback labels in mockups
-- Logo text: `darecky` (lowercase, heading font) + `.cz` (muted, 50% opacity)
+- Logo text: `prejemesi` (lowercase, heading font) + `.cz` (muted, 50% opacity)
 - Nav bar must not exceed 56px height
 - No horizontal scroll on nav bar at any viewport ≥ 320px
 - Sage green (`oklch(52.7% 0.154 150.069deg)`) is the only accent color in the shell — never warm amber/honey in this context

@@ -1,6 +1,6 @@
-# Darecky — What This Is
+# Přejeme si — What This Is
 
-Darecky ("dárečky" = presents in Czech) is a shareable wishlist web app where users create lists of desired gifts and share them with friends and family. The core mechanic is that the wishlist owner never sees which gifts are reserved, preserving the surprise element. Built with SvelteKit, Tailwind CSS, Drizzle ORM + PostgreSQL.
+Přejeme si ("dárečky" = presents in Czech) is a shareable wishlist web app where users create lists of desired gifts and share them with friends and family. The core mechanic is that the wishlist owner never sees which gifts are reserved, preserving the surprise element. Built with SvelteKit, Tailwind CSS, Drizzle ORM + PostgreSQL.
 
 ## Domain Language
 
@@ -89,7 +89,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - Each gift has a quantity field (default 1, hidden when 1, optional unlimited).
 - Wishlists are open — anyone with the link can view and reserve. Logged-in visitors auto-follow on first visit.
 - Wishlist lifecycle: Draft → Active (shared) → Archived. Archived wishlists are read-only with banner, existing reservations visible to non-owners.
-- App name "Darecky" is final (from Czech "dárečky" = presents).
+- App name "Přejeme si" is final (from Czech "dárečky" = presents).
 - No GDPR/cookie banners — family app scope.
 - Deployed on Cloudflare Workers (free) + Neon Postgres (free) + Cloudflare R2 (free, presigned URLs for uploads) + Resend (free).
 - Uses SvelteKit remote functions (query/form/command) for all client-server communication.

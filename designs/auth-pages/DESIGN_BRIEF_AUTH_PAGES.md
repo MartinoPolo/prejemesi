@@ -5,7 +5,7 @@
 > **Summary**: `designs/auth-pages/SUMMARY.md`
 > **Refinements**: Consistent logo from app shell, all 3 auth forms (login + register + magic link), error state on login, magic link success state, Google OAuth button, split-screen with sage green branding panel, light-mode only
 
-Darecky · Auth layout · Czech primary · 2026-05-30
+Přejeme si · Auth layout · Czech primary · 2026-05-30
 
 ---
 

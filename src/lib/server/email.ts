@@ -11,7 +11,7 @@ import { Resend } from 'resend';
  */
 
 /** Sandbox sender that works without a verified domain. */
-const DEFAULT_FROM = 'Darecky <onboarding@resend.dev>';
+const DEFAULT_FROM = 'Přejeme si <onboarding@resend.dev>';
 
 interface SendEmailParams {
 	readonly to: string;

@@ -27,7 +27,7 @@ function createSharingContext(getShortId: () => string, getIsShared: () => boole
 	});
 
 	const shareUrlDisplay = new Derived(() => {
-		const host = typeof window !== 'undefined' ? window.location.host : 'darecky.cz';
+		const host = typeof window !== 'undefined' ? window.location.host : 'prejemesi.cz';
 		return `${host}/w/${wishlistShortId.current}`;
 	});
 

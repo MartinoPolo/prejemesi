@@ -1,5 +1,5 @@
 /* Accent color overrides per [data-accent] attribute.
-   Darecky uses class-based dark mode (.dark), not data-theme attribute.
+   Přejeme si uses class-based dark mode (.dark), not data-theme attribute.
    Light:  :not(.dark)
    Dark:   .dark
 */

@@ -13,7 +13,7 @@ Owners need a single place to give a wishlist its visual identity: assign one im
 
 ## 1. Purpose
 
-A Darecky wishlist surfaces in many places at very different proportions: a 3:2 dashboard card, a 52px square list-row thumbnail, a wide header/banner on the wishlist page itself, and a 1.91:1 social-share card (Open Graph). Today the owner picks a theme during creation and the no-image surfaces fall back to raw gradients with no occasion personality. Issue #36 fixes three gaps:
+A Přejeme si wishlist surfaces in many places at very different proportions: a 3:2 dashboard card, a 52px square list-row thumbnail, a wide header/banner on the wishlist page itself, and a 1.91:1 social-share card (Open Graph). Today the owner picks a theme during creation and the no-image surfaces fall back to raw gradients with no occasion personality. Issue #36 fixes three gaps:
 
 1. **Image assignment lives in the wrong place** — it should be in settings/editing, not the create flow (create stays lightweight: title, occasion theme, done).
 2. **One image, many crops** — the owner uploads one image and tunes how it frames in each slot, so a tall portrait still reads well as a wide banner and a square thumbnail.
@@ -29,7 +29,7 @@ The mockup **MUST** show the full viewport with the app shell at correct proport
 
 ### Full Viewport Structure (top to bottom)
 
-1. **App nav bar** (56px fixed, `--nav-height`): logo `darecky.cz` left (primary color), nav links center (`Moje seznamy` active), avatar chip right. Faithful reproduction of the established shell (see `designs/dashboard/variant-2.html`, `designs/wishlist-page/refined.html`). Render at full fidelity, slightly de-emphasized — it is context, not the focus.
+1. **App nav bar** (56px fixed, `--nav-height`): logo `prejemesi.cz` left (primary color), nav links center (`Moje seznamy` active), avatar chip right. Faithful reproduction of the established shell (see `designs/dashboard/variant-2.html`, `designs/wishlist-page/refined.html`). Render at full fidelity, slightly de-emphasized — it is context, not the focus.
 2. **Settings page heading row**: back affordance + breadcrumb ("Moje seznamy / Vánoce 2026 / Nastavení vzhledu"), page title `Vzhled seznamu`, primary `Uložit změny` button right (sticky/affixed acceptable). The settings page also has other sections (Základní údaje, Sdílení, Moderátoři, Nebezpečná zóna) — represent these only as collapsed/adjacent nav or section stubs so the visuals section is clearly the focus.
 3. **The Visuals section — THE FOCUS** — contains three sub-areas:
     - **A. Image assignment** — drop/upload zone, current image, replace/remove.

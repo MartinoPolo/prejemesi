@@ -1,6 +1,6 @@
-# Darecky
+# Přejeme si
 
-**Darecky** (from Czech _"dárečky"_ — presents) is a shareable wishlist web app. Users create lists of
+**Přejeme si** (from Czech _"dárečky"_ — presents) is a shareable wishlist web app. Users create lists of
 gifts they'd love to receive and share a link with friends and family. Visitors reserve gifts so nobody
 buys the same thing twice — and the wishlist owner **never sees which gifts are reserved**, keeping the
 surprise intact.

@@ -93,9 +93,9 @@
 		<div class="w-80">
 			<Accordion.Root type="single" value="item-1">
 				<Accordion.Item value="item-1">
-					<Accordion.Trigger>What is Darecky?</Accordion.Trigger>
+					<Accordion.Trigger>What is Přejeme si?</Accordion.Trigger>
 					<Accordion.Content>
-						Darecky is a modern web application built with SvelteKit and a rich
+						Přejeme si is a modern web application built with SvelteKit and a rich
 						component library.
 					</Accordion.Content>
 				</Accordion.Item>
@@ -122,9 +122,9 @@
 		<div class="w-80">
 			<Accordion.Root type="multiple" value={['item-1', 'item-2']}>
 				<Accordion.Item value="item-1">
-					<Accordion.Trigger>What is Darecky?</Accordion.Trigger>
+					<Accordion.Trigger>What is Přejeme si?</Accordion.Trigger>
 					<Accordion.Content>
-						Darecky is a modern web application built with SvelteKit and a rich
+						Přejeme si is a modern web application built with SvelteKit and a rich
 						component library.
 					</Accordion.Content>
 				</Accordion.Item>
@@ -151,9 +151,9 @@
 		<div class="w-80">
 			<Accordion.Root type="single" value="item-1">
 				<Accordion.Item value="item-1">
-					<Accordion.Trigger>What is Darecky?</Accordion.Trigger>
+					<Accordion.Trigger>What is Přejeme si?</Accordion.Trigger>
 					<Accordion.Content>
-						Darecky is a modern web application built with SvelteKit and a rich
+						Přejeme si is a modern web application built with SvelteKit and a rich
 						component library.
 					</Accordion.Content>
 				</Accordion.Item>
@@ -185,9 +185,9 @@
 			</StoryKeyboardHints>
 			<Accordion.Root type="single">
 				<Accordion.Item value="item-1">
-					<Accordion.Trigger>What is Darecky?</Accordion.Trigger>
+					<Accordion.Trigger>What is Přejeme si?</Accordion.Trigger>
 					<Accordion.Content>
-						Darecky is a modern web application built with SvelteKit and a rich
+						Přejeme si is a modern web application built with SvelteKit and a rich
 						component library.
 					</Accordion.Content>
 				</Accordion.Item>

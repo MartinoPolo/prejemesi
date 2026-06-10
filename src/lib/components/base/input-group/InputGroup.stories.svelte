@@ -32,7 +32,7 @@
 			<div class="flex flex-col gap-2">
 				<p class="text-muted-foreground text-sm">Copy-to-clipboard URL</p>
 				<InputGroup.Root>
-					<InputGroup.Input value="https://darecky.app/w/birthday" readonly />
+					<InputGroup.Input value="https://prejemesi.cz/w/birthday" readonly />
 					<InputGroup.Addon align="inline-end">
 						<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Copy">
 							<CopyIcon />
@@ -105,7 +105,7 @@
 	{#snippet template()}
 		<div class="w-80">
 			<InputGroup.Root>
-				<InputGroup.Input value="https://darecky.app/w/birthday" readonly />
+				<InputGroup.Input value="https://prejemesi.cz/w/birthday" readonly />
 				<InputGroup.Addon align="inline-end">
 					<InputGroup.Button intent="ghost" size="icon-xs" aria-label="Copy">
 						<CopyIcon />

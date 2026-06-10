@@ -31,7 +31,7 @@ export const auth = betterAuth({
 		sendResetPassword: async ({ user, url }) => {
 			await sendEmail({
 				to: user.email,
-				subject: 'Reset your Darecky password',
+				subject: 'Reset your Přejeme si password',
 				html: renderActionEmail({
 					heading: 'Reset your password',
 					body: 'We received a request to reset your password. This link expires in 1 hour.',
@@ -49,7 +49,7 @@ export const auth = betterAuth({
 		sendVerificationEmail: async ({ user, url }) => {
 			await sendEmail({
 				to: user.email,
-				subject: 'Verify your Darecky email',
+				subject: 'Verify your Přejeme si email',
 				html: renderActionEmail({
 					heading: 'Confirm your email',
 					body: 'Please confirm your email address to finish setting up your account. This link expires in 1 hour.',
@@ -83,9 +83,9 @@ export const auth = betterAuth({
 			sendMagicLink: async ({ email, url }) => {
 				await sendEmail({
 					to: email,
-					subject: 'Your Darecky sign-in link',
+					subject: 'Your Přejeme si sign-in link',
 					html: renderActionEmail({
-						heading: 'Sign in to Darecky',
+						heading: 'Sign in to Přejeme si',
 						body: 'Click the button below to sign in. This link expires shortly and can only be used once.',
 						buttonLabel: 'Sign in',
 						url,

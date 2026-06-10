@@ -18,7 +18,7 @@
 	<meta property="og:title" content={m.landing_og_title()} />
 	<meta property="og:description" content={m.landing_og_description()} />
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://darecky.cz" />
+	<meta property="og:url" content="https://prejemesi.cz" />
 </svelte:head>
 
 <LandingNav />

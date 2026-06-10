@@ -10,9 +10,9 @@
 
 ## 1. Goal
 
-Turn a table-like list of presents (CSV export, pasted spreadsheet cells, or a Google Sheets link) into a Darecky wishlist with **properly-filled gifts**, with minimal manual retyping. The same machinery (an editable "draft grid" + a metadata "enrichment" service + multi-link gifts) also powers **bulk manual gift entry** and a **per-gift auto-fill** button in the single-gift modal.
+Turn a table-like list of presents (CSV export, pasted spreadsheet cells, or a Google Sheets link) into a Přejeme si wishlist with **properly-filled gifts**, with minimal manual retyping. The same machinery (an editable "draft grid" + a metadata "enrichment" service + multi-link gifts) also powers **bulk manual gift entry** and a **per-gift auto-fill** button in the single-gift modal.
 
-**Why:** The user's family currently keeps wishlists as shared Google Sheets. Three real exports were analyzed (below). Darecky aims to replace that workflow; a frictionless import is the on-ramp, so it must be robust against messy real-world sheets.
+**Why:** The user's family currently keeps wishlists as shared Google Sheets. Three real exports were analyzed (below). Přejeme si aims to replace that workflow; a frictionless import is the on-ramp, so it must be robust against messy real-world sheets.
 
 ---
 

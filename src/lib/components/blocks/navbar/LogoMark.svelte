@@ -3,12 +3,12 @@
 	import GiftIcon from '@lucide/svelte/icons/gift';
 </script>
 
-<a class="logo" href={resolve('/')} aria-label="Darecky — domovska stranka">
+<a class="logo" href={resolve('/')} aria-label="Přejeme si — domovska stranka">
 	<span class="logo-icon-wrap" aria-hidden="true">
 		<GiftIcon class="size-[18px]" />
 	</span>
 	<span class="logo-text">
-		darecky<span class="logo-tld">.cz</span>
+		prejemesi<span class="logo-tld">.cz</span>
 	</span>
 </a>
 

@@ -1,4 +1,4 @@
-# Design Brief — Landing Page (Darecky)
+# Design Brief — Landing Page (Přejeme si)
 
 > **Status**: Refined (Variant 2 — Feature showcase)
 > **Refined mockup**: `designs/landing-page/refined.html`
@@ -30,14 +30,14 @@ Secondary purpose: provide enough feature context to remove doubt ("is this the 
 
 | #   | Section                | Content                                                                                       |
 | --- | ---------------------- | --------------------------------------------------------------------------------------------- |
-| 1   | **Nav**                | Logo (`darecky.cz`), "Přihlásit se" (ghost), "Začít zdarma" (primary)                         |
+| 1   | **Nav**                | Logo (`prejemesi.cz`), "Přihlásit se" (ghost), "Začít zdarma" (primary)                         |
 | 2   | **Hero**               | Headline, subheadline, primary CTA, optional social proof signal (e.g. "Vyzkoušeno v rodině") |
 | 3   | **How It Works**       | 4-step process: Vytvořte seznam → Přidejte přání → Sdílejte odkaz → Překvapení!               |
 | 4   | **Key Features**       | Tajné rezervace, Tematické seznamy, Sdílení jedním odkazem, Zdarma navždy                     |
 | 5   | **App Preview / Mock** | Visual preview of the wishlist UI (cards, list, compact view) — the product in action         |
 | 6   | **Trust Signal**       | Small reassurance block: no ads, no payment required, no surprise spoiled                     |
 | 7   | **Final CTA**          | Repeat the "Začít zdarma" + "Přihlásit se" pair before the footer                             |
-| 8   | **Footer**             | © Darecky, language toggle                                                                    |
+| 8   | **Footer**             | © Přejeme si, language toggle                                                                    |
 
 ### Primary CTAs
 
@@ -156,7 +156,7 @@ Z-index:
 ## 8. Design Constraints (Non-Negotiable)
 
 1. **Czech text primary** — all visible copy in Czech. No English placeholder text.
-2. **App name "Darecky"** — always rendered as `darecky.cz` in logo (lowercase, with `.cz` dimmed at 50% opacity).
+2. **App name "Přejeme si"** — always rendered as `prejemesi.cz` in logo (lowercase, with `.cz` dimmed at 50% opacity).
 3. **Sage green primary** — `oklch(52.7% 0.154 150.069deg)`. No orange, yellow, red, or purple primary colors.
 4. **Owner-never-sees mechanic must be communicated** — headline or subheadline must make the "nobody sees who reserved what" promise explicit.
 5. **No GDPR/cookie banner** — excluded by project decision.

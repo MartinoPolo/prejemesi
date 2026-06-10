@@ -31,12 +31,12 @@
 	{/if}
 	{@render children?.()}
 	{#if state === 'loading'}
-		<div class="darecky-card-shimmer"></div>
+		<div class="prejemesi-card-shimmer"></div>
 	{/if}
 </div>
 
 <style>
-	:global(.darecky-card-shimmer) {
+	:global(.prejemesi-card-shimmer) {
 		position: absolute;
 		inset: 0;
 		background: linear-gradient(

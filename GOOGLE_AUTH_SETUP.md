@@ -1,6 +1,6 @@
 # Google Authentication Setup
 
-How to enable "Continue with Google" sign-in for Darecky.
+How to enable "Continue with Google" sign-in for Přejeme si.
 
 The application code is **already fully wired** for Google OAuth:
 
@@ -19,7 +19,7 @@ Stack reference: Better Auth `~1.4.22`, redirect path `{ORIGIN}/api/auth/callbac
 
 1. Go to <https://console.cloud.google.com/>
 2. Top bar → project dropdown → **New Project**.
-3. Name it (e.g. `Darecky`) → **Create** → select the new project.
+3. Name it (e.g. `Přejeme si`) → **Create** → select the new project.
 
 ## 2. Configure the OAuth consent screen
 
@@ -28,7 +28,7 @@ Required before credentials can be created.
 1. Navigate to **APIs & Services → OAuth consent screen** (newer console: **Google Auth Platform → Branding**).
 2. User type: **External** → **Create**.
 3. Fill the required fields:
-    - **App name**: `Darecky`
+    - **App name**: `Přejeme si`
     - **User support email**: your email
     - **Developer contact email**: your email
 4. **Scopes**: none required. Better Auth requests `openid`, `email`, `profile` by default — all non-sensitive, so no verification is needed.
@@ -38,7 +38,7 @@ Required before credentials can be created.
 
 1. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
 2. **Application type**: **Web application**.
-3. **Name**: e.g. `Darecky Web`.
+3. **Name**: e.g. `Přejeme si Web`.
 4. **Authorized JavaScript origins**:
     - `http://localhost:5173`
     - _(production)_ `https://yourdomain.com`
@@ -98,7 +98,7 @@ socialProviders:
 ## Notes
 
 - **No `redirectURI` in code** — Better Auth derives it from `baseURL` (`ORIGIN`). Only keep `ORIGIN` and the Console redirect URI aligned.
-- **Testing vs Production**: in _Testing_ status only listed test users can log in (no verification needed). To open sign-in to anyone, click **Publish App** on the consent screen. Verification is only required when requesting sensitive scopes — which Darecky does not.
+- **Testing vs Production**: in _Testing_ status only listed test users can log in (no verification needed). To open sign-in to anyone, click **Publish App** on the consent screen. Verification is only required when requesting sensitive scopes — which Přejeme si does not.
 - **Database**: Better Auth's Drizzle adapter stores the Google identity in the `account` table linked to `user`. No extra migration is needed beyond the existing schema.
 
 ## Troubleshooting

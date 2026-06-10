@@ -32,7 +32,7 @@ The mockup **MUST** show the full Settings page viewport with the app shell chro
 
 ### Full Viewport Structure (top to bottom)
 
-1. **Top navbar** (`--nav-height` = 56px, sticky): logo "darecky" with dimmed ".cz" TLD on the left; nav links (Moje seznamy / Spravované / Sledované); right cluster — "Vytvořit" primary button, notification bell (ghost), dark-mode cycle toggle (ghost), avatar. Reproduce faithfully but **dimmed/at-context fidelity** — it is parent chrome, not the design target. See `designs/app-shell/variant-1.html`.
+1. **Top navbar** (`--nav-height` = 56px, sticky): logo "prejemesi" with dimmed ".cz" TLD on the left; nav links (Moje seznamy / Spravované / Sledované); right cluster — "Vytvořit" primary button, notification bell (ghost), dark-mode cycle toggle (ghost), avatar. Reproduce faithfully but **dimmed/at-context fidelity** — it is parent chrome, not the design target. See `designs/app-shell/variant-1.html`.
 2. **Settings content area**: constrained to `max-width: 48rem` (768px), left-aligned within the content column (NOT centered full-bleed). Vertical stack of setting cards with `--space-6` gap.
     - Page header: `h1` "Nastavení" (`text-2xl`, bold) + muted subtitle "Spravujte svůj profil, zabezpečení a předvolby".
     - Cards in order: **Profil**, **Zabezpečení**, **Oznámení**, **Vzhled (Appearance)** ← focus, **Nebezpečná zóna**.

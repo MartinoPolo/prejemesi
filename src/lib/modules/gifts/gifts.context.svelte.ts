@@ -53,7 +53,7 @@ function createGiftsContext(
 	);
 
 	const viewMode = new Persisted<GiftViewMode>({
-		key: 'darecky-gift-view-mode',
+		key: 'prejemesi-gift-view-mode',
 		serde: jsonSerde(isGiftViewMode),
 		defaultValue: 'card',
 	});

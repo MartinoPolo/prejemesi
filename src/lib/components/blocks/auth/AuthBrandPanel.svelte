@@ -13,12 +13,12 @@
 
 <div class="brand-panel">
 	<div class="brand-content">
-		<a class="brand-logo" href={resolve('/')} aria-label="Darecky — domovska stranka">
+		<a class="brand-logo" href={resolve('/')} aria-label="Přejeme si — domovska stranka">
 			<span class="brand-logo-icon" aria-hidden="true">
 				<GiftIcon class="size-[26px]" />
 			</span>
 			<span class="brand-logo-wordmark">
-				darecky<span class="brand-logo-tld">.cz</span>
+				prejemesi<span class="brand-logo-tld">.cz</span>
 			</span>
 		</a>
 

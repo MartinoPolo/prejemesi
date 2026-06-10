@@ -1,5 +1,5 @@
 {
-	"app_name": "Darecky",
+	"app_name": "Přejeme si",
 	"email_label": "Email",
 	"password_label": "Password",
 	"cancel": "Cancel",
@@ -22,9 +22,9 @@
 	"profile": "Profile",
 	"deleting": "Deleting...",
 
-	"landing_meta_title": "Darecky — Share your wishes",
+	"landing_meta_title": "Přejeme si — Share your wishes",
 	"landing_meta_description": "Create a clear wishlist and share it with family and friends. You'll never see who reserved what — the surprise is preserved.",
-	"landing_og_title": "Darecky — Share your wishes",
+	"landing_og_title": "Přejeme si — Share your wishes",
 	"landing_og_description": "Create a wishlist, share it with one link. Gifters reserve anonymously — the surprise stays a surprise.",
 	"landing_nav_label": "Public navigation",
 	"landing_login": "Log in",
@@ -102,7 +102,7 @@
 	"landing_feat4_label": "Free forever",
 	"landing_feat4_eyebrow": "Free forever",
 	"landing_feat4_title": "No fees, no ads",
-	"landing_feat4_description": "Darecky is and always will be free. No credit card, no hidden fees, no advertising.",
+	"landing_feat4_description": "Přejeme si is and always will be free. No credit card, no hidden fees, no advertising.",
 	"landing_feat4_check1": "Free for owners and gifters — forever",
 	"landing_feat4_check2": "No ads, no third-party tracking",
 	"landing_feat4_check3": "No limits on lists or wishes",
@@ -123,7 +123,7 @@
 	"landing_footer_label": "Page footer",
 	"landing_footer_nav_label": "Footer navigation",
 	"landing_footer_create_account": "Create account",
-	"landing_footer_homepage": "Darecky — homepage",
+	"landing_footer_homepage": "Přejeme si — homepage",
 
 	"auth_tagline_login": "Share wishes,<br>preserve the surprise",
 	"auth_tagline_register": "Start creating<br>wishlists",
@@ -155,7 +155,7 @@
 	"auth_divider_or": "or",
 
 	"login_title": "Log in",
-	"login_subtitle": "Welcome back to Darecky",
+	"login_subtitle": "Welcome back to Přejeme si",
 	"login_error_credentials": "Incorrect email or password. Check your details and try again.",
 	"login_forgot_password": "Forgot your password?",
 	"login_submit": "Log in",
@@ -208,7 +208,7 @@
 	"magic_sent_check": "Check your email inbox.",
 	"magic_sent_spam": "If the email doesn't arrive, check your spam folder.",
 
-	"settings_page_title": "Settings | Darecky",
+	"settings_page_title": "Settings | Přejeme si",
 	"settings_title": "Settings",
 	"settings_subtitle": "Manage your profile, security, and preferences",
 	"settings_profile_title": "Profile",
@@ -518,7 +518,7 @@
 	"moderated_empty_title": "You don't manage any lists",
 	"moderated_empty_description": "When someone adds you as a manager of their list, it will appear here.",
 
-	"invite_page_title": "Invitation — {title} — Darecky",
+	"invite_page_title": "Invitation — {title} — Přejeme si",
 	"invite_accepted_title": "Invitation accepted!",
 	"invite_error_title": "Error",
 	"invite_pending_title": "List invitation",

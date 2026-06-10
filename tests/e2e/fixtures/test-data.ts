@@ -1,5 +1,5 @@
 export function uniqueEmail(prefix: string): string {
-	return `e2e-${prefix}-${Date.now()}@test.darecky.cz`;
+	return `e2e-${prefix}-${Date.now()}@test.prejemesi.cz`;
 }
 
 export const TEST_PASSWORD = 'TestPassword123!';
@@ -24,5 +24,5 @@ export const TEST_GIFT = {
 
 export const ANONYMOUS_RESERVER = {
 	name: 'Anonymni Jan',
-	email: 'anon@test.darecky.cz',
+	email: 'anon@test.prejemesi.cz',
 };

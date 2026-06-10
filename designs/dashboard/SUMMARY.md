@@ -32,7 +32,7 @@ Design tokens are consumed entirely from `designs/tokens.css` and `src/app.css`.
 | Sledovane         | Moje rezervace chip only + Dostupnych count                                          |
 | Sledovane toolbar | Extra Archivovane + Opustene filter toggles                                          |
 | Title + toolbar   | Merged into single row                                                               |
-| Logo              | Gift box SVG + Darecky (heading font, bold, primary) + dimmed .cz suffix             |
+| Logo              | Gift box SVG + Přejeme si (heading font, bold, primary) + dimmed .cz suffix             |
 
 ---
 

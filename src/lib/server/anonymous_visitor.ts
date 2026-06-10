@@ -17,7 +17,7 @@ import { getRequestEvent } from '$app/server';
  * work, per CONTEXT.md ("a Visitor can reserve, unreserve, and like gifts").
  */
 
-const ANON_VISITOR_COOKIE = 'darecky_anon_id';
+const ANON_VISITOR_COOKIE = 'prejemesi_anon_id';
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 

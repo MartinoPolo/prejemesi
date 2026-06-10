@@ -19,7 +19,7 @@
 			>
 				<GiftIcon class="size-3.5" />
 			</span>
-			<span>darecky<span class="font-medium opacity-40">.cz</span></span>
+			<span>prejemesi<span class="font-medium opacity-40">.cz</span></span>
 		</a>
 
 		<!-- Links -->
@@ -41,7 +41,7 @@
 
 		<!-- Copyright -->
 		<div class="text-sm text-muted-foreground/70">
-			&copy; {new Date().getFullYear()} Darecky
+			&copy; {new Date().getFullYear()} Přejeme si
 		</div>
 	</div>
 </footer>

@@ -798,7 +798,7 @@
 
 <!-- OpenGraph Meta Tags -->
 <svelte:head>
-	<title>{wishlist.title} — Darecky</title>
+	<title>{wishlist.title} — Přejeme si</title>
 	<meta property="og:title" content={wishlist.title} />
 	<meta property="og:description" content="Seznam prani od {wishlist.ownerName}" />
 	<meta property="og:type" content="website" />

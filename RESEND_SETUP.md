@@ -1,6 +1,6 @@
 # Resend Email Setup
 
-Status of email sending in Darecky, the free-tier limits, what's already wired, and the
+Status of email sending in Přejeme si, the free-tier limits, what's already wired, and the
 manual steps left to make it work end-to-end.
 
 ## Service: Resend (free tier)
@@ -43,14 +43,14 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
 
 1. Sign up at <https://resend.com> (free, no card). Use the email you'll test with —
    sandbox only delivers there.
-2. Dashboard → **API Keys** → **Create API Key** (name `darecky-dev`, **Sending access**, domain **All**).
+2. Dashboard → **API Keys** → **Create API Key** (name `prejemesi-dev`, **Sending access**, domain **All**).
 3. Copy the `re_...` key (shown once).
 
 ### 2. Configure `.env`
 
 ```
 RESEND_API_KEY=re_your_key_here
-EMAIL_FROM="Darecky <onboarding@resend.dev>"
+EMAIL_FROM="Přejeme si <onboarding@resend.dev>"
 ```
 
 Restart the dev server after editing `.env` so Vite reloads it.
@@ -71,7 +71,7 @@ Troubleshooting:
 
 1. Resend → **Domains** → **Add Domain** → enter your domain.
 2. Add the shown DNS records (SPF/`MX`, DKIM `TXT`, optional DMARC) at your DNS provider.
-3. Once **Verified**, set `EMAIL_FROM="Darecky <noreply@yourdomain.com>"`.
+3. Once **Verified**, set `EMAIL_FROM="Přejeme si <noreply@yourdomain.com>"`.
 
 This needs a domain you own and is **not** required to prove emailing works — skip until
 you're onboarding real users.

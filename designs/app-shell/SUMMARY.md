@@ -6,7 +6,7 @@
 
 | Area                | Before (Variant 1)                             | After (Refined)                                                                                                                    |
 | ------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Logo                | Emoji + plain text                             | Gift-box inline SVG (Lucide-style, 18x18) + "darecky" in heading font, bold, primary color + ".cz" at 42% opacity with visible gap |
+| Logo                | Emoji + plain text                             | Gift-box inline SVG (Lucide-style, 18x18) + "prejemesi" in heading font, bold, primary color + ".cz" at 42% opacity with visible gap |
 | Nav items           | Plain links only                               | Links + CSS hover dropdowns showing 3 recent wishlists + "Zobrazit vse"                                                            |
 | Nav dropdown footer | —                                              | No "Novy seznam", no "Archivovane" — clean footer link only                                                                        |
 | Active indicator    | Background highlight                           | Bold text + primary color underline via ::after pseudo-element                                                                     |

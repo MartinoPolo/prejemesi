@@ -1,5 +1,5 @@
 {
-	"app_name": "Darecky",
+	"app_name": "Přejeme si",
 	"email_label": "E-mail",
 	"password_label": "Heslo",
 	"cancel": "Zrušit",
@@ -22,9 +22,9 @@
 	"profile": "Profil",
 	"deleting": "Mazání...",
 
-	"landing_meta_title": "Darecky — Sdílejte svá přání",
+	"landing_meta_title": "Přejeme si — Sdílejte svá přání",
 	"landing_meta_description": "Vytvořte si přehledný seznam přání a sdílejte ho s rodinou a přáteli. Nikdy neuvidíte, kdo co rezervoval — překvapení je zachováno.",
-	"landing_og_title": "Darecky — Sdílejte svá přání",
+	"landing_og_title": "Přejeme si — Sdílejte svá přání",
 	"landing_og_description": "Vytvořte si seznam přání, sdílejte ho jedním odkazem. Dárci rezervují anonymně — překvapení zůstane překvapením.",
 	"landing_nav_label": "Veřejná navigace",
 	"landing_login": "Přihlásit se",
@@ -102,7 +102,7 @@
 	"landing_feat4_label": "Zdarma navždy",
 	"landing_feat4_eyebrow": "Zdarma navždy",
 	"landing_feat4_title": "Žádné poplatky, žádné reklamy",
-	"landing_feat4_description": "Darecky je a vždy bude zdarma. Žádná platební karta, žádné skryté poplatky, žádná reklama.",
+	"landing_feat4_description": "Přejeme si je a vždy bude zdarma. Žádná platební karta, žádné skryté poplatky, žádná reklama.",
 	"landing_feat4_check1": "Zdarma pro vlastníky i dárce — navždy",
 	"landing_feat4_check2": "Žádná reklama, žádné sledování třetí stranou",
 	"landing_feat4_check3": "Bez limitu na počet seznamů nebo přání",
@@ -123,7 +123,7 @@
 	"landing_footer_label": "Zápatí stránky",
 	"landing_footer_nav_label": "Navigace zápatí",
 	"landing_footer_create_account": "Vytvořit účet",
-	"landing_footer_homepage": "Darecky — domovská stránka",
+	"landing_footer_homepage": "Přejeme si — domovská stránka",
 
 	"auth_tagline_login": "Sdílejte přání,<br>zachovejte překvapení",
 	"auth_tagline_register": "Začněte vytvářet<br>seznamy přání",
@@ -155,7 +155,7 @@
 	"auth_divider_or": "nebo",
 
 	"login_title": "Přihlašte se",
-	"login_subtitle": "Vítejte zpět v Darecky",
+	"login_subtitle": "Vítejte zpět v Přejeme si",
 	"login_error_credentials": "Nesprávný email nebo heslo. Zkontrolujte zadané údaje a zkuste to znovu.",
 	"login_forgot_password": "Zapomněli jste heslo?",
 	"login_submit": "Přihlásit se",
@@ -208,7 +208,7 @@
 	"magic_sent_check": "Zkontrolujte svou emailovou schránku.",
 	"magic_sent_spam": "Pokud email nepřijde, podívejte se do spamu.",
 
-	"settings_page_title": "Nastavení | Darecky",
+	"settings_page_title": "Nastavení | Přejeme si",
 	"settings_title": "Nastavení",
 	"settings_subtitle": "Spravujte svůj profil, zabezpečení a předvolby",
 	"settings_profile_title": "Profil",
@@ -518,7 +518,7 @@
 	"moderated_empty_title": "Nespravujete žádné seznamy",
 	"moderated_empty_description": "Až vás někdo přidá jako správce svého seznamu, zobrazí se zde.",
 
-	"invite_page_title": "Pozvánka — {title} — Darecky",
+	"invite_page_title": "Pozvánka — {title} — Přejeme si",
 	"invite_accepted_title": "Pozvánka přijata!",
 	"invite_error_title": "Chyba",
 	"invite_pending_title": "Pozvánka do seznamu",

@@ -1,6 +1,6 @@
 # Decisions
 
-Settled architectural and design decisions for Darecky.
+Settled architectural and design decisions for Přejeme si.
 
 ## Product & Domain
 
@@ -206,10 +206,10 @@ Rejected: URL-only (too limiting), upload-only (unnecessary friction for store i
 
 ## Platform & Infrastructure
 
-### App name: Darecky
+### App name: Přejeme si
 
 Decided: 2026-05-29
-What: Final app name is "Darecky" (from Czech "dárečky" = presents/gifts).
+What: Final app name is "Přejeme si" (from Czech "dárečky" = presents/gifts).
 Why: Personal project, Czech audience, meaningful name.
 Rejected: N/A — personal choice.
 
@@ -328,7 +328,7 @@ Reference: `designs/app-shell/variant-1.html` (primary), `variant-2.html` (dropd
 ### App Shell: Logo with custom icon + dimmed TLD
 
 Decided: 2026-05-30
-What: Custom logo icon + "darecky" text + dimmed TLD suffix (e.g., ".cz") with visible gap between name and TLD. Both logo and text are links to the home/default page. Domain TBD — darecky.cz unavailable, may change name or TLD.
+What: Custom logo icon + "prejemesi" text + dimmed TLD suffix (e.g., ".cz") with visible gap between name and TLD. Both logo and text are links to the home/default page. Domain TBD — prejemesi.cz unavailable, may change name or TLD.
 Why: The visual gap between name and suffix is distinctive. Linking both provides easy home navigation.
 
 ### App Shell: Nav items as links + dropdown triggers
@@ -638,9 +638,9 @@ Rejected: Old getContext/setContext (manual key management, type-unsafe).
 ### Base components carried over from Grovekeeper
 
 Decided: 2026-05-31
-What: Upgrade base component library using Grovekeeper's mature implementations. Carry over GK versions for Button, Badge, Card, Input, Textarea, Alert, Tooltip. Keep Darecky versions for Dialog, Select, DropdownMenu, Sheet, Switch, Checkbox, Separator, Skeleton. Merge Label (GK typography + Darecky flex layout). Add 14 new components from GK: HelpText, SearchField, Toggle, ToggleGroup, Tabs, Accordion, Collapsible, Popover, Kbd, InputGroup, Progress, RadioGroup, Toast, Calendar/RangeCalendar.
+What: Upgrade base component library using Grovekeeper's mature implementations. Carry over GK versions for Button, Badge, Card, Input, Textarea, Alert, Tooltip. Keep Přejeme si versions for Dialog, Select, DropdownMenu, Sheet, Switch, Checkbox, Separator, Skeleton. Merge Label (GK typography + Přejeme si flex layout). Add 14 new components from GK: HelpText, SearchField, Toggle, ToggleGroup, Tabs, Accordion, Collapsible, Popover, Kbd, InputGroup, Progress, RadioGroup, Toast, Calendar/RangeCalendar.
 Why: Grovekeeper has production-tested components with better variant systems, testing, and stories. Standardizing across projects reduces maintenance.
-Rejected: Keeping Darecky's simpler components (missing error states, no variant files, fewer stories).
+Rejected: Keeping Přejeme si's simpler components (missing error states, no variant files, fewer stories).
 
 ### Component naming: intent/tone instead of variant
 
@@ -656,12 +656,12 @@ What: Components with `tv()` definitions extract them into a `*-variants.ts` fil
 Why: Single source of truth for styling. Types stay in sync with variants. Index.ts re-exports from variants file, not from `<script module>`.
 Rejected: Inline `<script module>` exports (couples types to component, harder to reuse).
 
-### Design tokens: merge GK tokens into Darecky
+### Design tokens: merge GK tokens into Přejeme si
 
 Decided: 2026-05-31
-What: Add GK surface/text/border tokens as aliases or new values: `--surface` (→ background), `--surface-2` (→ secondary), `--surface-3` (→ muted), `--surface-hover`, `--foreground-subtle`, `--border-strong`, `--primary-soft`. Keep all existing Darecky tokens. Keep `.light`/`.dark` class selector (not GK's `[data-theme]`). Keep Darecky fonts and spacing base.
+What: Add GK surface/text/border tokens as aliases or new values: `--surface` (→ background), `--surface-2` (→ secondary), `--surface-3` (→ muted), `--surface-hover`, `--foreground-subtle`, `--border-strong`, `--primary-soft`. Keep all existing Přejeme si tokens. Keep `.light`/`.dark` class selector (not GK's `[data-theme]`). Keep Přejeme si fonts and spacing base.
 Why: GK components reference these tokens. Aliases avoid duplicating values while maintaining compatibility with both naming conventions.
-Rejected: Full GK token system replacement (would break existing Darecky code), translating every GK class to Darecky tokens (too much manual work, loses GK consistency).
+Rejected: Full GK token system replacement (would break existing Přejeme si code), translating every GK class to Přejeme si tokens (too much manual work, loses GK consistency).
 
 ### PascalCase component file naming
 
@@ -680,8 +680,8 @@ Rejected: GK's dual native + custom approach (unnecessary complexity, native sel
 ### Select and DropdownMenu: merge best of both projects
 
 Decided: 2026-05-31
-What: Keep Darecky's styling and UX features (scroll buttons, size prop, bold focus, cursor-default, dark mode destructive). Add GK's structural improvements (state prop on Select trigger, SubContent defaults on DropdownMenu, destructive shortcut coloring). Create comprehensive stories with play tests from GK.
-Why: Darecky's UX decisions (bold focus, OS-convention cursor) are better. GK's structural completeness (error states, proper defaults, testing) fills gaps.
+What: Keep Přejeme si's styling and UX features (scroll buttons, size prop, bold focus, cursor-default, dark mode destructive). Add GK's structural improvements (state prop on Select trigger, SubContent defaults on DropdownMenu, destructive shortcut coloring). Create comprehensive stories with play tests from GK.
+Why: Přejeme si's UX decisions (bold focus, OS-convention cursor) are better. GK's structural completeness (error states, proper defaults, testing) fills gaps.
 Rejected: Taking either project's version wholesale (both have genuine strengths the other lacks).
 
 ## Import, Bulk Entry & Enrichment

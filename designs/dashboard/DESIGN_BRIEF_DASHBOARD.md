@@ -1,4 +1,4 @@
-# Design Brief — Darecky Dashboard
+# Design Brief — Přejeme si Dashboard
 
 > **Status**: Refined (Variant 3 cards + Variant 2 list ref)
 > **Refined mockup**: `designs/dashboard/refined.html`

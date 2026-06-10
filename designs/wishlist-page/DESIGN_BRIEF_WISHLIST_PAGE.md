@@ -15,7 +15,7 @@
 
 ## 1. Purpose & Success Criteria
 
-The Wishlist Page is the single most important page in Darecky. It is where the gift-surprise mechanic plays out. Success means:
+The Wishlist Page is the single most important page in Přejeme si. It is where the gift-surprise mechanic plays out. Success means:
 
 - A visitor arriving cold (no account, no context) immediately understands: whose wishlist, what occasion, what gifts cost, and how to reserve one — within 5 seconds
 - The owner can add gifts and share the list without accidentally seeing reservation state
@@ -37,7 +37,7 @@ The Wishlist Page is the single most important page in Darecky. It is where the 
 
 ### URL pattern
 
-`darecky.cz/w/abc123` — permanent visitor link, shared openly.
+`prejemesi.cz/w/abc123` — permanent visitor link, shared openly.
 
 ---
 

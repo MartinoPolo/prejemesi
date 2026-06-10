@@ -5,7 +5,7 @@
 > **Summary**: `designs/image-frame-foundation/SUMMARY.md`
 > **Refinements**: full state coverage (3 fit modes, 3 bg-fill tiers, loading/skeleton, empty/fallback, error, extreme aspect ratios tall/wide/tiny, focus-visible ring, light + dark mode, preset + custom palette, a11y/ARIA polish)
 
-The shared presentation primitive that renders every fixed image box in Darecky (gift cards, gift detail, reservation modal, wishlist card/banner, profile avatar) through one token-aware system. It replaces ad hoc `object-cover` / `object-contain` choices scattered across components with three canonical fit modes (`auto`, `contain-padded`, `cover-crop`), a deterministic background-fill fallback chain, and the new wishlist/image-frame theme tokens. This brief is a **foundation/primitive** — it is not a page. The mockup is a Storybook-style gallery showcasing the renderer across representative slots, fit modes, aspect ratios, fallback states, and both color modes.
+The shared presentation primitive that renders every fixed image box in Přejeme si (gift cards, gift detail, reservation modal, wishlist card/banner, profile avatar) through one token-aware system. It replaces ad hoc `object-cover` / `object-contain` choices scattered across components with three canonical fit modes (`auto`, `contain-padded`, `cover-crop`), a deterministic background-fill fallback chain, and the new wishlist/image-frame theme tokens. This brief is a **foundation/primitive** — it is not a page. The mockup is a Storybook-style gallery showcasing the renderer across representative slots, fit modes, aspect ratios, fallback states, and both color modes.
 
 **Source**: Issue #34 (sub-issue of PRD #33). Blocks #35 (image metadata persistence), #36 (wishlist visuals), #37 (gift crop), #38 (app background), #39 (coverage).
 
@@ -13,7 +13,7 @@ The shared presentation primitive that renders every fixed image box in Darecky 
 
 ## 1. Purpose
 
-Images in Darecky come from two uncontrolled sources: external store URLs (any aspect ratio, no color extraction) and user uploads. Fixed component boxes — a 160px gift card thumbnail, a square avatar, a 280px detail panel — must present these without blindly cropping away the product or leaving ugly raw letterbox bars. Today each component hard-codes its own `object-cover`, which silently crops tall/wide images and hides important content (the AC explicitly calls this out: "Extreme aspect-ratio images can be contained without hiding important content").
+Images in Přejeme si come from two uncontrolled sources: external store URLs (any aspect ratio, no color extraction) and user uploads. Fixed component boxes — a 160px gift card thumbnail, a square avatar, a 280px detail panel — must present these without blindly cropping away the product or leaving ugly raw letterbox bars. Today each component hard-codes its own `object-cover`, which silently crops tall/wide images and hides important content (the AC explicitly calls this out: "Extreme aspect-ratio images can be contained without hiding important content").
 
 The Image Frame Foundation answers, at a glance, four questions for any image slot:
 

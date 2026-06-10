@@ -148,7 +148,7 @@ The owner never sees reservation state, so the background wishlist cards always 
 - Social share buttons must not look like the primary CTA — they are secondary actions
 - The moderator section must be visually separated and feel like a "pro" area: smaller type, more subdued colors
 - No more than one primary button visible at a time per step
-- The permanent visitor URL must be displayed in full (`darecky.cz/w/xk9m2p`) — users need to recognize and trust the link
+- The permanent visitor URL must be displayed in full (`prejemesi.cz/w/xk9m2p`) — users need to recognize and trust the link
 - Pre-filled share message must be shown collapsed or as a small hint — not as a dominant text block
 
 ---

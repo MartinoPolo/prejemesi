@@ -18,7 +18,7 @@
 			<div class="flex items-center gap-2 rounded-lg border border-border bg-background p-3">
 				<LinkIcon class="size-4 shrink-0 text-muted-foreground/70" />
 				<span class="flex-1 truncate font-mono text-sm text-primary">
-					darecky.cz/w/martina-vanocni-2026
+					prejemesi.cz/w/martina-vanocni-2026
 				</span>
 				<Button intent="secondary" size="sm" class="shrink-0"
 					>{m.landing_feat2_copy()}</Button

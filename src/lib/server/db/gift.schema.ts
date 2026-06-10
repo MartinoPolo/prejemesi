@@ -77,7 +77,7 @@ export const reservation = pgTable(
 		anonymousEmail: text('anonymous_email'),
 		// Per-browser capability token for anonymous reservations. Lets an anonymous
 		// visitor recognise and cancel their own reservation (matched against the
-		// httpOnly `darecky_anon_id` cookie). Null for authenticated reservations.
+		// httpOnly `prejemesi_anon_id` cookie). Null for authenticated reservations.
 		anonymousVisitorId: text('anonymous_visitor_id'),
 		quantity: integer('quantity').notNull().default(1),
 		// Gifter-private "I already bought this" marker. Optional self-tracking flag set by the

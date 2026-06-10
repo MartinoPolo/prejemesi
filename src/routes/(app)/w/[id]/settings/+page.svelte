@@ -161,7 +161,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.wishlist_settings_title()} — Darecky</title>
+	<title>{m.wishlist_settings_title()} — Přejeme si</title>
 </svelte:head>
 
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">

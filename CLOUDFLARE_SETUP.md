@@ -1,6 +1,6 @@
 # Cloudflare Setup & Maintenance Guide
 
-How to deploy Darecky to Cloudflare, develop against it, and maintain it. The
+How to deploy Přejeme si to Cloudflare, develop against it, and maintain it. The
 project is **already architected for Cloudflare** — the decision is settled in
 `.mpx/DECISIONS.md` (2026-05-30) and most wiring exists in code. This guide
 covers provisioning the external services and filling in deploy-time config.
@@ -13,7 +13,7 @@ covers provisioning the external services and filling in deploy-time config.
 | ------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | **The app**  | **Cloudflare Workers** (not Pages)      | ✅ `adapter-cloudflare`, `wrangler.jsonc`, `_worker.js` output                                                  |
 | **Database** | **Neon Postgres** via **Hyperdrive**    | ✅ `getDb()` reads `platform.env.HYPERDRIVE` → falls back to `DATABASE_URL`; `postgres({ prepare: false })` set |
-| **Images**   | **R2** (`darecky-images`)               | ✅ binding + upload proxy + public-URL logic                                                                    |
+| **Images**   | **R2** (`prejemesi-images`)             | ✅ binding + upload proxy + public-URL logic                                                                    |
 | **Email**    | **Resend**                              | ✅ wrapper with console fallback                                                                                |
 | **Auth**     | better-auth (edge-compatible `minimal`) | ✅ magic-link + email/password + optional Google                                                                |
 
@@ -65,7 +65,7 @@ string (Hyperdrive does its own pooling, so point it at the unpooled endpoint).
 ### C. Hyperdrive
 
 ```powershell
-wrangler hyperdrive create darecky-db --connection-string="postgresql://USER:PASS@HOST/dbname?sslmode=require"
+wrangler hyperdrive create prejemesi-db --connection-string="postgresql://USER:PASS@HOST/dbname?sslmode=require"
 ```
 
 Copy the returned **id**, then uncomment + fill the binding in `wrangler.jsonc`
@@ -78,12 +78,12 @@ Copy the returned **id**, then uncomment + fill the binding in `wrangler.jsonc`
 ### D. R2 bucket + public URL
 
 ```powershell
-wrangler r2 bucket create darecky-images
+wrangler r2 bucket create prejemesi-images
 ```
 
-Then in the dashboard → R2 → `darecky-images` → **Settings → Public access**:
+Then in the dashboard → R2 → `prejemesi-images` → **Settings → Public access**:
 enable the **r2.dev** dev URL or (better) attach a custom subdomain like
-`images.darecky.com`. Set that value as `R2_PUBLIC_URL` (below). Without it,
+`images.prejemesi.cz`. Set that value as `R2_PUBLIC_URL` (below). Without it,
 images still work but get proxied through the Worker (burns Worker CPU).
 
 ### E. Secrets & vars
@@ -100,9 +100,9 @@ wrangler secret put GOOGLE_CLIENT_SECRET  # only if using Google
 
 ```jsonc
 "vars": {
-  "ORIGIN": "https://darecky.com",
-  "R2_PUBLIC_URL": "https://images.darecky.com",
-  "EMAIL_FROM": "Darecky <noreply@darecky.com>",
+  "ORIGIN": "https://prejemesi.cz",
+  "R2_PUBLIC_URL": "https://images.prejemesi.cz",
+  "EMAIL_FROM": "Přejeme si <noreply@prejemesi.cz>",
   "GOOGLE_CLIENT_ID": "..."   // optional; not secret
 }
 ```
@@ -139,13 +139,13 @@ Either way, **migrations run against Neon directly, never through Hyperdrive**
 pnpm run deploy
 ```
 
-Gives `https://darecky.<your-subdomain>.workers.dev`. Test before attaching a
+Gives `https://prejemesi.<your-subdomain>.workers.dev`. Test before attaching a
 domain.
 
 ### I. Custom domain
 
 Dashboard → your Worker → **Settings → Domains & Routes → Add custom domain** →
-`darecky.com`. If the domain's DNS is on Cloudflare, certs + routing are
+`prejemesi.cz`. If the domain's DNS is on Cloudflare, certs + routing are
 automatic. Then update `ORIGIN` to match and redeploy.
 
 ### J. Resend
@@ -158,7 +158,7 @@ address.
 ### K. Google OAuth (if used)
 
 In Google Cloud console add the authorized redirect URI:
-`https://darecky.com/api/auth/callback/google`.
+`https://prejemesi.cz/api/auth/callback/google`.
 
 ### L. Production auth hardening
 
