@@ -53,7 +53,7 @@
 		onclick={handleReserveClick}
 	>
 		{#if isFullyReserved}
-			Rezervovano
+			Rezervováno
 		{:else}
 			Rezervovat
 		{/if}
