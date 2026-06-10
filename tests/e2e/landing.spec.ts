@@ -5,12 +5,12 @@ test.describe('Landing page', () => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { level: 1 })).toContainText('Překvapení');
 		await expect(page.getByRole('link', { name: 'Přihlásit se' }).first()).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Začít zdarma' }).first()).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Registrovat' }).first()).toBeVisible();
 	});
 
 	test('CTA navigates to register', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('link', { name: 'Začít zdarma' }).first().click();
+		await page.getByRole('link', { name: 'Registrovat' }).first().click();
 		await expect(page).toHaveURL(/\/register/);
 	});
 

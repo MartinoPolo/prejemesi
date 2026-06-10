@@ -30,10 +30,39 @@ test.describe('Wishlist settings — non-image editing', () => {
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
 
+		// The event date is a DatePicker popover (not a native input). Pick a deterministic
+		// date 3 months out so the calendar — which opens on the current month — needs a fixed
+		// number of "next month" steps regardless of when the suite runs.
+		const eventDate = new Date();
+		eventDate.setDate(1); // avoid month-length rollover when advancing the month
+		eventDate.setMonth(eventDate.getMonth() + 3);
+		eventDate.setDate(15);
+		const eventDayLabel = String(eventDate.getDate());
+		const expectedEventDate = new Intl.DateTimeFormat('cs-CZ', { dateStyle: 'long' }).format(
+			eventDate,
+		);
+		const monthsToAdvance = 3;
+
 		const form = detailsForm(page);
 		await form.getByRole('textbox', { name: 'Název' }).fill('Detaily po úpravě');
 		await form.getByRole('textbox', { name: 'Popis' }).fill('Popis seznamu darů');
-		await form.getByLabel('Datum události (volitelné)').fill('2026-12-24');
+
+		const eventDateField = form.getByLabel('Datum události (volitelné)');
+		await eventDateField.click();
+		const calendarPopover = page.locator('[data-slot="popover-content"]');
+		await expect(calendarPopover).toBeVisible({ timeout: 5_000 });
+		for (let i = 0; i < monthsToAdvance; i++) {
+			await calendarPopover.getByRole('button', { name: 'Next' }).click();
+		}
+		await calendarPopover
+			.locator('[data-bits-day]:not([data-outside-month])', {
+				hasText: new RegExp(`^${eventDayLabel}$`),
+			})
+			.first()
+			.click();
+		// Selecting a day closes the popover; the trigger now shows the localized long date.
+		await expect(eventDateField).toContainText(expectedEventDate);
+
 		await form.getByRole('button', { name: 'Uložit' }).click();
 
 		await expect(page.getByText('Podrobnosti seznamu byly uloženy')).toBeVisible({
@@ -51,7 +80,9 @@ test.describe('Wishlist settings — non-image editing', () => {
 		await expect(reloaded.getByRole('textbox', { name: 'Popis' })).toHaveValue(
 			'Popis seznamu darů',
 		);
-		await expect(reloaded.getByLabel('Datum události (volitelné)')).toHaveValue('2026-12-24');
+		await expect(reloaded.getByLabel('Datum události (volitelné)')).toContainText(
+			expectedEventDate,
+		);
 
 		await page.context().close();
 	});

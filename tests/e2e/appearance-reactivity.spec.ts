@@ -111,11 +111,15 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 		await page.waitForLoadState('networkidle');
 		await expect(card(page, title)).toContainText(DEFAULT_THEME_EMOJI, { timeout: 10_000 });
 
-		// Change the theme in the settings page and save.
-		await page.goto(`/w/${shortId}/settings`);
+		// Change the theme via the detail-page theme dialog (the picker lives there, not in
+		// /settings) and save.
+		await page.goto(`/w/${shortId}`);
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: new RegExp(CHRISTMAS_THEME_EMOJI) }).click();
-		await page.getByRole('button', { name: /Uložit motiv|Save theme/ }).click();
+		await page.getByRole('button', { name: /Změnit motiv|Change theme/ }).click();
+		const themeDialog = page.getByRole('dialog');
+		await expect(themeDialog).toBeVisible({ timeout: 5_000 });
+		await themeDialog.getByRole('button', { name: new RegExp(CHRISTMAS_THEME_EMOJI) }).click();
+		await themeDialog.getByRole('button', { name: /Uložit motiv|Save theme/ }).click();
 		// The success toast only fires AFTER the save + dashboard-cache refresh resolve,
 		// so once it shows the client cache is guaranteed fresh.
 		await expect(page.getByText(/Motiv byl uložen|Theme has been saved/)).toBeVisible({

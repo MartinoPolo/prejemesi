@@ -139,7 +139,7 @@ test.describe('Moderator system', () => {
 		await expect(reserveDialog).toBeVisible({ timeout: 5_000 });
 		await reserveDialog.getByRole('textbox', { name: /Vaše jméno/i }).fill('Anon Reserver');
 		await reserveDialog.getByRole('button', { name: /Rezervovat/ }).click();
-		await expect(anonymousPage.getByText(/Rezervovano/).first()).toBeVisible({
+		await expect(anonymousPage.getByText(/Rezervov[aá]no/).first()).toBeVisible({
 			timeout: 5_000,
 		});
 		await anonymousContext.close();
@@ -148,7 +148,9 @@ test.describe('Moderator system', () => {
 		await inviteePage.reload();
 		await inviteePage.waitForLoadState('networkidle');
 		// As a moderator, gift shows as reserved
-		await expect(inviteePage.getByText(/Rezervovano/).first()).toBeVisible({ timeout: 5_000 });
+		await expect(inviteePage.getByText(/Rezervov[aá]no/).first()).toBeVisible({
+			timeout: 5_000,
+		});
 
 		await inviteeContext.close();
 		await ownerPage.context().close();

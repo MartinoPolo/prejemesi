@@ -172,10 +172,17 @@ test.describe('Gift deletion', () => {
 	});
 });
 
-// ── Edit lock after sharing (issue #12) ──────────────────────────────────────
+// ── Post-share editing rules (issues #82 / #83) ──────────────────────────────
+//
+// Sharing no longer hard-locks pre-existing gifts. Instead per-field rules apply
+// (name frozen, delete blocked; details stay editable), and a 2-minute grace
+// window after sharing temporarily restores FULL edit incl. name + delete, shown
+// as a live countdown. The per-field lock + grace expiry logic is covered by unit
+// tests (grace_window.test.ts, gift_post_share.test.ts); this E2E guards the
+// deterministic user-facing behavior right after sharing.
 
-test.describe('Edit lock after sharing', () => {
-	test('owner cannot edit existing gifts after sharing', async ({
+test.describe('Post-share editing rules', () => {
+	test('shared list shows the lock banner; pre-share gifts stay fully editable during the grace window', async ({
 		browser,
 		request,
 		baseURL,
@@ -186,26 +193,27 @@ test.describe('Edit lock after sharing', () => {
 		await createWishlistAndNavigate(page, 'Share Lock Test');
 		await addGift(page, TEST_GIFT.name);
 
-		// Share the wishlist — this locks pre-existing gifts
+		// Share the wishlist — pre-existing gifts become subject to the #82 rules.
 		await shareWishlist(page);
 
-		// The shared banner should appear
-		await expect(
-			page.getByText(/Seznam je sdílený — stávající přání nelze upravovat/i),
-		).toBeVisible({ timeout: 5_000 });
+		// The shared-state transparency banner appears: names locked, gifts can't be
+		// removed, but details stay editable — visible to everyone.
+		await expect(page.getByText(/názvy přání jsou uzamčeny/i)).toBeVisible({ timeout: 5_000 });
 
-		// Click the existing (pre-share) gift — the edit modal should still open
-		// but there should be no save / edit capability: the modal is read-only or no submit button
+		// Open the pre-share gift. Sharing opens a 2-minute grace window (#83) during
+		// which the owner regains full edit, surfaced as a live countdown.
 		await page.getByText(TEST_GIFT.name).click();
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		// The "Uložit" submit button is disabled (gift is locked after sharing)
-		await expect(dialog.getByRole('button', { name: /Uložit|Ulozit/i })).toBeDisabled();
+		// Grace countdown is shown and the name field is editable while the window is open.
+		await expect(dialog.getByText(/Právě sdíleno/i)).toBeVisible({ timeout: 5_000 });
+		await expect(dialog.locator('#gift-name')).toBeEnabled();
 
-		await dialog.getByRole('button', { name: /Close|Zavřít|Zavrit/i }).click();
+		await page.keyboard.press('Escape');
+		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
-		// Owner CAN still add new gifts after sharing
+		// Owner CAN still add new gifts after sharing.
 		await addGift(page, 'Novy darek po sdileni');
 
 		await page.context().close();
