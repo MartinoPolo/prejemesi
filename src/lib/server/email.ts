@@ -61,7 +61,11 @@ export async function sendEmail({
 		throw new Error(`[Email] Failed to send "${subject}" to ${to}: ${error.message}`);
 	}
 
-	console.log(`[Email] Sent "${subject}" to ${to} (id=${data?.id})`);
+	// Dev-only: avoid logging recipient addresses (PII) on every send in production.
+	// Resend's dashboard already records each send with its id.
+	if (import.meta.env.DEV) {
+		console.log(`[Email] Sent "${subject}" to ${to} (id=${data?.id})`);
+	}
 }
 
 /**
