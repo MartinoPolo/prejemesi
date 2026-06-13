@@ -656,111 +656,135 @@
 				<!-- =================================================================== -->
 				<section id="ship">
 					<h2><span class="emoji">🚀</span> How a change reaches production</h2>
-					<p>
-						There are <b>three</b> ways code gets deployed. You only need to understand
-						which one is active for you. Find out by checking the Cloudflare dashboard →
-						your Worker → <b>Settings → Builds</b> (is a repo connected?).
-					</p>
+					<div class="callout tip">
+						<span class="label">Current setup (2026-06-13)</span> Deployment is now
+						<b>automated via GitHub Actions</b>. Merging <code>dev</code> →
+						<code>production</code> triggers <code>.github/workflows/deploy.yml</code>,
+						which builds and runs <code>wrangler deploy</code>. The
+						<code>master</code> branch was deleted; <code>production</code> is the live
+						branch.
+					</div>
 
-					<h3>
-						Path A — Workers Builds (git-push deploy)
-						<span class="badge green">recommended</span>
-					</h3>
+					<h3>The pipeline</h3>
 					<div class="flow">
-						<span class="step">edit code</span><span class="arrow">→</span>
-						<span class="step">commit to <code>dev</code></span
-						><span class="arrow">→</span> <span class="step">push to GitHub</span
+						<span class="step">work on <code>dev</code></span
 						><span class="arrow">→</span>
-						<span class="step">Cloudflare auto-builds</span><span class="arrow">→</span>
+						<span class="step">PR <code>dev</code> → <code>production</code></span
+						><span class="arrow">→</span>
+						<span class="step">CI <code>checks</code> must pass</span
+						><span class="arrow">→</span> <span class="step">merge</span
+						><span class="arrow">→</span>
+						<span class="step">Actions runs <code>wrangler deploy</code></span
+						><span class="arrow">→</span>
 						<span class="step">live on prejemesi.cz</span>
 					</div>
 					<p>
-						If Workers Builds is connected (Dashboard → Worker →
-						<b>Settings → Builds → Connect repo</b>), every push to the production
-						branch (<code>dev</code>) deploys automatically. PRs get preview URLs.
-						Secrets live in Cloudflare, not in the CI. This is the lowest-maintenance
-						option and the one <code>CLOUDFLARE_SETUP.md</code> recommends.
+						<code>dev</code> is the integration branch (preview/work).
+						<code>production</code> is exactly what's live — its tip is the running
+						code, and <code>git log production</code> is your deploy history + rollback
+						anchor. You never push to <code>production</code> directly (protection
+						blocks it); you merge into it via PR.
 					</p>
 
-					<h3>Path B — Manual deploy from your machine</h3>
-					<p>Run one command. This builds locally and uploads with Wrangler:</p>
+					<h3>What's wired</h3>
+					<table>
+						<thead>
+							<tr>
+								<th>Piece</th>
+								<th>Where</th>
+								<th>Status</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>Deploy workflow</td>
+								<td>
+									<code>.github/workflows/deploy.yml</code> — on push to
+									<code>production</code> + manual <code>workflow_dispatch</code>
+								</td>
+								<td><span class="badge green">committed</span></td>
+							</tr>
+							<tr>
+								<td><code>CLOUDFLARE_API_TOKEN</code></td>
+								<td>GitHub repo secret (used by the deploy step)</td>
+								<td><span class="badge green">set</span></td>
+							</tr>
+							<tr>
+								<td><code>CLOUDFLARE_ACCOUNT_ID</code></td>
+								<td>GitHub repo variable (identifier, not a secret)</td>
+								<td><span class="badge green">set</span></td>
+							</tr>
+							<tr>
+								<td>CI gate on <code>production</code></td>
+								<td>
+									<code>ci.yml</code> runs the <code>checks</code> job; required
+									by branch protection
+								</td>
+								<td><span class="badge green">active</span></td>
+							</tr>
+						</tbody>
+					</table>
+
+					<h3>Break-glass: manual deploy</h3>
+					<p>
+						The old manual path still works for emergencies (bypasses the PR gate — use
+						sparingly). Requires a one-time <code>wrangler login</code>:
+					</p>
 					<div class="code">
 						<div class="code-head">
 							<span>PowerShell · project root</span
 							><button class="copy-btn">Copy</button>
 						</div>
-						<pre><span class="c-key">pnpm</span> run deploy   <span class="c-com"># = vite build && wrangler deploy</span></pre>
-					</div>
-					<p>
-						Requires <code>wrangler login</code> to have been run once (stores a
-						Cloudflare OAuth token in your user profile). This is what you'll use if no
-						git-deploy is connected.
-					</p>
-
-					<h3>Path C — GitHub Actions</h3>
-					<p>
-						Currently <b>not used for deploy</b>.
-						<code>.github/workflows/ci.yml</code> only runs checks + tests. You could
-						add a deploy job with <code>cloudflare/wrangler-action</code> and a
-						<code>CLOUDFLARE_API_TOKEN</code> secret, but that's more moving parts than
-						Path A.
-					</p>
-
-					<div class="callout danger">
-						<span class="label">Your active path: B (manual)</span> Confirmed via
-						<code>wrangler deployments list</code> — every deployment's Source is
-						<code>Upload</code>; <b>Workers Builds is not connected</b>. So a
-						<code>git push</code> <b>does not deploy</b>: it only updates GitHub.
-						Production stays on the old code until you run <code>pnpm run deploy</code>
-						from your machine. Don't assume a push went live.
+						<pre><span class="c-key">pnpm</span> run deploy   <span class="c-com"># = vite build && wrangler deploy (deploys current local code)</span></pre>
 					</div>
 
 					<h3>The full loop for a real change</h3>
 					<ol>
 						<li>
-							Make the change on the <code>dev</code> branch (or a feature branch → PR
-							into <code>dev</code>).
+							Make the change on <code>dev</code> (or a feature branch → PR into
+							<code>dev</code>).
 						</li>
 						<li>
 							Run <code>pnpm run check:all</code> and
-							<code>pnpm run test</code> locally — CI runs the same.
+							<code>pnpm run test</code> locally — CI runs the same and
+							<b>gates the merge to production</b>.
 						</li>
 						<li>
-							<b>If the change touches the DB schema</b> → generate + apply a
+							<b>If the change touches the DB schema</b> → generate + apply the
 							migration against Neon <i>first</i> (see
-							<a href="#backups">Migrations</a>), because the new Worker code expects
-							the new columns.
+							<a href="#backups">Migrations</a>); the deploy does <b>not</b> run
+							migrations.
 						</li>
 						<li>
-							Deploy (push for Path A, or <code>pnpm run deploy</code> for Path B).
+							Open a PR <code>dev</code> → <code>production</code>; once
+							<code>checks</code> is green, merge. Actions deploys automatically.
 						</li>
 						<li>
 							Watch <code>wrangler tail</code> for errors on the first real requests
-							(see <a href="#logs">Logs</a>).
+							(see <a href="#logs">Logs</a>), or the Actions run log for deploy
+							failures.
 						</li>
 					</ol>
+
+					<div class="callout warn">
+						<span class="label">Gate is real</span> Because <code>checks</code> is a
+						<i>required</i> status check on <code>production</code> (with admin
+						enforcement), you cannot merge while CI is red. If a deploy isn't happening,
+						check the <code>dev</code> CI run first — a failing
+						<code>check:all</code> blocks the whole pipeline by design.
+					</div>
 				</section>
 
 				<!-- =================================================================== -->
 				<section id="branches">
 					<h2><span class="emoji">🌿</span> Branches &amp; protection</h2>
 
-					<div class="callout warn">
-						<span class="label">Reality check</span> There is
-						<b>no separate, clearly-distinct "production" branch</b> in the conventional
-						sense. <code>dev</code> <i>is</i> the production/main branch by convention.
-						A stale <code>master</code> branch exists on the remote but is not used.
-					</div>
-
-					<div class="callout danger">
-						<span class="label">Confirmed deploy method</span> Verified via
-						<code>wrangler deployments list</code>: every deployment's
-						<b>Source is <code>Upload</code></b> (a manual <code>wrangler deploy</code>
-						from your machine), authored by your account.
-						<b>Workers Builds / git-push deploy is NOT connected.</b> Nothing
-						auto-deploys — production only changes when <i>you</i> run
-						<code>pnpm run deploy</code>. (Account <code>7492c3a2…</code>,
-						<code>martin.poloch@gmail.com</code>.)
+					<div class="callout tip">
+						<span class="label">Current model (2026-06-13)</span> Two-branch setup:
+						<code>dev</code> (integration, default) and <code>production</code> (live,
+						auto-deploys). The stale <code>master</code> branch was <b>deleted</b>.
+						Deployment is automated via GitHub Actions on merge to
+						<code>production</code> — see <a href="#ship">How a change reaches prod</a>.
 					</div>
 
 					<table>
@@ -774,19 +798,27 @@
 						<tbody>
 							<tr>
 								<td><code>dev</code> <span class="badge green">default</span></td>
-								<td>Integration + production branch</td>
+								<td>Integration branch</td>
 								<td>
-									This is <code>origin/HEAD</code>. All PRs target
-									<code>dev</code>. Deploys are <b>manual</b> (<code
-										>pnpm run deploy</code
-									>
-									from your machine) — no branch auto-deploys.
+									<code>origin/HEAD</code>. Feature branches PR into here; you can
+									also commit directly. Lightly protected (see below).
 								</td>
 							</tr>
 							<tr>
-								<td><code>master</code> <span class="badge red">stale</span></td>
-								<td>Unused legacy branch</td>
-								<td>Exists on remote, not maintained. Never target it for PRs.</td>
+								<td>
+									<code>production</code> <span class="badge amber">live</span>
+								</td>
+								<td>Exactly what's deployed</td>
+								<td>
+									Updated only by PR from <code>dev</code>. Merging triggers
+									<code>wrangler deploy</code>. Hardened protection + admin
+									enforcement.
+								</td>
+							</tr>
+							<tr>
+								<td><code>master</code> <span class="badge red">deleted</span></td>
+								<td>—</td>
+								<td>Removed 2026-06-13 (was a stale, unused legacy branch).</td>
 							</tr>
 							<tr>
 								<td><code>feature/*</code>, issue branches</td>
@@ -802,149 +834,110 @@
 					<h3>CI gate</h3>
 					<p>
 						<code>.github/workflows/ci.yml</code> runs on push/PR to
-						<code>[dev]</code> and executes: type-gen → <code>check:all</code> (format +
-						lint + typecheck + stylelint + fallow) → Playwright install →
+						<code>[dev, production]</code> and executes: type-gen →
+						<code>check:all</code> (paraglide + prettier + oxlint + stylelint + fallow +
+						svelte-check + eslint) → Playwright install →
 						<code>vitest --coverage</code>. The single job is named
 						<code>checks</code> — that's the context required by branch protection
 						(below).
 					</p>
 
-					<div class="callout tip">
-						<span class="label">Fixed</span> CI previously triggered on
-						<code>[dev, main]</code>, but there is no <code>main</code> branch (only
-						<code>dev</code> and a stale <code>master</code>), so the
-						<code>main</code> trigger was dead. Corrected to <code>[dev]</code> in
-						commit <code>59deb9c</code>. If you later adopt a real production branch,
-						add it to this trigger list.
+					<div class="callout warn">
+						<span class="label">check:all is a long chain</span> It runs as one
+						<code>&amp;&amp;</code> chain, so it stops at the <i>first</i> failing tool
+						and hides the rest.
+						<b>The local pre-push hook runs a lighter subset</b> (fallow, typecheck,
+						eslint, vitest) — so a push can pass locally yet fail CI on
+						prettier/stylelint/coverage. When CI is red, read the failing step in the
+						Actions log; fix it before expecting a production merge to go through.
+						<i
+							>History: the <code>[dev, main]</code> trigger was dead (no
+							<code>main</code> branch) and was corrected; a stale
+							<code>oxlint-ignore-next-line</code> directive that broke
+							<code>check:all</code> was also fixed.</i
+						>
 					</div>
 
 					<h3>Branch protection <span class="badge green">confirmed via gh</span></h3>
 					<p>
 						Checked live with
-						<code>gh api repos/MartinoPolo/prejemesi/branches/dev/protection</code>. The
-						repo is <b>PUBLIC</b>; default branch is <code>dev</code>. Here's exactly
-						what's enforced today:
+						<code
+							>gh api
+							repos/MartinoPolo/prejemesi/branches/&lt;branch&gt;/protection</code
+						>. The repo is <b>PUBLIC</b>; default branch is <code>dev</code>. Two
+						protected branches now — <code>production</code> is hardened,
+						<code>dev</code> stays light:
 					</p>
 					<table>
 						<thead>
 							<tr>
 								<th>Rule</th>
 								<th><code>dev</code></th>
+								<th><code>production</code></th>
 								<th>Meaning</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr>
-								<td>Required status checks</td>
-								<td><span class="badge green">on</span> — <code>checks</code></td>
+								<td>Required status check <code>checks</code></td>
+								<td><span class="badge green">on</span></td>
+								<td><span class="badge green">on, strict</span></td>
 								<td>
-									A PR can't merge until the CI <code>checks</code> job passes.
+									Can't merge until CI passes (strict = branch must be up to
+									date).
+								</td>
+							</tr>
+							<tr>
+								<td>Require a PR before merging</td>
+								<td><span class="badge red">off</span></td>
+								<td><span class="badge green">on</span> (0 approvals)</td>
+								<td>
+									<code>production</code> changes only via PR; no second reviewer
+									needed (solo). <code>dev</code> allows direct commits.
+								</td>
+							</tr>
+							<tr>
+								<td>Enforce on admins</td>
+								<td><span class="badge red">off</span></td>
+								<td><span class="badge green">on</span></td>
+								<td>
+									On <code>production</code> the rules apply to you too — no
+									bypass.
 								</td>
 							</tr>
 							<tr>
 								<td>Force pushes</td>
+								<td><span class="badge green">blocked</span></td>
 								<td><span class="badge green">blocked</span></td>
 								<td>History can't be rewritten.</td>
 							</tr>
 							<tr>
 								<td>Deletions</td>
 								<td><span class="badge green">blocked</span></td>
+								<td><span class="badge green">blocked</span></td>
 								<td>Branch can't be deleted.</td>
-							</tr>
-							<tr>
-								<td>Require a PR before merging</td>
-								<td><span class="badge red">off</span></td>
-								<td>You can push commits straight to <code>dev</code>.</td>
-							</tr>
-							<tr>
-								<td>Require PR review</td>
-								<td><span class="badge red">off</span></td>
-								<td>No approval needed.</td>
-							</tr>
-							<tr>
-								<td>Enforce on admins</td>
-								<td><span class="badge red">off</span></td>
-								<td>You (admin) bypass every rule above.</td>
-							</tr>
-							<tr>
-								<td><code>master</code></td>
-								<td><span class="badge red">unprotected</span></td>
-								<td>No rules at all (and it's stale — delete it).</td>
-							</tr>
-							<tr>
-								<td>Repo rulesets</td>
-								<td><span class="badge red">none</span></td>
-								<td><code>gh api …/rulesets</code> returns <code>[]</code>.</td>
-							</tr>
-						</tbody>
-					</table>
-					<div class="callout warn">
-						<span class="label">Read</span> <code>dev</code> is
-						<i>lightly</i> protected: nobody can force-push or delete it, and CI gates
-						PR merges — but as admin you can still commit directly with no review.
-						That's fine for solo work; if you adopt a production branch (below), protect
-						<i>that</i> one harder (turn on <b>Require a PR before merging</b> +
-						<b>Enforce on admins</b>) so a stray <code>git push</code> can't reach live
-						user data.
-					</div>
-
-					<h3>Should you have a separate production branch?</h3>
-					<p>
-						<b>Is deploying the trunk normal?</b> Yes — deploying straight from your
-						main branch is mainstream continuous deployment. The real problem is the
-						<i>name</i>: "deploy <code>dev</code>" sounds reckless because "dev"
-						universally means <i>not</i> production. Conventionally the deployed trunk
-						is called <code>main</code>.
-					</p>
-					<p>
-						Because deploys here are <b>manual</b> (confirmed: Source
-						<code>Upload</code>, no Workers Builds), "what's live" = "whatever was last
-						<code>deploy</code>ed" — which gives you <b>zero git-level overview</b>.
-						That's the gap you felt. Two ways to close it:
-					</p>
-					<table>
-						<thead>
-							<tr>
-								<th>Option</th>
-								<th>What you do</th>
-								<th>Best when</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td><b>A — Rename, stay single-branch</b></td>
-								<td>
-									Rename <code>dev</code> → <code>main</code>, delete stale
-									<code>master</code>. Keep deploying the trunk.
-								</td>
-								<td>You're happy with trunk = prod; just want honest naming.</td>
-							</tr>
-							<tr>
-								<td>
-									<b>B — Real production branch</b>
-									<span class="badge green">recommended here</span>
-								</td>
-								<td>
-									<code>dev</code> = integration; create <code>production</code> =
-									exactly what's live. Deploy <i>from</i> <code>production</code>;
-									merge <code>dev</code>→<code>production</code> when you ship.
-								</td>
-								<td>
-									You want a clear "this is live" pointer + rollback anchor (your
-									stated goal).
-								</td>
 							</tr>
 						</tbody>
 					</table>
 					<div class="callout tip">
-						<span class="label">Recommendation</span> Since deploys are manual,
-						<b>Option B</b> gives the overview you asked for: the tip of
-						<code>production</code> <i>is</i> the running code, and
-						<code>git log production</code> is your deploy history. The cheapest upgrade
-						that also helps: connect <b>Workers Builds</b> to auto-deploy from
-						<code>production</code> so shipping = a merge, not a laptop command. Either
-						way, <b>delete <code>master</code></b
-						>.
+						<span class="label">Resolved</span> You asked whether to have a separate
+						production branch — <b>yes, and it's now set up</b>. <code>dev</code> =
+						integration (light protection, direct commits OK), <code>production</code> =
+						exactly what's live (hardened: PR-gated, admin-enforced, CI-required). The
+						tip of <code>production</code> is the running code;
+						<code>git log production</code> is your deploy history + rollback anchor.
+						<code>master</code> deleted.
+					</div>
+					<div class="callout warn">
+						<span class="label">Trade-off to know</span> Because
+						<code>production</code> requires the <code>checks</code> status to be green
+						<i>and</i> enforces this on admins,
+						<b>you cannot merge to production while CI is red</b> — even as owner.
+						That's the hardening working (broken code can't reach live data), but it
+						means a failing <code>dev</code> CI blocks shipping. To ship past a known
+						pre-existing CI failure in an emergency, either fix CI, use the break-glass
+						manual <code>pnpm run deploy</code>, or temporarily relax the required check
+						with <code>gh api</code>.
 					</div>
 				</section>
 
@@ -2179,8 +2172,9 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 						</li>
 						<li>
 							<input type="checkbox" id="c4" /><label for="c4"
-								>Confirmed which deploy path is active (Workers Builds push vs
-								manual <code>pnpm run deploy</code>).</label
+								>Shipping = open a PR <code>dev</code> → <code>production</code>,
+								wait for <code>checks</code> green, merge (Actions deploys). Not a
+								push to <code>dev</code>.</label
 							>
 						</li>
 						<li>
@@ -2196,8 +2190,9 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 					<ul class="checklist" id="cl-after">
 						<li>
 							<input type="checkbox" id="c6" /><label for="c6"
-								><code>wrangler tail prejemesi</code> running while you smoke-test
-								the live site.</label
+								>The <b>Deploy (production)</b> Actions run finished green; then
+								<code>wrangler tail prejemesi</code> while you smoke-test
+								live.</label
 							>
 						</li>
 						<li>
@@ -2221,6 +2216,34 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 					</ul>
 
 					<hr class="soft" />
+					<h3>Done ✅ (2026-06-13)</h3>
+					<ul class="checklist" id="cl-done">
+						<li>
+							<input type="checkbox" id="d1" /><label for="d1"
+								>Deleted stale <code>master</code> branch.</label
+							>
+						</li>
+						<li>
+							<input type="checkbox" id="d2" /><label for="d2"
+								>Created hardened <code>production</code> branch (PR-gated,
+								admin-enforced, CI-required).</label
+							>
+						</li>
+						<li>
+							<input type="checkbox" id="d3" /><label for="d3"
+								>Auto-deploy via GitHub Actions on merge to
+								<code>production</code> (<code>CLOUDFLARE_API_TOKEN</code> secret +
+								account-id variable set).</label
+							>
+						</li>
+						<li>
+							<input type="checkbox" id="d4" /><label for="d4"
+								>Fixed dead CI branch trigger + the <code>check:all</code> oxlint
+								directive.</label
+							>
+						</li>
+					</ul>
+
 					<h3>One-time hardening still recommended</h3>
 					<ul class="checklist" id="cl-hard">
 						<li>
@@ -2232,17 +2255,6 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 						<li>
 							<input type="checkbox" id="h2" /><label for="h2"
 								>Add a <code>handleError</code> hook + consider Sentry.</label
-							>
-						</li>
-						<li>
-							<input type="checkbox" id="h3" /><label for="h3"
-								>Fix CI branch trigger (<code>main</code> → <code>master</code>, or
-								create <code>main</code>).</label
-							>
-						</li>
-						<li>
-							<input type="checkbox" id="h4" /><label for="h4"
-								>Confirm <code>dev</code> branch protection on GitHub.</label
 							>
 						</li>
 						<li>
