@@ -6,6 +6,9 @@ import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
 import { getAnonVisitorId } from '$lib/server/anonymous_visitor.js';
+import { wishlistFollower } from '$lib/server/db/follower.schema.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
+import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import {
 	verifyOwnerOrModerator,
 	assertWishlistMutable,
@@ -248,6 +251,29 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 		error(500, SERVER_ERROR.FAILED_TO_CREATE_GIFT);
 	}
 
+	const followerRows = await database
+		.select({ userId: wishlistFollower.userId })
+		.from(wishlistFollower)
+		.where(
+			and(
+				eq(wishlistFollower.wishlistId, input.wishlistId),
+				isNull(wishlistFollower.unfollowedAt),
+			),
+		);
+
+	await dispatchNotification({
+		type: NOTIFICATION_TYPE.NEW_GIFT_ADDED,
+		targetUserIds: followerRows
+			.map((row) => row.userId)
+			.filter(
+				(targetUserId) => targetUserId !== user.id && targetUserId !== wishlistRow.ownerId,
+			),
+		wishlistId: input.wishlistId,
+		giftId: created.id,
+		actorId: user.id,
+		actorName: user.name,
+	});
+
 	return created;
 });
 
@@ -370,6 +396,30 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		.set(updateData)
 		.where(eq(gift.id, input.id))
 		.returning();
+
+	if (updated !== undefined && role === 'moderator' && didChange) {
+		const reservationRows = await database
+			.select({
+				userId: reservation.userId,
+				anonymousEmail: reservation.anonymousEmail,
+			})
+			.from(reservation)
+			.where(and(eq(reservation.giftId, input.id), isNull(reservation.deletedAt)));
+
+		await dispatchNotification({
+			type: NOTIFICATION_TYPE.RESERVED_GIFT_EDITED,
+			targetUserIds: reservationRows
+				.map((row) => row.userId)
+				.filter((userId): userId is string => userId !== null && userId !== user.id),
+			targetEmails: reservationRows
+				.map((row) => row.anonymousEmail)
+				.filter((email): email is string => email !== null && email !== ''),
+			wishlistId: giftRow.wishlistId,
+			giftId: input.id,
+			actorId: user.id,
+			actorName: user.name,
+		});
+	}
 
 	return updated;
 });

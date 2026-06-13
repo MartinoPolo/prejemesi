@@ -82,7 +82,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 
 export interface DispatchNotificationInput {
 	type: NotificationType;
-	targetUserIds: string[];
+	targetUserIds?: readonly string[];
+	targetEmails?: readonly string[];
 	wishlistId?: string;
 	giftId?: string;
 	actorId?: string;

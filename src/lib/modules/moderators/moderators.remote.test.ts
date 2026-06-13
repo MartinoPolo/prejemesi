@@ -37,6 +37,10 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(),
 }));
 
+vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
+	dispatchNotification: vi.fn(),
+}));
+
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
