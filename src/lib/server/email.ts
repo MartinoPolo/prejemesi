@@ -19,6 +19,12 @@ interface SendEmailParams {
 	readonly html: string;
 	/** Prevents duplicate sends on retry. Use a stable per-event key. */
 	readonly idempotencyKey?: string;
+	/**
+	 * Dev-only: the action link embedded in the email (verify / magic-link / reset).
+	 * Logged to the console in dev so these flows can be exercised locally without a
+	 * deliverable inbox. Ignored in production.
+	 */
+	readonly actionUrl?: string;
 }
 
 let client: Resend | undefined;
@@ -44,7 +50,14 @@ export async function sendEmail({
 	subject,
 	html,
 	idempotencyKey,
+	actionUrl,
 }: SendEmailParams): Promise<void> {
+	// Dev: the Resend sandbox sender can only reach the account owner, so real sends
+	// to other recipients fail. Always surface the action link so the flow is testable.
+	if (import.meta.env.DEV && actionUrl !== undefined) {
+		console.log(`[Email:dev] "${subject}" → ${to}\n[Email:dev] link: ${actionUrl}`);
+	}
+
 	const resend = getClient();
 
 	if (resend === undefined) {
@@ -58,6 +71,14 @@ export async function sendEmail({
 	);
 
 	if (error !== null) {
+		// Dev: a sandbox rejection is expected for non-owner recipients; the link was
+		// already logged above, so warn instead of throwing to keep sign-up unblocked.
+		if (import.meta.env.DEV) {
+			console.warn(
+				`[Email:dev] Resend rejected "${subject}" (${error.message}) — use the logged link.`,
+			);
+			return;
+		}
 		throw new Error(`[Email] Failed to send "${subject}" to ${to}: ${error.message}`);
 	}
 

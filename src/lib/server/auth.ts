@@ -15,6 +15,11 @@ const devTrustedOrigins = import.meta.env.DEV
 	? Array.from({ length: 11 }, (_, i) => `http://localhost:${5173 + i}`)
 	: [];
 
+// Local dev has no deliverable inbox (the Resend sandbox sender only emails the
+// account owner), so verification links never arrive. Skip the verification gate
+// in dev — sign-up then auto-signs-in — while production still requires it.
+const requireEmailVerification = !import.meta.env.DEV;
+
 export function createAuth(event?: RequestEvent) {
 	return betterAuth({
 		baseURL: env.ORIGIN ?? 'http://localhost:5173',
@@ -28,7 +33,7 @@ export function createAuth(event?: RequestEvent) {
 			minPasswordLength: 8,
 			maxPasswordLength: 128,
 			autoSignIn: true,
-			requireEmailVerification: true,
+			requireEmailVerification,
 			resetPasswordTokenExpiresIn: 3600,
 			sendResetPassword: async ({ user, url }) => {
 				await sendEmail({
@@ -40,12 +45,13 @@ export function createAuth(event?: RequestEvent) {
 						buttonLabel: 'Reset password',
 						url,
 					}),
+					actionUrl: url,
 				});
 			},
 		},
 
 		emailVerification: {
-			sendOnSignUp: true,
+			sendOnSignUp: requireEmailVerification,
 			autoSignInAfterVerification: true,
 			expiresIn: 3600,
 			sendVerificationEmail: async ({ user, url }) => {
@@ -58,6 +64,7 @@ export function createAuth(event?: RequestEvent) {
 						buttonLabel: 'Verify email',
 						url,
 					}),
+					actionUrl: url,
 				});
 			},
 		},
@@ -95,6 +102,7 @@ export function createAuth(event?: RequestEvent) {
 							buttonLabel: 'Sign in',
 							url,
 						}),
+						actionUrl: url,
 					});
 				},
 			}),
