@@ -13,11 +13,16 @@
 	import AuthFormField from '$lib/components/blocks/auth/AuthFormField.svelte';
 	import AuthPasswordInput from '$lib/components/blocks/auth/AuthPasswordInput.svelte';
 	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import { authClient } from '$lib/auth_client.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import ListIcon from '@lucide/svelte/icons/list';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
+	import MailIcon from '@lucide/svelte/icons/mail';
+	import MailCheckIcon from '@lucide/svelte/icons/mail-check';
+
+	const EMAIL_NOT_VERIFIED = 'EMAIL_NOT_VERIFIED';
 
 	let email = $state('');
 	let password = $state('');
@@ -25,6 +30,11 @@
 	let errorMessage = $state('');
 	let emailError = $state('');
 	let passwordError = $state('');
+	// Set when sign-in is rejected because the address is unverified; drives the
+	// resend-verification prompt below instead of the generic credentials error.
+	let unverifiedEmail = $state('');
+	let resending = $state(false);
+	let resendSent = $state(false);
 
 	let callbackUrl = $derived(page.url.searchParams.get('redirect') ?? resolve('/my-lists'));
 
@@ -65,6 +75,8 @@
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 		errorMessage = '';
+		unverifiedEmail = '';
+		resendSent = false;
 
 		const emailValid = validateEmail();
 		const passwordValid = validatePassword();
@@ -81,7 +93,11 @@
 			});
 
 			if (result.error) {
-				errorMessage = m.login_error_credentials();
+				if (result.error.code === EMAIL_NOT_VERIFIED) {
+					unverifiedEmail = email.trim();
+				} else {
+					errorMessage = m.login_error_credentials();
+				}
 			} else {
 				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				await goto(callbackUrl);
@@ -90,6 +106,27 @@
 			errorMessage = m.error_generic();
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function handleResendVerification() {
+		errorMessage = '';
+		resending = true;
+		try {
+			const result = await authClient.sendVerificationEmail({
+				email: unverifiedEmail,
+				callbackURL: callbackUrl,
+			});
+
+			if (result.error) {
+				errorMessage = m.error_generic();
+			} else {
+				resendSent = true;
+			}
+		} catch {
+			errorMessage = m.error_generic();
+		} finally {
+			resending = false;
 		}
 	}
 </script>
@@ -121,6 +158,32 @@
 <AuthFormCard title={m.login_title()} subtitle={m.login_subtitle()}>
 	{#if errorMessage}
 		<ErrorBanner message={errorMessage} />
+	{/if}
+
+	{#if unverifiedEmail}
+		{#if resendSent}
+			<Alert.Root tone="default" class="mb-5">
+				<MailCheckIcon />
+				<Alert.Description>{m.login_resend_success()}</Alert.Description>
+			</Alert.Root>
+		{:else}
+			<Alert.Root tone="warning" class="mb-5">
+				<MailIcon />
+				<Alert.Description>{m.login_error_unverified()}</Alert.Description>
+			</Alert.Root>
+			<Button
+				type="button"
+				intent="outline"
+				class="mb-5 w-full"
+				disabled={resending}
+				onclick={handleResendVerification}
+			>
+				{#if resending}
+					<span class="spinner"></span>
+				{/if}
+				{m.login_resend_verification()}
+			</Button>
+		{/if}
 	{/if}
 
 	<form onsubmit={handleSubmit} novalidate>
