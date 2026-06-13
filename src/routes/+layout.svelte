@@ -6,10 +6,11 @@
 	import figtreeLatinUrl from '@fontsource-variable/figtree/files/figtree-latin-wght-normal.woff2?url';
 	import notoSansLatinUrl from '@fontsource-variable/noto-sans/files/noto-sans-latin-wght-normal.woff2?url';
 	import { afterNavigate, preloadCode } from '$app/navigation';
-	import { browser } from '$app/environment';
+	import { browser, dev } from '$app/environment';
 
-	// Tab title prefix — injected at dev-server start from git branch (vite.config.ts define).
+	// Dev-only tab title prefix — injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
+	// Gated on `dev` so production builds never show a branch tag (e.g. "[dev]").
 	function shortBranch(full: string): string {
 		const stripped = full.replace(/^[^/]+\//, ''); // strip feature/, fix/, etc.
 		return stripped.split(/[-_]/).slice(0, 2).join('-'); // first two segments
@@ -21,7 +22,7 @@
 	// so we can safely prepend without the page overwriting us again.
 	// Port is read here (browser-only) so each worktree's port is included.
 	afterNavigate(() => {
-		if (document.title && !document.title.startsWith('[')) {
+		if (dev && document.title && !document.title.startsWith('[')) {
 			const branch = shortBranch(__GIT_BRANCH__);
 			const port = window.location.port;
 			const prefix = port ? `[${branch}:${port}]` : `[${branch}]`;

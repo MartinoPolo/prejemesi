@@ -1,6 +1,6 @@
 # Project Instructions
 
-- App is in development — no backwards compatibility is required. When implementing changes, freely delete, replace, or restructure obsolete code and schemas without preservation shims.
+- App is in production (prejemesi.cz) with real user data. Preserve data integrity: avoid destructive schema operations, and migrate existing rows rather than dropping or recreating tables. Code may still be freely refactored, but breaking schema/API changes need a migration plan.
 - Before implementation, read `.mpx/CONTEXT.md` (domain language, feature index, constraints) and `.mpx/DECISIONS.md` (settled architectural choices).
 - Always fix unrelated errors you encounter (merge artifacts, stale imports, broken references, prior bugs) — they accumulate if ignored. Commit fixes separately from main work. If a fix fails after two attempts, revert and continue with the main task. Always notify user — both for fixes made and problems left unresolved.
 - Prefer targeted shell reads: `rg -l`, path-scoped `rg`, `git diff --stat`, and `git diff -- <files>`.
@@ -31,6 +31,8 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 
 ## Commands
 
+- On Windows, use `pnpm.cmd` for package commands. Corepack's pnpm store lives outside the
+  workspace, so package commands may need sandbox escalation.
 - `pnpm run dev` -- dev server
 - `pnpm run check` -- typecheck
 - `pnpm run check:all` -- full check suite (format + lint + typecheck + stylelint + fallow)
