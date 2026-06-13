@@ -8,9 +8,17 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare",
 	},
-	"workers_dev": true,
+	"workers_dev": false,
 	"preview_urls": true,
-	// hyperdrive and r2_buckets are configured at deploy time — leave empty for local dev
-	// "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<your-hyperdrive-id>" }],
+	"routes": [
+		{ "pattern": "prejemesi.cz", "custom_domain": true },
+		{ "pattern": "www.prejemesi.cz", "custom_domain": true },
+	],
+	"vars": {
+		"ORIGIN": "https://prejemesi.cz",
+		"R2_PUBLIC_URL": "https://images.prejemesi.cz",
+		"EMAIL_FROM": "Přejeme si <noreply@prejemesi.cz>",
+	},
+	"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "d7f44cea901644ab84ea75b59b9f3118" }],
 	"r2_buckets": [{ "binding": "R2", "bucket_name": "prejemesi-images" }],
 }
