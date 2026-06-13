@@ -11,6 +11,13 @@
 
 <script lang="ts">
 	import type { NavDropdownItem } from './navbar_types.js';
+	import { wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
+
+	// No custom image assigned → thumb falls back to the theme emoji.
+	const noImage = {
+		imageUrl: null,
+		imageFrame: wishlistSlotToFrameProps(null, 'thumbnail'),
+	} satisfies Pick<NavDropdownItem, 'imageUrl' | 'imageFrame'>;
 
 	const sampleItems: NavDropdownItem[] = [
 		{
@@ -18,6 +25,7 @@
 			meta: '8 prani',
 			href: '#1',
 			emoji: '🎄',
+			...noImage,
 			badgeLabel: 'Sdileno',
 			badgeVariant: 'shared',
 		},
@@ -26,6 +34,7 @@
 			meta: '5 prani',
 			href: '#2',
 			emoji: '🎂',
+			...noImage,
 			badgeLabel: 'Koncept',
 			badgeVariant: 'draft',
 		},
@@ -34,6 +43,7 @@
 			meta: '3 prani',
 			href: '#3',
 			emoji: '🐣',
+			...noImage,
 		},
 	];
 </script>

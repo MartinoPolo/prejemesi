@@ -26,6 +26,7 @@
 		getThemePreset,
 		type DashboardWishlistTheme,
 	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import {
@@ -99,6 +100,17 @@
 			.map(followedToDropdownItem),
 	);
 
+	// Custom cover image (cropped for the 1:1 thumbnail slot), falling back to the theme
+	// emoji when no image is assigned. Shared by all three dropdown mappers.
+	function thumbImage(
+		wishlistRecord: Wishlist,
+	): Pick<NavDropdownItem, 'imageUrl' | 'imageFrame'> {
+		return {
+			imageUrl: wishlistImageUrl(wishlistRecord.imageKey),
+			imageFrame: wishlistSlotToFrameProps(wishlistRecord.imageSlots, 'thumbnail'),
+		};
+	}
+
 	function wishlistToDropdownItem(wishlistRecord: MyWishlist): NavDropdownItem {
 		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const badge = STATUS_BADGE[wishlistRecord.status];
@@ -109,6 +121,7 @@
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
+			...thumbImage(wishlistRecord),
 			badgeLabel: badge.label,
 			badgeVariant: badge.variant,
 		};
@@ -122,6 +135,7 @@
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
+			...thumbImage(wishlistRecord),
 			badgeLabel: `${wishlistRecord.reservedGifts}/${wishlistRecord.totalGifts}`,
 			badgeVariant: 'draft',
 		};
@@ -136,6 +150,7 @@
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
+			...thumbImage(wishlistRecord),
 			...followedBadge(wishlistRecord, state),
 			resolution: state === FOLLOWED_LIST_STATE.open ? undefined : state,
 		};
