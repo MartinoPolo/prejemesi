@@ -19,6 +19,14 @@
 		"R2_PUBLIC_URL": "https://images.prejemesi.cz",
 		"EMAIL_FROM": "Přejeme si <noreply@prejemesi.cz>",
 	},
-	"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "d7f44cea901644ab84ea75b59b9f3118" }],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "d7f44cea901644ab84ea75b59b9f3118",
+			// Dev-only: wrangler/Miniflare emulates Hyperdrive against this local
+			// Postgres (see compose.yaml). Ignored on deploy.
+			"localConnectionString": "postgres://root:mysecretpassword@localhost:5432/local",
+		},
+	],
 	"r2_buckets": [{ "binding": "R2", "bucket_name": "prejemesi-images" }],
 }

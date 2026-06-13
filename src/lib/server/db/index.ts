@@ -31,6 +31,13 @@ function createDb(connectionString: string) {
 	const client = postgres(connectionString, {
 		prepare: false,
 		fetch_types: false,
+		// Bound the pool and reap idle/old connections. Without idle_timeout
+		// (postgres-js default is 0 = never close), pools orphaned by Vite HMR
+		// re-evaluation in dev keep their backends open forever, eventually
+		// exhausting Postgres ("too many clients already", 53300).
+		max: 10,
+		idle_timeout: 20,
+		max_lifetime: 60 * 30,
 	});
 	return drizzle(client, { schema });
 }
@@ -39,8 +46,19 @@ function createDb(connectionString: string) {
  * Process-global cache for non-request contexts (seed scripts, migrations) and
  * for the Node dev runtime, where a connection may be safely reused across
  * requests.
+ *
+ * Pinned to `globalThis` so it survives Vite HMR module re-evaluation in dev:
+ * a plain module-level Map is recreated on every server-file edit, abandoning
+ * the previous postgres pool and leaking its open connections. Reusing the
+ * global keeps a single pool alive across reloads.
  */
-const globalClientCache = new Map<string, ReturnType<typeof drizzle>>();
+const globalCacheKey = Symbol.for('prejemesi.db.globalClientCache');
+const globalCacheHost = globalThis as typeof globalThis & {
+	[globalCacheKey]?: Map<string, ReturnType<typeof drizzle>>;
+};
+const globalClientCache: Map<string, ReturnType<typeof drizzle>> = globalCacheHost[
+	globalCacheKey
+] ?? (globalCacheHost[globalCacheKey] = new Map());
 
 /**
  * Per-request cache for the Cloudflare Workers runtime. On Workers the postgres
