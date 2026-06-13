@@ -2,7 +2,7 @@ import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { getTextDirection } from '$lib/paraglide/runtime';
-import { isDatabaseConfigured } from '$lib/server/db/index.js';
+import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import type { BackgroundTheme } from '$lib/components/base/theme/types.js';
 
 const paraglideHandle: Handle = ({ event, resolve }) =>
@@ -29,13 +29,13 @@ const DEFAULT_BACKGROUND_THEME: BackgroundTheme = 'default';
 const backgroundThemeHandle: Handle = async ({ event, resolve }) => {
 	let bgTheme: BackgroundTheme = DEFAULT_BACKGROUND_THEME;
 
-	if (event.locals.user != null && isDatabaseConfigured()) {
+	if (event.locals.user != null && isDatabaseConfigured(event)) {
 		try {
 			const { getDb } = await import('$lib/server/db/index.js');
 			const { user } = await import('$lib/server/db/auth.schema.js');
 			const { eq } = await import('drizzle-orm');
 
-			const rows = await getDb()
+			const rows = await getDb(event)
 				.select({ appBackgroundTheme: user.appBackgroundTheme })
 				.from(user)
 				.where(eq(user.id, event.locals.user.id))
@@ -59,9 +59,16 @@ const backgroundThemeHandle: Handle = async ({ event, resolve }) => {
 };
 
 const authHandle: Handle = async ({ event, resolve }) => {
-	const { auth } = await import('$lib/server/auth.js');
+	rememberDatabaseBinding(event);
+
+	if (!isDatabaseConfigured(event)) {
+		return resolve(event);
+	}
+
+	const { createAuth } = await import('$lib/server/auth.js');
 	const { svelteKitHandler } = await import('better-auth/svelte-kit');
 	const { building } = await import('$app/environment');
+	const auth = createAuth(event);
 
 	const sessionData = await auth.api.getSession({ headers: event.request.headers });
 
@@ -73,10 +80,6 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({ event, resolve, auth, building });
 };
 
-const handles: Handle[] = [paraglideHandle];
-if (isDatabaseConfigured()) {
-	handles.push(authHandle);
-}
-handles.push(backgroundThemeHandle);
+const handles: Handle[] = [paraglideHandle, authHandle, backgroundThemeHandle];
 
 export const handle = sequence(...handles);
