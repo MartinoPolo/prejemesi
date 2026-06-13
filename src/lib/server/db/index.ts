@@ -2,41 +2,89 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
+import type { RequestEvent } from '@sveltejs/kit';
 import * as schema from './schema.js';
 
-export function isDatabaseConfigured(): boolean {
-	return env.DATABASE_URL !== undefined && env.DATABASE_URL !== '';
+function getHyperdriveConnectionString(event: RequestEvent | undefined): string | undefined {
+	return event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined;
 }
 
-const clientCache = new Map<string, ReturnType<typeof drizzle>>();
+let runtimeConnectionString: string | undefined;
 
-export function getDb() {
-	let connectionString: string | undefined;
-	try {
-		const event = getRequestEvent();
-		connectionString =
-			(event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined) ??
-			env.DATABASE_URL;
-	} catch {
-		connectionString = env.DATABASE_URL;
+export function rememberDatabaseBinding(event: RequestEvent): void {
+	const hyperdriveConnectionString = getHyperdriveConnectionString(event);
+	if (hyperdriveConnectionString !== undefined && hyperdriveConnectionString !== '') {
+		runtimeConnectionString = hyperdriveConnectionString;
 	}
+}
+
+export function isDatabaseConfigured(event?: RequestEvent): boolean {
+	const hyperdriveConnectionString = getHyperdriveConnectionString(event);
+	return (
+		(hyperdriveConnectionString !== undefined && hyperdriveConnectionString !== '') ||
+		(runtimeConnectionString !== undefined && runtimeConnectionString !== '') ||
+		(env.DATABASE_URL !== undefined && env.DATABASE_URL !== '')
+	);
+}
+
+function createDb(connectionString: string) {
+	const client = postgres(connectionString, {
+		prepare: false,
+		fetch_types: false,
+	});
+	return drizzle(client, { schema });
+}
+
+/**
+ * Process-global cache for non-request contexts (seed scripts, migrations) and
+ * for the Node dev runtime, where a connection may be safely reused across
+ * requests.
+ */
+const globalClientCache = new Map<string, ReturnType<typeof drizzle>>();
+
+/**
+ * Per-request cache for the Cloudflare Workers runtime. On Workers the postgres
+ * socket is request-scoped: an I/O object created in one request handler cannot
+ * be used by another ("Cannot perform I/O on behalf of a different request").
+ * Keying by the request event gives each request its own socket and lets it be
+ * collected when the request ends.
+ */
+const requestClientCache = new WeakMap<RequestEvent, ReturnType<typeof drizzle>>();
+
+export function getDb(event?: RequestEvent) {
+	let requestEvent: RequestEvent | undefined;
+	try {
+		requestEvent = event ?? getRequestEvent();
+	} catch {
+		requestEvent = undefined;
+	}
+
+	const hyperdriveConnectionString = getHyperdriveConnectionString(requestEvent);
+	const connectionString =
+		hyperdriveConnectionString ?? runtimeConnectionString ?? env.DATABASE_URL;
 
 	if (connectionString === undefined || connectionString === '') {
 		throw new Error('No database connection: set DATABASE_URL or configure Hyperdrive');
 	}
 
-	const cached = clientCache.get(connectionString);
+	// On Workers (Hyperdrive binding present) the socket cannot cross requests,
+	// so memoize per request rather than process-globally.
+	if (requestEvent !== undefined && hyperdriveConnectionString !== undefined) {
+		const cached = requestClientCache.get(requestEvent);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const db = createDb(connectionString);
+		requestClientCache.set(requestEvent, db);
+		return db;
+	}
+
+	const cached = globalClientCache.get(connectionString);
 	if (cached !== undefined) {
 		return cached;
 	}
-
-	const client = postgres(connectionString, {
-		prepare: false,
-		fetch_types: false,
-	});
-
-	const db = drizzle(client, { schema });
-	clientCache.set(connectionString, db);
+	const db = createDb(connectionString);
+	globalClientCache.set(connectionString, db);
 	return db;
 }
 
@@ -45,6 +93,6 @@ export function getDb() {
  * pooled client does not keep the process (or vitest) alive after the suite ends.
  */
 export async function closeDb(): Promise<void> {
-	await Promise.all([...clientCache.values()].map((db) => db.$client.end()));
-	clientCache.clear();
+	await Promise.all([...globalClientCache.values()].map((db) => db.$client.end()));
+	globalClientCache.clear();
 }
