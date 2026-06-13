@@ -7,6 +7,8 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
+import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
@@ -301,6 +303,32 @@ export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishl
 		})
 		.where(eq(wishlist.id, wishlistId))
 		.returning();
+
+	const followerRows = await database
+		.select({ userId: wishlistFollower.userId })
+		.from(wishlistFollower)
+		.where(
+			and(eq(wishlistFollower.wishlistId, wishlistId), isNull(wishlistFollower.unfollowedAt)),
+		);
+	const moderatorRows = await database
+		.select({ userId: moderatorAssignment.userId })
+		.from(moderatorAssignment)
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, wishlistId),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		);
+
+	await dispatchNotification({
+		type: NOTIFICATION_TYPE.WISHLIST_ARCHIVED,
+		targetUserIds: [...followerRows, ...moderatorRows]
+			.map((row) => row.userId)
+			.filter((targetUserId) => targetUserId !== user.id),
+		wishlistId,
+		actorId: user.id,
+		actorName: user.name,
+	});
 
 	return archived;
 });

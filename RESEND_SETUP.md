@@ -1,7 +1,17 @@
 # Resend Email Setup
 
 Status of email sending in Přejeme si, the free-tier limits, what's already wired, and the
-manual steps left to make it work end-to-end.
+production domain setup.
+
+## Current production status
+
+- Resend domain `prejemesi.cz` is verified.
+- Production sender is `Přejeme si <noreply@prejemesi.cz>` via `EMAIL_FROM` in `wrangler.jsonc`.
+- Production API key is stored as the Cloudflare Worker secret `RESEND_API_KEY`.
+- Receiving is disabled in Resend; the app only sends transactional emails.
+- Signup email verification is enabled in BetterAuth.
+- Critical notification emails are dispatched from app events through
+  `notification_dispatcher.ts`.
 
 ## Service: Resend (free tier)
 
@@ -21,7 +31,8 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
     - the email you signed up to Resend with, and
     - the test addresses `delivered@resend.dev` (always succeeds), `bounced@resend.dev`,
       `complained@resend.dev` (simulate failures).
-- Sending to any other real address requires verifying a domain (DNS records) — see Step 4.
+- Sending to any other real address requires a verified domain. Production uses verified
+  `prejemesi.cz`.
 
 ## What's already wired (in code)
 
@@ -37,7 +48,7 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
     - `sendMagicLink` (magic-link sign-in)
 - `.env.example` documents `RESEND_API_KEY` and `EMAIL_FROM`.
 
-## Manual steps (you)
+## Local setup
 
 ### 1. Create a Resend account + API key
 
@@ -67,26 +78,30 @@ Troubleshooting:
 - `(not sent — RESEND_API_KEY unset)` → key didn't load; check `.env` and restart dev server.
 - `[Email] Failed ...` to a non-sandbox address → expected before domain verification.
 
-### 4. (Later) Verify a sending domain — for real recipients
+### 4. Production domain
 
-1. Resend → **Domains** → **Add Domain** → enter your domain.
-2. Add the shown DNS records (SPF/`MX`, DKIM `TXT`, optional DMARC) at your DNS provider.
-3. Once **Verified**, set `EMAIL_FROM="Přejeme si <noreply@yourdomain.com>"`.
+Already done for `prejemesi.cz`. If the domain is ever recreated, add the Resend DNS
+records in Cloudflare and keep receiving disabled unless inbound email is intentionally
+needed.
 
-This needs a domain you own and is **not** required to prove emailing works — skip until
-you're onboarding real users.
+## Notification email coverage
 
-## Remaining work (notification emails — not yet built)
+Auth emails are wired: signup verification, password reset, and magic-link sign-in.
 
-Auth emails are the smallest slice and are done. The notification-email path is still open:
+Notification dispatcher coverage:
 
-- Infra that already exists: `notifications/types.ts` (`EMAIL_NOTIFICATION_TYPES` lists which
-  types must email), the `emailSent` column on the notification schema, and the per-type email
-  toggle UI (`NotificationPreferencesForm.svelte`).
-- Missing: the notification **dispatcher** — write the notification row, and for
-  `EMAIL_NOTIFICATION_TYPES` check the user's preference, call `sendEmail(...)` (pass a stable
-  `idempotencyKey` per event to avoid double-sends on retry), then flip `emailSent`. Wire it
-  into the event points (gift reservation, moderator invite, wishlist archive, etc.).
+- `liked_gift_reserved` — email + in-app when someone reserves a gift a user liked.
+- `reserved_gift_edited` — email + in-app when a moderator edits a reserved gift.
+- `wishlist_archived` — email + in-app to followers/moderators when a wishlist is archived.
+- `owner_self_promoted` — email + in-app to followers when the owner enables reservation visibility.
+- `new_gift_added` — in-app only to followers.
+- `gift_reserved` — in-app only to followers.
+
+Still not covered:
+
+- `moderator_invited` email, because current moderator invites are shareable links with no target
+  email address.
+- Saving notification preferences; the settings UI exists, but server persistence is still TODO.
 
 ## References
 

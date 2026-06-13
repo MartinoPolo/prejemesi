@@ -62,9 +62,6 @@ src/lib/paraglide/messages/*
 !src/lib/paraglide/messages/_index.d.ts
 project.inlang/cache/
 
-# Database
-drizzle/meta/
-
 # Storybook
 *storybook.log
 storybook-static/

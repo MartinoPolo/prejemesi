@@ -3,11 +3,14 @@ import { eq, and, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_error_codes.js';
 import { getDb } from '$lib/server/db/index.js';
-import { gift, reservation } from '$lib/server/db/gift.schema.js';
+import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
+import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { publicQuery, publicCommand, guardedCommand } from '$lib/server/remote.js';
 import { getAnonVisitorId, getOrCreateAnonVisitorId } from '$lib/server/anonymous_visitor.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
+import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import {
 	ReserveGiftInputSchema,
 	UnreserveInputSchema,
@@ -168,6 +171,45 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 	if (created === undefined) {
 		error(500, SERVER_ERROR.RESERVATION_FAILED);
 	}
+
+	const actorUserId = authContext?.user.id ?? null;
+	const actorName = authContext?.user.name ?? created.anonymousName ?? null;
+	const likedRows = await database
+		.select({ userId: giftLike.userId })
+		.from(giftLike)
+		.where(and(eq(giftLike.giftId, input.giftId), isNull(giftLike.deletedAt)));
+	const followerRows = await database
+		.select({ userId: wishlistFollower.userId })
+		.from(wishlistFollower)
+		.where(
+			and(
+				eq(wishlistFollower.wishlistId, wishlistRow.id),
+				isNull(wishlistFollower.unfollowedAt),
+			),
+		);
+	const likedUserIds = likedRows
+		.map((row) => row.userId)
+		.filter((userId) => userId !== actorUserId && userId !== wishlistRow.ownerId);
+	const followerUserIds = followerRows
+		.map((row) => row.userId)
+		.filter((userId) => userId !== actorUserId && userId !== wishlistRow.ownerId);
+
+	await dispatchNotification({
+		type: NOTIFICATION_TYPE.LIKED_GIFT_RESERVED,
+		targetUserIds: likedUserIds,
+		wishlistId: wishlistRow.id,
+		giftId: input.giftId,
+		actorId: actorUserId ?? undefined,
+		actorName: actorName ?? undefined,
+	});
+	await dispatchNotification({
+		type: NOTIFICATION_TYPE.GIFT_RESERVED,
+		targetUserIds: followerUserIds,
+		wishlistId: wishlistRow.id,
+		giftId: input.giftId,
+		actorId: actorUserId ?? undefined,
+		actorName: actorName ?? undefined,
+	});
 
 	return { id: created.id };
 });

@@ -34,17 +34,17 @@ all plans), R2 (10 GB), Neon (free, ~300–800ms cold start after idle), Resend
 paths, `app.d.ts` platform types, `cf:types` + `preview` scripts, `.env`
 gitignored (only `.env.example` tracked), `prepare:false` for the pooler.
 
-**Gaps to close before going public:**
+**Provisioning status:**
 
-1. Provision Neon DB + create Hyperdrive + uncomment the binding in `wrangler.jsonc`
-2. Create the R2 bucket + enable a public URL
-3. Set production secrets/vars in Cloudflare
-4. Add a `deploy` script (none exists today — only `preview`)
-5. Decide a **production migration strategy** (`drizzle/` is empty — push-based, interactive-only)
-6. Custom domain + set `ORIGIN`
-7. Resend domain verification + `RESEND_API_KEY`
-8. Production auth hardening (two flags in `auth.ts`)
-9. Google OAuth redirect URIs (if used)
+1. Neon DB + Hyperdrive: done
+2. R2 bucket + `images.prejemesi.cz`: done
+3. Production secrets/vars in Cloudflare: done
+4. Deploy script: done
+5. Production migration against Neon: done
+6. Custom domain + `ORIGIN`: done
+7. Resend domain verification + `RESEND_API_KEY`: done
+8. Production auth hardening: done
+9. Google OAuth redirect URIs: pending only if Google login is used
 
 ---
 
@@ -65,11 +65,13 @@ string (Hyperdrive does its own pooling, so point it at the unpooled endpoint).
 ### C. Hyperdrive
 
 ```powershell
-wrangler hyperdrive create prejemesi-db --connection-string="postgresql://USER:PASS@HOST/dbname?sslmode=require"
+wrangler hyperdrive create prejemesi-db --connection-string="postgresql://USER:PASS@HOST/dbname?sslmode=require" --caching-disabled
 ```
 
-Copy the returned **id**, then uncomment + fill the binding in `wrangler.jsonc`
-(already stubbed at line 14):
+`sslmode=verify-full` requires uploading a CA certificate to Cloudflare first.
+For Neon + Hyperdrive, `sslmode=require` is the working encrypted setup.
+
+Copy the returned **id**, then fill the binding in `wrangler.jsonc`:
 
 ```jsonc
 "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<your-hyperdrive-id>" }],
@@ -79,12 +81,16 @@ Copy the returned **id**, then uncomment + fill the binding in `wrangler.jsonc`
 
 ```powershell
 wrangler r2 bucket create prejemesi-images
+wrangler r2 bucket domain add prejemesi-images --domain images.prejemesi.cz --zone-id <zone-id> --min-tls 1.2 --force
 ```
 
-Then in the dashboard → R2 → `prejemesi-images` → **Settings → Public access**:
-enable the **r2.dev** dev URL or (better) attach a custom subdomain like
-`images.prejemesi.cz`. Set that value as `R2_PUBLIC_URL` (below). Without it,
-images still work but get proxied through the Worker (burns Worker CPU).
+R2 requires activating the $0/month metered subscription. The Standard storage
+free tier is 10 GB-month storage, 1M Class A operations, 10M Class B operations,
+and free egress.
+
+Use the custom subdomain `images.prejemesi.cz` and set that value as
+`R2_PUBLIC_URL` (below). Without it, images still work but get proxied through
+the Worker.
 
 ### E. Secrets & vars
 
@@ -110,25 +116,26 @@ wrangler secret put GOOGLE_CLIENT_SECRET  # only if using Google
 `ORIGIN` **must** be your production URL — auth redirects and email links derive
 from it (else links point to localhost).
 
-### F. Add a deploy script
+### F. Confirm the deploy script
 
-`package.json` has no `deploy` (only `preview`). Add:
+`package.json` includes:
 
 ```json
 "deploy": "vite build && wrangler deploy"
 ```
 
-### G. Production migration strategy ⚠️
+### G. Production migrations
 
-Currently **push-based** (`drizzle/` is empty, `db:push` is interactive and
-fails non-interactively on renames). Fine for local dev, risky for prod. Pick:
+Use generated migrations for production. The current baseline lives in
+`drizzle/`; apply it to Neon before the first deploy.
 
-- **Simplest now:** run `drizzle-kit push` from your machine against the Neon
-  connection string (set `DATABASE_URL` to Neon temporarily). Works, but
-  interactive and manual.
-- **Recommended long-term:** switch to generated migrations — `pnpm db:generate`
-  (commits SQL into `drizzle/`), then `pnpm db:migrate` against Neon in a deploy
-  step. Non-interactive, reviewable, safe.
+```powershell
+$env:DATABASE_URL = "postgresql://USER:PASS@HOST/dbname?sslmode=verify-full"
+pnpm db:migrate
+```
+
+For future schema changes: edit `schema.ts` → `pnpm db:generate` → review SQL →
+run `pnpm db:migrate` against Neon.
 
 Either way, **migrations run against Neon directly, never through Hyperdrive**
 (Hyperdrive is read-optimized/cached for the runtime).
@@ -139,14 +146,19 @@ Either way, **migrations run against Neon directly, never through Hyperdrive**
 pnpm run deploy
 ```
 
-Gives `https://prejemesi.<your-subdomain>.workers.dev`. Test before attaching a
-domain.
+Current production Cloudflare resources:
+
+- Worker: `prejemesi`
+- Custom domains: `prejemesi.cz`, `www.prejemesi.cz`
+- Hyperdrive: `prejemesi-db` / `d7f44cea901644ab84ea75b59b9f3118`
+- R2 bucket: `prejemesi-images`
+- R2 custom domain: `images.prejemesi.cz`
 
 ### I. Custom domain
 
-Dashboard → your Worker → **Settings → Domains & Routes → Add custom domain** →
-`prejemesi.cz`. If the domain's DNS is on Cloudflare, certs + routing are
-automatic. Then update `ORIGIN` to match and redeploy.
+Custom domains are configured in `wrangler.jsonc` under `routes` with
+`custom_domain: true`. Cloudflare creates the DNS records and certificates on
+deploy.
 
 ### J. Resend
 
@@ -155,6 +167,8 @@ that's `RESEND_API_KEY`. Until verified you can use the sandbox
 `onboarding@resend.dev` (the default fallback), but it only sends to your own
 address.
 
+Current production sender: `Přejeme si <noreply@prejemesi.cz>`.
+
 ### K. Google OAuth (if used)
 
 In Google Cloud console add the authorized redirect URI:
@@ -162,12 +176,10 @@ In Google Cloud console add the authorized redirect URI:
 
 ### L. Production auth hardening
 
-In `src/lib/server/auth.ts` two flags are marked for production:
+`src/lib/server/auth.ts` is production-hardened:
 
-- `requireEmailVerification: true` (line 21)
-- `sendOnSignUp: true` (line 38)
-
-Both depend on Resend working (step J), or users can't verify.
+- `requireEmailVerification: true`
+- `sendOnSignUp: true`
 
 ---
 
@@ -253,9 +265,9 @@ it to gate deploys behind existing CI.
 
 These can be applied in a commit without any Cloudflare login:
 
-1. Add the `deploy` script to `package.json`
+1. Confirm the `deploy` script in `package.json`
 2. Uncomment/template the `hyperdrive` + `vars` blocks in `wrangler.jsonc`
 3. Flip the two production auth flags in `src/lib/server/auth.ts`
-4. Optionally switch Drizzle to generated migrations (`db:generate` + `drizzle/` baseline)
+4. Review the generated `drizzle/` baseline before running it against Neon
 
 Account-side steps (Neon, Hyperdrive create, secrets, domains) require your login.

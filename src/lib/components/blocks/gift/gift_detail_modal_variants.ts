@@ -3,7 +3,11 @@ import { tv } from 'tailwind-variants';
 export const giftDetailModalVariants = tv({
 	slots: {
 		content: 'sm:max-w-[900px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
-		body: 'grid grid-cols-1 sm:grid-cols-[45%_55%] min-h-[400px] sm:min-h-[520px]',
+		// max-h caps the body at the dialog height so it never outgrows it. Without the cap
+		// the grid stretches to its content height in Crop mode (the crop preview lets the
+		// column grow), pushing the form past 90dvh where the dialog clips it with no
+		// scrollbar. Capped here, the detail column's own overflow-y-auto scrolls instead.
+		body: 'grid grid-cols-1 sm:grid-cols-[45%_55%] min-h-[400px] sm:min-h-[520px] max-h-[90dvh]',
 		imageColumn:
 			'relative overflow-hidden bg-muted border-b sm:border-b-0 sm:border-r border-border h-[200px] sm:h-auto',
 		imagePlaceholder:

@@ -74,17 +74,10 @@ Open the login page and click **Continue with Google**.
 
 ---
 
-## Code gotcha (recommended fix)
+## Code gotcha (fixed)
 
-`src/lib/server/auth.ts` enables the provider with this guard:
-
-```ts
-env.GOOGLE_CLIENT_ID !== undefined && env.GOOGLE_CLIENT_SECRET !== undefined;
-```
-
-With `$env/dynamic/private`, an **empty string** (`GOOGLE_CLIENT_ID=""`, as in `.env.example`) is _not_ `undefined` — it is `""`. The guard passes and Google is registered with empty credentials, producing a confusing OAuth error instead of cleanly disabling the provider.
-
-Use a truthy check instead so empty strings disable the provider:
+`src/lib/server/auth.ts` must enable the provider with a truthy guard.
+This avoids registering Google when `.env` contains empty strings:
 
 ```ts
 socialProviders:

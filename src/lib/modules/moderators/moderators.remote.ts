@@ -6,6 +6,9 @@ import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment, moderatorInvite } from '$lib/server/db/moderator.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { wishlistFollower } from '$lib/server/db/follower.schema.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
+import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
 import {
 	GenerateInviteInputSchema,
@@ -362,6 +365,26 @@ export const selfPromoteToModerator = guardedCommand(
 				updatedAt: new Date(),
 			})
 			.where(eq(wishlist.id, input.wishlistId));
+
+		const followerRows = await database
+			.select({ userId: wishlistFollower.userId })
+			.from(wishlistFollower)
+			.where(
+				and(
+					eq(wishlistFollower.wishlistId, input.wishlistId),
+					isNull(wishlistFollower.unfollowedAt),
+				),
+			);
+
+		await dispatchNotification({
+			type: NOTIFICATION_TYPE.OWNER_SELF_PROMOTED,
+			targetUserIds: followerRows
+				.map((row) => row.userId)
+				.filter((targetUserId) => targetUserId !== currentUser.id),
+			wishlistId: input.wishlistId,
+			actorId: currentUser.id,
+			actorName: currentUser.name,
+		});
 
 		return { success: true };
 	},

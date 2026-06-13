@@ -147,7 +147,7 @@ function createMultiQueryChain(...resultsQueue: unknown[][]) {
 	chain['transaction'] = vi.fn((cb: (tx: unknown) => unknown) => cb(chain));
 
 	// Make the chain awaitable — each top-level await pops from queue
-	// oxlint-ignore-next-line no-thenable -- intentional: mock must be thenable to simulate Drizzle's await behavior
+	// oxlint-disable-next-line no-thenable -- intentional: mock must be thenable to simulate Drizzle's await behavior
 	chain['then'] = (resolve: (value: unknown) => unknown) => resolve(queue.shift() ?? []);
 
 	return chain;
