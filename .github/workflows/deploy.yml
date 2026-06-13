@@ -1,0 +1,39 @@
+name: Deploy (production)
+
+# Auto-deploys the production branch to Cloudflare Workers.
+# Fires when production updates (i.e. when dev is merged into production)
+# and can be run manually from the Actions tab.
+#
+# Requires one repository secret named CLOUDFLARE_API_TOKEN.
+#   Create at: Cloudflare dashboard -> My Profile -> API Tokens
+#   -> "Edit Cloudflare Workers" template (scope to this account).
+#   Add it with:  gh secret set CLOUDFLARE_API_TOKEN --repo MartinoPolo/prejemesi
+# The CLOUDFLARE_ACCOUNT_ID repo variable (an identifier, not a secret) is set
+# via gh and read below.
+
+on:
+    push:
+        branches: [production]
+    workflow_dispatch:
+
+concurrency:
+    group: deploy-production
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm run build
+            - name: Deploy to Cloudflare Workers
+              run: pnpm exec wrangler deploy
+              env:
+                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
