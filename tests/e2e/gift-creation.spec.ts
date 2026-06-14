@@ -154,7 +154,7 @@ test.describe('Gift image upload', () => {
 		await uploadResponsePromise;
 
 		// Preview image should appear (upload complete, progress bar gone)
-		await expect(dialog.locator('img[alt="Upload preview"]')).toBeVisible({ timeout: 10_000 });
+		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
 		// No error message should be shown
 		await expect(dialog.locator('.text-destructive')).not.toBeVisible();

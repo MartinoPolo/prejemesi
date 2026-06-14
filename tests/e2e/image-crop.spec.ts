@@ -73,7 +73,7 @@ test.describe('Gift image crop & views', () => {
 		const uploaded = waitForUpload(page);
 		await fileInput.setInputFiles(SAMPLE_IMAGE_PATH);
 		await uploaded;
-		await expect(dialog.locator('img[alt="Upload preview"]')).toBeVisible({ timeout: 10_000 });
+		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
 		// The three fit modes are offered; selecting Crop then Fit-whole updates the active mode.
 		const cropOption = dialog.getByRole('radio', { name: /Oříznout/ });
