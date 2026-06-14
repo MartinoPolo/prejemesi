@@ -6,6 +6,7 @@
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
 	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 
@@ -183,7 +184,12 @@
 	/>
 
 	{#if previewUrl}
-		<img src={previewUrl} alt="Upload preview" class={styles.preview()} />
+		<img
+			src={previewUrl}
+			alt={m.image_upload_preview_alt()}
+			class={styles.preview()}
+			data-testid="image-upload-preview"
+		/>
 
 		{#if progress.status !== 'uploading'}
 			<Button
@@ -191,14 +197,14 @@
 				intent="ghost"
 				class={styles.removeButton()}
 				onclick={handleRemove}
-				aria-label="Remove image"
+				aria-label={m.image_upload_remove()}
 			>
 				<XIcon data-icon="solo" />
 			</Button>
 		{/if}
 	{:else}
 		<UploadIcon class="size-8 text-muted-foreground" />
-		<p class={styles.label()}>Drag and drop an image, or click to select</p>
+		<p class={styles.label()}>{m.image_upload_dropzone()}</p>
 	{/if}
 
 	{#if progress.status === 'uploading'}

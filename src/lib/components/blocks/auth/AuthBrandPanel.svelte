@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import GiftIcon from '@lucide/svelte/icons/gift';
+	import * as m from '$lib/paraglide/messages.js';
 	import type { Snippet } from 'svelte';
 
 	interface AuthBrandPanelProps {
@@ -13,7 +14,7 @@
 
 <div class="brand-panel">
 	<div class="brand-content">
-		<a class="brand-logo" href={resolve('/')} aria-label="Přejeme si — domovska stranka">
+		<a class="brand-logo" href={resolve('/')} aria-label={m.logo_home_label()}>
 			<span class="brand-logo-icon" aria-hidden="true">
 				<GiftIcon class="size-[26px]" />
 			</span>
@@ -62,7 +63,7 @@
 		</div>
 	</div>
 
-	<div class="brand-bottom">Zdarma navzdy &middot; Bez reklam</div>
+	<div class="brand-bottom">Zdarma navždy &middot; Bez reklam</div>
 </div>
 
 <style>
