@@ -364,7 +364,7 @@
 							<div class="flex items-start justify-between gap-2">
 								<div class="text-sm whitespace-pre-line text-wishlist-accent">
 									<span class="text-xs opacity-70"
-										>{formatAppendDate(append.addedAt)} —
+										>{formatAppendDate(append.addedAt)} –
 									</span>{append.text}
 								</div>
 								{#if isWithinGraceWindow(append.addedAt, graceNow)}

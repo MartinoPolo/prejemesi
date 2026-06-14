@@ -91,8 +91,10 @@ import {
 	getModeratorsForWishlist,
 } from './moderators.remote.js';
 import { getDb } from '$lib/server/db/index.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 
 const mockGetDb = vi.mocked(getDb);
+const mockDispatchNotification = vi.mocked(dispatchNotification);
 
 /**
  * Creates a mock database whose chained query methods resolve to sequential
@@ -195,7 +197,7 @@ const callRemoveModerator = (
 
 const callGenerateModeratorInviteLink = (
 	authContext: typeof ownerAuthContext,
-	input: { wishlistId: string },
+	input: { wishlistId: string; email?: string },
 ) =>
 	(generateModeratorInviteLink as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
@@ -309,6 +311,17 @@ describe('acceptModeratorInvite', () => {
 
 // ── generateModeratorInviteLink ──────────────────────────────────────────────
 
+const createdInviteRow = {
+	id: 'inv-new',
+	token: 'tok-new',
+	wishlistId: testWishlistId,
+	createdByUserId: ownerUser.id,
+	usedByUserId: null,
+	usedAt: null,
+	revokedAt: null,
+	createdAt: new Date('2025-03-01'),
+};
+
 describe('generateModeratorInviteLink', () => {
 	it('archived wishlist → throws 400', async () => {
 		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
@@ -318,6 +331,48 @@ describe('generateModeratorInviteLink', () => {
 		await expect(
 			callGenerateModeratorInviteLink(ownerAuthContext, { wishlistId: testWishlistId }),
 		).rejects.toMatchObject({ status: 400, message: 'CANNOT_INVITE_ON_ARCHIVED' });
+	});
+
+	it('without email → returns token + invitePath, does NOT call dispatchNotification', async () => {
+		// 1: wishlist lookup, 2: insert invite → returns created row
+		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow]]));
+
+		const result = await callGenerateModeratorInviteLink(ownerAuthContext, {
+			wishlistId: testWishlistId,
+		});
+
+		expect(result).toEqual({
+			token: createdInviteRow.token,
+			invitePath: `/w/${activeWishlistRow.shortId}/invite/${createdInviteRow.token}`,
+		});
+		expect(mockDispatchNotification).not.toHaveBeenCalled();
+	});
+
+	it('with email → dispatches MODERATOR_INVITED to targetEmails with urlPathOverride pointing to invite path', async () => {
+		const testEmail = 'invitee@example.com';
+		// 1: wishlist lookup, 2: insert invite → returns created row
+		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow]]));
+
+		const result = await callGenerateModeratorInviteLink(ownerAuthContext, {
+			wishlistId: testWishlistId,
+			email: testEmail,
+		});
+
+		const expectedInvitePath = `/w/${activeWishlistRow.shortId}/invite/${createdInviteRow.token}`;
+
+		expect(result).toEqual({
+			token: createdInviteRow.token,
+			invitePath: expectedInvitePath,
+		});
+		expect(mockDispatchNotification).toHaveBeenCalledOnce();
+		expect(mockDispatchNotification).toHaveBeenCalledWith({
+			type: 'moderator_invited',
+			targetEmails: [testEmail],
+			wishlistId: testWishlistId,
+			actorId: ownerUser.id,
+			actorName: undefined,
+			urlPathOverride: expectedInvitePath,
+		});
 	});
 });
 

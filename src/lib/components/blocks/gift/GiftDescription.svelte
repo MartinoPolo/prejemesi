@@ -24,7 +24,7 @@
 		{#each descriptionAppends as append, i (`${append.addedAt}:${i}`)}
 			<div class="whitespace-pre-line text-sm text-wishlist-accent">
 				<span class="text-xs opacity-70"
-					>{formatAppendDate(append.addedAt)} —
+					>{formatAppendDate(append.addedAt)} –
 				</span>{append.text}
 			</div>
 		{/each}

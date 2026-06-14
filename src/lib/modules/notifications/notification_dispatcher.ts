@@ -123,7 +123,10 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	const database = getDb();
 	const message = NOTIFICATION_MESSAGES[input.type]();
 	const wishlistContext = await getWishlistContext(input.wishlistId);
-	const url = getNotificationUrl(wishlistContext.shortId);
+	const url =
+		input.urlPathOverride !== undefined && input.urlPathOverride !== ''
+			? `${getOrigin()}${input.urlPathOverride}`
+			: getNotificationUrl(wishlistContext.shortId);
 	const body = getEmailBody({
 		message,
 		wishlistTitle: wishlistContext.title,

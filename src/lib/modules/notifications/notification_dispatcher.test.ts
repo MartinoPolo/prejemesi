@@ -14,10 +14,11 @@ vi.mock('$lib/server/email.js', () => ({
 
 import { dispatchNotification } from './notification_dispatcher.js';
 import { getDb } from '$lib/server/db/index.js';
-import { sendEmail } from '$lib/server/email.js';
+import { sendEmail, renderActionEmail } from '$lib/server/email.js';
 
 const mockGetDb = vi.mocked(getDb);
 const mockSendEmail = vi.mocked(sendEmail);
+const mockRenderActionEmail = vi.mocked(renderActionEmail);
 
 interface MockUserRow {
 	id: string;
@@ -152,5 +153,50 @@ describe('dispatchNotification — honoring per-user preferences', () => {
 
 		expect(insertedValues.map((row) => row.userId)).toEqual(['u']);
 		expect(mockSendEmail.mock.calls.map((call) => call[0].to)).toEqual(['u@test.cz']);
+	});
+});
+
+describe('dispatchNotification — urlPathOverride', () => {
+	it('when urlPathOverride is set, email CTA url is origin + override path (not plain wishlist url)', async () => {
+		const type = NOTIFICATION_TYPE.MODERATOR_INVITED;
+		const overridePath = '/w/short-abc/invite/tok-xyz';
+		const testEmail = 'invitee@example.com';
+
+		// Minimal db: wishlist context returns null (no wishlistId), user query returns empty (targetEmails path)
+		const db = {
+			select: () => ({
+				from: () => ({
+					where: () => ({
+						limit: () => Promise.resolve([]),
+					}),
+				}),
+			}),
+			insert: () => ({
+				values: (rows: Array<{ userId: string }>) => ({
+					returning: () =>
+						Promise.resolve(
+							rows.map((row, i) => ({ id: `n-${i}`, userId: row.userId })),
+						),
+				}),
+			}),
+			update: () => ({
+				set: () => ({
+					where: () => Promise.resolve(undefined),
+				}),
+			}),
+		};
+		mockGetDb.mockReturnValue(db as unknown as ReturnType<typeof getDb>);
+
+		await dispatchNotification({
+			type,
+			targetEmails: [testEmail],
+			urlPathOverride: overridePath,
+		});
+
+		expect(mockSendEmail).toHaveBeenCalledOnce();
+		// The url passed to renderActionEmail must be origin + overridePath
+		expect(mockRenderActionEmail).toHaveBeenCalledWith(
+			expect.objectContaining({ url: `http://localhost:5173${overridePath}` }),
+		);
 	});
 });
