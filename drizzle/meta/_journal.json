@@ -8,6 +8,13 @@
       "when": 1781274957155,
       "tag": "0000_deep_black_panther",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781420099024,
+      "tag": "0001_chubby_ultimatum",
+      "breakpoints": true
     }
   ]
 }
