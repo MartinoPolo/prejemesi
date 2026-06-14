@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import GiftIcon from '@lucide/svelte/icons/gift';
+	import * as m from '$lib/paraglide/messages.js';
 </script>
 
-<a class="logo" href={resolve('/')} aria-label="Přejeme si — domovska stranka">
+<a class="logo" href={resolve('/')} aria-label={m.logo_home_label()}>
 	<span class="logo-icon-wrap" aria-hidden="true">
 		<GiftIcon class="size-[18px]" />
 	</span>

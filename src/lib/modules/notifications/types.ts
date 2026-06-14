@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import * as m from '$lib/paraglide/messages.js';
 import type { notification } from '$lib/server/db/notification.schema.js';
 
@@ -78,6 +79,23 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 	moderator_invited: { email: true, inApp: true },
 } satisfies Record<NotificationType, NotificationPreferenceEntry>;
 
+// ── Preferences Input Validation ────────────────────────────────────────────
+
+const NotificationPreferenceEntrySchema = v.object({
+	email: v.boolean(),
+	inApp: v.boolean(),
+});
+
+// Built from NOTIFICATION_TYPE so the schema stays exhaustive: adding a type to the
+// enum forces a matching entry here (and a compile error in DEFAULT_… above).
+const notificationPreferencesShape = Object.fromEntries(
+	Object.values(NOTIFICATION_TYPE).map((type) => [type, NotificationPreferenceEntrySchema]),
+) as Record<NotificationType, typeof NotificationPreferenceEntrySchema>;
+
+export const UpdateNotificationPreferencesInputSchema = v.object({
+	preferences: v.object(notificationPreferencesShape),
+});
+
 // ── Dispatch Input ──────────────────────────────────────────────────────────
 
 export interface DispatchNotificationInput {
@@ -88,4 +106,6 @@ export interface DispatchNotificationInput {
 	giftId?: string;
 	actorId?: string;
 	actorName?: string;
+	/** Overrides the email CTA link path (resolved against origin). Defaults to the wishlist URL. Use for links that aren't the plain wishlist page (e.g. an invite-acceptance URL). */
+	urlPathOverride?: string;
 }

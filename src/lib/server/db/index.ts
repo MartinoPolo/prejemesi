@@ -85,9 +85,20 @@ export function getDb(event?: RequestEvent) {
 		throw new Error('No database connection: set DATABASE_URL or configure Hyperdrive');
 	}
 
-	// On Workers (Hyperdrive binding present) the socket cannot cross requests,
-	// so memoize per request rather than process-globally.
-	if (requestEvent !== undefined && hyperdriveConnectionString !== undefined) {
+	// On the real Cloudflare Workers runtime the postgres socket is request-scoped
+	// (an I/O object created in one request handler cannot be used by another:
+	// "Cannot perform I/O on behalf of a different request"), so memoize per request.
+	//
+	// In `vite dev` the Cloudflare adapter's platformProxy ALSO exposes the
+	// Hyperdrive binding (against compose.yaml's local Postgres), but dev is a
+	// long-lived Node process where a socket is freely reused across requests.
+	// Without the `!DEV` guard, dev would create a fresh pool per request and
+	// exhaust Postgres ("too many clients already", 53300) under any concurrency.
+	if (
+		!import.meta.env.DEV &&
+		requestEvent !== undefined &&
+		hyperdriveConnectionString !== undefined
+	) {
 		const cached = requestClientCache.get(requestEvent);
 		if (cached !== undefined) {
 			return cached;

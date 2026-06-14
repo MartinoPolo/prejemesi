@@ -3,6 +3,7 @@
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import type { ModeratorWithUser } from '$lib/modules/moderators/types.js';
 	import { moderatorPanelVariants } from './moderator_panel_variants.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface ModeratorListItemProps {
 		moderator: ModeratorWithUser;
@@ -51,7 +52,7 @@
 
 	<div class={styles.moderatorInfo()}>
 		<div class={styles.moderatorName()}>{moderator.userName}</div>
-		<div class={styles.moderatorDate()}>Pridan {formattedDate}</div>
+		<div class={styles.moderatorDate()}>{m.moderator_added_on({ date: formattedDate })}</div>
 	</div>
 
 	{#if canRemove}
@@ -60,7 +61,7 @@
 			intent="ghost"
 			class="text-destructive hover:text-destructive"
 			disabled={isRemoving}
-			aria-label="Odebrat moderatora {moderator.userName}"
+			aria-label={m.moderator_remove_label({ name: moderator.userName })}
 			onclick={() => onremove?.(moderator.id)}
 		>
 			<TrashIcon class="size-4" />

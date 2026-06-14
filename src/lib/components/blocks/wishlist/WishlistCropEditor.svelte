@@ -267,7 +267,7 @@
 				<div class="flex items-center justify-between">
 					<Label>{m.wishlist_image_zoom_label()}</Label>
 					<span class="text-xs tabular-nums text-foreground-subtle">
-						{isCropMode ? `${Math.round(activeZoom * 100)} %` : '—'}
+						{isCropMode ? `${Math.round(activeZoom * 100)} %` : '–'}
 					</span>
 				</div>
 				<Slider

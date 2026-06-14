@@ -17,6 +17,7 @@
 	} from '$lib/modules/gifts/types.js';
 	import type { WishlistTheme } from '$lib/modules/themes/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface WishlistModalsProps {
 		isOwner: boolean;
@@ -166,10 +167,8 @@
 	>
 		<Dialog.Content class="sm:max-w-lg">
 			<Dialog.Header>
-				<Dialog.Title>Motiv seznamu</Dialog.Title>
-				<Dialog.Description
-					>Zvolte prednastaveny motiv nebo vlastni barvu.</Dialog.Description
-				>
+				<Dialog.Title>{m.theme_dialog_title()}</Dialog.Title>
+				<Dialog.Description>{m.theme_dialog_description()}</Dialog.Description>
 			</Dialog.Header>
 			<ThemeSelector
 				currentTheme={activeTheme}

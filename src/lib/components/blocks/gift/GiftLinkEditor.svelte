@@ -6,7 +6,7 @@
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import GiftLinkRow from './GiftLinkRow.svelte';
 	import { MAX_GIFT_LINKS, type GiftLink } from '$lib/modules/gifts/types.js';
-	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
+	import { createGiftLinkId, normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 
 	interface GiftLinkEditorProps {
 		links: GiftLink[];
@@ -28,7 +28,7 @@
 		if (isAtCap) {
 			return;
 		}
-		onlinkschange([...links, { url: '' }]);
+		onlinkschange([...links, { url: '', id: createGiftLinkId() }]);
 	}
 
 	function removeLink(index: number) {
@@ -91,7 +91,7 @@
 		</div>
 	{:else}
 		<div class="flex flex-col gap-2">
-			{#each links as link, index (index)}
+			{#each links as link, index (link.id ?? index)}
 				<GiftLinkRow
 					{link}
 					isPrimary={index === 0}

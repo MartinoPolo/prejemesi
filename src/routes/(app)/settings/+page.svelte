@@ -5,6 +5,11 @@
 		updateProfile,
 		updateAppBackgroundTheme,
 	} from '$lib/modules/settings/settings.remote.js';
+	import {
+		getNotificationPreferences,
+		updateNotificationPreferences,
+	} from '$lib/modules/notifications/notifications.remote.js';
+	import type { NotificationPreferences } from '$lib/modules/notifications/types.js';
 	import type { BackgroundTheme } from '$lib/components/base/theme/types.js';
 	import {
 		SettingsProfileSection,
@@ -15,6 +20,7 @@
 	} from '$lib/components/blocks/settings/index.js';
 
 	const profile = await getUserProfile();
+	const notificationPreferences = await getNotificationPreferences();
 </script>
 
 <svelte:head>
@@ -41,7 +47,11 @@
 			<SettingsSecuritySection />
 		{/if}
 
-		<SettingsNotificationsSection />
+		<SettingsNotificationsSection
+			initialPreferences={notificationPreferences}
+			onSave={(preferences: NotificationPreferences) =>
+				updateNotificationPreferences({ preferences })}
+		/>
 
 		<SettingsAppearanceSection
 			appBackgroundTheme={profile.appBackgroundTheme}

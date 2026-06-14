@@ -54,7 +54,7 @@
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
-<div class="nav-dropdown" role="menu" aria-label="{m.nav_recent()} — {title}">
+<div class="nav-dropdown" role="menu" aria-label="{m.nav_recent()} – {title}">
 	<div class="nav-dropdown-panel">
 		{#if items.length > 0}
 			<div class="nav-dropdown-header">

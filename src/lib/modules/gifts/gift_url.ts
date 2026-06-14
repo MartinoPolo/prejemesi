@@ -49,6 +49,29 @@ export function getPrimaryGiftLink(links: readonly GiftLink[] | null | undefined
  * valid http(s) URL, trim labels (dropping empty ones), and cap the list at
  * {@link MAX_GIFT_LINKS}. Order is preserved so `links[0]` stays primary.
  */
+/**
+ * Generate a stable client-only id for a gift link (editor list key). Monotonic
+ * counter — unique within a session, never persisted.
+ */
+let nextGiftLinkId = 0;
+export function createGiftLinkId(): string {
+	nextGiftLinkId += 1;
+	return `gift-link-${nextGiftLinkId}`;
+}
+
+/**
+ * Ensure every link carries a stable {@link GiftLink.id} for editor reconciliation.
+ * Links arriving from the server lack one; this assigns ids without mutating input.
+ */
+export function ensureGiftLinkIds(links: readonly GiftLink[] | null | undefined): GiftLink[] {
+	if (!links) {
+		return [];
+	}
+	return links.map((link) =>
+		link.id !== undefined ? link : { ...link, id: createGiftLinkId() },
+	);
+}
+
 export function normalizeGiftLinks(links: readonly GiftLink[] | null | undefined): GiftLink[] {
 	if (!links) {
 		return [];

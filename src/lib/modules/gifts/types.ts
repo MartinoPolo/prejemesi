@@ -22,6 +22,11 @@ export const MAX_GIFT_LINKS = 10;
 export interface GiftLink {
 	url: string;
 	label?: string;
+	/**
+	 * Stable client-only key for editor list reconciliation (reorder/remove without
+	 * losing input focus). Never persisted — {@link normalizeGiftLinks} drops it.
+	 */
+	id?: string;
 }
 
 /** One immutable, timestamped post-share description segment (REQ-4). */
@@ -56,6 +61,7 @@ export interface GiftBase {
 	sortOrder: number;
 	received: boolean;
 	createdAt: Date;
+	priorityLevelId: string | null;
 	priorityLabel: string | null;
 	prioritySortOrder: number | null;
 }

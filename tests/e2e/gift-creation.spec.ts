@@ -154,7 +154,7 @@ test.describe('Gift image upload', () => {
 		await uploadResponsePromise;
 
 		// Preview image should appear (upload complete, progress bar gone)
-		await expect(dialog.locator('img[alt="Upload preview"]')).toBeVisible({ timeout: 10_000 });
+		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
 		// No error message should be shown
 		await expect(dialog.locator('.text-destructive')).not.toBeVisible();
@@ -164,6 +164,16 @@ test.describe('Gift image upload', () => {
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('Dárek s obrázkem')).toBeVisible({ timeout: 10_000 });
+
+		// Re-opening an uploaded-image gift opens on the Upload tab with the existing
+		// image shown as the preview (not its resolved URL in the URL field). The
+		// preview test id is only rendered while the Upload tab is active.
+		await page.getByText('Dárek s obrázkem').click();
+		const editDialog = page.getByRole('dialog');
+		await expect(editDialog).toBeVisible({ timeout: 5_000 });
+		await expect(editDialog.getByTestId('image-upload-preview')).toBeVisible({
+			timeout: 5_000,
+		});
 
 		await page.context().close();
 	});

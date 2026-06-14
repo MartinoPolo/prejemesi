@@ -53,6 +53,13 @@ vi.mock('$lib/server/db/notification.schema.js', () => ({
 	},
 }));
 
+vi.mock('$lib/server/db/auth.schema.js', () => ({
+	user: {
+		id: 'user.id',
+		notificationPreferences: 'user.notificationPreferences',
+	},
+}));
+
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...a: unknown[]) => a),
 	and: vi.fn((...a: unknown[]) => a),
@@ -61,7 +68,14 @@ vi.mock('drizzle-orm', () => ({
 	sql: vi.fn(),
 }));
 
-import { getNotifications, getUnreadCount, markAsRead } from './notifications.remote.js';
+import {
+	getNotifications,
+	getUnreadCount,
+	markAsRead,
+	getNotificationPreferences,
+	updateNotificationPreferences,
+} from './notifications.remote.js';
+import { DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPE } from './types.js';
 import { getDb } from '$lib/server/db/index.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -177,5 +191,55 @@ describe('markAsRead', () => {
 		await (markAsRead as unknown as (...args: unknown[]) => unknown)(testAuthContext, []);
 
 		expect(mockDb.update).not.toHaveBeenCalled();
+	});
+});
+
+describe('getNotificationPreferences', () => {
+	it('returns the stored preferences when the user has customized them', async () => {
+		const stored = {
+			...DEFAULT_NOTIFICATION_PREFERENCES,
+			[NOTIFICATION_TYPE.NEW_GIFT_ADDED]: { email: false, inApp: false },
+		};
+		mockGetDb.mockReturnValue(createMockDb([[{ preferences: stored }]]));
+
+		const result = await (
+			getNotificationPreferences as unknown as (...args: unknown[]) => unknown
+		)(testAuthContext);
+
+		expect(result).toEqual(stored);
+	});
+
+	it('falls back to defaults when preferences are NULL (never customized)', async () => {
+		mockGetDb.mockReturnValue(createMockDb([[{ preferences: null }]]));
+
+		const result = await (
+			getNotificationPreferences as unknown as (...args: unknown[]) => unknown
+		)(testAuthContext);
+
+		expect(result).toEqual(DEFAULT_NOTIFICATION_PREFERENCES);
+	});
+
+	it('falls back to defaults when the user row is missing', async () => {
+		mockGetDb.mockReturnValue(createMockDb([[]]));
+
+		const result = await (
+			getNotificationPreferences as unknown as (...args: unknown[]) => unknown
+		)(testAuthContext);
+
+		expect(result).toEqual(DEFAULT_NOTIFICATION_PREFERENCES);
+	});
+});
+
+describe('updateNotificationPreferences', () => {
+	it('writes the preferences to the user row', async () => {
+		const mockDb = createMockDb([[]]);
+		mockGetDb.mockReturnValue(mockDb);
+
+		await (updateNotificationPreferences as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+			{ preferences: DEFAULT_NOTIFICATION_PREFERENCES },
+		);
+
+		expect(mockDb.update).toHaveBeenCalled();
 	});
 });

@@ -173,10 +173,20 @@ export const generateModeratorInviteLink = guardedCommand(
 			error(500, SERVER_ERROR.FAILED_TO_CREATE_INVITE);
 		}
 
-		return {
-			token: created.token,
-			invitePath: `/w/${wishlistRow.shortId}/invite/${created.token}`,
-		};
+		const invitePath = `/w/${wishlistRow.shortId}/invite/${created.token}`;
+
+		if (input.email !== undefined && input.email !== '') {
+			await dispatchNotification({
+				type: NOTIFICATION_TYPE.MODERATOR_INVITED,
+				targetEmails: [input.email],
+				wishlistId: input.wishlistId,
+				actorId: currentUser.id,
+				actorName: currentUser.name,
+				urlPathOverride: invitePath,
+			});
+		}
+
+		return { token: created.token, invitePath };
 	},
 );
 

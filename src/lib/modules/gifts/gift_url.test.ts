@@ -4,6 +4,8 @@ import {
 	extractGiftUrlDomain,
 	normalizeGiftLinks,
 	getPrimaryGiftLink,
+	createGiftLinkId,
+	ensureGiftLinkIds,
 } from './gift_url.js';
 import { extractGiftDomain } from './gift_display.js';
 import { MAX_GIFT_LINKS } from './types.js';
@@ -101,6 +103,48 @@ describe('normalizeGiftLinks', () => {
 			url: `https://example.com/${i}`,
 		}));
 		expect(normalizeGiftLinks(input)).toHaveLength(MAX_GIFT_LINKS);
+	});
+
+	it('strips the client-only id so it never persists', () => {
+		const result = normalizeGiftLinks([{ url: 'https://example.com/1', id: 'gift-link-7' }]);
+		expect(result).toEqual([{ url: 'https://example.com/1' }]);
+	});
+});
+
+describe('createGiftLinkId', () => {
+	it('returns a unique id on each call', () => {
+		const a = createGiftLinkId();
+		const b = createGiftLinkId();
+		expect(a).not.toBe(b);
+	});
+});
+
+describe('ensureGiftLinkIds', () => {
+	it('returns an empty array for null or undefined', () => {
+		expect(ensureGiftLinkIds(null)).toEqual([]);
+		expect(ensureGiftLinkIds(undefined)).toEqual([]);
+	});
+
+	it('assigns an id to links that lack one', () => {
+		const result = ensureGiftLinkIds([{ url: 'https://example.com' }]);
+		expect(result[0]?.id).toBeDefined();
+		expect(result[0]?.url).toBe('https://example.com');
+	});
+
+	it('keeps an existing id untouched', () => {
+		const result = ensureGiftLinkIds([{ url: 'https://example.com', id: 'keep-me' }]);
+		expect(result[0]?.id).toBe('keep-me');
+	});
+
+	it('assigns distinct ids across links', () => {
+		const result = ensureGiftLinkIds([{ url: 'https://a.com' }, { url: 'https://b.com' }]);
+		expect(result[0]?.id).not.toBe(result[1]?.id);
+	});
+
+	it('does not mutate the input objects', () => {
+		const input = [{ url: 'https://example.com' }];
+		ensureGiftLinkIds(input);
+		expect('id' in input[0]!).toBe(false);
 	});
 });
 

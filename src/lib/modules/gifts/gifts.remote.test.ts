@@ -245,6 +245,7 @@ function makeGiftRow(overrides: Record<string, unknown> = {}): Record<string, un
 		received: false,
 		createdAt: AFTER_SHARING,
 		deletedAt: null,
+		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
 		...overrides,

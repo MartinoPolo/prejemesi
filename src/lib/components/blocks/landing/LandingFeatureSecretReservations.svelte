@@ -42,7 +42,7 @@
 			<!-- Owner view -->
 			<div class="flex flex-col gap-2">
 				<span class="view-label">{m.landing_feat1_owner_view()}</span>
-				{#each [{ emoji: '🎧', name: m.landing_gift_headphones(), sub: '7 490 Kč · alza.cz' }, { emoji: '📖', name: 'Sapiens — Y.N. Harari', sub: '399 Kč' }] as gift (gift.name)}
+				{#each [{ emoji: '🎧', name: m.landing_gift_headphones(), sub: '7 490 Kč · alza.cz' }, { emoji: '📖', name: 'Sapiens – Y.N. Harari', sub: '399 Kč' }] as gift (gift.name)}
 					<div
 						class="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
 					>
@@ -112,7 +112,7 @@
 						📖
 					</div>
 					<div class="flex-1">
-						<div class="text-sm font-semibold">Sapiens — Y.N. Harari</div>
+						<div class="text-sm font-semibold">Sapiens – Y.N. Harari</div>
 						<div class="mt-0.5 text-xs text-muted-foreground/70">399 Kč</div>
 					</div>
 					<Button size="sm" class="shrink-0">{m.landing_feat1_reserve_button()}</Button>

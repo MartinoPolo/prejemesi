@@ -37,7 +37,7 @@
 			<Sheet.Title>
 				<LogoMark />
 			</Sheet.Title>
-			<Sheet.Description class="sr-only">Navigacni menu</Sheet.Description>
+			<Sheet.Description class="sr-only">{m.nav_menu_description()}</Sheet.Description>
 		</Sheet.Header>
 
 		<nav class="flex flex-col gap-1 p-3">

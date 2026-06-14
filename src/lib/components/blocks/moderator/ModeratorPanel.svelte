@@ -3,6 +3,7 @@
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Input } from '$lib/components/base/input/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ModeratorListItem from './ModeratorListItem.svelte';
 	import { moderatorPanelVariants } from './moderator_panel_variants.js';
@@ -50,6 +51,7 @@
 	let isSelfPromoting = $state(false);
 	let linkCopied = $state(false);
 	let generatedInvitePath = $state<string | null>(null);
+	let inviteEmail = $state('');
 
 	async function loadModerators() {
 		isLoading = true;
@@ -69,10 +71,18 @@
 		linkCopied = false;
 		generatedInvitePath = null;
 		try {
-			const result = await generateModeratorInviteLink({ wishlistId });
+			const trimmed = inviteEmail.trim();
+			const result = await generateModeratorInviteLink(
+				trimmed === '' ? { wishlistId } : { wishlistId, email: trimmed },
+			);
 			generatedInvitePath = result.invitePath;
 			await loadModerators();
-			toastSuccess(m.moderator_toast_invite_generated());
+			if (trimmed === '') {
+				toastSuccess(m.moderator_toast_invite_generated());
+			} else {
+				toastSuccess(m.moderator_toast_invite_sent({ email: trimmed }));
+				inviteEmail = '';
+			}
 		} catch (thrown) {
 			toastError(translateServerError(thrown, m.moderator_error_generate()));
 		} finally {
@@ -141,14 +151,23 @@
 	function handleOpenChange(newOpen: boolean) {
 		open = newOpen;
 		onopenchange?.(newOpen);
-		if (newOpen) {
+	}
+
+	// Load moderator/invite data whenever the panel opens. Driven by an $effect on the
+	// bound `open` prop rather than only `onOpenChange`, because the panel is opened
+	// programmatically from the wishlist header (parent sets `open = true`). bits-ui's
+	// `onOpenChange` fires only for internally-initiated open changes (trigger/ESC/overlay),
+	// NOT parent-driven ones — so without this effect the panel would render empty.
+	$effect(() => {
+		if (open) {
 			void loadModerators();
 		} else {
-			// Reset state
+			// Reset transient state when the panel closes.
 			generatedInvitePath = null;
 			linkCopied = false;
+			inviteEmail = '';
 		}
-	}
+	});
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
@@ -211,6 +230,19 @@
 						</Button>
 					</div>
 				{/if}
+
+				<div class="flex flex-col gap-1.5">
+					<label for="invite-email" class="text-sm text-muted-foreground">
+						{m.moderator_invite_email_label()}
+					</label>
+					<Input
+						id="invite-email"
+						type="email"
+						placeholder={m.moderator_invite_email_placeholder()}
+						bind:value={inviteEmail}
+						disabled={isGenerating}
+					/>
+				</div>
 
 				<Button
 					size="sm"
