@@ -18,6 +18,8 @@
 		wishlist: Wishlist;
 		/** Owner name, displayed for moderated/followed cards */
 		ownerName?: string;
+		/** Total gift count for owner cards (owner invariant: count only, no reservation data) */
+		giftCount?: number;
 		/** Reservation progress for moderator cards */
 		reservationProgress?: { reserved: number; total: number };
 		/** Available gifts count for followed cards */
@@ -34,6 +36,7 @@
 	let {
 		wishlist: wishlistData,
 		ownerName,
+		giftCount,
 		reservationProgress,
 		availableGifts,
 		myReservations,
@@ -142,12 +145,25 @@
 			</div>
 		{/if}
 
+		<!-- Owner card: gift count + optional event date (owner invariant — no reservations) -->
+		{#if giftCount !== undefined}
+			<div class={variants.metaRow()}>
+				<span class={variants.availableCount()}>
+					<GiftIcon class="inline size-3.5 align-middle" />
+					{giftCount} přání
+				</span>
+				{#if wishlistData.eventDate}
+					<span class={variants.metaText()}>{formatDate(wishlistData.eventDate)}</span>
+				{/if}
+			</div>
+		{/if}
+
 		<div class={variants.metaRow()}>
 			<span class={variants.themeBadge()}>{theme.emoji} {theme.label}</span>
 			<span class={variants.metaText()}>
 				{#if reservationProgress}
 					{reservationProgress.total} přání celkem
-				{:else if wishlistData.createdAt}
+				{:else if giftCount === undefined && wishlistData.createdAt}
 					Vytvořeno {formatDate(wishlistData.createdAt)}
 				{/if}
 			</span>
