@@ -50,7 +50,7 @@
 		IMAGE_FIT_MODE_VALUES,
 		type ImageCropRect,
 	} from '$lib/modules/images/index.js';
-	import { normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
+	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -97,7 +97,7 @@
 	// svelte-ignore state_referenced_locally
 	let description = $state(gift?.description ?? '');
 	// svelte-ignore state_referenced_locally
-	let links = $state<GiftLink[]>(gift?.links ?? []);
+	let links = $state<GiftLink[]>(ensureGiftLinkIds(gift?.links));
 	// svelte-ignore state_referenced_locally
 	let price = $state(gift?.price != null ? String(gift.price) : '');
 	// svelte-ignore state_referenced_locally
@@ -110,7 +110,10 @@
 	let quantity = $state(String(gift?.quantity ?? 1));
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
-	let imageMode = $state<'url' | 'upload'>('url');
+	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
+	// the current image with replace/remove — not its resolved URL in the URL field.
+	// svelte-ignore state_referenced_locally
+	let imageMode = $state<'url' | 'upload'>((gift?.imageKey ?? '') !== '' ? 'upload' : 'url');
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
 
@@ -251,6 +254,11 @@
 	function handleImageUpload(result: UploadResult) {
 		imageKey = result.objectKey;
 		imageUrl = result.publicUrl;
+	}
+
+	function handleImageRemove() {
+		imageKey = '';
+		imageUrl = '';
 	}
 
 	function handleImageUploadError(uploadError: Error) {
@@ -467,8 +475,10 @@
 					<ImageUpload
 						target="gift-image"
 						size="small"
+						initialPreviewUrl={imageUrl !== '' ? imageUrl : undefined}
 						onUpload={handleImageUpload}
 						onError={handleImageUploadError}
+						onRemove={handleImageRemove}
 					/>
 				{/if}
 

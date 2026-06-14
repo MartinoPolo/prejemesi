@@ -19,10 +19,14 @@
 		maxSize?: number;
 		/** Component size variant. */
 		size?: ImageUploadSize;
+		/** Existing image shown as the initial preview (edit mode); replaced on upload. */
+		initialPreviewUrl?: string;
 		/** Called when upload completes successfully. */
 		onUpload?: (result: UploadResult) => void;
 		/** Called when an error occurs. */
 		onError?: (error: Error) => void;
+		/** Called when the user clears the current image (so callers can drop the key/url). */
+		onRemove?: () => void;
 		/** Additional CSS classes. */
 		class?: string;
 	}
@@ -32,14 +36,19 @@
 		accept = ALLOWED_CONTENT_TYPES.join(','),
 		maxSize,
 		size = 'medium',
+		initialPreviewUrl,
 		onUpload,
 		onError,
+		onRemove,
 		class: className,
 	}: Props = $props();
 
 	let fileInputElement: HTMLInputElement | undefined = $state(undefined);
 	let isDragOver = $state(false);
-	let previewUrl = $state<string | undefined>(undefined);
+	// Seed from the existing image (edit mode). A real http(s) URL here, not a blob —
+	// the revoke-on-cleanup calls below are harmless no-ops for non-blob URLs.
+	// svelte-ignore state_referenced_locally
+	let previewUrl = $state<string | undefined>(initialPreviewUrl);
 	let activeAbortController: AbortController | null = null;
 	let progress = $state<UploadProgress>({
 		status: 'idle',
@@ -144,6 +153,7 @@
 		}
 		previewUrl = undefined;
 		progress = { status: 'idle', percentage: 0 };
+		onRemove?.();
 	}
 
 	// Unmount guard — manual revokes in handlers cover the normal case
