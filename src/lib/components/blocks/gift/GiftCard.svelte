@@ -74,7 +74,7 @@
 		<!-- Name + piece count -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} />
+			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 		</div>
 
 		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />
@@ -89,10 +89,13 @@
 		{#if priorityInfo}
 			<div class={styles.priorityEyebrow()}>
 				<Badge tone="neutral" badgeStyle="subtle" class={priorityInfo.colorClass}>
-					<span class="text-[10px] uppercase opacity-60">{m.gift_priority_eyebrow()}</span
-					>
-					<span class="opacity-40"> &middot; </span>
-					{priorityInfo.label()}
+					<span class="inline-flex items-baseline gap-1">
+						<span class="text-[10px] uppercase opacity-60"
+							>{m.gift_priority_eyebrow()}</span
+						>
+						<span class="opacity-40">&middot;</span>
+						{priorityInfo.label()}
+					</span>
 				</Badge>
 			</div>
 		{/if}

@@ -2,16 +2,25 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import { NotificationPreferencesForm } from '$lib/components/blocks/notification/index.js';
+	import type { NotificationPreferences } from '$lib/modules/notifications/types.js';
 	import BellIcon from '@lucide/svelte/icons/bell';
+
+	interface Props {
+		initialPreferences: NotificationPreferences;
+		onSave: (preferences: NotificationPreferences) => Promise<void>;
+	}
+
+	let { initialPreferences, onSave }: Props = $props();
 
 	let notificationsSaving = $state(false);
 
-	function handleSaveNotifications() {
+	async function handleSaveNotifications(preferences: NotificationPreferences) {
 		notificationsSaving = true;
-		// TODO: save notification preferences to server
-		setTimeout(() => {
+		try {
+			await onSave(preferences);
+		} finally {
 			notificationsSaving = false;
-		}, 500);
+		}
 	}
 </script>
 
@@ -27,6 +36,7 @@
 	</Card.Header>
 	<Card.Content>
 		<NotificationPreferencesForm
+			{initialPreferences}
 			onSave={handleSaveNotifications}
 			isSaving={notificationsSaving}
 		/>

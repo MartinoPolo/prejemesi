@@ -66,6 +66,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			sortOrder: gift.sortOrder,
 			received: gift.received,
 			createdAt: gift.createdAt,
+			priorityLevelId: gift.priorityLevelId,
 			priorityLabel: priorityLevel.label,
 			prioritySortOrder: priorityLevel.sortOrder,
 		})
@@ -93,6 +94,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			sortOrder: row.sortOrder,
 			received: row.received,
 			createdAt: row.createdAt,
+			priorityLevelId: row.priorityLevelId,
 			priorityLabel: row.priorityLabel,
 			prioritySortOrder: row.prioritySortOrder,
 		}));
@@ -201,6 +203,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			sortOrder: row.sortOrder,
 			received: row.received,
 			createdAt: row.createdAt,
+			priorityLevelId: row.priorityLevelId,
 			priorityLabel: row.priorityLabel,
 			prioritySortOrder: row.prioritySortOrder,
 			likeCount: likeCounts.get(row.id) ?? 0,

@@ -21,7 +21,7 @@
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import { formatAppendDate } from '$lib/modules/gifts/gift_display.js';
+	import { formatAppendDate, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
 	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
 		giftDetailModalVariants,
@@ -50,7 +50,7 @@
 		IMAGE_FIT_MODE_VALUES,
 		type ImageCropRect,
 	} from '$lib/modules/images/index.js';
-	import { normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
+	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -97,18 +97,23 @@
 	// svelte-ignore state_referenced_locally
 	let description = $state(gift?.description ?? '');
 	// svelte-ignore state_referenced_locally
-	let links = $state<GiftLink[]>(gift?.links ?? []);
+	let links = $state<GiftLink[]>(ensureGiftLinkIds(gift?.links));
 	// svelte-ignore state_referenced_locally
 	let price = $state(gift?.price != null ? String(gift.price) : '');
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
 	let imageUrl = $state(gift?.imageUrl ?? '');
-	let imageKey = $state('');
+	// svelte-ignore state_referenced_locally
+	let imageKey = $state(gift?.imageKey ?? '');
 	// svelte-ignore state_referenced_locally
 	let quantity = $state(String(gift?.quantity ?? 1));
-	let priorityLevelId = $state('');
-	let imageMode = $state<'url' | 'upload'>('url');
+	// svelte-ignore state_referenced_locally
+	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
+	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
+	// the current image with replace/remove — not its resolved URL in the URL field.
+	// svelte-ignore state_referenced_locally
+	let imageMode = $state<'url' | 'upload'>((gift?.imageKey ?? '') !== '' ? 'upload' : 'url');
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
 
@@ -251,6 +256,11 @@
 		imageUrl = result.publicUrl;
 	}
 
+	function handleImageRemove() {
+		imageKey = '';
+		imageUrl = '';
+	}
+
 	function handleImageUploadError(uploadError: Error) {
 		console.error('Image upload failed:', uploadError.message);
 	}
@@ -354,7 +364,7 @@
 							<div class="flex items-start justify-between gap-2">
 								<div class="text-sm whitespace-pre-line text-wishlist-accent">
 									<span class="text-xs opacity-70"
-										>{formatAppendDate(append.addedAt)} —
+										>{formatAppendDate(append.addedAt)} –
 									</span>{append.text}
 								</div>
 								{#if isWithinGraceWindow(append.addedAt, graceNow)}
@@ -465,8 +475,10 @@
 					<ImageUpload
 						target="gift-image"
 						size="small"
+						initialPreviewUrl={imageUrl !== '' ? imageUrl : undefined}
 						onUpload={handleImageUpload}
 						onError={handleImageUploadError}
+						onRemove={handleImageRemove}
 					/>
 				{/if}
 
@@ -528,8 +540,12 @@
 					<Select.Root type="single" bind:value={priorityLevelId}>
 						<Select.Trigger class="w-full">
 							{#if priorityLevelId}
-								{priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
-									m.gift_priority_select()}
+								{@const selectedLabel =
+									priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
+									''}
+								{selectedLabel !== ''
+									? (getPriorityDisplay(selectedLabel)?.label() ?? selectedLabel)
+									: m.gift_priority_select()}
 							{:else}
 								{m.gift_priority_none()}
 							{/if}
@@ -540,8 +556,10 @@
 									>{m.gift_priority_none()}</Select.Item
 								>
 								{#each priorityLevels as level (level.id)}
-									<Select.Item value={level.id} label={level.label}>
-										{level.label}
+									{@const levelLabel =
+										getPriorityDisplay(level.label)?.label() ?? level.label}
+									<Select.Item value={level.id} label={levelLabel}>
+										{levelLabel}
 									</Select.Item>
 								{/each}
 							</Select.Group>

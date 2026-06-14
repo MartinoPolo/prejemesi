@@ -3,6 +3,7 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Badge } from '$lib/components/base/badge/index.js';
+	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import type { NavDropdownItem } from './navbar_types.js';
@@ -53,7 +54,7 @@
 </script>
 
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
-<div class="nav-dropdown" role="menu" aria-label="{m.nav_recent()} — {title}">
+<div class="nav-dropdown" role="menu" aria-label="{m.nav_recent()} – {title}">
 	<div class="nav-dropdown-panel">
 		{#if items.length > 0}
 			<div class="nav-dropdown-header">
@@ -102,7 +103,17 @@
 		role="menuitem"
 	>
 		<span class="nav-dropdown-thumb">
-			{item.emoji}
+			{#if item.imageUrl}
+				<WishlistSlotImage
+					class="nav-dropdown-thumb-image"
+					src={item.imageUrl}
+					frame={item.imageFrame}
+					themeEmoji={item.emoji}
+					alt={item.name}
+				/>
+			{:else}
+				{item.emoji}
+			{/if}
 			{#if item.resolution === 'bought'}
 				<span class="nav-dropdown-thumb-check"><CheckIcon class="size-2.5" /></span>
 			{/if}
@@ -227,6 +238,16 @@
 	   to the panel surface so it stays distinct instead of melting into the row. */
 	.nav-dropdown-item:hover .nav-dropdown-thumb {
 		background: var(--popover);
+	}
+
+	/* Custom cover image fills the thumb, clipped to its rounded corners. Clipping the
+	   image (not the thumb) keeps the bought-check overlay, which sits outside the box,
+	   visible. */
+	.nav-dropdown-thumb :global(.nav-dropdown-thumb-image) {
+		position: absolute;
+		inset: 0;
+		border-radius: var(--radius-md);
+		overflow: hidden;
 	}
 
 	/* Subtle neutral badge fills with --surface-2, which matches the hovered row's

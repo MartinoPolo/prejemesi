@@ -10,9 +10,15 @@
 	let { editedAfterShareAt }: GiftEditedBadgeProps = $props();
 </script>
 
+<!-- Wrapper keeps the pill content-sized: as a direct flex item the inline-flex Badge would
+	otherwise stretch full-width in the card's column body (align-items: stretch). -->
 {#if editedAfterShareAt !== null}
-	<Badge tone="neutral" badgeStyle="subtle" class="gap-1 text-[11px]">
-		<PencilIcon class="size-2.5" />
-		{m.gift_edited_after_share_badge()}
-	</Badge>
+	<div class="flex">
+		<Badge tone="neutral" badgeStyle="subtle" class="text-[11px]">
+			{#snippet icon()}
+				<PencilIcon class="size-2.5" />
+			{/snippet}
+			{m.gift_edited_after_share_badge()}
+		</Badge>
+	</div>
 {/if}

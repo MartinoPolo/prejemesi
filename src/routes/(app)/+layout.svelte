@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Navbar from '$lib/components/blocks/navbar/Navbar.svelte';
 	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	import type { Snippet } from 'svelte';
 	import type { LayoutData } from './$types.js';
@@ -34,7 +35,7 @@
 <div class="app-shell">
 	<Navbar
 		{user}
-		userName={user?.name ?? 'Uzivatel'}
+		userName={user?.name ?? m.nav_default_user()}
 		userEmail={user?.email ?? ''}
 		{userInitials}
 		userImage={user?.image}

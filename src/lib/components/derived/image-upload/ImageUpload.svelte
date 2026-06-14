@@ -6,6 +6,7 @@
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
 	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
 
@@ -18,10 +19,14 @@
 		maxSize?: number;
 		/** Component size variant. */
 		size?: ImageUploadSize;
+		/** Existing image shown as the initial preview (edit mode); replaced on upload. */
+		initialPreviewUrl?: string;
 		/** Called when upload completes successfully. */
 		onUpload?: (result: UploadResult) => void;
 		/** Called when an error occurs. */
 		onError?: (error: Error) => void;
+		/** Called when the user clears the current image (so callers can drop the key/url). */
+		onRemove?: () => void;
 		/** Additional CSS classes. */
 		class?: string;
 	}
@@ -31,14 +36,19 @@
 		accept = ALLOWED_CONTENT_TYPES.join(','),
 		maxSize,
 		size = 'medium',
+		initialPreviewUrl,
 		onUpload,
 		onError,
+		onRemove,
 		class: className,
 	}: Props = $props();
 
 	let fileInputElement: HTMLInputElement | undefined = $state(undefined);
 	let isDragOver = $state(false);
-	let previewUrl = $state<string | undefined>(undefined);
+	// Seed from the existing image (edit mode). A real http(s) URL here, not a blob —
+	// the revoke-on-cleanup calls below are harmless no-ops for non-blob URLs.
+	// svelte-ignore state_referenced_locally
+	let previewUrl = $state<string | undefined>(initialPreviewUrl);
 	let activeAbortController: AbortController | null = null;
 	let progress = $state<UploadProgress>({
 		status: 'idle',
@@ -143,6 +153,7 @@
 		}
 		previewUrl = undefined;
 		progress = { status: 'idle', percentage: 0 };
+		onRemove?.();
 	}
 
 	// Unmount guard — manual revokes in handlers cover the normal case
@@ -183,7 +194,12 @@
 	/>
 
 	{#if previewUrl}
-		<img src={previewUrl} alt="Upload preview" class={styles.preview()} />
+		<img
+			src={previewUrl}
+			alt={m.image_upload_preview_alt()}
+			class={styles.preview()}
+			data-testid="image-upload-preview"
+		/>
 
 		{#if progress.status !== 'uploading'}
 			<Button
@@ -191,14 +207,14 @@
 				intent="ghost"
 				class={styles.removeButton()}
 				onclick={handleRemove}
-				aria-label="Remove image"
+				aria-label={m.image_upload_remove()}
 			>
 				<XIcon data-icon="solo" />
 			</Button>
 		{/if}
 	{:else}
 		<UploadIcon class="size-8 text-muted-foreground" />
-		<p class={styles.label()}>Drag and drop an image, or click to select</p>
+		<p class={styles.label()}>{m.image_upload_dropzone()}</p>
 	{/if}
 
 	{#if progress.status === 'uploading'}

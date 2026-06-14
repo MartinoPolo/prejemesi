@@ -16,6 +16,7 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import { cn } from '$lib/utils.js';
+	import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
 		getMyWishlists,
@@ -26,6 +27,7 @@
 		getThemePreset,
 		type DashboardWishlistTheme,
 	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import {
@@ -99,16 +101,48 @@
 			.map(followedToDropdownItem),
 	);
 
+	// Custom cover image (cropped for the 1:1 thumbnail slot), falling back to the theme
+	// emoji when no image is assigned. Shared by all three dropdown mappers.
+	function thumbImage(
+		wishlistRecord: Wishlist,
+	): Pick<NavDropdownItem, 'imageUrl' | 'imageFrame'> {
+		return {
+			imageUrl: wishlistImageUrl(wishlistRecord.imageKey),
+			imageFrame: wishlistSlotToFrameProps(wishlistRecord.imageSlots, 'thumbnail'),
+		};
+	}
+
+	/** Czech-pluralized gift count for owner list cards. */
+	function giftCountLabel(count: number): string {
+		const category = czechPluralCategory(count);
+		return category === 'one'
+			? m.nav_gift_count_one()
+			: category === 'few'
+				? m.nav_gift_count_few({ count })
+				: m.nav_gift_count_other({ count });
+	}
+
+	/** Czech-pluralized count of gifts still available to claim. */
+	function availableCountLabel(count: number): string {
+		const category = czechPluralCategory(count);
+		return category === 'one'
+			? m.nav_available_count_one()
+			: category === 'few'
+				? m.nav_available_count_few({ count })
+				: m.nav_available_count_other({ count });
+	}
+
 	function wishlistToDropdownItem(wishlistRecord: MyWishlist): NavDropdownItem {
 		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const badge = STATUS_BADGE[wishlistRecord.status];
 		// Owner invariant: gift count + event countdown only — never reservation data.
 		return {
 			name: wishlistRecord.title,
-			meta: m.nav_gift_count({ count: wishlistRecord.totalGifts }),
+			meta: giftCountLabel(wishlistRecord.totalGifts),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
+			...thumbImage(wishlistRecord),
 			badgeLabel: badge.label,
 			badgeVariant: badge.variant,
 		};
@@ -122,6 +156,7 @@
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
+			...thumbImage(wishlistRecord),
 			badgeLabel: `${wishlistRecord.reservedGifts}/${wishlistRecord.totalGifts}`,
 			badgeVariant: 'draft',
 		};
@@ -136,6 +171,7 @@
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
 			emoji: theme.emoji,
+			...thumbImage(wishlistRecord),
 			...followedBadge(wishlistRecord, state),
 			resolution: state === FOLLOWED_LIST_STATE.open ? undefined : state,
 		};
@@ -158,7 +194,7 @@
 		return {
 			badgeLabel:
 				wishlistRecord.availableGifts > 0
-					? m.nav_available_count({ count: wishlistRecord.availableGifts })
+					? availableCountLabel(wishlistRecord.availableGifts)
 					: undefined,
 			badgeVariant: 'shared',
 		};
@@ -311,7 +347,7 @@
 			<!-- User menu -->
 			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
 		{:else}
-			<Button intent="primary" size="sm" href={resolve('/login')}>Prihlasit se</Button>
+			<Button intent="primary" size="sm" href={resolve('/login')}>{m.nav_login()}</Button>
 		{/if}
 	</div>
 </header>

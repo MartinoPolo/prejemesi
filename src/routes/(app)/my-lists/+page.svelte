@@ -30,7 +30,7 @@
 		return sortWishlists(filtered, sortValue);
 	});
 
-	function sortWishlists(items: Wishlist[], sort: SortOption): Wishlist[] {
+	function sortWishlists<T extends Wishlist>(items: T[], sort: SortOption): T[] {
 		const sorted = [...items];
 		switch (sort) {
 			case 'lastActivity':
@@ -88,11 +88,13 @@
 {:else if viewMode === 'grid'}
 	<WishlistCardGrid>
 		{#each filteredWishlists as wishlistItem (wishlistItem.id)}
-			<WishlistCard wishlist={wishlistItem} />
+			<WishlistCard wishlist={wishlistItem} giftCount={wishlistItem.totalGifts} />
 		{/each}
 	</WishlistCardGrid>
 {:else}
-	<WishlistListView items={filteredWishlists.map((w) => ({ wishlist: w }))} />
+	<WishlistListView
+		items={filteredWishlists.map((w) => ({ wishlist: w, giftCount: w.totalGifts }))}
+	/>
 {/if}
 
 <CreateWishlistModal bind:open={isCreateModalOpen} />

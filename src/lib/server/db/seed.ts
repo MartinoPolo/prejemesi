@@ -547,10 +547,13 @@ async function seed() {
 		];
 		const priorityRows = allWishlists.flatMap((wlId) => {
 			const short = wlId.replace('seed-wl-', '');
+			// Labels are stable i18n KEYS (ASCII), localized for display via getPriorityDisplay/
+			// PRIORITY_DISPLAY. Must match DEFAULT_PRIORITY_LEVELS — diacritic labels (e.g. "Vysoká")
+			// would not match the display map and would render without a priority badge.
 			return [
-				{ id: plId(short, 'h'), wishlistId: wlId, sortOrder: 0, label: 'Vysoká' },
-				{ id: plId(short, 'm'), wishlistId: wlId, sortOrder: 1, label: 'Střední' },
-				{ id: plId(short, 'l'), wishlistId: wlId, sortOrder: 2, label: 'Nízká' },
+				{ id: plId(short, 'h'), wishlistId: wlId, sortOrder: 0, label: 'Vysoka' },
+				{ id: plId(short, 'm'), wishlistId: wlId, sortOrder: 1, label: 'Stredni' },
+				{ id: plId(short, 'l'), wishlistId: wlId, sortOrder: 2, label: 'Nizka' },
 			];
 		});
 		await db.insert(priorityLevel).values(priorityRows);

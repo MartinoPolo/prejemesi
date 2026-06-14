@@ -2,8 +2,16 @@ import * as v from 'valibot';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
+import { user as userTable } from '$lib/server/db/auth.schema.js';
 import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
-import { NOTIFICATION_MESSAGES, type Notification, type NotificationType } from './types.js';
+import {
+	DEFAULT_NOTIFICATION_PREFERENCES,
+	NOTIFICATION_MESSAGES,
+	UpdateNotificationPreferencesInputSchema,
+	type Notification,
+	type NotificationPreferences,
+	type NotificationType,
+} from './types.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -42,6 +50,21 @@ export const getUnreadCount = guardedQuery(async ({ user }) => {
 	return Number(result[0]?.count ?? 0);
 });
 
+export const getNotificationPreferences = guardedQuery(
+	async ({ user: authUser }): Promise<NotificationPreferences> => {
+		const database = getDb();
+
+		const rows = await database
+			.select({ preferences: userTable.notificationPreferences })
+			.from(userTable)
+			.where(eq(userTable.id, authUser.id))
+			.limit(1);
+
+		// NULL (never customized) falls back to the product defaults.
+		return rows[0]?.preferences ?? DEFAULT_NOTIFICATION_PREFERENCES;
+	},
+);
+
 // ── Commands ────────────────────────────────────────────────────────────────
 
 export const markAsRead = guardedCommand(v.array(v.string()), async ({ user }, notificationIds) => {
@@ -65,3 +88,15 @@ export const markAllAsRead = guardedCommandNoArgs(async ({ user }) => {
 		.set({ read: true })
 		.where(and(eq(notification.userId, user.id), eq(notification.read, false)));
 });
+
+export const updateNotificationPreferences = guardedCommand(
+	UpdateNotificationPreferencesInputSchema,
+	async ({ user: authUser }, input) => {
+		const database = getDb();
+
+		await database
+			.update(userTable)
+			.set({ notificationPreferences: input.preferences, updatedAt: new Date() })
+			.where(eq(userTable.id, authUser.id));
+	},
+);

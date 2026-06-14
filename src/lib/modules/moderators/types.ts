@@ -28,10 +28,12 @@ export interface PendingInvite {
 /** Input for generating an invite link */
 export interface GenerateInviteInput {
 	wishlistId: string;
+	email?: string;
 }
 
 export const GenerateInviteInputSchema = v.object({
 	wishlistId: v.string(),
+	email: v.optional(v.pipe(v.string(), v.trim(), v.email())),
 });
 
 /** Input for accepting an invite */
