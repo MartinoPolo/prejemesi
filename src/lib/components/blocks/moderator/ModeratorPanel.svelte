@@ -141,14 +141,22 @@
 	function handleOpenChange(newOpen: boolean) {
 		open = newOpen;
 		onopenchange?.(newOpen);
-		if (newOpen) {
+	}
+
+	// Load moderator/invite data whenever the panel opens. Driven by an $effect on the
+	// bound `open` prop rather than only `onOpenChange`, because the panel is opened
+	// programmatically from the wishlist header (parent sets `open = true`). bits-ui's
+	// `onOpenChange` fires only for internally-initiated open changes (trigger/ESC/overlay),
+	// NOT parent-driven ones — so without this effect the panel would render empty.
+	$effect(() => {
+		if (open) {
 			void loadModerators();
 		} else {
-			// Reset state
+			// Reset transient state when the panel closes.
 			generatedInvitePath = null;
 			linkCopied = false;
 		}
-	}
+	});
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>

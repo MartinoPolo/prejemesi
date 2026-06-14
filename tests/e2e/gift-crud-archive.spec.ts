@@ -114,6 +114,49 @@ test.describe('Gift editing', () => {
 		await page.context().close();
 	});
 
+	test('editing a gift preserves its priority on save (regression: silent priority wipe)', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('gift-priority');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+
+		await createWishlistAndNavigate(page, 'Priority Persist Test');
+
+		// Create a gift WITH a priority (the high-priority default level "Vysoká").
+		await page
+			.getByRole('button', { name: /Přidat/ })
+			.first()
+			.click();
+		const createDialog = page.getByRole('dialog');
+		await expect(createDialog).toBeVisible({ timeout: 5_000 });
+		await createDialog.getByRole('textbox', { name: 'Název' }).fill('Darek s prioritou');
+		// The priority Select trigger initially reads "Bez priority"; open it and pick "Vysoká".
+		await createDialog.getByRole('button', { name: 'Bez priority' }).click();
+		await page.getByRole('option', { name: 'Vysoká' }).click();
+		await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
+
+		// The card must show the chosen priority.
+		const card = page.getByRole('button', { name: /Darek s prioritou/ });
+		await expect(card).toContainText('Vysoká', { timeout: 10_000 });
+
+		// Re-open the gift: the edit modal must SEED the existing priority (the bug seeded it
+		// as empty, so the trigger read "Bez priority" and saving wiped the priority).
+		await page.getByText('Darek s prioritou').click();
+		const editDialog = page.getByRole('dialog');
+		await expect(editDialog).toBeVisible({ timeout: 5_000 });
+		await expect(editDialog.getByRole('button', { name: 'Vysoká' })).toBeVisible();
+
+		// Save without changing anything — the priority must NOT be wiped.
+		await editDialog.getByRole('button', { name: /^(Uložit|Ulozit|Save)$/ }).click();
+		await expect(editDialog).not.toBeVisible({ timeout: 5_000 });
+
+		await expect(card).toContainText('Vysoká', { timeout: 10_000 });
+
+		await page.context().close();
+	});
+
 	test('switching between two gifts shows correct data each time', async ({
 		browser,
 		request,

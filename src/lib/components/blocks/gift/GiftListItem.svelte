@@ -62,7 +62,7 @@
 			<h3 class="truncate font-heading text-base font-semibold text-foreground">
 				{gift.name}
 			</h3>
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} />
+			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 			{#if gift.received}
 				<Badge tone="neutral" class="gap-1 text-[11px]">
 					<CheckIcon class="size-2.5" />

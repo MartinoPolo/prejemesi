@@ -74,7 +74,7 @@
 		<!-- Name + piece count -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} />
+			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 		</div>
 
 		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />

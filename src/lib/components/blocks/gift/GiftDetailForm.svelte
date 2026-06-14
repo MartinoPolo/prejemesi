@@ -21,7 +21,7 @@
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import { formatAppendDate } from '$lib/modules/gifts/gift_display.js';
+	import { formatAppendDate, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
 	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
 		giftDetailModalVariants,
@@ -104,10 +104,12 @@
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
 	let imageUrl = $state(gift?.imageUrl ?? '');
-	let imageKey = $state('');
+	// svelte-ignore state_referenced_locally
+	let imageKey = $state(gift?.imageKey ?? '');
 	// svelte-ignore state_referenced_locally
 	let quantity = $state(String(gift?.quantity ?? 1));
-	let priorityLevelId = $state('');
+	// svelte-ignore state_referenced_locally
+	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	let imageMode = $state<'url' | 'upload'>('url');
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
@@ -528,8 +530,12 @@
 					<Select.Root type="single" bind:value={priorityLevelId}>
 						<Select.Trigger class="w-full">
 							{#if priorityLevelId}
-								{priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
-									m.gift_priority_select()}
+								{@const selectedLabel =
+									priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
+									''}
+								{selectedLabel !== ''
+									? (getPriorityDisplay(selectedLabel)?.label() ?? selectedLabel)
+									: m.gift_priority_select()}
 							{:else}
 								{m.gift_priority_none()}
 							{/if}
@@ -540,8 +546,10 @@
 									>{m.gift_priority_none()}</Select.Item
 								>
 								{#each priorityLevels as level (level.id)}
-									<Select.Item value={level.id} label={level.label}>
-										{level.label}
+									{@const levelLabel =
+										getPriorityDisplay(level.label)?.label() ?? level.label}
+									<Select.Item value={level.id} label={levelLabel}>
+										{levelLabel}
 									</Select.Item>
 								{/each}
 							</Select.Group>

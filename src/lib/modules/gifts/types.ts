@@ -56,6 +56,7 @@ export interface GiftBase {
 	sortOrder: number;
 	received: boolean;
 	createdAt: Date;
+	priorityLevelId: string | null;
 	priorityLabel: string | null;
 	prioritySortOrder: number | null;
 }
