@@ -13,6 +13,10 @@
 		{
 			"file": "src/lib/components/**/index.ts",
 			"exports": ["*"]
+		},
+		{
+			"file": "src/routes/**/+*.ts",
+			"exports": ["prerender", "ssr", "csr", "trailingSlash"]
 		}
 	],
 	"ignoreDependencies": [
