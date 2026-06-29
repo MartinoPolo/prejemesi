@@ -77,3 +77,7 @@ worker-configuration.d.ts
 
 # Local convention
 *.local.*
+
+# Session handoff artifacts
+HANDOFF.md
+HANDOFF-*.md
