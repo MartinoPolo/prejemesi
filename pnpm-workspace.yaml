@@ -1,4 +1,8 @@
-minimumReleaseAge: 20160
+allowBuilds:
+    '@prisma/client': false
+    better-sqlite3: false
+    esbuild: true
+    sharp: true
+    workerd: true
 
-onlyBuiltDependencies:
-    - esbuild
+minimumReleaseAge: 20160
