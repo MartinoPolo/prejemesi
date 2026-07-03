@@ -17,7 +17,7 @@ const devTrustedOrigins = import.meta.env.DEV
 
 // Local dev has no deliverable inbox (the Resend sandbox sender only emails the
 // account owner), so verification links never arrive. Skip the verification gate
-// in dev — sign-up then auto-signs-in — while production still requires it.
+// in dev – sign-up then auto-signs-in – while production still requires it.
 const requireEmailVerification = !import.meta.env.DEV;
 
 export function createAuth(event?: RequestEvent) {

@@ -24,7 +24,7 @@ describe('THEME_PRESETS palettes', () => {
 
 	// REQ-2: preset token completeness. The ThemePalette interface enforces the
 	// presence of every key at compile time, but token *values* are typed `string`
-	// — a malformed/empty OKLCH string would compile yet break rendering. This guards
+	// – a malformed/empty OKLCH string would compile yet break rendering. This guards
 	// the full palette of all presets, not just the four image-frame tokens above.
 	it('defines a complete palette (all 14 tokens) for every preset', () => {
 		for (const preset of Object.values(THEME_PRESETS)) {
@@ -61,7 +61,7 @@ describe('THEME_PRESETS palettes', () => {
 	});
 });
 
-describe('deriveOklchPalette — image-frame tokens', () => {
+describe('deriveOklchPalette – image-frame tokens', () => {
 	const palette = deriveOklchPalette('oklch(0.54 0.14 275)');
 
 	/** Assert the palette derived and return a parsed token, failing the test otherwise. */
@@ -111,7 +111,7 @@ describe('deriveOklchPalette — image-frame tokens', () => {
 	});
 });
 
-describe('toModeAwarePalette — dark-mode safety', () => {
+describe('toModeAwarePalette – dark-mode safety', () => {
 	/** Extract the dark (second) argument of a `light-dark(<light>, <dark>)` value. */
 	function darkArg(value: string): string | null {
 		const match = value.match(/^light-dark\((.+?),\s*(.+)\)$/);

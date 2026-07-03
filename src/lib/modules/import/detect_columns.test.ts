@@ -11,7 +11,7 @@ function rolesOf(name: string): string[] {
 	return detectColumns(rows).columns.map((column) => column.role);
 }
 
-describe('detectColumns — sample fixtures', () => {
+describe('detectColumns – sample fixtures', () => {
 	it('classifies the clean file and skips the 2 preamble rows', () => {
 		const { rows } = parseTabular(
 			readFileSync(
@@ -64,13 +64,13 @@ describe('detectColumns — sample fixtures', () => {
 		expect(result.headerRowIndex).toBeNull();
 		// Leading section-header row ("Hračky") is preamble.
 		expect(result.skippedPreambleRows).toBe(1);
-		// Last row is a valid link-only row — must NOT be trimmed as a footer.
+		// Last row is a valid link-only row – must NOT be trimmed as a footer.
 		expect(result.skippedFooterRows).toBe(0);
 		expect(result.columns.map((c) => c.role)).toEqual([COLUMN_ROLE.name, COLUMN_ROLE.url]);
 	});
 });
 
-describe('detectColumns — role heuristics', () => {
+describe('detectColumns – role heuristics', () => {
 	it('detects price columns by value when there is no header', () => {
 		const rows = parseTabular(
 			'Boty,https://example.com/boty,1 299 Kč\nKniha,https://example.com/k,349',

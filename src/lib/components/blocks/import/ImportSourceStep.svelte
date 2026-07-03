@@ -86,7 +86,7 @@
 		</ToggleGroup.Item>
 	</ToggleGroup.Root>
 
-	<!-- Source sub-component — fixed height so the dialog does not jump between methods -->
+	<!-- Source sub-component – fixed height so the dialog does not jump between methods -->
 	<div class="flex h-48">
 		{#if sourceMethod === SOURCE_METHOD.file}
 			<ImportSourceFileDrop

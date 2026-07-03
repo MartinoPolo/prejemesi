@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Přejeme si — Deployment & Operations Guide</title>
+		<title>Přejeme si – Deployment & Operations Guide</title>
 		<style>
 			:root {
 				--bg: #0f1115;
@@ -539,7 +539,7 @@
 					<h1>Deployment & Operations Guide</h1>
 					<p>
 						Everything that turns code on your laptop into <b>prejemesi.cz</b> in front
-						of real users — the services, the secrets, the database, and where to look
+						of real users – the services, the secrets, the database, and where to look
 						when something breaks. Written for your first production deployment, so it's
 						deliberately specific. Secrets are shown as
 						<span class="c-redact">placeholders</span>; each one tells you exactly where
@@ -646,7 +646,7 @@
 
 					<div class="callout info">
 						<span class="label">Why this matters</span> The app has
-						<b>no traditional server</b> — it's a serverless Worker that cold-starts per
+						<b>no traditional server</b> – it's a serverless Worker that cold-starts per
 						request. That shapes everything: connection caching must be per-request,
 						secrets live in Cloudflare (not on a box you SSH into), and "logs" means
 						streaming from the edge, not tailing a file.
@@ -680,7 +680,7 @@
 					</div>
 					<p>
 						<code>dev</code> is the integration branch (preview/work).
-						<code>production</code> is exactly what's live — its tip is the running
+						<code>production</code> is exactly what's live – its tip is the running
 						code, and <code>git log production</code> is your deploy history + rollback
 						anchor. You never push to <code>production</code> directly (protection
 						blocks it); you merge into it via PR.
@@ -699,7 +699,7 @@
 							<tr>
 								<td>Deploy workflow</td>
 								<td>
-									<code>.github/workflows/deploy.yml</code> — on push to
+									<code>.github/workflows/deploy.yml</code> – on push to
 									<code>production</code> + manual <code>workflow_dispatch</code>
 								</td>
 								<td><span class="badge green">committed</span></td>
@@ -727,7 +727,7 @@
 
 					<h3>Break-glass: manual deploy</h3>
 					<p>
-						The old manual path still works for emergencies (bypasses the PR gate — use
+						The old manual path still works for emergencies (bypasses the PR gate – use
 						sparingly). Requires a one-time <code>wrangler login</code>:
 					</p>
 					<div class="code">
@@ -746,7 +746,7 @@
 						</li>
 						<li>
 							Run <code>pnpm run check:all</code> and
-							<code>pnpm run test</code> locally — CI runs the same and
+							<code>pnpm run test</code> locally – CI runs the same and
 							<b>gates the merge to production</b>.
 						</li>
 						<li>
@@ -770,7 +770,7 @@
 						<span class="label">Gate is real</span> Because <code>checks</code> is a
 						<i>required</i> status check on <code>production</code> (with admin
 						enforcement), you cannot merge while CI is red. If a deploy isn't happening,
-						check the <code>dev</code> CI run first — a failing
+						check the <code>dev</code> CI run first – a failing
 						<code>check:all</code> blocks the whole pipeline by design.
 					</div>
 				</section>
@@ -784,7 +784,7 @@
 						<code>dev</code> (integration, default) and <code>production</code> (live,
 						auto-deploys). The stale <code>master</code> branch was <b>deleted</b>.
 						Deployment is automated via GitHub Actions on merge to
-						<code>production</code> — see <a href="#ship">How a change reaches prod</a>.
+						<code>production</code> – see <a href="#ship">How a change reaches prod</a>.
 					</div>
 
 					<table>
@@ -817,7 +817,7 @@
 							</tr>
 							<tr>
 								<td><code>master</code> <span class="badge red">deleted</span></td>
-								<td>—</td>
+								<td>–</td>
 								<td>Removed 2026-06-13 (was a stale, unused legacy branch).</td>
 							</tr>
 							<tr>
@@ -838,7 +838,7 @@
 						<code>check:all</code> (paraglide + prettier + oxlint + stylelint + fallow +
 						svelte-check + eslint) → Playwright install →
 						<code>vitest --coverage</code>. The single job is named
-						<code>checks</code> — that's the context required by branch protection
+						<code>checks</code> – that's the context required by branch protection
 						(below).
 					</p>
 
@@ -847,7 +847,7 @@
 						<code>&amp;&amp;</code> chain, so it stops at the <i>first</i> failing tool
 						and hides the rest.
 						<b>The local pre-push hook runs a lighter subset</b> (fallow, typecheck,
-						eslint, vitest) — so a push can pass locally yet fail CI on
+						eslint, vitest) – so a push can pass locally yet fail CI on
 						prettier/stylelint/coverage. When CI is red, read the failing step in the
 						Actions log; fix it before expecting a production merge to go through.
 						<i
@@ -865,7 +865,7 @@
 							>gh api
 							repos/MartinoPolo/prejemesi/branches/&lt;branch&gt;/protection</code
 						>. The repo is <b>PUBLIC</b>; default branch is <code>dev</code>. Two
-						protected branches now — <code>production</code> is hardened,
+						protected branches now – <code>production</code> is hardened,
 						<code>dev</code> stays light:
 					</p>
 					<table>
@@ -901,7 +901,7 @@
 								<td><span class="badge red">off</span></td>
 								<td><span class="badge green">on</span></td>
 								<td>
-									On <code>production</code> the rules apply to you too — no
+									On <code>production</code> the rules apply to you too – no
 									bypass.
 								</td>
 							</tr>
@@ -921,7 +921,7 @@
 					</table>
 					<div class="callout tip">
 						<span class="label">Resolved</span> You asked whether to have a separate
-						production branch — <b>yes, and it's now set up</b>. <code>dev</code> =
+						production branch – <b>yes, and it's now set up</b>. <code>dev</code> =
 						integration (light protection, direct commits OK), <code>production</code> =
 						exactly what's live (hardened: PR-gated, admin-enforced, CI-required). The
 						tip of <code>production</code> is the running code;
@@ -932,7 +932,7 @@
 						<span class="label">Trade-off to know</span> Because
 						<code>production</code> requires the <code>checks</code> status to be green
 						<i>and</i> enforces this on admins,
-						<b>you cannot merge to production while CI is red</b> — even as owner.
+						<b>you cannot merge to production while CI is red</b> – even as owner.
 						That's the hardening working (broken code can't reach live data), but it
 						means a failing <code>dev</code> CI blocks shipping. To ship past a known
 						pre-existing CI failure in an emergency, either fix CI, use the break-glass
@@ -966,7 +966,7 @@
   },
   <span class="c-key">"workers_dev"</span>: <span class="c-num">false</span>,                        <span class="c-com">// disables the *.workers.dev URL</span>
   <span class="c-key">"preview_urls"</span>: <span class="c-num">true</span>,                        <span class="c-com">// PR/preview deployments get URLs</span>
-  <span class="c-key">"routes"</span>: [                                  <span class="c-com">// custom domains — Cloudflare makes DNS+TLS on deploy</span>
+  <span class="c-key">"routes"</span>: [                                  <span class="c-com">// custom domains – Cloudflare makes DNS+TLS on deploy</span>
     { <span class="c-key">"pattern"</span>: <span class="c-str">"prejemesi.cz"</span>, <span class="c-key">"custom_domain"</span>: <span class="c-num">true</span> },
     { <span class="c-key">"pattern"</span>: <span class="c-str">"www.prejemesi.cz"</span>, <span class="c-key">"custom_domain"</span>: <span class="c-num">true</span> }
   ],
@@ -983,8 +983,8 @@
 					<div class="callout info">
 						<span class="label">vars vs secrets</span> Anything in the
 						<code>"vars"</code> block is <b>public-ish</b> (it ships in the deploy and
-						is visible in the dashboard). Sensitive values — <code>AUTH_SECRET</code>,
-						<code>RESEND_API_KEY</code>, <code>GOOGLE_CLIENT_SECRET</code> — are
+						is visible in the dashboard). Sensitive values – <code>AUTH_SECRET</code>,
+						<code>RESEND_API_KEY</code>, <code>GOOGLE_CLIENT_SECRET</code> – are
 						<b>never</b> in <code>wrangler.jsonc</code>. They're set via
 						<code>wrangler secret put</code> and stored encrypted by Cloudflare. See
 						<a href="#secrets">Where each value lives</a>.
@@ -992,7 +992,7 @@
 
 					<h3>The <code>HYPERDRIVE</code> id is not a secret</h3>
 					<p>
-						<code>d7f44cea…</code> is a <b>resource identifier</b>, not a credential —
+						<code>d7f44cea…</code> is a <b>resource identifier</b>, not a credential –
 						it just names which Hyperdrive config to bind. The actual database password
 						is stored <i>inside</i> the Hyperdrive config on Cloudflare's side (you set
 						it when you ran <code>wrangler hyperdrive create</code>). That's why the
@@ -1006,8 +1006,8 @@
 							><button class="copy-btn">Copy</button>
 						</div>
 						<pre><span class="c-key">import</span> adapter <span class="c-key">from</span> <span class="c-str">'@sveltejs/adapter-cloudflare'</span>;
-<span class="c-com">// kit.adapter: adapter()  — no custom config needed</span>
-<span class="c-com">// kit.experimental.remoteFunctions: true  — type-safe client↔server RPC</span></pre>
+<span class="c-com">// kit.adapter: adapter()  – no custom config needed</span>
+<span class="c-com">// kit.experimental.remoteFunctions: true  – type-safe client↔server RPC</span></pre>
 					</div>
 
 					<h3>Key dependencies & versions</h3>
@@ -1073,7 +1073,7 @@
 								<td><code>pnpm dev</code></td>
 								<td>Vite (Node)</td>
 								<td>local Docker Postgres</td>
-								<td>Default — fast HMR</td>
+								<td>Default – fast HMR</td>
 							</tr>
 							<tr>
 								<td><code>pnpm preview</code></td>
@@ -1083,8 +1083,8 @@
 							</tr>
 							<tr>
 								<td><code>pnpm cf:types</code></td>
-								<td>—</td>
-								<td>—</td>
+								<td>–</td>
+								<td>–</td>
 								<td>
 									Regenerate binding types after editing
 									<code>wrangler.jsonc</code>
@@ -1102,7 +1102,7 @@
 
 				<!-- =================================================================== -->
 				<section id="r2">
-					<h2><span class="emoji">🖼️</span> R2 — image storage</h2>
+					<h2><span class="emoji">🖼️</span> R2 – image storage</h2>
 					<p>
 						R2 is Cloudflare's S3-compatible object store. Uploaded gift/wishlist/avatar
 						images live in the <code>prejemesi-images</code> bucket and are served from
@@ -1134,7 +1134,7 @@
 						The client <code>PUT</code>s to <code>/api/upload/[...path]</code> with the
 						file + an HMAC token. The server validates the token (signed with
 						<code>AUTH_SECRET</code>), content-type, and size, then forwards the bytes
-						to R2. Chosen for simpler auth (session cookie) and server-side validation —
+						to R2. Chosen for simpler auth (session cookie) and server-side validation –
 						see <code>.mpx/DECISIONS.md</code>.
 					</p>
 					<table>
@@ -1197,7 +1197,7 @@
 
 				<!-- =================================================================== -->
 				<section id="resend">
-					<h2><span class="emoji">✉️</span> Resend — transactional email</h2>
+					<h2><span class="emoji">✉️</span> Resend – transactional email</h2>
 					<p>
 						Resend sends auth emails (signup verification, password reset, magic-link)
 						and notification emails (liked-gift-reserved, etc.). The wrapper degrades
@@ -1247,13 +1247,13 @@
 							<code>Přejeme si &lt;noreply@prejemesi.cz&gt;</code> via the
 							<code>EMAIL_FROM</code> var.
 						</li>
-						<li>Receiving is disabled — transactional send only.</li>
+						<li>Receiving is disabled – transactional send only.</li>
 					</ol>
 
 					<div class="callout warn">
 						<span class="label">Free-tier limits</span> 3,000 emails/month and a hard
 						<b>100 emails/day</b> cap. 1 verified domain. 30-day log retention. For a
-						family app this is plenty, but it's a real ceiling — watch it in the Resend
+						family app this is plenty, but it's a real ceiling – watch it in the Resend
 						dashboard if usage grows.
 					</div>
 
@@ -1276,7 +1276,7 @@
 						<li>
 							In <code>wrangler tail</code> you'll see
 							<code>[Email] Sent "…" (id=…)</code> or
-							<code>[Email] (not sent — RESEND_API_KEY unset)</code>.
+							<code>[Email] (not sent – RESEND_API_KEY unset)</code>.
 						</li>
 					</ul>
 				</section>
@@ -1285,7 +1285,7 @@
 				<section id="google">
 					<h2><span class="emoji">🔑</span> Google Auth (OAuth)</h2>
 					<p>
-						Google login is <b>optional</b> — the provider only registers if <i>both</i>
+						Google login is <b>optional</b> – the provider only registers if <i>both</i>
 						<code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> are
 						present. Email/password + magic-link work without it.
 					</p>
@@ -1302,7 +1302,7 @@
   secret: env.AUTH_SECRET,
   database: <span class="c-fn">drizzleAdapter</span>(<span class="c-fn">getDb</span>(event), { provider: <span class="c-str">'pg'</span> }),
   socialProviders:
-    env.GOOGLE_CLIENT_ID &amp;&amp; env.GOOGLE_CLIENT_SECRET     <span class="c-com">// truthy guard — both required</span>
+    env.GOOGLE_CLIENT_ID &amp;&amp; env.GOOGLE_CLIENT_SECRET     <span class="c-com">// truthy guard – both required</span>
       ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
       : {},
   emailAndPassword: { enabled: <span class="c-num">true</span>, requireEmailVerification: <span class="c-num">true</span> },
@@ -1324,7 +1324,7 @@
 						<li>
 							<b>OAuth consent screen</b>: User type "External"; app name, support
 							email, developer email. Scopes left at defaults (<code>openid</code>,
-							<code>email</code>, <code>profile</code>) — no sensitive scopes means no
+							<code>email</code>, <code>profile</code>) – no sensitive scopes means no
 							Google verification needed. Test users added while in "Testing" status.
 						</li>
 						<li>
@@ -1349,7 +1349,7 @@
 					</ol>
 					<div class="callout warn">
 						<span class="label">Status</span> Per <code>docs/CLOUDFLARE_SETUP.md</code>,
-						the production redirect URI is the one pending item — only needed
+						the production redirect URI is the one pending item – only needed
 						<i>if</i> Google login is actually enabled. Verify the
 						<code>https://prejemesi.cz/api/auth/callback/google</code> URI is registered
 						before relying on Google sign-in in prod.
@@ -1368,7 +1368,7 @@
 
 				<!-- =================================================================== -->
 				<section id="database">
-					<h2><span class="emoji">🐘</span> Database — Neon + Hyperdrive + Drizzle</h2>
+					<h2><span class="emoji">🐘</span> Database – Neon + Hyperdrive + Drizzle</h2>
 					<p>
 						PostgreSQL hosted on <b>Neon</b>. In production the Worker reaches it
 						through <b>Hyperdrive</b> (Cloudflare's connection pooler at the edge).
@@ -1404,7 +1404,7 @@
 					<div class="callout danger">
 						<span class="label">The bug this prevents</span> A module-global DB client
 						on Workers throws
-						<i>"Cannot perform I/O on behalf of a different request"</i> — the socket is
+						<i>"Cannot perform I/O on behalf of a different request"</i> – the socket is
 						request-scoped. The fix (commit <code>9ef224c</code>) memoizes the client
 						<b>per request</b> via a <code>WeakMap</code> keyed by the request event.
 						Don't reintroduce a global client.
@@ -1433,7 +1433,7 @@
 
 					<div class="callout warn">
 						<span class="label">Golden rule</span> Migrations and direct inspection
-						always go to Neon's <b>direct/unpooled</b> endpoint —
+						always go to Neon's <b>direct/unpooled</b> endpoint –
 						<b>never through Hyperdrive</b> (it's read-optimized and may cache). The
 						runtime app uses Hyperdrive; you use the direct string.
 					</div>
@@ -1460,7 +1460,7 @@
 					</p>
 
 					<h3>
-						Option 1 — Neon's own SQL editor
+						Option 1 – Neon's own SQL editor
 						<span class="badge green">easiest, read-only-safe</span>
 					</h3>
 					<p>
@@ -1470,7 +1470,7 @@
 					</p>
 
 					<h3>
-						Option 2 — Drizzle Studio against prod
+						Option 2 – Drizzle Studio against prod
 						<span class="badge amber">powerful, be careful</span>
 					</h3>
 					<p>Point <code>DATABASE_URL</code> at Neon and launch the GUI:</p>
@@ -1492,7 +1492,7 @@ $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-reda
 						double-check the connection string is the one you think it is.
 					</div>
 
-					<h3>Option 3 — any psql client</h3>
+					<h3>Option 3 – any psql client</h3>
 					<p>
 						<code>psql "postgresql://…@…neon.tech/…?sslmode=require"</code> works too if
 						you have <code>psql</code> installed.
@@ -1503,7 +1503,7 @@ $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-reda
 						the <b>Neon direct connection string</b>. You do <b>not</b> have it in any
 						committed file (correctly). You <b>get it</b> from the Neon dashboard each
 						time, or stash it in a gitignored local file. Your
-						<code>.env</code> currently points at local Docker — don't commit a prod
+						<code>.env</code> currently points at local Docker – don't commit a prod
 						string into it.
 					</div>
 				</section>
@@ -1521,7 +1521,7 @@ $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-reda
 						</div>
 						<pre><span class="c-com"># 1. Edit src/lib/server/db/schema.ts</span>
 <span class="c-key">pnpm</span> db:generate    <span class="c-com"># writes a new SQL file into drizzle/</span>
-<span class="c-com"># 2. Review the generated SQL by hand — strict mode flags risky renames</span>
+<span class="c-com"># 2. Review the generated SQL by hand – strict mode flags risky renames</span>
 
 <span class="c-com"># 3. Apply to Neon DIRECTLY (not Hyperdrive)</span>
 $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-redact">…</span><span class="c-str">.neon.tech/</span><span class="c-redact">db</span><span class="c-str">?sslmode=require"</span>
@@ -1556,12 +1556,12 @@ $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-reda
 							<tr>
 								<td><code>pnpm db:seed</code></td>
 								<td>Idempotent test data</td>
-								<td>Local only — never prod</td>
+								<td>Local only – never prod</td>
 							</tr>
 						</tbody>
 					</table>
 					<div class="callout warn">
-						<span class="label">Memory note</span> <code>db:push</code> is interactive —
+						<span class="label">Memory note</span> <code>db:push</code> is interactive –
 						rename/drop prompts will <b>hang and fail</b> in a non-interactive shell.
 						For production-bound changes always use the generate→review→migrate path so
 						you see the SQL first. Ordering matters:
@@ -1572,20 +1572,20 @@ $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-reda
 					<h3>Backups <span class="badge amber">no custom system</span></h3>
 					<div class="callout danger">
 						<span class="label">Honest status</span> There is
-						<b>no project-level backup system</b> — no scheduled <code>pg_dump</code>,
+						<b>no project-level backup system</b> – no scheduled <code>pg_dump</code>,
 						no backup bucket, nothing in the codebase. You are relying entirely on
 						<b>Neon's built-in history / Point-in-Time Restore</b>.
 					</div>
 					<p><b>What you actually have (verify in the Neon dashboard):</b></p>
 					<ul>
 						<li>
-							<b>Neon History / PITR</b> — Neon keeps a write-ahead history that lets
+							<b>Neon History / PITR</b> – Neon keeps a write-ahead history that lets
 							you restore to any point within the <b>retention window</b>. On the free
 							plan this window is short (commonly ~1 day; check
 							<b>Project → Settings → Storage/History</b> for your exact value).
 						</li>
 						<li>
-							<b>Neon branching</b> — you can instantly branch the DB to a point in
+							<b>Neon branching</b> – you can instantly branch the DB to a point in
 							time, which acts like a snapshot you can inspect or promote.
 						</li>
 					</ul>
@@ -1617,7 +1617,7 @@ $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-reda
 					<p>
 						Every env var the app reads, how it's accessed, and whether it's secret. All
 						app vars are read server-side via
-						<code>$env/dynamic/private</code> (runtime) — there are
+						<code>$env/dynamic/private</code> (runtime) – there are
 						<b>no client-exposed <code>PUBLIC_*</code> vars</b> in this list.
 					</p>
 
@@ -1721,7 +1721,7 @@ $env:DATABASE_URL = <span class="c-str">"postgresql://</span><span class="c-reda
 					<h3>Your local <code>.env</code> template (what you have)</h3>
 					<div class="code">
 						<div class="code-head">
-							<span>.env.example — copy to .env for local dev</span
+							<span>.env.example – copy to .env for local dev</span
 							><button class="copy-btn">Copy</button>
 						</div>
 						<pre><span class="c-com"># Database</span>
@@ -1733,16 +1733,16 @@ ORIGIN=<span class="c-str">"http://localhost:5173"</span>
 <span class="c-com"># Google OAuth (optional)</span>
 GOOGLE_CLIENT_ID=<span class="c-str">""</span>
 GOOGLE_CLIENT_SECRET=<span class="c-str">""</span>
-<span class="c-com"># Email (Resend — optional; logs to console when unset)</span>
+<span class="c-com"># Email (Resend – optional; logs to console when unset)</span>
 RESEND_API_KEY=<span class="c-str">""</span>
 EMAIL_FROM=<span class="c-str">"Přejeme si &lt;onboarding@resend.dev&gt;"</span>
-<span class="c-com"># R2 (optional — in-memory fallback when unset)</span>
+<span class="c-com"># R2 (optional – in-memory fallback when unset)</span>
 R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 					</div>
 					<div class="callout tip">
 						<span class="label">Local = zero cloud creds</span> The local Docker DB
 						password (<code>mysecretpassword</code>) is intentionally trivial and safe
-						to commit in examples — it only exists on your machine.
+						to commit in examples – it only exists on your machine.
 					</div>
 				</section>
 
@@ -1792,7 +1792,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 									>).
 								</td>
 								<td>
-									<b>Write-only</b> — Cloudflare never shows it again. If lost,
+									<b>Write-only</b> – Cloudflare never shows it again. If lost,
 									generate a new one (<code>openssl rand -base64 32</code>) and
 									re-put it.
 									<i
@@ -1844,7 +1844,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 									The <code>"vars"</code> block in
 									<code>wrangler.jsonc</code> (committed).
 								</td>
-								<td>Already in the repo — edit there and redeploy to change.</td>
+								<td>Already in the repo – edit there and redeploy to change.</td>
 							</tr>
 						</tbody>
 					</table>
@@ -1872,7 +1872,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 				<!-- =================================================================== -->
 				<section id="logs">
 					<h2>
-						<span class="emoji">🔭</span> When a production error happens — where to
+						<span class="emoji">🔭</span> When a production error happens – where to
 						look
 					</h2>
 
@@ -1880,12 +1880,12 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 						<span class="label">Current state</span> There is
 						<b>no <code>handleError</code> hook</b> in <code>hooks.server.ts</code> and
 						<b>no Sentry / error-tracking</b>. Unhandled errors return a generic 500 and
-						the only detail is whatever was <code>console.error</code>'d — which you
+						the only detail is whatever was <code>console.error</code>'d – which you
 						read via Worker logs. This is fine for an MVP but means you must actively
 						tail logs to debug.
 					</div>
 
-					<h3>1. Live tail — first thing to run</h3>
+					<h3>1. Live tail – first thing to run</h3>
 					<div class="code">
 						<div class="code-head">
 							<span>stream live prod logs</span><button class="copy-btn">Copy</button>
@@ -1900,7 +1900,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 						<code>[Notification] …</code>, and <code>[backgroundThemeHandle] …</code>.
 					</p>
 
-					<h3>2. Retained logs &amp; metrics — the dashboard</h3>
+					<h3>2. Retained logs &amp; metrics – the dashboard</h3>
 					<p>
 						Cloudflare dashboard →
 						<b>Workers &amp; Pages → prejemesi → Logs / Observability</b>.
@@ -1980,7 +1980,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 				<!-- =================================================================== -->
 				<section id="agents">
 					<h2>
-						<span class="emoji">🤖</span> Debugging with agents — credentials &amp;
+						<span class="emoji">🤖</span> Debugging with agents – credentials &amp;
 						tooling
 					</h2>
 					<p>
@@ -2010,17 +2010,17 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 							<tr>
 								<td>Cloudflare / Wrangler MCP</td>
 								<td><span class="badge red">not configured</span></td>
-								<td>—</td>
+								<td>–</td>
 							</tr>
 							<tr>
 								<td>Neon MCP</td>
 								<td><span class="badge red">not configured</span></td>
-								<td>—</td>
+								<td>–</td>
 							</tr>
 							<tr>
 								<td>Resend MCP</td>
 								<td><span class="badge red">not configured</span></td>
-								<td>—</td>
+								<td>–</td>
 							</tr>
 							<tr>
 								<td>Context7</td>
@@ -2034,7 +2034,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 					</table>
 					<div class="callout info">
 						<span class="label">Bottom line</span> Agents do <b>not</b> operate your
-						infra through MCP today. They operate it through <b>CLIs in the shell</b> —
+						infra through MCP today. They operate it through <b>CLIs in the shell</b> –
 						and only if those CLIs are already authenticated on your machine.
 					</div>
 
@@ -2093,7 +2093,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 							<tr>
 								<td>Google</td>
 								<td>OAuth config</td>
-								<td>No CLI — dashboard only (human).</td>
+								<td>No CLI – dashboard only (human).</td>
 							</tr>
 						</tbody>
 					</table>
@@ -2114,7 +2114,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 						<li>
 							<span class="badge green">safe</span> <code>wrangler tail</code>,
 							<code>wrangler secret list</code> (names only),
-							<code>wrangler r2 bucket list</code> — read-only diagnostics.
+							<code>wrangler r2 bucket list</code> – read-only diagnostics.
 						</li>
 						<li>
 							<span class="badge green">safe</span> Run <code>SELECT</code> queries
@@ -2123,7 +2123,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 						<li>
 							<span class="badge amber">supervise</span>
 							<code>pnpm db:migrate</code> against Neon, <code>wrangler deploy</code>,
-							<code>wrangler secret put</code> — these change prod. Review the
+							<code>wrangler secret put</code> – these change prod. Review the
 							diff/SQL first.
 						</li>
 						<li>
@@ -2197,7 +2197,7 @@ R2_PUBLIC_URL=<span class="c-str">""</span></pre>
 						</li>
 						<li>
 							<input type="checkbox" id="c7" /><label for="c7"
-								>Loaded prejemesi.cz, logged in, created/viewed a wishlist — no
+								>Loaded prejemesi.cz, logged in, created/viewed a wishlist – no
 								500s.</label
 							>
 						</li>

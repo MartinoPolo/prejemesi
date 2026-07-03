@@ -7,7 +7,7 @@
 	interface Props {
 		/** Raw price text (whole units only; parsed to an integer by the host). */
 		price: string;
-		/** Currency code — defaults to CZK upstream. */
+		/** Currency code – defaults to CZK upstream. */
 		currency: GiftCurrency;
 		/** Write a new raw price back to the row. */
 		onPriceInput: (value: string) => void;

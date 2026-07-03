@@ -19,7 +19,7 @@ test.describe('Theme change workflow', () => {
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 		await expect(dialog.getByText('Motiv seznamu')).toBeVisible();
 
-		// All 5 presets should be visible (target the preset buttons — "Výchozí" also appears
+		// All 5 presets should be visible (target the preset buttons – "Výchozí" also appears
 		// in the current-theme badge, so a plain text match would be ambiguous).
 		await expect(dialog.getByRole('button', { name: 'Výchozí' })).toBeVisible();
 		await expect(dialog.getByRole('button', { name: 'Vánoce' })).toBeVisible();
@@ -44,7 +44,7 @@ test.describe('Theme change workflow', () => {
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		// Select Christmas preset — the preset card exposes its selected state via aria-pressed
+		// Select Christmas preset – the preset card exposes its selected state via aria-pressed
 		const christmasPreset = dialog.getByRole('button', { name: /Vánoce/ });
 		await christmasPreset.click();
 		await expect(christmasPreset).toHaveAttribute('aria-pressed', 'true');
@@ -55,7 +55,7 @@ test.describe('Theme change workflow', () => {
 		// Dialog should close
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
-		// Reopen the dialog — the saved preset should be the selected one
+		// Reopen the dialog – the saved preset should be the selected one
 		await getThemeButton(page).click();
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 		await expect(dialog.getByRole('button', { name: /Vánoce/ })).toHaveAttribute(
@@ -105,7 +105,7 @@ test.describe('Theme change workflow', () => {
 
 		await createWishlistAndNavigate(page, 'Theme Cancel');
 
-		// Open theme dialog — default preset starts selected
+		// Open theme dialog – default preset starts selected
 		await getThemeButton(page).click();
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
@@ -121,7 +121,7 @@ test.describe('Theme change workflow', () => {
 		await dialog.getByRole('button', { name: /Zrušit/ }).click();
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
-		// Reopen — selection should have reverted to the default preset
+		// Reopen – selection should have reverted to the default preset
 		await getThemeButton(page).click();
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 		await expect(dialog.getByRole('button', { name: /Výchozí/ })).toHaveAttribute(

@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Přejeme si — Background Theme · Refined</title>
+		<title>Přejeme si – Background Theme · Refined</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -14,7 +14,7 @@
 		<link rel="stylesheet" href="../tokens.css" />
 		<style>
 			/* ════════════════════════════════════════════════════════════════
-			   BASE PALETTE — from src/app.css
+			   BASE PALETTE – from src/app.css
 			   Light = :root (default), Dark = .dark
 			   ════════════════════════════════════════════════════════════════ */
 			:root {
@@ -85,12 +85,12 @@
 			}
 
 			/* ════════════════════════════════════════════════════════════════
-			   BACKGROUND THEME OVERRIDES — from src/palette-colors.css
+			   BACKGROUND THEME OVERRIDES – from src/palette-colors.css
 			   Applied via data-bg-theme on the app root element (REQ-3)
 			   NOT touching --primary / --wishlist-* (REQ-4, REQ-5)
 			   ════════════════════════════════════════════════════════════════ */
 
-			/* Golden Hour — light */
+			/* Golden Hour – light */
 			[data-bg-theme='golden-hour']:not(.dark) {
 				--background: oklch(98.5% 0.006 80deg);
 				--surface-2: oklch(96.5% 0.01 80deg);
@@ -100,7 +100,7 @@
 				--foreground-muted: oklch(46% 0.02 70deg);
 				--foreground-subtle: oklch(50% 0.016 70deg);
 			}
-			/* Golden Hour — dark */
+			/* Golden Hour – dark */
 			[data-bg-theme='golden-hour'].dark {
 				--background: oklch(15.5% 0.02 60deg);
 				--surface-2: oklch(22.5% 0.024 60deg);
@@ -110,7 +110,7 @@
 				--foreground-muted: oklch(73% 0.02 70deg);
 				--foreground-subtle: oklch(64% 0.022 65deg);
 			}
-			/* Twilight — light */
+			/* Twilight – light */
 			[data-bg-theme='twilight']:not(.dark) {
 				--background: oklch(98.5% 0.006 210deg);
 				--surface-2: oklch(96.5% 0.01 210deg);
@@ -120,7 +120,7 @@
 				--foreground-muted: oklch(46% 0.02 220deg);
 				--foreground-subtle: oklch(50% 0.016 220deg);
 			}
-			/* Twilight — dark */
+			/* Twilight – dark */
 			[data-bg-theme='twilight'].dark {
 				--background: oklch(15.5% 0.02 225deg);
 				--surface-2: oklch(22.5% 0.024 225deg);
@@ -479,7 +479,7 @@
 			.bg-card:active {
 				transform: scale(0.97);
 			}
-			/* Selected state: primary ring + check icon (NOT color alone — REQ a11y) */
+			/* Selected state: primary ring + check icon (NOT color alone – REQ a11y) */
 			.bg-card[aria-checked='true'] {
 				border-color: var(--primary);
 				box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 25%, transparent);
@@ -490,7 +490,7 @@
 				outline-offset: var(--focus-ring-offset);
 			}
 
-			/* Check icon — visible only when selected */
+			/* Check icon – visible only when selected */
 			.check-icon {
 				position: absolute;
 				top: 10px;
@@ -570,12 +570,12 @@
 				margin-top: 1px;
 			}
 
-			/* ── Mini-preview literal colors — mode-independent of page theme ──
+			/* ── Mini-preview literal colors – mode-independent of page theme ──
 			   These are purposely hardcoded because the preview must always
 			   show BOTH light AND dark appearance regardless of page's current
 			   color mode. Never use CSS custom props here.               */
 
-			/* Default — light half */
+			/* Default – light half */
 			.pv.l-default {
 				background: oklch(100% 0 0);
 			}
@@ -583,7 +583,7 @@
 				background: oklch(96.7% 0.001 286deg);
 			}
 
-			/* Default — dark half */
+			/* Default – dark half */
 			.pv.d-default {
 				background: oklch(15.3% 0.006 107.1deg);
 			}
@@ -591,7 +591,7 @@
 				background: oklch(27.4% 0.006 286deg);
 			}
 
-			/* Golden Hour — light half */
+			/* Golden Hour – light half */
 			.pv.l-golden {
 				background: oklch(98.5% 0.006 80deg);
 			}
@@ -599,7 +599,7 @@
 				background: oklch(96.5% 0.01 80deg);
 			}
 
-			/* Golden Hour — dark half */
+			/* Golden Hour – dark half */
 			.pv.d-golden {
 				background: oklch(15.5% 0.02 60deg);
 			}
@@ -607,7 +607,7 @@
 				background: oklch(22.5% 0.024 60deg);
 			}
 
-			/* Twilight — light half */
+			/* Twilight – light half */
 			.pv.l-twilight {
 				background: oklch(98.5% 0.006 210deg);
 			}
@@ -615,7 +615,7 @@
 				background: oklch(96.5% 0.01 210deg);
 			}
 
-			/* Twilight — dark half */
+			/* Twilight – dark half */
 			.pv.d-twilight {
 				background: oklch(15.5% 0.02 225deg);
 			}
@@ -700,7 +700,7 @@
 	</head>
 	<body>
 		<div class="variant-eyebrow">
-			<b>Refined — Variant A + full coverage</b> · Preview cards · 3-up grid · light+dark
+			<b>Refined – Variant A + full coverage</b> · Preview cards · 3-up grid · light+dark
 			split per card · all 3 themes · selected / unselected / hover / focus / active states ·
 			light mode frame &amp; dark mode frame · independence from color-mode control
 		</div>
@@ -710,7 +710,7 @@
 		     App root carries data-bg-theme="golden-hour" without .dark class
 		     so the whole frame reflects the chosen tint (REQ-3)
 		     ═══════════════════════════════════════════════════════════════════ -->
-		<p class="scenario-label">1 · Světlý režim — vybraná Zlatá hodinka</p>
+		<p class="scenario-label">1 · Světlý režim – vybraná Zlatá hodinka</p>
 
 		<div class="app" data-bg-theme="golden-hour">
 			<!-- Navbar (context chrome, dimmed) -->
@@ -855,7 +855,7 @@
 							<div class="group">
 								<div class="label">Barevný režim</div>
 								<!--
-									ToggleGroup type="single" — existing component.
+									ToggleGroup type="single" – existing component.
 									INDEPENDENT from background theme (REQ-5).
 									Two separate axes: brightness (here) vs tint (below).
 								-->
@@ -908,11 +908,11 @@
 
 							<hr class="hr" />
 
-							<!-- Group 2: Background theme (THE FOCUS — BackgroundThemeChooser) -->
+							<!-- Group 2: Background theme (THE FOCUS – BackgroundThemeChooser) -->
 							<div class="group">
 								<div class="label">
 									Zabarvení pozadí
-									<!-- Saved affordance — instant apply, no Save button -->
+									<!-- Saved affordance – instant apply, no Save button -->
 									<span class="saved" aria-live="polite">
 										<svg
 											width="12"
@@ -933,7 +933,7 @@
 									role="radiogroup" for keyboard nav (arrow keys move selection).
 									Each card: role="radio" aria-checked.
 									Preview tiles: aria-hidden (decorative, label carries the name).
-									Selected state: --primary ring + check icon (NOT color alone) — a11y REQ.
+									Selected state: --primary ring + check icon (NOT color alone) – a11y REQ.
 									Independence: this control drives data-bg-theme on the app root only.
 									It does NOT touch --primary / --wishlist-* tokens (REQ-4).
 								-->
@@ -1144,9 +1144,9 @@
 		<!-- ═══════════════════════════════════════════════════════════════════
 		     SCENARIO 2: Dark mode + Twilight selected
 		     Shows BOTH dark mode rendering AND a different theme selection.
-		     App root: .dark data-bg-theme="twilight" — correct selector match.
+		     App root: .dark data-bg-theme="twilight" – correct selector match.
 		     ═══════════════════════════════════════════════════════════════════ -->
-		<p class="scenario-label">2 · Tmavý režim — vybraný Soumrak</p>
+		<p class="scenario-label">2 · Tmavý režim – vybraný Soumrak</p>
 
 		<div class="app dark" data-bg-theme="twilight">
 			<div class="topbar">
@@ -1555,7 +1555,7 @@
 		     Shows that "no tint" is a valid and distinct first-run state.
 		     ═══════════════════════════════════════════════════════════════════ -->
 		<p class="scenario-label">
-			3 · Světlý režim — vybraný Výchozí (neutrální, žádné zabarvení)
+			3 · Světlý režim – vybraný Výchozí (neutrální, žádné zabarvení)
 		</p>
 
 		<div class="app" data-bg-theme="default">
@@ -1916,10 +1916,10 @@
 		<!-- /app scenario 3 -->
 
 		<!-- ═══════════════════════════════════════════════════════════════════
-		     SCENARIO 4: State coverage panel — hover / focus / active / unselected
+		     SCENARIO 4: State coverage panel – hover / focus / active / unselected
 		     Shown in a neutral light-mode frame (no bg-theme) so states are clear.
 		     ═══════════════════════════════════════════════════════════════════ -->
-		<p class="scenario-label">4 · Stavy karet — hover / focus / active / nevybráno / vybráno</p>
+		<p class="scenario-label">4 · Stavy karet – hover / focus / active / nevybráno / vybráno</p>
 
 		<div class="app" style="padding: var(--space-6)">
 			<div style="max-width: 768px">

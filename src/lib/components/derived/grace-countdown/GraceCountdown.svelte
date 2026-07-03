@@ -6,7 +6,7 @@
 	interface Props {
 		/** When the post-share grace window closes (server-derived authority). */
 		expiresAt: Date;
-		/** Reactive "now" owned by the parent page clock — keeps the countdown ticking live. */
+		/** Reactive "now" owned by the parent page clock – keeps the countdown ticking live. */
 		now: Date;
 		/** Sentence builder receiving the formatted `m:ss` remaining time (a paraglide message fn). */
 		message: (inputs: { time: string }) => string;

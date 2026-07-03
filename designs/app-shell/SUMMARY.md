@@ -1,4 +1,4 @@
-# App Shell — Design Summary
+# App Shell – Design Summary
 
 **Base**: Variant 1 | **Refined**: 2026-05-30
 
@@ -8,7 +8,7 @@
 | ------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Logo                | Emoji + plain text                             | Gift-box inline SVG (Lucide-style, 18x18) + "prejemesi" in heading font, bold, primary color + ".cz" at 42% opacity with visible gap |
 | Nav items           | Plain links only                               | Links + CSS hover dropdowns showing 3 recent wishlists + "Zobrazit vse"                                                            |
-| Nav dropdown footer | —                                              | No "Novy seznam", no "Archivovane" — clean footer link only                                                                        |
+| Nav dropdown footer | –                                              | No "Novy seznam", no "Archivovane" – clean footer link only                                                                        |
 | Active indicator    | Background highlight                           | Bold text + primary color underline via ::after pseudo-element                                                                     |
 | Page structure      | Separate sort-bar row below page header        | Page title + toolbar merged into single flex row                                                                                   |
 | Sort control        | Plain text label in sort-bar                   | Explicit ghost button "Razeni: Posledni aktivita" in toolbar                                                                       |
@@ -19,7 +19,7 @@
 
 ## Component Map
 
-### Codebase — Use As-Is
+### Codebase – Use As-Is
 
 | Element                         | Component                            | Location                        |
 | ------------------------------- | ------------------------------------ | ------------------------------- |
@@ -52,7 +52,7 @@
 
 **Logo gap**: Use a span with margin-left on the .cz TLD element, not a non-breaking space.
 
-**Nav dropdowns — keyboard accessibility**: CSS hover works for pointer users. For production, replace with DropdownMenu or Popover (Bits UI) for keyboard focus management and aria-expanded.
+**Nav dropdowns – keyboard accessibility**: CSS hover works for pointer users. For production, replace with DropdownMenu or Popover (Bits UI) for keyboard focus management and aria-expanded.
 
 **Active nav item**: Derive from $page.url.pathname in SvelteKit. Apply is-active class conditionally; use the ::after underline pattern from the mockup.
 

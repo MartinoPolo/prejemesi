@@ -14,7 +14,7 @@ export interface CustomTheme {
 	color: string;
 }
 
-/** Resolved wishlist theme — either a preset name or a custom color */
+/** Resolved wishlist theme – either a preset name or a custom color */
 export type WishlistTheme = ThemePresetName | CustomTheme;
 
 /** CSS variables that define a wishlist theme palette */

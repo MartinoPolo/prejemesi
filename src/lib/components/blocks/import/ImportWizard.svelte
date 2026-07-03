@@ -73,7 +73,7 @@
 
 	// Dialog width based on step. The review step holds the table-like draft grid;
 	// append mode adds a ~280px existing-items side panel, so it needs extra room.
-	// NOTE: the sm: prefix is required — Dialog.Content's base class sets `sm:max-w-lg`,
+	// NOTE: the sm: prefix is required – Dialog.Content's base class sets `sm:max-w-lg`,
 	// and only a same-breakpoint `sm:` override is deduped past it by tailwind-merge.
 	// Below sm the base `max-w-[calc(100%-2rem)]` keeps the dialog viewport-bound.
 	const dialogWidth = $derived.by(() => {

@@ -52,7 +52,7 @@ function createLikesContext(
 		revertToggle,
 		/** Whether the current visitor is logged in (likes require an account). */
 		isAuthenticated,
-		/** Invoked when an anonymous visitor attempts to like — prompts them to log in. */
+		/** Invoked when an anonymous visitor attempts to like – prompts them to log in. */
 		requireAuth: onRequireAuth,
 	};
 }

@@ -100,7 +100,7 @@ export function getServerErrorCode(thrown: unknown): string | null {
 				return parsed.code;
 			}
 		} catch {
-			// Not valid JSON — fall through
+			// Not valid JSON – fall through
 		}
 	}
 	return message;
@@ -120,7 +120,7 @@ export function translateServerError(thrown: unknown, fallback?: string): string
 				return TRANSLATIONS[code]!(parsed);
 			}
 		} catch {
-			// Not valid JSON — fall through
+			// Not valid JSON – fall through
 		}
 	}
 

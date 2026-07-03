@@ -111,7 +111,7 @@
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
-	// the current image with replace/remove — not its resolved URL in the URL field.
+	// the current image with replace/remove – not its resolved URL in the URL field.
 	// svelte-ignore state_referenced_locally
 	let imageMode = $state<'url' | 'upload'>((gift?.imageKey ?? '') !== '' ? 'upload' : 'url');
 	let showDeleteConfirm = $state(false);

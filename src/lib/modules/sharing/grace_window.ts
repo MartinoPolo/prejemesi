@@ -1,7 +1,7 @@
 /**
  * Post-share grace window (issue #83): every transition to read-only is fully reversible for
- * a debounced window after the LAST edit to that thing. Applies to (a) sharing itself — gift
- * name + delete — (b) each appended description segment, and (c) the wishlist event date.
+ * a debounced window after the LAST edit to that thing. Applies to (a) sharing itself – gift
+ * name + delete – (b) each appended description segment, and (c) the wishlist event date.
  *
  * The SERVER is the authority (REQ-6): guards evaluate {@link isWithinGraceWindow} against a
  * server `now`. The client countdown derived from {@link graceWindowExpiresAt} is presentational.

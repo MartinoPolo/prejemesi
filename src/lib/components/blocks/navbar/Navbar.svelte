@@ -135,7 +135,7 @@
 	function wishlistToDropdownItem(wishlistRecord: MyWishlist): NavDropdownItem {
 		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const badge = STATUS_BADGE[wishlistRecord.status];
-		// Owner invariant: gift count + event countdown only — never reservation data.
+		// Owner invariant: gift count + event countdown only – never reservation data.
 		return {
 			name: wishlistRecord.title,
 			meta: giftCountLabel(wishlistRecord.totalGifts),
@@ -231,7 +231,7 @@
 	});
 
 	// How many followed lists still need a gift (gifter hasn't reserved anything yet). Drives the
-	// footer nudge — counts only "open" lists, so users who never mark "bought" are never nagged.
+	// footer nudge – counts only "open" lists, so users who never mark "bought" are never nagged.
 	const followedOpenCount = $derived(
 		followedFiltered.filter((w) => followedListState(w) === FOLLOWED_LIST_STATE.open).length,
 	);

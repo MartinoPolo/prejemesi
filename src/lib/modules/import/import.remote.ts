@@ -22,7 +22,7 @@ import { ImportGiftsInputSchema, CreateWishlistFromImportInputSchema } from './i
 const SheetLinkSchema = v.pipe(v.string(), v.trim(), v.minLength(1));
 
 /**
- * Fetch a Google Sheet as CSV, server-side. The raw user URL is never fetched —
+ * Fetch a Google Sheet as CSV, server-side. The raw user URL is never fetched –
  * {@link buildSheetsCsvExportUrl} reconstructs a pinned `docs.google.com` export
  * URL or returns a typed error (invalid / not-a-sheet). The fetched response is
  * classified for private-sheet / failure cases before the CSV text is returned.
@@ -122,7 +122,7 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 
 /**
  * Create a new wishlist owned by the caller, seed its default priority levels,
- * and insert the imported drafts (sortOrder sequential from 0) — all atomically
+ * and insert the imported drafts (sortOrder sequential from 0) – all atomically
  * in one transaction. Returns the created wishlist row.
  */
 export const createWishlistFromImport = guardedCommand(

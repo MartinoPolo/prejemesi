@@ -84,7 +84,7 @@
 
 	const playAddRemoveLink = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
-		// No link inputs yet — only the "+ link" affordance.
+		// No link inputs yet – only the "+ link" affordance.
 		await expect(canvas.queryByLabelText(LINK_1_LABEL)).not.toBeInTheDocument();
 
 		await userEvent.click(canvas.getByRole('button', { name: ADD_LINK }));

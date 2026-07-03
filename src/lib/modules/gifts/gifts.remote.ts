@@ -301,7 +301,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	const now = new Date();
 	const isShared = wishlistRow.sharedAt !== null;
 	const isPreShareGift = isShared && giftRow.createdAt <= wishlistRow.sharedAt!;
-	// Within the debounced 2-min share grace window the owner regains FULL edit — name + delete —
+	// Within the debounced 2-min share grace window the owner regains FULL edit – name + delete –
 	// as if the list were unshared (REQ-1/2). The window resets on each post-share edit, so it is
 	// keyed off `editedAfterShareAt` (the last edit) and falls back to `sharedAt` until then.
 	const shareGraceOpen =
@@ -311,8 +311,8 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	// (REQ-4/5): name is locked, quantity may only rise, description edits accrue as appends.
 	// Moderators, owners editing post-share-created gifts, and in-window edits fall through to the
 	// full per-field write below. A targeted segment edit (`descriptionAppendEdit`, issue #83) is
-	// always routed through the engine — it carries its own per-segment window check that the
-	// full-write path cannot enforce — so it stays validated even while the share window is open.
+	// always routed through the engine – it carries its own per-segment window check that the
+	// full-write path cannot enforce – so it stays validated even while the share window is open.
 	const isPreShareOwnerEdit =
 		role === 'owner' &&
 		isPreShareGift &&

@@ -45,7 +45,7 @@ export const wishlist = pgTable(
 		sharedAt: timestamp('shared_at', { withTimezone: true }),
 		// Last edit to the event date during the post-share grace window (issue #83). Drives the
 		// debounced 2-min reversibility of the event-date lock; falls back to `sharedAt` when never
-		// re-edited. Server is the authority — the client countdown derives from this.
+		// re-edited. Server is the authority – the client countdown derives from this.
 		eventDateEditedAt: timestamp('event_date_edited_at', { withTimezone: true }),
 		archivedAt: timestamp('archived_at', { withTimezone: true }),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
