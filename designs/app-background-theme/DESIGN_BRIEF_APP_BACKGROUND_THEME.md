@@ -1,19 +1,19 @@
-# App Background Theme — Design Brief
+# App Background Theme – Design Brief
 
 > **Status**: Refined (Variant A)
 > **Refined mockup**: `designs/app-background-theme/refined.html`
 > **Summary**: `designs/app-background-theme/SUMMARY.md`
 > **Refinements**: full three-theme coverage, both light+dark mode frames, explicit independence from color-mode control, RadioGroup aria semantics (role=radio/radiogroup/aria-checked + roving tabindex), WCAG AA focus-visible rings, all interactive states, correct data-bg-theme on app root (REQ-3), corrected CSS selectors to :not(.dark)/.dark, ../tokens.css path
 
-A per-user **appearance preference** that recolors the app's neutral background and surface tones — `default`, `golden-hour`, or `twilight` — applied app-wide via a `data-bg-theme` attribute on the root element. It is a **separate, independent control** from the existing light/dark/system color-mode toggle, and entirely separate from per-wishlist identity themes. This brief covers the Settings → Appearance UI that exposes and persists the choice.
+A per-user **appearance preference** that recolors the app's neutral background and surface tones – `default`, `golden-hour`, or `twilight` – applied app-wide via a `data-bg-theme` attribute on the root element. It is a **separate, independent control** from the existing light/dark/system color-mode toggle, and entirely separate from per-wishlist identity themes. This brief covers the Settings → Appearance UI that exposes and persists the choice.
 
-**Source**: GitHub issue #38 — "Add app background theme UI". Blocked by #34 (token foundation) and #35 (persisted user preference).
+**Source**: GitHub issue #38 – "Add app background theme UI". Blocked by #34 (token foundation) and #35 (persisted user preference).
 
 ---
 
 ## 1. Purpose
 
-The app already ships the background-theme CSS (`src/palette-colors.css`): three neutral palettes that subtly tint the chrome — `default` (true neutral, warm-grey), `golden-hour` (warm amber-tinted neutrals, hue ~70–85°), and `twilight` (cool blue-tinted neutrals, hue ~205–225°). Each palette is defined for **both** light and dark mode and applied by setting `data-bg-theme` on the app root/html element. What's missing is the production surface that lets a user pick one and have it persist.
+The app already ships the background-theme CSS (`src/palette-colors.css`): three neutral palettes that subtly tint the chrome – `default` (true neutral, warm-grey), `golden-hour` (warm amber-tinted neutrals, hue ~70–85°), and `twilight` (cool blue-tinted neutrals, hue ~205–225°). Each palette is defined for **both** light and dark mode and applied by setting `data-bg-theme` on the app root/html element. What's missing is the production surface that lets a user pick one and have it persist.
 
 This brief designs that surface: a background-theme chooser living in the Settings → Appearance card, **next to** the existing color-mode (light/dark/system) control. The two controls answer two different questions:
 
@@ -22,7 +22,7 @@ This brief designs that surface: a background-theme chooser living in the Settin
 
 Both compose: golden-hour has a distinct look in light vs dark. The UI must make this two-axis relationship legible so users don't confuse the background theme with dark mode.
 
-**Key value**: A one-line setting that lets users warm up or cool down the entire app's chrome to taste — independent of brightness and independent of any wishlist's festive theme.
+**Key value**: A one-line setting that lets users warm up or cool down the entire app's chrome to taste – independent of brightness and independent of any wishlist's festive theme.
 
 ---
 
@@ -32,20 +32,20 @@ The mockup **MUST** show the full Settings page viewport with the app shell chro
 
 ### Full Viewport Structure (top to bottom)
 
-1. **Top navbar** (`--nav-height` = 56px, sticky): logo "prejemesi" with dimmed ".cz" TLD on the left; nav links (Moje seznamy / Spravované / Sledované); right cluster — "Vytvořit" primary button, notification bell (ghost), dark-mode cycle toggle (ghost), avatar. Reproduce faithfully but **dimmed/at-context fidelity** — it is parent chrome, not the design target. See `designs/app-shell/variant-1.html`.
+1. **Top navbar** (`--nav-height` = 56px, sticky): logo "prejemesi" with dimmed ".cz" TLD on the left; nav links (Moje seznamy / Spravované / Sledované); right cluster – "Vytvořit" primary button, notification bell (ghost), dark-mode cycle toggle (ghost), avatar. Reproduce faithfully but **dimmed/at-context fidelity** – it is parent chrome, not the design target. See `designs/app-shell/variant-1.html`.
 2. **Settings content area**: constrained to `max-width: 48rem` (768px), left-aligned within the content column (NOT centered full-bleed). Vertical stack of setting cards with `--space-6` gap.
     - Page header: `h1` "Nastavení" (`text-2xl`, bold) + muted subtitle "Spravujte svůj profil, zabezpečení a předvolby".
     - Cards in order: **Profil**, **Zabezpečení**, **Oznámení**, **Vzhled (Appearance)** ← focus, **Nebezpečná zóna**.
-3. **Appearance card** (`Vzhled`) — the design target. Card header: palette icon + "Vzhled" title + "Motiv a jazyk aplikace" description. Card content currently holds: **Color mode** (ToggleGroup: Světlý / Tmavý / Systém), a Separator, then **Language** (Čeština / English). This brief INSERTS a **Background theme** control into this card.
+3. **Appearance card** (`Vzhled`) – the design target. Card header: palette icon + "Vzhled" title + "Motiv a jazyk aplikace" description. Card content currently holds: **Color mode** (ToggleGroup: Světlý / Tmavý / Systém), a Separator, then **Language** (Čeština / English). This brief INSERTS a **Background theme** control into this card.
 
 **What parent provides**: navbar, page header, sibling setting cards, card chrome (`Card.Root/Header/Title/Description/Content`).
-**What this component fills**: a new labelled control group **inside the Appearance card content**, sitting between Color mode and Language (or grouped with Color mode under an "Appearance/Display" subgroup — designer's choice within constraints).
+**What this component fills**: a new labelled control group **inside the Appearance card content**, sitting between Color mode and Language (or grouped with Color mode under an "Appearance/Display" subgroup – designer's choice within constraints).
 **Must NOT include**: navbar redesign, new page routing, wishlist theme pickers.
 
 **Mockup rendering instructions**:
 
 - Show full viewport at ~1440×900 proportions; navbar + page header + at least the Appearance card fully visible. Adjacent cards (Profil above, Nebezpečná zóna below) may be partially shown to establish stacking context.
-- The Appearance card is the focus — render it at full fidelity. Other cards may be shown collapsed/summarized.
+- The Appearance card is the focus – render it at full fidelity. Other cards may be shown collapsed/summarized.
 - Because the choice affects the **whole app background**, each variant must demonstrate the chosen background applied to the page (not just a swatch) AND show how it reads in both light and dark mode (side-by-side preview, light/dark mini-frames, or a toggle within the preview).
 
 ---
@@ -58,7 +58,7 @@ Source of truth: `src/palette-colors.css` (golden-hour, twilight) + `src/app.css
 
 | Token                | Role in preview                     |
 | -------------------- | ----------------------------------- |
-| `--background`       | Page background — the dominant tint |
+| `--background`       | Page background – the dominant tint |
 | `--surface-2`        | Card / raised surface               |
 | `--surface-3`        | Deeper surface (inputs, wells)      |
 | `--border`           | Hairlines                           |
@@ -76,14 +76,14 @@ Light surface-2 values: default `oklch(96.7% 0.001 286)`, golden `oklch(96.5% 0.
 Dark surface-2 values: default `oklch(27.4% 0.006 286)`, golden `oklch(22.5% 0.024 60)`, twilight `oklch(22.5% 0.024 225)`.
 
 - REQ-1: Expose all three as a single-select chooser. Exactly one is active at a time.
-- Each option must show a **realistic preview** of the actual background tint, not a flat brand-color dot. The preview must convey what the app chrome looks like (a mini surface stack: background + a card + a text line + a hairline border), so the subtle neutral differences are visible — these palettes differ by a few percent chroma, so a plain dot would look identical across all three.
+- Each option must show a **realistic preview** of the actual background tint, not a flat brand-color dot. The preview must convey what the app chrome looks like (a mini surface stack: background + a card + a text line + a hairline border), so the subtle neutral differences are visible – these palettes differ by a few percent chroma, so a plain dot would look identical across all three.
 - Czech labels: `Výchozí` (Default), `Zlatá hodinka` (Golden Hour), `Soumrak` (Twilight). English: `Default`, `Golden hour`, `Twilight`. (New message keys: `settings_bg_theme_label`, `settings_bg_theme_default`, `settings_bg_theme_golden_hour`, `settings_bg_theme_twilight`, plus a one-line helper `settings_bg_theme_description`.)
-- A short helper line under the control: CS "Zabarvení pozadí aplikace – nezávislé na světlém/tmavém režimu." EN "Tints the app background — independent of light/dark mode."
+- A short helper line under the control: CS "Zabarvení pozadí aplikace – nezávislé na světlém/tmavém režimu." EN "Tints the app background – independent of light/dark mode."
 
 ### 3.2 Independence from color mode (REQ-5)
 
-- The background-theme control and the color-mode control are **two distinct controls** in the same card. The UI must make it obvious they are orthogonal — not a single 5-way list mixing "Light / Dark / Golden hour".
-- Each background preview must reflect the **current** color mode (if app is in dark mode, previews show the dark variant of each theme) OR explicitly show both — variant-dependent. At minimum the user must understand "this tint applies in whatever brightness mode I'm in".
+- The background-theme control and the color-mode control are **two distinct controls** in the same card. The UI must make it obvious they are orthogonal – not a single 5-way list mixing "Light / Dark / Golden hour".
+- Each background preview must reflect the **current** color mode (if app is in dark mode, previews show the dark variant of each theme) OR explicitly show both – variant-dependent. At minimum the user must understand "this tint applies in whatever brightness mode I'm in".
 - Recommended: a small inline note or layout grouping that reads "Background theme works in both light and dark."
 
 ### 3.3 Independence from wishlist themes (REQ-4)
@@ -95,14 +95,14 @@ Dark surface-2 values: default `oklch(27.4% 0.006 286)`, golden `oklch(22.5% 0.0
 
 - Selecting an option is immediate (optimistic): the whole app background updates live by setting `data-bg-theme` on the root, AND the choice is persisted per-user (via the #35 preference mechanism) so it survives reload and crosses sessions/devices.
 - Default selection when no preference stored: `default` (no attribute, or `data-bg-theme="default"`).
-- A subtle "Uloženo" / "Saved" affordance is acceptable but not required to be a blocking save button — treat like the existing color-mode toggle (instant apply). No explicit Save button for this control.
+- A subtle "Uloženo" / "Saved" affordance is acceptable but not required to be a blocking save button – treat like the existing color-mode toggle (instant apply). No explicit Save button for this control.
 
 ### 3.5 Accessibility
 
 - Single-select group must be keyboard operable (arrow keys move selection, Space/Enter selects) and expose `aria-checked` / `role="radio"` semantics (RadioGroup) or `aria-pressed` single ToggleGroup semantics.
 - Each option needs an accessible name (the Czech/English label), not just a color swatch.
 - Selected state must be conveyed by more than color alone (ring + check icon).
-- Preview swatches are decorative (`aria-hidden`) — the label carries the name.
+- Preview swatches are decorative (`aria-hidden`) – the label carries the name.
 
 ---
 
@@ -126,7 +126,7 @@ Dark surface-2 values: default `oklch(27.4% 0.006 286)`, golden `oklch(22.5% 0.0
 
 | Component       | Variant/Props                                | Usage in This Design                                                                           |
 | --------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `Card.*`        | Root/Header/Title/Description/Content        | The Appearance card shell (already in place — reuse, do not re-create)                         |
+| `Card.*`        | Root/Header/Title/Description/Content        | The Appearance card shell (already in place – reuse, do not re-create)                         |
 | `Label`         | default                                      | "Barevný režim", "Zabarvení pozadí", "Jazyk" group labels                                      |
 | `ToggleGroup.*` | `type="single"`, `Item` with `aria-label`    | Color-mode control (existing) and a candidate pattern for background theme (segmented variant) |
 | `RadioGroup.*`  | `type="single"`                              | Candidate pattern for background theme as accessible card/list selection                       |
@@ -139,7 +139,7 @@ Dark surface-2 values: default `oklch(27.4% 0.006 286)`, golden `oklch(22.5% 0.0
 
 ### Components to Adopt (install from shadcn-svelte)
 
-None required — RadioGroup, ToggleGroup, Card, HelpText all exist in `base/`.
+None required – RadioGroup, ToggleGroup, Card, HelpText all exist in `base/`.
 
 ### Components to Design (new)
 
@@ -181,7 +181,7 @@ Relevant tokens:
 The three palettes (exact, from source):
 
 ```css
-/* Default — from app.css :root / .dark (no data-bg-theme attribute) */
+/* Default – from app.css :root / .dark (no data-bg-theme attribute) */
 /* light  --background: oklch(100% 0 0);          --surface-2: oklch(96.7% 0.001 286) */
 /* dark   --background: oklch(15.3% 0.006 107.1);  --surface-2: oklch(27.4% 0.006 286) */
 
@@ -219,9 +219,9 @@ The three palettes (exact, from source):
 
 ## 8. Design Constraints (Non-Negotiable)
 
-- Background theme is a **separate control** from color mode — never merge them into one list/segmented control with mixed semantics.
-- Background theme drives ONLY neutral chrome tokens; it must NOT recolor `--primary`, accent, or `--wishlist-*` tokens. Selected-state ring/check uses `--primary` (the app accent) — that's fine; the previews themselves must not change accent.
-- Previews must be **token-driven and realistic** (background + surface + text + border), not flat brand dots — the differences are subtle neutrals.
+- Background theme is a **separate control** from color mode – never merge them into one list/segmented control with mixed semantics.
+- Background theme drives ONLY neutral chrome tokens; it must NOT recolor `--primary`, accent, or `--wishlist-*` tokens. Selected-state ring/check uses `--primary` (the app accent) – that's fine; the previews themselves must not change accent.
+- Previews must be **token-driven and realistic** (background + surface + text + border), not flat brand dots – the differences are subtle neutrals.
 - The chosen background applies app-wide via `data-bg-theme` on the root; selection is instant + persisted (no Save button for this control), matching the existing color-mode UX.
 - Reuse the existing Appearance `Card` and `Separator` rhythm; do not introduce a new page or modal.
 - Selected state conveyed by ring + check icon, not color alone (a11y).
@@ -230,7 +230,7 @@ The three palettes (exact, from source):
 
 ## 9. Design Freedom
 
-- Presentation of the chooser — this is the axis the three variants explore:
+- Presentation of the chooser – this is the axis the three variants explore:
     - **A**: large preview cards (3-up grid), each card splitting/showing light+dark.
     - **B**: vertical radio list with a thumbnail per row + a larger shared live-preview pane reflecting current mode.
     - **C**: compact segmented control (label-only) paired with a single full-bleed live preview that updates, plus a light/dark split inside that preview.
@@ -243,18 +243,18 @@ The three palettes (exact, from source):
 ## 10. Visual References
 
 - **Internal**:
-    - `src/lib/components/blocks/settings/SettingsAppearanceSection.svelte` — the card being extended (color-mode ToggleGroup + language).
-    - `src/routes/(app)/settings/+page.svelte` — settings page layout (`max-w-3xl`, stacked cards).
-    - `designs/app-shell/variant-1.html` — navbar chrome to reproduce as context.
-    - `src/palette-colors.css` — the exact bg-theme palettes.
-    - `designs/dashboard/` & `designs/wishlist-page/` variants — card/badge styling consistency.
-- **External**: OS-style appearance pickers (macOS System Settings Appearance row, VS Code theme tiles) — labelled preview tiles with a selected ring.
+    - `src/lib/components/blocks/settings/SettingsAppearanceSection.svelte` – the card being extended (color-mode ToggleGroup + language).
+    - `src/routes/(app)/settings/+page.svelte` – settings page layout (`max-w-3xl`, stacked cards).
+    - `designs/app-shell/variant-1.html` – navbar chrome to reproduce as context.
+    - `src/palette-colors.css` – the exact bg-theme palettes.
+    - `designs/dashboard/` & `designs/wishlist-page/` variants – card/badge styling consistency.
+- **External**: OS-style appearance pickers (macOS System Settings Appearance row, VS Code theme tiles) – labelled preview tiles with a selected ring.
 
 ## 11. Not Included (Scope Exclusions)
 
-- The persistence backend / preference schema (issue #35) — this brief assumes it exists and the chooser writes to it.
+- The persistence backend / preference schema (issue #35) – this brief assumes it exists and the chooser writes to it.
 - The token foundation itself (issue #34) and the palette CSS (already in `palette-colors.css`).
 - Wishlist identity theme picker (separate feature, per-wishlist).
-- Accent-color picker (`data-accent` in `accent-colors.css`) — out of scope unless later folded in.
+- Accent-color picker (`data-accent` in `accent-colors.css`) – out of scope unless later folded in.
 - Adding new background-theme palettes beyond the three shipped.
-- E2E test code (acceptance criterion, implemented during build — not part of the mockup).
+- E2E test code (acceptance criterion, implemented during build – not part of the mockup).

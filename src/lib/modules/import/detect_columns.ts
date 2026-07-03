@@ -6,7 +6,7 @@
  * the data, and classifies every column into a role (name / notes / url / price
  * / bool / ignore). Header labels are authoritative when present; otherwise the
  * column's values are sampled. Perfect classification of messy sheets is not a
- * goal — the editable draft grid is the escape hatch — but clean exports map to
+ * goal – the editable draft grid is the escape hatch – but clean exports map to
  * near-zero manual effort.
  */
 

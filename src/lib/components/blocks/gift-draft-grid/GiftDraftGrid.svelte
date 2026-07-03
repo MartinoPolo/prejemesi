@@ -157,7 +157,7 @@
 			isImport ? 'overflow-clip' : 'max-h-[560px] overflow-auto',
 		)}
 	>
-		<!-- Sticky header (desktop only) — hosts the single global select-all -->
+		<!-- Sticky header (desktop only) – hosts the single global select-all -->
 		<div
 			class={cn(
 				'sticky top-0 z-20 hidden border-b border-border-strong bg-surface-3 px-[29px] py-3',

@@ -7,7 +7,7 @@
 	import { imageMetaToFrameProps, type ImageMetadata } from '$lib/modules/images/index.js';
 
 	interface Props {
-		/** Image source URL — null/empty renders the themed fallback. */
+		/** Image source URL – null/empty renders the themed fallback. */
 		imageUrl: string | null;
 		/** Persisted presentation metadata (fit mode + crop/focal + bg fill). */
 		imageMeta: ImageMetadata | null;

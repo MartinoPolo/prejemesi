@@ -70,7 +70,7 @@
 
 			<Separator />
 
-			<!-- Background theme (REQ-1) — independent from color mode (REQ-5) -->
+			<!-- Background theme (REQ-1) – independent from color mode (REQ-5) -->
 			<BackgroundThemeChooser value={appBackgroundTheme} onSave={onSaveBackgroundTheme} />
 
 			<Separator />

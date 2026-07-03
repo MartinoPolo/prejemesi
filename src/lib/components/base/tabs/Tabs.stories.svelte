@@ -13,7 +13,7 @@
 		const canvas = within(canvasElement);
 		const tabs = canvas.getAllByRole('tab');
 
-		// Initial state — first tab active
+		// Initial state – first tab active
 		await expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
 		await expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
 		await expect(tabs[2]).toHaveAttribute('aria-selected', 'false');
@@ -55,7 +55,7 @@
 		// Click disabled tab (third tab in "With Disabled Tab" story)
 		await userEvent.click(tabs[2]);
 
-		// First tab should remain active — disabled tab should not activate
+		// First tab should remain active – disabled tab should not activate
 		await expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
 		await expect(tabs[2]).toHaveAttribute('aria-selected', 'false');
 	};

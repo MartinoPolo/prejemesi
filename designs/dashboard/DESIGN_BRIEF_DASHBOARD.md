@@ -1,4 +1,4 @@
-# Design Brief — Přejeme si Dashboard
+# Design Brief – Přejeme si Dashboard
 
 > **Status**: Refined (Variant 3 cards + Variant 2 list ref)
 > **Refined mockup**: `designs/dashboard/refined.html`
@@ -7,7 +7,7 @@
 
 ## Purpose
 
-The Dashboard is the authenticated user's home base. It is split into three separate first-level pages: **Moje seznamy** (owned wishlists), **Spravované** (moderated wishlists), and **Sledované** (followed wishlists). Each page has a distinct context, data shape, and action set. Anonymous users have no dashboard — they are redirected to the wishlist link they arrived from.
+The Dashboard is the authenticated user's home base. It is split into three separate first-level pages: **Moje seznamy** (owned wishlists), **Spravované** (moderated wishlists), and **Sledované** (followed wishlists). Each page has a distinct context, data shape, and action set. Anonymous users have no dashboard – they are redirected to the wishlist link they arrived from.
 
 ---
 
@@ -28,7 +28,7 @@ The Dashboard is the authenticated user's home base. It is split into three sepa
 
 **Data per card:**
 
-- Thumbnail image (square crop) — falls back to theme preset illustration
+- Thumbnail image (square crop) – falls back to theme preset illustration
 - Title (bold, prominent)
 - Occasion badge (e.g., "Vánoce 2026", "Narozeniny")
 - Event date (optional, e.g., "25. 12. 2026")
@@ -44,7 +44,7 @@ The Dashboard is the authenticated user's home base. It is split into three sepa
 
 **Sorting:** Poslední návštěva | Poslední úprava | Abecedně
 
-**Owner invariant:** NO reservation count visible here — owner cannot see reservation state.
+**Owner invariant:** NO reservation count visible here – owner cannot see reservation state.
 
 **Empty state:** Illustration + "Zatím žádné seznamy. Vytvořte svůj první!" + CTA button "Vytvořit seznam"
 
@@ -56,7 +56,7 @@ The Dashboard is the authenticated user's home base. It is split into three sepa
 
 - Thumbnail image
 - Title
-- Owner name (prominent — "Wishlist od: Jana Nováková")
+- Owner name (prominent – "Wishlist od: Jana Nováková")
 - Gift count total
 - Reservation progress bar + label (e.g., "7 / 12 rezervováno")
 - Status badge: Aktivní | Archivováno
@@ -68,7 +68,7 @@ The Dashboard is the authenticated user's home base. It is split into three sepa
 
 **Sorting:** Poslední aktivita | Název | Rezervace (most needed first)
 
-**Moderator note:** Moderators CAN see reservation state — progress bar is appropriate here.
+**Moderator note:** Moderators CAN see reservation state – progress bar is appropriate here.
 
 **Empty state:** "Zatím nejste moderátorem žádného seznamu."
 
@@ -88,7 +88,7 @@ The Dashboard is the authenticated user's home base. It is split into three sepa
 **Actions:**
 
 - Primary: Open wishlist
-- Secondary: Přestat sledovat (unfollow, destructive — requires confirmation)
+- Secondary: Přestat sledovat (unfollow, destructive – requires confirmation)
 
 **Sorting:** Poslední návštěva | Nejdříve nová přání | Název
 
@@ -129,8 +129,8 @@ The Dashboard is the authenticated user's home base. It is split into three sepa
 
 - Max content width: 1200px, centered, 24px horizontal padding
 - Nav height: 56px fixed
-- Card grid: `repeat(auto-fill, minmax(280px, 1fr))` — 2 cols on tablet, 3 on desktop
-- Card aspect ratio for thumbnail: 3:2 (landscape) or square — consistent across all cards
+- Card grid: `repeat(auto-fill, minmax(280px, 1fr))` – 2 cols on tablet, 3 on desktop
+- Card aspect ratio for thumbnail: 3:2 (landscape) or square – consistent across all cards
 - Sort bar: full width, aligned right, same height as page heading row
 - Archived cards stay in the grid but are visually subordinate
 
@@ -141,7 +141,7 @@ The Dashboard is the authenticated user's home base. It is split into three sepa
 From `tokens.css` and `app.css`:
 
 ```
-Primary (light): oklch(52.7% 0.154 150.069deg)   — sage green
+Primary (light): oklch(52.7% 0.154 150.069deg)   – sage green
 Primary (dark):  oklch(44.8% 0.119 151.328deg)
 Background (light): oklch(100% 0 0)
 Background (dark):  oklch(15.3% 0.006 107.1deg)
@@ -162,14 +162,14 @@ Shadow md: standard card elevation
 
 ## Design Constraints
 
-- Owner NEVER sees reservation state in "Moje seznamy" — do not show any reservation counter there
+- Owner NEVER sees reservation state in "Moje seznamy" – do not show any reservation counter there
 - Archived wishlists must be visually distinct but still present in the list
 - Status badge labels: "Koncept", "Sdíleno", "Archivováno" (not English)
 - Czech language throughout
 - No GDPR banners
-- No per-wishlist dark mode — the user's system preference controls everything
-- Thumbnail always present (theme preset as fallback) — no blank gray boxes
-- Card actions on hover via overlay or overflow menu — not always visible to reduce noise
+- No per-wishlist dark mode – the user's system preference controls everything
+- Thumbnail always present (theme preset as fallback) – no blank gray boxes
+- Card actions on hover via overlay or overflow menu – not always visible to reduce noise
 
 ---
 
@@ -181,22 +181,22 @@ Shadow md: standard card elevation
 - Theme color accent: color strip top of card vs tinted thumbnail background vs badge
 - Archived visual treatment: grayscale filter vs opacity reduction vs both
 - Empty state illustration: inline SVG pattern vs large emoji vs decorative shape
-- How to show "Moje rezervace: 2" in Sledované — chip, inline text, or icon count
+- How to show "Moje rezervace: 2" in Sledované – chip, inline text, or icon count
 - Whether to show a confirmation dialog for Unfollow or inline destructive button
 
 ---
 
 ## Visual References
 
-- `designs/style-exploration/direction-a-honey.html` — fidelity target, component patterns, nav shell
-- `designs/tokens.css` — all spacing, typography, motion tokens
-- `src/app.css` — final color values (sage green primary, dark/light variables)
+- `designs/style-exploration/direction-a-honey.html` – fidelity target, component patterns, nav shell
+- `designs/tokens.css` – all spacing, typography, motion tokens
+- `src/app.css` – final color values (sage green primary, dark/light variables)
 
 ---
 
 ## Not Included in Dashboard
 
-- Wishlist page itself (gift list, reservation flow, sharing modal) — separate design
+- Wishlist page itself (gift list, reservation flow, sharing modal) – separate design
 - Gift detail modal
 - Moderator invite link flow
 - Profile / Settings page

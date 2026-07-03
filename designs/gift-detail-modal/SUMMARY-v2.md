@@ -1,4 +1,4 @@
-# Gift Detail Modal v2 — Design Summary
+# Gift Detail Modal v2 – Design Summary
 
 **Base**: Variant A | **Refined**: 2026-06-03
 
@@ -6,19 +6,19 @@
 
 Variant A was chosen and refined with: Variant C link editor container, "Zobrazení:" label prefix, Variant C compact footer, Variant C enrich bar. See the design brief for full requirements. Key changes from the base variant:
 
-- **Link editor** replaced Variant A's flat rows with Variant C's bordered container (`.link-editor` with header, hairline-separated rows, footer). Each row stacks URL over a label row styled as a clickable link (arrow icon + underlined text, green for primary / gray for secondary — matching gift card v2's link rows). The label is an editable inline input; clicking outside the text navigates to the URL. The whole `.link-label-row` feels like a card link while remaining editable.
-- **Footer** switched from Variant A's full-width Save button to Variant C's right-aligned compact Zrušit + Uložit buttons with a footer note on the left ("Načtení metadat je doplněk — uloží se až tlačítkem Uložit.").
+- **Link editor** replaced Variant A's flat rows with Variant C's bordered container (`.link-editor` with header, hairline-separated rows, footer). Each row stacks URL over a label row styled as a clickable link (arrow icon + underlined text, green for primary / gray for secondary – matching gift card v2's link rows). The label is an editable inline input; clicking outside the text navigates to the URL. The whole `.link-label-row` feels like a card link while remaining editable.
+- **Footer** switched from Variant A's full-width Save button to Variant C's right-aligned compact Zrušit + Uložit buttons with a footer note on the left ("Načtení metadat je doplněk – uloží se až tlačítkem Uložit.").
 - **Enrich bar** adopted Variant C's separated `.enrich-bar` container below the link editor (bordered box with button + hint text) instead of Variant A's inline enrich adjacent to the primary link row. Per-row sparkle icons retained from Variant C for quick per-link enrichment.
 
 ## Component Map
 
-### Codebase — Use As-Is
+### Codebase – Use As-Is
 
 | Component     | Path                                  | Usage                               | Key Props/Variants                             |
 | ------------- | ------------------------------------- | ----------------------------------- | ---------------------------------------------- |
 | Button        | `src/lib/components/base/button/`     | Footer Zrušit/Uložit, overwrite     | `variant="ghost"`, `variant="default"` `size="sm"` |
 | Input         | `src/lib/components/base/input/`      | Name, price, URL, label fields      | standard styling                               |
-| Badge         | `src/lib/components/base/badge/`      | Not used in refined (primary = stripe) | —                                            |
+| Badge         | `src/lib/components/base/badge/`      | Not used in refined (primary = stripe) | –                                            |
 | Label         | `src/lib/components/base/label/`      | Field labels                        | standard                                       |
 | Skeleton      | `src/lib/components/base/skeleton/`   | Enrich loading shimmer              | per-field height                               |
 | Alert         | `src/lib/components/base/alert/`      | Enrich success/warning/error        | `variant="destructive"` etc.                   |

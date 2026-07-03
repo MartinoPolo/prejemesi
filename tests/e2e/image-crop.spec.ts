@@ -138,8 +138,8 @@ test.describe('Wishlist crop editor', () => {
 		await thumbnailTile.click();
 		await expect(thumbnailTile).toHaveAttribute('aria-pressed', 'true');
 
-		// Save the image assignment (the settings page has several "Uložit" buttons —
-		// details, image, theme — so target the image card's save by its test id).
+		// Save the image assignment (the settings page has several "Uložit" buttons –
+		// details, image, theme – so target the image card's save by its test id).
 		await page.getByTestId('wishlist-image-save').click();
 		await expect(page.getByText(/Obrázek seznamu byl uložen/)).toBeVisible({ timeout: 10_000 });
 

@@ -32,7 +32,7 @@ export const UPLOAD_TARGETS = {
 	'gift-image': 'gifts',
 	'wishlist-banner': 'wishlists/banners',
 	'wishlist-thumbnail': 'wishlists/thumbnails',
-	// Forward-ported from profile/settings — not in issue #5 scope but already wired up
+	// Forward-ported from profile/settings – not in issue #5 scope but already wired up
 	avatar: 'avatars',
 } as const;
 
@@ -71,7 +71,7 @@ export function getPublicUrl(objectKey: string): string {
 	if (publicUrl != null && publicUrl !== '') {
 		return `${publicUrl.replace(/\/$/, '')}/${objectKey}`;
 	}
-	// Local dev fallback — served from the upload API route
+	// Local dev fallback – served from the upload API route
 	return `${UPLOAD_API_BASE}/${objectKey}`;
 }
 

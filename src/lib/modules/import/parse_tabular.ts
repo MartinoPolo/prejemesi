@@ -5,7 +5,7 @@ import Papa from 'papaparse';
  * delimiter that was used. Rows that are entirely empty are dropped; cell text
  * is preserved verbatim (RFC-4180 quoting, embedded commas/newlines, BOM strip
  * are all handled by the parser). Header detection and preamble/footer skipping
- * are NOT done here — see {@link detectColumns}.
+ * are NOT done here – see {@link detectColumns}.
  */
 export interface ParsedTable {
 	rows: string[][];

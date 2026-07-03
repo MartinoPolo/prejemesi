@@ -8,11 +8,11 @@
 export const ROW_STATUS = {
 	/** Valid, ready to commit (green). */
 	ready: 'ready',
-	/** Matches an existing gift by name or link — advisory only (orange). */
+	/** Matches an existing gift by name or link – advisory only (orange). */
 	duplicate: 'duplicate',
 	/** Missing required name on a touched row (red). */
 	error: 'error',
-	/** Untouched batch starter row — no tint until edited. */
+	/** Untouched batch starter row – no tint until edited. */
 	neutral: 'neutral',
 } as const;
 
@@ -21,7 +21,7 @@ export type RowStatus = (typeof ROW_STATUS)[keyof typeof ROW_STATUS];
 interface DraftRowStatusInput {
 	name: string;
 	isDuplicate: boolean;
-	/** A pristine row was never touched (untouched batch starter) — stays neutral while blank. */
+	/** A pristine row was never touched (untouched batch starter) – stays neutral while blank. */
 	pristine: boolean;
 }
 

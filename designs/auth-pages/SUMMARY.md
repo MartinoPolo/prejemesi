@@ -1,6 +1,6 @@
-# Auth Pages — Refined Summary
+# Auth Pages – Refined Summary
 
-Variant 2 — Split Screen · Light mode only · 2026-05-30
+Variant 2 – Split Screen · Light mode only · 2026-05-30
 
 ---
 
@@ -53,7 +53,7 @@ src/routes/(auth)/
 
 ## Form Validation
 
-- Validation runs on blur (not on keystroke) — per design brief.
+- Validation runs on blur (not on keystroke) – per design brief.
 - Client-side: `zod` schemas per form, validated in `+page.svelte` before submission.
 - Server-side: BetterAuth returns structured errors; map to field-level `is-error` state + `ErrorBanner` for server errors.
 - Error messages in Czech (defined in `src/lib/i18n/` via Paraglide JS).

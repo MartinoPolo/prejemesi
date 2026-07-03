@@ -117,7 +117,7 @@ export function deriveOklchPalette(baseColor: string): ThemePalette | null {
 		hue,
 	};
 
-	// Preview: themed card preview surface — a noticeable light tint of the primary
+	// Preview: themed card preview surface – a noticeable light tint of the primary
 	const preview: OklchComponents = {
 		lightness: 0.96,
 		chroma: clamp(chroma * 0.22, 0.015, 0.05),
@@ -132,7 +132,7 @@ export function deriveOklchPalette(baseColor: string): ThemePalette | null {
 	};
 
 	// Icon/pattern fill for fallback visuals. Lightness is normalized to a fixed
-	// mid value (per the brief: "icon = primary @ ~55% L") — deliberately
+	// mid value (per the brief: "icon = primary @ ~55% L") – deliberately
 	// independent of the base color's lightness so the icon always keeps WCAG AA
 	// contrast on the light surface, whether the user picks a very light or very
 	// dark base. Only the hue and (scaled) chroma carry the base color's identity.
@@ -218,11 +218,11 @@ function toDarkValue(key: keyof ThemePalette, lightValue: string): string {
  * function. Each token becomes `light-dark(<light>, <dark>)`, so the same
  * applied inline style resolves to the correct surface in both modes and
  * live-updates when the `.dark` class (and thus computed `color-scheme`)
- * toggles — no re-apply needed. Tokens whose dark value equals the light value
+ * toggles – no re-apply needed. Tokens whose dark value equals the light value
  * are emitted unwrapped to keep output minimal.
  *
  * Requires `color-scheme: light`/`dark` to be set on `:root`/`.dark` (app.css)
- * — `light-dark()` keys off the computed `color-scheme`, not the `.dark` class.
+ * – `light-dark()` keys off the computed `color-scheme`, not the `.dark` class.
  */
 export function toModeAwarePalette(light: ThemePalette): ThemePalette {
 	const result = {} as Record<keyof ThemePalette, string>;

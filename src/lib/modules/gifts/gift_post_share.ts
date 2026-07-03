@@ -48,7 +48,7 @@ export function computePreShareOwnerEdit(
 	input: UpdateGiftInput,
 	now: Date,
 ): PostShareEditOutcome {
-	// Rejection checks first — they short-circuit before any updateData is built.
+	// Rejection checks first – they short-circuit before any updateData is built.
 	if (input.name !== undefined && input.name !== current.name) {
 		return {
 			rejection: { status: 403, code: SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING },
@@ -91,7 +91,7 @@ export function computePreShareOwnerEdit(
 	let changed = false;
 
 	// Per-segment edit/delete (within its window, already validated above). Editing resets the
-	// segment's addedAt — re-opening its window (debounce). A blank/null text deletes the segment.
+	// segment's addedAt – re-opening its window (debounce). A blank/null text deletes the segment.
 	// Takes precedence over a new-segment append: the two are mutually exclusive.
 	if (input.descriptionAppendEdit !== undefined) {
 		const { index, text } = input.descriptionAppendEdit;
@@ -113,7 +113,7 @@ export function computePreShareOwnerEdit(
 		}
 	}
 
-	// description append engine (skipped when a per-segment edit is supplied — mutually exclusive)
+	// description append engine (skipped when a per-segment edit is supplied – mutually exclusive)
 	if (
 		input.descriptionAppendEdit === undefined &&
 		typeof input.description === 'string' &&

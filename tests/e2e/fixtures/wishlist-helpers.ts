@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 /**
  * Shared wishlist/gift interaction helpers for E2E specs.
  *
- * Selectors target the app's real Czech accessible names (with diacritics) — do not
+ * Selectors target the app's real Czech accessible names (with diacritics) – do not
  * strip diacritics: Playwright's accessible-name matching is diacritic-sensitive, so
  * `'Nazev'` does NOT match the rendered label `'Název'`.
  */
@@ -11,7 +11,7 @@ import { expect, type Page } from '@playwright/test';
 /**
  * Wait for any modal overlay to fully detach. The dialog content hides immediately on
  * close, but the separate overlay element animates out and keeps intercepting pointer
- * events until removed — so the next click can be swallowed unless we wait for it.
+ * events until removed – so the next click can be swallowed unless we wait for it.
  */
 async function waitForOverlayGone(page: Page): Promise<void> {
 	await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0, { timeout: 5_000 });

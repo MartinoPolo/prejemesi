@@ -145,7 +145,7 @@
 			</div>
 		{/if}
 
-		<!-- Owner card: gift count + optional event date (owner invariant — no reservations) -->
+		<!-- Owner card: gift count + optional event date (owner invariant – no reservations) -->
 		{#if giftCount !== undefined}
 			<div class={variants.metaRow()}>
 				<span class={variants.availableCount()}>

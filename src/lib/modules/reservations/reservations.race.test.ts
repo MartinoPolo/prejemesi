@@ -117,7 +117,7 @@ async function activeReservedSum(giftId: string): Promise<number> {
  * DATABASE_URL alone is not enough: the connection must point at a database
  * whose schema matches the current code. Probe it once up front so an
  * unreachable or unmigrated DB skips the suite gracefully instead of hard-failing
- * in beforeAll. Only skips on schema/connection problems — genuine logic failures
+ * in beforeAll. Only skips on schema/connection problems – genuine logic failures
  * inside the tests still surface.
  */
 class ProbeRollback extends Error {}
@@ -128,8 +128,8 @@ async function isDbUsable(): Promise<boolean> {
 	}
 	try {
 		const database = getDb();
-		// Round-trip an insert (rolled back) so any schema drift — e.g. a column the
-		// code declares but the live DB lacks — is detected, not just table presence.
+		// Round-trip an insert (rolled back) so any schema drift – e.g. a column the
+		// code declares but the live DB lacks – is detected, not just table presence.
 		await database.transaction(async (tx) => {
 			await tx
 				.insert(user)
@@ -158,7 +158,7 @@ const DB_READY = await isDbUsable();
 // (default max 10), so the two reservations below run on separate connections and
 // genuinely contend on the gift row lock. The assertions are requirement-level
 // (exactly one reservation may fit; SUM never exceeds capacity) and hold regardless
-// of scheduling — without the FOR UPDATE lock the partial-quantity case overbooks
+// of scheduling – without the FOR UPDATE lock the partial-quantity case overbooks
 // (verified: it fails against the pre-fix non-atomic implementation).
 describe.skipIf(!DB_READY)('reserveGift overbooking race [real DB]', () => {
 	beforeAll(async () => {

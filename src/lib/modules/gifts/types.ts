@@ -24,7 +24,7 @@ export interface GiftLink {
 	label?: string;
 	/**
 	 * Stable client-only key for editor list reconciliation (reorder/remove without
-	 * losing input focus). Never persisted — {@link normalizeGiftLinks} drops it.
+	 * losing input focus). Never persisted – {@link normalizeGiftLinks} drops it.
 	 */
 	id?: string;
 }
@@ -77,7 +77,7 @@ export interface GiftForVisitor extends GiftBase {
 	myReservationPurchasedAt: Date | null;
 }
 
-/** Gift for owner view — no reservation data */
+/** Gift for owner view – no reservation data */
 export type GiftForOwner = GiftBase;
 
 /** Union type for gift based on role */

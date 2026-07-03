@@ -6,7 +6,7 @@ export interface WishlistWithOwner extends Wishlist {
 	ownerName: string;
 }
 
-/** Owner's own wishlist with gift count (no reservation data — owner invariant) */
+/** Owner's own wishlist with gift count (no reservation data – owner invariant) */
 export interface MyWishlist extends Wishlist {
 	totalGifts: number;
 }
@@ -27,11 +27,11 @@ export interface FollowedWishlist extends WishlistWithOwner {
 
 /**
  * Gifter-relative resolution state of a followed list:
- * - `open` — nothing reserved yet; the gifter still owes a gift (action needed)
- * - `reserved` — gift(s) claimed; covered, though not all marked bought
- * - `bought` — every reservation marked bought; fully done
+ * - `open` – nothing reserved yet; the gifter still owes a gift (action needed)
+ * - `reserved` – gift(s) claimed; covered, though not all marked bought
+ * - `bought` – every reservation marked bought; fully done
  *
- * "Bought" is an optional self-tracking signal — most users rest at `reserved`, which is
+ * "Bought" is an optional self-tracking signal – most users rest at `reserved`, which is
  * treated as resolved for sorting/dimming. We never nag non-buyers.
  */
 export const FOLLOWED_LIST_STATE = {

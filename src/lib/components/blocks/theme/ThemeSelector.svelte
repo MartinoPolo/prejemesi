@@ -21,7 +21,7 @@
 
 	const styles = themeSelectorVariants();
 
-	// Internal editing state — initialized once from currentTheme (parent remounts on re-open)
+	// Internal editing state – initialized once from currentTheme (parent remounts on re-open)
 	let selectedPreset = $state<ThemePresetName | 'custom'>(
 		untrack(() => (isCustomTheme(currentTheme) ? 'custom' : currentTheme)),
 	);

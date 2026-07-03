@@ -59,7 +59,7 @@ test.describe('Gift creation', () => {
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 		await expect(page.getByText('Plný dárek')).toBeVisible({ timeout: 10_000 });
-		// Price formatted via Intl.NumberFormat — "1 500 Kč" or similar depending on locale
+		// Price formatted via Intl.NumberFormat – "1 500 Kč" or similar depending on locale
 		await expect(page.getByText(/1\s?500/)).toBeVisible({ timeout: 10_000 });
 
 		await page.context().close();
@@ -76,7 +76,7 @@ test.describe('Gift creation', () => {
 		await fillGiftUrl(dialog, 'seznam.cz/produkt');
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
-		// Should not fail — gift must appear in the list
+		// Should not fail – gift must appear in the list
 		await expect(page.getByText('Odkaz bez protokolu')).toBeVisible({ timeout: 10_000 });
 
 		// Open the gift detail to verify the URL was saved and normalized
@@ -217,7 +217,7 @@ test.describe('Gift list refresh after creation', () => {
 			timeout: 10_000,
 		});
 
-		// Add second gift — no reload between
+		// Add second gift – no reload between
 		dialog = await openAddGiftDialog(page);
 		await dialog.getByRole('textbox', { name: 'Název' }).fill('Druhý dárek');
 		await dialog.getByRole('button', { name: 'Přidat dárek' }).click();

@@ -27,7 +27,7 @@
 		focal?: ImageFocalPoint;
 		/** Zoom factor (1 = 100%) honored in cover-crop, magnifying toward the focal point. */
 		zoom?: number;
-		/** Extracted/manual dominant color — tier 1 of the fill chain (REQ-3). */
+		/** Extracted/manual dominant color – tier 1 of the fill chain (REQ-3). */
 		fillColor?: string | null;
 		/** Scopes the tier-2 fill to the wishlist or the global surface (REQ-3). */
 		tokenScope?: ImageTokenScope;
@@ -35,7 +35,7 @@
 		fallbackEmoji?: string;
 		/** Optional faint label under the fallback emoji. */
 		fallbackLabel?: string;
-		/** Box shape — square inherits radius, circle for avatars. */
+		/** Box shape – square inherits radius, circle for avatars. */
 		shape?: ImageFrameShape;
 		/** Adds keyboard focusability + focus-visible ring (e.g. opens a crop editor). */
 		interactive?: boolean;
@@ -61,7 +61,7 @@
 	}: Props = $props();
 
 	// Load progress is tracked against the current `src` so it resets automatically
-	// (via $derived) whenever the source changes — no state-syncing $effect needed.
+	// (via $derived) whenever the source changes – no state-syncing $effect needed.
 	let loadedSrc = $state<string | null>(null);
 	let erroredSrc = $state<string | null>(null);
 	let measured = $state<{ src: string; ratio: number } | null>(null);
@@ -92,7 +92,7 @@
 	const styles = $derived(imageFrameVariants({ fit: effectiveFit, shape, interactive }));
 
 	// cover-crop honors the focal point (object-position) and an optional zoom that
-	// magnifies toward that same point — together they reproduce a saved manual crop.
+	// magnifies toward that same point – together they reproduce a saved manual crop.
 	const imageStyle = $derived(
 		effectiveFit === IMAGE_FIT_MODES.coverCrop
 			? `object-position: ${focal.x}% ${focal.y}%;` +

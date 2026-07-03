@@ -37,7 +37,7 @@
 		}
 	}
 
-	/** Human label for aria text — explicit label, else host, else a generic fallback. */
+	/** Human label for aria text – explicit label, else host, else a generic fallback. */
 	function labelOf(link: GiftLink): string {
 		if (link.label !== undefined && link.label.trim() !== '') {
 			return link.label;

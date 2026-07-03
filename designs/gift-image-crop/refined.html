@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Přejeme si — Gift Image Crop: REFINED (Variant A)</title>
+		<title>Přejeme si – Gift Image Crop: REFINED (Variant A)</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -15,7 +15,7 @@
 		     tokens.css intentionally does NOT own colors (they live in per-theme files / src/app.css). -->
 		<link rel="stylesheet" href="../tokens.css" />
 		<style>
-			/* ── Light theme (sage) — mirrors src/app.css resolved values ── */
+			/* ── Light theme (sage) – mirrors src/app.css resolved values ── */
 			:root {
 				--background: oklch(0.988 0.004 150);
 				--surface: oklch(1 0 0);
@@ -170,7 +170,7 @@
 				backdrop-filter: blur(6px);
 			}
 
-			/* ── Modal shell (parent-provided chrome — shown faithfully) ── */
+			/* ── Modal shell (parent-provided chrome – shown faithfully) ── */
 			.modal {
 				position: relative;
 				z-index: 1;
@@ -276,7 +276,7 @@
 				pointer-events: none;
 			}
 
-			/* Stage surface — holds crop canvas / fit preview / skeleton / empty per state */
+			/* Stage surface – holds crop canvas / fit preview / skeleton / empty per state */
 			.stage {
 				position: relative;
 				border-radius: 12px;
@@ -360,7 +360,7 @@
 				right: -7px;
 			}
 
-			/* Empty state on stage — mirrors the real ImageUpload dropzone
+			/* Empty state on stage – mirrors the real ImageUpload dropzone
 				   (src/lib/components/derived/image-upload): a dashed-border drop target
 				   with click/drag affordance, NOT the checkerboard crop surface. Fills the
 				   stage so the empty state reads as "drop an image here". */
@@ -403,7 +403,7 @@
 				max-width: 30ch;
 			}
 
-			/* Skeleton shimmer (loading) — slow, smooth sweep with a brand-tinted
+			/* Skeleton shimmer (loading) – slow, smooth sweep with a brand-tinted
 				   highlight so the motion reads clearly (the old 1.3s grey sweep was too
 				   fast and nearly invisible). */
 			.skeleton {
@@ -492,7 +492,7 @@
 				cursor: not-allowed;
 			}
 
-			/* Preview strip — 4 real consumer ratios */
+			/* Preview strip – 4 real consumer ratios */
 			.strip-label {
 				font-size: 11px;
 				font-weight: 600;
@@ -528,7 +528,7 @@
 				background-image: var(--src-img);
 				background-repeat: no-repeat;
 				background-size: cover;
-				background-position: 50% 36%; /* shared normalized crop focal — same across all slots */
+				background-position: 50% 36%; /* shared normalized crop focal – same across all slots */
 			}
 			/* contain-padded: whole image visible at its intrinsic 3:4 ratio; bg-fill shows around it */
 			.pv-frame[data-fit='contain'] .ph {
@@ -542,7 +542,7 @@
 			}
 			/* Loading: a skeleton tile fills its slot and shows ONLY the shimmer. This
 				   rule sits after (and ties specificity with) the cover/contain rules so its
-				   gradient wins — otherwise the real photo would paint through while loading. */
+				   gradient wins – otherwise the real photo would paint through while loading. */
 			.pv-frame .ph.skeleton {
 				position: absolute;
 				inset: 0;
@@ -714,7 +714,7 @@
 	</head>
 	<body>
 		<div class="eyebrow-bar">
-			<span class="eyebrow">Refined — Variant A · stage + preview strip · all states</span>
+			<span class="eyebrow">Refined – Variant A · stage + preview strip · all states</span>
 			<div class="bar-controls">
 				<div class="state-switch" role="group" aria-label="Náhled stavů (pouze mockup)">
 					<button data-state="auto" aria-pressed="true">Auto</button>
@@ -910,7 +910,7 @@ Pastelově modrý hrnek z lokální dílny, 350 ml.</textarea
 						<line x1="12" y1="3" x2="12" y2="15" />
 					</svg>
 					<span class="t">Přetáhněte obrázek sem nebo klikněte pro výběr</span>
-					<span class="s">Přidejte obrázek přes URL nebo nahrání — možnosti zobrazení se objeví poté.</span>
+					<span class="s">Přidejte obrázek přes URL nebo nahrání – možnosti zobrazení se objeví poté.</span>
 				</div>`;
 
 			const AUTO_HELP = `
@@ -972,7 +972,7 @@ Pastelově modrý hrnek z lokální dílny, 350 ml.</textarea
 					fill: 'var(--wishlist-surface)',
 					stage: FIT_PREVIEW,
 					toolbar:
-						`<div class="help-note"><span class="dot">i</span><span>Externí URL: bez extrakce barvy — pozadí se vezme z motivu seznamu.</span></div>` +
+						`<div class="help-note"><span class="dot">i</span><span>Externí URL: bez extrakce barvy – pozadí se vezme z motivu seznamu.</span></div>` +
 						fillChip('Výplň: token motivu', 'var(--wishlist-surface)'),
 					reset: false,
 				},

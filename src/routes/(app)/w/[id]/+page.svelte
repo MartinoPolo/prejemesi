@@ -82,7 +82,7 @@
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
 
-	// ── Context setup (must be synchronous — before any await) ───────────────
+	// ── Context setup (must be synchronous – before any await) ───────────────
 
 	const giftsContext = untrack(() =>
 		setGiftsContext(
@@ -127,7 +127,7 @@
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
 	// Initial fetch reads `shortId` once at component creation. SvelteKit reuses this
-	// component across /w/[id] param changes, so this top-level await never re-runs — the
+	// component across /w/[id] param changes, so this top-level await never re-runs – the
 	// `$effect` below detects shortId changes and calls refreshData(). Snapshot is intentional.
 	// svelte-ignore state_referenced_locally
 	const wishlistDataPromise = getWishlistByShortId(shortId);
@@ -143,7 +143,7 @@
 		try {
 			likedGiftIds = await getUserLikesForWishlist();
 		} catch {
-			// Guarded calls may fail for unauthenticated users — ignore
+			// Guarded calls may fail for unauthenticated users – ignore
 		}
 	}
 
@@ -151,7 +151,7 @@
 
 	async function refreshData() {
 		try {
-			// SvelteKit caches query results by arguments — .refresh() invalidates the cache,
+			// SvelteKit caches query results by arguments – .refresh() invalidates the cache,
 			// then we re-fetch to get the updated values
 			await Promise.all([
 				getWishlistByShortId(shortId).refresh(),
@@ -260,7 +260,7 @@
 	// The selected gift's share grace window: a pre-share gift on a shared list is fully editable
 	// again (name + delete) for 2 min after the last post-share edit. `editedAfterShareAt` drives
 	// the debounce, falling back to `sharedAt` until the first edit. Non-null ONLY when the gift is
-	// subject to the #82 post-share rules (owner, not moderator, shared, created at/before share) —
+	// subject to the #82 post-share rules (owner, not moderator, shared, created at/before share) –
 	// so it doubles as the "is this gift post-share-locked?" predicate below.
 	const selectedGiftGraceExpiresAt = $derived.by(() => {
 		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
@@ -287,7 +287,7 @@
 		const id = setInterval(() => {
 			graceClockNow = new Date();
 			if (graceClockNow.getTime() >= expiry) {
-				clearInterval(id); // window closed — the lock has already flipped
+				clearInterval(id); // window closed – the lock has already flipped
 			}
 		}, 1000);
 		return () => clearInterval(id);
@@ -670,7 +670,7 @@
 			try {
 				await followWishlist(wishlist.id);
 			} catch {
-				// Auto-follow failure is non-critical — ignore
+				// Auto-follow failure is non-critical – ignore
 			}
 		}
 	});
@@ -798,7 +798,7 @@
 
 <!-- OpenGraph Meta Tags -->
 <svelte:head>
-	<title>{wishlist.title} — Přejeme si</title>
+	<title>{wishlist.title} – Přejeme si</title>
 	<meta property="og:title" content={wishlist.title} />
 	<meta property="og:description" content="Seznam prani od {wishlist.ownerName}" />
 	<meta property="og:type" content="website" />
@@ -809,7 +809,7 @@
 	<!-- og:image points at the source image: crawlers fetch a static URL, and server-side
 	     cropping for the social slot is out of scope (the social-slot crop is previewed in-app only).
 	     Resolved inline (not via a $derived) so the value is read after the top-level await populates
-	     `wishlist` — a memoized SSR derived evaluates against the pre-await undefined wishlist. -->
+	     `wishlist` – a memoized SSR derived evaluates against the pre-await undefined wishlist. -->
 	{#if wishlist.imageKey}
 		<meta
 			property="og:image"
