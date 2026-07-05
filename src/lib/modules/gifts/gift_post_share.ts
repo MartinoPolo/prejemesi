@@ -32,6 +32,10 @@ function isBlank(value: string | null | undefined): boolean {
 	return value === null || value === undefined || value.trim() === '';
 }
 
+function normalizedText(value: string | null | undefined): string {
+	return value?.trim() ?? '';
+}
+
 /** Structural inequality for jsonb-shaped fields (links, imageMeta), normalizing null/undefined. */
 export function jsonChanged(a: unknown, b: unknown): boolean {
 	return JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
@@ -119,16 +123,23 @@ export function computePreShareOwnerEdit(
 		typeof input.description === 'string' &&
 		input.description.trim() !== ''
 	) {
+		const trimmedDescription = input.description.trim();
+		const latestAppend = current.descriptionAppends.at(-1);
 		if (isBlank(current.description)) {
 			// Empty-at-share edge: the frozen base is empty, so fill it directly (no append).
-			updateData.description = input.description;
+			updateData.description = trimmedDescription;
 			changed = true;
-		} else {
+		} else if (
+			normalizedText(current.description) !== trimmedDescription &&
+			normalizedText(latestAppend?.text) !== trimmedDescription
+		) {
 			updateData.descriptionAppends = [
 				...current.descriptionAppends,
-				{ text: input.description, addedAt: now.toISOString() },
+				{ text: trimmedDescription, addedAt: now.toISOString() },
 			];
 			changed = true;
+		} else {
+			// Idempotent save: do not create a duplicate history entry for unchanged text.
 		}
 	}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import TimerIcon from '@lucide/svelte/icons/timer';
 	import { formatGraceCountdown } from '$lib/modules/sharing/grace_window.js';
 
@@ -19,8 +19,8 @@
 </script>
 
 {#if remainingMs > 0}
-	<HelpText>
-		<TimerIcon class="size-3" />
-		{message({ time })}
-	</HelpText>
+	<Alert.Root tone="warning">
+		<TimerIcon class="size-4" />
+		<Alert.Description>{message({ time })}</Alert.Description>
+	</Alert.Root>
 {/if}

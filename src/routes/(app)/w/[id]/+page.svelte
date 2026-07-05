@@ -51,7 +51,10 @@
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
-	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
+	import {
+		ownerSharedGiftDeleteGraceExpiresAt,
+		preShareOwnerFullEditGraceExpiresAt,
+	} from '$lib/modules/gifts/gift_deletion_rules.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -257,32 +260,56 @@
 	// the effect below while the modal is open.
 	let graceClockNow = $state(new Date());
 
-	// The selected gift's share grace window: a pre-share gift on a shared list is fully editable
-	// again (name + delete) for 2 min after the last post-share edit. `editedAfterShareAt` drives
-	// the debounce, falling back to `sharedAt` until the first edit. Non-null ONLY when the gift is
-	// subject to the #82 post-share rules (owner, not moderator, shared, created at/before share) –
-	// so it doubles as the "is this gift post-share-locked?" predicate below.
-	const selectedGiftGraceExpiresAt = $derived.by(() => {
+	// Full edit grace: a pre-share gift is fully editable for 2 minutes after sharing only.
+	// Later edits update the transparency badge but never reopen name/delete grace.
+	const selectedFullEditGraceExpiresAt = $derived.by(() => {
 		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
 			return null;
 		}
-		if (new Date(selectedGift.createdAt) > new Date(wishlist.sharedAt)) {
+		return preShareOwnerFullEditGraceExpiresAt({
+			wishlistSharedAt: wishlist.sharedAt,
+			giftCreatedAt: selectedGift.createdAt,
+		});
+	});
+
+	const selectedDeleteGraceExpiresAt = $derived.by(() => {
+		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
 			return null;
 		}
-		return graceWindowExpiresAt(selectedGift.editedAfterShareAt ?? wishlist.sharedAt);
+		return ownerSharedGiftDeleteGraceExpiresAt({
+			wishlistSharedAt: wishlist.sharedAt,
+			giftCreatedAt: selectedGift.createdAt,
+		});
 	});
-	const isSelectedGiftWithinGrace = $derived(
-		selectedGiftGraceExpiresAt !== null &&
-			graceClockNow.getTime() < selectedGiftGraceExpiresAt.getTime(),
+	const selectedClockExpiresAt = $derived(
+		selectedFullEditGraceExpiresAt ?? selectedDeleteGraceExpiresAt,
+	);
+	const isSelectedGiftWithinFullEditGrace = $derived(
+		selectedFullEditGraceExpiresAt !== null &&
+			graceClockNow.getTime() < selectedFullEditGraceExpiresAt.getTime(),
+	);
+	const isSelectedGiftWithinDeleteGrace = $derived(
+		selectedDeleteGraceExpiresAt !== null &&
+			graceClockNow.getTime() < selectedDeleteGraceExpiresAt.getTime(),
+	);
+	const selectedActiveGraceExpiresAt = $derived(
+		isSelectedGiftWithinFullEditGrace
+			? selectedFullEditGraceExpiresAt
+			: isSelectedGiftWithinDeleteGrace
+				? selectedDeleteGraceExpiresAt
+				: null,
+	);
+	const selectedGraceMessage = $derived(
+		isSelectedGiftWithinFullEditGrace ? m.gift_grace_hint : m.gift_delete_grace_hint,
 	);
 
 	// Advance the clock once per second while the modal is open; self-stops once the window closes
 	// and is torn down when the modal closes (no timer leak).
 	$effect(() => {
-		if (!giftModalOpen || selectedGiftGraceExpiresAt === null) {
+		if (!giftModalOpen || selectedClockExpiresAt === null) {
 			return;
 		}
-		const expiry = selectedGiftGraceExpiresAt.getTime();
+		const expiry = selectedClockExpiresAt.getTime();
 		graceClockNow = new Date();
 		const id = setInterval(() => {
 			graceClockNow = new Date();
@@ -293,11 +320,9 @@
 		return () => clearInterval(id);
 	});
 
-	// Post-share-locked ⇔ the gift is subject to #82 rules AND its grace window has closed. Within
-	// the window this is false, restoring full edit; it flips back to true live when the countdown
-	// elapses (name frozen, delete blocked, quantity raise-only, description append-only).
+	// Post-share-locked means a pre-share gift's initial full-edit grace has closed.
 	const postShareLockSelectedGift = $derived(
-		selectedGiftGraceExpiresAt !== null && !isSelectedGiftWithinGrace,
+		selectedFullEditGraceExpiresAt !== null && !isSelectedGiftWithinFullEditGrace,
 	);
 
 	const canDeleteSelectedGift = $derived.by(() => {
@@ -305,13 +330,16 @@
 			return false;
 		}
 		if (postShareLockSelectedGift) {
-			return false; // delete stays blocked once the grace window closes
+			return false;
 		}
 		if (
 			'reservedCount' in selectedGift &&
 			(selectedGift as { reservedCount: number }).reservedCount > 0
 		) {
 			return false;
+		}
+		if (isOwner && !isModerator && wishlist.sharedAt !== null) {
+			return isSelectedGiftWithinDeleteGrace;
 		}
 		return true;
 	});
@@ -753,7 +781,8 @@
 	{priorityLevels}
 	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
-	graceExpiresAt={isSelectedGiftWithinGrace ? selectedGiftGraceExpiresAt : null}
+	graceExpiresAt={selectedActiveGraceExpiresAt}
+	graceMessage={selectedGraceMessage}
 	graceNow={graceClockNow}
 	{isSubmitting}
 	{isDeleting}

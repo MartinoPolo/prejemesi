@@ -112,6 +112,45 @@ describe('computePreShareOwnerEdit', () => {
 			expect(outcome.changed).toBe(true);
 		});
 
+		it('does not append when submitted description equals the frozen base', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({ description: 'Original description', descriptionAppends: [] }),
+				makeInput({ description: ' Original description ' }),
+				NOW,
+			);
+			expect(outcome.rejection).toBeNull();
+			expect('descriptionAppends' in outcome.updateData).toBe(false);
+			expect(outcome.changed).toBe(false);
+		});
+
+		it('does not append when submitted description equals the latest append', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({
+					description: 'Original',
+					descriptionAppends: [
+						{ text: 'latest note', addedAt: '2024-01-01T00:00:00.000Z' },
+					],
+				}),
+				makeInput({ description: ' latest note ' }),
+				NOW,
+			);
+			expect(outcome.rejection).toBeNull();
+			expect('descriptionAppends' in outcome.updateData).toBe(false);
+			expect(outcome.changed).toBe(false);
+		});
+
+		it('can update another field without duplicating the unchanged frozen base', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({ description: 'Original description', price: 1000 }),
+				makeInput({ description: 'Original description', price: 1200 }),
+				NOW,
+			);
+			expect(outcome.rejection).toBeNull();
+			expect(outcome.updateData.price).toBe(1200);
+			expect('descriptionAppends' in outcome.updateData).toBe(false);
+			expect(outcome.changed).toBe(true);
+		});
+
 		it('preserves existing appends and adds the new one', () => {
 			const outcome = computePreShareOwnerEdit(
 				makeCurrent({

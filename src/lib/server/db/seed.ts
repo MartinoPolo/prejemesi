@@ -222,7 +222,14 @@ const d = (iso: string) => new Date(iso);
 // Cleanup – remove all seed data (respects FK order)
 // ---------------------------------------------------------------------------
 async function cleanup(db: ReturnType<typeof drizzle>) {
-	await db.execute(sql`DELETE FROM notification WHERE id LIKE 'seed-%'`);
+	await db.execute(sql`
+		DELETE FROM notification
+		WHERE id LIKE 'seed-%'
+			OR user_id LIKE 'seed-%'
+			OR actor_id LIKE 'seed-%'
+			OR wishlist_id LIKE 'seed-%'
+			OR gift_id LIKE 'seed-%'
+	`);
 	await db.execute(sql`DELETE FROM gift_like WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM reservation WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM gift WHERE id LIKE 'seed-%'`);
@@ -329,7 +336,7 @@ async function seed() {
 				eventDate: d('2026-12-24T00:00:00Z'),
 				status: 'active',
 				theme: 'christmas',
-				sharedAt: d('2026-11-15T10:00:00Z'),
+				sharedAt: d('2026-06-15T10:00:00Z'),
 				imageKey: 'seed/wl-xmas2026.jpg',
 				imageSlots: {
 					card: { fitMode: 'cover-crop', focal: { x: 50, y: 40 }, zoom: 1 },
@@ -337,8 +344,8 @@ async function seed() {
 					banner: { fitMode: 'cover-crop', focal: { x: 50, y: 30 }, zoom: 1 },
 					social: { fitMode: 'contain-padded' },
 				},
-				createdAt: d('2026-11-01T09:00:00Z'),
-				updatedAt: d('2026-11-20T14:00:00Z'),
+				createdAt: d('2026-06-01T09:00:00Z'),
+				updatedAt: d('2026-06-22T14:00:00Z'),
 			},
 			// Martin – active, shared, birthday
 			{
@@ -578,6 +585,8 @@ async function seed() {
 				currency: 'CZK',
 				...giftImage('seed/g-ps5.jpg'),
 				sortOrder: 0,
+				createdAt: d('2026-06-05T09:00:00Z'),
+				updatedAt: d('2026-06-05T09:00:00Z'),
 			},
 			{
 				id: G_BUNDA,
@@ -590,6 +599,8 @@ async function seed() {
 				currency: 'CZK',
 				...giftImage('seed/g-bunda.jpg'),
 				sortOrder: 1,
+				createdAt: d('2026-06-06T09:00:00Z'),
+				updatedAt: d('2026-06-06T09:00:00Z'),
 			},
 			{
 				id: G_SAPIENS,
@@ -601,6 +612,8 @@ async function seed() {
 				currency: 'CZK',
 				...giftImage('seed/g-sapiens.jpg'),
 				sortOrder: 2,
+				createdAt: d('2026-06-08T09:00:00Z'),
+				updatedAt: d('2026-06-08T09:00:00Z'),
 			},
 			{
 				id: G_SONY,
@@ -613,6 +626,8 @@ async function seed() {
 				currency: 'CZK',
 				...giftImage('seed/g-sony.jpg'),
 				sortOrder: 3,
+				createdAt: d('2026-06-10T09:00:00Z'),
+				updatedAt: d('2026-06-10T09:00:00Z'),
 			},
 			{
 				id: G_PONOZKY,
@@ -624,6 +639,8 @@ async function seed() {
 				currency: 'CZK',
 				quantity: 3,
 				sortOrder: 4,
+				createdAt: d('2026-06-16T09:00:00Z'),
+				updatedAt: d('2026-06-16T09:00:00Z'),
 			},
 			{
 				id: G_POUKAZ,
@@ -634,6 +651,8 @@ async function seed() {
 				price: 2000,
 				currency: 'CZK',
 				sortOrder: 5,
+				createdAt: d('2026-06-17T09:00:00Z'),
+				updatedAt: d('2026-06-17T09:00:00Z'),
 			},
 			{
 				id: G_BATOH,
@@ -645,6 +664,8 @@ async function seed() {
 				currency: 'CZK',
 				...giftImage('seed/g-batoh.jpg'),
 				sortOrder: 6,
+				createdAt: d('2026-06-18T09:00:00Z'),
+				updatedAt: d('2026-06-18T09:00:00Z'),
 			},
 			{
 				id: G_ADVENT,
@@ -655,6 +676,8 @@ async function seed() {
 				currency: 'CZK',
 				sortOrder: 7,
 				received: true,
+				createdAt: d('2026-06-20T09:00:00Z'),
+				updatedAt: d('2026-06-20T09:00:00Z'),
 			},
 
 			// --- Narozeniny Martina (5 gifts) ---
@@ -1175,7 +1198,7 @@ async function seed() {
 				id: 'seed-ma-1',
 				wishlistId: WL_XMAS26,
 				userId: JANA,
-				assignedAt: d('2026-11-16T10:00:00Z'),
+				assignedAt: d('2026-06-16T10:00:00Z'),
 			},
 			{
 				id: 'seed-ma-2',
@@ -1191,9 +1214,9 @@ async function seed() {
 		console.log('Seeding followers...');
 		await db.insert(wishlistFollower).values([
 			// Vánoce 2026 – all active
-			{ wishlistId: WL_XMAS26, userId: JANA, createdAt: d('2026-11-15T12:00:00Z') },
-			{ wishlistId: WL_XMAS26, userId: PETR, createdAt: d('2026-11-16T09:00:00Z') },
-			{ wishlistId: WL_XMAS26, userId: EVA, createdAt: d('2026-11-17T14:00:00Z') },
+			{ wishlistId: WL_XMAS26, userId: JANA, createdAt: d('2026-06-15T12:00:00Z') },
+			{ wishlistId: WL_XMAS26, userId: PETR, createdAt: d('2026-06-16T09:00:00Z') },
+			{ wishlistId: WL_XMAS26, userId: EVA, createdAt: d('2026-06-17T14:00:00Z') },
 
 			// Narozeniny – Eva unfollowed
 			{ wishlistId: WL_BDAY, userId: JANA, createdAt: d('2026-02-02T10:00:00Z') },
@@ -1256,7 +1279,7 @@ async function seed() {
 				actorId: PETR,
 				actorName: 'Petr Svoboda',
 				read: true,
-				createdAt: d('2026-11-18T10:00:00Z'),
+				createdAt: d('2026-06-18T10:00:00Z'),
 			},
 			{
 				id: 'seed-n-2',
@@ -1267,7 +1290,7 @@ async function seed() {
 				actorId: JANA,
 				actorName: 'Jana Dvořáková',
 				read: false,
-				createdAt: d('2026-11-20T14:00:00Z'),
+				createdAt: d('2026-06-20T14:00:00Z'),
 			},
 			{
 				id: 'seed-n-3',
@@ -1278,7 +1301,7 @@ async function seed() {
 				actorId: PETR,
 				actorName: 'Petr Svoboda',
 				read: false,
-				createdAt: d('2026-11-18T10:05:00Z'),
+				createdAt: d('2026-06-18T10:05:00Z'),
 			},
 			{
 				id: 'seed-n-4',
@@ -1299,7 +1322,7 @@ async function seed() {
 				actorName: 'Jana Dvořáková',
 				actorId: JANA,
 				read: false,
-				createdAt: d('2026-11-22T16:00:00Z'),
+				createdAt: d('2026-06-22T16:00:00Z'),
 			},
 			{
 				id: 'seed-n-6',
@@ -1309,7 +1332,7 @@ async function seed() {
 				actorId: JANA,
 				actorName: 'Jana Dvořáková',
 				read: true,
-				createdAt: d('2026-11-16T10:30:00Z'),
+				createdAt: d('2026-06-16T10:30:00Z'),
 			},
 			{
 				id: 'seed-n-7',
