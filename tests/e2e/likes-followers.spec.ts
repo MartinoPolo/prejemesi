@@ -85,7 +85,7 @@ test.describe('Like system', () => {
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
 
-		// Like the gift — count should appear (1)
+		// Like the gift – count should appear (1)
 		const likeButton = visitorPage.getByRole('button', {
 			name: new RegExp(`P.idat do obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 		});
@@ -150,12 +150,12 @@ test.describe('Follower management', () => {
 		);
 		const followerPage = await followerContext.newPage();
 
-		// Visit the shared wishlist — should auto-follow
+		// Visit the shared wishlist – should auto-follow
 		await followerPage.goto(wishlistPath);
 		await followerPage.waitForLoadState('networkidle');
 		await expect(followerPage.getByText(TEST_GIFT.name)).toBeVisible();
 
-		// Navigate to /followed — wishlist should be listed
+		// Navigate to /followed – wishlist should be listed
 		await followerPage.goto('/followed');
 		await followerPage.waitForLoadState('networkidle');
 		await expect(followerPage.getByRole('heading', { name: 'Sledované' })).toBeVisible({

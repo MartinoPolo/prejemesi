@@ -1,4 +1,4 @@
-# Design Brief — App Shell / Navigation
+# Design Brief – App Shell / Navigation
 
 > **Status**: Refined (Variant 1)
 > **Refined mockup**: `designs/app-shell/refined.html`
@@ -7,7 +7,7 @@
 
 ## Purpose
 
-The App Shell is the persistent layout chrome that wraps every authenticated page in Přejeme si. It provides global orientation (which app, which user), primary navigation between the three dashboard views, and access to transient UI (notifications, user menu, dark mode toggle). It never competes with page content — it recedes when content is active.
+The App Shell is the persistent layout chrome that wraps every authenticated page in Přejeme si. It provides global orientation (which app, which user), primary navigation between the three dashboard views, and access to transient UI (notifications, user menu, dark mode toggle). It never competes with page content – it recedes when content is active.
 
 ---
 
@@ -24,7 +24,7 @@ Pages that render inside the App Shell:
 | `/profil`     | Profil          | User profile settings                                     |
 | `/nastaveni`  | Nastavení       | App preferences (notifications, dark mode)                |
 
-Anonymous visitors (no account) do NOT see the App Shell — they land directly on wishlist pages with a minimal nav strip. The App Shell is authenticated-only.
+Anonymous visitors (no account) do NOT see the App Shell – they land directly on wishlist pages with a minimal nav strip. The App Shell is authenticated-only.
 
 ---
 
@@ -34,13 +34,13 @@ Anonymous visitors (no account) do NOT see the App Shell — they land directly 
 
 **Primary nav links (always visible):**
 
-1. Moje seznamy — `/dashboard`
-2. Spravované — `/spravovane`
-3. Sledované — `/sledovane`
+1. Moje seznamy – `/dashboard`
+2. Spravované – `/spravovane`
+3. Sledované – `/sledovane`
 
 **Primary action:**
 
-- `+ Vytvořit` — creates a new wishlist (button, not a link)
+- `+ Vytvořit` – creates a new wishlist (button, not a link)
 
 **Active state:** Current page link is highlighted with primary color indicator (underline, pill, or sidebar highlight depending on variant).
 
@@ -52,7 +52,7 @@ Dropdown items:
 
 - Profil
 - Nastavení
-- — divider —
+- – divider –
 - Odhlásit se (destructive color)
 
 ### Notification Bell
@@ -85,7 +85,7 @@ All nav items visible. Avatar loaded with initials. Notification bell shows coun
 
 ### Loading
 
-Nav renders immediately (no skeleton needed — it's static). Content area below/beside the nav shows a skeleton or spinner per page.
+Nav renders immediately (no skeleton needed – it's static). Content area below/beside the nav shows a skeleton or spinner per page.
 
 ### Mobile (≤768px)
 
@@ -117,9 +117,9 @@ Handled by the page, not the shell. Shell chrome is identical.
 
 ## Layout Constraints
 
-- **Nav height:** `--nav-height: 56px` — fixed in tokens, do not change
-- **Sidebar width (persistent):** 240px — comfortable for Czech nav labels
-- **Sidebar width (collapsed):** 56px — icons only, no labels
+- **Nav height:** `--nav-height: 56px` – fixed in tokens, do not change
+- **Sidebar width (persistent):** 240px – comfortable for Czech nav labels
+- **Sidebar width (collapsed):** 56px – icons only, no labels
 - **Content max-width:** `--content-max-width: 1200px`
 - **Z-index:** Nav/sidebar at `--z-sticky: 30`; dropdowns at `--z-dropdown: 20`; overlays at `--z-overlay: 40`
 - **Backdrop blur:** `backdrop-filter: blur(12px)` on nav bar when scrolled
@@ -150,12 +150,12 @@ From `tokens.css` and `app.css`:
 
 ## Design Constraints
 
-- Czech text first — all labels in Czech
+- Czech text first – all labels in Czech
 - No English fallback labels in mockups
 - Logo text: `prejemesi` (lowercase, heading font) + `.cz` (muted, 50% opacity)
 - Nav bar must not exceed 56px height
 - No horizontal scroll on nav bar at any viewport ≥ 320px
-- Sage green (`oklch(52.7% 0.154 150.069deg)`) is the only accent color in the shell — never warm amber/honey in this context
+- Sage green (`oklch(52.7% 0.154 150.069deg)`) is the only accent color in the shell – never warm amber/honey in this context
 - 60-30-10 color rule: background is neutral (90%+ of shell surface), sage green used only for active states, primary CTA, logo, badges
 - WCAG AA contrast required for all text
 - No emoji in nav labels
@@ -166,7 +166,7 @@ From `tokens.css` and `app.css`:
 
 - Logo mark: pure text, text + gift icon, or wordmark with subtle gift motif
 - Active nav indicator: underline, left/bottom border stripe, filled pill, or background highlight
-- `+ Vytvořit` styling: ghost, outlined, or filled primary — just must read as CTA
+- `+ Vytvořit` styling: ghost, outlined, or filled primary – just must read as CTA
 - Sidebar: may use full color, white, or subtle gradient background
 - Notification dropdown (not required in mockup, but bell + badge should be shown)
 - Dark mode toggle placement: may be in user menu dropdown or exposed in nav bar
@@ -177,9 +177,9 @@ From `tokens.css` and `app.css`:
 
 ## Visual References
 
-- `designs/style-exploration/direction-a-honey.html` — component anatomy and token usage pattern
-- `designs/style-exploration/direction-b-sage.html` — sage green color direction (primary color for this shell)
-- `designs/tokens.css` — authoritative spacing, radius, shadow values
+- `designs/style-exploration/direction-a-honey.html` – component anatomy and token usage pattern
+- `designs/style-exploration/direction-b-sage.html` – sage green color direction (primary color for this shell)
+- `designs/tokens.css` – authoritative spacing, radius, shadow values
 
 ---
 
@@ -188,9 +188,9 @@ From `tokens.css` and `app.css`:
 The following are OUT OF SCOPE for the App Shell design brief:
 
 - Wishlist page chrome (theme colors, gift cards, hero banners)
-- Auth pages (login, register, magic link) — no App Shell
-- Anonymous visitor pages — minimal nav strip only, not this shell
-- Notification dropdown panel — bell + badge only; panel is a separate design
+- Auth pages (login, register, magic link) – no App Shell
+- Anonymous visitor pages – minimal nav strip only, not this shell
+- Notification dropdown panel – bell + badge only; panel is a separate design
 - Onboarding flows
 - Mobile app (v2)
 - Footer (none planned for v1)

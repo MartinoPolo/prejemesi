@@ -52,7 +52,10 @@
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
-	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
+	import {
+		ownerSharedGiftDeleteGraceExpiresAt,
+		preShareOwnerFullEditGraceExpiresAt,
+	} from '$lib/modules/gifts/gift_deletion_rules.js';
 	import type {
 		GiftFilters,
 		GiftSortOption,
@@ -83,7 +86,7 @@
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
 
-	// ── Context setup (must be synchronous — before any await) ───────────────
+	// ── Context setup (must be synchronous – before any await) ───────────────
 
 	const giftsContext = untrack(() =>
 		setGiftsContext(
@@ -124,16 +127,19 @@
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
 	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
 	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
-	const wishlistPageUrl = $derived(`${SITE_URL}/w/${wishlist.shortId}`);
-	const wishlistSocialImageUrl = $derived.by(() => {
+	function getWishlistPageUrl() {
+		return `${SITE_URL}/w/${wishlist.shortId}`;
+	}
+
+	function getWishlistSocialImageUrl() {
 		const imagePath = wishlistImageUrl(wishlist.imageKey);
 		return imagePath === null ? SOCIAL_PREVIEW_IMAGE_URL : `${SITE_URL}${imagePath}`;
-	});
+	}
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
 	// Initial fetch reads `shortId` once at component creation. SvelteKit reuses this
-	// component across /w/[id] param changes, so this top-level await never re-runs — the
+	// component across /w/[id] param changes, so this top-level await never re-runs – the
 	// `$effect` below detects shortId changes and calls refreshData(). Snapshot is intentional.
 	// svelte-ignore state_referenced_locally
 	const wishlistDataPromise = getWishlistByShortId(shortId);
@@ -149,7 +155,7 @@
 		try {
 			likedGiftIds = await getUserLikesForWishlist();
 		} catch {
-			// Guarded calls may fail for unauthenticated users — ignore
+			// Guarded calls may fail for unauthenticated users – ignore
 		}
 	}
 
@@ -157,7 +163,7 @@
 
 	async function refreshData() {
 		try {
-			// SvelteKit caches query results by arguments — .refresh() invalidates the cache,
+			// SvelteKit caches query results by arguments – .refresh() invalidates the cache,
 			// then we re-fetch to get the updated values
 			await Promise.all([
 				getWishlistByShortId(shortId).refresh(),
@@ -263,47 +269,69 @@
 	// the effect below while the modal is open.
 	let graceClockNow = $state(new Date());
 
-	// The selected gift's share grace window: a pre-share gift on a shared list is fully editable
-	// again (name + delete) for 2 min after the last post-share edit. `editedAfterShareAt` drives
-	// the debounce, falling back to `sharedAt` until the first edit. Non-null ONLY when the gift is
-	// subject to the #82 post-share rules (owner, not moderator, shared, created at/before share) —
-	// so it doubles as the "is this gift post-share-locked?" predicate below.
-	const selectedGiftGraceExpiresAt = $derived.by(() => {
+	// Full edit grace: a pre-share gift is fully editable for 2 minutes after sharing only.
+	// Later edits update the transparency badge but never reopen name/delete grace.
+	const selectedFullEditGraceExpiresAt = $derived.by(() => {
 		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
 			return null;
 		}
-		if (new Date(selectedGift.createdAt) > new Date(wishlist.sharedAt)) {
+		return preShareOwnerFullEditGraceExpiresAt({
+			wishlistSharedAt: wishlist.sharedAt,
+			giftCreatedAt: selectedGift.createdAt,
+		});
+	});
+
+	const selectedDeleteGraceExpiresAt = $derived.by(() => {
+		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
 			return null;
 		}
-		return graceWindowExpiresAt(selectedGift.editedAfterShareAt ?? wishlist.sharedAt);
+		return ownerSharedGiftDeleteGraceExpiresAt({
+			wishlistSharedAt: wishlist.sharedAt,
+			giftCreatedAt: selectedGift.createdAt,
+		});
 	});
-	const isSelectedGiftWithinGrace = $derived(
-		selectedGiftGraceExpiresAt !== null &&
-			graceClockNow.getTime() < selectedGiftGraceExpiresAt.getTime(),
+	const selectedClockExpiresAt = $derived(
+		selectedFullEditGraceExpiresAt ?? selectedDeleteGraceExpiresAt,
+	);
+	const isSelectedGiftWithinFullEditGrace = $derived(
+		selectedFullEditGraceExpiresAt !== null &&
+			graceClockNow.getTime() < selectedFullEditGraceExpiresAt.getTime(),
+	);
+	const isSelectedGiftWithinDeleteGrace = $derived(
+		selectedDeleteGraceExpiresAt !== null &&
+			graceClockNow.getTime() < selectedDeleteGraceExpiresAt.getTime(),
+	);
+	const selectedActiveGraceExpiresAt = $derived(
+		isSelectedGiftWithinFullEditGrace
+			? selectedFullEditGraceExpiresAt
+			: isSelectedGiftWithinDeleteGrace
+				? selectedDeleteGraceExpiresAt
+				: null,
+	);
+	const selectedGraceMessage = $derived(
+		isSelectedGiftWithinFullEditGrace ? m.gift_grace_hint : m.gift_delete_grace_hint,
 	);
 
 	// Advance the clock once per second while the modal is open; self-stops once the window closes
 	// and is torn down when the modal closes (no timer leak).
 	$effect(() => {
-		if (!giftModalOpen || selectedGiftGraceExpiresAt === null) {
+		if (!giftModalOpen || selectedClockExpiresAt === null) {
 			return;
 		}
-		const expiry = selectedGiftGraceExpiresAt.getTime();
+		const expiry = selectedClockExpiresAt.getTime();
 		graceClockNow = new Date();
 		const id = setInterval(() => {
 			graceClockNow = new Date();
 			if (graceClockNow.getTime() >= expiry) {
-				clearInterval(id); // window closed — the lock has already flipped
+				clearInterval(id); // window closed – the lock has already flipped
 			}
 		}, 1000);
 		return () => clearInterval(id);
 	});
 
-	// Post-share-locked ⇔ the gift is subject to #82 rules AND its grace window has closed. Within
-	// the window this is false, restoring full edit; it flips back to true live when the countdown
-	// elapses (name frozen, delete blocked, quantity raise-only, description append-only).
+	// Post-share-locked means a pre-share gift's initial full-edit grace has closed.
 	const postShareLockSelectedGift = $derived(
-		selectedGiftGraceExpiresAt !== null && !isSelectedGiftWithinGrace,
+		selectedFullEditGraceExpiresAt !== null && !isSelectedGiftWithinFullEditGrace,
 	);
 
 	const canDeleteSelectedGift = $derived.by(() => {
@@ -311,13 +339,16 @@
 			return false;
 		}
 		if (postShareLockSelectedGift) {
-			return false; // delete stays blocked once the grace window closes
+			return false;
 		}
 		if (
 			'reservedCount' in selectedGift &&
 			(selectedGift as { reservedCount: number }).reservedCount > 0
 		) {
 			return false;
+		}
+		if (isOwner && !isModerator && wishlist.sharedAt !== null) {
+			return isSelectedGiftWithinDeleteGrace;
 		}
 		return true;
 	});
@@ -676,7 +707,7 @@
 			try {
 				await followWishlist(wishlist.id);
 			} catch {
-				// Auto-follow failure is non-critical — ignore
+				// Auto-follow failure is non-critical – ignore
 			}
 		}
 	});
@@ -759,7 +790,8 @@
 	{priorityLevels}
 	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
-	graceExpiresAt={isSelectedGiftWithinGrace ? selectedGiftGraceExpiresAt : null}
+	graceExpiresAt={selectedActiveGraceExpiresAt}
+	graceMessage={selectedGraceMessage}
 	graceNow={graceClockNow}
 	{isSubmitting}
 	{isDeleting}
@@ -803,17 +835,17 @@
 {/if}
 
 <svelte:head>
-	<title>{wishlist.title} — Přejeme si</title>
+	<title>{wishlist.title} – Přejeme si</title>
 	<meta property="og:title" content={wishlist.title} />
 	<meta property="og:description" content="Seznam prani od {wishlist.ownerName}" />
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content={wishlistPageUrl} />
-	<meta property="og:image" content={wishlistSocialImageUrl} />
+	<meta property="og:url" content={getWishlistPageUrl()} />
+	<meta property="og:image" content={getWishlistSocialImageUrl()} />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta property="og:image:alt" content={wishlist.title} />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={wishlist.title} />
 	<meta name="twitter:description" content="Seznam prani od {wishlist.ownerName}" />
-	<meta name="twitter:image" content={wishlistSocialImageUrl} />
+	<meta name="twitter:image" content={getWishlistSocialImageUrl()} />
 </svelte:head>

@@ -9,7 +9,7 @@
 	import type { ImageFrameProps } from '$lib/modules/images/index.js';
 
 	interface Props {
-		/** Source image — null renders the themed fallback in every tile. */
+		/** Source image – null renders the themed fallback in every tile. */
 		src: string | null;
 		/** Accessible description shared by every tile. */
 		alt: string;

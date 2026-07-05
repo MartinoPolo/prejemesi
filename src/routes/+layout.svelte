@@ -8,7 +8,7 @@
 	import { afterNavigate, preloadCode } from '$app/navigation';
 	import { browser, dev } from '$app/environment';
 
-	// Dev-only tab title prefix — injected at dev-server start from git branch (vite.config.ts define).
+	// Dev-only tab title prefix – injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
 	// Gated on `dev` so production builds never show a branch tag (e.g. "[dev]").
 	function shortBranch(full: string): string {

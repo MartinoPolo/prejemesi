@@ -90,7 +90,7 @@
 		await userEvent.click(trigger);
 		await expect(getPopoverContent(canvasElement)).not.toBeNull();
 
-		// Press Escape — should close popover
+		// Press Escape – should close popover
 		await userEvent.keyboard('{Escape}');
 		await expectPopoverClosed(canvasElement);
 
@@ -100,7 +100,7 @@
 </script>
 
 <script lang="ts">
-	// Reactive state for Sort story — selecting sort/group values updates checkmarks
+	// Reactive state for Sort story – selecting sort/group values updates checkmarks
 	let sortBy = $state('updated');
 	let groupBy = $state('repository');
 </script>
@@ -281,7 +281,7 @@
 				<Popover.Content class="w-60" portalProps={{ disabled: true }}>
 					<Popover.Label>Status legend</Popover.Label>
 					<div class="grid gap-1.5 px-2 pb-1.5">
-						{#each [{ color: 'bg-[oklch(0.69_0.098_132)]', label: 'Active — in progress' }, { color: 'bg-[oklch(0.77_0.15_65)]', label: 'Review — awaiting review' }, { color: 'bg-[#e8a8c0]', label: 'Approved — ready to merge' }, { color: 'bg-[#e8a64a]', label: 'Blocked — needs attention' }, { color: 'bg-muted-foreground', label: 'Closed — completed' }, { color: 'bg-destructive', label: 'Cancelled — abandoned' }] as entry (entry.label)}
+						{#each [{ color: 'bg-[oklch(0.69_0.098_132)]', label: 'Active – in progress' }, { color: 'bg-[oklch(0.77_0.15_65)]', label: 'Review – awaiting review' }, { color: 'bg-[#e8a8c0]', label: 'Approved – ready to merge' }, { color: 'bg-[#e8a64a]', label: 'Blocked – needs attention' }, { color: 'bg-muted-foreground', label: 'Closed – completed' }, { color: 'bg-destructive', label: 'Cancelled – abandoned' }] as entry (entry.label)}
 							<div class="flex items-center gap-2">
 								<span class="size-2 shrink-0 rounded-0.5 {entry.color}"></span>
 								<span class="text-(length:--text-2xs) text-foreground"
@@ -474,7 +474,7 @@
 				<Popover.Content class="w-60" portalProps={{ disabled: true }}>
 					<Popover.Label>Status legend</Popover.Label>
 					<div class="grid gap-1.5 px-2 pb-1.5">
-						{#each [{ color: 'bg-[oklch(0.69_0.098_132)]', label: 'Active — in progress' }, { color: 'bg-[oklch(0.77_0.15_65)]', label: 'Review — awaiting review' }, { color: 'bg-[#e8a8c0]', label: 'Approved — ready to merge' }, { color: 'bg-[#e8a64a]', label: 'Blocked — needs attention' }, { color: 'bg-muted-foreground', label: 'Closed — completed' }, { color: 'bg-destructive', label: 'Cancelled — abandoned' }] as entry (entry.label)}
+						{#each [{ color: 'bg-[oklch(0.69_0.098_132)]', label: 'Active – in progress' }, { color: 'bg-[oklch(0.77_0.15_65)]', label: 'Review – awaiting review' }, { color: 'bg-[#e8a8c0]', label: 'Approved – ready to merge' }, { color: 'bg-[#e8a64a]', label: 'Blocked – needs attention' }, { color: 'bg-muted-foreground', label: 'Closed – completed' }, { color: 'bg-destructive', label: 'Cancelled – abandoned' }] as entry (entry.label)}
 							<div class="flex items-center gap-2">
 								<span class="size-2 shrink-0 rounded-0.5 {entry.color}"></span>
 								<span class="text-(length:--text-2xs) text-foreground"

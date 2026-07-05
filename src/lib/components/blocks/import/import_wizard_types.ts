@@ -63,7 +63,7 @@ export interface MappingFieldDef {
  * The mapping is field-oriented: one row per destination gift field, each
  * picking the source column(s) that fill it. Fields are fixed (the gift schema),
  * so the layout never widens with the spreadsheet. `bool`/`ignore` are not fields
- * — columns assigned to neither field are simply left out of the import.
+ * – columns assigned to neither field are simply left out of the import.
  */
 export const MAPPING_FIELDS: readonly MappingFieldDef[] = [
 	{

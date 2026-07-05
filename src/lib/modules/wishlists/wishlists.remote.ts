@@ -242,7 +242,7 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 	// Event date locks at share time, but stays editable within the debounced 2-min grace window
 	// (REQ-4). The window resets on each in-window edit, so it is keyed off `eventDateEditedAt`
 	// (the last edit) and falls back to `sharedAt` until then. Stale clients past the window are
-	// rejected here — the server is the authority (REQ-6).
+	// rejected here – the server is the authority (REQ-6).
 	const eventDateGraceOpen =
 		isShared && isWithinGraceWindow(row.eventDateEditedAt ?? row.sharedAt, now);
 	if (input.eventDate !== undefined && (!isShared || eventDateGraceOpen)) {

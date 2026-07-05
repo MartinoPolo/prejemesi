@@ -282,7 +282,7 @@
 			</div>
 		</div>
 
-		<!-- Per-slot previews (REQ-2) — clicking a tile selects it for editing -->
+		<!-- Per-slot previews (REQ-2) – clicking a tile selects it for editing -->
 		<div class="flex flex-col gap-2">
 			<span class="text-xs font-medium tracking-wide text-foreground-subtle uppercase">
 				{m.wishlist_image_preview_strip_label()}

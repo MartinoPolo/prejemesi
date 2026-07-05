@@ -5,7 +5,7 @@ import { Resend } from 'resend';
  * Email sending wrapper around Resend.
  *
  * Optional service: when `RESEND_API_KEY` is unset (e.g. local dev without a
- * Resend account), sends are logged to the console instead of dispatched —
+ * Resend account), sends are logged to the console instead of dispatched –
  * mirroring the R2 storage fallback. Configure `RESEND_API_KEY` and
  * `EMAIL_FROM` in `.env` to send for real.
  */
@@ -61,7 +61,7 @@ export async function sendEmail({
 	const resend = getClient();
 
 	if (resend === undefined) {
-		console.log(`[Email] (not sent — RESEND_API_KEY unset) to=${to} subject="${subject}"`);
+		console.log(`[Email] (not sent – RESEND_API_KEY unset) to=${to} subject="${subject}"`);
 		return;
 	}
 
@@ -75,7 +75,7 @@ export async function sendEmail({
 		// already logged above, so warn instead of throwing to keep sign-up unblocked.
 		if (import.meta.env.DEV) {
 			console.warn(
-				`[Email:dev] Resend rejected "${subject}" (${error.message}) — use the logged link.`,
+				`[Email:dev] Resend rejected "${subject}" (${error.message}) – use the logged link.`,
 			);
 			return;
 		}

@@ -8,7 +8,7 @@ export type ImportLimitError = 'rows' | 'size';
 
 /**
  * Validate that the parsed import data is within the hard limits.
- * Empty row count (0) is valid — empty-after-parse is handled separately.
+ * Empty row count (0) is valid – empty-after-parse is handled separately.
  */
 export function validateImportLimits(
 	rowCount: number,

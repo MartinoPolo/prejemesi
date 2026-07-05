@@ -1,7 +1,7 @@
-# Gift Detail Modal — Refined Summary
+# Gift Detail Modal – Refined Summary
 
 **Mockup:** `designs/gift-detail-modal/refined.html`
-**Base variant:** Variant 1 — center modal, 2-column (image left / details right)
+**Base variant:** Variant 1 – center modal, 2-column (image left / details right)
 **Date:** 2026-05-30
 
 ---
@@ -10,20 +10,20 @@
 
 ```
 blocks/gift-detail-modal/
-  GiftDetailModal.svelte          — orchestrator: open state, role prop, scroll lock, focus trap
-  GiftDetailImage.svelte          — product image with lazy loading + placeholder fallback
-  GiftDetailMeta.svelte           — name, description, price, external link, priority badge, dates
-  GiftDetailActions.svelte        — role-aware buttons (Rezervovat / Zrušit rezervaci / nothing for owner)
-  GiftDetailReserveForm.svelte    — quantity selector + anonymous identity form (v1: qty=1 only)
-  GiftDetailReservations.svelte   — moderator-only table: who reserved + when
-  GiftDetailSkeleton.svelte       — shimmer skeleton for name, description, image during load
+  GiftDetailModal.svelte          – orchestrator: open state, role prop, scroll lock, focus trap
+  GiftDetailImage.svelte          – product image with lazy loading + placeholder fallback
+  GiftDetailMeta.svelte           – name, description, price, external link, priority badge, dates
+  GiftDetailActions.svelte        – role-aware buttons (Rezervovat / Zrušit rezervaci / nothing for owner)
+  GiftDetailReserveForm.svelte    – quantity selector + anonymous identity form (v1: qty=1 only)
+  GiftDetailReservations.svelte   – moderator-only table: who reserved + when
+  GiftDetailSkeleton.svelte       – shimmer skeleton for name, description, image during load
 
 derived/
-  PriorityBadge.svelte            — reusable pill badge (Nízká / Střední / Vysoká); used on cards too
-  LikeButton.svelte               — heart icon + count, optimistic update via SvelteKit remote command
+  PriorityBadge.svelte            – reusable pill badge (Nízká / Střední / Vysoká); used on cards too
+  LikeButton.svelte               – heart icon + count, optimistic update via SvelteKit remote command
 
 base/
-  badge/, button/, dialog/        — shadcn-svelte primitives; Dialog handles backdrop + aria role
+  badge/, button/, dialog/        – shadcn-svelte primitives; Dialog handles backdrop + aria role
 ```
 
 ---
@@ -32,7 +32,7 @@ base/
 
 | State                   | Trigger                        | Key visual                                                                            |
 | ----------------------- | ------------------------------ | ------------------------------------------------------------------------------------- |
-| **Default — available** | Gift not reserved              | "Rezervovat" primary button active                                                    |
+| **Default – available** | Gift not reserved              | "Rezervovat" primary button active                                                    |
 | **Reserved by me**      | Visitor has active reservation | Green "Rezervováno vámi" banner + "Zrušit rezervaci" destructive outline button       |
 | **Fully reserved**      | All units claimed by others    | "Plně rezervováno" muted label, no action button, image desaturated, name/price muted |
 
@@ -50,8 +50,8 @@ Use `<Dialog.Root>` / `<Dialog.Content>` from `src/lib/components/base/dialog/`.
 
 ### Keyboard Navigation
 
-- **Esc** closes the modal — handled by Dialog primitive natively
-- **Tab** cycles focus within modal only — Dialog primitive's focus trap handles this
+- **Esc** closes the modal – handled by Dialog primitive natively
+- **Tab** cycles focus within modal only – Dialog primitive's focus trap handles this
 - Close button (×) must be the first focusable element for screen reader discoverability
 
 ### Focus Trap
@@ -75,7 +75,7 @@ Apply `overflow: hidden` to `<body>` while modal is open. shadcn Dialog primitiv
 
 ### Responsive Stacking (Mobile)
 
-At `<640px` breakpoint: `grid-template-columns: 1fr` — image stacks above details. Image collapses to `200px` height with `object-fit: cover`. Modal becomes full-screen (`width: 100vw; height: 100dvh; border-radius: 0`).
+At `<640px` breakpoint: `grid-template-columns: 1fr` – image stacks above details. Image collapses to `200px` height with `object-fit: cover`. Modal becomes full-screen (`width: 100vw; height: 100dvh; border-radius: 0`).
 
 ### Backdrop
 
@@ -102,4 +102,4 @@ Opens `target="_blank" rel="noopener noreferrer"`. Domain extracted from `gift.u
 
 ### Quantity = 1 Hidden Rule
 
-The quantity selector (GiftDetailReserveForm) is hidden when `gift.quantity === 1` — the reserve button directly triggers reservation without asking for quantity. Quantity selector appears only when `gift.quantity > 1`.
+The quantity selector (GiftDetailReserveForm) is hidden when `gift.quantity === 1` – the reserve button directly triggers reservation without asking for quantity. Quantity selector appears only when `gift.quantity > 1`.

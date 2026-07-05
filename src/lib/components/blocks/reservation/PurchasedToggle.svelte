@@ -18,7 +18,7 @@
 
 	const giftsContext = useGifts();
 
-	// Optional, gifter-private self-tracking — only for authenticated reservers holding a reservation.
+	// Optional, gifter-private self-tracking – only for authenticated reservers holding a reservation.
 	const canTrack = $derived(
 		giftsContext.isAuthenticated.current && gift.myReservationId !== null,
 	);

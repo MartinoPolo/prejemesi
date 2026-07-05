@@ -1,4 +1,4 @@
-# App Background Theme — Design Summary
+# App Background Theme – Design Summary
 
 **Base**: Variant A | **Refined**: 2026-06-02
 
@@ -10,7 +10,7 @@ Key changes from base variant: 4 scenario frames vs 1 in variant-a.html; selecto
 
 ## Component Map
 
-### Codebase — Use As-Is
+### Codebase – Use As-Is
 
 | Component        | Path                                         | Usage                                | Key Props/Variants                    |
 | ---------------- | -------------------------------------------- | ------------------------------------ | ------------------------------------- |
@@ -21,7 +21,7 @@ Key changes from base variant: 4 scenario frames vs 1 in variant-a.html; selecto
 | Separator        | src/lib/components/base/separator/           | Divides control groups               | default horizontal                    |
 | HelpText         | src/lib/components/base/help-text/           | Independence note under chooser      | default (foreground-muted, text-sm)   |
 | Toast            | src/lib/components/base/toast/               | Save-error feedback                  | error variant                         |
-| dark-mode-toggle | src/lib/components/derived/dark-mode-toggle/ | Existing control, not modified       | —                                     |
+| dark-mode-toggle | src/lib/components/derived/dark-mode-toggle/ | Existing control, not modified       | –                                     |
 
 ### Adopt from shadcn-svelte / Bits UI
 
@@ -36,9 +36,9 @@ None required. All primitives exist in base/.
 
 ## Implementation Notes
 
-**Persistence (REQ-2, REQ-3)**: Optimistic — set data-bg-theme on layout root immediately, persist via issue-#35 preference store. On error: revert + toast.error. No Save button.
+**Persistence (REQ-2, REQ-3)**: Optimistic – set data-bg-theme on layout root immediately, persist via issue-#35 preference store. On error: revert + toast.error. No Save button.
 
-**data-bg-theme application (REQ-3)**: Attribute on layout root. palette-colors.css selectors use [data-bg-theme="golden-hour"]:not(.dark) and .dark — orthogonal to the .dark class for brightness. Both coexist on the same element.
+**data-bg-theme application (REQ-3)**: Attribute on layout root. palette-colors.css selectors use [data-bg-theme="golden-hour"]:not(.dark) and .dark – orthogonal to the .dark class for brightness. Both coexist on the same element.
 
 **Independence from color mode (REQ-5)**: BackgroundThemeChooser never reads/modifies .dark. Two axes: .dark (brightness) and data-bg-theme (tint). Controls shown side-by-side with separate labels, never merged.
 
@@ -46,6 +46,6 @@ None required. All primitives exist in base/.
 
 **Keyboard nav**: role=radiogroup container, roving tabindex (selected=0, others=-1). Arrow Left/Right move focus+select. Space/Enter select.
 
-**Mini-preview tile colors**: Hardcoded (not CSS custom properties) so tiles show both light AND dark simultaneously regardless of page color mode. Locked to src/palette-colors.css — update both together if palette changes.
+**Mini-preview tile colors**: Hardcoded (not CSS custom properties) so tiles show both light AND dark simultaneously regardless of page color mode. Locked to src/palette-colors.css – update both together if palette changes.
 
 **Proposed i18n keys**: settings_bg_theme_label, settings_bg_theme_default, settings_bg_theme_golden_hour, settings_bg_theme_twilight, settings_bg_theme_description, settings_bg_theme_saved, settings_bg_theme_saving, settings_bg_theme_error, settings_bg_theme_note_default, settings_bg_theme_note_golden, settings_bg_theme_note_twilight.

@@ -19,7 +19,7 @@ vi.mock('$app/server', () => ({
 	}),
 }));
 
-// ── Mock remote wrappers — extract handlers directly ────────────────────────
+// ── Mock remote wrappers – extract handlers directly ────────────────────────
 // The Vite transform injects `fn.__.id = ...` for every export after calling
 // init_remote_functions, so each returned handler must carry a `__` object.
 function wrapWithRemoteMarker(
@@ -56,7 +56,7 @@ vi.mock('@sveltejs/kit', () => ({
 	}),
 }));
 
-// ── Mock drizzle-orm — used only as where-clause builders; no-ops are fine ──
+// ── Mock drizzle-orm – used only as where-clause builders; no-ops are fine ──
 // `sql` is a tagged template literal whose return value needs `.as()`.
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
@@ -70,7 +70,7 @@ vi.mock('drizzle-orm', () => ({
 	count: vi.fn(),
 }));
 
-// ── Mock schema imports — column references used in queries ─────────────────
+// ── Mock schema imports – column references used in queries ─────────────────
 vi.mock('$lib/server/db/gift.schema.js', () => ({
 	gift: {
 		id: 'gift.id',
@@ -706,7 +706,7 @@ describe('updateGift', () => {
 		});
 
 		it('owner can update gifts created after sharing date', async () => {
-			// gift lookup — created AFTER sharing
+			// gift lookup – created AFTER sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
 			// verifyOwnerOrModerator: wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
@@ -752,7 +752,7 @@ describe('updateGift', () => {
 	describe('owner per-field edit of a pre-share gift on a shared wishlist', () => {
 		it('allows editing price/links/imageMeta/priority and flags editedAfterShareAt', async () => {
 			const imageMeta = { fitMode: 'contain-padded', bgColor: '#222222' };
-			// gift lookup — created BEFORE sharing
+			// gift lookup – created BEFORE sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, price: 100 })]);
 			// wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
@@ -898,7 +898,7 @@ describe('updateGift', () => {
 
 	describe('moderator can always update', () => {
 		it('moderator bypasses the edit lock and updates the gift', async () => {
-			// gift lookup — created BEFORE sharing
+			// gift lookup – created BEFORE sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
 			// verifyOwnerOrModerator: wishlist lookup (shared, moderator user)
 			mockDbInstance.pushResult([
@@ -953,7 +953,7 @@ describe('updateGift', () => {
 	});
 });
 
-describe('updateGift — share grace window (issue #83)', () => {
+describe('updateGift – share grace window (issue #83)', () => {
 	// Server `now` is fixed so the window math is deterministic. sharedAt 60s ago = window open;
 	// 3 min ago = window closed.
 	const nowFake = new Date('2024-03-01T12:00:00.000Z');
@@ -984,29 +984,24 @@ describe('updateGift — share grace window (issue #83)', () => {
 
 		const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 			?.args[0] as Record<string, unknown>;
-		// Full-edit path: the name is written (not rejected) and the debounce timestamp bumps.
+		// Full-edit path: the name is written (not rejected) and the transparency timestamp bumps.
 		expect(setValues.name).toBe('Renamed');
 		expect(setValues.editedAfterShareAt).toBeInstanceOf(Date);
 	});
 
-	it('keeps the window open via a recent editedAfterShareAt even when sharedAt is old (debounce)', async () => {
+	it('does not keep full edit open via a recent editedAfterShareAt when sharedAt is old', async () => {
 		mockDbInstance.pushResult([
 			makeGiftRow({
 				createdAt: BEFORE_SHARING,
 				name: 'Original',
-				editedAfterShareAt: shared60sAgo, // last edit 60s ago → still open
+				editedAfterShareAt: shared60sAgo,
 			}),
 		]);
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: shared3MinAgo })]);
-		mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Renamed' }]);
 
-		await callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' });
-
-		const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
-			?.args[0] as Record<string, unknown>;
-		expect(setValues.name).toBe('Renamed');
-		// The edit re-bumps the debounce timestamp, keeping the window open.
-		expect(setValues.editedAfterShareAt).toBeInstanceOf(Date);
+		await expect(
+			callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
+		).rejects.toMatchObject({ status: 403, message: 'CANNOT_EDIT_AFTER_SHARING' });
 	});
 
 	it('rejects a name change once the window has closed (stale client cannot bypass server)', async () => {
@@ -1026,24 +1021,49 @@ describe('updateGift — share grace window (issue #83)', () => {
 });
 
 describe('deleteGift', () => {
-	describe('owner can delete unreserved gifts created after sharing', () => {
-		it('soft-deletes a gift with no reservations', async () => {
-			// gift lookup — created AFTER sharing
-			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
-			// verifyOwnerOrModerator: wishlist lookup (shared)
-			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
-			// reservation check — no reservations
+	describe('owner can delete unreserved gifts created after sharing only during creation grace', () => {
+		const nowFake = new Date('2024-03-01T12:00:00.000Z');
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(nowFake);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('soft-deletes a post-share-created gift within 2 minutes of creation', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: new Date(nowFake.getTime() - 60_000) }),
+			]);
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
+			]);
 			mockDbInstance.pushResult([]);
-			// soft-delete update (returns nothing meaningful)
 			mockDbInstance.pushResult([]);
 
 			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).resolves.not.toThrow();
+		});
+
+		it('blocks a post-share-created gift after its creation grace closes', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: new Date(nowFake.getTime() - 3 * 60_000) }),
+			]);
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
+			]);
+
+			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
+				status: 403,
+				message: 'CANNOT_DELETE_AFTER_SHARING',
+			});
 		});
 	});
 
 	describe('owner CANNOT delete gifts created before sharing (edit lock)', () => {
 		it('throws 403 when gift was created before wishlist was shared', async () => {
-			// gift lookup — created BEFORE sharing
+			// gift lookup – created BEFORE sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
 			// verifyOwnerOrModerator: wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
@@ -1068,14 +1088,14 @@ describe('deleteGift', () => {
 		});
 
 		it('soft-deletes a pre-share gift when the window is still open', async () => {
-			// gift lookup — created BEFORE sharing, shared 60s ago → window open
+			// gift lookup – created BEFORE sharing, shared 60s ago → window open
 			mockDbInstance.pushResult([
 				makeGiftRow({ createdAt: BEFORE_SHARING, editedAfterShareAt: null }),
 			]);
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 60_000) }),
 			]);
-			// reservation check — none
+			// reservation check – none
 			mockDbInstance.pushResult([]);
 			// soft-delete update
 			mockDbInstance.pushResult([]);
@@ -1098,6 +1118,23 @@ describe('deleteGift', () => {
 			});
 		});
 
+		it('does not reopen pre-share gift deletion via a recent post-share edit', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: BEFORE_SHARING,
+					editedAfterShareAt: new Date(nowFake.getTime() - 60_000),
+				}),
+			]);
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 3 * 60_000) }),
+			]);
+
+			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
+				status: 403,
+				message: 'CANNOT_DELETE_AFTER_SHARING',
+			});
+		});
+
 		it('still blocks deleting a reserved gift even within the window', async () => {
 			mockDbInstance.pushResult([
 				makeGiftRow({ createdAt: BEFORE_SHARING, editedAfterShareAt: null }),
@@ -1105,7 +1142,7 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 60_000) }),
 			]);
-			// reservation check — has a reservation
+			// reservation check – has a reservation
 			mockDbInstance.pushResult([{ id: 'reservation-1' }]);
 
 			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
@@ -1117,23 +1154,34 @@ describe('deleteGift', () => {
 
 	describe('cannot delete reserved gifts', () => {
 		it('throws 400 when gift has active reservations', async () => {
-			// gift lookup — created AFTER sharing (so edit lock does not trigger)
-			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
-			// verifyOwnerOrModerator: wishlist lookup (shared)
-			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
-			// reservation check — has a reservation
-			mockDbInstance.pushResult([{ id: 'reservation-1' }]);
+			const nowFake = new Date('2024-03-01T12:00:00.000Z');
+			vi.useFakeTimers();
+			vi.setSystemTime(nowFake);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
-				status: 400,
-				message: 'CANNOT_DELETE_RESERVED_GIFT',
-			});
+			try {
+				mockDbInstance.pushResult([
+					makeGiftRow({ createdAt: new Date(nowFake.getTime() - 60_000) }),
+				]);
+				mockDbInstance.pushResult([
+					makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
+				]);
+				mockDbInstance.pushResult([{ id: 'reservation-1' }]);
+
+				await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject(
+					{
+						status: 400,
+						message: 'CANNOT_DELETE_RESERVED_GIFT',
+					},
+				);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
 	describe('returns 404 for non-existent gift', () => {
 		it('throws 404 when gift does not exist', async () => {
-			// gift lookup — empty
+			// gift lookup – empty
 			mockDbInstance.pushResult([]);
 
 			await expect(

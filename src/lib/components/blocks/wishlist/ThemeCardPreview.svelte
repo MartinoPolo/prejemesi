@@ -15,7 +15,7 @@
 		themeLabel: string;
 		/** Sample title shown on the preview card. */
 		title?: string;
-		/** Optional assigned image URL — null shows the themed fallback. */
+		/** Optional assigned image URL – null shows the themed fallback. */
 		src?: string | null;
 		/** Renderer props for the card slot (defaults to renderer defaults). */
 		frame?: ImageFrameProps;
@@ -51,7 +51,7 @@
 
 <!--
 Realistic wishlist-card preview (REQ-4): a true card surface reacting to the selected
-theme and to the assigned image / themed fallback — replaces the former thin accent
+theme and to the assigned image / themed fallback – replaces the former thin accent
 line. Uses only --wishlist-* tokens so it reflects the theme in light and dark mode.
 -->
 <div

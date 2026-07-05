@@ -11,7 +11,7 @@ export const alertVariants = tv({
 			destructive:
 				'text-destructive bg-card *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
 			warning:
-				'text-status-warning bg-card *:data-[slot=alert-description]:text-status-warning/90 *:[svg]:text-current',
+				'border-status-warning/35 bg-status-warning/10 text-status-warning *:data-[slot=alert-description]:text-status-warning/90 *:[svg]:text-current',
 		},
 	},
 	defaultVariants: {

@@ -20,24 +20,24 @@ Rejected: Soft-delete approach (owner thinks they removed it but it persists) �
 
 ### Post-share editing: per-field, name is the identity anchor
 
-Decided: 2026-06-07 (revises "Sharing locks owner editing")
-What: After sharing, the owner can still edit existing gifts' presentation/info fields — image (add/replace/remove/recrop), links (add/edit/remove), price/currency, priority, and description (append-only, see below). `name` is frozen — it is the gift's identity, what the gifter reserved against. Delete stays blocked. `quantity` is raise-only relative to its current value (never lowered). Unlocked fields are editable for ALL pre-share gifts uniformly — never conditional on reservation state.
+Decided: 2026-06-07 (revises "Sharing locks owner editing"; delete grace revised 2026-07-02)
+What: After sharing, the owner can still edit existing gifts' presentation/info fields — image (add/replace/remove/recrop), links (add/edit/remove), price/currency, priority, and description (append-only, see below). `name` is frozen — it is the gift's identity, what the gifter reserved against. Delete stays blocked after grace: pre-share gifts are deletable only during the initial 2-minute share grace, and gifts added after sharing are deletable only within 2 minutes of creation. Later edits never reopen delete/name grace. `quantity` is raise-only relative to its current value (never lowered). Unlocked fields are editable for ALL pre-share gifts uniformly — never conditional on reservation state.
 Why: Owners legitimately need to add/fix an image, add alternative links, correct a price, or clarify details after sharing — none of these change what was reserved (the name). Uniform per-field unlock keeps the no-inference invariant intact. Lowering quantity is forbidden because clamping it to the reserved count would itself leak that count.
 Rejected: Blanket lock (too rigid); reservation-conditional editing (leaks reservation state); editable name (gifter mismatch); quantity lowered with silent server clamp (the clamp leaks the reserved count); raise-only relative to reserved count rather than current value (same leak).
 
 ### Append-only description after sharing
 
-Decided: 2026-06-07
-What: At share time the existing `description` freezes (read-only). Post-share clarifications are added as immutable appended segments (`{ text, addedAt }`), rendered in an accent color with their date. The gifter always sees the original text they reserved against plus what changed since. If `description` was empty at share time, the first post-share text goes into the main field instead (nothing to preserve). Segments cannot be edited/deleted afterward — except within the grace window below.
+Decided: 2026-06-07 (history display revised 2026-07-02)
+What: At share time the existing `description` freezes (read-only). Post-share clarifications are added as immutable appended segments (`{ text, addedAt }`), rendered in an accent color with their date. The gifter always sees the original text they reserved against plus what changed since. If `description` was empty at share time, the first post-share text goes into the main field instead (nothing to preserve). Segments cannot be edited/deleted afterward — except within the grace window below. Gift cards, list rows, and the edit dialog show only the latest appended segment by default and expose a toggle for full history.
 Why: Description is the field a gifter actually relies on; preserving the original + showing additions transparently protects them without forbidding clarification.
 Rejected: Free editing with just an "edited" badge (loses the original the gifter relied on); structured revision history (over-engineered).
 
-### Post-share grace window: 2-min debounced reversibility
+### Post-share grace window: 2-min scoped reversibility
 
-Decided: 2026-06-07
-What: Every transition to read-only is fully reversible for 2 minutes after the LAST edit to that thing (debounced — the timer resets on each edit; continued editing keeps it open, then it freezes 2 min after the last change). Applies to (a) sharing itself — during the window the owner has full edit incl. `name` + delete, as if unshared — (b) each appended description segment, and (c) the wishlist event date. A countdown communicates the remaining time.
-Why: Owners share, then immediately spot a typo or the wrong item. A short debounced window allows last-minute corrections / undoing a premature lock without a separate undo flow.
-Rejected: Hard lock at the instant of sharing (no recovery from a premature share); fixed non-debounced window (cuts an owner off mid-correction).
+Decided: 2026-06-07 (revised 2026-07-02)
+What: Selected read-only transitions are reversible for 2 minutes. Sharing itself opens one initial full-edit window for pre-share gifts (`name` + delete included), but later gift edits do not reopen that window. Gifts added after sharing can be deleted only for 2 minutes after creation. Each appended description segment and the wishlist event date keep their own grace windows. A countdown communicates active full-edit or delete-only grace.
+Why: Owners share, then immediately spot a typo or the wrong item. A short initial window allows last-minute corrections / undoing a premature lock without letting ordinary later edits resurrect destructive actions.
+Rejected: Hard lock at the instant of sharing (no recovery from a premature share); edit-driven full-gift grace after later edits (reopens delete/name edit on already-shared gifts).
 
 ### Post-share edit transparency: uniform indicators, no notification
 

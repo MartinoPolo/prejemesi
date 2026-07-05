@@ -7,7 +7,7 @@ function fixture(name: string): string {
 	return readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), 'utf-8');
 }
 
-describe('parseTabular — sample CSV fixtures', () => {
+describe('parseTabular – sample CSV fixtures', () => {
 	it('parses the clean 4-column file (preamble + trailing empty row present)', () => {
 		const { rows, delimiter } = parseTabular(fixture('darky_rosie_clean.csv'));
 		expect(delimiter).toBe(',');
@@ -47,7 +47,7 @@ describe('parseTabular — sample CSV fixtures', () => {
 	});
 });
 
-describe('parseTabular — edge cases', () => {
+describe('parseTabular – edge cases', () => {
 	it('strips a leading UTF-8 BOM', () => {
 		const { rows } = parseTabular('﻿Name,Link\nBoty,https://example.com');
 		expect(rows[0]).toEqual(['Name', 'Link']);
@@ -93,7 +93,7 @@ describe('parseTabular — edge cases', () => {
 	});
 });
 
-describe('parseTabular — HTML clipboard table', () => {
+describe('parseTabular – HTML clipboard table', () => {
 	it('extracts cells from an HTML table fragment', () => {
 		const html =
 			'<table><tr><td>Name</td><td>Link</td></tr><tr><td>Boty</td><td>https://example.com</td></tr></table>';

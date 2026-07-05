@@ -174,7 +174,7 @@
 		</div>
 	{/if}
 
-	<!-- Owner sees reservations disclosure — visible to ALL users -->
+	<!-- Owner sees reservations disclosure – visible to ALL users -->
 	{#if ownerIsModerator}
 		<div class={styles.disclosureBanner()}>
 			<EyeIcon class="size-4 flex-shrink-0" />
