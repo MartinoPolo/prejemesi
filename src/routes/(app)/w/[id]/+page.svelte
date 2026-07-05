@@ -35,6 +35,7 @@
 		type DashboardWishlistTheme,
 	} from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistImageUrl } from '$lib/modules/images/index.js';
+	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import {
@@ -123,6 +124,11 @@
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
 	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
 	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+	const wishlistPageUrl = $derived(`${SITE_URL}/w/${wishlist.shortId}`);
+	const wishlistSocialImageUrl = $derived.by(() => {
+		const imagePath = wishlistImageUrl(wishlist.imageKey);
+		return imagePath === null ? SOCIAL_PREVIEW_IMAGE_URL : `${SITE_URL}${imagePath}`;
+	});
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
@@ -796,26 +802,18 @@
 	/>
 {/if}
 
-<!-- OpenGraph Meta Tags -->
 <svelte:head>
 	<title>{wishlist.title} — Přejeme si</title>
 	<meta property="og:title" content={wishlist.title} />
 	<meta property="og:description" content="Seznam prani od {wishlist.ownerName}" />
 	<meta property="og:type" content="website" />
-	<meta
-		property="og:url"
-		content="{typeof window !== 'undefined' ? window.location.origin : ''}/w/{wishlist.shortId}"
-	/>
-	<!-- og:image points at the source image: crawlers fetch a static URL, and server-side
-	     cropping for the social slot is out of scope (the social-slot crop is previewed in-app only).
-	     Resolved inline (not via a $derived) so the value is read after the top-level await populates
-	     `wishlist` — a memoized SSR derived evaluates against the pre-await undefined wishlist. -->
-	{#if wishlist.imageKey}
-		<meta
-			property="og:image"
-			content="{typeof window !== 'undefined' ? window.location.origin : ''}{wishlistImageUrl(
-				wishlist.imageKey,
-			)}"
-		/>
-	{/if}
+	<meta property="og:url" content={wishlistPageUrl} />
+	<meta property="og:image" content={wishlistSocialImageUrl} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content={wishlist.title} />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={wishlist.title} />
+	<meta name="twitter:description" content="Seznam prani od {wishlist.ownerName}" />
+	<meta name="twitter:image" content={wishlistSocialImageUrl} />
 </svelte:head>

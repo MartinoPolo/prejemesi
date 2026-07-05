@@ -9,6 +9,7 @@
 	import LandingFeatureFreeForever from '$lib/components/blocks/landing/LandingFeatureFreeForever.svelte';
 	import LandingCallToAction from '$lib/components/blocks/landing/LandingCallToAction.svelte';
 	import LandingFooter from '$lib/components/blocks/landing/LandingFooter.svelte';
+	import { SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
@@ -19,6 +20,14 @@
 	<meta property="og:description" content={m.landing_og_description()} />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://prejemesi.cz" />
+	<meta property="og:image" content={SOCIAL_PREVIEW_IMAGE_URL} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content={m.landing_og_title()} />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content={m.landing_og_title()} />
+	<meta name="twitter:description" content={m.landing_og_description()} />
+	<meta name="twitter:image" content={SOCIAL_PREVIEW_IMAGE_URL} />
 </svelte:head>
 
 <LandingNav />

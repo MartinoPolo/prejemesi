@@ -38,7 +38,7 @@
 		<section class="flex flex-col gap-3 text-center">
 			<h2 class="text-4xl font-extrabold tracking-tight">Component Showcase</h2>
 			<p class="text-lg text-muted-foreground">
-				shadcn-svelte components with a green theme, light &amp; dark mode support.
+				Přejeme si component library with theme, light, and dark mode states.
 			</p>
 		</section>
 
@@ -512,7 +512,7 @@
 
 		<Separator />
 		<footer class="pb-8 text-center text-sm text-muted-foreground">
-			Built with SvelteKit, Tailwind CSS &amp; shadcn-svelte
+			Přejeme si design system playground
 		</footer>
 	</div>
 </main>
