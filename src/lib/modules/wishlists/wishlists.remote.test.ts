@@ -18,7 +18,7 @@ vi.mock('$app/server', () => ({
 	}),
 }));
 
-// ── Mock remote wrappers — attach .__  so init_remote_functions validator passes
+// ── Mock remote wrappers – attach .__  so init_remote_functions validator passes
 function wrapWithRemoteMarker(
 	handler: (...args: unknown[]) => unknown,
 ): (...args: unknown[]) => unknown {
@@ -50,7 +50,7 @@ vi.mock('@sveltejs/kit', () => ({
 	}),
 }));
 
-// ── Mock drizzle-orm — used only as where-clause builders; no-ops are fine ───
+// ── Mock drizzle-orm – used only as where-clause builders; no-ops are fine ───
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
@@ -549,7 +549,7 @@ describe('updateWishlist', () => {
 			// DB call 2: update returning
 			mockDbInstance.pushResult([updatedRow]);
 
-			// Should NOT throw — eventDate change is silently dropped
+			// Should NOT throw – eventDate change is silently dropped
 			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
 				id: WISHLIST_ID,
 				title: 'Updated Title',
@@ -615,7 +615,7 @@ describe('createWishlist', () => {
 describe('followWishlist', () => {
 	describe('owner cannot follow own wishlist', () => {
 		it('returns { followed: false, alreadyFollowing: false } without creating a record', async () => {
-			// DB call 1: wishlist lookup — owner is the caller
+			// DB call 1: wishlist lookup – owner is the caller
 			mockDbInstance.pushResult([{ ownerId: OWNER_ID }]);
 
 			const result = await callFollowWishlist(makeOwnerAuthContext(), WISHLIST_ID);
@@ -626,9 +626,9 @@ describe('followWishlist', () => {
 
 	describe('new visitor follows for the first time', () => {
 		it('creates a new follower record and returns { followed: true, alreadyFollowing: false }', async () => {
-			// DB call 1: wishlist lookup — owner is different user
+			// DB call 1: wishlist lookup – owner is different user
 			mockDbInstance.pushResult([{ ownerId: OWNER_ID }]);
-			// DB call 2: existing follower check — none found
+			// DB call 2: existing follower check – none found
 			mockDbInstance.pushResult([]);
 			// DB call 3: insert follower
 			mockDbInstance.pushResult([]);
@@ -641,9 +641,9 @@ describe('followWishlist', () => {
 
 	describe('returning visitor updates lastVisitedAt', () => {
 		it('returns { followed: false, alreadyFollowing: true } when record exists with unfollowedAt=null', async () => {
-			// DB call 1: wishlist lookup — owner is different user
+			// DB call 1: wishlist lookup – owner is different user
 			mockDbInstance.pushResult([{ ownerId: OWNER_ID }]);
-			// DB call 2: existing follower check — record found, not unfollowed
+			// DB call 2: existing follower check – record found, not unfollowed
 			mockDbInstance.pushResult([
 				{ unfollowedAt: null, lastVisitedAt: new Date('2024-01-01') },
 			]);
@@ -721,12 +721,12 @@ describe('getWishlistByShortId', () => {
 		});
 	});
 
-	describe('visitor role — authenticated non-owner/non-moderator', () => {
+	describe('visitor role – authenticated non-owner/non-moderator', () => {
 		it('returns role=visitor when authenticated user has no special assignment', async () => {
 			const wishlistRow = makeWishlistRow();
 			// DB call 1: wishlist + user join
 			mockDbInstance.pushResult([{ wishlist: wishlistRow, ownerName: 'Alice' }]);
-			// DB call 2: moderator check — none found
+			// DB call 2: moderator check – none found
 			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
@@ -738,7 +738,7 @@ describe('getWishlistByShortId', () => {
 		});
 	});
 
-	describe('visitor role — unauthenticated', () => {
+	describe('visitor role – unauthenticated', () => {
 		it('returns role=visitor when authContext is null', async () => {
 			const wishlistRow = makeWishlistRow();
 			// DB call 1: wishlist + user join
@@ -772,7 +772,7 @@ describe('getWishlistByShortId', () => {
 describe('unfollowWishlist', () => {
 	describe('sets unfollowedAt on the follower record (no-op when no record matches)', () => {
 		it('resolves without error regardless of whether a follower record matched', async () => {
-			// DB call 1: update wishlistFollower — resolves whether or not a row matched
+			// DB call 1: update wishlistFollower – resolves whether or not a row matched
 			mockDbInstance.pushResult([]);
 
 			await expect(
@@ -789,7 +789,7 @@ describe('unfollowWishlist', () => {
 describe('refollowWishlist', () => {
 	describe('clears unfollowedAt and updates lastVisitedAt (no-op when no record matches)', () => {
 		it('resolves without error regardless of whether a follower record matched', async () => {
-			// DB call 1: update wishlistFollower — resolves whether or not a row matched
+			// DB call 1: update wishlistFollower – resolves whether or not a row matched
 			mockDbInstance.pushResult([]);
 
 			await expect(

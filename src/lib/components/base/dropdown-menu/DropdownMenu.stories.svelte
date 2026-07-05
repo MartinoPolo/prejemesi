@@ -42,7 +42,7 @@
 	}
 
 	// Re-send a key until the UI reaches the expected state. Under headless-chromium
-	// load a keystroke is occasionally dropped entirely (not merely slow — a 3s wait
+	// load a keystroke is occasionally dropped entirely (not merely slow – a 3s wait
 	// still missed it), so a single send + wait is non-deterministic. We re-send with
 	// a settle window longer than any open/close/highlight transition, so a key that
 	// DID register is never double-applied (no highlight overshoot, no Enter-reopen)
@@ -59,7 +59,7 @@
 				await waitFor(assertState, { timeout: settle });
 				return;
 			} catch {
-				// Keystroke likely dropped under load — resend on the next iteration.
+				// Keystroke likely dropped under load – resend on the next iteration.
 			}
 		}
 		await waitFor(assertState, INTERACTION_TIMEOUT);
@@ -100,7 +100,7 @@
 		const trigger = findDropdownTrigger(canvasElement);
 		// Re-focus until it sticks: a single focus() can be raced by late event-listener
 		// attachment under CI load, which would drop the first ArrowDown and never open
-		// the menu — the original source of this story's flakiness.
+		// the menu – the original source of this story's flakiness.
 		await waitFor(() => {
 			trigger.focus();
 			expect(trigger).toHaveFocus();

@@ -226,7 +226,7 @@
 				</div>
 			</div>
 			<div class="rounded-lg p-4" style="background: oklch(75% 0.12 300deg)">
-				<p class="mb-2 text-xs opacity-70">oklch(75% 0.12 300deg) — vivid lavender</p>
+				<p class="mb-2 text-xs opacity-70">oklch(75% 0.12 300deg) – vivid lavender</p>
 				<div class="flex items-center gap-2">
 					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button
@@ -238,7 +238,7 @@
 				</div>
 			</div>
 			<div class="rounded-lg p-4 text-white" style="background: oklch(50% 0.05 200deg)">
-				<p class="mb-2 text-xs opacity-70">oklch(50% 0.05 200deg) — mid-tone gray-blue</p>
+				<p class="mb-2 text-xs opacity-70">oklch(50% 0.05 200deg) – mid-tone gray-blue</p>
 				<div class="flex items-center gap-2">
 					<Button intent="ghost" size="icon-sm" aria-label="Mail" {...args}
 						><MailIcon data-icon="inline-start" /></Button

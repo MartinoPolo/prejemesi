@@ -7,7 +7,7 @@
 	}
 
 	/**
-	 * Literal preview colors — intentionally NOT semantic CSS custom properties.
+	 * Literal preview colors – intentionally NOT semantic CSS custom properties.
 	 * Each tile must always render BOTH the light AND dark appearance of a theme
 	 * regardless of the page's current color mode, so the values are locked to
 	 * `src/palette-colors.css` + `src/app.css`. Update both together if the

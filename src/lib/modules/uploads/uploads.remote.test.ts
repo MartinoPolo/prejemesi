@@ -18,7 +18,7 @@ vi.mock('$app/server', () => ({
 	}),
 }));
 
-// ── Mock remote wrappers — extract handlers directly ────────────────────────
+// ── Mock remote wrappers – extract handlers directly ────────────────────────
 function wrapWithRemoteMarker(
 	handler: (...args: unknown[]) => unknown,
 ): (...args: unknown[]) => unknown {

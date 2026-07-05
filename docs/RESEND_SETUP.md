@@ -38,11 +38,11 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
 
 - `resend@6.x` installed.
 - `src/lib/server/email.ts`
-    - `sendEmail({ to, subject, html, idempotencyKey? })` — wraps Resend, handles the
+    - `sendEmail({ to, subject, html, idempotencyKey? })` – wraps Resend, handles the
       `{ data, error }` response, **throws on failure**, and **logs instead of sending when
       `RESEND_API_KEY` is unset** (same optional-service fallback as R2 storage).
-    - `renderActionEmail({ heading, body, buttonLabel, url })` — shared HTML template.
-- `src/lib/server/auth.ts` — the three better-auth stubs now send real emails:
+    - `renderActionEmail({ heading, body, buttonLabel, url })` – shared HTML template.
+- `src/lib/server/auth.ts` – the three better-auth stubs now send real emails:
     - `sendResetPassword` (password reset)
     - `sendVerificationEmail` (email verification)
     - `sendMagicLink` (magic-link sign-in)
@@ -52,7 +52,7 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
 
 ### 1. Create a Resend account + API key
 
-1. Sign up at <https://resend.com> (free, no card). Use the email you'll test with —
+1. Sign up at <https://resend.com> (free, no card). Use the email you'll test with –
    sandbox only delivers there.
 2. Dashboard → **API Keys** → **Create API Key** (name `prejemesi-dev`, **Sending access**, domain **All**).
 3. Copy the `re_...` key (shown once).
@@ -75,7 +75,7 @@ Restart the dev server after editing `.env` so Vite reloads it.
 
 Troubleshooting:
 
-- `(not sent — RESEND_API_KEY unset)` → key didn't load; check `.env` and restart dev server.
+- `(not sent – RESEND_API_KEY unset)` → key didn't load; check `.env` and restart dev server.
 - `[Email] Failed ...` to a non-sandbox address → expected before domain verification.
 
 ### 4. Production domain
@@ -90,12 +90,12 @@ Auth emails are wired: signup verification, password reset, and magic-link sign-
 
 Notification dispatcher coverage:
 
-- `liked_gift_reserved` — email + in-app when someone reserves a gift a user liked.
-- `reserved_gift_edited` — email + in-app when a moderator edits a reserved gift.
-- `wishlist_archived` — email + in-app to followers/moderators when a wishlist is archived.
-- `owner_self_promoted` — email + in-app to followers when the owner enables reservation visibility.
-- `new_gift_added` — in-app only to followers.
-- `gift_reserved` — in-app only to followers.
+- `liked_gift_reserved` – email + in-app when someone reserves a gift a user liked.
+- `reserved_gift_edited` – email + in-app when a moderator edits a reserved gift.
+- `wishlist_archived` – email + in-app to followers/moderators when a wishlist is archived.
+- `owner_self_promoted` – email + in-app to followers when the owner enables reservation visibility.
+- `new_gift_added` – in-app only to followers.
+- `gift_reserved` – in-app only to followers.
 
 Still not covered:
 

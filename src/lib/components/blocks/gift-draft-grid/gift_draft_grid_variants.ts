@@ -23,14 +23,14 @@ export const draftRowStatusVariants = tv({
 });
 
 /**
- * Shared desktop column template — header and every row use the same track sizes.
+ * Shared desktop column template – header and every row use the same track sizes.
  * Trailing enrich + remove actions share one `auto` track so they sit tightly
  * together; the link column gets the extra room freed from a slimmer price track.
  */
 export const DRAFT_GRID_COLUMNS =
 	'md:grid md:grid-cols-[44px_2fr_1.5fr_2.4fr_132px_auto] md:items-start md:gap-3';
 
-/** Column / field-label typography — shared by the desktop header and mobile cell labels. */
+/** Column / field-label typography – shared by the desktop header and mobile cell labels. */
 export const DRAFT_COL_LABEL_CLASS =
 	'text-xs font-bold tracking-wide text-foreground-muted uppercase';
 

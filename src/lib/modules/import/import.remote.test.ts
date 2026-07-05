@@ -35,7 +35,7 @@ vi.mock('@sveltejs/kit', () => ({
 	}),
 }));
 
-// ── Mock drizzle-orm — used only as where-clause builders; no-ops are fine ──
+// ── Mock drizzle-orm – used only as where-clause builders; no-ops are fine ──
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
@@ -77,7 +77,7 @@ vi.mock('$lib/server/db/moderator.schema.js', () => ({
 	},
 }));
 
-// ── DB mock helper — sequential `then` results, transaction + call tracking ──
+// ── DB mock helper – sequential `then` results, transaction + call tracking ──
 
 interface MockDb {
 	db: Record<string | symbol, unknown>;

@@ -234,7 +234,7 @@
 		background: var(--accent);
 	}
 
-	/* On hover the row adopts --accent, the thumb's own background — flip the thumb
+	/* On hover the row adopts --accent, the thumb's own background – flip the thumb
 	   to the panel surface so it stays distinct instead of melting into the row. */
 	.nav-dropdown-item:hover .nav-dropdown-thumb {
 		background: var(--popover);
@@ -251,7 +251,7 @@
 	}
 
 	/* Subtle neutral badge fills with --surface-2, which matches the hovered row's
-	   --accent — lift it onto the panel surface so it stays legible. (The "shared"
+	   --accent – lift it onto the panel surface so it stays legible. (The "shared"
 	   primary badge uses a translucent tint that already reads on either surface.) */
 	.nav-dropdown-item:hover :global(.nav-dropdown-badge-neutral) {
 		background: var(--popover);

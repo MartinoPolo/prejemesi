@@ -1,6 +1,6 @@
-# Design Brief — Auth Pages
+# Design Brief – Auth Pages
 
-> **Status**: Refined (Variant 2 — Split screen)
+> **Status**: Refined (Variant 2 – Split screen)
 > **Refined mockup**: `designs/auth-pages/refined.html`
 > **Summary**: `designs/auth-pages/SUMMARY.md`
 > **Refinements**: Consistent logo from app shell, all 3 auth forms (login + register + magic link), error state on login, magic link success state, Google OAuth button, split-screen with sage green branding panel, light-mode only
@@ -20,7 +20,7 @@ casual visitors arriving from a shared wishlist link.
 
 ## Surrounding Context
 
-Auth pages run under a **separate, unauthenticated layout** — no app shell nav,
+Auth pages run under a **separate, unauthenticated layout** – no app shell nav,
 no sidebar, no dashboard chrome. The full viewport belongs to the auth form.
 After successful auth the user is redirected into the app (dashboard or the
 original wishlist they were viewing).
@@ -80,26 +80,26 @@ original wishlist they were viewing).
 
 | Component          | Used in                                                                            |
 | ------------------ | ---------------------------------------------------------------------------------- |
-| `AuthCard`         | Wrapper for all three forms — consistent padding, max-width, optional illustration |
+| `AuthCard`         | Wrapper for all three forms – consistent padding, max-width, optional illustration |
 | `AuthLogo`         | Logo + tagline at top of card; same across all three forms                         |
 | `FormField`        | Label + input + optional error message; reused for every field                     |
 | `PasswordField`    | `FormField` + show/hide toggle button                                              |
-| `PrimaryButton`    | "Přihlásit se", "Vytvořit účet", "Odeslat odkaz" — loading state baked in          |
-| `SocialButton`     | Google OAuth button — consistent across login and register                         |
+| `PrimaryButton`    | "Přihlásit se", "Vytvořit účet", "Odeslat odkaz" – loading state baked in          |
+| `SocialButton`     | Google OAuth button – consistent across login and register                         |
 | `DividerWithLabel` | "nebo" separator between social and email/password sections                        |
-| `AuthFooterLinks`  | "Nemáte účet?", "Již máte účet?" — switches between forms                          |
+| `AuthFooterLinks`  | "Nemáte účet?", "Již máte účet?" – switches between forms                          |
 | `SuccessState`     | Magic link sent confirmation; reusable for any async success                       |
 
 ---
 
 ## Layout Constraints
 
-- Max card width: **440px** (login/magic link), **480px** (register — extra fields)
+- Max card width: **440px** (login/magic link), **480px** (register – extra fields)
 - Card must be **vertically centered** in viewport on desktop; top-aligned with padding on mobile
 - Logo area fixed height ~**80px** above form fields
 - Form stack: `gap: 16px` between fields, `gap: 24px` between field group and primary CTA
 - "Nebo" divider adds `24px` above/below
-- Social button below primary CTA (or above — variant decision)
+- Social button below primary CTA (or above – variant decision)
 - Footer links: `margin-top: 24px`, centered, small text
 - Mobile: card fills width with `16px` horizontal padding; no box shadow on very small screens
 
@@ -131,8 +131,8 @@ Dark mode tokens from `.dark` class apply automatically.
 
 ## Design Constraints
 
-- **No GDPR banner** — decision confirmed
-- **No navigation** — auth layout has no app nav
+- **No GDPR banner** – decision confirmed
+- **No navigation** – auth layout has no app nav
 - Logo links back to landing/home (`/`)
 - Error messages in Czech
 - Google button uses the official Google "G" SVG logo (inline); no external image deps
@@ -158,17 +158,17 @@ Dark mode tokens from `.dark` class apply automatically.
 
 ## Visual References
 
-- `direction-a-honey.html` — warmth, rounded buttons (pill), no card borders, shadow-elevated cards
-- `tokens.css` — spacing, type scale, shadow system
-- `app.css` — exact color tokens, font stack
-- Primary color is **sage green** `oklch(52.7% 0.154 150.069deg)` — fresh, gift-giving, friendly
+- `direction-a-honey.html` – warmth, rounded buttons (pill), no card borders, shadow-elevated cards
+- `tokens.css` – spacing, type scale, shadow system
+- `app.css` – exact color tokens, font stack
+- Primary color is **sage green** `oklch(52.7% 0.154 150.069deg)` – fresh, gift-giving, friendly
 - The Honey direction shows the level of polish expected; auth pages should match or exceed it
 
 ---
 
 ## Not Included
 
-- Password reset form (receives email, sends reset link) — separate brief
+- Password reset form (receives email, sends reset link) – separate brief
 - OAuth callback / error screens
 - Email verification screen (post-registration)
 - Two-factor authentication

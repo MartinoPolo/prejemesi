@@ -11,7 +11,7 @@ function startOfDay(date: Date): number {
 /**
  * Day-granular localized countdown to a wishlist event (e.g. "za 5 dní" / "in 5 days"), or
  * `null` when there is no date or the event has already passed (a past event is not actionable,
- * so surfaces nothing). Drives the passive "don't forget" reminder in the nav dropdowns — no
+ * so surfaces nothing). Drives the passive "don't forget" reminder in the nav dropdowns – no
  * scheduled job required, the date already lives on the wishlist row.
  */
 export function eventCountdown(eventDate: Date | null, now: Date = new Date()): string | null {

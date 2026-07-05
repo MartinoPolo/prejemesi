@@ -157,7 +157,7 @@
 	// bound `open` prop rather than only `onOpenChange`, because the panel is opened
 	// programmatically from the wishlist header (parent sets `open = true`). bits-ui's
 	// `onOpenChange` fires only for internally-initiated open changes (trigger/ESC/overlay),
-	// NOT parent-driven ones — so without this effect the panel would render empty.
+	// NOT parent-driven ones – so without this effect the panel would render empty.
 	$effect(() => {
 		if (open) {
 			void loadModerators();

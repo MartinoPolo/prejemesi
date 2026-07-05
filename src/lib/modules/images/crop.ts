@@ -2,7 +2,7 @@
  * Pure conversion helpers between an editor's crop rectangle and the renderer's
  * focal-point + zoom contract (#34 ImageFrame honors `focal` + `zoom`, not a raw
  * crop rect). For a gift, a single normalized crop is reused across every consumer
- * slot — each slot derives its visible window from the shared focal/zoom via
+ * slot – each slot derives its visible window from the shared focal/zoom via
  * object-fit cover ("one crop, all slots"). Wishlist images instead persist
  * independent crop metadata per slot (see `wishlist_slots.ts`). Kept framework-free
  * so it is unit-testable in isolation.
@@ -19,7 +19,7 @@ import {
 
 const CENTERED_FOCAL: ImageFocalPoint = { x: 50, y: 50 };
 
-/** Identity crop rectangle — the full image, no cropping applied. */
+/** Identity crop rectangle – the full image, no cropping applied. */
 export const FULL_CROP_RECT: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
 
 function clampZoom(zoom: number): number {

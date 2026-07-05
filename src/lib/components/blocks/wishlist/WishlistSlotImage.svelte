@@ -6,7 +6,7 @@
 	import WishlistFallbackHero from './WishlistFallbackHero.svelte';
 
 	interface Props {
-		/** Resolved image URL for the active slot — null renders the themed fallback. */
+		/** Resolved image URL for the active slot – null renders the themed fallback. */
 		src: string | null;
 		/** Renderer props derived from the slot's saved (or live) crop metadata. */
 		frame: ImageFrameProps;

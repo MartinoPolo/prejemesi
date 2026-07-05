@@ -1,14 +1,14 @@
 /**
- * Database seed script — creates test accounts and sample data for local development.
+ * Database seed script – creates test accounts and sample data for local development.
  *
  * Run: pnpm db:seed
  *
  * All test accounts use SEED_PASSWORD (defined below). Accounts:
- *   martin@test.cz  — Martin Novák    (primary owner, 4 wishlists in every state)
- *   jana@test.cz    — Jana Dvořáková  (moderator + owner, 3 wishlists)
- *   petr@test.cz    — Petr Svoboda    (active gifter with many reservations)
- *   eva@test.cz     — Eva Králová     (casual visitor, mostly likes)
- *   tomas@test.cz   — Tomáš Černý     (mostly inactive, 2 wishlists)
+ *   martin@test.cz  – Martin Novák    (primary owner, 4 wishlists in every state)
+ *   jana@test.cz    – Jana Dvořáková  (moderator + owner, 3 wishlists)
+ *   petr@test.cz    – Petr Svoboda    (active gifter with many reservations)
+ *   eva@test.cz     – Eva Králová     (casual visitor, mostly likes)
+ *   tomas@test.cz   – Tomáš Černý     (mostly inactive, 2 wishlists)
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -48,7 +48,7 @@ try {
 		}
 	}
 } catch {
-	/* .env not found — rely on environment */
+	/* .env not found – rely on environment */
 }
 
 const SEED_PASSWORD = ['password', '123'].join('');
@@ -64,7 +64,7 @@ function requireEnv(name: string): string {
 const DATABASE_URL: string = requireEnv('DATABASE_URL');
 
 // ---------------------------------------------------------------------------
-// Seed images — fetched from Unsplash on first seed, cached in .seed-uploads/
+// Seed images – fetched from Unsplash on first seed, cached in .seed-uploads/
 // ---------------------------------------------------------------------------
 const SEED_UPLOAD_DIR = join(process.cwd(), '.seed-uploads');
 
@@ -136,7 +136,7 @@ function giftImage(key: string) {
 }
 
 // ---------------------------------------------------------------------------
-// ID constants — deterministic, prefixed for easy cleanup
+// ID constants – deterministic, prefixed for easy cleanup
 // ---------------------------------------------------------------------------
 
 // Users
@@ -156,11 +156,11 @@ const WL_DETSKY = 'seed-wl-detsky';
 const WL_JBDAY = 'seed-wl-jbday';
 const WL_BYT = 'seed-wl-byt';
 const WL_KNIHY = 'seed-wl-knihy';
-// Lists Martin follows — give his "Sledované" dropdown the full open/reserved/bought spread.
-const WL_PBDAY = 'seed-wl-pbday'; // Petr — Martin: open
-const WL_KUCHYNE = 'seed-wl-kuchyne'; // Eva — Martin: open
-const WL_JXMAS = 'seed-wl-jxmas'; // Jana — Martin: bought
-const WL_CHATA = 'seed-wl-chata'; // Tomáš — Martin: bought
+// Lists Martin follows – give his "Sledované" dropdown the full open/reserved/bought spread.
+const WL_PBDAY = 'seed-wl-pbday'; // Petr – Martin: open
+const WL_KUCHYNE = 'seed-wl-kuchyne'; // Eva – Martin: open
+const WL_JXMAS = 'seed-wl-jxmas'; // Jana – Martin: bought
+const WL_CHATA = 'seed-wl-chata'; // Tomáš – Martin: bought
 
 // Priority level suffix helpers
 const plId = (wl: string, level: 'h' | 'm' | 'l') => `seed-pl-${wl}-${level}`;
@@ -219,7 +219,7 @@ const G_SEKERA = 'seed-g-sekera';
 const d = (iso: string) => new Date(iso);
 
 // ---------------------------------------------------------------------------
-// Cleanup — remove all seed data (respects FK order)
+// Cleanup – remove all seed data (respects FK order)
 // ---------------------------------------------------------------------------
 async function cleanup(db: ReturnType<typeof drizzle>) {
 	await db.execute(sql`
@@ -326,7 +326,7 @@ async function seed() {
 		// ---------------------------------------------------------------
 		console.log('Seeding wishlists...');
 		await db.insert(wishlist).values([
-			// Martin — active, shared, christmas
+			// Martin – active, shared, christmas
 			{
 				id: WL_XMAS26,
 				shortId: 'xmas2026',
@@ -347,7 +347,7 @@ async function seed() {
 				createdAt: d('2026-06-01T09:00:00Z'),
 				updatedAt: d('2026-06-22T14:00:00Z'),
 			},
-			// Martin — active, shared, birthday
+			// Martin – active, shared, birthday
 			{
 				id: WL_BDAY,
 				shortId: 'bdaymart',
@@ -368,7 +368,7 @@ async function seed() {
 				createdAt: d('2026-01-20T11:00:00Z'),
 				updatedAt: d('2026-03-10T15:00:00Z'),
 			},
-			// Martin — draft
+			// Martin – draft
 			{
 				id: WL_DRAFT,
 				shortId: 'draftlst',
@@ -379,7 +379,7 @@ async function seed() {
 				createdAt: d('2026-05-20T16:00:00Z'),
 				updatedAt: d('2026-05-20T16:00:00Z'),
 			},
-			// Martin — archived, christmas
+			// Martin – archived, christmas
 			{
 				id: WL_XMAS25,
 				shortId: 'xmas2025',
@@ -393,13 +393,13 @@ async function seed() {
 				createdAt: d('2025-11-01T09:00:00Z'),
 				updatedAt: d('2025-12-26T12:00:00Z'),
 			},
-			// Jana — active, shared, elegant
+			// Jana – active, shared, elegant
 			{
 				id: WL_SVATEK,
 				shortId: 'svatekjn',
 				ownerId: JANA,
 				title: 'Přání k svátku',
-				description: 'Svátek mám 24. května — nebojte se překvapit!',
+				description: 'Svátek mám 24. května – nebojte se překvapit!',
 				eventDate: d('2026-05-24T00:00:00Z'),
 				status: 'active',
 				theme: 'elegant',
@@ -414,7 +414,7 @@ async function seed() {
 				createdAt: d('2026-04-05T10:00:00Z'),
 				updatedAt: d('2026-04-15T11:00:00Z'),
 			},
-			// Jana — draft, fun
+			// Jana – draft, fun
 			{
 				id: WL_DETSKY,
 				shortId: 'detskypk',
@@ -426,7 +426,7 @@ async function seed() {
 				createdAt: d('2026-05-10T14:00:00Z'),
 				updatedAt: d('2026-05-10T14:00:00Z'),
 			},
-			// Jana — archived, birthday
+			// Jana – archived, birthday
 			{
 				id: WL_JBDAY,
 				shortId: 'janabday',
@@ -440,7 +440,7 @@ async function seed() {
 				createdAt: d('2025-05-15T09:00:00Z'),
 				updatedAt: d('2025-07-15T12:00:00Z'),
 			},
-			// Tomáš — archived, default
+			// Tomáš – archived, default
 			{
 				id: WL_BYT,
 				shortId: 'bytovtom',
@@ -454,7 +454,7 @@ async function seed() {
 				createdAt: d('2025-08-15T09:00:00Z'),
 				updatedAt: d('2026-01-15T12:00:00Z'),
 			},
-			// Tomáš — active, shared, custom theme
+			// Tomáš – active, shared, custom theme
 			{
 				id: WL_KNIHY,
 				shortId: 'knihy026',
@@ -475,7 +475,7 @@ async function seed() {
 				createdAt: d('2026-03-01T11:00:00Z'),
 				updatedAt: d('2026-04-20T15:00:00Z'),
 			},
-			// Petr — active, birthday. Martin follows, reserves nothing → OPEN.
+			// Petr – active, birthday. Martin follows, reserves nothing → OPEN.
 			{
 				id: WL_PBDAY,
 				shortId: 'petrbday',
@@ -489,13 +489,13 @@ async function seed() {
 				createdAt: d('2026-05-18T11:00:00Z'),
 				updatedAt: d('2026-06-05T15:00:00Z'),
 			},
-			// Eva — active, fun. Martin follows, reserves nothing → OPEN.
+			// Eva – active, fun. Martin follows, reserves nothing → OPEN.
 			{
 				id: WL_KUCHYNE,
 				shortId: 'kuchyne1',
 				ownerId: EVA,
 				title: 'Vybavení kuchyně',
-				description: 'Stěhujeme se — pomozte nám zařídit kuchyni.',
+				description: 'Stěhujeme se – pomozte nám zařídit kuchyni.',
 				eventDate: d('2026-09-01T00:00:00Z'),
 				status: 'active',
 				theme: 'fun',
@@ -503,7 +503,7 @@ async function seed() {
 				createdAt: d('2026-05-22T11:00:00Z'),
 				updatedAt: d('2026-06-02T15:00:00Z'),
 			},
-			// Jana — active, christmas. Martin reserves + marks bought → BOUGHT.
+			// Jana – active, christmas. Martin reserves + marks bought → BOUGHT.
 			{
 				id: WL_JXMAS,
 				shortId: 'janaxm26',
@@ -517,7 +517,7 @@ async function seed() {
 				createdAt: d('2026-05-12T11:00:00Z'),
 				updatedAt: d('2026-05-30T15:00:00Z'),
 			},
-			// Tomáš — active, default, event soon (countdown). Martin reserves + bought → BOUGHT.
+			// Tomáš – active, default, event soon (countdown). Martin reserves + bought → BOUGHT.
 			{
 				id: WL_CHATA,
 				shortId: 'chatatom',
@@ -555,7 +555,7 @@ async function seed() {
 		const priorityRows = allWishlists.flatMap((wlId) => {
 			const short = wlId.replace('seed-wl-', '');
 			// Labels are stable i18n KEYS (ASCII), localized for display via getPriorityDisplay/
-			// PRIORITY_DISPLAY. Must match DEFAULT_PRIORITY_LEVELS — diacritic labels (e.g. "Vysoká")
+			// PRIORITY_DISPLAY. Must match DEFAULT_PRIORITY_LEVELS – diacritic labels (e.g. "Vysoká")
 			// would not match the display map and would render without a priority badge.
 			return [
 				{ id: plId(short, 'h'), wishlistId: wlId, sortOrder: 0, label: 'Vysoka' },
@@ -606,7 +606,7 @@ async function seed() {
 				id: G_SAPIENS,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'l'),
-				name: 'Kniha — Sapiens',
+				name: 'Kniha – Sapiens',
 				links: [{ url: 'https://www.kosmas.cz/sapiens' }],
 				price: 399,
 				currency: 'CZK',
@@ -731,7 +731,7 @@ async function seed() {
 				wishlistId: WL_BDAY,
 				priorityLevelId: plId('bday', 'l'),
 				name: 'Lahev dobrého vína',
-				description: 'Červené, suché — třeba Frankovka nebo Cabernet',
+				description: 'Červené, suché – třeba Frankovka nebo Cabernet',
 				price: 500,
 				currency: 'CZK',
 				quantity: 2,
@@ -791,7 +791,7 @@ async function seed() {
 				id: G_PUZZLE,
 				wishlistId: WL_XMAS25,
 				priorityLevelId: plId('xmas25', 'l'),
-				name: 'Puzzle 1000 dílků — Starý Prahu',
+				name: 'Puzzle 1000 dílků – Starý Prahu',
 				price: 450,
 				currency: 'CZK',
 				...giftImage('seed/g-puzzle.jpg'),
@@ -897,7 +897,7 @@ async function seed() {
 				id: G_LAMPICKA,
 				wishlistId: WL_DETSKY,
 				priorityLevelId: plId('detsky', 'l'),
-				name: 'Noční lampička — hvězdná projekce',
+				name: 'Noční lampička – hvězdná projekce',
 				price: 600,
 				currency: 'CZK',
 				...giftImage('seed/g-lampicka.jpg'),
@@ -960,7 +960,7 @@ async function seed() {
 				id: G_DUNE,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'h'),
-				name: 'Dune — Frank Herbert',
+				name: 'Dune – Frank Herbert',
 				links: [{ url: 'https://www.kosmas.cz/dune' }],
 				price: 350,
 				currency: 'CZK',
@@ -971,7 +971,7 @@ async function seed() {
 				id: G_1984,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'h'),
-				name: '1984 — George Orwell',
+				name: '1984 – George Orwell',
 				links: [{ url: 'https://www.kosmas.cz/1984' }],
 				price: 280,
 				currency: 'CZK',
@@ -982,7 +982,7 @@ async function seed() {
 				id: G_HAILMARY,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'm'),
-				name: 'Projekt Hail Mary — Andy Weir',
+				name: 'Projekt Hail Mary – Andy Weir',
 				links: [{ url: 'https://www.kosmas.cz/hail-mary' }],
 				price: 420,
 				currency: 'CZK',
@@ -992,7 +992,7 @@ async function seed() {
 				id: G_SAPIENS2,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'l'),
-				name: 'Sapiens — ilustrovaná edice',
+				name: 'Sapiens – ilustrovaná edice',
 				links: [{ url: 'https://www.kosmas.cz/sapiens-ilustrovana' }],
 				price: 590,
 				currency: 'CZK',
@@ -1128,24 +1128,24 @@ async function seed() {
 			},
 			{ id: 'seed-r-12', giftId: G_STEAM, userId: PETR, quantity: 1 },
 
-			// Jana — Přání k svátku
+			// Jana – Přání k svátku
 			{ id: 'seed-r-13', giftId: G_KABELKA, userId: MARTIN, quantity: 1 },
 			{ id: 'seed-r-14', giftId: G_RECEPTY, userId: EVA, quantity: 1 },
 
-			// Jana — Minulé narozeniny (archived)
+			// Jana – Minulé narozeniny (archived)
 			{ id: 'seed-r-15', giftId: G_SPERKOVNICE, userId: MARTIN, quantity: 1 },
 			{ id: 'seed-r-16', giftId: G_MASAZ, userId: EVA, quantity: 1 },
 
-			// Tomáš — Výbava do bytu (archived)
+			// Tomáš – Výbava do bytu (archived)
 			{ id: 'seed-r-17', giftId: G_MIXER, userId: JANA, quantity: 1 },
 			{ id: 'seed-r-18', giftId: G_RUCNIKY, userId: PETR, quantity: 1 },
 			{ id: 'seed-r-19', giftId: G_MONSTERA, userId: EVA, quantity: 1 },
 
-			// Tomáš — Knihy 2026 (Martin's reservation here stays unbought → "reserved")
+			// Tomáš – Knihy 2026 (Martin's reservation here stays unbought → "reserved")
 			{ id: 'seed-r-20', giftId: G_DUNE, userId: MARTIN, quantity: 1 },
 			{ id: 'seed-r-21', giftId: G_1984, userId: JANA, quantity: 1 },
 
-			// Petrovy narozeniny — Eva reserves one (Martin reserves nothing → list stays "open")
+			// Petrovy narozeniny – Eva reserves one (Martin reserves nothing → list stays "open")
 			{ id: 'seed-r-22', giftId: G_HODINKY, userId: EVA, quantity: 1 },
 
 			// Martin's bought lists: he reserved AND marked purchased → "bought" section.
@@ -1181,11 +1181,11 @@ async function seed() {
 			{ id: 'seed-lk-6', giftId: G_KYTARA, userId: PETR },
 			{ id: 'seed-lk-7', giftId: G_VARENI, userId: EVA },
 
-			// Jana — Přání k svátku
+			// Jana – Přání k svátku
 			{ id: 'seed-lk-8', giftId: G_KABELKA, userId: EVA },
 			{ id: 'seed-lk-9', giftId: G_SATEK, userId: MARTIN },
 
-			// Tomáš — Knihy
+			// Tomáš – Knihy
 			{ id: 'seed-lk-10', giftId: G_DUNE, userId: JANA },
 		]);
 
@@ -1213,12 +1213,12 @@ async function seed() {
 		// ---------------------------------------------------------------
 		console.log('Seeding followers...');
 		await db.insert(wishlistFollower).values([
-			// Vánoce 2026 — all active
+			// Vánoce 2026 – all active
 			{ wishlistId: WL_XMAS26, userId: JANA, createdAt: d('2026-06-15T12:00:00Z') },
 			{ wishlistId: WL_XMAS26, userId: PETR, createdAt: d('2026-06-16T09:00:00Z') },
 			{ wishlistId: WL_XMAS26, userId: EVA, createdAt: d('2026-06-17T14:00:00Z') },
 
-			// Narozeniny — Eva unfollowed
+			// Narozeniny – Eva unfollowed
 			{ wishlistId: WL_BDAY, userId: JANA, createdAt: d('2026-02-02T10:00:00Z') },
 			{ wishlistId: WL_BDAY, userId: PETR, createdAt: d('2026-02-03T11:00:00Z') },
 			{
@@ -1228,12 +1228,12 @@ async function seed() {
 				unfollowedAt: d('2026-03-20T10:00:00Z'),
 			},
 
-			// Vánoce 2025 (archived) — all active
+			// Vánoce 2025 (archived) – all active
 			{ wishlistId: WL_XMAS25, userId: JANA, createdAt: d('2025-11-21T10:00:00Z') },
 			{ wishlistId: WL_XMAS25, userId: PETR, createdAt: d('2025-11-22T12:00:00Z') },
 			{ wishlistId: WL_XMAS25, userId: EVA, createdAt: d('2025-11-25T14:00:00Z') },
 
-			// Jana — Přání k svátku — Petr unfollowed
+			// Jana – Přání k svátku – Petr unfollowed
 			{ wishlistId: WL_SVATEK, userId: MARTIN, createdAt: d('2026-04-11T10:00:00Z') },
 			{ wishlistId: WL_SVATEK, userId: EVA, createdAt: d('2026-04-12T09:00:00Z') },
 			{
@@ -1243,20 +1243,20 @@ async function seed() {
 				unfollowedAt: d('2026-04-20T15:00:00Z'),
 			},
 
-			// Tomáš — Knihy 2026
+			// Tomáš – Knihy 2026
 			{ wishlistId: WL_KNIHY, userId: MARTIN, createdAt: d('2026-03-11T10:00:00Z') },
 			{ wishlistId: WL_KNIHY, userId: JANA, createdAt: d('2026-03-12T12:00:00Z') },
 
-			// Tomáš — Výbava do bytu (archived)
+			// Tomáš – Výbava do bytu (archived)
 			{ wishlistId: WL_BYT, userId: JANA, createdAt: d('2025-09-02T10:00:00Z') },
 			{ wishlistId: WL_BYT, userId: PETR, createdAt: d('2025-09-05T11:00:00Z') },
 			{ wishlistId: WL_BYT, userId: EVA, createdAt: d('2025-09-08T14:00:00Z') },
 
-			// Jana — Minulé narozeniny (archived)
+			// Jana – Minulé narozeniny (archived)
 			{ wishlistId: WL_JBDAY, userId: MARTIN, createdAt: d('2025-06-02T10:00:00Z') },
 			{ wishlistId: WL_JBDAY, userId: EVA, createdAt: d('2025-06-05T12:00:00Z') },
 
-			// Martin's followed spread — open (Petr, Eva), bought (Jana, Tomáš).
+			// Martin's followed spread – open (Petr, Eva), bought (Jana, Tomáš).
 			// Combined with WL_SVATEK + WL_KNIHY (reserved), this gives all three sections + truncation.
 			{ wishlistId: WL_PBDAY, userId: MARTIN, createdAt: d('2026-05-21T10:00:00Z') },
 			{ wishlistId: WL_PBDAY, userId: EVA, createdAt: d('2026-05-22T11:00:00Z') },
@@ -1362,11 +1362,11 @@ async function seed() {
 
 		console.log('');
 		console.log('Seed complete! Test accounts:');
-		console.log('  martin@test.cz  — Martin Novák');
-		console.log('  jana@test.cz    — Jana Dvořáková');
-		console.log('  petr@test.cz    — Petr Svoboda');
-		console.log('  eva@test.cz     — Eva Králová');
-		console.log('  tomas@test.cz   — Tomáš Černý');
+		console.log('  martin@test.cz  – Martin Novák');
+		console.log('  jana@test.cz    – Jana Dvořáková');
+		console.log('  petr@test.cz    – Petr Svoboda');
+		console.log('  eva@test.cz     – Eva Králová');
+		console.log('  tomas@test.cz   – Tomáš Černý');
 		console.log(`  Login with: ${SEED_PASSWORD}`);
 	} finally {
 		await client.end();

@@ -29,7 +29,7 @@ async function generateInviteLink(page: Page): Promise<string> {
 	const panel = await openModeratorPanel(page);
 	await panel.getByRole('button', { name: /Generovat pozvánku/ }).click();
 
-	// Link element appears in the panel — grab the full URL shown
+	// Link element appears in the panel – grab the full URL shown
 	const linkBox = panel.getByTestId('invite-link');
 	await expect(linkBox).toBeVisible({ timeout: 5_000 });
 	const inviteUrl = (await linkBox.textContent()) ?? '';
@@ -121,7 +121,7 @@ test.describe('Moderator system', () => {
 		await inviteePage.waitForLoadState('networkidle');
 
 		// Moderator sees gift reservation status (same as visitor, with full detail)
-		// The gift is visible and no "Moderátoři" button — moderators don't manage moderators
+		// The gift is visible and no "Moderátoři" button – moderators don't manage moderators
 		await expect(inviteePage.getByText('Invite Flow Gift')).toBeVisible({ timeout: 5_000 });
 		await expect(inviteePage.getByRole('button', { name: /Moderátoři/ })).not.toBeVisible();
 

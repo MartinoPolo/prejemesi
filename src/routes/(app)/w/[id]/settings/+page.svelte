@@ -69,7 +69,7 @@
 		const id = setInterval(() => {
 			eventDateClockNow = new Date();
 			if (eventDateClockNow.getTime() >= expiry) {
-				clearInterval(id); // window closed — the field has already re-locked
+				clearInterval(id); // window closed – the field has already re-locked
 			}
 		}, 1000);
 		return () => clearInterval(id);
@@ -150,7 +150,7 @@
 
 	// Deep link from the wishlist banner's hover "Edit image" button lands on #image.
 	// The async load resolves before this component mounts, so the native hash scroll
-	// misses the (not-yet-rendered) target — scroll it into view manually after render.
+	// misses the (not-yet-rendered) target – scroll it into view manually after render.
 	onMount(async () => {
 		if (page.url.hash !== '#image') {
 			return;
@@ -161,7 +161,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.wishlist_settings_title()} — Přejeme si</title>
+	<title>{m.wishlist_settings_title()} – Přejeme si</title>
 </svelte:head>
 
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">

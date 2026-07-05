@@ -9,13 +9,13 @@ import { registerAndGetPage } from './fixtures/auth-helpers.js';
  * The bug this protects against: editing a wishlist's appearance (theme / image / crop)
  * in `/w/<id>/settings` persisted correctly, but the SvelteKit remote `query` cache for
  * the dashboard list queries (getMyWishlists/Moderated/Followed) was never refreshed.
- * So the `/my-lists` card — and the navbar "recent" dropdowns — kept showing the OLD
+ * So the `/my-lists` card – and the navbar "recent" dropdowns – kept showing the OLD
  * theme/image until a full page reload.
  *
  * WHY THE OLD TESTS MISSED IT (the design lesson):
  * every existing appearance test verified persistence with `page.reload()` (or by
  * reopening a dialog on the same page). A full reload re-runs SSR and bypasses the stale
- * client cache entirely — it can NEVER catch a client-cache-invalidation bug.
+ * client cache entirely – it can NEVER catch a client-cache-invalidation bug.
  *
  * THE RULE these tests follow:
  *   1. Mutate on the settings page.
@@ -32,7 +32,7 @@ import { registerAndGetPage } from './fixtures/auth-helpers.js';
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
 
-// Locale-constant theme emojis (identical in cs + en) — see modules/wishlists/wishlist_theme.
+// Locale-constant theme emojis (identical in cs + en) – see modules/wishlists/wishlist_theme.
 const DEFAULT_THEME_EMOJI = '🎁';
 const CHRISTMAS_THEME_EMOJI = '🎄';
 
@@ -106,7 +106,7 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 		const title = 'Reaktivita motivu';
 		const shortId = await createWishlist(page, title); // created with the default theme
 
-		// Sanity baseline (full load is fine here — we only need the card to exist at default).
+		// Sanity baseline (full load is fine here – we only need the card to exist at default).
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');
 		await expect(card(page, title)).toContainText(DEFAULT_THEME_EMOJI, { timeout: 10_000 });
@@ -126,7 +126,7 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 			timeout: 10_000,
 		});
 
-		// Client-side navigate back — the card MUST already show the new theme (regression).
+		// Client-side navigate back – the card MUST already show the new theme (regression).
 		await spaNavigateToMyLists(page);
 		await expect(card(page, title)).toContainText(CHRISTMAS_THEME_EMOJI, { timeout: 10_000 });
 		await expect(card(page, title)).not.toContainText(DEFAULT_THEME_EMOJI);
@@ -145,7 +145,7 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 		const title = 'Reaktivita obrazku';
 		const shortId = await createWishlist(page, title);
 
-		// Baseline (full load): no image yet — the card renders the themed emoji fallback (no <img>).
+		// Baseline (full load): no image yet – the card renders the themed emoji fallback (no <img>).
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');
 		await expect(card(page, title)).toBeVisible({ timeout: 10_000 });
@@ -167,7 +167,7 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 			},
 		);
 
-		// Client-side navigate back — the card MUST now render the image, not the fallback.
+		// Client-side navigate back – the card MUST now render the image, not the fallback.
 		await spaNavigateToMyLists(page);
 		await expect(card(page, title).locator('img')).toBeVisible({ timeout: 10_000 });
 

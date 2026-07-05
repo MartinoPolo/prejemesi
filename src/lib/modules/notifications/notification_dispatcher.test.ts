@@ -73,7 +73,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 
-describe('dispatchNotification — honoring per-user preferences', () => {
+describe('dispatchNotification – honoring per-user preferences', () => {
 	it('inserts in-app rows only for users with in-app enabled', async () => {
 		const type = NOTIFICATION_TYPE.RESERVED_GIFT_EDITED; // email-capable type
 		const { db, insertedValues } = makeDispatcherDb([
@@ -156,7 +156,7 @@ describe('dispatchNotification — honoring per-user preferences', () => {
 	});
 });
 
-describe('dispatchNotification — urlPathOverride', () => {
+describe('dispatchNotification – urlPathOverride', () => {
 	it('when urlPathOverride is set, email CTA url is origin + override path (not plain wishlist url)', async () => {
 		const type = NOTIFICATION_TYPE.MODERATOR_INVITED;
 		const overridePath = '/w/short-abc/invite/tok-xyz';

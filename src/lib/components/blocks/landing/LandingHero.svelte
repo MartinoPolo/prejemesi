@@ -67,7 +67,7 @@
 			</p>
 		</div>
 
-		<!-- Visual column — floating wishlist card -->
+		<!-- Visual column – floating wishlist card -->
 		<div class="relative">
 			<div class="overflow-hidden rounded-3xl border border-border bg-background shadow-xl">
 				<!-- Card header -->
@@ -176,7 +176,7 @@
 		color: oklch(78% 0.08 60deg);
 	}
 
-	/* Gift icon background — uses --gift-hue custom property */
+	/* Gift icon background – uses --gift-hue custom property */
 	.gift-icon-bg {
 		background: oklch(94% 0.04 var(--gift-hue));
 	}

@@ -14,7 +14,7 @@ describe('resolveAutoFit', () => {
 	});
 
 	it('keeps cover-crop for moderately different ratios within the band', () => {
-		// 16:9 image in a 4:3 box — divergence < threshold
+		// 16:9 image in a 4:3 box – divergence < threshold
 		expect(resolveAutoFit(16 / 9, 4 / 3)).toBe(IMAGE_FIT_MODES.coverCrop);
 	});
 

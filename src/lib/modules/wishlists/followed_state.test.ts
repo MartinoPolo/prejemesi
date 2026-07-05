@@ -6,7 +6,7 @@ import {
 } from './dashboard_types.js';
 import { eventCountdown } from './event_countdown.js';
 
-/** Minimal FollowedWishlist for state derivation — only the reservation counters are read. */
+/** Minimal FollowedWishlist for state derivation – only the reservation counters are read. */
 function followed(myReservations: number, myPurchased: number): FollowedWishlist {
 	return { myReservations, myPurchased } as FollowedWishlist;
 }

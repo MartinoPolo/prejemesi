@@ -380,7 +380,7 @@ describe('WishlistImageSlotsSchema', () => {
 	});
 });
 
-describe('CreateGiftInputSchema — image metadata', () => {
+describe('CreateGiftInputSchema – image metadata', () => {
 	it('accepts a gift with valid image metadata', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',
@@ -410,7 +410,7 @@ describe('CreateGiftInputSchema — image metadata', () => {
 	});
 });
 
-describe('UpdateGiftInputSchema — image metadata', () => {
+describe('UpdateGiftInputSchema – image metadata', () => {
 	it('accepts updating only image metadata', () => {
 		const result = parseSuccess(UpdateGiftInputSchema, {
 			id: 'gift-1',
@@ -420,7 +420,7 @@ describe('UpdateGiftInputSchema — image metadata', () => {
 	});
 });
 
-describe('UpdateWishlistInputSchema — image assignment', () => {
+describe('UpdateWishlistInputSchema – image assignment', () => {
 	it('accepts a single image key plus per-slot metadata', () => {
 		const result = parseSuccess(UpdateWishlistInputSchema, {
 			id: 'wl-1',

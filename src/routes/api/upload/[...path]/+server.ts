@@ -1,5 +1,5 @@
 /**
- * Upload proxy route — intentional design choice over R2 presigned URLs.
+ * Upload proxy route – intentional design choice over R2 presigned URLs.
  *
  * Trade-off: upload bandwidth flows through the server. Acceptable for images
  * (max 10 MB). Consider presigned URLs if video/large-file uploads are added.
@@ -8,7 +8,7 @@
  * - HMAC token verification binds each upload to a specific user + objectKey
  * - Session cookie auth works without CORS presigned URL complexity
  * - Content-type and size validation happens server-side before storage
- * - Simpler client code — PUT to a same-origin URL
+ * - Simpler client code – PUT to a same-origin URL
  */
 import { readFile } from 'node:fs/promises';
 import { resolve, normalize } from 'node:path';
@@ -69,7 +69,7 @@ function validateTokenBinding(
 
 // In-memory store used only when no R2 binding is configured (e.g. plain
 // `node` runs without wrangler). Local dev and production both use R2, which
-// persists across restarts. Not persistent — entries are lost on restart.
+// persists across restarts. Not persistent – entries are lost on restart.
 const localDevStore = new Map<string, { body: ArrayBuffer; contentType: string }>();
 const LOCAL_DEV_STORE_MAX_ENTRIES = 50;
 
@@ -128,7 +128,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 			error(500, 'Failed to store upload');
 		}
 	} else {
-		// No R2 binding — keep the file in memory so uploads work in this session.
+		// No R2 binding – keep the file in memory so uploads work in this session.
 		if (localDevStore.size >= LOCAL_DEV_STORE_MAX_ENTRIES) {
 			const oldestKey = localDevStore.keys().next().value;
 			if (oldestKey !== undefined) {
@@ -142,7 +142,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 };
 
 /**
- * GET handler — serves files from R2 (or the in-memory fallback store).
+ * GET handler – serves files from R2 (or the in-memory fallback store).
  * Used as the public URL fallback when R2_PUBLIC_URL is not set.
  */
 export const GET: RequestHandler = async ({ params }) => {
@@ -177,7 +177,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		});
 	}
 
-	// Filesystem fallback — seed images downloaded by `pnpm db:seed`
+	// Filesystem fallback – seed images downloaded by `pnpm db:seed`
 	try {
 		const seedRoot = resolve(process.cwd(), '.seed-uploads');
 		const seedPath = resolve(seedRoot, normalize(objectKey));
@@ -217,7 +217,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		try {
 			await deleteObject(objectKey);
 		} catch {
-			// Best-effort delete — the object may already be gone
+			// Best-effort delete – the object may already be gone
 		}
 	} else {
 		localDevStore.delete(objectKey);

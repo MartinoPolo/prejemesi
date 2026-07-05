@@ -1,4 +1,4 @@
-/** Allowed image MIME types — shared between client and server. */
+/** Allowed image MIME types – shared between client and server. */
 export const ALLOWED_CONTENT_TYPES = [
 	'image/jpeg',
 	'image/png',

@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Přejeme si — Database Schema Visualization</title>
+		<title>Přejeme si – Database Schema Visualization</title>
 		<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 		<style>
 			:root {
@@ -342,7 +342,7 @@
 		</style>
 	</head>
 	<body>
-		<h1>Přejeme si — Database Schema</h1>
+		<h1>Přejeme si – Database Schema</h1>
 		<p class="subtitle">
 			Shareable wishlist app with surprise mechanic. Owner never sees reservation state.
 		</p>
@@ -351,7 +351,7 @@
 			<h3>Changes from v1 (2026-05-30)</h3>
 			<ul>
 				<li>
-					<span class="tag tag-new">NEW</span> <strong>priority_level</strong> table —
+					<span class="tag tag-new">NEW</span> <strong>priority_level</strong> table –
 					replaces jsonb column on wishlist. Owner can customize labels.
 				</li>
 				<li>
@@ -361,11 +361,11 @@
 				</li>
 				<li>
 					<span class="tag tag-changed">CHANGED</span>
-					<strong>wishlist_follower</strong> gains <code>unfollowed_at</code> — supports
+					<strong>wishlist_follower</strong> gains <code>unfollowed_at</code> – supports
 					"Zobrazit opustene" toggle on Sledovane page.
 				</li>
 				<li>
-					<span class="tag tag-changed">CHANGED</span> <strong>Notifications</strong> —
+					<span class="tag tag-changed">CHANGED</span> <strong>Notifications</strong> –
 					hard-deleted after 1 year (cron/scheduled job).
 				</li>
 				<li>
@@ -525,11 +525,11 @@
 				</tr>
 				<tr>
 					<td>wishlist</td>
-					<td>Owner "deletes" a wishlist — hidden from all views, data preserved</td>
+					<td>Owner "deletes" a wishlist – hidden from all views, data preserved</td>
 				</tr>
 				<tr>
 					<td>gift</td>
-					<td>Moderator removes an unreserved gift — reversible undo</td>
+					<td>Moderator removes an unreserved gift – reversible undo</td>
 				</tr>
 				<tr>
 					<td>reservation</td>
@@ -541,7 +541,7 @@
 				</tr>
 				<tr>
 					<td>moderator_assignment</td>
-					<td>Owner revokes moderator — preserves audit trail</td>
+					<td>Owner revokes moderator – preserves audit trail</td>
 				</tr>
 			</table>
 			<p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.75rem">
@@ -565,7 +565,7 @@
 					<tr>
 						<td class="pk">id</td>
 						<td>text</td>
-						<td>nanoid(12) — also the URL slug /w/{id}</td>
+						<td>nanoid(12) – also the URL slug /w/{id}</td>
 					</tr>
 					<tr>
 						<td class="fk">owner_id</td>
@@ -683,7 +683,7 @@
 				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
 					Default 3 levels seeded on wishlist creation: ["Nejvic chci", "Bylo by fajn",
 					"Kdyz nevite"]. Owner can rename, add, remove, reorder. Gift references
-					priority_level.id (nullable FK). No soft delete — levels are replaced/reordered
+					priority_level.id (nullable FK). No soft delete – levels are replaced/reordered
 					inline.
 				</p>
 			</div>
@@ -832,7 +832,7 @@
 				</table>
 				<p style="font-size: 0.75rem; color: var(--danger); margin-top: 0.5rem">
 					CHECK: user_id IS NOT NULL OR anonymous_name IS NOT NULL<br />
-					CHECK: user_id != (SELECT owner_id FROM wishlist WHERE id = gift.wishlist_id) —
+					CHECK: user_id != (SELECT owner_id FROM wishlist WHERE id = gift.wishlist_id) –
 					owner cannot reserve own gifts
 				</p>
 			</div>
@@ -873,7 +873,7 @@
 					</tr>
 				</table>
 				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
-					UNIQUE(gift_id, user_id) WHERE deleted_at IS NULL — one active like per user per
+					UNIQUE(gift_id, user_id) WHERE deleted_at IS NULL – one active like per user per
 					gift. Requires auth.
 				</p>
 			</div>
@@ -914,7 +914,7 @@
 					</tr>
 				</table>
 				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
-					UNIQUE(wishlist_id, user_id) WHERE deleted_at IS NULL — no duplicate active
+					UNIQUE(wishlist_id, user_id) WHERE deleted_at IS NULL – no duplicate active
 					assignments
 				</p>
 			</div>
@@ -970,7 +970,7 @@
 					</tr>
 				</table>
 				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
-					Valid = used_at IS NULL AND revoked_at IS NULL. No soft delete — revoked_at
+					Valid = used_at IS NULL AND revoked_at IS NULL. No soft delete – revoked_at
 					serves same purpose.
 				</p>
 			</div>
@@ -1016,7 +1016,7 @@
 				</table>
 				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
 					Auto-created on reservation (if auth). Manual follow/unfollow toggle. Re-follow
-					= SET unfollowed_at = NULL. No soft delete — unfollowed_at handles the
+					= SET unfollowed_at = NULL. No soft delete – unfollowed_at handles the
 					unfollow/re-follow cycle.
 				</p>
 			</div>
@@ -1097,7 +1097,7 @@
 			</div>
 			<div class="constraint">
 				<strong>Owner cannot reserve on own wishlist</strong>
-				Enforced at app level. Owner is the "recipient" role — if they want to reserve, they
+				Enforced at app level. Owner is the "recipient" role – if they want to reserve, they
 				follow someone else's list.
 			</div>
 			<div class="constraint">
@@ -1275,7 +1275,7 @@
 			<div class="flow-step">
 				<div class="num">2</div>
 				<div>
-					Check: if removing — gift has no active reservations (deleted_at IS NULL). Block
+					Check: if removing – gift has no active reservations (deleted_at IS NULL). Block
 					if any.
 				</div>
 			</div>
@@ -1529,7 +1529,7 @@
 					</tr>
 					<tr>
 						<td>Notification cleanup (cron)</td>
-						<td>notification(created_at) — for DELETE WHERE created_at < 1yr</td>
+						<td>notification(created_at) – for DELETE WHERE created_at < 1yr</td>
 					</tr>
 				</table>
 			</div>
@@ -1564,7 +1564,7 @@
 					<tr>
 						<td>priority_level</td>
 						<td>(wishlist_id, sort_order)</td>
-						<td>—</td>
+						<td>–</td>
 					</tr>
 				</table>
 				<p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem">
