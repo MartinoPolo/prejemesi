@@ -2,11 +2,7 @@
 	import LandingNav from '$lib/components/blocks/landing/LandingNav.svelte';
 	import LandingHero from '$lib/components/blocks/landing/LandingHero.svelte';
 	import LandingHowItWorks from '$lib/components/blocks/landing/LandingHowItWorks.svelte';
-	import LandingFeaturesHeader from '$lib/components/blocks/landing/LandingFeaturesHeader.svelte';
-	import LandingFeatureSecretReservations from '$lib/components/blocks/landing/LandingFeatureSecretReservations.svelte';
-	import LandingFeatureShareByLink from '$lib/components/blocks/landing/LandingFeatureShareByLink.svelte';
-	import LandingFeatureThemes from '$lib/components/blocks/landing/LandingFeatureThemes.svelte';
-	import LandingFeatureFreeForever from '$lib/components/blocks/landing/LandingFeatureFreeForever.svelte';
+	import LandingFeatureHighlights from '$lib/components/blocks/landing/LandingFeatureHighlights.svelte';
 	import LandingCallToAction from '$lib/components/blocks/landing/LandingCallToAction.svelte';
 	import LandingFooter from '$lib/components/blocks/landing/LandingFooter.svelte';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
@@ -34,10 +30,6 @@
 <LandingNav />
 <LandingHero />
 <LandingHowItWorks />
-<LandingFeaturesHeader />
-<LandingFeatureSecretReservations />
-<LandingFeatureShareByLink />
-<LandingFeatureThemes />
-<LandingFeatureFreeForever />
+<LandingFeatureHighlights />
 <LandingCallToAction />
 <LandingFooter />

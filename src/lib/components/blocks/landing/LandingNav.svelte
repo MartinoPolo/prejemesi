@@ -7,13 +7,40 @@
 </script>
 
 <nav
-	class="sticky top-0 z-30 flex h-[var(--nav-height)] items-center justify-between border-b border-border bg-background/92 px-6 backdrop-blur-lg md:px-8"
+	class="landing-nav sticky top-0 z-30 border-b border-border bg-background/92 backdrop-blur-lg"
 	aria-label={m.landing_nav_label()}
 >
-	<LogoMark />
-	<div class="flex items-center gap-2">
-		<DarkModeToggle />
-		<Button intent="ghost" href={resolve('/login')}>{m.landing_login()}</Button>
-		<Button href={resolve('/register')}>{m.register()}</Button>
+	<div
+		class="mx-auto flex h-16 w-full max-w-[var(--content-max-width)] items-center justify-between px-4 md:px-8"
+	>
+		<LogoMark />
+		<div class="flex items-center gap-2">
+			<DarkModeToggle />
+			<Button intent="ghost" size="sm" href={resolve('/login')}>{m.landing_login()}</Button>
+			<Button class="hidden sm:inline-flex" href={resolve('/register')}>{m.register()}</Button>
+		</div>
 	</div>
 </nav>
+
+<style>
+	@media (width >= 1280px) {
+		.landing-nav :global(.logo) {
+			font-size: var(--text-2xl);
+		}
+
+		.landing-nav :global(.logo-tld) {
+			font-size: var(--text-xl);
+		}
+
+		.landing-nav :global(.logo-icon-wrap) {
+			width: 36px;
+			height: 36px;
+			border-radius: var(--radius-lg);
+		}
+
+		.landing-nav :global(.logo-icon-wrap svg) {
+			width: 20px;
+			height: 20px;
+		}
+	}
+</style>
