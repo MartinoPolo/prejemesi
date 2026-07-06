@@ -1,9 +1,68 @@
+import { dev } from '$app/environment';
 import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { getTextDirection } from '$lib/paraglide/runtime';
 import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
+import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
+import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import type { BackgroundTheme } from '$lib/components/base/theme/types.js';
+
+function setSecurityHeaders(headers: Headers, url: URL) {
+	headers.set('X-Content-Type-Options', 'nosniff');
+	headers.set('X-Frame-Options', 'DENY');
+	headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	headers.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), payment=()');
+	headers.set(
+		'Content-Security-Policy',
+		[
+			"base-uri 'self'",
+			"object-src 'none'",
+			"frame-ancestors 'none'",
+			"form-action 'self'",
+			...(dev ? [] : ['upgrade-insecure-requests']),
+		].join('; '),
+	);
+
+	if (!dev) {
+		headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+	}
+
+	if (shouldNoindexPath(url.pathname)) {
+		headers.set('X-Robots-Tag', ROBOTS_NOINDEX_CONTENT);
+	}
+}
+
+const securityHeadersHandle: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+
+	try {
+		setSecurityHeaders(response.headers, event.url);
+		return response;
+	} catch {
+		const headers = new Headers(response.headers);
+		setSecurityHeaders(headers, event.url);
+		return new Response(response.body, {
+			status: response.status,
+			statusText: response.statusText,
+			headers,
+		});
+	}
+};
+
+const canonicalHostHandle: Handle = ({ event, resolve }) => {
+	if (!dev && event.url.hostname === WWW_HOSTNAME) {
+		const target = new URL(event.url.pathname + event.url.search, SITE_URL);
+		return new Response(null, {
+			status: 308,
+			headers: {
+				Location: target.toString(),
+			},
+		});
+	}
+
+	return resolve(event);
+};
 
 const paraglideHandle: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request: localizedRequest, locale }) => {
@@ -80,6 +139,12 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	return svelteKitHandler({ event, resolve, auth, building });
 };
 
-const handles: Handle[] = [paraglideHandle, authHandle, backgroundThemeHandle];
+const handles: Handle[] = [
+	securityHeadersHandle,
+	canonicalHostHandle,
+	paraglideHandle,
+	authHandle,
+	backgroundThemeHandle,
+];
 
 export const handle = sequence(...handles);

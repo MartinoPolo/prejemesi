@@ -13,6 +13,11 @@
 	let callbackUrl = $derived(page.url.searchParams.get('redirect') ?? resolve('/my-lists'));
 </script>
 
+<svelte:head>
+	<title>{m.register_title()} – Přejeme si</title>
+	<meta name="description" content={m.register_subtitle()} />
+</svelte:head>
+
 <AuthBrandPanel>
 	{#snippet tagline()}
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->

@@ -131,6 +131,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{m.login_title()} – Přejeme si</title>
+	<meta name="description" content={m.login_subtitle()} />
+</svelte:head>
+
 <AuthBrandPanel>
 	{#snippet tagline()}
 		<!-- eslint-disable-next-line svelte/no-at-html-tags -->

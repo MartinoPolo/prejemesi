@@ -4,7 +4,7 @@ import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
-import { renderActionEmail, sendEmail } from '$lib/server/email.js';
+import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
 import {
 	DEFAULT_NOTIFICATION_PREFERENCES,
 	EMAIL_NOTIFICATION_TYPES,
@@ -94,7 +94,7 @@ async function sendNotificationEmail(params: {
 		await sendEmail({
 			to: params.to,
 			subject: params.message,
-			html: renderActionEmail({
+			...renderActionEmailParts({
 				heading: params.message,
 				body: params.body,
 				buttonLabel: 'Open wishlist',

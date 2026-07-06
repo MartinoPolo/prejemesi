@@ -44,7 +44,8 @@ gitignored (only `.env.example` tracked), `prepare:false` for the pooler.
 6. Custom domain + `ORIGIN`: done
 7. Resend domain verification + `RESEND_API_KEY`: done
 8. Production auth hardening: done
-9. Google OAuth redirect URIs: pending only if Google login is used
+9. Production site hygiene: done
+10. Google OAuth redirect URIs: pending only if Google login is used
 
 ---
 
@@ -169,6 +170,15 @@ address.
 
 Current production sender: `Přejeme si <noreply@prejemesi.cz>`.
 
+DMARC is not managed by the app. Add this Cloudflare DNS TXT record:
+
+```txt
+_dmarc.prejemesi.cz "v=DMARC1; p=none; adkim=s; aspf=s"
+```
+
+Start with `p=none` for monitoring, then tighten to `quarantine`/`reject` after
+confirming legitimate mail passes SPF/DKIM alignment.
+
 ### K. Google OAuth (if used)
 
 In Google Cloud console add the authorized redirect URI:
@@ -180,6 +190,16 @@ In Google Cloud console add the authorized redirect URI:
 
 - `requireEmailVerification: true`
 - `sendOnSignUp: true`
+
+### M. Production site hygiene
+
+`src/hooks.server.ts` handles global production hygiene:
+
+- `www.prejemesi.cz` redirects to canonical `https://prejemesi.cz` with HTTP 308.
+- Auth, BetterAuth API, app-private routes, `/learn`, and private wishlist subroutes
+  emit `noindex, nofollow, noarchive`; exact public `/w/:id` wishlist pages remain indexable.
+- Security headers are applied to all routes, including `/api/auth/*`.
+- `/learn` is development-only and returns 404 in production.
 
 ---
 

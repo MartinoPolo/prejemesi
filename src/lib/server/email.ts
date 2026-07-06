@@ -17,6 +17,7 @@ interface SendEmailParams {
 	readonly to: string;
 	readonly subject: string;
 	readonly html: string;
+	readonly text?: string;
 	/** Prevents duplicate sends on retry. Use a stable per-event key. */
 	readonly idempotencyKey?: string;
 	/**
@@ -49,6 +50,7 @@ export async function sendEmail({
 	to,
 	subject,
 	html,
+	text,
 	idempotencyKey,
 	actionUrl,
 }: SendEmailParams): Promise<void> {
@@ -66,7 +68,7 @@ export async function sendEmail({
 	}
 
 	const { data, error } = await resend.emails.send(
-		{ from: getFrom(), to, subject, html },
+		{ from: getFrom(), to, subject, html, text: text ?? fallbackTextFromHtml(html) },
 		idempotencyKey !== undefined ? { idempotencyKey } : {},
 	);
 
@@ -89,17 +91,46 @@ export async function sendEmail({
 	}
 }
 
-/**
- * Renders a minimal action email (heading + body text + a call-to-action button).
- * Shared across auth flows and notification emails to keep markup consistent.
- */
-export function renderActionEmail(params: {
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function formatTextAsHtml(value: string): string {
+	return escapeHtml(value).replace(/\n/g, '<br>');
+}
+
+function fallbackTextFromHtml(html: string): string {
+	return html
+		.replace(/<br\s*\/?>/gi, '\n')
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/[ \t]+/g, ' ')
+		.replace(/\n\s+/g, '\n')
+		.trim();
+}
+
+interface ActionEmailParams {
 	readonly heading: string;
 	readonly body: string;
 	readonly buttonLabel: string;
 	readonly url: string;
-}): string {
+}
+
+/**
+ * Renders a minimal action email (heading + body text + a call-to-action button).
+ * Shared across auth flows and notification emails to keep markup consistent.
+ */
+export function renderActionEmail(params: ActionEmailParams): string {
 	const { heading, body, buttonLabel, url } = params;
+	const safeHeading = escapeHtml(heading);
+	const safeBody = formatTextAsHtml(body);
+	const safeButtonLabel = escapeHtml(buttonLabel);
+	const safeUrl = escapeHtml(url);
+
 	return `<!doctype html>
 <html>
   <body style="margin:0;padding:24px;background:#f6f6f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;">
@@ -107,14 +138,35 @@ export function renderActionEmail(params: {
       <tr><td align="center">
         <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:32px;">
           <tr><td>
-            <h1 style="margin:0 0 16px;font-size:20px;">${heading}</h1>
-            <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#444;">${body}</p>
-            <a href="${url}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">${buttonLabel}</a>
-            <p style="margin:24px 0 0;font-size:13px;color:#888;">Or copy this link into your browser:<br><span style="word-break:break-all;">${url}</span></p>
+            <h1 style="margin:0 0 16px;font-size:20px;">${safeHeading}</h1>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#444;">${safeBody}</p>
+            <a href="${safeUrl}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">${safeButtonLabel}</a>
+            <p style="margin:24px 0 0;font-size:13px;color:#888;">Or copy this link into your browser:<br><span style="word-break:break-all;">${safeUrl}</span></p>
           </td></tr>
         </table>
       </td></tr>
     </table>
   </body>
 </html>`;
+}
+
+export function renderActionEmailText(params: ActionEmailParams): string {
+	return `${params.heading}
+
+${params.body}
+
+${params.buttonLabel}: ${params.url}
+
+Or copy this link into your browser:
+${params.url}`;
+}
+
+export function renderActionEmailParts(params: ActionEmailParams): {
+	readonly html: string;
+	readonly text: string;
+} {
+	return {
+		html: renderActionEmail(params),
+		text: renderActionEmailText(params),
+	};
 }

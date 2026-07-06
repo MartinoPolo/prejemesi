@@ -79,6 +79,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{m.magic_title()} – Přejeme si</title>
+	<meta name="description" content={m.magic_subtitle()} />
+</svelte:head>
+
 <AuthBrandPanel>
 	{#snippet tagline()}
 		{#if sent}

@@ -848,4 +848,5 @@
 	<meta name="twitter:title" content={wishlist.title} />
 	<meta name="twitter:description" content="Seznam prani od {wishlist.ownerName}" />
 	<meta name="twitter:image" content={getWishlistSocialImageUrl()} />
+	<link rel="canonical" href={getWishlistPageUrl()} />
 </svelte:head>

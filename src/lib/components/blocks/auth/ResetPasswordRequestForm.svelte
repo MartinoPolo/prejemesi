@@ -7,6 +7,7 @@
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import AuthSuccessBanner from '$lib/components/blocks/auth/AuthSuccessBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import { getApplicationUrl } from '$lib/config/site.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let email = $state('');
@@ -46,7 +47,7 @@
 		try {
 			const result = await authClient.requestPasswordReset({
 				email: email.trim(),
-				redirectTo: window.location.origin + resolve('/reset-password'),
+				redirectTo: getApplicationUrl(resolve('/reset-password'), window.location.origin),
 			});
 
 			if (result.error) {

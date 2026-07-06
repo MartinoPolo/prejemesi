@@ -1,6 +1,7 @@
 import { createContext } from 'svelte';
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import { Derived } from '$lib/reactivity/derived.svelte.js';
+import { getApplicationHost, getApplicationUrl } from '$lib/config/site.js';
 import { SHARE_WIZARD_STEPS, type ShareWizardStep } from './types.js';
 
 type SharingContext = ReturnType<typeof createSharingContext>;
@@ -22,13 +23,13 @@ function createSharingContext(getShortId: () => string, getIsShared: () => boole
 	const linkCopied = new StateRaw(false);
 
 	const shareUrl = new Derived(() => {
-		const origin = typeof window !== 'undefined' ? window.location.origin : '';
-		return `${origin}/w/${wishlistShortId.current}`;
+		const origin = typeof window !== 'undefined' ? window.location.origin : undefined;
+		return getApplicationUrl(`/w/${wishlistShortId.current}`, origin);
 	});
 
 	const shareUrlDisplay = new Derived(() => {
-		const host = typeof window !== 'undefined' ? window.location.host : 'prejemesi.cz';
-		return `${host}/w/${wishlistShortId.current}`;
+		const host = typeof window !== 'undefined' ? window.location.host : undefined;
+		return `${getApplicationHost(host)}/w/${wishlistShortId.current}`;
 	});
 
 	function openWizard() {
