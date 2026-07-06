@@ -1,47 +1,55 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
-	import GiftIcon from '@lucide/svelte/icons/gift';
+	import LogoMark from '$lib/components/blocks/navbar/LogoMark.svelte';
+	import GithubBrandIcon from './GithubBrandIcon.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
-<footer class="border-t border-border bg-muted" aria-label={m.landing_footer_label()}>
+<footer class="border-t border-border bg-muted/70" aria-label={m.landing_footer_label()}>
 	<div
-		class="mx-auto flex max-w-[var(--content-max-width)] flex-col items-center gap-4 px-4 py-8 sm:flex-row sm:justify-between md:px-8"
+		class="mx-auto grid max-w-[var(--content-max-width)] gap-6 px-4 py-8 md:grid-cols-[1fr_auto] md:px-8"
 	>
-		<!-- Logo -->
-		<a
-			class="flex items-center gap-2 font-heading font-bold text-primary no-underline hover:opacity-80"
-			href={resolve('/')}
-			aria-label={m.landing_footer_homepage()}
-		>
-			<span
-				class="flex size-6 items-center justify-center rounded-sm bg-primary/10 text-primary"
-			>
-				<GiftIcon class="size-3.5" />
-			</span>
-			<span>prejemesi<span class="font-medium opacity-40">.cz</span></span>
-		</a>
+		<div class="flex flex-col gap-3">
+			<LogoMark />
+			<p class="max-w-xl text-sm leading-relaxed text-muted-foreground">
+				{m.landing_footer_author()}
+			</p>
+		</div>
 
-		<!-- Links -->
-		<nav class="flex items-center gap-1" aria-label={m.landing_footer_nav_label()}>
+		<nav
+			class="flex flex-wrap items-center gap-2 md:justify-end"
+			aria-label={m.landing_footer_nav_label()}
+		>
 			<a
-				href={resolve('/login')}
-				class="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline transition-all hover:bg-accent hover:text-foreground"
+				href="https://github.com/MartinoPolo/prejemesi"
+				target="_blank"
+				rel="noreferrer"
+				class="footer-link"
 			>
-				{m.landing_login()}
-			</a>
-			<span class="text-sm text-border" aria-hidden="true">·</span>
-			<a
-				href={resolve('/register')}
-				class="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline transition-all hover:bg-accent hover:text-foreground"
-			>
-				{m.landing_footer_create_account()}
+				<GithubBrandIcon class="size-4" />
+				{m.landing_footer_github()}
 			</a>
 		</nav>
-
-		<!-- Copyright -->
-		<div class="text-sm text-muted-foreground/70">
-			&copy; {new Date().getFullYear()} Přejeme si
-		</div>
 	</div>
 </footer>
+
+<style>
+	.footer-link {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		border-radius: var(--radius-lg);
+		color: var(--foreground);
+		padding: 0.5rem 0.75rem;
+		font-size: var(--text-sm);
+		font-weight: var(--weight-medium);
+		text-decoration: none;
+		transition:
+			background-color var(--duration-normal) var(--ease),
+			color var(--duration-normal) var(--ease);
+	}
+
+	.footer-link:hover {
+		background: var(--accent);
+		color: var(--accent-foreground);
+	}
+</style>
