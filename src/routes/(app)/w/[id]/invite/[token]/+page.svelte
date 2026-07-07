@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { toastSuccess } from '$lib/components/base/toast/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
@@ -29,7 +30,9 @@
 			toastSuccess(m.invite_toast_accepted());
 			// Redirect to the wishlist after a short delay
 			setTimeout(() => {
-				void goto(resolve('/(app)/w/[id]', { id: result.wishlistShortId }));
+				void goto(
+					localizeInternalHref(resolve('/(app)/w/[id]', { id: result.wishlistShortId })),
+				);
 			}, 1500);
 		} catch (thrown) {
 			errorMessage = translateServerError(thrown, m.invite_error_generic());
@@ -94,7 +97,11 @@
 				<Button
 					intent="outline"
 					onclick={() =>
-						void goto(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
+						void goto(
+							localizeInternalHref(
+								resolve('/(app)/w/[id]', { id: wishlistData.shortId }),
+							),
+						)}
 				>
 					{m.cancel()}
 				</Button>
@@ -113,7 +120,11 @@
 				<Button
 					intent="outline"
 					onclick={() =>
-						void goto(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
+						void goto(
+							localizeInternalHref(
+								resolve('/(app)/w/[id]', { id: wishlistData.shortId }),
+							),
+						)}
 				>
 					{m.invite_back_to_list()}
 				</Button>

@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
@@ -17,7 +18,7 @@
 			</p>
 		</div>
 
-		<Button size="lg" href={resolve('/register')} class="w-full sm:w-auto">
+		<Button size="lg" href={localizeInternalHref(resolve('/register'))} class="w-full sm:w-auto">
 			<GiftIcon data-icon="inline-start" />
 			{m.landing_hero_cta()}
 		</Button>

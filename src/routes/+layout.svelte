@@ -7,6 +7,8 @@
 	import notoSansLatinUrl from '@fontsource-variable/noto-sans/files/noto-sans-latin-wght-normal.woff2?url';
 	import { afterNavigate, preloadCode } from '$app/navigation';
 	import { browser, dev } from '$app/environment';
+	import { page } from '$app/state';
+	import { getLocaleForUrl, getTextDirection } from '$lib/paraglide/runtime.js';
 
 	// Dev-only tab title prefix – injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
@@ -17,6 +19,15 @@
 	}
 
 	let { children } = $props();
+	const currentLocale = $derived(getLocaleForUrl(page.url.href));
+	const currentTextDirection = $derived(getTextDirection(currentLocale));
+
+	$effect(() => {
+		if (browser) {
+			document.documentElement.lang = currentLocale;
+			document.documentElement.dir = currentTextDirection;
+		}
+	});
 
 	// afterNavigate fires after SvelteKit applies <svelte:head><title> from the page,
 	// so we can safely prepend without the page overwriting us again.
@@ -63,6 +74,8 @@
 	/>
 </svelte:head>
 
-{@render children()}
+{#key currentLocale}
+	{@render children()}
+{/key}
 
 <AppToaster />

@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { Progress } from '$lib/components/base/progress/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
@@ -71,7 +72,10 @@
 				{m.import_wizard_success({ count: giftCount })}
 			</p>
 			{#if resultShortId !== null && !suppressNavigation}
-				<Button intent="primary" href={resolve('/(app)/w/[id]', { id: resultShortId })}>
+				<Button
+					intent="primary"
+					href={localizeInternalHref(resolve('/(app)/w/[id]', { id: resultShortId }))}
+				>
 					{m.import_wizard_success_open()}
 					<ArrowRightIcon data-icon="inline-end" />
 				</Button>

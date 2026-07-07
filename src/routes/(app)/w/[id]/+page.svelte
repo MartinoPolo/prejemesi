@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -368,14 +369,16 @@
 	}
 
 	function handleSettingsOpened() {
-		void goto(resolve('/(app)/w/[id]/settings', { id: shortId }));
+		void goto(localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId })));
 	}
 
 	function handleEditImage() {
 		// resolve() handles the route; the #image fragment cannot be expressed through it,
 		// so the rule (which only accepts a bare resolve() call for goto) is disabled here.
 		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		void goto(`${resolve('/(app)/w/[id]/settings', { id: shortId })}#image`);
+		void goto(
+			`${localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId }))}#image`,
+		);
 	}
 
 	function handleShared() {

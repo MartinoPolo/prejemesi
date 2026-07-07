@@ -15,6 +15,13 @@
       "when": 1781420099024,
       "tag": "0001_chubby_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783349730301,
+      "tag": "0002_add_preferred_locale",
+      "breakpoints": true
     }
   ]
 }

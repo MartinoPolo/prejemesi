@@ -12,6 +12,7 @@ import {
 	type GiftByRole,
 } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+import { getLocale } from '$lib/paraglide/runtime.js';
 
 type GiftsContext = ReturnType<typeof createGiftsContext>;
 
@@ -103,7 +104,7 @@ function createGiftsContext(
 					return bPrice - aPrice;
 				}
 				case GIFT_SORT_OPTIONS.name:
-					return a.name.localeCompare(b.name, 'cs');
+					return a.name.localeCompare(b.name, getLocale());
 				case GIFT_SORT_OPTIONS.dateAdded:
 					return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 				default:

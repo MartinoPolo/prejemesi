@@ -8,6 +8,7 @@
 	import AuthSuccessBanner from '$lib/components/blocks/auth/AuthSuccessBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
 	import { getApplicationUrl } from '$lib/config/site.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let email = $state('');
@@ -47,7 +48,10 @@
 		try {
 			const result = await authClient.requestPasswordReset({
 				email: email.trim(),
-				redirectTo: getApplicationUrl(resolve('/reset-password'), window.location.origin),
+				redirectTo: getApplicationUrl(
+					localizeInternalHref(resolve('/reset-password')),
+					window.location.origin,
+				),
 			});
 
 			if (result.error) {
@@ -97,7 +101,11 @@
 	</form>
 {/if}
 
-<AuthFooterLink promptText="" linkHref={resolve('/login')} linkText={m.back_to_login()} />
+<AuthFooterLink
+	promptText=""
+	linkHref={localizeInternalHref(resolve('/login'))}
+	linkText={m.back_to_login()}
+/>
 
 <style>
 	.form-stack {

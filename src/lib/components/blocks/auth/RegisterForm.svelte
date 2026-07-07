@@ -10,6 +10,7 @@
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { resolve } from '$app/paths';
 
@@ -186,7 +187,7 @@
 
 <AuthFooterLink
 	promptText={m.register_has_account()}
-	linkHref={resolve('/login')}
+	linkHref={localizeInternalHref(resolve('/login'))}
 	linkText={m.register_login_link()}
 />
 

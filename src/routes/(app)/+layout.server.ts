@@ -4,6 +4,7 @@ import { resolve } from '$app/paths';
 import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
+import { getActiveLocaleForUrl, localizeInternalHref } from '$lib/i18n/locale.js';
 
 const PUBLIC_PATH_PREFIXES = ['/w/'];
 
@@ -12,8 +13,9 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	if (locals.session == null || locals.user == null) {
 		if (!isPublicRoute) {
-			const redirectParam = encodeURIComponent(url.pathname);
-			throw redirect(303, resolve('/login') + `?redirect=${redirectParam}`);
+			const redirectParam = url.pathname + url.search;
+			const loginHref = localizeInternalHref(resolve('/login'), getActiveLocaleForUrl(url));
+			throw redirect(303, `${loginHref}?${new URLSearchParams({ redirect: redirectParam })}`);
 		}
 		return { user: null, unreadNotificationCount: 0 };
 	}

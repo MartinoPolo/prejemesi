@@ -2,7 +2,9 @@
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
+	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import LogoMark from '$lib/components/blocks/navbar/LogoMark.svelte';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
@@ -16,8 +18,9 @@
 		<LogoMark />
 		<div class="flex items-center gap-2">
 			<DarkModeToggle />
-			<Button intent="ghost" size="sm" href={resolve('/login')}>{m.landing_login()}</Button>
-			<Button class="hidden sm:inline-flex" href={resolve('/register')}>{m.register()}</Button>
+			<LanguageToggle variant="icon" />
+			<Button intent="ghost" size="sm" href={localizeInternalHref(resolve('/login'))}>{m.landing_login()}</Button>
+			<Button class="hidden sm:inline-flex" href={localizeInternalHref(resolve('/register'))}>{m.register()}</Button>
 		</div>
 	</div>
 </nav>

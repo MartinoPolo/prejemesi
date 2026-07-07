@@ -7,6 +7,7 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import { authClient } from '$lib/auth_client.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface UserMenuProps {
@@ -18,13 +19,13 @@
 
 	let { userName, userEmail, userInitials, userImage = null }: UserMenuProps = $props();
 
-	const settingsHref = resolve('/(app)/settings');
+	const settingsHref = $derived(localizeInternalHref(resolve('/(app)/settings')));
 
 	async function handleSignOut() {
 		try {
 			await authClient.signOut();
 		} finally {
-			window.location.href = resolve('/');
+			window.location.href = localizeInternalHref(resolve('/'));
 		}
 	}
 </script>

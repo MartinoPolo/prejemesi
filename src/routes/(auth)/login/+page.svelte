@@ -15,6 +15,7 @@
 	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { authClient } from '$lib/auth_client.js';
+	import { getLocalizedAuthCallback, localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import ListIcon from '@lucide/svelte/icons/list';
 	import LinkIcon from '@lucide/svelte/icons/link';
@@ -36,7 +37,9 @@
 	let resending = $state(false);
 	let resendSent = $state(false);
 
-	let callbackUrl = $derived(page.url.searchParams.get('redirect') ?? resolve('/my-lists'));
+	let callbackUrl = $derived(
+		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/my-lists')),
+	);
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
@@ -99,7 +102,6 @@
 					errorMessage = m.login_error_credentials();
 				}
 			} else {
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				await goto(callbackUrl);
 			}
 		} catch {
@@ -223,7 +225,7 @@
 					disabled={loading}
 					onblur={handlePasswordBlur}
 				/>
-				<a href={resolve('/reset-password')} class="forgot-link"
+				<a href={localizeInternalHref(resolve('/reset-password'))} class="forgot-link"
 					>{m.login_forgot_password()}</a
 				>
 			</AuthFormField>
@@ -248,7 +250,7 @@
 
 	<AuthFooterLink
 		promptText={m.login_no_account()}
-		linkHref={resolve('/register')}
+		linkHref={localizeInternalHref(resolve('/register'))}
 		linkText={m.login_signup_link()}
 	/>
 </AuthFormCard>

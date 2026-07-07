@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
@@ -145,7 +146,7 @@
 	}
 
 	function goBack() {
-		void goto(resolve('/(app)/w/[id]', { id: shortId }));
+		void goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: shortId })));
 	}
 
 	// Deep link from the wishlist banner's hover "Edit image" button lands on #image.

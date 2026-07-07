@@ -5,6 +5,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import LockIcon from '@lucide/svelte/icons/lock';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
@@ -39,7 +40,7 @@
 			</p>
 
 			<div class="flex flex-wrap items-center gap-4">
-				<Button size="lg" href={resolve('/register')}>
+				<Button size="lg" href={localizeInternalHref(resolve('/register'))}>
 					<GiftIcon data-icon="inline-start" />
 					{m.landing_hero_cta()}
 				</Button>

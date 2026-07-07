@@ -1,6 +1,4 @@
-// ── Relative Time Formatting ───────────────────────────────────────────────
-
-const RELATIVE_TIME_FORMATTER = new Intl.RelativeTimeFormat('cs', { numeric: 'auto' });
+import { getLocale } from '$lib/paraglide/runtime.js';
 
 const TIME_DIVISIONS: { amount: number; unit: Intl.RelativeTimeFormatUnit }[] = [
 	{ amount: 60, unit: 'second' },
@@ -13,14 +11,15 @@ const TIME_DIVISIONS: { amount: number; unit: Intl.RelativeTimeFormatUnit }[] = 
 ];
 
 export function formatRelativeTime(date: Date): string {
+	const relativeTimeFormatter = new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' });
 	let durationSeconds = (date.getTime() - Date.now()) / 1000;
 
 	for (const division of TIME_DIVISIONS) {
 		if (Math.abs(durationSeconds) < division.amount) {
-			return RELATIVE_TIME_FORMATTER.format(Math.round(durationSeconds), division.unit);
+			return relativeTimeFormatter.format(Math.round(durationSeconds), division.unit);
 		}
 		durationSeconds /= division.amount;
 	}
 
-	return RELATIVE_TIME_FORMATTER.format(Math.round(durationSeconds), 'year');
+	return relativeTimeFormatter.format(Math.round(durationSeconds), 'year');
 }

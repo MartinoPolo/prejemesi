@@ -9,6 +9,7 @@
 	import AuthFormCard from '$lib/components/blocks/auth/AuthFormCard.svelte';
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import { getLocalizedAuthCallback, localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -22,7 +23,9 @@
 	let errorMessage = $state('');
 	let emailError = $state('');
 
-	let callbackUrl = $derived(page.url.searchParams.get('redirect') ?? resolve('/my-lists'));
+	let callbackUrl = $derived(
+		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/my-lists')),
+	);
 
 	function validateEmail(): boolean {
 		if (!email.trim()) {
@@ -123,7 +126,11 @@
 				{m.magic_sent_check()}<br />
 				{m.magic_sent_spam()}
 			</p>
-			<a href={resolve('/login')} class="success-back" onclick={handleReset}>
+			<a
+				href={localizeInternalHref(resolve('/login'))}
+				class="success-back"
+				onclick={handleReset}
+			>
 				<ChevronLeftIcon class="size-3.5" />
 				{m.back_to_login()}
 			</a>
@@ -168,7 +175,7 @@
 		</form>
 
 		<div class="auth-footer">
-			<a href={resolve('/login')}>
+			<a href={localizeInternalHref(resolve('/login'))}>
 				<ChevronLeftIcon class="inline size-3.5 align-[-2px]" />
 				{m.back_to_login()}
 			</a>

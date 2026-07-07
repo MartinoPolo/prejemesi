@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
+	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
@@ -16,6 +17,7 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import { cn } from '$lib/utils.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
@@ -140,7 +142,7 @@
 			name: wishlistRecord.title,
 			meta: giftCountLabel(wishlistRecord.totalGifts),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
-			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,
 			...thumbImage(wishlistRecord),
 			badgeLabel: badge.label,
@@ -154,7 +156,7 @@
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
-			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,
 			...thumbImage(wishlistRecord),
 			badgeLabel: `${wishlistRecord.reservedGifts}/${wishlistRecord.totalGifts}`,
@@ -169,7 +171,7 @@
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
-			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,
 			...thumbImage(wishlistRecord),
 			...followedBadge(wishlistRecord, state),
@@ -208,9 +210,9 @@
 	};
 
 	const NAV_LINKS = [
-		{ label: m.nav_my_lists(), href: resolve('/(app)/my-lists') },
-		{ label: m.nav_moderated(), href: resolve('/(app)/moderated') },
-		{ label: m.nav_followed(), href: resolve('/(app)/followed') },
+		{ label: m.nav_my_lists(), href: localizeInternalHref(resolve('/(app)/my-lists')) },
+		{ label: m.nav_moderated(), href: localizeInternalHref(resolve('/(app)/moderated')) },
+		{ label: m.nav_followed(), href: localizeInternalHref(resolve('/(app)/followed')) },
 	] as const;
 
 	const navDropdownItems = $derived<NavDropdownItem[][]>([
@@ -342,12 +344,15 @@
 
 		<!-- Dark mode toggle -->
 		<DarkModeToggle />
+		<LanguageToggle variant="icon" />
 
 		{#if user}
 			<!-- User menu -->
 			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
 		{:else}
-			<Button intent="primary" size="sm" href={resolve('/login')}>{m.nav_login()}</Button>
+			<Button intent="primary" size="sm" href={localizeInternalHref(resolve('/login'))}
+				>{m.nav_login()}</Button
+			>
 		{/if}
 	</div>
 </header>

@@ -2,7 +2,7 @@ import { dev } from '$app/environment';
 import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { getTextDirection } from '$lib/paraglide/runtime';
+import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
 import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
@@ -76,6 +76,52 @@ const paraglideHandle: Handle = ({ event, resolve }) =>
 		});
 	});
 
+function hasExplicitUrlLocale(url: URL) {
+	return url.pathname === '/en' || url.pathname.startsWith('/en/');
+}
+
+function setRequestLocaleCookie(request: Request, locale: Locale) {
+	const headers = new Headers(request.headers);
+	const existingCookie = headers.get('cookie') ?? '';
+	const cookieParts = existingCookie
+		.split(';')
+		.map((part) => part.trim())
+		.filter((part) => part.length > 0 && !part.startsWith(`${cookieName}=`));
+	cookieParts.push(`${cookieName}=${locale}`);
+	headers.set('cookie', cookieParts.join('; '));
+	return new Request(request, { headers });
+}
+
+const accountLocalePreferenceHandle: Handle = async ({ event, resolve }) => {
+	if (
+		event.locals.user != null &&
+		isDatabaseConfigured(event) &&
+		!hasExplicitUrlLocale(event.url) &&
+		event.url.pathname !== '/'
+	) {
+		try {
+			const { getDb } = await import('$lib/server/db/index.js');
+			const { user } = await import('$lib/server/db/auth.schema.js');
+			const { eq } = await import('drizzle-orm');
+
+			const rows = await getDb(event)
+				.select({ preferredLocale: user.preferredLocale })
+				.from(user)
+				.where(eq(user.id, event.locals.user.id))
+				.limit(1);
+
+			const preferredLocale = rows[0]?.preferredLocale;
+			if (preferredLocale != null) {
+				event.request = setRequestLocaleCookie(event.request, preferredLocale);
+			}
+		} catch (err) {
+			console.error('[accountLocalePreferenceHandle] failed to read preferred locale', err);
+		}
+	}
+
+	return resolve(event);
+};
+
 const DEFAULT_BACKGROUND_THEME: BackgroundTheme = 'default';
 
 /**
@@ -142,8 +188,9 @@ const authHandle: Handle = async ({ event, resolve }) => {
 const handles: Handle[] = [
 	securityHeadersHandle,
 	canonicalHostHandle,
-	paraglideHandle,
 	authHandle,
+	accountLocalePreferenceHandle,
+	paraglideHandle,
 	backgroundThemeHandle,
 ];
 

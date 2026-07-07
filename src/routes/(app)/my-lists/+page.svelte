@@ -10,6 +10,7 @@
 	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { getMyWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -40,7 +41,7 @@
 						new Date(a.updatedAt ?? a.createdAt).getTime(),
 				);
 			case 'alphabetical':
-				return sorted.sort((a, b) => a.title.localeCompare(b.title, 'cs'));
+				return sorted.sort((a, b) => a.title.localeCompare(b.title, getLocale()));
 			case 'dateCreated':
 				return sorted.sort(
 					(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

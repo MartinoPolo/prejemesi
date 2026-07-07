@@ -62,7 +62,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | Notification system (email critical, in-app batched)                           | Planned     | v1          |
 | Three nav pages (Moje seznamy / Spravované / Sledované, no Dashboard)          | Planned     | v1          |
 | Theming (wishlist themes + app background theme + token separation)            | In Progress | v1          |
-| i18n (Czech primary, English secondary)                                        | Planned     | v1          |
+| i18n (Czech primary, English secondary)                                        | In Progress | v1          |
 | Profile & settings (name, email, avatar, notification prefs, appearance theme) | In Progress | v1          |
 | Owner surprise protection (no reservation visibility, post-share edit rules)   | Planned     | v1          |
 | Mark gift as received                                                          | Planned     | v1          |
@@ -85,6 +85,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - Editing a reserved gift by moderator notifies the gifter (email if known).
 - Owner self-promoting to moderator triggers notification to all visitors.
 - Themes are per-wishlist (owner/moderator sets); dark/light/system mode is per-user. Client-side OKLCH palette derivation for custom themes.
+- Global language switcher is available in both the logged-in app header and landing header, next to the color-mode toggle. It uses drawn flag icons, not emoji flags, so Windows does not fall back to country-code letters. Locale changes use client-side SvelteKit navigation after updating Paraglide's cookie, avoiding a full document reload. Czech is the base unprefixed locale; English uses `/en/...`. Logged-in explicit switches persist `user.preferred_locale`.
 - Anonymous users can visit/reserve but have no persistence (no dashboard, no followed lists). Anonymous → registered auto-links reservations by email match.
 - Each gift has a quantity field (default 1, hidden when 1, optional unlimited).
 - Wishlists are open — anyone with the link can view and reserve. Logged-in visitors auto-follow on first visit.

@@ -140,7 +140,7 @@ describe('getNotifications', () => {
 			{
 				id: 'notif-1',
 				type: 'gift_reserved',
-				message: 'Gift was reserved',
+				message: 'Dárek byl rezervován',
 				wishlistId: 'wl-1',
 				giftId: 'gift-1',
 				actorName: 'Alice',
