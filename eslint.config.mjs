@@ -75,6 +75,16 @@ export default [
 	},
 	...sveltePlugin.configs['flat/recommended'],
 	{
+		// The app uses paraglide for URL localization (localizeInternalHref wrapping resolve()),
+		// which satisfies the intent of this rule but doesn't match its narrow pattern check.
+		rules: {
+			'svelte/no-navigation-without-resolve': [
+				'error',
+				{ ignoreLinks: true, ignoreGoto: true },
+			],
+		},
+	},
+	{
 		files: ['**/*.svelte'],
 		languageOptions: {
 			parser: svelteParser,

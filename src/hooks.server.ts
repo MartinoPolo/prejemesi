@@ -64,6 +64,61 @@ const canonicalHostHandle: Handle = ({ event, resolve }) => {
 	return resolve(event);
 };
 
+const PUBLIC_WISHLIST_PATH_PREFIXES = ['/w/', '/en/w/'] as const;
+
+const BETTER_AUTH_SESSION_COOKIE_NAMES = new Set([
+	'better-auth.session_token',
+	'__Secure-better-auth.session_token',
+	'better-auth-session_token',
+	'__Secure-better-auth-session_token',
+	'better-auth.session_data',
+	'__Secure-better-auth.session_data',
+	'better-auth-session_data',
+	'__Secure-better-auth-session_data',
+]);
+
+const BOT_PROBE_EXACT_PATHS = new Set(['/xmlrpc.php', '/.env', '/phpinfo.php']);
+const BOT_PROBE_PATH_PREFIXES = [
+	'/wp-',
+	'/wp/',
+	'/wordpress/',
+	'/phpmyadmin',
+	'/pma/',
+	'/.git/',
+] as const;
+
+function isPublicWishlistPath(pathname: string) {
+	return PUBLIC_WISHLIST_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function hasBetterAuthSessionCookie(headers: Headers) {
+	const cookieHeader = headers.get('cookie');
+	if (cookieHeader === null || cookieHeader.length === 0) {
+		return false;
+	}
+
+	return cookieHeader.split(';').some((cookiePart) => {
+		const cookieName = cookiePart.trim().split('=', 1)[0];
+		return BETTER_AUTH_SESSION_COOKIE_NAMES.has(cookieName);
+	});
+}
+
+function isBotProbePath(pathname: string) {
+	const lowerPathname = pathname.toLowerCase();
+	return (
+		BOT_PROBE_EXACT_PATHS.has(lowerPathname) ||
+		BOT_PROBE_PATH_PREFIXES.some((prefix) => lowerPathname.startsWith(prefix))
+	);
+}
+
+const botProbeHandle: Handle = ({ event, resolve }) => {
+	if (isBotProbePath(event.url.pathname)) {
+		return new Response('Not found', { status: 404 });
+	}
+
+	return resolve(event);
+};
+
 const paraglideHandle: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request: localizedRequest, locale }) => {
 		event.request = localizedRequest;
@@ -170,6 +225,13 @@ const authHandle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
+	if (
+		isPublicWishlistPath(event.url.pathname) &&
+		!hasBetterAuthSessionCookie(event.request.headers)
+	) {
+		return resolve(event);
+	}
+
 	const { createAuth } = await import('$lib/server/auth.js');
 	const { svelteKitHandler } = await import('better-auth/svelte-kit');
 	const { building } = await import('$app/environment');
@@ -188,6 +250,7 @@ const authHandle: Handle = async ({ event, resolve }) => {
 const handles: Handle[] = [
 	securityHeadersHandle,
 	canonicalHostHandle,
+	botProbeHandle,
 	authHandle,
 	accountLocalePreferenceHandle,
 	paraglideHandle,

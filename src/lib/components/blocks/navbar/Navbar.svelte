@@ -67,7 +67,17 @@
 		archived: { label: m.dashboard_status_archived(), variant: 'draft' },
 	};
 
-	const myListsQuery = $derived(user ? getMyWishlists() : null);
+	let shouldLoadNavDropdownData = $state(false);
+
+	function requestNavDropdownData() {
+		if (user !== null) {
+			shouldLoadNavDropdownData = true;
+		}
+	}
+
+	const canLoadNavDropdownData = $derived(user !== null && shouldLoadNavDropdownData);
+
+	const myListsQuery = $derived(canLoadNavDropdownData ? getMyWishlists() : null);
 	const myListsFiltered = $derived(
 		(myListsQuery?.current ?? []).filter((w) => w.status !== 'archived'),
 	);
@@ -75,7 +85,7 @@
 		myListsFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(wishlistToDropdownItem),
 	);
 
-	const moderatedQuery = $derived(user ? getModeratedWishlists() : null);
+	const moderatedQuery = $derived(canLoadNavDropdownData ? getModeratedWishlists() : null);
 	const moderatedFiltered = $derived(
 		(moderatedQuery?.current ?? []).filter((w) => w.status !== 'archived'),
 	);
@@ -83,7 +93,7 @@
 		moderatedFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(moderatedToDropdownItem),
 	);
 
-	const followedQuery = $derived(user ? getFollowedWishlists() : null);
+	const followedQuery = $derived(canLoadNavDropdownData ? getFollowedWishlists() : null);
 	const followedFiltered = $derived(
 		(followedQuery?.current ?? []).filter(
 			(w) => w.unfollowedAt === null && w.status !== 'archived',
@@ -254,7 +264,12 @@
 	<!-- Desktop nav links with dropdowns -->
 	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	{#if user}
-		<nav class="nav-links" aria-label={m.nav_main_label()}>
+		<nav
+			class="nav-links"
+			aria-label={m.nav_main_label()}
+			onpointerenter={requestNavDropdownData}
+			onfocusin={requestNavDropdownData}
+		>
 			{#each NAV_LINKS as link, i (link.href)}
 				<div class="nav-item">
 					<a

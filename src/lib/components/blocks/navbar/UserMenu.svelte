@@ -19,8 +19,6 @@
 
 	let { userName, userEmail, userInitials, userImage = null }: UserMenuProps = $props();
 
-	const settingsHref = $derived(localizeInternalHref(resolve('/(app)/settings')));
-
 	async function handleSignOut() {
 		try {
 			await authClient.signOut();
@@ -65,7 +63,7 @@
 		</DropdownMenu.Label>
 		<DropdownMenu.Separator />
 		<DropdownMenu.Group>
-			<DropdownMenu.Item onSelect={() => goto(settingsHref)}>
+			<DropdownMenu.Item onSelect={() => goto(localizeInternalHref(resolve('/settings')))}>
 				<SettingsIcon data-icon="inline-start" />
 				{m.nav_settings()}
 			</DropdownMenu.Item>

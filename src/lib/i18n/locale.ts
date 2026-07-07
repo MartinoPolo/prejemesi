@@ -6,13 +6,9 @@ import {
 	type Locale,
 } from '$lib/paraglide/runtime.js';
 
-export const DEFAULT_LOCALE: Locale = 'cs';
+const DEFAULT_LOCALE: Locale = 'cs';
 export const SUPPORTED_LOCALES = ['cs', 'en'] as const satisfies readonly Locale[];
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
-
-export function isSupportedLocale(value: unknown): value is SupportedLocale {
-	return typeof value === 'string' && SUPPORTED_LOCALES.includes(value as SupportedLocale);
-}
 
 export function getActiveLocaleForUrl(url: URL | string): Locale {
 	const parsedUrl = typeof url === 'string' ? new URL(url, 'http://localhost') : url;

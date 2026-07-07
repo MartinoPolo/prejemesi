@@ -6,7 +6,7 @@ import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { getActiveLocaleForUrl, localizeInternalHref } from '$lib/i18n/locale.js';
 
-const PUBLIC_PATH_PREFIXES = ['/w/'];
+const PUBLIC_PATH_PREFIXES = ['/w/', '/en/w/'];
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	const isPublicRoute = PUBLIC_PATH_PREFIXES.some((prefix) => url.pathname.startsWith(prefix));

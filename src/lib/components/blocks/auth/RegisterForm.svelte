@@ -108,7 +108,6 @@
 					errorMessage = m.register_error_failed();
 				}
 			} else {
-				// eslint-disable-next-line svelte/no-navigation-without-resolve
 				await goto(callbackUrl);
 			}
 		} catch {

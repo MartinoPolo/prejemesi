@@ -577,6 +577,7 @@
 	"wishlist_detail_unfollow": "Stop following",
 	"wishlist_detail_add_gift_label": "Add gift",
 	"wishlist_detail_add_wish": "Add wish",
+	"wishlist_detail_loading_gifts": "Loading wishes...",
 	"wishlist_detail_archived_empty_title": "List was archived",
 	"wishlist_detail_archived_empty_description": "This list was archived and is empty.",
 	"wishlist_detail_owner_empty_title": "Nothing here yet",

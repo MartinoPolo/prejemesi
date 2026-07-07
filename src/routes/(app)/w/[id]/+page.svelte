@@ -72,9 +72,6 @@
 	let { data } = $props();
 
 	const shortId = $derived(page.params.id!);
-	// Capture auth state before top-level await so Svelte doesn't warn about
-	// reading reactive $props in an initialization block.
-	const initialUser = untrack(() => data.user);
 	const isAuthenticated = $derived(data.user !== null);
 
 	// ── Reactive state (declared before await for synchronous context setup) ─
@@ -83,6 +80,7 @@
 	let gifts = $state<GiftByRole[]>([]);
 	let role = $state<WishlistRole>('visitor');
 	let likedGiftIds = $state.raw<string[]>([]);
+	let isGiftDataLoading = $state(true);
 
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
@@ -139,26 +137,13 @@
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
-	// Initial fetch reads `shortId` once at component creation. SvelteKit reuses this
-	// component across /w/[id] param changes, so this top-level await never re-runs – the
-	// `$effect` below detects shortId changes and calls refreshData(). Snapshot is intentional.
+	// SSR fetches only wishlist metadata for title/OG/header. Gift rows render client-side
+	// after mount to keep the Cloudflare Worker render path below the free CPU budget.
 	// svelte-ignore state_referenced_locally
-	const wishlistDataPromise = getWishlistByShortId(shortId);
-	// svelte-ignore state_referenced_locally
-	const giftsDataPromise = getGiftsByWishlistShortId(shortId);
-	const [wishlistData, giftsData] = await Promise.all([wishlistDataPromise, giftsDataPromise]);
+	const wishlistData = await getWishlistByShortId(shortId);
 
 	wishlist = wishlistData;
-	gifts = giftsData.gifts;
-	role = giftsData.role;
-
-	if (initialUser !== null) {
-		try {
-			likedGiftIds = await getUserLikesForWishlist();
-		} catch {
-			// Guarded calls may fail for unauthenticated users – ignore
-		}
-	}
+	role = wishlistData.role;
 
 	// ── Refresh function ─────────────────────────────────────────────────────
 
@@ -177,17 +162,43 @@
 			wishlist = freshWishlist;
 			gifts = freshGifts.gifts;
 			role = freshGifts.role;
-			if (isAuthenticated) {
-				try {
-					await getUserLikesForWishlist().refresh();
-					likedGiftIds = await getUserLikesForWishlist();
-				} catch {
-					// ignore
-				}
-			}
+			await refreshLikedGiftIds({ refresh: true });
 			await refreshWishlistDashboards();
 		} catch (thrown) {
 			console.error('Failed to refresh wishlist data:', thrown);
+		} finally {
+			isGiftDataLoading = false;
+		}
+	}
+
+	async function loadGiftData() {
+		isGiftDataLoading = true;
+		try {
+			const giftsData = await getGiftsByWishlistShortId(shortId);
+			gifts = giftsData.gifts;
+			role = giftsData.role;
+			await refreshLikedGiftIds();
+		} catch (thrown) {
+			console.error('Failed to load wishlist gifts:', thrown);
+			toastError(translateServerError(thrown));
+		} finally {
+			isGiftDataLoading = false;
+		}
+	}
+
+	async function refreshLikedGiftIds({ refresh = false }: { refresh?: boolean } = {}) {
+		if (!isAuthenticated) {
+			likedGiftIds = [];
+			return;
+		}
+
+		try {
+			if (refresh) {
+				await getUserLikesForWishlist().refresh();
+			}
+			likedGiftIds = await getUserLikesForWishlist();
+		} catch {
+			likedGiftIds = [];
 		}
 	}
 
@@ -252,6 +263,7 @@
 			return;
 		}
 		lastLoadedId = shortId;
+		isGiftDataLoading = true;
 		void refreshData();
 	});
 
@@ -260,6 +272,7 @@
 	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const totalCount = $derived(giftsContext.giftCount.current);
+	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
 	const hasActiveFilters = $derived(giftsContext.hasActiveFilters.current);
 	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
 	const isEmpty = $derived(totalCount === 0);
@@ -373,9 +386,7 @@
 	}
 
 	function handleEditImage() {
-		// resolve() handles the route; the #image fragment cannot be expressed through it,
-		// so the rule (which only accepts a bare resolve() call for goto) is disabled here.
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
+		// resolve() handles the route; the #image fragment cannot be expressed through it.
 		void goto(
 			`${localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId }))}#image`,
 		);
@@ -705,15 +716,26 @@
 
 	// ── Lifecycle: auto-follow on mount ───────────────────────────────────────
 
-	onMount(async () => {
-		if (isAuthenticated) {
-			try {
-				await followWishlist(wishlist.id);
-			} catch {
-				// Auto-follow failure is non-critical – ignore
-			}
-		}
+	onMount(() => {
+		void loadClientSideWishlistData();
 	});
+
+	async function loadClientSideWishlistData() {
+		await Promise.all([
+			loadGiftData(),
+			(async () => {
+				if (!isAuthenticated) {
+					return;
+				}
+
+				try {
+					await followWishlist(wishlist.id);
+				} catch {
+					// Auto-follow failure is non-critical – ignore
+				}
+			})(),
+		]);
+	}
 </script>
 
 <div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
@@ -727,7 +749,7 @@
 		eventDate={wishlist.eventDate}
 		status={wishlistStatus}
 		{role}
-		giftCount={totalCount}
+		giftCount={headerGiftCount}
 		ownerIsModerator={ownerIsModeratorLocal}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
@@ -762,6 +784,7 @@
 		{isOwner}
 		{isOwnerOrModerator}
 		{viewMode}
+		isLoading={isGiftDataLoading}
 		{isEmpty}
 		{isFilteredEmpty}
 		{draggedIndex}

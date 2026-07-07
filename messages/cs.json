@@ -577,6 +577,7 @@
 	"wishlist_detail_unfollow": "Přestat sledovat",
 	"wishlist_detail_add_gift_label": "Přidat dárek",
 	"wishlist_detail_add_wish": "Přidat přání",
+	"wishlist_detail_loading_gifts": "Načítání přání...",
 	"wishlist_detail_archived_empty_title": "Seznam byl archivován",
 	"wishlist_detail_archived_empty_description": "Tento seznam byl archivován a je prázdný.",
 	"wishlist_detail_owner_empty_title": "Zatím tu nic není",
