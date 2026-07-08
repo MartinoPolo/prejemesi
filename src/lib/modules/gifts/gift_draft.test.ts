@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parsePrice, validateDraft, findDuplicates, type GiftDraft } from './gift_draft.js';
-import { GIFT_CURRENCIES, MAX_GIFT_LINKS, type GiftLink } from './types.js';
+import { DEFAULT_DRAFT_PRIORITY, GIFT_CURRENCIES, MAX_GIFT_LINKS, type GiftLink } from './types.js';
 
 function makeDraft(overrides: Partial<GiftDraft> = {}): GiftDraft {
 	return {
@@ -9,6 +9,7 @@ function makeDraft(overrides: Partial<GiftDraft> = {}): GiftDraft {
 		links: [],
 		price: null,
 		currency: GIFT_CURRENCIES.CZK,
+		priority: DEFAULT_DRAFT_PRIORITY,
 		...overrides,
 	};
 }

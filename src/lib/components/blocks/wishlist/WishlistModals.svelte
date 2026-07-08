@@ -199,6 +199,7 @@
 		bind:open={batchAddDialogOpen}
 		{wishlistTitle}
 		isSubmitting={isBatchSubmitting}
+		priorityAvailable={priorityLevels.length >= 2}
 		onsubmit={onbatchsubmit}
 		onOpenChange={onbatchdialogopenchange}
 	/>

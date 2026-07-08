@@ -12,6 +12,8 @@
 		open: boolean;
 		wishlistTitle?: string;
 		isSubmitting?: boolean;
+		/** Show the priority heart column (hidden when the wishlist lacks ≥2 levels). */
+		priorityAvailable?: boolean;
 		onsubmit?: (drafts: GiftDraft[]) => void;
 		oncancel?: () => void;
 		onOpenChange?: (open: boolean) => void;
@@ -21,6 +23,7 @@
 		open = $bindable(false),
 		wishlistTitle = '',
 		isSubmitting = false,
+		priorityAvailable = true,
 		onsubmit,
 		oncancel,
 		onOpenChange,
@@ -70,7 +73,7 @@
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
 	<Dialog.Content
-		class="flex max-h-[90dvh] w-full max-w-[1100px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1100px]"
+		class="flex max-h-[90dvh] w-full max-w-[1180px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1180px]"
 	>
 		<Dialog.Header class="border-b border-border px-6 py-5 text-left">
 			<Dialog.Title class="font-heading text-xl font-bold tracking-tight">
@@ -87,7 +90,11 @@
 
 		<div class="min-h-0 flex-1 overflow-auto px-4 py-4">
 			{#key gridKey}
-				<GiftDraftGrid context={DRAFT_GRID_CONTEXT.batch} onchange={handleChange} />
+				<GiftDraftGrid
+					context={DRAFT_GRID_CONTEXT.batch}
+					{priorityAvailable}
+					onchange={handleChange}
+				/>
 			{/key}
 		</div>
 

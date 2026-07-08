@@ -19,8 +19,12 @@
 		<div class="flex items-center gap-2">
 			<DarkModeToggle />
 			<LanguageToggle variant="icon" />
-			<Button intent="ghost" size="sm" href={localizeInternalHref(resolve('/login'))}>{m.landing_login()}</Button>
-			<Button class="hidden sm:inline-flex" href={localizeInternalHref(resolve('/register'))}>{m.register()}</Button>
+			<Button intent="ghost" size="sm" href={localizeInternalHref(resolve('/login'))}
+				>{m.landing_login()}</Button
+			>
+			<Button class="hidden sm:inline-flex" href={localizeInternalHref(resolve('/register'))}
+				>{m.register()}</Button
+			>
 		</div>
 	</div>
 </nav>

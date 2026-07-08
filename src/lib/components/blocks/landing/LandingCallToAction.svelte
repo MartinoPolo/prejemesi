@@ -18,7 +18,11 @@
 			</p>
 		</div>
 
-		<Button size="lg" href={localizeInternalHref(resolve('/register'))} class="w-full sm:w-auto">
+		<Button
+			size="lg"
+			href={localizeInternalHref(resolve('/register'))}
+			class="w-full sm:w-auto"
+		>
 			<GiftIcon data-icon="inline-start" />
 			{m.landing_hero_cta()}
 		</Button>

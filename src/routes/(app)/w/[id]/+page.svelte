@@ -854,6 +854,7 @@
 		wishlistId={wishlist.id}
 		wishlistShortId={wishlist.shortId}
 		wishlistTitle={wishlist.title}
+		priorityLevelCount={priorityLevels.length}
 		existingGifts={importExistingGifts}
 		suppressNavigation
 		onsuccess={handleImportSuccess}
