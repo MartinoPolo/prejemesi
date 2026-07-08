@@ -14,18 +14,23 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftLinksCell from './GiftDraftLinksCell.svelte';
 	import GiftDraftPriceCell from './GiftDraftPriceCell.svelte';
+	import GiftDraftPriorityCell from './GiftDraftPriorityCell.svelte';
 	import {
 		draftRowStatusVariants,
 		DRAFT_GRID_COLUMNS,
+		DRAFT_GRID_COLUMNS_NO_PRIORITY,
 		DRAFT_COL_LABEL_CLASS,
 		DRAFT_DESTRUCTIVE_HOVER_CLASS,
 	} from './gift_draft_grid_variants.js';
 	import type { DraftGridRow } from './gift_draft_grid_model.js';
+	import type { DraftPriority } from '$lib/modules/gifts/types.js';
 
 	interface Props {
 		row: DraftGridRow;
 		/** Whole-card status derived by the grid (error > duplicate > ready). */
 		status: RowStatus;
+		/** Show the priority (heart) cell. Hidden when the target lacks ≥2 levels. */
+		showPriority: boolean;
 		/** Re-emit drafts after any edit/selection change. */
 		onchange?: () => void;
 		/** Remove this row entirely. */
@@ -34,7 +39,18 @@
 		ondismissduplicate: () => void;
 	}
 
-	let { row = $bindable(), status, onchange, ondelete, ondismissduplicate }: Props = $props();
+	let {
+		row = $bindable(),
+		status,
+		showPriority,
+		onchange,
+		ondelete,
+		ondismissduplicate,
+	}: Props = $props();
+
+	const gridColumns = $derived(
+		showPriority ? DRAFT_GRID_COLUMNS : DRAFT_GRID_COLUMNS_NO_PRIORITY,
+	);
 
 	let editing = $state(false);
 
@@ -51,12 +67,17 @@
 		row.selected = checked;
 		onchange?.();
 	}
+
+	function setPriority(next: DraftPriority) {
+		row.priority = next;
+		onchange?.();
+	}
 </script>
 
 <div
 	class={cn(
 		'relative flex flex-col gap-3 rounded-lg border border-border bg-surface px-5 py-4 transition-[background,border-color,box-shadow] duration-(--duration-normal) hover:shadow-sm',
-		DRAFT_GRID_COLUMNS,
+		gridColumns,
 		draftRowStatusVariants({ status }),
 		row.selected ? '' : 'opacity-50',
 		editing && 'shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_16%,transparent)]',
@@ -74,6 +95,9 @@
 				: m.draft_grid_select_row({ name: row.name })}
 		/>
 		<div class="flex-1"></div>
+		{#if showPriority}
+			<GiftDraftPriorityCell priority={row.priority} name={row.name} onchange={setPriority} />
+		{/if}
 		<Button
 			intent="ghost"
 			size="icon-sm"
@@ -187,7 +211,14 @@
 		/>
 	</div>
 
-	<!-- Desktop enrich + remove actions (col 6, sharing one tight track) -->
+	<!-- Priority heart toggle (col 6, desktop) -->
+	{#if showPriority}
+		<div class="hidden md:flex md:items-start md:justify-center md:pt-1">
+			<GiftDraftPriorityCell priority={row.priority} name={row.name} onchange={setPriority} />
+		</div>
+	{/if}
+
+	<!-- Desktop enrich + remove actions (col 7, sharing one tight track) -->
 	<div class="hidden md:flex md:items-start md:gap-0.5 md:pt-1">
 		<Button
 			intent="ghost"

@@ -2,6 +2,7 @@ import { normalizeGiftLinks, normalizeGiftUrl } from './gift_url.js';
 import {
 	DEFAULT_GIFT_CURRENCY,
 	GIFT_CURRENCIES,
+	type DraftPriority,
 	type GiftCurrency,
 	type GiftLink,
 } from './types.js';
@@ -13,6 +14,7 @@ export interface GiftDraft {
 	links: GiftLink[];
 	price: number | null;
 	currency: GiftCurrency;
+	priority: DraftPriority;
 }
 
 /** Lowercased tokens that map a raw price string to a {@link GiftCurrency}. */
@@ -94,6 +96,7 @@ export function validateDraft(draft: Readonly<GiftDraft>): {
 			links: normalizeGiftLinks(draft.links),
 			price: draft.price,
 			currency: draft.currency,
+			priority: draft.priority,
 		},
 	};
 }

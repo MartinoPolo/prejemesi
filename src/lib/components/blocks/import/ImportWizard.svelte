@@ -41,6 +41,8 @@
 				wishlistId: string;
 				wishlistShortId?: string;
 				wishlistTitle?: string;
+				/** Target wishlist's priority-level count; the heart column needs ≥2. */
+				priorityLevelCount?: number;
 				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
 				suppressNavigation?: boolean;
 				onsuccess?: () => void;
@@ -55,11 +57,19 @@
 		wishlistId,
 		wishlistShortId,
 		wishlistTitle,
+		priorityLevelCount,
 	}: ImportWizardProps & {
 		wishlistId?: string;
 		wishlistShortId?: string;
 		wishlistTitle?: string;
+		priorityLevelCount?: number;
 	} = $props();
+
+	// New-list mode always seeds the 3 default levels at commit, so priority is
+	// always assignable there; append mode depends on the target wishlist's levels.
+	const priorityAvailable = $derived(
+		mode === WIZARD_MODE.newList || (priorityLevelCount ?? 0) >= 2,
+	);
 
 	let currentStep = $state<WizardStep>(WIZARD_STEP.source);
 	let parsedRows = $state<string[][]>([]);
@@ -80,7 +90,7 @@
 		if (currentStep !== WIZARD_STEP.review) {
 			return 'sm:max-w-[680px]';
 		}
-		return mode === WIZARD_MODE.append ? 'sm:max-w-[1320px]' : 'sm:max-w-[1100px]';
+		return mode === WIZARD_MODE.append ? 'sm:max-w-[1400px]' : 'sm:max-w-[1180px]';
 	});
 
 	// Duplicate count for confirm step
@@ -268,6 +278,7 @@
 					{filename}
 					{mode}
 					{existingGifts}
+					{priorityAvailable}
 					onready={handleReviewReady}
 				/>
 			{:else if currentStep === WIZARD_STEP.confirm}

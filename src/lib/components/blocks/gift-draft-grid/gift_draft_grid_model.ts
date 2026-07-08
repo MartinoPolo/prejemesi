@@ -1,6 +1,8 @@
 import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
 import {
+	DEFAULT_DRAFT_PRIORITY,
 	DEFAULT_GIFT_CURRENCY,
+	type DraftPriority,
 	type GiftCurrency,
 	type GiftLink,
 } from '$lib/modules/gifts/types.js';
@@ -39,6 +41,8 @@ export interface DraftGridRow {
 	/** Raw price text (whole units); parsed to an integer on emit. */
 	price: string;
 	currency: GiftCurrency;
+	/** Binary priority toggled via the heart control; medium until set high. */
+	priority: DraftPriority;
 	selected: boolean;
 	/** Untouched batch starter – suppresses the premature error tint while blank. */
 	pristine: boolean;
@@ -58,6 +62,7 @@ export function createDraftGridRow(
 		links: (init?.links ?? []).map((link) => ({ ...link })),
 		price: init?.price != null ? String(init.price) : '',
 		currency: init?.currency ?? DEFAULT_GIFT_CURRENCY,
+		priority: init?.priority ?? DEFAULT_DRAFT_PRIORITY,
 		selected: opts?.selected ?? true,
 		pristine: opts?.pristine ?? false,
 		dismissedDuplicate: false,
@@ -74,5 +79,6 @@ export function rowToDraft(row: DraftGridRow): GiftDraft {
 		links: row.links.filter((link) => link.url.trim() !== ''),
 		price: parsed !== null && Number.isFinite(parsed) ? parsed : null,
 		currency: row.currency,
+		priority: row.priority,
 	};
 }

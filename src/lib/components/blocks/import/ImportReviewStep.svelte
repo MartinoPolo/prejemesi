@@ -27,6 +27,8 @@
 		filename?: string;
 		mode: WizardMode;
 		existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+		/** Show the priority heart column (hidden when the target lacks ≥2 levels). */
+		priorityAvailable?: boolean;
 		onready: (data: { drafts: GiftDraft[]; title?: string }) => void;
 	}
 
@@ -35,6 +37,7 @@
 		filename,
 		mode,
 		existingGifts = [],
+		priorityAvailable = true,
 		onready,
 	}: ImportReviewStepProps = $props();
 
@@ -178,6 +181,7 @@
 				{existingGifts}
 				allowAddRow={false}
 				showLegend={false}
+				{priorityAvailable}
 				onchange={handleGridChange}
 			/>
 		{/key}

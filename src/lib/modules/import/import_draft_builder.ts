@@ -2,7 +2,7 @@ import type { DetectedColumn } from '$lib/modules/import/detect_columns.js';
 import { COLUMN_ROLE } from '$lib/modules/import/detect_columns.js';
 import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
 import { parsePrice } from '$lib/modules/gifts/gift_draft.js';
-import { DEFAULT_GIFT_CURRENCY } from '$lib/modules/gifts/types.js';
+import { DEFAULT_DRAFT_PRIORITY, DEFAULT_GIFT_CURRENCY } from '$lib/modules/gifts/types.js';
 
 /**
  * Build {@link GiftDraft} rows from parsed data rows + detected column mapping.
@@ -51,6 +51,6 @@ export function buildDraftRows(
 			}
 		}
 
-		return { name, description, links, price, currency };
+		return { name, description, links, price, currency, priority: DEFAULT_DRAFT_PRIORITY };
 	});
 }
