@@ -7,7 +7,7 @@ import { getRequestEvent } from '$app/server';
  * reservations across requests. We mint an opaque random id the first time an
  * anonymous visitor reserves a gift, store it in an httpOnly cookie, and persist
  * it on the reservation row (`reservation.anonymous_visitor_id`). Whoever holds
- * the cookie can later cancel that reservation — a capability token scoped to the
+ * the cookie can later cancel that reservation – a capability token scoped to the
  * browser. UUIDv4 (122 bits of randomness) is unguessable, so a leaked id is the
  * only way to act on someone else's anonymous reservation.
  *
@@ -36,7 +36,7 @@ export function getAnonVisitorId(): string | null {
 
 /**
  * Returns the existing anonymous visitor id, or mints + sets a new one.
- * MUST be called from a `command`/`form` handler — only those may write cookies.
+ * MUST be called from a `command`/`form` handler – only those may write cookies.
  * Returns null outside a request context (unit tests), in which case the caller
  * simply persists a null visitor id (the reservation still succeeds).
  */

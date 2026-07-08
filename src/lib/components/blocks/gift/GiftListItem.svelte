@@ -114,6 +114,7 @@
 		<GiftDescription
 			description={gift.description}
 			descriptionAppends={gift.descriptionAppends}
+			maxVisibleAppends={1}
 		/>
 	</div>
 

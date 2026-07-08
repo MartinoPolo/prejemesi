@@ -8,17 +8,17 @@ import {
 vi.mock('$env/dynamic/private', () => ({ env: {} }));
 vi.mock('$lib/server/db/index.js', () => ({ getDb: vi.fn() }));
 vi.mock('$lib/server/email.js', () => ({
-	renderActionEmail: vi.fn(() => '<html></html>'),
+	renderActionEmailParts: vi.fn(() => ({ html: '<html></html>', text: 'text' })),
 	sendEmail: vi.fn(async () => undefined),
 }));
 
 import { dispatchNotification } from './notification_dispatcher.js';
 import { getDb } from '$lib/server/db/index.js';
-import { sendEmail, renderActionEmail } from '$lib/server/email.js';
+import { sendEmail, renderActionEmailParts } from '$lib/server/email.js';
 
 const mockGetDb = vi.mocked(getDb);
 const mockSendEmail = vi.mocked(sendEmail);
-const mockRenderActionEmail = vi.mocked(renderActionEmail);
+const mockRenderActionEmailParts = vi.mocked(renderActionEmailParts);
 
 interface MockUserRow {
 	id: string;
@@ -73,7 +73,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 
-describe('dispatchNotification — honoring per-user preferences', () => {
+describe('dispatchNotification – honoring per-user preferences', () => {
 	it('inserts in-app rows only for users with in-app enabled', async () => {
 		const type = NOTIFICATION_TYPE.RESERVED_GIFT_EDITED; // email-capable type
 		const { db, insertedValues } = makeDispatcherDb([
@@ -156,7 +156,7 @@ describe('dispatchNotification — honoring per-user preferences', () => {
 	});
 });
 
-describe('dispatchNotification — urlPathOverride', () => {
+describe('dispatchNotification – urlPathOverride', () => {
 	it('when urlPathOverride is set, email CTA url is origin + override path (not plain wishlist url)', async () => {
 		const type = NOTIFICATION_TYPE.MODERATOR_INVITED;
 		const overridePath = '/w/short-abc/invite/tok-xyz';
@@ -194,8 +194,8 @@ describe('dispatchNotification — urlPathOverride', () => {
 		});
 
 		expect(mockSendEmail).toHaveBeenCalledOnce();
-		// The url passed to renderActionEmail must be origin + overridePath
-		expect(mockRenderActionEmail).toHaveBeenCalledWith(
+		// The url passed to renderActionEmailParts must be origin + overridePath
+		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
 			expect.objectContaining({ url: `http://localhost:5173${overridePath}` }),
 		);
 	});

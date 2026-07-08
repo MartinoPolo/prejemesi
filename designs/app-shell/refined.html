@@ -3,8 +3,8 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<meta name="description" content="Přejeme si — App Shell refined mockup, light mode only" />
-		<title>Přejeme si — App Shell: REFINED (Variant 1 + agreed nav decisions)</title>
+		<meta name="description" content="Přejeme si – App Shell refined mockup, light mode only" />
+		<title>Přejeme si – App Shell: REFINED (Variant 1 + agreed nav decisions)</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -13,7 +13,7 @@
 		/>
 		<link rel="stylesheet" href="../tokens.css" />
 		<style>
-			/* ── REFINED — App Shell: Variant 1 + agreed nav decisions ──────
+			/* ── REFINED – App Shell: Variant 1 + agreed nav decisions ──────
 			   Light mode only. Dark mode auto-generated from tokens.
 			   Changes from variant-1:
 			   - Gift-box SVG logo icon (no emoji)
@@ -337,7 +337,7 @@
 				flex-shrink: 0;
 			}
 
-			/* Create button — primary */
+			/* Create button – primary */
 			.btn-create {
 				display: inline-flex;
 				align-items: center;
@@ -430,7 +430,7 @@
 				border-color: var(--primary);
 			}
 
-			/* User dropdown — open for demo */
+			/* User dropdown – open for demo */
 			.user-dropdown {
 				position: absolute;
 				top: calc(100% + var(--space-2));
@@ -518,7 +518,7 @@
 				flex-shrink: 0;
 			}
 
-			/* Right toolbar — sort + view switcher + archive toggle */
+			/* Right toolbar – sort + view switcher + archive toggle */
 			.page-toolbar {
 				display: flex;
 				align-items: center;
@@ -700,14 +700,14 @@
 	</head>
 	<body>
 		<!-- ── Eyebrow header ── -->
-		<div class="refined-eyebrow">REFINED — App Shell: Variant 1 + agreed nav decisions</div>
+		<div class="refined-eyebrow">REFINED – App Shell: Variant 1 + agreed nav decisions</div>
 
 		<!-- ════════════════════════════════════════════════════════
 		     TOP NAVIGATION BAR
 		     ════════════════════════════════════════════════════════ -->
 		<header class="topbar">
-			<!-- Logo: gift-box SVG icon + "prejemesi" + dimmed ".cz" — both link to home -->
-			<a class="logo" href="/" aria-label="Přejeme si — domovská stránka">
+			<!-- Logo: gift-box SVG icon + "prejemesi" + dimmed ".cz" – both link to home -->
+			<a class="logo" href="/" aria-label="Přejeme si – domovská stránka">
 				<div class="logo-icon-wrap" aria-hidden="true">
 					<!-- Lucide-style gift box icon, 18×18 within 30×30 container -->
 					<svg
@@ -733,7 +733,7 @@
 
 			<!-- Primary nav: links that also open dropdowns on hover -->
 			<nav class="nav-links" aria-label="Hlavní navigace">
-				<!-- Moje seznamy — ACTIVE, dropdown shown open for demo -->
+				<!-- Moje seznamy – ACTIVE, dropdown shown open for demo -->
 				<div class="nav-item is-open">
 					<a class="nav-link is-active" href="/dashboard" aria-current="page">
 						Moje seznamy
@@ -753,7 +753,7 @@
 					</a>
 
 					<!-- Dropdown: 3 recent wishlists + "Zobrazit vše →". NO "Nový seznam", NO "Archivované". -->
-					<div class="nav-dropdown" role="menu" aria-label="Nedávné seznamy — Moje">
+					<div class="nav-dropdown" role="menu" aria-label="Nedávné seznamy – Moje">
 						<div class="nav-dropdown-header">
 							<span class="nav-dropdown-title">Nedávné</span>
 							<a class="nav-dropdown-view-all" href="/dashboard">
@@ -875,8 +875,8 @@
 							<polyline points="6 9 12 15 18 9" />
 						</svg>
 					</a>
-					<!-- Dropdown (hidden at rest — shown on hover via CSS) -->
-					<div class="nav-dropdown" role="menu" aria-label="Nedávné — Spravované">
+					<!-- Dropdown (hidden at rest – shown on hover via CSS) -->
+					<div class="nav-dropdown" role="menu" aria-label="Nedávné – Spravované">
 						<div class="nav-dropdown-header">
 							<span class="nav-dropdown-title">Nedávné</span>
 							<a class="nav-dropdown-view-all" href="/spravovane">Zobrazit vše →</a>
@@ -926,7 +926,7 @@
 							<polyline points="6 9 12 15 18 9" />
 						</svg>
 					</a>
-					<div class="nav-dropdown" role="menu" aria-label="Nedávné — Sledované">
+					<div class="nav-dropdown" role="menu" aria-label="Nedávné – Sledované">
 						<div class="nav-dropdown-header">
 							<span class="nav-dropdown-title">Nedávné</span>
 							<a class="nav-dropdown-view-all" href="/sledovane">Zobrazit vše →</a>
@@ -959,7 +959,7 @@
 
 			<!-- Right controls -->
 			<div class="nav-right">
-				<!-- + Vytvořit — primary CTA -->
+				<!-- + Vytvořit – primary CTA -->
 				<a class="btn-create" href="/vytvorit" role="button">
 					<svg
 						width="16"
@@ -977,7 +977,7 @@
 					Vytvořit
 				</a>
 
-				<!-- Notification bell — ghost, red badge "3" -->
+				<!-- Notification bell – ghost, red badge "3" -->
 				<button class="icon-btn" aria-label="Oznámení (3 nepřečtené)">
 					<svg
 						width="20"
@@ -996,10 +996,10 @@
 					<span class="notif-badge" aria-hidden="true">3</span>
 				</button>
 
-				<!-- Dark mode toggle — single cycling ghost button, light mode active -->
+				<!-- Dark mode toggle – single cycling ghost button, light mode active -->
 				<!-- tooltip: "Světlý režim" (current state label) -->
 				<button class="icon-btn" aria-label="Přepnout režim zobrazení" title="Světlý režim">
-					<!-- Sun icon — light mode active -->
+					<!-- Sun icon – light mode active -->
 					<svg
 						width="20"
 						height="20"
@@ -1027,7 +1027,7 @@
 				<div class="user-menu-wrap">
 					<button
 						class="avatar"
-						aria-label="Jana Nováková — menu uživatele"
+						aria-label="Jana Nováková – menu uživatele"
 						aria-haspopup="true"
 					>
 						JN
@@ -1097,7 +1097,7 @@
 		</header>
 
 		<!-- ════════════════════════════════════════════════════════
-		     PAGE CONTENT — "Moje seznamy" (default home page)
+		     PAGE CONTENT – "Moje seznamy" (default home page)
 		     ════════════════════════════════════════════════════════ -->
 		<main class="content-wrap">
 			<!-- Single merged title + toolbar row (no separate toolbar below) -->
@@ -1105,7 +1105,7 @@
 				<h1 class="page-title">Moje seznamy</h1>
 
 				<div class="page-toolbar" role="toolbar" aria-label="Nástroje stránky">
-					<!-- Sort dropdown — explicit label -->
+					<!-- Sort dropdown – explicit label -->
 					<button class="sort-btn" aria-haspopup="listbox" aria-label="Seřadit seznam">
 						<svg
 							width="15"
@@ -1140,7 +1140,7 @@
 
 					<!-- View switcher: Card | List -->
 					<div class="view-switcher" role="group" aria-label="Zobrazení">
-						<!-- Card view — active -->
+						<!-- Card view – active -->
 						<button
 							class="view-btn is-active"
 							title="Zobrazení karet"
@@ -1258,7 +1258,7 @@
 						🎂
 					</div>
 					<div class="wl-card-body">
-						<div class="wl-card-name">Narozeniny — Petr</div>
+						<div class="wl-card-name">Narozeniny – Petr</div>
 						<div class="wl-card-sub">Upraveno včera</div>
 						<div class="wl-card-meta">
 							<span class="wl-stat"><b>5</b> přání</span>

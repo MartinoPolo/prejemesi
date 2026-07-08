@@ -230,12 +230,12 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 
 	// Check authorization: only the reserver (or a moderator) can unreserve
 	if (reservationRow.userId !== null) {
-		// Authenticated reservation — must match userId
+		// Authenticated reservation – must match userId
 		if (authContext === null || authContext.user.id !== reservationRow.userId) {
 			error(403, SERVER_ERROR.CANNOT_CANCEL_OTHERS_RESERVATION);
 		}
 	} else if (authContext === null) {
-		// Anonymous reservation cancelled by an anonymous visitor — only the original
+		// Anonymous reservation cancelled by an anonymous visitor – only the original
 		// reserver may, proven by holding the matching per-browser capability cookie.
 		const anonVisitorId = getAnonVisitorId();
 		if (
@@ -246,7 +246,7 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 			error(403, SERVER_ERROR.ANONYMOUS_CANNOT_CANCEL_RESERVATIONS);
 		}
 	} else {
-		// Anonymous reservation cancelled by an authenticated user — must be a moderator.
+		// Anonymous reservation cancelled by an authenticated user – must be a moderator.
 		const giftRow = await database
 			.select({ wishlistId: gift.wishlistId })
 			.from(gift)
@@ -275,7 +275,7 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 
 /**
  * Toggle the gifter-private "I bought this" marker on the caller's own reservation. Optional
- * self-tracking only — never surfaced to the wishlist owner. Authenticated reservations only
+ * self-tracking only – never surfaced to the wishlist owner. Authenticated reservations only
  * (anonymous visitors have no persistent identity to track against).
  */
 export const setReservationPurchased = guardedCommand(

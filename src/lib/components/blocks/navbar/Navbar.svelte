@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
+	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
@@ -16,6 +17,7 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import { cn } from '$lib/utils.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
@@ -65,7 +67,17 @@
 		archived: { label: m.dashboard_status_archived(), variant: 'draft' },
 	};
 
-	const myListsQuery = $derived(user ? getMyWishlists() : null);
+	let shouldLoadNavDropdownData = $state(false);
+
+	function requestNavDropdownData() {
+		if (user !== null) {
+			shouldLoadNavDropdownData = true;
+		}
+	}
+
+	const canLoadNavDropdownData = $derived(user !== null && shouldLoadNavDropdownData);
+
+	const myListsQuery = $derived(canLoadNavDropdownData ? getMyWishlists() : null);
 	const myListsFiltered = $derived(
 		(myListsQuery?.current ?? []).filter((w) => w.status !== 'archived'),
 	);
@@ -73,7 +85,7 @@
 		myListsFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(wishlistToDropdownItem),
 	);
 
-	const moderatedQuery = $derived(user ? getModeratedWishlists() : null);
+	const moderatedQuery = $derived(canLoadNavDropdownData ? getModeratedWishlists() : null);
 	const moderatedFiltered = $derived(
 		(moderatedQuery?.current ?? []).filter((w) => w.status !== 'archived'),
 	);
@@ -81,7 +93,7 @@
 		moderatedFiltered.slice(-MAX_DROPDOWN_ITEMS).reverse().map(moderatedToDropdownItem),
 	);
 
-	const followedQuery = $derived(user ? getFollowedWishlists() : null);
+	const followedQuery = $derived(canLoadNavDropdownData ? getFollowedWishlists() : null);
 	const followedFiltered = $derived(
 		(followedQuery?.current ?? []).filter(
 			(w) => w.unfollowedAt === null && w.status !== 'archived',
@@ -135,12 +147,12 @@
 	function wishlistToDropdownItem(wishlistRecord: MyWishlist): NavDropdownItem {
 		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const badge = STATUS_BADGE[wishlistRecord.status];
-		// Owner invariant: gift count + event countdown only — never reservation data.
+		// Owner invariant: gift count + event countdown only – never reservation data.
 		return {
 			name: wishlistRecord.title,
 			meta: giftCountLabel(wishlistRecord.totalGifts),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
-			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,
 			...thumbImage(wishlistRecord),
 			badgeLabel: badge.label,
@@ -154,7 +166,7 @@
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
-			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,
 			...thumbImage(wishlistRecord),
 			badgeLabel: `${wishlistRecord.reservedGifts}/${wishlistRecord.totalGifts}`,
@@ -169,7 +181,7 @@
 			name: wishlistRecord.title,
 			meta: wishlistRecord.ownerName,
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
-			href: resolve('/(app)/w/[id]', { id: wishlistRecord.shortId }),
+			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,
 			...thumbImage(wishlistRecord),
 			...followedBadge(wishlistRecord, state),
@@ -208,9 +220,9 @@
 	};
 
 	const NAV_LINKS = [
-		{ label: m.nav_my_lists(), href: resolve('/(app)/my-lists') },
-		{ label: m.nav_moderated(), href: resolve('/(app)/moderated') },
-		{ label: m.nav_followed(), href: resolve('/(app)/followed') },
+		{ label: m.nav_my_lists(), href: localizeInternalHref(resolve('/(app)/my-lists')) },
+		{ label: m.nav_moderated(), href: localizeInternalHref(resolve('/(app)/moderated')) },
+		{ label: m.nav_followed(), href: localizeInternalHref(resolve('/(app)/followed')) },
 	] as const;
 
 	const navDropdownItems = $derived<NavDropdownItem[][]>([
@@ -231,7 +243,7 @@
 	});
 
 	// How many followed lists still need a gift (gifter hasn't reserved anything yet). Drives the
-	// footer nudge — counts only "open" lists, so users who never mark "bought" are never nagged.
+	// footer nudge – counts only "open" lists, so users who never mark "bought" are never nagged.
 	const followedOpenCount = $derived(
 		followedFiltered.filter((w) => followedListState(w) === FOLLOWED_LIST_STATE.open).length,
 	);
@@ -252,7 +264,12 @@
 	<!-- Desktop nav links with dropdowns -->
 	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	{#if user}
-		<nav class="nav-links" aria-label={m.nav_main_label()}>
+		<nav
+			class="nav-links"
+			aria-label={m.nav_main_label()}
+			onpointerenter={requestNavDropdownData}
+			onfocusin={requestNavDropdownData}
+		>
 			{#each NAV_LINKS as link, i (link.href)}
 				<div class="nav-item">
 					<a
@@ -342,12 +359,15 @@
 
 		<!-- Dark mode toggle -->
 		<DarkModeToggle />
+		<LanguageToggle variant="icon" />
 
 		{#if user}
 			<!-- User menu -->
 			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
 		{:else}
-			<Button intent="primary" size="sm" href={resolve('/login')}>{m.nav_login()}</Button>
+			<Button intent="primary" size="sm" href={localizeInternalHref(resolve('/login'))}
+				>{m.nav_login()}</Button
+			>
 		{/if}
 	</div>
 </header>

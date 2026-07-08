@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { SUPPORTED_LOCALES, type SupportedLocale } from '$lib/i18n/locale.js';
 
 /**
  * App background theme preference values (REQ-3). Domain-owned so the persistence
@@ -20,6 +21,7 @@ export interface UserProfile {
 	image: string | null;
 	isOAuthUser: boolean;
 	appBackgroundTheme: BackgroundTheme;
+	preferredLocale: SupportedLocale | null;
 }
 
 export const UpdateProfileInputSchema = v.object({
@@ -30,4 +32,8 @@ export const UpdateProfileInputSchema = v.object({
 /** App background theme preference input (REQ-3). */
 export const UpdateAppBackgroundThemeInputSchema = v.object({
 	appBackgroundTheme: v.picklist(BACKGROUND_THEMES),
+});
+
+export const UpdatePreferredLocaleInputSchema = v.object({
+	preferredLocale: v.picklist(SUPPORTED_LOCALES),
 });

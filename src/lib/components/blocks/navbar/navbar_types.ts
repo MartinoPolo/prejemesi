@@ -4,7 +4,7 @@ export interface NavDropdownItem {
 	name: string;
 	meta: string;
 	href: string;
-	/** Theme emoji — fallback shown in the thumb when the list has no custom image. */
+	/** Theme emoji – fallback shown in the thumb when the list has no custom image. */
 	emoji: string;
 	/** Resolved custom cover-image URL, or null to fall back to {@link emoji}. */
 	imageUrl: string | null;

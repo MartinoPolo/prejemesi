@@ -35,11 +35,12 @@ vi.mock('@sveltejs/kit', () => ({
 	}),
 }));
 
-// ── Mock drizzle-orm — used only as where-clause builders; no-ops are fine ──
+// ── Mock drizzle-orm – used only as where-clause builders; no-ops are fine ──
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
+	asc: vi.fn((arg: unknown) => arg),
 	sql: vi.fn(() => ({ as: vi.fn(() => ({})) })),
 }));
 
@@ -77,7 +78,7 @@ vi.mock('$lib/server/db/moderator.schema.js', () => ({
 	},
 }));
 
-// ── DB mock helper — sequential `then` results, transaction + call tracking ──
+// ── DB mock helper – sequential `then` results, transaction + call tracking ──
 
 interface MockDb {
 	db: Record<string | symbol, unknown>;
@@ -173,7 +174,9 @@ function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string
 }
 
 /** The array passed to the gift `.insert(...).values([...])` call (rows carry `links`). */
-function giftInsertRows(): { name: string; sortOrder: number; links: unknown[] }[] | undefined {
+function giftInsertRows():
+	| { name: string; sortOrder: number; links: unknown[]; priorityLevelId: string | null }[]
+	| undefined {
 	const valuesCall = mockDbInstance.calls.find(
 		(call) =>
 			call.method === 'values' &&
@@ -182,17 +185,34 @@ function giftInsertRows(): { name: string; sortOrder: number; links: unknown[] }
 			'links' in (call.args[0] as Record<string, unknown>[])[0],
 	);
 	return valuesCall?.args[0] as
-		| { name: string; sortOrder: number; links: unknown[] }[]
+		| { name: string; sortOrder: number; links: unknown[]; priorityLevelId: string | null }[]
 		| undefined;
 }
+
+/** Ranked priority-level ids the resolver maps to: index 0 = high, index 1 = medium. */
+const RANKED_LEVELS = [{ id: 'pl-high' }, { id: 'pl-medium' }];
 
 /** Whether the command opened a DB transaction (atomicity guarantee). */
 function transactionOpened(): boolean {
 	return mockDbInstance.calls.some((call) => call.method === 'transaction');
 }
 
-const draftA = { name: 'Boty', description: null, links: [], price: null, currency: 'CZK' };
-const draftB = { name: 'Kniha', description: null, links: [], price: null, currency: 'CZK' };
+const draftA = {
+	name: 'Boty',
+	description: null,
+	links: [],
+	price: null,
+	currency: 'CZK',
+	priority: 'medium',
+};
+const draftB = {
+	name: 'Kniha',
+	description: null,
+	links: [],
+	price: null,
+	currency: 'CZK',
+	priority: 'high',
+};
 
 function mockFetchResponse(options: {
 	status?: number;
@@ -303,6 +323,7 @@ describe('importGifts', () => {
 	it('appends gifts atomically with sequential sortOrder continuing from the current max', async () => {
 		mockDbInstance.pushResult([makeWishlistRow()]); // verifyOwnerOrModerator: wishlist (owner)
 		mockDbInstance.pushResult([{ maxSort: 4 }]); // max sortOrder
+		mockDbInstance.pushResult(RANKED_LEVELS); // ranked priority levels
 		mockDbInstance.pushResult([
 			{ id: 'g5', sortOrder: 5 },
 			{ id: 'g6', sortOrder: 6 },
@@ -318,12 +339,15 @@ describe('importGifts', () => {
 		expect(rows).toBeDefined();
 		expect(rows!.map((r) => r.sortOrder)).toEqual([5, 6]);
 		expect(rows!.map((r) => r.name)).toEqual(['Boty', 'Kniha']);
+		// draftA = medium → rank 1, draftB = high → rank 0.
+		expect(rows!.map((r) => r.priorityLevelId)).toEqual(['pl-medium', 'pl-high']);
 		expect(result).toHaveLength(2);
 	});
 
 	it('starts sortOrder at 0 for an empty wishlist (COALESCE -1)', async () => {
 		mockDbInstance.pushResult([makeWishlistRow()]);
 		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult(RANKED_LEVELS);
 		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
 
 		await callImportGifts(AUTH, { wishlistId: WISHLIST_ID, gifts: [draftA] });
@@ -335,6 +359,7 @@ describe('importGifts', () => {
 		mockDbInstance.pushResult([makeWishlistRow({ ownerId: 'someone-else' })]); // not owner
 		mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]); // moderator check
 		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult(RANKED_LEVELS);
 		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
 
 		const result = await callImportGifts(
@@ -348,6 +373,7 @@ describe('importGifts', () => {
 	it('normalizes links, dropping non-http(s) URLs on insert', async () => {
 		mockDbInstance.pushResult([makeWishlistRow()]);
 		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult(RANKED_LEVELS);
 		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
 
 		await callImportGifts(AUTH, {
@@ -417,6 +443,7 @@ describe('createWishlistFromImport', () => {
 		};
 		mockDbInstance.pushResult([createdWishlist]); // insert wishlist returning
 		mockDbInstance.pushResult([]); // insert priority levels
+		mockDbInstance.pushResult(RANKED_LEVELS); // ranked priority levels
 		mockDbInstance.pushResult([]); // insert gifts
 
 		const result = await callCreateFromImport(AUTH, {
@@ -448,6 +475,8 @@ describe('createWishlistFromImport', () => {
 		expect(rows).toBeDefined();
 		expect(rows!.map((r) => r.sortOrder)).toEqual([0, 1]);
 		expect(rows!.map((r) => r.name)).toEqual(['Boty', 'Kniha']);
+		// draftA = medium → rank 1, draftB = high → rank 0.
+		expect(rows!.map((r) => r.priorityLevelId)).toEqual(['pl-medium', 'pl-high']);
 	});
 
 	it('defaults the theme to "default" when none is provided', async () => {
@@ -475,6 +504,7 @@ describe('createWishlistFromImport', () => {
 	it('normalizes seeded gift links', async () => {
 		mockDbInstance.pushResult([{ id: 'new-wl', ownerId: OWNER_ID }]);
 		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult(RANKED_LEVELS);
 		mockDbInstance.pushResult([]);
 
 		await callCreateFromImport(AUTH, {

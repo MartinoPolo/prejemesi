@@ -27,6 +27,8 @@
 		filename?: string;
 		mode: WizardMode;
 		existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+		/** Show the priority heart column (hidden when the target lacks ≥2 levels). */
+		priorityAvailable?: boolean;
 		onready: (data: { drafts: GiftDraft[]; title?: string }) => void;
 	}
 
@@ -35,10 +37,11 @@
 		filename,
 		mode,
 		existingGifts = [],
+		priorityAvailable = true,
 		onready,
 	}: ImportReviewStepProps = $props();
 
-	// Column detection — derived from props so it stays reactive
+	// Column detection – derived from props so it stays reactive
 	const detectionResult = $derived(detectColumns(parsedRows));
 
 	// Mutable column overrides (user can remap roles). Normalized so a single-use
@@ -46,7 +49,7 @@
 	let columnOverrides = $state<DetectedColumn[] | null>(null);
 	const columns = $derived(normalizeColumnRoles(columnOverrides ?? detectionResult.columns));
 
-	// Title for new-list mode — initialized once from props (component remounts on each dialog open).
+	// Title for new-list mode – initialized once from props (component remounts on each dialog open).
 	// untrack prevents Svelte from treating props as reactive dependencies of the $state initializer.
 	let title = $state(
 		untrack(() => (mode === WIZARD_MODE.newList ? deriveWishlistTitle(filename ?? '') : '')),
@@ -169,7 +172,7 @@
 			{/if}
 		</div>
 
-		<!-- Editable draft grid — renders full height; the whole dialog body scrolls.
+		<!-- Editable draft grid – renders full height; the whole dialog body scrolls.
 		     Keyed on the mapping so a remap rebuilds the grid from the new columns. -->
 		{#key mappingKey}
 			<GiftDraftGrid
@@ -178,12 +181,13 @@
 				{existingGifts}
 				allowAddRow={false}
 				showLegend={false}
+				{priorityAvailable}
 				onchange={handleGridChange}
 			/>
 		{/key}
 	</div>
 
-	<!-- Existing items panel (append mode) — large screens inline -->
+	<!-- Existing items panel (append mode) – large screens inline -->
 	{#if mode === WIZARD_MODE.append && existingGifts.length > 0}
 		<div class="hidden shrink-0 lg:block">
 			{@render existingPanel()}

@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Přejeme si — Gift Draft Grid — REFINED (Variant B)</title>
+		<title>Přejeme si – Gift Draft Grid – REFINED (Variant B)</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -38,7 +38,7 @@
 				--status-warning: oklch(0.72 0.15 75);
 				--status-info: oklch(0.6 0.12 230);
 				--status-success: oklch(0.62 0.13 145);
-				/* possible-duplicate accent — vivid orange (hue 68), well clear of
+				/* possible-duplicate accent – vivid orange (hue 68), well clear of
 				   red danger (hue 25) so the two tints never read alike */
 				--status-dup: oklch(0.72 0.175 68);
 			}
@@ -257,7 +257,7 @@
 				margin-top: 2px;
 			}
 
-			/* ── DETACHED bulk bar — card-like (REFINED) ────────────── */
+			/* ── DETACHED bulk bar – card-like (REFINED) ────────────── */
 			/* Was: full-bleed strip attached to the grid header.
 			   Now: a rounded, padded, bordered card that floats with side
 			   margins above the grid; no select-all checkbox (the grid
@@ -373,7 +373,7 @@
 			}
 
 			/* ── Whole-card status overview (REFINED) ───────────────── */
-			/* The entire card is tinted to signal row status at a glance —
+			/* The entire card is tinted to signal row status at a glance –
 			   replaces the old left-edge stripe. One status class per row.
 			   Status is never color-only: error keeps its helper text,
 			   duplicate keeps its badge, inclusion is shown by the checkbox. */
@@ -398,11 +398,11 @@
 			.row.is-error:hover {
 				border-color: color-mix(in oklab, var(--status-danger) 78%, var(--border));
 			}
-			/* excluded (deselected) — dim the whole card, status tint stays */
+			/* excluded (deselected) – dim the whole card, status tint stays */
 			.row.is-excluded {
 				opacity: 0.5;
 			}
-			/* editing — focus ring layered on top of any status tint */
+			/* editing – focus ring layered on top of any status tint */
 			.row.is-editing {
 				box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 16%, transparent);
 			}
@@ -510,7 +510,7 @@
 				box-shadow: 0 0 0 3px color-mix(in oklch, var(--invalid-ring) 22%, transparent);
 			}
 			/* ── Poznámka = MULTILINE textarea (REFINED) ────────────── */
-			/* base/textarea — user-resizable; growing it grows the whole
+			/* base/textarea – user-resizable; growing it grows the whole
 			   row (cells are top-aligned). Mirrors Textarea.svelte
 			   (field-sizing-content + resize-vertical). */
 			textarea.field {
@@ -560,7 +560,7 @@
 				opacity: 0.7;
 			}
 
-			/* ── Links cell — STACKED mini-rows ─────────────────────── */
+			/* ── Links cell – STACKED mini-rows ─────────────────────── */
 			.links-stack {
 				display: flex;
 				flex-direction: column;
@@ -1115,7 +1115,7 @@
 				overflow: auto;
 				position: relative;
 			}
-			/* Mobile bulk bar — also detached card-like, and it DOES keep a
+			/* Mobile bulk bar – also detached card-like, and it DOES keep a
 			   select-all checkbox because mobile cards have no header row to
 			   host the global select-all. */
 			.m-bulk {
@@ -1245,7 +1245,7 @@
 		<div class="page theme-light">
 			<div class="section-intro">
 				<p class="eyebrow">
-					REFINED — Variant B · detached bulk card · ghost +odkaz · multiline note ·
+					REFINED – Variant B · detached bulk card · ghost +odkaz · multiline note ·
 					status-color rows
 				</p>
 				<h2>Gift Draft Grid</h2>
@@ -1258,9 +1258,9 @@
 				</p>
 			</div>
 
-			<!-- ══════════════ HOST A — IMPORT REVIEW GRID (LIGHT) ══════════════ -->
+			<!-- ══════════════ HOST A – IMPORT REVIEW GRID (LIGHT) ══════════════ -->
 			<div class="section-label">
-				Host A — Import Wizard · Kontrola
+				Host A – Import Wizard · Kontrola
 				<span>rows pre-filled · whole-card status · light theme</span>
 			</div>
 			<div class="section-body">
@@ -1294,7 +1294,7 @@
 						</nav>
 					</div>
 
-					<!-- DETACHED bulk bar (card) — NO select-all checkbox here -->
+					<!-- DETACHED bulk bar (card) – NO select-all checkbox here -->
 					<div class="bulk-bar" role="region" aria-label="Hromadné akce">
 						<span class="bulk-count"
 							><span class="dot" aria-hidden="true"></span>Vybráno 5</span
@@ -1335,7 +1335,7 @@
 
 					<div class="grid-scroll">
 						<div class="grid grow">
-							<!-- sticky header — the SINGLE global select-all lives here -->
+							<!-- sticky header – the SINGLE global select-all lives here -->
 							<div class="grid-header" role="row">
 								<span class="col-label col-center">
 									<input
@@ -1355,7 +1355,7 @@
 							</div>
 
 							<div class="grid-body">
-								<!-- ROW 1 — READY (green): valid selected, multi-link + primary -->
+								<!-- ROW 1 – READY (green): valid selected, multi-link + primary -->
 								<div class="row is-ready" role="row">
 									<div class="cell cell-center">
 										<input
@@ -1521,7 +1521,7 @@ Velikost 42–43, tmavě modré</textarea
 									</div>
 								</div>
 
-								<!-- ROW 2 — ERROR (red): blank name, selected -->
+								<!-- ROW 2 – ERROR (red): blank name, selected -->
 								<div class="row is-error" role="row">
 									<div class="cell cell-center">
 										<input
@@ -1670,7 +1670,7 @@ Velikost 42–43, tmavě modré</textarea
 									</div>
 								</div>
 
-								<!-- ROW 3 — DUPLICATE (orange): toggleable badge, editing/focused -->
+								<!-- ROW 3 – DUPLICATE (orange): toggleable badge, editing/focused -->
 								<div class="row is-duplicate is-editing" role="row">
 									<div class="cell cell-center">
 										<input
@@ -1690,7 +1690,7 @@ Velikost 42–43, tmavě modré</textarea
 										<button
 											class="dup-badge"
 											type="button"
-											title="Shoda s existujícím dárkem — klepnutím zrušíte"
+											title="Shoda s existujícím dárkem – klepnutím zrušíte"
 										>
 											<svg
 												width="12"
@@ -1817,7 +1817,7 @@ Keramický, 0,4 l</textarea
 									</div>
 								</div>
 
-								<!-- ROW 4 — READY (green): valid, single link, Phase-2 ENRICHED -->
+								<!-- ROW 4 – READY (green): valid, single link, Phase-2 ENRICHED -->
 								<div class="row is-ready" role="row">
 									<div class="cell cell-center">
 										<input
@@ -1959,7 +1959,7 @@ James Clear, vázaná. Český překlad, 2. vydání.</textarea
 									</div>
 								</div>
 
-								<!-- ROW 5 — EXCLUDED (deselected, dimmed) + Phase-2 ENRICHING shimmer -->
+								<!-- ROW 5 – EXCLUDED (deselected, dimmed) + Phase-2 ENRICHING shimmer -->
 								<div class="row is-ready is-excluded" role="row">
 									<div class="cell cell-center">
 										<input
@@ -2063,7 +2063,7 @@ James Clear, vázaná. Český překlad, 2. vydání.</textarea
 									</div>
 								</div>
 
-								<!-- ROW 6 — READY (green): link maxed (+ odkaz disabled at 10), Phase-2 ENRICH-FAILED -->
+								<!-- ROW 6 – READY (green): link maxed (+ odkaz disabled at 10), Phase-2 ENRICH-FAILED -->
 								<div class="row is-ready" role="row">
 									<div class="cell cell-center">
 										<input
@@ -2291,7 +2291,7 @@ Set 10311, dekorace</textarea
 
 				<!-- footer ENABLED example -->
 				<p class="eyebrow" style="margin: 28px 0 10px">
-					Footer — stav „Pokračovat" povolen (≥ 1 platný vybraný řádek)
+					Footer – stav „Pokračovat" povolen (≥ 1 platný vybraný řádek)
 				</p>
 				<div class="wizard" style="border-radius: var(--radius-lg)">
 					<div class="host-footer">
@@ -2315,9 +2315,9 @@ Set 10311, dekorace</textarea
 				</div>
 			</div>
 
-			<!-- ══════════════ HOST B — BATCH DIALOG (LIGHT, empty state) ══════════════ -->
+			<!-- ══════════════ HOST B – BATCH DIALOG (LIGHT, empty state) ══════════════ -->
 			<div class="section-label">
-				Host B — „Hromadně přidat dárky"
+				Host B – „Hromadně přidat dárky"
 				<span>wide dialog over blurred page · pristine empty row · light theme</span>
 			</div>
 			<div class="section-body" style="padding-top: 0">
@@ -2396,7 +2396,7 @@ Set 10311, dekorace</textarea
 									>
 								</div>
 								<div class="grid-body">
-									<!-- PRISTINE empty row — neutral (no error tint until touched) -->
+									<!-- PRISTINE empty row – neutral (no error tint until touched) -->
 									<div class="row" role="row">
 										<div class="cell cell-center">
 											<input
@@ -2538,9 +2538,9 @@ Set 10311, dekorace</textarea
 				</div>
 			</div>
 
-			<!-- ══════════════ MOBILE — stacked cards (light) ══════════════ -->
+			<!-- ══════════════ MOBILE – stacked cards (light) ══════════════ -->
 			<div class="section-label">
-				Mobile &lt; 600px — stacked cards
+				Mobile &lt; 600px – stacked cards
 				<span>375px preview · detached bulk card · whole-card status · light theme</span>
 			</div>
 			<div class="section-body">
@@ -2851,11 +2851,11 @@ Velikost 42–43, modré</textarea
 		</div>
 
 		<!-- ════════════════════════════════════════════════════════════
-		     DARK THEME SECTION — Host A grid + Host B dialog
+		     DARK THEME SECTION – Host A grid + Host B dialog
 		     ════════════════════════════════════════════════════════════ -->
 		<div class="page theme-dark">
 			<div class="section-label">
-				Dark theme — Host A grid + Host B dialog <span>same refinements, dark surfaces</span>
+				Dark theme – Host A grid + Host B dialog <span>same refinements, dark surfaces</span>
 			</div>
 			<div class="section-body">
 				<div class="wizard grow">
@@ -3068,7 +3068,7 @@ Velikost 42–43, modré</textarea
 										<textarea
 											class="field"
 											rows="1"
-											placeholder="—"
+											placeholder="–"
 											aria-label="Poznámka"
 										></textarea>
 									</div>
@@ -3185,7 +3185,7 @@ Velikost 42–43, modré</textarea
 										<button
 											class="dup-badge"
 											type="button"
-											title="Shoda odkazu — klepnutím zrušíte"
+											title="Shoda odkazu – klepnutím zrušíte"
 										>
 											<svg
 												width="12"
@@ -3453,7 +3453,7 @@ Skleněná, 1,2 l</textarea
 
 				<!-- Host B dialog dark -->
 				<p class="eyebrow" style="margin: 32px 0 12px; color: var(--foreground-subtle)">
-					Host B — „Hromadně přidat dárky" (dark)
+					Host B – „Hromadně přidat dárky" (dark)
 				</p>
 				<div
 					class="dialog grow-batch"
@@ -3622,7 +3622,7 @@ Skleněná, 1,2 l</textarea
 			</div>
 			<div class="note">
 				Poznámka: ovládací prvky mapování sloupců patří wizardu (Review header), nikoli této
-				mřížce — zde se nezobrazují.
+				mřížce – zde se nezobrazují.
 			</div>
 		</div>
 	</body>

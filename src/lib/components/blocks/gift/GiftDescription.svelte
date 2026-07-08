@@ -1,4 +1,8 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+	import { Button } from '$lib/components/base/button/index.js';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import { cn } from '$lib/utils.js';
 	import { formatAppendDate } from '$lib/modules/gifts/gift_display.js';
 	import type { DescriptionAppend } from '$lib/modules/gifts/types.js';
@@ -6,27 +10,77 @@
 	interface GiftDescriptionProps {
 		description: string | null;
 		descriptionAppends: DescriptionAppend[];
+		maxVisibleAppends?: number | null;
 		class?: string;
 	}
 
-	let { description, descriptionAppends, class: className = '' }: GiftDescriptionProps = $props();
+	let {
+		description,
+		descriptionAppends,
+		maxVisibleAppends = null,
+		class: className = '',
+	}: GiftDescriptionProps = $props();
+
+	let showAllAppends = $state(false);
 
 	const hasBase = $derived((description ?? '').trim() !== '');
 	const hasAppends = $derived(descriptionAppends.length > 0);
 	const hasContent = $derived(hasBase || hasAppends);
+	const visibleAppendItems = $derived.by(() => {
+		if (maxVisibleAppends === null || showAllAppends) {
+			return descriptionAppends.map((append, index) => ({ append, index }));
+		}
+		if (maxVisibleAppends <= 0) {
+			return [];
+		}
+		const startIndex = Math.max(0, descriptionAppends.length - maxVisibleAppends);
+		return descriptionAppends
+			.slice(startIndex)
+			.map((append, offset) => ({ append, index: startIndex + offset }));
+	});
+	const collapsedHiddenAppendCount = $derived(
+		maxVisibleAppends === null
+			? 0
+			: Math.max(0, descriptionAppends.length - Math.max(0, maxVisibleAppends)),
+	);
+	const canToggleAppends = $derived(collapsedHiddenAppendCount > 0);
+
+	function toggleAppendHistory(event: MouseEvent) {
+		event.stopPropagation();
+		showAllAppends = !showAllAppends;
+	}
 </script>
 
 {#if hasContent}
-	<div class={cn('flex flex-col gap-1', className)}>
+	<div class={cn('flex flex-col gap-1.5', className)}>
 		{#if hasBase}
 			<p class="whitespace-pre-line text-sm text-muted-foreground">{description}</p>
 		{/if}
-		{#each descriptionAppends as append, i (`${append.addedAt}:${i}`)}
+		{#each visibleAppendItems as item (`${item.append.addedAt}:${item.index}`)}
 			<div class="whitespace-pre-line text-sm text-wishlist-accent">
 				<span class="text-xs opacity-70"
-					>{formatAppendDate(append.addedAt)} –
-				</span>{append.text}
+					>{formatAppendDate(item.append.addedAt) + ' - '}
+				</span>{item.append.text}
 			</div>
 		{/each}
+		{#if canToggleAppends}
+			<Button
+				type="button"
+				size="sm"
+				intent="ghost"
+				class="-ml-1.5 h-7 w-fit px-1.5 text-xs text-muted-foreground hover:text-foreground"
+				aria-expanded={showAllAppends}
+				onclick={toggleAppendHistory}
+				onkeydown={(event: KeyboardEvent) => event.stopPropagation()}
+			>
+				{#if showAllAppends}
+					<ChevronUpIcon data-icon="inline-start" />
+					{m.gift_description_history_hide()}
+				{:else}
+					<ChevronDownIcon data-icon="inline-start" />
+					{m.gift_description_history_show({ count: collapsedHiddenAppendCount })}
+				{/if}
+			</Button>
+		{/if}
 	</div>
 {/if}

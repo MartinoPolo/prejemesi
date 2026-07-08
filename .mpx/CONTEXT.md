@@ -23,8 +23,8 @@ Přejeme si ("dárečky" = presents in Czech) is a shareable wishlist web app wh
 **Image-frame fill** — The `--frame-fill` background color shown behind letterboxed images. Resolved from a priority chain: slot-specific override → wishlist theme surface → global fallback.
 **OKLCH palette** — The color-derivation strategy for custom wishlist themes: one input color produces a harmonious full palette via OKLCH lightness/chroma adjustments, computed client-side for live preview.
 **Sharing** — Distributing a wishlist link. Freezes each existing gift's identity (`name`) and blocks delete, but leaves presentation/info fields editable (image, links, price, priority, append-only description; quantity raise-only). See Post-share editing.
-**Post-share grace window** — A 2-minute debounced window after any read-only transition (sharing, a description append, the event-date lock) during which the change is fully reversible; the timer resets on each edit.
-**Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter.
+**Post-share grace window** — A 2-minute reversibility window for sharing, each description append, and the event-date lock; later gift edits never reopen gift name/delete grace.
+**Description append** — A post-share description change: an immutable, accent-colored, timestamped addition. The original text freezes at share time and is preserved for the gifter; cards show only the latest append by default with a toggle for full history.
 **Archive** — A read-only state for a completed wishlist; visually distinct, no new reservations accepted.
 **Unfollowed** — A wishlist the user was previously invited to / followed but has since unfollowed. Tracked for re-discovery via toggle on the Sledované page.
 **Gift draft** — An unsaved, editable gift row (name, notes, link(s), price) in the import or batch grid, before it is committed as a real Gift.
@@ -62,7 +62,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | Notification system (email critical, in-app batched)                           | Planned     | v1          |
 | Three nav pages (Moje seznamy / Spravované / Sledované, no Dashboard)          | Planned     | v1          |
 | Theming (wishlist themes + app background theme + token separation)            | In Progress | v1          |
-| i18n (Czech primary, English secondary)                                        | Planned     | v1          |
+| i18n (Czech primary, English secondary)                                        | In Progress | v1          |
 | Profile & settings (name, email, avatar, notification prefs, appearance theme) | In Progress | v1          |
 | Owner surprise protection (no reservation visibility, post-share edit rules)   | Planned     | v1          |
 | Mark gift as received                                                          | Planned     | v1          |
@@ -80,11 +80,12 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 ## Key Constraints
 
 - Owner NEVER sees reservation state — this is the core product invariant. Enforced at API level (strip data) + UI level (don't render).
-- After sharing, the owner can edit existing gifts' presentation/info fields (image, links, price, priority) + append to the description, and raise (never lower) quantity; `name` is frozen and delete is blocked. Edits apply uniformly to all gifts (never reservation-conditional) and are surfaced via an "Upraveno po sdílení" badge. A 2-min debounced grace window after sharing allows full edit/undo.
+- After sharing, the owner can edit existing gifts' presentation/info fields (image, links, price, priority) + append to the description, and raise (never lower) quantity; `name` is frozen and delete is blocked. Edits apply uniformly to all gifts (never reservation-conditional) and are surfaced via an "Upraveno po sdílení" badge. A 2-min grace after sharing allows full edit/undo only for the initial share transition; later edits never reopen delete/name grace. Gifts added after sharing can be deleted only within 2 minutes of creation and never when reserved.
 - Reserved gifts cannot be removed by moderators — must contact gifter first.
 - Editing a reserved gift by moderator notifies the gifter (email if known).
 - Owner self-promoting to moderator triggers notification to all visitors.
 - Themes are per-wishlist (owner/moderator sets); dark/light/system mode is per-user. Client-side OKLCH palette derivation for custom themes.
+- Global language switcher is available in both the logged-in app header and landing header, next to the color-mode toggle. It uses drawn flag icons, not emoji flags, so Windows does not fall back to country-code letters. Locale changes use client-side SvelteKit navigation after updating Paraglide's cookie, avoiding a full document reload. Czech is the base unprefixed locale; English uses `/en/...`. Logged-in explicit switches persist `user.preferred_locale`.
 - Anonymous users can visit/reserve but have no persistence (no dashboard, no followed lists). Anonymous → registered auto-links reservations by email match.
 - Each gift has a quantity field (default 1, hidden when 1, optional unlimited).
 - Wishlists are open — anyone with the link can view and reserve. Logged-in visitors auto-follow on first visit.

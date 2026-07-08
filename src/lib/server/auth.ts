@@ -5,7 +5,7 @@ import { magicLink } from 'better-auth/plugins/magic-link';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from './db/index.js';
-import { sendEmail, renderActionEmail } from './email.js';
+import { sendEmail, renderActionEmailParts } from './email.js';
 import type { RequestEvent } from '@sveltejs/kit';
 
 // Dev: Vite picks the next free port (5174, 5175, ...) when 5173 is taken.
@@ -17,7 +17,7 @@ const devTrustedOrigins = import.meta.env.DEV
 
 // Local dev has no deliverable inbox (the Resend sandbox sender only emails the
 // account owner), so verification links never arrive. Skip the verification gate
-// in dev — sign-up then auto-signs-in — while production still requires it.
+// in dev – sign-up then auto-signs-in – while production still requires it.
 const requireEmailVerification = !import.meta.env.DEV;
 
 export function createAuth(event?: RequestEvent) {
@@ -39,7 +39,7 @@ export function createAuth(event?: RequestEvent) {
 				await sendEmail({
 					to: user.email,
 					subject: 'Reset your Přejeme si password',
-					html: renderActionEmail({
+					...renderActionEmailParts({
 						heading: 'Reset your password',
 						body: 'We received a request to reset your password. This link expires in 1 hour.',
 						buttonLabel: 'Reset password',
@@ -58,7 +58,7 @@ export function createAuth(event?: RequestEvent) {
 				await sendEmail({
 					to: user.email,
 					subject: 'Verify your Přejeme si email',
-					html: renderActionEmail({
+					...renderActionEmailParts({
 						heading: 'Confirm your email',
 						body: 'Please confirm your email address to finish setting up your account. This link expires in 1 hour.',
 						buttonLabel: 'Verify email',
@@ -96,7 +96,7 @@ export function createAuth(event?: RequestEvent) {
 					await sendEmail({
 						to: email,
 						subject: 'Your Přejeme si sign-in link',
-						html: renderActionEmail({
+						...renderActionEmailParts({
 							heading: 'Sign in to Přejeme si',
 							body: 'Click the button below to sign in. This link expires shortly and can only be used once.',
 							buttonLabel: 'Sign in',

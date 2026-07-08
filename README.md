@@ -1,8 +1,8 @@
 # Přejeme si
 
-**Přejeme si** (from Czech _"dárečky"_ — presents) is a shareable wishlist web app. Users create lists of
+**Přejeme si** (from Czech _"dárečky"_ – presents) is a shareable wishlist web app. Users create lists of
 gifts they'd love to receive and share a link with friends and family. Visitors reserve gifts so nobody
-buys the same thing twice — and the wishlist owner **never sees which gifts are reserved**, keeping the
+buys the same thing twice – and the wishlist owner **never sees which gifts are reserved**, keeping the
 surprise intact.
 
 ## How It Works
@@ -12,10 +12,10 @@ surprise intact.
   once, or use the **import wizard** (CSV upload, paste cells, or Google Sheets link) for a 3-step
   Source → Review → Confirm flow. Each gift can carry up to 10 links (**multi-link**); the first is
   treated as the primary.
-- **Share a link.** Anyone with the link can view and reserve gifts — no account required to reserve
+- **Share a link.** Anyone with the link can view and reserve gifts – no account required to reserve
   (anonymous visitors just provide a display name). Logged-in visitors auto-follow the list.
 - **Reserve & like.** Visitors reserve gifts (with quantity support) to prevent duplicate buying, and
-  "like" gifts to signal interest — if a liked gift gets reserved by someone else, the liker is notified.
+  "like" gifts to signal interest – if a liked gift gets reserved by someone else, the liker is notified.
 - **Stay surprised.** The owner sees their list and can add gifts, but reservation state is stripped from
   everything they see (enforced at both the API and UI level). Sharing locks editing of existing gifts so
   the owner can't infer reservations from blocked actions.
@@ -27,7 +27,7 @@ surprise intact.
 | ------------- | ----------------------------------------------------------------- | ------------------ |
 | **Owner**     | Create lists, add gifts, reorder, set theme, archive, assign mods | ❌ Never           |
 | **Moderator** | Full state, add/edit/remove gifts (except reserved ones)          | ✅ Yes             |
-| **Visitor**   | View, reserve/unreserve, like — via shared link, account optional | ✅ Yes             |
+| **Visitor**   | View, reserve/unreserve, like – via shared link, account optional | ✅ Yes             |
 
 ### Key Concepts
 
@@ -80,7 +80,7 @@ pnpm run db:start
 # 4. Push database schema
 pnpm run db:push
 
-# 5. Seed test data (idempotent — safe to re-run)
+# 5. Seed test data (idempotent – safe to re-run)
 pnpm run db:seed
 
 # 6. Start dev server
@@ -94,11 +94,11 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 | Email          | Name           | Role                                                |
 | -------------- | -------------- | --------------------------------------------------- |
-| martin@test.cz | Martin Novák   | Primary owner — 4 wishlists (active/draft/archived) |
+| martin@test.cz | Martin Novák   | Primary owner – 4 wishlists (active/draft/archived) |
 | jana@test.cz   | Jana Dvořáková | Owner + moderator on Martin's lists                 |
-| petr@test.cz   | Petr Svoboda   | Active gifter — many reservations                   |
-| eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                       |
-| tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list        |
+| petr@test.cz   | Petr Svoboda   | Active gifter – many reservations                   |
+| eva@test.cz    | Eva Králová    | Casual visitor – mostly likes                       |
+| tomas@test.cz  | Tomáš Černý    | Mostly inactive – 1 archived + 1 active list        |
 
 ## Scripts
 
@@ -159,7 +159,7 @@ Copy `.env.example` to `.env` and configure:
 | ---------------------- | -------- | ------------------------------------------------------------- |
 | `DATABASE_URL`         | Yes      | PostgreSQL connection string                                  |
 | `AUTH_SECRET`          | Yes      | 32-byte base64 secret (`openssl rand -base64 32`)             |
-| `ORIGIN`               | No       | App URL — OAuth redirects + email links (default 5173)        |
+| `ORIGIN`               | No       | App URL – OAuth redirects + email links (default 5173)        |
 | `GOOGLE_CLIENT_ID`     | No       | Google OAuth client ID                                        |
 | `GOOGLE_CLIENT_SECRET` | No       | Google OAuth client secret                                    |
 | `R2_PUBLIC_URL`        | No       | Public R2 bucket URL; uploads use in-memory fallback if unset |
@@ -177,33 +177,33 @@ src/
       base/                  # shadcn-svelte / bits-ui primitives (do not edit)
       derived/               # reusable wrappers combining base components
       blocks/                # feature-level composed UI (WishlistCard, GiftDetailModal, …)
-    modules/                 # domain modules — each owns types, remote fns, context, public API
+    modules/                 # domain modules – each owns types, remote fns, context, public API
       wishlists/  gifts/  reservations/  likes/  moderators/
       sharing/    themes/ notifications/  uploads/  settings/  errors/
-      import/                # import wizard — CSV/Google Sheets → draft grid → gifts
+      import/                # import wizard – CSV/Google Sheets → draft grid → gifts
     reactivity/              # reactive primitives (StateRaw, Derived, Persisted)
     server/
       auth.ts                # BetterAuth server config
       db/
         schema.ts            # Drizzle schema (auth, wishlist, gift, moderator, follower, notification)
-                             #   gift.image_meta — fit mode + focal-point crop (one crop for all surfaces)
-                             #   gift.links — jsonb array of up to 10 URLs; links[0] is primary (replaces url)
-                             #   wishlist.image_key + image_slots — single upload + per-slot crop JSON
+                             #   gift.image_meta – fit mode + focal-point crop (one crop for all surfaces)
+                             #   gift.links – jsonb array of up to 10 URLs; links[0] is primary (replaces url)
+                             #   wishlist.image_key + image_slots – single upload + per-slot crop JSON
                              #     (replaced banner_image_key / thumbnail_image_key)
-                             #   user.app_background_theme — default | golden-hour | twilight
+                             #   user.app_background_theme – default | golden-hour | twilight
         seed.ts              # Idempotent test-data seeder
   routes/
     (auth)/                  # login, register, magic-link, reset-password (split-screen layout)
     (app)/                   # my-lists, moderated, followed, settings, w/[id] (app shell)
-                             #   w/[id]/settings — owner-only wishlist appearance (image, theme, per-slot crop)
+                             #   w/[id]/settings – owner-only wishlist appearance (image, theme, per-slot crop)
     +page.svelte             # Landing page
 messages/                    # Translation files (cs.json, en.json)
 tests/e2e/                   # Playwright E2E tests
 ```
 
 Each domain module exposes a small public API via `index.ts`. Client–server communication uses
-SvelteKit **remote functions** (`*.remote.ts`) — `query` for reads, `form` for progressive-enhancement
-mutations, `command` for JS-only actions — wrapped in guarded helpers that enforce auth. No traditional
+SvelteKit **remote functions** (`*.remote.ts`) – `query` for reads, `form` for progressive-enhancement
+mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. No traditional
 `+page.server.ts` load functions or `+server.ts` routes (except the BetterAuth catch-all and the upload
 proxy).
 
@@ -217,7 +217,7 @@ proxy).
 ## Deployment
 
 Built with `@sveltejs/adapter-cloudflare` for **Cloudflare Workers**, backed by **Neon Postgres** (via
-Hyperdrive), **R2** for image storage, and **Resend** for email — all on free tiers. Configuration is in
+Hyperdrive), **R2** for image storage, and **Resend** for email – all on free tiers. Configuration is in
 `wrangler.jsonc`; add Cloudflare bindings (KV, D1, R2) in `src/app.d.ts` under `App.Platform`.
 
 `.github/workflows/ci.yml` runs the full check suite, unit tests with coverage, and Playwright E2E on every

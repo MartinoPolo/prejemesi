@@ -22,13 +22,13 @@
 </script>
 
 <!-- ── Three fit modes on the same source (REQ-1, REQ-2) ── -->
-<Story name="Fit — auto">
+<Story name="Fit – auto">
 	{#snippet template()}
 		<ImageFrame class="h-40 w-60" src={NORMAL} alt="Sony sluchátka" fitMode="auto" />
 	{/snippet}
 </Story>
 
-<Story name="Fit — contain-padded">
+<Story name="Fit – contain-padded">
 	{#snippet template()}
 		<ImageFrame
 			class="h-40 w-60"
@@ -40,13 +40,13 @@
 	{/snippet}
 </Story>
 
-<Story name="Fit — cover-crop">
+<Story name="Fit – cover-crop">
 	{#snippet template()}
 		<ImageFrame class="h-40 w-60" src={NORMAL} alt="Sony sluchátka" fitMode="cover-crop" />
 	{/snippet}
 </Story>
 
-<Story name="Fit modes — side by side">
+<Story name="Fit modes – side by side">
 	{#snippet template()}
 		<div class="flex gap-4">
 			<div class="flex flex-col gap-1">
@@ -72,7 +72,7 @@
 </Story>
 
 <!-- ── Background-fill priority (REQ-3) ── -->
-<Story name="Fill tier 1 — extracted color">
+<Story name="Fill tier 1 – extracted color">
 	{#snippet template()}
 		<ImageFrame
 			class="h-32 w-48"
@@ -84,7 +84,7 @@
 	{/snippet}
 </Story>
 
-<Story name="Fill tier 2 — wishlist token">
+<Story name="Fill tier 2 – wishlist token">
 	{#snippet template()}
 		<ImageFrame
 			class="h-32 w-48"
@@ -96,7 +96,7 @@
 	{/snippet}
 </Story>
 
-<Story name="Fill tier 3 — global surface">
+<Story name="Fill tier 3 – global surface">
 	{#snippet template()}
 		<ImageFrame
 			class="h-32 w-48"
@@ -157,7 +157,7 @@
 </Story>
 
 <!-- ── Shapes ── -->
-<Story name="Avatar — circle cover-crop">
+<Story name="Avatar – circle cover-crop">
 	{#snippet template()}
 		<ImageFrame
 			class="size-24"
@@ -171,7 +171,7 @@
 </Story>
 
 <!-- ── Preset vs custom wishlist palette (REQ-4, REQ-5) ── -->
-<Story name="Palette — preset (Birthday)">
+<Story name="Palette – preset (Birthday)">
 	{#snippet template()}
 		<div
 			class="w-60"
@@ -200,7 +200,7 @@
 	{/snippet}
 </Story>
 
-<Story name="Palette — custom (OKLCH hue 275)">
+<Story name="Palette – custom (OKLCH hue 275)">
 	{#snippet template()}
 		<div
 			class="w-60"

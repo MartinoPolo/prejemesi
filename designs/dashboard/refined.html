@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Přejeme si — Dashboard Refined (Three Pages)</title>
+		<title>Přejeme si – Dashboard Refined (Three Pages)</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -12,7 +12,7 @@
 		/>
 		<link rel="stylesheet" href="../tokens.css" />
 		<style>
-			/* ── Refined Dashboard — Three Separate Pages (Light Mode Only) ──────
+			/* ── Refined Dashboard – Three Separate Pages (Light Mode Only) ──────
 			   Base: Variant 3 card style + Variant 2 list view reference.
 			   Each page section has its own nav with active item highlighted.
 			   3-column card grid. Title inside banner. Hover ring + lift.
@@ -284,7 +284,7 @@
 				filter: brightness(1.08);
 			}
 
-			/* Outline variant — used for all card action buttons */
+			/* Outline variant – used for all card action buttons */
 			.btn-outline {
 				background: transparent;
 				color: var(--foreground);
@@ -296,7 +296,7 @@
 				color: var(--foreground);
 			}
 
-			/* Ghost variant — nav utility buttons */
+			/* Ghost variant – nav utility buttons */
 			.btn-ghost {
 				background: transparent;
 				color: var(--foreground-muted);
@@ -307,7 +307,7 @@
 				color: var(--foreground);
 			}
 
-			/* Destructive outline — Přestat sledovat */
+			/* Destructive outline – Přestat sledovat */
 			.btn-destructive-outline {
 				background: transparent;
 				color: var(--destructive);
@@ -515,7 +515,7 @@
 				pointer-events: none;
 			}
 
-			/* Title inside banner — bottom left */
+			/* Title inside banner – bottom left */
 			.card-banner-title {
 				position: absolute;
 				bottom: 12px;
@@ -530,7 +530,7 @@
 				text-shadow: 0 1px 3px oklch(0 0 0 / 0.45);
 			}
 
-			/* Status badge — bottom right of banner, semi-transparent backdrop */
+			/* Status badge – bottom right of banner, semi-transparent backdrop */
 			.card-status-badge {
 				position: absolute;
 				bottom: 12px;
@@ -543,7 +543,7 @@
 				font-size: 11px;
 				font-weight: 700;
 				letter-spacing: 0.03em;
-				/* Semi-transparent backdrop — legible on ANY background */
+				/* Semi-transparent backdrop – legible on ANY background */
 				background: oklch(0 0 0 / 0.52);
 				backdrop-filter: blur(6px);
 				color: oklch(1 0 0 / 0.95);
@@ -568,7 +568,7 @@
 				background: oklch(0.7 0 0 / 0.5);
 			}
 
-			/* Card body — NO visible seam between banner and body */
+			/* Card body – NO visible seam between banner and body */
 			.card-body {
 				padding: 14px 16px 16px;
 				display: flex;
@@ -717,7 +717,7 @@
 				margin: 2px 0;
 			}
 
-			/* Action row — all outline with icon */
+			/* Action row – all outline with icon */
 			.card-actions {
 				display: flex;
 				align-items: center;
@@ -780,16 +780,16 @@
 	</head>
 	<body>
 		<!-- ═══════════════════════════════════════════════════════
-		     PAGE 1 — MOJE SEZNAMY
+		     PAGE 1 – MOJE SEZNAMY
 		     ═══════════════════════════════════════════════════════ -->
 		<div class="page-section">
-			<div class="section-eyebrow-strip">REFINED — Moje seznamy</div>
+			<div class="section-eyebrow-strip">REFINED – Moje seznamy</div>
 
-			<!-- Navigation — Moje seznamy active -->
+			<!-- Navigation – Moje seznamy active -->
 			<nav class="nav" aria-label="Hlavní navigace">
 				<div class="nav-left">
 					<!-- Logo -->
-					<a class="nav-logo" href="#" aria-label="Přejeme si — domů">
+					<a class="nav-logo" href="#" aria-label="Přejeme si – domů">
 						<div class="nav-logo-icon" aria-hidden="true">
 							<!-- Gift box icon -->
 							<svg
@@ -867,7 +867,7 @@
 						class="btn btn-ghost btn-icon"
 						type="button"
 						aria-label="Přepnout tmavý režim"
-						title="Světlý režim — kliknutím přepněte"
+						title="Světlý režim – kliknutím přepněte"
 					>
 						<svg
 							class="icon-sm"
@@ -895,7 +895,7 @@
 						class="nav-avatar"
 						role="button"
 						tabindex="0"
-						aria-label="Můj profil — Jana Nováková"
+						aria-label="Můj profil – Jana Nováková"
 					>
 						JN
 					</div>
@@ -992,7 +992,7 @@
 
 				<!-- Card grid -->
 				<div class="wishlist-grid">
-					<!-- Card 1: Vánoce 2026 — Sdíleno, Christmas (dark green) -->
+					<!-- Card 1: Vánoce 2026 – Sdíleno, Christmas (dark green) -->
 					<article class="wl-card" tabindex="0" aria-label="Vánoce 2026">
 						<div
 							class="card-banner"
@@ -1045,7 +1045,7 @@
 							</div>
 							<div class="card-divider"></div>
 							<div class="card-actions">
-								<!-- All outline with icon — same variant throughout -->
+								<!-- All outline with icon – same variant throughout -->
 								<button class="btn btn-outline btn-sm" type="button">
 									<svg
 										class="icon-xs"
@@ -1102,8 +1102,8 @@
 						</div>
 					</article>
 
-					<!-- Card 2: Narozeniny — Petr — Koncept, Birthday (warm amber) -->
-					<article class="wl-card" tabindex="0" aria-label="Narozeniny — Petr">
+					<!-- Card 2: Narozeniny – Petr – Koncept, Birthday (warm amber) -->
+					<article class="wl-card" tabindex="0" aria-label="Narozeniny – Petr">
 						<div
 							class="card-banner"
 							style="
@@ -1124,7 +1124,7 @@
 								>🎂</span
 							>
 							<div class="card-banner-overlay"></div>
-							<div class="card-banner-title">Narozeniny — Petr</div>
+							<div class="card-banner-title">Narozeniny – Petr</div>
 							<div class="card-status-badge" aria-label="Stav: Koncept">
 								<span class="status-dot dot-draft"></span>
 								Koncept
@@ -1210,7 +1210,7 @@
 						</div>
 					</article>
 
-					<!-- Card 3: Dárky pro maminku — Sdíleno, Default (sage green) -->
+					<!-- Card 3: Dárky pro maminku – Sdíleno, Default (sage green) -->
 					<article class="wl-card" tabindex="0" aria-label="Dárky pro maminku">
 						<div
 							class="card-banner"
@@ -1318,7 +1318,7 @@
 						</div>
 					</article>
 
-					<!-- Card 4: Wish list pro kolegy — Sdíleno, Fun (teal) -->
+					<!-- Card 4: Wish list pro kolegy – Sdíleno, Fun (teal) -->
 					<article class="wl-card" tabindex="0" aria-label="Wish list pro kolegy">
 						<div
 							class="card-banner"
@@ -1426,11 +1426,11 @@
 						</div>
 					</article>
 
-					<!-- Card 5: Svatba Jana & Tomáš — ARCHIVOVÁNO (dimmed) -->
+					<!-- Card 5: Svatba Jana & Tomáš – ARCHIVOVÁNO (dimmed) -->
 					<article
 						class="wl-card is-archived"
 						tabindex="0"
-						aria-label="Svatba Jana a Tomáš — archivováno"
+						aria-label="Svatba Jana a Tomáš – archivováno"
 					>
 						<div
 							class="card-banner"
@@ -1518,19 +1518,19 @@
 
 		<!-- Page break -->
 		<div class="page-break-indicator">
-			<span>— Nová stránka: Spravované —</span>
+			<span>– Nová stránka: Spravované –</span>
 		</div>
 
 		<!-- ═══════════════════════════════════════════════════════
-		     PAGE 2 — SPRAVOVANÉ
+		     PAGE 2 – SPRAVOVANÉ
 		     ═══════════════════════════════════════════════════════ -->
 		<div class="page-section">
-			<div class="section-eyebrow-strip">REFINED — Spravované</div>
+			<div class="section-eyebrow-strip">REFINED – Spravované</div>
 
-			<!-- Navigation — Spravované active -->
+			<!-- Navigation – Spravované active -->
 			<nav class="nav" aria-label="Hlavní navigace">
 				<div class="nav-left">
-					<a class="nav-logo" href="#" aria-label="Přejeme si — domů">
+					<a class="nav-logo" href="#" aria-label="Přejeme si – domů">
 						<div class="nav-logo-icon" aria-hidden="true">
 							<svg
 								width="18"
@@ -1624,7 +1624,7 @@
 						class="nav-avatar"
 						role="button"
 						tabindex="0"
-						aria-label="Můj profil — Jana Nováková"
+						aria-label="Můj profil – Jana Nováková"
 					>
 						JN
 					</div>
@@ -1712,13 +1712,13 @@
 					</div>
 				</div>
 
-				<!-- Card grid — Spravované (3 cards, moderator context) -->
+				<!-- Card grid – Spravované (3 cards, moderator context) -->
 				<div class="wishlist-grid">
-					<!-- Card S1: Vánoce 2026 — moderátor — owner: Petr Svoboda -->
+					<!-- Card S1: Vánoce 2026 – moderátor – owner: Petr Svoboda -->
 					<article
 						class="wl-card"
 						tabindex="0"
-						aria-label="Vánoce 2026 — vlastník Petr Svoboda"
+						aria-label="Vánoce 2026 – vlastník Petr Svoboda"
 					>
 						<div
 							class="card-banner"
@@ -1805,11 +1805,11 @@
 						</div>
 					</article>
 
-					<!-- Card S2: Narozeniny — Jana — owner: Eva Modrá -->
+					<!-- Card S2: Narozeniny – Jana – owner: Eva Modrá -->
 					<article
 						class="wl-card"
 						tabindex="0"
-						aria-label="Narozeniny Jana — vlastník Eva Modrá"
+						aria-label="Narozeniny Jana – vlastník Eva Modrá"
 					>
 						<div
 							class="card-banner"
@@ -1894,11 +1894,11 @@
 						</div>
 					</article>
 
-					<!-- Card S3: Dárky pro Tomáše — owner: Lucie Nová — fully reserved -->
+					<!-- Card S3: Dárky pro Tomáše – owner: Lucie Nová – fully reserved -->
 					<article
 						class="wl-card"
 						tabindex="0"
-						aria-label="Dárky pro Tomáše — vlastník Lucie Nová"
+						aria-label="Dárky pro Tomáše – vlastník Lucie Nová"
 					>
 						<div
 							class="card-banner"
@@ -1991,19 +1991,19 @@
 
 		<!-- Page break -->
 		<div class="page-break-indicator">
-			<span>— Nová stránka: Sledované —</span>
+			<span>– Nová stránka: Sledované –</span>
 		</div>
 
 		<!-- ═══════════════════════════════════════════════════════
-		     PAGE 3 — SLEDOVANÉ
+		     PAGE 3 – SLEDOVANÉ
 		     ═══════════════════════════════════════════════════════ -->
 		<div class="page-section">
-			<div class="section-eyebrow-strip">REFINED — Sledované</div>
+			<div class="section-eyebrow-strip">REFINED – Sledované</div>
 
-			<!-- Navigation — Sledované active -->
+			<!-- Navigation – Sledované active -->
 			<nav class="nav" aria-label="Hlavní navigace">
 				<div class="nav-left">
-					<a class="nav-logo" href="#" aria-label="Přejeme si — domů">
+					<a class="nav-logo" href="#" aria-label="Přejeme si – domů">
 						<div class="nav-logo-icon" aria-hidden="true">
 							<svg
 								width="18"
@@ -2097,7 +2097,7 @@
 						class="nav-avatar"
 						role="button"
 						tabindex="0"
-						aria-label="Můj profil — Jana Nováková"
+						aria-label="Můj profil – Jana Nováková"
 					>
 						JN
 					</div>
@@ -2190,13 +2190,13 @@
 					</div>
 				</div>
 
-				<!-- Card grid — Sledované (follower context) -->
+				<!-- Card grid – Sledované (follower context) -->
 				<div class="wishlist-grid">
-					<!-- Card F1: Narozeniny — Petr — I have 2 reservations -->
+					<!-- Card F1: Narozeniny – Petr – I have 2 reservations -->
 					<article
 						class="wl-card"
 						tabindex="0"
-						aria-label="Narozeniny — Petr, vlastník Petr Novák"
+						aria-label="Narozeniny – Petr, vlastník Petr Novák"
 					>
 						<div
 							class="card-banner"
@@ -2218,7 +2218,7 @@
 								>🎂</span
 							>
 							<div class="card-banner-overlay"></div>
-							<div class="card-banner-title">Narozeniny — Petr</div>
+							<div class="card-banner-title">Narozeniny – Petr</div>
 						</div>
 						<div class="card-body">
 							<div class="card-owner-row">
@@ -2301,7 +2301,7 @@
 						</div>
 					</article>
 
-					<!-- Card F2: Dárky pro maminku — Kateřina Horáková — no reservations -->
+					<!-- Card F2: Dárky pro maminku – Kateřina Horáková – no reservations -->
 					<article
 						class="wl-card"
 						tabindex="0"
@@ -2399,7 +2399,7 @@
 						</div>
 					</article>
 
-					<!-- Card F3: Vánoce 2026 — Martin Starý — 1 reservation -->
+					<!-- Card F3: Vánoce 2026 – Martin Starý – 1 reservation -->
 					<article
 						class="wl-card"
 						tabindex="0"

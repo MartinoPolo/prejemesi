@@ -41,7 +41,7 @@ describe('upload token HMAC', () => {
 	});
 
 	describe('verifyUploadToken', () => {
-		it('round-trips correctly — verified payload matches input', async () => {
+		it('round-trips correctly – verified payload matches input', async () => {
 			const { token } = await createUploadToken(TEST_OBJECT_KEY, TEST_USER_ID, TEST_SECRET);
 			const payload = await verifyUploadToken(token, TEST_SECRET);
 

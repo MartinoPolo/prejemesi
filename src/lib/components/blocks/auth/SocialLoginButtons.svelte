@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { authClient } from '$lib/auth_client.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -26,7 +27,7 @@
 		try {
 			await authClient.signIn.social({
 				provider: 'google',
-				callbackURL: callbackUrl ?? resolve('/my-lists'),
+				callbackURL: callbackUrl ?? localizeInternalHref(resolve('/my-lists')),
 			});
 		} catch {
 			googleLoading = false;
@@ -66,7 +67,7 @@
 </Button>
 
 {#if showMagicLink}
-	<Button intent="ghost" href={resolve('/magic-link')} class="mt-2 w-full">
+	<Button intent="ghost" href={localizeInternalHref(resolve('/magic-link'))} class="mt-2 w-full">
 		<MailIcon data-icon="inline-start" />
 		{m.login_magic_link()}
 	</Button>

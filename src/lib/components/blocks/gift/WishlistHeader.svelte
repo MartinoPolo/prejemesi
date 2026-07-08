@@ -32,7 +32,7 @@
 		eventDate: Date | null;
 		status: 'draft' | 'active' | 'archived';
 		role: WishlistRole;
-		giftCount: number;
+		giftCount: number | null;
 		ownerIsModerator: boolean;
 		onshare?: () => void;
 		onmoderators?: () => void;
@@ -90,6 +90,9 @@
 	const statusBadgeTone = $derived(WISHLIST_STATUS_BADGE_MAP[status]);
 
 	const giftCountLabel = $derived.by(() => {
+		if (giftCount === null) {
+			return null;
+		}
 		if (giftCount === 1) {
 			return m.wishlist_gift_count_one();
 		}
@@ -124,7 +127,9 @@
 			{/if}
 			<div class={styles.metaRowOnBanner()}>
 				<Badge tone={statusBadgeTone}>{statusLabel}</Badge>
-				<span>{giftCountLabel}</span>
+				{#if giftCountLabel !== null}
+					<span>{giftCountLabel}</span>
+				{/if}
 				{#if formattedDate}
 					<span class="inline-flex items-center gap-1">
 						<CalendarIcon class="size-3.5" />
@@ -174,7 +179,7 @@
 		</div>
 	{/if}
 
-	<!-- Owner sees reservations disclosure — visible to ALL users -->
+	<!-- Owner sees reservations disclosure – visible to ALL users -->
 	{#if ownerIsModerator}
 		<div class={styles.disclosureBanner()}>
 			<EyeIcon class="size-4 flex-shrink-0" />

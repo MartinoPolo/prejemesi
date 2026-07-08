@@ -16,6 +16,6 @@
 		{/if}
 		<kbd class="rounded bg-muted px-1 font-mono text-xs">{keyPart}</kbd>
 	{/each}
-	<span>—</span>
+	<span>–</span>
 	<span>{action}</span>
 </li>

@@ -41,6 +41,8 @@
 				wishlistId: string;
 				wishlistShortId?: string;
 				wishlistTitle?: string;
+				/** Target wishlist's priority-level count; the heart column needs ≥2. */
+				priorityLevelCount?: number;
 				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
 				suppressNavigation?: boolean;
 				onsuccess?: () => void;
@@ -55,11 +57,19 @@
 		wishlistId,
 		wishlistShortId,
 		wishlistTitle,
+		priorityLevelCount,
 	}: ImportWizardProps & {
 		wishlistId?: string;
 		wishlistShortId?: string;
 		wishlistTitle?: string;
+		priorityLevelCount?: number;
 	} = $props();
+
+	// New-list mode always seeds the 3 default levels at commit, so priority is
+	// always assignable there; append mode depends on the target wishlist's levels.
+	const priorityAvailable = $derived(
+		mode === WIZARD_MODE.newList || (priorityLevelCount ?? 0) >= 2,
+	);
 
 	let currentStep = $state<WizardStep>(WIZARD_STEP.source);
 	let parsedRows = $state<string[][]>([]);
@@ -73,14 +83,14 @@
 
 	// Dialog width based on step. The review step holds the table-like draft grid;
 	// append mode adds a ~280px existing-items side panel, so it needs extra room.
-	// NOTE: the sm: prefix is required — Dialog.Content's base class sets `sm:max-w-lg`,
+	// NOTE: the sm: prefix is required – Dialog.Content's base class sets `sm:max-w-lg`,
 	// and only a same-breakpoint `sm:` override is deduped past it by tailwind-merge.
 	// Below sm the base `max-w-[calc(100%-2rem)]` keeps the dialog viewport-bound.
 	const dialogWidth = $derived.by(() => {
 		if (currentStep !== WIZARD_STEP.review) {
 			return 'sm:max-w-[680px]';
 		}
-		return mode === WIZARD_MODE.append ? 'sm:max-w-[1320px]' : 'sm:max-w-[1100px]';
+		return mode === WIZARD_MODE.append ? 'sm:max-w-[1400px]' : 'sm:max-w-[1180px]';
 	});
 
 	// Duplicate count for confirm step
@@ -268,6 +278,7 @@
 					{filename}
 					{mode}
 					{existingGifts}
+					{priorityAvailable}
 					onready={handleReviewReady}
 				/>
 			{:else if currentStep === WIZARD_STEP.confirm}

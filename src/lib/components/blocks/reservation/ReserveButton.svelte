@@ -35,7 +35,7 @@
 </script>
 
 {#if hasMyReservation}
-	<!-- Current user holds a reservation — allow cancelling (even on archived lists) -->
+	<!-- Current user holds a reservation – allow cancelling (even on archived lists) -->
 	<Button
 		{size}
 		intent="danger"

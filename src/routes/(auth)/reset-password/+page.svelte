@@ -10,8 +10,21 @@
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import MailIcon from '@lucide/svelte/icons/mail';
 
-	let token = $derived(page.url.searchParams.get('token'));
+	let passwordResetToken = $derived.by(() => {
+		const token = page.url.searchParams.get('token');
+		return token !== null && token !== '' ? token : null;
+	});
 </script>
+
+<svelte:head>
+	<title>
+		{passwordResetToken !== null ? m.reset_set_title() : m.reset_request_title()} – Přejeme si
+	</title>
+	<meta
+		name="description"
+		content={passwordResetToken !== null ? m.reset_set_subtitle() : m.reset_request_subtitle()}
+	/>
+</svelte:head>
 
 <AuthBrandPanel>
 	{#snippet tagline()}
@@ -37,9 +50,9 @@
 	{/snippet}
 </AuthBrandPanel>
 
-{#if token}
+{#if passwordResetToken !== null}
 	<AuthFormCard title={m.reset_set_title()} subtitle={m.reset_set_subtitle()}>
-		<ResetPasswordSetForm {token} />
+		<ResetPasswordSetForm token={passwordResetToken} />
 	</AuthFormCard>
 {:else}
 	<AuthFormCard title={m.reset_request_title()} subtitle={m.reset_request_subtitle()}>

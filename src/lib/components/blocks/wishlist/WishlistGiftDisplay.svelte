@@ -1,5 +1,7 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
 	import WishlistEmptyState from './WishlistEmptyState.svelte';
+	import GiftCardSkeleton from '$lib/components/blocks/gift/GiftCardSkeleton.svelte';
 	import WishlistGiftCardGrid from './WishlistGiftCardGrid.svelte';
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
@@ -13,6 +15,7 @@
 		isOwner: boolean;
 		isOwnerOrModerator: boolean;
 		viewMode: GiftViewMode;
+		isLoading?: boolean;
 		isEmpty: boolean;
 		isFilteredEmpty: boolean;
 		draggedIndex: number | null;
@@ -36,6 +39,7 @@
 		isOwner,
 		isOwnerOrModerator,
 		viewMode,
+		isLoading = false,
 		isEmpty,
 		isFilteredEmpty,
 		draggedIndex,
@@ -53,7 +57,17 @@
 	}: WishlistGiftDisplayProps = $props();
 </script>
 
-{#if isEmpty || isFilteredEmpty}
+{#if isLoading}
+	<div
+		class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+		aria-busy="true"
+		aria-label={m.wishlist_detail_loading_gifts()}
+	>
+		{#each Array.from({ length: 6 }, (_, i) => i) as index (index)}
+			<GiftCardSkeleton />
+		{/each}
+	</div>
+{:else if isEmpty || isFilteredEmpty}
 	<WishlistEmptyState {isArchived} {isOwner} {isFilteredEmpty} {onaddgift} {onclearfilters} />
 {:else if viewMode === 'card'}
 	<WishlistGiftCardGrid

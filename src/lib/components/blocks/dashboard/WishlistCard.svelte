@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { wishlistCardVariants, STATUS_DOT_CLASSES } from './wishlist_card_variants.js';
 	import {
 		getThemePreset,
@@ -10,6 +11,7 @@
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import type { Snippet } from 'svelte';
@@ -67,7 +69,7 @@
 		if (date === null) {
 			return '';
 		}
-		return new Intl.DateTimeFormat('cs-CZ', {
+		return new Intl.DateTimeFormat(getLocale(), {
 			day: 'numeric',
 			month: 'numeric',
 			year: 'numeric',
@@ -76,7 +78,7 @@
 </script>
 
 <a
-	href={resolve('/(app)/w/[id]', { id: wishlistData.shortId })}
+	href={localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistData.shortId }))}
 	class={cn(variants.root(), className)}
 	aria-label={wishlistData.title}
 	data-testid="wishlist-card"
@@ -145,7 +147,7 @@
 			</div>
 		{/if}
 
-		<!-- Owner card: gift count + optional event date (owner invariant — no reservations) -->
+		<!-- Owner card: gift count + optional event date (owner invariant – no reservations) -->
 		{#if giftCount !== undefined}
 			<div class={variants.metaRow()}>
 				<span class={variants.availableCount()}>

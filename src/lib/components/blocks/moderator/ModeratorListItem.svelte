@@ -4,6 +4,7 @@
 	import type { ModeratorWithUser } from '$lib/modules/moderators/types.js';
 	import { moderatorPanelVariants } from './moderator_panel_variants.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	interface ModeratorListItemProps {
 		moderator: ModeratorWithUser;
@@ -26,7 +27,7 @@
 
 	const formattedDate = $derived.by(() => {
 		try {
-			return new Intl.DateTimeFormat('cs-CZ', {
+			return new Intl.DateTimeFormat(getLocale(), {
 				day: 'numeric',
 				month: 'short',
 				year: 'numeric',

@@ -36,6 +36,7 @@
 		canDeleteSelectedGift: boolean;
 		/** When the selected gift's share grace window closes (issue #83), or null when none. */
 		graceExpiresAt: Date | null;
+		graceMessage: (inputs: { time: string }) => string;
 		/** Reactive "now" from the page clock that keeps the grace countdown live. */
 		graceNow: Date;
 		isSubmitting: boolean;
@@ -87,6 +88,7 @@
 		postShareLocked,
 		canDeleteSelectedGift,
 		graceExpiresAt,
+		graceMessage,
 		graceNow,
 		isSubmitting,
 		isDeleting,
@@ -129,6 +131,7 @@
 		{postShareLocked}
 		canDelete={canDeleteSelectedGift}
 		{graceExpiresAt}
+		{graceMessage}
 		{graceNow}
 		{isSubmitting}
 		{isDeleting}
@@ -196,6 +199,7 @@
 		bind:open={batchAddDialogOpen}
 		{wishlistTitle}
 		isSubmitting={isBatchSubmitting}
+		priorityAvailable={priorityLevels.length >= 2}
 		onsubmit={onbatchsubmit}
 		onOpenChange={onbatchdialogopenchange}
 	/>

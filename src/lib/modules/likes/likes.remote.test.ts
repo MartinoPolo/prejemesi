@@ -165,7 +165,7 @@ describe('toggleLike', () => {
 
 	it('inserts a new like and returns liked: true with likeCount when no existing like', async () => {
 		// Query 1: gift, Query 2: wishlist (different owner), Query 3: existing likes → none,
-		// Query 4: insert (mutation — ignored), Query 5: count result
+		// Query 4: insert (mutation – ignored), Query 5: count result
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ id: 'gift-abc', wishlistId: 'wl-1' }],

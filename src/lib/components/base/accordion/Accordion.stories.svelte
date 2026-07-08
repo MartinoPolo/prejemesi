@@ -24,12 +24,12 @@
 		await expect(triggers[1]).toHaveAttribute('data-state', 'closed');
 		await expect(triggers[2]).toHaveAttribute('data-state', 'closed');
 
-		// Click item-2 — should open it and close item-1 (single mode)
+		// Click item-2 – should open it and close item-1 (single mode)
 		await userEvent.click(triggers[1]);
 		await expect(triggers[0]).toHaveAttribute('data-state', 'closed');
 		await expect(triggers[1]).toHaveAttribute('data-state', 'open');
 
-		// Click item-3 — should open it and close item-2
+		// Click item-3 – should open it and close item-2
 		await userEvent.click(triggers[2]);
 		await expect(triggers[1]).toHaveAttribute('data-state', 'closed');
 		await expect(triggers[2]).toHaveAttribute('data-state', 'open');
@@ -43,7 +43,7 @@
 		await expect(triggers[1]).toHaveAttribute('data-state', 'open');
 		await expect(triggers[2]).toHaveAttribute('data-state', 'closed');
 
-		// Expand third item — all three should be open
+		// Expand third item – all three should be open
 		await userEvent.click(triggers[2]);
 		await expect(triggers[0]).toHaveAttribute('data-state', 'open');
 		await expect(triggers[1]).toHaveAttribute('data-state', 'open');
@@ -53,7 +53,7 @@
 	const playDisabledNoChange = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const triggers = getAccordionTriggers(canvasElement);
 
-		// "Disabled Item" — item-1 expanded, item-2 disabled, item-3 collapsed
+		// "Disabled Item" – item-1 expanded, item-2 disabled, item-3 collapsed
 		await expect(triggers[0]).toHaveAttribute('data-state', 'open');
 		await expect(triggers[1]).toBeDisabled();
 		await expect(triggers[2]).toHaveAttribute('data-state', 'closed');
@@ -72,16 +72,16 @@
 		// All start collapsed
 		await expect(triggers[0]).toHaveAttribute('data-state', 'closed');
 
-		// Focus first trigger and press Enter — should expand
+		// Focus first trigger and press Enter – should expand
 		(triggers[0] as HTMLButtonElement).focus();
 		await userEvent.keyboard('{Enter}');
 		await expect(triggers[0]).toHaveAttribute('data-state', 'open');
 
-		// Press Space on same trigger — should collapse
+		// Press Space on same trigger – should collapse
 		await userEvent.keyboard(' ');
 		await expect(triggers[0]).toHaveAttribute('data-state', 'closed');
 
-		// Focus second trigger and press Space — should expand
+		// Focus second trigger and press Space – should expand
 		(triggers[1] as HTMLButtonElement).focus();
 		await userEvent.keyboard(' ');
 		await expect(triggers[1]).toHaveAttribute('data-state', 'open');

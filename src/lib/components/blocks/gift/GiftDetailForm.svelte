@@ -9,19 +9,20 @@
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import GiftImageCropCanvas from './GiftImageCropCanvas.svelte';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
+	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
-	import LockIcon from '@lucide/svelte/icons/lock';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import { formatAppendDate, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
+	import { getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
 	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
 		giftDetailModalVariants,
@@ -60,8 +61,9 @@
 		isOwner: boolean;
 		postShareLocked: boolean;
 		canDelete: boolean;
-		/** When the share grace window closes (issue #83), or null when none is active. */
+		/** When the active gift grace window closes (issue #83), or null when none is active. */
 		graceExpiresAt?: Date | null;
+		graceMessage?: (inputs: { time: string }) => string;
 		/** Reactive "now" from the page clock that keeps the grace countdown live. */
 		graceNow?: Date;
 		isSubmitting: boolean;
@@ -81,6 +83,7 @@
 		postShareLocked,
 		canDelete,
 		graceExpiresAt = null,
+		graceMessage = m.gift_grace_hint,
 		graceNow = new Date(),
 		isSubmitting,
 		isDeleting,
@@ -111,7 +114,7 @@
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
-	// the current image with replace/remove — not its resolved URL in the URL field.
+	// the current image with replace/remove – not its resolved URL in the URL field.
 	// svelte-ignore state_referenced_locally
 	let imageMode = $state<'url' | 'upload'>((gift?.imageKey ?? '') !== '' ? 'upload' : 'url');
 	let showDeleteConfirm = $state(false);
@@ -137,7 +140,7 @@
 
 	const isEdit = $derived(mode === 'edit');
 	const locked = $derived(isEdit && postShareLocked);
-	// Active share grace window (full edit + delete restored): shown as a live countdown banner.
+	// Active gift grace window: full edit after sharing, or delete-only for a new post-share gift.
 	const graceActive = $derived(
 		isEdit && graceExpiresAt !== null && graceNow.getTime() < graceExpiresAt.getTime(),
 	);
@@ -300,35 +303,41 @@
 
 	<!-- Right column: form -->
 	<div class={styles.detailColumn()}>
-		<!-- Share grace window (issue #83): full edit + delete are temporarily restored. -->
+		<!-- Gift grace window (issue #83): communicates temporary full-edit/delete or delete-only access. -->
 		{#if graceActive && graceExpiresAt !== null}
 			<div class="mb-3">
-				<GraceCountdown
-					expiresAt={graceExpiresAt}
-					now={graceNow}
-					message={m.gift_grace_hint}
-				/>
+				<GraceCountdown expiresAt={graceExpiresAt} now={graceNow} message={graceMessage} />
 			</div>
 		{/if}
 		<fieldset class="contents">
 			<!-- Name -->
 			<div class={styles.formField()}>
 				<Label for="gift-name">{m.gift_name_label()}</Label>
-				<Input
-					id="gift-name"
-					bind:value={name}
-					placeholder={m.gift_name_placeholder()}
-					disabled={locked}
-					aria-invalid={nameError !== '' ? true : undefined}
-				/>
+				{#if locked}
+					<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
+						{#snippet asChild(tooltipProps)}
+							<div {...tooltipProps} tabindex="-1" class="w-full">
+								<Input
+									id="gift-name"
+									class="pointer-events-none"
+									bind:value={name}
+									placeholder={m.gift_name_placeholder()}
+									disabled
+									aria-invalid={nameError !== '' ? true : undefined}
+								/>
+							</div>
+						{/snippet}
+					</SimpleTooltip>
+				{:else}
+					<Input
+						id="gift-name"
+						bind:value={name}
+						placeholder={m.gift_name_placeholder()}
+						aria-invalid={nameError !== '' ? true : undefined}
+					/>
+				{/if}
 				{#if nameError}
 					<span class="text-xs text-destructive">{nameError}</span>
-				{/if}
-				{#if locked}
-					<HelpText>
-						<LockIcon class="size-3" />
-						{m.gift_name_frozen_hint()}
-					</HelpText>
 				{/if}
 			</div>
 
@@ -342,52 +351,54 @@
 							{gift?.description}
 						</p>
 					{/if}
-					<!-- Appended segments: each is editable/deletable only within its own grace window. -->
-					{#each gift?.descriptionAppends ?? [] as append, i (`${append.addedAt}:${i}`)}
-						{#if editingAppendIndex === i}
-							<div class="flex flex-col gap-2">
-								<Textarea bind:value={editingAppendText} rows={2} />
-								<div class="flex gap-2">
-									<Button
-										size="sm"
-										onclick={() => saveEditAppend(i)}
-										disabled={editingAppendText.trim() === ''}
-									>
-										{m.save()}
-									</Button>
-									<Button size="sm" intent="ghost" onclick={cancelEditAppend}>
-										{m.cancel()}
-									</Button>
-								</div>
-							</div>
-						{:else}
-							<div class="flex items-start justify-between gap-2">
-								<div class="text-sm whitespace-pre-line text-wishlist-accent">
-									<span class="text-xs opacity-70"
-										>{formatAppendDate(append.addedAt)} –
-									</span>{append.text}
-								</div>
-								{#if isWithinGraceWindow(append.addedAt, graceNow)}
-									<div class="flex shrink-0 gap-1">
+					<GiftDescription
+						description={null}
+						descriptionAppends={gift?.descriptionAppends ?? []}
+						maxVisibleAppends={1}
+					/>
+					<!-- Recent description appends can be corrected only during their own grace window. -->
+					{#each gift?.descriptionAppends ?? [] as append, index (`${append.addedAt}:${index}`)}
+						{#if isWithinGraceWindow(append.addedAt, graceNow)}
+							{#if editingAppendIndex === index}
+								<div
+									class="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-2"
+								>
+									<Textarea bind:value={editingAppendText} rows={2} />
+									<div class="flex gap-2">
 										<Button
-											size="icon-sm"
-											intent="ghost"
-											aria-label={m.gift_description_append_edit_aria()}
-											onclick={() => startEditAppend(i, append.text)}
+											size="sm"
+											onclick={() => saveEditAppend(index)}
+											disabled={editingAppendText.trim() === ''}
 										>
-											<PencilIcon />
+											{m.save()}
 										</Button>
-										<Button
-											size="icon-sm"
-											intent="ghost"
-											aria-label={m.gift_description_append_delete_aria()}
-											onclick={() => deleteAppend(i)}
-										>
-											<TrashIcon />
+										<Button size="sm" intent="ghost" onclick={cancelEditAppend}>
+											{m.cancel()}
 										</Button>
 									</div>
-								{/if}
-							</div>
+								</div>
+							{:else}
+								<div
+									class="flex w-fit gap-1 rounded-md border border-border bg-surface-2 p-1"
+								>
+									<Button
+										size="icon-sm"
+										intent="ghost"
+										aria-label={m.gift_description_append_edit_aria()}
+										onclick={() => startEditAppend(index, append.text)}
+									>
+										<PencilIcon />
+									</Button>
+									<Button
+										size="icon-sm"
+										intent="ghost"
+										aria-label={m.gift_description_append_delete_aria()}
+										onclick={() => deleteAppend(index)}
+									>
+										<TrashIcon />
+									</Button>
+								</div>
+							{/if}
 						{/if}
 					{/each}
 					<Label class="mt-2">{m.gift_description_add_note_label()}</Label>
@@ -529,7 +540,9 @@
 					placeholder="1"
 				/>
 				{#if locked}
-					<HelpText>{m.gift_quantity_frozen_help()}</HelpText>
+					<HelpText class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1">
+						{m.gift_quantity_frozen_help()}
+					</HelpText>
 				{/if}
 			</div>
 

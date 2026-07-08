@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import GiftIcon from '@lucide/svelte/icons/gift';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
-<a class="logo" href={resolve('/')} aria-label={m.logo_home_label()}>
+<a class="logo" href={localizeInternalHref(resolve('/'))} aria-label={m.logo_home_label()}>
 	<span class="logo-icon-wrap" aria-hidden="true">
 		<GiftIcon class="size-[18px]" />
 	</span>

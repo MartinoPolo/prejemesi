@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -86,7 +87,7 @@
 
 			open = false;
 			resetForm();
-			await goto(resolve('/(app)/w/[id]', { id: created.shortId }));
+			await goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })));
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : m.wishlist_create_error();
 			isSubmitting = false;

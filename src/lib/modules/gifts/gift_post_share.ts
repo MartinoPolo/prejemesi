@@ -32,6 +32,10 @@ function isBlank(value: string | null | undefined): boolean {
 	return value === null || value === undefined || value.trim() === '';
 }
 
+function normalizedText(value: string | null | undefined): string {
+	return value?.trim() ?? '';
+}
+
 /** Structural inequality for jsonb-shaped fields (links, imageMeta), normalizing null/undefined. */
 export function jsonChanged(a: unknown, b: unknown): boolean {
 	return JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
@@ -48,7 +52,7 @@ export function computePreShareOwnerEdit(
 	input: UpdateGiftInput,
 	now: Date,
 ): PostShareEditOutcome {
-	// Rejection checks first — they short-circuit before any updateData is built.
+	// Rejection checks first – they short-circuit before any updateData is built.
 	if (input.name !== undefined && input.name !== current.name) {
 		return {
 			rejection: { status: 403, code: SERVER_ERROR.CANNOT_EDIT_AFTER_SHARING },
@@ -91,7 +95,7 @@ export function computePreShareOwnerEdit(
 	let changed = false;
 
 	// Per-segment edit/delete (within its window, already validated above). Editing resets the
-	// segment's addedAt — re-opening its window (debounce). A blank/null text deletes the segment.
+	// segment's addedAt – re-opening its window (debounce). A blank/null text deletes the segment.
 	// Takes precedence over a new-segment append: the two are mutually exclusive.
 	if (input.descriptionAppendEdit !== undefined) {
 		const { index, text } = input.descriptionAppendEdit;
@@ -113,22 +117,29 @@ export function computePreShareOwnerEdit(
 		}
 	}
 
-	// description append engine (skipped when a per-segment edit is supplied — mutually exclusive)
+	// description append engine (skipped when a per-segment edit is supplied – mutually exclusive)
 	if (
 		input.descriptionAppendEdit === undefined &&
 		typeof input.description === 'string' &&
 		input.description.trim() !== ''
 	) {
+		const trimmedDescription = input.description.trim();
+		const latestAppend = current.descriptionAppends.at(-1);
 		if (isBlank(current.description)) {
 			// Empty-at-share edge: the frozen base is empty, so fill it directly (no append).
-			updateData.description = input.description;
+			updateData.description = trimmedDescription;
 			changed = true;
-		} else {
+		} else if (
+			normalizedText(current.description) !== trimmedDescription &&
+			normalizedText(latestAppend?.text) !== trimmedDescription
+		) {
 			updateData.descriptionAppends = [
 				...current.descriptionAppends,
-				{ text: input.description, addedAt: now.toISOString() },
+				{ text: trimmedDescription, addedAt: now.toISOString() },
 			];
 			changed = true;
+		} else {
+			// Idempotent save: do not create a duplicate history entry for unchanged text.
 		}
 	}
 

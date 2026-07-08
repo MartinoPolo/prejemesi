@@ -19,6 +19,7 @@
 		postShareLocked?: boolean;
 		canDelete?: boolean;
 		graceExpiresAt?: Date | null;
+		graceMessage?: (inputs: { time: string }) => string;
 		graceNow?: Date;
 		isSubmitting?: boolean;
 		isDeleting?: boolean;
@@ -39,6 +40,7 @@
 		postShareLocked = false,
 		canDelete = true,
 		graceExpiresAt = null,
+		graceMessage = m.gift_grace_hint,
 		graceNow = new Date(),
 		isSubmitting = false,
 		isDeleting = false,
@@ -77,6 +79,7 @@
 			{postShareLocked}
 			{canDelete}
 			{graceExpiresAt}
+			{graceMessage}
 			{graceNow}
 			{isSubmitting}
 			{isDeleting}

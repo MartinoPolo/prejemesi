@@ -1,4 +1,4 @@
-# Import Wizard — Design Summary
+# Import Wizard – Design Summary
 
 **Base**: Variant A (Numbered Stepper) | **Refined**: 2026-06-03
 
@@ -7,15 +7,15 @@
 Variant A was chosen and refined with: **source-method tabs use icons instead of ①②③ numbers**
 (File / Table / Google), **clarified internal scrolling** for long lists, **expanded the duplicate
 (Kontrola/append) step with realistic long, asymmetric lists**, and **removed the
-"Reprezentativní náhled — interní logika mřížky" preview label** so the imported grid top-aligns
+"Reprezentativní náhled – interní logika mřížky" preview label** so the imported grid top-aligns
 with the existing-items panel. See the design brief for full requirements.
 
 Key changes from the base variant:
 
-- **Source tabs**: the leading `.tab-num` circled-number was replaced with a 16px icon — Lucide
+- **Source tabs**: the leading `.tab-num` circled-number was replaced with a 16px icon – Lucide
   **File** (Nahrát soubor), Lucide **Table** (Vložit buňky), and the multicolor **Google** brand
   mark (Odkaz na Tabulky Google). Numbers are gone; the numbered _stepper_ (1·2·3 in the header)
-  is unchanged — that is the variant's identity.
+  is unchanged – that is the variant's identity.
 - **Internal scroll model**: both the embedded draft grid and the append existing-items panel are
   now internally scrolling regions with a **sticky header row** and a **token-themed scrollbar**
   (`.scroll-y`), instead of the body growing unboundedly. The Review `modal-body` no longer
@@ -27,7 +27,7 @@ Key changes from the base variant:
 
 ## Component Map
 
-### Codebase — Use As-Is
+### Codebase – Use As-Is
 
 | Component        | Path                                     | Usage                                     | Key Props/Variants                          |
 | ---------------- | ---------------------------------------- | ----------------------------------------- | ------------------------------------------- |
@@ -43,13 +43,13 @@ Key changes from the base variant:
 | Badge            | `src/lib/components/base/badge/`         | "možný duplikát"; selection count pill    | `tone="warning"`                            |
 | Progress         | `src/lib/components/base/progress/`      | Commit progress (Confirm)                 | determinate when row count known            |
 | Checkbox         | `src/lib/components/base/checkbox/`      | Per-row select (lives in grid)            | tri-state select-all in grid header         |
-| Separator        | `src/lib/components/base/separator/`     | grid / panel dividers                     | —                                           |
-| Label / HelpText | `src/lib/components/base/label/` · `help-text/` | Title field label; inline hints   | —                                           |
+| Separator        | `src/lib/components/base/separator/`     | grid / panel dividers                     | –                                           |
+| Label / HelpText | `src/lib/components/base/label/` · `help-text/` | Title field label; inline hints   | –                                           |
 | ImageUpload      | `src/lib/components/derived/image-upload/` | Drop-zone interaction pattern (retarget .csv/.tsv) | drag/drop + click-to-pick      |
 
 ### Adopt from shadcn-svelte / Bits UI
 
-None required — every primitive already exists in `base/`.
+None required – every primitive already exists in `base/`.
 
 ### Build Custom
 
@@ -57,7 +57,7 @@ None required — every primitive already exists in `base/`.
 | -------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `blocks/import/*`    | Wizard orchestrator + Source/Review/Confirm steps (see brief §5)| Composition of the primitives above; the step machine + parse handling is app-specific.   |
 | Google source icon   | Multicolor Google brand mark for the Sheets-link tab            | Lucide ships **no brand logos**; supply an inline 4-path SVG (`viewBox 0 0 48 48`) or a brand-icon component. File/Table use `lucide-svelte`. |
-| Existing-items panel | `ImportExistingItemsPanel.svelte` — scrollable list, warn-dot on matched rows, name/link only | Append-only comparison surface; no base list primitive; must never render reservation data. |
+| Existing-items panel | `ImportExistingItemsPanel.svelte` – scrollable list, warn-dot on matched rows, name/link only | Append-only comparison surface; no base list primitive; must never render reservation data. |
 | `.scroll-y` utility  | Token-themed thin scrollbar + sticky-head pattern               | Shared scroll affordance for the grid and existing-items panel; not a component, a utility/recipe. |
 
 > The **Gift Draft Grid** itself (`blocks/gift-draft-grid/`) is a separate brief; Review only embeds it.
@@ -66,11 +66,11 @@ None required — every primitive already exists in `base/`.
 
 - **Source-method icons**: File/Table from `lucide-svelte` (`File`, `Table`), sized 16px, `currentColor`
   so they tint with the active/inactive tab state. The Google mark is intentionally full-color (brand
-  identity) — keep it `aria-hidden` and rely on the visible "Odkaz na Tabulky Google" label for a11y.
+  identity) – keep it `aria-hidden` and rely on the visible "Odkaz na Tabulky Google" label for a11y.
 - **Scroll regions**: the grid is the scroll container (sticky `.grid-row.head` via `position: sticky;
   top: 0`); the existing-items panel keeps a sticky `.ep-title` header and a separate scrolling body.
   Use `overscroll-behavior: contain` so wheel scroll doesn't chain to the page/modal. In Svelte the
-  scrollers live inside the grid block and the panel — the wizard footer stays pinned below.
+  scrollers live inside the grid block and the panel – the wizard footer stays pinned below.
 - **Top/bottom alignment**: the dedup region is `align-items: stretch`; the grid column reserves room
   for the selection summary (grid `max-height` slightly less than the panel) so both columns end level
   regardless of which list is longer. This replaces the removed preview-label spacer that previously
@@ -80,9 +80,9 @@ None required — every primitive already exists in `base/`.
   flip). Always-visible gutter avoids layout shift when content grows past the threshold.
 - **a11y / keyboard**: tabs remain `role="tab"`/`aria-selected`; selection count and duplicate count
   use `aria-live`; the existing-items list is informational (not focus-trapping). WCAG AA contrast holds
-  for the warn-dot — pair it with the "možný duplikát" badge text, never color alone.
+  for the warn-dot – pair it with the "možný duplikát" badge text, never color alone.
 - **Duplicate badge in long names**: the "možný duplikát" badge must stay visible when the Název is
-  long — wrap the name text in a truncating `.nm` span inside a flex `.cell-name` and keep the badge
+  long – wrap the name text in a truncating `.nm` span inside a flex `.cell-name` and keep the badge
   `flex-shrink: 0`. Truncating the whole cell (badge included) hides the flag exactly on long rows.
 - **Mobile**: the append existing-items panel collapses **below** the grid under `lg` (or into a
   `base/collapsible`); the stacked source tabs already use the same icons.

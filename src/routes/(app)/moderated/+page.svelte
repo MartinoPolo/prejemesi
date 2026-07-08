@@ -7,6 +7,7 @@
 	import WishlistCard from '$lib/components/blocks/dashboard/WishlistCard.svelte';
 	import { getModeratedWishlists } from '$lib/modules/wishlists/wishlists.remote.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import type { SortOption, ViewMode } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { ModeratedWishlist } from '$lib/modules/wishlists/dashboard_types.js';
 
@@ -50,7 +51,7 @@
 						new Date(a.updatedAt ?? a.createdAt).getTime(),
 				);
 			case 'alphabetical':
-				return sorted.sort((a, b) => a.title.localeCompare(b.title, 'cs'));
+				return sorted.sort((a, b) => a.title.localeCompare(b.title, getLocale()));
 			case 'dateCreated':
 				return sorted.sort(
 					(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),

@@ -45,7 +45,7 @@
 
 	let fileInputElement: HTMLInputElement | undefined = $state(undefined);
 	let isDragOver = $state(false);
-	// Seed from the existing image (edit mode). A real http(s) URL here, not a blob —
+	// Seed from the existing image (edit mode). A real http(s) URL here, not a blob –
 	// the revoke-on-cleanup calls below are harmless no-ops for non-blob URLs.
 	// svelte-ignore state_referenced_locally
 	let previewUrl = $state<string | undefined>(initialPreviewUrl);
@@ -156,7 +156,7 @@
 		onRemove?.();
 	}
 
-	// Unmount guard — manual revokes in handlers cover the normal case
+	// Unmount guard – manual revokes in handlers cover the normal case
 	$effect(() => {
 		const url = previewUrl;
 		return () => {

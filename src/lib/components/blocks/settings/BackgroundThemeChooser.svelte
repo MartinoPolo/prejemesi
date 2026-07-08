@@ -63,7 +63,7 @@
 				showSaved = false;
 			}, 2000);
 		} catch {
-			// Revert on failure — the effect restores the previous attribute.
+			// Revert on failure – the effect restores the previous attribute.
 			selected = previous;
 			toastError(m.settings_bg_theme_error());
 		}
@@ -71,7 +71,7 @@
 
 	// REQ-3/REQ-5: drive ONLY data-bg-theme on the app root. The `.dark` class
 	// (color mode) is owned by mode-watcher on the same element and never touched
-	// here — the two axes (tint vs brightness) stay orthogonal.
+	// here – the two axes (tint vs brightness) stay orthogonal.
 	$effect(() => {
 		document.documentElement.setAttribute('data-bg-theme', selected);
 	});

@@ -1,11 +1,11 @@
-# Design Brief — Wishlist Page
+# Design Brief – Wishlist Page
 
-> **Status**: Refined (Variant 2 — E-commerce grid)
+> **Status**: Refined (Variant 2 – E-commerce grid)
 > **Refined mockup**: `designs/wishlist-page/refined.html`
 > **Summary**: `designs/wishlist-page/SUMMARY.md`
 > **Refinements**: Approved app shell nav, visitor + owner role views, 3-way view toggle, sort/filter dropdown, gift cards with link/priority/quantity/like/reserve, drag-and-drop hints for owner, light-mode only, 4 role views (visitor, owner-draft, owner-shared, moderator), gift card component reference with all states
 
-**Page:** `/w/<short-id>` — the core shareable wishlist view
+**Page:** `/w/<short-id>` – the core shareable wishlist view
 **Status:** Design exploration (5 variants)
 **Date:** 2026-05-30
 **Primary audience:** Visitors arriving via WhatsApp/email share links (first-time, often mobile)
@@ -17,7 +17,7 @@
 
 The Wishlist Page is the single most important page in Přejeme si. It is where the gift-surprise mechanic plays out. Success means:
 
-- A visitor arriving cold (no account, no context) immediately understands: whose wishlist, what occasion, what gifts cost, and how to reserve one — within 5 seconds
+- A visitor arriving cold (no account, no context) immediately understands: whose wishlist, what occasion, what gifts cost, and how to reserve one – within 5 seconds
 - The owner can add gifts and share the list without accidentally seeing reservation state
 - A moderator can manage gifts and see full reservation state in the same UI
 - All three roles have visually distinct, unambiguous affordances with no role confusion
@@ -29,15 +29,15 @@ The Wishlist Page is the single most important page in Přejeme si. It is where 
 
 ### Hierarchy (top to bottom)
 
-1. **App nav bar** — Logo, navigation links, user avatar
-2. **Wishlist header** — Owner name (primary color, large), title, description, occasion badge, stats, lifecycle banner
-3. **Toolbar** — View switcher (card/list/compact), sort+filter dropdown trigger, action buttons (share, add gift)
-4. **Gift grid/list/table** — The gift collection in the chosen view mode
-5. **Empty state** — When no gifts exist or filters return nothing
+1. **App nav bar** – Logo, navigation links, user avatar
+2. **Wishlist header** – Owner name (primary color, large), title, description, occasion badge, stats, lifecycle banner
+3. **Toolbar** – View switcher (card/list/compact), sort+filter dropdown trigger, action buttons (share, add gift)
+4. **Gift grid/list/table** – The gift collection in the chosen view mode
+5. **Empty state** – When no gifts exist or filters return nothing
 
 ### URL pattern
 
-`prejemesi.cz/w/abc123` — permanent visitor link, shared openly.
+`prejemesi.cz/w/abc123` – permanent visitor link, shared openly.
 
 ---
 
@@ -51,7 +51,7 @@ The default for anyone arriving via a shared link.
 - Toolbar: view switcher + sort/filter only (no share, no add)
 - Each gift: name, price, link, priority badge, quantity badge, like heart with count, **Reserve button**
 - Reserved gifts: show "Rezervováno" badge, disable reserve button (grayed, no click)
-- Partial quantity: "Rezervováno (1/3)" — reserve button still active for remaining units
+- Partial quantity: "Rezervováno (1/3)" – reserve button still active for remaining units
 - No edit/delete affordances anywhere
 - Share button absent
 
@@ -62,7 +62,7 @@ The wishlist creator, who must NEVER see reservation state.
 **Draft state (not yet shared):**
 
 - Full edit powers: edit, delete, reorder (drag handle) for each gift
-- "Sdílet" (Share) button in toolbar — prominent, triggers share dialog
+- "Sdílet" (Share) button in toolbar – prominent, triggers share dialog
 - "Přidat přání" (Add gift) button always visible
 - No reserve button, no reservation badges, no "X reserved" stats
 
@@ -71,12 +71,12 @@ The wishlist creator, who must NEVER see reservation state.
 - Edit + delete buttons hidden/locked for existing gifts (lock icon tooltip: "Přání nelze po sdílení upravovat")
 - Add gift button still visible
 - Share button still present (copy link, social sharing)
-- Stats: "8 přání" — no mention of reservations
+- Stats: "8 přání" – no mention of reservations
 - Visual lock indicator on existing gifts (subtle, not alarming)
 
 **Archived state:**
 
-- Banner: "Archivováno — seznam je uzavřen"
+- Banner: "Archivováno – seznam je uzavřen"
 - All add/edit/delete buttons hidden
 - Read-only display
 
@@ -88,7 +88,7 @@ A trusted third party with full management + visibility.
 - Each gift card/row: "Upravit" (edit) + "Smazat" (delete) icon buttons
 - Reserved gifts: shows "Rezervováno: Tomáš K." (who reserved)
 - Partial: "Rezervováno: 1× Tomáš K." for quantity gifts
-- **Cannot delete reserved gifts** — delete button disabled with tooltip "Nejdříve zrušte rezervaci"
+- **Cannot delete reserved gifts** – delete button disabled with tooltip "Nejdříve zrušte rezervaci"
 - "Přidat přání" button visible
 - Share button visible
 - Stats: "8 přání · 3 rezervováno · 2 oblíbeno"
@@ -105,8 +105,8 @@ Each gift carries up to 9 data points. Layout order (by importance):
 | 2        | Name           | Semibold, 15px, 2-line clamp                                            |
 | 3        | Price          | Bold, primary color; "Cena neuvedena" (muted) if absent                 |
 | 4        | External link  | ↗ domain.cz (12px, primary color); "Bez odkazu" (muted) if absent       |
-| 5        | Priority badge | "Vysoká" (red), "Střední" (amber), "Nízká" (muted) — omitted if not set |
-| 6        | Quantity badge | "×3" (muted) — only shown when qty > 1                                  |
+| 5        | Priority badge | "Vysoká" (red), "Střední" (amber), "Nízká" (muted) – omitted if not set |
+| 6        | Quantity badge | "×3" (muted) – only shown when qty > 1                                  |
 | 7        | Like heart     | Heart icon + count; filled/red when liked by current user               |
 | 8        | Reserve button | Visitor only: "Rezervovat" (primary); disabled "Rezervováno" if taken   |
 | 9        | Reserved badge | Visitor: "Rezervováno" badge; Moderator: "Rezervováno: Jméno"           |
@@ -129,9 +129,9 @@ Each gift carries up to 9 data points. Layout order (by importance):
 ## 5. Wishlist Header Specification
 
 ```
-[Owner name — text-2xl, bold, primary color]
-[Wishlist title — text-3xl, bold, tight tracking]
-[Description — text-base, muted]
+[Owner name – text-2xl, bold, primary color]
+[Wishlist title – text-3xl, bold, tight tracking]
+[Description – text-base, muted]
 
 [Occasion badge]  [N přání]  [Date if set]
                                          [Share btn] [Add gift btn]
@@ -142,7 +142,7 @@ Each gift carries up to 9 data points. Layout order (by importance):
 - Owner name uses `--primary` color (sage green `oklch(52.7% 0.154 150.069deg)` in light)
 - Wishlist title uses `--foreground`, font-heading (Noto Sans)
 - Description wraps; max 2 lines with expand affordance if longer
-- Stats line: "8 přání · Vánoce 25. 12. 2026" — muted, small
+- Stats line: "8 přání · Vánoce 25. 12. 2026" – muted, small
 - No theme hero banner in v1 (tokens exist for future use)
 
 ### Lifecycle Banners
@@ -156,12 +156,12 @@ Each gift carries up to 9 data points. Layout order (by importance):
 Muted info tone, collapsible.
 
 **Active (shared):**
-No banner needed — normal state. Lock icon on gift edit buttons is sufficient.
+No banner needed – normal state. Lock icon on gift edit buttons is sufficient.
 
 **Archived:**
 
 ```
-[🗄] Archivováno — seznam je uzavřen. Nová rezervace není možná.
+[🗄] Archivováno – seznam je uzavřen. Nová rezervace není možná.
 ```
 
 Full-width amber/muted banner. Page background slightly desaturated.
@@ -223,9 +223,9 @@ On mobile: view switcher + filter button in one row; share + add in header top-r
 
 **Semantic colors (from tokens.css):**
 
-- Reserved: `oklch(0.62 0.13 145)` — green-teal
-- Liked: `oklch(0.64 0.18 15)` — warm red/coral
-- Archived: `oklch(0.55 0.02 250)` — cool gray
+- Reserved: `oklch(0.62 0.13 145)` – green-teal
+- Liked: `oklch(0.64 0.18 15)` – warm red/coral
+- Archived: `oklch(0.55 0.02 250)` – cool gray
 
 **Priority badge colors:**
 
@@ -253,7 +253,7 @@ On mobile: view switcher + filter button in one row; share + add in header top-r
 1. Visitor clicks "Rezervovat"
 2. If anonymous: modal "Jak se jmenuješ?" (name required, email optional) → confirm
 3. If logged in: instant reservation, success toast "Rezervováno!"
-4. Button state: changes to "Zrušit rezervaci" (ghost/danger) — only for reserving user
+4. Button state: changes to "Zrušit rezervaci" (ghost/danger) – only for reserving user
 5. Other visitors see: "Rezervováno" badge, disabled button
 
 ### Like flow

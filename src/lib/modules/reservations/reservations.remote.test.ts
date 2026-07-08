@@ -57,7 +57,7 @@ vi.mock('$lib/server/db/index.js', () => ({
 }));
 
 // Drizzle ORM helpers are used only as column references in query builders.
-// We don't need their real implementations — stub them so the module loads.
+// We don't need their real implementations – stub them so the module loads.
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn(),
 	and: vi.fn(),
@@ -139,14 +139,14 @@ function createMultiQueryChain(...resultsQueue: unknown[][]) {
 		chain[method] = vi.fn(() => chain);
 	}
 
-	// .returning() terminates insert chains — pops from queue
+	// .returning() terminates insert chains – pops from queue
 	chain['returning'] = vi.fn(() => Promise.resolve(queue.shift() ?? []));
 
 	// transaction(cb) invokes the callback with the SAME chain so its queue
 	// serves the in-transaction queries (locked gift select → count → insert).
 	chain['transaction'] = vi.fn((cb: (tx: unknown) => unknown) => cb(chain));
 
-	// Make the chain awaitable — each top-level await pops from queue
+	// Make the chain awaitable – each top-level await pops from queue
 	// oxlint-disable-next-line no-thenable -- intentional: mock must be thenable to simulate Drizzle's await behavior
 	chain['then'] = (resolve: (value: unknown) => unknown) => resolve(queue.shift() ?? []);
 
@@ -193,10 +193,10 @@ describe('reserveGift', () => {
 	//     transaction invokes cb with the SAME chain, whose queue serves the in-tx
 	//     queries in order: locked gift select (.for('update')) → active count → insert.
 	//   - getDb() call #2 = getGiftWithWishlist's own getDb() (wishlist row).
-	//   - getActiveReservedCount no longer calls getDb() — it runs on the passed tx.
+	//   - getActiveReservedCount no longer calls getDb() – it runs on the passed tx.
 
-	it('authenticated visitor can reserve a gift — returns { id }', async () => {
-		// Call #1: `database` — transaction queue: locked gift, count, insert.returning()
+	it('authenticated visitor can reserve a gift – returns { id }', async () => {
+		// Call #1: `database` – transaction queue: locked gift, count, insert.returning()
 		const database = createMultiQueryChain(
 			[{ quantity: 5 }],
 			[{ totalQuantity: 0 }],
@@ -219,7 +219,7 @@ describe('reserveGift', () => {
 
 	// CI-level regression guard for the atomic structure. The real proof that
 	// concurrent reservations cannot overbook lives in reservations.race.test.ts
-	// (real DB) — but those skip in CI, so this asserts the transaction + row lock
+	// (real DB) – but those skip in CI, so this asserts the transaction + row lock
 	// are still present, catching their accidental removal.
 	it('capacity check runs inside a transaction that locks the gift row (FOR UPDATE)', async () => {
 		const database = createMultiQueryChain(
@@ -246,8 +246,8 @@ describe('reserveGift', () => {
 		expect(txChain['for']).toHaveBeenCalledWith('update');
 	});
 
-	it('owner cannot reserve their own gift — throws 403', async () => {
-		// Call #1: `database` — transaction never reached (throws on pre-check)
+	it('owner cannot reserve their own gift – throws 403', async () => {
+		// Call #1: `database` – transaction never reached (throws on pre-check)
 		const database = createChain([]);
 		// Call #2: wishlist lookup
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
@@ -264,7 +264,7 @@ describe('reserveGift', () => {
 		).rejects.toMatchObject({ status: 403 });
 	});
 
-	it('cannot reserve on an archived wishlist — throws 400', async () => {
+	it('cannot reserve on an archived wishlist – throws 400', async () => {
 		const archivedRow = {
 			...makeActiveWishlistRow(),
 			wishlist: { ...makeActiveWishlistRow().wishlist, status: 'archived' },
@@ -284,7 +284,7 @@ describe('reserveGift', () => {
 		).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('anonymous user without a name — throws 400', async () => {
+	it('anonymous user without a name – throws 400', async () => {
 		const database = createChain([]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
@@ -300,7 +300,7 @@ describe('reserveGift', () => {
 		).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('anonymous user with only whitespace name — throws 400', async () => {
+	it('anonymous user with only whitespace name – throws 400', async () => {
 		const database = createChain([]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
@@ -316,7 +316,7 @@ describe('reserveGift', () => {
 		).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('quantity less than 1 — throws 400', async () => {
+	it('quantity less than 1 – throws 400', async () => {
 		const database = createChain([]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
@@ -332,8 +332,8 @@ describe('reserveGift', () => {
 		).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('over-reservation rejected — throws 400', async () => {
-		// Gift has quantity 5, all 5 already reserved under the lock — available = 0.
+	it('over-reservation rejected – throws 400', async () => {
+		// Gift has quantity 5, all 5 already reserved under the lock – available = 0.
 		// Transaction queue: locked gift (quantity 5), count (5). Insert never reached.
 		const database = createMultiQueryChain([{ quantity: 5 }], [{ totalQuantity: 5 }]);
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
@@ -350,7 +350,7 @@ describe('reserveGift', () => {
 		).rejects.toMatchObject({ status: 400 });
 	});
 
-	it('anonymous user with valid name can reserve — returns { id }', async () => {
+	it('anonymous user with valid name can reserve – returns { id }', async () => {
 		const database = createMultiQueryChain(
 			[{ quantity: 5 }],
 			[{ totalQuantity: 0 }],
@@ -386,8 +386,8 @@ describe('unreserveGift', () => {
 	//   - soft-delete UPDATE (query 3 on database)
 	// determineRole makes its own separate getDb() call (call #2) for the mod check.
 
-	it('authenticated user can unreserve their own reservation — returns { success: true }', async () => {
-		// Call #1: `database` — used for reservation SELECT then UPDATE
+	it('authenticated user can unreserve their own reservation – returns { success: true }', async () => {
+		// Call #1: `database` – used for reservation SELECT then UPDATE
 		// Queue: [reservation row array, [] for update]
 		const database = createMultiQueryChain(
 			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: VISITOR_ID, deletedAt: null }],
@@ -404,8 +404,8 @@ describe('unreserveGift', () => {
 		expect(result).toEqual({ success: true });
 	});
 
-	it('authenticated user cannot unreserve someone else reservation — throws 403', async () => {
-		// Reservation belongs to a different user — throws before any further queries
+	it('authenticated user cannot unreserve someone else reservation – throws 403', async () => {
+		// Reservation belongs to a different user – throws before any further queries
 		const database = createChain([
 			{ id: RESERVATION_ID, giftId: GIFT_ID, userId: 'other-user', deletedAt: null },
 		]);
@@ -442,7 +442,7 @@ describe('unreserveGift', () => {
 		expect(result).toEqual({ success: true });
 	});
 
-	it('anonymous visitor with a mismatched cookie cannot unreserve — throws 403', async () => {
+	it('anonymous visitor with a mismatched cookie cannot unreserve – throws 403', async () => {
 		const database = createChain([
 			{
 				id: RESERVATION_ID,
@@ -460,7 +460,7 @@ describe('unreserveGift', () => {
 		).rejects.toMatchObject({ status: 403 });
 	});
 
-	it('anonymous visitor without any cookie cannot unreserve — throws 403', async () => {
+	it('anonymous visitor without any cookie cannot unreserve – throws 403', async () => {
 		const database = createChain([
 			{
 				id: RESERVATION_ID,
@@ -478,14 +478,14 @@ describe('unreserveGift', () => {
 		).rejects.toMatchObject({ status: 403 });
 	});
 
-	it('moderator can unreserve an anonymous reservation — returns { success: true }', async () => {
-		// Call #1: `database` — reservation SELECT, gift SELECT, then UPDATE
+	it('moderator can unreserve an anonymous reservation – returns { success: true }', async () => {
+		// Call #1: `database` – reservation SELECT, gift SELECT, then UPDATE
 		const database = createMultiQueryChain(
 			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }], // reservation
 			[{ wishlistId: WISHLIST_ID }], // gift wishlistId lookup
 			[], // update (unused)
 		);
-		// Call #2: determineRole's own getDb() — moderator assignment found
+		// Call #2: determineRole's own getDb() – moderator assignment found
 		const modDb = createChain([{ id: 'mod-assignment-1' }]);
 
 		mockGetDb
@@ -500,13 +500,13 @@ describe('unreserveGift', () => {
 		expect(result).toEqual({ success: true });
 	});
 
-	it('non-moderator authenticated user cannot unreserve an anonymous reservation — throws 403', async () => {
-		// Call #1: `database` — reservation SELECT, gift SELECT
+	it('non-moderator authenticated user cannot unreserve an anonymous reservation – throws 403', async () => {
+		// Call #1: `database` – reservation SELECT, gift SELECT
 		const database = createMultiQueryChain(
 			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }], // reservation
 			[{ wishlistId: WISHLIST_ID }], // gift wishlistId lookup
 		);
-		// Call #2: determineRole's own getDb() — no moderator assignment
+		// Call #2: determineRole's own getDb() – no moderator assignment
 		const modDb = createChain([]);
 
 		mockGetDb
@@ -529,7 +529,7 @@ describe('getReservationsForGift', () => {
 		vi.resetAllMocks();
 	});
 
-	it('owner gets empty reservations array — core privacy invariant', async () => {
+	it('owner gets empty reservations array – core privacy invariant', async () => {
 		// getGiftWithWishlist
 		const wishlistChain = createChain([makeActiveWishlistRow()]);
 		// determineRole: userId === ownerId → short-circuits, no DB call needed
@@ -596,7 +596,7 @@ describe('getReservationsForGift', () => {
 
 		// getGiftWithWishlist
 		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		// determineRole — moderator assignment found
+		// determineRole – moderator assignment found
 		const modChain = createChain([{ id: 'mod-assignment-1' }]);
 		// Fetch reservations list
 		const reservationsChain = createChain(reservationRows);

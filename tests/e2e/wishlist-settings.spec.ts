@@ -14,7 +14,7 @@ function shortIdFromPath(path: string): string {
 	return id!;
 }
 
-test.describe('Wishlist settings — non-image editing', () => {
+test.describe('Wishlist settings – non-image editing', () => {
 	test('owner can edit title, description, and event date, and changes persist', async ({
 		browser,
 		request,
@@ -31,7 +31,7 @@ test.describe('Wishlist settings — non-image editing', () => {
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
 
 		// The event date is a DatePicker popover (not a native input). Pick a deterministic
-		// date 3 months out so the calendar — which opens on the current month — needs a fixed
+		// date 3 months out so the calendar – which opens on the current month – needs a fixed
 		// number of "next month" steps regardless of when the suite runs.
 		const eventDate = new Date();
 		eventDate.setDate(1); // avoid month-length rollover when advancing the month
@@ -136,7 +136,7 @@ test.describe('Wishlist settings — non-image editing', () => {
 		const path = await createWishlistAndNavigate(page, 'Archivovaný seznam');
 		const shortId = shortIdFromPath(path);
 
-		// Archiving triggers a native confirm() dialog — auto-accept it.
+		// Archiving triggers a native confirm() dialog – auto-accept it.
 		page.on('dialog', (dialog) => void dialog.accept());
 		await page.getByRole('button', { name: 'Archivovat seznam' }).click();
 		await expect(

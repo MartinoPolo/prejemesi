@@ -8,7 +8,7 @@
 		slot: WishlistImageSlot;
 		/** Human label for the slot (localized). */
 		label: string;
-		/** Resolved image URL — null renders the themed fallback. */
+		/** Resolved image URL – null renders the themed fallback. */
 		src: string | null;
 		/** Renderer props derived from this slot's crop metadata. */
 		frame: ImageFrameProps;

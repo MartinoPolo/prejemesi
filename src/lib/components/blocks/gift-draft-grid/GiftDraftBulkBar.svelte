@@ -12,7 +12,7 @@
 		selectedCount: number;
 		/** Tri-state of the global select-all (drives the mobile-only checkbox). */
 		selectAllState: HeaderSelectionState;
-		/** Toggle every row's selection (mobile select-all lives here — no header on mobile). */
+		/** Toggle every row's selection (mobile select-all lives here – no header on mobile). */
 		onselectall: (checked: boolean) => void;
 		/** Delete every selected row. */
 		ondelete: () => void;
