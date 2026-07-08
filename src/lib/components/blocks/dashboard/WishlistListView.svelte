@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { wishlistListViewVariants } from './wishlist_list_view_variants.js';
 	import { STATUS_DOT_CLASSES } from './wishlist_card_variants.js';
 	import {
@@ -38,7 +39,7 @@
 		{@const thumbSrc = wishlistImageUrl(item.wishlist.imageKey)}
 		{@const thumbFrame = wishlistSlotToFrameProps(item.wishlist.imageSlots, 'thumbnail')}
 		<a
-			href={resolve('/(app)/w/[id]', { id: item.wishlist.shortId })}
+			href={localizeInternalHref(resolve('/(app)/w/[id]', { id: item.wishlist.shortId }))}
 			class={rowVariants.row()}
 			aria-label={item.wishlist.title}
 		>

@@ -1,4 +1,4 @@
-# Wishlist Visuals & Settings Workflow — Design Summary
+# Wishlist Visuals & Settings Workflow – Design Summary
 
 **Base**: Variant A (tabbed slot editor) | **Refined**: 2026-06-02
 
@@ -8,17 +8,17 @@ Variant A was chosen for its per-slot tab switcher (Karta / Miniatura / Záhlav�
 nav, and its settings section nav. See the design brief for full requirements. Changes applied on
 top of Variant A:
 
-1. **Zoom slider added** (adapted from Variant B) — a `Slider`-style control sits directly under the
+1. **Zoom slider added** (adapted from Variant B) – a `Slider`-style control sits directly under the
    fit-mode toggle in the crop stage column, active only in `cover-crop` (disabled with an em-dash
    in `auto` / `contain-padded` and while no image is assigned). Range 100–300 %.
-2. **Mouse-wheel zoom on the crop stage** — scrolling over the stage zooms the image (anchored on
+2. **Mouse-wheel zoom on the crop stage** – scrolling over the stage zooms the image (anchored on
    the focal point) and keeps the slider, fill bar, and % label in sync. `wheel` is `preventDefault`-ed
    over the stage so the page doesn't scroll while cropping.
-3. **Dark-mode contrast fix** — `--foreground-subtle` was lifted from `oklch(0.5 …)` to
+3. **Dark-mode contrast fix** – `--foreground-subtle` was lifted from `oklch(0.5 …)` to
    `oklch(0.66 …)` in `.theme-dark`. This fixes the dim/low-contrast text _around the previews_ (rail
    titles, mini-info captions, fallback notes, tab ratios) that the user flagged. `.mini-info b` and
    `.preset .plabel` were also pinned to `--foreground` so labels stay crisp in both modes.
-4. **Token path corrected** — `refined.html` links `../tokens.css` (one level up from `variants/`).
+4. **Token path corrected** – `refined.html` links `../tokens.css` (one level up from `variants/`).
    The `.theme-light` / `.theme-dark` color blocks stay inlined because `tokens.css` owns only
    structural tokens; the surface palette lives in `src/app.css` / per-theme blocks.
 
@@ -29,7 +29,7 @@ Kept as-is from Variant A: layout, nav, settings nav, image-assignment panel, fo
 
 ## Component Map
 
-### Codebase — Use As-Is
+### Codebase – Use As-Is
 
 | Component          | Path                                           | Usage                                                 | Key Props/Variants               |
 | ------------------ | ---------------------------------------------- | ----------------------------------------------------- | -------------------------------- |
@@ -42,17 +42,17 @@ Kept as-is from Variant A: layout, nav, settings nav, image-assignment panel, fo
 | `Button`           | `src/lib/components/base/button/`              | Save, Replace, Remove, controls                       | default / outline / ghost / sm   |
 | `Badge`            | `src/lib/components/base/badge/`               | Slot / occasion labels (`.tag`)                       | secondary / occasion             |
 | `Alert`            | `src/lib/components/base/alert/`               | Upload error                                          | `variant="destructive"`          |
-| `Separator`        | `src/lib/components/base/separator/`           | Section dividers                                      | —                                |
-| `Skeleton`         | `src/lib/components/base/skeleton/`            | Slot preview loading                                  | —                                |
-| `Tooltip`          | `src/lib/components/base/tooltip/`             | Fit-mode / focal-point / zoom hints                   | —                                |
-| `Progress`         | `src/lib/components/base/progress/`            | Upload progress                                       | —                                |
+| `Separator`        | `src/lib/components/base/separator/`           | Section dividers                                      | –                                |
+| `Skeleton`         | `src/lib/components/base/skeleton/`            | Slot preview loading                                  | –                                |
+| `Tooltip`          | `src/lib/components/base/tooltip/`             | Fit-mode / focal-point / zoom hints                   | –                                |
+| `Progress`         | `src/lib/components/base/progress/`            | Upload progress                                       | –                                |
 | `dark-mode-toggle` | `src/lib/components/derived/dark-mode-toggle/` | Mode demonstration affordance                         | derived                          |
 
 ### Adopt from shadcn-svelte / Bits UI
 
 | Component | Source        | Install command                            | Purpose                                                                       |
 | --------- | ------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| `Slider`  | shadcn-svelte | `pnpm dlx shadcn-svelte@latest add slider` | Only if a base `Slider` is not already present — drives the new zoom control. |
+| `Slider`  | shadcn-svelte | `pnpm dlx shadcn-svelte@latest add slider` | Only if a base `Slider` is not already present – drives the new zoom control. |
 
 ### Build Custom
 
@@ -70,7 +70,7 @@ Kept as-is from Variant A: layout, nav, settings nav, image-assignment panel, fo
   this with a CSS `transform: scale()` on the stage image anchored at the focal origin (`56% 38%`).
 - **Wheel handler must `preventDefault`** while pointer is over the stage so the settings page does
   not scroll mid-crop; restore normal scroll once the pointer leaves. Consider a modifier (e.g. only
-  zoom on wheel, pan on drag) to avoid hijacking trackpad scroll — evaluate during implementation.
+  zoom on wheel, pan on drag) to avoid hijacking trackpad scroll – evaluate during implementation.
 - **Zoom is cover-crop-only**: disable (and visually dim) the slider in `auto` / `contain-padded`
   and whenever no image is assigned, mirroring the disabled state shown in the dark page.
 - **Dark-mode legibility**: the `--foreground-subtle` lift is the fix for the flagged preview text;
@@ -78,5 +78,5 @@ Kept as-is from Variant A: layout, nav, settings nav, image-assignment panel, fo
 - **Slider a11y**: `role="slider"` with `aria-valuemin/max/now`, arrow-key stepping (±5 %), visible
   focus ring via `--ring`. Use the base `Slider` primitive in the real build rather than a hand-rolled
   knob.
-- Persistence, fit-mode semantics, and bg-fill priority are all delegated to **#34 / #35** — this UI
+- Persistence, fit-mode semantics, and bg-fill priority are all delegated to **#34 / #35** – this UI
   only produces the metadata `{ perSlot: { fitMode, cropRect, zoom }, theme }`.

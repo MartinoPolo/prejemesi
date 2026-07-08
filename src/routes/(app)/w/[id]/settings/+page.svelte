@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
@@ -69,7 +70,7 @@
 		const id = setInterval(() => {
 			eventDateClockNow = new Date();
 			if (eventDateClockNow.getTime() >= expiry) {
-				clearInterval(id); // window closed — the field has already re-locked
+				clearInterval(id); // window closed – the field has already re-locked
 			}
 		}, 1000);
 		return () => clearInterval(id);
@@ -145,12 +146,12 @@
 	}
 
 	function goBack() {
-		void goto(resolve('/(app)/w/[id]', { id: shortId }));
+		void goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: shortId })));
 	}
 
 	// Deep link from the wishlist banner's hover "Edit image" button lands on #image.
 	// The async load resolves before this component mounts, so the native hash scroll
-	// misses the (not-yet-rendered) target — scroll it into view manually after render.
+	// misses the (not-yet-rendered) target – scroll it into view manually after render.
 	onMount(async () => {
 		if (page.url.hash !== '#image') {
 			return;
@@ -161,7 +162,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.wishlist_settings_title()} — Přejeme si</title>
+	<title>{m.wishlist_settings_title()} – Přejeme si</title>
 </svelte:head>
 
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">

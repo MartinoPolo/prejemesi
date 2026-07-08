@@ -20,7 +20,7 @@
 
 <PopoverPrimitive.Portal {...portalProps}>
 	<!-- Keyboard accessibility is handled by bits-ui automatically:
-	     - Focus moves to first focusable element on open (no trapFocus — Tab cycles freely)
+	     - Focus moves to first focusable element on open (no trapFocus – Tab cycles freely)
 	     - Tab/Shift+Tab cycles through all focusable items inside the popover
 	     - Space/Enter activates buttons and checkboxes
 	     - Escape closes via bits-ui's escape-layer system (topmost layer only)

@@ -17,6 +17,7 @@
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
+	import { getApplicationUrl } from '$lib/config/site.js';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -95,7 +96,7 @@
 			return;
 		}
 		try {
-			const fullUrl = `${window.location.origin}${generatedInvitePath}`;
+			const fullUrl = getApplicationUrl(generatedInvitePath, window.location.origin);
 			await navigator.clipboard.writeText(fullUrl);
 			linkCopied = true;
 			toastSuccess(m.moderator_toast_link_copied());
@@ -157,7 +158,7 @@
 	// bound `open` prop rather than only `onOpenChange`, because the panel is opened
 	// programmatically from the wishlist header (parent sets `open = true`). bits-ui's
 	// `onOpenChange` fires only for internally-initiated open changes (trigger/ESC/overlay),
-	// NOT parent-driven ones — so without this effect the panel would render empty.
+	// NOT parent-driven ones – so without this effect the panel would render empty.
 	$effect(() => {
 		if (open) {
 			void loadModerators();
@@ -213,7 +214,7 @@
 							class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
 							data-testid="invite-link"
 						>
-							{window.location.origin}{generatedInvitePath}
+							{getApplicationUrl(generatedInvitePath, window.location.origin)}
 						</div>
 						<Button
 							size="sm"

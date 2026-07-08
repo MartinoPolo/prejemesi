@@ -9,6 +9,7 @@
 	import MinusIcon from '@lucide/svelte/icons/minus';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { resolve } from '$app/paths';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { reserveModalVariants } from './reserve_modal_variants.js';
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
@@ -207,11 +208,17 @@
 							{m.reserve_auth_prompt()}
 						</p>
 						<div class={styles.authPromptLinks()}>
-							<a href={resolve('/login')} class="text-primary hover:underline">
+							<a
+								href={localizeInternalHref(resolve('/login'))}
+								class="text-primary hover:underline"
+							>
 								{m.reserve_login()}
 							</a>
 							<span class={styles.separator()}>{m.or()}</span>
-							<a href={resolve('/register')} class="text-primary hover:underline">
+							<a
+								href={localizeInternalHref(resolve('/register'))}
+								class="text-primary hover:underline"
+							>
 								{m.reserve_register()}
 							</a>
 						</div>

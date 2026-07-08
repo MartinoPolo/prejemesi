@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { resolve } from '$app/paths';
 
 	interface LoginPromptDialogProps {
@@ -24,10 +25,10 @@
 			<Dialog.Description>{description}</Dialog.Description>
 		</Dialog.Header>
 		<div class="flex justify-end gap-2">
-			<Button intent="outline" href={resolve('/register')}>
+			<Button intent="outline" href={localizeInternalHref(resolve('/register'))}>
 				{m.reserve_register()}
 			</Button>
-			<Button href={resolve('/login')}>
+			<Button href={localizeInternalHref(resolve('/login'))}>
 				{m.reserve_login()}
 			</Button>
 		</div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import HeartIcon from '@lucide/svelte/icons/heart';
 	import { onMount } from 'svelte';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { cn } from '$lib/utils.js';
@@ -18,7 +19,11 @@
 	import GiftDraftRow from './GiftDraftRow.svelte';
 	import GiftDraftBulkBar from './GiftDraftBulkBar.svelte';
 	import GiftDraftStatusLegend from './GiftDraftStatusLegend.svelte';
-	import { DRAFT_GRID_COLUMNS, DRAFT_COL_LABEL_CLASS } from './gift_draft_grid_variants.js';
+	import {
+		DRAFT_GRID_COLUMNS,
+		DRAFT_GRID_COLUMNS_NO_PRIORITY,
+		DRAFT_COL_LABEL_CLASS,
+	} from './gift_draft_grid_variants.js';
 	import {
 		DRAFT_GRID_CONTEXT,
 		createDraftGridRow,
@@ -39,6 +44,11 @@
 		allowAddRow?: boolean;
 		/** Show the status legend above the grid. Defaults to import context. */
 		showLegend?: boolean;
+		/**
+		 * Show the priority (heart) column. Hidden when the target wishlist lacks the
+		 * two ranks the toggle maps to. Defaults to true (every wishlist has them).
+		 */
+		priorityAvailable?: boolean;
 		/** Emitted on every edit/selection change with the committable draft set. */
 		onchange?: (change: DraftGridChange) => void;
 		class?: string;
@@ -50,6 +60,7 @@
 		existingGifts = [],
 		allowAddRow,
 		showLegend,
+		priorityAvailable = true,
 		onchange,
 		class: className,
 	}: Props = $props();
@@ -57,6 +68,9 @@
 	const showAddRow = $derived(allowAddRow ?? context === DRAFT_GRID_CONTEXT.batch);
 	const showStatusLegend = $derived(showLegend ?? context === DRAFT_GRID_CONTEXT.import);
 	const isImport = $derived(context === DRAFT_GRID_CONTEXT.import);
+	const gridColumns = $derived(
+		priorityAvailable ? DRAFT_GRID_COLUMNS : DRAFT_GRID_COLUMNS_NO_PRIORITY,
+	);
 
 	let rows = $state<DraftGridRow[]>(seedRows());
 
@@ -157,11 +171,11 @@
 			isImport ? 'overflow-clip' : 'max-h-[560px] overflow-auto',
 		)}
 	>
-		<!-- Sticky header (desktop only) — hosts the single global select-all -->
+		<!-- Sticky header (desktop only) – hosts the single global select-all -->
 		<div
 			class={cn(
 				'sticky top-0 z-20 hidden border-b border-border-strong bg-surface-3 px-[29px] py-3',
-				DRAFT_GRID_COLUMNS,
+				gridColumns,
 			)}
 		>
 			<span class="flex items-center justify-center">
@@ -176,6 +190,15 @@
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_note()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_links()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_price()}</span>
+			{#if priorityAvailable}
+				<span
+					class="text-foreground-muted flex items-center justify-center"
+					title={m.draft_grid_col_priority()}
+				>
+					<HeartIcon class="size-3.5" aria-hidden="true" />
+					<span class="sr-only">{m.draft_grid_col_priority()}</span>
+				</span>
+			{/if}
 			<span
 				class={cn(DRAFT_COL_LABEL_CLASS, 'text-center')}
 				title={m.draft_grid_col_enrich()}
@@ -190,6 +213,7 @@
 				<GiftDraftRow
 					bind:row={rows[index]}
 					status={rowStatus(row)}
+					showPriority={priorityAvailable}
 					onchange={emit}
 					ondelete={() => removeRow(row.id)}
 					ondismissduplicate={() => dismissDuplicate(row)}

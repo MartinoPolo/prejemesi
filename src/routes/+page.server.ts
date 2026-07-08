@@ -1,9 +1,10 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { resolve } from '$app/paths';
+import { getActiveLocaleForUrl, localizeInternalHref } from '$lib/i18n/locale.js';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.session != null && locals.user != null) {
-		throw redirect(303, resolve('/my-lists'));
+		throw redirect(303, localizeInternalHref(resolve('/my-lists'), getActiveLocaleForUrl(url)));
 	}
 };

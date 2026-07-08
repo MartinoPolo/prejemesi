@@ -47,6 +47,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		email: 'u.email',
 		image: 'u.image',
 		appBackgroundTheme: 'u.appBackgroundTheme',
+		preferredLocale: 'u.preferredLocale',
 		updatedAt: 'u.updatedAt',
 	},
 	account: { userId: 'a.userId', providerId: 'a.providerId' },
@@ -56,7 +57,11 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...a: unknown[]) => a),
 }));
 
-import { getUserProfile, updateAppBackgroundTheme } from './settings.remote.js';
+import {
+	getUserProfile,
+	updateAppBackgroundTheme,
+	updatePreferredLocale,
+} from './settings.remote.js';
 import { getDb } from '$lib/server/db/index.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -112,6 +117,7 @@ describe('getUserProfile', () => {
 						name: 'Fresh Name',
 						image: 'https://example.com/fresh.jpg',
 						appBackgroundTheme: 'default',
+						preferredLocale: null,
 					},
 				],
 			]),
@@ -128,6 +134,7 @@ describe('getUserProfile', () => {
 			image: 'https://example.com/fresh.jpg',
 			isOAuthUser: false,
 			appBackgroundTheme: 'default',
+			preferredLocale: null,
 		});
 	});
 
@@ -135,7 +142,14 @@ describe('getUserProfile', () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ providerId: 'credential' }, { providerId: 'google' }],
-				[{ name: testUser.name, image: testUser.image, appBackgroundTheme: 'twilight' }],
+				[
+					{
+						name: testUser.name,
+						image: testUser.image,
+						appBackgroundTheme: 'twilight',
+						preferredLocale: null,
+					},
+				],
 			]),
 		);
 
@@ -150,6 +164,7 @@ describe('getUserProfile', () => {
 			image: testUser.image,
 			isOAuthUser: true,
 			appBackgroundTheme: 'twilight',
+			preferredLocale: null,
 		});
 	});
 
@@ -172,6 +187,22 @@ describe('updateAppBackgroundTheme', () => {
 		await (updateAppBackgroundTheme as unknown as (...args: unknown[]) => unknown)(
 			testAuthContext,
 			{ appBackgroundTheme: 'golden-hour' },
+		);
+
+		expect(mockDb.update).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('updatePreferredLocale', () => {
+	it('persists the chosen locale', async () => {
+		const mockDb = createMockDb([[]]);
+		mockGetDb.mockReturnValue(mockDb);
+
+		await (updatePreferredLocale as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+			{
+				preferredLocale: 'en',
+			},
 		);
 
 		expect(mockDb.update).toHaveBeenCalledTimes(1);

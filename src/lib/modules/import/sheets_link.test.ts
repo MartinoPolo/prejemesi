@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildSheetsCsvExportUrl, classifySheetCsvResponse, DOCS_HOST } from './sheets_link.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
-describe('buildSheetsCsvExportUrl — valid sheets', () => {
+describe('buildSheetsCsvExportUrl – valid sheets', () => {
 	it('builds a pinned CSV export URL from a standard share link with gid', () => {
 		const result = buildSheetsCsvExportUrl(
 			'https://docs.google.com/spreadsheets/d/1AbCdEf_123-XYZ/edit#gid=42',
@@ -60,7 +60,7 @@ describe('buildSheetsCsvExportUrl — valid sheets', () => {
 	});
 });
 
-describe('buildSheetsCsvExportUrl — rejections (SSRF + typed errors)', () => {
+describe('buildSheetsCsvExportUrl – rejections (SSRF + typed errors)', () => {
 	it('rejects a non-http(s) scheme', () => {
 		expect(buildSheetsCsvExportUrl('file:///etc/passwd')).toEqual({
 			ok: false,

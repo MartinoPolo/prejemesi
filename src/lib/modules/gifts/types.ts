@@ -24,7 +24,7 @@ export interface GiftLink {
 	label?: string;
 	/**
 	 * Stable client-only key for editor list reconciliation (reorder/remove without
-	 * losing input focus). Never persisted — {@link normalizeGiftLinks} drops it.
+	 * losing input focus). Never persisted – {@link normalizeGiftLinks} drops it.
 	 */
 	id?: string;
 }
@@ -77,7 +77,7 @@ export interface GiftForVisitor extends GiftBase {
 	myReservationPurchasedAt: Date | null;
 }
 
-/** Gift for owner view — no reservation data */
+/** Gift for owner view – no reservation data */
 export type GiftForOwner = GiftBase;
 
 /** Union type for gift based on role */
@@ -122,6 +122,20 @@ export type GiftCurrency = (typeof GIFT_CURRENCIES)[keyof typeof GIFT_CURRENCIES
 /** Default currency for new/parsed gifts when none is detected. */
 export const DEFAULT_GIFT_CURRENCY: GiftCurrency = GIFT_CURRENCIES.CZK;
 
+/**
+ * Binary priority a draft carries before commit. Mapped to a concrete wishlist
+ * priority level by rank at commit time (high → lowest sortOrder, medium → 2nd).
+ */
+export const DRAFT_PRIORITY = { high: 'high', medium: 'medium' } as const;
+
+export type DraftPriority = (typeof DRAFT_PRIORITY)[keyof typeof DRAFT_PRIORITY];
+
+/** Picklist-friendly tuple of priority values. */
+export const DRAFT_PRIORITY_VALUES = [DRAFT_PRIORITY.high, DRAFT_PRIORITY.medium] as const;
+
+/** Empty heart — every imported/batch row starts at medium until toggled high. */
+export const DEFAULT_DRAFT_PRIORITY: DraftPriority = DRAFT_PRIORITY.medium;
+
 export const GIFT_CURRENCY_LABELS = {
 	CZK: 'CZK (Kč)',
 	EUR: 'EUR',
@@ -164,7 +178,8 @@ export const CreateGiftInputSchema = v.object({
 /**
  * Wire shape of one import/batch draft committed into a real gift. Mirrors the
  * editable {@link GiftDraft} grid row minus DB-managed fields (wishlist, image,
- * quantity, priority, sortOrder). `name` is required; everything else optional.
+ * quantity, sortOrder). `name` is required; everything else optional. `priority`
+ * is a binary rank the server resolves to a concrete priority level at commit.
  */
 export const GiftDraftInputSchema = v.object({
 	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
@@ -172,6 +187,7 @@ export const GiftDraftInputSchema = v.object({
 	links: v.optional(v.nullable(GiftLinksSchema)),
 	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
 	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+	priority: v.optional(v.picklist(DRAFT_PRIORITY_VALUES), DEFAULT_DRAFT_PRIORITY),
 });
 
 export type GiftDraftInput = v.InferOutput<typeof GiftDraftInputSchema>;

@@ -40,6 +40,10 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 - `pnpm run test:e2e` -- E2E tests
 - `pnpm run db:seed` -- populate DB with test data (idempotent, safe to re-run)
 
+## Git Workflow
+
+- For verified branch-delete-only pushes, use `git push --no-verify origin --delete ...` unless the user explicitly wants hooks run.
+
 ## Svelte Rules
 
 - Before finalizing any .svelte or .svelte.ts file, run svelte-autofixer and iterate until no issues remain.

@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
 // Read current git branch at dev-server start so each worktree gets its own
-// branch name baked in — consumed by +layout.svelte to prefix browser tab titles.
+// branch name baked in – consumed by +layout.svelte to prefix browser tab titles.
 const gitBranch = (() => {
 	try {
 		return execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();

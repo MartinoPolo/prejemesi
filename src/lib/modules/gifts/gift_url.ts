@@ -51,7 +51,7 @@ export function getPrimaryGiftLink(links: readonly GiftLink[] | null | undefined
  */
 /**
  * Generate a stable client-only id for a gift link (editor list key). Monotonic
- * counter — unique within a session, never persisted.
+ * counter – unique within a session, never persisted.
  */
 let nextGiftLinkId = 0;
 export function createGiftLinkId(): string {

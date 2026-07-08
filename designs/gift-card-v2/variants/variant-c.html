@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Přejeme si — Gift Card v2 — Variant C: Soft & Friendly</title>
+		<title>Přejeme si – Gift Card v2 – Variant C: Soft & Friendly</title>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -12,7 +12,7 @@
 		/>
 		<link rel="stylesheet" href="../../tokens.css" />
 		<style>
-			/* ── Sage theme — light (source of truth) ───────────────── */
+			/* ── Sage theme – light (source of truth) ───────────────── */
 			.theme-light {
 				--background: oklch(0.985 0.006 145);
 				--surface: oklch(1 0 0);
@@ -155,11 +155,11 @@
 				min-width: 0;
 			}
 
-			/* ── CARD MODE — soft & friendly ────────────────────────── */
+			/* ── CARD MODE – soft & friendly ────────────────────────── */
 			.gcard {
 				position: relative;
 				background: var(--card);
-				border-radius: var(--radius-2xl); /* 20px — large, friendly */
+				border-radius: var(--radius-2xl); /* 20px – large, friendly */
 				box-shadow:
 					0 6px 24px oklch(0.5 0.05 150 / 0.07),
 					0 1px 3px oklch(0.5 0.05 150 / 0.05);
@@ -205,7 +205,7 @@
 				object-fit: cover;
 				display: block;
 			}
-			/* friendly themed emoji fallback — charming & prominent */
+			/* friendly themed emoji fallback – charming & prominent */
 			.gcard-fallback {
 				background: radial-gradient(
 					circle at 50% 38%,
@@ -240,7 +240,7 @@
 				color: oklch(0.99 0.01 150);
 			}
 
-			/* fully reserved — softly blurred image + centered pill */
+			/* fully reserved – softly blurred image + centered pill */
 			.gcard.is-full .gcard-img img {
 				filter: blur(2px) saturate(0.8);
 				transform: scale(1.04);
@@ -278,7 +278,7 @@
 				opacity: 0.78;
 			}
 
-			/* drag handle (owner draft) — hover reveal */
+			/* drag handle (owner draft) – hover reveal */
 			.drag-handle {
 				position: absolute;
 				top: 12px;
@@ -376,7 +376,7 @@
 				color: var(--muted-foreground);
 			}
 
-			/* links — soft rounded pill chips, sage tint on hover */
+			/* links – soft rounded pill chips, sage tint on hover */
 			.gcard-links {
 				display: flex;
 				flex-direction: column;
@@ -665,7 +665,7 @@
 				flex: none;
 			}
 
-			/* ── COMPACT MODE — table ───────────────────────────────── */
+			/* ── COMPACT MODE – table ───────────────────────────────── */
 			.ctable-wrap {
 				background: var(--card);
 				border-radius: var(--radius-xl);
@@ -826,8 +826,8 @@
 			<!-- ═══════════════════ LIGHT PANEL ═══════════════════ -->
 			<main class="theme-light panel">
 				<header class="panel-head">
-					<span class="eyebrow">Variant C — Soft &amp; Friendly</span>
-					<h1 class="panel-title">Gift Card v2 — měkká, oblá, přívětivá</h1>
+					<span class="eyebrow">Variant C – Soft &amp; Friendly</span>
+					<h1 class="panel-title">Gift Card v2 – měkká, oblá, přívětivá</h1>
 					<p class="panel-desc">
 						Velké rádiusy, jemné sage-tónované povrchy a difúzní stíny. Odkazy jako oblé
 						pilulky, hravý 🎁 fallback a centrovaná rezervační pilulka na rozmazaném
@@ -842,9 +842,9 @@
 						Hlavní povrch nástěnky přání. Všechny stavy podle role.
 					</p>
 					<div class="card-grid">
-						<!-- 1. OWNER default — CORE INVARIANT: piece count only -->
+						<!-- 1. OWNER default – CORE INVARIANT: piece count only -->
 						<div class="case">
-							<p class="case-label">1 · Vlastník (výchozí) — pouze počet kusů</p>
+							<p class="case-label">1 · Vlastník (výchozí) – pouze počet kusů</p>
 							<article
 								class="gcard"
 								tabindex="0"
@@ -915,7 +915,7 @@
 
 						<!-- 2. Visitor available -->
 						<div class="case">
-							<p class="case-label">2 · Návštěvník — dostupné</p>
+							<p class="case-label">2 · Návštěvník – dostupné</p>
 							<article class="gcard" tabindex="0">
 								<div class="gcard-img">
 									<img
@@ -979,16 +979,16 @@
 
 						<!-- 3. Visitor partial -->
 						<div class="case">
-							<p class="case-label">3 · Návštěvník — částečně rezervováno</p>
+							<p class="case-label">3 · Návštěvník – částečně rezervováno</p>
 							<article class="gcard" tabindex="0">
 								<div class="gcard-img">
 									<img
 										src="https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=560&q=70"
-										alt="Lego Botanická kolekce — Orchidej"
+										alt="Lego Botanická kolekce – Orchidej"
 									/>
 								</div>
 								<div class="gcard-body">
-									<h3 class="gcard-name">Lego Botanická kolekce — Orchidej</h3>
+									<h3 class="gcard-name">Lego Botanická kolekce – Orchidej</h3>
 									<span class="gcard-count"
 										>3 kusy <span class="sep">·</span>
 										<span class="reserved">1 rezervováno</span></span
@@ -1053,7 +1053,7 @@
 
 						<!-- 4. Visitor fully reserved -->
 						<div class="case">
-							<p class="case-label">4 · Návštěvník — plně rezervováno</p>
+							<p class="case-label">4 · Návštěvník – plně rezervováno</p>
 							<article class="gcard is-full" tabindex="0">
 								<div class="gcard-img">
 									<img
@@ -1130,7 +1130,7 @@
 
 						<!-- 5. Moderator -->
 						<div class="case">
-							<p class="case-label">5 · Moderátor — bez tlačítka Rezervovat</p>
+							<p class="case-label">5 · Moderátor – bez tlačítka Rezervovat</p>
 							<article class="gcard" tabindex="0">
 								<div class="gcard-img">
 									<img
@@ -1269,7 +1269,7 @@
 
 						<!-- 7. No-image fallback -->
 						<div class="case">
-							<p class="case-label">7 · Bez obrázku — 🎁 fallback</p>
+							<p class="case-label">7 · Bez obrázku – 🎁 fallback</p>
 							<article class="gcard" tabindex="0">
 								<div class="gcard-img gcard-fallback">
 									<span class="emoji" role="img" aria-label="Dárek">🎁</span>
@@ -1329,11 +1329,11 @@
 								<div class="gcard-img">
 									<img
 										src="https://images.unsplash.com/photo-1556228720-195a672e8a03?w=560&q=70"
-										alt="Lego Botanická kolekce — Orchidej"
+										alt="Lego Botanická kolekce – Orchidej"
 									/>
 								</div>
 								<div class="gcard-body">
-									<h3 class="gcard-name">Lego Botanická kolekce — Orchidej</h3>
+									<h3 class="gcard-name">Lego Botanická kolekce – Orchidej</h3>
 									<span class="gcard-count">1 kus</span>
 									<div class="gcard-meta">
 										<span class="gcard-price">1 299 Kč</span>
@@ -1381,7 +1381,7 @@
 
 						<!-- 9. Multi-link overflow + long domain -->
 						<div class="case">
-							<p class="case-label">9 · Více odkazů — 3 viditelné + „+2 další“</p>
+							<p class="case-label">9 · Více odkazů – 3 viditelné + „+2 další“</p>
 							<article class="gcard" tabindex="0">
 								<div class="gcard-img">
 									<img
@@ -1461,7 +1461,7 @@
 									<span class="emoji" role="img" aria-label="Dárek">🎁</span>
 								</div>
 								<div class="gcard-body">
-									<h3 class="gcard-name">Překvapení — nech se obdarovat</h3>
+									<h3 class="gcard-name">Překvapení – nech se obdarovat</h3>
 									<span class="gcard-count">1 kus</span>
 									<div class="gcard-meta">
 										<span class="gcard-price is-empty">Cena neuvedena</span>
@@ -1595,7 +1595,7 @@
 							</div>
 							<div class="linfo">
 								<div class="lname">
-									Lego Botanická kolekce — Orchidej
+									Lego Botanická kolekce – Orchidej
 									<span class="count">3 kusy</span>
 									<span class="reserved">· 1 rezervováno</span>
 								</div>
@@ -1748,7 +1748,7 @@
 								</tr>
 								<tr>
 									<td class="cname">
-										Lego Botanická kolekce — Orchidej
+										Lego Botanická kolekce – Orchidej
 										<span class="count">3 kusy · 1 rezervováno</span>
 									</td>
 									<td>
@@ -1826,8 +1826,8 @@
 			<!-- ═══════════════════ DARK PANEL ═══════════════════ -->
 			<section class="theme-dark panel">
 				<header class="panel-head">
-					<span class="eyebrow">Variant C — Dark</span>
-					<h1 class="panel-title">Tmavý režim — povrchy elevací, ne stíny</h1>
+					<span class="eyebrow">Variant C – Dark</span>
+					<h1 class="panel-title">Tmavý režim – povrchy elevací, ne stíny</h1>
 					<p class="panel-desc">
 						Stejné komponenty v tmavém režimu. Hloubka přes světlejší elevované povrchy
 						(card světlejší než pozadí), bez těžkých stínů.
@@ -1835,11 +1835,11 @@
 				</header>
 
 				<section class="section">
-					<h2 class="section-label">Card mode — výběr stavů</h2>
+					<h2 class="section-label">Card mode – výběr stavů</h2>
 					<div class="card-grid">
 						<!-- visitor available -->
 						<div class="case">
-							<p class="case-label">Návštěvník — dostupné</p>
+							<p class="case-label">Návštěvník – dostupné</p>
 							<article class="gcard" tabindex="0">
 								<div class="gcard-img">
 									<img
@@ -1987,7 +1987,7 @@
 
 						<!-- no image fallback -->
 						<div class="case">
-							<p class="case-label">Bez obrázku — 🎁</p>
+							<p class="case-label">Bez obrázku – 🎁</p>
 							<article class="gcard" tabindex="0">
 								<div class="gcard-img gcard-fallback">
 									<span class="emoji" role="img" aria-label="Dárek">🎁</span>
@@ -2028,7 +2028,7 @@
 						</div>
 					</div>
 
-					<h2 class="section-label">Compact mode — tmavý</h2>
+					<h2 class="section-label">Compact mode – tmavý</h2>
 					<div class="ctable-wrap">
 						<table class="ctable">
 							<thead>

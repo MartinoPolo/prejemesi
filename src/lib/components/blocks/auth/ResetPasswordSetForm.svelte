@@ -7,6 +7,7 @@
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
 	import AuthSuccessBanner from '$lib/components/blocks/auth/AuthSuccessBanner.svelte';
 	import { authClient } from '$lib/auth_client.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface ResetPasswordSetFormProps {
@@ -87,7 +88,9 @@
 {#if success}
 	<AuthSuccessBanner>
 		<p class="success-text">{m.reset_success()}</p>
-		<a href={resolve('/login')} class="success-link">{m.reset_success_link()}</a>
+		<a href={localizeInternalHref(resolve('/login'))} class="success-link"
+			>{m.reset_success_link()}</a
+		>
 	</AuthSuccessBanner>
 {:else}
 	<ErrorBanner message={errorMessage} />
@@ -137,7 +140,11 @@
 		</Button>
 	</form>
 
-	<AuthFooterLink promptText="" linkHref={resolve('/login')} linkText={m.back_to_login()} />
+	<AuthFooterLink
+		promptText=""
+		linkHref={localizeInternalHref(resolve('/login'))}
+		linkText={m.back_to_login()}
+	/>
 {/if}
 
 <style>

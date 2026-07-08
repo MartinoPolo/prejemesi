@@ -35,13 +35,13 @@ test.describe('Gift editing', () => {
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-		// The modal should be in edit mode — change the name
+		// The modal should be in edit mode – change the name
 		const updatedGiftName = 'Upraveny darek';
 		const nameInput = dialog.getByRole('textbox', { name: 'Název' });
 		await nameInput.clear();
 		await nameInput.fill(updatedGiftName);
 
-		// Save — button reads "Uložit" in edit mode
+		// Save – button reads "Uložit" in edit mode
 		await dialog.getByRole('button', { name: /Uložit|Ulozit|Save/i }).click();
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
@@ -78,7 +78,7 @@ test.describe('Gift editing', () => {
 		await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
 		await expect(page.getByText('Testovaci polozka')).toBeVisible({ timeout: 10_000 });
 
-		// Re-open the gift — edit modal must be pre-populated
+		// Re-open the gift – edit modal must be pre-populated
 		await page.getByText('Testovaci polozka').click();
 		const editDialog = page.getByRole('dialog');
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
@@ -86,7 +86,7 @@ test.describe('Gift editing', () => {
 		await expect(editDialog.getByRole('textbox', { name: 'Název' })).toHaveValue(
 			'Testovaci polozka',
 		);
-		// Use exact name — the link-row label input ("Popisek …") also matches a loose /Popis/i.
+		// Use exact name – the link-row label input ("Popisek …") also matches a loose /Popis/i.
 		await expect(editDialog.getByRole('textbox', { name: 'Popis', exact: true })).toHaveValue(
 			'Popis testovaci',
 		);
@@ -98,7 +98,7 @@ test.describe('Gift editing', () => {
 
 		await editDialog.getByRole('button', { name: /Close|Zavřít|Zavrit/i }).click();
 
-		// Open "Add gift" after editing — form must be empty (no stale data)
+		// Open "Add gift" after editing – form must be empty (no stale data)
 		await page
 			.getByRole('button', { name: /Přidat/ })
 			.first()
@@ -107,7 +107,7 @@ test.describe('Gift editing', () => {
 		await expect(addDialog).toBeVisible({ timeout: 5_000 });
 		await expect(addDialog.getByRole('textbox', { name: 'Název' })).toHaveValue('');
 		await expect(addDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue('');
-		// The new-gift link editor starts empty — it shows the empty state, not a URL input.
+		// The new-gift link editor starts empty – it shows the empty state, not a URL input.
 		await expect(addDialog.getByText(/Bez odkazu|No link/).first()).toBeVisible();
 		await expect(addDialog.getByLabel(/Cena/)).toHaveValue('');
 
@@ -148,7 +148,7 @@ test.describe('Gift editing', () => {
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
 		await expect(editDialog.getByRole('button', { name: 'Vysoká' })).toBeVisible();
 
-		// Save without changing anything — the priority must NOT be wiped.
+		// Save without changing anything – the priority must NOT be wiped.
 		await editDialog.getByRole('button', { name: /^(Uložit|Ulozit|Save)$/ }).click();
 		await expect(editDialog).not.toBeVisible({ timeout: 5_000 });
 
@@ -177,7 +177,7 @@ test.describe('Gift editing', () => {
 		await dialog.getByRole('button', { name: /Close|Zavřít|Zavrit/i }).click();
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
-		// Open second gift — must show its data, not the first gift's
+		// Open second gift – must show its data, not the first gift's
 		await page.getByText('Darek beta').click();
 		dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
@@ -236,11 +236,11 @@ test.describe('Post-share editing rules', () => {
 		await createWishlistAndNavigate(page, 'Share Lock Test');
 		await addGift(page, TEST_GIFT.name);
 
-		// Share the wishlist — pre-existing gifts become subject to the #82 rules.
+		// Share the wishlist – pre-existing gifts become subject to the #82 rules.
 		await shareWishlist(page);
 
 		// The shared-state transparency banner appears: names locked, gifts can't be
-		// removed, but details stay editable — visible to everyone.
+		// removed, but details stay editable – visible to everyone.
 		await expect(page.getByText(/názvy přání jsou uzamčeny/i)).toBeVisible({ timeout: 5_000 });
 
 		// Open the pre-share gift. Sharing opens a 2-minute grace window (#83) during
@@ -282,7 +282,7 @@ test.describe('Wishlist archival', () => {
 			.click();
 
 		// The archived banner should appear
-		await expect(page.getByText(/Archivováno — seznam je uzavřen/i)).toBeVisible({
+		await expect(page.getByText(/Archivováno – seznam je uzavřen/i)).toBeVisible({
 			timeout: 10_000,
 		});
 
@@ -307,7 +307,7 @@ test.describe('Wishlist archival', () => {
 			.getByRole('button', { name: /Archivovat seznam|Archivovat/i })
 			.first()
 			.click();
-		await expect(ownerPage.getByText(/Archivováno — seznam je uzavřen/i)).toBeVisible({
+		await expect(ownerPage.getByText(/Archivováno – seznam je uzavřen/i)).toBeVisible({
 			timeout: 10_000,
 		});
 

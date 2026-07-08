@@ -8,6 +8,7 @@ production domain setup.
 - Resend domain `prejemesi.cz` is verified.
 - Production sender is `Přejeme si <noreply@prejemesi.cz>` via `EMAIL_FROM` in `wrangler.jsonc`.
 - Production API key is stored as the Cloudflare Worker secret `RESEND_API_KEY`.
+- DMARC is still external DNS work: add `_dmarc.prejemesi.cz` as a TXT record in Cloudflare.
 - Receiving is disabled in Resend; the app only sends transactional emails.
 - Signup email verification is enabled in BetterAuth.
 - Critical notification emails are dispatched from app events through
@@ -38,11 +39,13 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
 
 - `resend@6.x` installed.
 - `src/lib/server/email.ts`
-    - `sendEmail({ to, subject, html, idempotencyKey? })` — wraps Resend, handles the
+    - `sendEmail({ to, subject, html, text?, idempotencyKey? })` – wraps Resend, handles the
       `{ data, error }` response, **throws on failure**, and **logs instead of sending when
       `RESEND_API_KEY` is unset** (same optional-service fallback as R2 storage).
-    - `renderActionEmail({ heading, body, buttonLabel, url })` — shared HTML template.
-- `src/lib/server/auth.ts` — the three better-auth stubs now send real emails:
+      It always sends a plain-text alternative, either caller-supplied or generated from HTML.
+    - `renderActionEmailParts({ heading, body, buttonLabel, url })` – shared HTML + text
+      template. User-controlled text is escaped before embedding in the HTML email.
+- `src/lib/server/auth.ts` – the three better-auth stubs now send real emails:
     - `sendResetPassword` (password reset)
     - `sendVerificationEmail` (email verification)
     - `sendMagicLink` (magic-link sign-in)
@@ -52,7 +55,7 @@ Plenty for dev and early production. Pro ($20/mo) drops the daily cap and raises
 
 ### 1. Create a Resend account + API key
 
-1. Sign up at <https://resend.com> (free, no card). Use the email you'll test with —
+1. Sign up at <https://resend.com> (free, no card). Use the email you'll test with –
    sandbox only delivers there.
 2. Dashboard → **API Keys** → **Create API Key** (name `prejemesi-dev`, **Sending access**, domain **All**).
 3. Copy the `re_...` key (shown once).
@@ -75,7 +78,7 @@ Restart the dev server after editing `.env` so Vite reloads it.
 
 Troubleshooting:
 
-- `(not sent — RESEND_API_KEY unset)` → key didn't load; check `.env` and restart dev server.
+- `(not sent – RESEND_API_KEY unset)` → key didn't load; check `.env` and restart dev server.
 - `[Email] Failed ...` to a non-sandbox address → expected before domain verification.
 
 ### 4. Production domain
@@ -84,23 +87,30 @@ Already done for `prejemesi.cz`. If the domain is ever recreated, add the Resend
 records in Cloudflare and keep receiving disabled unless inbound email is intentionally
 needed.
 
+Also add a DMARC record in Cloudflare DNS:
+
+```
+_dmarc.prejemesi.cz TXT "v=DMARC1; p=none; adkim=s; aspf=s"
+```
+
+After monitoring delivery, consider tightening `p=quarantine` and then `p=reject`.
+
 ## Notification email coverage
 
 Auth emails are wired: signup verification, password reset, and magic-link sign-in.
 
 Notification dispatcher coverage:
 
-- `liked_gift_reserved` — email + in-app when someone reserves a gift a user liked.
-- `reserved_gift_edited` — email + in-app when a moderator edits a reserved gift.
-- `wishlist_archived` — email + in-app to followers/moderators when a wishlist is archived.
-- `owner_self_promoted` — email + in-app to followers when the owner enables reservation visibility.
-- `new_gift_added` — in-app only to followers.
-- `gift_reserved` — in-app only to followers.
+- `liked_gift_reserved` – email + in-app when someone reserves a gift a user liked.
+- `reserved_gift_edited` – email + in-app when a moderator edits a reserved gift.
+- `wishlist_archived` – email + in-app to followers/moderators when a wishlist is archived.
+- `owner_self_promoted` – email + in-app to followers when the owner enables reservation visibility.
+- `moderator_invited` – email when an invite is generated for a target email address.
+- `new_gift_added` – in-app only to followers.
+- `gift_reserved` – in-app only to followers.
 
 Still not covered:
 
-- `moderator_invited` email, because current moderator invites are shareable links with no target
-  email address.
 - Saving notification preferences; the settings UI exists, but server persistence is still TODO.
 
 ## References

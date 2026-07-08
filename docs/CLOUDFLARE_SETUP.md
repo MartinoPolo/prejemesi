@@ -1,7 +1,7 @@
 # Cloudflare Setup & Maintenance Guide
 
 How to deploy Přejeme si to Cloudflare, develop against it, and maintain it. The
-project is **already architected for Cloudflare** — the decision is settled in
+project is **already architected for Cloudflare** – the decision is settled in
 `.mpx/DECISIONS.md` (2026-05-30) and most wiring exists in code. This guide
 covers provisioning the external services and filling in deploy-time config.
 
@@ -22,7 +22,7 @@ covers provisioning the external services and filling in deploy-time config.
 > project. Deploy to **Workers**; in the dashboard the project appears under
 > **Workers & Pages → your worker**. Do not create a Pages project.
 
-**Cost:** $0/month on free tiers — Workers (100k req/day), Hyperdrive (free on
+**Cost:** $0/month on free tiers – Workers (100k req/day), Hyperdrive (free on
 all plans), R2 (10 GB), Neon (free, ~300–800ms cold start after idle), Resend
 (3k emails/mo, 100/day).
 
@@ -44,7 +44,8 @@ gitignored (only `.env.example` tracked), `prepare:false` for the pooler.
 6. Custom domain + `ORIGIN`: done
 7. Resend domain verification + `RESEND_API_KEY`: done
 8. Production auth hardening: done
-9. Google OAuth redirect URIs: pending only if Google login is used
+9. Production site hygiene: done
+10. Google OAuth redirect URIs: pending only if Google login is used
 
 ---
 
@@ -94,7 +95,7 @@ the Worker.
 
 ### E. Secrets & vars
 
-**Secrets** (sensitive — `wrangler secret put NAME`, prompts for value):
+**Secrets** (sensitive – `wrangler secret put NAME`, prompts for value):
 
 ```powershell
 wrangler secret put AUTH_SECRET          # openssl rand -base64 32
@@ -102,7 +103,7 @@ wrangler secret put RESEND_API_KEY
 wrangler secret put GOOGLE_CLIENT_SECRET  # only if using Google
 ```
 
-**Plain vars** (non-sensitive — add a `"vars"` block to `wrangler.jsonc`):
+**Plain vars** (non-sensitive – add a `"vars"` block to `wrangler.jsonc`):
 
 ```jsonc
 "vars": {
@@ -113,7 +114,7 @@ wrangler secret put GOOGLE_CLIENT_SECRET  # only if using Google
 }
 ```
 
-`ORIGIN` **must** be your production URL — auth redirects and email links derive
+`ORIGIN` **must** be your production URL – auth redirects and email links derive
 from it (else links point to localhost).
 
 ### F. Confirm the deploy script
@@ -169,6 +170,15 @@ address.
 
 Current production sender: `Přejeme si <noreply@prejemesi.cz>`.
 
+DMARC is not managed by the app. Add this Cloudflare DNS TXT record:
+
+```txt
+_dmarc.prejemesi.cz "v=DMARC1; p=none; adkim=s; aspf=s"
+```
+
+Start with `p=none` for monitoring, then tighten to `quarantine`/`reject` after
+confirming legitimate mail passes SPF/DKIM alignment.
+
 ### K. Google OAuth (if used)
 
 In Google Cloud console add the authorized redirect URI:
@@ -181,15 +191,25 @@ In Google Cloud console add the authorized redirect URI:
 - `requireEmailVerification: true`
 - `sendOnSignUp: true`
 
+### M. Production site hygiene
+
+`src/hooks.server.ts` handles global production hygiene:
+
+- `www.prejemesi.cz` redirects to canonical `https://prejemesi.cz` with HTTP 308.
+- Auth, BetterAuth API, app-private routes, `/learn`, and private wishlist subroutes
+  emit `noindex, nofollow, noarchive`; exact public `/w/:id` wishlist pages remain indexable.
+- Security headers are applied to all routes, including `/api/auth/*`.
+- `/learn` is development-only and returns 404 in production.
+
 ---
 
 ## 4. Development workflow (day-to-day)
 
 | Command          | Runtime                             | DB                    | R2                    | Use for                       |
 | ---------------- | ----------------------------------- | --------------------- | --------------------- | ----------------------------- |
-| `pnpm dev`       | Vite (Node)                         | local Docker Postgres | in-memory fallback    | **Default** — fast HMR        |
+| `pnpm dev`       | Vite (Node)                         | local Docker Postgres | in-memory fallback    | **Default** – fast HMR        |
 | `pnpm preview`   | **real Workers runtime** (wrangler) | local or `--remote`   | real R2 if `--remote` | Verify prod-matching behavior |
-| `pnpm db:studio` | —                                   | Drizzle Studio GUI    | —                     | Inspect/edit data             |
+| `pnpm db:studio` | –                                   | Drizzle Studio GUI    | –                     | Inspect/edit data             |
 
 **Local DB loop:**
 
@@ -206,22 +226,22 @@ no Hyperdrive/R2 bindings locally → falls back to `DATABASE_URL` + in-memory
 image store. So **local dev needs zero Cloudflare access**.
 
 To test against **real Cloudflare bindings** locally: `wrangler dev --remote`
-(after `vite build`) — uses the actual Hyperdrive + R2. Run `pnpm cf:types`
+(after `vite build`) – uses the actual Hyperdrive + R2. Run `pnpm cf:types`
 after changing bindings to regenerate types.
 
 ---
 
 ## 5. Deploy / CI-CD (pick one)
 
-**Recommended — Workers Builds (git-push deploys):** Dashboard → your Worker →
+**Recommended – Workers Builds (git-push deploys):** Dashboard → your Worker →
 **Settings → Builds → Connect repo**. Build command `pnpm run build`, deploy
 command `npx wrangler deploy`, production branch `dev` (your main branch). Every
 push auto-deploys; PRs get preview URLs. Secrets live in Cloudflare, not in CI.
 Lowest-maintenance, fits the existing `dev`-as-main convention.
 
-**Alternative — manual:** run `pnpm run deploy` when you want to ship.
+**Alternative – manual:** run `pnpm run deploy` when you want to ship.
 
-**Alternative — GitHub Actions:** `ci.yml` currently only checks/tests (no
+**Alternative – GitHub Actions:** `ci.yml` currently only checks/tests (no
 deploy). Add a deploy job using `cloudflare/wrangler-action` with a
 `CLOUDFLARE_API_TOKEN` secret. More moving parts than Workers Builds; only worth
 it to gate deploys behind existing CI.
@@ -238,7 +258,7 @@ it to gate deploys behind existing CI.
   **Observability** on the Worker in the dashboard for retained logs + metrics.
 - **Hyperdrive caching gotcha:** Hyperdrive caches `SELECT`s (~60s default).
   With auth/session data this can serve briefly stale reads. better-auth already
-  has a 5-min session cookie cache, so usually fine — but if you see stale data,
+  has a 5-min session cookie cache, so usually fine – but if you see stale data,
   disable Hyperdrive query caching (`wrangler hyperdrive update <id>
 --caching-disabled` or `caching: { disabled: true }`). Writes are never cached.
 - **Free-tier ceilings:** Workers 100k req/day, Resend 100 emails/day, Neon
@@ -261,7 +281,7 @@ it to gate deploys behind existing CI.
 
 ---
 
-## Quick reference — code-side changes (no account access needed)
+## Quick reference – code-side changes (no account access needed)
 
 These can be applied in a commit without any Cloudflare login:
 

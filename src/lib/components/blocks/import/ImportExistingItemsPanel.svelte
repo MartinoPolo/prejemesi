@@ -4,7 +4,7 @@
 
 	/**
 	 * CRITICAL: Owner-never-sees-reservations. This panel only accepts
-	 * `{ name, links }` — never GiftForVisitor or any reservation data.
+	 * `{ name, links }` – never GiftForVisitor or any reservation data.
 	 */
 	interface ImportExistingItemsPanelProps {
 		existingGifts: Array<{ name: string; links: GiftLink[] }>;

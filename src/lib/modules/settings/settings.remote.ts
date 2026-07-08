@@ -6,6 +6,7 @@ import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/
 import {
 	UpdateProfileInputSchema,
 	UpdateAppBackgroundThemeInputSchema,
+	UpdatePreferredLocaleInputSchema,
 	type UserProfile,
 } from './types.js';
 
@@ -31,6 +32,7 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 			name: user.name,
 			image: user.image,
 			appBackgroundTheme: user.appBackgroundTheme,
+			preferredLocale: user.preferredLocale,
 		})
 		.from(user)
 		.where(eq(user.id, authUser.id))
@@ -43,6 +45,7 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 		image: rows[0]?.image ?? null,
 		isOAuthUser,
 		appBackgroundTheme: rows[0]?.appBackgroundTheme ?? 'default',
+		preferredLocale: rows[0]?.preferredLocale ?? null,
 	};
 });
 
@@ -73,6 +76,21 @@ export const updateAppBackgroundTheme = guardedCommand(
 			.update(user)
 			.set({
 				appBackgroundTheme: input.appBackgroundTheme,
+				updatedAt: new Date(),
+			})
+			.where(eq(user.id, authUser.id));
+	},
+);
+
+export const updatePreferredLocale = guardedCommand(
+	UpdatePreferredLocaleInputSchema,
+	async ({ user: authUser }, input) => {
+		const database = getDb();
+
+		await database
+			.update(user)
+			.set({
+				preferredLocale: input.preferredLocale,
 				updatedAt: new Date(),
 			})
 			.where(eq(user.id, authUser.id));

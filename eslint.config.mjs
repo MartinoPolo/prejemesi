@@ -4,7 +4,7 @@ import svelteParser from 'svelte-eslint-parser';
 import checkFile from 'eslint-plugin-check-file';
 import storybook from 'eslint-plugin-storybook';
 import globals from 'globals';
-// Cache-safe subset of svelte.config.js — the real config uses a function for
+// Cache-safe subset of svelte.config.js – the real config uses a function for
 // compilerOptions.runes which ESLint cannot serialize for --cache.
 const eslintSvelteConfig = {
 	compilerOptions: { runes: true },
@@ -74,6 +74,16 @@ export default [
 		},
 	},
 	...sveltePlugin.configs['flat/recommended'],
+	{
+		// The app uses paraglide for URL localization (localizeInternalHref wrapping resolve()),
+		// which satisfies the intent of this rule but doesn't match its narrow pattern check.
+		rules: {
+			'svelte/no-navigation-without-resolve': [
+				'error',
+				{ ignoreLinks: true, ignoreGoto: true },
+			],
+		},
+	},
 	{
 		files: ['**/*.svelte'],
 		languageOptions: {

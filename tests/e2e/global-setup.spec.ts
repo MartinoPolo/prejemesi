@@ -8,7 +8,7 @@ import { registerViaApi, createAuthenticatedContext } from './fixtures/auth-help
 // Deliberately NOT using `waitForLoadState('networkidle')`: a cold SvelteKit dev
 // page streams hundreds of on-demand module-transform requests (`/_app/...`,
 // `/node_modules/.vite/...`) plus the dashboard's remote queries, and rarely gets
-// the 500ms of network quiet `networkidle` requires within the timeout — so the
+// the 500ms of network quiet `networkidle` requires within the timeout – so the
 // warmup would time out even though the route compiled fine. `goto`'s default
 // 'load' wait already forces each route's server modules to compile; a deterministic
 // content assertion then proves the rendered output is ready.
@@ -28,7 +28,7 @@ test('warmup: compile all route modules', async ({ page, request, browser }) => 
 	// Generous timeout: the first cold compile of the authenticated shell (Navbar +
 	// dashboard + gift/bits-ui component trees) can far exceed the default expect
 	// timeout. Locale-agnostic: the app serves cs at `/` and en at `/en` (base locale
-	// en), so a fresh context's default locale can be either — match both.
+	// en), so a fresh context's default locale can be either – match both.
 	await expect(authPage.getByRole('heading', { name: /Moje seznamy|My lists/ })).toBeVisible({
 		timeout: 45_000,
 	});

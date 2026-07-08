@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildDraftRows } from './import_draft_builder.js';
 import { COLUMN_ROLE, type DetectedColumn } from '$lib/modules/import/detect_columns.js';
-import { GIFT_CURRENCIES } from '$lib/modules/gifts/types.js';
+import { DEFAULT_DRAFT_PRIORITY, GIFT_CURRENCIES } from '$lib/modules/gifts/types.js';
 
 function makeColumn(
 	index: number,
@@ -33,6 +33,7 @@ describe('buildDraftRows', () => {
 			links: [{ url: 'https://alza.cz/book' }],
 			price: 299,
 			currency: GIFT_CURRENCIES.CZK,
+			priority: DEFAULT_DRAFT_PRIORITY,
 		});
 		expect(drafts[1]).toEqual({
 			name: 'Headphones',
@@ -40,6 +41,7 @@ describe('buildDraftRows', () => {
 			links: [{ url: 'https://alza.cz/headphones' }],
 			price: 8990,
 			currency: GIFT_CURRENCIES.CZK,
+			priority: DEFAULT_DRAFT_PRIORITY,
 		});
 	});
 
@@ -97,6 +99,7 @@ describe('buildDraftRows', () => {
 			links: [],
 			price: null,
 			currency: GIFT_CURRENCIES.CZK,
+			priority: DEFAULT_DRAFT_PRIORITY,
 		});
 	});
 
@@ -115,6 +118,7 @@ describe('buildDraftRows', () => {
 			links: [],
 			price: null,
 			currency: GIFT_CURRENCIES.CZK,
+			priority: DEFAULT_DRAFT_PRIORITY,
 		});
 	});
 

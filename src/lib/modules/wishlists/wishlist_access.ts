@@ -8,7 +8,7 @@ import type { WishlistRole } from './types.js';
 
 /**
  * Derive the caller's role from an already-fetched wishlist row.
- * Does NOT throw — returns 'visitor' when authContext is null or the user
+ * Does NOT throw – returns 'visitor' when authContext is null or the user
  * has no elevated access. Use for read-only queries that need role information.
  */
 export async function resolveWishlistRole(

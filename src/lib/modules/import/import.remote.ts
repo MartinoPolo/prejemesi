@@ -1,15 +1,21 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, sql, asc } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
+import { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { guardedCommand } from '$lib/server/remote.js';
 import {
 	verifyOwnerOrModerator,
 	assertWishlistMutable,
 } from '$lib/modules/wishlists/wishlist_access.js';
 import { seedNewWishlist } from '$lib/modules/wishlists/wishlist_create.js';
-import { DEFAULT_GIFT_CURRENCY, type GiftDraftInput } from '$lib/modules/gifts/types.js';
+import {
+	DEFAULT_GIFT_CURRENCY,
+	DRAFT_PRIORITY,
+	type DraftPriority,
+	type GiftDraftInput,
+} from '$lib/modules/gifts/types.js';
 import { normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
@@ -22,7 +28,7 @@ import { ImportGiftsInputSchema, CreateWishlistFromImportInputSchema } from './i
 const SheetLinkSchema = v.pipe(v.string(), v.trim(), v.minLength(1));
 
 /**
- * Fetch a Google Sheet as CSV, server-side. The raw user URL is never fetched —
+ * Fetch a Google Sheet as CSV, server-side. The raw user URL is never fetched –
  * {@link buildSheetsCsvExportUrl} reconstructs a pinned `docs.google.com` export
  * URL or returns a typed error (invalid / not-a-sheet). The fetched response is
  * classified for private-sheet / failure cases before the CSV text is returned.
@@ -75,7 +81,12 @@ export const fetchGoogleSheetCsv = guardedCommand(SheetLinkSchema, async (_authC
 });
 
 /** Map a committed draft to a gift insert row at a fixed sortOrder position. */
-function draftToGiftValues(wishlistId: string, draft: GiftDraftInput, sortOrder: number) {
+function draftToGiftValues(
+	wishlistId: string,
+	draft: GiftDraftInput,
+	sortOrder: number,
+	priorityLevelId: string | null,
+) {
 	return {
 		wishlistId,
 		name: draft.name,
@@ -83,8 +94,35 @@ function draftToGiftValues(wishlistId: string, draft: GiftDraftInput, sortOrder:
 		links: normalizeGiftLinks(draft.links),
 		price: draft.price ?? null,
 		currency: draft.currency ?? DEFAULT_GIFT_CURRENCY,
+		priorityLevelId,
 		sortOrder,
 	};
+}
+
+/**
+ * Resolve a draft's binary priority to a concrete priority-level id by rank:
+ * high → lowest sortOrder, medium → second. Returns null when the needed rank
+ * is absent (the grid hides the toggle in that case — this is a safety net).
+ */
+function resolvePriorityLevelId(
+	priority: DraftPriority,
+	rankedLevelIds: readonly string[],
+): string | null {
+	const rank = priority === DRAFT_PRIORITY.high ? 0 : 1;
+	return rankedLevelIds[rank] ?? null;
+}
+
+/** Priority-level ids for a wishlist, ranked by sortOrder (index 0 = highest priority). */
+async function rankedPriorityLevelIds(
+	tx: Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0],
+	wishlistId: string,
+): Promise<string[]> {
+	const rows = await tx
+		.select({ id: priorityLevel.id })
+		.from(priorityLevel)
+		.where(eq(priorityLevel.wishlistId, wishlistId))
+		.orderBy(asc(priorityLevel.sortOrder));
+	return rows.map((row) => row.id);
 }
 
 /**
@@ -110,11 +148,19 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 			.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
 
 		const base = Number(maxSortRows[0]?.maxSort ?? -1) + 1;
+		const rankedLevelIds = await rankedPriorityLevelIds(tx, input.wishlistId);
 
 		return tx
 			.insert(gift)
 			.values(
-				input.gifts.map((draft, i) => draftToGiftValues(input.wishlistId, draft, base + i)),
+				input.gifts.map((draft, i) =>
+					draftToGiftValues(
+						input.wishlistId,
+						draft,
+						base + i,
+						resolvePriorityLevelId(draft.priority, rankedLevelIds),
+					),
+				),
 			)
 			.returning();
 	});
@@ -122,7 +168,7 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 
 /**
  * Create a new wishlist owned by the caller, seed its default priority levels,
- * and insert the imported drafts (sortOrder sequential from 0) — all atomically
+ * and insert the imported drafts (sortOrder sequential from 0) – all atomically
  * in one transaction. Returns the created wishlist row.
  */
 export const createWishlistFromImport = guardedCommand(
@@ -134,9 +180,19 @@ export const createWishlistFromImport = guardedCommand(
 			const created = await seedNewWishlist(tx, user.id, input);
 
 			if (input.gifts.length > 0) {
+				const rankedLevelIds = await rankedPriorityLevelIds(tx, created.id);
 				await tx
 					.insert(gift)
-					.values(input.gifts.map((draft, i) => draftToGiftValues(created.id, draft, i)));
+					.values(
+						input.gifts.map((draft, i) =>
+							draftToGiftValues(
+								created.id,
+								draft,
+								i,
+								resolvePriorityLevelId(draft.priority, rankedLevelIds),
+							),
+						),
+					);
 			}
 
 			return created;

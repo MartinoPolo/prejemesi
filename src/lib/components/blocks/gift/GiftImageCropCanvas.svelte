@@ -60,7 +60,7 @@
 	// broken source must not leave draggable handles over a broken-image glyph.
 	const isReady = $derived(!loadFailed && naturalRatio !== null);
 
-	// drag bookkeeping (plain, non-reactive — only read inside pointer handlers)
+	// drag bookkeeping (plain, non-reactive – only read inside pointer handlers)
 	let mode: DragMode = 'move';
 	let startRect: ImageCropRect = FULL_CROP_RECT;
 	let startPointer = { x: 0, y: 0 };
@@ -216,7 +216,7 @@
 				<!-- Crop rectangle: draggable body + rule-of-thirds grid + handles.
 			     Accessibility exception (issue #50, closed NOT_PLANNED): this region is
 			     pointer-only. Keyboard move/resize and removing the nested interactive
-			     handles were deliberately deferred — an accepted, documented WCAG 2.1.1
+			     handles were deliberately deferred – an accepted, documented WCAG 2.1.1
 			     gap pending reprioritization (see .mpx/DECISIONS.md / PHASE_END_PRD_33.md).
 			     The region stays focusable for discoverability. -->
 				<div

@@ -2,6 +2,7 @@
 	import { defineMeta } from '@storybook/addon-svelte-csf';
 	import { expect, userEvent, within } from 'storybook/test';
 	import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
+	import { DRAFT_PRIORITY } from '$lib/modules/gifts/types.js';
 	import { DRAFT_GRID_CONTEXT, type ExistingGiftRef } from './gift_draft_grid_model.js';
 	import GiftDraftGrid from './GiftDraftGrid.svelte';
 
@@ -13,12 +14,33 @@
 
 	// ── Fixtures ────────────────────────────────────────────────────────────
 	const SINGLE_NAMED: GiftDraft[] = [
-		{ name: 'Ponožky', description: null, links: [], price: null, currency: 'CZK' },
+		{
+			name: 'Ponožky',
+			description: null,
+			links: [],
+			price: null,
+			currency: 'CZK',
+			priority: DRAFT_PRIORITY.medium,
+		},
 	];
 
 	const TWO_NAMED: GiftDraft[] = [
-		{ name: 'Ponožky', description: null, links: [], price: 349, currency: 'CZK' },
-		{ name: 'Hrnek', description: null, links: [], price: 259, currency: 'CZK' },
+		{
+			name: 'Ponožky',
+			description: null,
+			links: [],
+			price: 349,
+			currency: 'CZK',
+			priority: DRAFT_PRIORITY.high,
+		},
+		{
+			name: 'Hrnek',
+			description: null,
+			links: [],
+			price: 259,
+			currency: 'CZK',
+			priority: DRAFT_PRIORITY.medium,
+		},
 	];
 
 	const IMPORT_ROWS: GiftDraft[] = [
@@ -28,6 +50,7 @@
 			links: [{ url: 'https://www.alza.cz' }],
 			price: 349,
 			currency: 'CZK',
+			priority: DRAFT_PRIORITY.high,
 		},
 		// Blank name → error row (carries data, not pristine).
 		{
@@ -36,6 +59,7 @@
 			links: [{ url: 'https://www.heureka.cz' }],
 			price: null,
 			currency: 'CZK',
+			priority: DRAFT_PRIORITY.medium,
 		},
 		// Matches an existing gift → possible-duplicate row.
 		{
@@ -44,6 +68,7 @@
 			links: [{ url: 'https://www.heureka.cz' }],
 			price: 259,
 			currency: 'CZK',
+			priority: DRAFT_PRIORITY.medium,
 		},
 	];
 
@@ -59,6 +84,7 @@
 			links: [{ url: 'https://www.heureka.cz' }],
 			price: null,
 			currency: 'CZK',
+			priority: DRAFT_PRIORITY.medium,
 		},
 	];
 
@@ -84,7 +110,7 @@
 
 	const playAddRemoveLink = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
-		// No link inputs yet — only the "+ link" affordance.
+		// No link inputs yet – only the "+ link" affordance.
 		await expect(canvas.queryByLabelText(LINK_1_LABEL)).not.toBeInTheDocument();
 
 		await userEvent.click(canvas.getByRole('button', { name: ADD_LINK }));

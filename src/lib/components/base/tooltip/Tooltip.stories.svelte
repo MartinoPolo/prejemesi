@@ -170,7 +170,7 @@
 <Story name="Delay 0ms">
 	{#snippet template()}
 		<div class="flex items-center justify-center p-16">
-			<Tooltip.SimpleTooltip text="Instant — no delay" delayDuration={0}>
+			<Tooltip.SimpleTooltip text="Instant – no delay" delayDuration={0}>
 				{#snippet asChild(props)}
 					<Button {...props} intent="secondary" size="sm">Hover me (instant)</Button>
 				{/snippet}
@@ -194,7 +194,7 @@
 <Story name="Delay 700ms">
 	{#snippet template()}
 		<div class="flex items-center justify-center p-16">
-			<Tooltip.SimpleTooltip text="700ms delay — deliberate hover" delayDuration={700}>
+			<Tooltip.SimpleTooltip text="700ms delay – deliberate hover" delayDuration={700}>
 				{#snippet asChild(props)}
 					<Button {...props} intent="secondary" size="sm">Hover me (700ms)</Button>
 				{/snippet}

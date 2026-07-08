@@ -26,7 +26,10 @@ import {
 } from './types.js';
 import { normalizeGiftLinks } from './gift_url.js';
 import { computePreShareOwnerEdit, jsonChanged } from './gift_post_share.js';
-import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
+import {
+	isOwnerSharedGiftDeleteGraceOpen,
+	isPreShareOwnerFullEditGraceOpen,
+} from './gift_deletion_rules.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
@@ -301,18 +304,21 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	const now = new Date();
 	const isShared = wishlistRow.sharedAt !== null;
 	const isPreShareGift = isShared && giftRow.createdAt <= wishlistRow.sharedAt!;
-	// Within the debounced 2-min share grace window the owner regains FULL edit — name + delete —
-	// as if the list were unshared (REQ-1/2). The window resets on each post-share edit, so it is
-	// keyed off `editedAfterShareAt` (the last edit) and falls back to `sharedAt` until then.
-	const shareGraceOpen =
-		isPreShareGift &&
-		isWithinGraceWindow(giftRow.editedAfterShareAt ?? wishlistRow.sharedAt, now);
+	// Within the initial 2-minute share grace window the owner regains full edit. Later edits
+	// deliberately do not reopen name or delete grace.
+	const shareGraceOpen = isPreShareOwnerFullEditGraceOpen(
+		{
+			wishlistSharedAt: wishlistRow.sharedAt,
+			giftCreatedAt: giftRow.createdAt,
+		},
+		now,
+	);
 	// An owner editing a pre-share gift once the grace window has closed follows the per-field rules
 	// (REQ-4/5): name is locked, quantity may only rise, description edits accrue as appends.
 	// Moderators, owners editing post-share-created gifts, and in-window edits fall through to the
 	// full per-field write below. A targeted segment edit (`descriptionAppendEdit`, issue #83) is
-	// always routed through the engine — it carries its own per-segment window check that the
-	// full-write path cannot enforce — so it stays validated even while the share window is open.
+	// always routed through the engine – it carries its own per-segment window check that the
+	// full-write path cannot enforce – so it stays validated even while the share window is open.
 	const isPreShareOwnerEdit =
 		role === 'owner' &&
 		isPreShareGift &&
@@ -445,16 +451,19 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
 	assertWishlistMutable(wishlistRow);
 
-	// Edit lock: owner cannot delete a pre-share gift once its share grace window has closed
-	// (REQ-2). Within the debounced window, delete is allowed as if the list were unshared.
+	// Delete lock: owner delete on shared wishlists is limited to the initial share grace for
+	// pre-share gifts, or the creation grace for gifts added after sharing. Later edits do not reopen it.
 	const now = new Date();
 	const isShared = wishlistRow.sharedAt !== null;
-	if (role === 'owner' && isShared && giftRow.createdAt <= wishlistRow.sharedAt!) {
-		const shareGraceOpen = isWithinGraceWindow(
-			giftRow.editedAfterShareAt ?? wishlistRow.sharedAt,
+	if (role === 'owner' && isShared) {
+		const deleteGraceOpen = isOwnerSharedGiftDeleteGraceOpen(
+			{
+				wishlistSharedAt: wishlistRow.sharedAt,
+				giftCreatedAt: giftRow.createdAt,
+			},
 			now,
 		);
-		if (!shareGraceOpen) {
+		if (!deleteGraceOpen) {
 			error(403, SERVER_ERROR.CANNOT_DELETE_AFTER_SHARING);
 		}
 	}

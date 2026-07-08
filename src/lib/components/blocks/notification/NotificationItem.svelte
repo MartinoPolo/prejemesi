@@ -12,6 +12,7 @@
 	import UserPlusIcon from '@lucide/svelte/icons/user-plus';
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { cn } from '$lib/utils.js';
 
 	interface NotificationItemProps {
@@ -41,7 +42,9 @@
 		}
 
 		if (notification.wishlistId != null && notification.wishlistId !== '') {
-			void goto(resolve('/(app)/w/[id]', { id: notification.wishlistId }));
+			void goto(
+				localizeInternalHref(resolve('/(app)/w/[id]', { id: notification.wishlistId })),
+			);
 		}
 	}
 </script>

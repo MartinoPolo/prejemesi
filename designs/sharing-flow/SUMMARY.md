@@ -1,6 +1,6 @@
-# Sharing Flow — Design Summary
+# Sharing Flow – Design Summary
 
-**Base**: Variant 2 — Multi-step wizard | **Refined**: 2026-05-30
+**Base**: Variant 2 – Multi-step wizard | **Refined**: 2026-05-30
 
 ## Refinements Applied
 
@@ -8,14 +8,14 @@ Variant 2 was chosen and refined with: approved app shell nav as backdrop, 3-ste
 
 ## Component Map
 
-### Codebase — Use As-Is
+### Codebase – Use As-Is
 
 | Component | Path                                 | Usage                                                                                               | Key Props/Variants                                                                   |
 | --------- | ------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Button    | `src/lib/components/base/button/`    | Primary (Sdílet), outline (Zrušit, Vytvořit pozvánku), ghost (close ×), destructive-ghost (Odebrat) | `variant="default"`, `variant="outline"`, `variant="ghost"`, `variant="destructive"` |
 | Input     | `src/lib/components/base/input/`     | Read-only link field                                                                                | `readonly`                                                                           |
 | Badge     | `src/lib/components/base/badge/`     | "Aktivní" moderator status                                                                          | `variant="outline"` with success color                                               |
-| Separator | `src/lib/components/base/separator/` | Divides link / social / moderator sections in Step 2                                                | —                                                                                    |
+| Separator | `src/lib/components/base/separator/` | Divides link / social / moderator sections in Step 2                                                | –                                                                                    |
 
 ### Adopt from shadcn-svelte / Bits UI
 
@@ -58,8 +58,8 @@ success
 
 ## Implementation Notes
 
-- Use `base/alert-dialog` for Step 1 (destructive-consequence flow). Use `base/dialog` for Steps 2–3 — same instance, swap content with `{#if}` to avoid remount flicker.
+- Use `base/alert-dialog` for Step 1 (destructive-consequence flow). Use `base/dialog` for Steps 2–3 – same instance, swap content with `{#if}` to avoid remount flicker.
 - Clipboard API with `aria-live="polite"` on "Zkopírováno!" text. Fallback: `document.execCommand('copy')`.
-- All social intent URLs are client-side only — no server involvement. Open with `window.open(url, '_blank', 'noopener,noreferrer')`.
+- All social intent URLs are client-side only – no server involvement. Open with `window.open(url, '_blank', 'noopener,noreferrer')`.
 - Moderator invite: `POST` generates 48h-TTL token. Revoke: `DELETE` with optimistic UI removal.
 - Server applies edit lock atomically when share succeeds (`wishlists.sharedAt` set). Do NOT apply lock optimistically client-side.

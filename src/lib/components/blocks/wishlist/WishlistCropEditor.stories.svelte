@@ -83,7 +83,7 @@
 	{/snippet}
 </Story>
 
-<Story name="With image — slot previews [play: slot selection]" play={playSlotSelection}>
+<Story name="With image – slot previews [play: slot selection]" play={playSlotSelection}>
 	{#snippet template()}
 		<div class="max-w-2xl">
 			<WishlistCropEditor
