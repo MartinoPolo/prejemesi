@@ -31,7 +31,9 @@
 				</span>
 			</div>
 
-			<h1 class="font-heading text-4xl font-extrabold leading-tight md:text-5xl md:leading-[1.05] lg:text-6xl">
+			<h1
+				class="font-heading text-4xl font-extrabold leading-tight md:text-5xl md:leading-[1.05] lg:text-6xl"
+			>
 				{m.landing_hero_title()}
 			</h1>
 
@@ -59,14 +61,20 @@
 		</div>
 
 		<div class="hero-scene relative" aria-hidden="true">
-			<div class="wishlist-card overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
+			<div
+				class="wishlist-card overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
+			>
 				<div class="hero-card-header border-b border-border px-5 pb-5 pt-6">
-					<div class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+					<div
+						class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70"
+					>
 						{m.landing_wishes_for()}
 					</div>
 					<div class="font-heading text-2xl font-bold">{m.landing_example_name()}</div>
 					<div class="mt-3 flex items-center gap-3">
-						<span class="hero-badge-event rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+						<span
+							class="hero-badge-event rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+						>
 							{m.landing_birthday()}
 						</span>
 						<span
@@ -78,7 +86,9 @@
 				</div>
 
 				{#each [{ emoji: '📗', hue: '150', name: m.landing_gift_book(), price: '349 Kč · alza.cz', status: 'free' }, { emoji: '🎧', hue: '200', name: m.landing_gift_headphones(), price: '2 490 Kč · mall.cz', status: 'reserved' }, { emoji: '🕯️', hue: '60', name: m.landing_gift_candles(), price: '650 Kč · notino.cz', status: 'free' }, { emoji: '🧴', hue: '330', name: m.landing_gift_cosmetics(), price: '1 890 Kč · sephora.cz', status: 'reserved' }] as gift (gift.name)}
-					<div class="flex items-center gap-4 border-b border-border px-5 py-3.5 last:border-b-0">
+					<div
+						class="flex items-center gap-4 border-b border-border px-5 py-3.5 last:border-b-0"
+					>
 						<div
 							class="gift-icon-bg flex size-11 shrink-0 items-center justify-center rounded-xl text-[22px]"
 							style={`--gift-hue: ${gift.hue}deg`}
@@ -96,7 +106,9 @@
 								{m.landing_status_free()}
 							</span>
 						{:else}
-							<span class="hero-badge-reserved shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+							<span
+								class="hero-badge-reserved shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+							>
 								{m.landing_status_reserved()}
 							</span>
 						{/if}
@@ -104,7 +116,9 @@
 				{/each}
 			</div>
 
-			<div class="privacy-note rounded-2xl bg-primary px-4 py-3 text-sm font-semibold leading-snug text-primary-foreground shadow-lg">
+			<div
+				class="privacy-note rounded-2xl bg-primary px-4 py-3 text-sm font-semibold leading-snug text-primary-foreground shadow-lg"
+			>
 				<LockIcon class="mb-2 size-5" />
 				{m.landing_privacy_note()}
 			</div>

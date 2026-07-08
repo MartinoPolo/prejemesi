@@ -21,7 +21,13 @@
 		{ name: 'birthday', label: m.theme_birthday(), emoji: '🎂', hue: '55deg', active: false },
 		{ name: 'elegant', label: m.theme_elegant(), emoji: '💍', hue: '270deg', active: false },
 		{ name: 'fun', label: m.theme_fun(), emoji: '🎉', hue: '340deg', active: false },
-		{ name: 'custom', label: m.landing_feat3_custom(), emoji: '🎨', hue: '205deg', active: false },
+		{
+			name: 'custom',
+			label: m.landing_feat3_custom(),
+			emoji: '🎨',
+			hue: '205deg',
+			active: false,
+		},
 	] as const;
 </script>
 
@@ -45,20 +51,30 @@
 				<div class="rounded-2xl border border-border bg-background p-3">
 					<div class="mb-3 flex items-center justify-between gap-3">
 						<span class="view-pill">{m.landing_feat1_owner_view()}</span>
-						<span class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+						<span
+							class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+						>
 							<ShieldCheckIcon class="size-3.5" />
 							{m.landing_feat1_hidden_note()}
 						</span>
 					</div>
-					<div class="flex items-center gap-3 rounded-xl border border-border bg-muted/60 p-3">
+					<div
+						class="flex items-center gap-3 rounded-xl border border-border bg-muted/60 p-3"
+					>
 						<div class="gift-preview-icon">🎧</div>
 						<div class="min-w-0 flex-1">
-							<div class="truncate text-sm font-semibold">{m.landing_gift_headphones()}</div>
+							<div class="truncate text-sm font-semibold">
+								{m.landing_gift_headphones()}
+							</div>
 							<div class="text-xs text-muted-foreground">7 490 Kč · alza.cz</div>
 						</div>
-						<span class="blurred-status" aria-hidden="true">{m.landing_feat1_hidden()}</span>
+						<span class="blurred-status" aria-hidden="true"
+							>{m.landing_feat1_hidden()}</span
+						>
 					</div>
-					<div class="mt-3 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/10 p-3">
+					<div
+						class="mt-3 flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/10 p-3"
+					>
 						<div class="gift-preview-icon gift-preview-icon-warm">📖</div>
 						<div class="min-w-0 flex-1">
 							<div class="truncate text-sm font-semibold">Sapiens</div>
@@ -89,10 +105,15 @@
 							{m.landing_feat2_link_ready()}
 						</span>
 					</div>
-					<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+					<div
+						class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4"
+					>
 						{#each shareApps as app (app.platform)}
 							<div class="share-chip">
-								<BrandShareIcon platform={app.platform} class={`size-5 ${app.colorClass}`} />
+								<BrandShareIcon
+									platform={app.platform}
+									class={`size-5 ${app.colorClass}`}
+								/>
 								<span>{app.label}</span>
 							</div>
 						{/each}
@@ -122,15 +143,23 @@
 								style={`--theme-hue: ${theme.hue}`}
 							>
 								<span class="text-[22px] leading-none">{theme.emoji}</span>
-								<span class="mt-2 block truncate text-xs font-semibold">{theme.label}</span>
+								<span class="mt-2 block truncate text-xs font-semibold"
+									>{theme.label}</span
+								>
 							</div>
 						{/each}
 					</div>
-					<div class="mt-3 rounded-2xl bg-[oklch(92%_0.04_150deg)] p-4 dark:bg-[oklch(25%_0.03_150deg)]">
-						<div class="font-heading text-lg font-extrabold text-[oklch(35%_0.08_150deg)] dark:text-[oklch(78%_0.06_150deg)]">
+					<div
+						class="mt-3 rounded-2xl bg-[oklch(92%_0.04_150deg)] p-4 dark:bg-[oklch(25%_0.03_150deg)]"
+					>
+						<div
+							class="font-heading text-lg font-extrabold text-[oklch(35%_0.08_150deg)] dark:text-[oklch(78%_0.06_150deg)]"
+						>
 							{m.landing_feat3_preview_title()}
 						</div>
-						<div class="mt-1 text-sm text-[oklch(45%_0.06_150deg)] dark:text-[oklch(70%_0.04_150deg)]">
+						<div
+							class="mt-1 text-sm text-[oklch(45%_0.06_150deg)] dark:text-[oklch(70%_0.04_150deg)]"
+						>
 							{m.landing_feat3_preview_subtitle()}
 						</div>
 					</div>
