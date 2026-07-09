@@ -12,9 +12,9 @@
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
 
 	interface WishlistDetailToolbarProps {
-		isOwner: boolean;
+		/** Recipient OR správce: gates theme, settings, import, batch-add, and add-gift. */
+		canManage: boolean;
 		isArchived: boolean;
-		isOwnerOrModerator: boolean;
 		isAuthenticated: boolean;
 		viewMode: GiftViewMode;
 		sortOption: GiftSortOption;
@@ -32,9 +32,8 @@
 	}
 
 	let {
-		isOwner,
+		canManage,
 		isArchived,
-		isOwnerOrModerator,
 		isAuthenticated,
 		viewMode,
 		sortOption,
@@ -64,7 +63,7 @@
 	/>
 
 	<div class="ml-auto flex items-center gap-2">
-		{#if isOwner && !isArchived}
+		{#if canManage && !isArchived}
 			<SimpleTooltip text={m.wishlist_detail_change_theme()}>
 				<Button
 					size="icon"
@@ -86,12 +85,12 @@
 				</Button>
 			</SimpleTooltip>
 		{/if}
-		{#if !isOwner && !isArchived && isAuthenticated}
+		{#if !canManage && !isArchived && isAuthenticated}
 			<Button size="sm" intent="ghost" onclick={onunfollow}
 				>{m.wishlist_detail_unfollow()}</Button
 			>
 		{/if}
-		{#if isOwnerOrModerator && !isArchived}
+		{#if canManage && !isArchived}
 			<SimpleTooltip text={m.import_toolbar_label()}>
 				<Button
 					size="icon"

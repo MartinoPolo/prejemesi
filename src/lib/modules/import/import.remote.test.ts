@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { RECIPIENT_KIND } from '$lib/modules/wishlists/types.js';
 
 // ── Suppress SvelteKit's remote-function validator injected by the Vite transform
 vi.mock('@sveltejs/kit/internal', () => ({
@@ -57,7 +58,9 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 	wishlist: {
 		id: 'wishlist.id',
-		ownerId: 'wishlist.ownerId',
+		recipientUserId: 'wishlist.recipientUserId',
+		recipientName: 'wishlist.recipientName',
+		recipientIsModerator: 'wishlist.recipientIsModerator',
 		status: 'wishlist.status',
 		deletedAt: 'wishlist.deletedAt',
 	},
@@ -166,7 +169,8 @@ const AUTH = { user: { id: OWNER_ID }, session: {} };
 function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
 	return {
 		id: WISHLIST_ID,
-		ownerId: OWNER_ID,
+		recipientUserId: OWNER_ID,
+		recipientName: null,
 		status: 'draft',
 		deletedAt: null,
 		...overrides,
@@ -356,7 +360,7 @@ describe('importGifts', () => {
 	});
 
 	it('lets a moderator append gifts', async () => {
-		mockDbInstance.pushResult([makeWishlistRow({ ownerId: 'someone-else' })]); // not owner
+		mockDbInstance.pushResult([makeWishlistRow({ recipientUserId: 'someone-else' })]); // not the recipient
 		mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]); // moderator check
 		mockDbInstance.pushResult([{ maxSort: -1 }]);
 		mockDbInstance.pushResult(RANKED_LEVELS);
@@ -392,8 +396,8 @@ describe('importGifts', () => {
 		expect(giftInsertRows()![0].links).toEqual([{ url: 'https://example.com/ok' }]);
 	});
 
-	it('throws 403 when the caller is neither owner nor moderator', async () => {
-		mockDbInstance.pushResult([makeWishlistRow({ ownerId: 'someone-else' })]);
+	it('throws 403 when the caller is neither recipient nor moderator', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ recipientUserId: 'someone-else' })]);
 		mockDbInstance.pushResult([]); // moderator check empty
 
 		await expect(
@@ -434,10 +438,29 @@ describe('importGifts', () => {
 });
 
 describe('createWishlistFromImport', () => {
-	it('creates the wishlist, default priority levels, and gifts (sortOrder from 0) atomically', async () => {
+	/** Extract the single-object `.values(...)` call – the wishlist insert row. */
+	function wishlistInsertValues(): Record<string, unknown> | undefined {
+		return mockDbInstance.calls.find((c) => c.method === 'values' && !Array.isArray(c.args[0]))
+			?.args[0] as Record<string, unknown> | undefined;
+	}
+
+	/** The moderator-assignment `.values({...})` row, if one was inserted (for-someone lists). */
+	function moderatorAssignmentValues(): Record<string, unknown> | undefined {
+		return mockDbInstance.calls.find(
+			(c) =>
+				c.method === 'values' &&
+				!Array.isArray(c.args[0]) &&
+				typeof c.args[0] === 'object' &&
+				c.args[0] !== null &&
+				'wishlistId' in (c.args[0] as Record<string, unknown>) &&
+				'userId' in (c.args[0] as Record<string, unknown>),
+		)?.args[0] as Record<string, unknown> | undefined;
+	}
+
+	it('self: creates a list linked to the creator, default priority levels, and gifts (sortOrder from 0)', async () => {
 		const createdWishlist = {
 			id: 'new-wl',
-			ownerId: OWNER_ID,
+			recipientUserId: OWNER_ID,
 			title: 'My List',
 			shortId: 'sh',
 		};
@@ -447,6 +470,7 @@ describe('createWishlistFromImport', () => {
 		mockDbInstance.pushResult([]); // insert gifts
 
 		const result = await callCreateFromImport(AUTH, {
+			recipientKind: RECIPIENT_KIND.self,
 			title: 'My List',
 			gifts: [draftA, draftB],
 		});
@@ -454,12 +478,15 @@ describe('createWishlistFromImport', () => {
 		expect(result).toMatchObject({ id: 'new-wl', title: 'My List' });
 		expect(transactionOpened()).toBe(true);
 
-		// Wishlist owned by caller.
-		const wishlistValues = mockDbInstance.calls.find(
-			(c) => c.method === 'values' && !Array.isArray(c.args[0]),
-		)?.args[0] as Record<string, unknown>;
+		// A self list links the creator as recipient; no free-text recipient name, no správce row.
+		const wishlistValues = wishlistInsertValues();
 		expect(wishlistValues).toBeDefined();
-		expect(wishlistValues).toMatchObject({ ownerId: OWNER_ID, title: 'My List' });
+		expect(wishlistValues).toMatchObject({
+			recipientUserId: OWNER_ID,
+			recipientName: null,
+			title: 'My List',
+		});
+		expect(moderatorAssignmentValues()).toBeUndefined();
 
 		// Default priority levels inserted (array of rows with `label`).
 		const priorityValues = mockDbInstance.calls.find(
@@ -479,35 +506,78 @@ describe('createWishlistFromImport', () => {
 		expect(rows!.map((r) => r.priorityLevelId)).toEqual(['pl-medium', 'pl-high']);
 	});
 
+	it('other: stores a free-text recipient and makes the creator the first správce (moderator row)', async () => {
+		const createdWishlist = { id: 'new-wl', recipientName: 'Babička', title: 'Pro babičku' };
+		mockDbInstance.pushResult([createdWishlist]); // insert wishlist returning
+		mockDbInstance.pushResult([]); // insert moderatorAssignment (creator = first správce)
+		mockDbInstance.pushResult([]); // insert priority levels
+		mockDbInstance.pushResult(RANKED_LEVELS); // ranked priority levels
+		mockDbInstance.pushResult([]); // insert gifts
+
+		const result = await callCreateFromImport(AUTH, {
+			recipientKind: RECIPIENT_KIND.other,
+			recipientName: 'Babička',
+			title: 'Pro babičku',
+			gifts: [draftA],
+		});
+
+		expect(result).toMatchObject({ id: 'new-wl' });
+		expect(transactionOpened()).toBe(true);
+
+		// For-someone list: free-text recipient, no linked recipient account.
+		const wishlistValues = wishlistInsertValues();
+		expect(wishlistValues).toBeDefined();
+		expect(wishlistValues).toMatchObject({
+			recipientUserId: null,
+			recipientName: 'Babička',
+			title: 'Pro babičku',
+		});
+
+		// The creator is seeded as the first správce so the orphan list has a manager.
+		const modRow = moderatorAssignmentValues();
+		expect(modRow).toBeDefined();
+		expect(modRow).toMatchObject({ wishlistId: 'new-wl', userId: OWNER_ID });
+
+		// Gifts still seeded, scoped to the new wishlist.
+		expect(giftInsertRows()!.map((r) => r.name)).toEqual(['Boty']);
+	});
+
 	it('defaults the theme to "default" when none is provided', async () => {
 		mockDbInstance.pushResult([{ id: 'new-wl' }]);
 		mockDbInstance.pushResult([]);
 
-		await callCreateFromImport(AUTH, { title: 'My List', gifts: [] });
+		await callCreateFromImport(AUTH, {
+			recipientKind: RECIPIENT_KIND.self,
+			title: 'My List',
+			gifts: [],
+		});
 
-		const wishlistValues = mockDbInstance.calls.find(
-			(c) => c.method === 'values' && !Array.isArray(c.args[0]),
-		)?.args[0] as Record<string, unknown>;
+		const wishlistValues = wishlistInsertValues();
 		expect(wishlistValues).toMatchObject({ theme: 'default' });
 	});
 
 	it('creates the wishlist and priority levels but no gifts when the draft list is empty', async () => {
-		mockDbInstance.pushResult([{ id: 'new-wl', ownerId: OWNER_ID }]);
+		mockDbInstance.pushResult([{ id: 'new-wl', recipientUserId: OWNER_ID }]);
 		mockDbInstance.pushResult([]); // priority levels
 
-		const result = await callCreateFromImport(AUTH, { title: 'Empty', gifts: [] });
+		const result = await callCreateFromImport(AUTH, {
+			recipientKind: RECIPIENT_KIND.self,
+			title: 'Empty',
+			gifts: [],
+		});
 
 		expect(result).toMatchObject({ id: 'new-wl' });
 		expect(giftInsertRows()).toBeUndefined();
 	});
 
 	it('normalizes seeded gift links', async () => {
-		mockDbInstance.pushResult([{ id: 'new-wl', ownerId: OWNER_ID }]);
+		mockDbInstance.pushResult([{ id: 'new-wl', recipientUserId: OWNER_ID }]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult(RANKED_LEVELS);
 		mockDbInstance.pushResult([]);
 
 		await callCreateFromImport(AUTH, {
+			recipientKind: RECIPIENT_KIND.self,
 			title: 'My List',
 			gifts: [{ ...draftB, links: [{ url: 'not a url' }, { url: 'https://example.com/x' }] }],
 		});

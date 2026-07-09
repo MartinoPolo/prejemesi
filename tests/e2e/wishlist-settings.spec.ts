@@ -113,11 +113,15 @@ test.describe('Wishlist settings – non-image editing', () => {
 			visitorPage.getByRole('button', { name: 'Nastavení seznamu' }),
 		).not.toBeVisible();
 
-		// Direct navigation to the settings URL shows the owner-only notice, not the edit form.
+		// Direct navigation to the settings URL shows the manager-only notice, not the edit form.
+		// wishlist_settings_owner_only was reworded from „…pouze vlastník" to the obdarovaný/správce
+		// wording („…pouze obdarovaný nebo správce." / „Only the recipient or a manager can edit …").
 		await visitorPage.goto(`/w/${shortId}/settings`);
 		await visitorPage.waitForLoadState('networkidle');
 		await expect(
-			visitorPage.getByText('Nastavení seznamu může upravovat pouze vlastník.'),
+			visitorPage.getByText(
+				/Nastavení seznamu může upravovat pouze obdarovaný nebo správce\.|Only the recipient or a manager can edit the wishlist settings\./,
+			),
 		).toBeVisible({ timeout: 10_000 });
 		await expect(visitorPage.getByRole('textbox', { name: 'Popis' })).not.toBeVisible();
 

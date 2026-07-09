@@ -17,7 +17,15 @@ async function waitForOverlayGone(page: Page): Promise<void> {
 	await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0, { timeout: 5_000 });
 }
 
-/** Create a wishlist from /my-lists via the modal and wait until its detail page loads. */
+/**
+ * Create a wishlist from /my-lists via the modal and wait until its detail page loads.
+ *
+ * The create modal now leads with a „Pro mě" / „Pro někoho jiného" segmented control
+ * (ToggleGroup) that defaults to „Pro mě" (self). This helper drives the default self
+ * path — it never touches the toggle, so the recipient-name input stays hidden and the
+ * created list is a for-me (linked-recipient) list. The „Název" textbox and „Vytvořit"
+ * submit are addressed by role+name, which the toggle items cannot intercept.
+ */
 export async function createWishlistAndNavigate(page: Page, title: string): Promise<string> {
 	await page.goto('/my-lists');
 	await page.waitForLoadState('networkidle');
@@ -25,6 +33,41 @@ export async function createWishlistAndNavigate(page: Page, title: string): Prom
 
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
+	await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
+	await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
+
+	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
+	await page.waitForLoadState('networkidle');
+	return new URL(page.url()).pathname;
+}
+
+/**
+ * Create a for-someone-else wishlist (free-text recipient) via the modal and wait until
+ * its detail page loads. Selects the „Pro někoho jiného" toggle, fills the revealed
+ * „Jméno obdarovaného" input (id `#wishlist-recipient-name`), then title + submit.
+ *
+ * The creator becomes the first správce (moderator role) — so they see reservation state
+ * and can reserve — while the free-text recipient is who the list is "for".
+ */
+export async function createWishlistForSomeoneAndNavigate(
+	page: Page,
+	{ title, recipientName }: { title: string; recipientName: string },
+): Promise<string> {
+	await page.goto('/my-lists');
+	await page.waitForLoadState('networkidle');
+	await page.getByRole('button', { name: 'Vytvořit seznam' }).first().click();
+
+	const dialog = page.getByRole('dialog');
+	await expect(dialog).toBeVisible({ timeout: 5_000 });
+
+	// Switch to the „Pro někoho jiného" branch; its label is a toggle inside the dialog.
+	await dialog.getByText('Pro někoho jiného', { exact: true }).click();
+
+	// The required recipient-name input appears (stable id survives locale changes).
+	const recipientInput = dialog.locator('#wishlist-recipient-name');
+	await expect(recipientInput).toBeVisible({ timeout: 5_000 });
+	await recipientInput.fill(recipientName);
+
 	await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
 	await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
 

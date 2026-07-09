@@ -17,16 +17,21 @@
 	} from '$lib/modules/gifts/types.js';
 	import type { WishlistTheme } from '$lib/modules/themes/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { canReserveGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface WishlistModalsProps {
-		isOwner: boolean;
-		isOwnerOrModerator: boolean;
+		/** Viewer role — drives the reserve gate (recipient cannot reserve). */
+		role: WishlistRole;
+		/** Recipient OR správce: gates the gift editor, share wizard, theme, správci panel, batch add. */
+		canManage: boolean;
 		isAuthenticated: boolean;
 		wishlistId: string;
 		wishlistTitle: string;
 		giftCount: number;
-		ownerIsModerator: boolean;
+		/** Linked recipient self-promoted to see reservation state (passed to the správci panel). */
+		recipientIsModerator: boolean;
 		// Gift detail modal
 		giftModalOpen: boolean;
 		giftModalMode: 'create' | 'edit';
@@ -74,13 +79,13 @@
 	}
 
 	let {
-		isOwner,
-		isOwnerOrModerator,
+		role,
+		canManage,
 		isAuthenticated,
 		wishlistId,
 		wishlistTitle,
 		giftCount,
-		ownerIsModerator,
+		recipientIsModerator,
 		giftModalOpen = $bindable(),
 		giftModalMode,
 		selectedGift,
@@ -117,17 +122,22 @@
 		onbatchsubmit,
 		onbatchdialogopenchange,
 	}: WishlistModalsProps = $props();
+
+	// Reservation availability: everyone except the recipient (their own surprise) may reserve.
+	const canReserve = $derived(canReserveGift(role));
 </script>
 
-<!-- Gift Detail Modal (owner/moderator only) -->
-{#if isOwnerOrModerator}
+<!-- Gift Detail Modal (managers only: recipient or správce).
+     GiftDetailModal's legacy `isOwner` prop only gates the manager-only "mark received" button,
+     so it maps to canManage in the new role model, not to the recipient specifically. -->
+{#if canManage}
 	<GiftDetailModal
 		bind:open={giftModalOpen}
 		mode={giftModalMode}
 		gift={selectedGift}
 		{wishlistId}
 		{priorityLevels}
-		{isOwner}
+		isOwner={canManage}
 		{postShareLocked}
 		canDelete={canDeleteSelectedGift}
 		{graceExpiresAt}
@@ -143,8 +153,8 @@
 	/>
 {/if}
 
-<!-- Reserve Modal (visitor/moderator only, hidden for owner) -->
-{#if !isOwner}
+<!-- Reserve Modal (everyone who may reserve — recipient excluded, they don't spoil their surprise) -->
+{#if canReserve}
 	<ReserveModal
 		bind:open={reserveModalOpen}
 		gift={reservingGift}
@@ -155,13 +165,13 @@
 	/>
 {/if}
 
-<!-- Share Wizard (owner only) -->
-{#if isOwner}
+<!-- Share Wizard (managers only) -->
+{#if canManage}
 	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
 {/if}
 
-<!-- Theme Selector Dialog (owner only) -->
-{#if isOwner}
+<!-- Theme Selector Dialog (managers only) -->
+{#if canManage}
 	<Dialog.Root
 		bind:open={themeDialogOpen}
 		onOpenChange={(open) => {
@@ -183,18 +193,18 @@
 	</Dialog.Root>
 {/if}
 
-<!-- Moderator Panel (owner only) -->
-{#if isOwner}
+<!-- Správci panel (managers only) -->
+{#if canManage}
 	<ModeratorPanel
 		{wishlistId}
-		{ownerIsModerator}
+		{recipientIsModerator}
 		bind:open={moderatorPanelOpen}
 		onselfpromoted={onmoderatorselfpromoted}
 	/>
 {/if}
 
-<!-- Batch Add Gifts Dialog (owner/moderator only) -->
-{#if isOwnerOrModerator}
+<!-- Batch Add Gifts Dialog (managers only) -->
+{#if canManage}
 	<GiftDraftDialog
 		bind:open={batchAddDialogOpen}
 		{wishlistTitle}

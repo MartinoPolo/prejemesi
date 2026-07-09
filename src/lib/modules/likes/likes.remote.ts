@@ -27,7 +27,7 @@ export const toggleLike = guardedCommand(
 		}
 
 		const wishlistRows = await database
-			.select({ ownerId: wishlist.ownerId, status: wishlist.status })
+			.select({ recipientUserId: wishlist.recipientUserId, status: wishlist.status })
 			.from(wishlist)
 			.where(and(eq(wishlist.id, giftRow.wishlistId), isNull(wishlist.deletedAt)))
 			.limit(1);
@@ -39,8 +39,9 @@ export const toggleLike = guardedCommand(
 		if (wishlistRow.status === 'archived') {
 			error(400, SERVER_ERROR.CANNOT_LIKE_ON_ARCHIVED);
 		}
-		if (wishlistRow.ownerId === user.id) {
-			error(403, SERVER_ERROR.OWNER_CANNOT_LIKE_OWN_GIFTS);
+		// Only the linked recipient is blocked (protects their own surprise); správci may like.
+		if (wishlistRow.recipientUserId === user.id) {
+			error(403, SERVER_ERROR.RECIPIENT_CANNOT_LIKE_OWN_GIFTS);
 		}
 
 		const existingLikes = await database

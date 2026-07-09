@@ -62,9 +62,12 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 	wishlist: {
 		id: 'wishlist.id',
-		ownerId: 'wishlist.ownerId',
+		recipientUserId: 'wishlist.recipientUserId',
+		status: 'wishlist.status',
 	},
 }));
+
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 import { toggleLike, getUserLikesForWishlist } from './likes.remote.js';
 import { getDb } from '$lib/server/db/index.js';
@@ -141,25 +144,28 @@ describe('toggleLike', () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
-				[{ ownerId: 'owner-other', status: 'archived' }],
+				[{ recipientUserId: 'recipient-other', status: 'archived' }],
 			]),
 		);
 
 		await expect(callToggleLike(testAuthContext, testInput)).rejects.toMatchObject({
 			status: 400,
-			message: 'CANNOT_LIKE_ON_ARCHIVED',
+			message: SERVER_ERROR.CANNOT_LIKE_ON_ARCHIVED,
 		});
 	});
 
-	it('throws 403 when the user is the wishlist owner', async () => {
-		// Query 1: gift found, Query 2: wishlist with same ownerId as user
+	it('throws 403 when the caller is the linked recipient of their own list', async () => {
+		// Query 1: gift found, Query 2: wishlist whose recipientUserId is the caller
 		mockGetDb.mockReturnValue(
-			createMockDb([[{ id: 'gift-abc', wishlistId: 'wl-1' }], [{ ownerId: testUser.id }]]),
+			createMockDb([
+				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
+				[{ recipientUserId: testUser.id }],
+			]),
 		);
 
 		await expect(callToggleLike(testAuthContext, testInput)).rejects.toMatchObject({
 			status: 403,
-			message: 'OWNER_CANNOT_LIKE_OWN_GIFTS',
+			message: SERVER_ERROR.RECIPIENT_CANNOT_LIKE_OWN_GIFTS,
 		});
 	});
 
@@ -169,7 +175,7 @@ describe('toggleLike', () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
-				[{ ownerId: 'owner-other' }],
+				[{ recipientUserId: 'recipient-other' }],
 				[], // no existing like
 				[], // insert mutation result (ignored)
 				[{ count: 3 }], // updated count
@@ -187,7 +193,7 @@ describe('toggleLike', () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
-				[{ ownerId: 'owner-other' }],
+				[{ recipientUserId: 'recipient-other' }],
 				[{ id: 'like-1', giftId: 'gift-abc', userId: testUser.id, deletedAt: null }],
 				[], // update mutation result
 				[{ count: 2 }],
@@ -205,7 +211,7 @@ describe('toggleLike', () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ id: 'gift-abc', wishlistId: 'wl-1' }],
-				[{ ownerId: 'owner-other' }],
+				[{ recipientUserId: 'recipient-other' }],
 				[
 					{
 						id: 'like-1',

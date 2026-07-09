@@ -6,14 +6,13 @@
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
 	import type { GiftByRole, GiftForVisitor, GiftViewMode } from '$lib/modules/gifts/types.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 	interface WishlistGiftDisplayProps {
 		gifts: GiftByRole[];
 		role: WishlistRole;
 		isArchived: boolean;
-		isOwner: boolean;
-		isOwnerOrModerator: boolean;
 		viewMode: GiftViewMode;
 		isLoading?: boolean;
 		isEmpty: boolean;
@@ -36,8 +35,6 @@
 		gifts,
 		role,
 		isArchived,
-		isOwner,
-		isOwnerOrModerator,
 		viewMode,
 		isLoading = false,
 		isEmpty,
@@ -55,6 +52,11 @@
 		ondrop,
 		ondragend,
 	}: WishlistGiftDisplayProps = $props();
+
+	// Management affordances (add/edit/reorder) open to recipient OR správce.
+	const canManage = $derived(canManageWishlist(role));
+	// The recipient (person the list is for) never sees the like/reserve columns — their own surprise.
+	const isRecipient = $derived(role === WISHLIST_ROLES.recipient);
 </script>
 
 {#if isLoading}
@@ -68,13 +70,13 @@
 		{/each}
 	</div>
 {:else if isEmpty || isFilteredEmpty}
-	<WishlistEmptyState {isArchived} {isOwner} {isFilteredEmpty} {onaddgift} {onclearfilters} />
+	<WishlistEmptyState {isArchived} {canManage} {isFilteredEmpty} {onaddgift} {onclearfilters} />
 {:else if viewMode === 'card'}
 	<WishlistGiftCardGrid
 		{gifts}
 		{role}
 		{isArchived}
-		{isOwnerOrModerator}
+		{canManage}
 		{draggedIndex}
 		{dragOverIndex}
 		{onedit}
@@ -91,7 +93,7 @@
 		{gifts}
 		{role}
 		{isArchived}
-		{isOwnerOrModerator}
+		{canManage}
 		{draggedIndex}
 		{dragOverIndex}
 		{onedit}
@@ -108,8 +110,8 @@
 		{gifts}
 		{role}
 		{isArchived}
-		{isOwner}
-		{isOwnerOrModerator}
+		{isRecipient}
+		{canManage}
 		{onedit}
 		{onreserve}
 		{onunreserve}

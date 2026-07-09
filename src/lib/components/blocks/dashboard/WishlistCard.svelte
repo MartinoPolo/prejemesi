@@ -12,14 +12,15 @@
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import type { Snippet } from 'svelte';
 
 	interface WishlistCardProps {
 		wishlist: Wishlist;
-		/** Owner name, displayed for moderated/followed cards */
-		ownerName?: string;
+		/** Recipient display name (who the list is for), shown for moderated/followed cards */
+		recipientDisplayName?: string;
 		/** Total gift count for owner cards (owner invariant: count only, no reservation data) */
 		giftCount?: number;
 		/** Reservation progress for moderator cards */
@@ -37,7 +38,7 @@
 
 	let {
 		wishlist: wishlistData,
-		ownerName,
+		recipientDisplayName,
 		giftCount,
 		reservationProgress,
 		availableGifts,
@@ -55,7 +56,7 @@
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
 	const statusDotClass = $derived(STATUS_DOT_CLASSES[wishlistData.status]);
 
-	function getOwnerInitials(name: string): string {
+	function getRecipientInitials(name: string): string {
 		return name
 			.split(' ')
 			.map((part) => part[0])
@@ -103,11 +104,12 @@
 
 	<!-- Body -->
 	<div class={variants.body()}>
-		{#if ownerName}
+		{#if recipientDisplayName}
 			<div class={variants.ownerRow()}>
-				<div class={variants.ownerAvatar()}>{getOwnerInitials(ownerName)}</div>
-				<span>{ownerName}</span>
-				<span class={variants.ownerLabel()}>· vlastník</span>
+				<div class={variants.ownerAvatar()}>
+					{getRecipientInitials(recipientDisplayName)}
+				</div>
+				<span>{m.wishlist_recipient_chip({ name: recipientDisplayName })}</span>
 			</div>
 		{/if}
 

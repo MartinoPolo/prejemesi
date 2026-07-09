@@ -73,7 +73,7 @@ function createGiftsContext(
 		let result = [...effectiveGifts.current];
 
 		const currentFilters = filters.current;
-		if (currentFilters.availableOnly && viewerRole.current !== 'owner') {
+		if (currentFilters.availableOnly && viewerRole.current !== 'recipient') {
 			result = result.filter((giftItem) => {
 				const visitorGift = giftItem as GiftForVisitor;
 				return !visitorGift.isFullyReserved;

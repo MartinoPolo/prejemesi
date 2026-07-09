@@ -20,6 +20,7 @@
 		getWishlistByShortId,
 		updateWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
@@ -44,7 +45,8 @@
 	const initial = await getWishlistByShortId(shortId);
 	let wishlist = $state(initial);
 
-	const isOwner = $derived(wishlist.role === 'owner');
+	// Settings editing is manager-gated (recipient OR správce); non-managers see a read-only alert.
+	const canManage = $derived(canManageWishlist(wishlist.role));
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isShared = $derived(wishlist.sharedAt !== null);
 	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
@@ -181,7 +183,7 @@
 		</div>
 	</div>
 
-	{#if !isOwner}
+	{#if !canManage}
 		<Alert.Root tone="warning">
 			<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
 		</Alert.Root>
