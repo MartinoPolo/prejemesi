@@ -247,7 +247,16 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 	await db.execute(sql`DELETE FROM reservation WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM gift WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM priority_level WHERE id LIKE 'seed-%'`);
-	await db.execute(sql`DELETE FROM moderator_invite WHERE id LIKE 'seed-%'`);
+	// moderator_invite FKs to user have no ON DELETE action, so invites created
+	// at runtime BY seed users (non-seed ids) must be matched via FK columns or
+	// they block the final user delete. Other tables cascade from user/wishlist.
+	await db.execute(sql`
+		DELETE FROM moderator_invite
+		WHERE id LIKE 'seed-%'
+			OR wishlist_id LIKE 'seed-%'
+			OR created_by_user_id LIKE 'seed-%'
+			OR used_by_user_id LIKE 'seed-%'
+	`);
 	await db.execute(sql`DELETE FROM moderator_assignment WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM wishlist_follower WHERE wishlist_id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM wishlist WHERE id LIKE 'seed-%'`);
