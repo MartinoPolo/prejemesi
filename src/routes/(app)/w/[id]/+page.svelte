@@ -759,7 +759,13 @@
 	}
 </script>
 
-<div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
+<!-- data-palette re-derives every color token for this subtree (see app.css), giving the
+     wishlist its own per-list identity independent of the viewer's app palette. -->
+<div
+	bind:this={themeWrapperElement}
+	data-palette={wishlist.palette}
+	class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6"
+>
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}

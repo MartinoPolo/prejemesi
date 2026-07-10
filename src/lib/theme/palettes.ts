@@ -28,6 +28,9 @@ export const DEFAULT_PALETTE: Palette = 'sky';
 /** Cookie mirroring the persisted palette so SSR can theme anonymous users too. */
 export const PALETTE_COOKIE_NAME = 'app-palette';
 
+/** Palette cookie lifetime: one year, re-extended on every palette change. */
+export const PALETTE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
 /** Czech display names (product names, shown in both locales). */
 export const PALETTE_LABELS: Record<Palette, string> = {
 	sky: 'Obloha',

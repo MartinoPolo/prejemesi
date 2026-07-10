@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import type { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from '$lib/modules/images/types.js';
+import { isPalette, type Palette } from '$lib/theme/palettes.js';
 
 /** Full wishlist row from DB */
 export type Wishlist = typeof wishlist.$inferSelect;
@@ -106,6 +107,12 @@ export const WISHLIST_ROLES = {
 } as const;
 
 export type WishlistRole = (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES];
+
+/** Input for changing a wishlist's palette (Redesign 2026, issue #102). Validated via isPalette(). */
+export const SetWishlistPaletteInputSchema = v.object({
+	wishlistId: v.string(),
+	palette: v.custom<Palette>(isPalette),
+});
 
 /** Input for renaming a free-text recipient (správci only; for-someone lists only). */
 export const RenameRecipientInputSchema = v.object({

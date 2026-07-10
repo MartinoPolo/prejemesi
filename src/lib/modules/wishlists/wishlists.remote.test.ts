@@ -206,6 +206,7 @@ import {
 	unfollowWishlist,
 	refollowWishlist,
 	getWishlistByShortId,
+	setWishlistPalette,
 } from './wishlists.remote.js';
 
 // ── Test data factories ───────────────────────────────────────────────────────
@@ -299,6 +300,10 @@ type RenameRecipientHandler = (
 	auth: AuthContext,
 	input: { id: string; recipientName: string },
 ) => Promise<unknown>;
+type SetWishlistPaletteHandler = (
+	auth: AuthContext,
+	input: { wishlistId: string; palette: string },
+) => Promise<unknown>;
 
 const callDeleteWishlist = deleteWishlist as unknown as DeleteWishlistHandler;
 const callUpdateWishlist = updateWishlist as unknown as UpdateWishlistHandler;
@@ -307,6 +312,7 @@ const callCreateWishlist = createWishlist as unknown as CreateWishlistHandler;
 const callRenameRecipient = renameRecipient as unknown as RenameRecipientHandler;
 const callFollowWishlist = followWishlist as unknown as FollowWishlistHandler;
 const callGetWishlistByShortId = getWishlistByShortId as unknown as GetWishlistByShortIdHandler;
+const callSetWishlistPalette = setWishlistPalette as unknown as SetWishlistPaletteHandler;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -372,6 +378,45 @@ describe('deleteWishlist', () => {
 			).rejects.toMatchObject({
 				status: 404,
 				message: 'WISHLIST_NOT_FOUND',
+			});
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('setWishlistPalette', () => {
+	describe('non-manager cannot change the palette', () => {
+		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
+			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			// DB call 2: hasActiveModeratorAssignment → none found
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				callSetWishlistPalette(makeOtherAuthContext(), {
+					wishlistId: WISHLIST_ID,
+					palette: 'mint',
+				}),
+			).rejects.toMatchObject({
+				status: 403,
+				message: 'ACCESS_DENIED',
+			});
+		});
+	});
+
+	describe('archived wishlist is read-only', () => {
+		it('throws 400 even for the linked recipient (same rule as updateWishlist)', async () => {
+			// DB call 1: requireWishlistRow — archived list, caller IS the linked recipient
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(
+				callSetWishlistPalette(makeRecipientAuthContext(), {
+					wishlistId: WISHLIST_ID,
+					palette: 'mint',
+				}),
+			).rejects.toMatchObject({
+				status: 400,
+				message: 'CANNOT_MODIFY_ARCHIVED_WISHLIST',
 			});
 		});
 	});

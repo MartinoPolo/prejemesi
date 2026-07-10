@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '$lib/i18n/locale.js';
+import { isPalette, type Palette } from '$lib/theme/palettes.js';
 
 /**
  * App background theme preference values (REQ-3). Domain-owned so the persistence
@@ -37,3 +38,6 @@ export const UpdateAppBackgroundThemeInputSchema = v.object({
 export const UpdatePreferredLocaleInputSchema = v.object({
 	preferredLocale: v.picklist(SUPPORTED_LOCALES),
 });
+
+/** App-level palette preference input (Redesign 2026, issue #102). Validated via isPalette(). */
+export const SetUserPaletteInputSchema = v.custom<Palette>(isPalette);
