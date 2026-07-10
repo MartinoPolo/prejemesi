@@ -163,12 +163,11 @@ Rejected: Require account for all actions (too much friction), fully anonymous w
 
 ## UI & Theming
 
-### Per-wishlist themes with 5 presets + custom
+### ~~Per-wishlist themes with 5 presets + custom~~ (superseded)
 
-Decided: 2026-05-29
-What: Each wishlist has a theme set by owner/moderator. Presets: Christmas, Birthday, Fun, Elegant, Default (yellow base). Custom = one color picker, palette auto-derived via OKLCH.
-Why: Themed wishlists feel personal and festive. OKLCH derivation ensures harmonious palettes from a single input.
-Rejected: User-level themes (wishlists should look the same for all visitors), full color customization (too complex, inconsistent results).
+Decided: 2026-05-29 — **Superseded 2026-07-10** by "Single theming system: 10 app palettes" below.
+~~What: Each wishlist has a theme set by owner/moderator. Presets: Christmas, Birthday, Fun, Elegant, Default (yellow base). Custom = one color picker, palette auto-derived via OKLCH.~~
+Replaced because: the Redesign 2026 palette system covers per-wishlist identity with 10 curated palettes; named presets and the custom color picker are removed.
 
 ### Dark/light/system mode per-user
 
@@ -356,12 +355,11 @@ What: On for-someone lists the prominent name slot shows „Pro {recipient}" (�
 Why: The prominent slot answers "whose gifts are these?" — for a kid's list that is the recipient, not the manager. Validated with live DOM mockups; the author-first variant buried the key fact in metadata.
 Rejected: Author-first header with a small „Seznam pro Rosie" meta label (the current confusion, just annotated).
 
-### Sort and filter as icon-only dropdown trigger
+### ~~Sort and filter as icon-only dropdown trigger~~ (superseded)
 
-Decided: 2026-05-30
-What: Sorting and filtering are accessed via a single icon-only button (funnel/sliders icon) in the top-right toolbar. Clicking opens a dropdown with sort options (owner's order, priority, price, name) and filter toggles (available only, with link only).
-Why: Keeps the toolbar compact. Sort/filter is a secondary action — most visitors use the owner's default order. Icon-only saves horizontal space for the view switcher.
-Rejected: Separate sort + filter buttons (takes too much space), inline sort controls (clutters the header).
+Decided: 2026-05-30 — **Superseded 2026-07-10** by "Toolbar: visible sort select + 'Pouze dostupné' chip" below.
+~~What: Sorting and filtering are accessed via a single icon-only button (funnel/sliders icon) in the top-right toolbar. Clicking opens a dropdown with sort options (owner's order, priority, price, name) and filter toggles (available only, with link only).~~
+Replaced because: availability filtering is the highest-value visitor action and was buried (#101); the redesign toolbar shows the sort select and the availability chip directly.
 
 ## Design — UI Review (2026-05-30)
 
@@ -588,12 +586,11 @@ What: Remote functions strip reservation data before returning to the owner (API
 Why: API is the security boundary. UI is defense-in-depth to prevent accidental leaks via component bugs.
 Rejected: DB-level views (unnecessary complexity), UI-only (insecure).
 
-### Client-side theme palette derivation
+### ~~Client-side theme palette derivation~~ (superseded)
 
-Decided: 2026-05-30
-What: Server returns theme name + custom color. Presets are predefined CSS variable sets. Custom themes use a JS utility to derive an OKLCH palette from a single input color and set CSS variables on the page wrapper. Live preview during editing.
-Why: Simpler than server-side computation, works reactively, enables live preview without round-trips.
-Rejected: Server-side pre-computation (adds latency, no live preview), build-time generation (can't handle dynamic custom colors).
+Decided: 2026-05-30 — **Superseded 2026-07-10** by "Single theming system: 10 app palettes" below.
+~~What: Server returns theme name + custom color. Presets are predefined CSS variable sets. Custom themes use a JS utility to derive an OKLCH palette from a single input color and set CSS variables on the page wrapper. Live preview during editing.~~
+Replaced because: custom single-color themes are removed; the 10 palettes are static primitive sets and all derived tokens are computed in CSS via `color-mix(in oklab, …)`, no JS derivation.
 
 ### Server proxy for image uploads (revised from presigned R2 URLs)
 
@@ -834,12 +831,11 @@ What: Three distinct token layers — `data-bg-theme` attribute controls app-she
 Why: Each concern is independently themeable and must not leak into the others (e.g., wishlist accent color must not affect the app shell).
 Rejected: Shared token namespace (cross-contamination between app shell and wishlist themes).
 
-### App background theme applied server-side via data-bg-theme on <html>
+### ~~App background theme applied server-side via data-bg-theme on <html>~~ (superseded)
 
-Decided: 2026-06-02
-What: The user's `app_background_theme` preference (`default` / `golden-hour` / `twilight`) is read in `hooks.server.ts` and written as a `data-bg-theme` attribute on `<html>` before the first byte is sent.
-Why: Setting it server-side eliminates flash-of-wrong-theme on first paint — the correct theme is present in the initial HTML.
-Rejected: Client-only `onMount` application (causes visible flash of the default theme on load).
+Decided: 2026-06-02 — **Superseded 2026-07-10** by "Single theming system: 10 app palettes" + "Palette persistence" below.
+~~What: The user's `app_background_theme` preference (`default` / `golden-hour` / `twilight`) is read in `hooks.server.ts` and written as a `data-bg-theme` attribute on `<html>` before the first byte is sent.~~
+Replaced because: the background-theme axis is removed; the server-side-attribute pattern itself is retained and reused for `data-palette`.
 
 ### Native <input type=range> instead of bits-ui Slider for crop zoom control
 
@@ -855,3 +851,96 @@ What: `GiftImageCropCanvas` exposes a focusable `role="button"` crop region driv
 Why: Keyboard crop operation was deprioritized for v1; the gap was reviewed and consciously accepted rather than silently shipped. Documented here and inline in the component so it is not mistaken for an oversight.
 Rejected: Implementing keyboard nudge/resize now (deferred); silently leaving it undocumented (would read as a bug).
 Revisit: If the crop editor becomes a primary owner workflow or an accessibility audit requires AA, reopen #50 and implement keyboard operation + fix the nested-interactive handles.
+
+## Redesign 2026 — Anime Sky
+
+### Visual base: anime-sky-final mockup
+
+Decided: 2026-07-10
+What: The whole app redesign is based on `designs/redesign-2026/anime-sky-final.html` — ink borders, hard offset "sticker" shadows, notebook motifs, DynaPuff display + Geist body, playful rotations, spring-lift hovers. Pre-redesign mockup references (designs/app-shell, dashboard, landing-page, …) remain valid for layout/structure; their visual style is superseded.
+Why: Chosen from the redesign-2026 anime variants after iteration (banner padding, mint-style cards, dimmed reserved gifts, retuned hue-saturated dark mode).
+Rejected: Other redesign-2026 variants (anime-mint, original anime-sky, brutalism, terracotta, modern, …).
+
+### Single theming system: 10 app palettes
+
+Decided: 2026-07-10 (supersedes per-wishlist theme presets + custom, `data-accent` accents, `data-bg-theme` backgrounds)
+What: One palette system with 10 curated palettes — Obloha (sky, default), Máta, Broskev, Hrozen, Sakura, Oceán, Med, Malina, Matcha, Tužka. Each defines 4–6 primitives (`--p-brand`, `--p-deep`, `--p-ink`, `--p-bright`, `--p-accent`, `--p-on-accent`); ALL other tokens derive via `color-mix(in oklab, …)`. shadcn semantic token names are kept; only their values are re-derived. Dark mode derives from the same primitives (light mode stays source of truth). The owner picks one palette per wishlist (replaces Christmas/Birthday/… presets and the custom picker); the viewer's own palette themes every other surface. The 12-accent `data-accent` axis and 3-theme `data-bg-theme` axis are removed.
+Why: Three parallel theming systems would have become four; one primitive-driven system covers user preference, wishlist identity, and dark mode with a single derivation.
+Rejected: Palettes for chrome only (two coexisting systems); viewer palette everywhere (loses festive per-wishlist identity); keeping a custom picker (can return later by deriving primitives from one color).
+
+### Palette persistence: user column + cookie + SSR attribute
+
+Decided: 2026-07-10
+What: Logged-in users persist the palette on the user row (like `preferred_locale`); a cookie mirror lets `hooks.server.ts` set `data-palette` on `<html>` before first byte (the pattern `data-bg-theme` used). Anonymous users: cookie only.
+Why: Zero flash-of-wrong-palette, cross-device persistence for logged-in users, proven pattern.
+Rejected: localStorage only (no SSR, no cross-device); DB only (flash on every load).
+
+### Fonts: DynaPuff display + Geist body
+
+Decided: 2026-07-10
+What: Replace Figtree/Noto Sans with DynaPuff (headings) + Geist (body), self-hosted via fontsource with latin-ext subsets and metric-adjusted fallbacks (existing pattern). Czech diacritic coverage (ěščřžůď…) must be verified before committing to DynaPuff.
+Why: The fonts carry the anime identity.
+Rejected: DynaPuff-only with Figtree body (mixed identity); keeping current fonts (loses the character).
+
+### Motion system: tokens + gated reveals
+
+Decided: 2026-07-10
+What: Motion tokens — ~200 ms standard, 300 ms transform ease, spring `cubic-bezier(.34,1.56,.64,1)` for lifts; raise the current 75 ms global default transition duration. Hover lifts/wiggles on cards and buttons, staggered fadeUp reveals on page headers/hero, all inside `@media (prefers-reduced-motion: no-preference)`. Svelte transitions only where bits-ui built-ins don't cover.
+Why: The app has almost no motion today; the mockup's character depends on it.
+Rejected: Micro-interactions only (loses the reveal charm); full-on FLIP/page transitions (perf risk on long lists).
+
+### Wishlist header: notebook page + taped polaroid + sticky countdown
+
+Decided: 2026-07-10
+What: The header becomes the spiral-notebook panel. The wishlist image (image-slots crop feature) appears as a taped polaroid photo on the notebook. The event countdown is a taped sticky note on desktop; below ~960 px it collapses into a chip in the meta row next to the absolute-date chip; hidden when no event date; "proběhlo" once passed (owner archive prompt takes over).
+Why: Keeps the image upload/crop feature while adopting the notebook identity.
+Rejected: Full-bleed banner stacked above the notebook (two heroes); dropping the header image (dead crop UI).
+
+### Share UI: status chip + single button
+
+Decided: 2026-07-10
+What: A status chip (Koncept/Sdílený/Archivováno) in the header meta row + one "Sdílet" action button opening the share wizard (post-share it opens at the copy-link step). The full-width shared/draft strips are removed.
+Why: Three overlapping share indicators collapse into two compact ones.
+Rejected: Keeping restyled strips (heavy header); hiding share behind an overflow menu post-share.
+
+### Reservation-visibility notices: subtle reassurance, loud warning
+
+Decided: 2026-07-10
+What: Two messages, one Alert-based component with tones — moderator reassurance ("you see reservations; the owner never will") is a calm tinted disclosure; the visitor trust warning (owner self-promoted to moderator) is an accent sticky-note banner (tape, bold, warning tone). The bespoke purple strip in WishlistHeader is removed.
+Why: The trust warning is the one visitors must not miss; the reassurance is ambient.
+Rejected: Both subtle (warning missable); both loud (shouty for moderators on every visit).
+
+### Reserver name visible to visitors and moderators
+
+Decided: 2026-07-10
+What: Gift cards/detail show who reserved ("rezervovala Babička") to all non-owner viewers. The owner continues to see nothing (core invariant, API-stripped). Requires exposing the reserver display name in gift queries for non-owner roles.
+Why: Helps family coordination ("grandma has it covered"); lists are shared among trusted people.
+Rejected: Moderators-only (loses the gifter-view value); keeping the anonymous "Reserved" badge.
+
+### Toolbar: visible sort select + "Pouze dostupné" chip
+
+Decided: 2026-07-10 (supersedes "Sort and filter as icon-only dropdown trigger")
+What: The sort select is visible in the wishlist toolbar; "Pouze dostupné" is a toggle chip (#101); the rare "s odkazem" filter moves to a small overflow menu. The toolbar flex-wraps on narrow screens.
+Why: Availability filtering is the highest-value visitor action; burying it defeated it.
+Rejected: Icon-only dropdown (buried filters); three visible chips (toolbar overflow).
+
+### Navigation: pill states, landing anchor links, mobile control consolidation
+
+Decided: 2026-07-10
+What: Both navs use background-pill hover/active states (no underline). The landing header gains desktop-only section anchor links (no landing hamburger). Below ~768 px the palette/language/dark controls consolidate — app: into the MobileNav drawer; landing: into a single popover. The dark-mode toggle stays the 3-state cycle (light→dark→system), restyled as a bordered header button.
+Why: Consistent nav language; 390 px headers are already crowded before the palette control arrives.
+Rejected: Underline active states; all controls visible on mobile; 2-state dark toggle.
+
+### Language switcher: text trigger, flags in dropdown
+
+Decided: 2026-07-10
+What: The trigger is a text shortcut ("CZ"/"EN") + chevron — no flag. The drawn `LanguageFlag` SVGs (never emoji — Windows renders emoji flags as letters) appear only inside the dropdown items.
+Why: Lower visual weight in the header; flags stay for recognition where they don't shout.
+Rejected: Flag trigger (too eye-catching); emoji flags (Windows fallback).
+
+### Rollout: big-bang branch, single tracking issue, mockups first
+
+Decided: 2026-07-10
+What: One redesign branch merged to dev when complete, tracked by a single GitHub issue. Before implementation, dedicated anime-style mockups for: wishlist header (polaroid + share chip + alert variants), dashboard cards, gift detail modal, auth pages. Remaining surfaces are designed in code from the token system.
+Why: Coherent reveal preferred over staged PRs; the four high-traffic/high-state surfaces are worth nailing visually first.
+Rejected: Staged token-first PRs; feature-flag opt-in (double styling maintenance).
