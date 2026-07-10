@@ -906,7 +906,7 @@ Rejected: Keeping restyled strips (heavy header); hiding share behind an overflo
 ### Reservation-visibility notices: subtle reassurance, loud warning
 
 Decided: 2026-07-10
-What: Two messages, one Alert-based component with tones — moderator reassurance ("you see reservations; the owner never will") is a calm tinted disclosure; the visitor trust warning (owner self-promoted to moderator) is an accent sticky-note banner (tape, bold, warning tone). The bespoke purple strip in WishlistHeader is removed.
+What: Two messages, one Alert-based component with tones — moderator reassurance ("you see reservations; the owner never will") is a calm tinted disclosure; the visitor trust warning (owner self-promoted to moderator) is an accent banner (bold, warning tone, NO tape — see round-2 deltas). The bespoke purple strip in WishlistHeader is removed.
 Why: The trust warning is the one visitors must not miss; the reassurance is ambient.
 Rejected: Both subtle (warning missable); both loud (shouty for moderators on every visit).
 
@@ -944,3 +944,18 @@ Decided: 2026-07-10
 What: One redesign branch merged to dev when complete, tracked by a single GitHub issue. Before implementation, dedicated anime-style mockups for: wishlist header (polaroid + share chip + alert variants), dashboard cards, gift detail modal, auth pages. Remaining surfaces are designed in code from the token system.
 Why: Coherent reveal preferred over staged PRs; the four high-traffic/high-state surfaces are worth nailing visually first.
 Rejected: Staged token-first PRs; feature-flag opt-in (double styling maintenance).
+
+### Round-2 mockup deltas (all four mockups complete)
+
+Decided: 2026-07-10 (round 2, after user review of the mockups)
+What: All four mockups live in `designs/redesign-2026/sky-final/` (anime-sky-final, anime-dashboard, anime-gift-detail-modal, anime-auth). Deltas over the round-1 base:
+
+- Primary buttons are FLAT stickers — `--brand-fill` background, ink border, hard offset shadow, white text, spring-lift hover. The gradient+glow primary (and glowPulse animation) is superseded.
+- Tape appears only on paper-like artifacts (sticky note, polaroid). The loud trust warning keeps accent bg/bold/rotation but has NO tape.
+- Gift images: real photos `object-fit: cover` by default; non-filling images letterbox with the dotted mat visible (`contain` + padding). Dotted gift-image background pans 0 0 → 24px 12px on hover (static for reserved/received).
+- Like/heart control in the gift modal action bar is a full sticker-sized button (~52 px, 21 px heart), matching the reserve button.
+- Visible Czech copy avoids em-dashes — comma, colon, or spaced en-dash instead.
+- Static text hides the caret but stays selectable (`caret-color: transparent` on html, `auto` on form fields; never `user-select: none`). App-side caret investigation found no bug (Brave caret browsing, F7); app hardening optional.
+
+Why: User review of round 1 flagged the glossy 3D primaries, misplaced tape, undersized heart, and em-dash copy; photo embeds + hover pan were requested additions.
+Rejected: Glow kept as hover accent (still off-language); `user-select: none` for the caret (kills text selection).
