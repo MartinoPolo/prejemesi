@@ -15,9 +15,10 @@ async function addGiftAndShare(page: Page, giftName: string) {
 }
 
 async function openModeratorPanel(page: Page) {
-	// The "Moderátoři" button is visible only to owners
+	// The správci-management button (aria-label wishlist_moderators_label → „Správci" / „Managers")
+	// is visible only to managers (linked recipient OR správce).
 	await page
-		.getByRole('button', { name: /Moderátoři/ })
+		.getByRole('button', { name: /Správci|Managers/ })
 		.first()
 		.click();
 	const panel = page.getByRole('dialog');
@@ -39,7 +40,7 @@ async function generateInviteLink(page: Page): Promise<string> {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 test.describe('Moderator system', () => {
-	test('owner sees moderator management button on wishlist page', async ({
+	test('manager sees správci-management button on wishlist page', async ({
 		browser,
 		request,
 		baseURL,
@@ -49,8 +50,9 @@ test.describe('Moderator system', () => {
 
 		await createWishlistAndNavigate(page, 'Mod Owner Btn Test');
 
-		// The "Moderátoři" button (with UsersIcon) is rendered only for the owner
-		await expect(page.getByRole('button', { name: /Moderátoři/ })).toBeVisible();
+		// The správci-management button (UsersIcon, aria-label „Správci" / „Managers") is
+		// rendered only for managers — here the creator is the linked recipient of a for-me list.
+		await expect(page.getByRole('button', { name: /Správci|Managers/ })).toBeVisible();
 
 		await page.context().close();
 	});
@@ -120,10 +122,10 @@ test.describe('Moderator system', () => {
 		await inviteePage.waitForURL(`**${wishlistPath}`, { timeout: 10_000 });
 		await inviteePage.waitForLoadState('networkidle');
 
-		// Moderator sees gift reservation status (same as visitor, with full detail)
-		// The gift is visible and no "Moderátoři" button – moderators don't manage moderators
+		// Správce sees gift reservation status (same as visitor, with full detail). The gift is
+		// visible; the správci-management button IS available (any správce can invite/revoke
+		// správci per the rights matrix), so we assert on the gift only, not on button absence.
 		await expect(inviteePage.getByText('Invite Flow Gift')).toBeVisible({ timeout: 5_000 });
-		await expect(inviteePage.getByRole('button', { name: /Moderátoři/ })).not.toBeVisible();
 
 		// ── Step 3: anonymous visitor reserves the gift ───────────────────────
 		const anonymousContext = await browser.newContext();
@@ -156,43 +158,53 @@ test.describe('Moderator system', () => {
 		await ownerPage.context().close();
 	});
 
-	test('owner self-promote shows permanent disclosure banner', async ({
+	test('recipient self-promote shows permanent disclosure banner', async ({
 		browser,
 		request,
 		baseURL,
 	}) => {
-		const owner = createTestUser('mod-self-promote');
-		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		// A linked recipient (for-me list) self-promotes to also see reservation state — the
+		// mechanics (in-panel active disclosure + permanent header banner) are unchanged from the
+		// old owner-self-promote flow; only the wording was re-keyed to the obdarovaný/správce model.
+		const recipient = createTestUser('mod-self-promote');
+		const page = await registerAndGetPage(browser, request, baseURL!, recipient);
 
 		await createWishlistAndNavigate(page, 'Self Promote Test');
 
 		// Share wishlist so the banner section is meaningful
 		await shareWishlist(page);
 
-		// Open moderator panel
+		// Open the správci panel
 		const panel = await openModeratorPanel(page);
 
-		// "Aktivovat zobrazení" button is in the self-promote section
-		await expect(panel.getByRole('button', { name: /Aktivovat zobrazení/ })).toBeVisible({
-			timeout: 5_000,
-		});
-		await panel.getByRole('button', { name: /Aktivovat zobrazení/ }).click();
+		// „Aktivovat zobrazení" / „Activate visibility" button is in the self-promote section
+		await expect(
+			panel.getByRole('button', { name: /Aktivovat zobrazení|Activate visibility/ }),
+		).toBeVisible({ timeout: 5_000 });
+		await panel
+			.getByRole('button', { name: /Aktivovat zobrazení|Activate visibility/ })
+			.click();
 
-		// The panel updates in place (it does not close): the self-promote button is
-		// replaced by the permanent active-disclosure text.
-		await expect(panel.getByText(/Vidíte stav rezervací/)).toBeVisible({ timeout: 5_000 });
-		await expect(panel.getByRole('button', { name: /Aktivovat zobrazení/ })).not.toBeVisible();
+		// The panel updates in place (it does not close): the self-promote button is replaced by
+		// the permanent active-disclosure text (moderator_active_disclosure).
+		await expect(
+			panel.getByText(/Vidíte stav rezervací|You can see reservation status/),
+		).toBeVisible({ timeout: 5_000 });
+		await expect(
+			panel.getByRole('button', { name: /Aktivovat zobrazení|Activate visibility/ }),
+		).not.toBeVisible();
 
 		// Close the panel and confirm the permanent disclosure banner on the wishlist header
-		// (rendered when ownerIsModerator is true).
+		// (rendered when recipientIsModerator is true): reworded to wishlist_owner_sees_reservations
+		// → „Obdarovaný je zároveň správcem seznamu." / „The recipient is also a manager of this list."
 		await page.keyboard.press('Escape');
 		await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0, {
 			timeout: 5_000,
 		});
 		await page.waitForLoadState('networkidle');
-		await expect(page.getByText(/Vlastník vidí stav rezervací/)).toBeVisible({
-			timeout: 5_000,
-		});
+		await expect(
+			page.getByText(/Obdarovaný je zároveň správcem|The recipient is also a manager/),
+		).toBeVisible({ timeout: 5_000 });
 
 		await page.context().close();
 	});

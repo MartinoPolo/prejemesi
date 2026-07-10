@@ -5,7 +5,7 @@
 
 	interface WishlistGiftDraggableWrapperProps {
 		index: number;
-		isOwnerOrModerator: boolean;
+		canManage: boolean;
 		draggedIndex: number | null;
 		dragOverIndex: number | null;
 		dragOverStyle: 'ring' | 'bg';
@@ -20,7 +20,7 @@
 
 	let {
 		index,
-		isOwnerOrModerator,
+		canManage,
 		draggedIndex,
 		dragOverIndex,
 		dragOverStyle,
@@ -75,23 +75,23 @@
 <div
 	class={cn(
 		'relative transition-opacity',
-		isOwnerOrModerator && 'cursor-pointer',
+		canManage && 'cursor-pointer',
 		isDragged && 'opacity-40',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
 	)}
-	role={isOwnerOrModerator ? 'button' : undefined}
-	tabindex={isOwnerOrModerator ? 0 : undefined}
+	role={canManage ? 'button' : undefined}
+	tabindex={canManage ? 0 : undefined}
 	onclick={handleClick}
 	onkeydown={handleKeydown}
-	draggable={isOwnerOrModerator}
+	draggable={canManage}
 	{ondragstart}
 	{ondragover}
 	{ondragleave}
 	{ondrop}
 	{ondragend}
 >
-	{#if isOwnerOrModerator}
+	{#if canManage}
 		<div
 			class="absolute left-2 top-2 z-10 cursor-grab rounded bg-background/80 p-0.5 opacity-60 transition-opacity hover:opacity-100"
 		>

@@ -73,7 +73,7 @@
 				{:else}
 					{m.invite_pending_description({
 						title: wishlistData.title,
-						owner: wishlistData.ownerName,
+						owner: wishlistData.recipientDisplayName,
 					})}
 				{/if}
 			</Card.Description>

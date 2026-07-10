@@ -45,15 +45,18 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
+	count: vi.fn(() => 'count()'),
 }));
 
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 	wishlist: {
 		id: 'w.id',
-		ownerId: 'w.ownerId',
+		recipientUserId: 'w.recipientUserId',
+		recipientName: 'w.recipientName',
+		recipientIsModerator: 'w.recipientIsModerator',
 		shortId: 'w.shortId',
+		status: 'w.status',
 		deletedAt: 'w.deletedAt',
-		ownerIsModerator: 'w.ownerIsModerator',
 		updatedAt: 'w.updatedAt',
 	},
 }));
@@ -80,6 +83,14 @@ vi.mock('$lib/server/db/moderator.schema.js', () => ({
 
 vi.mock('$lib/server/db/auth.schema.js', () => ({
 	user: { id: 'u.id', name: 'u.name', image: 'u.image' },
+}));
+
+vi.mock('$lib/server/db/follower.schema.js', () => ({
+	wishlistFollower: {
+		wishlistId: 'wf.wishlistId',
+		userId: 'wf.userId',
+		unfollowedAt: 'wf.unfollowedAt',
+	},
 }));
 
 import {
@@ -138,10 +149,12 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 
 // ── Shared fixtures ──────────────────────────────────────────────────────────
 
-const ownerUser = { id: 'owner-1', email: 'owner@example.com' };
+// `recipientUser` is the linked recipient of the self list (`activeWishlistRow`) — manages it
+// inherently, so `verifyManagerAccess`/`resolveWishlistRole` match without a mod-assignment query.
+const recipientUser = { id: 'recipient-1', email: 'recipient@example.com' };
 const regularUser = { id: 'user-2', email: 'user@example.com' };
 
-const ownerAuthContext = { user: ownerUser };
+const recipientAuthContext = { user: recipientUser };
 const regularAuthContext = { user: regularUser };
 
 const testWishlistId = 'wl-abc';
@@ -149,13 +162,27 @@ const testInviteId = 'inv-abc';
 const testInviteToken = 'tok-abc';
 const testAssignmentId = 'asgn-abc';
 
+/** A "self" list: the linked recipient (`recipientUser`) is the manager; no free-text name. */
 const activeWishlistRow = {
 	id: testWishlistId,
-	ownerId: ownerUser.id,
+	recipientUserId: recipientUser.id,
+	recipientName: null,
+	recipientIsModerator: false,
 	shortId: 'short-abc',
 	title: 'Test List',
 	status: 'active',
-	ownerIsModerator: false,
+	deletedAt: null,
+};
+
+/** A "for-someone" list: no linked recipient, free-text name, managed only via moderatorAssignment. */
+const forSomeoneWishlistRow = {
+	id: testWishlistId,
+	recipientUserId: null,
+	recipientName: 'Grandma',
+	recipientIsModerator: false,
+	shortId: 'short-abc',
+	title: 'Test List',
+	status: 'active',
 	deletedAt: null,
 };
 
@@ -163,7 +190,7 @@ const pendingInviteRow = {
 	id: testInviteId,
 	token: testInviteToken,
 	wishlistId: testWishlistId,
-	createdByUserId: ownerUser.id,
+	createdByUserId: recipientUser.id,
 	usedByUserId: null,
 	usedAt: null,
 	revokedAt: null,
@@ -181,32 +208,35 @@ const activeAssignmentRow = {
 // ── Helper wrappers (bypass TS signature enforcement on mocked functions) ────
 
 const callAcceptModeratorInvite = (
-	authContext: typeof ownerAuthContext,
+	authContext: typeof recipientAuthContext,
 	input: { token: string },
 ) => (acceptModeratorInvite as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callRevokeModeratorInvite = (
-	authContext: typeof ownerAuthContext,
+	authContext: typeof recipientAuthContext,
 	input: { inviteId: string },
 ) => (revokeModeratorInvite as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callRemoveModerator = (
-	authContext: typeof ownerAuthContext,
+	authContext: typeof recipientAuthContext,
 	input: { assignmentId: string },
 ) => (removeModerator as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callGenerateModeratorInviteLink = (
-	authContext: typeof ownerAuthContext,
+	authContext: typeof recipientAuthContext,
 	input: { wishlistId: string; email?: string },
 ) =>
 	(generateModeratorInviteLink as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
 const callSelfPromoteToModerator = (
-	authContext: typeof ownerAuthContext,
+	authContext: typeof recipientAuthContext,
 	input: { wishlistId: string },
 ) => (selfPromoteToModerator as unknown as (...args: unknown[]) => unknown)(authContext, input);
 
-const callGetModeratorsForWishlist = (authContext: typeof ownerAuthContext, wishlistId: string) =>
+const callGetModeratorsForWishlist = (
+	authContext: typeof recipientAuthContext,
+	wishlistId: string,
+) =>
 	(getModeratorsForWishlist as unknown as (...args: unknown[]) => unknown)(
 		authContext,
 		wishlistId,
@@ -275,15 +305,15 @@ describe('acceptModeratorInvite', () => {
 		).rejects.toMatchObject({ status: 400, message: 'INVITE_ALREADY_USED' });
 	});
 
-	it('owner accepting own invite → throws 400', async () => {
-		// 1: invite found, 2: wishlist found (owner matches currentUser)
+	it('linked recipient accepting own invite → throws 400', async () => {
+		// 1: invite found, 2: wishlist found (recipientUserId matches currentUser)
 		mockGetDb.mockReturnValue(createMockDb([[pendingInviteRow], [activeWishlistRow]]));
 
 		await expect(
-			callAcceptModeratorInvite(ownerAuthContext, { token: testInviteToken }),
+			callAcceptModeratorInvite(recipientAuthContext, { token: testInviteToken }),
 		).rejects.toMatchObject({
 			status: 400,
-			message: 'OWNER_CANNOT_ACCEPT_OWN_INVITE',
+			message: 'RECIPIENT_CANNOT_ACCEPT_OWN_INVITE',
 		});
 	});
 
@@ -315,7 +345,7 @@ const createdInviteRow = {
 	id: 'inv-new',
 	token: 'tok-new',
 	wishlistId: testWishlistId,
-	createdByUserId: ownerUser.id,
+	createdByUserId: recipientUser.id,
 	usedByUserId: null,
 	usedAt: null,
 	revokedAt: null,
@@ -325,19 +355,19 @@ const createdInviteRow = {
 describe('generateModeratorInviteLink', () => {
 	it('archived wishlist → throws 400', async () => {
 		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
-		// 1: wishlist lookup (verifyWishlistOwner)
+		// 1: requireWishlistRow (recipient = manager, no mod query)
 		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
 
 		await expect(
-			callGenerateModeratorInviteLink(ownerAuthContext, { wishlistId: testWishlistId }),
+			callGenerateModeratorInviteLink(recipientAuthContext, { wishlistId: testWishlistId }),
 		).rejects.toMatchObject({ status: 400, message: 'CANNOT_INVITE_ON_ARCHIVED' });
 	});
 
 	it('without email → returns token + invitePath, does NOT call dispatchNotification', async () => {
-		// 1: wishlist lookup, 2: insert invite → returns created row
+		// 1: requireWishlistRow, 2: insert invite → returns created row
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow]]));
 
-		const result = await callGenerateModeratorInviteLink(ownerAuthContext, {
+		const result = await callGenerateModeratorInviteLink(recipientAuthContext, {
 			wishlistId: testWishlistId,
 		});
 
@@ -348,12 +378,29 @@ describe('generateModeratorInviteLink', () => {
 		expect(mockDispatchNotification).not.toHaveBeenCalled();
 	});
 
+	it('a moderator (not the recipient) may also generate an invite link', async () => {
+		// 1: requireWishlistRow (for-someone list, caller not recipient),
+		// 2: hasActiveModeratorAssignment → found, 3: insert invite → created row
+		mockGetDb.mockReturnValue(
+			createMockDb([[forSomeoneWishlistRow], [{ id: 'assignment-1' }], [createdInviteRow]]),
+		);
+
+		const result = await callGenerateModeratorInviteLink(regularAuthContext, {
+			wishlistId: testWishlistId,
+		});
+
+		expect(result).toEqual({
+			token: createdInviteRow.token,
+			invitePath: `/w/${forSomeoneWishlistRow.shortId}/invite/${createdInviteRow.token}`,
+		});
+	});
+
 	it('with email → dispatches MODERATOR_INVITED to targetEmails with urlPathOverride pointing to invite path', async () => {
 		const testEmail = 'invitee@example.com';
-		// 1: wishlist lookup, 2: insert invite → returns created row
+		// 1: requireWishlistRow, 2: insert invite → returns created row
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow]]));
 
-		const result = await callGenerateModeratorInviteLink(ownerAuthContext, {
+		const result = await callGenerateModeratorInviteLink(recipientAuthContext, {
 			wishlistId: testWishlistId,
 			email: testEmail,
 		});
@@ -369,7 +416,7 @@ describe('generateModeratorInviteLink', () => {
 			type: 'moderator_invited',
 			targetEmails: [testEmail],
 			wishlistId: testWishlistId,
-			actorId: ownerUser.id,
+			actorId: recipientUser.id,
 			actorName: undefined,
 			urlPathOverride: expectedInvitePath,
 		});
@@ -379,15 +426,24 @@ describe('generateModeratorInviteLink', () => {
 // ── revokeModeratorInvite ────────────────────────────────────────────────────
 
 describe('revokeModeratorInvite', () => {
-	it('owner revokes pending invite → succeeds (no return value)', async () => {
-		// 1: invite lookup, 2: wishlist lookup (verifyWishlistOwner), 3: update (revoke)
+	it('recipient revokes pending invite → succeeds (no return value)', async () => {
+		// 1: invite lookup, 2: requireWishlistRow (recipient = manager, no mod query), 3: update (revoke)
 		mockGetDb.mockReturnValue(createMockDb([[pendingInviteRow], [activeWishlistRow], []]));
 
-		const result = await callRevokeModeratorInvite(ownerAuthContext, {
+		const result = await callRevokeModeratorInvite(recipientAuthContext, {
 			inviteId: testInviteId,
 		});
 
 		expect(result).toBeUndefined();
+	});
+
+	it('non-manager cannot revoke → throws 403 ACCESS_DENIED', async () => {
+		// 1: invite lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → none
+		mockGetDb.mockReturnValue(createMockDb([[pendingInviteRow], [forSomeoneWishlistRow], []]));
+
+		await expect(
+			callRevokeModeratorInvite(regularAuthContext, { inviteId: testInviteId }),
+		).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
 	});
 
 	it('already used invite → throws 400', async () => {
@@ -396,21 +452,21 @@ describe('revokeModeratorInvite', () => {
 			usedAt: new Date('2025-02-01'),
 			usedByUserId: regularUser.id,
 		};
-		// 1: invite lookup, 2: wishlist lookup
+		// 1: invite lookup, 2: requireWishlistRow (recipient = manager, no mod query)
 		mockGetDb.mockReturnValue(createMockDb([[usedInvite], [activeWishlistRow]]));
 
 		await expect(
-			callRevokeModeratorInvite(ownerAuthContext, { inviteId: testInviteId }),
+			callRevokeModeratorInvite(recipientAuthContext, { inviteId: testInviteId }),
 		).rejects.toMatchObject({ status: 400, message: 'INVITE_ALREADY_USED' });
 	});
 
 	it('already revoked invite → throws 400', async () => {
 		const revokedInvite = { ...pendingInviteRow, revokedAt: new Date('2025-02-01') };
-		// 1: invite lookup, 2: wishlist lookup
+		// 1: invite lookup, 2: requireWishlistRow (recipient = manager, no mod query)
 		mockGetDb.mockReturnValue(createMockDb([[revokedInvite], [activeWishlistRow]]));
 
 		await expect(
-			callRevokeModeratorInvite(ownerAuthContext, { inviteId: testInviteId }),
+			callRevokeModeratorInvite(recipientAuthContext, { inviteId: testInviteId }),
 		).rejects.toMatchObject({ status: 400, message: 'INVITE_ALREADY_REVOKED' });
 	});
 });
@@ -418,11 +474,12 @@ describe('revokeModeratorInvite', () => {
 // ── removeModerator ──────────────────────────────────────────────────────────
 
 describe('removeModerator', () => {
-	it('owner removes moderator → succeeds (no return value)', async () => {
-		// 1: assignment lookup, 2: wishlist lookup (verifyWishlistOwner), 3: soft-delete update
+	it('recipient removes a moderator on a self list → succeeds (orphan guard exempt)', async () => {
+		// 1: assignment lookup, 2: requireWishlistRow (recipient = manager, no mod query),
+		// assertNotLastManager returns early (recipientUserId set → no count query), 3: soft-delete update
 		mockGetDb.mockReturnValue(createMockDb([[activeAssignmentRow], [activeWishlistRow], []]));
 
-		const result = await callRemoveModerator(ownerAuthContext, {
+		const result = await callRemoveModerator(recipientAuthContext, {
 			assignmentId: testAssignmentId,
 		});
 
@@ -433,41 +490,89 @@ describe('removeModerator', () => {
 		mockGetDb.mockReturnValue(createMockDb([[]]));
 
 		await expect(
-			callRemoveModerator(ownerAuthContext, { assignmentId: 'nonexistent-id' }),
+			callRemoveModerator(recipientAuthContext, { assignmentId: 'nonexistent-id' }),
 		).rejects.toMatchObject({ status: 404, message: 'MODERATOR_NOT_FOUND' });
+	});
+
+	it('orphan guard: removing the last správce on a for-someone list → throws 403 CANNOT_REMOVE_LAST_MANAGER', async () => {
+		// The sole moderator (regularUser) tries to remove themselves from a list with no linked recipient.
+		// 1: assignment lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → found,
+		// 4: countActiveModerators → 1 (last one) → guard throws before the soft-delete.
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[activeAssignmentRow],
+				[forSomeoneWishlistRow],
+				[{ id: 'assignment-1' }],
+				[{ value: 1 }],
+			]),
+		);
+
+		await expect(
+			callRemoveModerator(regularAuthContext, { assignmentId: testAssignmentId }),
+		).rejects.toMatchObject({ status: 403, message: 'CANNOT_REMOVE_LAST_MANAGER' });
+	});
+
+	it('for-someone list with more than one správce → removal is allowed', async () => {
+		// 1: assignment lookup, 2: requireWishlistRow (for-someone), 3: hasActiveModeratorAssignment → found,
+		// 4: countActiveModerators → 2 (guard passes), 5: soft-delete update.
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[activeAssignmentRow],
+				[forSomeoneWishlistRow],
+				[{ id: 'assignment-1' }],
+				[{ value: 2 }],
+				[],
+			]),
+		);
+
+		const result = await callRemoveModerator(regularAuthContext, {
+			assignmentId: testAssignmentId,
+		});
+
+		expect(result).toBeUndefined();
 	});
 });
 
 // ── selfPromoteToModerator ───────────────────────────────────────────────────
 
 describe('selfPromoteToModerator', () => {
-	it('owner promotes self → returns success', async () => {
-		// 1: wishlist lookup (verifyWishlistOwner), 2: update wishlist
-		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], []]));
+	it('linked recipient promotes self → sets recipientIsModerator and returns success', async () => {
+		// 1: requireWishlistRow (recipientUserId === caller), 2: update wishlist, 3: follower select
+		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [], []]));
 
-		const result = await callSelfPromoteToModerator(ownerAuthContext, {
+		const result = await callSelfPromoteToModerator(recipientAuthContext, {
 			wishlistId: testWishlistId,
 		});
 
 		expect(result).toEqual({ success: true });
 	});
 
-	it('already promoted → throws 400', async () => {
-		const alreadyPromotedWishlistRow = { ...activeWishlistRow, ownerIsModerator: true };
+	it('non-recipient (not the person the list is for) → throws 403 ACCESS_DENIED', async () => {
+		// Self-promote is a recipient-only action; a správce/visitor cannot opt into reservation state.
+		// 1: requireWishlistRow (recipientUserId is recipientUser, caller is regularUser)
+		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow]]));
+
+		await expect(
+			callSelfPromoteToModerator(regularAuthContext, { wishlistId: testWishlistId }),
+		).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
+	});
+
+	it('already seeing reservations → throws 400', async () => {
+		const alreadyPromotedWishlistRow = { ...activeWishlistRow, recipientIsModerator: true };
 		mockGetDb.mockReturnValue(createMockDb([[alreadyPromotedWishlistRow]]));
 
 		await expect(
-			callSelfPromoteToModerator(ownerAuthContext, { wishlistId: testWishlistId }),
+			callSelfPromoteToModerator(recipientAuthContext, { wishlistId: testWishlistId }),
 		).rejects.toMatchObject({ status: 400, message: 'ALREADY_SEEING_RESERVATIONS' });
 	});
 
 	it('archived wishlist → throws 400', async () => {
 		const archivedWishlistRow = { ...activeWishlistRow, status: 'archived' };
-		// 1: wishlist lookup (verifyWishlistOwner)
+		// 1: requireWishlistRow (recipient match, then archived check throws)
 		mockGetDb.mockReturnValue(createMockDb([[archivedWishlistRow]]));
 
 		await expect(
-			callSelfPromoteToModerator(ownerAuthContext, { wishlistId: testWishlistId }),
+			callSelfPromoteToModerator(recipientAuthContext, { wishlistId: testWishlistId }),
 		).rejects.toMatchObject({ status: 400, message: 'CANNOT_SELF_PROMOTE_ON_ARCHIVED' });
 	});
 });
@@ -475,7 +580,7 @@ describe('selfPromoteToModerator', () => {
 // ── getModeratorsForWishlist ─────────────────────────────────────────────────
 
 describe('getModeratorsForWishlist', () => {
-	it('owner sees moderators and pending invites', async () => {
+	it('recipient of a self list sees moderators + pending invites; recipientName null, isForSomeoneElse false', async () => {
 		const moderatorRow = {
 			id: testAssignmentId,
 			userId: regularUser.id,
@@ -491,20 +596,21 @@ describe('getModeratorsForWishlist', () => {
 			revokedAt: null,
 		};
 
-		// 1: wishlist lookup, 2: moderators select, 3: pending invites select
+		// 1: requireWishlistRow (recipient match, no mod query), 2: moderators select, 3: invites select
 		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [moderatorRow], [inviteRow]]));
 
-		const result = await callGetModeratorsForWishlist(ownerAuthContext, testWishlistId);
+		const result = await callGetModeratorsForWishlist(recipientAuthContext, testWishlistId);
 
 		expect(result).toEqual({
 			moderators: [moderatorRow],
 			pendingInvites: [inviteRow],
-			ownerIsModerator: false,
+			recipientIsModerator: false,
+			isForSomeoneElse: false,
+			recipientName: null,
 		});
 	});
 
-	it('moderator sees moderators but not pending invites', async () => {
-		const nonOwnerWishlist = { ...activeWishlistRow, ownerId: 'different-owner' };
+	it('a moderator on a for-someone list also sees pending invites; exposes recipientName + isForSomeoneElse', async () => {
 		const moderatorRow = {
 			id: testAssignmentId,
 			userId: regularUser.id,
@@ -512,19 +618,33 @@ describe('getModeratorsForWishlist', () => {
 			userImage: null,
 			assignedAt: new Date('2025-01-01'),
 		};
+		const inviteRow = {
+			id: testInviteId,
+			token: testInviteToken,
+			createdAt: new Date('2025-01-01'),
+			usedAt: null,
+			revokedAt: null,
+		};
 
-		// 1: wishlist lookup (user is not owner), 2: mod check → found,
-		// 3: moderators select, (no invite query for non-owners)
+		// 1: requireWishlistRow (for-someone), 2: resolveWishlistRole mod check → found,
+		// 3: moderators select, 4: invites select (invites now visible to any manager)
 		mockGetDb.mockReturnValue(
-			createMockDb([[nonOwnerWishlist], [activeAssignmentRow], [moderatorRow]]),
+			createMockDb([
+				[forSomeoneWishlistRow],
+				[{ id: 'assignment-1' }],
+				[moderatorRow],
+				[inviteRow],
+			]),
 		);
 
 		const result = await callGetModeratorsForWishlist(regularAuthContext, testWishlistId);
 
 		expect(result).toEqual({
 			moderators: [moderatorRow],
-			pendingInvites: [],
-			ownerIsModerator: false,
+			pendingInvites: [inviteRow],
+			recipientIsModerator: false,
+			isForSomeoneElse: true,
+			recipientName: 'Grandma',
 		});
 	});
 
@@ -532,15 +652,13 @@ describe('getModeratorsForWishlist', () => {
 		mockGetDb.mockReturnValue(createMockDb([[]]));
 
 		await expect(
-			callGetModeratorsForWishlist(ownerAuthContext, 'nonexistent-wl'),
+			callGetModeratorsForWishlist(recipientAuthContext, 'nonexistent-wl'),
 		).rejects.toMatchObject({ status: 404, message: 'WISHLIST_NOT_FOUND' });
 	});
 
-	it('non-owner non-moderator → throws 403', async () => {
-		const nonOwnerWishlist = { ...activeWishlistRow, ownerId: 'different-owner' };
-
-		// 1: wishlist lookup (not owner), 2: mod check → empty (not a mod)
-		mockGetDb.mockReturnValue(createMockDb([[nonOwnerWishlist], []]));
+	it('non-manager (neither recipient nor správce) → throws 403 ACCESS_DENIED', async () => {
+		// 1: requireWishlistRow (for-someone), 2: resolveWishlistRole mod check → empty (not a mod)
+		mockGetDb.mockReturnValue(createMockDb([[forSomeoneWishlistRow], []]));
 
 		await expect(
 			callGetModeratorsForWishlist(regularAuthContext, testWishlistId),

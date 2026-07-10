@@ -4,11 +4,14 @@
  * Run: pnpm db:seed
  *
  * All test accounts use SEED_PASSWORD (defined below). Accounts:
- *   martin@test.cz  – Martin Novák    (primary owner, 4 wishlists in every state)
- *   jana@test.cz    – Jana Dvořáková  (moderator + owner, 3 wishlists)
+ *   martin@test.cz  – Martin Novák    (primary recipient, 4 self-lists; správce of 2 for-someone lists)
+ *   jana@test.cz    – Jana Dvořáková  (moderator + recipient, 3 self-lists; co-správce of Miminko)
  *   petr@test.cz    – Petr Svoboda    (active gifter with many reservations)
  *   eva@test.cz     – Eva Králová     (casual visitor, mostly likes)
  *   tomas@test.cz   – Tomáš Černý     (mostly inactive, 2 wishlists)
+ *
+ * For-someone lists (issue #99): Rosie (single správce Martin) + Miminko (multi správce
+ * Martin + Jana) have a free-text recipient and are managed via moderatorAssignment rows.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -161,6 +164,9 @@ const WL_PBDAY = 'seed-wl-pbday'; // Petr – Martin: open
 const WL_KUCHYNE = 'seed-wl-kuchyne'; // Eva – Martin: open
 const WL_JXMAS = 'seed-wl-jxmas'; // Jana – Martin: bought
 const WL_CHATA = 'seed-wl-chata'; // Tomáš – Martin: bought
+// For-someone lists (issue #99) – free-text recipient, managed via moderatorAssignment.
+const WL_ROSIE = 'seed-wl-rosie'; // recipient "Rosie" (child) – single správce: Martin
+const WL_MIMINKO = 'seed-wl-miminko'; // recipient "Miminko" (baby) – multi správce: Martin + Jana
 
 // Priority level suffix helpers
 const plId = (wl: string, level: 'h' | 'm' | 'l') => `seed-pl-${wl}-${level}`;
@@ -214,6 +220,13 @@ const G_KASMIR = 'seed-g-kasmir';
 const G_DECKY = 'seed-g-decky';
 const G_GRIL = 'seed-g-gril';
 const G_SEKERA = 'seed-g-sekera';
+// Gifts on the for-someone lists (Rosie / Miminko)
+const G_PANENKA = 'seed-g-panenka';
+const G_ODRAZEDLO = 'seed-g-odrazedlo';
+const G_KNIZKA = 'seed-g-knizka';
+const G_KOCAREK = 'seed-g-kocarek';
+const G_DUPACKY = 'seed-g-dupacky';
+const G_CHRASTITKO = 'seed-g-chrastitko';
 
 // Date helper
 const d = (iso: string) => new Date(iso);
@@ -330,7 +343,11 @@ async function seed() {
 			{
 				id: WL_XMAS26,
 				shortId: 'xmas2026',
-				ownerId: MARTIN,
+				recipientUserId: MARTIN,
+				recipientName: null,
+				// Linked recipient self-promoted to also see reservation state (disclosure only,
+				// not a management right). Exercises the recipientIsModerator surface.
+				recipientIsModerator: true,
 				title: 'Vánoce 2026',
 				description: 'Přání pod stromeček pro celou rodinu',
 				eventDate: d('2026-12-24T00:00:00Z'),
@@ -351,7 +368,8 @@ async function seed() {
 			{
 				id: WL_BDAY,
 				shortId: 'bdaymart',
-				ownerId: MARTIN,
+				recipientUserId: MARTIN,
+				recipientName: null,
 				title: 'Narozeniny Martina',
 				description: 'Budu mít 30! Cokoliv z tohoto seznamu mě potěší.',
 				eventDate: d('2027-03-15T00:00:00Z'),
@@ -372,7 +390,8 @@ async function seed() {
 			{
 				id: WL_DRAFT,
 				shortId: 'draftlst',
-				ownerId: MARTIN,
+				recipientUserId: MARTIN,
+				recipientName: null,
 				title: 'Nový seznam',
 				status: 'draft',
 				theme: 'default',
@@ -383,7 +402,8 @@ async function seed() {
 			{
 				id: WL_XMAS25,
 				shortId: 'xmas2025',
-				ownerId: MARTIN,
+				recipientUserId: MARTIN,
+				recipientName: null,
 				title: 'Vánoce 2025',
 				eventDate: d('2025-12-24T00:00:00Z'),
 				status: 'archived',
@@ -397,7 +417,8 @@ async function seed() {
 			{
 				id: WL_SVATEK,
 				shortId: 'svatekjn',
-				ownerId: JANA,
+				recipientUserId: JANA,
+				recipientName: null,
 				title: 'Přání k svátku',
 				description: 'Svátek mám 24. května – nebojte se překvapit!',
 				eventDate: d('2026-05-24T00:00:00Z'),
@@ -418,7 +439,8 @@ async function seed() {
 			{
 				id: WL_DETSKY,
 				shortId: 'detskypk',
-				ownerId: JANA,
+				recipientUserId: JANA,
+				recipientName: null,
 				title: 'Dětský pokoj',
 				description: 'Vybavení do nového pokojíčku',
 				status: 'draft',
@@ -430,7 +452,8 @@ async function seed() {
 			{
 				id: WL_JBDAY,
 				shortId: 'janabday',
-				ownerId: JANA,
+				recipientUserId: JANA,
+				recipientName: null,
 				title: 'Minulé narozeniny',
 				eventDate: d('2025-06-20T00:00:00Z'),
 				status: 'archived',
@@ -444,7 +467,8 @@ async function seed() {
 			{
 				id: WL_BYT,
 				shortId: 'bytovtom',
-				ownerId: TOMAS,
+				recipientUserId: TOMAS,
+				recipientName: null,
 				title: 'Výbava do bytu',
 				eventDate: d('2025-10-01T00:00:00Z'),
 				status: 'archived',
@@ -458,7 +482,8 @@ async function seed() {
 			{
 				id: WL_KNIHY,
 				shortId: 'knihy026',
-				ownerId: TOMAS,
+				recipientUserId: TOMAS,
+				recipientName: null,
 				title: 'Knihy 2026',
 				description: 'Čtení na celý rok',
 				status: 'active',
@@ -479,7 +504,8 @@ async function seed() {
 			{
 				id: WL_PBDAY,
 				shortId: 'petrbday',
-				ownerId: PETR,
+				recipientUserId: PETR,
+				recipientName: null,
 				title: 'Petrovy narozeniny',
 				description: 'Třicítka se blíží!',
 				eventDate: d('2026-07-15T00:00:00Z'),
@@ -493,7 +519,8 @@ async function seed() {
 			{
 				id: WL_KUCHYNE,
 				shortId: 'kuchyne1',
-				ownerId: EVA,
+				recipientUserId: EVA,
+				recipientName: null,
 				title: 'Vybavení kuchyně',
 				description: 'Stěhujeme se – pomozte nám zařídit kuchyni.',
 				eventDate: d('2026-09-01T00:00:00Z'),
@@ -507,7 +534,8 @@ async function seed() {
 			{
 				id: WL_JXMAS,
 				shortId: 'janaxm26',
-				ownerId: JANA,
+				recipientUserId: JANA,
+				recipientName: null,
 				title: 'Janiny Vánoce 2026',
 				description: 'Letošní přání pod stromeček',
 				eventDate: d('2026-12-24T00:00:00Z'),
@@ -521,7 +549,8 @@ async function seed() {
 			{
 				id: WL_CHATA,
 				shortId: 'chatatom',
-				ownerId: TOMAS,
+				recipientUserId: TOMAS,
+				recipientName: null,
 				title: 'Na chatu',
 				description: 'Vychytávky na víkendovou chalupu',
 				eventDate: d('2026-06-20T00:00:00Z'),
@@ -530,6 +559,41 @@ async function seed() {
 				sharedAt: d('2026-05-28T09:00:00Z'),
 				createdAt: d('2026-05-26T11:00:00Z'),
 				updatedAt: d('2026-06-06T15:00:00Z'),
+			},
+			// --- For-someone lists (issue #99) ---
+			// Free-text recipient (recipientName set, recipientUserId null). Management comes
+			// ONLY from moderatorAssignment rows (seeded below). Exercises the „Pro {recipient}"
+			// header and the orphan guard (cannot remove the last správce).
+			// Rosie – single správce (Martin). Active, shared, fun theme.
+			{
+				id: WL_ROSIE,
+				shortId: 'rosiewl1',
+				recipientUserId: null,
+				recipientName: 'Rosie',
+				title: 'Rosčiny narozeniny',
+				description: 'Dárky pro Rosie k pátým narozeninám',
+				eventDate: d('2026-08-30T00:00:00Z'),
+				status: 'active',
+				theme: 'fun',
+				sharedAt: d('2026-06-10T09:00:00Z'),
+				createdAt: d('2026-06-08T11:00:00Z'),
+				updatedAt: d('2026-06-12T15:00:00Z'),
+			},
+			// Miminko – multi správce (Martin + Jana). Active, shared, elegant theme.
+			// Two moderatorAssignment rows exercise the plural „Spravují {names}" header.
+			{
+				id: WL_MIMINKO,
+				shortId: 'miminko1',
+				recipientUserId: null,
+				recipientName: 'Miminko',
+				title: 'Výbavička pro miminko',
+				description: 'Seznam pro čekané miminko – spravují oba rodiče',
+				eventDate: d('2026-10-15T00:00:00Z'),
+				status: 'active',
+				theme: 'elegant',
+				sharedAt: d('2026-06-18T09:00:00Z'),
+				createdAt: d('2026-06-15T11:00:00Z'),
+				updatedAt: d('2026-06-20T15:00:00Z'),
 			},
 		]);
 
@@ -551,6 +615,8 @@ async function seed() {
 			WL_KUCHYNE,
 			WL_JXMAS,
 			WL_CHATA,
+			WL_ROSIE,
+			WL_MIMINKO,
 		];
 		const priorityRows = allWishlists.flatMap((wlId) => {
 			const short = wlId.replace('seed-wl-', '');
@@ -1087,6 +1153,68 @@ async function seed() {
 				currency: 'CZK',
 				sortOrder: 1,
 			},
+
+			// --- Rosčiny narozeniny / for-someone (Rosie), 3 gifts ---
+			{
+				id: G_PANENKA,
+				wishlistId: WL_ROSIE,
+				priorityLevelId: plId('rosie', 'h'),
+				name: 'Panenka s oblečky',
+				description: 'Rosie si přeje panenku, kterou lze převlékat',
+				price: 890,
+				currency: 'CZK',
+				sortOrder: 0,
+			},
+			{
+				id: G_ODRAZEDLO,
+				wishlistId: WL_ROSIE,
+				priorityLevelId: plId('rosie', 'm'),
+				name: 'Dřevěné odrážedlo',
+				price: 1200,
+				currency: 'CZK',
+				sortOrder: 1,
+			},
+			{
+				id: G_KNIZKA,
+				wishlistId: WL_ROSIE,
+				priorityLevelId: plId('rosie', 'l'),
+				name: 'Obrázková knížka pohádek',
+				price: 350,
+				currency: 'CZK',
+				sortOrder: 2,
+			},
+
+			// --- Výbavička pro miminko / for-someone (Miminko), 3 gifts ---
+			{
+				id: G_KOCAREK,
+				wishlistId: WL_MIMINKO,
+				priorityLevelId: plId('miminko', 'h'),
+				name: 'Kočárek 3v1',
+				description: 'Kombinovaný kočárek – korba, sportovní i autosedačka',
+				price: 18990,
+				currency: 'CZK',
+				sortOrder: 0,
+			},
+			{
+				id: G_DUPACKY,
+				wishlistId: WL_MIMINKO,
+				priorityLevelId: plId('miminko', 'm'),
+				name: 'Sada dupaček',
+				description: 'Velikost 56–68, neutrální barvy',
+				price: 900,
+				currency: 'CZK',
+				quantity: 3,
+				sortOrder: 1,
+			},
+			{
+				id: G_CHRASTITKO,
+				wishlistId: WL_MIMINKO,
+				priorityLevelId: plId('miminko', 'l'),
+				name: 'Chrastítko',
+				price: 250,
+				currency: 'CZK',
+				sortOrder: 2,
+			},
 		]);
 
 		// ---------------------------------------------------------------
@@ -1163,6 +1291,17 @@ async function seed() {
 				quantity: 1,
 				purchasedAt: d('2026-06-05T14:00:00Z'),
 			},
+
+			// For-someone lists (issue #99) – gifters reserve on Rosie/Miminko so the správce
+			// surfaces render reservation state. Martin (Rosie's správce) does NOT reserve here.
+			{ id: 'seed-r-25', giftId: G_PANENKA, userId: EVA, quantity: 1 },
+			{
+				id: 'seed-r-26',
+				giftId: G_DUPACKY,
+				anonymousName: 'Teta Klára',
+				quantity: 2,
+			},
+			{ id: 'seed-r-27', giftId: G_KOCAREK, userId: PETR, quantity: 1 },
 		]);
 
 		// ---------------------------------------------------------------
@@ -1205,6 +1344,28 @@ async function seed() {
 				wishlistId: WL_KNIHY,
 				userId: MARTIN,
 				assignedAt: d('2026-03-12T11:00:00Z'),
+			},
+			// For-someone lists (issue #99): management comes ONLY from these rows (no linked
+			// recipient). Rosie – single správce (Martin). Header „Pro Rosie".
+			{
+				id: 'seed-ma-3',
+				wishlistId: WL_ROSIE,
+				userId: MARTIN,
+				assignedAt: d('2026-06-08T11:00:00Z'),
+			},
+			// Miminko – multi správce (Martin + Jana). Two rows exercise the plural
+			// „Spravují {names}" header and the orphan guard (cannot remove the last správce).
+			{
+				id: 'seed-ma-4',
+				wishlistId: WL_MIMINKO,
+				userId: MARTIN,
+				assignedAt: d('2026-06-15T11:00:00Z'),
+			},
+			{
+				id: 'seed-ma-5',
+				wishlistId: WL_MIMINKO,
+				userId: JANA,
+				assignedAt: d('2026-06-16T09:00:00Z'),
 			},
 		]);
 

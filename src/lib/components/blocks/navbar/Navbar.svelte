@@ -164,7 +164,7 @@
 		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		return {
 			name: wishlistRecord.title,
-			meta: wishlistRecord.ownerName,
+			meta: m.wishlist_recipient_chip({ name: wishlistRecord.recipientDisplayName }),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,
@@ -179,7 +179,7 @@
 		const state = followedListState(wishlistRecord);
 		return {
 			name: wishlistRecord.title,
-			meta: wishlistRecord.ownerName,
+			meta: m.wishlist_recipient_chip({ name: wishlistRecord.recipientDisplayName }),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
 			emoji: theme.emoji,

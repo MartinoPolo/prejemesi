@@ -31,6 +31,7 @@
 	import { reserveGift, unreserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		getThemePreset,
 		type DashboardWishlistTheme,
@@ -76,7 +77,9 @@
 
 	// ── Reactive state (declared before await for synchronous context setup) ─
 
-	let wishlist = $state<Wishlist & { ownerName: string; role: WishlistRole }>(undefined!);
+	let wishlist = $state<
+		Wishlist & { recipientDisplayName: string; managerNames: string[]; role: WishlistRole }
+	>(undefined!);
 	let gifts = $state<GiftByRole[]>([]);
 	let role = $state<WishlistRole>('visitor');
 	let likedGiftIds = $state.raw<string[]>([]);
@@ -120,11 +123,13 @@
 	// ── Derived values ───────────────────────────────────────────────────────
 
 	const isArchived = $derived(wishlist.status === 'archived');
-	const isOwner = $derived(role === 'owner');
-	const isModerator = $derived(role === 'moderator');
-	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
+	const isRecipient = $derived(role === 'recipient');
+	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
+	const canManage = $derived(canManageWishlist(role));
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
-	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
+	const recipientIsModerator = $derived(wishlist.recipientIsModerator);
+	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
+	const isForSomeoneElse = $derived(wishlist.recipientUserId === null);
 	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
 	function getWishlistPageUrl() {
 		return `${SITE_URL}/w/${wishlist.shortId}`;
@@ -133,6 +138,19 @@
 	function getWishlistSocialImageUrl() {
 		const imagePath = wishlistImageUrl(wishlist.imageKey);
 		return imagePath === null ? SOCIAL_PREVIEW_IMAGE_URL : `${SITE_URL}${imagePath}`;
+	}
+
+	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
+	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
+	// during async SSR and 500s. For-someone lists read „…pro {recipient}"; self lists keep the
+	// original wording, sourced from recipientDisplayName.
+	function getSocialDescription() {
+		if (wishlist.recipientUserId === null) {
+			return m.wishlist_og_description_recipient({
+				recipient: wishlist.recipientDisplayName,
+			});
+		}
+		return `Seznam prani od ${wishlist.recipientDisplayName}`;
 	}
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
@@ -286,7 +304,10 @@
 	// Full edit grace: a pre-share gift is fully editable for 2 minutes after sharing only.
 	// Later edits update the transparency badge but never reopen name/delete grace.
 	const selectedFullEditGraceExpiresAt = $derived.by(() => {
-		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
+		// Post-share edit locks bind the linked recipient (the person the list is for), never a
+		// správce — a moderator edits freely. Self-promotion changes only reservation visibility,
+		// so a self-promoted recipient stays subject to the lock.
+		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
 			return null;
 		}
 		return preShareOwnerFullEditGraceExpiresAt({
@@ -296,7 +317,7 @@
 	});
 
 	const selectedDeleteGraceExpiresAt = $derived.by(() => {
-		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
+		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
 			return null;
 		}
 		return ownerSharedGiftDeleteGraceExpiresAt({
@@ -361,7 +382,7 @@
 		) {
 			return false;
 		}
-		if (isOwner && !isModerator && wishlist.sharedAt !== null) {
+		if (isRecipient && wishlist.sharedAt !== null) {
 			return isSelectedGiftWithinDeleteGrace;
 		}
 		return true;
@@ -420,7 +441,7 @@
 	}
 
 	async function openEditModal(gift: GiftByRole) {
-		if (!isOwnerOrModerator) {
+		if (!canManage) {
 			return;
 		}
 		await loadPriorityLevels();
@@ -601,7 +622,7 @@
 	// ── Drag-and-drop handlers ────────────────────────────────────────────────
 
 	function handleDragStart(event: DragEvent, index: number) {
-		if (!isOwnerOrModerator) {
+		if (!canManage) {
 			return;
 		}
 		draggedIndex = index;
@@ -741,7 +762,9 @@
 <div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
 	<WishlistHeader
 		title={wishlist.title}
-		ownerName={wishlist.ownerName}
+		recipientDisplayName={wishlist.recipientDisplayName}
+		{isForSomeoneElse}
+		managerNames={wishlist.managerNames}
 		description={wishlist.description}
 		imageKey={wishlist.imageKey}
 		imageSlots={wishlist.imageSlots}
@@ -750,7 +773,7 @@
 		status={wishlistStatus}
 		{role}
 		giftCount={headerGiftCount}
-		ownerIsModerator={ownerIsModeratorLocal}
+		{recipientIsModerator}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
@@ -758,9 +781,8 @@
 	/>
 
 	<WishlistDetailToolbar
-		{isOwner}
+		{canManage}
 		{isArchived}
-		{isOwnerOrModerator}
 		{isAuthenticated}
 		{viewMode}
 		sortOption={giftsContext.sortOption.current}
@@ -781,8 +803,6 @@
 		gifts={displayedGifts}
 		{role}
 		{isArchived}
-		{isOwner}
-		{isOwnerOrModerator}
 		{viewMode}
 		isLoading={isGiftDataLoading}
 		{isEmpty}
@@ -803,13 +823,13 @@
 </div>
 
 <WishlistModals
-	{isOwner}
-	{isOwnerOrModerator}
+	{role}
+	{canManage}
 	{isAuthenticated}
 	wishlistId={wishlist.id}
 	wishlistTitle={wishlist.title}
 	giftCount={totalCount}
-	ownerIsModerator={ownerIsModeratorLocal}
+	{recipientIsModerator}
 	bind:giftModalOpen
 	{giftModalMode}
 	{selectedGift}
@@ -847,7 +867,7 @@
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
 
-{#if isOwnerOrModerator}
+{#if canManage}
 	<ImportWizard
 		bind:open={importWizardOpen}
 		mode={WIZARD_MODE.append}
@@ -864,7 +884,7 @@
 <svelte:head>
 	<title>{wishlist.title} – Přejeme si</title>
 	<meta property="og:title" content={wishlist.title} />
-	<meta property="og:description" content="Seznam prani od {wishlist.ownerName}" />
+	<meta property="og:description" content={getSocialDescription()} />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={getWishlistPageUrl()} />
 	<meta property="og:image" content={getWishlistSocialImageUrl()} />
@@ -873,7 +893,7 @@
 	<meta property="og:image:alt" content={wishlist.title} />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={wishlist.title} />
-	<meta name="twitter:description" content="Seznam prani od {wishlist.ownerName}" />
+	<meta name="twitter:description" content={getSocialDescription()} />
 	<meta name="twitter:image" content={getWishlistSocialImageUrl()} />
 	<link rel="canonical" href={getWishlistPageUrl()} />
 </svelte:head>

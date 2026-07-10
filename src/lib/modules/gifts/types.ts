@@ -77,11 +77,11 @@ export interface GiftForVisitor extends GiftBase {
 	myReservationPurchasedAt: Date | null;
 }
 
-/** Gift for owner view – no reservation data */
-export type GiftForOwner = GiftBase;
+/** Gift for the recipient's view – no reservation data (protects the surprise) */
+export type GiftForRecipient = GiftBase;
 
 /** Union type for gift based on role */
-export type GiftByRole = GiftForVisitor | GiftForOwner;
+export type GiftByRole = GiftForVisitor | GiftForRecipient;
 
 /** View mode for gift display */
 export const GIFT_VIEW_MODES = {

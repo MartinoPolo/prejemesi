@@ -8,7 +8,7 @@
 		gifts: GiftByRole[];
 		role: WishlistRole;
 		isArchived: boolean;
-		isOwnerOrModerator: boolean;
+		canManage: boolean;
 		draggedIndex: number | null;
 		dragOverIndex: number | null;
 		onedit: (gift: GiftByRole) => void;
@@ -25,7 +25,7 @@
 		gifts,
 		role,
 		isArchived,
-		isOwnerOrModerator,
+		canManage,
 		draggedIndex,
 		dragOverIndex,
 		onedit,
@@ -46,7 +46,7 @@
 	{#each gifts as giftItem, index (giftItem.id)}
 		<WishlistGiftDraggableWrapper
 			{index}
-			{isOwnerOrModerator}
+			{canManage}
 			{draggedIndex}
 			{dragOverIndex}
 			dragOverStyle="ring"

@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 vi.mock('$app/server', () => ({
 	getRequestEvent: vi.fn(),
@@ -36,17 +37,29 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
+	count: vi.fn(() => 'count'),
 }));
 
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 	wishlist: {
 		id: 'wishlist.id',
-		ownerId: 'wishlist.ownerId',
+		recipientUserId: 'wishlist.recipientUserId',
+		recipientName: 'wishlist.recipientName',
+		recipientIsModerator: 'wishlist.recipientIsModerator',
 		shortId: 'wishlist.shortId',
 		sharedAt: 'wishlist.sharedAt',
 		status: 'wishlist.status',
 		deletedAt: 'wishlist.deletedAt',
 		updatedAt: 'wishlist.updatedAt',
+	},
+}));
+
+vi.mock('$lib/server/db/moderator.schema.js', () => ({
+	moderatorAssignment: {
+		id: 'moderatorAssignment.id',
+		wishlistId: 'moderatorAssignment.wishlistId',
+		userId: 'moderatorAssignment.userId',
+		deletedAt: 'moderatorAssignment.deletedAt',
 	},
 }));
 
@@ -103,40 +116,42 @@ describe('shareWishlist', () => {
 
 		await expect(callShareWishlist(testAuthContext, wishlistId)).rejects.toMatchObject({
 			status: 404,
-			message: 'Wishlist not found',
+			message: SERVER_ERROR.WISHLIST_NOT_FOUND,
 		});
 	});
 
-	it('throws 403 when user is not the owner', async () => {
-		// Query 1: wishlist found but owned by a different user
+	it('throws 403 ACCESS_DENIED when the caller is neither recipient nor moderator', async () => {
+		// Query 1: wishlist found but linked to a different recipient.
+		// Query 2: moderator assignment lookup → empty (caller is a plain visitor).
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[
 					{
 						id: wishlistId,
-						ownerId: 'other-user',
+						recipientUserId: 'other-user',
 						shortId: 'abc123',
 						sharedAt: null,
 						status: 'draft',
 					},
 				],
+				[], // no moderator assignment
 			]),
 		);
 
 		await expect(callShareWishlist(testAuthContext, wishlistId)).rejects.toMatchObject({
 			status: 403,
-			message: 'Not authorized',
+			message: SERVER_ERROR.ACCESS_DENIED,
 		});
 	});
 
 	it('throws 400 when wishlist is archived', async () => {
-		// Query 1: wishlist found, owned by user, but archived
+		// Query 1: wishlist found, caller is the linked recipient, but archived.
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[
 					{
 						id: wishlistId,
-						ownerId: testUser.id,
+						recipientUserId: testUser.id,
 						shortId: 'abc123',
 						sharedAt: null,
 						status: 'archived',
@@ -147,18 +162,18 @@ describe('shareWishlist', () => {
 
 		await expect(callShareWishlist(testAuthContext, wishlistId)).rejects.toMatchObject({
 			status: 400,
-			message: 'Cannot share an archived wishlist',
+			message: SERVER_ERROR.CANNOT_SHARE_ARCHIVED_WISHLIST,
 		});
 	});
 
 	it('returns alreadyShared: true when already shared (idempotent)', async () => {
-		// Query 1: wishlist found, owned by user, already shared (sharedAt set)
+		// Query 1: wishlist found, caller is the linked recipient, already shared (sharedAt set)
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[
 					{
 						id: wishlistId,
-						ownerId: testUser.id,
+						recipientUserId: testUser.id,
 						shortId: 'abc123',
 						sharedAt: new Date('2024-01-01'),
 						status: 'active',
@@ -173,14 +188,14 @@ describe('shareWishlist', () => {
 	});
 
 	it('sets sharedAt and status=active on first share', async () => {
-		// Query 1: wishlist found, owned by user, not yet shared (sharedAt: null)
+		// Query 1: wishlist found, caller is the linked recipient, not yet shared (sharedAt: null)
 		// Query 2: update mutation result (ignored)
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[
 					{
 						id: wishlistId,
-						ownerId: testUser.id,
+						recipientUserId: testUser.id,
 						shortId: 'abc123',
 						sharedAt: null,
 						status: 'draft',

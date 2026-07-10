@@ -1,5 +1,6 @@
 import {
 	boolean,
+	check,
 	index,
 	integer,
 	jsonb,
@@ -28,9 +29,13 @@ export const wishlist = pgTable(
 			.notNull()
 			.unique()
 			.$defaultFn(() => generateShortId()),
-		ownerId: text('owner_id')
-			.notNull()
-			.references(() => user.id, { onDelete: 'cascade' }),
+		// Recipient role model (issue #99): every wishlist is FOR someone. Exactly one of
+		// the two recipient columns identifies them — a linked user account (self lists,
+		// later also claimed lists) or a free-text display name (for-someone lists).
+		recipientUserId: text('recipient_user_id').references(() => user.id, {
+			onDelete: 'cascade',
+		}),
+		recipientName: text('recipient_name'),
 		title: text('title').notNull(),
 		description: text('description'),
 		eventDate: timestamp('event_date', { withTimezone: true }),
@@ -41,7 +46,9 @@ export const wishlist = pgTable(
 		// the obsolete separate banner/thumbnail keys (no compatibility shim kept).
 		imageKey: text('image_key'),
 		imageSlots: jsonb('image_slots').$type<WishlistImageSlots>(),
-		ownerIsModerator: boolean('owner_is_moderator').notNull().default(false),
+		// Visibility-disclosure flag: the linked recipient opted into seeing reservation
+		// state (self-promote). Not a management right — recipients manage inherently.
+		recipientIsModerator: boolean('recipient_is_moderator').notNull().default(false),
 		sharedAt: timestamp('shared_at', { withTimezone: true }),
 		// Last edit to the event date during the post-share grace window (issue #83). Drives the
 		// debounced 2-min reversibility of the event-date lock; falls back to `sharedAt` when never
@@ -53,10 +60,14 @@ export const wishlist = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 	},
 	(table) => ({
-		ownerStatusIdx: index('wishlist_owner_status_idx')
-			.on(table.ownerId, table.status)
+		recipientStatusIdx: index('wishlist_recipient_status_idx')
+			.on(table.recipientUserId, table.status)
 			.where(sql`${table.deletedAt} IS NULL`),
 		shortIdIdx: uniqueIndex('wishlist_short_id_idx').on(table.shortId),
+		recipientPresence: check(
+			'wishlist_recipient_presence_check',
+			sql`${table.recipientUserId} IS NOT NULL OR ${table.recipientName} IS NOT NULL`,
+		),
 	}),
 );
 

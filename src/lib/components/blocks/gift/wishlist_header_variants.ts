@@ -9,6 +9,10 @@ export const wishlistHeaderVariants = tv({
 		bannerOverlay: 'absolute inset-0 rounded-xl bg-gradient-to-t from-black/60 to-black/10',
 		contentArea: 'relative flex flex-col gap-1',
 		ownerNameOnBanner: 'font-heading text-2xl font-bold text-white',
+		/** Lighter „Pro" prefix that precedes the bold recipient name on for-someone lists. */
+		recipientForPrefix: 'font-heading text-2xl font-normal text-white/85',
+		/** Small muted „Spravuje {name}" / „Spravují {names}" line on for-someone lists. */
+		managedByLine: 'text-sm text-white/75',
 		titleOnBanner: 'font-heading text-3xl font-bold tracking-tight text-white',
 		descriptionOnBanner: 'max-w-2xl text-base text-white/80',
 		metaRowOnBanner: 'flex flex-wrap items-center gap-3 text-sm text-white/70',

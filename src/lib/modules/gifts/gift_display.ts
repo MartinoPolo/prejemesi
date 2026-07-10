@@ -99,8 +99,8 @@ export function formatPieceCount(
 				? m.gift_piece_count_few({ count: quantity })
 				: m.gift_piece_count_other({ count: quantity });
 
-	// Owner NEVER sees reserved info
-	if (role === 'owner') {
+	// Recipient NEVER sees reserved info (their own surprise)
+	if (role === 'recipient') {
 		return { pieceText, reservedText: null };
 	}
 

@@ -158,7 +158,7 @@ function createChain(returnValue: unknown[] = []) {
 	return createMultiQueryChain(returnValue);
 }
 
-/** Fake wishlist row for an active (non-archived) wishlist owned by OWNER_ID. */
+/** Fake wishlist row for an active (non-archived) list whose linked recipient is OWNER_ID. */
 function makeActiveWishlistRow() {
 	return {
 		gift: {
@@ -169,7 +169,7 @@ function makeActiveWishlistRow() {
 		},
 		wishlist: {
 			id: WISHLIST_ID,
-			ownerId: OWNER_ID,
+			recipientUserId: OWNER_ID,
 			status: 'active',
 			deletedAt: null,
 		},
@@ -246,10 +246,10 @@ describe('reserveGift', () => {
 		expect(txChain['for']).toHaveBeenCalledWith('update');
 	});
 
-	it('owner cannot reserve their own gift – throws 403', async () => {
+	it('linked recipient cannot reserve their own gift – throws 403', async () => {
 		// Call #1: `database` – transaction never reached (throws on pre-check)
 		const database = createChain([]);
-		// Call #2: wishlist lookup
+		// Call #2: wishlist lookup – recipientUserId matches the caller
 		const wishlistDb = createChain([makeActiveWishlistRow()]);
 
 		mockGetDb
@@ -382,9 +382,11 @@ describe('unreserveGift', () => {
 
 	// unreserveGift stores ONE `database` from getDb() (call #1) and reuses it for:
 	//   - reservation SELECT (query 1 on database)
-	//   - gift wishlistId SELECT (query 2 on database, only for anonymous reservations)
-	//   - soft-delete UPDATE (query 3 on database)
-	// determineRole makes its own separate getDb() call (call #2) for the mod check.
+	//   - soft-delete UPDATE (final query on database)
+	// For an anonymous reservation cancelled by an authenticated user, the handler also:
+	//   - getGiftWithWishlist(): its own getDb() call (call #2) → joined gift+wishlist row
+	//   - resolveWishlistRole(): if not the recipient, hasActiveModeratorAssignment()
+	//     makes its own getDb() call (call #3) for the mod check.
 
 	it('authenticated user can unreserve their own reservation – returns { success: true }', async () => {
 		// Call #1: `database` – used for reservation SELECT then UPDATE
@@ -479,17 +481,19 @@ describe('unreserveGift', () => {
 	});
 
 	it('moderator can unreserve an anonymous reservation – returns { success: true }', async () => {
-		// Call #1: `database` – reservation SELECT, gift SELECT, then UPDATE
+		// Call #1: `database` – reservation SELECT, then UPDATE.
 		const database = createMultiQueryChain(
 			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }], // reservation
-			[{ wishlistId: WISHLIST_ID }], // gift wishlistId lookup
 			[], // update (unused)
 		);
-		// Call #2: determineRole's own getDb() – moderator assignment found
+		// Call #2: getGiftWithWishlist's own getDb() – joined gift+wishlist row (recipient ≠ mod)
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		// Call #3: resolveWishlistRole → hasActiveModeratorAssignment's getDb() – assignment found
 		const modDb = createChain([{ id: 'mod-assignment-1' }]);
 
 		mockGetDb
 			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
 
 		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
@@ -501,16 +505,18 @@ describe('unreserveGift', () => {
 	});
 
 	it('non-moderator authenticated user cannot unreserve an anonymous reservation – throws 403', async () => {
-		// Call #1: `database` – reservation SELECT, gift SELECT
+		// Call #1: `database` – reservation SELECT (update never reached).
 		const database = createMultiQueryChain(
 			[{ id: RESERVATION_ID, giftId: GIFT_ID, userId: null, deletedAt: null }], // reservation
-			[{ wishlistId: WISHLIST_ID }], // gift wishlistId lookup
 		);
-		// Call #2: determineRole's own getDb() – no moderator assignment
+		// Call #2: getGiftWithWishlist's own getDb() – joined gift+wishlist row (recipient ≠ visitor)
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		// Call #3: resolveWishlistRole → hasActiveModeratorAssignment's getDb() – no assignment
 		const modDb = createChain([]);
 
 		mockGetDb
 			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
 			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
 
 		await expect(
@@ -529,10 +535,10 @@ describe('getReservationsForGift', () => {
 		vi.resetAllMocks();
 	});
 
-	it('owner gets empty reservations array – core privacy invariant', async () => {
+	it('linked recipient gets empty reservations array – core privacy invariant', async () => {
 		// getGiftWithWishlist
 		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		// determineRole: userId === ownerId → short-circuits, no DB call needed
+		// resolveWishlistRole: userId === recipientUserId → short-circuits, no mod DB call needed
 		mockGetDb.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>);
 
 		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
@@ -541,7 +547,7 @@ describe('getReservationsForGift', () => {
 		)) as { reservations: unknown[]; role: string };
 
 		expect(result.reservations).toEqual([]);
-		expect(result.role).toBe('owner');
+		expect(result.role).toBe('recipient');
 	});
 
 	it('anonymous visitor gets empty reservations array', async () => {

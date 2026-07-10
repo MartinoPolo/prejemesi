@@ -12,11 +12,12 @@
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import * as m from '$lib/paraglide/messages.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 
 	interface WishlistListItem {
 		wishlist: Wishlist;
-		ownerName?: string;
+		recipientDisplayName?: string;
 		giftCount?: number;
 		reservedCount?: number;
 	}
@@ -58,8 +59,8 @@
 			<div class={rowVariants.info()}>
 				<span class={rowVariants.title()}>{item.wishlist.title}</span>
 				<span class={rowVariants.subtitle()}>
-					{#if item.ownerName}
-						{item.ownerName}
+					{#if item.recipientDisplayName}
+						{m.wishlist_recipient_chip({ name: item.recipientDisplayName })}
 						{#if item.reservedCount !== undefined && item.giftCount !== undefined}
 							· {item.reservedCount}/{item.giftCount} rezervováno
 						{/if}

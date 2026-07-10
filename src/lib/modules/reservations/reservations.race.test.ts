@@ -175,7 +175,8 @@ describe.skipIf(!DB_READY)('reserveGift overbooking race [real DB]', () => {
 			.values({
 				id: WISHLIST_ID,
 				shortId: `${PREFIX}short`,
-				ownerId: OWNER_ID,
+				recipientUserId: OWNER_ID,
+				recipientName: null,
 				title: 'Race wishlist',
 				status: 'active',
 			})

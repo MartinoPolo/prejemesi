@@ -20,7 +20,6 @@ export const wishlistCardVariants = tv({
 		ownerRow: 'flex items-center gap-2 text-[13px] text-muted-foreground',
 		ownerAvatar:
 			'flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary',
-		ownerLabel: 'text-xs text-muted-foreground/70',
 		progressWrap: 'flex flex-col gap-1.5',
 		progressLabelRow: 'flex items-center justify-between text-xs text-muted-foreground',
 		progressValue: 'font-bold text-primary',

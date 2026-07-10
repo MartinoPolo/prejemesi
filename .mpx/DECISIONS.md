@@ -85,24 +85,65 @@ Rejected: Auto-archive after event date (too aggressive), time-based expiry (arb
 
 ### Owner can add gifts but not moderate by default
 
-Decided: 2026-05-29
+Decided: 2026-05-29 — **Superseded 2026-07-08** by "Recipient replaces owner" below (owner role dissolved into recipient + správce).
 What: Owner adds gifts to their wishlist and marks received. They cannot edit, remove, or see reservation state unless they self-promote to moderator.
 Why: Clean separation — the owner is the "recipient" role, not the "manager" role.
 Rejected: Owner has full edit powers (breaks surprise mechanic if they notice blocked removals).
 
 ### Moderator assigned by owner only
 
-Decided: 2026-05-29
+Decided: 2026-05-29 — **Revised 2026-07-08** by "Správci can add and revoke správci" below.
 What: Only the owner can promote users to moderator (via invite link with token or by email). Moderators cannot promote others. No limit on moderator count.
 Why: Owner controls trust chain. Preventing moderator-to-moderator promotion avoids uncontrolled access spread.
 Rejected: Moderators can promote others (security risk), single moderator limit (too restrictive for families).
 
 ### Owner self-promote to moderator with disclosure
 
-Decided: 2026-05-29
+Decided: 2026-05-29 — **Reworded 2026-07-08**: now "recipient self-promotes to správce"; mechanics (notification + permanent banner) unchanged.
 What: Owner can opt into moderator role (seeing full state), but this triggers a notification to all visitors and shows a permanent banner on the wishlist.
 Why: Maintains trust — visitors know the surprise is no longer protected for this wishlist.
 Rejected: Silent self-promote (breaks trust), no self-promote option (too restrictive for some use cases).
+
+### Recipient replaces owner: recipient + správce roles
+
+Decided: 2026-07-08
+What: The standalone "owner" role is dissolved. Every wishlist has a **Recipient** — the person gifts are for — either a linked user account or a free-text name (e.g. a child without email), plus one or more **Správci** (UI term for the `moderator` role). At creation the user picks "for me" (creator = linked recipient) or "for someone else" (creator = first správce, recipient = free-text name). No for-me ↔ for-someone conversion after creation; správci may rename a free-text recipient anytime. Nav: for-someone lists appear under Spravované for správci and under Moje seznamy for a linked recipient.
+Why: A parent managing a kid's list was impossible — `ownerId` conflated manager and recipient, and moderators lacked management rights (share/archive/metadata). One model now covers both self-lists and lists for others.
+Rejected: Display-only recipientName on top of the owner model (keeps the conflation); kid account as owner + parent as moderator (kids lack email; parent loses management rights); post-creation conversion (a self-list flip would silently grant reservation visibility).
+
+### Rights matrix: recipient vs správce
+
+Decided: 2026-07-08
+What: Recipient (with account): add gifts, edit per post-share rules, mark received, edit metadata/theme/image, share, archive, delete, manage správci — but NEVER sees reservations/likes/gifter identities and cannot reserve. Správce: all recipient rights PLUS full reservation visibility and reserving gifts (on any list). Visitors unchanged (see reserved state, not gifter identity). Removing the last správce of a for-someone list is blocked (orphan guard — a free-text recipient cannot manage anything).
+Why: "Správce sees everything, recipient sees no spoilers" is the entire role distinction; a family-trust app favors symmetric powers over hierarchy.
+Rejected: Správce without share/archive/delete (recreates the owner bottleneck this feature removes); správce unable to reserve (a parent is also a gifter on their kid's list).
+
+### Správci can add and revoke správci
+
+Decided: 2026-07-08 (revises "Moderator assigned by owner only")
+What: Any správce — and a linked recipient — can invite and revoke správci. Removing the last správce of a for-someone list is blocked.
+Why: For-someone lists have no owner to gate the trust chain, and the creator may go inactive.
+Rejected: Creator-only assignment (single point of failure).
+
+### Recipient account linking via claim token (follow-up)
+
+Decided: 2026-07-08
+What: v1 ships free-text recipients only, but the schema carries a nullable `recipientUserId` from day one. A follow-up adds a "Pozvat obdarovaného" claim link (token-based, like moderator invites): claiming links the account, shows the list in the recipient's Moje seznamy with recipient rights, and strips reservation state from their view.
+Why: Kids — the primary case — have no accounts. A claim link gives an explicit consent moment; email lookup at creation invites typos and surprises.
+Rejected: Email lookup at creation; shipping linking inside the first release (delays the headline feature).
+
+### Migration: existing lists become self-recipient
+
+Decided: 2026-07-08
+What: Existing wishlists map losslessly: former owner → linked recipient; `ownerIsModerator = true` → recipient-also-správce (disclosure banner kept, reworded „Obdarovaný je zároveň správcem"). Additive columns; renames via raw SQL (Drizzle push is interactive).
+Why: Production data must be preserved; the old model is a strict subset of the new one.
+
+### UI terminology: obdarovaný / správce; code keeps moderator
+
+Decided: 2026-07-08
+What: UI terms — cs „obdarovaný" / en "recipient"; cs „správce" / en "manager". Code and DB keep `moderator` identifiers (tables, role enum); owner→recipient identifiers are renamed during implementation.
+Why: "Moderator" is unfamiliar to the target audience; renaming the prod moderator tables is churn without user-facing gain.
+Rejected: Renaming moderator tables/enum; „příjemce" (postal register), „oslavenec" (birthday-only).
 
 ## Authentication & Users
 
@@ -308,6 +349,13 @@ What: The wishlist owner's name is displayed above the wishlist title in a large
 Why: When a visitor arrives via a shared link, they need immediate context about who this list belongs to. Previously the name was small and easy to miss.
 Rejected: Owner name in subtitle only (too subtle), owner name in nav bar (conflicts with logged-in user identity).
 
+### Wishlist header: recipient-first on for-someone lists (variant A)
+
+Decided: 2026-07-08 (extends "Owner name prominent in wishlist header")
+What: On for-someone lists the prominent name slot shows „Pro {recipient}" („Pro" in lighter weight, recipient bold), title unchanged, and the meta row gains „Spravuje {name}" / „Spravují {names}" in small muted text (`text-sm text-white/75`). Self-recipient lists are visually unchanged. OG description becomes „Seznam přání pro {recipient}". Dashboards/dropdowns/cards show the recipient as the person label (e.g. „Pro Rosie" chip).
+Why: The prominent slot answers "whose gifts are these?" — for a kid's list that is the recipient, not the manager. Validated with live DOM mockups; the author-first variant buried the key fact in metadata.
+Rejected: Author-first header with a small „Seznam pro Rosie" meta label (the current confusion, just annotated).
+
 ### Sort and filter as icon-only dropdown trigger
 
 Decided: 2026-05-30
@@ -494,6 +542,13 @@ Decided: 2026-05-30
 What: Creating a wishlist opens a modal with minimal fields: title (required), event date (optional), theme (optional, default preset). After creation, redirects to the wishlist page. Description, images, and custom theme are edited on the wishlist page itself.
 Why: Fast creation flow — the modal keeps context, and most fields are optional at creation time.
 Rejected: Separate page (`/new-list`), multi-step wizard (over-engineered for 1-3 fields).
+
+### Creation modal: recipient choice as top segmented control
+
+Decided: 2026-07-08
+What: The create-wishlist modal gains a two-option segmented control at the top, above the title field: „Pro mě" (default) / „Pro někoho jiného". Selecting „Pro někoho jiného" reveals a required, autofocused „Jméno obdarovaného" text input (trimmed, max 100 chars) plus one muted helper line: „Seznam budete spravovat vy a uvidíte rezervace. Volbu nelze později změnit." No title auto-fill from the recipient name; no email/linking fields.
+Why: The recipient defines the list's identity, so it is decided first. A segmented control fits a binary, glanceable choice; the „Pro mě" default keeps the common path at zero added friction. The helper line covers the two non-obvious consequences (creator = správce with full visibility; choice immutable).
+Rejected: Select/radio group (heavier for two options); recipient field at the bottom (frames the title wrong); title auto-fill „Vánoce pro Rosie" (too magical); email lookup in the modal (claim-token follow-up covers linking).
 
 ## Authentication Flow
 

@@ -57,12 +57,12 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 
 ### Test Accounts (password: see `SEED_PASSWORD` in seed.ts — "password" + "123")
 
-| Email          | Name           | Role                                                |
-| -------------- | -------------- | --------------------------------------------------- |
-| martin@test.cz | Martin Novák   | Primary owner — 4 wishlists (active/draft/archived) |
-| jana@test.cz   | Jana Dvořáková | Owner + moderator on Martin's lists                 |
-| petr@test.cz   | Petr Svoboda   | Active gifter — many reservations                   |
-| eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                       |
-| tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list        |
+| Email          | Name           | Role                                                                         |
+| -------------- | -------------- | ---------------------------------------------------------------------------- |
+| martin@test.cz | Martin Novák   | Recipient — 4 self-lists (active/draft/archived); správce of Rosie + Miminko |
+| jana@test.cz   | Jana Dvořáková | Recipient + moderator on Martin's lists; co-správce of Miminko               |
+| petr@test.cz   | Petr Svoboda   | Active gifter — many reservations                                            |
+| eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                                                |
+| tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list                                 |
 
-Seed includes 13 wishlists, 47 gifts, 24 reservations (2 marked bought/purchased), 10 likes, moderator assignments, followers (incl. unfollowed), and notifications. Martin follows 6 active lists spanning all gifter states — open (Petr, Eva), reserved (Jana svátek, Tomáš knihy), bought (Jana Vánoce, Tomáš chata) — to exercise the Sledované dropdown sections + truncation. All seed IDs are prefixed `seed-` for easy identification/cleanup.
+Seed includes 15 wishlists, 53 gifts, 27 reservations (2 marked bought/purchased), 10 likes, moderator assignments, followers (incl. unfollowed), and notifications. Martin follows 6 active lists spanning all gifter states — open (Petr, Eva), reserved (Jana svátek, Tomáš knihy), bought (Jana Vánoce, Tomáš chata) — to exercise the Sledované dropdown sections + truncation. Two "for-someone" lists (issue #99) exercise the „Pro {recipient}" header + orphan guard: recipient **Rosie** (single správce Martin) and recipient **Miminko** (multi správce Martin + Jana, plural „Spravují {names}"). All seed IDs are prefixed `seed-` for easy identification/cleanup.

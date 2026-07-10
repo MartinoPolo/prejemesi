@@ -12,6 +12,7 @@
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		WISHLIST_STATUS_LABELS,
 		WISHLIST_STATUS_BADGE_MAP,
@@ -23,7 +24,12 @@
 
 	interface WishlistHeaderProps {
 		title: string;
-		ownerName: string;
+		/** Who the list is for: linked recipient's account name or the free-text recipient name. */
+		recipientDisplayName: string;
+		/** True for a free-text (for-someone-else) list; drives the „Pro {recipient}" name slot + managed-by line. */
+		isForSomeoneElse: boolean;
+		/** Names of the správci managing a for-someone list (empty on self lists). Powers „Spravuje/Spravují". */
+		managerNames: string[];
 		description: string | null;
 		imageKey: string | null;
 		imageSlots: WishlistImageSlots | null;
@@ -33,7 +39,8 @@
 		status: 'draft' | 'active' | 'archived';
 		role: WishlistRole;
 		giftCount: number | null;
-		ownerIsModerator: boolean;
+		/** True when the linked recipient self-promoted to also see reservation state (disclosure banner). */
+		recipientIsModerator: boolean;
 		onshare?: () => void;
 		onmoderators?: () => void;
 		onarchive?: () => void;
@@ -42,7 +49,9 @@
 
 	let {
 		title,
-		ownerName,
+		recipientDisplayName,
+		isForSomeoneElse,
+		managerNames,
 		description,
 		imageKey,
 		imageSlots,
@@ -51,7 +60,7 @@
 		status,
 		role,
 		giftCount,
-		ownerIsModerator,
+		recipientIsModerator,
 		onshare,
 		onmoderators,
 		onarchive,
@@ -64,11 +73,23 @@
 	// banner slot) when present, otherwise the theme-aware fallback hero (REQ-3/4).
 	const bannerSrc = $derived(wishlistImageUrl(imageKey));
 	const bannerFrame = $derived(wishlistSlotToFrameProps(imageSlots, 'banner'));
-	const isOwner = $derived(role === 'owner');
-	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
+	// Management actions (share/archive/edit-image + lifecycle banners) are now open to any manager
+	// — the linked recipient OR a správce — per the rights matrix (issue #99), not just an owner.
+	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
 	const isDraft = $derived(status === 'draft');
 	const isEventPast = $derived(eventDate !== null && new Date(eventDate) < new Date());
+
+	// „Spravuje {name}" (single správce) / „Spravují {names}" (multiple, comma-joined) — for-someone lists only.
+	const managedByLabel = $derived.by(() => {
+		if (!isForSomeoneElse || managerNames.length === 0) {
+			return null;
+		}
+		if (managerNames.length === 1) {
+			return m.wishlist_managed_by_one({ name: managerNames[0]! });
+		}
+		return m.wishlist_managed_by_many({ names: managerNames.join(', ') });
+	});
 
 	const formattedDate = $derived.by(() => {
 		if (eventDate === null) {
@@ -107,7 +128,7 @@
 			<WishlistSlotImage src={bannerSrc} frame={bannerFrame} {themeEmoji} alt={title} />
 		</div>
 		<div class={styles.bannerOverlay()}></div>
-		{#if isOwner && !isArchived}
+		{#if canManage && !isArchived}
 			<Button
 				size="sm"
 				intent="outline"
@@ -120,7 +141,13 @@
 			</Button>
 		{/if}
 		<div class={styles.contentArea()}>
-			<span class={styles.ownerNameOnBanner()}>{ownerName}</span>
+			<!-- Variant A: for-someone lists lead with „Pro {recipient}" (prefix lighter, name bold);
+			     self lists render the recipient name exactly as the old owner slot did. -->
+			<span class={styles.ownerNameOnBanner()}>
+				{#if isForSomeoneElse}<span class={styles.recipientForPrefix()}
+						>{m.wishlist_header_for_prefix()}</span
+					>&nbsp;{/if}{recipientDisplayName}
+			</span>
 			<h1 class={styles.titleOnBanner()}>{title}</h1>
 			{#if description}
 				<p class={styles.descriptionOnBanner()}>{description}</p>
@@ -137,13 +164,16 @@
 					</span>
 				{/if}
 			</div>
+			{#if managedByLabel !== null}
+				<div class={styles.managedByLine()}>{managedByLabel}</div>
+			{/if}
 		</div>
 	</div>
 
-	<!-- Action buttons -->
-	{#if isOwnerOrModerator}
+	<!-- Action buttons – open to any manager (recipient OR správce) per the rights matrix -->
+	{#if canManage}
 		<div class={styles.actionRow()}>
-			{#if isOwner && !isArchived}
+			{#if !isArchived}
 				<Button
 					size="sm"
 					intent="outline"
@@ -154,18 +184,16 @@
 					{m.wishlist_share_button()}
 				</Button>
 			{/if}
-			{#if isOwner}
-				<Button
-					size="sm"
-					intent="outline"
-					aria-label={m.wishlist_moderators_label()}
-					onclick={onmoderators}
-				>
-					<UsersIcon data-icon="inline-start" />
-					{m.wishlist_moderators_label()}
-				</Button>
-			{/if}
-			{#if isOwner && !isArchived}
+			<Button
+				size="sm"
+				intent="outline"
+				aria-label={m.wishlist_moderators_label()}
+				onclick={onmoderators}
+			>
+				<UsersIcon data-icon="inline-start" />
+				{m.wishlist_moderators_label()}
+			</Button>
+			{#if !isArchived}
 				<Button
 					size="sm"
 					intent="outline"
@@ -179,8 +207,8 @@
 		</div>
 	{/if}
 
-	<!-- Owner sees reservations disclosure – visible to ALL users -->
-	{#if ownerIsModerator}
+	<!-- Recipient-also-správce disclosure – visible to ALL users -->
+	{#if recipientIsModerator}
 		<div class={styles.disclosureBanner()}>
 			<EyeIcon class="size-4 flex-shrink-0" />
 			<span>{m.wishlist_owner_sees_reservations()}</span>
@@ -193,7 +221,7 @@
 			<ArchiveIcon class="size-4 flex-shrink-0" />
 			<span>{m.wishlist_archived_banner()}</span>
 		</div>
-	{:else if isOwner && isEventPast}
+	{:else if canManage && isEventPast}
 		<div class={styles.archivedBanner()}>
 			<ArchiveIcon class="size-4 flex-shrink-0" />
 			<span>{m.wishlist_archive_event_passed()}</span>
@@ -201,7 +229,7 @@
 				{m.wishlist_archive_button()}
 			</Button>
 		</div>
-	{:else if !isDraft && isOwner}
+	{:else if !isDraft && canManage}
 		<div class={styles.sharedBanner()}>
 			<LockIcon class="size-4 flex-shrink-0" />
 			<span>{m.wishlist_shared_banner()}</span>
@@ -209,7 +237,7 @@
 				{m.wishlist_reshare()}
 			</Button>
 		</div>
-	{:else if isDraft && isOwner}
+	{:else if isDraft && canManage}
 		<div class={styles.draftBanner()}>
 			<InfoIcon class="size-4 flex-shrink-0" />
 			<span>{m.wishlist_draft_banner()}</span>

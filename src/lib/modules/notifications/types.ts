@@ -8,7 +8,9 @@ export const NOTIFICATION_TYPE = {
 	LIKED_GIFT_RESERVED: 'liked_gift_reserved',
 	RESERVED_GIFT_EDITED: 'reserved_gift_edited',
 	WISHLIST_ARCHIVED: 'wishlist_archived',
-	OWNER_SELF_PROMOTED: 'owner_self_promoted',
+	// Recipient self-promoted to správce. Stored value kept as 'owner_self_promoted' so existing
+	// production notification rows and the icon/message maps keyed on it stay valid (issue #99).
+	RECIPIENT_SELF_PROMOTED: 'owner_self_promoted',
 	NEW_GIFT_ADDED: 'new_gift_added',
 	GIFT_RESERVED: 'gift_reserved',
 	MODERATOR_INVITED: 'moderator_invited',
@@ -21,7 +23,7 @@ export const EMAIL_NOTIFICATION_TYPES: readonly NotificationType[] = [
 	NOTIFICATION_TYPE.LIKED_GIFT_RESERVED,
 	NOTIFICATION_TYPE.RESERVED_GIFT_EDITED,
 	NOTIFICATION_TYPE.WISHLIST_ARCHIVED,
-	NOTIFICATION_TYPE.OWNER_SELF_PROMOTED,
+	NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
 	NOTIFICATION_TYPE.MODERATOR_INVITED,
 ] as const;
 

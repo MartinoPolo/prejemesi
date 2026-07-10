@@ -92,7 +92,7 @@
 		{#each filteredWishlists as wishlistItem (wishlistItem.id)}
 			<WishlistCard
 				wishlist={wishlistItem}
-				ownerName={wishlistItem.ownerName}
+				recipientDisplayName={wishlistItem.recipientDisplayName}
 				reservationProgress={{
 					reserved: wishlistItem.reservedGifts,
 					total: wishlistItem.totalGifts,
@@ -104,7 +104,7 @@
 	<WishlistListView
 		items={filteredWishlists.map((w) => ({
 			wishlist: w,
-			ownerName: w.ownerName,
+			recipientDisplayName: w.recipientDisplayName,
 			giftCount: w.totalGifts,
 			reservedCount: w.reservedGifts,
 		}))}
