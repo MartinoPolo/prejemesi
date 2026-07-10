@@ -46,9 +46,9 @@ Controlled via `value` + `onValueChange`.
 	{value}
 	oninput={handleInput}
 	class={cn(
-		'h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted outline-none select-none disabled:cursor-not-allowed disabled:opacity-50',
-		'[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-sm',
-		'[&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-primary [&::-moz-range-thumb]:bg-background',
+		'h-2.5 w-full cursor-pointer appearance-none rounded-full border-2 border-ink bg-background outline-none select-none disabled:cursor-not-allowed disabled:opacity-50',
+		'[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-ink [&::-webkit-slider-thumb]:bg-card [&::-webkit-slider-thumb]:shadow-[2px_2px_0_var(--hard-shadow)]',
+		'[&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-ink [&::-moz-range-thumb]:bg-card',
 		'focus-visible:ring-2 focus-visible:ring-ring/50',
 		className,
 	)}

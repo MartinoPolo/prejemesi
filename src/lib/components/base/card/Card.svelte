@@ -42,7 +42,7 @@
 		background: linear-gradient(
 			90deg,
 			transparent 0%,
-			color-mix(in oklch, var(--foreground) 4%, transparent) 50%,
+			color-mix(in oklab, var(--foreground) 4%, transparent) 50%,
 			transparent 100%
 		);
 		background-size: 200% 100%;

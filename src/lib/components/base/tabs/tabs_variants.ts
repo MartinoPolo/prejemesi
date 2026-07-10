@@ -4,14 +4,14 @@ import type { HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const tabsContainerVariants = tv({
-	base: 'inline-flex bg-surface-2 border border-border p-0.75 rounded-md gap-0.5',
+	base: 'inline-flex bg-background border-[2.5px] border-ink p-[5px] rounded-[12px] gap-1',
 });
 
 export const tabVariants = tv({
-	base: 'inline-flex items-center gap-1.5 px-3 py-1.25 text-xs font-medium rounded-sm text-foreground-muted cursor-pointer transition-all duration-120 ease-[ease] border-none bg-transparent hover:text-foreground hover:bg-[color-mix(in_oklch,var(--foreground)_4%,transparent)] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] active:bg-[color-mix(in_oklch,var(--foreground)_8%,transparent)]',
+	base: 'inline-flex items-center gap-1.5 px-3 py-1.25 text-xs font-semibold rounded-btn text-foreground-muted cursor-pointer transition-[background-color,color,box-shadow] border-2 border-transparent bg-transparent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97]',
 	variants: {
 		active: {
-			true: 'bg-surface text-foreground shadow-sm hover:bg-surface-hover',
+			true: 'bg-card text-foreground border-ink shadow-sticker-sm',
 			false: '',
 		},
 	},

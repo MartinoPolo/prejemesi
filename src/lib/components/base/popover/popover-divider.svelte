@@ -12,6 +12,6 @@
 <hr
 	bind:this={ref}
 	data-slot="popover-divider"
-	class={cn('my-1 border-t border-border', className)}
+	class={cn('my-1 border-t-2 border-dashed border-ink-faint', className)}
 	{...restProps}
 />
