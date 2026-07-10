@@ -51,8 +51,11 @@ test.describe('Create a wishlist for someone else', () => {
 		await shareWishlist(page);
 
 		// The reserve button carries aria-label „Rezervovat {gift.name}" for visitors/správci.
+		// `exact: true` is required: a správce also gets a drag-to-reorder wrapper (role="button")
+		// around each card whose aggregated accessible name contains this label as a substring, so a
+		// non-exact name match resolves to two elements (the wrapper + the real button).
 		await expect(
-			page.getByRole('button', { name: `Rezervovat ${TEST_GIFT.name}` }),
+			page.getByRole('button', { name: `Rezervovat ${TEST_GIFT.name}`, exact: true }),
 		).toBeVisible({ timeout: 10_000 });
 
 		await page.context().close();

@@ -146,8 +146,7 @@
 			<span class={styles.ownerNameOnBanner()}>
 				{#if isForSomeoneElse}<span class={styles.recipientForPrefix()}
 						>{m.wishlist_header_for_prefix()}</span
-					>
-				{/if}{recipientDisplayName}
+					>&nbsp;{/if}{recipientDisplayName}
 			</span>
 			<h1 class={styles.titleOnBanner()}>{title}</h1>
 			{#if description}

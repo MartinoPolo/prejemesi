@@ -16,6 +16,7 @@ export default [
 			'.svelte-kit',
 			'.storybook',
 			'storybook-static',
+			'.design-probe',
 			'build',
 			'coverage',
 			'node_modules',

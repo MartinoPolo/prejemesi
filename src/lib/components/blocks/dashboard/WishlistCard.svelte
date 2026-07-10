@@ -96,7 +96,10 @@
 		</div>
 		<div class={variants.bannerOverlay()}></div>
 		<div class={variants.bannerTitle()}>{wishlistData.title}</div>
-		<div class={variants.statusBadge()} aria-label="Stav: {statusLabel}">
+		<div
+			class={variants.statusBadge()}
+			aria-label={m.wishlist_status_aria({ status: statusLabel })}
+		>
 			<span class={cn(variants.statusDot(), statusDotClass)}></span>
 			{statusLabel}
 		</div>
@@ -116,9 +119,12 @@
 		{#if reservationProgress}
 			<div class={variants.progressWrap()}>
 				<div class={variants.progressLabelRow()}>
-					<span>Průběh rezervací</span>
+					<span>{m.wishlist_reservation_progress()}</span>
 					<span class={variants.progressValue()}>
-						{reservationProgress.reserved} / {reservationProgress.total} rezervováno
+						{m.wishlist_reserved_ratio({
+							reserved: reservationProgress.reserved,
+							total: reservationProgress.total,
+						})}
 					</span>
 				</div>
 				<div class={variants.progressTrack()}>
@@ -136,15 +142,17 @@
 			<div class={variants.metaRow()}>
 				<span class={variants.availableCount()}>
 					<GiftIcon class="inline size-3.5 align-middle" />
-					Dostupných: {availableGifts} přání
+					{m.wishlist_available_gifts({ count: availableGifts })}
 				</span>
 				{#if myReservations !== undefined && myReservations > 0}
 					<span class={variants.reservationChip()}>
 						<CheckIcon class="size-3" />
-						Moje rezervace: {myReservations}
+						{m.wishlist_my_reservations({ count: myReservations })}
 					</span>
 				{:else if myReservations !== undefined}
-					<span class="text-xs text-muted-foreground/60">žádné moje rezervace</span>
+					<span class="text-xs text-muted-foreground/60"
+						>{m.wishlist_no_my_reservations()}</span
+					>
 				{/if}
 			</div>
 		{/if}
@@ -154,7 +162,9 @@
 			<div class={variants.metaRow()}>
 				<span class={variants.availableCount()}>
 					<GiftIcon class="inline size-3.5 align-middle" />
-					{giftCount} přání
+					{giftCount === 1
+						? m.wishlist_gift_count_one()
+						: m.wishlist_gift_count_other({ count: giftCount })}
 				</span>
 				{#if wishlistData.eventDate}
 					<span class={variants.metaText()}>{formatDate(wishlistData.eventDate)}</span>
@@ -166,9 +176,9 @@
 			<span class={variants.themeBadge()}>{theme.emoji} {theme.label}</span>
 			<span class={variants.metaText()}>
 				{#if reservationProgress}
-					{reservationProgress.total} přání celkem
+					{m.wishlist_total_gifts({ count: reservationProgress.total })}
 				{:else if giftCount === undefined && wishlistData.createdAt}
-					Vytvořeno {formatDate(wishlistData.createdAt)}
+					{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
 				{/if}
 			</span>
 		</div>
