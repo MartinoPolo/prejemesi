@@ -1,0 +1,918 @@
+<!--
+  Přejeme si — redesign exploration, variant: NEOBRUTALISM
+  Punchy yellow × deep violet, 3px ink borders, hard offset shadows, flat surfaces.
+  Two views in one file: landing page + wishlist detail (správce view). Toggle bottom right.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přejeme si — koncept Neobrutalism</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --yellow:#FDC800;
+  --violet:#432DD7;
+  --success:#16A34A;
+  --danger:#DC2626;
+  --surface:#FBFBF9;
+  --ink:#1C293C;
+  --white:#FFFFFF;
+
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s6:24px; --s8:32px;
+
+  --fs-xs:13px; --fs-sm:15px; --fs-md:17px; --fs-lg:21px; --fs-xl:27px; --fs-2xl:35px;
+
+  --bw:3px;                              /* structural border weight */
+  --shadow:6px 6px 0 var(--ink);
+  --shadow-sm:4px 4px 0 var(--ink);
+  --shadow-lg:9px 9px 0 var(--ink);
+
+  --font-ui:'Inter',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+
+/* ============ BASE ============ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-ui);
+  font-size:var(--fs-md);
+  line-height:1.55;
+  color:var(--ink);
+  background:var(--surface);
+  overflow-x:hidden;
+}
+h1,h2,h3{line-height:1.08;font-weight:900;letter-spacing:-.02em}
+a{color:var(--violet);text-decoration-thickness:2px;text-underline-offset:3px}
+button{font-family:inherit;cursor:pointer}
+img,svg{display:block;max-width:100%}
+.mono{font-family:var(--font-mono)}
+.container{max-width:1200px;margin-inline:auto;padding-inline:var(--s6)}
+
+:focus-visible{outline:var(--bw) solid var(--violet);outline-offset:3px}
+.band-violet :focus-visible,.on-violet :focus-visible{outline-color:var(--yellow)}
+
+/* ============ BRUTAL PRIMITIVES ============ */
+.brut{border:var(--bw) solid var(--ink);background:var(--white);box-shadow:var(--shadow)}
+.brut-sm{border:var(--bw) solid var(--ink);background:var(--white);box-shadow:var(--shadow-sm)}
+
+.btn{
+  display:inline-flex;align-items:center;gap:var(--s2);
+  border:var(--bw) solid var(--ink);
+  box-shadow:var(--shadow-sm);
+  background:var(--white);color:var(--ink);
+  font-weight:800;font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:.02em;
+  padding:var(--s3) var(--s6);
+  transition:transform .12s ease,box-shadow .12s ease;
+  text-decoration:none;
+}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.btn:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
+.btn-yellow{background:var(--yellow)}
+.btn-violet{background:var(--violet);color:var(--white)}
+.btn-ghost{box-shadow:none;background:transparent}
+.btn-ghost:hover{background:var(--yellow);transform:none;box-shadow:none}
+.btn-sm{padding:var(--s2) var(--s4);font-size:var(--fs-xs);box-shadow:3px 3px 0 var(--ink)}
+.btn-sm:hover{box-shadow:5px 5px 0 var(--ink)}
+.btn-sm:active{box-shadow:0 0 0 var(--ink)}
+
+.sticker{
+  display:inline-block;
+  border:var(--bw) solid var(--ink);
+  background:var(--yellow);
+  font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);
+  text-transform:uppercase;letter-spacing:.04em;
+  padding:var(--s1) var(--s3);
+  box-shadow:var(--shadow-sm);
+}
+.sticker-white{background:var(--white)}
+.sticker-violet{background:var(--violet);color:var(--white)}
+.rot-l{transform:rotate(-2deg)}
+.rot-r{transform:rotate(1.5deg)}
+
+.eyebrow{
+  font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);
+  text-transform:uppercase;letter-spacing:.14em;
+  display:inline-flex;align-items:center;gap:var(--s2);
+  margin-bottom:var(--s4);
+}
+.eyebrow::before{content:"";width:14px;height:14px;background:var(--yellow);border:var(--bw) solid var(--ink);display:inline-block}
+
+.hl{background:var(--yellow);padding:0 .12em;box-decoration-break:clone;-webkit-box-decoration-break:clone;border:2px solid var(--ink)}
+.hl-violet{background:var(--violet);color:var(--white);padding:0 .12em;border:2px solid var(--ink);box-decoration-break:clone;-webkit-box-decoration-break:clone}
+
+/* zigzag divider */
+.zigzag{
+  height:18px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='18' viewBox='0 0 36 18'%3E%3Cpath d='M0 15 9 3l9 12L27 3l9 12' fill='none' stroke='%231C293C' stroke-width='3'/%3E%3C/svg%3E");
+  background-repeat:repeat-x;
+  background-size:36px 18px;
+}
+
+/* checkerboard accent */
+.checker{
+  position:absolute;width:72px;height:72px;
+  background:repeating-conic-gradient(var(--ink) 0 25%,transparent 0 50%) 0 0/24px 24px;
+  opacity:.9;pointer-events:none;
+}
+
+/* ============ VIEW SWITCHER ============ */
+.switcher{
+  position:fixed;right:var(--s4);bottom:var(--s4);z-index:99;
+  border:var(--bw) solid var(--ink);background:var(--white);box-shadow:var(--shadow);
+  padding:var(--s2);display:flex;gap:var(--s2);align-items:center;
+}
+.switcher .lbl{font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding-inline:var(--s2)}
+.switcher button{
+  border:var(--bw) solid var(--ink);background:var(--white);
+  font-weight:800;font-size:var(--fs-xs);text-transform:uppercase;
+  padding:var(--s2) var(--s3);
+  transition:transform .12s ease;
+}
+.switcher button:hover{transform:translate(-1px,-1px)}
+.switcher button[aria-pressed="true"]{background:var(--violet);color:var(--white)}
+
+.view{display:none}
+.view.active{display:block}
+
+/* ============ MARQUEE ============ */
+.marquee{
+  border-block:var(--bw) solid var(--ink);
+  background:var(--violet);color:var(--white);
+  overflow:hidden;white-space:nowrap;
+  padding-block:var(--s2);
+}
+.marquee-track{display:inline-block;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-sm);letter-spacing:.08em}
+.marquee-track .star{color:var(--yellow)}
+
+/* ============ LANDING: NAV ============ */
+.nav{
+  border-bottom:var(--bw) solid var(--ink);
+  background:var(--surface);
+  position:sticky;top:0;z-index:50;
+}
+.nav-inner{display:flex;align-items:center;gap:var(--s6);padding-block:var(--s3)}
+.logo{display:inline-flex;align-items:center;gap:var(--s3);text-decoration:none;color:var(--ink)}
+.logo-box{
+  width:40px;height:40px;display:grid;place-items:center;font-size:20px;
+  background:var(--yellow);border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--ink);
+}
+.logo b{font-weight:900;font-size:var(--fs-lg);letter-spacing:-.02em;text-transform:uppercase}
+.nav-links{display:flex;gap:var(--s6);margin-left:var(--s4)}
+.nav-links a{color:var(--ink);font-weight:700;font-size:var(--fs-sm);text-decoration:none;border-bottom:3px solid transparent}
+.nav-links a:hover{border-bottom-color:var(--yellow)}
+.nav-cta{margin-left:auto;display:flex;gap:var(--s3);align-items:center}
+
+/* ============ LANDING: HERO ============ */
+.hero{position:relative;padding-block:64px 72px;overflow:hidden}
+.hero .checker{top:0;right:0}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+.hero-badges{display:flex;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s6)}
+.hero h1{font-size:clamp(40px,6vw,68px);text-transform:uppercase;margin-bottom:var(--s6)}
+.hero p.lead{font-size:var(--fs-lg);font-weight:500;max-width:34ch;margin-bottom:var(--s8)}
+.hero-cta{display:flex;gap:var(--s4);flex-wrap:wrap;align-items:center}
+.hero-note{margin-top:var(--s4);font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.hero-note::before{content:"→ ";color:var(--violet)}
+
+/* hero product mock */
+.mock{position:relative}
+.mock-card{padding:var(--s6);position:relative;background:var(--white);border:var(--bw) solid var(--ink);box-shadow:var(--shadow-lg)}
+.mock-head{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s3);border-bottom:var(--bw) solid var(--ink);padding-bottom:var(--s3);margin-bottom:var(--s3)}
+.mock-head h3{font-size:var(--fs-lg);text-transform:uppercase}
+.mock-count{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;background:var(--yellow);border:2px solid var(--ink);padding:2px var(--s2)}
+.mock-row{display:flex;align-items:center;gap:var(--s3);padding-block:var(--s3);border-bottom:2px dashed var(--ink)}
+.mock-row:last-of-type{border-bottom:none}
+.mock-emoji{width:44px;height:44px;display:grid;place-items:center;font-size:22px;border:var(--bw) solid var(--ink);background:var(--surface);flex:none}
+.mock-name{font-weight:700;font-size:var(--fs-sm)}
+.mock-price{font-family:var(--font-mono);font-size:var(--fs-xs);opacity:.85}
+.mock-state{margin-left:auto;flex:none;font-family:var(--font-mono);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border:2px solid var(--ink);padding:3px var(--s2)}
+.state-free{background:var(--yellow)}
+.state-res{background:var(--white);color:var(--success);border-color:var(--success)}
+.mock-privacy{
+  position:absolute;right:-14px;bottom:-26px;max-width:260px;
+  background:var(--yellow);border:var(--bw) solid var(--ink);box-shadow:var(--shadow-sm);
+  font-weight:700;font-size:var(--fs-xs);padding:var(--s3) var(--s4);
+  transform:rotate(-2.5deg);
+}
+.mock-privacy b{text-decoration:underline;text-decoration-thickness:3px;text-decoration-color:var(--violet)}
+
+/* ============ LANDING: PRO NĚKOHO JINÉHO ============ */
+.band-violet{background:var(--violet);color:var(--white);border-block:var(--bw) solid var(--ink);position:relative}
+.band-violet .eyebrow::before{background:var(--yellow)}
+.forsomeone{padding-block:72px}
+.forsomeone-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.forsomeone h2{font-size:clamp(30px,4vw,46px);text-transform:uppercase;margin-bottom:var(--s6)}
+.forsomeone h2 .hl{border-width:0}
+.forsomeone p{font-size:var(--fs-md);margin-bottom:var(--s6);max-width:46ch}
+.forsomeone ul{list-style:none;display:grid;gap:var(--s3)}
+.forsomeone li{display:flex;gap:var(--s3);font-weight:500;font-size:var(--fs-sm)}
+.forsomeone li::before{content:"★";color:var(--yellow);font-size:var(--fs-md);flex:none;line-height:1.4}
+
+.creator-mock{background:var(--white);color:var(--ink);border:var(--bw) solid var(--ink);box-shadow:var(--shadow-lg);padding:var(--s6)}
+.creator-mock .q{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:var(--s3)}
+.segment{display:grid;grid-template-columns:1fr 1fr;border:var(--bw) solid var(--ink);margin-bottom:var(--s4)}
+.segment button{border:none;background:var(--white);font-weight:800;font-size:var(--fs-sm);padding:var(--s3);text-transform:uppercase}
+.segment button:first-child{border-right:var(--bw) solid var(--ink)}
+.segment button[aria-pressed="true"]{background:var(--yellow)}
+.segment button:hover:not([aria-pressed="true"]){background:var(--surface)}
+.field-mock{border:var(--bw) solid var(--ink);padding:var(--s3) var(--s4);display:flex;flex-direction:column;gap:2px;margin-bottom:var(--s4)}
+.field-mock label{font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+.field-mock .val{font-weight:800;font-size:var(--fs-lg)}
+.field-mock .val::after{content:"";display:inline-block;width:2px;height:1.05em;background:var(--violet);vertical-align:-3px;margin-left:2px}
+.result-mini{border:var(--bw) solid var(--ink);background:var(--surface);padding:var(--s4);display:flex;align-items:center;gap:var(--s4)}
+.result-mini .avatar{width:48px;height:48px;flex:none;display:grid;place-items:center;font-size:24px;background:var(--yellow);border:var(--bw) solid var(--ink)}
+.result-mini .who{font-weight:900;font-size:var(--fs-md)}
+.result-mini .who span{font-weight:500}
+.result-mini .meta{font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.75;margin-top:2px}
+
+/* ============ LANDING: KROKY ============ */
+.steps{padding-block:72px;background:var(--yellow);border-bottom:var(--bw) solid var(--ink);position:relative;overflow:hidden}
+.steps .checker{left:-18px;bottom:-18px}
+.steps h2{font-size:clamp(30px,4vw,46px);text-transform:uppercase;margin-bottom:var(--s8)}
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s6)}
+.step{background:var(--white);border:var(--bw) solid var(--ink);box-shadow:var(--shadow);padding:var(--s6);position:relative;transition:transform .12s ease,box-shadow .12s ease}
+.step:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}
+.step .num{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-2xl);line-height:1;color:var(--white);-webkit-text-stroke:2px var(--ink);letter-spacing:-.02em}
+.step h3{font-size:var(--fs-md);text-transform:uppercase;margin-block:var(--s3) var(--s2)}
+.step p{font-size:var(--fs-sm);font-weight:500}
+.step .tag{position:absolute;top:-14px;right:var(--s3)}
+
+/* ============ LANDING: VÝHODY ============ */
+.features{padding-block:72px}
+.features h2{font-size:clamp(30px,4vw,46px);text-transform:uppercase;margin-bottom:var(--s8)}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s6);align-items:start}
+.feature{border:var(--bw) solid var(--ink);background:var(--white);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.feature-head{border-bottom:var(--bw) solid var(--ink);padding:var(--s4) var(--s4);display:flex;align-items:center;gap:var(--s3);background:var(--surface)}
+.feature-head .ic{width:36px;height:36px;flex:none;display:grid;place-items:center;border:var(--bw) solid var(--ink);background:var(--yellow);font-size:18px}
+.feature-head h3{font-size:var(--fs-md);text-transform:uppercase}
+.feature-body{padding:var(--s4);display:grid;gap:var(--s3)}
+.feature-body p{font-size:var(--fs-sm);font-weight:500}
+
+.compare{display:grid;gap:var(--s3)}
+.compare-panel{border:var(--bw) solid var(--ink);padding:var(--s3)}
+.compare-panel .who{font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:var(--s2)}
+.compare-row{display:flex;align-items:center;gap:var(--s2);font-weight:700;font-size:var(--fs-xs)}
+.compare-row .mock-emoji{width:32px;height:32px;font-size:16px}
+.compare-hidden{background:var(--surface)}
+.compare-hidden .q{margin-left:auto;font-family:var(--font-mono);font-weight:700;letter-spacing:.2em;color:var(--violet)}
+.compare-seen{background:var(--yellow)}
+.compare-seen .mock-state{margin-left:auto}
+
+.linkpill{display:flex;border:var(--bw) solid var(--ink)}
+.linkpill .url{flex:1;font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;padding:var(--s3);background:var(--surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.linkpill button{border:none;border-left:var(--bw) solid var(--ink);background:var(--yellow);font-weight:800;font-size:var(--fs-xs);text-transform:uppercase;padding-inline:var(--s4)}
+.linkpill button:hover{background:var(--violet);color:var(--white)}
+.share-row{display:flex;gap:var(--s2);flex-wrap:wrap}
+.share-chip{border:var(--bw) solid var(--ink);background:var(--white);font-weight:700;font-size:var(--fs-xs);padding:var(--s2) var(--s3);display:inline-flex;gap:var(--s2);align-items:center;box-shadow:3px 3px 0 var(--ink);transition:transform .12s ease,box-shadow .12s ease;cursor:pointer}
+.share-chip:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink);background:var(--yellow)}
+.share-chip:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+
+.themes-row{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.theme-chip{border:var(--bw) solid var(--ink);font-weight:700;font-size:var(--fs-xs);padding:var(--s2) var(--s3);display:inline-flex;gap:var(--s2);align-items:center;background:var(--white);transition:transform .12s ease;cursor:pointer}
+.theme-chip:hover{transform:rotate(-2deg) scale(1.04)}
+.theme-chip.t-vanoce{background:#ffe3e0}
+.theme-chip.t-naroz{background:#ffe0f1}
+.theme-chip.t-eleg{background:#e5e9ff}
+.theme-chip.t-zabava{background:#e0f5ff}
+.theme-chip.t-vlastni{background:repeating-linear-gradient(45deg,var(--yellow) 0 8px,var(--white) 8px 16px)}
+
+/* ============ LANDING: CTA + FOOTER ============ */
+.cta{background:var(--violet);color:var(--white);border-block:var(--bw) solid var(--ink);padding-block:72px;text-align:center;position:relative;overflow:hidden}
+.cta .checker{right:-18px;top:-18px;background:repeating-conic-gradient(var(--yellow) 0 25%,transparent 0 50%) 0 0/24px 24px}
+.cta h2{font-size:clamp(32px,5vw,56px);text-transform:uppercase;margin-bottom:var(--s4)}
+.cta p{font-size:var(--fs-lg);margin-bottom:var(--s8)}
+.cta .mono-note{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:var(--s4);color:var(--yellow)}
+
+.footer{background:var(--ink);color:var(--surface);padding-block:var(--s8)}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);flex-wrap:wrap}
+.footer .logo-box{box-shadow:none;width:32px;height:32px;font-size:16px}
+.footer a{color:var(--yellow);font-weight:700}
+.footer p{font-size:var(--fs-sm)}
+
+/* ============ WISHLIST VIEW ============ */
+.appnav{border-bottom:var(--bw) solid var(--ink);background:var(--surface);position:sticky;top:0;z-index:50}
+.appnav-inner{display:flex;align-items:center;gap:var(--s6);padding-block:var(--s3)}
+.tabs{display:flex;gap:var(--s2);margin-left:var(--s4)}
+.tab{border:var(--bw) solid transparent;background:transparent;font-weight:700;font-size:var(--fs-sm);padding:var(--s2) var(--s4);color:var(--ink);text-decoration:none}
+.tab:hover{border-color:var(--ink)}
+.tab.active{background:var(--yellow);border-color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.avatar{margin-left:auto;width:40px;height:40px;display:grid;place-items:center;font-weight:900;background:var(--violet);color:var(--white);border:var(--bw) solid var(--ink);box-shadow:3px 3px 0 var(--ink)}
+
+.wl-hero{
+  border-bottom:var(--bw) solid var(--ink);
+  background:var(--violet);
+  background-image:radial-gradient(var(--yellow) 2.5px,transparent 3px);
+  background-size:26px 26px;
+  color:var(--white);
+  padding-block:48px;position:relative;
+}
+.wl-hero-card{background:var(--white);color:var(--ink);border:var(--bw) solid var(--ink);box-shadow:var(--shadow-lg);padding:var(--s8);display:flex;gap:var(--s6);justify-content:space-between;flex-wrap:wrap;align-items:flex-end}
+.wl-for{font-size:var(--fs-lg);font-weight:500}
+.wl-for b{font-weight:900;background:var(--yellow);border:2px solid var(--ink);padding:0 .15em}
+.wl-title{font-size:clamp(28px,4vw,44px);text-transform:uppercase;margin-block:var(--s2) var(--s4)}
+.wl-meta{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center}
+.wl-meta .muted{font-family:var(--font-mono);font-size:var(--fs-xs);font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.04em}
+.wl-actions{display:flex;gap:var(--s3);flex-wrap:wrap}
+
+.disclosure{background:var(--yellow);border-bottom:var(--bw) solid var(--ink)}
+.disclosure-inner{display:flex;gap:var(--s3);align-items:center;padding-block:var(--s3);font-weight:700;font-size:var(--fs-sm)}
+.disclosure .eye{width:32px;height:32px;flex:none;display:grid;place-items:center;background:var(--white);border:var(--bw) solid var(--ink);font-size:16px}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:var(--s3);align-items:center;padding-block:var(--s6)}
+.viewmode{display:flex;border:var(--bw) solid var(--ink)}
+.viewmode button{border:none;background:var(--white);padding:var(--s2) var(--s3);font-size:var(--fs-sm);display:grid;place-items:center}
+.viewmode button:first-child{border-right:var(--bw) solid var(--ink)}
+.viewmode button[aria-pressed="true"]{background:var(--violet);color:var(--white)}
+.viewmode button:hover:not([aria-pressed="true"]){background:var(--yellow)}
+.sort{border:var(--bw) solid var(--ink);background:var(--white);font-family:var(--font-ui);font-weight:700;font-size:var(--fs-xs);padding:var(--s2) var(--s3);text-transform:uppercase}
+.filter-chip{border:var(--bw) solid var(--ink);background:var(--white);font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.03em;padding:var(--s2) var(--s3);transition:transform .12s ease}
+.filter-chip:hover{transform:translate(-1px,-1px)}
+.filter-chip[aria-pressed="true"]{background:var(--success);color:var(--white)}
+.toolbar-right{margin-left:auto;display:flex;gap:var(--s3);flex-wrap:wrap}
+
+/* gift grid */
+.gifts{display:grid;grid-template-columns:repeat(auto-fill,minmax(264px,1fr));gap:var(--s8) var(--s6);padding-bottom:96px}
+.gift{border:var(--bw) solid var(--ink);background:var(--white);box-shadow:var(--shadow);display:flex;flex-direction:column;position:relative;transition:transform .12s ease,box-shadow .12s ease}
+.gift:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}
+.gift-media{height:132px;border-bottom:var(--bw) solid var(--ink);display:grid;place-items:center;font-size:56px;position:relative;overflow:hidden}
+.media-yellow{background:var(--yellow)}
+.media-dots{background:var(--surface);background-image:radial-gradient(var(--ink) 1.8px,transparent 2.2px);background-size:20px 20px}
+.media-stripes{background:repeating-linear-gradient(-45deg,var(--surface) 0 14px,#efece5 14px 28px)}
+.media-violet{background:var(--violet)}
+.media-grid{background:var(--white);background-image:linear-gradient(var(--ink) 1.5px,transparent 1.5px),linear-gradient(90deg,var(--ink) 1.5px,transparent 1.5px);background-size:24px 24px;background-position:-1px -1px}
+
+.stamp{
+  position:absolute;inset:auto;left:50%;top:50%;
+  transform:translate(-50%,-50%) rotate(-8deg);
+  font-weight:900;font-size:19px;text-transform:uppercase;letter-spacing:.04em;
+  border:var(--bw) solid var(--ink);box-shadow:var(--shadow-sm);
+  padding:var(--s2) var(--s4);white-space:nowrap;
+}
+.stamp-res{background:var(--success);color:var(--white)}
+.stamp-recv{background:var(--violet);color:var(--white)}
+
+.gift-tags{position:absolute;top:-13px;left:var(--s3);right:var(--s3);display:flex;gap:var(--s2);flex-wrap:wrap;z-index:2}
+.gift-tags .sticker{font-size:11px;padding:2px var(--s2);box-shadow:2px 2px 0 var(--ink)}
+
+.gift-body{padding:var(--s4);display:flex;flex-direction:column;gap:var(--s2);flex:1}
+.gift h3{font-size:var(--fs-md);font-weight:800;letter-spacing:-.01em}
+.piece{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);border:2px solid var(--ink);background:var(--surface);padding:0 var(--s1);vertical-align:2px;margin-left:var(--s1)}
+.gift-price{font-family:var(--font-mono);font-weight:700;font-size:var(--fs-md)}
+.gift-price.none{opacity:.55;font-size:var(--fs-xs);text-transform:uppercase}
+.link-chip{align-self:flex-start;font-family:var(--font-mono);font-size:11px;font-weight:700;border:2px solid var(--ink);padding:2px var(--s2);background:var(--surface);text-decoration:none;color:var(--violet)}
+.link-chip:hover{background:var(--violet);color:var(--white);border-color:var(--ink)}
+.avail{font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--violet)}
+.reserved-by{font-family:var(--font-mono);font-size:11px;font-weight:700;text-transform:uppercase;color:var(--success)}
+
+.gift-foot{margin-top:auto;display:flex;gap:var(--s2);align-items:center;padding-top:var(--s3)}
+.like{
+  border:var(--bw) solid var(--ink);background:var(--white);
+  font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);
+  padding:var(--s2) var(--s3);display:inline-flex;gap:6px;align-items:center;
+  transition:transform .12s ease;
+}
+.like:hover{transform:rotate(-4deg) scale(1.06);background:#ffe3e0}
+.like[aria-pressed="true"]{background:#ffe3e0;color:var(--danger)}
+.gift-foot .btn{flex:1;justify-content:center;padding-block:var(--s2)}
+.taken-label{flex:1;text-align:center;font-family:var(--font-mono);font-weight:700;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;border:var(--bw) dashed var(--ink);padding:var(--s2);opacity:.7}
+
+.gift-add{
+  border:var(--bw) dashed var(--ink);background:transparent;box-shadow:none;
+  display:grid;place-items:center;min-height:280px;cursor:pointer;
+  font-weight:800;font-size:var(--fs-md);text-transform:uppercase;gap:var(--s2);
+  transition:transform .12s ease,background .12s ease;
+}
+.gift-add:hover{background:var(--yellow);transform:rotate(-1deg)}
+.gift-add .plus{font-size:44px;font-weight:900;line-height:1}
+
+.gift.is-hidden{display:none}
+
+/* list mode */
+.gifts.listmode{grid-template-columns:1fr;gap:var(--s4)}
+.gifts.listmode .gift{flex-direction:row;align-items:stretch}
+.gifts.listmode .gift-media{width:120px;height:auto;min-height:110px;border-bottom:none;border-right:var(--bw) solid var(--ink);font-size:40px;flex:none}
+.gifts.listmode .gift-body{flex-direction:row;align-items:center;flex-wrap:wrap;gap:var(--s3) var(--s6)}
+.gifts.listmode .gift-foot{margin-top:0;margin-left:auto;padding-top:0}
+.gifts.listmode .gift-foot .btn{flex:none}
+.gifts.listmode .gift-add{min-height:90px}
+.gifts.listmode .stamp{font-size:14px}
+
+/* ============ ANIMATIONS ============ */
+@media (prefers-reduced-motion: no-preference){
+  @keyframes popIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @keyframes floaty{0%,100%{transform:rotate(-2.5deg) translateY(0)}50%{transform:rotate(-1.5deg) translateY(-6px)}}
+  @keyframes wob{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+
+  .view.active .anim{animation:popIn .4s cubic-bezier(.2,.9,.3,1.2) both;animation-delay:calc(var(--i,0)*60ms)}
+  .marquee-track{animation:slide 22s linear infinite}
+  .mock-privacy{animation:floaty 5s ease-in-out infinite}
+  .hero-badges .sticker:hover{animation:wob .5s ease-in-out}
+  .step .tag{transition:transform .15s ease}
+  .step:hover .tag{transform:rotate(6deg) scale(1.1)}
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width:1000px){
+  .hero-grid,.forsomeone-grid{grid-template-columns:1fr;gap:var(--s8)}
+  .steps-grid{grid-template-columns:repeat(2,1fr)}
+  .features-grid{grid-template-columns:1fr}
+  .mock-privacy{right:var(--s2)}
+}
+@media (max-width:640px){
+  .nav-links{display:none}
+  .steps-grid{grid-template-columns:1fr}
+  .hero{padding-block:40px 56px}
+  .hero h1{font-size:38px}
+  .wl-hero-card{padding:var(--s6)}
+  .tabs{display:none}
+  .toolbar-right{margin-left:0}
+}
+</style>
+
+<!-- ==================== VIEW SWITCHER ==================== -->
+<div class="switcher" role="group" aria-label="Přepínač náhledu">
+  <span class="lbl">Náhled</span>
+  <button type="button" data-goto="landing" aria-pressed="true">Úvod</button>
+  <button type="button" data-goto="wishlist" aria-pressed="false">Seznam</button>
+</div>
+
+<!-- ==================== VIEW 1: LANDING ==================== -->
+<main class="view active" id="view-landing">
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="logo" href="#">
+        <span class="logo-box">🎁</span>
+        <b>Přejeme&nbsp;si</b>
+      </a>
+      <div class="nav-links">
+        <a href="#jak">Jak to funguje</a>
+        <a href="#vyhody">Výhody</a>
+      </div>
+      <div class="nav-cta">
+        <a class="btn btn-ghost btn-sm" href="#">Přihlásit se</a>
+        <a class="btn btn-yellow btn-sm" href="#">Vytvořit seznam</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="checker" aria-hidden="true"></div>
+    <div class="container hero-grid">
+      <div>
+        <div class="hero-badges anim" style="--i:0">
+          <span class="sticker rot-l">Žádný dárek dvakrát</span>
+          <span class="sticker sticker-white rot-r">Vánoce, narozeniny i výročí</span>
+        </div>
+        <h1 class="anim" style="--i:1">Dárky, které si <span class="hl">přejete</span>. Přesto s&nbsp;<span class="hl-violet">překvapením</span>.</h1>
+        <p class="lead anim" style="--i:2">Sdílejte přání jedním odkazem. Rodina a přátelé si dárky rezervují, abyste nedostali stejný dárek dvakrát.</p>
+        <div class="hero-cta anim" style="--i:3">
+          <a class="btn btn-yellow" href="#">Vytvořit seznam</a>
+          <a class="btn" href="#jak">Jak to funguje?</a>
+        </div>
+        <p class="hero-note anim" style="--i:4">Rezervovat lze i bez účtu.</p>
+      </div>
+
+      <div class="mock anim" style="--i:2">
+        <div class="mock-card">
+          <div class="mock-head">
+            <h3>Přání pro Terezu</h3>
+            <span class="mock-count">8 přání</span>
+          </div>
+          <div class="mock-row">
+            <span class="mock-emoji">🎧</span>
+            <div><div class="mock-name">Sluchátka Sony WH-CH520</div><div class="mock-price">1 190 Kč · alza.cz</div></div>
+            <span class="mock-state state-free">Volné</span>
+          </div>
+          <div class="mock-row">
+            <span class="mock-emoji">📖</span>
+            <div><div class="mock-name">Kuchařka Deník Dity P.</div><div class="mock-price">449 Kč</div></div>
+            <span class="mock-state state-res">Rezervováno</span>
+          </div>
+          <div class="mock-row">
+            <span class="mock-emoji">🧶</span>
+            <div><div class="mock-name">Vlněná deka</div><div class="mock-price">890 Kč</div></div>
+            <span class="mock-state state-free">Volné</span>
+          </div>
+          <div class="mock-row">
+            <span class="mock-emoji">🎫</span>
+            <div><div class="mock-name">Vstupenky na koncert</div><div class="mock-price">1 800 Kč</div></div>
+            <span class="mock-state state-res">Rezervováno</span>
+          </div>
+        </div>
+        <div class="mock-privacy">Tereza rezervace <b>nevidí</b>.<br>Rodina a přátelé ano.</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      ŽÁDNÝ DÁREK DVAKRÁT <span class="star">★</span> REZERVACE ZŮSTÁVAJÍ SKRYTÉ <span class="star">★</span> JEDEN ODKAZ PRO CELOU RODINU <span class="star">★</span> REZERVOVAT LZE I BEZ ÚČTU <span class="star">★</span>
+      ŽÁDNÝ DÁREK DVAKRÁT <span class="star">★</span> REZERVACE ZŮSTÁVAJÍ SKRYTÉ <span class="star">★</span> JEDEN ODKAZ PRO CELOU RODINU <span class="star">★</span> REZERVOVAT LZE I BEZ ÚČTU <span class="star">★</span>
+    </div>
+  </div>
+
+  <!-- ISSUE #99: pro někoho jiného -->
+  <section class="band-violet forsomeone">
+    <div class="container forsomeone-grid">
+      <div>
+        <p class="eyebrow anim" style="--i:0">Novinka · Seznam pro někoho jiného</p>
+        <h2 class="anim" style="--i:1">Seznam i pro ty, kdo si ho <span class="hl">sami nezaloží</span>.</h2>
+        <p class="anim" style="--i:2">Založte seznam dítěti, babičce nebo komukoli bez účtu. Vy ho spravujete a vidíte rezervace, rodina rezervuje jako obvykle — a překvapení zůstane překvapením.</p>
+        <ul class="anim" style="--i:3">
+          <li>Plná správa zůstává vám — přidáváte přání a vidíte, co už je zabrané.</li>
+          <li>Správců může být víc. Máma i táta, klidně i teta.</li>
+          <li>Obdarovaný rezervace nikdy neuvidí.</li>
+        </ul>
+      </div>
+
+      <div class="creator-mock on-violet anim" style="--i:2">
+        <p class="q">Nový seznam — pro koho je?</p>
+        <div class="segment" role="group" aria-label="Pro koho je seznam">
+          <button type="button" aria-pressed="false">Pro mě</button>
+          <button type="button" aria-pressed="true">Pro někoho jiného</button>
+        </div>
+        <div class="field-mock">
+          <label>Jméno obdarovaného</label>
+          <span class="val">Anička</span>
+        </div>
+        <div class="result-mini">
+          <span class="avatar" aria-hidden="true">🎂</span>
+          <div>
+            <div class="who"><span>Pro</span> Aničku</div>
+            <div class="meta">Spravují máma a táta · 8 přání</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KROKY -->
+  <section class="steps" id="jak">
+    <div class="checker" aria-hidden="true"></div>
+    <div class="container">
+      <p class="eyebrow anim" style="--i:0">Jak to funguje</p>
+      <h2 class="anim" style="--i:0">Čtyři kroky k překvapení</h2>
+      <div class="steps-grid">
+        <div class="step anim" style="--i:1">
+          <span class="sticker sticker-white tag rot-r">📝</span>
+          <div class="num">01</div>
+          <h3>Vytvořte seznam</h3>
+          <p>Pojmenujte ho, vyberte téma a přidejte datum události.</p>
+        </div>
+        <div class="step anim" style="--i:2">
+          <span class="sticker sticker-white tag rot-l">🎁</span>
+          <div class="num">02</div>
+          <h3>Přidejte přání</h3>
+          <p>Vložte odkaz z e-shopu nebo krátký popis s cenou.</p>
+        </div>
+        <div class="step anim" style="--i:3">
+          <span class="sticker sticker-white tag rot-r">🔗</span>
+          <div class="num">03</div>
+          <h3>Sdílejte odkaz</h3>
+          <p>Pošlete ho přes WhatsApp, Messenger, Telegram nebo e-mail.</p>
+        </div>
+        <div class="step anim" style="--i:4">
+          <span class="sticker sticker-violet tag rot-l">🤫</span>
+          <div class="num">04</div>
+          <h3>Rezervace zůstanou skryté</h3>
+          <p>Rodina vidí, co už je zabrané. Obdarovaný ne.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VÝHODY -->
+  <section class="features" id="vyhody">
+    <div class="container">
+      <p class="eyebrow anim" style="--i:0">Hlavní výhody</p>
+      <h2 class="anim" style="--i:0">Co řeší Přejeme si</h2>
+      <div class="features-grid">
+
+        <div class="feature anim" style="--i:1">
+          <div class="feature-head"><span class="ic">🙈</span><h3>Skryté rezervace</h3></div>
+          <div class="feature-body">
+            <div class="compare">
+              <div class="compare-panel compare-hidden">
+                <p class="who">Obdarovaný vidí</p>
+                <div class="compare-row"><span class="mock-emoji">🛴</span> Koloběžka <span class="q">???</span></div>
+              </div>
+              <div class="compare-panel compare-seen">
+                <p class="who">Rodina vidí</p>
+                <div class="compare-row"><span class="mock-emoji">🛴</span> Koloběžka <span class="mock-state state-res">Rezervováno</span></div>
+              </div>
+            </div>
+            <p>Stav rezervací zůstává obdarovanému skrytý až do rozbalení.</p>
+          </div>
+        </div>
+
+        <div class="feature anim" style="--i:2">
+          <div class="feature-head"><span class="ic">🔗</span><h3>Sdílení bez přihlašování</h3></div>
+          <div class="feature-body">
+            <div class="linkpill">
+              <span class="url">prejemesi.cz/s/anicka-9</span>
+              <button type="button">Kopírovat</button>
+            </div>
+            <div class="share-row">
+              <button type="button" class="share-chip">💬 WhatsApp</button>
+              <button type="button" class="share-chip">✉️ E-mail</button>
+              <button type="button" class="share-chip">📨 Messenger</button>
+              <button type="button" class="share-chip">✈️ Telegram</button>
+            </div>
+            <p>Babička nepotřebuje účet. Otevře odkaz a rezervuje jedním klikem.</p>
+          </div>
+        </div>
+
+        <div class="feature anim" style="--i:3">
+          <div class="feature-head"><span class="ic">🎨</span><h3>Téma podle příležitosti</h3></div>
+          <div class="feature-body">
+            <div class="themes-row">
+              <span class="theme-chip">🎁 Výchozí</span>
+              <span class="theme-chip t-vanoce">🎄 Vánoce</span>
+              <span class="theme-chip t-naroz">🎂 Narozeniny</span>
+              <span class="theme-chip t-eleg">💍 Elegantní</span>
+              <span class="theme-chip t-zabava">🎉 Zábava</span>
+              <span class="theme-chip t-vlastni">✨ Vlastní</span>
+            </div>
+            <p>Každý seznam dostane vlastní barvy — od Vánoc po svatbu.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="checker" aria-hidden="true"></div>
+    <div class="container on-violet">
+      <h2 class="anim" style="--i:0">Připravte seznam pro další oslavu</h2>
+      <p class="anim" style="--i:1">Stačí pár přání a jeden odkaz.</p>
+      <a class="btn btn-yellow anim" style="--i:2" href="#">Vytvořit seznam</a>
+      <p class="mono-note anim" style="--i:3">Zdarma · Bez reklam · Open source</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <a class="logo" href="#" style="color:var(--surface)">
+        <span class="logo-box">🎁</span>
+        <b>Přejeme&nbsp;si</b>
+      </a>
+      <p>Osobní open-source projekt. Zdarma pro celou rodinu.</p>
+      <a href="#">GitHub ↗</a>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ==================== VIEW 2: WISHLIST DETAIL ==================== -->
+<main class="view" id="view-wishlist">
+
+  <nav class="appnav">
+    <div class="container appnav-inner">
+      <a class="logo" href="#">
+        <span class="logo-box">🎁</span>
+        <b>Přejeme&nbsp;si</b>
+      </a>
+      <div class="tabs">
+        <a class="tab" href="#">Moje seznamy</a>
+        <a class="tab active" href="#">Spravované</a>
+        <a class="tab" href="#">Sledované</a>
+      </div>
+      <span class="avatar">M</span>
+    </div>
+  </nav>
+
+  <header class="wl-hero">
+    <div class="container">
+      <div class="wl-hero-card anim" style="--i:0">
+        <div>
+          <p class="wl-for">Pro <b>Aničku</b></p>
+          <h1 class="wl-title">Anička má narozeniny 🎂</h1>
+          <div class="wl-meta">
+            <span class="sticker rot-l">Sdílený</span>
+            <span class="sticker sticker-white">8 přání</span>
+            <span class="sticker sticker-white">🗓 14. září 2026</span>
+            <span class="muted">Spravují Martin a Jana</span>
+          </div>
+        </div>
+        <div class="wl-actions">
+          <button type="button" class="btn btn-yellow btn-sm">Sdílet</button>
+          <button type="button" class="btn btn-sm">Správci</button>
+          <button type="button" class="btn btn-sm">Archivovat</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="disclosure">
+    <div class="container disclosure-inner">
+      <span class="eye" aria-hidden="true">👁</span>
+      Jako správce vidíte stav rezervací. Anička je neuvidí nikdy.
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="toolbar">
+      <div class="viewmode" role="group" aria-label="Zobrazení">
+        <button type="button" id="mode-cards" aria-pressed="true" aria-label="Karty">▦</button>
+        <button type="button" id="mode-list" aria-pressed="false" aria-label="Řádky">☰</button>
+      </div>
+      <select class="sort" aria-label="Řazení">
+        <option>Priorita</option>
+        <option>Cena: od nejnižší</option>
+        <option>Cena: od nejvyšší</option>
+        <option>Název</option>
+        <option>Datum přidání</option>
+      </select>
+      <button type="button" class="filter-chip" id="filter-avail" aria-pressed="false">Pouze dostupné</button>
+      <div class="toolbar-right">
+        <button type="button" class="btn btn-sm">Import</button>
+        <button type="button" class="btn btn-violet btn-sm">+ Přidat přání</button>
+      </div>
+    </div>
+
+    <div class="gifts" id="gifts">
+
+      <!-- 1: volné + priorita -->
+      <article class="gift anim" style="--i:0" data-avail="1">
+        <div class="gift-tags"><span class="sticker rot-l">Priorita · Vysoká</span></div>
+        <div class="gift-media media-yellow">🚜</div>
+        <div class="gift-body">
+          <h3>LEGO Technic bagr</h3>
+          <p class="gift-price">1 899 Kč</p>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>2</span></button>
+            <button type="button" class="btn btn-yellow">Rezervovat</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2: rezervováno -->
+      <article class="gift anim" style="--i:1" data-avail="0">
+        <div class="gift-media media-dots">🧥
+          <span class="stamp stamp-res">✓ Rezervováno</span>
+        </div>
+        <div class="gift-body">
+          <h3>Zimní bunda (vel. 134)</h3>
+          <p class="gift-price">1 249 Kč</p>
+          <p class="reserved-by">Rezervovala Babička</p>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>1</span></button>
+            <span class="taken-label">Zabráno</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 3: volné + odkaz -->
+      <article class="gift anim" style="--i:2" data-avail="1">
+        <div class="gift-media media-stripes">📚</div>
+        <div class="gift-body">
+          <h3>Kniha Harry Potter a Kámen mudrců</h3>
+          <p class="gift-price">349 Kč</p>
+          <a class="link-chip" href="#">knihydobrovsky.cz ↗</a>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>0</span></button>
+            <button type="button" class="btn btn-yellow">Rezervovat</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 4: částečně rezervováno ×2 -->
+      <article class="gift anim" style="--i:3" data-avail="1">
+        <div class="gift-media media-grid">🎲</div>
+        <div class="gift-body">
+          <h3>Společenská hra Azul <span class="piece">×2</span></h3>
+          <p class="gift-price">799 Kč</p>
+          <p class="avail">Dostupné 1 z 2</p>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>3</span></button>
+            <button type="button" class="btn btn-yellow">Rezervovat</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 5: přijatý dárek -->
+      <article class="gift anim" style="--i:4" data-avail="0">
+        <div class="gift-media media-violet">🐉
+          <span class="stamp stamp-recv">✓ Přijatý dárek</span>
+        </div>
+        <div class="gift-body">
+          <h3>Plyšový drak</h3>
+          <p class="gift-price none">Cena neuvedena</p>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>4</span></button>
+            <span class="taken-label">Splněno 🎉</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 6: upraveno po sdílení -->
+      <article class="gift anim" style="--i:5" data-avail="1">
+        <div class="gift-tags"><span class="sticker sticker-white rot-r">Upraveno po sdílení</span></div>
+        <div class="gift-media media-dots">🛴</div>
+        <div class="gift-body">
+          <h3>Koloběžka</h3>
+          <p class="gift-price">2 490 Kč</p>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>5</span></button>
+            <button type="button" class="btn btn-yellow">Rezervovat</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 7: ×4, částečné -->
+      <article class="gift anim" style="--i:6" data-avail="1">
+        <div class="gift-media media-yellow">🌊</div>
+        <div class="gift-body">
+          <h3>Vstup do aquaparku <span class="piece">×4</span></h3>
+          <p class="gift-price">500 Kč</p>
+          <p class="avail">Dostupné 2 ze 4</p>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>1</span></button>
+            <button type="button" class="btn btn-yellow">Rezervovat</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 8: volné -->
+      <article class="gift anim" style="--i:7" data-avail="1">
+        <div class="gift-media media-stripes">🖍</div>
+        <div class="gift-body">
+          <h3>Pastelky Faber-Castell 36 ks</h3>
+          <p class="gift-price">289 Kč</p>
+          <div class="gift-foot">
+            <button type="button" class="like" aria-pressed="false" aria-label="Líbí se">♥ <span>0</span></button>
+            <button type="button" class="btn btn-yellow">Rezervovat</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- ghost: přidat -->
+      <button type="button" class="gift-add anim" style="--i:8">
+        <span class="plus">+</span>
+        Přidat přání
+      </button>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+// view switcher
+const switcherButtons = document.querySelectorAll('.switcher button');
+switcherButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    switcherButtons.forEach(other => other.setAttribute('aria-pressed', String(other === button)));
+    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+    document.getElementById('view-' + button.dataset.goto).classList.add('active');
+    window.scrollTo({top: 0, behavior: 'instant'});
+  });
+});
+
+// like buttons
+document.querySelectorAll('.like').forEach(likeButton => {
+  likeButton.addEventListener('click', () => {
+    const pressed = likeButton.getAttribute('aria-pressed') === 'true';
+    const countElement = likeButton.querySelector('span');
+    likeButton.setAttribute('aria-pressed', String(!pressed));
+    countElement.textContent = Number(countElement.textContent) + (pressed ? -1 : 1);
+  });
+});
+
+// filter: pouze dostupné
+const filterAvailable = document.getElementById('filter-avail');
+filterAvailable.addEventListener('click', () => {
+  const active = filterAvailable.getAttribute('aria-pressed') !== 'true';
+  filterAvailable.setAttribute('aria-pressed', String(active));
+  document.querySelectorAll('#gifts .gift').forEach(giftCard => {
+    giftCard.classList.toggle('is-hidden', active && giftCard.dataset.avail === '0');
+  });
+});
+
+// view mode cards/list
+const modeCards = document.getElementById('mode-cards');
+const modeList = document.getElementById('mode-list');
+const giftsGrid = document.getElementById('gifts');
+function setListMode(isList) {
+  giftsGrid.classList.toggle('listmode', isList);
+  modeCards.setAttribute('aria-pressed', String(!isList));
+  modeList.setAttribute('aria-pressed', String(isList));
+}
+modeCards.addEventListener('click', () => setListMode(false));
+modeList.addEventListener('click', () => setListMode(true));
+
+// segmented control demo (landing)
+document.querySelectorAll('.segment button').forEach(segmentButton => {
+  segmentButton.addEventListener('click', () => {
+    segmentButton.closest('.segment').querySelectorAll('button')
+      .forEach(other => other.setAttribute('aria-pressed', String(other === segmentButton)));
+  });
+});
+</script>

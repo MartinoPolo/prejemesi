@@ -1,0 +1,1260 @@
+<!--
+  Přejeme si — redesign exploration 2026
+  Variant: MODERN „Tinted Paper" (typeui.sh „Modern" design skill — ship software peacefully)
+  The whole interface lives inside a colored canvas — a muted, dignified surface (not white,
+  not black), like writing on tinted paper stock. White IBM Plex Serif text throughout.
+  Near-black panels (cards, dropdowns, toolbar) recede as dark layers to create depth WITHIN
+  the colored environment. Calm, literary, unhurried — developer-tool-meets-literary-magazine.
+  No gradients, no glow, no shouting. Hierarchy through clarity and darkness layering.
+
+  Three palettes flow through CSS custom properties:
+    Fialová (default) · Smrk · Půlnoc — switched via [data-palette="…"] on <html>.
+  Dark mode „noc" (🌙 toggle) deepens the canvas to near-black tinted with the hue and FLIPS
+  the depth: panels become LIGHTER than the canvas. Only tokens change.
+  Self-contained — only external resource is Google Fonts.
+-->
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přejeme si — návrh „Modern"</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  /* ==================================================================== */
+  /* tokens — Palette A „Fialová" (default)                               */
+  /* ==================================================================== */
+  :root {
+    --canvas:        #553F83;   /* the tinted paper — whole page surface  */
+    --canvas-deep:   #48356F;   /* deeper band: hero, footer              */
+    --panel:         #131313;   /* near-black card / panel                */
+    --panel-soft:    #1E1E1E;   /* nested rows, peek demos, emoji wells   */
+    --panel-line:    rgba(255,255,255,.14);
+    --panel-line-2:  rgba(255,255,255,.08);
+
+    --text:          #FFFFFF;
+    --text-soft:     rgba(255,255,255,.72);
+    --text-faint:    rgba(255,255,255,.45);
+
+    --accent-light:  #C9B8F0;   /* light tint of the canvas hue           */
+    --btn-primary-ink: #3F2E63;  /* canvas-colored ink on warm-white btn  */
+
+    --success:       #4ADE80;
+    --danger:        #F87171;
+    --heart:         #F49BAB;
+
+    /* palette dot fills for the switcher (hardcoded, dots only) */
+    --dot-fialova:   #C9B8F0;
+    --dot-smrk:      #A9DCC3;
+    --dot-pulnoc:    #B0C5F2;
+
+    --font-serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --font-mono:  "JetBrains Mono", ui-monospace, monospace;
+
+    /* 8px rhythm */
+    --s1: 8px;  --s2: 16px; --s3: 24px; --s4: 32px;
+    --s5: 40px; --s6: 48px; --s8: 64px; --s11: 88px;
+
+    --r-panel: 12px;
+    --r-btn:   10px;
+
+    --container: 1120px;
+    --grid-gap: 32px;
+  }
+
+  /* --------- Palette B „Smrk" ---------- */
+  [data-palette="smrk"] {
+    --canvas:        #34584A;
+    --canvas-deep:   #2B4A3E;
+    --accent-light:  #A9DCC3;
+    --btn-primary-ink: #234135;
+  }
+  /* --------- Palette C „Půlnoc" ---------- */
+  [data-palette="pulnoc"] {
+    --canvas:        #3B4B74;
+    --canvas-deep:   #323F62;
+    --accent-light:  #B0C5F2;
+    --btn-primary-ink: #2A3756;
+  }
+
+  /* ==================================================================== */
+  /* dark mode „noc" — canvas deepens, panels become LIGHTER (depth flips) */
+  /* ==================================================================== */
+  [data-theme="dark"] {
+    --canvas:        #17121F;
+    --canvas-deep:   #120E19;
+    --panel:         #221A33;
+    --panel-soft:    #2B2140;
+    --panel-line:    rgba(255,255,255,.12);
+    --panel-line-2:  rgba(255,255,255,.07);
+    --btn-primary-ink: #221A33;
+  }
+  [data-theme="dark"][data-palette="smrk"] {
+    --canvas:        #0F1B16;
+    --canvas-deep:   #0B1511;
+    --panel:         #1A2C24;
+    --panel-soft:    #22382E;
+    --btn-primary-ink: #1A2C24;
+  }
+  [data-theme="dark"][data-palette="pulnoc"] {
+    --canvas:        #12182B;
+    --canvas-deep:   #0E1322;
+    --panel:         #1D2740;
+    --panel-soft:    #25314F;
+    --btn-primary-ink: #1D2740;
+  }
+
+  /* ==================================================================== */
+  /* reset                                                                */
+  /* ==================================================================== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--canvas);
+    overflow-x: hidden;
+    transition: background-color .2s ease, color .2s ease;
+    -webkit-font-smoothing: antialiased;
+  }
+  img, svg { display: block; }
+  a { color: var(--accent-light); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 1.5px; }
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    line-height: 1.14;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  button { font-family: var(--font-serif); cursor: pointer; color: inherit; }
+  ::selection { background: var(--accent-light); color: var(--canvas-deep); }
+
+  :focus-visible {
+    outline: 2px solid #FFFFFF;
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  .container { max-width: var(--container); margin-inline: auto; padding-inline: var(--s3); }
+
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent-light);
+    margin-bottom: var(--s2);
+  }
+
+  .rule { height: 1px; background: var(--panel-line); border: 0; }
+
+  /* ==================================================================== */
+  /* buttons                                                              */
+  /* ==================================================================== */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-serif);
+    font-weight: 500; font-size: 15px; text-decoration: none;
+    padding: 11px 20px; border-radius: var(--r-btn);
+    border: 1px solid transparent;
+    transition: background-color .18s ease, color .18s ease,
+                border-color .18s ease, transform .18s ease;
+  }
+
+  /* primary — warm white fill, canvas-colored ink */
+  .btn-primary {
+    background: #FFFFFF;
+    color: var(--btn-primary-ink);
+    border-color: #FFFFFF;
+  }
+  .btn-primary:hover { background: #FBF7F0; transform: translateY(-1px); }
+  .btn-primary:active { background: #F1EADD; transform: translateY(0); }
+  .btn-primary:disabled,
+  .btn-primary[aria-disabled="true"] {
+    background: rgba(255,255,255,.28); border-color: transparent;
+    color: rgba(255,255,255,.55); cursor: not-allowed; transform: none;
+  }
+
+  /* secondary — ghost: transparent, white-alpha border, fills on hover */
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--panel-line);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.3); }
+  .btn-ghost:active { background: rgba(255,255,255,.14); }
+  .btn-ghost:disabled,
+  .btn-ghost[aria-disabled="true"] {
+    color: var(--text-faint); border-color: var(--panel-line-2);
+    cursor: not-allowed; background: transparent;
+  }
+
+  .btn-small { padding: 8px 14px; font-size: 14px; }
+
+  /* ==================================================================== */
+  /* panel + chip                                                         */
+  /* ==================================================================== */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: var(--r-panel);
+  }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px; font-weight: 400; letter-spacing: 0.02em;
+    color: var(--text-soft);
+    padding: 4px 11px; border-radius: 999px;
+    border: 1px solid var(--panel-line);
+    background: transparent;
+    white-space: nowrap;
+  }
+  .chip-accent { color: var(--accent-light); border-color: rgba(255,255,255,.2); }
+
+  /* ==================================================================== */
+  /* view switcher                                                        */
+  /* ==================================================================== */
+  .view-switch {
+    position: fixed; bottom: 20px; right: 20px; z-index: 90;
+    display: flex; align-items: center; gap: 4px; padding: 6px;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: var(--r-panel);
+  }
+  .view-switch button {
+    font-family: var(--font-serif);
+    font-size: 14px; font-weight: 500; color: var(--text-soft);
+    background: transparent; border: 1px solid transparent;
+    border-radius: 8px; padding: 7px 12px;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .view-switch button:hover { background: rgba(255,255,255,.07); color: var(--text); }
+  .view-switch button[aria-pressed="true"] {
+    background: rgba(255,255,255,.12); color: var(--text);
+    border-color: var(--panel-line);
+  }
+  .switch-divider { width: 1px; align-self: stretch; background: var(--panel-line); margin-inline: 2px; }
+
+  .palette-dots { display: flex; align-items: center; gap: 6px; }
+  .view-switch button.palette-dot {
+    width: 18px; height: 18px; padding: 0; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.35);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .view-switch button.palette-dot:hover { transform: scale(1.12); }
+  .view-switch button.palette-dot[aria-pressed="true"] {
+    border-color: transparent;
+    box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px #FFFFFF;
+  }
+  .view-switch button.dot-fialova { background: var(--dot-fialova); }
+  .view-switch button.dot-smrk    { background: var(--dot-smrk); }
+  .view-switch button.dot-pulnoc  { background: var(--dot-pulnoc); }
+
+  .theme-toggle { font-size: 15px; }
+
+  .view { display: none; }
+  .view.is-active { display: block; }
+
+  /* ==================================================================== */
+  /* landing — nav                                                        */
+  /* ==================================================================== */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in oklab, var(--canvas) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--panel-line);
+  }
+  .nav-inner {
+    display: flex; align-items: center; gap: var(--s3);
+    padding-block: 16px;
+  }
+  .wordmark {
+    font-family: var(--font-serif); font-size: 20px; font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .wordmark .mark {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: var(--panel); border: 1px solid var(--panel-line);
+    display: grid; place-items: center; font-size: 16px;
+  }
+  .nav-links { display: flex; gap: var(--s3); margin-left: var(--s2); }
+  .nav-links a {
+    color: var(--text-soft); text-decoration: none; font-weight: 400; font-size: 15px;
+    padding-bottom: 2px; border-bottom: 1px solid transparent;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .nav-links a:hover { color: var(--text); border-bottom-color: var(--accent-light); }
+  .nav-actions { margin-left: auto; display: flex; gap: var(--s2); align-items: center; }
+  .nav-login {
+    color: var(--text); font-weight: 500; text-decoration: none; font-size: 15px;
+    transition: color .15s ease;
+  }
+  .nav-login:hover { color: var(--accent-light); }
+
+  /* ==================================================================== */
+  /* hero                                                                 */
+  /* ==================================================================== */
+  .hero { background: var(--canvas-deep); padding-block: var(--s11) 92px; }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.08fr .92fr;
+    gap: var(--s8); align-items: center;
+  }
+  .hero-badges { display: flex; gap: var(--s1); flex-wrap: wrap; margin-bottom: var(--s3); }
+  .hero h1 {
+    font-size: clamp(32px, 4.6vw, 44px);
+    letter-spacing: -0.03em; line-height: 1.1;
+    margin-bottom: var(--s3);
+    font-weight: 600;
+  }
+  .hero h1 em { font-style: italic; font-weight: 400; color: var(--accent-light); }
+  .hero-sub {
+    font-size: 18px; color: var(--text-soft); max-width: 46ch;
+    margin-bottom: var(--s4); line-height: 1.55;
+  }
+  .hero-ctas { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+  .hero-helper {
+    margin-top: var(--s3); font-size: 14px; color: var(--text-faint);
+    display: flex; gap: 8px; align-items: center;
+    font-family: var(--font-mono);
+  }
+
+  /* hero product mock — dark panel */
+  .mock { max-width: 420px; margin-inline: auto; width: 100%; }
+  .mock-face { padding: var(--s3); }
+  .mock-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--s2); margin-bottom: var(--s3);
+  }
+  .mock-title { font-family: var(--font-serif); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .mock-rows { display: grid; gap: 8px; }
+  .mock-row {
+    display: flex; align-items: center; gap: 12px;
+    border: 1px solid var(--panel-line-2); border-radius: 10px;
+    padding: 9px 12px; background: var(--panel-soft);
+  }
+  .mock-emoji {
+    width: 36px; height: 36px; flex: none; font-size: 19px;
+    display: grid; place-items: center;
+    background: var(--panel); border: 1px solid var(--panel-line-2); border-radius: 8px;
+  }
+  .mock-row-name { font-weight: 500; font-size: 14px; letter-spacing: -0.01em; }
+  .mock-row-price { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); }
+  .mock-row .chip { margin-left: auto; font-size: 11px; padding: 3px 9px; }
+  .mock-note {
+    margin-top: var(--s3); padding-top: var(--s3);
+    border-top: 1px solid var(--panel-line);
+    font-size: 13.5px; font-style: italic; color: var(--text-soft);
+    line-height: 1.5;
+  }
+
+  /* ==================================================================== */
+  /* sections                                                             */
+  /* ==================================================================== */
+  .section { padding-block: 88px; }
+  .section-head { max-width: 640px; margin-bottom: var(--s6); }
+  .section-head.centered { text-align: center; margin-inline: auto; }
+  .section-head.centered .eyebrow { justify-content: center; }
+  .section-head h2 {
+    font-size: clamp(27px, 3.4vw, 34px);
+    letter-spacing: -0.025em; line-height: 1.15;
+  }
+  .section-head p { margin-top: var(--s2); color: var(--text-soft); font-size: 17px; }
+  .section-head h2 em { font-style: italic; font-weight: 400; color: var(--accent-light); }
+
+  /* --------- pro někoho jiného --------- */
+  .someone { border-block: 1px solid var(--panel-line); }
+  .someone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s8); align-items: center; }
+  .someone h2 { font-size: clamp(26px, 3.2vw, 32px); margin-bottom: var(--s3); letter-spacing: -0.025em; }
+  .someone > div > p { color: var(--text-soft); font-size: 17px; }
+  .someone-list { list-style: none; display: grid; gap: 14px; margin-top: var(--s4); }
+  .someone-list li { display: flex; gap: 14px; align-items: flex-start; font-size: 15.5px; color: var(--text-soft); }
+  .someone-list li strong { color: var(--text); font-weight: 600; }
+  .someone-list .tick {
+    flex: none; width: 24px; height: 24px; margin-top: 2px;
+    color: var(--accent-light); border: 1px solid var(--panel-line);
+    border-radius: 7px; display: grid; place-items: center;
+    font-size: 13px; font-weight: 600;
+  }
+
+  .segmented {
+    display: inline-flex; gap: 4px; padding: 4px;
+    background: var(--panel); border: 1px solid var(--panel-line);
+    border-radius: 11px; margin-bottom: var(--s3);
+  }
+  .segmented span {
+    padding: 8px 16px; font-size: 14px; font-weight: 500; border-radius: 8px;
+    color: var(--text-faint); border: 1px solid transparent;
+  }
+  .segmented .seg-active {
+    background: var(--panel-soft); color: var(--text); border-color: var(--panel-line);
+  }
+
+  .kid-card { max-width: 380px; }
+  .kid-face { padding: var(--s3); }
+  .kid-for { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+  .kid-name { font-family: var(--font-serif); font-size: 24px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; margin-top: 2px; }
+  .kid-title { font-family: var(--font-serif); font-size: 17px; font-weight: 400; color: var(--text-soft); margin-top: 6px; }
+  .kid-managers { display: flex; align-items: center; gap: 10px; margin-top: var(--s3); }
+  .avatars { display: flex; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--panel-soft); border: 1px solid var(--panel-line);
+    display: grid; place-items: center;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--text);
+  }
+  .avatar + .avatar { margin-left: -8px; }
+  .kid-managers p { font-size: 13.5px; color: var(--text-soft); }
+  .kid-progress {
+    margin-top: var(--s3); border-top: 1px solid var(--panel-line); padding-top: var(--s2);
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--text-faint);
+  }
+
+  /* --------- steps --------- */
+  .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--grid-gap); }
+  .step { padding: var(--s3); }
+  .step-num {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+    letter-spacing: 0.06em; color: var(--accent-light);
+    display: flex; align-items: center; gap: 8px; margin-bottom: var(--s2);
+  }
+  .step-num .num { font-size: 13px; }
+  .step-num .glyph { font-size: 18px; }
+  .step h3 { font-size: 18px; margin-bottom: 8px; letter-spacing: -0.02em; }
+  .step p { font-size: 14.5px; color: var(--text-soft); }
+
+  /* --------- features --------- */
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--grid-gap); }
+  .feature { padding: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+  .feature h3 { font-size: 19px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+  .feature h3 .fico { font-size: 20px; }
+  .feature > p { font-size: 14.5px; color: var(--text-soft); }
+  .feature-demo {
+    margin-top: var(--s2); background: var(--panel-soft);
+    border: 1px solid var(--panel-line-2);
+    border-radius: 11px; padding: 14px; display: grid; gap: 10px;
+  }
+  .peek-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .peek-label {
+    font-family: var(--font-mono); font-weight: 400; width: 92px; flex: none;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint);
+  }
+  .peek-gift {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--panel-line-2);
+    border-radius: 8px; padding: 7px 10px; font-size: 13px;
+  }
+  .peek-gift .chip { margin-left: auto; font-size: 10.5px; padding: 2px 8px; }
+  .chip-hidden { filter: blur(3.5px); opacity: .7; }
+  .chip-reserved { color: var(--accent-light); border-color: rgba(255,255,255,.2); }
+
+  .share-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--panel-line);
+    border-radius: 10px; padding: 8px 8px 8px 14px;
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--text-soft);
+  }
+  .share-pill button {
+    margin-left: auto; border: 1px solid var(--panel-line); background: transparent;
+    color: var(--text); font-family: var(--font-serif);
+    font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 8px;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .share-pill button:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.3); }
+  .share-pill button:active { background: rgba(255,255,255,.14); }
+  .share-icons { display: flex; gap: 8px; }
+  .share-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--panel-line-2);
+    display: grid; place-items: center; color: var(--text-soft);
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+  }
+  .share-icon:hover { color: var(--text); background: rgba(255,255,255,.06); border-color: var(--panel-line); transform: translateY(-2px); }
+
+  .themes-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .theme-swatch {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 400; padding: 6px 12px;
+    background: var(--panel); border: 1px solid var(--panel-line-2); border-radius: 9px;
+    color: var(--text-soft);
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+  }
+  .theme-swatch:hover { color: var(--text); border-color: var(--panel-line); background: rgba(255,255,255,.05); }
+
+  /* --------- big CTA --------- */
+  .bigcta { background: var(--canvas-deep); }
+  .bigcta-inner { text-align: center; max-width: 680px; margin-inline: auto; position: relative; }
+  .bigcta h2 { font-size: clamp(28px, 3.8vw, 38px); margin-bottom: var(--s2); letter-spacing: -0.03em; }
+  .bigcta p { color: var(--text-soft); font-size: 17px; margin-bottom: var(--s4); }
+  .free-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent-light);
+    border: 1px solid var(--panel-line); border-radius: 999px;
+    padding: 5px 14px; margin-bottom: var(--s3);
+  }
+
+  /* ==================================================================== */
+  /* footer                                                               */
+  /* ==================================================================== */
+  .footer {
+    background: var(--canvas-deep);
+    border-top: 1px solid var(--panel-line);
+    padding-block: var(--s6);
+  }
+  .footer-inner { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+  .footer p { font-size: 14px; color: var(--text-soft); }
+  .footer a.gh {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+    color: var(--text); font-weight: 500; font-size: 14px; text-decoration: none;
+    border: 1px solid var(--panel-line); border-radius: var(--r-btn); padding: 8px 14px;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .footer a.gh:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.3); }
+
+  /* ==================================================================== */
+  /* ============================ WISHLIST VIEW ========================= */
+  /* ==================================================================== */
+  .appnav {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in oklab, var(--canvas) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--panel-line);
+  }
+  .appnav-inner { display: flex; align-items: center; gap: var(--s4); padding-block: 14px; }
+  .apptabs { display: flex; gap: 2px; }
+  .apptab {
+    font-size: 14.5px; font-weight: 400; color: var(--text-faint);
+    text-decoration: none; padding: 7px 14px; border-radius: 8px;
+    border: 1px solid transparent;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .apptab:hover { color: var(--text); background: rgba(255,255,255,.06); }
+  .apptab.is-active { color: var(--text); background: rgba(255,255,255,.1); border-color: var(--panel-line); }
+  .appnav .avatar { margin-left: auto; width: 34px; height: 34px; }
+
+  /* wishlist header — quiet, on the canvas itself (no card) */
+  .wl-banner { padding-block: var(--s6) 0; }
+  .wl-eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+  .wl-title { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.03em; margin-top: 6px; line-height: 1.1; }
+  .wl-meta {
+    display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-top: var(--s3);
+    font-family: var(--font-mono); font-size: 13px; color: var(--text-faint);
+  }
+  .wl-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-faint); }
+  .wl-meta strong { color: var(--text-soft); font-weight: 500; }
+  .wl-actions { display: flex; gap: var(--s1); flex-wrap: wrap; margin-top: var(--s3); }
+  .wl-rule { margin-top: var(--s4); }
+
+  .disclosure {
+    margin-top: var(--s4);
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--r-panel);
+    padding: 14px 18px; font-size: 14px; color: var(--text-soft); font-style: italic;
+  }
+  .disclosure .eye {
+    flex: none; width: 30px; height: 30px; font-size: 15px;
+    background: var(--panel-soft); border: 1px solid var(--panel-line-2); border-radius: 8px;
+    display: grid; place-items: center; font-style: normal;
+  }
+  .disclosure strong { color: var(--text); font-weight: 600; font-style: normal; }
+
+  /* toolbar — dark panel */
+  .toolbar {
+    margin-top: var(--s4);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .viewmode {
+    display: flex; gap: 2px; background: var(--panel-soft);
+    border: 1px solid var(--panel-line-2); border-radius: 9px; padding: 3px;
+  }
+  .viewmode button {
+    border: 1px solid transparent; background: transparent; color: var(--text-faint);
+    border-radius: 6px; padding: 5px 8px; display: grid; place-items: center;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .viewmode button:hover { color: var(--text-soft); }
+  .viewmode button[aria-pressed="true"] { background: var(--panel); border-color: var(--panel-line); color: var(--text); }
+  .toolbar select {
+    font-family: var(--font-serif); font-size: 14px; font-weight: 400; color: var(--text);
+    background: var(--panel-soft); border: 1px solid var(--panel-line-2); border-radius: 9px;
+    padding: 8px 30px 8px 12px; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23ffffff' stroke-opacity='0.55' stroke-width='1.5'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    transition: border-color .15s ease;
+  }
+  .toolbar select:hover { border-color: var(--panel-line); }
+  .filter-chip {
+    font-family: var(--font-serif); font-size: 13.5px; font-weight: 400; color: var(--text-soft);
+    background: var(--panel-soft); border: 1px solid var(--panel-line-2); border-radius: 999px;
+    padding: 7px 14px; transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .filter-chip:hover { color: var(--text); border-color: var(--panel-line); }
+  .filter-chip[aria-pressed="true"] { color: var(--accent-light); border-color: rgba(255,255,255,.28); background: rgba(255,255,255,.05); }
+  .toolbar .spacer { flex: 1; }
+
+  /* ------------------------------------------------------- gift grid */
+  .gifts { padding-block: var(--s5) 104px; }
+  .gift-grid {
+    display: grid; gap: var(--grid-gap);
+    grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
+  }
+  .gift {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: var(--r-panel);
+    overflow: hidden;
+    transition: border-color .18s ease, transform .18s ease;
+    display: flex; flex-direction: column;
+  }
+  .gift:hover, .gift:focus-within { border-color: rgba(255,255,255,.28); transform: translateY(-2px); }
+  .gift-face { display: flex; flex-direction: column; height: 100%; }
+  .gift-img {
+    position: relative; height: 124px; overflow: hidden;
+    border-bottom: 1px solid var(--panel-line);
+    background: var(--panel-soft);
+    display: grid; place-items: center;
+  }
+  .gift-img .emoji { font-size: 50px; transition: transform .22s ease; line-height: 1; }
+  .gift:hover .gift-img .emoji { transform: scale(1.06); }
+
+  .gift-body { padding: 16px; display: grid; gap: 8px; }
+  .gift-name {
+    font-size: 16.5px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.25;
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  }
+  .qty {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--text-faint);
+    border: 1px solid var(--panel-line); border-radius: 5px; padding: 0 6px;
+  }
+  .gift-price { font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--accent-light); }
+  .gift-price.muted { color: var(--text-faint); font-weight: 400; font-style: italic; font-family: var(--font-serif); }
+  .gift-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 400; letter-spacing: 0.02em;
+    padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--panel-line); background: transparent; color: var(--text-soft);
+  }
+  .tag-priority { color: var(--accent-light); border-color: rgba(255,255,255,.24); }
+  .tag-edited { color: var(--text-soft); }
+  .tag-link {
+    color: var(--accent-light); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .tag-link:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.24); }
+
+  .gift-foot {
+    margin-top: auto; display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px 16px;
+  }
+  .like {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 13px; font-weight: 400; color: var(--text-soft);
+    background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 5px 8px;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .like:hover { background: rgba(255,255,255,.06); color: var(--text); }
+  .like:active { background: rgba(255,255,255,.1); }
+  .like .heart { color: var(--heart); font-size: 14px; }
+  .gift-foot .btn { margin-left: auto; }
+  .availability { margin-left: auto; text-align: right; display: grid; gap: 5px; justify-items: end; }
+  .availability small { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-faint); }
+
+  /* reserved card — content dims, does not lift */
+  .gift-reserved:hover, .gift-reserved:focus-within { transform: none; border-color: var(--panel-line); }
+  .gift-reserved:hover .gift-img .emoji { transform: none; }
+  .gift-reserved .gift-body,
+  .gift-reserved .gift-img .emoji { opacity: .55; }
+  .reserved-note {
+    margin-top: auto; padding: 12px 16px 16px;
+    font-size: 13.5px; font-style: italic; color: var(--text-soft);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .reserved-note .heart { color: var(--heart); font-family: var(--font-mono); font-size: 13px; font-style: normal; }
+
+  .received-badge {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em;
+    color: var(--accent-light); border: 1px solid rgba(255,255,255,.3); border-radius: 999px;
+    padding: 3px 10px; background: color-mix(in oklab, var(--panel) 70%, transparent);
+    backdrop-filter: blur(2px);
+  }
+
+  /* ghost add card */
+  .ghost-add {
+    border: 1px dashed var(--panel-line); border-radius: var(--r-panel);
+    display: grid; place-items: center; text-align: center;
+    min-height: 272px; color: var(--text-faint); text-decoration: none;
+    background: transparent;
+    transition: border-color .18s ease, color .18s ease, background-color .18s ease, transform .18s ease;
+  }
+  .ghost-add:hover { border-color: rgba(255,255,255,.35); color: var(--text); background: rgba(255,255,255,.03); transform: translateY(-2px); }
+  .ghost-add .plus { font-family: var(--font-serif); font-size: 40px; font-weight: 300; line-height: 1; margin-bottom: 6px; }
+  .ghost-add span.lbl { font-weight: 500; font-size: 15px; }
+
+  /* ==================================================================== */
+  /* animations — gentle fade-up only                                     */
+  /* ==================================================================== */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .reveal { animation: fadeUp .55s ease backwards; }
+    .reveal-2 { animation-delay: .08s; } .reveal-3 { animation-delay: .16s; }
+    .reveal-4 { animation-delay: .24s; } .reveal-5 { animation-delay: .32s; }
+
+    .gift-grid > * { animation: fadeUp .5s ease backwards; }
+    .gift-grid > :nth-child(1) { animation-delay: .03s; }
+    .gift-grid > :nth-child(2) { animation-delay: .07s; }
+    .gift-grid > :nth-child(3) { animation-delay: .11s; }
+    .gift-grid > :nth-child(4) { animation-delay: .15s; }
+    .gift-grid > :nth-child(5) { animation-delay: .19s; }
+    .gift-grid > :nth-child(6) { animation-delay: .23s; }
+    .gift-grid > :nth-child(7) { animation-delay: .27s; }
+    .gift-grid > :nth-child(8) { animation-delay: .31s; }
+    .gift-grid > :nth-child(9) { animation-delay: .35s; }
+
+    .steps-grid > *, .features-grid > * { animation: fadeUp .5s ease backwards; }
+    .steps-grid > :nth-child(2), .features-grid > :nth-child(2) { animation-delay: .08s; }
+    .steps-grid > :nth-child(3), .features-grid > :nth-child(3) { animation-delay: .16s; }
+    .steps-grid > :nth-child(4) { animation-delay: .24s; }
+  }
+
+  /* ==================================================================== */
+  /* responsive                                                           */
+  /* ==================================================================== */
+  @media (max-width: 960px) {
+    .hero-grid, .someone-grid { grid-template-columns: 1fr; gap: var(--s6); }
+    .steps-grid { grid-template-columns: repeat(2, 1fr); }
+    .features-grid { grid-template-columns: 1fr; }
+    .hero { padding-block: var(--s8); }
+    .mock { margin-top: var(--s3); }
+  }
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .apptabs { display: none; }
+    .section { padding-block: 64px; }
+    .hero-sub { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ VIEW SWITCHER ═══════════════════════════ -->
+<nav class="view-switch" aria-label="Přepínač náhledů a motivu">
+  <button type="button" data-view="landing" aria-pressed="true">🏠 Úvod</button>
+  <button type="button" data-view="wishlist" aria-pressed="false">🎁 Seznam</button>
+  <span class="switch-divider" aria-hidden="true"></span>
+  <span class="palette-dots" role="group" aria-label="Barevná paleta">
+    <button type="button" class="palette-dot dot-fialova" data-palette="" aria-pressed="true" aria-label="Paleta Fialová"></button>
+    <button type="button" class="palette-dot dot-smrk" data-palette="smrk" aria-pressed="false" aria-label="Paleta Smrk"></button>
+    <button type="button" class="palette-dot dot-pulnoc" data-palette="pulnoc" aria-pressed="false" aria-label="Paleta Půlnoc"></button>
+  </span>
+  <span class="switch-divider" aria-hidden="true"></span>
+  <button type="button" class="theme-toggle" aria-pressed="false" aria-label="Přepnout tmavý režim">🌙</button>
+</nav>
+
+<!-- ═══════════════════════════ LANDING VIEW ═══════════════════════════ -->
+<div class="view is-active" id="view-landing">
+
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="wordmark" href="#"><span class="mark">🎁</span>Přejeme si</a>
+      <div class="nav-links">
+        <a href="#jak-to-funguje">Jak to funguje</a>
+        <a href="#vyhody">Výhody</a>
+      </div>
+      <div class="nav-actions">
+        <a class="nav-login" href="#">Přihlásit se</a>
+        <a class="btn btn-primary btn-small" href="#">Vytvořit seznam</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <div class="hero-badges reveal">
+          <span class="chip chip-accent">✓ Žádný dárek dvakrát</span>
+          <span class="chip">Vánoce, narozeniny i výročí</span>
+        </div>
+        <h1 class="reveal reveal-2">Dárky, které si přejete. <em>Přesto s překvapením.</em></h1>
+        <p class="hero-sub reveal reveal-3">Sdílejte přání jedním odkazem. Rodina a přátelé si dárky rezervují, abyste nedostali stejný dárek dvakrát.</p>
+        <div class="hero-ctas reveal reveal-4">
+          <a class="btn btn-primary" href="#">Vytvořit seznam</a>
+          <a class="btn btn-ghost" href="#jak-to-funguje">Jak to funguje?</a>
+        </div>
+        <p class="hero-helper reveal reveal-5">Rezervovat lze i bez účtu.</p>
+      </div>
+
+      <div class="mock panel reveal reveal-3">
+        <div class="mock-face">
+          <div class="mock-head">
+            <div class="mock-title">Přání pro Terezu</div>
+            <span class="chip">🎂 Narozeniny</span>
+          </div>
+          <div class="mock-rows">
+            <div class="mock-row">
+              <span class="mock-emoji">🎧</span>
+              <div><div class="mock-row-name">Sluchátka Sony</div><div class="mock-row-price">1&nbsp;990&nbsp;Kč</div></div>
+              <span class="chip">Volné</span>
+            </div>
+            <div class="mock-row">
+              <span class="mock-emoji">🧦</span>
+              <div><div class="mock-row-name">Veselé ponožky</div><div class="mock-row-price">249&nbsp;Kč</div></div>
+              <span class="chip chip-accent">Rezervováno</span>
+            </div>
+            <div class="mock-row">
+              <span class="mock-emoji">📖</span>
+              <div><div class="mock-row-name">Kuchařka Deník Dity P.</div><div class="mock-row-price">449&nbsp;Kč</div></div>
+              <span class="chip">Volné</span>
+            </div>
+            <div class="mock-row">
+              <span class="mock-emoji">🪴</span>
+              <div><div class="mock-row-name">Monstera do obýváku</div><div class="mock-row-price">590&nbsp;Kč</div></div>
+              <span class="chip chip-accent">Rezervováno</span>
+            </div>
+          </div>
+          <p class="mock-note">Tereza rezervace nevidí. Rodina a přátelé ano.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ————— issue #99: seznam pro někoho jiného ————— -->
+  <section class="someone section">
+    <div class="container someone-grid">
+      <div>
+        <span class="eyebrow">Novinka</span>
+        <h2>Seznam i pro ty, kdo si ho sami nezaloží</h2>
+        <p>Založte seznam přání svému dítěti, babičce nebo komukoli, kdo se o něj nechce starat sám. Vy jste správce — obdarovaný jen dostává dárky.</p>
+        <ul class="someone-list">
+          <li><span class="tick">✓</span><span>Seznam založíte a spravujete <strong>vy</strong> — dítě žádný účet nepotřebuje.</span></li>
+          <li><span class="tick">✓</span><span>Jako správce <strong>vidíte rezervace</strong>, takže víte, co se už kupuje.</span></li>
+          <li><span class="tick">✓</span><span>Rodina rezervuje jako obvykle. Překvapení zůstane překvapením.</span></li>
+        </ul>
+      </div>
+      <div>
+        <div class="segmented" role="img" aria-label="Volba při zakládání seznamu: Pro mě, nebo Pro někoho jiného">
+          <span>Pro mě</span>
+          <span class="seg-active">Pro někoho jiného 🧒</span>
+        </div>
+        <div class="kid-card panel">
+          <div class="kid-face">
+            <p class="kid-for">Pro</p>
+            <p class="kid-name">Anička</p>
+            <p class="kid-title">Anička má narozeniny 🎂</p>
+            <div class="kid-managers">
+              <div class="avatars">
+                <span class="avatar">M</span><span class="avatar">T</span>
+              </div>
+              <p>Spravují máma a táta</p>
+            </div>
+            <div class="kid-progress">
+              <span>8 přání</span>
+              <span>14. září 2026</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ————— jak to funguje ————— -->
+  <section class="section" id="jak-to-funguje">
+    <div class="container">
+      <div class="section-head centered">
+        <span class="eyebrow">Jak to funguje</span>
+        <h2>Čtyři kroky k <em>překvapení</em></h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step panel">
+          <div class="step-num"><span class="num">01</span> <span class="glyph" aria-hidden="true">📝</span></div>
+          <h3>Vytvořte seznam</h3>
+          <p>Pojmenujte ho, vyberte téma a přidejte datum oslavy, pokud chcete.</p>
+        </div>
+        <div class="step panel">
+          <div class="step-num"><span class="num">02</span> <span class="glyph" aria-hidden="true">🎁</span></div>
+          <h3>Přidejte přání</h3>
+          <p>Vložte odkaz z e-shopu, nebo krátký popis s cenou.</p>
+        </div>
+        <div class="step panel">
+          <div class="step-num"><span class="num">03</span> <span class="glyph" aria-hidden="true">🔗</span></div>
+          <h3>Sdílejte odkaz</h3>
+          <p>Pošlete ho rodině přes WhatsApp, Messenger, Telegram nebo e‑mail.</p>
+        </div>
+        <div class="step panel">
+          <div class="step-num"><span class="num">04</span> <span class="glyph" aria-hidden="true">🤫</span></div>
+          <h3>Rezervace zůstanou skryté</h3>
+          <p>Rodina vidí, co je zabrané. Obdarovaný pořád jen svá přání.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ————— výhody ————— -->
+  <section class="section" id="vyhody">
+    <div class="container">
+      <div class="section-head centered">
+        <span class="eyebrow">Hlavní výhody</span>
+        <h2>Co řeší Přejeme si</h2>
+      </div>
+      <div class="features-grid">
+
+        <div class="feature panel">
+          <h3><span class="fico" aria-hidden="true">🙈</span>Skryté rezervace</h3>
+          <p>Obdarovaný nikdy nevidí, co už kdo zamluvil. Rodina ano — a nikdo nekoupí totéž.</p>
+          <div class="feature-demo">
+            <div class="peek-row">
+              <span class="peek-label">Anička vidí</span>
+              <span class="peek-gift">🧸 Plyšák <span class="chip chip-hidden">Rezervováno</span></span>
+            </div>
+            <div class="peek-row">
+              <span class="peek-label">Rodina vidí</span>
+              <span class="peek-gift">🧸 Plyšák <span class="chip chip-reserved">Rezervováno</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature panel">
+          <h3><span class="fico" aria-hidden="true">🔗</span>Sdílení bez přihlašování</h3>
+          <p>Jeden odkaz stačí. Babička rezervuje bez registrace, jen se podepíše.</p>
+          <div class="feature-demo">
+            <div class="share-pill">prejemesi.cz/s/anicka‑9 <button type="button">Kopírovat</button></div>
+            <div class="share-icons">
+              <a class="share-icon" href="#" aria-label="Sdílet přes WhatsApp">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.6 8.6 0 0 1-3.9-.9L3 20l1.2-5.3a8.1 8.1 0 0 1-1-4A8.4 8.4 0 0 1 11.7 2.5a8.5 8.5 0 0 1 9.3 9Z"/><path d="M8.7 8.6c.3-.8.9-.8 1.2-.1l.5 1.1c.2.4 0 .9-.3 1.2 0 0 .5 1.6 2.6 2.6.4-.3.9-.5 1.3-.3l1.1.5c.7.3.7.9-.1 1.2-2.9 1.2-7.5-3.3-6.3-6.2Z" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <a class="share-icon" href="#" aria-label="Sdílet přes Messenger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a9.5 9.5 0 0 0-9.5 9.3c0 2.8 1.3 5.3 3.4 7v3.2l3-1.7c1 .3 2 .4 3.1.4A9.5 9.5 0 0 0 21.5 11 9.5 9.5 0 0 0 12 2Z"/><path d="m7 13.5 3.2-3.4 2.5 2.4 4.3-3.9-3.2 3.5-2.4-2.4L7 13.5Z" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <a class="share-icon" href="#" aria-label="Sdílet přes Telegram">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 3.5 2.9 10.7c-.9.4-.8 1 .1 1.3l4.6 1.5 1.8 5.4c.3.8.9.9 1.4.3l2.4-2.5 4.7 3.5c.7.4 1.3.2 1.5-.7l3-14.5c.2-1-.4-1.4-1-1.5Z"/><path d="m7.6 13.5 9.4-6.8-7.4 7.9-.3 3.2-1.7-4.3Z" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <a class="share-icon" href="#" aria-label="Sdílet e-mailem">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3.5 6.5 8.5 7 8.5-7"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature panel">
+          <h3><span class="fico" aria-hidden="true">🎨</span>Téma podle příležitosti</h3>
+          <p>Každý seznam může vypadat jinak — vánočně, narozeninově, nebo úplně po svém.</p>
+          <div class="feature-demo">
+            <div class="themes-row">
+              <span class="theme-swatch">🎁 Výchozí</span>
+              <span class="theme-swatch">🎄 Vánoce</span>
+              <span class="theme-swatch">🎂 Narozeniny</span>
+              <span class="theme-swatch">💍 Elegantní</span>
+              <span class="theme-swatch">🎉 Zábava</span>
+              <span class="theme-swatch">✨ Vlastní</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ————— závěrečné CTA ————— -->
+  <section class="section bigcta">
+    <div class="container">
+      <div class="bigcta-inner">
+        <span class="free-badge">100% zdarma</span>
+        <h2>Připravte seznam pro další oslavu</h2>
+        <p>Stačí pár přání a jeden odkaz. O to, aby se dárky neopakovaly, se postará Přejeme si.</p>
+        <a class="btn btn-primary" href="#">Vytvořit seznam</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <a class="wordmark" href="#"><span class="mark">🎁</span>Přejeme si</a>
+      <p>Osobní open-source projekt. Zdarma pro celou rodinu.</p>
+      <a class="gh" href="#">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════ WISHLIST VIEW ═══════════════════════════ -->
+<div class="view" id="view-wishlist">
+
+  <header class="appnav">
+    <div class="container appnav-inner">
+      <a class="wordmark" href="#"><span class="mark">🎁</span>Přejeme si</a>
+      <nav class="apptabs" aria-label="Hlavní navigace">
+        <a class="apptab" href="#">Moje seznamy</a>
+        <a class="apptab is-active" href="#" aria-current="page">Spravované</a>
+        <a class="apptab" href="#">Sledované</a>
+      </nav>
+      <span class="avatar" aria-label="Martin">M</span>
+    </div>
+  </header>
+
+  <section class="wl-banner">
+    <div class="container">
+      <p class="wl-eyebrow reveal">Pro Aničku</p>
+      <h1 class="wl-title reveal reveal-2">Anička má narozeniny 🎂</h1>
+      <div class="wl-meta reveal reveal-3">
+        <span>Sdílený</span>
+        <span class="dot" aria-hidden="true"></span>
+        <span>8 přání</span>
+        <span class="dot" aria-hidden="true"></span>
+        <span>14. září 2026</span>
+        <span class="dot" aria-hidden="true"></span>
+        <span>Spravují <strong>Martin</strong> a <strong>Jana</strong></span>
+      </div>
+      <div class="wl-actions reveal reveal-4">
+        <a class="btn btn-primary btn-small" href="#">Sdílet</a>
+        <a class="btn btn-ghost btn-small" href="#">Správci</a>
+        <a class="btn btn-ghost btn-small" href="#">Archivovat</a>
+      </div>
+
+      <hr class="rule wl-rule reveal reveal-4">
+
+      <div class="disclosure reveal reveal-5">
+        <span class="eye" aria-hidden="true">👀</span>
+        <span>Jako správce <strong>vidíte stav rezervací</strong>. Anička je neuvidí nikdy.</span>
+      </div>
+
+      <div class="toolbar panel">
+        <div class="viewmode" role="group" aria-label="Zobrazení">
+          <button type="button" aria-pressed="true" aria-label="Karty">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+          </button>
+          <button type="button" aria-pressed="false" aria-label="Řádky">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="2" width="14" height="2.6" rx="1"/><rect x="1" y="6.7" width="14" height="2.6" rx="1"/><rect x="1" y="11.4" width="14" height="2.6" rx="1"/></svg>
+          </button>
+        </div>
+        <label>
+          <span style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)">Řazení</span>
+          <select>
+            <option>Priorita</option>
+            <option>Cena: od nejnižší</option>
+            <option>Cena: od nejvyšší</option>
+            <option>Název</option>
+            <option>Datum přidání</option>
+          </select>
+        </label>
+        <button type="button" class="filter-chip" aria-pressed="false">Pouze dostupné</button>
+        <span class="spacer"></span>
+        <a class="btn btn-ghost btn-small" href="#">Import</a>
+        <a class="btn btn-primary btn-small" href="#">+ Přidat přání</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="gifts">
+    <div class="container gift-grid">
+
+      <!-- 1 · volné + priorita -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🚜</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">LEGO Technic bagr</h3>
+            <p class="gift-price">1&nbsp;899&nbsp;Kč</p>
+            <div class="gift-tags"><span class="tag tag-priority">⭐ Priorita · Vysoká</span></div>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 2 lidem"><span class="heart" aria-hidden="true">♥</span>2</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2 · plně rezervováno -->
+      <article class="gift gift-reserved">
+        <div class="gift-face">
+          <div class="gift-img">
+            <span class="emoji" aria-hidden="true">🧥</span>
+          </div>
+          <div class="gift-body">
+            <h3 class="gift-name">Zimní bunda (vel. 134)</h3>
+            <p class="gift-price">1&nbsp;249&nbsp;Kč</p>
+          </div>
+          <div class="reserved-note">
+            <span class="heart" aria-hidden="true">♥</span>
+            <span><em>Rezervováno — babička</em></span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 3 · volné + odkaz -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">📚</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Kniha Harry Potter a Kámen mudrců</h3>
+            <p class="gift-price">349&nbsp;Kč</p>
+            <div class="gift-tags">
+              <a class="tag tag-link" href="#">🔗 knihydobrovsky.cz</a>
+            </div>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Zatím bez lajků"><span class="heart" aria-hidden="true">♥</span>0</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 4 · částečně rezervováno ×2 -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🎲</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Společenská hra Azul <span class="qty">×2</span></h3>
+            <p class="gift-price">799&nbsp;Kč</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 3 lidem"><span class="heart" aria-hidden="true">♥</span>3</button>
+            <span class="availability">
+              <small>Dostupné 1 z 2</small>
+              <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 5 · přijatý dárek, bez ceny -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img">
+            <span class="emoji" aria-hidden="true">🐉</span>
+            <span class="received-badge">✓ Přijatý dárek</span>
+          </div>
+          <div class="gift-body">
+            <h3 class="gift-name">Plyšový drak</h3>
+            <p class="gift-price muted">Cena neuvedena</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 4 lidem"><span class="heart" aria-hidden="true">♥</span>4</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 6 · upraveno po sdílení -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🛴</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Koloběžka</h3>
+            <p class="gift-price">2&nbsp;490&nbsp;Kč</p>
+            <div class="gift-tags"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 5 lidem"><span class="heart" aria-hidden="true">♥</span>5</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 7 · částečně rezervováno ×4 -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🌊</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Vstup do aquaparku <span class="qty">×4</span></h3>
+            <p class="gift-price">500&nbsp;Kč</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 2 lidem"><span class="heart" aria-hidden="true">♥</span>2</button>
+            <span class="availability">
+              <small>Dostupné 2 ze 4</small>
+              <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 8 · volné -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🖍️</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Pastelky Faber‑Castell 36&nbsp;ks</h3>
+            <p class="gift-price">289&nbsp;Kč</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 1 člověku"><span class="heart" aria-hidden="true">♥</span>1</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- ghost add -->
+      <a class="ghost-add" href="#">
+        <span>
+          <span class="plus">+</span><br>
+          <span class="lbl">Přidat přání</span>
+        </span>
+      </a>
+
+    </div>
+  </section>
+</div>
+
+<script>
+  const views = { landing: document.getElementById("view-landing"),
+                  wishlist: document.getElementById("view-wishlist") };
+  const switchButtons = document.querySelectorAll(".view-switch button[data-view]");
+
+  switchButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.view;
+      switchButtons.forEach(b => b.setAttribute("aria-pressed", String(b === button)));
+      for (const [name, el] of Object.entries(views)) {
+        el.classList.toggle("is-active", name === target);
+      }
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  });
+
+  const rootElement = document.documentElement;
+
+  // palette switching — palette A („fialová") removes the attribute
+  const paletteButtons = document.querySelectorAll(".palette-dot[data-palette]");
+  paletteButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const palette = button.dataset.palette;
+      if (palette) rootElement.setAttribute("data-palette", palette);
+      else rootElement.removeAttribute("data-palette");
+      paletteButtons.forEach(b => b.setAttribute("aria-pressed", String(b === button)));
+    });
+  });
+
+  // dark „noc" mode — only tokens change
+  const themeToggle = document.querySelector(".theme-toggle");
+  themeToggle.addEventListener("click", () => {
+    const isDark = rootElement.getAttribute("data-theme") === "dark";
+    if (isDark) rootElement.removeAttribute("data-theme");
+    else rootElement.setAttribute("data-theme", "dark");
+    themeToggle.setAttribute("aria-pressed", String(!isDark));
+    themeToggle.textContent = isDark ? "🌙" : "☀️";
+  });
+</script>
+</body>
+</html>
