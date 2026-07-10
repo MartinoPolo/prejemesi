@@ -6,7 +6,12 @@ import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtim
 import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
-import type { BackgroundTheme } from '$lib/components/base/theme/types.js';
+import {
+	DEFAULT_PALETTE,
+	PALETTE_COOKIE_NAME,
+	isPalette,
+	type Palette,
+} from '$lib/theme/palettes.js';
 
 function setSecurityHeaders(headers: Headers, url: URL) {
 	headers.set('X-Content-Type-Options', 'nosniff');
@@ -177,44 +182,43 @@ const accountLocalePreferenceHandle: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-const DEFAULT_BACKGROUND_THEME: BackgroundTheme = 'default';
-
 /**
- * Applies the user's persisted app background theme to the root <html> element
- * server-side (REQ-3), so the chosen tint is present on first paint with no
- * flash. Anonymous users (and unconfigured DB) fall back to the neutral default.
+ * Applies the viewer's palette to the root <html> element server-side, so the
+ * chosen palette is present on first paint with no flash. The cookie mirror is
+ * the fast path (works for anonymous users too); logged-in users without the
+ * cookie (fresh device) fall back to the palette persisted on their user row.
  * Sequenced after authHandle so `locals.user` is populated when the DB is
- * configured; without a DB authHandle is absent and this falls back to default.
+ * configured.
  */
-const backgroundThemeHandle: Handle = async ({ event, resolve }) => {
-	let bgTheme: BackgroundTheme = DEFAULT_BACKGROUND_THEME;
+const paletteHandle: Handle = async ({ event, resolve }) => {
+	let palette: Palette = DEFAULT_PALETTE;
 
-	if (event.locals.user != null && isDatabaseConfigured(event)) {
+	const cookiePalette = event.cookies.get(PALETTE_COOKIE_NAME);
+	if (isPalette(cookiePalette)) {
+		palette = cookiePalette;
+	} else if (event.locals.user != null && isDatabaseConfigured(event)) {
 		try {
 			const { getDb } = await import('$lib/server/db/index.js');
 			const { user } = await import('$lib/server/db/auth.schema.js');
 			const { eq } = await import('drizzle-orm');
 
 			const rows = await getDb(event)
-				.select({ appBackgroundTheme: user.appBackgroundTheme })
+				.select({ palette: user.palette })
 				.from(user)
 				.where(eq(user.id, event.locals.user.id))
 				.limit(1);
 
-			const stored = rows[0]?.appBackgroundTheme;
-			if (stored != null) {
-				bgTheme = stored;
+			const stored = rows[0]?.palette;
+			if (isPalette(stored)) {
+				palette = stored;
 			}
 		} catch (err) {
-			console.error(
-				'[backgroundThemeHandle] failed to read app background theme, using default',
-				err,
-			);
+			console.error('[paletteHandle] failed to read palette, using default', err);
 		}
 	}
 
 	return resolve(event, {
-		transformPageChunk: ({ html }) => html.replaceAll('%app.bgTheme%', bgTheme),
+		transformPageChunk: ({ html }) => html.replaceAll('%app.palette%', palette),
 	});
 };
 
@@ -254,7 +258,7 @@ const handles: Handle[] = [
 	authHandle,
 	accountLocalePreferenceHandle,
 	paraglideHandle,
-	backgroundThemeHandle,
+	paletteHandle,
 ];
 
 export const handle = sequence(...handles);

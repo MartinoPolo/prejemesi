@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { user } from './auth.schema.js';
-import { wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
+import { paletteEnum, wishlistStatusEnum, wishlistThemeEnum } from './enums.js';
 import { generateId } from './id.js';
 import type { WishlistImageSlots } from '$lib/modules/images/types.js';
 
@@ -40,8 +40,11 @@ export const wishlist = pgTable(
 		description: text('description'),
 		eventDate: timestamp('event_date', { withTimezone: true }),
 		status: wishlistStatusEnum('status').notNull().default('draft'),
+		// Superseded by `palette`; kept for rollback safety, no reader remains.
 		theme: wishlistThemeEnum('theme').notNull().default('default'),
 		customThemeColor: text('custom_theme_color'),
+		// Redesign 2026 per-wishlist palette (replaces theme presets + custom color).
+		palette: paletteEnum('palette').notNull().default('sky'),
 		// One wishlist image assignment + per-slot crop metadata (REQ-2). Replaces
 		// the obsolete separate banner/thumbnail keys (no compatibility shim kept).
 		imageKey: text('image_key'),
