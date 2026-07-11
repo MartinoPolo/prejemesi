@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
+	import AppearanceMenu from '$lib/components/derived/appearance-menu/AppearanceMenu.svelte';
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
@@ -358,10 +359,19 @@
 			<NotificationBell />
 		{/if}
 
-		<!-- Palette / dark mode / language controls -->
-		<PaletteSwitcher />
-		<DarkModeToggle />
-		<LanguageToggle variant="icon" />
+		<!-- Palette / dark mode / language controls: separate buttons on desktop; below
+		     768px they consolidate into the MobileNav drawer (logged-in) or a compact
+		     popover (anonymous — no drawer exists for them). -->
+		<div class="hidden items-center gap-1 md:flex">
+			<PaletteSwitcher />
+			<DarkModeToggle />
+			<LanguageToggle variant="icon" />
+		</div>
+		{#if !user}
+			<div class="md:hidden">
+				<AppearanceMenu />
+			</div>
+		{/if}
 
 		{#if user}
 			<!-- User menu -->
@@ -383,13 +393,14 @@
 {/if}
 
 <style>
+	/* Mockup topbar treatment: solid panel + ink rule (no translucency). */
 	.topbar {
 		position: sticky;
 		top: 0;
 		z-index: var(--z-sticky);
 		height: var(--nav-height);
-		background: var(--background);
-		border-bottom: 1px solid var(--border);
+		background: var(--card);
+		border-bottom: var(--border-w) solid var(--ink);
 		display: flex;
 		align-items: center;
 		padding: 0 var(--space-6);
@@ -415,18 +426,20 @@
 		position: relative;
 	}
 
+	/* Mockup pill states: hover = subtle surface pill, active = filled pill
+	   with an ink border (no underline). */
 	.nav-link {
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
 		height: 36px;
 		padding: 0 var(--space-3);
-		border-radius: var(--radius-md);
-		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
+		border-radius: 9px;
+		font-size: var(--text-base);
+		font-weight: var(--weight-semibold);
 		color: var(--muted-foreground);
 		text-decoration: none;
-		border: none;
+		border: 2px solid transparent;
 		background: transparent;
 		cursor: pointer;
 		font-family: var(--font-sans);
@@ -434,7 +447,6 @@
 			background var(--duration-normal) var(--ease-standard),
 			color var(--duration-normal) var(--ease-standard);
 		white-space: nowrap;
-		position: relative;
 	}
 
 	.nav-link:hover {
@@ -443,25 +455,9 @@
 	}
 
 	.nav-link.is-active {
-		color: var(--primary);
-		font-weight: var(--weight-semibold);
-	}
-
-	/* Active underline indicator */
-	.nav-link.is-active::after {
-		content: '';
-		position: absolute;
-		bottom: -1px;
-		left: var(--space-3);
-		right: var(--space-3);
-		height: 2px;
-		background: var(--primary);
-		border-radius: 9999px;
-	}
-
-	.nav-link.is-active:hover {
-		background: oklch(from var(--primary) l c h / 10%);
+		background: var(--accent);
 		color: var(--foreground);
+		border-color: var(--ink);
 	}
 
 	.nav-item:hover :global(.nav-chevron) {

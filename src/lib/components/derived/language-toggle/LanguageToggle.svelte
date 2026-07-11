@@ -13,7 +13,8 @@
 	import LanguageFlag from './LanguageFlag.svelte';
 
 	interface LanguageToggleProps {
-		variant?: 'wide' | 'icon';
+		/** `wide`/`icon` = popover trigger in headers; `inline` = label + rows for drawers/consolidated menus. */
+		variant?: 'wide' | 'icon' | 'inline';
 	}
 
 	let { variant = 'wide' }: LanguageToggleProps = $props();
@@ -118,64 +119,95 @@
 	}
 </script>
 
-<div role="group" aria-label={ariaLabel}>
-	<Popover.Root bind:open={isOpen}>
-		<span
-			bind:this={triggerElement}
-			role="presentation"
-			class="inline-flex"
-			onmouseover={openMenu}
-			onmouseout={handleMouseOut}
-			onfocus={openMenu}
-			onblur={handleFocusOut}
-			onfocusin={openMenu}
-			onfocusout={handleFocusOut}
+{#if variant === 'inline'}
+	<div role="group" aria-label={m.settings_language_label()} class="flex flex-col gap-1.5">
+		<span class="text-(length:--text-sm) font-semibold text-foreground-muted"
+			>{m.settings_language_label()}</span
 		>
-			<Popover.Trigger>
-				{#snippet child({ props })}
-					<Button
-						{...props}
-						intent="outline"
-						size="md"
-						class={cn(!isIconVariant && 'w-40 justify-between')}
-						aria-label={ariaLabel}
-						title={ariaLabel}
-					>
-						<span>{isIconVariant ? LOCALE_CODES[currentLocale] : currentLabel}</span>
-						<ChevronDownIcon data-icon class="opacity-60" />
-					</Button>
-				{/snippet}
-			</Popover.Trigger>
-		</span>
-		<Popover.Content
-			bind:ref={contentElement}
-			align={isIconVariant ? 'end' : 'start'}
-			class="w-44 min-w-0 p-1"
-			role="menu"
-			aria-label={m.settings_language_label()}
-			onmouseover={openMenu}
-			onmouseout={handleMouseOut}
-			onfocus={openMenu}
-			onblur={handleFocusOut}
-		>
+		<div class="grid gap-1">
 			{#each availableLocales as locale (locale)}
 				{@const language = LOCALE_META[locale]}
-				<Popover.Item
-					class="justify-between"
-					active={locale === currentLocale}
-					aria-current={locale === currentLocale ? 'true' : undefined}
+				<button
+					type="button"
+					class={cn(
+						'flex cursor-pointer items-center gap-2 rounded-btn border-2 border-transparent px-2 py-1.5 text-left text-(length:--text-sm) font-semibold text-foreground transition-colors',
+						'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
+						locale === currentLocale && 'border-ink bg-accent',
+					)}
+					aria-pressed={locale === currentLocale}
 					aria-disabled={isSwitchingLocale ? 'true' : undefined}
 					onclick={() => handleLocaleChange(locale)}
 				>
-					<span class="flex items-center gap-2">
-						<LanguageFlag {locale} />
-						<span>{language.label()}</span>
-					</span>
+					<LanguageFlag {locale} />
+					<span class="flex-1">{language.label()}</span>
 					{#if locale === currentLocale}
 						<CheckIcon class="size-4 text-primary" aria-hidden="true" />
 					{/if}
-				</Popover.Item>
+				</button>
 			{/each}
-		</Popover.Content>
-	</Popover.Root>
-</div>
+		</div>
+	</div>
+{:else}
+	<div role="group" aria-label={ariaLabel}>
+		<Popover.Root bind:open={isOpen}>
+			<span
+				bind:this={triggerElement}
+				role="presentation"
+				class="inline-flex"
+				onmouseover={openMenu}
+				onmouseout={handleMouseOut}
+				onfocus={openMenu}
+				onblur={handleFocusOut}
+				onfocusin={openMenu}
+				onfocusout={handleFocusOut}
+			>
+				<Popover.Trigger>
+					{#snippet child({ props })}
+						<Button
+							{...props}
+							intent="outline"
+							size="md"
+							class={cn(!isIconVariant && 'w-40 justify-between')}
+							aria-label={ariaLabel}
+							title={ariaLabel}
+						>
+							<span>{isIconVariant ? LOCALE_CODES[currentLocale] : currentLabel}</span
+							>
+							<ChevronDownIcon data-icon class="opacity-60" />
+						</Button>
+					{/snippet}
+				</Popover.Trigger>
+			</span>
+			<Popover.Content
+				bind:ref={contentElement}
+				align={isIconVariant ? 'end' : 'start'}
+				class="w-44 min-w-0 p-1"
+				role="menu"
+				aria-label={m.settings_language_label()}
+				onmouseover={openMenu}
+				onmouseout={handleMouseOut}
+				onfocus={openMenu}
+				onblur={handleFocusOut}
+			>
+				{#each availableLocales as locale (locale)}
+					{@const language = LOCALE_META[locale]}
+					<Popover.Item
+						class="justify-between"
+						active={locale === currentLocale}
+						aria-current={locale === currentLocale ? 'true' : undefined}
+						aria-disabled={isSwitchingLocale ? 'true' : undefined}
+						onclick={() => handleLocaleChange(locale)}
+					>
+						<span class="flex items-center gap-2">
+							<LanguageFlag {locale} />
+							<span>{language.label()}</span>
+						</span>
+						{#if locale === currentLocale}
+							<CheckIcon class="size-4 text-primary" aria-hidden="true" />
+						{/if}
+					</Popover.Item>
+				{/each}
+			</Popover.Content>
+		</Popover.Root>
+	</div>
+{/if}

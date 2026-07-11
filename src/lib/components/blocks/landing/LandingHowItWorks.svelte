@@ -1,28 +1,24 @@
 <script lang="ts">
-	import GiftIcon from '@lucide/svelte/icons/gift';
-	import ListIcon from '@lucide/svelte/icons/list';
-	import Share2Icon from '@lucide/svelte/icons/share-2';
-	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import * as m from '$lib/paraglide/messages.js';
 
 	const steps = [
 		{
-			icon: ListIcon,
+			emoji: '📝',
 			title: m.landing_how_step1_title(),
 			description: m.landing_how_step1_description(),
 		},
 		{
-			icon: GiftIcon,
+			emoji: '🎁',
 			title: m.landing_how_step2_title(),
 			description: m.landing_how_step2_description(),
 		},
 		{
-			icon: Share2Icon,
+			emoji: '🔗',
 			title: m.landing_how_step3_title(),
 			description: m.landing_how_step3_description(),
 		},
 		{
-			icon: SparklesIcon,
+			emoji: '🤫',
 			title: m.landing_how_step4_title(),
 			description: m.landing_how_step4_description(),
 		},
@@ -30,23 +26,32 @@
 </script>
 
 <section
-	class="border-b border-border bg-background"
+	class="bg-ruled scroll-mt-16"
 	id="jak-to-funguje"
 	aria-label={m.landing_how_section_label()}
 >
-	<div class="mx-auto max-w-[var(--content-max-width)] px-4 py-16 md:px-8 md:py-20">
-		<span class="section-eyebrow">{m.landing_how_eyebrow()}</span>
-		<h2 class="section-headline">{m.landing_how_headline()}</h2>
+	<div class="mx-auto max-w-[var(--content-max-width)] px-4 py-16 md:px-8 md:py-24">
+		<div class="mx-auto max-w-[640px] text-center">
+			<span class="section-eyebrow">
+				<span aria-hidden="true">📒</span>
+				{m.landing_how_eyebrow()}
+			</span>
+			<h2 class="section-headline">{m.landing_how_headline()}</h2>
+		</div>
 
-		<div class="how-steps relative grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+		<div class="steps-grid grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
 			{#each steps as step, index (step.title)}
-				<article class="flex flex-col items-center gap-4 text-center">
-					<div class="step-icon-wrap">
-						<span class="step-number">{index + 1}</span>
-						<step.icon class="size-6" />
+				<article
+					class="step rounded-panel border-ink bg-card border-[2.5px] p-6 shadow-sticker"
+				>
+					<div class="step-num font-heading mb-2.5 flex items-center gap-2.5 text-brand">
+						{index + 1}.
+						<span aria-hidden="true">{step.emoji}</span>
 					</div>
-					<h3 class="font-heading text-lg font-semibold">{step.title}</h3>
-					<p class="text-sm leading-relaxed text-muted-foreground">{step.description}</p>
+					<h3 class="mb-2 text-[19px] font-semibold">{step.title}</h3>
+					<p class="text-(length:--text-lg) leading-relaxed text-ink-soft">
+						{step.description}
+					</p>
 				</article>
 			{/each}
 		</div>
@@ -54,50 +59,48 @@
 </section>
 
 <style>
-	.step-icon-wrap {
-		position: relative;
-		display: flex;
-		width: 3.5rem;
-		height: 3.5rem;
-		align-items: center;
-		justify-content: center;
-		border: 2px solid var(--border);
-		border-radius: 9999px;
-		background: var(--background);
-		color: var(--primary);
+	.step-num {
+		font-size: 34px;
+		font-weight: 700;
 	}
 
-	.step-number {
-		position: absolute;
-		top: -0.375rem;
-		right: -0.375rem;
-		display: flex;
-		width: 1.25rem;
-		height: 1.25rem;
-		align-items: center;
-		justify-content: center;
-		border-radius: 9999px;
-		background: var(--primary);
-		color: var(--primary-foreground);
-		font-size: 11px;
-		font-weight: var(--weight-bold);
+	.step {
+		transition: transform 0.2s ease;
 	}
 
-	@media (width >= 1024px) {
-		.how-steps::before {
-			content: '';
-			position: absolute;
-			top: 28px;
-			right: calc(12.5% + 28px);
-			left: calc(12.5% + 28px);
-			height: 2px;
-			background: linear-gradient(
-				90deg,
-				var(--border) 0%,
-				var(--primary) 40%,
-				var(--primary) 60%,
-				var(--border) 100%
-			);
+	/* Playful alternating tilt, kept during the hover lift */
+	.step:nth-child(odd) {
+		transform: rotate(-0.6deg);
+	}
+
+	.step:nth-child(even) {
+		transform: rotate(0.5deg);
+	}
+
+	.step:nth-child(odd):hover {
+		transform: rotate(-0.6deg) translateY(-4px);
+	}
+
+	.step:nth-child(even):hover {
+		transform: rotate(0.5deg) translateY(-4px);
+	}
+
+	/* Staggered pop-in on load (mockup .steps-grid reveal) */
+	@media (prefers-reduced-motion: no-preference) {
+		.steps-grid > * {
+			animation: pop-in 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
+		}
+
+		.steps-grid > :nth-child(2) {
+			animation-delay: 0.1s;
+		}
+
+		.steps-grid > :nth-child(3) {
+			animation-delay: 0.2s;
+		}
+
+		.steps-grid > :nth-child(4) {
+			animation-delay: 0.3s;
 		}
 	}
 </style>

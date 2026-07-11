@@ -1,6 +1,9 @@
 <script lang="ts">
 	import * as Sheet from '$lib/components/base/sheet/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
+	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
+	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
 	import MenuIcon from '@lucide/svelte/icons/menu';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import LogoMark from './LogoMark.svelte';
@@ -32,7 +35,7 @@
 			</Button>
 		{/snippet}
 	</Sheet.Trigger>
-	<Sheet.Content side="left" class="w-72 p-0">
+	<Sheet.Content side="left" class="w-72 overflow-y-auto p-0">
 		<Sheet.Header class="border-b border-border px-5 py-4">
 			<Sheet.Title>
 				<LogoMark />
@@ -67,5 +70,18 @@
 				</Button>
 			{/each}
 		</nav>
+
+		<!-- ≤768px control consolidation: palette / language / dark mode live here
+		     instead of the topbar (DECISIONS.md, mobile control consolidation). -->
+		<div class="flex flex-col gap-3 border-t border-border p-4">
+			<span
+				class="text-(length:--text-xs) font-bold uppercase tracking-wider text-foreground-subtle"
+			>
+				{m.settings_appearance_title()}
+			</span>
+			<PaletteSwitcher variant="inline" />
+			<LanguageToggle variant="inline" />
+			<DarkModeToggle variant="inline" />
+		</div>
 	</Sheet.Content>
 </Sheet.Root>
