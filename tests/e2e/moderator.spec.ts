@@ -158,20 +158,22 @@ test.describe('Moderator system', () => {
 		await ownerPage.context().close();
 	});
 
-	test('recipient self-promote shows permanent disclosure banner', async ({
+	test('recipient self-promote shows in-panel disclosure and the loud visitor trust warning', async ({
 		browser,
 		request,
 		baseURL,
 	}) => {
-		// A linked recipient (for-me list) self-promotes to also see reservation state — the
-		// mechanics (in-panel active disclosure + permanent header banner) are unchanged from the
-		// old owner-self-promote flow; only the wording was re-keyed to the obdarovaný/správce model.
+		// A linked recipient (for-me list) self-promotes to also see reservation state.
+		// Anime-sky redesign (#102, REQ-13): the bespoke purple header strip is gone. The
+		// recipient's own confirmation is the permanent in-panel active disclosure; the
+		// visitor-facing notice becomes the loud accent trust warning Alert (shown to any
+		// viewer who is NOT the recipient), which is the notice visitors must not miss.
 		const recipient = createTestUser('mod-self-promote');
 		const page = await registerAndGetPage(browser, request, baseURL!, recipient);
 
-		await createWishlistAndNavigate(page, 'Self Promote Test');
+		const wishlistPath = await createWishlistAndNavigate(page, 'Self Promote Test');
 
-		// Share wishlist so the banner section is meaningful
+		// Share wishlist so the disclosure is meaningful
 		await shareWishlist(page);
 
 		// Open the správci panel
@@ -186,7 +188,8 @@ test.describe('Moderator system', () => {
 			.click();
 
 		// The panel updates in place (it does not close): the self-promote button is replaced by
-		// the permanent active-disclosure text (moderator_active_disclosure).
+		// the permanent active-disclosure text (moderator_active_disclosure). This is the
+		// recipient's permanent disclosure now that the header strip is removed.
 		await expect(
 			panel.getByText(/Vidíte stav rezervací|You can see reservation status/),
 		).toBeVisible({ timeout: 5_000 });
@@ -194,18 +197,24 @@ test.describe('Moderator system', () => {
 			panel.getByRole('button', { name: /Aktivovat zobrazení|Activate visibility/ }),
 		).not.toBeVisible();
 
-		// Close the panel and confirm the permanent disclosure banner on the wishlist header
-		// (rendered when recipientIsModerator is true): reworded to wishlist_owner_sees_reservations
-		// → „Obdarovaný je zároveň správcem seznamu." / „The recipient is also a manager of this list."
-		await page.keyboard.press('Escape');
-		await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0, {
-			timeout: 5_000,
-		});
-		await page.waitForLoadState('networkidle');
-		await expect(
-			page.getByText(/Obdarovaný je zároveň správcem|The recipient is also a manager/),
-		).toBeVisible({ timeout: 5_000 });
-
 		await page.context().close();
+
+		// A separate visitor to the shared list sees the loud trust warning (REQ-13): the
+		// recipient is also a manager and can see reservations. Shown for any non-recipient
+		// viewer; the recipient themselves never sees this header alert.
+		const visitorUser = createTestUser('self-promote-visitor');
+		const visitorCookies = await registerViaApi(request, baseURL!, visitorUser);
+		const visitorContext = await createAuthenticatedContext(browser, visitorCookies, baseURL!);
+		const visitorPage = await visitorContext.newPage();
+
+		await visitorPage.goto(wishlistPath);
+		await visitorPage.waitForLoadState('networkidle');
+		await expect(
+			visitorPage.getByText(
+				new RegExp(`${recipient.name}.*(zároveň správcem|is also a manager)`),
+			),
+		).toBeVisible({ timeout: 10_000 });
+
+		await visitorContext.close();
 	});
 });

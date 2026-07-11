@@ -258,10 +258,13 @@ test.describe('Follower management', () => {
 			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
 		).not.toBeVisible({ timeout: 5_000 });
 
-		// Enable "Opuštěné" toggle (the toolbar also has a "show archived" switch, so
-		// target this one by its label).
-		const toggle = followerPage.getByRole('switch', { name: 'Opuštěné' });
+		// Enable the "Opuštěné" filter chip. The anime-sky redesign (#102, FilterChip)
+		// renders it as a button with aria-pressed (not role="switch"); the toolbar also
+		// has an "Archivované" chip, so target this one by its label.
+		const toggle = followerPage.getByRole('button', { name: 'Opuštěné' });
+		await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 		await toggle.click();
+		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
 		// Unfollowed wishlist should now be visible again with "Znovu sledovat" button
 		await expect(

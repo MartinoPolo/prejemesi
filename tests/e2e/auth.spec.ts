@@ -56,6 +56,10 @@ test.describe('Authentication', () => {
 		await page.goto('/login');
 		await page.getByRole('link', { name: /odkazem/ }).click();
 		await expect(page).toHaveURL(/\/magic-link/);
-		await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+		// The anime-sky split-screen auth layout (#102, REQ-16) renders two h1s: the brand
+		// panel tagline and the form heading. Assert the form heading specifically.
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Přihlášení odkazem' }),
+		).toBeVisible();
 	});
 });

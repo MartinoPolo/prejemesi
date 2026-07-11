@@ -225,7 +225,7 @@ test.describe('Gift deletion', () => {
 // deterministic user-facing behavior right after sharing.
 
 test.describe('Post-share editing rules', () => {
-	test('shared list shows the lock banner; pre-share gifts stay fully editable during the grace window', async ({
+	test('shared list shows the shared status chip; pre-share gifts stay fully editable during the grace window', async ({
 		browser,
 		request,
 		baseURL,
@@ -239,9 +239,9 @@ test.describe('Post-share editing rules', () => {
 		// Share the wishlist – pre-existing gifts become subject to the #82 rules.
 		await shareWishlist(page);
 
-		// The shared-state transparency banner appears: names locked, gifts can't be
-		// removed, but details stay editable – visible to everyone.
-		await expect(page.getByText(/názvy přání jsou uzamčeny/i)).toBeVisible({ timeout: 5_000 });
+		// Anime-sky redesign (#102, REQ-12): the full-width shared lifecycle strip is gone.
+		// The shared state is now surfaced by the compact status chip in the header meta row.
+		await expect(page.getByRole('main').getByText('Sdíleno')).toBeVisible({ timeout: 5_000 });
 
 		// Open the pre-share gift. Sharing opens a 2-minute grace window (#83) during
 		// which the owner regains full edit, surfaced as a live countdown.
@@ -281,8 +281,9 @@ test.describe('Wishlist archival', () => {
 			.first()
 			.click();
 
-		// The archived banner should appear
-		await expect(page.getByText(/Archivováno – seznam je uzavřen/i)).toBeVisible({
+		// The archived alert appears. Shipped Czech copy uses a colon ("Archivováno:")
+		// per the no-em-dash rule (the old en-dash form was retired in the redesign).
+		await expect(page.getByText(/Archivováno: seznam je uzavřen/i)).toBeVisible({
 			timeout: 10_000,
 		});
 
@@ -307,7 +308,7 @@ test.describe('Wishlist archival', () => {
 			.getByRole('button', { name: /Archivovat seznam|Archivovat/i })
 			.first()
 			.click();
-		await expect(ownerPage.getByText(/Archivováno – seznam je uzavřen/i)).toBeVisible({
+		await expect(ownerPage.getByText(/Archivováno: seznam je uzavřen/i)).toBeVisible({
 			timeout: 10_000,
 		});
 
