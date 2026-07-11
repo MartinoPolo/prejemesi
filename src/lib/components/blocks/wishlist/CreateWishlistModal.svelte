@@ -142,12 +142,24 @@
 					recipientTouched = false;
 				}}
 				disabled={isSubmitting}
-				class="w-full"
+				class="border-ink shadow-sticker-sm rounded-btn w-full gap-0 overflow-hidden border-2"
 			>
-				<ToggleGroup.Item value={RECIPIENT_KIND.self} class="flex-1">
+				<!-- Each item drops its own sticker chrome (border/shadow/radius/lift) so the two
+				     segments read as one connected control; the outer Root carries the unified
+				     ink border, radius, and offset shadow. border-transparent is repeated on the
+				     data-[state=on] variant so the active segment's `border-ink` (from the outline
+				     toggle intent) doesn't paint an inner ring. The second segment adds a single
+				     ink left divider (immune to state) to avoid a double-thick middle border. -->
+				<ToggleGroup.Item
+					value={RECIPIENT_KIND.self}
+					class="flex-1 rounded-none border-transparent shadow-none hover:translate-y-0 data-[state=on]:border-transparent"
+				>
 					{m.create_for_toggle_self()}
 				</ToggleGroup.Item>
-				<ToggleGroup.Item value={RECIPIENT_KIND.other} class="flex-1">
+				<ToggleGroup.Item
+					value={RECIPIENT_KIND.other}
+					class="flex-1 rounded-none border-transparent shadow-none hover:translate-y-0 border-l-ink border-l-2 data-[state=on]:border-transparent data-[state=on]:border-l-ink"
+				>
 					{m.create_for_toggle_other()}
 				</ToggleGroup.Item>
 			</ToggleGroup.Root>

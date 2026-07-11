@@ -1,6 +1,7 @@
 <script lang="ts">
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
 	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
+	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
@@ -50,6 +51,7 @@
 			{draggedIndex}
 			{dragOverIndex}
 			dragOverStyle="ring"
+			visitorLinkHref={normalizeGiftUrl(getPrimaryGiftLink(giftItem.links)?.url ?? null)}
 			onedit={() => onedit(giftItem)}
 			ondragstart={(e) => ondragstart(e, index)}
 			ondragover={(e) => ondragover(e, index)}

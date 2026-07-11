@@ -169,6 +169,9 @@
 			wishlist = freshWishlist;
 			gifts = freshGifts.gifts;
 			role = freshGifts.role;
+			// Fresh server data is authoritative — drop any optimistic reorder layer so a
+			// stale pre-refresh order can never mask the newly fetched gifts.
+			giftsContext.clearReorderOverride();
 			await refreshLikedGiftIds({ refresh: true });
 			await refreshWishlistDashboards();
 		} catch (thrown) {
@@ -184,6 +187,8 @@
 			const giftsData = await getGiftsByWishlistShortId(shortId);
 			gifts = giftsData.gifts;
 			role = giftsData.role;
+			// Fresh server data is authoritative — drop any optimistic reorder layer.
+			giftsContext.clearReorderOverride();
 			await refreshLikedGiftIds();
 		} catch (thrown) {
 			console.error('Failed to load wishlist gifts:', thrown);
@@ -611,9 +616,14 @@
 				sortOrder: index,
 			}));
 			await reorderGifts(reorderItems);
-			giftsContext.clearReorderOverride();
-			await refreshData();
+			// Success: keep the optimistic override in place. Its objects are already the
+			// rendered ones, so no data refetch is needed — avoiding the wholesale object
+			// replacement that re-triggered every card's $derived (the disabled/dim flash).
+			// The next real refresh (navigation, other mutation) clears the override so the
+			// authoritative server order takes over.
 		} catch (thrown) {
+			// Failure: revert to the pre-drag order and re-sync with the server so the
+			// visible order matches persisted state (existing error handling unchanged).
 			console.error('Failed to reorder gifts:', thrown);
 			giftsContext.clearReorderOverride();
 			await refreshData();

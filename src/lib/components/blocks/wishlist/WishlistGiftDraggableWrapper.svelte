@@ -9,6 +9,13 @@
 		draggedIndex: number | null;
 		dragOverIndex: number | null;
 		dragOverStyle: 'ring' | 'bg';
+		/**
+		 * Visitor-only: the gift's primary link (sanitized). When a visitor (canManage=false)
+		 * clicks/activates the card body or image, this link opens in a new tab. `null` when the
+		 * gift has no link — the card is then inert (no pointer, not focusable). Ignored for managers,
+		 * whose card click opens the edit modal via `onedit`.
+		 */
+		visitorLinkHref?: string | null;
 		children: Snippet;
 		onedit: () => void;
 		ondragstart: (event: DragEvent) => void;
@@ -24,6 +31,7 @@
 		draggedIndex,
 		dragOverIndex,
 		dragOverStyle,
+		visitorLinkHref = null,
 		children,
 		onedit,
 		ondragstart,
@@ -35,6 +43,13 @@
 
 	const isDragged = $derived(draggedIndex === index);
 	const isDragOver = $derived(dragOverIndex === index);
+
+	// A visitor can open the card only when it carries a primary link. Managers ignore this and
+	// keep their edit-modal / drag affordances.
+	const visitorLinkActivatable = $derived(!canManage && visitorLinkHref !== null);
+	// The card is interactive (clickable/focusable) either as a manager (opens edit modal) or as a
+	// visitor with a link (opens the link).
+	const isInteractive = $derived(canManage || visitorLinkActivatable);
 
 	function eventStartedInsideInteractiveElement(event: Event): boolean {
 		const target = event.target;
@@ -51,12 +66,23 @@
 		return interactiveElement !== null && interactiveElement !== currentTarget;
 	}
 
+	function activateCard() {
+		if (canManage) {
+			onedit();
+			return;
+		}
+		// Visitor: open the gift's primary link in a new tab. No-op when the gift has no link.
+		if (visitorLinkHref !== null) {
+			window.open(visitorLinkHref, '_blank', 'noopener,noreferrer');
+		}
+	}
+
 	function handleClick(event: MouseEvent) {
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
 		}
 
-		onedit();
+		activateCard();
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -66,7 +92,7 @@
 
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			onedit();
+			activateCard();
 		}
 	}
 </script>
@@ -75,13 +101,13 @@
 <div
 	class={cn(
 		'relative transition-opacity',
-		canManage && 'cursor-pointer',
+		isInteractive && 'cursor-pointer',
 		isDragged && 'opacity-40',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
 	)}
-	role={canManage ? 'button' : undefined}
-	tabindex={canManage ? 0 : undefined}
+	role={canManage ? 'button' : visitorLinkActivatable ? 'link' : undefined}
+	tabindex={isInteractive ? 0 : undefined}
 	onclick={handleClick}
 	onkeydown={handleKeydown}
 	draggable={canManage}
