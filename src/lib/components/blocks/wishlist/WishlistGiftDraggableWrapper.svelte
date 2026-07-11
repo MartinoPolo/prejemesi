@@ -1,5 +1,6 @@
 <script lang="ts">
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
+	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
 
@@ -18,11 +19,10 @@
 		visitorLinkHref?: string | null;
 		children: Snippet;
 		onedit: () => void;
-		ondragstart: (event: DragEvent) => void;
-		ondragover: (event: DragEvent) => void;
-		ondragleave: () => void;
-		ondrop: (event: DragEvent) => void;
-		ondragend: () => void;
+		/** Grip pointerdown — starts a pointer-driven reorder drag (mouse + touch + pen). */
+		onreorderpointerdown: (event: PointerEvent, index: number) => void;
+		/** Keyboard reorder from the grip: move this gift one slot toward the list start/end. */
+		onreordermove: (index: number, direction: -1 | 1) => void;
 	}
 
 	let {
@@ -34,11 +34,8 @@
 		visitorLinkHref = null,
 		children,
 		onedit,
-		ondragstart,
-		ondragover,
-		ondragleave,
-		ondrop,
-		ondragend,
+		onreorderpointerdown,
+		onreordermove,
 	}: WishlistGiftDraggableWrapperProps = $props();
 
 	const isDragged = $derived(draggedIndex === index);
@@ -95,10 +92,22 @@
 			activateCard();
 		}
 	}
+
+	function handleGripKeydown(event: KeyboardEvent) {
+		// Keyboard reorder affordance: Arrow Up/Left moves the gift earlier, Down/Right later.
+		if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+			event.preventDefault();
+			onreordermove(index, -1);
+		} else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+			event.preventDefault();
+			onreordermove(index, 1);
+		}
+	}
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
+	data-gift-item
 	class={cn(
 		'relative transition-opacity',
 		isInteractive && 'cursor-pointer',
@@ -110,19 +119,21 @@
 	tabindex={isInteractive ? 0 : undefined}
 	onclick={handleClick}
 	onkeydown={handleKeydown}
-	draggable={canManage}
-	{ondragstart}
-	{ondragover}
-	{ondragleave}
-	{ondrop}
-	{ondragend}
 >
 	{#if canManage}
-		<div
-			class="absolute left-2 top-2 z-10 cursor-grab rounded bg-background/80 p-0.5 opacity-60 transition-opacity hover:opacity-100"
+		<!-- Grip is the drag handle. `touch-action: none` stops the browser hijacking the touch
+		     gesture for scrolling so pointer reordering works on phones/tablets. -->
+		<button
+			type="button"
+			aria-label={m.gift_reorder_grip_label()}
+			title={m.gift_reorder_keyboard_hint()}
+			class="absolute left-2 top-2 z-10 cursor-grab touch-none rounded bg-background/80 p-0.5 opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+			data-prevent-gift-card-open
+			onpointerdown={(event) => onreorderpointerdown(event, index)}
+			onkeydown={handleGripKeydown}
 		>
 			<GripVerticalIcon class="size-4 text-muted-foreground" />
-		</div>
+		</button>
 	{/if}
 	{@render children()}
 </div>

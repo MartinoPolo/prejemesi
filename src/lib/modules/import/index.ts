@@ -21,3 +21,9 @@ export {
 	type ImportGiftsInput,
 	type CreateWishlistFromImportInput,
 } from './import_types.js';
+export {
+	buildGiftCsv,
+	giftCsvFilename,
+	downloadGiftCsv,
+	type ExportableGift,
+} from './gift_csv_export.js';

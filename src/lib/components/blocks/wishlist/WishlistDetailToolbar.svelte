@@ -5,6 +5,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
+	import FileDownIcon from '@lucide/svelte/icons/file-down';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import FilterChip from '$lib/components/derived/filter-chip/FilterChip.svelte';
@@ -33,6 +34,7 @@
 		onaddgift: () => void;
 		onbatchadd: () => void;
 		onimport: () => void;
+		onexport: () => void;
 	}
 
 	let {
@@ -52,6 +54,7 @@
 		onaddgift,
 		onbatchadd,
 		onimport,
+		onexport,
 	}: WishlistDetailToolbarProps = $props();
 
 	// Role guard (issue #101 REQ-3): the recipient never sees reservation state, so
@@ -117,6 +120,16 @@
 					onclick={onimport}
 				>
 					<FileUpIcon />
+				</Button>
+			</SimpleTooltip>
+			<SimpleTooltip text={m.export_toolbar_label()}>
+				<Button
+					size="icon"
+					intent="outline"
+					aria-label={m.export_toolbar_label()}
+					onclick={onexport}
+				>
+					<FileDownIcon />
 				</Button>
 			</SimpleTooltip>
 			<SimpleTooltip text={m.batch_add_toolbar_label()}>

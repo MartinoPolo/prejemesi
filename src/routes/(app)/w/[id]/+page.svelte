@@ -47,6 +47,7 @@
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
+	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import {
 		ownerSharedGiftDeleteGraceExpiresAt,
 		preShareOwnerFullEditGraceExpiresAt,
@@ -236,11 +237,6 @@
 	// ── Palette dialog state (issue #102 REQ-5) ──────────────────────────────
 
 	let paletteDialogOpen = $state(false);
-
-	// ── Drag-and-drop state ──────────────────────────────────────────────────
-
-	let draggedIndex = $state<number | null>(null);
-	let dragOverIndex = $state<number | null>(null);
 
 	// ── Reservation modal state ───────────────────────────────────────────────
 
@@ -514,6 +510,24 @@
 		await refreshData();
 	}
 
+	// ── Export handler ────────────────────────────────────────────────────────
+
+	// Exports gift DATA ONLY (name/notes/links/price), mirroring the import columns
+	// for a round-trip. Never emits reservation state – the recipient must not infer
+	// it, and reservations are not gift-catalog data (DECISIONS.md).
+	function handleExport() {
+		const csv = buildGiftCsv(
+			gifts.map((gift) => ({
+				name: gift.name,
+				description: gift.description,
+				links: gift.links ?? [],
+				price: gift.price,
+				currency: gift.currency,
+			})),
+		);
+		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
+	}
+
 	// ── Batch add handlers ───────────────────────────────────────────────────
 
 	function openBatchAddDialog() {
@@ -564,51 +578,23 @@
 		wishlist.palette = palette;
 	}
 
-	// ── Drag-and-drop handlers ────────────────────────────────────────────────
+	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
-	function handleDragStart(event: DragEvent, index: number) {
-		if (!canManage) {
-			return;
-		}
-		draggedIndex = index;
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-			event.dataTransfer.setData('text/plain', String(index));
-		}
-	}
-
-	function handleDragOver(event: DragEvent, index: number) {
-		event.preventDefault();
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-		dragOverIndex = index;
-	}
-
-	function handleDragLeave() {
-		dragOverIndex = null;
-	}
-
-	async function handleDrop(event: DragEvent, dropIndex: number) {
-		event.preventDefault();
-		if (draggedIndex === null || draggedIndex === dropIndex) {
-			draggedIndex = null;
-			dragOverIndex = null;
+	// The card grid / list views drive reordering via pointer events (works on touch, unlike
+	// native HTML5 DnD) and keyboard arrows on the grip. Both surfaces report a source→target
+	// index pair over the rendered order and route through this single persistence path.
+	async function handleReorder(fromIndex: number, toIndex: number) {
+		if (!canManage || fromIndex === toIndex) {
 			return;
 		}
 
 		const items = [...giftsContext.effectiveGifts.current];
-		const [movedItem] = items.splice(draggedIndex, 1);
+		const [movedItem] = items.splice(fromIndex, 1);
 		if (movedItem === undefined) {
-			draggedIndex = null;
-			dragOverIndex = null;
 			return;
 		}
-		items.splice(dropIndex, 0, movedItem);
+		items.splice(toIndex, 0, movedItem);
 		giftsContext.reorderGifts(items);
-
-		draggedIndex = null;
-		dragOverIndex = null;
 
 		try {
 			const reorderItems = items.map((item, index) => ({
@@ -628,11 +614,6 @@
 			giftsContext.clearReorderOverride();
 			await refreshData();
 		}
-	}
-
-	function handleDragEnd() {
-		draggedIndex = null;
-		dragOverIndex = null;
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
@@ -749,6 +730,7 @@
 		onaddgift={openCreateModal}
 		onbatchadd={openBatchAddDialog}
 		onimport={openImportWizard}
+		onexport={handleExport}
 	/>
 
 	<WishlistGiftDisplay
@@ -759,18 +741,12 @@
 		isLoading={isGiftDataLoading}
 		{isEmpty}
 		{isFilteredEmpty}
-		{draggedIndex}
-		{dragOverIndex}
 		onedit={openEditModal}
 		onreserve={handleOpenReserveModal}
 		onunreserve={handleUnreserve}
 		onaddgift={openCreateModal}
 		onclearfilters={clearFilters}
-		ondragstart={handleDragStart}
-		ondragover={handleDragOver}
-		ondragleave={handleDragLeave}
-		ondrop={handleDrop}
-		ondragend={handleDragEnd}
+		onreorder={handleReorder}
 	/>
 </div>
 

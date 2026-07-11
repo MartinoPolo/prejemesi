@@ -17,18 +17,12 @@
 		isLoading?: boolean;
 		isEmpty: boolean;
 		isFilteredEmpty: boolean;
-		draggedIndex: number | null;
-		dragOverIndex: number | null;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onaddgift: () => void;
 		onclearfilters: () => void;
-		ondragstart: (event: DragEvent, index: number) => void;
-		ondragover: (event: DragEvent, index: number) => void;
-		ondragleave: () => void;
-		ondrop: (event: DragEvent, index: number) => void;
-		ondragend: () => void;
+		onreorder: (fromIndex: number, toIndex: number) => void;
 	}
 
 	let {
@@ -39,18 +33,12 @@
 		isLoading = false,
 		isEmpty,
 		isFilteredEmpty,
-		draggedIndex,
-		dragOverIndex,
 		onedit,
 		onreserve,
 		onunreserve,
 		onaddgift,
 		onclearfilters,
-		ondragstart,
-		ondragover,
-		ondragleave,
-		ondrop,
-		ondragend,
+		onreorder,
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -77,16 +65,10 @@
 		{role}
 		{isArchived}
 		{canManage}
-		{draggedIndex}
-		{dragOverIndex}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{ondragstart}
-		{ondragover}
-		{ondragleave}
-		{ondrop}
-		{ondragend}
+		{onreorder}
 	/>
 {:else if viewMode === 'list'}
 	<WishlistGiftListView
@@ -94,16 +76,10 @@
 		{role}
 		{isArchived}
 		{canManage}
-		{draggedIndex}
-		{dragOverIndex}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{ondragstart}
-		{ondragover}
-		{ondragleave}
-		{ondrop}
-		{ondragend}
+		{onreorder}
 	/>
 {:else}
 	<WishlistGiftCompactTable
