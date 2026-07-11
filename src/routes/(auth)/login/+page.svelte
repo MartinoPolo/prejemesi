@@ -218,10 +218,10 @@
 					autocomplete="email"
 					bind:value={email}
 					onblur={handleEmailBlur}
+					state={emailError ? 'error' : 'default'}
 					aria-invalid={emailError ? true : undefined}
 					aria-describedby={emailError ? 'login-email-error' : undefined}
 					disabled={loading}
-					class={emailError ? 'border-destructive! ring-destructive/20! ring-3!' : ''}
 				/>
 			</AuthFormField>
 

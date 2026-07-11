@@ -37,6 +37,13 @@
 		onmoveup,
 		onmovedown,
 	}: GiftLinkRowProps = $props();
+
+	const hasUrlError = $derived(urlError != null && urlError !== '');
+	// `link.id` is always populated by ensureGiftLinkIds in the editor; fall back to the URL
+	// so the describedby target stays stable even for an id-less link.
+	const urlErrorId = $derived(
+		hasUrlError ? `gift-link-${link.id ?? link.url}-url-error` : undefined,
+	);
 </script>
 
 <div class="flex flex-col gap-1.5 rounded-md border border-border/60 p-2.5">
@@ -54,7 +61,9 @@
 			type="text"
 			data-testid="gift-link-url"
 			{disabled}
-			aria-invalid={urlError != null && urlError !== '' ? true : undefined}
+			state={hasUrlError ? 'error' : 'default'}
+			aria-invalid={hasUrlError ? true : undefined}
+			aria-describedby={urlErrorId}
 			oninput={(e: Event) => onurlchange((e.target as HTMLInputElement).value)}
 		/>
 
@@ -102,7 +111,7 @@
 		oninput={(e: Event) => onlabelchange((e.target as HTMLInputElement).value)}
 	/>
 
-	{#if urlError}
-		<span class="text-xs text-destructive">{urlError}</span>
+	{#if hasUrlError}
+		<span id={urlErrorId} class="text-xs text-destructive">{urlError}</span>
 	{/if}
 </div>

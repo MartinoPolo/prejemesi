@@ -9,6 +9,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
@@ -52,8 +53,6 @@
 			? m.create_recipient_name_required()
 			: '',
 	);
-	const hasTitleError = $derived(titleError !== '');
-	const hasRecipientError = $derived(recipientError !== '');
 
 	// Focus the recipient-name input the moment the "other" branch mounts.
 	const autofocusOnMount: Attachment<HTMLInputElement> = (node) => {
@@ -165,50 +164,53 @@
 			</ToggleGroup.Root>
 
 			{#if recipientKind === RECIPIENT_KIND.other}
-				<div class="flex flex-col gap-2">
-					<Label for="wishlist-recipient-name">{m.create_recipient_name_label()}</Label>
-					<Input
-						id="wishlist-recipient-name"
-						bind:value={recipientName}
-						placeholder={m.create_recipient_name_placeholder()}
-						maxlength={RECIPIENT_NAME_MAX_LENGTH}
-						required
-						disabled={isSubmitting}
-						state={hasRecipientError ? 'error' : 'default'}
-						aria-describedby={hasRecipientError
-							? 'wishlist-recipient-name-error'
-							: undefined}
-						oninput={() => (recipientTouched = true)}
-						{@attach autofocusOnMount}
-					/>
-					{#if hasRecipientError}
-						<p id="wishlist-recipient-name-error" class="text-destructive text-sm">
-							{recipientError}
-						</p>
-					{:else}
+				<Field
+					fieldId="wishlist-recipient-name"
+					label={m.create_recipient_name_label()}
+					errorMessage={recipientError}
+				>
+					{#snippet children({ hasError, errorId }: FieldControlContext)}
+						<Input
+							id="wishlist-recipient-name"
+							bind:value={recipientName}
+							placeholder={m.create_recipient_name_placeholder()}
+							maxlength={RECIPIENT_NAME_MAX_LENGTH}
+							required
+							disabled={isSubmitting}
+							state={hasError ? 'error' : 'default'}
+							aria-invalid={hasError ? true : undefined}
+							aria-describedby={errorId}
+							oninput={() => (recipientTouched = true)}
+							{@attach autofocusOnMount}
+						/>
+					{/snippet}
+					{#snippet help()}
 						<p class="text-muted-foreground text-sm">
 							{m.create_recipient_name_helper()}
 						</p>
-					{/if}
-				</div>
+					{/snippet}
+				</Field>
 			{/if}
 
-			<div class="flex flex-col gap-2">
-				<Label for="wishlist-title">{m.wishlist_name_label()}</Label>
-				<Input
-					id="wishlist-title"
-					bind:value={title}
-					placeholder={m.wishlist_name_placeholder()}
-					required
-					disabled={isSubmitting}
-					state={hasTitleError ? 'error' : 'default'}
-					aria-describedby={hasTitleError ? 'wishlist-title-error' : undefined}
-					oninput={() => (titleTouched = true)}
-				/>
-				{#if hasTitleError}
-					<p id="wishlist-title-error" class="text-destructive text-sm">{titleError}</p>
-				{/if}
-			</div>
+			<Field
+				fieldId="wishlist-title"
+				label={m.wishlist_name_label()}
+				errorMessage={titleError}
+			>
+				{#snippet children({ hasError, errorId }: FieldControlContext)}
+					<Input
+						id="wishlist-title"
+						bind:value={title}
+						placeholder={m.wishlist_name_placeholder()}
+						required
+						disabled={isSubmitting}
+						state={hasError ? 'error' : 'default'}
+						aria-invalid={hasError ? true : undefined}
+						aria-describedby={errorId}
+						oninput={() => (titleTouched = true)}
+					/>
+				{/snippet}
+			</Field>
 
 			<div class="flex flex-col gap-2">
 				<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>

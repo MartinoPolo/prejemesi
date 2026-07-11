@@ -12,6 +12,7 @@
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
@@ -196,16 +197,24 @@
 			</Card.Header>
 			<Card.Content>
 				<form onsubmit={handleDetailsSave} class="flex flex-col gap-4">
-					<div class="flex flex-col gap-2">
-						<Label for="wishlist-title">{m.wishlist_name_label()}</Label>
-						<Input
-							id="wishlist-title"
-							bind:value={detailsTitle}
-							placeholder={m.wishlist_name_placeholder()}
-							required
-							disabled={savingDetails}
-						/>
-					</div>
+					<Field
+						fieldId="wishlist-title"
+						label={m.wishlist_name_label()}
+						errorMessage={detailsError}
+					>
+						{#snippet children({ hasError, errorId }: FieldControlContext)}
+							<Input
+								id="wishlist-title"
+								bind:value={detailsTitle}
+								placeholder={m.wishlist_name_placeholder()}
+								required
+								disabled={savingDetails}
+								state={hasError ? 'error' : 'default'}
+								aria-invalid={hasError ? true : undefined}
+								aria-describedby={errorId}
+							/>
+						{/snippet}
+					</Field>
 
 					<div class="flex flex-col gap-2">
 						<Label for="wishlist-description">{m.wishlist_description_label()}</Label>
@@ -236,10 +245,6 @@
 							</p>
 						{/if}
 					</div>
-
-					{#if detailsError !== ''}
-						<p class="text-destructive text-sm">{detailsError}</p>
-					{/if}
 
 					<div class="flex justify-end">
 						<Button type="submit" disabled={savingDetails}>
