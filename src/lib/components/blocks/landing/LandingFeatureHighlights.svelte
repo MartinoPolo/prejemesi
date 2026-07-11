@@ -1,6 +1,7 @@
 <script lang="ts">
 	import BrandShareIcon from './BrandShareIcon.svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { PALETTE_LABELS, PALETTE_SWATCHES, type Palette } from '$lib/theme/palettes.js';
 
 	const shareApps = [
@@ -81,10 +82,14 @@
 					</div>
 					<div class="flex justify-center gap-2.5">
 						{#each shareApps as app (app.platform)}
-							<span class="share-icon" title={app.label}>
-								<BrandShareIcon platform={app.platform} class="size-5" />
-								<span class="sr-only">{app.label}</span>
-							</span>
+							<SimpleTooltip text={app.label} side="top">
+								{#snippet asChild(triggerProps)}
+									<span {...triggerProps} class="share-icon">
+										<BrandShareIcon platform={app.platform} class="size-5" />
+										<span class="sr-only">{app.label}</span>
+									</span>
+								{/snippet}
+							</SimpleTooltip>
 						{/each}
 					</div>
 					<div

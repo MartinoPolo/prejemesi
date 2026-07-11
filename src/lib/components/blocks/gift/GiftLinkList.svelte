@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import { normalizeGiftUrl, extractGiftUrlDomain } from '$lib/modules/gifts/gift_url.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 
 	interface GiftLinkListProps {
@@ -23,17 +24,21 @@
 		{#each visibleLinks as link, index (index)}
 			{@const safeUrl = normalizeGiftUrl(link.url)}
 			{@const domain = extractGiftUrlDomain(link.url)}
-			<a
-				href={safeUrl ?? '#'}
-				target="_blank"
-				rel="external noopener noreferrer"
-				class="inline-flex max-w-full items-center gap-1 rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[11.5px] font-bold text-[color:var(--link)] no-underline transition-colors hover:bg-link-tint"
-				title={link.url}
-				onclick={(e: MouseEvent) => e.stopPropagation()}
-			>
-				<ExternalLinkIcon class="size-3 flex-shrink-0" />
-				<span class="truncate">{link.label ?? domain ?? link.url}</span>
-			</a>
+			<SimpleTooltip text={link.url} side="top">
+				{#snippet asChild(triggerProps)}
+					<a
+						{...triggerProps}
+						href={safeUrl ?? '#'}
+						target="_blank"
+						rel="external noopener noreferrer"
+						class="inline-flex max-w-full items-center gap-1 rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[11.5px] font-bold text-[color:var(--link)] no-underline transition-colors hover:bg-link-tint"
+						onclick={(e: MouseEvent) => e.stopPropagation()}
+					>
+						<ExternalLinkIcon class="size-3 flex-shrink-0" />
+						<span class="truncate">{link.label ?? domain ?? link.url}</span>
+					</a>
+				{/snippet}
+			</SimpleTooltip>
 		{/each}
 		{#if overflowCount > 0}
 			<span class="text-xs font-semibold text-ink-soft"
