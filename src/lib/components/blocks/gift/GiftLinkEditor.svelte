@@ -3,7 +3,6 @@
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import GiftLinkRow from './GiftLinkRow.svelte';
 	import { MAX_GIFT_LINKS, type GiftLink } from '$lib/modules/gifts/types.js';
 	import { createGiftLinkId, normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
@@ -124,10 +123,4 @@
 			{/if}
 		</div>
 	{/if}
-
-	<!-- Phase 2: enrichment placeholder -->
-	<Button intent="ghost" size="sm" disabled class="self-start opacity-50">
-		<SparklesIcon data-icon="inline-start" />
-		{m.gift_enrich_placeholder()}
-	</Button>
 </div>

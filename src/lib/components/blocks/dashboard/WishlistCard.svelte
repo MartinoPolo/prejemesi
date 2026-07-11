@@ -170,6 +170,20 @@
 			</div>
 		{/if}
 
+		<!-- Owner card: created + last-updated timestamps (own lists only) -->
+		{#if giftCount !== undefined && !reservationProgress && wishlistData.createdAt}
+			<div class={variants.metaRow()}>
+				<span class={variants.metaText()}>
+					{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
+				</span>
+				{#if wishlistData.updatedAt}
+					<span class={variants.metaText()}>
+						{m.wishlist_updated_at({ date: formatDate(wishlistData.updatedAt) })}
+					</span>
+				{/if}
+			</div>
+		{/if}
+
 		{#if reservationProgress || (giftCount === undefined && wishlistData.createdAt)}
 			<div class={variants.metaRow()}>
 				<span class={variants.metaText()}>

@@ -197,7 +197,7 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-md">
+	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
 		<Dialog.Header>
 			<Dialog.Title>{m.moderator_title()}</Dialog.Title>
 			<Dialog.Description>{m.moderator_description()}</Dialog.Description>
@@ -349,45 +349,48 @@
 				</div>
 			{/if}
 
-			<Separator />
+			<!-- Reservation visibility (self lists only): recipient self-promotion + disclosure -->
+			{#if !isForSomeoneElse}
+				<Separator />
 
-			<!-- Self-promote section -->
-			{#if !recipientIsModerator}
-				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
+				<!-- Self-promote section -->
+				{#if !recipientIsModerator}
+					<div class={styles.section()}>
+						<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
 
-					<div class={styles.selfPromoteWarning()}>
-						<div class="flex items-center gap-2">
-							<AlertTriangleIcon class="size-4 flex-shrink-0" />
-							<div class={styles.selfPromoteTitle()}>
-								{m.moderator_see_reservations_title()}
+						<div class={styles.selfPromoteWarning()}>
+							<div class="flex items-center gap-2">
+								<AlertTriangleIcon class="size-4 flex-shrink-0" />
+								<div class={styles.selfPromoteTitle()}>
+									{m.moderator_see_reservations_title()}
+								</div>
 							</div>
+							<div class={styles.selfPromoteDescription()}>
+								{m.moderator_see_reservations_description()}
+							</div>
+							<Button
+								size="sm"
+								intent="outline"
+								class="mt-1 self-start"
+								disabled={isSelfPromoting}
+								onclick={handleSelfPromote}
+							>
+								<EyeIcon data-icon="inline-start" />
+								{isSelfPromoting
+									? m.moderator_activating()
+									: m.moderator_activate_button()}
+							</Button>
 						</div>
-						<div class={styles.selfPromoteDescription()}>
-							{m.moderator_see_reservations_description()}
+					</div>
+				{:else}
+					<div class={styles.section()}>
+						<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
+						<div class={styles.disclosureBanner()}>
+							<EyeIcon class="size-4 flex-shrink-0" />
+							<span>{m.moderator_active_disclosure()}</span>
 						</div>
-						<Button
-							size="sm"
-							intent="outline"
-							class="mt-1 self-start"
-							disabled={isSelfPromoting}
-							onclick={handleSelfPromote}
-						>
-							<EyeIcon data-icon="inline-start" />
-							{isSelfPromoting
-								? m.moderator_activating()
-								: m.moderator_activate_button()}
-						</Button>
 					</div>
-				</div>
-			{:else}
-				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
-					<div class={styles.disclosureBanner()}>
-						<EyeIcon class="size-4 flex-shrink-0" />
-						<span>{m.moderator_active_disclosure()}</span>
-					</div>
-				</div>
+				{/if}
 			{/if}
 		</div>
 	</Dialog.Content>
