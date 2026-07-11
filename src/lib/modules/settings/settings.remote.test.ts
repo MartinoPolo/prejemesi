@@ -63,12 +63,7 @@ vi.mock('drizzle-orm', () => ({
 }));
 
 import * as v from 'valibot';
-import {
-	getUserProfile,
-	updateAppBackgroundTheme,
-	updatePreferredLocale,
-	setUserPalette,
-} from './settings.remote.js';
+import { getUserProfile, updatePreferredLocale, setUserPalette } from './settings.remote.js';
 import { SetUserPaletteInputSchema } from './types.js';
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
@@ -126,7 +121,6 @@ describe('getUserProfile', () => {
 					{
 						name: 'Fresh Name',
 						image: 'https://example.com/fresh.jpg',
-						appBackgroundTheme: 'default',
 						preferredLocale: null,
 					},
 				],
@@ -143,7 +137,6 @@ describe('getUserProfile', () => {
 			email: testUser.email,
 			image: 'https://example.com/fresh.jpg',
 			isOAuthUser: false,
-			appBackgroundTheme: 'default',
 			preferredLocale: null,
 		});
 	});
@@ -156,7 +149,6 @@ describe('getUserProfile', () => {
 					{
 						name: testUser.name,
 						image: testUser.image,
-						appBackgroundTheme: 'twilight',
 						preferredLocale: null,
 					},
 				],
@@ -173,33 +165,8 @@ describe('getUserProfile', () => {
 			email: testUser.email,
 			image: testUser.image,
 			isOAuthUser: true,
-			appBackgroundTheme: 'twilight',
 			preferredLocale: null,
 		});
-	});
-
-	it('falls back to the default background theme when no user row is returned', async () => {
-		mockGetDb.mockReturnValue(createMockDb([[{ providerId: 'credential' }], []]));
-
-		const result = (await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
-			testAuthContext,
-		)) as { appBackgroundTheme: string };
-
-		expect(result.appBackgroundTheme).toBe('default');
-	});
-});
-
-describe('updateAppBackgroundTheme', () => {
-	it('persists the chosen background theme', async () => {
-		const mockDb = createMockDb([[]]);
-		mockGetDb.mockReturnValue(mockDb);
-
-		await (updateAppBackgroundTheme as unknown as (...args: unknown[]) => unknown)(
-			testAuthContext,
-			{ appBackgroundTheme: 'golden-hour' },
-		);
-
-		expect(mockDb.update).toHaveBeenCalledTimes(1);
 	});
 });
 

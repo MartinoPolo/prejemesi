@@ -1,5 +1,4 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
-import { BACKGROUND_THEMES } from '$lib/components/base/theme/types.js';
 import { SUPPORTED_LOCALES } from '$lib/i18n/locale.js';
 import { WISHLIST_THEMES } from '$lib/modules/wishlists/types.js';
 import { PALETTES } from '$lib/theme/palettes.js';
@@ -8,9 +7,14 @@ export const wishlistStatusEnum = pgEnum('wishlist_status', ['draft', 'active', 
 
 /**
  * Superseded by `paletteEnum` (Redesign 2026). Column kept in the DB for
- * rollback safety; no code reads it anymore.
+ * rollback safety; no code reads it anymore. Values inlined here (the former
+ * `BACKGROUND_THEMES` constant + its UI were removed) so the enum DDL is stable.
  */
-export const appBackgroundThemeEnum = pgEnum('app_background_theme', BACKGROUND_THEMES);
+export const appBackgroundThemeEnum = pgEnum('app_background_theme', [
+	'default',
+	'golden-hour',
+	'twilight',
+]);
 
 export const preferredLocaleEnum = pgEnum('preferred_locale', SUPPORTED_LOCALES);
 

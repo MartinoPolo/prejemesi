@@ -12,7 +12,6 @@ import {
 import { PALETTE_COOKIE_MAX_AGE_SECONDS, PALETTE_COOKIE_NAME } from '$lib/theme/palettes.js';
 import {
 	UpdateProfileInputSchema,
-	UpdateAppBackgroundThemeInputSchema,
 	UpdatePreferredLocaleInputSchema,
 	SetUserPaletteInputSchema,
 	type UserProfile,
@@ -39,7 +38,6 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 		.select({
 			name: user.name,
 			image: user.image,
-			appBackgroundTheme: user.appBackgroundTheme,
 			preferredLocale: user.preferredLocale,
 		})
 		.from(user)
@@ -52,7 +50,6 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 		email: authUser.email,
 		image: rows[0]?.image ?? null,
 		isOAuthUser,
-		appBackgroundTheme: rows[0]?.appBackgroundTheme ?? 'default',
 		preferredLocale: rows[0]?.preferredLocale ?? null,
 	};
 });
@@ -69,21 +66,6 @@ export const updateProfile = guardedCommand(
 			.set({
 				name: input.name,
 				image: input.image,
-				updatedAt: new Date(),
-			})
-			.where(eq(user.id, authUser.id));
-	},
-);
-
-export const updateAppBackgroundTheme = guardedCommand(
-	UpdateAppBackgroundThemeInputSchema,
-	async ({ user: authUser }, input) => {
-		const database = getDb();
-
-		await database
-			.update(user)
-			.set({
-				appBackgroundTheme: input.appBackgroundTheme,
 				updatedAt: new Date(),
 			})
 			.where(eq(user.id, authUser.id));

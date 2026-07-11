@@ -24,10 +24,7 @@
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 
 	/** Normalize a stored event date to a `Date` for the `DatePicker`, or `null` when unset/invalid. */
@@ -49,7 +46,7 @@
 	const canManage = $derived(canManageWishlist(wishlist.role));
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isShared = $derived(wishlist.sharedAt !== null);
-	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+	const themeEmoji = $derived(getWishlistEmoji(wishlist.theme));
 
 	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
 	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back

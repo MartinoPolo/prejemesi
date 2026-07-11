@@ -364,23 +364,6 @@
 	--switch-track: color-mix(in oklab, var(--p-ink) 20%, transparent);
 	--switch-thumb: #fff;
 	--switch-thumb-active: #fff;
-
-	/* ── Wishlist theme aliases (transitional — superseded by palettes,
-	      kept until every --wishlist-* consumer is restyled) ── */
-	--wishlist-primary: var(--primary);
-	--wishlist-primary-fg: var(--primary-foreground);
-	--wishlist-accent: var(--brand-deep);
-	--wishlist-accent-fg: #fff;
-	--wishlist-surface: var(--card);
-	--wishlist-surface-hover: var(--panel-hover);
-	--wishlist-border: var(--border);
-	--wishlist-border-strong: var(--border-strong);
-	--wishlist-muted: var(--muted);
-	--wishlist-muted-fg: var(--muted-foreground);
-	--wishlist-preview: var(--tint);
-	--wishlist-page: var(--background);
-	--wishlist-icon: var(--primary);
-	--wishlist-image-frame: var(--secondary);
 }
 
 /* ── Dark derivation — „midnight notebook" ──────────────────────────────
@@ -506,22 +489,6 @@
 	--switch-track: color-mix(in oklab, var(--ink) 25%, transparent);
 	--switch-thumb: var(--ink);
 	--switch-thumb-active: #fff;
-
-	/* Wishlist theme aliases (dark — same derivation chain) */
-	--wishlist-primary: var(--primary);
-	--wishlist-primary-fg: var(--primary-foreground);
-	--wishlist-accent: var(--p-bright);
-	--wishlist-accent-fg: #04101c;
-	--wishlist-surface: var(--card);
-	--wishlist-surface-hover: var(--panel-hover);
-	--wishlist-border: var(--border);
-	--wishlist-border-strong: var(--border-strong);
-	--wishlist-muted: var(--muted);
-	--wishlist-muted-fg: var(--muted-foreground);
-	--wishlist-preview: var(--tint);
-	--wishlist-page: var(--background);
-	--wishlist-icon: var(--brand);
-	--wishlist-image-frame: var(--secondary);
 }
 
 @theme inline {
@@ -649,22 +616,6 @@
 	--animate-pop-in: pop-in 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) backwards;
 	--animate-bob: bob 3.6s ease-in-out infinite alternate;
 	--animate-emoji-wiggle: emoji-wiggle 0.45s ease both;
-
-	/* ── Wishlist theme colors (transitional aliases) ── */
-	--color-wishlist-primary: var(--wishlist-primary);
-	--color-wishlist-primary-fg: var(--wishlist-primary-fg);
-	--color-wishlist-accent: var(--wishlist-accent);
-	--color-wishlist-accent-fg: var(--wishlist-accent-fg);
-	--color-wishlist-surface: var(--wishlist-surface);
-	--color-wishlist-surface-hover: var(--wishlist-surface-hover);
-	--color-wishlist-border: var(--wishlist-border);
-	--color-wishlist-border-strong: var(--wishlist-border-strong);
-	--color-wishlist-muted: var(--wishlist-muted);
-	--color-wishlist-muted-fg: var(--wishlist-muted-fg);
-	--color-wishlist-preview: var(--wishlist-preview);
-	--color-wishlist-page: var(--wishlist-page);
-	--color-wishlist-icon: var(--wishlist-icon);
-	--color-wishlist-image-frame: var(--wishlist-image-frame);
 }
 
 @layer base {

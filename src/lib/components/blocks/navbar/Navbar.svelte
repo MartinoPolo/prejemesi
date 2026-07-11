@@ -27,10 +27,7 @@
 		getModeratedWishlists,
 		getFollowedWishlists,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
@@ -147,7 +144,6 @@
 	}
 
 	function wishlistToDropdownItem(wishlistRecord: MyWishlist): NavDropdownItem {
-		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const badge = STATUS_BADGE[wishlistRecord.status];
 		// Owner invariant: gift count + event countdown only – never reservation data.
 		return {
@@ -155,7 +151,7 @@
 			meta: giftCountLabel(wishlistRecord.totalGifts),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
-			emoji: theme.emoji,
+			emoji: getWishlistEmoji(wishlistRecord.theme),
 			...thumbImage(wishlistRecord),
 			badgeLabel: badge.label,
 			badgeVariant: badge.variant,
@@ -163,13 +159,12 @@
 	}
 
 	function moderatedToDropdownItem(wishlistRecord: ModeratedWishlist): NavDropdownItem {
-		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		return {
 			name: wishlistRecord.title,
 			meta: m.wishlist_recipient_chip({ name: wishlistRecord.recipientDisplayName }),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
-			emoji: theme.emoji,
+			emoji: getWishlistEmoji(wishlistRecord.theme),
 			...thumbImage(wishlistRecord),
 			badgeLabel: `${wishlistRecord.reservedGifts}/${wishlistRecord.totalGifts}`,
 			badgeVariant: 'draft',
@@ -177,14 +172,13 @@
 	}
 
 	function followedToDropdownItem(wishlistRecord: FollowedWishlist): NavDropdownItem {
-		const theme = getThemePreset(wishlistRecord.theme as DashboardWishlistTheme);
 		const state = followedListState(wishlistRecord);
 		return {
 			name: wishlistRecord.title,
 			meta: m.wishlist_recipient_chip({ name: wishlistRecord.recipientDisplayName }),
 			countdown: eventCountdown(wishlistRecord.eventDate) ?? undefined,
 			href: localizeInternalHref(resolve('/(app)/w/[id]', { id: wishlistRecord.shortId })),
-			emoji: theme.emoji,
+			emoji: getWishlistEmoji(wishlistRecord.theme),
 			...thumbImage(wishlistRecord),
 			...followedBadge(wishlistRecord, state),
 			resolution: state === FOLLOWED_LIST_STATE.open ? undefined : state,

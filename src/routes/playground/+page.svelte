@@ -272,46 +272,34 @@
 
 		<Separator />
 
-		<!-- C1: Wishlist Theme Tokens -->
+		<!-- C1: Per-wishlist palette (Redesign 2026) -->
 		<section class="flex flex-col gap-4">
-			<h3 class="text-2xl font-semibold tracking-tight">C1: Wishlist Theme</h3>
+			<h3 class="text-2xl font-semibold tracking-tight">C1: Per-wishlist palette</h3>
 			<p class="text-sm text-muted-foreground">
-				10 tokens define the per-wishlist palette. Without dark overrides, light surfaces
-				appeared on dark backgrounds. Now surfaces darken, borders become transparent white,
-				and text brightens.
+				A <code class="rounded bg-muted px-1 text-xs">data-palette</code> wrapper re-derives every
+				semantic token for its subtree, giving each wishlist its own identity with zero JS. The
+				same mock card is shown below under three palettes.
 			</p>
 
-			<div class="grid grid-cols-5 gap-3">
-				{#each [{ var: '--wishlist-primary', label: 'primary' }, { var: '--wishlist-primary-fg', label: 'primary-fg' }, { var: '--wishlist-accent', label: 'accent' }, { var: '--wishlist-surface', label: 'surface' }, { var: '--wishlist-surface-hover', label: 'surface-hover' }, { var: '--wishlist-border', label: 'border' }, { var: '--wishlist-border-strong', label: 'border-strong' }, { var: '--wishlist-muted', label: 'muted' }, { var: '--wishlist-muted-fg', label: 'muted-fg' }, { var: '--wishlist-accent-fg', label: 'accent-fg' }] as swatch (swatch.var)}
-					<div class="flex flex-col gap-1">
+			<div class="grid gap-4 md:grid-cols-3">
+				{#each ['sky', 'sakura', 'honey'] as demoPalette (demoPalette)}
+					<div
+						data-palette={demoPalette}
+						class="overflow-hidden rounded-lg border-2 border-border-strong bg-background"
+					>
 						<div
-							class="h-10 rounded-md border border-border"
-							style="background: var({swatch.var})"
-						></div>
-						<span class="text-[10px] font-medium">{swatch.label}</span>
+							class="flex items-center justify-between bg-primary px-4 py-3 text-primary-foreground"
+						>
+							<span class="font-semibold capitalize">{demoPalette}</span>
+							<span class="text-xs opacity-80">3 gifts</span>
+						</div>
+						<div class="border-t border-border bg-card px-4 py-3">
+							<p class="text-sm text-muted-foreground">
+								Example content on a themed surface with a themed border.
+							</p>
+						</div>
 					</div>
 				{/each}
-			</div>
-
-			<div
-				class="overflow-hidden rounded-lg border-2"
-				style="border-color: var(--wishlist-border-strong)"
-			>
-				<div
-					class="flex items-center justify-between px-4 py-3"
-					style="background: var(--wishlist-primary); color: var(--wishlist-primary-fg)"
-				>
-					<span class="font-semibold">My Birthday Wishlist</span>
-					<span class="text-xs opacity-80">3 gifts</span>
-				</div>
-				<div
-					class="px-4 py-3"
-					style="background: var(--wishlist-surface); border-top: 1px solid var(--wishlist-border)"
-				>
-					<p class="text-sm" style="color: var(--wishlist-muted-fg)">
-						Example content on wishlist surface with themed border.
-					</p>
-				</div>
 			</div>
 		</section>
 

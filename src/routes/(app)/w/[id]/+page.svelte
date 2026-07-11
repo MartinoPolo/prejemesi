@@ -14,10 +14,6 @@
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
-	import { setWishlistThemeContext } from '$lib/modules/themes/themes.context.svelte.js';
-	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply_theme.js';
-	import { toWishlistTheme } from '$lib/modules/themes/types.js';
-	import type { Palette } from '$lib/theme/palettes.js';
 	import {
 		getWishlistByShortId,
 		archiveWishlist,
@@ -31,10 +27,8 @@
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import type { Palette } from '$lib/theme/palettes.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistImageUrl } from '$lib/modules/images/index.js';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
@@ -115,10 +109,6 @@
 		),
 	);
 
-	const themeContext = untrack(() =>
-		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
-	);
-
 	// ── Derived values ───────────────────────────────────────────────────────
 
 	const isArchived = $derived(wishlist.status === 'archived');
@@ -129,7 +119,7 @@
 	const recipientIsModerator = $derived(wishlist.recipientIsModerator);
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
 	const isForSomeoneElse = $derived(wishlist.recipientUserId === null);
-	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+	const themeEmoji = $derived(getWishlistEmoji(wishlist.theme));
 	function getWishlistPageUrl() {
 		return `${SITE_URL}/w/${wishlist.shortId}`;
 	}
@@ -252,23 +242,6 @@
 	let reserveModalOpen = $state(false);
 	let reservingGift = $state<GiftForVisitor | null>(null);
 	let isReserving = $state(false);
-
-	// ── Theme application via $effect ─────────────────────────────────────────
-
-	let themeWrapperElement = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		if (themeWrapperElement === null) {
-			return;
-		}
-		const theme = themeContext.effectiveTheme.current;
-		applyWishlistTheme(themeWrapperElement, theme);
-		return () => {
-			if (themeWrapperElement !== null) {
-				removeWishlistTheme(themeWrapperElement);
-			}
-		};
-	});
 
 	// ── Re-fetch on route param change ───────────────────────────────────────
 
@@ -728,11 +701,7 @@
 
 <!-- data-palette re-derives every color token for this subtree (see app.css), giving the
      wishlist its own per-list identity independent of the viewer's app palette. -->
-<div
-	bind:this={themeWrapperElement}
-	data-palette={wishlist.palette}
-	class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6"
->
+<div data-palette={wishlist.palette} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}

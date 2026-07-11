@@ -76,8 +76,6 @@ export interface UpdateWishlistInput {
 	title?: string;
 	description?: string | null;
 	eventDate?: Date | null;
-	theme?: WishlistTheme;
-	customThemeColor?: string | null;
 	imageKey?: string | null;
 	imageSlots?: WishlistImageSlots | null;
 }
@@ -87,8 +85,6 @@ export const UpdateWishlistInputSchema = v.object({
 	title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
-	theme: v.optional(v.picklist(WISHLIST_THEMES)),
-	customThemeColor: v.optional(v.nullable(v.string())),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
 });

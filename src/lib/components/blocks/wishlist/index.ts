@@ -11,4 +11,3 @@ export { default as WishlistFallbackHero } from './WishlistFallbackHero.svelte';
 export { default as WishlistSlotImage } from './WishlistSlotImage.svelte';
 export { default as SlotPreviewCard } from './SlotPreviewCard.svelte';
 export { default as WishlistCropEditor } from './WishlistCropEditor.svelte';
-export { default as ThemeCardPreview } from './ThemeCardPreview.svelte';

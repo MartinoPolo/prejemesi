@@ -3,10 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { wishlistCardVariants, STATUS_CHIP_CLASSES } from './wishlist_card_variants.js';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
@@ -49,7 +46,7 @@
 	}: WishlistCardProps = $props();
 
 	const isArchived = $derived(wishlistData.status === 'archived');
-	const theme = $derived(getThemePreset(wishlistData.theme as DashboardWishlistTheme));
+	const themeEmoji = $derived(getWishlistEmoji(wishlistData.theme));
 	const cardSrc = $derived(wishlistImageUrl(wishlistData.imageKey));
 	const cardFrame = $derived(wishlistSlotToFrameProps(wishlistData.imageSlots, 'card'));
 	const variants = $derived(wishlistCardVariants({ archived: isArchived }));
@@ -90,7 +87,7 @@
 			<WishlistSlotImage
 				src={cardSrc}
 				frame={cardFrame}
-				themeEmoji={theme.emoji}
+				{themeEmoji}
 				alt={wishlistData.title}
 			/>
 		</div>

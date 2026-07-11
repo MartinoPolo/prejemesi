@@ -277,14 +277,6 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		}
 	}
 
-	// Theme can always be updated (visual preference, not content)
-	if (input.theme !== undefined) {
-		updateData['theme'] = input.theme;
-	}
-	if (input.customThemeColor !== undefined) {
-		updateData['customThemeColor'] = input.customThemeColor;
-	}
-
 	// Image assignment + per-slot crop metadata can always be updated
 	if (input.imageKey !== undefined) {
 		updateData['imageKey'] = input.imageKey;

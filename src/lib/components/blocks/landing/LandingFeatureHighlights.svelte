@@ -1,6 +1,7 @@
 <script lang="ts">
 	import BrandShareIcon from './BrandShareIcon.svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import { PALETTE_LABELS, PALETTE_SWATCHES, type Palette } from '$lib/theme/palettes.js';
 
 	const shareApps = [
 		{ platform: 'whatsapp', label: 'WhatsApp' },
@@ -9,14 +10,21 @@
 		{ platform: 'email', label: 'Email' },
 	] as const;
 
-	const themeSwatches = [
-		{ name: 'default', label: m.theme_default(), emoji: '🎁' },
-		{ name: 'christmas', label: m.theme_christmas(), emoji: '🎄' },
-		{ name: 'birthday', label: m.theme_birthday(), emoji: '🎂' },
-		{ name: 'elegant', label: m.theme_elegant(), emoji: '💍' },
-		{ name: 'fun', label: m.theme_fun(), emoji: '🎉' },
-		{ name: 'custom', label: m.landing_feat3_custom(), emoji: '✨' },
-	] as const;
+	// A representative sample of the 10 curated palettes (Redesign 2026) — the
+	// single theming system that replaced the old preset+custom themes.
+	const PALETTE_SAMPLE = [
+		'sky',
+		'sakura',
+		'honey',
+		'mint',
+		'grape',
+		'ruby',
+	] as const satisfies Palette[];
+	const themeSwatches = PALETTE_SAMPLE.map((name) => ({
+		name,
+		label: PALETTE_LABELS[name],
+		color: PALETTE_SWATCHES[name],
+	}));
 </script>
 
 <section class="bg-dots scroll-mt-16" id="vyhody" aria-label={m.landing_features_headline()}>
@@ -100,7 +108,11 @@
 					<div class="flex flex-wrap gap-2">
 						{#each themeSwatches as theme (theme.name)}
 							<span class="theme-swatch">
-								<span aria-hidden="true">{theme.emoji}</span>
+								<span
+									class="theme-swatch-dot"
+									style="background: {theme.color}"
+									aria-hidden="true"
+								></span>
 								{theme.label}
 							</span>
 						{/each}
@@ -241,6 +253,14 @@
 
 	.theme-swatch:hover {
 		transform: rotate(-2deg) scale(1.05);
+	}
+
+	.theme-swatch-dot {
+		display: inline-block;
+		width: 14px;
+		height: 14px;
+		border: 2px solid var(--ink);
+		border-radius: 50%;
 	}
 
 	/* Staggered pop-in on load (mockup .features-grid reveal) */
