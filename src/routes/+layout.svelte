@@ -3,8 +3,8 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import { AppToaster } from '$lib/components/base/toast/index.js';
 	import favicon from '$lib/assets/favicon.svg';
-	import figtreeLatinUrl from '@fontsource-variable/figtree/files/figtree-latin-wght-normal.woff2?url';
-	import notoSansLatinUrl from '@fontsource-variable/noto-sans/files/noto-sans-latin-wght-normal.woff2?url';
+	import dynapuffLatinUrl from '@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2?url';
+	import geistLatinUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
 	import { afterNavigate, preloadCode } from '$app/navigation';
 	import { browser, dev } from '$app/environment';
 	import { page } from '$app/state';
@@ -60,18 +60,12 @@
 	<link rel="icon" href={favicon} />
 	<link
 		rel="preload"
-		href={figtreeLatinUrl}
+		href={dynapuffLatinUrl}
 		as="font"
 		type="font/woff2"
 		crossorigin="anonymous"
 	/>
-	<link
-		rel="preload"
-		href={notoSansLatinUrl}
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
+	<link rel="preload" href={geistLatinUrl} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
 {#key currentLocale}
