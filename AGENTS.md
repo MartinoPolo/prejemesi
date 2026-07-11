@@ -29,6 +29,15 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 
 - When writing tests, always derive expected behavior from requirements (GitHub issue descriptions and comments, `DECISIONS.md`, `CONTEXT.md`, or other docs) — never adapt tests to match the implementation. If a test reveals a bug, report it to the user or fix it immediately.
 
+## Visual / Browser Testing
+
+- Chrome DevTools MCP and Playwright MCP are unreliable in this project (they routinely fail to connect — the plugin pins a `chrome-devtools-mcp` version blocked by the global npm `before` time-pin, and Playwright MCP isn't registered here). Do NOT burn time trying to (re)connect them.
+- **Default to raw Playwright** via the project's own installed `playwright` dependency — it has no MCP layer, so it works in every session:
+    - Quick screenshot / crawl / click: `node scripts/shot.mjs <route> [--user martin|jana|petr|eva|tomas] [--mobile] [--dark] [--full] [--wait <sel>]`. Prints the PNG path; Read it back to view. Run from **PowerShell** (Git Bash mangles leading-slash args; from Bash prefix `MSYS_NO_PATHCONV=1`).
+    - Repeatable verification: a `tests/e2e/*.spec.ts` with `@playwright/test`, reusing `tests/e2e/fixtures/{auth,wishlist}-helpers.ts`.
+- Prereqs: dev server (`pnpm run dev`) + seeded DB (`pnpm db:seed`). Authed routes are under the `(app)` group: `/my-lists`, `/followed`, `/moderated`, `/settings`, `/w/<id>`.
+- Prefer explicit `waitForSelector` over `waitUntil: 'networkidle'` (networkidle hangs on SSE/long-poll surfaces).
+
 ## Commands
 
 - On Windows, use `pnpm.cmd` for package commands. Corepack's pnpm store lives outside the
