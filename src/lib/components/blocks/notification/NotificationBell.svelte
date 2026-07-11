@@ -48,10 +48,10 @@
 <style>
 	.notif-badge {
 		position: absolute;
-		top: 2px;
-		right: 2px;
-		min-width: 16px;
-		height: 16px;
+		top: 0;
+		right: 0;
+		min-width: 17px;
+		height: 17px;
 		padding: 0 3px;
 		background: var(--destructive);
 		color: white;
@@ -62,7 +62,8 @@
 		align-items: center;
 		justify-content: center;
 		line-height: 1;
-		border: 2px solid var(--background);
+		border: 2px solid var(--ink);
+		transform: rotate(6deg);
 		pointer-events: none;
 	}
 </style>

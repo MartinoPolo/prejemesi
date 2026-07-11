@@ -7,6 +7,7 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import FilterChip from '$lib/components/derived/filter-chip/FilterChip.svelte';
 	import GiftSortSelect from '$lib/components/blocks/gift/GiftSortSelect.svelte';
 	import GiftFilterOverflowMenu from '$lib/components/blocks/gift/GiftFilterOverflowMenu.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
@@ -72,25 +73,20 @@
 
 	{#if showAvailableChip}
 		<!-- „Pouze dostupné" toggle chip (issue #101): filled when active, aria-pressed for AT -->
-		<button
-			type="button"
-			class="rounded-full border-2 border-ink bg-surface px-3.5 py-1.5 text-[13.5px] font-semibold text-ink transition-[background-color,color,transform] hover:-translate-y-px aria-pressed:bg-primary aria-pressed:text-primary-foreground"
-			aria-pressed={filters.availableOnly}
-			onclick={toggleAvailableOnly}
-		>
+		<FilterChip pressed={filters.availableOnly} onclick={toggleAvailableOnly}>
 			{m.gift_filter_available_only()}
-		</button>
+		</FilterChip>
 	{/if}
 
 	<GiftFilterOverflowMenu {filters} {onfilterchange} />
 
 	<div class="ml-auto flex items-center gap-2">
 		{#if canManage && !isArchived}
-			<SimpleTooltip text={m.wishlist_detail_change_theme()}>
+			<SimpleTooltip text={m.wishlist_palette_dialog_title()}>
 				<Button
 					size="icon"
 					intent="outline"
-					aria-label={m.wishlist_detail_change_theme()}
+					aria-label={m.wishlist_palette_dialog_title()}
 					onclick={onthemeopen}
 				>
 					<PaletteIcon />

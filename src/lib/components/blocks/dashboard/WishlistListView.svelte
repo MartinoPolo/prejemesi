@@ -3,7 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { wishlistListViewVariants } from './wishlist_list_view_variants.js';
-	import { STATUS_DOT_CLASSES } from './wishlist_card_variants.js';
+	import { STATUS_CHIP_CLASSES } from './wishlist_card_variants.js';
 	import {
 		getThemePreset,
 		type DashboardWishlistTheme,
@@ -53,21 +53,18 @@
 						alt={item.wishlist.title}
 					/>
 				</div>
-				<div class={rowVariants.bannerMiniOverlay()}></div>
 			</div>
 
 			<div class={rowVariants.info()}>
 				<span class={rowVariants.title()}>{item.wishlist.title}</span>
-				<span class={rowVariants.subtitle()}>
-					{#if item.recipientDisplayName}
+				{#if item.recipientDisplayName}
+					<span class={rowVariants.subtitle()}>
 						{m.wishlist_recipient_chip({ name: item.recipientDisplayName })}
 						{#if item.reservedCount !== undefined && item.giftCount !== undefined}
 							· {item.reservedCount}/{item.giftCount} rezervováno
 						{/if}
-					{:else}
-						{theme.emoji} {theme.label}
-					{/if}
-				</span>
+					</span>
+				{/if}
 			</div>
 
 			<div class={rowVariants.trailing()}>
@@ -77,13 +74,9 @@
 						{item.giftCount}
 					</span>
 				{/if}
-				<div class={rowVariants.statusBadge()}>
-					<span
-						class={cn(
-							rowVariants.statusDot(),
-							STATUS_DOT_CLASSES[item.wishlist.status],
-						)}
-					></span>
+				<div
+					class={cn(rowVariants.statusBadge(), STATUS_CHIP_CLASSES[item.wishlist.status])}
+				>
 					{WISHLIST_STATUS_LABELS[item.wishlist.status]()}
 				</div>
 			</div>

@@ -252,7 +252,7 @@
 		<!-- Header: Title + Stepper -->
 		<div class="flex flex-col gap-3 px-6 pt-5 pb-4">
 			<div class="flex items-center justify-between">
-				<h2 class="text-foreground text-lg font-semibold">
+				<h2 class="font-heading text-lg font-semibold text-foreground">
 					{m.import_wizard_title()}
 				</h2>
 				<Dialog.Close>
@@ -265,24 +265,22 @@
 				</Dialog.Close>
 			</div>
 
-			<!-- Stepper -->
+			<!-- Stepper: ink-bordered dots + dashed connectors (anime-sky design language) -->
 			<div class="flex items-center gap-2">
 				{#each WIZARD_STEPS as step, index (step)}
 					{#if index > 0}
 						<div
-							class="h-px flex-1 {index <= currentStepIndex
-								? 'bg-primary'
-								: 'bg-border'}"
+							class="flex-1 border-t-2 {index <= currentStepIndex
+								? 'border-ink'
+								: 'border-dashed border-ink-faint'}"
 						></div>
 					{/if}
 					<div class="flex items-center gap-1.5">
 						<div
-							class="flex size-6 items-center justify-center rounded-full text-xs font-medium {index <
+							class="flex size-6 items-center justify-center rounded-full border-2 text-xs font-bold {index <=
 							currentStepIndex
-								? 'bg-primary/15 text-primary'
-								: index === currentStepIndex
-									? 'bg-primary text-primary-foreground'
-									: 'border-border text-muted-foreground border'}"
+								? 'border-ink bg-primary text-primary-foreground'
+								: 'border-ink-faint bg-surface text-ink-soft'}"
 						>
 							{#if index < currentStepIndex}
 								<CheckIcon class="size-3.5" />
@@ -292,8 +290,8 @@
 						</div>
 						<span
 							class="text-xs {index === currentStepIndex
-								? 'text-foreground font-medium'
-								: 'text-muted-foreground'}"
+								? 'font-bold text-foreground'
+								: 'font-semibold text-ink-soft'}"
 						>
 							{STEP_LABELS[index]()}
 						</span>

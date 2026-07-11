@@ -1,5 +1,6 @@
 <script lang="ts">
 	import HeartIcon from '@lucide/svelte/icons/heart';
+	import * as m from '$lib/paraglide/messages.js';
 	import { useLikes } from '$lib/modules/likes/likes.context.svelte.js';
 	import { toggleLike } from '$lib/modules/likes/likes.remote.js';
 	import { likeButtonVariants, type LikeButtonSize } from './like_button_variants.js';
@@ -62,7 +63,9 @@
 <button
 	type="button"
 	class={cn(styles.root(), className)}
-	aria-label={liked ? `Odebrat z oblibenych: ${giftName}` : `Pridat do oblibenych: ${giftName}`}
+	aria-label={liked
+		? m.gift_like_remove_aria({ name: giftName })
+		: m.gift_like_add_aria({ name: giftName })}
 	aria-pressed={liked}
 	onclick={handleClick}
 >

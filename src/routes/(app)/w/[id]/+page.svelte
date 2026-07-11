@@ -16,11 +16,10 @@
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { setWishlistThemeContext } from '$lib/modules/themes/themes.context.svelte.js';
 	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply_theme.js';
-	import { isCustomTheme, toWishlistTheme } from '$lib/modules/themes/types.js';
-	import type { WishlistTheme } from '$lib/modules/themes/types.js';
+	import { toWishlistTheme } from '$lib/modules/themes/types.js';
+	import type { Palette } from '$lib/theme/palettes.js';
 	import {
 		getWishlistByShortId,
-		updateWishlist,
 		archiveWishlist,
 		unfollowWishlist,
 		followWishlist,
@@ -239,9 +238,9 @@
 
 	let importWizardOpen = $state(false);
 
-	// ── Theme selector dialog state ──────────────────────────────────────────
+	// ── Palette dialog state (issue #102 REQ-5) ──────────────────────────────
 
-	let themeDialogOpen = $state(false);
+	let paletteDialogOpen = $state(false);
 
 	// ── Drag-and-drop state ──────────────────────────────────────────────────
 
@@ -578,44 +577,13 @@
 		}
 	}
 
-	// ── Theme handlers ────────────────────────────────────────────────────────
+	// ── Palette handler (issue #102 REQ-5) ────────────────────────────────────
 
-	function handleThemePreview(theme: WishlistTheme) {
-		themeContext.startPreview(theme);
-	}
-
-	function handleThemeCancel() {
-		themeContext.cancelPreview();
-		themeDialogOpen = false;
-	}
-
-	async function handleThemeSave(theme: WishlistTheme) {
-		try {
-			const themePreset = isCustomTheme(theme) ? 'custom' : theme;
-			const customThemeColor = isCustomTheme(theme) ? theme.color : null;
-
-			await updateWishlist({
-				id: wishlist.id,
-				theme: themePreset,
-				customThemeColor,
-			});
-
-			wishlist.theme = themePreset;
-			wishlist.customThemeColor = customThemeColor;
-			themeContext.cancelPreview();
-			themeDialogOpen = false;
-			toastSuccess(m.toast_theme_saved());
-			await refreshWishlistDashboards();
-		} catch (thrown) {
-			console.error('Failed to save theme:', thrown);
-			toastError(m.toast_theme_save_error());
-		}
-	}
-
-	function handleThemeDialogOpenChange(open: boolean) {
-		if (!open) {
-			themeContext.cancelPreview();
-		}
+	// Optimistic local update: the `data-palette` wrapper re-derives the whole token
+	// subtree instantly; the picker persists via setWishlistPalette (which refreshes
+	// the wishlist + dashboard queries server-side) and reverts on error.
+	function handlePaletteSelect(palette: Palette) {
+		wishlist.palette = palette;
 	}
 
 	// ── Drag-and-drop handlers ────────────────────────────────────────────────
@@ -796,7 +764,7 @@
 		onviewmodechange={handleViewModeChange}
 		onsortchange={handleSortChange}
 		onfilterchange={handleFilterChange}
-		onthemeopen={() => (themeDialogOpen = true)}
+		onthemeopen={() => (paletteDialogOpen = true)}
 		onsettings={handleSettingsOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
@@ -849,8 +817,8 @@
 	bind:reserveModalOpen
 	{reservingGift}
 	{isReserving}
-	bind:themeDialogOpen
-	activeTheme={themeContext.activeTheme.current}
+	bind:paletteDialogOpen
+	wishlistPalette={wishlist.palette}
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
 	bind:moderatorPanelOpen
@@ -863,10 +831,7 @@
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onshared={handleShared}
-	onthemedialogopenchange={handleThemeDialogOpenChange}
-	onthemepreview={handleThemePreview}
-	onthemesave={handleThemeSave}
-	onthemecancel={handleThemeCancel}
+	onpaletteselect={handlePaletteSelect}
 	onmoderatorselfpromoted={handleSelfPromoted}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}

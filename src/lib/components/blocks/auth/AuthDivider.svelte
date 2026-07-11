@@ -22,14 +22,15 @@
 
 	.auth-divider-line {
 		flex: 1;
-		height: 1px;
-		background: var(--border);
+		border-top: 2px dashed var(--ink-faint);
 	}
 
 	.auth-divider-text {
 		font-size: var(--text-xs);
-		color: var(--muted-foreground);
+		font-weight: 800;
+		text-transform: uppercase;
+		color: var(--ink-soft);
 		white-space: nowrap;
-		letter-spacing: var(--tracking-wide);
+		letter-spacing: 0.08em;
 	}
 </style>

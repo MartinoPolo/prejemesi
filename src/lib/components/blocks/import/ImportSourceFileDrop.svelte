@@ -94,8 +94,8 @@
 
 <button
 	type="button"
-	class="border-border-strong hover:border-primary/50 hover:bg-primary/5 flex h-full w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-6 transition-colors {isDragOver
-		? 'border-primary bg-primary/5'
+	class="flex h-full w-full flex-col items-center justify-center gap-3 rounded-panel border-[3px] border-dashed border-ink-soft px-6 transition-colors hover:border-ink hover:bg-tint {isDragOver
+		? 'border-ink bg-tint'
 		: ''} {disabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'}"
 	ondrop={handleDrop}
 	ondragover={handleDragOver}
@@ -103,18 +103,22 @@
 	onclick={handleClick}
 	{disabled}
 >
-	<div class="text-muted-foreground">
+	<div class="text-ink-soft">
 		<UploadIcon class="size-8" />
 	</div>
 	<div class="text-center">
-		<p class="text-foreground text-sm font-medium">{m.import_wizard_file_drop_label()}</p>
-		<p class="text-muted-foreground text-xs">{m.import_wizard_file_drop_or_click()}</p>
+		<p class="text-sm font-semibold text-foreground">{m.import_wizard_file_drop_label()}</p>
+		<p class="text-xs text-ink-soft">{m.import_wizard_file_drop_or_click()}</p>
 	</div>
 	<div class="flex gap-2">
-		<span class="bg-surface-2 text-muted-foreground rounded-md px-2 py-0.5 text-xs font-medium">
+		<span
+			class="rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-xs font-semibold text-foreground"
+		>
 			.CSV
 		</span>
-		<span class="bg-surface-2 text-muted-foreground rounded-md px-2 py-0.5 text-xs font-medium">
+		<span
+			class="rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-xs font-semibold text-foreground"
+		>
 			.TSV
 		</span>
 	</div>

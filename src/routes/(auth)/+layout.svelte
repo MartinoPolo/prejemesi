@@ -20,7 +20,7 @@
 <style>
 	.auth-screen {
 		display: grid;
-		grid-template-columns: 45fr 55fr;
+		grid-template-columns: 1.05fr 0.95fr;
 		min-height: 100dvh;
 		background: var(--background);
 	}

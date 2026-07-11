@@ -57,10 +57,15 @@
 			<p class="whitespace-pre-line text-sm text-muted-foreground">{description}</p>
 		{/if}
 		{#each visibleAppendItems as item (`${item.append.addedAt}:${item.index}`)}
-			<div class="whitespace-pre-line text-sm text-wishlist-accent">
-				<span class="text-xs opacity-70"
-					>{formatAppendDate(item.append.addedAt) + ' - '}
-				</span>{item.append.text}
+			<!-- Post-share append (issue #102, `anime-gift-detail-modal.html` desc-append):
+			     immutable note on an accent-tinted block with the timestamp. -->
+			<div
+				class="rounded-r-[10px] border-l-4 border-accent-loud bg-[color-mix(in_oklab,var(--accent-loud)_16%,var(--card))] px-3 py-1.5 text-sm whitespace-pre-line text-foreground"
+			>
+				<span class="text-xs font-bold text-ink-soft"
+					>{formatAppendDate(item.append.addedAt)}</span
+				>
+				<br />{item.append.text}
 			</div>
 		{/each}
 		{#if canToggleAppends}

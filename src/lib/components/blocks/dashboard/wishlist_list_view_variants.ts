@@ -1,26 +1,31 @@
 import { tv } from 'tailwind-variants';
 
+/**
+ * Anime-sky sticker rows (issue #102 REQ-16, `anime-dashboard.html` list view):
+ * each row is its own sticker with a tilted emoji tile; archived rows dim and
+ * stop lifting.
+ */
 export const wishlistListViewVariants = tv({
 	slots: {
-		root: 'flex flex-col divide-y divide-border rounded-xl border border-border bg-card',
-		row: 'group/row flex items-center gap-4 px-4 py-3 transition-colors duration-normal hover:bg-surface-hover',
+		root: 'stagger-pop flex flex-col gap-3.5',
+		row: 'group/row flex items-center gap-3.5 rounded-panel border-[2.5px] border-ink bg-card px-4 py-3 shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring',
 		bannerMini:
-			'relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg',
-		bannerMiniOverlay:
-			'pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-black/30 dark:from-black/5 dark:to-black/40',
+			'relative flex size-11 shrink-0 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-2 border-ink',
 		info: 'flex min-w-0 flex-1 flex-col gap-0.5',
-		title: 'truncate text-sm font-semibold text-foreground',
-		subtitle: 'truncate text-xs text-muted-foreground',
+		title: 'truncate font-heading text-[16px] font-semibold text-foreground',
+		subtitle: 'truncate text-xs text-ink-soft',
 		trailing: 'flex shrink-0 items-center gap-3',
 		statusBadge:
-			'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/18 bg-black/52 px-2 py-0.5 text-[10px] font-bold text-white/95 backdrop-blur-md',
-		statusDot: 'size-1.5 shrink-0 rounded-full',
-		giftCount: 'whitespace-nowrap text-xs text-muted-foreground',
+			'inline-flex items-center whitespace-nowrap rounded-full border-2 border-ink px-2.5 py-0.5 text-[11px] font-semibold',
+		giftCount: 'whitespace-nowrap text-[13px] font-bold text-ink-soft',
 	},
 	variants: {
 		archived: {
 			true: {
-				row: 'opacity-65 saturate-[0.28] brightness-[0.96]',
+				row: 'opacity-70 grayscale-[0.7]',
+			},
+			false: {
+				row: 'hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-0.5 motion-safe:focus-within:-translate-y-0.5',
 			},
 		},
 	},

@@ -293,8 +293,8 @@
 			/>
 		{:else}
 			<div class={styles.imagePlaceholder()}>
-				<GiftIcon class="size-16 text-muted-foreground/40" />
-				<span class="text-sm font-medium text-muted-foreground/60"
+				<GiftIcon class="size-16 text-ink-faint" />
+				<span class="text-sm font-semibold text-ink-soft"
 					>{m.gift_image_preview_label()}</span
 				>
 			</div>

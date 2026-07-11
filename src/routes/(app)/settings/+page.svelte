@@ -1,16 +1,11 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import {
-		getUserProfile,
-		updateProfile,
-		updateAppBackgroundTheme,
-	} from '$lib/modules/settings/settings.remote.js';
+	import { getUserProfile, updateProfile } from '$lib/modules/settings/settings.remote.js';
 	import {
 		getNotificationPreferences,
 		updateNotificationPreferences,
 	} from '$lib/modules/notifications/notifications.remote.js';
 	import type { NotificationPreferences } from '$lib/modules/notifications/types.js';
-	import type { BackgroundTheme } from '$lib/components/base/theme/types.js';
 	import {
 		SettingsProfileSection,
 		SettingsSecuritySection,
@@ -29,12 +24,14 @@
 
 <div class="settings-page">
 	<!-- Page header -->
-	<div class="mb-8">
-		<h1 class="text-2xl font-bold">{m.settings_title()}</h1>
-		<p class="mt-1 text-muted-foreground">{m.settings_subtitle()}</p>
+	<div class="mb-8 motion-safe:animate-fade-up">
+		<h1 class="font-heading text-[clamp(26px,3.4vw,34px)] font-semibold tracking-tight">
+			{m.settings_title()}
+		</h1>
+		<p class="mt-1 text-ink-soft">{m.settings_subtitle()}</p>
 	</div>
 
-	<div class="settings-sections">
+	<div class="settings-sections stagger-pop">
 		<SettingsProfileSection
 			email={profile.email}
 			isOAuthUser={profile.isOAuthUser}
@@ -53,11 +50,7 @@
 				updateNotificationPreferences({ preferences })}
 		/>
 
-		<SettingsAppearanceSection
-			appBackgroundTheme={profile.appBackgroundTheme}
-			onSaveBackgroundTheme={(appBackgroundTheme: BackgroundTheme) =>
-				updateAppBackgroundTheme({ appBackgroundTheme })}
-		/>
+		<SettingsAppearanceSection />
 
 		<SettingsDangerSection />
 	</div>

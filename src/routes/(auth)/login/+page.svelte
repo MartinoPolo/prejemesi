@@ -162,7 +162,22 @@
 	{/snippet}
 </AuthBrandPanel>
 
-<AuthFormCard title={m.login_title()} subtitle={m.login_subtitle()}>
+<AuthFormCard
+	title={m.login_title()}
+	subtitle={m.login_subtitle()}
+	tabs={[
+		{
+			label: m.auth_tab_login(),
+			href: localizeInternalHref(resolve('/login')),
+			active: true,
+		},
+		{
+			label: m.auth_tab_register(),
+			href: localizeInternalHref(resolve('/register')),
+			active: false,
+		},
+	]}
+>
 	{#if errorMessage}
 		<ErrorBanner message={errorMessage} />
 	{/if}
@@ -263,17 +278,18 @@
 	}
 
 	.forgot-link {
-		font-size: var(--text-xs);
-		color: var(--muted-foreground);
-		text-decoration: none;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--link);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 		text-align: right;
 		display: block;
 		margin-top: 2px;
-		transition: color var(--duration-fast);
 	}
 
 	.forgot-link:hover {
-		color: var(--primary);
+		text-decoration-thickness: 2px;
 	}
 
 	.spinner {
