@@ -6,6 +6,7 @@ import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { getAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
@@ -435,6 +436,17 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		.where(eq(gift.id, input.id))
 		.returning();
 
+	// Storage cleanup (issue #107, REQ-6): replacing or removing an uploaded
+	// image leaves no unreferenced R2 object behind.
+	if (
+		updated !== undefined &&
+		updateData.imageKey !== undefined &&
+		giftRow.imageKey !== null &&
+		giftRow.imageKey !== updateData.imageKey
+	) {
+		await deleteObjectsBestEffort([giftRow.imageKey]);
+	}
+
 	if (updated !== undefined && role === WISHLIST_ROLES.moderator && didChange) {
 		const reservationRows = await database
 			.select({
@@ -511,6 +523,10 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 
 	// Soft delete
 	await database.update(gift).set({ deletedAt: now, updatedAt: now }).where(eq(gift.id, giftId));
+
+	// Storage cleanup (issue #107, REQ-6): the uploaded image is unreachable
+	// once the gift is deleted (no restore path exists) – drop the object.
+	await deleteObjectsBestEffort([giftRow.imageKey]);
 });
 
 export const reorderGifts = guardedCommand(

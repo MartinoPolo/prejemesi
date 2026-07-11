@@ -89,6 +89,7 @@
 				frame={cardFrame}
 				{themeEmoji}
 				alt={wishlistData.title}
+				variant="card"
 			/>
 		</div>
 		{#if cardSrc === null}

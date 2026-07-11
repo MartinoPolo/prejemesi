@@ -39,6 +39,7 @@
 	"dependencies": {
 		"@fontsource-variable/dynapuff": "^5.2.8",
 		"@fontsource-variable/geist": "^5.2.9",
+		"aws4fetch": "^1.0.20",
 		"better-auth": "~1.4.22",
 		"drizzle-orm": "^0.45.1",
 		"mode-watcher": "^1.1.0",

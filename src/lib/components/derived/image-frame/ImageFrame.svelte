@@ -15,12 +15,24 @@
 		type ImageFrameResolvedFit,
 	} from './image_frame_variants.js';
 	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
+	import { transformedImageUrl, type ImageVariant } from '$lib/modules/images/variants.js';
 
 	interface Props {
 		/** Image source. Null/empty renders the themed fallback. */
 		src?: string | null;
 		/** Accessible description. Empty string marks the image as decorative. */
 		alt: string;
+		/**
+		 * Size-appropriate delivery variant (issue #107). When set, the frame loads
+		 * a width-bounded Cloudflare transformation of `src` (falling back to the
+		 * original if the transformation fails); when null, the original loads.
+		 */
+		variant?: ImageVariant | null;
+		/**
+		 * Loads the image eagerly (above-the-fold surfaces like the page banner).
+		 * Everything else lazy-loads and decodes asynchronously (issue #107).
+		 */
+		eagerLoading?: boolean;
 		/** Fit strategy for the box (REQ-1). */
 		fitMode?: ImageFitMode;
 		/** Focal point (%) honored in cover-crop. */
@@ -47,6 +59,8 @@
 	let {
 		src = null,
 		alt,
+		variant = null,
+		eagerLoading = false,
 		fitMode = IMAGE_FIT_MODES.auto,
 		focal = { x: 50, y: 50 },
 		zoom = 1,
@@ -64,11 +78,17 @@
 	// (via $derived) whenever the source changes – no state-syncing $effect needed.
 	let loadedSrc = $state<string | null>(null);
 	let erroredSrc = $state<string | null>(null);
+	// Transformation delivery is fail-open: when the variant URL errors (e.g. the
+	// free-tier transformation quota is exhausted), the frame retries the original.
+	let transformFailedSrc = $state<string | null>(null);
 	let measured = $state<{ src: string; ratio: number } | null>(null);
 	let boxWidth = $state(0);
 	let boxHeight = $state(0);
 
 	const hasSrc = $derived(src !== null && src.trim() !== '');
+	const displaySrc = $derived(
+		!hasSrc || transformFailedSrc === src ? src : transformedImageUrl(src, variant),
+	);
 	const errored = $derived(hasSrc && erroredSrc === src);
 	// Skeleton shows while the image is in flight, or when the parent forces it.
 	const pending = $derived(hasSrc && loadedSrc !== src && erroredSrc !== src);
@@ -115,6 +135,15 @@
 		loadedSrc = src;
 	}
 
+	function markErrored() {
+		if (displaySrc !== src) {
+			// The transformed variant failed – fall back to the original (REQ-3).
+			transformFailedSrc = src;
+		} else {
+			erroredSrc = src;
+		}
+	}
+
 	// A cached or SSR-rendered image can finish loading in the gap between the server
 	// paint and client hydration, so framework-wired `onload`/`onerror` handlers (added
 	// during hydration) may miss the event entirely and leave the skeleton stuck. This
@@ -123,7 +152,7 @@
 	function trackImageLoad(img: HTMLImageElement) {
 		const onLoad = () => markLoaded(img);
 		const onError = () => {
-			erroredSrc = src;
+			markErrored();
 		};
 		if (img.complete) {
 			if (img.naturalWidth > 0) {
@@ -169,8 +198,10 @@
 				{@attach trackImageLoad}
 				class={styles.image()}
 				style={imageStyle}
-				{src}
+				src={displaySrc}
 				{alt}
+				loading={eagerLoading ? 'eager' : 'lazy'}
+				decoding="async"
 				aria-hidden={alt === '' ? 'true' : undefined}
 			/>
 		{/if}

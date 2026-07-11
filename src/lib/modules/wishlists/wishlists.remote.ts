@@ -11,6 +11,7 @@ import { dispatchNotification } from '$lib/modules/notifications/notification_di
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { seedNewWishlist } from './wishlist_create.js';
 import {
@@ -291,6 +292,12 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		.where(eq(wishlist.id, input.id))
 		.returning();
 
+	// Storage cleanup (issue #107, REQ-6): a replaced or removed wishlist image
+	// leaves no unreferenced R2 object behind.
+	if (input.imageKey !== undefined && row.imageKey !== null && row.imageKey !== input.imageKey) {
+		await deleteObjectsBestEffort([row.imageKey]);
+	}
+
 	return updated;
 });
 
@@ -410,11 +417,20 @@ export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishli
 		error(400, 'Cannot delete a shared wishlist. Archive it instead.');
 	}
 
+	const giftImageRows = await database
+		.select({ imageKey: gift.imageKey })
+		.from(gift)
+		.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)));
+
 	// Soft delete
 	await database
 		.update(wishlist)
 		.set({ deletedAt: new Date(), updatedAt: new Date() })
 		.where(eq(wishlist.id, wishlistId));
+
+	// Storage cleanup (issue #107, REQ-6): the wishlist image and all of its
+	// gifts' uploaded images become unreachable with the list – drop the objects.
+	await deleteObjectsBestEffort([row.imageKey, ...giftImageRows.map((g) => g.imageKey)]);
 });
 
 // ── Follower Commands ──────────────────────────────────────────────────────

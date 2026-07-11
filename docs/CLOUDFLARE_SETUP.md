@@ -90,8 +90,44 @@ free tier is 10 GB-month storage, 1M Class A operations, 10M Class B operations,
 and free egress.
 
 Use the custom subdomain `images.prejemesi.cz` and set that value as
-`R2_PUBLIC_URL` (below). Without it, images still work but get proxied through
+`PUBLIC_R2_URL` (below). Without it, images still work but get proxied through
 the Worker.
+
+#### R2 CORS (presigned direct uploads – issue #107)
+
+Browsers upload straight to R2 via presigned PUT URLs, which requires CORS on
+the bucket. The rules live in `scripts/r2-cors.json`; apply them with:
+
+```powershell
+wrangler r2 bucket cors set prejemesi-images --file scripts/r2-cors.json
+```
+
+Re-run after editing the file (e.g. adding a new origin).
+
+#### R2 API token (presigned direct uploads – issue #107)
+
+Presigning needs S3-API credentials. Dashboard → **R2 → Manage API Tokens** →
+create a token with **Object Read & Write** scoped to `prejemesi-images`, then:
+
+```powershell
+wrangler secret put R2_ACCESS_KEY_ID
+wrangler secret put R2_SECRET_ACCESS_KEY
+```
+
+`R2_ACCOUNT_ID` + `R2_BUCKET_NAME` are plain vars in `wrangler.jsonc`. Until
+the two secrets exist, uploads transparently fall back to the same-origin
+Worker proxy route (the pre-#107 behavior).
+
+#### Image Transformations (issue #107)
+
+Card/list/thumbnail surfaces load width-bounded `/cdn-cgi/image/…` variants
+from `images.prejemesi.cz`. Enable once per zone: Dashboard → **Images →
+Transformations** → enable for the `prejemesi.cz` zone (allow same-zone
+sources). No wrangler/API equivalent exists for this toggle.
+
+Free tier: 5,000 unique transformations/month. If the quota is exceeded (or
+the toggle is off), the client falls back to the original image URLs
+automatically – images never break, they are just unoptimized.
 
 ### E. Secrets & vars
 
@@ -101,6 +137,8 @@ the Worker.
 wrangler secret put AUTH_SECRET          # openssl rand -base64 32
 wrangler secret put RESEND_API_KEY
 wrangler secret put GOOGLE_CLIENT_SECRET  # only if using Google
+wrangler secret put R2_ACCESS_KEY_ID      # presigned uploads (issue #107)
+wrangler secret put R2_SECRET_ACCESS_KEY  # presigned uploads (issue #107)
 ```
 
 **Plain vars** (non-sensitive – add a `"vars"` block to `wrangler.jsonc`):
@@ -108,7 +146,9 @@ wrangler secret put GOOGLE_CLIENT_SECRET  # only if using Google
 ```jsonc
 "vars": {
   "ORIGIN": "https://prejemesi.cz",
-  "R2_PUBLIC_URL": "https://images.prejemesi.cz",
+  "PUBLIC_R2_URL": "https://images.prejemesi.cz", // PUBLIC_: client reads it too
+  "R2_ACCOUNT_ID": "<account-id>",
+  "R2_BUCKET_NAME": "prejemesi-images",
   "EMAIL_FROM": "Přejeme si <noreply@prejemesi.cz>",
   "GOOGLE_CLIENT_ID": "..."   // optional; not secret
 }
