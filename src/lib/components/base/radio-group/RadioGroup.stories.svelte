@@ -113,6 +113,60 @@
 	import KeyboardHint from '$lib/storybook/KeyboardHint.svelte';
 </script>
 
+<Story name="All States">
+	{#snippet template(args: RadioGroupProps)}
+		<div class="grid grid-cols-4 gap-6">
+			<div class="flex flex-col items-center gap-2">
+				<span class="text-xs text-foreground-subtle">Rest</span>
+				<RadioGroup {...args}>
+					<RadioGroupItem value="x" />
+				</RadioGroup>
+			</div>
+			<div class="flex flex-col items-center gap-2">
+				<span class="text-xs text-foreground-subtle">Selected</span>
+				<RadioGroup value="x">
+					<RadioGroupItem value="x" />
+				</RadioGroup>
+			</div>
+			<div class="flex flex-col items-center gap-2">
+				<span class="text-xs text-foreground-subtle">Disabled</span>
+				<RadioGroup disabled>
+					<RadioGroupItem value="x" />
+				</RadioGroup>
+			</div>
+			<div class="flex flex-col items-center gap-2">
+				<span class="text-xs text-foreground-subtle">Disabled + Selected</span>
+				<RadioGroup value="x" disabled>
+					<RadioGroupItem value="x" />
+				</RadioGroup>
+			</div>
+			<div class="col-span-4 flex flex-col gap-2">
+				<span class="text-xs text-foreground-subtle">Group</span>
+				<RadioGroup value="claude" class="flex flex-row gap-4">
+					<div class="flex items-center gap-1.5">
+						<RadioGroupItem value="claude" id="rs-claude" />
+						<Label for="rs-claude" class="mb-0 cursor-pointer text-(length:--text-md)"
+							>Claude</Label
+						>
+					</div>
+					<div class="flex items-center gap-1.5">
+						<RadioGroupItem value="codex" id="rs-codex" />
+						<Label for="rs-codex" class="mb-0 cursor-pointer text-(length:--text-md)"
+							>Codex</Label
+						>
+					</div>
+					<div class="flex items-center gap-1.5">
+						<RadioGroupItem value="cursor" id="rs-cursor" />
+						<Label for="rs-cursor" class="mb-0 cursor-pointer text-(length:--text-md)"
+							>Cursor</Label
+						>
+					</div>
+				</RadioGroup>
+			</div>
+		</div>
+	{/snippet}
+</Story>
+
 <Story name="Default [play: click selects option]" play={playClickSelectsOption}>
 	{#snippet template(args: RadioGroupProps)}
 		<RadioGroup {...args} value="claude">
@@ -261,59 +315,5 @@
 				<Label for="rd-codex" class="mb-0 text-(length:--text-md) opacity-40">Codex</Label>
 			</div>
 		</RadioGroup>
-	{/snippet}
-</Story>
-
-<Story name="All States">
-	{#snippet template(args: RadioGroupProps)}
-		<div class="grid grid-cols-4 gap-6">
-			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Rest</span>
-				<RadioGroup {...args}>
-					<RadioGroupItem value="x" />
-				</RadioGroup>
-			</div>
-			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Selected</span>
-				<RadioGroup value="x">
-					<RadioGroupItem value="x" />
-				</RadioGroup>
-			</div>
-			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Disabled</span>
-				<RadioGroup disabled>
-					<RadioGroupItem value="x" />
-				</RadioGroup>
-			</div>
-			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Disabled + Selected</span>
-				<RadioGroup value="x" disabled>
-					<RadioGroupItem value="x" />
-				</RadioGroup>
-			</div>
-			<div class="col-span-4 flex flex-col gap-2">
-				<span class="text-xs text-foreground-subtle">Group</span>
-				<RadioGroup value="claude" class="flex flex-row gap-4">
-					<div class="flex items-center gap-1.5">
-						<RadioGroupItem value="claude" id="rs-claude" />
-						<Label for="rs-claude" class="mb-0 cursor-pointer text-(length:--text-md)"
-							>Claude</Label
-						>
-					</div>
-					<div class="flex items-center gap-1.5">
-						<RadioGroupItem value="codex" id="rs-codex" />
-						<Label for="rs-codex" class="mb-0 cursor-pointer text-(length:--text-md)"
-							>Codex</Label
-						>
-					</div>
-					<div class="flex items-center gap-1.5">
-						<RadioGroupItem value="cursor" id="rs-cursor" />
-						<Label for="rs-cursor" class="mb-0 cursor-pointer text-(length:--text-md)"
-							>Cursor</Label
-						>
-					</div>
-				</RadioGroup>
-			</div>
-		</div>
 	{/snippet}
 </Story>

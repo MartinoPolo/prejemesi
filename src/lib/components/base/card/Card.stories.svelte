@@ -25,20 +25,36 @@
 
 <Story name="All Variants">
 	{#snippet template(args: CardProps)}
-		<div class="grid grid-cols-[7rem_repeat(2,minmax(0,1fr))] items-stretch gap-3">
-			<div></div>
-			{#each CARD_PADDING_OPTIONS as padding (padding)}
-				<div class="text-center text-xs text-muted-foreground">{padding}</div>
-			{/each}
-			{#each CARD_STATE_OPTIONS as state (state)}
-				<div class="self-center text-xs text-muted-foreground">{state}</div>
-				{#each CARD_PADDING_OPTIONS as padding (padding)}
-					<Card {...args} {padding} {state}>
-						<p class="text-xs font-medium text-muted-foreground">{padding}</p>
-						<p class="text-sm">{state}</p>
-					</Card>
-				{/each}
-			{/each}
+		<div class="flex flex-col gap-6">
+			<div>
+				<div class="mb-2 text-xs font-semibold text-muted-foreground">Variants</div>
+				<div class="grid grid-cols-[7rem_repeat(2,minmax(0,1fr))] items-stretch gap-3">
+					<div></div>
+					{#each CARD_PADDING_OPTIONS as padding (padding)}
+						<div class="text-center text-xs text-muted-foreground">{padding}</div>
+					{/each}
+					{#each CARD_STATE_OPTIONS as state (state)}
+						<div class="self-center text-xs text-muted-foreground">{state}</div>
+						{#each CARD_PADDING_OPTIONS as padding (padding)}
+							<Card {...args} {padding} {state}>
+								<p class="text-xs font-medium text-muted-foreground">{padding}</p>
+								<p class="text-sm">{state}</p>
+							</Card>
+						{/each}
+					{/each}
+				</div>
+			</div>
+			<div>
+				<div class="mb-2 text-xs font-semibold text-muted-foreground">States</div>
+				<div class="grid grid-cols-2 gap-4">
+					{#each CARD_STATE_OPTIONS as state (state)}
+						<Card {...args} padding="padded" {state}>
+							<p class="text-xs font-medium text-muted-foreground">{state}</p>
+							<p class="text-sm">Card in {state} state.</p>
+						</Card>
+					{/each}
+				</div>
+			</div>
 		</div>
 	{/snippet}
 </Story>
@@ -58,19 +74,6 @@
 				<p class="text-sm">Card with manual padding control.</p>
 			</div>
 		</Card>
-	{/snippet}
-</Story>
-
-<Story name="All States">
-	{#snippet template(args: CardProps)}
-		<div class="grid grid-cols-2 gap-4">
-			{#each CARD_STATE_OPTIONS as state (state)}
-				<Card {...args} padding="padded" {state}>
-					<p class="text-xs font-medium text-muted-foreground">{state}</p>
-					<p class="text-sm">Card in {state} state.</p>
-				</Card>
-			{/each}
-		</div>
 	{/snippet}
 </Story>
 
