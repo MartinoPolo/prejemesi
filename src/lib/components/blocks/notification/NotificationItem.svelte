@@ -70,13 +70,20 @@
 
 	<!-- Content -->
 	<div class="flex min-w-0 flex-1 flex-col gap-0.5">
-		<p class={cn('text-sm leading-snug', !notification.read && 'font-semibold')}>
+		<p
+			class={cn(
+				'whitespace-normal break-words text-sm leading-snug',
+				!notification.read && 'font-semibold',
+			)}
+		>
 			{notification.message}
 		</p>
 		{#if notification.actorName}
-			<p class="text-xs text-ink-soft">{notification.actorName}</p>
+			<p class="whitespace-normal break-words text-xs text-ink-soft">
+				{notification.actorName}
+			</p>
 		{/if}
-		<p class="text-xs text-ink-soft">{relativeTime}</p>
+		<p class="truncate text-xs text-ink-soft">{relativeTime}</p>
 	</div>
 
 	<!-- Unread dot -->
