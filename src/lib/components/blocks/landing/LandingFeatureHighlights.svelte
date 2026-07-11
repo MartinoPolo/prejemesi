@@ -2,6 +2,7 @@
 	import BrandShareIcon from './BrandShareIcon.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
+	import * as InputGroup from '$lib/components/base/input-group/index.js';
 	import { PALETTE_LABELS, PALETTE_SWATCHES, type Palette } from '$lib/theme/palettes.js';
 
 	const shareApps = [
@@ -48,21 +49,25 @@
 					{m.landing_feat1_description()}
 				</p>
 				<div class="feature-demo">
-					<div class="peek-row">
+					<div class="peek-view">
 						<span class="peek-label">{m.landing_feat1_owner_view()}</span>
-						<span class="peek-gift">
-							<span aria-hidden="true">🎧</span>
-							<span class="truncate">{m.landing_gift_headphones()}</span>
+						<div class="peek-gift">
+							<span class="peek-gift-name">
+								<span aria-hidden="true">🎧</span>
+								<span class="truncate">{m.landing_gift_headphones()}</span>
+							</span>
 							<span class="chip chip-hidden">{m.landing_status_reserved()}</span>
-						</span>
+						</div>
 					</div>
-					<div class="peek-row">
+					<div class="peek-view">
 						<span class="peek-label">{m.landing_feat1_gifter_view()}</span>
-						<span class="peek-gift">
-							<span aria-hidden="true">🎧</span>
-							<span class="truncate">{m.landing_gift_headphones()}</span>
+						<div class="peek-gift">
+							<span class="peek-gift-name">
+								<span aria-hidden="true">🎧</span>
+								<span class="truncate">{m.landing_gift_headphones()}</span>
+							</span>
 							<span class="chip chip-filled">{m.landing_status_reserved()}</span>
-						</span>
+						</div>
 					</div>
 				</div>
 			</article>
@@ -76,10 +81,19 @@
 					{m.landing_feat2_description()}
 				</p>
 				<div class="feature-demo">
-					<div class="share-pill">
-						<span class="truncate">prejemesi.cz/w/martina-vanocni-2026</span>
-						<span class="share-pill-copy">{m.landing_feat2_copy()}</span>
-					</div>
+					<InputGroup.Root>
+						<InputGroup.Input
+							value="prejemesi.cz/w/martina-vanocni-2026"
+							readonly
+							tabindex={-1}
+							aria-label={m.landing_feat2_title()}
+						/>
+						<InputGroup.Addon align="inline-end">
+							<InputGroup.Button aria-hidden="true" tabindex={-1}>
+								{m.landing_feat2_copy()}
+							</InputGroup.Button>
+						</InputGroup.Addon>
+					</InputGroup.Root>
 					<div class="flex justify-center gap-2.5">
 						{#each shareApps as app (app.platform)}
 							<SimpleTooltip text={app.label} side="top">
@@ -141,44 +155,52 @@
 		margin-top: auto;
 		background: var(--background);
 		border: 2px solid var(--ink);
-		border-radius: 12px;
+		border-radius: var(--radius);
 		padding: 14px;
 		display: grid;
 		gap: 10px;
 	}
 
-	.peek-row {
+	/* Card 1: owner vs gifter comparison — each view stacks its label, the gift
+	   name (full width, never clipped by the status) and the reservation status
+	   beneath it, so the name is always fully visible at every card width. */
+	.peek-view {
 		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-size: 13px;
-		flex-wrap: wrap;
+		flex-direction: column;
+		gap: 6px;
 	}
 
 	.peek-label {
 		font-weight: 700;
-		flex: none;
 		font-size: 12px;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 	}
 
 	.peek-gift {
-		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
 		min-width: 0;
+		background: var(--card);
+		border: 2px solid var(--ink);
+		border-radius: var(--radius-btn);
+		padding: 8px 10px;
+	}
+
+	.peek-gift-name {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		background: var(--card);
-		border: 2px solid var(--ink);
-		border-radius: 8px;
-		padding: 6px 10px;
+		min-width: 0;
+		font-size: 13px;
+		font-weight: 600;
 	}
 
 	.chip {
+		align-self: flex-start;
 		display: inline-flex;
 		align-items: center;
-		margin-left: auto;
 		font-size: 10.5px;
 		font-weight: 600;
 		padding: 2px 8px;
@@ -198,30 +220,6 @@
 	.chip-hidden {
 		filter: blur(3.5px);
 		opacity: 0.75;
-	}
-
-	.share-pill {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		background: var(--card);
-		border: 2px solid var(--ink);
-		border-radius: 999px;
-		padding: 8px 8px 8px 16px;
-		font-size: 13.5px;
-		font-weight: 600;
-		flex-wrap: wrap;
-	}
-
-	.share-pill-copy {
-		margin-left: auto;
-		border: 2px solid var(--ink);
-		background: var(--primary);
-		color: var(--primary-foreground);
-		font-size: 12px;
-		font-weight: 700;
-		padding: 4px 12px;
-		border-radius: 999px;
 	}
 
 	.share-icon {
@@ -252,7 +250,7 @@
 		padding: 6px 12px;
 		background: var(--card);
 		border: 2px solid var(--ink);
-		border-radius: 10px;
+		border-radius: 999px;
 		transition: transform 0.15s ease;
 	}
 
