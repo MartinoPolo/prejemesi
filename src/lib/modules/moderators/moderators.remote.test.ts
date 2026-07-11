@@ -374,6 +374,7 @@ describe('generateModeratorInviteLink', () => {
 		expect(result).toEqual({
 			token: createdInviteRow.token,
 			invitePath: `/w/${activeWishlistRow.shortId}/invite/${createdInviteRow.token}`,
+			unregisteredInvitee: false,
 		});
 		expect(mockDispatchNotification).not.toHaveBeenCalled();
 	});
@@ -392,13 +393,14 @@ describe('generateModeratorInviteLink', () => {
 		expect(result).toEqual({
 			token: createdInviteRow.token,
 			invitePath: `/w/${forSomeoneWishlistRow.shortId}/invite/${createdInviteRow.token}`,
+			unregisteredInvitee: false,
 		});
 	});
 
 	it('with email → dispatches MODERATOR_INVITED to targetEmails with urlPathOverride pointing to invite path', async () => {
 		const testEmail = 'invitee@example.com';
-		// 1: requireWishlistRow, 2: insert invite → returns created row
-		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow]]));
+		// 1: requireWishlistRow, 2: insert invite → created row, 3: user lookup → not registered
+		mockGetDb.mockReturnValue(createMockDb([[activeWishlistRow], [createdInviteRow], []]));
 
 		const result = await callGenerateModeratorInviteLink(recipientAuthContext, {
 			wishlistId: testWishlistId,
@@ -410,6 +412,7 @@ describe('generateModeratorInviteLink', () => {
 		expect(result).toEqual({
 			token: createdInviteRow.token,
 			invitePath: expectedInvitePath,
+			unregisteredInvitee: true,
 		});
 		expect(mockDispatchNotification).toHaveBeenCalledOnce();
 		expect(mockDispatchNotification).toHaveBeenCalledWith({
@@ -420,6 +423,26 @@ describe('generateModeratorInviteLink', () => {
 			actorName: undefined,
 			urlPathOverride: expectedInvitePath,
 		});
+	});
+
+	it('with email of a registered user → unregisteredInvitee is false', async () => {
+		const testEmail = regularUser.email;
+		// 1: requireWishlistRow, 2: insert invite → created row, 3: user lookup → registered user found
+		mockGetDb.mockReturnValue(
+			createMockDb([[activeWishlistRow], [createdInviteRow], [{ id: regularUser.id }]]),
+		);
+
+		const result = await callGenerateModeratorInviteLink(recipientAuthContext, {
+			wishlistId: testWishlistId,
+			email: testEmail,
+		});
+
+		expect(result).toEqual({
+			token: createdInviteRow.token,
+			invitePath: `/w/${activeWishlistRow.shortId}/invite/${createdInviteRow.token}`,
+			unregisteredInvitee: false,
+		});
+		expect(mockDispatchNotification).toHaveBeenCalledOnce();
 	});
 });
 

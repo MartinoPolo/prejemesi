@@ -133,7 +133,18 @@ export const generateModeratorInviteLink = guardedCommand(
 
 		const invitePath = `/w/${wishlistRow.shortId}/invite/${created.token}`;
 
+		// When an email is supplied we email the invite link regardless of whether the
+		// address belongs to an account (the accept page handles register-then-accept).
+		// Look the email up so the manager can be told the invitee has no account yet.
+		let unregisteredInvitee = false;
 		if (input.email !== undefined && input.email !== '') {
+			const existingUser = await database
+				.select({ id: user.id })
+				.from(user)
+				.where(eq(user.email, input.email.toLowerCase()))
+				.limit(1);
+			unregisteredInvitee = existingUser[0] === undefined;
+
 			await dispatchNotification({
 				type: NOTIFICATION_TYPE.MODERATOR_INVITED,
 				targetEmails: [input.email],
@@ -144,7 +155,7 @@ export const generateModeratorInviteLink = guardedCommand(
 			});
 		}
 
-		return { token: created.token, invitePath };
+		return { token: created.token, invitePath, unregisteredInvitee };
 	},
 );
 

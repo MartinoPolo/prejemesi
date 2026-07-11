@@ -16,7 +16,7 @@
 	} from '$lib/modules/moderators/moderators.remote.js';
 	import { renameRecipient } from '$lib/modules/wishlists/wishlists.remote.js';
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
-	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import { toastSuccess, toastError, toastInfo } from '$lib/components/base/toast/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import { getApplicationUrl } from '$lib/config/site.js';
 	import LinkIcon from '@lucide/svelte/icons/link';
@@ -107,6 +107,14 @@
 				toastSuccess(m.moderator_toast_invite_generated());
 			} else {
 				toastSuccess(m.moderator_toast_invite_sent({ email: trimmed }));
+				// Non-blocking heads-up: the invitee has no account yet, so they'll be
+				// asked to register when they open the invite (the email still went out).
+				if (result.unregisteredInvitee) {
+					toastInfo(
+						m.moderator_invite_unregistered_title(),
+						m.moderator_invite_unregistered_body(),
+					);
+				}
 				inviteEmail = '';
 			}
 		} catch (thrown) {
