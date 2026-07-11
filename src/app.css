@@ -588,7 +588,7 @@
 	--ease-standard: var(--ease-standard);
 	--font-sans: var(--font-body);
 	--font-heading: var(--font-head);
-	--default-transition-duration: 150ms;
+	--default-transition-duration: var(--duration-normal);
 
 	@keyframes accordion-down {
 		from {

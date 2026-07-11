@@ -23,7 +23,10 @@
 		<p class="footer-tagline">
 			{m.landing_footer_author()}
 		</p>
-		<nav class="ml-auto" aria-label={m.landing_footer_nav_label()}>
+		<nav
+			class="ml-auto flex flex-wrap items-center gap-3"
+			aria-label={m.landing_footer_nav_label()}
+		>
 			<a
 				href="https://github.com/MartinoPolo/prejemesi"
 				target="_blank"
@@ -32,6 +35,14 @@
 			>
 				<GithubBrandIcon class="size-4" />
 				{m.landing_footer_github()}
+			</a>
+			<a
+				href="https://github.com/MartinoPolo/prejemesi/issues"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="footer-link"
+			>
+				{m.landing_footer_report()}
 			</a>
 		</nav>
 	</div>

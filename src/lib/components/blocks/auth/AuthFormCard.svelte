@@ -142,7 +142,7 @@
 		}
 
 		.free-sticker {
-			animation: bob 3s ease-in-out infinite alternate;
+			animation: var(--animate-bob);
 		}
 	}
 
