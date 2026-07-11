@@ -21,9 +21,18 @@
 		system: m.mode_toggle_system,
 	};
 
+	// Tooltip names the action a click performs (cycle order: light → dark → system → light).
+	const NEXT_MODE_LABELS: Record<Mode, () => string> = {
+		light: m.mode_toggle_switch_to_dark,
+		dark: m.mode_toggle_switch_to_system,
+		system: m.mode_toggle_switch_to_light,
+	};
+
 	let { variant = 'icon' }: DarkModeToggleProps = $props();
 
-	const tooltipText = $derived(MODE_LABELS[(userPrefersMode.current as Mode) ?? 'system']());
+	const currentMode = $derived((userPrefersMode.current as Mode) ?? 'system');
+	const currentModeLabel = $derived(MODE_LABELS[currentMode]());
+	const nextActionLabel = $derived(NEXT_MODE_LABELS[currentMode]());
 
 	function cycleMode() {
 		const current: Mode = userPrefersMode.current as Mode;
@@ -52,21 +61,21 @@
 			intent="outline"
 			size="md"
 			class="w-full justify-start"
-			aria-label={tooltipText}
+			aria-label={currentModeLabel}
 		>
 			{@render modeIcon()}
-			{tooltipText}
+			{currentModeLabel}
 		</Button>
 	</div>
 {:else}
-	<SimpleTooltip text={tooltipText} side="bottom">
+	<SimpleTooltip text={nextActionLabel} side="bottom">
 		{#snippet asChild(triggerProps)}
 			<Button
 				{...triggerProps}
 				onclick={cycleMode}
 				intent="outline"
 				size="icon"
-				aria-label={tooltipText}
+				aria-label={currentModeLabel}
 			>
 				{@render modeIcon()}
 			</Button>

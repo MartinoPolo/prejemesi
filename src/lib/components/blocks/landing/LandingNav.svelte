@@ -40,8 +40,8 @@
 			<!-- ≥768px: separate controls; below: one consolidated popover (DECISIONS.md). -->
 			<div class="hidden items-center gap-1 md:flex">
 				<PaletteSwitcher />
-				<DarkModeToggle />
 				<LanguageToggle variant="icon" />
+				<DarkModeToggle />
 			</div>
 			<div class="md:hidden">
 				<AppearanceMenu />

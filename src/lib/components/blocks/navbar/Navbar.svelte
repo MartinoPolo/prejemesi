@@ -358,8 +358,8 @@
 		     popover (anonymous — no drawer exists for them). -->
 		<div class="hidden items-center gap-1 md:flex">
 			<PaletteSwitcher />
-			<DarkModeToggle />
 			<LanguageToggle variant="icon" />
+			<DarkModeToggle />
 		</div>
 		{#if !user}
 			<div class="md:hidden">

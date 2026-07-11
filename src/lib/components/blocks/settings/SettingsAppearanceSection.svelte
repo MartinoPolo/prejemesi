@@ -66,10 +66,7 @@
 			<Separator />
 
 			<!-- Language -->
-			<div class="flex flex-col gap-2">
-				<Label>{m.settings_language_label()}</Label>
-				<LanguageToggle />
-			</div>
+			<LanguageToggle variant="inline" />
 		</div>
 	</Card.Content>
 </Card.Root>

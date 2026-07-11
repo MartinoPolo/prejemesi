@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { setUserPalette } from '$lib/modules/settings/settings.remote.js';
 	import {
@@ -85,23 +86,24 @@
 	</div>
 {:else}
 	<Popover.Root bind:open={isOpen}>
-		<Popover.Trigger>
-			{#snippet child({ props })}
-				<Button
-					{...props}
-					intent="outline"
-					size="icon"
-					aria-label={m.palette_switcher_label()}
-					title={m.palette_switcher_label()}
-				>
-					<!-- Dot inherits the active palette via the cascade (--primary = --p-brand). -->
-					<span
-						class="size-4 shrink-0 rounded-full border-2 border-ink bg-primary"
-						aria-hidden="true"
-					></span>
-				</Button>
-			{/snippet}
-		</Popover.Trigger>
+		<SimpleTooltip text={m.palette_switcher_tooltip()} side="bottom" disabled={isOpen}>
+			<Popover.Trigger>
+				{#snippet child({ props })}
+					<Button
+						{...props}
+						intent="outline"
+						size="icon"
+						aria-label={m.palette_switcher_label()}
+					>
+						<!-- Dot inherits the active palette via the cascade (--primary = --p-brand). -->
+						<span
+							class="size-4 shrink-0 rounded-full border-2 border-ink bg-primary"
+							aria-hidden="true"
+						></span>
+					</Button>
+				{/snippet}
+			</Popover.Trigger>
+		</SimpleTooltip>
 		<Popover.Content
 			align="end"
 			class="w-66 min-w-0 p-2.5"

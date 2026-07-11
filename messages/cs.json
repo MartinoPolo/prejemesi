@@ -541,6 +541,12 @@
 	"mode_toggle_dark": "Tmavý režim",
 	"mode_toggle_system": "Systémový režim",
 	"palette_switcher_label": "Barevná paleta",
+	"palette_switcher_tooltip": "Změnit barvu",
+	"language_toggle_tooltip": "Změnit jazyk",
+	"appearance_menu_tooltip": "Upravit vzhled",
+	"mode_toggle_switch_to_light": "Přepnout na světlý režim",
+	"mode_toggle_switch_to_dark": "Přepnout na tmavý režim",
+	"mode_toggle_switch_to_system": "Přepnout na systémový režim",
 
 	"followed_title": "Sledované",
 	"followed_loading": "Načítání...",
