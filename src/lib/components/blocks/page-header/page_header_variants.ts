@@ -8,7 +8,7 @@ export const pageHeaderVariants = tv({
 	slots: {
 		root: 'flex flex-wrap items-center justify-between gap-x-4 gap-y-3 motion-safe:animate-fade-up',
 		title: 'font-heading font-semibold tracking-tight text-foreground',
-		toolbar: 'flex flex-shrink-0 flex-wrap items-center gap-2',
+		toolbar: 'flex min-w-0 flex-wrap items-center gap-2',
 	},
 	variants: {
 		size: {

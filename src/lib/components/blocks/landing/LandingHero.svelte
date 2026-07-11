@@ -31,9 +31,9 @@
 
 <section class="bg-dots relative" aria-label={m.landing_hero_section_label()}>
 	<div
-		class="relative z-[1] mx-auto grid max-w-[var(--content-max-width)] items-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-24"
+		class="relative z-[1] mx-auto grid max-w-[var(--content-max-width)] grid-cols-1 items-center gap-12 px-4 py-16 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-24"
 	>
-		<div class="flex max-w-[640px] flex-col gap-6">
+		<div class="flex min-w-0 max-w-[640px] flex-col gap-6">
 			<div class="hero-badges reveal flex flex-wrap items-center gap-3">
 				<span class="chip chip-filled">
 					<CheckIcon class="size-3.5" aria-hidden="true" />
@@ -120,7 +120,7 @@
 						{m.landing_birthday()}
 					</span>
 				</div>
-				<div class="grid gap-2.5">
+				<div class="grid grid-cols-1 gap-2.5">
 					{#each exampleGifts as gift (gift.name)}
 						<div class="mock-row">
 							<span class="mock-emoji">{gift.emoji}</span>
