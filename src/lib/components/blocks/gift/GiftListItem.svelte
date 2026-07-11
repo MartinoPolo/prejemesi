@@ -45,7 +45,7 @@
 <div
 	class={cn(
 		'flex items-center gap-4 border-b border-border px-2 py-3 transition-colors hover:bg-muted/50',
-		isFullyReserved && 'opacity-[0.78]',
+		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 	)}
 >
 	<!-- Thumbnail -->

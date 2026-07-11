@@ -291,7 +291,6 @@
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const totalCount = $derived(giftsContext.giftCount.current);
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
-	const hasActiveFilters = $derived(giftsContext.hasActiveFilters.current);
 	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
 	const isEmpty = $derived(totalCount === 0);
 
@@ -788,12 +787,12 @@
 
 	<WishlistDetailToolbar
 		{canManage}
+		{role}
 		{isArchived}
 		{isAuthenticated}
 		{viewMode}
 		sortOption={giftsContext.sortOption.current}
 		filters={giftsContext.filters.current}
-		{hasActiveFilters}
 		onviewmodechange={handleViewModeChange}
 		onsortchange={handleSortChange}
 		onfilterchange={handleFilterChange}

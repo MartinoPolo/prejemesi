@@ -44,7 +44,7 @@
 <tr
 	class={cn(
 		'h-10 border-b border-border transition-colors hover:bg-muted/50',
-		isFullyReserved && 'opacity-65',
+		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 		onclick && 'cursor-pointer',
 	)}
 	onclick={() => onclick?.()}

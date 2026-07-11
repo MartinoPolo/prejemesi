@@ -7,19 +7,22 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import GiftSortFilter from '$lib/components/blocks/gift/GiftSortFilter.svelte';
+	import GiftSortSelect from '$lib/components/blocks/gift/GiftSortSelect.svelte';
+	import GiftFilterOverflowMenu from '$lib/components/blocks/gift/GiftFilterOverflowMenu.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
+	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
 
 	interface WishlistDetailToolbarProps {
 		/** Recipient OR správce: gates theme, settings, import, batch-add, and add-gift. */
 		canManage: boolean;
+		/** Viewer role: the availability chip is hidden for the recipient (reservations are hidden). */
+		role: WishlistRole;
 		isArchived: boolean;
 		isAuthenticated: boolean;
 		viewMode: GiftViewMode;
 		sortOption: GiftSortOption;
 		filters: GiftFilters;
-		hasActiveFilters: boolean;
 		onviewmodechange: (mode: GiftViewMode) => void;
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
@@ -33,12 +36,12 @@
 
 	let {
 		canManage,
+		role,
 		isArchived,
 		isAuthenticated,
 		viewMode,
 		sortOption,
 		filters,
-		hasActiveFilters,
 		onviewmodechange,
 		onsortchange,
 		onfilterchange,
@@ -49,18 +52,37 @@
 		onbatchadd,
 		onimport,
 	}: WishlistDetailToolbarProps = $props();
+
+	// Role guard (issue #101 REQ-3): the recipient never sees reservation state, so
+	// an availability filter would be meaningless noise on their own list.
+	const showAvailableChip = $derived(role !== WISHLIST_ROLES.recipient);
+
+	function toggleAvailableOnly() {
+		onfilterchange({ ...filters, availableOnly: !filters.availableOnly });
+	}
 </script>
 
-<div class="flex flex-wrap items-center gap-3">
+<!-- Sticker toolbar panel (anime-sky wishlist view) -->
+<div
+	class="flex flex-wrap items-center gap-2.5 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
+>
 	<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
 
-	<GiftSortFilter
-		sortValue={sortOption}
-		{filters}
-		{hasActiveFilters}
-		{onsortchange}
-		{onfilterchange}
-	/>
+	<GiftSortSelect value={sortOption} onchange={onsortchange} />
+
+	{#if showAvailableChip}
+		<!-- „Pouze dostupné" toggle chip (issue #101): filled when active, aria-pressed for AT -->
+		<button
+			type="button"
+			class="rounded-full border-2 border-ink bg-surface px-3.5 py-1.5 text-[13.5px] font-semibold text-ink transition-[background-color,color,transform] hover:-translate-y-px aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+			aria-pressed={filters.availableOnly}
+			onclick={toggleAvailableOnly}
+		>
+			{m.gift_filter_available_only()}
+		</button>
+	{/if}
+
+	<GiftFilterOverflowMenu {filters} {onfilterchange} />
 
 	<div class="ml-auto flex items-center gap-2">
 		{#if canManage && !isArchived}

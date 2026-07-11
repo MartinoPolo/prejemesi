@@ -1,31 +1,44 @@
 import { tv } from 'tailwind-variants';
 
+/**
+ * Anime-sky sticker gift card (issue #102 REQ-14): ink border, hard offset
+ * shadow, spring lift on hover, dotted-mat image background that pans on hover.
+ * `dimmed` covers fully reserved (visitor/moderator view) and received gifts —
+ * the card greys out, stops lifting, and the mat stops panning; the reservation
+ * sticker stays crisp on top.
+ */
 export const giftCardVariants = tv({
 	slots: {
-		card: 'group relative flex flex-col overflow-hidden rounded-xl shadow-sm ring-1 ring-border bg-card transition-shadow hover:shadow-md',
-		imageArea: 'relative h-40 w-full overflow-hidden bg-muted',
-		image: 'size-full object-cover',
-		imagePlaceholder:
-			'flex size-full items-center justify-center bg-gradient-to-br from-muted to-accent text-4xl',
+		card: 'group relative flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+		imageArea:
+			'relative h-32 w-full overflow-hidden border-b-[2.5px] border-ink bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] bg-position-[0px_0px] transition-[background-position] duration-600 motion-safe:group-hover:bg-position-[24px_12px]',
+		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
+		imageVeil: 'absolute inset-0 bg-reserved-veil',
 		body: 'flex flex-1 flex-col gap-2 p-4',
 		nameRow: 'flex flex-wrap items-baseline gap-1.5',
-		name: 'line-clamp-2 font-heading text-base font-semibold leading-snug text-foreground',
-		price: 'text-lg font-bold text-primary',
-		priceEmpty: 'text-sm text-muted-foreground',
+		name: 'line-clamp-2 font-heading text-[17px] font-semibold leading-snug text-foreground',
+		price: 'text-[15px] font-bold text-foreground',
+		priceEmpty: 'text-sm text-ink-soft italic',
 		priorityEyebrow: 'flex items-center gap-1',
 		linkList: 'mt-auto flex flex-col',
-		footer: 'flex items-center justify-between border-t border-border px-4 py-2.5',
-		reservedOverlay: 'absolute inset-0 flex items-center justify-center bg-background/40',
+		footer: 'flex items-center justify-between gap-2 px-4 pt-1 pb-3.5',
+		reservedSticker:
+			'absolute inset-0 z-10 m-auto flex h-fit w-fit -rotate-6 items-center gap-1 rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
+		receivedSticker:
+			'absolute top-2.5 right-2.5 z-10 flex rotate-4 items-center gap-1 rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11.5px] font-extrabold text-primary-foreground',
 	},
 	variants: {
-		reserved: {
+		dimmed: {
 			true: {
-				card: 'opacity-[0.78]',
+				card: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] hover:shadow-sticker-strong focus-within:shadow-sticker-strong motion-safe:hover:translate-y-0 motion-safe:focus-within:translate-y-0',
+				imageArea: 'motion-safe:group-hover:bg-position-[0px_0px]',
+				body: 'opacity-55 grayscale-50',
+				footer: 'opacity-55 grayscale-50',
 			},
 			false: {},
 		},
 	},
 	defaultVariants: {
-		reserved: false,
+		dimmed: false,
 	},
 });
