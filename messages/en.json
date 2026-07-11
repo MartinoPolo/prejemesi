@@ -541,6 +541,7 @@
 	"mode_toggle_light": "Light mode",
 	"mode_toggle_dark": "Dark mode",
 	"mode_toggle_system": "System mode",
+	"palette_switcher_label": "Color palette",
 
 	"followed_title": "Followed",
 	"followed_loading": "Loading...",

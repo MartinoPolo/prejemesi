@@ -541,6 +541,7 @@
 	"mode_toggle_light": "Světlý režim",
 	"mode_toggle_dark": "Tmavý režim",
 	"mode_toggle_system": "Systémový režim",
+	"palette_switcher_label": "Barevná paleta",
 
 	"followed_title": "Sledované",
 	"followed_loading": "Načítání...",

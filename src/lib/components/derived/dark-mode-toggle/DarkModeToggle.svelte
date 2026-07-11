@@ -30,7 +30,7 @@
 		<Button
 			{...triggerProps}
 			onclick={cycleMode}
-			intent="ghost"
+			intent="outline"
 			size="icon"
 			aria-label={tooltipText}
 		>

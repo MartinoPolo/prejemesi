@@ -23,6 +23,12 @@
 		en: { label: m.settings_language_en },
 	};
 
+	/** Short codes for the compact header trigger (flags appear only in the dropdown items). */
+	const LOCALE_CODES: Record<Locale, string> = {
+		cs: 'CZ',
+		en: 'EN',
+	};
+
 	const LOCALE_SORT_ORDER: Record<Locale, number> = {
 		cs: 0,
 		en: 1,
@@ -129,17 +135,14 @@
 				{#snippet child({ props })}
 					<Button
 						{...props}
-						intent="ghost"
-						size={isIconVariant ? 'icon' : 'md'}
+						intent="outline"
+						size="md"
 						class={cn(!isIconVariant && 'w-40 justify-between')}
 						aria-label={ariaLabel}
 						title={ariaLabel}
 					>
-						<LanguageFlag locale={currentLocale} />
-						{#if !isIconVariant}
-							<span>{currentLabel}</span>
-							<ChevronDownIcon data-icon class="opacity-60" />
-						{/if}
+						<span>{isIconVariant ? LOCALE_CODES[currentLocale] : currentLabel}</span>
+						<ChevronDownIcon data-icon class="opacity-60" />
 					</Button>
 				{/snippet}
 			</Popover.Trigger>
@@ -147,7 +150,7 @@
 		<Popover.Content
 			bind:ref={contentElement}
 			align={isIconVariant ? 'end' : 'start'}
-			class="w-44 rounded-md border-0 bg-popover p-1 text-popover-foreground ring-1 ring-foreground/10"
+			class="w-44 min-w-0 p-1"
 			role="menu"
 			aria-label={m.settings_language_label()}
 			onmouseover={openMenu}

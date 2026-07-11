@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
+	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
@@ -357,7 +358,8 @@
 			<NotificationBell />
 		{/if}
 
-		<!-- Dark mode toggle -->
+		<!-- Palette / dark mode / language controls -->
+		<PaletteSwitcher />
 		<DarkModeToggle />
 		<LanguageToggle variant="icon" />
 
