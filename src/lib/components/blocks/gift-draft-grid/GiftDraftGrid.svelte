@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import HeartIcon from '@lucide/svelte/icons/heart';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { onMount } from 'svelte';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
@@ -207,8 +208,8 @@
 			<SimpleTooltip text={m.draft_grid_col_enrich()} side="top">
 				{#snippet asChild(triggerProps)}
 					<span {...triggerProps} class={cn(DRAFT_COL_LABEL_CLASS, 'text-center')}>
-						✨
-						<span class="sr-only">{m.draft_grid_remove_row()}</span>
+						<SparklesIcon class="size-3.5" aria-hidden="true" />
+						<span class="sr-only">{m.draft_grid_col_enrich()}</span>
 					</span>
 				{/snippet}
 			</SimpleTooltip>
