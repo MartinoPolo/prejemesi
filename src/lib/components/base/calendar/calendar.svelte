@@ -26,6 +26,7 @@
 		class: className,
 		// fallow-ignore-next-line code-duplication
 		weekdayFormat = 'short',
+		weekStartsOn = 1,
 		buttonIntent = 'ghost',
 		captionLayout = 'label',
 		locale = 'en-US',
@@ -66,6 +67,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 	bind:ref
 	bind:placeholder
 	{weekdayFormat}
+	{weekStartsOn}
 	{disableDaysOutsideMonth}
 	class={cn(
 		'w-fit p-3 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(8)] bg-background group/calendar in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent',
