@@ -4,6 +4,7 @@ import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
+import { user } from '$lib/server/db/auth.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
 import { getAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
@@ -14,7 +15,10 @@ import {
 	assertWishlistMutable,
 	resolveWishlistRole,
 } from '$lib/modules/wishlists/wishlist_access.js';
-import { hidesReservationState } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import {
+	hidesReservationState,
+	canSeeReserverNames,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	CreateGiftInputSchema,
@@ -109,22 +113,41 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 	// Visitor/Moderator: include reservation counts and like counts
 	const giftIds = giftRows.map((row) => row.id);
 
-	// Batch fetch reservation counts (scoped to this wishlist's gifts)
+	// Batch fetch active reservations with reserver display names (scoped to this
+	// wishlist's gifts): account name for authenticated reservers, the signed
+	// anonymous name otherwise. Counts and names derive from the same rows so they
+	// can never disagree. Names are only emitted to viewers passing the
+	// canSeeReserverNames gate below (issue #102 REQ-14) — a self-promoted
+	// recipient reaches this branch but must see counts only, never identities.
 	const reservationCounts = new Map<string, number>();
+	const reserverNamesByGiftId = new Map<string, string[]>();
 	if (giftIds.length > 0) {
-		const resCounts = await database
+		const reservationRows = await database
 			.select({
 				giftId: reservation.giftId,
-				totalQuantity: sql<number>`COALESCE(SUM(${reservation.quantity}), 0)`.as(
-					'total_quantity',
-				),
+				quantity: reservation.quantity,
+				reserverName: sql<
+					string | null
+				>`COALESCE(${user.name}, ${reservation.anonymousName})`,
 			})
 			.from(reservation)
+			.leftJoin(user, eq(reservation.userId, user.id))
 			.where(and(inArray(reservation.giftId, giftIds), isNull(reservation.deletedAt)))
-			.groupBy(reservation.giftId);
+			.orderBy(reservation.createdAt);
 
-		for (const row of resCounts) {
-			reservationCounts.set(row.giftId, Number(row.totalQuantity));
+		for (const row of reservationRows) {
+			reservationCounts.set(
+				row.giftId,
+				(reservationCounts.get(row.giftId) ?? 0) + Number(row.quantity),
+			);
+			if (row.reserverName !== null && row.reserverName.trim() !== '') {
+				const names = reserverNamesByGiftId.get(row.giftId);
+				if (names === undefined) {
+					reserverNamesByGiftId.set(row.giftId, [row.reserverName]);
+				} else if (!names.includes(row.reserverName)) {
+					names.push(row.reserverName);
+				}
+			}
 		}
 	}
 
@@ -187,6 +210,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 		}
 	}
 
+	const includeReserverNames = canSeeReserverNames(role);
+
 	const visitorGifts: GiftForVisitor[] = giftRows.map((row) => {
 		const qty = row.quantity ?? 1;
 		const reserved = reservationCounts.get(row.id) ?? 0;
@@ -213,6 +238,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			likeCount: likeCounts.get(row.id) ?? 0,
 			reservedCount: reserved,
 			isFullyReserved: reserved >= qty,
+			reserverNames: includeReserverNames ? (reserverNamesByGiftId.get(row.id) ?? []) : [],
 			myReservationId: myReservations.get(row.id)?.id ?? null,
 			myReservationPurchasedAt: myReservations.get(row.id)?.purchasedAt ?? null,
 		};

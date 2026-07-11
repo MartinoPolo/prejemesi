@@ -96,6 +96,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		id: 'reservation.id',
 		giftId: 'reservation.giftId',
 		userId: 'reservation.userId',
+		anonymousName: 'reservation.anonymousName',
 		quantity: 'reservation.quantity',
 		deletedAt: 'reservation.deletedAt',
 		createdAt: 'reservation.createdAt',
@@ -123,6 +124,13 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 		wishlistId: 'priorityLevel.wishlistId',
 		label: 'priorityLevel.label',
 		sortOrder: 'priorityLevel.sortOrder',
+	},
+}));
+
+vi.mock('$lib/server/db/auth.schema.js', () => ({
+	user: {
+		id: 'user.id',
+		name: 'user.name',
 	},
 }));
 
@@ -333,6 +341,7 @@ describe('getGiftsByWishlistShortId', () => {
 			expect('reservedCount' in gift).toBe(false);
 			expect('likeCount' in gift).toBe(false);
 			expect('isFullyReserved' in gift).toBe(false);
+			expect('reserverNames' in gift).toBe(false);
 		});
 	});
 
@@ -343,8 +352,10 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: true })]);
 			// DB call 2: gift rows
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 3 })]);
-			// DB call 3: reservation counts
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 2 }]);
+			// DB call 3: reservation rows (with reserver names the DB always returns)
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
+			]);
 			// DB call 4: like counts
 			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 5 }]);
 			// DB call 5: my reservations (recipient has none)
@@ -360,6 +371,9 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.reservedCount).toBe(2);
 			expect(gift.likeCount).toBe(5);
 			expect(gift.isFullyReserved).toBe(false); // 2 reserved out of 3
+			// …but gifter identities never are: self-promote reveals counts, not names
+			// (issue #102 REQ-14 keeps the surprise of WHO for the recipient).
+			expect(gift.reserverNames).toEqual([]);
 		});
 	});
 
@@ -371,8 +385,10 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([]);
 			// DB call 3: gift rows
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 2 })]);
-			// DB call 4: reservation counts (fully reserved)
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 2 }]);
+			// DB call 4: reservation rows (fully reserved)
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
+			]);
 			// DB call 5: like counts
 			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 3 }]);
 
@@ -408,7 +424,8 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			mockDbInstance.pushResult([]); // not a moderator
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 1 }]); // reservation counts
+			// reservation rows
+			mockDbInstance.pushResult([{ giftId: GIFT_ID, quantity: 1, reserverName: 'Já' }]);
 			mockDbInstance.pushResult([]); // like counts
 			// my active reservations for these gifts
 			mockDbInstance.pushResult([{ id: 'res-mine', giftId: GIFT_ID }]);
@@ -442,8 +459,10 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
 			// DB call 3: gift rows
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 5 })]);
-			// DB call 4: reservation counts
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 1 }]);
+			// DB call 4: reservation rows
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+			]);
 			// DB call 5: like counts
 			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 10 }]);
 
@@ -454,6 +473,94 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.reservedCount).toBe(1);
 			expect(gift.likeCount).toBe(10);
 			expect(gift.isFullyReserved).toBe(false);
+			// Moderators see who reserved (issue #102 REQ-14)
+			expect(gift.reserverNames).toEqual(['Babička Marie']);
+		});
+	});
+
+	describe('reserver display names (issue #102 REQ-14)', () => {
+		it('visitor sees the reserver display name on a reserved gift', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
+			// reservation rows: name coalesced from the reserver account / anonymous signature
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+			]);
+			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // my reservations
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.isFullyReserved).toBe(true);
+			expect(gift.reserverNames).toEqual(['Babička Marie']);
+		});
+
+		it('collects multiple reservers in reservation order and deduplicates repeats', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 4 })]);
+			// Same person reserving twice must appear once; order follows createdAt.
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+			]);
+			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // my reservations
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.reservedCount).toBe(4);
+			expect(gift.isFullyReserved).toBe(true);
+			expect(gift.reserverNames).toEqual(['Babička Marie', 'Petr Svoboda']);
+		});
+
+		it('counts reservations without a usable name but emits no name entry for them', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 2 })]);
+			// e.g. reserver account deleted (userId set null, no anonymous signature)
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: null },
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Teta Klára' },
+			]);
+			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // my reservations
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.reservedCount).toBe(2);
+			expect(gift.reserverNames).toEqual(['Teta Klára']);
+		});
+
+		it('owner/recipient payload carries ZERO reservation fields — including reserverNames', async () => {
+			// Core product invariant: the recipient must never learn reservation state.
+			// Enumerates every visitor-only field so a future field addition that leaks
+			// past the strip fails this test.
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
+			mockDbInstance.pushResult([makeGiftRow()]);
+
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
+
+			expect(result.role).toBe('recipient');
+			const gift = result.gifts[0] as Record<string, unknown>;
+			const visitorOnlyFields = [
+				'likeCount',
+				'reservedCount',
+				'isFullyReserved',
+				'reserverNames',
+				'myReservationId',
+				'myReservationPurchasedAt',
+			];
+			for (const field of visitorOnlyFields) {
+				expect(field in gift, `field "${field}" must not leak to the recipient`).toBe(
+					false,
+				);
+			}
 		});
 	});
 

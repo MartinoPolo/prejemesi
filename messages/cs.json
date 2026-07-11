@@ -707,6 +707,8 @@
 	"gift_enrich_placeholder": "Načíst metadata",
 	"gift_priority_eyebrow": "Priorita",
 	"gift_reserved_overlay": "Rezervováno",
+	"gift_reserved_by": "rezervoval(a) {name}",
+	"gift_reserved_by_many": "rezervovali {names}",
 	"gift_received_badge": "Přijato",
 	"gift_edited_after_share_badge": "Upraveno po sdílení",
 	"gift_description_add_note_label": "Přidat k popisu",

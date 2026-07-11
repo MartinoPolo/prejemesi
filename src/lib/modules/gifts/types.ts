@@ -71,6 +71,12 @@ export interface GiftForVisitor extends GiftBase {
 	likeCount: number;
 	reservedCount: number;
 	isFullyReserved: boolean;
+	/**
+	 * Display names of active reservers (account name, or the anonymous signature), in
+	 * reservation order. Empty when the viewer may not see identities — the API omits
+	 * names for a self-promoted recipient, who sees counts only (issue #102 REQ-14).
+	 */
+	reserverNames: string[];
 	/** Active reservation id held by the current authenticated user for this gift, or null. */
 	myReservationId: string | null;
 	/** When the current user marked their reservation as bought (gifter-private), or null. */

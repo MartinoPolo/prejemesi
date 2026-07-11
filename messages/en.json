@@ -707,6 +707,8 @@
 	"gift_enrich_placeholder": "Load metadata",
 	"gift_priority_eyebrow": "Priority",
 	"gift_reserved_overlay": "Reserved",
+	"gift_reserved_by": "reserved by {name}",
+	"gift_reserved_by_many": "reserved by {names}",
 	"gift_received_badge": "Received",
 	"gift_edited_after_share_badge": "Edited after sharing",
 	"gift_description_add_note_label": "Add to description",

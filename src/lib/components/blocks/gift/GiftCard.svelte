@@ -10,7 +10,11 @@
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
+	import {
+		formatPrice,
+		formatReserverLine,
+		getPriorityDisplay,
+	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftEditedBadge from './GiftEditedBadge.svelte';
@@ -38,6 +42,7 @@
 
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
+	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>
 
 <div class={styles.card()}>
@@ -56,8 +61,13 @@
 
 		{#if isVisitorOrModerator && isFullyReserved}
 			<span class={styles.reservedSticker()}>
-				<CheckIcon class="size-3.5" />
-				{m.gift_reserved_overlay()}
+				<span class={styles.reservedStickerLabel()}>
+					<CheckIcon class="size-3.5" />
+					{m.gift_reserved_overlay()}
+				</span>
+				{#if reserverLine !== null}
+					<small class={styles.reservedStickerNames()}>{reserverLine}</small>
+				{/if}
 			</span>
 		{/if}
 

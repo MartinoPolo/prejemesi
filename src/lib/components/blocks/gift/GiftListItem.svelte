@@ -12,6 +12,7 @@
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		formatPrice,
+		formatReserverLine,
 		extractGiftDomain,
 		getPriorityDisplay,
 	} from '$lib/modules/gifts/gift_display.js';
@@ -40,6 +41,7 @@
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
+	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>
 
 <div
@@ -109,6 +111,10 @@
 				>
 					{priorityInfo.label()}
 				</Badge>
+			{/if}
+
+			{#if isFullyReserved && reserverLine !== null}
+				<span class="text-xs font-semibold text-ink-soft">{reserverLine}</span>
 			{/if}
 		</div>
 		<GiftDescription
