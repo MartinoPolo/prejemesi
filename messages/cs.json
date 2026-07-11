@@ -367,6 +367,8 @@
 	"wishlist_archive_event_passed": "Datum události již uplynulo. Chcete tento seznam archivovat?",
 
 	"gift_sort_owner_order": "Výchozí pořadí",
+	"gift_reorder_grip_label": "Přesunout dárek",
+	"gift_reorder_keyboard_hint": "Šipkami změníte pořadí",
 	"gift_sort_priority": "Priorita",
 	"gift_sort_price_asc": "Cena (vzestupně)",
 	"gift_sort_price_desc": "Cena (sestupně)",
@@ -495,6 +497,8 @@
 	"moderator_active_disclosure": "Vidíte stav rezervací tohoto seznamu.",
 	"moderator_toast_invite_generated": "Pozvánka byla vygenerována",
 	"moderator_toast_invite_sent": "Pozvánka odeslána na {email}",
+	"moderator_invite_unregistered_title": "Tento uživatel zatím nemá účet",
+	"moderator_invite_unregistered_body": "Po otevření pozvánky bude vyzván k registraci. Pozvánku jsme přesto odeslali.",
 	"moderator_toast_link_copied": "Odkaz byl zkopírován",
 	"moderator_toast_invite_revoked": "Pozvánka byla zrušena",
 	"moderator_toast_removed": "Správce byl odebrán",
@@ -658,6 +662,7 @@
 	"server_error_already_moderator": "Již jste správcem tohoto seznamu",
 	"server_error_failed_to_assign_moderator": "Nepodařilo se přiřadit správce",
 	"server_error_moderator_not_found": "Správce nebyl nalezen",
+	"server_error_cannot_invite_on_archived": "Tento seznam je archivovaný, pozvánku k němu nelze přijmout.",
 	"server_error_cannot_remove_last_manager": "Nelze odebrat posledního správce seznamu",
 	"server_error_recipient_rename_not_allowed": "Jméno obdarovaného u tohoto seznamu nelze změnit",
 	"server_error_already_seeing_reservations": "Již vidíte stav rezervací",
@@ -766,6 +771,7 @@
 	"batch_add_hint_enabled": "{count} k přidání",
 	"batch_add_toolbar_label": "Hromadně přidat dárky",
 	"import_toolbar_label": "Importovat z tabulky",
+	"export_toolbar_label": "Exportovat do tabulky",
 	"toast_batch_add_success": "Přidáno {count} dárků",
 
 	"import_wizard_title": "Importovat dárky",

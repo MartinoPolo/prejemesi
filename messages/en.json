@@ -367,6 +367,8 @@
 	"wishlist_archive_event_passed": "The event date has passed. Would you like to archive this list?",
 
 	"gift_sort_owner_order": "Default order",
+	"gift_reorder_grip_label": "Move gift",
+	"gift_reorder_keyboard_hint": "Use arrow keys to reorder",
 	"gift_sort_priority": "Priority",
 	"gift_sort_price_asc": "Price (ascending)",
 	"gift_sort_price_desc": "Price (descending)",
@@ -495,6 +497,8 @@
 	"moderator_active_disclosure": "You can see reservation status of this list.",
 	"moderator_toast_invite_generated": "Invite has been generated",
 	"moderator_toast_invite_sent": "Invitation sent to {email}",
+	"moderator_invite_unregistered_title": "This person doesn't have an account yet",
+	"moderator_invite_unregistered_body": "They'll be asked to register when they open the invite. We've sent it anyway.",
 	"moderator_toast_link_copied": "Link has been copied",
 	"moderator_toast_invite_revoked": "Invite has been revoked",
 	"moderator_toast_removed": "Manager has been removed",
@@ -658,6 +662,7 @@
 	"server_error_already_moderator": "You are already a manager of this list",
 	"server_error_failed_to_assign_moderator": "Failed to assign manager",
 	"server_error_moderator_not_found": "Manager not found",
+	"server_error_cannot_invite_on_archived": "This list is archived, so the invite can't be accepted.",
 	"server_error_cannot_remove_last_manager": "You can't remove the last manager of the list",
 	"server_error_recipient_rename_not_allowed": "The recipient name of this list can't be changed",
 	"server_error_already_seeing_reservations": "You can already see reservation status",
@@ -766,6 +771,7 @@
 	"batch_add_hint_enabled": "{count} valid rows to add",
 	"batch_add_toolbar_label": "Batch add gifts",
 	"import_toolbar_label": "Import from spreadsheet",
+	"export_toolbar_label": "Export to spreadsheet",
 	"toast_batch_add_success": "Added {count} gifts",
 
 	"import_wizard_title": "Import gifts",
