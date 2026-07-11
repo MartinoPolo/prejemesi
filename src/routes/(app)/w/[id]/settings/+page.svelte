@@ -12,6 +12,7 @@
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
@@ -24,10 +25,7 @@
 	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 
 	/** Normalize a stored event date to a `Date` for the `DatePicker`, or `null` when unset/invalid. */
@@ -49,7 +47,7 @@
 	const canManage = $derived(canManageWishlist(wishlist.role));
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isShared = $derived(wishlist.sharedAt !== null);
-	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+	const themeEmoji = $derived(getWishlistEmoji(wishlist.theme));
 
 	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
 	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back
@@ -199,16 +197,24 @@
 			</Card.Header>
 			<Card.Content>
 				<form onsubmit={handleDetailsSave} class="flex flex-col gap-4">
-					<div class="flex flex-col gap-2">
-						<Label for="wishlist-title">{m.wishlist_name_label()}</Label>
-						<Input
-							id="wishlist-title"
-							bind:value={detailsTitle}
-							placeholder={m.wishlist_name_placeholder()}
-							required
-							disabled={savingDetails}
-						/>
-					</div>
+					<Field
+						fieldId="wishlist-title"
+						label={m.wishlist_name_label()}
+						errorMessage={detailsError}
+					>
+						{#snippet children({ hasError, errorId }: FieldControlContext)}
+							<Input
+								id="wishlist-title"
+								bind:value={detailsTitle}
+								placeholder={m.wishlist_name_placeholder()}
+								required
+								disabled={savingDetails}
+								state={hasError ? 'error' : 'default'}
+								aria-invalid={hasError ? true : undefined}
+								aria-describedby={errorId}
+							/>
+						{/snippet}
+					</Field>
 
 					<div class="flex flex-col gap-2">
 						<Label for="wishlist-description">{m.wishlist_description_label()}</Label>
@@ -239,10 +245,6 @@
 							</p>
 						{/if}
 					</div>
-
-					{#if detailsError !== ''}
-						<p class="text-destructive text-sm">{detailsError}</p>
-					{/if}
 
 					<div class="flex justify-end">
 						<Button type="submit" disabled={savingDetails}>

@@ -4,7 +4,7 @@
 	import { GiftDraftDialog } from '$lib/components/blocks/gift-draft-grid/index.js';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
-	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
+	import WishlistPalettePicker from '$lib/components/blocks/wishlist/WishlistPalettePicker.svelte';
 	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
 	import LoginPromptDialog from '$lib/components/blocks/auth/LoginPromptDialog.svelte';
 	import type {
@@ -15,7 +15,7 @@
 		UpdateGiftInput,
 		GiftDraftInput,
 	} from '$lib/modules/gifts/types.js';
-	import type { WishlistTheme } from '$lib/modules/themes/types.js';
+	import type { Palette } from '$lib/theme/palettes.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canReserveGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -50,9 +50,9 @@
 		reserveModalOpen: boolean;
 		reservingGift: GiftForVisitor | null;
 		isReserving: boolean;
-		// Theme dialog
-		themeDialogOpen: boolean;
-		activeTheme: WishlistTheme;
+		// Palette dialog (issue #102 REQ-5)
+		paletteDialogOpen: boolean;
+		wishlistPalette: Palette;
 		// Batch add dialog
 		batchAddDialogOpen: boolean;
 		isBatchSubmitting: boolean;
@@ -69,10 +69,7 @@
 		onreservemodalclose: () => void;
 		onreserve: (input: ReserveGiftInput) => void;
 		onshared: () => void;
-		onthemedialogopenchange: (open: boolean) => void;
-		onthemepreview: (theme: WishlistTheme) => void;
-		onthemesave: (theme: WishlistTheme) => void;
-		onthemecancel: () => void;
+		onpaletteselect: (palette: Palette) => void;
 		onmoderatorselfpromoted: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
@@ -100,8 +97,8 @@
 		reserveModalOpen = $bindable(),
 		reservingGift,
 		isReserving,
-		themeDialogOpen = $bindable(),
-		activeTheme,
+		paletteDialogOpen = $bindable(),
+		wishlistPalette,
 		batchAddDialogOpen = $bindable(),
 		isBatchSubmitting,
 		moderatorPanelOpen = $bindable(),
@@ -114,10 +111,7 @@
 		onreservemodalclose,
 		onreserve,
 		onshared,
-		onthemedialogopenchange,
-		onthemepreview,
-		onthemesave,
-		onthemecancel,
+		onpaletteselect,
 		onmoderatorselfpromoted,
 		onbatchsubmit,
 		onbatchdialogopenchange,
@@ -170,24 +164,19 @@
 	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
 {/if}
 
-<!-- Theme Selector Dialog (managers only) -->
+<!-- Wishlist palette dialog (managers only, issue #102 REQ-5): replaces the old
+     theme-preset/custom-color picker with the 10-palette swatch grid. -->
 {#if canManage}
-	<Dialog.Root
-		bind:open={themeDialogOpen}
-		onOpenChange={(open) => {
-			onthemedialogopenchange(open ?? false);
-		}}
-	>
-		<Dialog.Content class="sm:max-w-lg">
+	<Dialog.Root bind:open={paletteDialogOpen}>
+		<Dialog.Content class="sm:max-w-md">
 			<Dialog.Header>
-				<Dialog.Title>{m.theme_dialog_title()}</Dialog.Title>
-				<Dialog.Description>{m.theme_dialog_description()}</Dialog.Description>
+				<Dialog.Title>{m.wishlist_palette_dialog_title()}</Dialog.Title>
+				<Dialog.Description>{m.wishlist_palette_dialog_description()}</Dialog.Description>
 			</Dialog.Header>
-			<ThemeSelector
-				currentTheme={activeTheme}
-				onsave={onthemesave}
-				oncancel={onthemecancel}
-				onpreview={onthemepreview}
+			<WishlistPalettePicker
+				{wishlistId}
+				palette={wishlistPalette}
+				onselect={onpaletteselect}
 			/>
 		</Dialog.Content>
 	</Dialog.Root>

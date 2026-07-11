@@ -56,6 +56,59 @@
 	import { Kbd } from '$lib/components/base/kbd/index.js';
 </script>
 
+<Story name="All States">
+	{#snippet template(args: SearchFieldProps)}
+		<div class="grid max-w-2xl grid-cols-3 items-start gap-4">
+			<div>
+				<span class="mb-2 block text-xs text-foreground-subtle">Rest</span>
+				<SearchField
+					placeholder="Search issues, branches…"
+					aria-label="Search rest"
+					{...args}
+				/>
+			</div>
+			<div>
+				<span class="mb-2 block text-xs text-foreground-subtle">Typing + results</span>
+				<SearchField value="forest" aria-label="Search typing">
+					<div
+						class="mt-1.5 max-h-80 overflow-auto rounded-md border border-border bg-surface p-1.5 shadow-lg"
+					>
+						<div
+							class="px-2 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle"
+						>
+							Issues
+						</div>
+						<div
+							class="flex cursor-pointer items-center gap-2 rounded-md bg-primary-soft px-2 py-1.5 text-[12.5px] text-foreground"
+						>
+							<TreesIcon class="size-3" />
+							#118 · Forest view overlays
+						</div>
+						<div
+							class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-secondary"
+						>
+							<TreesIcon class="size-3" />
+							#128 · Forest tag centering
+						</div>
+					</div>
+				</SearchField>
+			</div>
+			<div>
+				<span class="mb-2 block text-xs text-foreground-subtle">No results</span>
+				<SearchField value="qqzzqz" aria-label="Search no results">
+					<div
+						class="mt-1.5 rounded-md border border-border bg-surface p-4.5 text-center shadow-lg"
+					>
+						<span class="text-[11px] text-foreground-subtle"
+							>No matches for "qqzzqz".</span
+						>
+					</div>
+				</SearchField>
+			</div>
+		</div>
+	{/snippet}
+</Story>
+
 <Story name="Rest">
 	{#snippet template(args: SearchFieldProps)}
 		<div class="max-w-xs">
@@ -118,59 +171,6 @@
 					<span class="text-[11px] text-foreground-subtle">No matches for "qqzzqz".</span>
 				</div>
 			</SearchField>
-		</div>
-	{/snippet}
-</Story>
-
-<Story name="All States">
-	{#snippet template(args: SearchFieldProps)}
-		<div class="grid max-w-2xl grid-cols-3 items-start gap-4">
-			<div>
-				<span class="mb-2 block text-xs text-foreground-subtle">Rest</span>
-				<SearchField
-					placeholder="Search issues, branches…"
-					aria-label="Search rest"
-					{...args}
-				/>
-			</div>
-			<div>
-				<span class="mb-2 block text-xs text-foreground-subtle">Typing + results</span>
-				<SearchField value="forest" aria-label="Search typing">
-					<div
-						class="mt-1.5 max-h-80 overflow-auto rounded-md border border-border bg-surface p-1.5 shadow-lg"
-					>
-						<div
-							class="px-2 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-foreground-subtle"
-						>
-							Issues
-						</div>
-						<div
-							class="flex cursor-pointer items-center gap-2 rounded-md bg-primary-soft px-2 py-1.5 text-[12.5px] text-foreground"
-						>
-							<TreesIcon class="size-3" />
-							#118 · Forest view overlays
-						</div>
-						<div
-							class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-secondary"
-						>
-							<TreesIcon class="size-3" />
-							#128 · Forest tag centering
-						</div>
-					</div>
-				</SearchField>
-			</div>
-			<div>
-				<span class="mb-2 block text-xs text-foreground-subtle">No results</span>
-				<SearchField value="qqzzqz" aria-label="Search no results">
-					<div
-						class="mt-1.5 rounded-md border border-border bg-surface p-4.5 text-center shadow-lg"
-					>
-						<span class="text-[11px] text-foreground-subtle"
-							>No matches for "qqzzqz".</span
-						>
-					</div>
-				</SearchField>
-			</div>
 		</div>
 	{/snippet}
 </Story>

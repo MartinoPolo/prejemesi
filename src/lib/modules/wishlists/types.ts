@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import type { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from '$lib/modules/images/types.js';
+import { isPalette, type Palette } from '$lib/theme/palettes.js';
 
 /** Full wishlist row from DB */
 export type Wishlist = typeof wishlist.$inferSelect;
@@ -75,8 +76,6 @@ export interface UpdateWishlistInput {
 	title?: string;
 	description?: string | null;
 	eventDate?: Date | null;
-	theme?: WishlistTheme;
-	customThemeColor?: string | null;
 	imageKey?: string | null;
 	imageSlots?: WishlistImageSlots | null;
 }
@@ -86,8 +85,6 @@ export const UpdateWishlistInputSchema = v.object({
 	title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
-	theme: v.optional(v.picklist(WISHLIST_THEMES)),
-	customThemeColor: v.optional(v.nullable(v.string())),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
 });
@@ -106,6 +103,12 @@ export const WISHLIST_ROLES = {
 } as const;
 
 export type WishlistRole = (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES];
+
+/** Input for changing a wishlist's palette (Redesign 2026, issue #102). Validated via isPalette(). */
+export const SetWishlistPaletteInputSchema = v.object({
+	wishlistId: v.string(),
+	palette: v.custom<Palette>(isPalette),
+});
 
 /** Input for renaming a free-text recipient (správci only; for-someone lists only). */
 export const RenameRecipientInputSchema = v.object({

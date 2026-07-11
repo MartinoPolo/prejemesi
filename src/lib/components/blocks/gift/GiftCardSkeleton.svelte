@@ -2,9 +2,12 @@
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 </script>
 
-<div class="flex flex-col overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
+<!-- Mirrors the sticker gift card chrome so the loading grid doesn't jump on swap -->
+<div
+	class="flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
+>
 	<!-- Image area -->
-	<Skeleton class="h-40 w-full rounded-t-xl" />
+	<Skeleton class="h-32 w-full rounded-none border-b-[2.5px] border-ink" />
 
 	<!-- Body -->
 	<div class="flex flex-1 flex-col gap-2 p-4">

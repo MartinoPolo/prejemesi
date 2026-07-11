@@ -35,20 +35,20 @@
 				{...props}
 				intent="ghost"
 				size="icon"
-				class="rounded-full"
+				class="rounded-xl"
 				aria-label={m.nav_user_menu({ name: userName })}
 			>
 				{#if userImage}
 					<ImageFrame
 						src={userImage}
 						alt={userName}
-						shape="circle"
+						shape="square"
 						fitMode="cover-crop"
-						class="size-8"
+						class="size-8 rounded-xl"
 					/>
 				{:else}
 					<span
-						class="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+						class="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary"
 					>
 						{userInitials}
 					</span>

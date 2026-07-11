@@ -58,10 +58,11 @@ describe('resolveFrameFill', () => {
 		expect(result).toBe('var(--surface-2)');
 	});
 
-	it('uses the wishlist image-frame token (tier 2) with the exact fallback chain order', () => {
-		// strict priority: image-frame token → wishlist surface → global surface
+	it('uses the palette surface token (tier 2) in wishlist scope', () => {
+		// Redesign 2026: palette tokens re-derive per [data-palette] subtree, so the
+		// wishlist scope resolves through the semantic secondary-surface token.
 		expect(resolveFrameFill({ fillColor: null, tokenScope: 'wishlist' })).toBe(
-			'var(--wishlist-image-frame, var(--wishlist-surface, var(--surface-2)))',
+			'var(--secondary)',
 		);
 	});
 

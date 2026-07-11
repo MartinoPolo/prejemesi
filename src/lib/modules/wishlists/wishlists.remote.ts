@@ -13,11 +13,16 @@ import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { seedNewWishlist } from './wishlist_create.js';
-import { resolveWishlistRole, verifyManagerAccess } from './wishlist_access.js';
+import {
+	resolveWishlistRole,
+	verifyManagerAccess,
+	assertWishlistMutable,
+} from './wishlist_access.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
 	RenameRecipientInputSchema,
+	SetWishlistPaletteInputSchema,
 	type WishlistRole,
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
@@ -272,14 +277,6 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		}
 	}
 
-	// Theme can always be updated (visual preference, not content)
-	if (input.theme !== undefined) {
-		updateData['theme'] = input.theme;
-	}
-	if (input.customThemeColor !== undefined) {
-		updateData['customThemeColor'] = input.customThemeColor;
-	}
-
 	// Image assignment + per-slot crop metadata can always be updated
 	if (input.imageKey !== undefined) {
 		updateData['imageKey'] = input.imageKey;
@@ -320,6 +317,40 @@ export const renameRecipient = guardedCommand(
 			.set({ recipientName: input.recipientName, updatedAt: new Date() })
 			.where(eq(wishlist.id, input.id))
 			.returning();
+
+		return updated;
+	},
+);
+
+/**
+ * Change a wishlist's palette (per-list visual identity, Redesign 2026 issue #102).
+ * Any manager (recipient or správce) may change it; archived lists are read-only,
+ * matching the updateWishlist theme rules.
+ */
+export const setWishlistPalette = guardedCommand(
+	SetWishlistPaletteInputSchema,
+	async ({ user }, input) => {
+		const database = getDb();
+
+		const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
+		assertWishlistMutable(wishlistRow);
+
+		const [updated] = await database
+			.update(wishlist)
+			.set({ palette: input.palette, updatedAt: new Date() })
+			.where(eq(wishlist.id, input.wishlistId))
+			.returning();
+
+		// Single-flight refresh (server-side counterpart of refreshWishlistDashboards
+		// plus the wishlist page query): the open page and the dashboard/nav list cards
+		// get fresh data in the same round trip, so the palette change never leaves
+		// stale surfaces behind. Untracked queries are a no-op.
+		await Promise.allSettled([
+			getWishlistByShortId(wishlistRow.shortId).refresh(),
+			getMyWishlists().refresh(),
+			getModeratedWishlists().refresh(),
+			getFollowedWishlists().refresh(),
+		]);
 
 		return updated;
 	},

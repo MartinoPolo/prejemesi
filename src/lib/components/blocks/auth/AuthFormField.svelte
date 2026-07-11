@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Label } from '$lib/components/base/label/index.js';
+	import { Field } from '$lib/components/derived/field/index.js';
 
 	interface AuthFormFieldProps {
 		fieldId: string;
@@ -9,34 +9,9 @@
 		children: Snippet;
 	}
 
-	let { fieldId, label, errorMessage, children }: AuthFormFieldProps = $props();
-
-	let errorId = $derived(
-		errorMessage !== undefined && errorMessage !== '' ? `${fieldId}-error` : undefined,
-	);
+	let { fieldId, label, errorMessage, children: control }: AuthFormFieldProps = $props();
 </script>
 
-<div class="form-field">
-	<Label for={fieldId}>{label}</Label>
-	{@render children()}
-	{#if errorMessage}
-		<span class="form-error-text" id={errorId}>{errorMessage}</span>
-	{/if}
-</div>
-
-<style>
-	.form-field {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.form-error-text {
-		font-size: var(--text-xs);
-		color: var(--destructive);
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		line-height: var(--leading-snug);
-	}
-</style>
+<!-- Thin wrapper over the shared Field: auth consumers wire the control's a11y props
+     themselves, so the control slot's context is unused here. -->
+<Field {fieldId} {label} {errorMessage} children={control} />

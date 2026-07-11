@@ -4,13 +4,25 @@ import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
 
 test.describe('Wishlist page', () => {
-	test('shows draft banner for unshared wishlist', async ({ browser, request, baseURL }) => {
+	test('shows draft status chip and single share action for unshared wishlist', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
 		const user = createTestUser('wl-draft');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await createWishlistAndNavigate(page, 'Test Draft');
-		await expect(page.getByText(/Tento seznam (je.t.|jeste) nebyl sd.len/i)).toBeVisible();
+
+		// Anime-sky redesign (#102, REQ-12): the full-width draft lifecycle strip is removed.
+		// The unshared state is surfaced by the compact "Koncept" status chip in the header.
 		await expect(page.getByRole('main').getByText('Koncept')).toBeVisible();
+		await expect(page.getByText(/Tento seznam (je.t.|jeste) nebyl sd.len/i)).toHaveCount(0);
+
+		// A single „Sdílet" action opens the share wizard (replacing the removed strips).
+		await expect(
+			page.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ }).first(),
+		).toBeVisible();
 
 		await page.context().close();
 	});

@@ -43,14 +43,19 @@
 		return m.register_strength_strong();
 	});
 
-	let color = $derived.by(() => {
+	// Segment fills climb through the palette tokens (`anime-auth.html` strength bar):
+	// danger → sticky-note accent → soft brand → full brand.
+	let fillColor = $derived.by(() => {
 		if (strength <= 1) {
 			return 'var(--destructive)';
 		}
 		if (strength === 2) {
-			return 'var(--status-warning)';
+			return 'var(--accent-loud)';
 		}
-		return 'var(--status-success)';
+		if (strength === 3) {
+			return 'color-mix(in oklab, var(--brand) 62%, var(--card))';
+		}
+		return 'var(--brand)';
 	});
 </script>
 
@@ -59,29 +64,32 @@
 		{#each [0, 1, 2, 3] as index (index)}
 			<div
 				class="strength-segment"
-				style:background={index < strength ? color : undefined}
+				style:background={index < strength ? fillColor : undefined}
 			></div>
 		{/each}
 	</div>
-	<span class="form-helper-text" style:color>{label}</span>
+	<span class="form-helper-text">{label}</span>
 {/if}
 
 <style>
 	.strength-bar {
 		display: flex;
-		gap: 4px;
+		gap: 5px;
 		margin-top: 2px;
 	}
 
 	.strength-segment {
 		flex: 1;
-		height: 3px;
-		border-radius: 2px;
-		background: var(--border);
+		height: 9px;
+		border-radius: 999px;
+		border: 2px solid var(--ink);
+		background: var(--surface);
 		transition: background var(--duration-normal);
 	}
 
 	.form-helper-text {
-		font-size: var(--text-xs);
+		font-size: 12.5px;
+		font-weight: 700;
+		color: var(--ink-soft);
 	}
 </style>

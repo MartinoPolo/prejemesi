@@ -9,6 +9,8 @@
 		side?: 'top' | 'bottom' | 'left' | 'right';
 		sideOffset?: number;
 		delayDuration?: number | undefined;
+		/** When true, the tooltip never opens (used to suppress it while an attached popover/menu is open). */
+		disabled?: boolean;
 		/** Span-wrap mode: content is wrapped in an inline-flex span trigger. */
 		children?: Snippet;
 		/** AsChild mode: snippet receives trigger props to spread onto the interactive element. */
@@ -20,6 +22,7 @@
 		side = 'top',
 		sideOffset = 6,
 		delayDuration = undefined,
+		disabled = false,
 		children,
 		asChild,
 	}: Props = $props();
@@ -27,7 +30,7 @@
 
 {#if delayDuration !== undefined}
 	<TooltipPrimitive.Provider {delayDuration}>
-		<TooltipPrimitive.Root>
+		<TooltipPrimitive.Root {disabled}>
 			<TooltipTrigger>
 				{#snippet child({ props })}
 					{#if asChild}
@@ -46,7 +49,7 @@
 	</TooltipPrimitive.Provider>
 {:else}
 	<TooltipPrimitive.Provider>
-		<TooltipPrimitive.Root>
+		<TooltipPrimitive.Root {disabled}>
 			<TooltipTrigger>
 				{#snippet child({ props })}
 					{#if asChild}

@@ -1,5 +1,5 @@
 import { boolean, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
-import { appBackgroundThemeEnum, preferredLocaleEnum } from './enums.js';
+import { appBackgroundThemeEnum, paletteEnum, preferredLocaleEnum } from './enums.js';
 import type { NotificationPreferences } from '../../modules/notifications/types.js';
 
 export const user = pgTable('user', {
@@ -8,8 +8,11 @@ export const user = pgTable('user', {
 	email: text('email').notNull().unique(),
 	emailVerified: boolean('email_verified').notNull().default(false),
 	image: text('image'),
+	// Superseded by `palette`; kept for rollback safety, no reader remains.
 	appBackgroundTheme: appBackgroundThemeEnum('app_background_theme').notNull().default('default'),
 	preferredLocale: preferredLocaleEnum('preferred_locale'),
+	// Redesign 2026 viewer palette (mirrored in the `app-palette` cookie for SSR).
+	palette: paletteEnum('palette').notNull().default('sky'),
 	// Per-user in-app/email notification toggles. Nullable: NULL = "never customized",
 	// interpreted as DEFAULT_NOTIFICATION_PREFERENCES by readers (dispatcher + settings).
 	notificationPreferences: jsonb('notification_preferences').$type<NotificationPreferences>(),

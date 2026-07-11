@@ -22,6 +22,8 @@
 	<h2 class={variants.title()}>{title}</h2>
 	<p class={variants.description()}>{description}</p>
 	{#if actions}
-		{@render actions()}
+		<div class="mt-1.5 flex flex-wrap items-center justify-center gap-2">
+			{@render actions()}
+		</div>
 	{/if}
 </div>

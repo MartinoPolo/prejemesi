@@ -3,14 +3,14 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const toastVariants = tv({
-	base: 'flex items-center gap-3 rounded-lg border border-border bg-surface p-3 shadow-md',
+	base: 'flex items-center gap-3 rounded-[12px] border-[2.5px] border-ink bg-card p-3 shadow-sticker',
 	variants: {
 		tone: {
-			info: 'border-l-2 border-l-status-info',
-			success: 'border-l-2 border-l-status-success',
-			warning: 'border-l-2 border-l-status-warning',
-			danger: 'border-l-2 border-l-status-danger',
-			loading: 'border-l-2 border-l-primary',
+			info: 'border-l-[6px] border-l-status-info',
+			success: 'border-l-[6px] border-l-status-success',
+			warning: 'border-l-[6px] border-l-status-warning',
+			danger: 'border-l-[6px] border-l-status-danger',
+			loading: 'border-l-[6px] border-l-primary',
 		},
 	},
 	defaultVariants: {

@@ -13,6 +13,9 @@
 <Separator
 	bind:ref
 	data-slot="select-separator"
-	class={cn('bg-border -mx-1 my-1 h-px pointer-events-none', className)}
+	class={cn(
+		'-mx-1 my-1 h-0 border-t-2 border-dashed border-ink-faint pointer-events-none',
+		className,
+	)}
 	{...restProps}
 />

@@ -17,8 +17,6 @@ import {
 	WishlistImageSlotsSchema,
 	IMAGE_FIT_MODE_VALUES,
 } from './images/types.js';
-import { UpdateAppBackgroundThemeInputSchema } from './settings/types.js';
-import { BACKGROUND_THEMES } from '$lib/components/base/theme/types.js';
 
 function parseSuccess(
 	schema: v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>,
@@ -595,28 +593,5 @@ describe('UpdateWishlistInputSchema – image assignment', () => {
 		// the schema must still validate without them present.
 		const result = parseSuccess(UpdateWishlistInputSchema, { id: 'wl-1' });
 		expect(result.success).toBe(true);
-	});
-});
-
-describe('UpdateAppBackgroundThemeInputSchema', () => {
-	it('accepts every supported background theme', () => {
-		for (const theme of BACKGROUND_THEMES) {
-			const result = parseSuccess(UpdateAppBackgroundThemeInputSchema, {
-				appBackgroundTheme: theme,
-			});
-			expect(result.success, `theme "${theme}" should be valid`).toBe(true);
-		}
-	});
-
-	it('rejects an unsupported background theme', () => {
-		const result = parseSuccess(UpdateAppBackgroundThemeInputSchema, {
-			appBackgroundTheme: 'midnight',
-		});
-		expect(result.success).toBe(false);
-	});
-
-	it('rejects a missing background theme', () => {
-		const result = parseSuccess(UpdateAppBackgroundThemeInputSchema, {});
-		expect(result.success).toBe(false);
 	});
 });

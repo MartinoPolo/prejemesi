@@ -81,13 +81,13 @@
 						<ImageFrame
 							src={avatarUrl}
 							alt={displayName}
-							shape="circle"
+							shape="square"
 							fitMode="cover-crop"
-							class="size-16"
+							class="size-16 rounded-xl"
 						/>
 					{:else}
 						<span
-							class="flex size-16 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary"
+							class="flex size-16 items-center justify-center rounded-xl bg-primary/10 text-lg font-semibold text-primary"
 						>
 							{getInitials(displayName)}
 						</span>

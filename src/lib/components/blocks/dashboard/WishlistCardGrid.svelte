@@ -10,6 +10,6 @@
 	let { children, class: className }: WishlistCardGridProps = $props();
 </script>
 
-<div class={cn('grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3', className)}>
+<div class={cn('stagger-pop grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3', className)}>
 	{@render children()}
 </div>

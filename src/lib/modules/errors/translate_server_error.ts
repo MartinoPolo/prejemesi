@@ -15,6 +15,7 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.ALREADY_MODERATOR]: () => m.server_error_already_moderator(),
 	[SERVER_ERROR.FAILED_TO_ASSIGN_MODERATOR]: () => m.server_error_failed_to_assign_moderator(),
 	[SERVER_ERROR.MODERATOR_NOT_FOUND]: () => m.server_error_moderator_not_found(),
+	[SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED]: () => m.server_error_cannot_invite_on_archived(),
 	[SERVER_ERROR.CANNOT_REMOVE_LAST_MANAGER]: () => m.server_error_cannot_remove_last_manager(),
 	[SERVER_ERROR.ALREADY_SEEING_RESERVATIONS]: () => m.server_error_already_seeing_reservations(),
 

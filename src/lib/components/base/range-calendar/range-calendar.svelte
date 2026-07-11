@@ -25,6 +25,7 @@
 		placeholder = $bindable(),
 		// fallow-ignore-next-line code-duplication
 		weekdayFormat = 'short',
+		weekStartsOn = 1,
 		class: className,
 		buttonIntent = 'ghost',
 		captionLayout = 'label',
@@ -62,6 +63,7 @@
 	bind:value
 	bind:placeholder
 	{weekdayFormat}
+	{weekStartsOn}
 	{disableDaysOutsideMonth}
 	class={cn(
 		'w-fit p-3 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(8)] bg-background group/calendar [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent',

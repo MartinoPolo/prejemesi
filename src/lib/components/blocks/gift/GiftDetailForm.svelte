@@ -5,6 +5,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
@@ -293,8 +294,8 @@
 			/>
 		{:else}
 			<div class={styles.imagePlaceholder()}>
-				<GiftIcon class="size-16 text-muted-foreground/40" />
-				<span class="text-sm font-medium text-muted-foreground/60"
+				<GiftIcon class="size-16 text-ink-faint" />
+				<span class="text-sm font-semibold text-ink-soft"
 					>{m.gift_image_preview_label()}</span
 				>
 			</div>
@@ -311,35 +312,42 @@
 		{/if}
 		<fieldset class="contents">
 			<!-- Name -->
-			<div class={styles.formField()}>
-				<Label for="gift-name">{m.gift_name_label()}</Label>
-				{#if locked}
-					<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
-						{#snippet asChild(tooltipProps)}
-							<div {...tooltipProps} tabindex="-1" class="w-full">
-								<Input
-									id="gift-name"
-									class="pointer-events-none"
-									bind:value={name}
-									placeholder={m.gift_name_placeholder()}
-									disabled
-									aria-invalid={nameError !== '' ? true : undefined}
-								/>
-							</div>
-						{/snippet}
-					</SimpleTooltip>
-				{:else}
-					<Input
-						id="gift-name"
-						bind:value={name}
-						placeholder={m.gift_name_placeholder()}
-						aria-invalid={nameError !== '' ? true : undefined}
-					/>
-				{/if}
-				{#if nameError}
-					<span class="text-xs text-destructive">{nameError}</span>
-				{/if}
-			</div>
+			<Field
+				fieldId="gift-name"
+				label={m.gift_name_label()}
+				errorMessage={nameError}
+				class={styles.formField()}
+			>
+				{#snippet children({ hasError, errorId }: FieldControlContext)}
+					{#if locked}
+						<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
+							{#snippet asChild(tooltipProps)}
+								<div {...tooltipProps} tabindex="-1" class="w-full">
+									<Input
+										id="gift-name"
+										class="pointer-events-none"
+										bind:value={name}
+										placeholder={m.gift_name_placeholder()}
+										disabled
+										state={hasError ? 'error' : 'default'}
+										aria-invalid={hasError ? true : undefined}
+										aria-describedby={errorId}
+									/>
+								</div>
+							{/snippet}
+						</SimpleTooltip>
+					{:else}
+						<Input
+							id="gift-name"
+							bind:value={name}
+							placeholder={m.gift_name_placeholder()}
+							state={hasError ? 'error' : 'default'}
+							aria-invalid={hasError ? true : undefined}
+							aria-describedby={errorId}
+						/>
+					{/if}
+				{/snippet}
+			</Field>
 
 			<!-- Description -->
 			<div class="mt-3 {styles.formField()}">

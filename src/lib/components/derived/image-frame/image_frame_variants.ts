@@ -5,14 +5,16 @@ export const imageFrameVariants = tv({
 		root: 'relative block overflow-hidden bg-[var(--frame-fill)]',
 		image: 'block size-full',
 		fallback: 'flex size-full flex-col items-center justify-center gap-2 text-center',
-		fallbackIcon: 'text-4xl leading-none text-wishlist-icon',
+		fallbackIcon: 'text-4xl leading-none text-primary',
 		fallbackLabel: 'text-xs text-foreground-subtle',
 		skeleton: 'absolute inset-0 z-10 size-full rounded-none',
 	},
 	variants: {
 		/** Concrete fit applied to the image (after `auto` has been resolved). */
 		fit: {
-			'contain-padded': { image: 'object-contain' },
+			/* Letterboxed photos keep breathing room so the frame fill (or a parent's
+			   dotted mat) reads as a passe-partout (Redesign 2026 round-2 delta). */
+			'contain-padded': { image: 'object-contain p-2' },
 			'cover-crop': { image: 'object-cover' },
 		},
 		shape: {

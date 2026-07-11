@@ -14,13 +14,8 @@
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
-	import { setWishlistThemeContext } from '$lib/modules/themes/themes.context.svelte.js';
-	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply_theme.js';
-	import { isCustomTheme, toWishlistTheme } from '$lib/modules/themes/types.js';
-	import type { WishlistTheme } from '$lib/modules/themes/types.js';
 	import {
 		getWishlistByShortId,
-		updateWishlist,
 		archiveWishlist,
 		unfollowWishlist,
 		followWishlist,
@@ -32,10 +27,8 @@
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import type { Palette } from '$lib/theme/palettes.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistImageUrl } from '$lib/modules/images/index.js';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
@@ -54,6 +47,7 @@
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
+	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import {
 		ownerSharedGiftDeleteGraceExpiresAt,
 		preShareOwnerFullEditGraceExpiresAt,
@@ -116,10 +110,6 @@
 		),
 	);
 
-	const themeContext = untrack(() =>
-		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
-	);
-
 	// ── Derived values ───────────────────────────────────────────────────────
 
 	const isArchived = $derived(wishlist.status === 'archived');
@@ -130,7 +120,7 @@
 	const recipientIsModerator = $derived(wishlist.recipientIsModerator);
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
 	const isForSomeoneElse = $derived(wishlist.recipientUserId === null);
-	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+	const themeEmoji = $derived(getWishlistEmoji(wishlist.theme));
 	function getWishlistPageUrl() {
 		return `${SITE_URL}/w/${wishlist.shortId}`;
 	}
@@ -180,6 +170,9 @@
 			wishlist = freshWishlist;
 			gifts = freshGifts.gifts;
 			role = freshGifts.role;
+			// Fresh server data is authoritative — drop any optimistic reorder layer so a
+			// stale pre-refresh order can never mask the newly fetched gifts.
+			giftsContext.clearReorderOverride();
 			await refreshLikedGiftIds({ refresh: true });
 			await refreshWishlistDashboards();
 		} catch (thrown) {
@@ -195,6 +188,8 @@
 			const giftsData = await getGiftsByWishlistShortId(shortId);
 			gifts = giftsData.gifts;
 			role = giftsData.role;
+			// Fresh server data is authoritative — drop any optimistic reorder layer.
+			giftsContext.clearReorderOverride();
 			await refreshLikedGiftIds();
 		} catch (thrown) {
 			console.error('Failed to load wishlist gifts:', thrown);
@@ -239,37 +234,15 @@
 
 	let importWizardOpen = $state(false);
 
-	// ── Theme selector dialog state ──────────────────────────────────────────
+	// ── Palette dialog state (issue #102 REQ-5) ──────────────────────────────
 
-	let themeDialogOpen = $state(false);
-
-	// ── Drag-and-drop state ──────────────────────────────────────────────────
-
-	let draggedIndex = $state<number | null>(null);
-	let dragOverIndex = $state<number | null>(null);
+	let paletteDialogOpen = $state(false);
 
 	// ── Reservation modal state ───────────────────────────────────────────────
 
 	let reserveModalOpen = $state(false);
 	let reservingGift = $state<GiftForVisitor | null>(null);
 	let isReserving = $state(false);
-
-	// ── Theme application via $effect ─────────────────────────────────────────
-
-	let themeWrapperElement = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		if (themeWrapperElement === null) {
-			return;
-		}
-		const theme = themeContext.effectiveTheme.current;
-		applyWishlistTheme(themeWrapperElement, theme);
-		return () => {
-			if (themeWrapperElement !== null) {
-				removeWishlistTheme(themeWrapperElement);
-			}
-		};
-	});
 
 	// ── Re-fetch on route param change ───────────────────────────────────────
 
@@ -291,7 +264,6 @@
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const totalCount = $derived(giftsContext.giftCount.current);
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
-	const hasActiveFilters = $derived(giftsContext.hasActiveFilters.current);
 	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
 	const isEmpty = $derived(totalCount === 0);
 
@@ -538,6 +510,24 @@
 		await refreshData();
 	}
 
+	// ── Export handler ────────────────────────────────────────────────────────
+
+	// Exports gift DATA ONLY (name/notes/links/price), mirroring the import columns
+	// for a round-trip. Never emits reservation state – the recipient must not infer
+	// it, and reservations are not gift-catalog data (DECISIONS.md).
+	function handleExport() {
+		const csv = buildGiftCsv(
+			gifts.map((gift) => ({
+				name: gift.name,
+				description: gift.description,
+				links: gift.links ?? [],
+				price: gift.price,
+				currency: gift.currency,
+			})),
+		);
+		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
+	}
+
 	// ── Batch add handlers ───────────────────────────────────────────────────
 
 	function openBatchAddDialog() {
@@ -579,91 +569,32 @@
 		}
 	}
 
-	// ── Theme handlers ────────────────────────────────────────────────────────
+	// ── Palette handler (issue #102 REQ-5) ────────────────────────────────────
 
-	function handleThemePreview(theme: WishlistTheme) {
-		themeContext.startPreview(theme);
+	// Optimistic local update: the `data-palette` wrapper re-derives the whole token
+	// subtree instantly; the picker persists via setWishlistPalette (which refreshes
+	// the wishlist + dashboard queries server-side) and reverts on error.
+	function handlePaletteSelect(palette: Palette) {
+		wishlist.palette = palette;
 	}
 
-	function handleThemeCancel() {
-		themeContext.cancelPreview();
-		themeDialogOpen = false;
-	}
+	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
-	async function handleThemeSave(theme: WishlistTheme) {
-		try {
-			const themePreset = isCustomTheme(theme) ? 'custom' : theme;
-			const customThemeColor = isCustomTheme(theme) ? theme.color : null;
-
-			await updateWishlist({
-				id: wishlist.id,
-				theme: themePreset,
-				customThemeColor,
-			});
-
-			wishlist.theme = themePreset;
-			wishlist.customThemeColor = customThemeColor;
-			themeContext.cancelPreview();
-			themeDialogOpen = false;
-			toastSuccess(m.toast_theme_saved());
-			await refreshWishlistDashboards();
-		} catch (thrown) {
-			console.error('Failed to save theme:', thrown);
-			toastError(m.toast_theme_save_error());
-		}
-	}
-
-	function handleThemeDialogOpenChange(open: boolean) {
-		if (!open) {
-			themeContext.cancelPreview();
-		}
-	}
-
-	// ── Drag-and-drop handlers ────────────────────────────────────────────────
-
-	function handleDragStart(event: DragEvent, index: number) {
-		if (!canManage) {
-			return;
-		}
-		draggedIndex = index;
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-			event.dataTransfer.setData('text/plain', String(index));
-		}
-	}
-
-	function handleDragOver(event: DragEvent, index: number) {
-		event.preventDefault();
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-		dragOverIndex = index;
-	}
-
-	function handleDragLeave() {
-		dragOverIndex = null;
-	}
-
-	async function handleDrop(event: DragEvent, dropIndex: number) {
-		event.preventDefault();
-		if (draggedIndex === null || draggedIndex === dropIndex) {
-			draggedIndex = null;
-			dragOverIndex = null;
+	// The card grid / list views drive reordering via pointer events (works on touch, unlike
+	// native HTML5 DnD) and keyboard arrows on the grip. Both surfaces report a source→target
+	// index pair over the rendered order and route through this single persistence path.
+	async function handleReorder(fromIndex: number, toIndex: number) {
+		if (!canManage || fromIndex === toIndex) {
 			return;
 		}
 
 		const items = [...giftsContext.effectiveGifts.current];
-		const [movedItem] = items.splice(draggedIndex, 1);
+		const [movedItem] = items.splice(fromIndex, 1);
 		if (movedItem === undefined) {
-			draggedIndex = null;
-			dragOverIndex = null;
 			return;
 		}
-		items.splice(dropIndex, 0, movedItem);
+		items.splice(toIndex, 0, movedItem);
 		giftsContext.reorderGifts(items);
-
-		draggedIndex = null;
-		dragOverIndex = null;
 
 		try {
 			const reorderItems = items.map((item, index) => ({
@@ -671,18 +602,18 @@
 				sortOrder: index,
 			}));
 			await reorderGifts(reorderItems);
-			giftsContext.clearReorderOverride();
-			await refreshData();
+			// Success: keep the optimistic override in place. Its objects are already the
+			// rendered ones, so no data refetch is needed — avoiding the wholesale object
+			// replacement that re-triggered every card's $derived (the disabled/dim flash).
+			// The next real refresh (navigation, other mutation) clears the override so the
+			// authoritative server order takes over.
 		} catch (thrown) {
+			// Failure: revert to the pre-drag order and re-sync with the server so the
+			// visible order matches persisted state (existing error handling unchanged).
 			console.error('Failed to reorder gifts:', thrown);
 			giftsContext.clearReorderOverride();
 			await refreshData();
 		}
-	}
-
-	function handleDragEnd() {
-		draggedIndex = null;
-		dragOverIndex = null;
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
@@ -759,7 +690,9 @@
 	}
 </script>
 
-<div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
+<!-- data-palette re-derives every color token for this subtree (see app.css), giving the
+     wishlist its own per-list identity independent of the viewer's app palette. -->
+<div data-palette={wishlist.palette} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
@@ -782,21 +715,22 @@
 
 	<WishlistDetailToolbar
 		{canManage}
+		{role}
 		{isArchived}
 		{isAuthenticated}
 		{viewMode}
 		sortOption={giftsContext.sortOption.current}
 		filters={giftsContext.filters.current}
-		{hasActiveFilters}
 		onviewmodechange={handleViewModeChange}
 		onsortchange={handleSortChange}
 		onfilterchange={handleFilterChange}
-		onthemeopen={() => (themeDialogOpen = true)}
+		onthemeopen={() => (paletteDialogOpen = true)}
 		onsettings={handleSettingsOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
 		onbatchadd={openBatchAddDialog}
 		onimport={openImportWizard}
+		onexport={handleExport}
 	/>
 
 	<WishlistGiftDisplay
@@ -807,18 +741,12 @@
 		isLoading={isGiftDataLoading}
 		{isEmpty}
 		{isFilteredEmpty}
-		{draggedIndex}
-		{dragOverIndex}
 		onedit={openEditModal}
 		onreserve={handleOpenReserveModal}
 		onunreserve={handleUnreserve}
 		onaddgift={openCreateModal}
 		onclearfilters={clearFilters}
-		ondragstart={handleDragStart}
-		ondragover={handleDragOver}
-		ondragleave={handleDragLeave}
-		ondrop={handleDrop}
-		ondragend={handleDragEnd}
+		onreorder={handleReorder}
 	/>
 </div>
 
@@ -844,8 +772,8 @@
 	bind:reserveModalOpen
 	{reservingGift}
 	{isReserving}
-	bind:themeDialogOpen
-	activeTheme={themeContext.activeTheme.current}
+	bind:paletteDialogOpen
+	wishlistPalette={wishlist.palette}
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
 	bind:moderatorPanelOpen
@@ -858,10 +786,7 @@
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onshared={handleShared}
-	onthemedialogopenchange={handleThemeDialogOpenChange}
-	onthemepreview={handleThemePreview}
-	onthemesave={handleThemeSave}
-	onthemecancel={handleThemeCancel}
+	onpaletteselect={handlePaletteSelect}
 	onmoderatorselfpromoted={handleSelfPromoted}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}

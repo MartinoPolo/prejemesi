@@ -36,6 +36,13 @@
       "when": 1783573690028,
       "tag": "0004_recipient_role_model_contract",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783710128292,
+      "tag": "0005_fair_iron_lad",
+      "breakpoints": true
     }
   ]
 }

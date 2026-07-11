@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import * as m from '$lib/paraglide/messages.js';
 	import type { Notification } from '$lib/modules/notifications/types.js';
 	import { formatRelativeTime } from '$lib/modules/notifications/notification_display.js';
 	import HeartIcon from '@lucide/svelte/icons/heart';
@@ -52,16 +53,16 @@
 <Button
 	intent="ghost"
 	class={cn(
-		'flex h-auto w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-muted/50',
-		!notification.read && 'bg-primary/5',
+		'flex h-auto w-full items-start gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors hover:bg-accent',
+		!notification.read && 'bg-tint',
 	)}
 	onclick={handleClick}
 >
-	<!-- Icon -->
+	<!-- Icon: tilted sticker tile, filled while unread -->
 	<span
 		class={cn(
-			'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full',
-			notification.read ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary',
+			'mt-0.5 flex size-8 shrink-0 -rotate-3 items-center justify-center rounded-[9px] border-2 border-ink',
+			notification.read ? 'bg-surface text-ink-soft' : 'bg-primary text-primary-foreground',
 		)}
 	>
 		<IconComponent class="size-4" />
@@ -69,17 +70,27 @@
 
 	<!-- Content -->
 	<div class="flex min-w-0 flex-1 flex-col gap-0.5">
-		<p class={cn('text-sm leading-snug', !notification.read && 'font-medium')}>
+		<p
+			class={cn(
+				'whitespace-normal break-words text-sm leading-snug',
+				!notification.read && 'font-semibold',
+			)}
+		>
 			{notification.message}
 		</p>
 		{#if notification.actorName}
-			<p class="text-xs text-muted-foreground">{notification.actorName}</p>
+			<p class="whitespace-normal break-words text-xs text-ink-soft">
+				{notification.actorName}
+			</p>
 		{/if}
-		<p class="text-xs text-muted-foreground">{relativeTime}</p>
+		<p class="truncate text-xs text-ink-soft">{relativeTime}</p>
 	</div>
 
 	<!-- Unread dot -->
 	{#if !notification.read}
-		<span class="mt-2 size-2 shrink-0 rounded-full bg-primary" aria-label="Neprecten"></span>
+		<span
+			class="mt-2 size-2.5 shrink-0 rounded-full border-2 border-ink bg-primary"
+			aria-label={m.notification_unread()}
+		></span>
 	{/if}
 </Button>

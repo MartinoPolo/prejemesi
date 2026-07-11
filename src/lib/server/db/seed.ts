@@ -247,7 +247,16 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 	await db.execute(sql`DELETE FROM reservation WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM gift WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM priority_level WHERE id LIKE 'seed-%'`);
-	await db.execute(sql`DELETE FROM moderator_invite WHERE id LIKE 'seed-%'`);
+	// moderator_invite FKs to user have no ON DELETE action, so invites created
+	// at runtime BY seed users (non-seed ids) must be matched via FK columns or
+	// they block the final user delete. Other tables cascade from user/wishlist.
+	await db.execute(sql`
+		DELETE FROM moderator_invite
+		WHERE id LIKE 'seed-%'
+			OR wishlist_id LIKE 'seed-%'
+			OR created_by_user_id LIKE 'seed-%'
+			OR used_by_user_id LIKE 'seed-%'
+	`);
 	await db.execute(sql`DELETE FROM moderator_assignment WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM wishlist_follower WHERE wishlist_id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM wishlist WHERE id LIKE 'seed-%'`);
@@ -353,6 +362,7 @@ async function seed() {
 				eventDate: d('2026-12-24T00:00:00Z'),
 				status: 'active',
 				theme: 'christmas',
+				palette: 'ruby',
 				sharedAt: d('2026-06-15T10:00:00Z'),
 				imageKey: 'seed/wl-xmas2026.jpg',
 				imageSlots: {
@@ -375,6 +385,7 @@ async function seed() {
 				eventDate: d('2027-03-15T00:00:00Z'),
 				status: 'active',
 				theme: 'birthday',
+				palette: 'sakura',
 				sharedAt: d('2026-02-01T08:00:00Z'),
 				imageKey: 'seed/wl-bday.jpg',
 				imageSlots: {
@@ -395,6 +406,7 @@ async function seed() {
 				title: 'Nový seznam',
 				status: 'draft',
 				theme: 'default',
+				palette: 'sky',
 				createdAt: d('2026-05-20T16:00:00Z'),
 				updatedAt: d('2026-05-20T16:00:00Z'),
 			},
@@ -408,6 +420,7 @@ async function seed() {
 				eventDate: d('2025-12-24T00:00:00Z'),
 				status: 'archived',
 				theme: 'christmas',
+				palette: 'ruby',
 				sharedAt: d('2025-11-20T10:00:00Z'),
 				archivedAt: d('2025-12-26T12:00:00Z'),
 				createdAt: d('2025-11-01T09:00:00Z'),
@@ -424,6 +437,7 @@ async function seed() {
 				eventDate: d('2026-05-24T00:00:00Z'),
 				status: 'active',
 				theme: 'elegant',
+				palette: 'graphite',
 				sharedAt: d('2026-04-10T09:00:00Z'),
 				imageKey: 'seed/wl-svatek.jpg',
 				imageSlots: {
@@ -445,6 +459,7 @@ async function seed() {
 				description: 'Vybavení do nového pokojíčku',
 				status: 'draft',
 				theme: 'fun',
+				palette: 'honey',
 				createdAt: d('2026-05-10T14:00:00Z'),
 				updatedAt: d('2026-05-10T14:00:00Z'),
 			},
@@ -458,6 +473,7 @@ async function seed() {
 				eventDate: d('2025-06-20T00:00:00Z'),
 				status: 'archived',
 				theme: 'birthday',
+				palette: 'sakura',
 				sharedAt: d('2025-06-01T08:00:00Z'),
 				archivedAt: d('2025-07-15T12:00:00Z'),
 				createdAt: d('2025-05-15T09:00:00Z'),
@@ -473,6 +489,7 @@ async function seed() {
 				eventDate: d('2025-10-01T00:00:00Z'),
 				status: 'archived',
 				theme: 'default',
+				palette: 'mint',
 				sharedAt: d('2025-09-01T10:00:00Z'),
 				archivedAt: d('2026-01-15T12:00:00Z'),
 				createdAt: d('2025-08-15T09:00:00Z'),
@@ -489,6 +506,7 @@ async function seed() {
 				status: 'active',
 				theme: 'custom',
 				customThemeColor: '#4A90D9',
+				palette: 'sky',
 				sharedAt: d('2026-03-10T09:00:00Z'),
 				imageKey: 'seed/wl-knihy.jpg',
 				imageSlots: {
@@ -511,6 +529,7 @@ async function seed() {
 				eventDate: d('2026-07-15T00:00:00Z'),
 				status: 'active',
 				theme: 'birthday',
+				palette: 'sakura',
 				sharedAt: d('2026-05-20T09:00:00Z'),
 				createdAt: d('2026-05-18T11:00:00Z'),
 				updatedAt: d('2026-06-05T15:00:00Z'),
@@ -526,6 +545,7 @@ async function seed() {
 				eventDate: d('2026-09-01T00:00:00Z'),
 				status: 'active',
 				theme: 'fun',
+				palette: 'honey',
 				sharedAt: d('2026-05-25T09:00:00Z'),
 				createdAt: d('2026-05-22T11:00:00Z'),
 				updatedAt: d('2026-06-02T15:00:00Z'),
@@ -541,6 +561,7 @@ async function seed() {
 				eventDate: d('2026-12-24T00:00:00Z'),
 				status: 'active',
 				theme: 'christmas',
+				palette: 'ruby',
 				sharedAt: d('2026-05-15T09:00:00Z'),
 				createdAt: d('2026-05-12T11:00:00Z'),
 				updatedAt: d('2026-05-30T15:00:00Z'),
@@ -556,6 +577,7 @@ async function seed() {
 				eventDate: d('2026-06-20T00:00:00Z'),
 				status: 'active',
 				theme: 'default',
+				palette: 'ocean',
 				sharedAt: d('2026-05-28T09:00:00Z'),
 				createdAt: d('2026-05-26T11:00:00Z'),
 				updatedAt: d('2026-06-06T15:00:00Z'),
@@ -575,6 +597,7 @@ async function seed() {
 				eventDate: d('2026-08-30T00:00:00Z'),
 				status: 'active',
 				theme: 'fun',
+				palette: 'honey',
 				sharedAt: d('2026-06-10T09:00:00Z'),
 				createdAt: d('2026-06-08T11:00:00Z'),
 				updatedAt: d('2026-06-12T15:00:00Z'),
@@ -591,6 +614,7 @@ async function seed() {
 				eventDate: d('2026-10-15T00:00:00Z'),
 				status: 'active',
 				theme: 'elegant',
+				palette: 'graphite',
 				sharedAt: d('2026-06-18T09:00:00Z'),
 				createdAt: d('2026-06-15T11:00:00Z'),
 				updatedAt: d('2026-06-20T15:00:00Z'),

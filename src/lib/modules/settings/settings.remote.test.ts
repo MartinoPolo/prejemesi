@@ -36,6 +36,11 @@ vi.mock('$lib/server/remote.js', () => ({
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
 	}),
+	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
+		const wrapped = (...args: unknown[]) => handler(...args);
+		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
+		return wrapped;
+	}),
 }));
 
 vi.mock('$lib/server/db/index.js', () => ({ getDb: vi.fn() }));
@@ -57,14 +62,14 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...a: unknown[]) => a),
 }));
 
-import {
-	getUserProfile,
-	updateAppBackgroundTheme,
-	updatePreferredLocale,
-} from './settings.remote.js';
+import * as v from 'valibot';
+import { getUserProfile, updatePreferredLocale, setUserPalette } from './settings.remote.js';
+import { SetUserPaletteInputSchema } from './types.js';
 import { getDb } from '$lib/server/db/index.js';
+import { getRequestEvent } from '$app/server';
 
 const mockGetDb = vi.mocked(getDb);
+const mockGetRequestEvent = vi.mocked(getRequestEvent);
 
 function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 	let queryIndex = 0;
@@ -116,7 +121,6 @@ describe('getUserProfile', () => {
 					{
 						name: 'Fresh Name',
 						image: 'https://example.com/fresh.jpg',
-						appBackgroundTheme: 'default',
 						preferredLocale: null,
 					},
 				],
@@ -133,7 +137,6 @@ describe('getUserProfile', () => {
 			email: testUser.email,
 			image: 'https://example.com/fresh.jpg',
 			isOAuthUser: false,
-			appBackgroundTheme: 'default',
 			preferredLocale: null,
 		});
 	});
@@ -146,7 +149,6 @@ describe('getUserProfile', () => {
 					{
 						name: testUser.name,
 						image: testUser.image,
-						appBackgroundTheme: 'twilight',
 						preferredLocale: null,
 					},
 				],
@@ -163,32 +165,55 @@ describe('getUserProfile', () => {
 			email: testUser.email,
 			image: testUser.image,
 			isOAuthUser: true,
-			appBackgroundTheme: 'twilight',
 			preferredLocale: null,
 		});
 	});
-
-	it('falls back to the default background theme when no user row is returned', async () => {
-		mockGetDb.mockReturnValue(createMockDb([[{ providerId: 'credential' }], []]));
-
-		const result = (await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
-			testAuthContext,
-		)) as { appBackgroundTheme: string };
-
-		expect(result.appBackgroundTheme).toBe('default');
-	});
 });
 
-describe('updateAppBackgroundTheme', () => {
-	it('persists the chosen background theme', async () => {
+describe('setUserPalette', () => {
+	function mockCookies() {
+		const cookieSet = vi.fn();
+		mockGetRequestEvent.mockReturnValue({
+			cookies: { set: cookieSet },
+		} as unknown as ReturnType<typeof getRequestEvent>);
+		return cookieSet;
+	}
+
+	it('validates input via isPalette: accepts palettes, rejects everything else', () => {
+		expect(v.is(SetUserPaletteInputSchema, 'mint')).toBe(true);
+		expect(v.is(SetUserPaletteInputSchema, 'graphite')).toBe(true);
+		expect(v.is(SetUserPaletteInputSchema, 'neon')).toBe(false);
+		expect(v.is(SetUserPaletteInputSchema, '')).toBe(false);
+		expect(v.is(SetUserPaletteInputSchema, 42)).toBe(false);
+		expect(v.is(SetUserPaletteInputSchema, null)).toBe(false);
+	});
+
+	it('anonymous: sets the app-palette cookie only, no DB write, no error', async () => {
+		const cookieSet = mockCookies();
 		const mockDb = createMockDb([[]]);
 		mockGetDb.mockReturnValue(mockDb);
 
-		await (updateAppBackgroundTheme as unknown as (...args: unknown[]) => unknown)(
+		await (setUserPalette as unknown as (...args: unknown[]) => Promise<void>)(null, 'ruby');
+
+		expect(cookieSet).toHaveBeenCalledWith(
+			'app-palette',
+			'ruby',
+			expect.objectContaining({ path: '/', httpOnly: false, sameSite: 'lax' }),
+		);
+		expect(mockDb.update).not.toHaveBeenCalled();
+	});
+
+	it('logged in: sets the cookie AND persists the palette on the user row', async () => {
+		const cookieSet = mockCookies();
+		const mockDb = createMockDb([[]]);
+		mockGetDb.mockReturnValue(mockDb);
+
+		await (setUserPalette as unknown as (...args: unknown[]) => Promise<void>)(
 			testAuthContext,
-			{ appBackgroundTheme: 'golden-hour' },
+			'ocean',
 		);
 
+		expect(cookieSet).toHaveBeenCalledWith('app-palette', 'ocean', expect.any(Object));
 		expect(mockDb.update).toHaveBeenCalledTimes(1);
 	});
 });

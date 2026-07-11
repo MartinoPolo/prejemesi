@@ -1,12 +1,19 @@
 import { eq } from 'drizzle-orm';
+import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { account } from '$lib/server/db/auth.schema.js';
-import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
+import {
+	guardedQuery,
+	guardedCommand,
+	guardedCommandNoArgs,
+	publicCommand,
+} from '$lib/server/remote.js';
+import { PALETTE_COOKIE_MAX_AGE_SECONDS, PALETTE_COOKIE_NAME } from '$lib/theme/palettes.js';
 import {
 	UpdateProfileInputSchema,
-	UpdateAppBackgroundThemeInputSchema,
 	UpdatePreferredLocaleInputSchema,
+	SetUserPaletteInputSchema,
 	type UserProfile,
 } from './types.js';
 
@@ -31,7 +38,6 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 		.select({
 			name: user.name,
 			image: user.image,
-			appBackgroundTheme: user.appBackgroundTheme,
 			preferredLocale: user.preferredLocale,
 		})
 		.from(user)
@@ -44,7 +50,6 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 		email: authUser.email,
 		image: rows[0]?.image ?? null,
 		isOAuthUser,
-		appBackgroundTheme: rows[0]?.appBackgroundTheme ?? 'default',
 		preferredLocale: rows[0]?.preferredLocale ?? null,
 	};
 });
@@ -67,21 +72,6 @@ export const updateProfile = guardedCommand(
 	},
 );
 
-export const updateAppBackgroundTheme = guardedCommand(
-	UpdateAppBackgroundThemeInputSchema,
-	async ({ user: authUser }, input) => {
-		const database = getDb();
-
-		await database
-			.update(user)
-			.set({
-				appBackgroundTheme: input.appBackgroundTheme,
-				updatedAt: new Date(),
-			})
-			.where(eq(user.id, authUser.id));
-	},
-);
-
 export const updatePreferredLocale = guardedCommand(
 	UpdatePreferredLocaleInputSchema,
 	async ({ user: authUser }, input) => {
@@ -94,6 +84,37 @@ export const updatePreferredLocale = guardedCommand(
 				updatedAt: new Date(),
 			})
 			.where(eq(user.id, authUser.id));
+	},
+);
+
+/**
+ * Persist the viewer's app-level palette (Redesign 2026, issue #102).
+ *
+ * Always mirrors the choice into the `app-palette` cookie so `paletteHandle`
+ * (hooks.server.ts) themes the very next request; for anonymous users the cookie
+ * is the only store. Logged-in users additionally get the palette persisted on
+ * their user row, which serves as the fresh-device fallback when the cookie is
+ * absent. Not httpOnly: the client may read it for instant theming.
+ */
+export const setUserPalette = publicCommand(
+	SetUserPaletteInputSchema,
+	async (authContext, palette) => {
+		const event = getRequestEvent();
+		event.cookies.set(PALETTE_COOKIE_NAME, palette, {
+			path: '/',
+			maxAge: PALETTE_COOKIE_MAX_AGE_SECONDS,
+			httpOnly: false,
+			sameSite: 'lax',
+		});
+
+		if (authContext === null) {
+			return;
+		}
+
+		await getDb()
+			.update(user)
+			.set({ palette, updatedAt: new Date() })
+			.where(eq(user.id, authContext.user.id));
 	},
 );
 

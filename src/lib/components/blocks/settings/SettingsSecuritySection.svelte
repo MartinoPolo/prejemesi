@@ -2,12 +2,21 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
-	import { Label } from '$lib/components/base/label/index.js';
+	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { authClient } from '$lib/auth_client.js';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
+
+	// Which control an error attaches to, so a single validation/API error can drive the
+	// matching field's error state + aria wiring instead of one generic card-bottom message.
+	const PASSWORD_ERROR_FIELD = {
+		current: 'current',
+		new: 'new',
+		confirm: 'confirm',
+	} as const;
+	type PasswordErrorField = (typeof PASSWORD_ERROR_FIELD)[keyof typeof PASSWORD_ERROR_FIELD];
 
 	let currentPassword = $state('');
 	let newPassword = $state('');
@@ -16,18 +25,32 @@
 	let showNewPassword = $state(false);
 	let saving = $state(false);
 	let passwordError = $state('');
+	let passwordErrorField = $state<PasswordErrorField | null>(null);
 	let passwordSuccess = $state(false);
+
+	const currentPasswordError = $derived(
+		passwordErrorField === PASSWORD_ERROR_FIELD.current ? passwordError : '',
+	);
+	const newPasswordError = $derived(
+		passwordErrorField === PASSWORD_ERROR_FIELD.new ? passwordError : '',
+	);
+	const confirmPasswordError = $derived(
+		passwordErrorField === PASSWORD_ERROR_FIELD.confirm ? passwordError : '',
+	);
 
 	async function handleChangePassword() {
 		passwordError = '';
+		passwordErrorField = null;
 		passwordSuccess = false;
 
 		if (newPassword.length < 8) {
 			passwordError = m.settings_password_min_length();
+			passwordErrorField = PASSWORD_ERROR_FIELD.new;
 			return;
 		}
 		if (newPassword !== confirmPassword) {
 			passwordError = m.settings_password_mismatch();
+			passwordErrorField = PASSWORD_ERROR_FIELD.confirm;
 			return;
 		}
 
@@ -39,7 +62,9 @@
 			});
 
 			if (result.error) {
+				// A rejected change is almost always a wrong current password; surface it there.
 				passwordError = result.error.message ?? m.settings_password_error();
+				passwordErrorField = PASSWORD_ERROR_FIELD.current;
 			} else {
 				passwordSuccess = true;
 				currentPassword = '';
@@ -51,6 +76,7 @@
 			}
 		} catch {
 			passwordError = m.error_generic();
+			passwordErrorField = PASSWORD_ERROR_FIELD.current;
 		} finally {
 			saving = false;
 		}
@@ -70,73 +96,94 @@
 	<Card.Content>
 		<div class="flex flex-col gap-4">
 			<!-- Current password -->
-			<div class="flex flex-col gap-2">
-				<Label for="settings-current-password">{m.settings_current_password()}</Label>
-				<div class="relative">
-					<Input
-						id="settings-current-password"
-						type={showCurrentPassword ? 'text' : 'password'}
-						autocomplete="current-password"
-						bind:value={currentPassword}
-						class="pr-11!"
-					/>
-					<button
-						class="password-toggle"
-						type="button"
-						aria-label={showCurrentPassword ? m.hide_password() : m.show_password()}
-						onclick={() => (showCurrentPassword = !showCurrentPassword)}
-						tabindex={-1}
-					>
-						{#if showCurrentPassword}
-							<EyeOffIcon class="size-4" />
-						{:else}
-							<EyeIcon class="size-4" />
-						{/if}
-					</button>
-				</div>
-			</div>
+			<Field
+				fieldId="settings-current-password"
+				label={m.settings_current_password()}
+				errorMessage={currentPasswordError}
+			>
+				{#snippet children({ hasError, errorId }: FieldControlContext)}
+					<div class="relative">
+						<Input
+							id="settings-current-password"
+							type={showCurrentPassword ? 'text' : 'password'}
+							autocomplete="current-password"
+							bind:value={currentPassword}
+							state={hasError ? 'error' : 'default'}
+							aria-invalid={hasError ? true : undefined}
+							aria-describedby={errorId}
+							class="pr-11!"
+						/>
+						<button
+							class="password-toggle"
+							type="button"
+							aria-label={showCurrentPassword ? m.hide_password() : m.show_password()}
+							onclick={() => (showCurrentPassword = !showCurrentPassword)}
+							tabindex={-1}
+						>
+							{#if showCurrentPassword}
+								<EyeOffIcon class="size-4" />
+							{:else}
+								<EyeIcon class="size-4" />
+							{/if}
+						</button>
+					</div>
+				{/snippet}
+			</Field>
 
 			<!-- New password -->
-			<div class="flex flex-col gap-2">
-				<Label for="settings-new-password">{m.settings_new_password()}</Label>
-				<div class="relative">
-					<Input
-						id="settings-new-password"
-						type={showNewPassword ? 'text' : 'password'}
-						autocomplete="new-password"
-						bind:value={newPassword}
-						class="pr-11!"
-					/>
-					<button
-						class="password-toggle"
-						type="button"
-						aria-label={showNewPassword ? m.hide_password() : m.show_password()}
-						onclick={() => (showNewPassword = !showNewPassword)}
-						tabindex={-1}
-					>
-						{#if showNewPassword}
-							<EyeOffIcon class="size-4" />
-						{:else}
-							<EyeIcon class="size-4" />
-						{/if}
-					</button>
-				</div>
-			</div>
+			<Field
+				fieldId="settings-new-password"
+				label={m.settings_new_password()}
+				errorMessage={newPasswordError}
+			>
+				{#snippet children({ hasError, errorId }: FieldControlContext)}
+					<div class="relative">
+						<Input
+							id="settings-new-password"
+							type={showNewPassword ? 'text' : 'password'}
+							autocomplete="new-password"
+							bind:value={newPassword}
+							state={hasError ? 'error' : 'default'}
+							aria-invalid={hasError ? true : undefined}
+							aria-describedby={errorId}
+							class="pr-11!"
+						/>
+						<button
+							class="password-toggle"
+							type="button"
+							aria-label={showNewPassword ? m.hide_password() : m.show_password()}
+							onclick={() => (showNewPassword = !showNewPassword)}
+							tabindex={-1}
+						>
+							{#if showNewPassword}
+								<EyeOffIcon class="size-4" />
+							{:else}
+								<EyeIcon class="size-4" />
+							{/if}
+						</button>
+					</div>
+				{/snippet}
+			</Field>
 
 			<!-- Confirm password -->
-			<div class="flex flex-col gap-2">
-				<Label for="settings-confirm-password">{m.settings_confirm_password()}</Label>
-				<Input
-					id="settings-confirm-password"
-					type="password"
-					autocomplete="new-password"
-					bind:value={confirmPassword}
-				/>
-			</div>
+			<Field
+				fieldId="settings-confirm-password"
+				label={m.settings_confirm_password()}
+				errorMessage={confirmPasswordError}
+			>
+				{#snippet children({ hasError, errorId }: FieldControlContext)}
+					<Input
+						id="settings-confirm-password"
+						type="password"
+						autocomplete="new-password"
+						bind:value={confirmPassword}
+						state={hasError ? 'error' : 'default'}
+						aria-invalid={hasError ? true : undefined}
+						aria-describedby={errorId}
+					/>
+				{/snippet}
+			</Field>
 
-			{#if passwordError}
-				<p class="text-sm text-destructive">{passwordError}</p>
-			{/if}
 			{#if passwordSuccess}
 				<p class="text-sm text-status-success">
 					{m.settings_password_changed()}

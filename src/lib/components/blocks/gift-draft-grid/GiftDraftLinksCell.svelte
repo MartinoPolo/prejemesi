@@ -6,6 +6,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { MAX_GIFT_LINKS, type GiftLink } from '$lib/modules/gifts/types.js';
@@ -142,16 +143,17 @@
 		</div>
 	{/each}
 
-	<Button
-		intent="ghost"
-		size="sm"
-		class="self-start font-semibold text-foreground-muted"
-		onclick={addLink}
-		disabled={atLimit}
-		title={atLimit ? m.draft_grid_link_limit() : undefined}
-		aria-label={m.draft_grid_add_link_aria()}
-	>
-		<PlusIcon data-icon="inline-start" />
-		{m.draft_grid_add_link()}
-	</Button>
+	<SimpleTooltip text={m.draft_grid_link_limit()} side="top" disabled={!atLimit}>
+		<Button
+			intent="ghost"
+			size="sm"
+			class="self-start font-semibold text-foreground-muted"
+			onclick={addLink}
+			disabled={atLimit}
+			aria-label={m.draft_grid_add_link_aria()}
+		>
+			<PlusIcon data-icon="inline-start" />
+			{m.draft_grid_add_link()}
+		</Button>
+	</SimpleTooltip>
 </div>
