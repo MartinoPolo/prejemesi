@@ -63,7 +63,12 @@ vi.mock('drizzle-orm', () => ({
 }));
 
 import * as v from 'valibot';
-import { getUserProfile, updatePreferredLocale, setUserPalette } from './settings.remote.js';
+import {
+	getUserProfile,
+	updateProfile,
+	updatePreferredLocale,
+	setUserPalette,
+} from './settings.remote.js';
 import { SetUserPaletteInputSchema } from './types.js';
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
@@ -215,6 +220,47 @@ describe('setUserPalette', () => {
 
 		expect(cookieSet).toHaveBeenCalledWith('app-palette', 'ocean', expect.any(Object));
 		expect(mockDb.update).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('updateProfile', () => {
+	function createRecordingDb() {
+		const setMock = vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) }));
+		const updateMock = vi.fn(() => ({ set: setMock }));
+		mockGetDb.mockReturnValue({ update: updateMock } as unknown as ReturnType<typeof getDb>);
+		return { setMock, updateMock };
+	}
+
+	it('persists the name and the public avatar URL verbatim on the user row', async () => {
+		// user.image must hold a renderable public URL — whatever the client sends
+		// as `image` is what every profile consumer will use as <img src>.
+		const { setMock, updateMock } = createRecordingDb();
+
+		await (updateProfile as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext, {
+			name: 'Fresh Name',
+			image: 'https://cdn.example.com/avatars/abc123.jpg',
+		});
+
+		expect(updateMock).toHaveBeenCalledTimes(1);
+		expect(setMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Fresh Name',
+				image: 'https://cdn.example.com/avatars/abc123.jpg',
+			}),
+		);
+	});
+
+	it('persists a null image (no avatar) without error', async () => {
+		const { setMock } = createRecordingDb();
+
+		await (updateProfile as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext, {
+			name: 'Fresh Name',
+			image: null,
+		});
+
+		expect(setMock).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Fresh Name', image: null }),
+		);
 	});
 });
 

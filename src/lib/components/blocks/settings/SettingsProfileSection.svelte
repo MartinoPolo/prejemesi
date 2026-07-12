@@ -26,7 +26,6 @@
 	// The local state intentionally diverges from the prop after first render.
 	let displayName = $state(untrack(() => initialName));
 	let avatarUrl = $state<string | null>(untrack(() => initialAvatarUrl));
-	let avatarObjectKey = $state<string | null>(null);
 	let saving = $state(false);
 	let saved = $state(false);
 
@@ -41,14 +40,15 @@
 
 	function handleAvatarUpload(result: UploadResult) {
 		avatarUrl = result.publicUrl;
-		avatarObjectKey = result.objectKey;
 	}
 
 	async function handleSave() {
 		saving = true;
 		saved = false;
 		try {
-			await onSave({ name: displayName, image: avatarObjectKey ?? avatarUrl });
+			// user.image must hold a renderable public URL (not the raw R2 object key),
+			// otherwise every consumer of the profile gets an invalid <img> src.
+			await onSave({ name: displayName, image: avatarUrl });
 			saved = true;
 			setTimeout(() => {
 				saved = false;

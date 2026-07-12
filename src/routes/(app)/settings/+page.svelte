@@ -16,6 +16,13 @@
 
 	const profile = await getUserProfile();
 	const notificationPreferences = await getNotificationPreferences();
+
+	async function handleProfileSave(params: { name: string; image: string | null }) {
+		await updateProfile(params);
+		// Force-refresh the profile query so every surface reading it reflects the
+		// change without a full page reload (same pattern as refreshWishlistDashboards).
+		await getUserProfile().refresh();
+	}
 </script>
 
 <svelte:head>
@@ -37,7 +44,7 @@
 			isOAuthUser={profile.isOAuthUser}
 			initialName={profile.name}
 			initialAvatarUrl={profile.image}
-			onSave={updateProfile}
+			onSave={handleProfileSave}
 		/>
 
 		{#if profile.isOAuthUser !== true}
