@@ -1,11 +1,5 @@
 # Creation Dialog — „Další nastavení" Accordion — Design Brief
 
-> **Status**: Refined (Variant A)
-> **Refined mockup**: `designs/creation-dialog-accordion/refined.html`
-> **Summary**: `designs/creation-dialog-accordion/SUMMARY.md`
-> **Refinements**: equal, centered spacing of the accordion trigger between the dashed divider and the solid separator (8px each side — tighter than the form's `gap-4`, so the optional zone reads as a compact cluster)
-> **Chrome note**: the mockup's dialog chrome (title, description, labels, segmented toggle, close button) predates and is superseded by control-heights §3.9 — see §4.8.
-
 The create-wishlist dialog today offers only recipient choice („Pro mě" / „Pro někoho jiného"), optional recipient name, title, and event date; description, palette, and image become editable only after creation (settings modal). This design adds an optional, **collapsed-by-default** „Další nastavení" disclosure section to the creation dialog containing description and palette (image participation is an open HITL question, §3), so a list can be fully dressed at creation time without any post-creation edit round-trip. Leaving the section untouched must produce exactly today's creation behavior.
 
 **Source**: issue #112.
@@ -119,24 +113,6 @@ Per `designs/control-heights/DESIGN_BRIEF_CONTROL_HEIGHTS.md` §3.5, this dialog
 
 - New visible copy: „Další nastavení" (trigger); optionally a muted one-line hint inside the expanded section or under the trigger (e.g. „Vše volitelné, lze upravit i později."). ALL Czech copy: never em-dashes (—); comma, colon, or spaced en-dash instead.
 
-### 4.8 Dialog chrome (issue #159 §3.9 supersedes this mockup)
-
-`refined.html` was refined for layout/spacing only and predates the control-heights refinement
-(`designs/control-heights/DESIGN_BRIEF_CONTROL_HEIGHTS.md` §3.9), which owns dialog chrome
-app-wide. Five chrome details in this mockup are stale — implement per #159, using
-`designs/control-heights/refined.html` as the chrome reference:
-
-| Element              | This mockup (stale)                            | #159 §3.9 (authoritative)                                                   |
-| -------------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
-| `Dialog.Title`       | hardcoded 21 px                                | `text-2xl` 22 px DynaPuff semibold                                           |
-| `Dialog.Description` | `text-md` 13 px                                | `text-sm` 12 px muted                                                        |
-| Form `Label`         | 13 px / weight 700 / full ink                  | 12 px / weight 600 / ~72 % ink (scoped to `Label`; no global ink flip)       |
-| Segmented toggle     | joined single container, `border-left` divider | two separate ink-outline buttons with a gap; active = accent fill + sticker shadow |
-| Close button         | bare positioned `×`                            | production circled X (`overlayCloseButtonClass`, #164)                       |
-
-This mockup remains authoritative for the accordion layout, the 8 px trigger spacing, `lg` 38 px
-controls (§4.6), and the palette grid.
-
 ---
 
 ## 5. States
@@ -194,7 +170,7 @@ controls (§4.6), and the palette grid.
 - Dialog width unchanged: `sm:max-w-lg` (512 px), mobile full-width minus 2 rem. Widening to `sm:max-w-xl` is allowed ONLY if the palette grid demonstrably needs it (§10) — never wider (the settings modal at `2xl` is the heavier surface; creation stays lighter).
 - Vertical: form `flex flex-col gap-4`; accordion is one flow child, full dialog width; expansion grows the form downward inside `max-h-[85vh] overflow-y-auto` — the dialog never overflows the viewport and the footer never detaches.
 - Palette grid: 2 columns (today's picker), 10 options; option rows compact (~32–36 px) so the expanded section stays scannable; swatch dot 16 px with 2 px ink ring.
-- Accordion trigger: full-width row; its padding must sit on the 4 px spacing scale and visually separate the optional zone from the required fields above (the base accordion's dashed divider voice may serve as the separator). **The collapsed trigger must be vertically centered between the dashed divider above it and the solid import `Separator` below it — equal 8 px on each side (refined), deliberately tighter than the form's 16 px `gap-4` so the optional zone reads as a compact cluster. Achieve this with 8 px between the dashed divider and the trigger, and by pulling the accordion 8 px onto the `Separator` (the accordion↔separator gap is 8 px, not the form's 16 px) — do not change the global form gap.**
+- Accordion trigger: full-width row; its padding must sit on the 4 px spacing scale and visually separate the optional zone from the required fields above (the base accordion's dashed divider voice may serve as the separator).
 - Control heights per §4.6 (`lg` 38 px stack; textarea exempt; import shortcut `sm`).
 - Touch targets ≥ 24 px for palette options and the trigger on mobile.
 
