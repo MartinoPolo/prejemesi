@@ -19,7 +19,7 @@
 	});
 </script>
 
-<!-- Each tone ships a default icon + tinted background; no icon snippet needed. -->
+<!-- Each tone ships a default icon + status-colored border, tinted background, and title accent; no icon snippet needed. -->
 <Story name="All Variants">
 	{#snippet template()}
 		<div class="flex max-w-135 flex-col gap-3">

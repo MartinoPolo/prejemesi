@@ -4,6 +4,7 @@
 	import {
 		toastVariants,
 		toastIconColors,
+		toastTitleColors,
 		type ToastProps,
 		type ToastTone,
 	} from './toast_variants.js';
@@ -57,7 +58,7 @@
 	</div>
 
 	<div class="min-w-0 flex-1">
-		<div class="text-[12.5px] font-semibold text-foreground">{title}</div>
+		<div class={cn('text-[12.5px] font-semibold', toastTitleColors[tone])}>{title}</div>
 		{#if body}
 			<div class="mt-0.5 text-(length:--text-sm) text-muted-foreground">{body}</div>
 		{/if}
