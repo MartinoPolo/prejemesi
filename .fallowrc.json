@@ -6,7 +6,10 @@
 		"src/lib/components/blocks/*/index.ts",
 		"src/lib/modules/*/index.ts",
 		"**/*.stories.svelte",
-		"src/lib/reactivity/*.svelte.ts"
+		"src/lib/reactivity/*.svelte.ts",
+		"tests/load/run.ts",
+		"tests/load/setup.ts",
+		"tests/load/cleanup.ts"
 	],
 	"ignorePatterns": ["scripts/**", "designs/**"],
 	"ignoreExports": [

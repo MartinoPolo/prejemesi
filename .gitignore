@@ -52,6 +52,7 @@ debug/
 coverage/
 playwright-report/
 test-results/
+tests/load/reports/
 
 # Paraglide (auto-generated, except hand-maintained type declarations)
 src/lib/paraglide/*
