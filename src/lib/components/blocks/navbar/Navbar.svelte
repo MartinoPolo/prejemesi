@@ -14,11 +14,9 @@
 	import { isNavActive } from './navbar_utils.js';
 	import UserMenu from './UserMenu.svelte';
 	import MobileNav from './MobileNav.svelte';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import GiftIcon from '@lucide/svelte/icons/gift';
-	import { cn } from '$lib/utils.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -258,7 +256,6 @@
 	<LogoMark />
 
 	<!-- Desktop nav links with dropdowns -->
-	<!-- eslint-disable svelte/no-navigation-without-resolve -->
 	{#if user}
 		<nav
 			class="nav-links"
@@ -267,50 +264,41 @@
 			onfocusin={requestNavDropdownData}
 		>
 			{#each NAV_LINKS as link, i (link.href)}
-				<div class="nav-item">
-					<a
-						class={cn('nav-link', isNavActive(link.href) && 'is-active')}
-						href={link.href}
-						aria-current={isNavActive(link.href) ? 'page' : undefined}
-					>
-						{link.label}
-						<ChevronDownIcon class="nav-chevron" />
-					</a>
-					<NavDropdown
-						title={link.label}
-						viewAllHref={link.href}
-						items={navDropdownItems[i]}
-						totalCount={navDropdownTotalCounts[i]}
-						grouped={i === 2}
-					>
-						{#snippet footer()}
-							{#if i === 0}
-								<button
-									class="nav-dropdown-create"
-									onclick={() => (isCreateModalOpen = true)}
-								>
-									<PlusIcon class="size-3.5" />
-									{m.nav_footer_new_list()}
-								</button>
-							{:else if i === 1}
-								<span class="nav-dropdown-stats">
-									<GiftIcon class="size-3.5" />
-									{m.nav_footer_reserved_stats({
-										reserved: moderatedStats.reserved,
-										total: moderatedStats.total,
-									})}
-								</span>
-							{:else}
-								<span class="nav-dropdown-stats">
-									<GiftIcon class="size-3.5" />
-									{followedOpenCount > 0
-										? m.nav_footer_lists_need_gift({ count: followedOpenCount })
-										: m.nav_footer_all_sorted()}
-								</span>
-							{/if}
-						{/snippet}
-					</NavDropdown>
-				</div>
+				<NavDropdown
+					title={link.label}
+					viewAllHref={link.href}
+					active={isNavActive(link.href)}
+					items={navDropdownItems[i]}
+					totalCount={navDropdownTotalCounts[i]}
+					grouped={i === 2}
+				>
+					{#snippet footer()}
+						{#if i === 0}
+							<button
+								class="nav-dropdown-create"
+								onclick={() => (isCreateModalOpen = true)}
+							>
+								<PlusIcon class="size-3.5" />
+								{m.nav_footer_new_list()}
+							</button>
+						{:else if i === 1}
+							<span class="nav-dropdown-stats">
+								<GiftIcon class="size-3.5" />
+								{m.nav_footer_reserved_stats({
+									reserved: moderatedStats.reserved,
+									total: moderatedStats.total,
+								})}
+							</span>
+						{:else}
+							<span class="nav-dropdown-stats">
+								<GiftIcon class="size-3.5" />
+								{followedOpenCount > 0
+									? m.nav_footer_lists_need_gift({ count: followedOpenCount })
+									: m.nav_footer_all_sorted()}
+							</span>
+						{/if}
+					{/snippet}
+				</NavDropdown>
 			{/each}
 		</nav>
 	{/if}
@@ -414,56 +402,6 @@
 		.nav-links {
 			display: flex;
 		}
-	}
-
-	.nav-item {
-		position: relative;
-	}
-
-	/* Mockup pill states: hover = subtle surface pill, active = filled pill
-	   with an ink border (no underline). */
-	.nav-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		height: 36px;
-		padding: 0 var(--space-3);
-		border-radius: 9px;
-		font-size: var(--text-base);
-		font-weight: var(--weight-semibold);
-		color: var(--muted-foreground);
-		text-decoration: none;
-		border: 2px solid transparent;
-		background: transparent;
-		cursor: pointer;
-		font-family: var(--font-sans);
-		transition:
-			background var(--duration-normal) var(--ease-standard),
-			color var(--duration-normal) var(--ease-standard);
-		white-space: nowrap;
-	}
-
-	.nav-link:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-
-	.nav-link.is-active {
-		background: var(--accent);
-		color: var(--foreground);
-		border-color: var(--ink);
-	}
-
-	.nav-item:hover :global(.nav-chevron) {
-		transform: rotate(180deg);
-	}
-
-	:global(.nav-chevron) {
-		opacity: 0.55;
-		transition: transform var(--duration-normal) var(--ease-standard);
-		flex-shrink: 0;
-		width: 14px;
-		height: 14px;
 	}
 
 	/* Dropdown footer variants */

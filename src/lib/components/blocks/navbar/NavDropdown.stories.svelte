@@ -48,34 +48,38 @@
 	];
 </script>
 
+<!-- The trigger link is part of the component: hover opens the panel, click navigates,
+     ArrowDown opens and focuses the first item. `defaultOpen` renders stories pre-opened. -->
 <Story name="With Items">
 	{#snippet template()}
-		<div class="nav-item is-open story-wrapper">
-			<NavDropdown title="Seznamy" viewAllHref="#all" items={sampleItems} />
+		<div class="story-wrapper">
+			<NavDropdown title="Seznamy" viewAllHref="#all" items={sampleItems} defaultOpen />
 		</div>
 	{/snippet}
 </Story>
 
 <Story name="Empty State">
 	{#snippet template()}
-		<div class="nav-item is-open story-wrapper">
-			<NavDropdown title="Seznamy" viewAllHref="#all" items={[]} />
+		<div class="story-wrapper">
+			<NavDropdown title="Seznamy" viewAllHref="#all" items={[]} defaultOpen />
 		</div>
 	{/snippet}
 </Story>
 
 <Story name="Single Item">
 	{#snippet template()}
-		<div class="nav-item is-open story-wrapper">
-			<NavDropdown title="Seznamy" viewAllHref="#all" items={[sampleItems[0]]} />
+		<div class="story-wrapper">
+			<NavDropdown title="Seznamy" viewAllHref="#all" items={[sampleItems[0]]} defaultOpen />
 		</div>
 	{/snippet}
 </Story>
 
 <style>
+	/* The panel portals to <body> and anchors below the trigger – reserve vertical
+	   space so pre-opened panels don't overlay the next story in docs view. */
 	.story-wrapper {
-		position: relative;
 		display: inline-block;
+		min-height: 320px;
 		padding-top: 8px;
 	}
 </style>
