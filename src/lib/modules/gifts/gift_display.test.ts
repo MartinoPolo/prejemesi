@@ -38,16 +38,16 @@ describe('czechPluralCategory', () => {
 
 describe('formatPieceCount', () => {
 	it('returns null for null quantity', () => {
-		expect(formatPieceCount(null, 'owner')).toBeNull();
+		expect(formatPieceCount(null, 'recipient')).toBeNull();
 	});
 
-	it('returns "1 kus" for quantity 1 as owner', () => {
-		const result = formatPieceCount(1, 'owner');
+	it('returns "1 kus" for quantity 1 as recipient', () => {
+		const result = formatPieceCount(1, 'recipient');
 		expect(result).toEqual({ pieceText: '1 kus', reservedText: null });
 	});
 
-	it('returns no reserved info for owner even with reservedCount', () => {
-		const result = formatPieceCount(3, 'owner', 2);
+	it('returns no reserved info for recipient even with reservedCount', () => {
+		const result = formatPieceCount(3, 'recipient', 2);
 		expect(result).toEqual({ pieceText: '3 kusy', reservedText: null });
 	});
 
@@ -81,8 +81,8 @@ describe('formatPieceCount', () => {
 		expect(result).toEqual({ pieceText: '1 kus', reservedText: 'plně rezervováno' });
 	});
 
-	it('returns null reservedText for owner even at scale', () => {
-		const result = formatPieceCount(10, 'owner', 8);
+	it('returns null reservedText for recipient even at scale', () => {
+		const result = formatPieceCount(10, 'recipient', 8);
 		expect(result).toEqual({ pieceText: '10 kusů', reservedText: null });
 	});
 });

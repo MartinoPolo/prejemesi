@@ -3,7 +3,7 @@ import AppToaster from './AppToaster.svelte';
 
 export { Toast, AppToaster };
 export type { ToastProps, ToastTone } from './toast_variants.js';
-export { TOAST_TONES, toastVariants, toastIconColors } from './toast_variants.js';
+export { TOAST_TONES, toastVariants, toastIconColors, toastTitleColors } from './toast_variants.js';
 export {
 	showToast,
 	toastSuccess,

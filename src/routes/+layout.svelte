@@ -3,9 +3,9 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import { AppToaster } from '$lib/components/base/toast/index.js';
 	import favicon from '$lib/assets/favicon.svg';
-	import figtreeLatinUrl from '@fontsource-variable/figtree/files/figtree-latin-wght-normal.woff2?url';
-	import notoSansLatinUrl from '@fontsource-variable/noto-sans/files/noto-sans-latin-wght-normal.woff2?url';
-	import { afterNavigate, preloadCode } from '$app/navigation';
+	import dynapuffLatinUrl from '@fontsource-variable/dynapuff/files/dynapuff-latin-wght-normal.woff2?url';
+	import geistLatinUrl from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
+	import { afterNavigate } from '$app/navigation';
 	import { browser, dev } from '$app/environment';
 	import { page } from '$app/state';
 	import { getLocaleForUrl, getTextDirection } from '$lib/paraglide/runtime.js';
@@ -41,17 +41,13 @@
 		}
 	});
 
-	if (browser) {
-		const primaryRoutes = [
-			'/my-lists',
-			'/moderated',
-			'/followed',
-			'/settings',
-			'/login',
-			'/register',
-		];
-		Promise.allSettled(primaryRoutes.map((route) => preloadCode(route)));
-	}
+	// Route code preloading strategy (see docs/performance-budget.md):
+	// - No unconditional preloading here — public/auth pages must not download
+	//   authenticated app code before user intent.
+	// - Intent-based preloading is framework-provided via
+	//   `data-sveltekit-preload-data="hover"` on <body> (src/app.html).
+	// - Authenticated users get bounded idle-time preloading of primary nav routes
+	//   in src/routes/(app)/+layout.svelte.
 </script>
 
 <ModeWatcher />
@@ -60,18 +56,12 @@
 	<link rel="icon" href={favicon} />
 	<link
 		rel="preload"
-		href={figtreeLatinUrl}
+		href={dynapuffLatinUrl}
 		as="font"
 		type="font/woff2"
 		crossorigin="anonymous"
 	/>
-	<link
-		rel="preload"
-		href={notoSansLatinUrl}
-		as="font"
-		type="font/woff2"
-		crossorigin="anonymous"
-	/>
+	<link rel="preload" href={geistLatinUrl} as="font" type="font/woff2" crossorigin="anonymous" />
 </svelte:head>
 
 {#key currentLocale}

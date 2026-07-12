@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Override when port 5173 is held by another worktree's dev server
+// (each worktree runs its own port): PLAYWRIGHT_DEV_SERVER_PORT=5199 playwright test
+const devServerPort = Number(process.env.PLAYWRIGHT_DEV_SERVER_PORT ?? 5173);
+
 export default defineConfig({
 	testDir: 'tests/e2e',
 	fullyParallel: true,
@@ -8,14 +12,15 @@ export default defineConfig({
 	expect: { timeout: 10_000 },
 	workers: 4,
 	use: {
-		baseURL: 'http://localhost:5173',
+		baseURL: `http://localhost:${devServerPort}`,
 		trace: 'on-first-retry',
 		actionTimeout: 15_000,
 		navigationTimeout: 30_000,
 	},
 	webServer: {
-		command: 'pnpm run dev',
-		port: 5173,
+		// No `--` separator: pnpm forwards it verbatim and vite would treat the flags as positionals.
+		command: `pnpm run dev --port ${devServerPort} --strictPort`,
+		port: devServerPort,
 		reuseExistingServer: true,
 	},
 	projects: [

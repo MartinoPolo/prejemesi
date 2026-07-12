@@ -23,21 +23,60 @@
 
 <Story name="All Variants">
 	{#snippet template(args: TextareaProps)}
-		<div class="grid max-w-2xl grid-cols-2 gap-4">
-			{#each TEXTAREA_STATES as state (state)}
-				<div>
-					<Label>{state}</Label>
-					<Textarea
-						{...args}
-						{state}
-						aria-label={state}
-						rows={3}
-						value={state === 'error'
-							? ''
-							: 'Surface session failures and PR review state directly above each tree.'}
-					/>
+		<div class="flex flex-col gap-6">
+			<div>
+				<div class="mb-2 text-xs font-semibold text-foreground-subtle">Variants</div>
+				<div class="grid max-w-2xl grid-cols-2 gap-4">
+					{#each TEXTAREA_STATES as state (state)}
+						<div>
+							<Label>{state}</Label>
+							<Textarea
+								{...args}
+								{state}
+								aria-label={state}
+								rows={3}
+								value={state === 'error'
+									? ''
+									: 'Surface session failures and PR review state directly above each tree.'}
+							/>
+						</div>
+					{/each}
 				</div>
-			{/each}
+			</div>
+			<div>
+				<div class="mb-2 text-xs font-semibold text-foreground-subtle">States</div>
+				<div class="grid max-w-2xl grid-cols-2 gap-4">
+					<div>
+						<Label>Default</Label>
+						<Textarea
+							rows={3}
+							placeholder="Describe the change…"
+							aria-label="Default"
+						/>
+					</div>
+					<div>
+						<Label>Focus (interact)</Label>
+						<Textarea
+							rows={3}
+							aria-label="Focus"
+							value="Surface session failures and PR review state directly above each tree."
+						/>
+					</div>
+					<div>
+						<Label>Error</Label>
+						<Textarea state="error" rows={2} aria-label="Error" />
+					</div>
+					<div>
+						<Label>Disabled</Label>
+						<Textarea
+							disabled
+							rows={3}
+							aria-label="Disabled"
+							value="Locked while session running"
+						/>
+					</div>
+				</div>
+			</div>
 		</div>
 	{/snippet}
 </Story>
@@ -85,43 +124,6 @@
 				value="Locked while session running"
 				{...args}
 			/>
-		</div>
-	{/snippet}
-</Story>
-
-<Story name="All States">
-	{#snippet template(args: TextareaProps)}
-		<div class="grid max-w-2xl grid-cols-2 gap-4">
-			<div>
-				<Label>Default</Label>
-				<Textarea
-					rows={3}
-					placeholder="Describe the change…"
-					aria-label="Default"
-					{...args}
-				/>
-			</div>
-			<div>
-				<Label>Focus (interact)</Label>
-				<Textarea
-					rows={3}
-					aria-label="Focus"
-					value="Surface session failures and PR review state directly above each tree."
-				/>
-			</div>
-			<div>
-				<Label>Error</Label>
-				<Textarea state="error" rows={2} aria-label="Error" />
-			</div>
-			<div>
-				<Label>Disabled</Label>
-				<Textarea
-					disabled
-					rows={3}
-					aria-label="Disabled"
-					value="Locked while session running"
-				/>
-			</div>
 		</div>
 	{/snippet}
 </Story>

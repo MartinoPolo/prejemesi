@@ -13,7 +13,7 @@
 	bind:ref
 	class={cn(
 		'flex size-(--cell-size) flex-col items-center justify-center gap-1 rounded-(--cell-radius) p-0 leading-none font-normal whitespace-nowrap select-none cursor-pointer',
-		'[&:not([data-selected]):not([data-highlighted])]:hover:bg-accent [&:not([data-selected]):not([data-highlighted])]:hover:text-accent-foreground',
+		'[&:not([data-selected]):not([data-highlighted])]:hover:bg-primary/10 [&:not([data-selected]):not([data-highlighted])]:hover:text-accent-foreground',
 		// Today (not selected) – light brand tint (accent is near-white, so it would be invisible)
 		'[&[data-today]:not([data-selected])]:bg-primary/12 [&[data-today]:not([data-selected])]:hover:bg-primary/20',
 		'[&[data-today][data-disabled]]:text-muted-foreground',

@@ -5,7 +5,7 @@
 	import AuthBrandFeature from '$lib/components/blocks/auth/AuthBrandFeature.svelte';
 	import AuthFormCard from '$lib/components/blocks/auth/AuthFormCard.svelte';
 	import RegisterForm from '$lib/components/blocks/auth/RegisterForm.svelte';
-	import { getLocalizedAuthCallback } from '$lib/i18n/locale.js';
+	import { getLocalizedAuthCallback, localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -45,6 +45,21 @@
 	{/snippet}
 </AuthBrandPanel>
 
-<AuthFormCard title={m.register_title()} subtitle={m.register_subtitle()}>
+<AuthFormCard
+	title={m.register_title()}
+	subtitle={m.register_subtitle()}
+	tabs={[
+		{
+			label: m.auth_tab_login(),
+			href: localizeInternalHref(resolve('/login')),
+			active: false,
+		},
+		{
+			label: m.auth_tab_register(),
+			href: localizeInternalHref(resolve('/register')),
+			active: true,
+		},
+	]}
+>
 	<RegisterForm {callbackUrl} />
 </AuthFormCard>

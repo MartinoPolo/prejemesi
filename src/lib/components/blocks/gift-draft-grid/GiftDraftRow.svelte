@@ -9,6 +9,7 @@
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
 	import { ROW_STATUS, type RowStatus } from '$lib/modules/gifts/draft_grid.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -154,16 +155,20 @@
 			</HelpText>
 		{/if}
 		{#if isDuplicate}
-			<button
-				type="button"
-				onclick={ondismissduplicate}
-				title={m.draft_grid_duplicate_dismiss()}
-				class="inline-flex h-6 items-center gap-1.5 self-start rounded-full border border-[color-mix(in_oklch,var(--status-dup)_42%,transparent)] bg-[color-mix(in_oklch,var(--status-dup)_16%,transparent)] px-2.5 text-xs font-semibold text-[color-mix(in_oklch,var(--status-dup)_60%,var(--foreground))] transition-colors hover:bg-[color-mix(in_oklch,var(--status-dup)_26%,transparent)]"
-			>
-				<CopyIcon class="size-3" aria-hidden="true" />
-				{m.draft_grid_duplicate_badge()}
-				<XIcon class="size-3 opacity-70" aria-hidden="true" />
-			</button>
+			<SimpleTooltip text={m.draft_grid_duplicate_dismiss()} side="top">
+				{#snippet asChild(triggerProps)}
+					<button
+						{...triggerProps}
+						type="button"
+						onclick={ondismissduplicate}
+						class="inline-flex h-6 items-center gap-1.5 self-start rounded-full border border-[color-mix(in_oklch,var(--status-dup)_42%,transparent)] bg-[color-mix(in_oklch,var(--status-dup)_16%,transparent)] px-2.5 text-xs font-semibold text-[color-mix(in_oklch,var(--status-dup)_60%,var(--foreground))] transition-colors hover:bg-[color-mix(in_oklch,var(--status-dup)_26%,transparent)]"
+					>
+						<CopyIcon class="size-3" aria-hidden="true" />
+						{m.draft_grid_duplicate_badge()}
+						<XIcon class="size-3 opacity-70" aria-hidden="true" />
+					</button>
+				{/snippet}
+			</SimpleTooltip>
 		{/if}
 	</div>
 

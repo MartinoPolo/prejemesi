@@ -1,45 +1,50 @@
 import { tv } from 'tailwind-variants';
 
+/**
+ * Anime-sky sticker wishlist card (issue #102 REQ-16, `anime-dashboard.html`):
+ * ink border, hard offset shadow, spring lift, banner with the title on a small
+ * rotated label sticker and the status chip pinned top-right. Archived cards dim,
+ * desaturate, and stop lifting.
+ */
 export const wishlistCardVariants = tv({
 	slots: {
-		root: 'group/card relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-slow ease-out',
-		banner: 'relative flex h-45 shrink-0 items-center justify-center overflow-hidden',
-		bannerOverlay:
-			'pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black/45 dark:from-black/10 dark:via-black/30 dark:to-black/65',
+		root: 'group/card relative flex cursor-pointer flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring',
+		banner: 'relative flex h-32 shrink-0 flex-col items-start justify-end overflow-hidden border-b-[2.5px] border-ink p-3.5',
+		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
+		bannerPattern:
+			'pointer-events-none absolute inset-0 bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px]',
 		bannerTitle:
-			'absolute bottom-3 left-3.5 right-20 font-heading text-lg font-bold leading-tight tracking-tight text-white/95 [text-shadow:0_1px_3px_oklch(0_0_0/0.45)]',
+			'relative z-[1] max-w-full -rotate-1 truncate rounded-[10px] border-2 border-ink bg-card px-3 py-1 font-heading text-[17px] font-semibold text-foreground shadow-sticker-sm',
 		statusBadge:
-			'absolute bottom-3 right-3 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/18 bg-black/52 px-2.5 py-1 text-[11px] font-bold tracking-wide text-white/95 backdrop-blur-md',
-		statusDot: 'size-1.5 shrink-0 rounded-full',
-		body: 'flex flex-1 flex-col gap-2.5 px-4 pb-4 pt-3.5',
-		metaRow: 'flex flex-wrap items-center gap-2',
-		themeBadge:
-			'inline-flex h-5.5 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-primary/22 bg-primary/10 px-2.5 text-[11px] font-semibold text-primary',
-		metaText: 'truncate text-xs text-muted-foreground',
-		giftCount: 'flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground',
-		ownerRow: 'flex items-center gap-2 text-[13px] text-muted-foreground',
+			'absolute top-3 right-3 z-[1] inline-flex items-center whitespace-nowrap rounded-full border-2 border-ink px-3 py-0.5 text-[12.5px] font-semibold',
+		body: 'flex flex-1 flex-col gap-2.5 px-4 pt-3.5 pb-4',
+		metaRow: 'flex flex-wrap items-center gap-1.5',
+		metaChip:
+			'inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink bg-surface px-3 py-0.5 text-[13px] font-semibold text-foreground',
+		metaText: 'truncate text-[13px] text-ink-soft',
+		ownerRow: 'flex items-center gap-2 text-sm text-ink-soft',
 		ownerAvatar:
-			'flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary',
-		ownerLabel: 'text-xs text-muted-foreground/70',
+			'flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-primary text-[10px] font-extrabold text-primary-foreground',
 		progressWrap: 'flex flex-col gap-1.5',
-		progressLabelRow: 'flex items-center justify-between text-xs text-muted-foreground',
-		progressValue: 'font-bold text-primary',
-		progressTrack: 'h-1.5 overflow-hidden rounded-full border border-border bg-muted',
-		progressFill: 'h-full rounded-full bg-primary transition-[width] duration-slow ease-out',
+		progressLabelRow: 'flex items-center justify-between text-[13px] font-bold text-ink-soft',
+		progressValue: 'font-extrabold text-primary',
+		progressTrack: 'h-3.5 overflow-hidden rounded-full border-2 border-ink bg-surface',
+		progressFill:
+			'h-full rounded-full bg-gradient-to-r from-brand to-brand-deep transition-[width] duration-slow ease-out',
 		reservationChip:
-			'inline-flex h-5.5 items-center gap-1 whitespace-nowrap rounded-full border border-primary/25 bg-primary/12 px-2.5 text-[11px] font-semibold text-primary',
-		availableCount: 'text-xs font-medium text-muted-foreground',
-		divider: 'my-0.5 h-px bg-border',
+			'inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground',
+		availableCount: 'text-[13px] font-semibold text-ink-soft',
+		divider: 'my-0.5 border-t-2 border-dashed border-ink-faint',
 		actions: 'flex flex-wrap items-center gap-1.5',
 		actionsEnd: 'ml-auto flex items-center gap-1.5',
 	},
 	variants: {
 		archived: {
 			true: {
-				root: 'opacity-65 saturate-[0.28] brightness-[0.96]',
+				root: 'opacity-70 grayscale-[0.7]',
 			},
 			false: {
-				root: 'hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-[0_0_0_2px_oklch(0.527_0.154_150/0.18),0_8px_28px_oklch(0.527_0.154_150/0.1),0_2px_6px_oklch(0_0_0/0.05)]',
+				root: 'hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
 			},
 		},
 	},
@@ -48,8 +53,9 @@ export const wishlistCardVariants = tv({
 	},
 });
 
-export const STATUS_DOT_CLASSES = {
-	draft: 'bg-muted-foreground/50',
-	active: 'bg-status-success',
-	archived: 'bg-muted-foreground/40',
+/** Status chip fills per wishlist status: shared (active) is the loud filled chip. */
+export const STATUS_CHIP_CLASSES = {
+	draft: 'bg-card text-foreground',
+	active: 'bg-primary text-primary-foreground',
+	archived: 'bg-card text-ink-soft',
 } as const;

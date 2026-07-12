@@ -11,17 +11,32 @@ import { dispatchNotification } from '$lib/modules/notifications/notification_di
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { seedNewWishlist } from './wishlist_create.js';
-import { resolveWishlistRole } from './wishlist_access.js';
+import {
+	resolveWishlistRole,
+	verifyManagerAccess,
+	assertWishlistMutable,
+} from './wishlist_access.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
+	RenameRecipientInputSchema,
+	SetWishlistPaletteInputSchema,
 	type WishlistRole,
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
+
+/**
+ * SQL for "who the list is for": the linked recipient's account name (left-joined on
+ * `recipientUserId`) or the free-text `recipientName`. Requires a leftJoin on `user`.
+ */
+function recipientDisplayNameSql() {
+	return sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`;
+}
 
 export const getMyWishlists = guardedQuery(async ({ user }) => {
 	const database = getDb();
@@ -43,7 +58,7 @@ export const getMyWishlists = guardedQuery(async ({ user }) => {
 		})
 		.from(wishlist)
 		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
-		.where(and(eq(wishlist.ownerId, user.id), isNull(wishlist.deletedAt)))
+		.where(and(eq(wishlist.recipientUserId, user.id), isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
 
 	return rows.map(
@@ -60,10 +75,10 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 	const rows = await database
 		.select({
 			wishlist: wishlist,
-			ownerName: user.name,
+			recipientDisplayName: recipientDisplayNameSql(),
 		})
 		.from(wishlist)
-		.innerJoin(user, eq(wishlist.ownerId, user.id))
+		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
 		.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt)))
 		.limit(1);
 
@@ -75,7 +90,30 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 	// Determine role
 	const role: WishlistRole = await resolveWishlistRole(authContext, row.wishlist);
 
-	return { ...row.wishlist, ownerName: row.ownerName, role } as const;
+	// Manager names power the header "Spravuje {name}" meta row. Only fetched for for-someone lists
+	// (free-text recipient); self lists show the recipient prominently and need no manager label.
+	let managerNames: string[] = [];
+	if (row.wishlist.recipientUserId === null) {
+		const managerRows = await database
+			.select({ name: user.name })
+			.from(moderatorAssignment)
+			.innerJoin(user, eq(moderatorAssignment.userId, user.id))
+			.where(
+				and(
+					eq(moderatorAssignment.wishlistId, row.wishlist.id),
+					isNull(moderatorAssignment.deletedAt),
+				),
+			)
+			.orderBy(moderatorAssignment.assignedAt);
+		managerNames = managerRows.map((manager) => manager.name);
+	}
+
+	return {
+		...row.wishlist,
+		recipientDisplayName: row.recipientDisplayName,
+		managerNames,
+		role,
+	} as const;
 });
 
 export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) => {
@@ -105,13 +143,13 @@ export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) 
 	const rows = await database
 		.select({
 			wishlist: wishlist,
-			ownerName: user.name,
+			recipientDisplayName: recipientDisplayNameSql(),
 			totalGifts: sql<number>`coalesce(${totalGiftsSubquery.count}, 0)`,
 			reservedGifts: sql<number>`coalesce(${reservedGiftsSubquery.count}, 0)`,
 		})
 		.from(moderatorAssignment)
 		.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
-		.innerJoin(user, eq(wishlist.ownerId, user.id))
+		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
 		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
 		.leftJoin(reservedGiftsSubquery, eq(reservedGiftsSubquery.wishlistId, wishlist.id))
 		.where(
@@ -126,7 +164,7 @@ export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) 
 	return rows.map(
 		(row): ModeratedWishlist => ({
 			...row.wishlist,
-			ownerName: row.ownerName,
+			recipientDisplayName: row.recipientDisplayName,
 			totalGifts: Number(row.totalGifts),
 			reservedGifts: Number(row.reservedGifts),
 		}),
@@ -171,7 +209,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 	const rows = await database
 		.select({
 			wishlist: wishlist,
-			ownerName: user.name,
+			recipientDisplayName: recipientDisplayNameSql(),
 			availableGifts: sql<number>`coalesce(${availableGiftsSubquery.count}, 0)`,
 			myReservations: sql<number>`coalesce(${myReservationsSubquery.count}, 0)`,
 			myPurchased: sql<number>`coalesce(${myReservationsSubquery.purchasedCount}, 0)`,
@@ -179,7 +217,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 		})
 		.from(wishlistFollower)
 		.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
-		.innerJoin(user, eq(wishlist.ownerId, user.id))
+		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
 		.leftJoin(availableGiftsSubquery, eq(availableGiftsSubquery.wishlistId, wishlist.id))
 		.leftJoin(myReservationsSubquery, eq(myReservationsSubquery.wishlistId, wishlist.id))
 		.where(and(eq(wishlistFollower.userId, currentUser.id), isNull(wishlist.deletedAt)))
@@ -188,7 +226,7 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 	return rows.map(
 		(row): FollowedWishlist => ({
 			...row.wishlist,
-			ownerName: row.ownerName,
+			recipientDisplayName: row.recipientDisplayName,
 			availableGifts: Number(row.availableGifts),
 			myReservations: Number(row.myReservations),
 			myPurchased: Number(row.myPurchased),
@@ -207,20 +245,8 @@ export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({
 export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
-	// Verify ownership
-	const existing = await database
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, input.id), isNull(wishlist.deletedAt)))
-		.limit(1);
-
-	const row = existing[0];
-	if (row === undefined) {
-		error(404, 'Wishlist not found');
-	}
-	if (row.ownerId !== user.id) {
-		error(403, 'Not authorized');
-	}
+	// Any manager (recipient or správce) may edit list metadata/theme/image (issue #99).
+	const { wishlistRow: row } = await verifyManagerAccess(user.id, input.id);
 	if (row.status === 'archived') {
 		error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
 	}
@@ -252,14 +278,6 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		}
 	}
 
-	// Theme can always be updated (visual preference, not content)
-	if (input.theme !== undefined) {
-		updateData['theme'] = input.theme;
-	}
-	if (input.customThemeColor !== undefined) {
-		updateData['customThemeColor'] = input.customThemeColor;
-	}
-
 	// Image assignment + per-slot crop metadata can always be updated
 	if (input.imageKey !== undefined) {
 		updateData['imageKey'] = input.imageKey;
@@ -274,25 +292,82 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		.where(eq(wishlist.id, input.id))
 		.returning();
 
+	// Storage cleanup (issue #107, REQ-6): a replaced or removed wishlist image
+	// leaves no unreferenced R2 object behind.
+	if (input.imageKey !== undefined && row.imageKey !== null && row.imageKey !== input.imageKey) {
+		await deleteObjectsBestEffort([row.imageKey]);
+	}
+
 	return updated;
 });
+
+/**
+ * Rename a free-text recipient (issue #99). Any manager may do this anytime, incl. post-share.
+ * Rejected on self/linked-recipient lists (there is no free-text name to rename) and on archived
+ * lists. The for-me/for-someone kind itself is immutable — this only edits the display name.
+ */
+export const renameRecipient = guardedCommand(
+	RenameRecipientInputSchema,
+	async ({ user }, input) => {
+		const database = getDb();
+
+		const { wishlistRow } = await verifyManagerAccess(user.id, input.id);
+		if (wishlistRow.status === 'archived') {
+			error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
+		}
+		if (wishlistRow.recipientUserId !== null) {
+			error(400, SERVER_ERROR.RECIPIENT_RENAME_NOT_ALLOWED);
+		}
+
+		const [updated] = await database
+			.update(wishlist)
+			.set({ recipientName: input.recipientName, updatedAt: new Date() })
+			.where(eq(wishlist.id, input.id))
+			.returning();
+
+		return updated;
+	},
+);
+
+/**
+ * Change a wishlist's palette (per-list visual identity, Redesign 2026 issue #102).
+ * Any manager (recipient or správce) may change it; archived lists are read-only,
+ * matching the updateWishlist theme rules.
+ */
+export const setWishlistPalette = guardedCommand(
+	SetWishlistPaletteInputSchema,
+	async ({ user }, input) => {
+		const database = getDb();
+
+		const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
+		assertWishlistMutable(wishlistRow);
+
+		const [updated] = await database
+			.update(wishlist)
+			.set({ palette: input.palette, updatedAt: new Date() })
+			.where(eq(wishlist.id, input.wishlistId))
+			.returning();
+
+		// Single-flight refresh (server-side counterpart of refreshWishlistDashboards
+		// plus the wishlist page query): the open page and the dashboard/nav list cards
+		// get fresh data in the same round trip, so the palette change never leaves
+		// stale surfaces behind. Untracked queries are a no-op.
+		await Promise.allSettled([
+			getWishlistByShortId(wishlistRow.shortId).refresh(),
+			getMyWishlists().refresh(),
+			getModeratedWishlists().refresh(),
+			getFollowedWishlists().refresh(),
+		]);
+
+		return updated;
+	},
+);
 
 export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
-	const existing = await database
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
-		.limit(1);
-
-	const row = existing[0];
-	if (row === undefined) {
-		error(404, 'Wishlist not found');
-	}
-	if (row.ownerId !== user.id) {
-		error(403, 'Not authorized');
-	}
+	// Any manager (recipient or správce) may archive.
+	await verifyManagerAccess(user.id, wishlistId);
 
 	const [archived] = await database
 		.update(wishlist)
@@ -336,28 +411,26 @@ export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishl
 export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
 	const database = getDb();
 
-	const existing = await database
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
-		.limit(1);
-
-	const row = existing[0];
-	if (row === undefined) {
-		error(404, 'Wishlist not found');
-	}
-	if (row.ownerId !== user.id) {
-		error(403, 'Not authorized');
-	}
+	// Any manager (recipient or správce) may delete an unshared list.
+	const { wishlistRow: row } = await verifyManagerAccess(user.id, wishlistId);
 	if (row.sharedAt !== null) {
 		error(400, 'Cannot delete a shared wishlist. Archive it instead.');
 	}
+
+	const giftImageRows = await database
+		.select({ imageKey: gift.imageKey })
+		.from(gift)
+		.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)));
 
 	// Soft delete
 	await database
 		.update(wishlist)
 		.set({ deletedAt: new Date(), updatedAt: new Date() })
 		.where(eq(wishlist.id, wishlistId));
+
+	// Storage cleanup (issue #107, REQ-6): the wishlist image and all of its
+	// gifts' uploaded images become unreachable with the list – drop the objects.
+	await deleteObjectsBestEffort([row.imageKey, ...giftImageRows.map((g) => g.imageKey)]);
 });
 
 // ── Follower Commands ──────────────────────────────────────────────────────
@@ -367,7 +440,7 @@ export const followWishlist = guardedCommand(v.string(), async ({ user }, wishli
 
 	// Verify wishlist exists
 	const wishlistRows = await database
-		.select({ ownerId: wishlist.ownerId })
+		.select({ recipientUserId: wishlist.recipientUserId })
 		.from(wishlist)
 		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
 		.limit(1);
@@ -377,8 +450,8 @@ export const followWishlist = guardedCommand(v.string(), async ({ user }, wishli
 		error(404, 'Wishlist not found');
 	}
 
-	// Don't follow own wishlist
-	if (wishlistRow.ownerId === user.id) {
+	// The linked recipient never follows their own list (it lives in Moje seznamy).
+	if (wishlistRow.recipientUserId === user.id) {
 		return { followed: false, alreadyFollowing: false };
 	}
 

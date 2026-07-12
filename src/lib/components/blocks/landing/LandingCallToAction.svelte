@@ -6,25 +6,55 @@
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
-<section class="border-b border-border bg-background" aria-label={m.landing_cta_label()}>
-	<div
-		class="mx-auto flex max-w-[var(--content-max-width)] flex-col items-start justify-between gap-6 px-4 py-10 md:flex-row md:items-center md:px-8 md:py-12"
-	>
-		<div class="max-w-2xl">
-			<span class="section-eyebrow">{m.landing_cta_eyebrow()}</span>
-			<h2 class="section-headline !mb-0">{m.landing_cta_title()}</h2>
-			<p class="mt-3 text-base leading-relaxed text-muted-foreground md:text-lg">
+<section class="bg-stripes text-center" aria-label={m.landing_cta_label()}>
+	<div class="mx-auto max-w-[var(--content-max-width)] px-4 py-16 md:px-8 md:py-24">
+		<div
+			class="rounded-panel border-ink bg-card relative mx-auto max-w-[720px] border-[2.5px] px-6 py-12 shadow-sticker md:px-10 md:py-16"
+		>
+			<span class="free-sticker motion-safe:animate-bob">
+				{m.landing_cta_free_sticker()}
+				<span aria-hidden="true">✨</span>
+			</span>
+			<h2 class="mb-4 text-[clamp(30px,4vw,42px)] font-semibold leading-[1.15]">
+				{m.landing_cta_title()}
+			</h2>
+			<p class="mb-8 text-[17px] leading-relaxed text-ink-soft">
 				{m.landing_cta_description()}
 			</p>
+			<Button
+				size="lg"
+				class="h-12 px-5 text-[16px]"
+				href={localizeInternalHref(resolve('/register'))}
+			>
+				<GiftIcon data-icon="inline-start" />
+				{m.landing_hero_cta()}
+			</Button>
 		</div>
-
-		<Button
-			size="lg"
-			href={localizeInternalHref(resolve('/register'))}
-			class="w-full sm:w-auto"
-		>
-			<GiftIcon data-icon="inline-start" />
-			{m.landing_hero_cta()}
-		</Button>
 	</div>
 </section>
+
+<style>
+	/* Sunshine sticker pinned to the card corner, bobbing gently */
+	.free-sticker {
+		position: absolute;
+		top: -22px;
+		right: -14px;
+		background: var(--accent-loud);
+		color: var(--accent-loud-foreground);
+		border: var(--border-w) solid var(--ink);
+		border-radius: 999px;
+		font-family: var(--font-head);
+		font-size: 15px;
+		padding: 10px 18px;
+		transform: rotate(6deg);
+		box-shadow: 4px 4px 0 var(--hard-shadow);
+
+		--rot: 6deg;
+	}
+
+	@media (width < 640px) {
+		.free-sticker {
+			right: 4px;
+		}
+	}
+</style>

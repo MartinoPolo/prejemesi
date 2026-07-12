@@ -6,7 +6,8 @@
 
 	interface WishlistEmptyStateProps {
 		isArchived: boolean;
-		isOwner: boolean;
+		/** Recipient OR správce: shows the "add your first gift" CTA instead of the visitor empty state. */
+		canManage: boolean;
 		isFilteredEmpty: boolean;
 		onaddgift: () => void;
 		onclearfilters: () => void;
@@ -14,7 +15,7 @@
 
 	let {
 		isArchived,
-		isOwner,
+		canManage,
 		isFilteredEmpty,
 		onaddgift,
 		onclearfilters,
@@ -39,7 +40,7 @@
 		title={m.wishlist_detail_archived_empty_title()}
 		description={m.wishlist_detail_archived_empty_description()}
 	/>
-{:else if isOwner}
+{:else if canManage}
 	<EmptyState
 		emoji="🎁"
 		title={m.wishlist_detail_owner_empty_title()}

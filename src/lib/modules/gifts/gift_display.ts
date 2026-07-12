@@ -57,6 +57,32 @@ export function getPriorityDisplay(
 	return null;
 }
 
+/**
+ * Small line naming who reserved a gift, e.g. „rezervoval(a) Babička" (issue #102
+ * REQ-14). Shown to visitors and moderators only — the API already omits names for
+ * recipient viewers, so this returns null exactly when nothing may be shown.
+ */
+export function formatReserverLine(reserverNames: readonly string[]): string | null {
+	const firstName = reserverNames[0];
+	if (firstName === undefined) {
+		return null;
+	}
+	if (reserverNames.length === 1) {
+		return m.gift_reserved_by({ name: firstName });
+	}
+
+	let joinedNames: string;
+	try {
+		joinedNames = new Intl.ListFormat(getLocale(), {
+			style: 'long',
+			type: 'conjunction',
+		}).format(reserverNames);
+	} catch {
+		joinedNames = reserverNames.join(', ');
+	}
+	return m.gift_reserved_by_many({ names: joinedNames });
+}
+
 /** Format an ISO timestamp from a description append as a short locale date. */
 export function formatAppendDate(iso: string): string {
 	return new Intl.DateTimeFormat(getLocale(), {
@@ -99,8 +125,8 @@ export function formatPieceCount(
 				? m.gift_piece_count_few({ count: quantity })
 				: m.gift_piece_count_other({ count: quantity });
 
-	// Owner NEVER sees reserved info
-	if (role === 'owner') {
+	// Recipient NEVER sees reserved info (their own surprise)
+	if (role === 'recipient') {
 		return { pieceText, reservedText: null };
 	}
 

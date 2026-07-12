@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 
 	/**
@@ -27,10 +28,14 @@
 		{#each existingGifts as gift (gift.name)}
 			<div class="border-border flex items-center gap-2 border-b px-3 py-2 last:border-b-0">
 				{#if matchedNames.has(gift.name)}
-					<span
-						class="bg-status-warning size-2 shrink-0 rounded-full"
-						title={m.import_wizard_possible_duplicate()}
-					></span>
+					<SimpleTooltip text={m.import_wizard_possible_duplicate()} side="top">
+						{#snippet asChild(triggerProps)}
+							<span
+								{...triggerProps}
+								class="bg-status-warning size-2 shrink-0 rounded-full"
+							></span>
+						{/snippet}
+					</SimpleTooltip>
 				{:else}
 					<span class="size-2 shrink-0"></span>
 				{/if}

@@ -5,6 +5,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
@@ -38,6 +39,7 @@
 		type UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
+	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
 		IMAGE_FIT_MODES,
@@ -120,6 +122,11 @@
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
 
+	// Uploads made in this form session that are not persisted yet (issue #107,
+	// REQ-6). The image key included in the last submit is kept on unmount.
+	const pendingUploads = createPendingUploads();
+	let submittedImageKey: string | null = null;
+
 	// Image presentation metadata (REQ-1/3). The crop rect is the editing representation;
 	// it is converted to the renderer's focal+zoom on save and retained when switching
 	// away from Crop so re-selecting it restores the region.
@@ -176,6 +183,7 @@
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
 		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
+		submittedImageKey = imageKey || null;
 
 		if (mode === 'create') {
 			oncreate?.({
@@ -257,6 +265,7 @@
 	function handleImageUpload(result: UploadResult) {
 		imageKey = result.objectKey;
 		imageUrl = result.publicUrl;
+		pendingUploads.track(result);
 	}
 
 	function handleImageRemove() {
@@ -267,6 +276,15 @@
 	function handleImageUploadError(uploadError: Error) {
 		console.error('Image upload failed:', uploadError.message);
 	}
+
+	// Storage cleanup (issue #107, REQ-6): uploads that were replaced, removed,
+	// or abandoned before save are deleted when the form unmounts (dialog close).
+	// The submitted key survives; a pre-existing gift image is never tracked here.
+	$effect(() => {
+		return () => {
+			void pendingUploads.commit(submittedImageKey);
+		};
+	});
 </script>
 
 <div class={styles.body()}>
@@ -293,8 +311,8 @@
 			/>
 		{:else}
 			<div class={styles.imagePlaceholder()}>
-				<GiftIcon class="size-16 text-muted-foreground/40" />
-				<span class="text-sm font-medium text-muted-foreground/60"
+				<GiftIcon class="size-16 text-ink-faint" />
+				<span class="text-sm font-semibold text-ink-soft"
 					>{m.gift_image_preview_label()}</span
 				>
 			</div>
@@ -311,35 +329,42 @@
 		{/if}
 		<fieldset class="contents">
 			<!-- Name -->
-			<div class={styles.formField()}>
-				<Label for="gift-name">{m.gift_name_label()}</Label>
-				{#if locked}
-					<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
-						{#snippet asChild(tooltipProps)}
-							<div {...tooltipProps} tabindex="-1" class="w-full">
-								<Input
-									id="gift-name"
-									class="pointer-events-none"
-									bind:value={name}
-									placeholder={m.gift_name_placeholder()}
-									disabled
-									aria-invalid={nameError !== '' ? true : undefined}
-								/>
-							</div>
-						{/snippet}
-					</SimpleTooltip>
-				{:else}
-					<Input
-						id="gift-name"
-						bind:value={name}
-						placeholder={m.gift_name_placeholder()}
-						aria-invalid={nameError !== '' ? true : undefined}
-					/>
-				{/if}
-				{#if nameError}
-					<span class="text-xs text-destructive">{nameError}</span>
-				{/if}
-			</div>
+			<Field
+				fieldId="gift-name"
+				label={m.gift_name_label()}
+				errorMessage={nameError}
+				class={styles.formField()}
+			>
+				{#snippet children({ hasError, errorId }: FieldControlContext)}
+					{#if locked}
+						<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
+							{#snippet asChild(tooltipProps)}
+								<div {...tooltipProps} tabindex="-1" class="w-full">
+									<Input
+										id="gift-name"
+										class="pointer-events-none"
+										bind:value={name}
+										placeholder={m.gift_name_placeholder()}
+										disabled
+										state={hasError ? 'error' : 'default'}
+										aria-invalid={hasError ? true : undefined}
+										aria-describedby={errorId}
+									/>
+								</div>
+							{/snippet}
+						</SimpleTooltip>
+					{:else}
+						<Input
+							id="gift-name"
+							bind:value={name}
+							placeholder={m.gift_name_placeholder()}
+							state={hasError ? 'error' : 'default'}
+							aria-invalid={hasError ? true : undefined}
+							aria-describedby={errorId}
+						/>
+					{/if}
+				{/snippet}
+			</Field>
 
 			<!-- Description -->
 			<div class="mt-3 {styles.formField()}">

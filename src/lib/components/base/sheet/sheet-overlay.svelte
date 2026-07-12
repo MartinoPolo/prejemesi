@@ -13,7 +13,7 @@
 	bind:ref
 	data-slot="sheet-overlay"
 	class={cn(
-		'bg-black/10 supports-backdrop-filter:backdrop-blur-xs fixed inset-0 z-(--z-modal)',
+		'bg-[color-mix(in_oklab,var(--p-ink)_45%,transparent)] supports-backdrop-filter:backdrop-blur-[2.5px] fixed inset-0 z-(--z-modal)',
 		className,
 	)}
 	{...restProps}

@@ -19,10 +19,10 @@
 	}
 </script>
 
-<div class="flex w-80 flex-col">
-	<!-- Header -->
-	<div class="flex items-center justify-between px-3 pb-2">
-		<h3 class="text-sm font-semibold">{m.notification_panel_title()}</h3>
+<div class="flex w-full flex-col">
+	<!-- Header: px-4.5 keeps the title aligned with item content (6px list inset + 12px item padding) -->
+	<div class="flex items-center justify-between px-4.5 pt-3 pb-2">
+		<h3 class="font-heading text-sm font-semibold">{m.notification_panel_title()}</h3>
 		{#if ctx.hasUnread.current}
 			<Button intent="ghost" size="sm" onclick={handleMarkAllAsRead}>
 				<CheckCheckIcon data-icon="inline-start" />
@@ -33,8 +33,8 @@
 
 	<Separator />
 
-	<!-- Notification list -->
-	<div class="max-h-80 overflow-y-auto">
+	<!-- Notification list: inset so rounded item backgrounds never touch the panel border or separator -->
+	<div class="max-h-80 overflow-y-auto p-1.5">
 		{#if ctx.isLoading.current && ctx.notifications.current.length === 0}
 			<!-- Loading skeleton -->
 			{#each [0, 1, 2] as index (index)}
@@ -48,9 +48,9 @@
 			{/each}
 		{:else if ctx.notifications.current.length === 0}
 			<!-- Empty state -->
-			<div class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-				<BellOffIcon class="size-8 opacity-50" />
-				<p class="text-sm">{m.notification_empty()}</p>
+			<div class="flex flex-col items-center gap-2 py-8 text-ink-soft">
+				<BellOffIcon class="size-8 opacity-70" />
+				<p class="text-sm font-semibold">{m.notification_empty()}</p>
 			</div>
 		{:else}
 			{#each ctx.notifications.current as notification (notification.id)}

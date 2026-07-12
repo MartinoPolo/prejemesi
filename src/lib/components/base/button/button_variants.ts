@@ -4,25 +4,29 @@ import { tv } from 'tailwind-variants';
 import { asExhaustiveArray } from '$lib/utils/variants.js';
 
 const FILLED_BUTTON_KBD_CLASSES =
-	'[&_[data-slot=kbd]]:border-[color-mix(in_oklch,currentColor_28%,transparent)] [&_[data-slot=kbd]]:bg-[color-mix(in_oklch,currentColor_16%,transparent)] [&_[data-slot=kbd]]:text-current';
+	'[&_[data-slot=kbd]]:border-[color-mix(in_oklab,currentColor_28%,transparent)] [&_[data-slot=kbd]]:bg-[color-mix(in_oklab,currentColor_16%,transparent)] [&_[data-slot=kbd]]:text-current';
+
+/** Flat sticker button: ink border, hard offset shadow, spring lift on hover, press-down on active. */
+const STICKER_BUTTON_CLASSES =
+	'border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm';
 
 export const buttonVariants = tv({
-	base: 'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent font-medium leading-none outline-none select-none cursor-pointer transition-[background,border-color,color,transform,filter,box-shadow] duration-120 ease-[ease] active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 [&_[data-icon]]:pointer-events-none [&_[data-icon]]:shrink-0',
+	base: 'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-btn border-[2.5px] border-transparent font-semibold leading-none outline-none select-none cursor-pointer transition-[background-color,border-color,color,transform,box-shadow] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 [&_[data-icon]]:pointer-events-none [&_[data-icon]]:shrink-0',
 	variants: {
 		intent: {
-			primary: `bg-primary text-primary-foreground shadow-sm hover:bg-[color-mix(in_oklch,var(--primary)_88%,white_12%)] dark:hover:bg-[color-mix(in_oklch,var(--primary)_88%,black_12%)] ${FILLED_BUTTON_KBD_CLASSES}`,
-			secondary:
-				'border-border bg-surface-2 text-foreground hover:bg-surface-3 hover:border-border-strong',
-			ghost: 'bg-transparent text-foreground-muted hover:bg-surface-hover hover:text-foreground',
+			primary: `bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
+			secondary: `bg-card text-ink hover:bg-panel-hover ${STICKER_BUTTON_CLASSES}`,
+			ghost: 'bg-transparent text-foreground-muted hover:bg-accent hover:text-foreground',
 			'ghost-overlay':
-				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklch,currentColor_10%,transparent)]',
-			danger: 'bg-transparent text-status-danger border-[color-mix(in_oklch,var(--status-danger)_35%,transparent)] hover:bg-[color-mix(in_oklch,var(--status-danger)_12%,transparent)]',
-			'primary-destructive': `bg-status-danger text-white shadow-sm hover:bg-[color-mix(in_oklch,var(--status-danger)_88%,white_12%)] dark:hover:bg-[color-mix(in_oklch,var(--status-danger)_88%,black_12%)] ${FILLED_BUTTON_KBD_CLASSES}`,
-			outline: 'border-border bg-background hover:bg-accent hover:text-accent-foreground',
+				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
+			danger: 'bg-card text-status-danger border-status-danger shadow-sticker-sm hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
+			'primary-destructive': `bg-status-danger text-white hover:bg-[color-mix(in_oklab,var(--status-danger)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
+			outline:
+				'border-ink bg-card text-foreground shadow-sticker-sm hover:bg-accent hover:text-accent-foreground hover:-translate-y-px',
 			link: 'text-primary underline-offset-4 hover:underline',
 		},
 		size: {
-			sm: 'h-(--size-control-sm) px-2.25 text-(length:--text-sm) rounded-sm [&_[data-icon]]:size-3.5',
+			sm: 'h-(--size-control-sm) px-2.25 text-(length:--text-sm) [&_[data-icon]]:size-3.5',
 			md: 'h-(--size-control-md) px-3 text-(length:--text-md) [&_[data-icon]]:size-4',
 			lg: 'h-(--size-control-lg) px-4 text-(length:--text-base) [&_[data-icon]]:size-4',
 			icon: 'size-(--size-control-md) p-0 [&_svg]:size-4',

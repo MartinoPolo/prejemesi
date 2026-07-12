@@ -10,6 +10,14 @@ import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
+import {
+	verifyManagerAccess,
+	requireWishlistRow,
+	assertNotLastManager,
+	resolveWishlistRole,
+} from '$lib/modules/wishlists/wishlist_access.js';
+import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import {
 	GenerateInviteInputSchema,
 	AcceptInviteInputSchema,
@@ -21,28 +29,6 @@ import {
 	type PendingInvite,
 } from './types.js';
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-async function verifyWishlistOwner(userId: string, wishlistId: string) {
-	const database = getDb();
-
-	const rows = await database
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
-		.limit(1);
-
-	const row = rows[0];
-	if (row === undefined) {
-		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-	}
-	if (row.ownerId !== userId) {
-		error(403, SERVER_ERROR.ONLY_OWNER_CAN_MANAGE_MODERATORS);
-	}
-
-	return row;
-}
-
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export const getModeratorsForWishlist = guardedQueryWithArgs(
@@ -50,37 +36,11 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 	async ({ user: currentUser }, wishlistId): Promise<ModeratorsData> => {
 		const database = getDb();
 
-		// Verify the wishlist exists and user has access
-		const wishlistRows = await database
-			.select()
-			.from(wishlist)
-			.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
-			.limit(1);
-
-		const wishlistRow = wishlistRows[0];
-		if (wishlistRow === undefined) {
-			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-		}
-
-		const isOwner = wishlistRow.ownerId === currentUser.id;
-
-		if (!isOwner) {
-			// Check if moderator
-			const modRows = await database
-				.select()
-				.from(moderatorAssignment)
-				.where(
-					and(
-						eq(moderatorAssignment.wishlistId, wishlistId),
-						eq(moderatorAssignment.userId, currentUser.id),
-						isNull(moderatorAssignment.deletedAt),
-					),
-				)
-				.limit(1);
-
-			if (modRows[0] === undefined) {
-				error(403, SERVER_ERROR.ACCESS_DENIED);
-			}
+		// Access + role: only managers (recipient or správce) may view the správci panel.
+		const wishlistRow = await requireWishlistRow(wishlistId);
+		const role = await resolveWishlistRole({ user: currentUser }, wishlistRow);
+		if (!canManageWishlist(role)) {
+			error(403, SERVER_ERROR.ACCESS_DENIED);
 		}
 
 		// Fetch active moderators with user info
@@ -106,44 +66,43 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 			id: row.id,
 			userId: row.userId,
 			userName: row.userName,
-			userImage: row.userImage,
+			userImage: resolveUserImageUrl(row.userImage),
 			assignedAt: row.assignedAt,
 		}));
 
-		// Fetch pending invites (only for owner)
-		let pendingInvites: PendingInvite[] = [];
-		if (isOwner) {
-			const inviteRows = await database
-				.select({
-					id: moderatorInvite.id,
-					token: moderatorInvite.token,
-					createdAt: moderatorInvite.createdAt,
-					usedAt: moderatorInvite.usedAt,
-					revokedAt: moderatorInvite.revokedAt,
-				})
-				.from(moderatorInvite)
-				.where(
-					and(
-						eq(moderatorInvite.wishlistId, wishlistId),
-						isNull(moderatorInvite.usedAt),
-						isNull(moderatorInvite.revokedAt),
-					),
-				)
-				.orderBy(moderatorInvite.createdAt);
+		// Pending invites are visible to any manager (recipient or správce can invite/revoke).
+		const inviteRows = await database
+			.select({
+				id: moderatorInvite.id,
+				token: moderatorInvite.token,
+				createdAt: moderatorInvite.createdAt,
+				usedAt: moderatorInvite.usedAt,
+				revokedAt: moderatorInvite.revokedAt,
+			})
+			.from(moderatorInvite)
+			.where(
+				and(
+					eq(moderatorInvite.wishlistId, wishlistId),
+					isNull(moderatorInvite.usedAt),
+					isNull(moderatorInvite.revokedAt),
+				),
+			)
+			.orderBy(moderatorInvite.createdAt);
 
-			pendingInvites = inviteRows.map((row) => ({
-				id: row.id,
-				token: row.token,
-				createdAt: row.createdAt,
-				usedAt: row.usedAt,
-				revokedAt: row.revokedAt,
-			}));
-		}
+		const pendingInvites: PendingInvite[] = inviteRows.map((row) => ({
+			id: row.id,
+			token: row.token,
+			createdAt: row.createdAt,
+			usedAt: row.usedAt,
+			revokedAt: row.revokedAt,
+		}));
 
 		return {
 			moderators,
 			pendingInvites,
-			ownerIsModerator: wishlistRow.ownerIsModerator,
+			recipientIsModerator: wishlistRow.recipientIsModerator,
+			isForSomeoneElse: wishlistRow.recipientUserId === null,
+			recipientName: wishlistRow.recipientName,
 		};
 	},
 );
@@ -154,7 +113,7 @@ export const generateModeratorInviteLink = guardedCommand(
 	GenerateInviteInputSchema,
 	async ({ user: currentUser }, input) => {
 		const database = getDb();
-		const wishlistRow = await verifyWishlistOwner(currentUser.id, input.wishlistId);
+		const { wishlistRow } = await verifyManagerAccess(currentUser.id, input.wishlistId);
 
 		if (wishlistRow.status === 'archived') {
 			error(400, SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED);
@@ -175,7 +134,18 @@ export const generateModeratorInviteLink = guardedCommand(
 
 		const invitePath = `/w/${wishlistRow.shortId}/invite/${created.token}`;
 
+		// When an email is supplied we email the invite link regardless of whether the
+		// address belongs to an account (the accept page handles register-then-accept).
+		// Look the email up so the manager can be told the invitee has no account yet.
+		let unregisteredInvitee = false;
 		if (input.email !== undefined && input.email !== '') {
+			const existingUser = await database
+				.select({ id: user.id })
+				.from(user)
+				.where(eq(user.email, input.email.toLowerCase()))
+				.limit(1);
+			unregisteredInvitee = existingUser[0] === undefined;
+
 			await dispatchNotification({
 				type: NOTIFICATION_TYPE.MODERATOR_INVITED,
 				targetEmails: [input.email],
@@ -186,7 +156,7 @@ export const generateModeratorInviteLink = guardedCommand(
 			});
 		}
 
-		return { token: created.token, invitePath };
+		return { token: created.token, invitePath, unregisteredInvitee };
 	},
 );
 
@@ -233,9 +203,9 @@ export const acceptModeratorInvite = guardedCommand(
 			error(400, SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED);
 		}
 
-		// Cannot accept own invite (owner)
-		if (wishlistRow.ownerId === currentUser.id) {
-			error(400, SERVER_ERROR.OWNER_CANNOT_ACCEPT_OWN_INVITE);
+		// The linked recipient already manages the list — accepting a správce invite is redundant.
+		if (wishlistRow.recipientUserId === currentUser.id) {
+			error(400, SERVER_ERROR.RECIPIENT_CANNOT_ACCEPT_OWN_INVITE);
 		}
 
 		// Check if already a moderator
@@ -302,8 +272,8 @@ export const revokeModeratorInvite = guardedCommand(
 			error(404, SERVER_ERROR.INVITE_NOT_FOUND);
 		}
 
-		// Verify ownership of the wishlist
-		await verifyWishlistOwner(currentUser.id, invite.wishlistId);
+		// Any manager (recipient or správce) may revoke invites.
+		await verifyManagerAccess(currentUser.id, invite.wishlistId);
 
 		// Check if already used or revoked
 		if (invite.usedAt !== null) {
@@ -343,8 +313,11 @@ export const removeModerator = guardedCommand(
 			error(404, SERVER_ERROR.MODERATOR_NOT_FOUND);
 		}
 
-		// Verify ownership of the wishlist
-		await verifyWishlistOwner(currentUser.id, assignment.wishlistId);
+		// Any manager (recipient or správce) may remove správci.
+		const { wishlistRow } = await verifyManagerAccess(currentUser.id, assignment.wishlistId);
+
+		// Orphan guard: a for-someone list must keep at least one správce.
+		await assertNotLastManager(wishlistRow);
 
 		// Soft delete
 		await database
@@ -358,12 +331,17 @@ export const selfPromoteToModerator = guardedCommand(
 	SelfPromoteInputSchema,
 	async ({ user: currentUser }, input) => {
 		const database = getDb();
-		const wishlistRow = await verifyWishlistOwner(currentUser.id, input.wishlistId);
+		const wishlistRow = await requireWishlistRow(input.wishlistId);
 
+		// Self-promote is a linked-recipient action only: it opts the recipient into seeing
+		// reservation counts. Správci already see full state; free-text recipients have no account.
+		if (wishlistRow.recipientUserId !== currentUser.id) {
+			error(403, SERVER_ERROR.ACCESS_DENIED);
+		}
 		if (wishlistRow.status === 'archived') {
 			error(400, SERVER_ERROR.CANNOT_SELF_PROMOTE_ON_ARCHIVED);
 		}
-		if (wishlistRow.ownerIsModerator === true) {
+		if (wishlistRow.recipientIsModerator === true) {
 			error(400, SERVER_ERROR.ALREADY_SEEING_RESERVATIONS);
 		}
 
@@ -371,7 +349,7 @@ export const selfPromoteToModerator = guardedCommand(
 		await database
 			.update(wishlist)
 			.set({
-				ownerIsModerator: true,
+				recipientIsModerator: true,
 				updatedAt: new Date(),
 			})
 			.where(eq(wishlist.id, input.wishlistId));
@@ -387,7 +365,7 @@ export const selfPromoteToModerator = guardedCommand(
 			);
 
 		await dispatchNotification({
-			type: NOTIFICATION_TYPE.OWNER_SELF_PROMOTED,
+			type: NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
 			targetUserIds: followerRows
 				.map((row) => row.userId)
 				.filter((targetUserId) => targetUserId !== currentUser.id),

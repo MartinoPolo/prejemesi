@@ -3,6 +3,7 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import type { HeaderSelectionState } from '$lib/modules/gifts/draft_grid.js';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -54,8 +55,10 @@
 		<Trash2Icon data-icon="inline-start" />
 		{m.draft_grid_bulk_delete()}
 	</Button>
-	<Button intent="ghost" size="sm" disabled title={m.draft_grid_bulk_enrich_phase2()}>
-		<SparklesIcon data-icon="inline-start" />
-		{m.draft_grid_bulk_enrich()}
-	</Button>
+	<SimpleTooltip text={m.draft_grid_bulk_enrich_phase2()} side="top">
+		<Button intent="ghost" size="sm" disabled>
+			<SparklesIcon data-icon="inline-start" />
+			{m.draft_grid_bulk_enrich()}
+		</Button>
+	</SimpleTooltip>
 </div>

@@ -21,12 +21,13 @@
 		display: flex;
 		align-items: flex-start;
 		gap: var(--space-3);
-		background: oklch(from var(--status-success) l c h / 8%);
-		border: 1px solid oklch(from var(--status-success) l c h / 28%);
-		border-radius: var(--radius-md);
+		background: color-mix(in oklab, var(--status-success) 10%, var(--card));
+		border: 2.5px solid var(--ink);
+		border-radius: 12px;
 		padding: var(--space-3) var(--space-4);
 		margin-bottom: var(--space-5);
 		font-size: var(--text-sm);
+		font-weight: 600;
 		color: var(--status-success);
 		line-height: var(--leading-snug);
 	}

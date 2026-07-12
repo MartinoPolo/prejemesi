@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<!--
+  Přejeme si — redesign exploration 2026
+  Variant: ANIME / „Sky Notebook" — gift detail modal (visitor view)
+  Companion to anime-sky-final.html — same token system, header controls,
+  fonts, motion; theme/palette choices carry over via localStorage.
+  · centered 2-column sticker modal over a dimmed, blurred gift grid
+  · polaroid-flavored image left; title, piece count, primary-colored price,
+    priority chip, description with accent append + „Upraveno po sdílení",
+    stacked multi-link list (+ grey „Bez odkazu" variant) right
+  · reserve-area states shown as annotated variants below the composition
+  · ≤ 640 px the modal becomes a full-width stacked sheet with a sticky
+    bottom action bar
+  Self-contained — only external resource is Google Fonts.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přejeme si — návrh „Anime · Sky Notebook" — detail dárku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400;500;600;700&family=Geist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  /* ------------------------------------------------------ palette primitives
+     Each palette defines 4–6 primitives; every other color derives from them
+     via color-mix(in oklab) below, so all 10 palettes work in light AND dark. */
+  :root, [data-palette="sky"] {
+    --p-brand:  #1E9BE9;  /* primary                        */
+    --p-deep:   #1265A8;  /* darker shade (gradients, dark) */
+    --p-ink:    #16385C;  /* text & borders, hue-tinted     */
+    --p-bright: #55B9F3;  /* luminous shade for dark mode   */
+    --p-accent: #FFC93C;  /* sticky-note accent             */
+    --p-on-accent: #16385C;
+  }
+  [data-palette="mint"]     { --p-brand:#14A56F; --p-deep:#0B7A4E; --p-ink:#164A38; --p-bright:#3BD598; }
+  [data-palette="peach"]    { --p-brand:#F97250; --p-deep:#C2410C; --p-ink:#6B2F1A; --p-bright:#FF9B7A; }
+  [data-palette="grape"]    { --p-brand:#8B5CF6; --p-deep:#6023C0; --p-ink:#35216B; --p-bright:#A78BFA; }
+  [data-palette="sakura"]   { --p-brand:#EC5FA3; --p-deep:#BE3382; --p-ink:#5F1D44; --p-bright:#F48FC0; }
+  [data-palette="ocean"]    { --p-brand:#0FA8A8; --p-deep:#0B7676; --p-ink:#10484A; --p-bright:#3AD1CE; }
+  [data-palette="honey"]    { --p-brand:#EFA00B; --p-deep:#B26E05; --p-ink:#59430D; --p-bright:#FFC24B;
+                              --p-accent:#A9DBFF; --p-on-accent:#14486B; }
+  [data-palette="ruby"]     { --p-brand:#E23A57; --p-deep:#A31335; --p-ink:#571726; --p-bright:#F7728B; }
+  [data-palette="matcha"]   { --p-brand:#7FB023; --p-deep:#557812; --p-ink:#33430F; --p-bright:#A3CC4E; }
+  [data-palette="graphite"] { --p-brand:#526A85; --p-deep:#33465C; --p-ink:#1D2B3A; --p-bright:#8FA6BD; }
+
+  /* ---------------------------------------------------------------- tokens */
+  :root {
+    color-scheme: light;
+
+    --surface:      color-mix(in oklab, var(--p-brand) 11%, white);
+    --panel:        #FFFFFF;
+    --panel-hover:  color-mix(in oklab, var(--p-brand) 6%, white);
+    --brand:        var(--p-brand);
+    --brand-deep:   var(--p-deep);
+    --brand-fill:   var(--p-brand);
+    --ink:          var(--p-ink);
+    --ink-soft:     color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --ink-faint:    color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --link:         #7048E8;
+    --accent:       var(--p-accent);
+    --on-accent:    var(--p-on-accent);
+    --margin-red:   #E4574C;
+    --danger:       #E4574C;
+    --heart:        #E25563;
+
+    --tint:         color-mix(in oklab, var(--p-brand) 21%, white);
+    --row-bg:       color-mix(in oklab, var(--p-brand) 4%, white);
+    --fan-back-1:   color-mix(in oklab, var(--p-brand) 16%, white);
+    --fan-back-2:   color-mix(in oklab, var(--p-brand) 6%, white);
+    --note-tint:    #FFF1C1;
+    --note-ink:     var(--p-ink);
+    --tag-priority-bg: #FFE9AD;
+    --tag-edited-bg:   #ECE5FC;
+    --like-tint:    #FDECEC;
+    --link-tint:    #F1EDFD;
+    --reserved-veil: color-mix(in oklab, var(--surface) 55%, transparent);
+    --ghost-hover:  rgba(255, 255, 255, .5);
+
+    --pattern-dot:    color-mix(in oklab, var(--ink) 13%, transparent);
+    --pattern-line:   color-mix(in oklab, var(--ink) 9%, transparent);
+    --pattern-stripe: color-mix(in oklab, var(--ink) 5%, transparent);
+    --rule-line:      color-mix(in oklab, var(--ink) 10%, transparent);
+    --hole-inner:     var(--surface);
+    --hole-ring:      var(--ink);
+    --tape-bg:        color-mix(in oklab, var(--tint) 65%, transparent);
+    --tape-border:    color-mix(in oklab, var(--ink) 25%, transparent);
+
+    --footer-bg:    var(--p-ink);
+    --footer-text:  var(--tint);
+    --footer-hover: color-mix(in oklab, var(--footer-text) 15%, transparent);
+
+    --btn-border-top:    color-mix(in oklab, var(--p-brand) 45%, white);
+    --btn-border-bottom: var(--p-ink);
+    --btn-edge:     color-mix(in oklab, var(--p-ink) 30%, transparent);
+    --hard-shadow:        color-mix(in oklab, var(--p-ink) 16%, transparent);
+    --hard-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+    --glow-soft:    color-mix(in oklab, var(--p-brand) 50%, transparent);
+    --glow-pulse:   color-mix(in oklab, var(--p-brand) 72%, transparent);
+
+    --font-head:    "DynaPuff", system-ui, sans-serif;
+    --font-body:    "Geist", system-ui, sans-serif;
+
+    /* 8px rhythm */
+    --s1: 8px;  --s2: 16px; --s3: 24px; --s4: 32px;
+    --s5: 40px; --s6: 48px; --s8: 64px; --s11: 88px;
+
+    --r-panel: 16px;   /* panels & modals   */
+    --r-btn:   7px;    /* buttons           */
+    --border-w: 2.5px;
+
+    --container: 1200px;
+    --grid-gap: 32px;
+
+    --shadow-sticker:      4px 4px 0 var(--hard-shadow);
+    --shadow-sticker-lift: 7px 7px 0 var(--hard-shadow);
+    --shadow-glow:    0 6px 20px color-mix(in oklab, var(--p-brand) 35%, transparent);
+  }
+
+  /* „midnight notebook" — the same page after dark, not a grey different app:
+     surfaces stay saturated with the palette hue, chalk ink is hue-tinted,
+     sunshine notes and stickers stay vivid. */
+  [data-theme="dark"] {
+    color-scheme: dark;
+
+    --surface:      color-mix(in oklab, var(--p-deep) 30%, #060C15);
+    --panel:        color-mix(in oklab, var(--p-deep) 48%, #081018);
+    --panel-hover:  color-mix(in oklab, var(--p-deep) 58%, #081018);
+    --brand:        var(--p-bright);
+    --brand-deep:   var(--p-deep);
+    --brand-fill:   color-mix(in oklab, var(--p-brand) 88%, #04101C);
+    --ink:          color-mix(in oklab, var(--p-bright) 28%, #FDFEFF);
+    --ink-soft:     color-mix(in oklab, var(--ink) 65%, transparent);
+    --ink-faint:    color-mix(in oklab, var(--ink) 16%, transparent);
+    --link:         #B39DFC;
+    --margin-red:   #F07A6E;
+    --heart:        #F58A94;
+
+    --tint:         color-mix(in oklab, var(--p-deep) 62%, #0A1220);
+    --row-bg:       color-mix(in oklab, var(--p-deep) 40%, #0A1220);
+    --fan-back-1:   color-mix(in oklab, var(--p-deep) 36%, #070D16);
+    --fan-back-2:   color-mix(in oklab, var(--p-deep) 52%, #0A1524);
+    --note-tint:    #FFDD75;
+    --note-ink:     #43350A;
+    --tag-priority-bg: #5A4A12;
+    --tag-edited-bg:   #43356E;
+    --like-tint:    #57293A;
+    --link-tint:    #352B60;
+    --reserved-veil: color-mix(in oklab, var(--surface) 62%, transparent);
+    --ghost-hover:  rgba(255, 255, 255, .06);
+
+    --pattern-dot:    color-mix(in oklab, var(--ink) 13%, transparent);
+    --pattern-line:   color-mix(in oklab, var(--ink) 9%, transparent);
+    --pattern-stripe: color-mix(in oklab, var(--ink) 6%, transparent);
+    --rule-line:      color-mix(in oklab, var(--ink) 15%, transparent);
+    --hole-inner:     color-mix(in oklab, var(--p-deep) 20%, #04080E);
+    --hole-ring:      color-mix(in oklab, var(--ink) 80%, transparent);
+    --tape-bg:        rgba(255, 255, 255, .14);
+    --tape-border:    color-mix(in oklab, var(--ink) 32%, transparent);
+
+    --footer-bg:    color-mix(in oklab, var(--p-deep) 24%, #04080E);
+    --footer-text:  color-mix(in oklab, var(--p-bright) 40%, #E6EFF8);
+    --footer-hover: color-mix(in oklab, var(--footer-text) 15%, transparent);
+
+    --btn-border-top:    color-mix(in oklab, var(--p-bright) 70%, white);
+    --btn-border-bottom: color-mix(in oklab, var(--p-deep) 45%, #02060C);
+    --btn-edge:     rgba(0, 0, 0, .5);
+    --hard-shadow:        rgba(2, 6, 12, .42);
+    --hard-shadow-strong: rgba(2, 6, 12, .55);
+    --glow-soft:    color-mix(in oklab, var(--p-bright) 45%, transparent);
+    --glow-pulse:   color-mix(in oklab, var(--p-bright) 60%, transparent);
+
+    --shadow-glow:  0 6px 20px color-mix(in oklab, var(--p-bright) 32%, transparent);
+  }
+
+  /* ---------------------------------------------------------------- reset */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  /* Brave paints a text caret when clicking static text — hide the caret but keep text selectable */
+  html { caret-color: transparent; }
+  input, textarea, select, [contenteditable="true"] { caret-color: auto; }
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--ink);
+    background: var(--surface);
+    overflow-x: hidden;
+  }
+  img, svg { display: block; }
+  [hidden] { display: none !important; }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.15; color: var(--ink); }
+  button { font-family: var(--font-body); cursor: pointer; }
+
+  :focus-visible {
+    outline: 3px dashed var(--ink);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  .container { max-width: var(--container); margin-inline: auto; padding-inline: var(--s3); }
+
+  /* ------------------------------------------------------- bg patterns */
+  .bg-dots {
+    background-image: radial-gradient(var(--pattern-dot) 1.5px, transparent 1.6px);
+    background-size: 24px 24px;
+  }
+
+  /* ------------------------------------------------------------ buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: var(--s1);
+    font-weight: 600; font-size: 16px; text-decoration: none;
+    padding: 12px 22px; border-radius: var(--r-btn);
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+    border: var(--border-w) solid transparent;
+  }
+  .btn:active { transform: translateY(2px) scale(.98); }
+
+  .btn-primary {
+    color: #fff;
+    background: var(--brand-fill);
+    border-color: var(--ink);
+    box-shadow: var(--shadow-sticker);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    background: color-mix(in oklab, var(--brand-fill) 86%, #fff);
+    box-shadow: var(--shadow-sticker-lift);
+  }
+  .btn-secondary {
+    color: var(--ink);
+    background: var(--panel);
+    border-color: var(--ink);
+    box-shadow: var(--shadow-sticker);
+  }
+  .btn-secondary:hover { background: var(--panel-hover); transform: translateY(-2px); }
+
+  .btn-small { padding: 8px 14px; font-size: 14px; }
+
+  /* --------------------------------------------------------- sticker panel */
+  .sticker {
+    background: var(--panel);
+    border: var(--border-w) solid var(--ink);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-sticker);
+  }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600;
+    padding: 4px 12px; border-radius: 999px;
+    border: 2px solid var(--ink);
+    background: var(--panel);
+    white-space: nowrap;
+  }
+  .chip-filled { background: var(--brand-fill); border-color: var(--ink); color: #fff; }
+  .chip-mint   { background: var(--surface); }
+
+  .tag {
+    font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--panel);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .tag-priority { background: var(--tag-priority-bg); transform: rotate(-1.5deg); }
+  .tag-edited   { background: var(--tag-edited-bg); transform: rotate(1deg); }
+
+  .like {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 17px; font-weight: 700; color: var(--ink);
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: var(--r-btn); padding: 13px 18px;
+    box-shadow: var(--shadow-sticker);
+    transition: transform .15s ease, background-color .15s ease, box-shadow .15s ease;
+  }
+  .like:hover { background: var(--like-tint); transform: translateY(-2px); box-shadow: var(--shadow-sticker-lift); }
+  .like .heart { color: var(--heart); font-size: 21px; line-height: 1; }
+
+  /* annotation tag — mockup-only label marking design states/variants */
+  .anno {
+    display: inline-block; width: fit-content;
+    font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-soft); background: var(--panel);
+    border: 2px dashed color-mix(in oklab, var(--ink) 38%, transparent);
+    border-radius: 999px; padding: 3px 11px;
+  }
+
+  /* ------------------------------------------------- mockup file switcher */
+  .view-switch {
+    position: fixed; bottom: 20px; right: 20px; z-index: 90;
+    display: flex; gap: 6px; padding: 6px;
+    flex-wrap: wrap; justify-content: flex-end;
+    max-width: calc(100vw - 40px);
+    transform: rotate(-1deg);
+  }
+  .view-switch a {
+    font-size: 14px; font-weight: 600; color: var(--ink); text-decoration: none;
+    border: 2px solid transparent; border-radius: 9px; padding: 8px 14px;
+    transition: background-color .15s ease, transform .15s ease;
+  }
+  .view-switch a:hover { background: var(--surface); transform: translateY(-1px); }
+  .view-switch a[aria-current="page"] { background: var(--brand-fill); color: #fff; border-color: var(--ink); }
+
+  /* --------------------------------------------------------- header controls */
+  .hdr-controls { display: flex; align-items: center; gap: 4px; }
+  .hdr-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1;
+    background: transparent; border: 2px solid transparent; border-radius: 9px;
+    padding: 7px 9px; cursor: pointer;
+    transition: background-color .15s ease;
+  }
+  .hdr-btn:hover { background: var(--surface); }
+  .hdr-btn .chev { opacity: .55; }
+
+  .dd { position: relative; }
+  .dd > summary { list-style: none; }
+  .dd > summary::-webkit-details-marker { display: none; }
+  .dd[open] > summary { background: var(--surface); border-color: var(--ink); }
+  .dd-panel {
+    position: absolute; right: 0; top: calc(100% + 10px); z-index: 80;
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: 12px; box-shadow: var(--shadow-sticker);
+    padding: 10px;
+  }
+  .dd-title {
+    font-family: var(--font-head); font-size: 13px; color: var(--ink-soft);
+    padding: 2px 8px 8px;
+  }
+
+  .palette-dot {
+    width: 15px; height: 15px; border-radius: 50%; flex: none;
+    background: var(--brand); border: 2px solid var(--ink);
+  }
+  .palette-panel { width: 264px; }
+  .palette-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .palette-grid button {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13.5px; font-weight: 600; color: var(--ink); text-align: left;
+    background: transparent; border: 2px solid transparent; border-radius: 8px;
+    padding: 6px 8px;
+    transition: background-color .12s ease;
+  }
+  .palette-grid button:hover { background: var(--surface); }
+  .palette-grid button[aria-pressed="true"] { background: var(--surface); border-color: var(--ink); }
+  .swatch {
+    width: 16px; height: 16px; border-radius: 50%; flex: none;
+    background: var(--sw); border: 2px solid var(--ink);
+  }
+
+  .lang-panel { min-width: 170px; display: grid; gap: 2px; }
+  .lang-panel button {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 600; color: var(--ink); text-align: left;
+    background: transparent; border: 2px solid transparent; border-radius: 8px;
+    padding: 7px 10px;
+    transition: background-color .12s ease;
+  }
+  .lang-panel button:hover { background: var(--surface); }
+  .lang-panel button[aria-pressed="true"] { background: var(--surface); border-color: var(--ink); }
+  .lang-panel .flag { font-size: 16px; }
+  .lang-panel .check { margin-left: auto; visibility: hidden; color: var(--brand); font-weight: 800; }
+  .lang-panel button[aria-pressed="true"] .check { visibility: visible; }
+
+  /* ---------------------------------------------------------------- appnav */
+  .appnav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--panel); border-bottom: var(--border-w) solid var(--ink);
+  }
+  .appnav-inner { display: flex; align-items: center; gap: var(--s4); padding-block: 11px; }
+  .wordmark {
+    font-family: var(--font-head); font-size: 22px; font-weight: 700;
+    color: var(--ink); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .wordmark .mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(180deg, var(--brand), var(--brand-deep));
+    border: 2px solid var(--ink);
+    display: grid; place-items: center; font-size: 17px;
+    transform: rotate(-4deg);
+  }
+  .apptabs { display: flex; gap: 4px; }
+  .apptab {
+    font-size: 14.5px; font-weight: 600; color: var(--ink-soft);
+    text-decoration: none; padding: 8px 14px; border-radius: 9px;
+    border: 2px solid transparent;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .apptab:hover { background: var(--surface); color: var(--ink); }
+  .apptab.is-active { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+  .appnav-right { margin-left: auto; display: flex; align-items: center; gap: var(--s2); }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--brand-fill); border: 2px solid var(--ink);
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 800; color: #fff;
+  }
+
+  /* --------------------------------------------------- stage & backdrop grid
+     The wishlist grid sits behind a dimming overlay; the modal floats above. */
+  .stage-anno { padding-block: var(--s3) var(--s2); display: flex; gap: 8px; flex-wrap: wrap; }
+  .stage {
+    position: relative; overflow: hidden;
+    padding: var(--s6) var(--s3);
+    display: grid; place-items: center;
+    border-block: var(--border-w) solid var(--ink);
+  }
+  .stage-bg {
+    position: absolute; inset: 0; z-index: 0;
+    padding: var(--s3);
+    display: grid; gap: var(--s3);
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    align-content: start;
+  }
+  .bgift {
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: var(--r-panel); box-shadow: var(--shadow-sticker);
+    overflow: hidden;
+  }
+  .bgift-img {
+    height: 92px; display: grid; place-items: center; font-size: 40px;
+    border-bottom: var(--border-w) solid var(--ink);
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px; background-color: var(--surface);
+  }
+  .bgift-body { padding: 10px 14px 14px; }
+  .bgift-name { font-family: var(--font-head); font-size: 15px; }
+  .bgift-price { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+  .stage-overlay {
+    position: absolute; inset: 0; z-index: 1;
+    background: color-mix(in oklab, var(--p-ink) 45%, transparent);
+    backdrop-filter: blur(2.5px);
+  }
+
+  /* ------------------------------------------------------------- the modal */
+  .modal {
+    position: relative; z-index: 2;
+    width: min(880px, 100%);
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    grid-template-areas:
+      "media body"
+      "actions actions";
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px; z-index: 4;
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 2px solid var(--ink); background: var(--panel);
+    font-size: 15px; font-weight: 800; color: var(--ink);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+  }
+  .modal-close:hover { transform: rotate(90deg) scale(1.08); }
+
+  .modal-media {
+    grid-area: media;
+    padding: var(--s4) var(--s3);
+    border-right: 2px dashed var(--ink-faint);
+    display: grid; place-items: center;
+  }
+  /* polaroid-flavored print — stays a physical photo, frame colors fixed */
+  .modal-photo {
+    width: 100%; max-width: 290px; margin: 0;
+    background: #FFFDF6; border: 2px solid #4A443A; border-radius: 3px;
+    padding: 10px 10px 0;
+    transform: rotate(-2deg);
+    box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+    position: relative;
+  }
+  .modal-photo::before {
+    content: ""; position: absolute; top: -12px; left: 50%; z-index: 1;
+    width: 76px; height: 20px;
+    transform: translateX(-50%) rotate(-4deg);
+    background: var(--tape-bg);
+    border: 1.5px solid var(--tape-border);
+  }
+  .modal-photo-img {
+    height: 228px; display: grid; place-items: center;
+    border: 2px solid rgba(0, 0, 0, .14);
+    /* placeholder photo: wooden railway on a sunny rug */
+    background:
+      radial-gradient(circle at 80% 18%, #FFE79B 0 12%, transparent 13%),
+      linear-gradient(180deg, #A6D8F7 0%, #D6EDFC 52%, #EAD9B8 52%, #D9BF92 100%);
+  }
+  .modal-photo-img span { font-size: 84px; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, .18)); }
+  .modal-photo figcaption {
+    font-family: var(--font-head); font-size: 13.5px; color: #6C6353;
+    text-align: center; padding: 8px 4px 10px;
+  }
+
+  .modal-body {
+    grid-area: body;
+    min-width: 0; /* let nowrap link titles ellipsize instead of inflating the grid track */
+    padding: var(--s4) var(--s5) var(--s3) var(--s4);
+    display: grid; gap: var(--s2); align-content: start;
+  }
+  .modal-title { font-size: clamp(24px, 3vw, 32px); padding-right: var(--s5); }
+  .modal-facts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .modal-price { font-size: 24px; font-weight: 800; color: var(--brand); }
+  .modal-sub {
+    font-family: var(--font-body); font-size: 12px; font-weight: 800;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .modal-desc { display: grid; gap: 8px; }
+  .modal-desc > p { font-size: 15px; color: var(--ink); }
+
+  /* post-share append — immutable, accent-colored, timestamped */
+  .desc-append {
+    border-left: 4px solid var(--accent);
+    background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    display: grid; gap: 6px;
+  }
+  .desc-append-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .desc-append-head small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .desc-append p { font-size: 14.5px; }
+
+  .modal-links { display: grid; gap: 8px; }
+  .link-list { list-style: none; display: grid; gap: 8px; }
+  .link-row {
+    display: flex; align-items: center; gap: 10px;
+    text-decoration: none; color: var(--ink);
+    border: 2px solid var(--ink); border-radius: 10px;
+    padding: 8px 12px; background: var(--panel);
+    font-size: 14px;
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+  }
+  .link-row:hover { transform: translateY(-2px); box-shadow: 3px 3px 0 var(--hard-shadow); background: var(--link-tint); }
+  .link-domain {
+    flex: none; font-size: 12.5px; font-weight: 800; color: var(--link);
+    background: var(--link-tint); border: 2px solid var(--ink); border-radius: 999px;
+    padding: 2px 10px;
+  }
+  .link-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); font-weight: 600; }
+  .link-none {
+    display: flex; align-items: center; gap: 10px;
+    border: 2px dashed var(--ink-faint); border-radius: 10px;
+    padding: 8px 12px;
+    color: var(--ink-soft); font-size: 14px; font-weight: 600; font-style: italic;
+  }
+
+  /* action bar — dialog footer on desktop, sticky sheet bar on mobile */
+  .modal-actions {
+    grid-area: actions;
+    display: flex; align-items: center; gap: var(--s2);
+    padding: 14px var(--s3);
+    border-top: var(--border-w) solid var(--ink);
+    background: var(--panel);
+    border-radius: 0 0 calc(var(--r-panel) - 3px) calc(var(--r-panel) - 3px);
+  }
+  .availability-note { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--ink-soft); text-align: right; }
+
+  .reopen {
+    position: absolute; z-index: 2;
+  }
+
+  /* ----------------------------------------------------- reserve-area states */
+  .states { padding-block: var(--s6) 120px; }
+  .states h2 { font-size: clamp(24px, 3vw, 32px); margin-bottom: var(--s3); }
+  .states-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--grid-gap); align-items: start; }
+  .state-col { display: grid; gap: 10px; }
+  .state-card {
+    padding: var(--s3);
+    display: grid; gap: 12px; justify-items: start;
+  }
+  .state-card small { font-size: 13px; color: var(--ink-soft); }
+  .state-availability { font-size: 14px; font-weight: 800; }
+  .state-mine { font-size: 15px; font-weight: 800; color: var(--brand); }
+  .state-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  .state-dim { background: color-mix(in oklab, var(--panel) 82%, var(--surface)); }
+  .state-dim > *:not(.reserved-note) { opacity: .55; filter: grayscale(.5); }
+  .reserved-note {
+    background: var(--panel); border: var(--border-w) solid var(--ink); border-radius: 10px;
+    font-weight: 800; font-size: 14px; padding: 7px 14px;
+    transform: rotate(-3deg);
+    box-shadow: var(--shadow-sticker);
+    display: grid; justify-items: center;
+  }
+  .reserved-note small { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+
+  .purchased-toggle {
+    font-size: 13.5px; font-weight: 600; color: var(--ink);
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 999px;
+    padding: 7px 14px;
+    transition: background-color .15s ease, transform .15s ease;
+  }
+  .purchased-toggle:hover { transform: translateY(-1px); }
+  .purchased-toggle[aria-pressed="true"] { background: var(--brand-fill); color: #fff; }
+
+  /* ------------------------------------------------------------ animations */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      0%   { opacity: 0; transform: translateY(16px) scale(.96); }
+      70%  { transform: translateY(-3px) scale(1.01); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .reveal { animation: fadeUp .6s ease backwards; }
+    .reveal-2 { animation-delay: .12s; } .reveal-3 { animation-delay: .24s; }
+
+    .modal { animation: popIn .5s cubic-bezier(.34,1.4,.64,1) backwards; animation-delay: .15s; }
+    .states-grid > * { animation: popIn .55s cubic-bezier(.34,1.4,.64,1) backwards; }
+    .states-grid > :nth-child(2) { animation-delay: .1s; }
+    .states-grid > :nth-child(3) { animation-delay: .2s; }
+  }
+
+  /* ------------------------------------------------------------ responsive */
+  @media (max-width: 960px) {
+    .states-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .apptabs { display: none; }
+    .appnav-inner { gap: var(--s2); }
+    .appnav-right { gap: 10px; }
+    .hdr-btn { padding-inline: 6px; }
+    /* the modal becomes a full-width stacked sheet with a sticky action bar */
+    .stage { padding: 0; }
+    .modal {
+      width: 100%;
+      grid-template-columns: 1fr;
+      grid-template-areas: "media" "body" "actions";
+      border-radius: 0; border-inline: none;
+      box-shadow: none;
+    }
+    .modal-media { border-right: 0; border-bottom: 2px dashed var(--ink-faint); padding: var(--s4) var(--s3) var(--s3); }
+    .modal-photo { max-width: 250px; }
+    .modal-photo-img { height: 190px; }
+    .modal-body { padding: var(--s3); }
+    .modal-actions {
+      position: sticky; bottom: 0; z-index: 3;
+      min-width: 0; gap: var(--s1); padding-inline: var(--s2);
+      border-radius: 0;
+      box-shadow: 0 -6px 18px rgba(0, 0, 0, .12);
+    }
+  }
+  @media (max-width: 560px) {
+    .container { padding-inline: var(--s2); }
+  }
+</style>
+
+<!-- ═══════════════════════════ mockup switcher ═══════════════════════════ -->
+<nav class="view-switch sticker" aria-label="Přepínač náhledů">
+  <a href="anime-sky-final.html">📒 Základ</a>
+  <a href="anime-dashboard.html">🗂 Nástěnka</a>
+  <a href="anime-gift-detail-modal.html" aria-current="page">🔍 Detail</a>
+  <a href="anime-auth.html">🔑 Přihlášení</a>
+</nav>
+
+<!-- ═══════════════════════════════ appnav ═══════════════════════════════ -->
+<header class="appnav">
+  <div class="container appnav-inner">
+    <a class="wordmark" href="#"><span class="mark">🎁</span>Přejeme si</a>
+    <nav class="apptabs" aria-label="Hlavní navigace">
+      <a class="apptab" href="#">Moje seznamy</a>
+      <a class="apptab" href="#">Spravované</a>
+      <a class="apptab is-active" href="#" aria-current="page">Sledované</a>
+    </nav>
+    <div class="appnav-right">
+      <div class="hdr-controls">
+        <details class="dd">
+          <summary class="hdr-btn" title="Barevná paleta" aria-label="Barevná paleta">
+            <span class="palette-dot" aria-hidden="true"></span>
+            <svg class="chev" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg>
+          </summary>
+          <div class="dd-panel palette-panel">
+            <p class="dd-title">Barevná paleta</p>
+            <div class="palette-grid">
+              <button type="button" data-palette="sky" aria-pressed="true"><span class="swatch" style="--sw:#1E9BE9"></span>Obloha</button>
+              <button type="button" data-palette="mint" aria-pressed="false"><span class="swatch" style="--sw:#14A56F"></span>Máta</button>
+              <button type="button" data-palette="peach" aria-pressed="false"><span class="swatch" style="--sw:#F97250"></span>Broskev</button>
+              <button type="button" data-palette="grape" aria-pressed="false"><span class="swatch" style="--sw:#8B5CF6"></span>Hrozen</button>
+              <button type="button" data-palette="sakura" aria-pressed="false"><span class="swatch" style="--sw:#EC5FA3"></span>Sakura</button>
+              <button type="button" data-palette="ocean" aria-pressed="false"><span class="swatch" style="--sw:#0FA8A8"></span>Oceán</button>
+              <button type="button" data-palette="honey" aria-pressed="false"><span class="swatch" style="--sw:#EFA00B"></span>Med</button>
+              <button type="button" data-palette="ruby" aria-pressed="false"><span class="swatch" style="--sw:#E23A57"></span>Malina</button>
+              <button type="button" data-palette="matcha" aria-pressed="false"><span class="swatch" style="--sw:#7FB023"></span>Matcha</button>
+              <button type="button" data-palette="graphite" aria-pressed="false"><span class="swatch" style="--sw:#526A85"></span>Tužka</button>
+            </div>
+          </div>
+        </details>
+        <details class="dd">
+          <summary class="hdr-btn" aria-label="Jazyk">
+            <span class="lang-label">CZ</span>
+            <svg class="chev" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg>
+          </summary>
+          <div class="dd-panel lang-panel">
+            <button type="button" data-lang="cs" aria-pressed="true"><span class="flag" aria-hidden="true">🇨🇿</span>Čeština<span class="check" aria-hidden="true">✓</span></button>
+            <button type="button" data-lang="en" aria-pressed="false"><span class="flag" aria-hidden="true">🇬🇧</span>English<span class="check" aria-hidden="true">✓</span></button>
+          </div>
+        </details>
+        <button type="button" class="hdr-btn theme-toggle" aria-pressed="false" aria-label="Tmavý režim">🌙</button>
+      </div>
+      <span class="avatar" aria-label="Petr">P</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════ composition: modal over dimmed wishlist ═══════════════ -->
+<div class="container stage-anno">
+  <span class="anno">Kompozice — detail dárku nad ztlumeným seznamem (pohled návštěvníka)</span>
+  <span class="anno">≤ 640 px: sheet přes celou šířku, akční lišta přilepená dole</span>
+</div>
+
+<section class="stage bg-dots">
+  <div class="stage-bg" aria-hidden="true">
+    <div class="bgift"><div class="bgift-img">🚜</div><div class="bgift-body"><p class="bgift-name">LEGO Technic bagr</p><p class="bgift-price">1&nbsp;899&nbsp;Kč</p></div></div>
+    <div class="bgift"><div class="bgift-img">🧥</div><div class="bgift-body"><p class="bgift-name">Zimní bunda</p><p class="bgift-price">1&nbsp;249&nbsp;Kč</p></div></div>
+    <div class="bgift"><div class="bgift-img">📚</div><div class="bgift-body"><p class="bgift-name">Harry Potter</p><p class="bgift-price">349&nbsp;Kč</p></div></div>
+    <div class="bgift"><div class="bgift-img">🎲</div><div class="bgift-body"><p class="bgift-name">Hra Azul</p><p class="bgift-price">799&nbsp;Kč</p></div></div>
+    <div class="bgift"><div class="bgift-img">🛴</div><div class="bgift-body"><p class="bgift-name">Koloběžka</p><p class="bgift-price">2&nbsp;490&nbsp;Kč</p></div></div>
+    <div class="bgift"><div class="bgift-img">🖍️</div><div class="bgift-body"><p class="bgift-name">Pastelky</p><p class="bgift-price">289&nbsp;Kč</p></div></div>
+    <div class="bgift"><div class="bgift-img">🌊</div><div class="bgift-body"><p class="bgift-name">Aquapark</p><p class="bgift-price">500&nbsp;Kč</p></div></div>
+    <div class="bgift"><div class="bgift-img">🐉</div><div class="bgift-body"><p class="bgift-name">Plyšový drak</p><p class="bgift-price">—</p></div></div>
+  </div>
+  <div class="stage-overlay" aria-hidden="true"></div>
+
+  <button type="button" class="btn btn-primary reopen" id="reopen-modal" hidden>Otevřít detail dárku</button>
+
+  <div class="modal sticker" id="gift-modal" role="dialog" aria-modal="true" aria-labelledby="gift-title">
+    <button type="button" class="modal-close" id="close-modal" aria-label="Zavřít">✕</button>
+
+    <div class="modal-media">
+      <figure class="modal-photo">
+        <div class="modal-photo-img"><span aria-hidden="true">🚂</span></div>
+        <figcaption>vysněná mašinka Emily 🌟</figcaption>
+      </figure>
+    </div>
+
+    <div class="modal-body">
+      <h2 class="modal-title" id="gift-title">Dřevěná vláčkodráha</h2>
+      <div class="modal-facts">
+        <span class="modal-price">1&nbsp;490&nbsp;Kč</span>
+        <span class="chip chip-mint">3 kusy · 1 rezervováno</span>
+        <span class="tag tag-priority">⭐ Priorita · Vysoká</span>
+      </div>
+
+      <div class="modal-desc">
+        <h3 class="modal-sub">Popis</h3>
+        <p>Dřevěné koleje kompatibilní s IKEA i Brio. Ideálně set s mostem a tunelem, vláčky máme zatím jen dva.</p>
+        <div class="desc-append">
+          <div class="desc-append-head">
+            <span class="tag tag-edited">✏️ Upraveno po sdílení</span>
+            <small>doplněno 2. července</small>
+          </div>
+          <p>Stačí i menší set — hlavně ať je v něm mašinka Emily, tu si Anička přeje nejvíc.</p>
+        </div>
+      </div>
+
+      <div class="modal-links">
+        <h3 class="modal-sub">Odkazy</h3>
+        <ul class="link-list">
+          <li><a class="link-row" href="#"><span class="link-domain">↗ alza.cz</span><span class="link-title">Vláčkodráha 3v1 s mostem a tunelem</span></a></li>
+          <li><a class="link-row" href="#"><span class="link-domain">↗ mall.cz</span><span class="link-title">Mašinka Emily — dřevěná, magnetická</span></a></li>
+          <li class="link-none"><span class="anno">Varianta</span> Bez odkazu</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="like" type="button" aria-label="Líbí se 3 lidem"><span class="heart" aria-hidden="true">♥</span>3</button>
+      <span class="availability-note">Dostupné 2 ze 3</span>
+      <a class="btn btn-primary" href="#">Rezervovat</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ reserve-area states (annotated) ═══════════════════ -->
+<section class="states">
+  <div class="container">
+    <h2>Rezervační oblast — tři stavy</h2>
+    <div class="states-grid">
+
+      <div class="state-col">
+        <p class="anno">1 · Volné</p>
+        <div class="state-card sticker">
+          <p class="state-availability">Dostupné 2 ze 3</p>
+          <a class="btn btn-primary" href="#">Rezervovat</a>
+          <small>Rezervovat lze i bez účtu — stačí se podepsat.</small>
+        </div>
+      </div>
+
+      <div class="state-col">
+        <p class="anno">2 · Rezervováno někým jiným</p>
+        <div class="state-card sticker state-dim">
+          <span class="reserved-note">✓ Rezervováno<small>rezervovala Babička</small></span>
+          <p class="state-availability">Dostupné 0 ze 3</p>
+          <small>Žádný kus už není volný — jméno vidí návštěvníci i správci, Anička nikdy.</small>
+        </div>
+      </div>
+
+      <div class="state-col">
+        <p class="anno">3 · Rezervováno mnou</p>
+        <div class="state-card sticker">
+          <p class="state-mine">✓ Rezervováno vámi · 1 kus</p>
+          <div class="state-actions">
+            <button type="button" class="btn btn-secondary btn-small">Zrušit rezervaci</button>
+            <button type="button" class="purchased-toggle" aria-pressed="false">🛍 Koupeno</button>
+          </div>
+          <small>Po nákupu označte „Koupeno" — ostatní gifteři to uvidí, Anička ne.</small>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+  const root = document.documentElement;
+
+  /* ------------------------------------------------------------- dark mode */
+  const themeToggles = document.querySelectorAll(".theme-toggle");
+
+  function applyTheme(dark) {
+    if (dark) { root.setAttribute("data-theme", "dark"); }
+    else      { root.removeAttribute("data-theme"); }
+    themeToggles.forEach(b => {
+      b.setAttribute("aria-pressed", String(dark));
+      b.textContent = dark ? "☀️" : "🌙";
+      b.setAttribute("aria-label", dark ? "Světlý režim" : "Tmavý režim");
+    });
+    try { localStorage.setItem("psi-final-theme", dark ? "dark" : "light"); } catch { /* private mode */ }
+  }
+  themeToggles.forEach(b =>
+    b.addEventListener("click", () => applyTheme(root.getAttribute("data-theme") !== "dark")));
+
+  /* --------------------------------------------------------------- palettes */
+  const paletteButtons = document.querySelectorAll(".palette-grid button");
+
+  function applyPalette(key) {
+    root.setAttribute("data-palette", key);
+    paletteButtons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.palette === key)));
+    try { localStorage.setItem("psi-final-palette", key); } catch { /* private mode */ }
+  }
+  paletteButtons.forEach(b => b.addEventListener("click", () => {
+    applyPalette(b.dataset.palette);
+    b.closest("details").removeAttribute("open");
+  }));
+
+  /* --------------------------------------------- language (visual mock only) */
+  const langButtons = document.querySelectorAll(".lang-panel button");
+  const langLabels = document.querySelectorAll(".lang-label");
+
+  function applyLang(code) {
+    langButtons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === code)));
+    langLabels.forEach(l => { l.textContent = code === "cs" ? "CZ" : "EN"; });
+  }
+  langButtons.forEach(b => b.addEventListener("click", () => {
+    applyLang(b.dataset.lang);
+    b.closest("details").removeAttribute("open");
+  }));
+
+  /* ------------------------------------- close dropdowns on outside click/Esc */
+  document.addEventListener("click", e => {
+    document.querySelectorAll("details.dd[open]").forEach(d => {
+      if (!d.contains(e.target)) { d.removeAttribute("open"); }
+    });
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      document.querySelectorAll("details.dd[open]").forEach(d => d.removeAttribute("open"));
+    }
+  });
+
+  /* ------------------------------------------------------- restore settings */
+  try {
+    if (localStorage.getItem("psi-final-theme") === "dark") { applyTheme(true); }
+    const savedPalette = localStorage.getItem("psi-final-palette");
+    if (savedPalette && document.querySelector(`.palette-grid button[data-palette="${savedPalette}"]`)) {
+      applyPalette(savedPalette);
+    }
+  } catch { /* private mode */ }
+
+  /* -------------------------------------------------- modal close / reopen */
+  const giftModal = document.getElementById("gift-modal");
+  const reopenButton = document.getElementById("reopen-modal");
+  document.getElementById("close-modal").addEventListener("click", () => {
+    giftModal.hidden = true;
+    reopenButton.hidden = false;
+  });
+  reopenButton.addEventListener("click", () => {
+    giftModal.hidden = false;
+    reopenButton.hidden = true;
+  });
+
+  /* ----------------------------------------------------- purchased toggle */
+  document.querySelectorAll(".purchased-toggle").forEach(button => {
+    button.addEventListener("click", () => {
+      const pressed = button.getAttribute("aria-pressed") !== "true";
+      button.setAttribute("aria-pressed", String(pressed));
+      button.textContent = pressed ? "✓ Koupeno" : "🛍 Koupeno";
+    });
+  });
+</script>

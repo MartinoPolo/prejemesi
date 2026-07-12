@@ -2,24 +2,22 @@
 	import { cn } from '$lib/utils.js';
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
-	import { wishlistCardVariants, STATUS_DOT_CLASSES } from './wishlist_card_variants.js';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { wishlistCardVariants, STATUS_CHIP_CLASSES } from './wishlist_card_variants.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { WISHLIST_STATUS_LABELS } from '$lib/modules/wishlists/dashboard_types.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import type { Snippet } from 'svelte';
 
 	interface WishlistCardProps {
 		wishlist: Wishlist;
-		/** Owner name, displayed for moderated/followed cards */
-		ownerName?: string;
+		/** Recipient display name (who the list is for), shown for moderated/followed cards */
+		recipientDisplayName?: string;
 		/** Total gift count for owner cards (owner invariant: count only, no reservation data) */
 		giftCount?: number;
 		/** Reservation progress for moderator cards */
@@ -37,7 +35,7 @@
 
 	let {
 		wishlist: wishlistData,
-		ownerName,
+		recipientDisplayName,
 		giftCount,
 		reservationProgress,
 		availableGifts,
@@ -48,14 +46,14 @@
 	}: WishlistCardProps = $props();
 
 	const isArchived = $derived(wishlistData.status === 'archived');
-	const theme = $derived(getThemePreset(wishlistData.theme as DashboardWishlistTheme));
+	const themeEmoji = $derived(getWishlistEmoji(wishlistData.theme));
 	const cardSrc = $derived(wishlistImageUrl(wishlistData.imageKey));
 	const cardFrame = $derived(wishlistSlotToFrameProps(wishlistData.imageSlots, 'card'));
 	const variants = $derived(wishlistCardVariants({ archived: isArchived }));
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
-	const statusDotClass = $derived(STATUS_DOT_CLASSES[wishlistData.status]);
+	const statusChipClass = $derived(STATUS_CHIP_CLASSES[wishlistData.status]);
 
-	function getOwnerInitials(name: string): string {
+	function getRecipientInitials(name: string): string {
 		return name
 			.split(' ')
 			.map((part) => part[0])
@@ -83,40 +81,49 @@
 	aria-label={wishlistData.title}
 	data-testid="wishlist-card"
 >
-	<!-- Banner -->
+	<!-- Banner: taped-notebook tint with dot pattern (photo replaces both when assigned) -->
 	<div class={variants.banner()} aria-hidden="true">
 		<div class="absolute inset-0">
 			<WishlistSlotImage
 				src={cardSrc}
 				frame={cardFrame}
-				themeEmoji={theme.emoji}
+				{themeEmoji}
 				alt={wishlistData.title}
+				variant="card"
 			/>
 		</div>
-		<div class={variants.bannerOverlay()}></div>
+		{#if cardSrc === null}
+			<div class={variants.bannerPattern()}></div>
+		{/if}
 		<div class={variants.bannerTitle()}>{wishlistData.title}</div>
-		<div class={variants.statusBadge()} aria-label="Stav: {statusLabel}">
-			<span class={cn(variants.statusDot(), statusDotClass)}></span>
+		<div
+			class={cn(variants.statusBadge(), statusChipClass)}
+			aria-label={m.wishlist_status_aria({ status: statusLabel })}
+		>
 			{statusLabel}
 		</div>
 	</div>
 
 	<!-- Body -->
 	<div class={variants.body()}>
-		{#if ownerName}
+		{#if recipientDisplayName}
 			<div class={variants.ownerRow()}>
-				<div class={variants.ownerAvatar()}>{getOwnerInitials(ownerName)}</div>
-				<span>{ownerName}</span>
-				<span class={variants.ownerLabel()}>· vlastník</span>
+				<div class={variants.ownerAvatar()}>
+					{getRecipientInitials(recipientDisplayName)}
+				</div>
+				<span>{m.wishlist_recipient_chip({ name: recipientDisplayName })}</span>
 			</div>
 		{/if}
 
 		{#if reservationProgress}
 			<div class={variants.progressWrap()}>
 				<div class={variants.progressLabelRow()}>
-					<span>Průběh rezervací</span>
+					<span>{m.wishlist_reservation_progress()}</span>
 					<span class={variants.progressValue()}>
-						{reservationProgress.reserved} / {reservationProgress.total} rezervováno
+						{m.wishlist_reserved_ratio({
+							reserved: reservationProgress.reserved,
+							total: reservationProgress.total,
+						})}
 					</span>
 				</div>
 				<div class={variants.progressTrack()}>
@@ -134,15 +141,17 @@
 			<div class={variants.metaRow()}>
 				<span class={variants.availableCount()}>
 					<GiftIcon class="inline size-3.5 align-middle" />
-					Dostupných: {availableGifts} přání
+					{m.wishlist_available_gifts({ count: availableGifts })}
 				</span>
 				{#if myReservations !== undefined && myReservations > 0}
 					<span class={variants.reservationChip()}>
 						<CheckIcon class="size-3" />
-						Moje rezervace: {myReservations}
+						{m.wishlist_my_reservations({ count: myReservations })}
 					</span>
 				{:else if myReservations !== undefined}
-					<span class="text-xs text-muted-foreground/60">žádné moje rezervace</span>
+					<span class="text-xs text-muted-foreground/60"
+						>{m.wishlist_no_my_reservations()}</span
+					>
 				{/if}
 			</div>
 		{/if}
@@ -150,26 +159,43 @@
 		<!-- Owner card: gift count + optional event date (owner invariant – no reservations) -->
 		{#if giftCount !== undefined}
 			<div class={variants.metaRow()}>
-				<span class={variants.availableCount()}>
-					<GiftIcon class="inline size-3.5 align-middle" />
-					{giftCount} přání
+				<span class={variants.metaChip()}>
+					<GiftIcon class="size-3.5" />
+					{giftCount === 1
+						? m.wishlist_gift_count_one()
+						: m.wishlist_gift_count_other({ count: giftCount })}
 				</span>
 				{#if wishlistData.eventDate}
-					<span class={variants.metaText()}>{formatDate(wishlistData.eventDate)}</span>
+					<span class={variants.metaChip()}>🗓 {formatDate(wishlistData.eventDate)}</span>
 				{/if}
 			</div>
 		{/if}
 
-		<div class={variants.metaRow()}>
-			<span class={variants.themeBadge()}>{theme.emoji} {theme.label}</span>
-			<span class={variants.metaText()}>
-				{#if reservationProgress}
-					{reservationProgress.total} přání celkem
-				{:else if giftCount === undefined && wishlistData.createdAt}
-					Vytvořeno {formatDate(wishlistData.createdAt)}
+		<!-- Owner card: created + last-updated timestamps (own lists only) -->
+		{#if giftCount !== undefined && !reservationProgress && wishlistData.createdAt}
+			<div class={variants.metaRow()}>
+				<span class={variants.metaText()}>
+					{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
+				</span>
+				{#if wishlistData.updatedAt}
+					<span class={variants.metaText()}>
+						{m.wishlist_updated_at({ date: formatDate(wishlistData.updatedAt) })}
+					</span>
 				{/if}
-			</span>
-		</div>
+			</div>
+		{/if}
+
+		{#if reservationProgress || (giftCount === undefined && wishlistData.createdAt)}
+			<div class={variants.metaRow()}>
+				<span class={variants.metaText()}>
+					{#if reservationProgress}
+						{m.wishlist_total_gifts({ count: reservationProgress.total })}
+					{:else}
+						{m.wishlist_created_at({ date: formatDate(wishlistData.createdAt) })}
+					{/if}
+				</span>
+			</div>
+		{/if}
 
 		{#if extraContent}
 			{@render extraContent()}

@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
+	import { Avatar } from '$lib/components/derived/avatar/index.js';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
 	import { authClient } from '$lib/auth_client.js';
@@ -31,28 +31,17 @@
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
+			<!-- border-0 removes the Button's own (transparent) 2.5px border so the
+			     bordered Avatar fills the 32px control exactly – the avatar's ink
+			     border is the only border, matching the neighboring outline buttons. -->
 			<Button
 				{...props}
 				intent="ghost"
 				size="icon"
-				class="rounded-full"
+				class="rounded-xl border-0 hover:-translate-y-px hover:bg-transparent"
 				aria-label={m.nav_user_menu({ name: userName })}
 			>
-				{#if userImage}
-					<ImageFrame
-						src={userImage}
-						alt={userName}
-						shape="circle"
-						fitMode="cover-crop"
-						class="size-8"
-					/>
-				{:else}
-					<span
-						class="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
-					>
-						{userInitials}
-					</span>
-				{/if}
+				<Avatar src={userImage} alt="" initials={userInitials} size="sm" bordered />
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>

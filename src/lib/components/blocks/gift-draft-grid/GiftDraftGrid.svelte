@@ -1,8 +1,10 @@
 <script lang="ts">
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import HeartIcon from '@lucide/svelte/icons/heart';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { onMount } from 'svelte';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
 	import {
 		findDuplicates,
@@ -191,21 +193,26 @@
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_links()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_price()}</span>
 			{#if priorityAvailable}
-				<span
-					class="text-foreground-muted flex items-center justify-center"
-					title={m.draft_grid_col_priority()}
-				>
-					<HeartIcon class="size-3.5" aria-hidden="true" />
-					<span class="sr-only">{m.draft_grid_col_priority()}</span>
-				</span>
+				<SimpleTooltip text={m.draft_grid_col_priority()} side="top">
+					{#snippet asChild(triggerProps)}
+						<span
+							{...triggerProps}
+							class="text-foreground-muted flex items-center justify-center"
+						>
+							<HeartIcon class="size-3.5" aria-hidden="true" />
+							<span class="sr-only">{m.draft_grid_col_priority()}</span>
+						</span>
+					{/snippet}
+				</SimpleTooltip>
 			{/if}
-			<span
-				class={cn(DRAFT_COL_LABEL_CLASS, 'text-center')}
-				title={m.draft_grid_col_enrich()}
-			>
-				✨
-				<span class="sr-only">{m.draft_grid_remove_row()}</span>
-			</span>
+			<SimpleTooltip text={m.draft_grid_col_enrich()} side="top">
+				{#snippet asChild(triggerProps)}
+					<span {...triggerProps} class={cn(DRAFT_COL_LABEL_CLASS, 'text-center')}>
+						<SparklesIcon class="size-3.5" aria-hidden="true" />
+						<span class="sr-only">{m.draft_grid_col_enrich()}</span>
+					</span>
+				{/snippet}
+			</SimpleTooltip>
 		</div>
 
 		<div class="flex flex-col gap-2 p-2">

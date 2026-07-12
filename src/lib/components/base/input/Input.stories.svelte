@@ -49,18 +49,62 @@
 
 <Story name="All Variants">
 	{#snippet template(args: InputProps)}
-		<div class="grid max-w-2xl grid-cols-2 gap-4">
-			{#each INPUT_STATES as state (state)}
-				<div>
-					<Label>{state}</Label>
-					<Input
-						{...args}
-						{state}
-						aria-label={state}
-						value={state === 'loading' ? 'resolving...' : 'feat/forest-overlays'}
-					/>
+		<div class="flex flex-col gap-6">
+			<div>
+				<div class="mb-2 text-xs font-semibold text-foreground-subtle">Variants</div>
+				<div class="grid max-w-2xl grid-cols-2 gap-4">
+					{#each INPUT_STATES as state (state)}
+						<div>
+							<Label>{state}</Label>
+							<Input
+								{...args}
+								{state}
+								aria-label={state}
+								value={state === 'loading'
+									? 'resolving...'
+									: 'feat/forest-overlays'}
+							/>
+						</div>
+					{/each}
 				</div>
-			{/each}
+			</div>
+			<div>
+				<div class="mb-2 text-xs font-semibold text-foreground-subtle">States</div>
+				<div class="grid max-w-2xl grid-cols-3 gap-4">
+					<div>
+						<Label>Default</Label>
+						<Input placeholder="Branch name" aria-label="Default" />
+					</div>
+					<div>
+						<Label>Filled</Label>
+						<Input value="feat/forest-overlays" aria-label="Filled" />
+					</div>
+					<div>
+						<Label>Focus (interact)</Label>
+						<Input value="feat/forest-overlays" aria-label="Focus" />
+					</div>
+					<div>
+						<Label>Success</Label>
+						<Input state="success" value="feat/valid-name" aria-label="Success" />
+					</div>
+					<div>
+						<Label>Error</Label>
+						<Input state="error" value="feat/forest overlays" aria-label="Error" />
+					</div>
+					<div>
+						<Label>Disabled</Label>
+						<Input disabled value="feat/locked-branch" aria-label="Disabled" />
+					</div>
+					<div>
+						<Label>Read-only</Label>
+						<Input readonly value="main" aria-label="Read-only" />
+					</div>
+					<div>
+						<Label>Loading</Label>
+						<Input state="loading" value="resolving..." aria-label="Loading" />
+					</div>
+				</div>
+			</div>
 		</div>
 	{/snippet}
 </Story>
@@ -146,45 +190,6 @@
 	{#snippet template(args: InputProps)}
 		<div class="max-w-xs">
 			<Input disabled value="feat/locked-branch" aria-label="Disabled branch" {...args} />
-		</div>
-	{/snippet}
-</Story>
-
-<Story name="All States">
-	{#snippet template(args: InputProps)}
-		<div class="grid max-w-2xl grid-cols-3 gap-4">
-			<div>
-				<Label>Default</Label>
-				<Input placeholder="Branch name" aria-label="Default" {...args} />
-			</div>
-			<div>
-				<Label>Filled</Label>
-				<Input value="feat/forest-overlays" aria-label="Filled" />
-			</div>
-			<div>
-				<Label>Focus (interact)</Label>
-				<Input value="feat/forest-overlays" aria-label="Focus" />
-			</div>
-			<div>
-				<Label>Success</Label>
-				<Input state="success" value="feat/valid-name" aria-label="Success" />
-			</div>
-			<div>
-				<Label>Error</Label>
-				<Input state="error" value="feat/forest overlays" aria-label="Error" />
-			</div>
-			<div>
-				<Label>Disabled</Label>
-				<Input disabled value="feat/locked-branch" aria-label="Disabled" />
-			</div>
-			<div>
-				<Label>Read-only</Label>
-				<Input readonly value="main" aria-label="Read-only" />
-			</div>
-			<div>
-				<Label>Loading</Label>
-				<Input state="loading" value="resolving..." aria-label="Loading" />
-			</div>
 		</div>
 	{/snippet}
 </Story>

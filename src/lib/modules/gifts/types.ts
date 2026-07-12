@@ -71,17 +71,23 @@ export interface GiftForVisitor extends GiftBase {
 	likeCount: number;
 	reservedCount: number;
 	isFullyReserved: boolean;
+	/**
+	 * Display names of active reservers (account name, or the anonymous signature), in
+	 * reservation order. Empty when the viewer may not see identities — the API omits
+	 * names for a self-promoted recipient, who sees counts only (issue #102 REQ-14).
+	 */
+	reserverNames: string[];
 	/** Active reservation id held by the current authenticated user for this gift, or null. */
 	myReservationId: string | null;
 	/** When the current user marked their reservation as bought (gifter-private), or null. */
 	myReservationPurchasedAt: Date | null;
 }
 
-/** Gift for owner view – no reservation data */
-export type GiftForOwner = GiftBase;
+/** Gift for the recipient's view – no reservation data (protects the surprise) */
+export type GiftForRecipient = GiftBase;
 
 /** Union type for gift based on role */
-export type GiftByRole = GiftForVisitor | GiftForOwner;
+export type GiftByRole = GiftForVisitor | GiftForRecipient;
 
 /** View mode for gift display */
 export const GIFT_VIEW_MODES = {
@@ -108,6 +114,7 @@ export type GiftSortOption = (typeof GIFT_SORT_OPTIONS)[keyof typeof GIFT_SORT_O
 export interface GiftFilters {
 	availableOnly: boolean;
 	withLinkOnly: boolean;
+	likedOnly: boolean;
 }
 
 /** Supported currencies */

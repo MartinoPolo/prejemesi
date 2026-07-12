@@ -1,0 +1,1321 @@
+<!--
+  Přejeme si — redesign exploration 2026
+  Variant: ANIME · „Peach Bakery" (2/4)
+  Warm-cream bakery take on the anime study-board style: cream surfaces, cocoa ink,
+  tangerine brand, butter+teal accents, DynaPuff headings, Geist UI text.
+  Fan-stack kept only on small isolated cards (hero mock, kid card).
+  Wishlist header = static „cupcake liner" panel (no hover). Gift cards = polaroid-straighten hover.
+  Self-contained — only external resource is Google Fonts.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Přejeme si — návrh „Anime · Peach Bakery"</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400;500;600;700&family=Geist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  /* ---------------------------------------------------------------- tokens */
+  :root {
+    --surface:      #FFF3E6;   /* warm cream page background      */
+    --panel:        #FFFDFA;   /* sticker panels                  */
+    --brand:        #F2743C;   /* tangerine                       */
+    --ink:          #6E3413;   /* cocoa ink                       */
+    --ink-soft:     rgba(110, 52, 19, .62);
+    --ink-faint:    rgba(110, 52, 19, .12);
+    --link:         #0E9594;   /* teal links                      */
+    --butter:       #FFD166;   /* butter accent                   */
+    --on-butter:    #6E3413;   /* text on butter — dark in both themes */
+    --tint:         #FFE1C4;   /* peach tint fills + header back layer + scallop */
+    --tint-2:       #FFF8EF;   /* second fan layer                */
+    --danger:       #C2452D;
+    --heart:        #E25563;
+    --font-head:    "DynaPuff", system-ui, sans-serif;
+    --font-body:    "Geist", system-ui, sans-serif;
+
+    /* derived fills */
+    --panel-hover:  #FFF6EB;
+    --row-bg:       #FFFBF5;
+    --butter-tint:  #FFE9B8;
+    --teal-tint:    #D8F0EF;
+    --teal-tint-hover: #E4F4F3;
+    --like-tint:    #FDE8DE;
+    --reserved-veil: rgba(255, 243, 230, .55);
+    --ghost-hover-bg: rgba(255, 253, 250, .6);
+
+    /* patterns */
+    --pattern-dot:    rgba(110, 52, 19, .13);
+    --pattern-line:   rgba(110, 52, 19, .09);
+    --pattern-stripe: rgba(110, 52, 19, .05);
+    --sprinkle-1: rgba(242, 116, 60, .28);
+    --sprinkle-2: rgba(255, 209, 102, .55);
+    --sprinkle-3: rgba(14, 149, 148, .22);
+
+    /* polaroid photo area stays light in BOTH themes */
+    --polaroid-bg:     #FFF3E6;
+    --polaroid-dot:    rgba(110, 52, 19, .12);
+    --polaroid-border: rgba(110, 52, 19, .16);
+
+    /* primary button recipe */
+    --btn-grad-top:    #F2743C;
+    --btn-grad-bottom: #D14B1F;
+    --btn-ring-top:    #FFAC7E;
+    --btn-ring-bottom: #6E3413;
+    --btn-under-color: rgba(110, 52, 19, .3);
+    --glow:       rgba(242, 116, 60, .35);
+    --glow-hover: rgba(242, 116, 60, .5);
+    --glow-pulse: rgba(242, 116, 60, .72);
+
+    /* footer */
+    --footer-bg:   #6E3413;
+    --footer-text: #FFE1C4;
+
+    /* 8px rhythm */
+    --s1: 8px;  --s2: 16px; --s3: 24px; --s4: 32px;
+    --s5: 40px; --s6: 48px; --s8: 64px; --s11: 88px;
+
+    --r-panel: 16px;   /* panels & modals   */
+    --r-btn:   7px;    /* buttons           */
+    --border-w: 2.5px;
+
+    --container: 1200px;
+    --grid-gap: 32px;
+
+    --shadow-sticker: 4px 4px 0 rgba(110, 52, 19, .16);
+    --shadow-lift:          7px 9px 0 rgba(110, 52, 19, .2);
+    --shadow-lift-reserved: 5px 6px 0 rgba(110, 52, 19, .19);
+    --seg-shadow: 2px 2px 0 rgba(110, 52, 19, .15);
+    --cake-shadow: rgba(110, 52, 19, .2);
+    --shadow-glow: 0 6px 20px var(--glow);
+  }
+
+  /* ------------------------------------------------- „cocoa night" dark mode */
+  [data-theme="dark"] {
+    --surface:   #2A1509;
+    --panel:     #3A2113;
+    --ink:       #FFE9D1;
+    --ink-soft:  rgba(255, 233, 209, .62);
+    --ink-faint: rgba(255, 233, 209, .16);
+    --brand:     #FF8A50;
+    --link:      #3FC9C4;
+    --tint:      #4A2B18;   /* header back layer + scallop + tint fills */
+    --tint-2:    #34200F;
+    --heart:     #FF8A94;
+
+    --panel-hover: #4A2B18;
+    --row-bg:      #452817;
+    --butter-tint: #5C400E;
+    --teal-tint:   #123B3A;
+    --teal-tint-hover: #0F4645;
+    --like-tint:   #55231C;
+    --ghost-hover-bg: rgba(58, 33, 19, .6);
+
+    --pattern-dot:    rgba(255, 233, 209, .10);
+    --pattern-line:   rgba(255, 233, 209, .08);
+    --pattern-stripe: rgba(255, 233, 209, .05);
+    --sprinkle-1: rgba(255, 138, 80, .30);
+    --sprinkle-2: rgba(255, 209, 102, .35);
+    --sprinkle-3: rgba(63, 201, 196, .25);
+
+    /* polaroid photo stays light — only its frame border adapts */
+    --polaroid-border: rgba(255, 233, 209, .28);
+
+    --btn-grad-top:    #FF8A50;
+    --btn-grad-bottom: #D9541F;
+    --btn-ring-top:    #FFB98F;
+    --btn-ring-bottom: #1C0D04;
+    --btn-under-color: rgba(0, 0, 0, .45);
+    --glow:       rgba(255, 138, 80, .35);
+    --glow-hover: rgba(255, 138, 80, .5);
+    --glow-pulse: rgba(255, 138, 80, .7);
+
+    --footer-bg: #1C0D04;
+
+    --shadow-sticker: 4px 4px 0 rgba(0, 0, 0, .4);
+    --shadow-lift:          7px 9px 0 rgba(0, 0, 0, .45);
+    --shadow-lift-reserved: 5px 6px 0 rgba(0, 0, 0, .42);
+    --seg-shadow: 2px 2px 0 rgba(0, 0, 0, .35);
+    --cake-shadow: rgba(0, 0, 0, .4);
+  }
+
+  /* ---------------------------------------------------------------- reset */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--ink);
+    background: var(--surface);
+    overflow-x: hidden;
+  }
+  img, svg { display: block; }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.15; color: var(--ink); }
+  button { font-family: var(--font-body); cursor: pointer; }
+
+  :focus-visible {
+    outline: 3px dashed var(--ink);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  .container { max-width: var(--container); margin-inline: auto; padding-inline: var(--s3); }
+
+  /* ------------------------------------------------------- bg patterns */
+  .bg-dots {
+    background-image: radial-gradient(var(--pattern-dot) 1.5px, transparent 1.6px);
+    background-size: 24px 24px;
+  }
+  .bg-ruled {
+    background-image: repeating-linear-gradient(
+      transparent 0 34px, var(--pattern-line) 34px 35px);
+  }
+  .bg-stripes {
+    background-image: repeating-linear-gradient(
+      -45deg, var(--pattern-stripe) 0 14px, transparent 14px 30px);
+  }
+
+  /* ------------------------------------------------------------ buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: var(--s1);
+    font-weight: 600; font-size: 16px; text-decoration: none;
+    padding: 12px 22px; border-radius: var(--r-btn);
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+    border: var(--border-w) solid transparent;
+  }
+  .btn:active { transform: translateY(2px) scale(.98); }
+
+  .btn-primary {
+    color: #fff;
+    background:
+      linear-gradient(180deg, var(--btn-grad-top), var(--btn-grad-bottom)) padding-box,
+      linear-gradient(180deg, var(--btn-ring-top), var(--btn-ring-bottom)) border-box;
+    box-shadow: var(--shadow-glow), 0 2px 0 var(--btn-under-color);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px var(--glow-hover), 0 3px 0 var(--btn-under-color);
+  }
+  .btn-secondary {
+    color: var(--ink);
+    background: var(--panel);
+    border-color: var(--ink);
+    box-shadow: var(--shadow-sticker);
+  }
+  .btn-secondary:hover { background: var(--panel-hover); transform: translateY(-2px); }
+
+  .btn-small { padding: 8px 14px; font-size: 14px; }
+
+  /* --------------------------------------------------------- sticker panel */
+  .sticker {
+    background: var(--panel);
+    border: var(--border-w) solid var(--ink);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-sticker);
+  }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600;
+    padding: 4px 12px; border-radius: 999px;
+    border: 2px solid var(--ink);
+    background: var(--panel);
+    white-space: nowrap;
+  }
+  .chip-filled { background: var(--brand); border-color: var(--ink); color: #fff; }
+  .chip-mint   { background: var(--surface); }
+
+  /* ---------------------------------------------------------- view switch */
+  .view-switch {
+    position: fixed; bottom: 20px; right: 20px; z-index: 90;
+    display: flex; gap: 6px; padding: 6px;
+    transform: rotate(-1deg);
+  }
+  .view-switch button {
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    background: transparent; border: 2px solid transparent;
+    border-radius: 9px; padding: 8px 14px;
+    transition: background-color .15s ease, transform .15s ease;
+  }
+  .view-switch button:hover { background: var(--surface); transform: translateY(-1px); }
+  .view-switch button[aria-pressed="true"] {
+    background: var(--brand); color: #fff; border-color: var(--ink);
+  }
+
+  .view { display: none; }
+  .view.is-active { display: block; }
+
+  /* ------------------------------------------------------------- doodles */
+  .doodle { color: var(--brand); pointer-events: none; }
+  .doodle-ink { color: var(--ink); }
+
+  .squiggle-wrap { position: relative; display: inline-block; white-space: nowrap; }
+  .squiggle-wrap svg {
+    position: absolute; left: 0; right: 0; bottom: -.28em; width: 100%; height: .35em;
+    color: var(--brand);
+  }
+  .squiggle-path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+
+  /* ------------------------------------------------------------- landing nav */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--panel);
+    border-bottom: var(--border-w) solid var(--ink);
+  }
+  .nav-inner {
+    display: flex; align-items: center; gap: var(--s3);
+    padding-block: 14px;
+  }
+  .wordmark {
+    font-family: var(--font-head); font-size: 22px; font-weight: 700;
+    color: var(--ink); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .wordmark .mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(180deg, var(--btn-grad-top), var(--btn-grad-bottom));
+    border: 2px solid var(--ink);
+    display: grid; place-items: center; font-size: 17px;
+    transform: rotate(-4deg);
+  }
+  .nav-links { display: flex; gap: var(--s3); margin-left: var(--s2); }
+  .nav-links a {
+    color: var(--ink); text-decoration: none; font-weight: 500; font-size: 15px;
+    border-bottom: 2px solid transparent;
+  }
+  .nav-links a:hover { border-bottom-color: var(--brand); }
+  .nav-actions { margin-left: auto; display: flex; gap: var(--s2); align-items: center; }
+  .nav-login { color: var(--ink); font-weight: 600; text-decoration: none; font-size: 15px; }
+  .nav-login:hover { text-decoration: underline; text-decoration-thickness: 2px; }
+
+  /* ------------------------------------------------------------------ hero */
+  .hero { position: relative; padding-block: var(--s11) 96px; }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.05fr .95fr;
+    gap: var(--s6); align-items: center;
+  }
+  .hero-badges { display: flex; gap: var(--s2); flex-wrap: wrap; margin-bottom: var(--s3); }
+  .hero-badges .chip { transform: rotate(-1.5deg); }
+  .hero-badges .chip:last-child { transform: rotate(1.2deg); }
+  .hero h1 { font-size: clamp(34px, 5vw, 54px); margin-bottom: var(--s3); }
+  .hero-sub { font-size: 18px; color: var(--ink-soft); max-width: 46ch; margin-bottom: var(--s4); }
+  .hero-ctas { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+  .hero-helper { margin-top: var(--s2); font-size: 14px; color: var(--ink-soft); display: flex; gap: 6px; align-items: center; }
+
+  .hero-arrow {
+    position: absolute; margin-top: 6px;
+    transform: translate(450px, -12px) rotate(12deg);
+    width: 90px;
+  }
+
+  /* ----------------------------------------------------- fan (stacked) card
+     Kept ONLY for the two small isolated cards (hero mock + kid card),
+     with softened angles so back layers never stray far. */
+  .fan { position: relative; z-index: 0; }
+  .fan::before, .fan::after {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    background: var(--panel);
+    border: var(--border-w) solid var(--ink);
+    transition: transform .28s cubic-bezier(.34,1.56,.64,1);
+  }
+  .fan::before { transform: rotate(-1.6deg); background: var(--tint); }
+  .fan::after  { transform: rotate(1.3deg);  background: var(--tint-2); }
+  .fan:hover::before, .fan:focus-within::before { transform: rotate(-3deg) translateY(2px); }
+  .fan:hover::after,  .fan:focus-within::after  { transform: rotate(2.6deg) translateY(-2px); }
+  .fan-face {
+    position: relative;
+    background: var(--panel);
+    border: var(--border-w) solid var(--ink);
+    /* fan cards keep square corners */
+  }
+
+  /* hero product mock */
+  .mock { max-width: 430px; margin-inline: auto; }
+  .mock-face { padding: var(--s3); }
+  .mock-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
+  .mock-title { font-family: var(--font-head); font-size: 19px; }
+  .mock-rows { display: grid; gap: 10px; }
+  .mock-row {
+    display: flex; align-items: center; gap: 12px;
+    border: 2px solid var(--ink-faint); border-radius: 10px;
+    padding: 9px 12px; background: var(--row-bg);
+  }
+  .mock-emoji {
+    width: 38px; height: 38px; flex: none; font-size: 20px;
+    display: grid; place-items: center;
+    background: var(--surface); border: 2px solid var(--ink); border-radius: 9px;
+  }
+  .mock-row-name { font-weight: 600; font-size: 14px; }
+  .mock-row-price { font-size: 12.5px; color: var(--ink-soft); }
+  .mock-row .chip { margin-left: auto; font-size: 11.5px; padding: 2px 9px; }
+  .mock-note {
+    position: relative; margin: 18px -8px -34px auto; max-width: 250px;
+    background: var(--tint); border: var(--border-w) solid var(--ink);
+    border-radius: 12px; padding: 10px 14px;
+    font-size: 13.5px; font-weight: 600;
+    transform: rotate(-2deg);
+    box-shadow: var(--shadow-sticker);
+  }
+
+  /* -------------------------------------------------------------- sections */
+  .section { padding-block: 92px; position: relative; }
+  .section-head { text-align: center; max-width: 640px; margin-inline: auto; margin-bottom: var(--s6); }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--brand); margin-bottom: var(--s2);
+  }
+  .section-head h2 { font-size: clamp(28px, 3.6vw, 40px); }
+  .section-head p { margin-top: var(--s2); color: var(--ink-soft); font-size: 17px; }
+
+  /* --------------------------------------------------- pro někoho jiného */
+  .someone { background: var(--panel); border-block: var(--border-w) solid var(--ink); }
+  .someone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s6); align-items: center; }
+  .someone h2 { font-size: clamp(28px, 3.4vw, 38px); margin-bottom: var(--s3); }
+  .someone-list { list-style: none; display: grid; gap: 14px; margin-top: var(--s3); }
+  .someone-list li { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; }
+  .someone-list .tick {
+    flex: none; width: 26px; height: 26px; margin-top: 1px;
+    background: var(--brand); color: #fff; border: 2px solid var(--ink);
+    border-radius: 8px; display: grid; place-items: center; font-size: 14px; font-weight: 800;
+    transform: rotate(-3deg);
+  }
+  .someone-list li:nth-child(2) .tick { transform: rotate(2deg); }
+  .someone-list li:nth-child(3) .tick { transform: rotate(-1deg); }
+
+  .segmented {
+    display: flex; gap: 4px; padding: 5px;
+    background: var(--surface); border: var(--border-w) solid var(--ink); border-radius: 12px;
+    width: fit-content; margin-bottom: var(--s3);
+  }
+  .segmented span {
+    padding: 9px 18px; font-size: 15px; font-weight: 600; border-radius: 8px;
+    color: var(--ink-soft); border: 2px solid transparent;
+  }
+  .segmented .seg-active {
+    background: var(--panel); color: var(--ink); border-color: var(--ink);
+    box-shadow: var(--seg-shadow);
+  }
+
+  .kid-card { max-width: 380px; }
+  .kid-face { padding: var(--s3); }
+  .kid-for { font-size: 15px; color: var(--ink-soft); }
+  .kid-for strong { font-family: var(--font-head); font-size: 24px; color: var(--ink); font-weight: 600; }
+  .kid-title { font-family: var(--font-head); font-size: 19px; margin-top: 4px; }
+  .kid-managers { display: flex; align-items: center; gap: 10px; margin-top: var(--s2); }
+  .avatars { display: flex; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--ink);
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 800; color: var(--ink);
+  }
+  .avatar + .avatar { margin-left: -8px; background: var(--tint); }
+  .kid-managers p { font-size: 13.5px; color: var(--ink-soft); }
+  .kid-progress { margin-top: var(--s2); border-top: 2px dashed var(--ink-faint); padding-top: var(--s2);
+    display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------------------------------------------------------------- steps */
+  .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--grid-gap); }
+  .step { padding: var(--s3); position: relative; transition: transform .2s ease; }
+  .step:hover { transform: translateY(-4px) rotate(-.4deg); }
+  .step-num {
+    font-family: var(--font-head); font-size: 34px; font-weight: 700; color: var(--brand);
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .step h3 { font-size: 19px; margin-bottom: 8px; }
+  .step p { font-size: 14.5px; color: var(--ink-soft); }
+  .step:nth-child(odd)  { transform: rotate(-.6deg); }
+  .step:nth-child(even) { transform: rotate(.5deg); }
+  .step:nth-child(odd):hover  { transform: rotate(-.6deg) translateY(-4px); }
+  .step:nth-child(even):hover { transform: rotate(.5deg) translateY(-4px); }
+
+  /* -------------------------------------------------------------- features */
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--grid-gap); }
+  .feature { padding: var(--s3); display: flex; flex-direction: column; gap: var(--s2); }
+  .feature h3 { font-size: 20px; }
+  .feature > p { font-size: 14.5px; color: var(--ink-soft); }
+  .feature-demo {
+    margin-top: auto; background: var(--surface); border: 2px solid var(--ink);
+    border-radius: 12px; padding: 14px; display: grid; gap: 10px;
+  }
+  .peek-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .peek-label { font-weight: 700; width: 96px; flex: none; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .peek-gift {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 8px; padding: 6px 10px;
+  }
+  .peek-gift .chip { margin-left: auto; font-size: 10.5px; padding: 2px 8px; }
+  .chip-hidden { filter: blur(3.5px); opacity: .75; }
+
+  .share-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 999px;
+    padding: 8px 8px 8px 16px; font-size: 13.5px; font-weight: 600;
+  }
+  .share-pill button {
+    margin-left: auto; border: 2px solid var(--ink); background: var(--brand); color: #fff;
+    font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px;
+    transition: transform .15s ease;
+  }
+  .share-pill button:hover { transform: scale(1.06); }
+  .share-icons { display: flex; gap: 10px; justify-content: center; }
+  .share-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--panel); border: 2px solid var(--ink);
+    display: grid; place-items: center; color: var(--ink);
+    transition: transform .18s ease, background-color .18s ease;
+  }
+  .share-icon:hover { transform: translateY(-3px) rotate(-4deg); background: var(--tint); }
+
+  .themes-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .theme-swatch {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; padding: 6px 12px;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 10px;
+    transition: transform .15s ease;
+  }
+  .theme-swatch:hover { transform: rotate(-2deg) scale(1.05); }
+
+  /* --------------------------------------------------------------- big CTA */
+  .bigcta { text-align: center; }
+  .bigcta-card {
+    position: relative; max-width: 720px; margin-inline: auto;
+    padding: var(--s8) var(--s5);
+  }
+  .bigcta h2 { font-size: clamp(30px, 4vw, 42px); margin-bottom: var(--s2); }
+  .bigcta p { color: var(--ink-soft); font-size: 17px; margin-bottom: var(--s4); }
+  .free-sticker {
+    position: absolute; top: -22px; right: -14px;
+    background: var(--butter); color: var(--on-butter);
+    border: var(--border-w) solid var(--ink); border-radius: 999px;
+    font-family: var(--font-head); font-size: 15px;
+    padding: 10px 18px; transform: rotate(6deg);
+    box-shadow: var(--shadow-sticker);
+  }
+
+  /* ---------------------------------------------------------------- footer */
+  .footer {
+    background: var(--footer-bg); color: var(--footer-text);
+    border-top: var(--border-w) solid var(--footer-bg);
+    padding-block: var(--s6);
+    position: relative; overflow: hidden;
+  }
+  .footer-inner { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+  .footer .wordmark { color: #fff; }
+  .footer .wordmark .mark { border-color: var(--footer-text); }
+  .footer p { font-size: 14.5px; opacity: .85; }
+  .footer a.gh {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+    color: #fff; font-weight: 600; font-size: 14.5px; text-decoration: none;
+    border: 2px solid var(--footer-text); border-radius: var(--r-btn); padding: 8px 14px;
+    transition: background-color .15s ease, transform .15s ease;
+  }
+  .footer a.gh:hover { background: rgba(255,225,196,.15); transform: translateY(-2px); }
+  .footer a.gh:focus-visible { outline-color: var(--footer-text); }
+  .footer-doodle { position: absolute; opacity: .18; }
+
+  /* =================================================================== */
+  /* ============================ WISHLIST VIEW ======================== */
+  /* =================================================================== */
+
+  .appnav {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--panel); border-bottom: var(--border-w) solid var(--ink);
+  }
+  .appnav-inner { display: flex; align-items: center; gap: var(--s4); padding-block: 12px; }
+  .apptabs { display: flex; gap: 4px; }
+  .apptab {
+    font-size: 14.5px; font-weight: 600; color: var(--ink-soft);
+    text-decoration: none; padding: 8px 14px; border-radius: 9px;
+    border: 2px solid transparent;
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .apptab:hover { background: var(--surface); color: var(--ink); }
+  .apptab.is-active { background: var(--surface); color: var(--ink); border-color: var(--ink); }
+  .appnav .avatar { margin-left: auto; width: 36px; height: 36px; background: var(--brand); color: #fff; }
+
+  /* wishlist header — static „cupcake liner" panel: NO hover animation.
+     Depth = one non-rotated back layer, pure translate offset. */
+  .wl-banner { padding-block: var(--s6) 0; position: relative; }
+  .wl-header { position: relative; z-index: 0; }
+  .wl-header::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    transform: translate(10px, 10px);
+    background: var(--tint);
+    border: var(--border-w) solid var(--ink);
+  }
+  .wl-header-face {
+    background: var(--panel);
+    border: var(--border-w) solid var(--ink);
+    padding: var(--s4) var(--s5) calc(var(--s4) + 12px);
+    position: relative; overflow: hidden;
+  }
+  /* scalloped cupcake-liner bottom edge */
+  .wl-header-face::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 14px;
+    background-image: radial-gradient(circle at 10px 0, var(--tint) 8px, transparent 8.6px);
+    background-size: 20px 14px;
+    background-repeat: repeat-x;
+    pointer-events: none;
+  }
+  /* sprinkles: tiny candy dots in butter / tangerine / teal */
+  .wl-header-sprinkles {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(var(--sprinkle-1) 2px, transparent 2.5px),
+      radial-gradient(var(--sprinkle-2) 2px, transparent 2.5px),
+      radial-gradient(var(--sprinkle-3) 1.8px, transparent 2.3px);
+    background-size: 48px 48px, 40px 40px, 56px 56px;
+    background-position: 0 0, 21px 14px, 9px 31px;
+  }
+  .wl-for { font-size: 17px; color: var(--ink-soft); font-weight: 400; }
+  .wl-for strong { font-family: var(--font-head); font-weight: 600; font-size: 26px; color: var(--ink); }
+  .wl-title { font-size: clamp(28px, 4vw, 42px); margin-top: 2px; }
+  .wl-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: var(--s2); }
+  .wl-managers { font-size: 14px; color: var(--ink-soft); }
+  .wl-actions { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); position: relative; }
+  .wl-cake {
+    position: absolute; right: 34px; top: 24px; font-size: 64px;
+    transform: rotate(8deg); filter: drop-shadow(3px 3px 0 var(--cake-shadow));
+  }
+
+  .disclosure {
+    margin-top: var(--s3);
+    display: flex; gap: 12px; align-items: center;
+    background: var(--tint); border: var(--border-w) solid var(--ink); border-radius: 12px;
+    padding: 12px 18px; font-size: 14.5px; font-weight: 600;
+    transform: rotate(-.35deg);
+  }
+  .disclosure .eye {
+    flex: none; width: 34px; height: 34px; font-size: 17px;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 50%;
+    display: grid; place-items: center; transform: rotate(4deg);
+  }
+
+  /* toolbar */
+  .toolbar {
+    margin-top: var(--s3);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px;
+  }
+  .viewmode { display: flex; gap: 4px; background: var(--surface); border: 2px solid var(--ink); border-radius: 9px; padding: 3px; }
+  .viewmode button {
+    border: 2px solid transparent; background: transparent; color: var(--ink-soft);
+    border-radius: 6px; padding: 5px 8px; display: grid; place-items: center;
+    transition: background-color .15s ease;
+  }
+  .viewmode button:hover { color: var(--ink); }
+  .viewmode button[aria-pressed="true"] { background: var(--panel); border-color: var(--ink); color: var(--ink); }
+  .toolbar select {
+    font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--ink);
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 9px; padding: 7px 10px;
+  }
+  .filter-chip {
+    font-size: 13.5px; font-weight: 600; color: var(--ink);
+    background: var(--surface); border: 2px solid var(--ink); border-radius: 999px;
+    padding: 7px 14px; transition: background-color .15s ease, transform .15s ease;
+  }
+  .filter-chip:hover { transform: translateY(-1px); }
+  .filter-chip[aria-pressed="true"] { background: var(--brand); color: #fff; }
+  .toolbar .spacer { flex: 1; }
+
+  /* ------------------------------------------------------------ gift grid */
+  .gifts { padding-block: var(--s5) 110px; }
+  .gift-grid {
+    display: grid; gap: var(--grid-gap);
+    grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+    padding-top: var(--s2);
+  }
+
+  /* gift cards — „polaroid straighten": rest at a tiny alternating tilt,
+     hover straightens + lifts. Uses the standalone `rotate` property so the
+     entrance animation (transform) never fights the rest tilt. Everything
+     stays inside the card's own footprint. */
+  .gift {
+    --tilt: -0.9deg;
+    position: relative;
+    background: var(--panel);
+    border: var(--border-w) solid var(--ink);
+    box-shadow: var(--shadow-sticker);
+    rotate: var(--tilt);
+    transition:
+      rotate .32s cubic-bezier(.34,1.45,.64,1),
+      transform .32s cubic-bezier(.34,1.45,.64,1),
+      box-shadow .32s ease;
+  }
+  .gift:nth-child(even) { --tilt: 0.8deg; }
+  .gift:hover, .gift:focus-within {
+    rotate: 0deg;
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+  /* reserved card keeps its rest tilt — only the shadow answers the hover */
+  .gift-reserved:hover, .gift-reserved:focus-within {
+    rotate: var(--tilt);
+    transform: none;
+    box-shadow: var(--shadow-lift-reserved);
+  }
+
+  .gift-face { display: flex; flex-direction: column; height: 100%; }
+  /* polaroid frame: white padding around the photo + inner border */
+  .gift-img {
+    position: relative; height: 118px; overflow: hidden;
+    margin: 12px 12px 0;
+    border: 2px solid var(--polaroid-border);
+    border-radius: 4px;
+    background-image: radial-gradient(var(--polaroid-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px; background-color: var(--polaroid-bg);
+    display: grid; place-items: center;
+  }
+  .gift-img .emoji { font-size: 52px; filter: drop-shadow(2px 3px 0 rgba(110,52,19,.18)); transition: transform .25s ease; }
+  .gift:hover .gift-img .emoji { transform: scale(1.12) rotate(-5deg); }
+
+  .gift-body { padding: 14px 16px 12px; display: grid; gap: 7px; }
+  .gift-name { font-size: 17px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .qty { font-family: var(--font-body); font-size: 12.5px; font-weight: 700; color: var(--ink-soft);
+    border: 2px solid var(--ink-faint); border-radius: 6px; padding: 0 6px; }
+  .gift-price { font-size: 15px; font-weight: 700; }
+  .gift-price.muted { color: var(--ink-soft); font-weight: 500; font-style: italic; }
+  .gift-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--panel);
+  }
+  .tag-priority { background: var(--butter-tint); transform: rotate(-1.5deg); }
+  .tag-edited   { background: var(--teal-tint); transform: rotate(1deg); }
+  .tag-received { background: var(--brand); color: #fff; }
+  .tag-link {
+    background: var(--panel); color: var(--link); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .tag-link:hover { background: var(--teal-tint-hover); }
+
+  .gift-foot {
+    margin-top: auto; display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 14px;
+  }
+  .like {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 14px; font-weight: 700; color: var(--ink);
+    background: transparent; border: 2px solid transparent; border-radius: 8px; padding: 5px 8px;
+    transition: transform .15s ease, background-color .15s ease;
+  }
+  .like:hover { background: var(--like-tint); transform: scale(1.08); }
+  .like .heart { color: var(--heart); font-size: 15px; }
+  .gift-foot .btn { margin-left: auto; }
+  .availability { margin-left: auto; text-align: right; display: grid; gap: 4px; justify-items: end; }
+  .availability small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+
+  /* reserved overlay */
+  .gift-reserved .gift-img::after {
+    content: ""; position: absolute; inset: 0;
+    background: var(--reserved-veil);
+  }
+  .reserved-sticker {
+    position: absolute; z-index: 2;
+    background: var(--panel); border: var(--border-w) solid var(--ink); border-radius: 10px;
+    font-weight: 800; font-size: 14px; padding: 7px 14px;
+    transform: rotate(-6deg);
+    box-shadow: var(--shadow-sticker);
+    display: grid; gap: 0; justify-items: center;
+  }
+  .reserved-sticker small { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+  .gift-reserved .gift-face { opacity: .92; }
+  .reserved-label { margin-left: auto; font-size: 13.5px; font-weight: 700; color: var(--ink-soft); }
+
+  .received-sticker {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    background: var(--brand); color: #fff; border: 2px solid var(--ink); border-radius: 999px;
+    font-size: 11.5px; font-weight: 800; padding: 3px 10px; transform: rotate(4deg);
+  }
+
+  /* ghost add card */
+  .ghost-add {
+    border: 3px dashed var(--ink-soft); border-radius: 4px;
+    display: grid; place-items: center; text-align: center;
+    min-height: 280px; color: var(--ink-soft); text-decoration: none;
+    background: transparent;
+    transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+  }
+  .ghost-add:hover { border-color: var(--ink); background: var(--ghost-hover-bg); transform: translateY(-3px); color: var(--ink); }
+  .ghost-add .plus { font-family: var(--font-head); font-size: 44px; line-height: 1; }
+  .ghost-add span { font-weight: 600; font-size: 15px; }
+
+  /* ------------------------------------------------------------ animations */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      0%   { opacity: 0; transform: translateY(16px) scale(.96); }
+      70%  { transform: translateY(-3px) scale(1.01); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes bob {
+      from { transform: translateY(0) rotate(var(--rot, 0deg)); }
+      to   { transform: translateY(-8px) rotate(var(--rot, 0deg)); }
+    }
+    @keyframes drawIn { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+    @keyframes glowPulse {
+      0%, 100% { box-shadow: 0 10px 26px var(--glow-hover), 0 3px 0 var(--btn-under-color); }
+      50%      { box-shadow: 0 10px 34px var(--glow-pulse), 0 3px 0 var(--btn-under-color); }
+    }
+
+    .reveal { animation: fadeUp .6s ease backwards; }
+    .reveal-2 { animation-delay: .12s; } .reveal-3 { animation-delay: .24s; }
+    .reveal-4 { animation-delay: .36s; } .reveal-5 { animation-delay: .48s; }
+
+    .gift-grid > * { animation: popIn .5s cubic-bezier(.34,1.4,.64,1) backwards; }
+    .gift-grid > :nth-child(1) { animation-delay: .04s; }
+    .gift-grid > :nth-child(2) { animation-delay: .09s; }
+    .gift-grid > :nth-child(3) { animation-delay: .14s; }
+    .gift-grid > :nth-child(4) { animation-delay: .19s; }
+    .gift-grid > :nth-child(5) { animation-delay: .24s; }
+    .gift-grid > :nth-child(6) { animation-delay: .29s; }
+    .gift-grid > :nth-child(7) { animation-delay: .34s; }
+    .gift-grid > :nth-child(8) { animation-delay: .39s; }
+    .gift-grid > :nth-child(9) { animation-delay: .44s; }
+
+    .steps-grid > *, .features-grid > * { animation: popIn .55s cubic-bezier(.34,1.4,.64,1) backwards; }
+    .steps-grid > :nth-child(2), .features-grid > :nth-child(2) { animation-delay: .1s; }
+    .steps-grid > :nth-child(3), .features-grid > :nth-child(3) { animation-delay: .2s; }
+    .steps-grid > :nth-child(4) { animation-delay: .3s; }
+
+    .doodle-bob { animation: bob 3.6s ease-in-out infinite alternate; }
+    .doodle-bob-slow { animation: bob 5s ease-in-out infinite alternate; }
+    .squiggle-path { stroke-dashoffset: 1; animation: drawIn 1s ease .5s forwards; }
+    .btn-primary:hover { animation: glowPulse 1.4s ease-in-out infinite; }
+    .free-sticker { animation: bob 3s ease-in-out infinite alternate; --rot: 6deg; }
+  }
+
+  /* ------------------------------------------------------------ responsive */
+  @media (max-width: 960px) {
+    .hero-grid, .someone-grid { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: repeat(2, 1fr); }
+    .features-grid { grid-template-columns: 1fr; }
+    .hero { padding-block: var(--s8); }
+    .hero-arrow { display: none; }
+    .mock { margin-top: var(--s3); }
+    .wl-cake { display: none; }
+  }
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .apptabs { display: none; }
+    .mock-note { margin-right: 0; }
+    .wl-header-face { padding: var(--s3) var(--s3) calc(var(--s3) + 12px); }
+  }
+</style>
+
+<!-- ═══════════════════════════ VIEW SWITCHER ═══════════════════════════ -->
+<nav class="view-switch sticker" aria-label="Přepínač náhledů">
+  <button type="button" data-view="landing" aria-pressed="true">🏠 Úvod</button>
+  <button type="button" data-view="wishlist" aria-pressed="false">🎁 Seznam</button>
+  <button type="button" id="theme-toggle" aria-pressed="false" aria-label="Přepnout tmavý režim">🌙</button>
+</nav>
+
+<!-- ═══════════════════════════ LANDING VIEW ═══════════════════════════ -->
+<div class="view is-active" id="view-landing">
+
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="wordmark" href="#"><span class="mark">🎁</span>Přejeme si</a>
+      <div class="nav-links">
+        <a href="#jak-to-funguje">Jak to funguje</a>
+        <a href="#vyhody">Výhody</a>
+      </div>
+      <div class="nav-actions">
+        <a class="nav-login" href="#">Přihlásit se</a>
+        <a class="btn btn-primary btn-small" href="#">Vytvořit seznam</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero bg-dots">
+    <div class="container hero-grid">
+      <div>
+        <div class="hero-badges reveal">
+          <span class="chip chip-filled">✓ Žádný dárek dvakrát</span>
+          <span class="chip">🎄 Vánoce, narozeniny i výročí</span>
+        </div>
+        <h1 class="reveal reveal-2">Dárky, které si přejete.
+          <span class="squiggle-wrap">Přesto&nbsp;s&nbsp;překvapením.
+            <svg viewBox="0 0 220 14" preserveAspectRatio="none" aria-hidden="true">
+              <path class="squiggle-path" pathLength="1"
+                d="M3 10 C 20 2, 38 12, 55 7 S 90 2, 108 8 S 145 12, 162 6 S 200 4, 217 9"
+                fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </h1>
+        <p class="hero-sub reveal reveal-3">Sdílejte přání jedním odkazem. Rodina a přátelé si dárky rezervují, abyste nedostali stejný dárek dvakrát.</p>
+        <div class="hero-ctas reveal reveal-4">
+          <a class="btn btn-primary" href="#">Vytvořit seznam</a>
+          <a class="btn btn-secondary" href="#jak-to-funguje">Jak to funguje?</a>
+          <svg class="hero-arrow doodle doodle-bob" viewBox="0 0 100 60" aria-hidden="true">
+            <path d="M92 8 C 70 38, 40 50, 12 46" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+            <path d="M24 38 L 11 46 L 22 55" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="hero-helper reveal reveal-5">🤍 Rezervovat lze i bez účtu.</p>
+      </div>
+
+      <div class="mock fan reveal reveal-3">
+        <div class="fan-face mock-face">
+          <div class="mock-head">
+            <div>
+              <div class="mock-title">Přání pro Terezu</div>
+            </div>
+            <span class="chip chip-mint">🎂 Narozeniny</span>
+          </div>
+          <div class="mock-rows">
+            <div class="mock-row">
+              <span class="mock-emoji">🎧</span>
+              <div><div class="mock-row-name">Sluchátka Sony</div><div class="mock-row-price">1&nbsp;990&nbsp;Kč</div></div>
+              <span class="chip">Volné</span>
+            </div>
+            <div class="mock-row">
+              <span class="mock-emoji">🧦</span>
+              <div><div class="mock-row-name">Veselé ponožky</div><div class="mock-row-price">249&nbsp;Kč</div></div>
+              <span class="chip chip-filled">Rezervováno</span>
+            </div>
+            <div class="mock-row">
+              <span class="mock-emoji">📖</span>
+              <div><div class="mock-row-name">Kuchařka Deník Dity P.</div><div class="mock-row-price">449&nbsp;Kč</div></div>
+              <span class="chip">Volné</span>
+            </div>
+            <div class="mock-row">
+              <span class="mock-emoji">🪴</span>
+              <div><div class="mock-row-name">Monstera do obýváku</div><div class="mock-row-price">590&nbsp;Kč</div></div>
+              <span class="chip chip-filled">Rezervováno</span>
+            </div>
+          </div>
+        </div>
+        <p class="mock-note">🤫 Tereza rezervace nevidí.<br>Rodina a přátelé ano.</p>
+      </div>
+    </div>
+
+    <svg class="doodle doodle-bob-slow" style="position:absolute; top:70px; left:4%; width:34px; --rot:-10deg" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z" fill="currentColor"/>
+    </svg>
+    <svg class="doodle doodle-bob" style="position:absolute; bottom:120px; right:6%; width:22px; --rot:14deg" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z" fill="currentColor"/>
+    </svg>
+  </section>
+
+  <!-- ————— issue #99: seznam pro někoho jiného ————— -->
+  <section class="someone section bg-stripes">
+    <div class="container someone-grid">
+      <div>
+        <span class="eyebrow">✏️ Novinka</span>
+        <h2>Seznam i pro ty, kdo si ho sami nezaloží</h2>
+        <p style="color:var(--ink-soft); font-size:17px;">Založte seznam přání svému dítěti, babičce nebo komukoli, kdo se o něj nechce starat sám. Vy jste správce — obdarovaný jen dostává dárky.</p>
+        <ul class="someone-list">
+          <li><span class="tick">✓</span>Seznam založíte a spravujete vy — dítě žádný účet nepotřebuje.</li>
+          <li><span class="tick">✓</span>Jako správce vidíte rezervace, takže víte, co se už kupuje.</li>
+          <li><span class="tick">✓</span>Rodina rezervuje jako obvykle. Překvapení zůstane překvapením.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="segmented" role="img" aria-label="Volba při zakládání seznamu: Pro mě, nebo Pro někoho jiného">
+          <span>Pro mě</span>
+          <span class="seg-active">Pro někoho jiného 🧒</span>
+        </div>
+        <div class="kid-card fan">
+          <div class="fan-face kid-face">
+            <p class="kid-for">Pro <strong>Aničku</strong></p>
+            <p class="kid-title">Anička má narozeniny 🎂</p>
+            <div class="kid-managers">
+              <div class="avatars">
+                <span class="avatar">M</span><span class="avatar">T</span>
+              </div>
+              <p>Spravují máma a táta</p>
+            </div>
+            <div class="kid-progress">
+              <span>8 přání</span>
+              <span>🗓 14. září 2026</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ————— jak to funguje ————— -->
+  <section class="section bg-ruled" id="jak-to-funguje">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">📒 Jak to funguje</span>
+        <h2>Čtyři kroky k <span class="squiggle-wrap">překvapení
+          <svg viewBox="0 0 160 14" preserveAspectRatio="none" aria-hidden="true">
+            <path class="squiggle-path" pathLength="1"
+              d="M3 10 C 18 3, 33 12, 48 7 S 78 2, 95 8 S 130 11, 157 6"
+              fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg></span>
+        </h2>
+      </div>
+      <div class="steps-grid">
+        <div class="step sticker">
+          <div class="step-num">1. <span aria-hidden="true">📝</span></div>
+          <h3>Vytvořte seznam</h3>
+          <p>Pojmenujte ho, vyberte téma a přidejte datum oslavy, pokud chcete.</p>
+        </div>
+        <div class="step sticker">
+          <div class="step-num">2. <span aria-hidden="true">🎁</span></div>
+          <h3>Přidejte přání</h3>
+          <p>Vložte odkaz z e-shopu, nebo krátký popis s cenou.</p>
+        </div>
+        <div class="step sticker">
+          <div class="step-num">3. <span aria-hidden="true">🔗</span></div>
+          <h3>Sdílejte odkaz</h3>
+          <p>Pošlete ho rodině přes WhatsApp, Messenger, Telegram nebo e‑mail.</p>
+        </div>
+        <div class="step sticker">
+          <div class="step-num">4. <span aria-hidden="true">🤫</span></div>
+          <h3>Rezervace zůstanou skryté</h3>
+          <p>Rodina vidí, co je zabrané. Obdarovaný pořád jen svá přání.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ————— výhody ————— -->
+  <section class="section bg-dots" id="vyhody">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">⭐ Hlavní výhody</span>
+        <h2>Co řeší Přejeme si</h2>
+      </div>
+      <div class="features-grid">
+
+        <div class="feature sticker">
+          <h3>🙈 Skryté rezervace</h3>
+          <p>Obdarovaný nikdy nevidí, co už kdo zamluvil. Rodina ano — a nikdo nekoupí totéž.</p>
+          <div class="feature-demo">
+            <div class="peek-row">
+              <span class="peek-label">Anička vidí</span>
+              <span class="peek-gift">🧸 Plyšák <span class="chip chip-hidden">Rezervováno</span></span>
+            </div>
+            <div class="peek-row">
+              <span class="peek-label">Rodina vidí</span>
+              <span class="peek-gift">🧸 Plyšák <span class="chip chip-filled">Rezervováno</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature sticker">
+          <h3>🔗 Sdílení bez přihlašování</h3>
+          <p>Jeden odkaz stačí. Babička rezervuje bez registrace, jen se podepíše.</p>
+          <div class="feature-demo">
+            <div class="share-pill">prejemesi.cz/s/anicka‑9 <button type="button">Kopírovat</button></div>
+            <div class="share-icons">
+              <a class="share-icon" href="#" aria-label="Sdílet přes WhatsApp">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.6 8.6 0 0 1-3.9-.9L3 20l1.2-5.3a8.1 8.1 0 0 1-1-4A8.4 8.4 0 0 1 11.7 2.5a8.5 8.5 0 0 1 9.3 9Z"/><path d="M8.7 8.6c.3-.8.9-.8 1.2-.1l.5 1.1c.2.4 0 .9-.3 1.2 0 0 .5 1.6 2.6 2.6.4-.3.9-.5 1.3-.3l1.1.5c.7.3.7.9-.1 1.2-2.9 1.2-7.5-3.3-6.3-6.2Z" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <a class="share-icon" href="#" aria-label="Sdílet přes Messenger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a9.5 9.5 0 0 0-9.5 9.3c0 2.8 1.3 5.3 3.4 7v3.2l3-1.7c1 .3 2 .4 3.1.4A9.5 9.5 0 0 0 21.5 11 9.5 9.5 0 0 0 12 2Z"/><path d="m7 13.5 3.2-3.4 2.5 2.4 4.3-3.9-3.2 3.5-2.4-2.4L7 13.5Z" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <a class="share-icon" href="#" aria-label="Sdílet přes Telegram">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 3.5 2.9 10.7c-.9.4-.8 1 .1 1.3l4.6 1.5 1.8 5.4c.3.8.9.9 1.4.3l2.4-2.5 4.7 3.5c.7.4 1.3.2 1.5-.7l3-14.5c.2-1-.4-1.4-1-1.5Z"/><path d="m7.6 13.5 9.4-6.8-7.4 7.9-.3 3.2-1.7-4.3Z" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <a class="share-icon" href="#" aria-label="Sdílet e-mailem">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3.5 6.5 8.5 7 8.5-7"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature sticker">
+          <h3>🎨 Téma podle příležitosti</h3>
+          <p>Každý seznam může vypadat jinak — vánočně, narozeninově, nebo úplně po svém.</p>
+          <div class="feature-demo">
+            <div class="themes-row">
+              <span class="theme-swatch">🎁 Výchozí</span>
+              <span class="theme-swatch">🎄 Vánoce</span>
+              <span class="theme-swatch">🎂 Narozeniny</span>
+              <span class="theme-swatch">💍 Elegantní</span>
+              <span class="theme-swatch">🎉 Zábava</span>
+              <span class="theme-swatch">✨ Vlastní</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ————— závěrečné CTA ————— -->
+  <section class="section bigcta bg-stripes">
+    <div class="container">
+      <div class="bigcta-card sticker">
+        <span class="free-sticker">100% zdarma ✨</span>
+        <h2>Připravte seznam pro další oslavu</h2>
+        <p>Stačí pár přání a jeden odkaz. O to, aby se dárky neopakovaly, se postará Přejeme si.</p>
+        <a class="btn btn-primary" href="#">Vytvořit seznam</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <svg class="footer-doodle doodle-bob-slow" style="top:14px; right:8%; width:40px; color:var(--footer-text)" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 0 C13 7 17 11 24 12 C17 13 13 17 12 24 C11 17 7 13 0 12 C7 11 11 7 12 0 Z" fill="currentColor"/>
+    </svg>
+    <div class="container footer-inner">
+      <a class="wordmark" href="#"><span class="mark">🎁</span>Přejeme si</a>
+      <p>Osobní open-source projekt. Zdarma pro celou rodinu.</p>
+      <a class="gh" href="#">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════ WISHLIST VIEW ═══════════════════════════ -->
+<div class="view" id="view-wishlist">
+
+  <header class="appnav">
+    <div class="container appnav-inner">
+      <a class="wordmark" href="#"><span class="mark">🎁</span>Přejeme si</a>
+      <nav class="apptabs" aria-label="Hlavní navigace">
+        <a class="apptab" href="#">Moje seznamy</a>
+        <a class="apptab is-active" href="#" aria-current="page">Spravované</a>
+        <a class="apptab" href="#">Sledované</a>
+      </nav>
+      <span class="avatar" aria-label="Martin">M</span>
+    </div>
+  </header>
+
+  <section class="wl-banner bg-dots">
+    <div class="container">
+      <div class="wl-header">
+        <div class="wl-header-face">
+          <div class="wl-header-sprinkles" aria-hidden="true"></div>
+          <span class="wl-cake" aria-hidden="true">🎂</span>
+          <p class="wl-for reveal">Pro <strong>Aničku</strong></p>
+          <h1 class="wl-title reveal reveal-2">Anička má narozeniny 🎂</h1>
+          <div class="wl-meta reveal reveal-3">
+            <span class="chip chip-filled">Sdílený</span>
+            <span class="chip chip-mint">8 přání</span>
+            <span class="chip chip-mint">🗓 14. září 2026</span>
+            <span class="wl-managers">Spravují <strong>Martin</strong> a <strong>Jana</strong></span>
+          </div>
+          <div class="wl-actions reveal reveal-4">
+            <a class="btn btn-primary btn-small" href="#">Sdílet</a>
+            <a class="btn btn-secondary btn-small" href="#">Správci</a>
+            <a class="btn btn-secondary btn-small" href="#">Archivovat</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="disclosure reveal reveal-5">
+        <span class="eye" aria-hidden="true">👀</span>
+        Jako správce vidíte stav rezervací. Anička je neuvidí nikdy.
+      </div>
+
+      <div class="toolbar sticker">
+        <div class="viewmode" role="group" aria-label="Zobrazení">
+          <button type="button" aria-pressed="true" aria-label="Karty">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+          </button>
+          <button type="button" aria-pressed="false" aria-label="Řádky">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="2" width="14" height="2.6" rx="1"/><rect x="1" y="6.7" width="14" height="2.6" rx="1"/><rect x="1" y="11.4" width="14" height="2.6" rx="1"/></svg>
+          </button>
+        </div>
+        <label>
+          <span style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)">Řazení</span>
+          <select>
+            <option>Priorita</option>
+            <option>Cena: od nejnižší</option>
+            <option>Cena: od nejvyšší</option>
+            <option>Název</option>
+            <option>Datum přidání</option>
+          </select>
+        </label>
+        <button type="button" class="filter-chip" aria-pressed="false">Pouze dostupné</button>
+        <span class="spacer"></span>
+        <a class="btn btn-secondary btn-small" href="#">Import</a>
+        <a class="btn btn-primary btn-small" href="#">+ Přidat přání</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="gifts">
+    <div class="container gift-grid">
+
+      <!-- 1 · volné + priorita -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🚜</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">LEGO Technic bagr</h3>
+            <p class="gift-price">1&nbsp;899&nbsp;Kč</p>
+            <div class="gift-tags"><span class="tag tag-priority">⭐ Priorita · Vysoká</span></div>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 2 lidem"><span class="heart" aria-hidden="true">♥</span>2</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2 · plně rezervováno -->
+      <article class="gift gift-reserved">
+        <div class="gift-face">
+          <div class="gift-img">
+            <span class="emoji" aria-hidden="true">🧥</span>
+            <span class="reserved-sticker">✓ Rezervováno<small>rezervovala Babička</small></span>
+          </div>
+          <div class="gift-body">
+            <h3 class="gift-name">Zimní bunda (vel. 134)</h3>
+            <p class="gift-price">1&nbsp;249&nbsp;Kč</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 1 člověku"><span class="heart" aria-hidden="true">♥</span>1</button>
+            <span class="reserved-label">Zamluveno 🎉</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 3 · volné + odkaz -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">📚</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Kniha Harry Potter a Kámen mudrců</h3>
+            <p class="gift-price">349&nbsp;Kč</p>
+            <div class="gift-tags">
+              <a class="tag tag-link" href="#">🔗 knihydobrovsky.cz</a>
+            </div>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Zatím bez lajků"><span class="heart" aria-hidden="true">♥</span>0</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 4 · částečně rezervováno ×2 -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🎲</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Společenská hra Azul <span class="qty">×2</span></h3>
+            <p class="gift-price">799&nbsp;Kč</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 3 lidem"><span class="heart" aria-hidden="true">♥</span>3</button>
+            <span class="availability">
+              <small>Dostupné 1 z 2</small>
+              <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 5 · přijatý dárek, bez ceny -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img">
+            <span class="emoji" aria-hidden="true">🐉</span>
+            <span class="received-sticker">✓ Přijatý dárek</span>
+          </div>
+          <div class="gift-body">
+            <h3 class="gift-name">Plyšový drak</h3>
+            <p class="gift-price muted">Cena neuvedena</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 4 lidem"><span class="heart" aria-hidden="true">♥</span>4</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- 6 · upraveno po sdílení -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🛴</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Koloběžka</h3>
+            <p class="gift-price">2&nbsp;490&nbsp;Kč</p>
+            <div class="gift-tags"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 5 lidem"><span class="heart" aria-hidden="true">♥</span>5</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 7 · částečně rezervováno ×4 -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🌊</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Vstup do aquaparku <span class="qty">×4</span></h3>
+            <p class="gift-price">500&nbsp;Kč</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 2 lidem"><span class="heart" aria-hidden="true">♥</span>2</button>
+            <span class="availability">
+              <small>Dostupné 2 ze 4</small>
+              <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 8 · volné -->
+      <article class="gift">
+        <div class="gift-face">
+          <div class="gift-img"><span class="emoji" aria-hidden="true">🖍️</span></div>
+          <div class="gift-body">
+            <h3 class="gift-name">Pastelky Faber‑Castell 36&nbsp;ks</h3>
+            <p class="gift-price">289&nbsp;Kč</p>
+          </div>
+          <div class="gift-foot">
+            <button class="like" type="button" aria-label="Líbí se 1 člověku"><span class="heart" aria-hidden="true">♥</span>1</button>
+            <a class="btn btn-primary btn-small" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- ghost add -->
+      <a class="ghost-add" href="#">
+        <span>
+          <span class="plus">+</span><br>
+          <span>Přidat přání</span>
+        </span>
+      </a>
+
+    </div>
+  </section>
+</div>
+
+<script>
+  const views = { landing: document.getElementById("view-landing"),
+                  wishlist: document.getElementById("view-wishlist") };
+  const switchButtons = document.querySelectorAll(".view-switch button[data-view]");
+
+  switchButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.view;
+      switchButtons.forEach(b => b.setAttribute("aria-pressed", String(b === button)));
+      for (const [name, el] of Object.entries(views)) {
+        el.classList.toggle("is-active", name === target);
+      }
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  });
+
+  const themeToggle = document.getElementById("theme-toggle");
+  themeToggle.addEventListener("click", () => {
+    const dark = document.documentElement.getAttribute("data-theme") !== "dark";
+    if (dark) document.documentElement.setAttribute("data-theme", "dark");
+    else document.documentElement.removeAttribute("data-theme");
+    themeToggle.setAttribute("aria-pressed", String(dark));
+    themeToggle.textContent = dark ? "☀️" : "🌙";
+  });
+</script>

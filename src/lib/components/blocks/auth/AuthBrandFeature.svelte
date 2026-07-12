@@ -10,6 +10,7 @@
 	let { icon: Icon, title, description }: AuthBrandFeatureProps = $props();
 </script>
 
+<!-- Anime-sky tick row (`anime-auth.html` brand values): tilted brand square + ink text. -->
 <div class="brand-feature-item">
 	<div class="brand-feature-icon" aria-hidden="true">
 		<Icon class="size-4" />
@@ -23,26 +24,29 @@
 <style>
 	.brand-feature-item {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: var(--space-3);
 		text-align: left;
 	}
 
 	.brand-feature-icon {
-		width: 32px;
-		height: 32px;
-		border-radius: var(--radius-md);
-		background: oklch(from white l c h / 14%);
+		width: 30px;
+		height: 30px;
+		margin-top: 2px;
+		border-radius: 8px;
+		background: var(--primary);
+		border: 2px solid var(--ink);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: white;
+		color: var(--primary-foreground);
 		flex-shrink: 0;
+		transform: rotate(-3deg);
 	}
 
 	.brand-feature-text {
 		font-size: var(--text-sm);
-		color: white;
+		color: var(--ink);
 		line-height: var(--leading-snug);
 	}
 
@@ -52,7 +56,7 @@
 	}
 
 	.brand-feature-text span {
-		opacity: 0.75;
+		color: var(--ink-soft);
 		font-size: var(--text-xs);
 	}
 </style>

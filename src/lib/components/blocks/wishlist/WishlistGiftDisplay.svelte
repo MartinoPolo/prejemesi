@@ -6,55 +6,45 @@
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
 	import type { GiftByRole, GiftForVisitor, GiftViewMode } from '$lib/modules/gifts/types.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 	interface WishlistGiftDisplayProps {
 		gifts: GiftByRole[];
 		role: WishlistRole;
 		isArchived: boolean;
-		isOwner: boolean;
-		isOwnerOrModerator: boolean;
 		viewMode: GiftViewMode;
 		isLoading?: boolean;
 		isEmpty: boolean;
 		isFilteredEmpty: boolean;
-		draggedIndex: number | null;
-		dragOverIndex: number | null;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onaddgift: () => void;
 		onclearfilters: () => void;
-		ondragstart: (event: DragEvent, index: number) => void;
-		ondragover: (event: DragEvent, index: number) => void;
-		ondragleave: () => void;
-		ondrop: (event: DragEvent, index: number) => void;
-		ondragend: () => void;
+		onreorder: (fromIndex: number, toIndex: number) => void;
 	}
 
 	let {
 		gifts,
 		role,
 		isArchived,
-		isOwner,
-		isOwnerOrModerator,
 		viewMode,
 		isLoading = false,
 		isEmpty,
 		isFilteredEmpty,
-		draggedIndex,
-		dragOverIndex,
 		onedit,
 		onreserve,
 		onunreserve,
 		onaddgift,
 		onclearfilters,
-		ondragstart,
-		ondragover,
-		ondragleave,
-		ondrop,
-		ondragend,
+		onreorder,
 	}: WishlistGiftDisplayProps = $props();
+
+	// Management affordances (add/edit/reorder) open to recipient OR správce.
+	const canManage = $derived(canManageWishlist(role));
+	// The recipient (person the list is for) never sees the like/reserve columns — their own surprise.
+	const isRecipient = $derived(role === WISHLIST_ROLES.recipient);
 </script>
 
 {#if isLoading}
@@ -68,48 +58,36 @@
 		{/each}
 	</div>
 {:else if isEmpty || isFilteredEmpty}
-	<WishlistEmptyState {isArchived} {isOwner} {isFilteredEmpty} {onaddgift} {onclearfilters} />
+	<WishlistEmptyState {isArchived} {canManage} {isFilteredEmpty} {onaddgift} {onclearfilters} />
 {:else if viewMode === 'card'}
 	<WishlistGiftCardGrid
 		{gifts}
 		{role}
 		{isArchived}
-		{isOwnerOrModerator}
-		{draggedIndex}
-		{dragOverIndex}
+		{canManage}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{ondragstart}
-		{ondragover}
-		{ondragleave}
-		{ondrop}
-		{ondragend}
+		{onreorder}
 	/>
 {:else if viewMode === 'list'}
 	<WishlistGiftListView
 		{gifts}
 		{role}
 		{isArchived}
-		{isOwnerOrModerator}
-		{draggedIndex}
-		{dragOverIndex}
+		{canManage}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{ondragstart}
-		{ondragover}
-		{ondragleave}
-		{ondrop}
-		{ondragend}
+		{onreorder}
 	/>
 {:else}
 	<WishlistGiftCompactTable
 		{gifts}
 		{role}
 		{isArchived}
-		{isOwner}
-		{isOwnerOrModerator}
+		{isRecipient}
+		{canManage}
 		{onedit}
 		{onreserve}
 		{onunreserve}

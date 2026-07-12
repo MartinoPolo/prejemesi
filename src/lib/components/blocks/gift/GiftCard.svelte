@@ -10,7 +10,11 @@
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
+	import {
+		formatPrice,
+		formatReserverLine,
+		getPriorityDisplay,
+	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftEditedBadge from './GiftEditedBadge.svelte';
@@ -30,42 +34,49 @@
 		deriveGiftDisplayState(gift, role),
 	);
 
-	const styles = $derived(giftCardVariants({ reserved: isFullyReserved }));
+	// Dimmed = "don't buy this": fully reserved (visitor/moderator only — the
+	// recipient never sees reservation state) or already received.
+	const isDimmed = $derived((isVisitorOrModerator && isFullyReserved) || gift.received);
+
+	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
 
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
+	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>
 
 <div class={styles.card()}>
-	<!-- Image area -->
+	<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
 	<div class={styles.imageArea()}>
 		<GiftImage
-			class="size-full"
+			class="size-full bg-transparent"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
 			alt={gift.name}
+			variant="card"
 		/>
 
+		{#if isDimmed}
+			<div class={styles.imageVeil()} aria-hidden="true"></div>
+		{/if}
+
 		{#if isVisitorOrModerator && isFullyReserved}
-			<div class={styles.reservedOverlay()}>
-				<Badge
-					tone="neutral"
-					badgeStyle="subtle"
-					class="bg-reserved/15 text-reserved gap-1 border-reserved/25"
-				>
-					<CheckIcon class="size-3" />
+			<span class={styles.reservedSticker()}>
+				<span class={styles.reservedStickerLabel()}>
+					<CheckIcon class="size-3.5" />
 					{m.gift_reserved_overlay()}
-				</Badge>
-			</div>
+				</span>
+				{#if reserverLine !== null}
+					<small class={styles.reservedStickerNames()}>{reserverLine}</small>
+				{/if}
+			</span>
 		{/if}
 
 		{#if gift.received}
-			<div class="absolute top-2 right-2">
-				<Badge tone="neutral" class="gap-1">
-					<CheckIcon class="size-3" />
-					{m.gift_received_badge()}
-				</Badge>
-			</div>
+			<span class={styles.receivedSticker()}>
+				<CheckIcon class="size-3" />
+				{m.gift_received_badge()}
+			</span>
 		{/if}
 	</div>
 

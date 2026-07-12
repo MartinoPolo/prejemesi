@@ -62,7 +62,9 @@ vi.mock('drizzle-orm', () => ({
 vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 	wishlist: {
 		id: 'wishlist.id',
-		ownerId: 'wishlist.ownerId',
+		recipientUserId: 'wishlist.recipientUserId',
+		recipientName: 'wishlist.recipientName',
+		recipientIsModerator: 'wishlist.recipientIsModerator',
 		shortId: 'wishlist.shortId',
 		status: 'wishlist.status',
 		sharedAt: 'wishlist.sharedAt',
@@ -70,7 +72,6 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 		deletedAt: 'wishlist.deletedAt',
 		createdAt: 'wishlist.createdAt',
 		updatedAt: 'wishlist.updatedAt',
-		ownerIsModerator: 'wishlist.ownerIsModerator',
 		title: 'wishlist.title',
 		description: 'wishlist.description',
 		eventDate: 'wishlist.eventDate',
@@ -90,9 +91,11 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 
 vi.mock('$lib/server/db/moderator.schema.js', () => ({
 	moderatorAssignment: {
+		id: 'moderatorAssignment.id',
 		wishlistId: 'moderatorAssignment.wishlistId',
 		userId: 'moderatorAssignment.userId',
 		deletedAt: 'moderatorAssignment.deletedAt',
+		assignedAt: 'moderatorAssignment.assignedAt',
 	},
 }));
 
@@ -125,6 +128,10 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		id: 'user.id',
 		name: 'user.name',
 	},
+}));
+
+vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
+	dispatchNotification: vi.fn(),
 }));
 
 // ── DB mock helper ────────────────────────────────────────────────────────────
@@ -187,6 +194,12 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(() => mockDbInstance.db),
 }));
 
+// ── Mock R2 storage cleanup (issue #107, REQ-6) ──────────────────────────────
+
+vi.mock('$lib/server/storage/r2.js', () => ({
+	deleteObjectsBestEffort: vi.fn(() => Promise.resolve()),
+}));
+
 // ── Import the module under test (after all mocks are set up) ─────────────────
 
 import {
@@ -194,25 +207,37 @@ import {
 	updateWishlist,
 	archiveWishlist,
 	createWishlist,
+	renameRecipient,
 	followWishlist,
 	unfollowWishlist,
 	refollowWishlist,
 	getWishlistByShortId,
+	setWishlistPalette,
 } from './wishlists.remote.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+
+const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
 
 // ── Test data factories ───────────────────────────────────────────────────────
 
-const OWNER_ID = 'user-owner';
+/** The linked recipient of a self list — manages inherently, no moderatorAssignment row. */
+const RECIPIENT_ID = 'user-recipient';
 const OTHER_USER_ID = 'user-other';
 const MODERATOR_ID = 'user-moderator';
 const WISHLIST_ID = 'wishlist-1';
 const WISHLIST_SHORT_ID = 'abc12345';
 
+/**
+ * A "self" wishlist row: the linked recipient (`recipientUserId`) is the manager, there is no
+ * free-text recipient name. Pass `recipientUserId: null` + `recipientName` for a for-someone list.
+ */
 function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
 	return {
 		id: WISHLIST_ID,
 		shortId: WISHLIST_SHORT_ID,
-		ownerId: OWNER_ID,
+		recipientUserId: RECIPIENT_ID,
+		recipientName: null,
+		recipientIsModerator: false,
 		title: 'Test Wishlist',
 		description: null,
 		status: 'draft',
@@ -225,15 +250,26 @@ function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string
 		customThemeColor: null,
 		imageKey: null,
 		imageSlots: null,
-		ownerIsModerator: false,
 		createdAt: new Date('2024-01-01T00:00:00Z'),
 		updatedAt: new Date('2024-01-01T00:00:00Z'),
 		...overrides,
 	};
 }
 
-function makeOwnerAuthContext(): { user: { id: string } } {
-	return { user: { id: OWNER_ID } };
+/** For-someone list: no linked recipient, free-text `recipientName`, managed via moderatorAssignment. */
+function makeForSomeoneWishlistRow(
+	overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+	return makeWishlistRow({
+		recipientUserId: null,
+		recipientName: 'Grandma',
+		...overrides,
+	});
+}
+
+/** Auth context for the linked recipient (manages a self list inherently). */
+function makeRecipientAuthContext(): { user: { id: string } } {
+	return { user: { id: RECIPIENT_ID } };
 }
 
 function makeOtherAuthContext(): { user: { id: string } } {
@@ -269,13 +305,23 @@ type GetWishlistByShortIdHandler = (
 	authContext: NullableAuthContext,
 	shortId: string,
 ) => Promise<unknown>;
+type RenameRecipientHandler = (
+	auth: AuthContext,
+	input: { id: string; recipientName: string },
+) => Promise<unknown>;
+type SetWishlistPaletteHandler = (
+	auth: AuthContext,
+	input: { wishlistId: string; palette: string },
+) => Promise<unknown>;
 
 const callDeleteWishlist = deleteWishlist as unknown as DeleteWishlistHandler;
 const callUpdateWishlist = updateWishlist as unknown as UpdateWishlistHandler;
 const callArchiveWishlist = archiveWishlist as unknown as ArchiveWishlistHandler;
 const callCreateWishlist = createWishlist as unknown as CreateWishlistHandler;
+const callRenameRecipient = renameRecipient as unknown as RenameRecipientHandler;
 const callFollowWishlist = followWishlist as unknown as FollowWishlistHandler;
 const callGetWishlistByShortId = getWishlistByShortId as unknown as GetWishlistByShortIdHandler;
+const callSetWishlistPalette = setWishlistPalette as unknown as SetWishlistPaletteHandler;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -286,29 +332,49 @@ beforeEach(() => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('deleteWishlist', () => {
-	describe('owner can delete an unshared wishlist', () => {
-		it('resolves without throwing when owner deletes a draft wishlist', async () => {
-			// DB call 1: wishlist lookup
+	describe('recipient can delete an unshared wishlist', () => {
+		it('resolves without throwing when the linked recipient deletes a draft wishlist', async () => {
+			// DB call 1: requireWishlistRow (recipientUserId matches caller → manager, no mod query)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
-			// DB call 2: soft-delete update
+			// DB call 2: gift image-key collection (issue #107 cleanup)
+			mockDbInstance.pushResult([]);
+			// DB call 3: soft-delete update
 			mockDbInstance.pushResult([]);
 
 			await expect(
-				callDeleteWishlist(makeOwnerAuthContext(), WISHLIST_ID),
+				callDeleteWishlist(makeRecipientAuthContext(), WISHLIST_ID),
 			).resolves.not.toThrow();
+		});
+
+		it('deletes the wishlist image and its gifts’ images from storage (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/w.jpg' }),
+			]);
+			mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }, { imageKey: null }]);
+			mockDbInstance.pushResult([]);
+
+			await callDeleteWishlist(makeRecipientAuthContext(), WISHLIST_ID);
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith([
+				'wishlists/banners/w.jpg',
+				'gifts/a.jpg',
+				null,
+			]);
 		});
 	});
 
-	describe('non-owner cannot delete', () => {
-		it('throws 403 when caller is not the wishlist owner', async () => {
-			// DB call 1: wishlist lookup (owned by OWNER_ID, caller is OTHER_USER_ID)
+	describe('non-manager cannot delete', () => {
+		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
+			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
+			// DB call 2: hasActiveModeratorAssignment → none found
+			mockDbInstance.pushResult([]);
 
 			await expect(
 				callDeleteWishlist(makeOtherAuthContext(), WISHLIST_ID),
 			).rejects.toMatchObject({
 				status: 403,
-				message: 'Not authorized',
+				message: 'ACCESS_DENIED',
 			});
 		});
 	});
@@ -321,7 +387,7 @@ describe('deleteWishlist', () => {
 			]);
 
 			await expect(
-				callDeleteWishlist(makeOwnerAuthContext(), WISHLIST_ID),
+				callDeleteWishlist(makeRecipientAuthContext(), WISHLIST_ID),
 			).rejects.toMatchObject({
 				status: 400,
 				message: expect.stringContaining('Cannot delete a shared wishlist'),
@@ -335,10 +401,49 @@ describe('deleteWishlist', () => {
 			mockDbInstance.pushResult([]);
 
 			await expect(
-				callDeleteWishlist(makeOwnerAuthContext(), 'ghost-wishlist'),
+				callDeleteWishlist(makeRecipientAuthContext(), 'ghost-wishlist'),
 			).rejects.toMatchObject({
 				status: 404,
-				message: 'Wishlist not found',
+				message: 'WISHLIST_NOT_FOUND',
+			});
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('setWishlistPalette', () => {
+	describe('non-manager cannot change the palette', () => {
+		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
+			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			// DB call 2: hasActiveModeratorAssignment → none found
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				callSetWishlistPalette(makeOtherAuthContext(), {
+					wishlistId: WISHLIST_ID,
+					palette: 'mint',
+				}),
+			).rejects.toMatchObject({
+				status: 403,
+				message: 'ACCESS_DENIED',
+			});
+		});
+	});
+
+	describe('archived wishlist is read-only', () => {
+		it('throws 400 even for the linked recipient (same rule as updateWishlist)', async () => {
+			// DB call 1: requireWishlistRow — archived list, caller IS the linked recipient
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(
+				callSetWishlistPalette(makeRecipientAuthContext(), {
+					wishlistId: WISHLIST_ID,
+					palette: 'mint',
+				}),
+			).rejects.toMatchObject({
+				status: 400,
+				message: 'CANNOT_MODIFY_ARCHIVED_WISHLIST',
 			});
 		});
 	});
@@ -346,15 +451,15 @@ describe('deleteWishlist', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('updateWishlist', () => {
-	describe('owner can update title on an unshared wishlist', () => {
+	describe('recipient can update title on an unshared wishlist', () => {
 		it('returns updated wishlist row', async () => {
 			const updatedRow = makeWishlistRow({ title: 'New Title' });
-			// DB call 1: wishlist lookup (not shared)
+			// DB call 1: requireWishlistRow (recipient = manager, no mod query; not shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// DB call 2: update returning
 			mockDbInstance.pushResult([updatedRow]);
 
-			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+			const result = await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				title: 'New Title',
 			});
@@ -363,7 +468,26 @@ describe('updateWishlist', () => {
 		});
 	});
 
-	describe('owner can update image assignment + per-slot metadata', () => {
+	describe('moderator (správce) can update title on a for-someone list', () => {
+		it('returns updated wishlist row after the mod-assignment check passes', async () => {
+			const updatedRow = makeForSomeoneWishlistRow({ title: 'New Title' });
+			// DB call 1: requireWishlistRow (for-someone list, caller is not recipient)
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow({ sharedAt: null })]);
+			// DB call 2: hasActiveModeratorAssignment → found → manager
+			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+			// DB call 3: update returning
+			mockDbInstance.pushResult([updatedRow]);
+
+			const result = await callUpdateWishlist(makeModeratorAuthContext(), {
+				id: WISHLIST_ID,
+				title: 'New Title',
+			});
+
+			expect(result).toMatchObject({ id: WISHLIST_ID, title: 'New Title' });
+		});
+	});
+
+	describe('recipient can update image assignment + per-slot metadata', () => {
 		it('persists imageKey and imageSlots', async () => {
 			const imageSlots = {
 				card: { fitMode: 'cover-crop', focal: { x: 50, y: 40 } },
@@ -375,7 +499,7 @@ describe('updateWishlist', () => {
 			// DB call 2: update returning
 			mockDbInstance.pushResult([updatedRow]);
 
-			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+			const result = await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				imageKey: 'wishlists/hero.jpg',
 				imageSlots,
@@ -383,9 +507,37 @@ describe('updateWishlist', () => {
 
 			expect(result).toMatchObject({ imageKey: 'wishlists/hero.jpg', imageSlots });
 		});
+
+		it('deletes the replaced uploaded image from storage (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ imageKey: 'wishlists/banners/new.jpg' })]);
+
+			await callUpdateWishlist(makeRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				imageKey: 'wishlists/banners/new.jpg',
+			});
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['wishlists/banners/old.jpg']);
+		});
+
+		it('keeps storage untouched when only crop metadata changes (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/same.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow()]);
+
+			await callUpdateWishlist(makeRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				imageSlots: { card: { fitMode: 'cover-crop' } },
+			});
+
+			expect(mockDeleteObjects).not.toHaveBeenCalled();
+		});
 	});
 
-	describe('owner can update description on an unshared wishlist', () => {
+	describe('recipient can update description on an unshared wishlist', () => {
 		it('returns updated wishlist row with new description', async () => {
 			const updatedRow = makeWishlistRow({ description: 'A festive list' });
 			// DB call 1: wishlist lookup (not shared)
@@ -393,7 +545,7 @@ describe('updateWishlist', () => {
 			// DB call 2: update returning
 			mockDbInstance.pushResult([updatedRow]);
 
-			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+			const result = await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				description: 'A festive list',
 			});
@@ -407,7 +559,7 @@ describe('updateWishlist', () => {
 		});
 	});
 
-	describe('owner can update event date on an unshared wishlist', () => {
+	describe('recipient can update event date on an unshared wishlist', () => {
 		it('returns updated wishlist row with new event date', async () => {
 			const eventDate = new Date('2026-12-24T00:00:00Z');
 			const updatedRow = makeWishlistRow({ eventDate });
@@ -416,7 +568,7 @@ describe('updateWishlist', () => {
 			// DB call 2: update returning
 			mockDbInstance.pushResult([updatedRow]);
 
-			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+			const result = await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				eventDate,
 			});
@@ -427,10 +579,12 @@ describe('updateWishlist', () => {
 		});
 	});
 
-	describe('non-owner cannot update', () => {
-		it('throws 403 when caller is not the wishlist owner', async () => {
-			// DB call 1: wishlist lookup (owned by OWNER_ID, caller is OTHER_USER_ID)
+	describe('non-manager cannot update', () => {
+		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
+			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
+			// DB call 2: hasActiveModeratorAssignment → none found
+			mockDbInstance.pushResult([]);
 
 			await expect(
 				callUpdateWishlist(makeOtherAuthContext(), {
@@ -439,7 +593,7 @@ describe('updateWishlist', () => {
 				}),
 			).rejects.toMatchObject({
 				status: 403,
-				message: 'Not authorized',
+				message: 'ACCESS_DENIED',
 			});
 		});
 	});
@@ -449,7 +603,7 @@ describe('updateWishlist', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
 
 			await expect(
-				callUpdateWishlist(makeOwnerAuthContext(), {
+				callUpdateWishlist(makeRecipientAuthContext(), {
 					id: WISHLIST_ID,
 					title: 'Should Fail',
 				}),
@@ -484,7 +638,7 @@ describe('updateWishlist', () => {
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ eventDate: newDate })]);
 
-			await callUpdateWishlist(makeOwnerAuthContext(), {
+			await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				eventDate: newDate,
 			});
@@ -505,7 +659,7 @@ describe('updateWishlist', () => {
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ eventDate: newDate })]);
 
-			await callUpdateWishlist(makeOwnerAuthContext(), {
+			await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				eventDate: newDate,
 			});
@@ -523,7 +677,7 @@ describe('updateWishlist', () => {
 			]);
 			mockDbInstance.pushResult([makeWishlistRow()]);
 
-			await callUpdateWishlist(makeOwnerAuthContext(), {
+			await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				eventDate: new Date('2026-12-24T00:00:00Z'),
 			});
@@ -550,7 +704,7 @@ describe('updateWishlist', () => {
 			mockDbInstance.pushResult([updatedRow]);
 
 			// Should NOT throw – eventDate change is silently dropped
-			const result = await callUpdateWishlist(makeOwnerAuthContext(), {
+			const result = await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				title: 'Updated Title',
 				eventDate: new Date('2025-12-25T00:00:00Z'),
@@ -562,31 +716,106 @@ describe('updateWishlist', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe('renameRecipient', () => {
+	describe('a správce can rename a for-someone recipient', () => {
+		it('updates recipientName and returns the updated row', async () => {
+			const renamedRow = makeForSomeoneWishlistRow({ recipientName: 'Aunt May' });
+			// DB call 1: requireWishlistRow (for-someone list, caller not recipient)
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow()]);
+			// DB call 2: hasActiveModeratorAssignment → found → manager
+			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+			// DB call 3: update returning
+			mockDbInstance.pushResult([renamedRow]);
+
+			const result = await callRenameRecipient(makeModeratorAuthContext(), {
+				id: WISHLIST_ID,
+				recipientName: 'Aunt May',
+			});
+
+			expect(mockDbInstance.lastSetPayload()).toMatchObject({ recipientName: 'Aunt May' });
+			expect(result).toMatchObject({ id: WISHLIST_ID, recipientName: 'Aunt May' });
+		});
+	});
+
+	describe('non-manager cannot rename', () => {
+		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
+			// DB call 1: requireWishlistRow (for-someone list)
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow()]);
+			// DB call 2: hasActiveModeratorAssignment → none
+			mockDbInstance.pushResult([]);
+
+			await expect(
+				callRenameRecipient(makeOtherAuthContext(), {
+					id: WISHLIST_ID,
+					recipientName: 'Hacked Name',
+				}),
+			).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
+		});
+	});
+
+	describe('rejects a self / linked-recipient list', () => {
+		it('throws 400 RECIPIENT_RENAME_NOT_ALLOWED when recipientUserId is set (no free-text name to rename)', async () => {
+			// DB call 1: requireWishlistRow (self list, recipient = caller → manager, no mod query)
+			mockDbInstance.pushResult([makeWishlistRow()]);
+
+			await expect(
+				callRenameRecipient(makeRecipientAuthContext(), {
+					id: WISHLIST_ID,
+					recipientName: 'New Name',
+				}),
+			).rejects.toMatchObject({ status: 400, message: 'RECIPIENT_RENAME_NOT_ALLOWED' });
+		});
+	});
+
+	describe('rejects an archived wishlist', () => {
+		it('throws 400 CANNOT_MODIFY_ARCHIVED_WISHLIST before touching recipientName', async () => {
+			// DB call 1: requireWishlistRow (for-someone + archived)
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow({ status: 'archived' })]);
+			// DB call 2: hasActiveModeratorAssignment → found → manager
+			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+
+			await expect(
+				callRenameRecipient(makeModeratorAuthContext(), {
+					id: WISHLIST_ID,
+					recipientName: 'New Name',
+				}),
+			).rejects.toMatchObject({ status: 400, message: 'CANNOT_MODIFY_ARCHIVED_WISHLIST' });
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('archiveWishlist', () => {
-	describe('owner can archive', () => {
+	describe('recipient can archive', () => {
 		it('returns the archived wishlist row', async () => {
 			const archivedRow = makeWishlistRow({ status: 'archived', archivedAt: new Date() });
-			// DB call 1: wishlist lookup
+			// DB call 1: requireWishlistRow (recipient = manager, no mod query)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// DB call 2: update returning
 			mockDbInstance.pushResult([archivedRow]);
+			// DB call 3: follower select (for archive notification)
+			mockDbInstance.pushResult([]);
+			// DB call 4: moderator select (for archive notification)
+			mockDbInstance.pushResult([]);
 
-			const result = await callArchiveWishlist(makeOwnerAuthContext(), WISHLIST_ID);
+			const result = await callArchiveWishlist(makeRecipientAuthContext(), WISHLIST_ID);
 
 			expect(result).toMatchObject({ id: WISHLIST_ID, status: 'archived' });
 		});
 	});
 
-	describe('non-owner cannot archive', () => {
-		it('throws 403 when caller is not the wishlist owner', async () => {
-			// DB call 1: wishlist lookup (owned by OWNER_ID, caller is OTHER_USER_ID)
+	describe('non-manager cannot archive', () => {
+		it('throws 403 ACCESS_DENIED when caller is neither recipient nor správce', async () => {
+			// DB call 1: requireWishlistRow (recipient is RECIPIENT_ID, caller is OTHER_USER_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
+			// DB call 2: hasActiveModeratorAssignment → none found
+			mockDbInstance.pushResult([]);
 
 			await expect(
 				callArchiveWishlist(makeOtherAuthContext(), WISHLIST_ID),
 			).rejects.toMatchObject({
 				status: 403,
-				message: 'Not authorized',
+				message: 'ACCESS_DENIED',
 			});
 		});
 	});
@@ -594,31 +823,73 @@ describe('archiveWishlist', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('createWishlist', () => {
-	describe('creates wishlist with default priority levels', () => {
-		it('returns the created wishlist row after inserting default priority levels', async () => {
-			const createdRow = makeWishlistRow({ id: 'new-wishlist-id', title: 'My Birthday' });
-			// DB call 1: insert wishlist returning
+	describe('recipientKind: self (creator is the linked recipient)', () => {
+		it('inserts the wishlist with recipientUserId = creator, recipientName = null, and NO moderatorAssignment', async () => {
+			const createdRow = makeWishlistRow({
+				id: 'new-wishlist-id',
+				title: 'My Birthday',
+				recipientUserId: RECIPIENT_ID,
+				recipientName: null,
+			});
+			// DB call 1 (in tx): insert wishlist returning
 			mockDbInstance.pushResult([createdRow]);
-			// DB call 2: insert default priority levels (no returning needed)
+			// DB call 2 (in tx): insert default priority levels (no moderatorAssignment on self lists)
 			mockDbInstance.pushResult([]);
 
-			const result = await callCreateWishlist(makeOwnerAuthContext(), {
+			const result = await callCreateWishlist(makeRecipientAuthContext(), {
+				recipientKind: 'self',
 				title: 'My Birthday',
 			});
 
-			expect(result).toMatchObject({ id: 'new-wishlist-id', title: 'My Birthday' });
+			// The wishlist insert must link the creator as recipient with no free-text name.
+			expect(mockDbInstance.lastSetPayload).toBeDefined();
+			expect(result).toMatchObject({
+				id: 'new-wishlist-id',
+				title: 'My Birthday',
+				recipientUserId: RECIPIENT_ID,
+				recipientName: null,
+			});
+		});
+	});
+
+	describe('recipientKind: other (free-text recipient, creator becomes first správce)', () => {
+		it('inserts the wishlist with recipientName set, recipientUserId = null, plus a moderatorAssignment row', async () => {
+			const createdRow = makeForSomeoneWishlistRow({
+				id: 'new-wishlist-id',
+				title: "Grandma's List",
+				recipientName: 'Grandma',
+			});
+			// DB call 1 (in tx): insert wishlist returning
+			mockDbInstance.pushResult([createdRow]);
+			// DB call 2 (in tx): insert moderatorAssignment for the creator (for-someone list)
+			mockDbInstance.pushResult([]);
+			// DB call 3 (in tx): insert default priority levels
+			mockDbInstance.pushResult([]);
+
+			const result = await callCreateWishlist(makeRecipientAuthContext(), {
+				recipientKind: 'other',
+				recipientName: 'Grandma',
+				title: "Grandma's List",
+			});
+
+			expect(result).toMatchObject({
+				id: 'new-wishlist-id',
+				title: "Grandma's List",
+				recipientUserId: null,
+				recipientName: 'Grandma',
+			});
 		});
 	});
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('followWishlist', () => {
-	describe('owner cannot follow own wishlist', () => {
+	describe('recipient cannot follow own wishlist', () => {
 		it('returns { followed: false, alreadyFollowing: false } without creating a record', async () => {
-			// DB call 1: wishlist lookup – owner is the caller
-			mockDbInstance.pushResult([{ ownerId: OWNER_ID }]);
+			// DB call 1: wishlist lookup – the linked recipient is the caller
+			mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
 
-			const result = await callFollowWishlist(makeOwnerAuthContext(), WISHLIST_ID);
+			const result = await callFollowWishlist(makeRecipientAuthContext(), WISHLIST_ID);
 
 			expect(result).toEqual({ followed: false, alreadyFollowing: false });
 		});
@@ -626,8 +897,8 @@ describe('followWishlist', () => {
 
 	describe('new visitor follows for the first time', () => {
 		it('creates a new follower record and returns { followed: true, alreadyFollowing: false }', async () => {
-			// DB call 1: wishlist lookup – owner is different user
-			mockDbInstance.pushResult([{ ownerId: OWNER_ID }]);
+			// DB call 1: wishlist lookup – recipient is a different user
+			mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
 			// DB call 2: existing follower check – none found
 			mockDbInstance.pushResult([]);
 			// DB call 3: insert follower
@@ -641,8 +912,8 @@ describe('followWishlist', () => {
 
 	describe('returning visitor updates lastVisitedAt', () => {
 		it('returns { followed: false, alreadyFollowing: true } when record exists with unfollowedAt=null', async () => {
-			// DB call 1: wishlist lookup – owner is different user
-			mockDbInstance.pushResult([{ ownerId: OWNER_ID }]);
+			// DB call 1: wishlist lookup – recipient is a different user
+			mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
 			// DB call 2: existing follower check – record found, not unfollowed
 			mockDbInstance.pushResult([
 				{ unfollowedAt: null, lastVisitedAt: new Date('2024-01-01') },
@@ -657,7 +928,7 @@ describe('followWishlist', () => {
 
 		it('returns { followed: false, alreadyFollowing: false } when record exists but unfollowedAt is set', async () => {
 			// DB call 1: wishlist lookup
-			mockDbInstance.pushResult([{ ownerId: OWNER_ID }]);
+			mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
 			// DB call 2: existing follower with unfollowedAt set (previously unfollowed)
 			mockDbInstance.pushResult([
 				{ unfollowedAt: new Date('2024-01-05'), lastVisitedAt: new Date('2024-01-01') },
@@ -688,29 +959,36 @@ describe('followWishlist', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('getWishlistByShortId', () => {
-	describe('owner role', () => {
-		it('returns role=owner when authenticated user is the wishlist owner', async () => {
+	describe('recipient role', () => {
+		it('returns role=recipient when the authed user is the linked recipient (self list, no managerNames)', async () => {
 			const wishlistRow = makeWishlistRow();
-			// DB call 1: wishlist + user join
-			mockDbInstance.pushResult([{ wishlist: wishlistRow, ownerName: 'Alice' }]);
-			// No DB call 2: owner check skips moderator query
+			// DB call 1: wishlist + user leftJoin → coalesced recipientDisplayName
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			// No mod query (recipient match); no managerNames query (recipientUserId is set)
 
 			const result = (await callGetWishlistByShortId(
-				makeOwnerAuthContext(),
+				makeRecipientAuthContext(),
 				WISHLIST_SHORT_ID,
-			)) as { role: string };
+			)) as { role: string; recipientDisplayName: string; managerNames: string[] };
 
-			expect(result.role).toBe('owner');
+			expect(result.role).toBe('recipient');
+			expect(result.recipientDisplayName).toBe('Recipient Alice');
+			// Self lists surface the recipient directly, so no manager label is fetched.
+			expect(result.managerNames).toEqual([]);
 		});
 	});
 
 	describe('moderator role', () => {
-		it('returns role=moderator when user has an active moderator assignment', async () => {
+		it('returns role=moderator when the user has an active moderator assignment', async () => {
 			const wishlistRow = makeWishlistRow();
-			// DB call 1: wishlist + user join
-			mockDbInstance.pushResult([{ wishlist: wishlistRow, ownerName: 'Alice' }]);
-			// DB call 2: moderator assignment found
-			mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID, userId: MODERATOR_ID }]);
+			// DB call 1: wishlist + user leftJoin
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			// DB call 2: hasActiveModeratorAssignment → found
+			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
 
 			const result = (await callGetWishlistByShortId(
 				makeModeratorAuthContext(),
@@ -721,12 +999,35 @@ describe('getWishlistByShortId', () => {
 		});
 	});
 
-	describe('visitor role – authenticated non-owner/non-moderator', () => {
-		it('returns role=visitor when authenticated user has no special assignment', async () => {
+	describe('for-someone list exposes managerNames', () => {
+		it('returns coalesced recipientName as recipientDisplayName and the manager names list', async () => {
+			const wishlistRow = makeForSomeoneWishlistRow();
+			// DB call 1: wishlist + user leftJoin (no linked user → recipientName wins)
+			mockDbInstance.pushResult([{ wishlist: wishlistRow, recipientDisplayName: 'Grandma' }]);
+			// DB call 2: hasActiveModeratorAssignment → found (caller is a správce)
+			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+			// DB call 3: managerNames query (only runs when recipientUserId === null)
+			mockDbInstance.pushResult([{ name: 'Martin' }, { name: 'Jana' }]);
+
+			const result = (await callGetWishlistByShortId(
+				makeModeratorAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { role: string; recipientDisplayName: string; managerNames: string[] };
+
+			expect(result.role).toBe('moderator');
+			expect(result.recipientDisplayName).toBe('Grandma');
+			expect(result.managerNames).toEqual(['Martin', 'Jana']);
+		});
+	});
+
+	describe('visitor role – authenticated non-recipient/non-moderator', () => {
+		it('returns role=visitor when the authed user has no special assignment', async () => {
 			const wishlistRow = makeWishlistRow();
-			// DB call 1: wishlist + user join
-			mockDbInstance.pushResult([{ wishlist: wishlistRow, ownerName: 'Alice' }]);
-			// DB call 2: moderator check – none found
+			// DB call 1: wishlist + user leftJoin
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			// DB call 2: hasActiveModeratorAssignment → none found
 			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
@@ -741,8 +1042,10 @@ describe('getWishlistByShortId', () => {
 	describe('visitor role – unauthenticated', () => {
 		it('returns role=visitor when authContext is null', async () => {
 			const wishlistRow = makeWishlistRow();
-			// DB call 1: wishlist + user join
-			mockDbInstance.pushResult([{ wishlist: wishlistRow, ownerName: 'Alice' }]);
+			// DB call 1: wishlist + user leftJoin
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
 			// No moderator check when unauthenticated
 
 			const result = (await callGetWishlistByShortId(null, WISHLIST_SHORT_ID)) as {
@@ -759,7 +1062,7 @@ describe('getWishlistByShortId', () => {
 			mockDbInstance.pushResult([]);
 
 			await expect(
-				callGetWishlistByShortId(makeOwnerAuthContext(), 'nonexistent'),
+				callGetWishlistByShortId(makeRecipientAuthContext(), 'nonexistent'),
 			).rejects.toMatchObject({
 				status: 404,
 				message: 'Wishlist not found',

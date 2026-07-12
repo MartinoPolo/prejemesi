@@ -7,7 +7,11 @@
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, extractGiftDomain } from '$lib/modules/gifts/gift_display.js';
+	import {
+		formatPrice,
+		formatReserverLine,
+		extractGiftDomain,
+	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
@@ -39,12 +43,13 @@
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
+	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>
 
 <tr
 	class={cn(
 		'h-10 border-b border-border transition-colors hover:bg-muted/50',
-		isFullyReserved && 'opacity-65',
+		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 		onclick && 'cursor-pointer',
 	)}
 	onclick={() => onclick?.()}
@@ -109,9 +114,15 @@
 			<div class="flex items-center justify-end gap-1.5">
 				<PurchasedToggle gift={visitorGift} size="sm" />
 				{#if isFullyReserved && visitorGift.myReservationId === null}
-					<span class="text-xs font-medium text-reserved"
-						>{m.gift_reserved_overlay()}</span
-					>
+					<span class="flex flex-col items-end leading-tight">
+						<span class="text-xs font-medium text-reserved"
+							>{m.gift_reserved_overlay()}</span
+						>
+						{#if reserverLine !== null}
+							<span class="text-[10px] font-medium text-ink-soft">{reserverLine}</span
+							>
+						{/if}
+					</span>
 				{:else}
 					<ReserveButton
 						gift={visitorGift}

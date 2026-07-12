@@ -1,21 +1,24 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
+	import HourglassIcon from '@lucide/svelte/icons/hourglass';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import ShareIcon from '@lucide/svelte/icons/share-2';
-	import LockIcon from '@lucide/svelte/icons/lock';
 	import ArchiveIcon from '@lucide/svelte/icons/archive';
-	import InfoIcon from '@lucide/svelte/icons/info';
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import EyeIcon from '@lucide/svelte/icons/eye';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		WISHLIST_STATUS_LABELS,
 		WISHLIST_STATUS_BADGE_MAP,
 	} from '$lib/modules/wishlists/dashboard_types.js';
+	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
@@ -23,17 +26,23 @@
 
 	interface WishlistHeaderProps {
 		title: string;
-		ownerName: string;
+		/** Who the list is for: linked recipient's account name or the free-text recipient name. */
+		recipientDisplayName: string;
+		/** True for a free-text (for-someone-else) list; drives the „Pro {recipient}" name slot + managed-by line. */
+		isForSomeoneElse: boolean;
+		/** Names of the správci managing a for-someone list (empty on self lists). Powers „Spravuje/Spravují". */
+		managerNames: string[];
 		description: string | null;
 		imageKey: string | null;
 		imageSlots: WishlistImageSlots | null;
-		/** Theme-derived emoji for the no-image fallback hero (REQ-3). */
+		/** Theme-derived emoji for the no-image polaroid fallback. */
 		themeEmoji: string;
 		eventDate: Date | null;
 		status: 'draft' | 'active' | 'archived';
 		role: WishlistRole;
 		giftCount: number | null;
-		ownerIsModerator: boolean;
+		/** True when the linked recipient self-promoted to also see reservation state (trust warning). */
+		recipientIsModerator: boolean;
 		onshare?: () => void;
 		onmoderators?: () => void;
 		onarchive?: () => void;
@@ -42,7 +51,9 @@
 
 	let {
 		title,
-		ownerName,
+		recipientDisplayName,
+		isForSomeoneElse,
+		managerNames,
 		description,
 		imageKey,
 		imageSlots,
@@ -51,7 +62,7 @@
 		status,
 		role,
 		giftCount,
-		ownerIsModerator,
+		recipientIsModerator,
 		onshare,
 		onmoderators,
 		onarchive,
@@ -60,15 +71,25 @@
 
 	const styles = wishlistHeaderVariants();
 
-	// Banner always renders the themed surface: the assigned image (cropped for the
-	// banner slot) when present, otherwise the theme-aware fallback hero (REQ-3/4).
-	const bannerSrc = $derived(wishlistImageUrl(imageKey));
-	const bannerFrame = $derived(wishlistSlotToFrameProps(imageSlots, 'banner'));
-	const isOwner = $derived(role === 'owner');
-	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
+	// The wishlist photo (image-slots crop) renders as the taped polaroid print;
+	// the card slot's 3:2 crop is the closest match for the polaroid frame.
+	const polaroidSrc = $derived(wishlistImageUrl(imageKey));
+	const polaroidFrame = $derived(wishlistSlotToFrameProps(imageSlots, 'card'));
+	// Management actions open to any manager — the linked recipient OR a správce (issue #99).
+	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
-	const isDraft = $derived(status === 'draft');
 	const isEventPast = $derived(eventDate !== null && new Date(eventDate) < new Date());
+
+	// „Spravuje {name}" (single správce) / „Spravují {names}" (multiple) — for-someone lists only.
+	const managedByLabel = $derived.by(() => {
+		if (!isForSomeoneElse || managerNames.length === 0) {
+			return null;
+		}
+		if (managerNames.length === 1) {
+			return m.wishlist_managed_by_one({ name: managerNames[0]! });
+		}
+		return m.wishlist_managed_by_many({ names: managerNames.join(', ') });
+	});
 
 	const formattedDate = $derived.by(() => {
 		if (eventDate === null) {
@@ -85,8 +106,36 @@
 		}
 	});
 
-	const statusLabel = $derived(WISHLIST_STATUS_LABELS[status]());
+	// Sticky-note / meta-chip countdown (REQ-12): hidden without an event date,
+	// „proběhlo" once the event passed (the manager archive prompt takes over).
+	const countdownLabel = $derived.by(() => {
+		if (eventDate === null) {
+			return null;
+		}
+		const countdown = eventCountdown(new Date(eventDate));
+		if (countdown !== null) {
+			return m.wishlist_countdown_note({ countdown });
+		}
+		return m.wishlist_countdown_passed();
+	});
 
+	// Polaroid caption mimics a handwritten photo label: „Anička · září 2026".
+	const polaroidCaption = $derived.by(() => {
+		if (eventDate === null) {
+			return recipientDisplayName;
+		}
+		try {
+			const monthYear = new Intl.DateTimeFormat(getLocale(), {
+				month: 'long',
+				year: 'numeric',
+			}).format(new Date(eventDate));
+			return `${recipientDisplayName} · ${monthYear}`;
+		} catch {
+			return recipientDisplayName;
+		}
+	});
+
+	const statusLabel = $derived(WISHLIST_STATUS_LABELS[status]());
 	const statusBadgeTone = $derived(WISHLIST_STATUS_BADGE_MAP[status]);
 
 	const giftCountLabel = $derived.by(() => {
@@ -101,121 +150,303 @@
 </script>
 
 <header class={styles.root()}>
-	<!-- Themed banner: assigned image (banner-slot crop) or theme-aware fallback hero -->
-	<div class="{styles.bannerArea()} min-h-48 overflow-hidden" data-testid="wishlist-banner">
-		<div class="absolute inset-0">
-			<WishlistSlotImage src={bannerSrc} frame={bannerFrame} {themeEmoji} alt={title} />
-		</div>
-		<div class={styles.bannerOverlay()}></div>
-		{#if isOwner && !isArchived}
-			<Button
-				size="sm"
-				intent="outline"
-				class={styles.editImageButton()}
-				aria-label={m.wishlist_edit_image_label()}
-				onclick={oneditimage}
-			>
-				<PencilIcon data-icon="inline-start" />
-				{m.wishlist_edit_image_label()}
-			</Button>
-		{/if}
-		<div class={styles.contentArea()}>
-			<span class={styles.ownerNameOnBanner()}>{ownerName}</span>
-			<h1 class={styles.titleOnBanner()}>{title}</h1>
-			{#if description}
-				<p class={styles.descriptionOnBanner()}>{description}</p>
+	<!-- Spiral-notebook panel: punch holes, red margin line, ruled lines -->
+	<div class="notebook" data-testid="wishlist-banner">
+		<div class="notebook-face">
+			{#if countdownLabel !== null}
+				<!-- Sunshine sticky note pinned to the page's top-right corner (desktop only) -->
+				<div class="sticky-note" aria-hidden="true">{countdownLabel}</div>
 			{/if}
-			<div class={styles.metaRowOnBanner()}>
-				<Badge tone={statusBadgeTone}>{statusLabel}</Badge>
-				{#if giftCountLabel !== null}
-					<span>{giftCountLabel}</span>
+
+			<!-- Taped polaroid print — a physical photo, so frame + caption ink stay fixed -->
+			<figure class="polaroid reveal group/polaroid">
+				<div class="polaroid-img">
+					<WishlistSlotImage
+						class="size-full rounded-none"
+						src={polaroidSrc}
+						frame={polaroidFrame}
+						{themeEmoji}
+						alt={title}
+						variant="banner"
+						eagerLoading
+					/>
+					{#if canManage && !isArchived}
+						<Button
+							size="icon-sm"
+							intent="secondary"
+							class={styles.editImageButton()}
+							aria-label={m.wishlist_edit_image_label()}
+							onclick={oneditimage}
+						>
+							<PencilIcon />
+						</Button>
+					{/if}
+				</div>
+				<figcaption>{polaroidCaption}</figcaption>
+			</figure>
+
+			<div class={styles.headerText()}>
+				<!-- For-someone lists lead with „Pro {recipient}"; self lists show the name plain. -->
+				<p class={styles.recipientLine()}>
+					{#if isForSomeoneElse}{m.wishlist_header_for_prefix()}
+						<strong class={styles.recipientName()}>{recipientDisplayName}</strong
+						>{:else}<strong class={styles.recipientName()}
+							>{recipientDisplayName}</strong
+						>{/if}
+				</p>
+				<h1 class={styles.title()}>{title}</h1>
+				{#if description}
+					<p class={styles.description()}>{description}</p>
 				{/if}
-				{#if formattedDate}
-					<span class="inline-flex items-center gap-1">
-						<CalendarIcon class="size-3.5" />
-						{formattedDate}
-					</span>
+				<div class={styles.metaRow()}>
+					<Badge tone={statusBadgeTone} size="lg">{statusLabel}</Badge>
+					{#if giftCountLabel !== null}
+						<Badge tone="neutral" size="lg">{giftCountLabel}</Badge>
+					{/if}
+					{#if formattedDate !== null}
+						<Badge tone="neutral" size="lg">
+							<CalendarIcon data-icon="inline-start" />
+							{formattedDate}
+						</Badge>
+					{/if}
+					{#if countdownLabel !== null}
+						<!-- Stands in for the sticky note below 960 px -->
+						<Badge size="lg" class={styles.countdownChip()}>
+							<HourglassIcon data-icon="inline-start" />
+							{countdownLabel}
+						</Badge>
+					{/if}
+					{#if managedByLabel !== null}
+						<span class={styles.managersLine()}>{managedByLabel}</span>
+					{/if}
+				</div>
+				{#if canManage}
+					<div class={styles.actionRow()}>
+						{#if !isArchived}
+							<Button
+								size="sm"
+								aria-label={m.wishlist_share_label()}
+								onclick={onshare}
+							>
+								<ShareIcon data-icon="inline-start" />
+								{m.wishlist_share_button()}
+							</Button>
+						{/if}
+						<Button
+							size="sm"
+							intent="secondary"
+							aria-label={m.wishlist_moderators_label()}
+							onclick={onmoderators}
+						>
+							<UsersIcon data-icon="inline-start" />
+							{m.wishlist_moderators_label()}
+						</Button>
+						{#if !isArchived}
+							<Button
+								size="sm"
+								intent="secondary"
+								aria-label={m.wishlist_archive_label()}
+								onclick={onarchive}
+							>
+								<ArchiveIcon data-icon="inline-start" />
+								{m.wishlist_archive_button()}
+							</Button>
+						{/if}
+					</div>
 				{/if}
 			</div>
 		</div>
 	</div>
 
-	<!-- Action buttons -->
-	{#if isOwnerOrModerator}
-		<div class={styles.actionRow()}>
-			{#if isOwner && !isArchived}
-				<Button
-					size="sm"
-					intent="outline"
-					aria-label={m.wishlist_share_label()}
-					onclick={onshare}
-				>
-					<ShareIcon data-icon="inline-start" />
-					{m.wishlist_share_button()}
-				</Button>
-			{/if}
-			{#if isOwner}
-				<Button
-					size="sm"
-					intent="outline"
-					aria-label={m.wishlist_moderators_label()}
-					onclick={onmoderators}
-				>
-					<UsersIcon data-icon="inline-start" />
-					{m.wishlist_moderators_label()}
-				</Button>
-			{/if}
-			{#if isOwner && !isArchived}
-				<Button
-					size="sm"
-					intent="outline"
-					aria-label={m.wishlist_archive_label()}
-					onclick={onarchive}
-				>
-					<ArchiveIcon data-icon="inline-start" />
+	<!-- Lifecycle notices: calm tinted panels (the shared/draft strips are gone — REQ-12) -->
+	{#if isArchived}
+		<Alert.Root>
+			<ArchiveIcon />
+			<Alert.Title>{m.wishlist_archived_banner()}</Alert.Title>
+		</Alert.Root>
+	{:else if canManage && isEventPast}
+		<Alert.Root>
+			<ArchiveIcon />
+			<Alert.Title>{m.wishlist_archive_event_passed()}</Alert.Title>
+			<Alert.Action>
+				<Button size="sm" intent="secondary" onclick={onarchive}>
 					{m.wishlist_archive_button()}
 				</Button>
-			{/if}
-		</div>
+			</Alert.Action>
+		</Alert.Root>
 	{/if}
 
-	<!-- Owner sees reservations disclosure – visible to ALL users -->
-	{#if ownerIsModerator}
-		<div class={styles.disclosureBanner()}>
-			<EyeIcon class="size-4 flex-shrink-0" />
-			<span>{m.wishlist_owner_sees_reservations()}</span>
-		</div>
-	{/if}
-
-	<!-- Lifecycle banners -->
-	{#if isArchived}
-		<div class={styles.archivedBanner()}>
-			<ArchiveIcon class="size-4 flex-shrink-0" />
-			<span>{m.wishlist_archived_banner()}</span>
-		</div>
-	{:else if isOwner && isEventPast}
-		<div class={styles.archivedBanner()}>
-			<ArchiveIcon class="size-4 flex-shrink-0" />
-			<span>{m.wishlist_archive_event_passed()}</span>
-			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onarchive}>
-				{m.wishlist_archive_button()}
-			</Button>
-		</div>
-	{:else if !isDraft && isOwner}
-		<div class={styles.sharedBanner()}>
-			<LockIcon class="size-4 flex-shrink-0" />
-			<span>{m.wishlist_shared_banner()}</span>
-			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
-				{m.wishlist_reshare()}
-			</Button>
-		</div>
-	{:else if isDraft && isOwner}
-		<div class={styles.draftBanner()}>
-			<InfoIcon class="size-4 flex-shrink-0" />
-			<span>{m.wishlist_draft_banner()}</span>
-			<Button size="sm" intent="link" class="ml-auto px-0" onclick={onshare}>
-				{m.wishlist_share_list()}
-			</Button>
-		</div>
+	<!-- Reservation-visibility notices (REQ-13): calm reassurance vs loud trust warning -->
+	{#if recipientIsModerator && role !== WISHLIST_ROLES.recipient}
+		<!-- Loud sticky-note warning — visitors must not miss it. NO tape (settled decision). -->
+		<Alert.Root tone="warning" class="reveal reveal-5 -rotate-[0.5deg]">
+			<TriangleAlertIcon />
+			<Alert.Title>{m.wishlist_trust_warning({ name: recipientDisplayName })}</Alert.Title>
+		</Alert.Root>
+	{:else if role === WISHLIST_ROLES.moderator}
+		<Alert.Root class="reveal reveal-5 -rotate-[0.35deg]">
+			<EyeIcon />
+			<Alert.Title
+				>{m.wishlist_moderator_sees_reservations({
+					name: recipientDisplayName,
+				})}</Alert.Title
+			>
+		</Alert.Root>
 	{/if}
 </header>
+
+<style>
+	/* Static „spiral notebook page": ruled lines, red margin, punch holes down the
+	   left edge. Layered backgrounds don't translate to utility classes, so the
+	   notebook motifs live here; colors come from the palette tokens in app.css. */
+	.notebook {
+		position: relative;
+		background-color: var(--card);
+		background-image:
+			radial-gradient(
+				circle at 34px 26px,
+				var(--hole-inner) 0 5.5px,
+				var(--hole-ring) 5.5px 8px,
+				transparent 8.5px
+			),
+			linear-gradient(
+				to right,
+				transparent 0 84px,
+				var(--margin-red) 84px 86.5px,
+				transparent 86.5px
+			),
+			repeating-linear-gradient(transparent 0 33px, var(--rule-line) 33px 35px);
+		background-size:
+			100% 52px,
+			100% 100%,
+			100% 100%;
+		background-repeat: repeat-y, no-repeat, no-repeat;
+		border: 2.5px solid var(--ink);
+		border-radius: 14px;
+		box-shadow: 6px 6px 0 var(--hard-shadow-strong);
+	}
+
+	.notebook-face {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: var(--space-6);
+		padding: var(--space-6) var(--space-8) var(--space-6) 116px;
+	}
+
+	/* Sunshine sticky note pinned to the page's top-right corner (static) */
+	.sticky-note {
+		position: absolute;
+		top: 18px;
+		right: 34px;
+		z-index: 1;
+		padding: 14px 18px 12px;
+		font-family: var(--font-head);
+		font-size: 15px;
+		line-height: 1.25;
+		text-align: center;
+		color: var(--accent-loud-foreground);
+		background: var(--accent-loud);
+		border: 2.5px solid var(--accent-loud-foreground);
+		border-radius: 4px;
+		transform: rotate(4deg);
+		box-shadow: 4px 5px 0 var(--hard-shadow-strong);
+	}
+
+	/* Strip of translucent tape over the note's top edge (tape belongs on paper) */
+	.sticky-note::before {
+		content: '';
+		position: absolute;
+		top: -12px;
+		left: 50%;
+		width: 62px;
+		height: 18px;
+		transform: translateX(-50%) rotate(-3deg);
+		background: var(--tape-bg);
+		border: 1.5px solid var(--tape-border);
+	}
+
+	/* Taped polaroid print — the print stays a physical photo, so its frame and
+	   caption ink are fixed and do NOT follow the palette or dark mode. */
+	.polaroid {
+		position: relative;
+		flex: none;
+		width: 172px;
+		margin: 0;
+		padding: 9px 9px 0;
+		background: #fffdf6;
+		border: 2px solid #4a443a;
+		border-radius: 3px;
+		transform: rotate(-3deg);
+		box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+	}
+
+	.polaroid::before {
+		content: '';
+		position: absolute;
+		top: -12px;
+		left: 50%;
+		z-index: 1;
+		width: 72px;
+		height: 20px;
+		transform: translateX(-50%) rotate(-4deg);
+		background: var(--tape-bg);
+		border: 1.5px solid var(--tape-border);
+	}
+
+	.polaroid-img {
+		position: relative;
+		height: 138px;
+		overflow: hidden;
+		border: 2px solid rgb(0 0 0 / 14%);
+	}
+
+	.polaroid figcaption {
+		padding: 7px 4px 9px;
+		font-family: var(--font-head);
+		font-size: 13.5px;
+		text-align: center;
+		color: #6c6353;
+	}
+
+	@media (width <= 960px) {
+		.sticky-note {
+			display: none;
+		}
+	}
+
+	@media (width <= 640px) {
+		.notebook {
+			background-image:
+				radial-gradient(
+					circle at 20px 26px,
+					var(--hole-inner) 0 4.5px,
+					var(--hole-ring) 4.5px 6.5px,
+					transparent 7px
+				),
+				linear-gradient(
+					to right,
+					transparent 0 48px,
+					var(--margin-red) 48px 50px,
+					transparent 50px
+				),
+				repeating-linear-gradient(transparent 0 33px, var(--rule-line) 33px 35px);
+		}
+
+		.notebook-face {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: var(--space-4);
+			padding: var(--space-4) var(--space-4) var(--space-4) 66px;
+		}
+
+		.polaroid {
+			width: 148px;
+			transform: rotate(-2deg);
+		}
+
+		.polaroid-img {
+			height: 116px;
+		}
+	}
+</style>

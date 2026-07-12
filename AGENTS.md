@@ -29,6 +29,15 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 
 - When writing tests, always derive expected behavior from requirements (GitHub issue descriptions and comments, `DECISIONS.md`, `CONTEXT.md`, or other docs) — never adapt tests to match the implementation. If a test reveals a bug, report it to the user or fix it immediately.
 
+## Visual / Browser Testing
+
+- Chrome DevTools MCP and Playwright MCP are unreliable in this project (they routinely fail to connect — the plugin pins a `chrome-devtools-mcp` version blocked by the global npm `before` time-pin, and Playwright MCP isn't registered here). Do NOT burn time trying to (re)connect them.
+- **Default to raw Playwright** via the project's own installed `playwright` dependency — it has no MCP layer, so it works in every session:
+    - Quick screenshot / crawl / click: `node scripts/shot.mjs <route> [--user martin|jana|petr|eva|tomas] [--mobile] [--dark] [--full] [--wait <sel>]`. Prints the PNG path; Read it back to view. Run from **PowerShell** (Git Bash mangles leading-slash args; from Bash prefix `MSYS_NO_PATHCONV=1`).
+    - Repeatable verification: a `tests/e2e/*.spec.ts` with `@playwright/test`, reusing `tests/e2e/fixtures/{auth,wishlist}-helpers.ts`.
+- Prereqs: dev server (`pnpm run dev`) + seeded DB (`pnpm db:seed`). Authed routes are under the `(app)` group: `/my-lists`, `/followed`, `/moderated`, `/settings`, `/w/<id>`.
+- Prefer explicit `waitForSelector` over `waitUntil: 'networkidle'` (networkidle hangs on SSE/long-poll surfaces).
+
 ## Commands
 
 - On Windows, use `pnpm.cmd` for package commands. Corepack's pnpm store lives outside the
@@ -57,12 +66,12 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 
 ### Test Accounts (password: see `SEED_PASSWORD` in seed.ts — "password" + "123")
 
-| Email          | Name           | Role                                                |
-| -------------- | -------------- | --------------------------------------------------- |
-| martin@test.cz | Martin Novák   | Primary owner — 4 wishlists (active/draft/archived) |
-| jana@test.cz   | Jana Dvořáková | Owner + moderator on Martin's lists                 |
-| petr@test.cz   | Petr Svoboda   | Active gifter — many reservations                   |
-| eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                       |
-| tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list        |
+| Email          | Name           | Role                                                                         |
+| -------------- | -------------- | ---------------------------------------------------------------------------- |
+| martin@test.cz | Martin Novák   | Recipient — 4 self-lists (active/draft/archived); správce of Rosie + Miminko |
+| jana@test.cz   | Jana Dvořáková | Recipient + moderator on Martin's lists; co-správce of Miminko               |
+| petr@test.cz   | Petr Svoboda   | Active gifter — many reservations                                            |
+| eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                                                |
+| tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list                                 |
 
-Seed includes 13 wishlists, 47 gifts, 24 reservations (2 marked bought/purchased), 10 likes, moderator assignments, followers (incl. unfollowed), and notifications. Martin follows 6 active lists spanning all gifter states — open (Petr, Eva), reserved (Jana svátek, Tomáš knihy), bought (Jana Vánoce, Tomáš chata) — to exercise the Sledované dropdown sections + truncation. All seed IDs are prefixed `seed-` for easy identification/cleanup.
+Seed includes 15 wishlists, 53 gifts, 27 reservations (2 marked bought/purchased), 10 likes, moderator assignments, followers (incl. unfollowed), and notifications. Martin follows 6 active lists spanning all gifter states — open (Petr, Eva), reserved (Jana svátek, Tomáš knihy), bought (Jana Vánoce, Tomáš chata) — to exercise the Sledované dropdown sections + truncation. Two "for-someone" lists (issue #99) exercise the „Pro {recipient}" header + orphan guard: recipient **Rosie** (single správce Martin) and recipient **Miminko** (multi správce Martin + Jana, plural „Spravují {names}"). All seed IDs are prefixed `seed-` for easy identification/cleanup.

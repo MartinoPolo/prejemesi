@@ -4,7 +4,7 @@
 	import { GiftDraftDialog } from '$lib/components/blocks/gift-draft-grid/index.js';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
-	import ThemeSelector from '$lib/components/blocks/theme/ThemeSelector.svelte';
+	import WishlistPalettePicker from '$lib/components/blocks/wishlist/WishlistPalettePicker.svelte';
 	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
 	import LoginPromptDialog from '$lib/components/blocks/auth/LoginPromptDialog.svelte';
 	import type {
@@ -15,18 +15,23 @@
 		UpdateGiftInput,
 		GiftDraftInput,
 	} from '$lib/modules/gifts/types.js';
-	import type { WishlistTheme } from '$lib/modules/themes/types.js';
+	import type { Palette } from '$lib/theme/palettes.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { canReserveGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface WishlistModalsProps {
-		isOwner: boolean;
-		isOwnerOrModerator: boolean;
+		/** Viewer role — drives the reserve gate (recipient cannot reserve). */
+		role: WishlistRole;
+		/** Recipient OR správce: gates the gift editor, share wizard, theme, správci panel, batch add. */
+		canManage: boolean;
 		isAuthenticated: boolean;
 		wishlistId: string;
 		wishlistTitle: string;
 		giftCount: number;
-		ownerIsModerator: boolean;
+		/** Linked recipient self-promoted to see reservation state (passed to the správci panel). */
+		recipientIsModerator: boolean;
 		// Gift detail modal
 		giftModalOpen: boolean;
 		giftModalMode: 'create' | 'edit';
@@ -45,9 +50,9 @@
 		reserveModalOpen: boolean;
 		reservingGift: GiftForVisitor | null;
 		isReserving: boolean;
-		// Theme dialog
-		themeDialogOpen: boolean;
-		activeTheme: WishlistTheme;
+		// Palette dialog (issue #102 REQ-5)
+		paletteDialogOpen: boolean;
+		wishlistPalette: Palette;
 		// Batch add dialog
 		batchAddDialogOpen: boolean;
 		isBatchSubmitting: boolean;
@@ -64,23 +69,20 @@
 		onreservemodalclose: () => void;
 		onreserve: (input: ReserveGiftInput) => void;
 		onshared: () => void;
-		onthemedialogopenchange: (open: boolean) => void;
-		onthemepreview: (theme: WishlistTheme) => void;
-		onthemesave: (theme: WishlistTheme) => void;
-		onthemecancel: () => void;
+		onpaletteselect: (palette: Palette) => void;
 		onmoderatorselfpromoted: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
 	}
 
 	let {
-		isOwner,
-		isOwnerOrModerator,
+		role,
+		canManage,
 		isAuthenticated,
 		wishlistId,
 		wishlistTitle,
 		giftCount,
-		ownerIsModerator,
+		recipientIsModerator,
 		giftModalOpen = $bindable(),
 		giftModalMode,
 		selectedGift,
@@ -95,8 +97,8 @@
 		reserveModalOpen = $bindable(),
 		reservingGift,
 		isReserving,
-		themeDialogOpen = $bindable(),
-		activeTheme,
+		paletteDialogOpen = $bindable(),
+		wishlistPalette,
 		batchAddDialogOpen = $bindable(),
 		isBatchSubmitting,
 		moderatorPanelOpen = $bindable(),
@@ -109,25 +111,27 @@
 		onreservemodalclose,
 		onreserve,
 		onshared,
-		onthemedialogopenchange,
-		onthemepreview,
-		onthemesave,
-		onthemecancel,
+		onpaletteselect,
 		onmoderatorselfpromoted,
 		onbatchsubmit,
 		onbatchdialogopenchange,
 	}: WishlistModalsProps = $props();
+
+	// Reservation availability: everyone except the recipient (their own surprise) may reserve.
+	const canReserve = $derived(canReserveGift(role));
 </script>
 
-<!-- Gift Detail Modal (owner/moderator only) -->
-{#if isOwnerOrModerator}
+<!-- Gift Detail Modal (managers only: recipient or správce).
+     GiftDetailModal's legacy `isOwner` prop only gates the manager-only "mark received" button,
+     so it maps to canManage in the new role model, not to the recipient specifically. -->
+{#if canManage}
 	<GiftDetailModal
 		bind:open={giftModalOpen}
 		mode={giftModalMode}
 		gift={selectedGift}
 		{wishlistId}
 		{priorityLevels}
-		{isOwner}
+		isOwner={canManage}
 		{postShareLocked}
 		canDelete={canDeleteSelectedGift}
 		{graceExpiresAt}
@@ -143,8 +147,8 @@
 	/>
 {/if}
 
-<!-- Reserve Modal (visitor/moderator only, hidden for owner) -->
-{#if !isOwner}
+<!-- Reserve Modal (everyone who may reserve — recipient excluded, they don't spoil their surprise) -->
+{#if canReserve}
 	<ReserveModal
 		bind:open={reserveModalOpen}
 		gift={reservingGift}
@@ -155,46 +159,41 @@
 	/>
 {/if}
 
-<!-- Share Wizard (owner only) -->
-{#if isOwner}
+<!-- Share Wizard (managers only) -->
+{#if canManage}
 	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
 {/if}
 
-<!-- Theme Selector Dialog (owner only) -->
-{#if isOwner}
-	<Dialog.Root
-		bind:open={themeDialogOpen}
-		onOpenChange={(open) => {
-			onthemedialogopenchange(open ?? false);
-		}}
-	>
-		<Dialog.Content class="sm:max-w-lg">
+<!-- Wishlist palette dialog (managers only, issue #102 REQ-5): replaces the old
+     theme-preset/custom-color picker with the 10-palette swatch grid. -->
+{#if canManage}
+	<Dialog.Root bind:open={paletteDialogOpen}>
+		<Dialog.Content class="sm:max-w-md">
 			<Dialog.Header>
-				<Dialog.Title>{m.theme_dialog_title()}</Dialog.Title>
-				<Dialog.Description>{m.theme_dialog_description()}</Dialog.Description>
+				<Dialog.Title>{m.wishlist_palette_dialog_title()}</Dialog.Title>
+				<Dialog.Description>{m.wishlist_palette_dialog_description()}</Dialog.Description>
 			</Dialog.Header>
-			<ThemeSelector
-				currentTheme={activeTheme}
-				onsave={onthemesave}
-				oncancel={onthemecancel}
-				onpreview={onthemepreview}
+			<WishlistPalettePicker
+				{wishlistId}
+				palette={wishlistPalette}
+				onselect={onpaletteselect}
 			/>
 		</Dialog.Content>
 	</Dialog.Root>
 {/if}
 
-<!-- Moderator Panel (owner only) -->
-{#if isOwner}
+<!-- Správci panel (managers only) -->
+{#if canManage}
 	<ModeratorPanel
 		{wishlistId}
-		{ownerIsModerator}
+		{recipientIsModerator}
 		bind:open={moderatorPanelOpen}
 		onselfpromoted={onmoderatorselfpromoted}
 	/>
 {/if}
 
-<!-- Batch Add Gifts Dialog (owner/moderator only) -->
-{#if isOwnerOrModerator}
+<!-- Batch Add Gifts Dialog (managers only) -->
+{#if canManage}
 	<GiftDraftDialog
 		bind:open={batchAddDialogOpen}
 		{wishlistTitle}

@@ -22,6 +22,27 @@
       "when": 1783349730301,
       "tag": "0002_add_preferred_locale",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783533202178,
+      "tag": "0003_recipient_role_model_expand",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783573690028,
+      "tag": "0004_recipient_role_model_contract",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783710128292,
+      "tag": "0005_fair_iron_lad",
+      "breakpoints": true
     }
   ]
 }

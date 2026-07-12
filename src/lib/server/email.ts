@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { Resend } from 'resend';
+import { escapeHtml } from '$lib/utils/escape_html.js';
 
 /**
  * Email sending wrapper around Resend.
@@ -89,15 +90,6 @@ export async function sendEmail({
 	if (import.meta.env.DEV) {
 		console.log(`[Email] Sent "${subject}" to ${to} (id=${data?.id})`);
 	}
-}
-
-function escapeHtml(value: string): string {
-	return value
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;');
 }
 
 function formatTextAsHtml(value: string): string {

@@ -4,14 +4,14 @@ import type { HTMLAttributes } from 'svelte/elements';
 import type { WithElementRef } from '$lib/utils.js';
 
 export const alertVariants = tv({
-	base: "grid gap-0.5 rounded-lg border px-4 py-3 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2.5 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4 group/alert relative w-full",
+	base: "grid gap-0.5 rounded-[12px] border-[2.5px] border-ink px-4 py-3 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2.5 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4 group/alert relative w-full",
 	variants: {
 		tone: {
-			default: 'bg-card text-card-foreground',
+			default: 'bg-tint text-card-foreground',
 			destructive:
 				'text-destructive bg-card *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
 			warning:
-				'border-status-warning/35 bg-status-warning/10 text-status-warning *:data-[slot=alert-description]:text-status-warning/90 *:[svg]:text-current',
+				'border-accent-loud-foreground bg-accent-loud text-accent-loud-foreground font-semibold shadow-sticker-strong *:data-[slot=alert-description]:text-accent-loud-foreground/90 *:[svg]:text-current',
 		},
 	},
 	defaultVariants: {

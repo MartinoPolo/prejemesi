@@ -1,37 +1,22 @@
-import * as m from '$lib/paraglide/messages.js';
-import { THEME_PRESETS } from '$lib/modules/themes/theme_presets.js';
-import type { ThemePresetName } from '$lib/modules/themes/types.js';
-
 /**
- * Theme identifier for dashboard cards. Named distinctly from the `themes`
- * module's `WishlistTheme` to avoid a collision at import sites. Includes
- * 'custom' because the DB enum includes it.
+ * Emoji shown for a wishlist that has no cover image (REQ-3 fallback hero,
+ * dashboard cards, navbar dropdown thumbnails).
+ *
+ * The visual theming of a wishlist is now the palette system (Redesign 2026);
+ * the retained `theme` column (kept for rollback safety) still carries the
+ * historical preset name for existing rows, which we map to a representative
+ * emoji. New rows default to `default` → 🎁.
  */
-export type DashboardWishlistTheme = ThemePresetName | 'custom';
+const THEME_EMOJI: Record<string, string> = {
+	default: '🎁',
+	christmas: '🎄',
+	birthday: '🎂',
+	fun: '🎉',
+	elegant: '💍',
+	custom: '✨',
+};
 
-interface ThemePresetDisplay {
-	emoji: string;
-	label: string;
-	gradient: string;
-}
-
-/** Get display info for a theme preset. Used by dashboard cards. */
-export function getThemePreset(theme: DashboardWishlistTheme): ThemePresetDisplay {
-	if (theme === 'custom') {
-		return {
-			emoji: '✨',
-			label: m.theme_custom(),
-			gradient:
-				'linear-gradient(145deg, oklch(0.42 0.12 275), oklch(0.52 0.15 268), oklch(0.36 0.1 282))',
-		};
-	}
-	const preset = THEME_PRESETS[theme];
-	if (preset === undefined) {
-		return { emoji: '🎁', label: 'Vychozi', gradient: THEME_PRESETS.default.gradient };
-	}
-	return {
-		emoji: preset.emoji,
-		label: preset.label(),
-		gradient: preset.gradient,
-	};
+/** Representative fallback emoji for a wishlist's (retained) theme value. */
+export function getWishlistEmoji(theme: string): string {
+	return THEME_EMOJI[theme] ?? THEME_EMOJI.default;
 }

@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const cardVariants = tv({
-	base: 'relative flex flex-col gap-6 bg-surface border rounded-lg py-6 shadow-sm',
+	base: 'relative flex flex-col gap-6 bg-card text-card-foreground border-[2.5px] border-ink rounded-panel py-6 shadow-sticker transition-[transform,box-shadow] ease-spring',
 	variants: {
 		padding: {
 			none: '',
@@ -12,14 +12,13 @@ export const cardVariants = tv({
 		},
 		state: {
 			default: '',
-			hover: 'border-border-strong shadow-md',
-			selected:
-				'border-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_22%,transparent)]',
+			hover: '-translate-y-1 shadow-sticker-lift',
+			selected: 'border-primary',
 			focus: 'outline-2 outline-solid outline-offset-2 outline-ring',
-			dragging: '-rotate-1 scale-[1.02] shadow-lg cursor-grabbing opacity-[0.92]',
+			dragging: '-rotate-1 scale-[1.02] shadow-sticker-lift cursor-grabbing opacity-[0.92]',
 			loading: 'relative overflow-hidden',
-			error: 'border-[color-mix(in_oklch,var(--status-danger)_50%,var(--border))] border-l-0.75 border-l-status-danger',
-			success: 'border-l-0.75 border-l-status-success',
+			error: 'border-status-danger',
+			success: 'border-status-success',
 			archived: 'opacity-55',
 			disabled: 'opacity-45 pointer-events-none',
 		},

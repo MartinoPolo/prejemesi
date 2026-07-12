@@ -16,7 +16,14 @@
 	],
 	"vars": {
 		"ORIGIN": "https://prejemesi.cz",
-		"R2_PUBLIC_URL": "https://images.prejemesi.cz",
+		// PUBLIC_ prefix: the client builds image + transformation URLs from it (issue #107).
+		"PUBLIC_R2_URL": "https://images.prejemesi.cz",
+		// Presigned direct uploads (issue #107). The two secrets that pair with these
+		// are set via `wrangler secret put R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`
+		// (an R2 API token with Object Read & Write on the bucket). Without them the
+		// app falls back to the same-origin upload proxy.
+		"R2_ACCOUNT_ID": "7492c3a2a8fad8ffea2f3d0dba97d18f",
+		"R2_BUCKET_NAME": "prejemesi-images",
 		"EMAIL_FROM": "Přejeme si <noreply@prejemesi.cz>",
 		"GOOGLE_CLIENT_ID": "867815684383-d6tg9nlkf7539s0f21divv8u5b9d3ir2.apps.googleusercontent.com",
 	},

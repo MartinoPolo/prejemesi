@@ -4,16 +4,22 @@ import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
+import { user } from '$lib/server/db/auth.schema.js';
 import { publicQuery, guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { getAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import {
-	verifyOwnerOrModerator,
+	verifyManagerAccess,
 	assertWishlistMutable,
 	resolveWishlistRole,
 } from '$lib/modules/wishlists/wishlist_access.js';
+import {
+	hidesReservationState,
+	canSeeReserverNames,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	CreateGiftInputSchema,
@@ -21,7 +27,7 @@ import {
 	ReorderGiftItemSchema,
 	MarkGiftReceivedInputSchema,
 	DEFAULT_GIFT_CURRENCY,
-	type GiftForOwner,
+	type GiftForRecipient,
 	type GiftForVisitor,
 } from './types.js';
 import { normalizeGiftLinks } from './gift_url.js';
@@ -30,7 +36,7 @@ import {
 	isOwnerSharedGiftDeleteGraceOpen,
 	isPreShareOwnerFullEditGraceOpen,
 } from './gift_deletion_rules.js';
-import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
@@ -78,9 +84,9 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 		.where(and(eq(gift.wishlistId, wishlistRow.id), isNull(gift.deletedAt)))
 		.orderBy(gift.sortOrder);
 
-	if (role === 'owner' && wishlistRow.ownerIsModerator === false) {
-		// Owner without self-promote: no reservation data, no like counts
-		const ownerGifts: GiftForOwner[] = giftRows.map((row) => ({
+	if (hidesReservationState(role, wishlistRow.recipientIsModerator)) {
+		// Recipient without self-promote: no reservation data, no like counts (protects the surprise)
+		const recipientGifts: GiftForRecipient[] = giftRows.map((row) => ({
 			id: row.id,
 			wishlistId: row.wishlistId,
 			name: row.name,
@@ -102,28 +108,47 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			prioritySortOrder: row.prioritySortOrder,
 		}));
 
-		return { role, gifts: ownerGifts } as const;
+		return { role, gifts: recipientGifts } as const;
 	}
 
 	// Visitor/Moderator: include reservation counts and like counts
 	const giftIds = giftRows.map((row) => row.id);
 
-	// Batch fetch reservation counts (scoped to this wishlist's gifts)
+	// Batch fetch active reservations with reserver display names (scoped to this
+	// wishlist's gifts): account name for authenticated reservers, the signed
+	// anonymous name otherwise. Counts and names derive from the same rows so they
+	// can never disagree. Names are only emitted to viewers passing the
+	// canSeeReserverNames gate below (issue #102 REQ-14) — a self-promoted
+	// recipient reaches this branch but must see counts only, never identities.
 	const reservationCounts = new Map<string, number>();
+	const reserverNamesByGiftId = new Map<string, string[]>();
 	if (giftIds.length > 0) {
-		const resCounts = await database
+		const reservationRows = await database
 			.select({
 				giftId: reservation.giftId,
-				totalQuantity: sql<number>`COALESCE(SUM(${reservation.quantity}), 0)`.as(
-					'total_quantity',
-				),
+				quantity: reservation.quantity,
+				reserverName: sql<
+					string | null
+				>`COALESCE(${user.name}, ${reservation.anonymousName})`,
 			})
 			.from(reservation)
+			.leftJoin(user, eq(reservation.userId, user.id))
 			.where(and(inArray(reservation.giftId, giftIds), isNull(reservation.deletedAt)))
-			.groupBy(reservation.giftId);
+			.orderBy(reservation.createdAt);
 
-		for (const row of resCounts) {
-			reservationCounts.set(row.giftId, Number(row.totalQuantity));
+		for (const row of reservationRows) {
+			reservationCounts.set(
+				row.giftId,
+				(reservationCounts.get(row.giftId) ?? 0) + Number(row.quantity),
+			);
+			if (row.reserverName !== null && row.reserverName.trim() !== '') {
+				const names = reserverNamesByGiftId.get(row.giftId);
+				if (names === undefined) {
+					reserverNamesByGiftId.set(row.giftId, [row.reserverName]);
+				} else if (!names.includes(row.reserverName)) {
+					names.push(row.reserverName);
+				}
+			}
 		}
 	}
 
@@ -186,6 +211,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 		}
 	}
 
+	const includeReserverNames = canSeeReserverNames(role);
+
 	const visitorGifts: GiftForVisitor[] = giftRows.map((row) => {
 		const qty = row.quantity ?? 1;
 		const reserved = reservationCounts.get(row.id) ?? 0;
@@ -212,6 +239,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			likeCount: likeCounts.get(row.id) ?? 0,
 			reservedCount: reserved,
 			isFullyReserved: reserved >= qty,
+			reserverNames: includeReserverNames ? (reserverNamesByGiftId.get(row.id) ?? []) : [],
 			myReservationId: myReservations.get(row.id)?.id ?? null,
 			myReservationPurchasedAt: myReservations.get(row.id)?.purchasedAt ?? null,
 		};
@@ -224,7 +252,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 
 export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user }, input) => {
 	const database = getDb();
-	const { wishlistRow } = await verifyOwnerOrModerator(user.id, input.wishlistId);
+	const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
 	assertWishlistMutable(wishlistRow);
 
 	// Determine sortOrder: place at the end
@@ -272,7 +300,8 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 		targetUserIds: followerRows
 			.map((row) => row.userId)
 			.filter(
-				(targetUserId) => targetUserId !== user.id && targetUserId !== wishlistRow.ownerId,
+				(targetUserId) =>
+					targetUserId !== user.id && targetUserId !== wishlistRow.recipientUserId,
 			),
 		wishlistId: input.wishlistId,
 		giftId: created.id,
@@ -298,13 +327,13 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
 
-	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
+	const { role, wishlistRow } = await verifyManagerAccess(user.id, giftRow.wishlistId);
 	assertWishlistMutable(wishlistRow);
 
 	const now = new Date();
 	const isShared = wishlistRow.sharedAt !== null;
 	const isPreShareGift = isShared && giftRow.createdAt <= wishlistRow.sharedAt!;
-	// Within the initial 2-minute share grace window the owner regains full edit. Later edits
+	// Within the initial 2-minute share grace window the recipient regains full edit. Later edits
 	// deliberately do not reopen name or delete grace.
 	const shareGraceOpen = isPreShareOwnerFullEditGraceOpen(
 		{
@@ -313,18 +342,19 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		},
 		now,
 	);
-	// An owner editing a pre-share gift once the grace window has closed follows the per-field rules
-	// (REQ-4/5): name is locked, quantity may only rise, description edits accrue as appends.
-	// Moderators, owners editing post-share-created gifts, and in-window edits fall through to the
-	// full per-field write below. A targeted segment edit (`descriptionAppendEdit`, issue #83) is
-	// always routed through the engine – it carries its own per-segment window check that the
-	// full-write path cannot enforce – so it stays validated even while the share window is open.
-	const isPreShareOwnerEdit =
-		role === 'owner' &&
+	// The recipient editing a pre-share gift once the grace window has closed follows the per-field
+	// rules (REQ-4/5): name is locked, quantity may only rise, description edits accrue as appends —
+	// these protect gifters from the surprise-blind recipient. Správci (moderators), recipient edits
+	// to post-share-created gifts, and in-window edits fall through to the full per-field write below.
+	// A targeted segment edit (`descriptionAppendEdit`, issue #83) is always routed through the engine
+	// – it carries its own per-segment window check that the full-write path cannot enforce – so it
+	// stays validated even while the share window is open.
+	const isPreShareRecipientEdit =
+		role === WISHLIST_ROLES.recipient &&
 		isPreShareGift &&
 		(!shareGraceOpen || input.descriptionAppendEdit !== undefined);
 
-	if (isPreShareOwnerEdit) {
+	if (isPreShareRecipientEdit) {
 		const outcome = computePreShareOwnerEdit(giftRow, input, now);
 		if (outcome.rejection !== null) {
 			error(outcome.rejection.status, outcome.rejection.code);
@@ -394,7 +424,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		didChange = true;
 	}
 
-	// Transparency: any post-share edit (moderator, or owner on a post-share-created gift) that
+	// Transparency: any post-share edit (moderator, or recipient on a post-share-created gift) that
 	// actually changes a field flags the gift as edited after sharing (REQ-6).
 	if (isShared && didChange) {
 		updateData.editedAfterShareAt = now;
@@ -406,7 +436,18 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		.where(eq(gift.id, input.id))
 		.returning();
 
-	if (updated !== undefined && role === 'moderator' && didChange) {
+	// Storage cleanup (issue #107, REQ-6): replacing or removing an uploaded
+	// image leaves no unreferenced R2 object behind.
+	if (
+		updated !== undefined &&
+		updateData.imageKey !== undefined &&
+		giftRow.imageKey !== null &&
+		giftRow.imageKey !== updateData.imageKey
+	) {
+		await deleteObjectsBestEffort([giftRow.imageKey]);
+	}
+
+	if (updated !== undefined && role === WISHLIST_ROLES.moderator && didChange) {
 		const reservationRows = await database
 			.select({
 				userId: reservation.userId,
@@ -448,14 +489,15 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 		error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 	}
 
-	const { role, wishlistRow } = await verifyOwnerOrModerator(user.id, giftRow.wishlistId);
+	const { role, wishlistRow } = await verifyManagerAccess(user.id, giftRow.wishlistId);
 	assertWishlistMutable(wishlistRow);
 
-	// Delete lock: owner delete on shared wishlists is limited to the initial share grace for
+	// Delete lock: recipient delete on shared wishlists is limited to the initial share grace for
 	// pre-share gifts, or the creation grace for gifts added after sharing. Later edits do not reopen it.
+	// Správci (moderators) are exempt — they see reservation state, so no inference leak to guard.
 	const now = new Date();
 	const isShared = wishlistRow.sharedAt !== null;
-	if (role === 'owner' && isShared) {
+	if (role === WISHLIST_ROLES.recipient && isShared) {
 		const deleteGraceOpen = isOwnerSharedGiftDeleteGraceOpen(
 			{
 				wishlistSharedAt: wishlistRow.sharedAt,
@@ -481,6 +523,10 @@ export const deleteGift = guardedCommand(v.string(), async ({ user }, giftId) =>
 
 	// Soft delete
 	await database.update(gift).set({ deletedAt: now, updatedAt: now }).where(eq(gift.id, giftId));
+
+	// Storage cleanup (issue #107, REQ-6): the uploaded image is unreachable
+	// once the gift is deleted (no restore path exists) – drop the object.
+	await deleteObjectsBestEffort([giftRow.imageKey]);
 });
 
 export const reorderGifts = guardedCommand(
@@ -504,7 +550,7 @@ export const reorderGifts = guardedCommand(
 			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 		}
 
-		const { wishlistRow } = await verifyOwnerOrModerator(user.id, firstGift.wishlistId);
+		const { wishlistRow } = await verifyManagerAccess(user.id, firstGift.wishlistId);
 		assertWishlistMutable(wishlistRow);
 
 		const uniqueGiftIds = [...new Set(items.map((item) => item.id))];
@@ -561,21 +607,10 @@ export const markGiftReceived = guardedCommand(
 			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
 		}
 
-		// Only owner can mark as received
-		const wishlistRows = await database
-			.select()
-			.from(wishlist)
-			.where(eq(wishlist.id, giftRow.wishlistId))
-			.limit(1);
-
-		const wishlistRow = wishlistRows[0];
-		if (wishlistRow === undefined) {
-			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
-		}
+		// Marking received is a management action (recipient or správce) — the recipient marks
+		// their own gifts received; on a for-someone list the správce does it for the recipient.
+		const { wishlistRow } = await verifyManagerAccess(user.id, giftRow.wishlistId);
 		assertWishlistMutable(wishlistRow);
-		if (wishlistRow.ownerId !== user.id) {
-			error(403, SERVER_ERROR.ONLY_OWNER_CAN_MARK_RECEIVED);
-		}
 
 		const [updated] = await database
 			.update(gift)
@@ -592,7 +627,7 @@ export const getPriorityLevels = guardedQueryWithArgs(v.string(), async ({ user 
 	const database = getDb();
 
 	// Verify access
-	await verifyOwnerOrModerator(user.id, wishlistId);
+	await verifyManagerAccess(user.id, wishlistId);
 
 	return database
 		.select()

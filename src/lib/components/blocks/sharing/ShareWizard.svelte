@@ -359,8 +359,25 @@
 					</div>
 					<div class={styles.successTitle()}>{m.share_success_title()}</div>
 					<p class={styles.successSub()}>
-						{m.share_success_body({ title: wishlistTitle, url: shareUrlDisplay })}
+						{m.share_success_body({ title: wishlistTitle })}
 					</p>
+					<div class={styles.successLinkRow()}>
+						<span class={styles.successLinkText()}>{shareUrlDisplay}</span>
+						<Button
+							intent={linkCopied ? 'primary' : 'outline'}
+							size="icon-sm"
+							class="flex-shrink-0"
+							aria-label={linkCopied ? m.share_link_copied() : m.share_copy()}
+							aria-live="polite"
+							onclick={() => sharing.copyLink()}
+						>
+							{#if linkCopied}
+								<CheckIcon />
+							{:else}
+								<CopyIcon />
+							{/if}
+						</Button>
+					</div>
 				</div>
 
 				<!-- Permissions guidance card -->

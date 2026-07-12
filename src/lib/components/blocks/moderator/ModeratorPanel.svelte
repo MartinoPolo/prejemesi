@@ -14,8 +14,9 @@
 		removeModerator,
 		selfPromoteToModerator,
 	} from '$lib/modules/moderators/moderators.remote.js';
+	import { renameRecipient } from '$lib/modules/wishlists/wishlists.remote.js';
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
-	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
+	import { toastSuccess, toastError, toastInfo } from '$lib/components/base/toast/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import { getApplicationUrl } from '$lib/config/site.js';
 	import LinkIcon from '@lucide/svelte/icons/link';
@@ -27,7 +28,8 @@
 
 	interface ModeratorPanelProps {
 		wishlistId: string;
-		ownerIsModerator: boolean;
+		/** Linked recipient self-promoted to see reservation state; toggles the disclosure section. */
+		recipientIsModerator: boolean;
 		open: boolean;
 		onopenchange?: (open: boolean) => void;
 		onselfpromoted?: () => void;
@@ -35,7 +37,7 @@
 
 	let {
 		wishlistId,
-		ownerIsModerator,
+		recipientIsModerator,
 		open = $bindable(false),
 		onopenchange,
 		onselfpromoted,
@@ -45,11 +47,15 @@
 
 	let moderators = $state.raw<ModeratorWithUser[]>([]);
 	let pendingInvites = $state.raw<PendingInvite[]>([]);
+	// For-someone lists (free-text recipient) expose a rename section pre-filled with the current name.
+	let isForSomeoneElse = $state(false);
+	let recipientNameDraft = $state('');
 	let isLoading = $state(false);
 	let isGenerating = $state(false);
 	let isRemoving = $state(false);
 	let isRevokingId = $state<string | null>(null);
 	let isSelfPromoting = $state(false);
+	let isRenamingRecipient = $state(false);
 	let linkCopied = $state(false);
 	let generatedInvitePath = $state<string | null>(null);
 	let inviteEmail = $state('');
@@ -60,10 +66,29 @@
 			const data = await getModeratorsForWishlist(wishlistId);
 			moderators = data.moderators;
 			pendingInvites = data.pendingInvites;
+			isForSomeoneElse = data.isForSomeoneElse;
+			recipientNameDraft = data.recipientName ?? '';
 		} catch (thrown) {
 			console.error('Failed to load moderators:', thrown);
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	async function handleRenameRecipient() {
+		const trimmed = recipientNameDraft.trim();
+		if (trimmed === '') {
+			return;
+		}
+		isRenamingRecipient = true;
+		try {
+			await renameRecipient({ id: wishlistId, recipientName: trimmed });
+			recipientNameDraft = trimmed;
+			toastSuccess(m.recipient_rename_toast_success());
+		} catch (thrown) {
+			toastError(translateServerError(thrown, m.recipient_rename_error()));
+		} finally {
+			isRenamingRecipient = false;
 		}
 	}
 
@@ -82,6 +107,14 @@
 				toastSuccess(m.moderator_toast_invite_generated());
 			} else {
 				toastSuccess(m.moderator_toast_invite_sent({ email: trimmed }));
+				// Non-blocking heads-up: the invitee has no account yet, so they'll be
+				// asked to register when they open the invite (the email still went out).
+				if (result.unregisteredInvitee) {
+					toastInfo(
+						m.moderator_invite_unregistered_title(),
+						m.moderator_invite_unregistered_body(),
+					);
+				}
 				inviteEmail = '';
 			}
 		} catch (thrown) {
@@ -172,13 +205,42 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-md">
+	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
 		<Dialog.Header>
 			<Dialog.Title>{m.moderator_title()}</Dialog.Title>
 			<Dialog.Description>{m.moderator_description()}</Dialog.Description>
 		</Dialog.Header>
 
 		<div class="flex flex-col gap-6">
+			<!-- Rename recipient (for-someone lists only): edit the free-text obdarovaný name -->
+			{#if isForSomeoneElse}
+				<div class={styles.section()}>
+					<div class={styles.sectionTitle()}>{m.recipient_section_title()}</div>
+					<div class="flex flex-col gap-1.5">
+						<label for="recipient-name" class="text-sm text-muted-foreground">
+							{m.recipient_rename_label()}
+						</label>
+						<div class="flex items-center gap-2">
+							<Input
+								id="recipient-name"
+								bind:value={recipientNameDraft}
+								disabled={isRenamingRecipient}
+							/>
+							<Button
+								size="sm"
+								intent="outline"
+								disabled={isRenamingRecipient || recipientNameDraft.trim() === ''}
+								onclick={handleRenameRecipient}
+							>
+								{m.recipient_rename_button()}
+							</Button>
+						</div>
+					</div>
+				</div>
+
+				<Separator />
+			{/if}
+
 			<!-- Active moderators -->
 			<div class={styles.section()}>
 				<div class={styles.sectionTitle()}>{m.moderator_active_title()}</div>
@@ -295,45 +357,48 @@
 				</div>
 			{/if}
 
-			<Separator />
+			<!-- Reservation visibility (self lists only): recipient self-promotion + disclosure -->
+			{#if !isForSomeoneElse}
+				<Separator />
 
-			<!-- Self-promote section -->
-			{#if !ownerIsModerator}
-				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
+				<!-- Self-promote section -->
+				{#if !recipientIsModerator}
+					<div class={styles.section()}>
+						<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
 
-					<div class={styles.selfPromoteWarning()}>
-						<div class="flex items-center gap-2">
-							<AlertTriangleIcon class="size-4 flex-shrink-0" />
-							<div class={styles.selfPromoteTitle()}>
-								{m.moderator_see_reservations_title()}
+						<div class={styles.selfPromoteWarning()}>
+							<div class="flex items-center gap-2">
+								<AlertTriangleIcon class="size-4 flex-shrink-0" />
+								<div class={styles.selfPromoteTitle()}>
+									{m.moderator_see_reservations_title()}
+								</div>
 							</div>
+							<div class={styles.selfPromoteDescription()}>
+								{m.moderator_see_reservations_description()}
+							</div>
+							<Button
+								size="sm"
+								intent="outline"
+								class="mt-1 self-start"
+								disabled={isSelfPromoting}
+								onclick={handleSelfPromote}
+							>
+								<EyeIcon data-icon="inline-start" />
+								{isSelfPromoting
+									? m.moderator_activating()
+									: m.moderator_activate_button()}
+							</Button>
 						</div>
-						<div class={styles.selfPromoteDescription()}>
-							{m.moderator_see_reservations_description()}
+					</div>
+				{:else}
+					<div class={styles.section()}>
+						<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
+						<div class={styles.disclosureBanner()}>
+							<EyeIcon class="size-4 flex-shrink-0" />
+							<span>{m.moderator_active_disclosure()}</span>
 						</div>
-						<Button
-							size="sm"
-							intent="outline"
-							class="mt-1 self-start"
-							disabled={isSelfPromoting}
-							onclick={handleSelfPromote}
-						>
-							<EyeIcon data-icon="inline-start" />
-							{isSelfPromoting
-								? m.moderator_activating()
-								: m.moderator_activate_button()}
-						</Button>
 					</div>
-				</div>
-			{:else}
-				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
-					<div class={styles.disclosureBanner()}>
-						<EyeIcon class="size-4 flex-shrink-0" />
-						<span>{m.moderator_active_disclosure()}</span>
-					</div>
-				</div>
+				{/if}
 			{/if}
 		</div>
 	</Dialog.Content>

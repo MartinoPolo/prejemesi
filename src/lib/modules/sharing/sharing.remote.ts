@@ -1,35 +1,25 @@
 import * as v from 'valibot';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { guardedCommand } from '$lib/server/remote.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { verifyManagerAccess } from '$lib/modules/wishlists/wishlist_access.js';
 
 export const shareWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
-	const database = getDb();
+	// Any manager (linked recipient or správce) may share — full management rights (issue #99).
+	const { wishlistRow } = await verifyManagerAccess(user.id, wishlistId);
 
-	const rows = await database
-		.select()
-		.from(wishlist)
-		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
-		.limit(1);
-
-	const row = rows[0];
-	if (row === undefined) {
-		error(404, 'Wishlist not found');
+	if (wishlistRow.status === 'archived') {
+		error(400, SERVER_ERROR.CANNOT_SHARE_ARCHIVED_WISHLIST);
 	}
-	if (row.ownerId !== user.id) {
-		error(403, 'Not authorized');
-	}
-	if (row.status === 'archived') {
-		error(400, 'Cannot share an archived wishlist');
-	}
-	if (row.sharedAt !== null) {
-		return { shortId: row.shortId, alreadyShared: true } as const;
+	if (wishlistRow.sharedAt !== null) {
+		return { shortId: wishlistRow.shortId, alreadyShared: true } as const;
 	}
 
 	const now = new Date();
-	await database
+	await getDb()
 		.update(wishlist)
 		.set({
 			sharedAt: now,
@@ -38,5 +28,5 @@ export const shareWishlist = guardedCommand(v.string(), async ({ user }, wishlis
 		})
 		.where(eq(wishlist.id, wishlistId));
 
-	return { shortId: row.shortId, alreadyShared: false } as const;
+	return { shortId: wishlistRow.shortId, alreadyShared: false } as const;
 });

@@ -25,8 +25,15 @@ export function setGiftsContext(
 	getRole: () => WishlistRole,
 	getIsArchived: () => boolean,
 	getIsAuthenticated: () => boolean,
+	getLikedIds: () => string[],
 ) {
-	const context = createGiftsContext(getGifts, getRole, getIsArchived, getIsAuthenticated);
+	const context = createGiftsContext(
+		getGifts,
+		getRole,
+		getIsArchived,
+		getIsAuthenticated,
+		getLikedIds,
+	);
 	setGiftsInternal(context);
 	return context;
 }
@@ -42,11 +49,14 @@ function createGiftsContext(
 	getRole: () => WishlistRole,
 	getIsArchived: () => boolean,
 	getIsAuthenticated: () => boolean,
+	getLikedIds: () => string[],
 ) {
 	const gifts = new Derived(getGifts);
 	const viewerRole = new Derived(getRole);
 	const archived = new Derived(getIsArchived);
 	const isAuthenticated = new Derived(getIsAuthenticated);
+	// Set for O(1) lookup in the likedOnly filter (mirrors LikesContext.baseLikedIds).
+	const likedIdSet = new Derived(() => new Set(getLikedIds()));
 
 	const reorderOverride = new StateRaw<GiftByRole[] | null>(null);
 	const effectiveGifts = new Derived<GiftByRole[]>(
@@ -63,17 +73,21 @@ function createGiftsContext(
 	const filters = new StateRaw<GiftFilters>({
 		availableOnly: false,
 		withLinkOnly: false,
+		likedOnly: false,
 	});
 
 	const hasActiveFilters = new Derived(
-		() => filters.current.availableOnly || filters.current.withLinkOnly,
+		() =>
+			filters.current.availableOnly ||
+			filters.current.withLinkOnly ||
+			filters.current.likedOnly,
 	);
 
 	const sortedAndFilteredGifts = new Derived<GiftByRole[]>(() => {
 		let result = [...effectiveGifts.current];
 
 		const currentFilters = filters.current;
-		if (currentFilters.availableOnly && viewerRole.current !== 'owner') {
+		if (currentFilters.availableOnly && viewerRole.current !== 'recipient') {
 			result = result.filter((giftItem) => {
 				const visitorGift = giftItem as GiftForVisitor;
 				return !visitorGift.isFullyReserved;
@@ -81,6 +95,9 @@ function createGiftsContext(
 		}
 		if (currentFilters.withLinkOnly) {
 			result = result.filter((giftItem) => giftItem.links.length > 0);
+		}
+		if (currentFilters.likedOnly) {
+			result = result.filter((giftItem) => likedIdSet.current.has(giftItem.id));
 		}
 
 		const currentSort = sortOption.current;

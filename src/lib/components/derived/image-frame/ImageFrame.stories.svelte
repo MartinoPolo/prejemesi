@@ -170,15 +170,10 @@
 	{/snippet}
 </Story>
 
-<!-- ── Preset vs custom wishlist palette (REQ-4, REQ-5) ── -->
-<Story name="Palette – preset (Birthday)">
+<!-- ── Per-wishlist palette (REQ-5): data-palette re-derives every token for the subtree ── -->
+<Story name="Palette – Sakura">
 	{#snippet template()}
-		<div
-			class="w-60"
-			style:--wishlist-surface="oklch(0.985 0.01 330)"
-			style:--wishlist-image-frame="oklch(0.95 0.016 330)"
-			style:--wishlist-icon="oklch(0.56 0.16 330)"
-		>
+		<div class="w-60" data-palette="sakura">
 			<div class="flex gap-4">
 				<ImageFrame
 					class="h-32 w-32"
@@ -200,14 +195,9 @@
 	{/snippet}
 </Story>
 
-<Story name="Palette – custom (OKLCH hue 275)">
+<Story name="Palette – Grape">
 	{#snippet template()}
-		<div
-			class="w-60"
-			style:--wishlist-surface="oklch(0.985 0.008 275)"
-			style:--wishlist-image-frame="oklch(0.95 0.014 275)"
-			style:--wishlist-icon="oklch(0.55 0.13 275)"
-		>
+		<div class="w-60" data-palette="grape">
 			<div class="flex gap-4">
 				<ImageFrame
 					class="h-32 w-32"
@@ -215,7 +205,7 @@
 					alt=""
 					tokenScope="wishlist"
 					fallbackEmoji="✨"
-					fallbackLabel="Vlastní"
+					fallbackLabel="Hrozen"
 				/>
 				<ImageFrame
 					class="h-32 w-32"

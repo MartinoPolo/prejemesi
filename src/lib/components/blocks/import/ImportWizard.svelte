@@ -1,8 +1,13 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Input } from '$lib/components/base/input/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
+	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
+	import type { Attachment } from 'svelte/attachments';
 	import ImportSourceStep from './ImportSourceStep.svelte';
 	import ImportReviewStep from './ImportReviewStep.svelte';
 	import ImportConfirmStep from './ImportConfirmStep.svelte';
@@ -78,6 +83,11 @@
 	let reviewTitle = $state<string | undefined>(undefined);
 	let commitStatus = $state<CommitStatus>(COMMIT_STATUS.idle);
 
+	// Recipient choice (new-list mode only). Typed as string to match ToggleGroup's
+	// single-select value binding; comparisons against RECIPIENT_KIND narrow it.
+	let recipientKind = $state<string>(RECIPIENT_KIND.self);
+	let recipientName = $state('');
+
 	// Step index for the stepper
 	const currentStepIndex = $derived(WIZARD_STEPS.indexOf(currentStep));
 
@@ -107,13 +117,21 @@
 		return count;
 	});
 
+	// In new-list mode the "for someone else" branch requires a non-empty recipient name
+	// before the wizard may advance from review to confirm (and thus to commit).
+	const recipientChoiceComplete = $derived(
+		mode !== WIZARD_MODE.newList ||
+			recipientKind !== RECIPIENT_KIND.other ||
+			recipientName.trim() !== '',
+	);
+
 	// Forward gate: different per step
 	const canProceed = $derived.by(() => {
 		if (currentStep === WIZARD_STEP.source) {
 			return parsedRows.length > 0;
 		}
 		if (currentStep === WIZARD_STEP.review) {
-			return selectedDrafts.length > 0;
+			return selectedDrafts.length > 0 && recipientChoiceComplete;
 		}
 		return false;
 	});
@@ -134,10 +152,22 @@
 		commitStatus = COMMIT_STATUS.committing;
 		try {
 			if (mode === WIZARD_MODE.newList) {
-				const result = await createWishlistFromImport({
-					title: reviewTitle ?? 'Import',
-					gifts: selectedDrafts,
-				});
+				const commitTitle = reviewTitle ?? 'Import';
+				const trimmedRecipientName = recipientName.trim();
+				const result = await createWishlistFromImport(
+					recipientKind === RECIPIENT_KIND.other
+						? {
+								recipientKind: RECIPIENT_KIND.other,
+								recipientName: trimmedRecipientName,
+								title: commitTitle,
+								gifts: selectedDrafts,
+							}
+						: {
+								recipientKind: RECIPIENT_KIND.self,
+								title: commitTitle,
+								gifts: selectedDrafts,
+							},
+				);
 				commitStatus = COMMIT_STATUS.success;
 				onsuccess?.();
 				return { shortId: result.shortId };
@@ -185,7 +215,14 @@
 		selectedDrafts = [];
 		reviewTitle = undefined;
 		commitStatus = COMMIT_STATUS.idle;
+		recipientKind = RECIPIENT_KIND.self;
+		recipientName = '';
 	}
+
+	// Focus the recipient-name input the moment the "other" branch mounts.
+	const autofocusOnMount: Attachment<HTMLInputElement> = (node) => {
+		node.focus();
+	};
 
 	function handleOpenChange(isOpen: boolean) {
 		if (!isOpen) {
@@ -215,7 +252,7 @@
 		<!-- Header: Title + Stepper -->
 		<div class="flex flex-col gap-3 px-6 pt-5 pb-4">
 			<div class="flex items-center justify-between">
-				<h2 class="text-foreground text-lg font-semibold">
+				<h2 class="font-heading text-lg font-semibold text-foreground">
 					{m.import_wizard_title()}
 				</h2>
 				<Dialog.Close>
@@ -228,24 +265,22 @@
 				</Dialog.Close>
 			</div>
 
-			<!-- Stepper -->
+			<!-- Stepper: ink-bordered dots + dashed connectors (anime-sky design language) -->
 			<div class="flex items-center gap-2">
 				{#each WIZARD_STEPS as step, index (step)}
 					{#if index > 0}
 						<div
-							class="h-px flex-1 {index <= currentStepIndex
-								? 'bg-primary'
-								: 'bg-border'}"
+							class="flex-1 border-t-2 {index <= currentStepIndex
+								? 'border-ink'
+								: 'border-dashed border-ink-faint'}"
 						></div>
 					{/if}
 					<div class="flex items-center gap-1.5">
 						<div
-							class="flex size-6 items-center justify-center rounded-full text-xs font-medium {index <
+							class="flex size-6 items-center justify-center rounded-full border-2 text-xs font-bold {index <=
 							currentStepIndex
-								? 'bg-primary/15 text-primary'
-								: index === currentStepIndex
-									? 'bg-primary text-primary-foreground'
-									: 'border-border text-muted-foreground border'}"
+								? 'border-ink bg-primary text-primary-foreground'
+								: 'border-ink-faint bg-surface text-ink-soft'}"
 						>
 							{#if index < currentStepIndex}
 								<CheckIcon class="size-3.5" />
@@ -255,8 +290,8 @@
 						</div>
 						<span
 							class="text-xs {index === currentStepIndex
-								? 'text-foreground font-medium'
-								: 'text-muted-foreground'}"
+								? 'font-bold text-foreground'
+								: 'font-semibold text-ink-soft'}"
 						>
 							{STEP_LABELS[index]()}
 						</span>
@@ -273,6 +308,51 @@
 			{#if currentStep === WIZARD_STEP.source}
 				<ImportSourceStep onparsed={handleSourceParsed} />
 			{:else if currentStep === WIZARD_STEP.review}
+				{#if mode === WIZARD_MODE.newList}
+					<div class="mb-4 flex flex-col gap-3">
+						<ToggleGroup.Root
+							type="single"
+							intent="outline"
+							value={recipientKind}
+							onValueChange={(newValue) => {
+								if (newValue !== '') recipientKind = newValue;
+							}}
+							class="w-full sm:w-fit"
+						>
+							<ToggleGroup.Item
+								value={RECIPIENT_KIND.self}
+								class="flex-1 sm:flex-none"
+							>
+								{m.create_for_toggle_self()}
+							</ToggleGroup.Item>
+							<ToggleGroup.Item
+								value={RECIPIENT_KIND.other}
+								class="flex-1 sm:flex-none"
+							>
+								{m.create_for_toggle_other()}
+							</ToggleGroup.Item>
+						</ToggleGroup.Root>
+
+						{#if recipientKind === RECIPIENT_KIND.other}
+							<div class="flex max-w-sm flex-col gap-2">
+								<Label for="wishlist-recipient-name">
+									{m.create_recipient_name_label()}
+								</Label>
+								<Input
+									id="wishlist-recipient-name"
+									bind:value={recipientName}
+									placeholder={m.create_recipient_name_placeholder()}
+									maxlength={RECIPIENT_NAME_MAX_LENGTH}
+									required
+									{@attach autofocusOnMount}
+								/>
+								<p class="text-muted-foreground text-sm">
+									{m.create_recipient_name_helper()}
+								</p>
+							</div>
+						{/if}
+					</div>
+				{/if}
 				<ImportReviewStep
 					{parsedRows}
 					{filename}

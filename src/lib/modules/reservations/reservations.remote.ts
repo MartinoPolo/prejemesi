@@ -5,19 +5,19 @@ import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_erro
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { publicQuery, publicCommand, guardedCommand } from '$lib/server/remote.js';
 import { getAnonVisitorId, getOrCreateAnonVisitorId } from '$lib/server/anonymous_visitor.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
+import { resolveWishlistRole } from '$lib/modules/wishlists/wishlist_access.js';
+import { canSeeGifterIdentity } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import {
 	ReserveGiftInputSchema,
 	UnreserveInputSchema,
 	SetReservationPurchasedInputSchema,
 	type ReservationForModerator,
 } from './types.js';
-import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 // ── Executor types ───────────────────────────────────────────────────────────
 
@@ -59,38 +59,6 @@ async function getActiveReservedCount(giftId: string, executor: DbExecutor): Pro
 	return Number(result[0]?.totalQuantity ?? 0);
 }
 
-async function determineRole(
-	userId: string | null,
-	wishlistOwnerId: string,
-	wishlistId: string,
-): Promise<WishlistRole> {
-	if (userId === null) {
-		return 'visitor';
-	}
-	if (userId === wishlistOwnerId) {
-		return 'owner';
-	}
-
-	const database = getDb();
-	const modRows = await database
-		.select()
-		.from(moderatorAssignment)
-		.where(
-			and(
-				eq(moderatorAssignment.wishlistId, wishlistId),
-				eq(moderatorAssignment.userId, userId),
-				isNull(moderatorAssignment.deletedAt),
-			),
-		)
-		.limit(1);
-
-	if (modRows[0] !== undefined) {
-		return 'moderator';
-	}
-
-	return 'visitor';
-}
-
 // ── Commands ───────────────────────────────────────────────────────────────
 
 export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authContext, input) => {
@@ -102,9 +70,9 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		error(400, SERVER_ERROR.CANNOT_RESERVE_ON_ARCHIVED);
 	}
 
-	// Owner cannot reserve their own gifts
-	if (authContext !== null && authContext.user.id === wishlistRow.ownerId) {
-		error(403, SERVER_ERROR.OWNER_CANNOT_RESERVE_OWN_GIFTS);
+	// The recipient cannot reserve their own gifts (protects the surprise). Správci may.
+	if (authContext !== null && authContext.user.id === wishlistRow.recipientUserId) {
+		error(403, SERVER_ERROR.RECIPIENT_CANNOT_RESERVE_OWN_GIFTS);
 	}
 
 	// Anonymous users must provide a display name
@@ -189,10 +157,10 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		);
 	const likedUserIds = likedRows
 		.map((row) => row.userId)
-		.filter((userId) => userId !== actorUserId && userId !== wishlistRow.ownerId);
+		.filter((userId) => userId !== actorUserId && userId !== wishlistRow.recipientUserId);
 	const followerUserIds = followerRows
 		.map((row) => row.userId)
-		.filter((userId) => userId !== actorUserId && userId !== wishlistRow.ownerId);
+		.filter((userId) => userId !== actorUserId && userId !== wishlistRow.recipientUserId);
 
 	await dispatchNotification({
 		type: NOTIFICATION_TYPE.LIKED_GIFT_RESERVED,
@@ -246,20 +214,12 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 			error(403, SERVER_ERROR.ANONYMOUS_CANNOT_CANCEL_RESERVATIONS);
 		}
 	} else {
-		// Anonymous reservation cancelled by an authenticated user – must be a moderator.
-		const giftRow = await database
-			.select({ wishlistId: gift.wishlistId })
-			.from(gift)
-			.where(eq(gift.id, reservationRow.giftId))
-			.limit(1);
+		// Anonymous reservation cancelled by an authenticated user – must be a správce (moderator),
+		// since cancelling on someone's behalf requires seeing gifter identity.
+		const { wishlist: wishlistRow } = await getGiftWithWishlist(reservationRow.giftId);
+		const role = await resolveWishlistRole(authContext, wishlistRow);
 
-		if (giftRow[0] === undefined) {
-			error(404, SERVER_ERROR.GIFT_NOT_FOUND);
-		}
-
-		const role = await determineRole(authContext.user.id, '', giftRow[0].wishlistId);
-
-		if (role !== 'moderator') {
+		if (!canSeeGifterIdentity(role)) {
 			error(403, SERVER_ERROR.CANNOT_CANCEL_ANONYMOUS_RESERVATION);
 		}
 	}
@@ -311,16 +271,11 @@ export const setReservationPurchased = guardedCommand(
 export const getReservationsForGift = publicQuery(v.string(), async (authContext, giftId) => {
 	const wishlistRow = (await getGiftWithWishlist(giftId)).wishlist;
 
-	const userId = authContext?.user.id ?? null;
-	const role = await determineRole(userId, wishlistRow.ownerId, wishlistRow.id);
+	const role = await resolveWishlistRole(authContext, wishlistRow);
 
-	// Owner never sees reservation data
-	if (role === 'owner') {
-		return { reservations: [] as ReservationForModerator[], role };
-	}
-
-	// Only moderators see full reservation details
-	if (role !== 'moderator') {
+	// Only správci (moderators) see gifter identities. Recipient (even self-promoted, who sees
+	// counts) and visitors never learn who reserved what.
+	if (!canSeeGifterIdentity(role)) {
 		return { reservations: [] as ReservationForModerator[], role };
 	}
 

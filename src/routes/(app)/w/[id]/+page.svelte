@@ -1,26 +1,26 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
-	import { localizeInternalHref } from '$lib/i18n/locale.js';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
+	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
+	import {
+		WISHLIST_SETTINGS_QUERY_PARAM,
+		WISHLIST_SETTINGS_TABS,
+		isWishlistSettingsTab,
+		type WishlistSettingsTab,
+	} from '$lib/components/blocks/wishlist/wishlist_settings_modal_types.js';
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
-	import { setWishlistThemeContext } from '$lib/modules/themes/themes.context.svelte.js';
-	import { applyWishlistTheme, removeWishlistTheme } from '$lib/modules/themes/apply_theme.js';
-	import { isCustomTheme, toWishlistTheme } from '$lib/modules/themes/types.js';
-	import type { WishlistTheme } from '$lib/modules/themes/types.js';
 	import {
 		getWishlistByShortId,
-		updateWishlist,
 		archiveWishlist,
 		unfollowWishlist,
 		followWishlist,
@@ -31,10 +31,9 @@
 	import { reserveGift, unreserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
-	import {
-		getThemePreset,
-		type DashboardWishlistTheme,
-	} from '$lib/modules/wishlists/wishlist_theme.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import type { Palette } from '$lib/theme/palettes.js';
+	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistImageUrl } from '$lib/modules/images/index.js';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
@@ -53,6 +52,7 @@
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
+	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import {
 		ownerSharedGiftDeleteGraceExpiresAt,
 		preShareOwnerFullEditGraceExpiresAt,
@@ -76,7 +76,9 @@
 
 	// ── Reactive state (declared before await for synchronous context setup) ─
 
-	let wishlist = $state<Wishlist & { ownerName: string; role: WishlistRole }>(undefined!);
+	let wishlist = $state<
+		Wishlist & { recipientDisplayName: string; managerNames: string[]; role: WishlistRole }
+	>(undefined!);
 	let gifts = $state<GiftByRole[]>([]);
 	let role = $state<WishlistRole>('visitor');
 	let likedGiftIds = $state.raw<string[]>([]);
@@ -93,6 +95,7 @@
 			() => role,
 			() => wishlist.status === 'archived',
 			() => isAuthenticated,
+			() => likedGiftIds,
 		),
 	);
 
@@ -113,19 +116,17 @@
 		),
 	);
 
-	const themeContext = untrack(() =>
-		setWishlistThemeContext(() => toWishlistTheme(wishlist.theme, wishlist.customThemeColor)),
-	);
-
 	// ── Derived values ───────────────────────────────────────────────────────
 
 	const isArchived = $derived(wishlist.status === 'archived');
-	const isOwner = $derived(role === 'owner');
-	const isModerator = $derived(role === 'moderator');
-	const isOwnerOrModerator = $derived(role === 'owner' || role === 'moderator');
+	const isRecipient = $derived(role === 'recipient');
+	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
+	const canManage = $derived(canManageWishlist(role));
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
-	const ownerIsModeratorLocal = $derived(wishlist.ownerIsModerator);
-	const themeEmoji = $derived(getThemePreset(wishlist.theme as DashboardWishlistTheme).emoji);
+	const recipientIsModerator = $derived(wishlist.recipientIsModerator);
+	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
+	const isForSomeoneElse = $derived(wishlist.recipientUserId === null);
+	const themeEmoji = $derived(getWishlistEmoji(wishlist.theme));
 	function getWishlistPageUrl() {
 		return `${SITE_URL}/w/${wishlist.shortId}`;
 	}
@@ -133,6 +134,19 @@
 	function getWishlistSocialImageUrl() {
 		const imagePath = wishlistImageUrl(wishlist.imageKey);
 		return imagePath === null ? SOCIAL_PREVIEW_IMAGE_URL : `${SITE_URL}${imagePath}`;
+	}
+
+	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
+	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
+	// during async SSR and 500s. For-someone lists read „…pro {recipient}"; self lists keep the
+	// original wording, sourced from recipientDisplayName.
+	function getSocialDescription() {
+		if (wishlist.recipientUserId === null) {
+			return m.wishlist_og_description_recipient({
+				recipient: wishlist.recipientDisplayName,
+			});
+		}
+		return `Seznam prani od ${wishlist.recipientDisplayName}`;
 	}
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
@@ -162,6 +176,9 @@
 			wishlist = freshWishlist;
 			gifts = freshGifts.gifts;
 			role = freshGifts.role;
+			// Fresh server data is authoritative — drop any optimistic reorder layer so a
+			// stale pre-refresh order can never mask the newly fetched gifts.
+			giftsContext.clearReorderOverride();
 			await refreshLikedGiftIds({ refresh: true });
 			await refreshWishlistDashboards();
 		} catch (thrown) {
@@ -177,6 +194,8 @@
 			const giftsData = await getGiftsByWishlistShortId(shortId);
 			gifts = giftsData.gifts;
 			role = giftsData.role;
+			// Fresh server data is authoritative — drop any optimistic reorder layer.
+			giftsContext.clearReorderOverride();
 			await refreshLikedGiftIds();
 		} catch (thrown) {
 			console.error('Failed to load wishlist gifts:', thrown);
@@ -221,37 +240,20 @@
 
 	let importWizardOpen = $state(false);
 
-	// ── Theme selector dialog state ──────────────────────────────────────────
+	// ── Palette dialog state (issue #102 REQ-5) ──────────────────────────────
 
-	let themeDialogOpen = $state(false);
+	let paletteDialogOpen = $state(false);
 
-	// ── Drag-and-drop state ──────────────────────────────────────────────────
+	// ── Settings modal state (per-wishlist settings, moved from /w/<id>/settings) ─
 
-	let draggedIndex = $state<number | null>(null);
-	let dragOverIndex = $state<number | null>(null);
+	let settingsModalOpen = $state(false);
+	let settingsModalTab = $state<WishlistSettingsTab>(WISHLIST_SETTINGS_TABS.details);
 
 	// ── Reservation modal state ───────────────────────────────────────────────
 
 	let reserveModalOpen = $state(false);
 	let reservingGift = $state<GiftForVisitor | null>(null);
 	let isReserving = $state(false);
-
-	// ── Theme application via $effect ─────────────────────────────────────────
-
-	let themeWrapperElement = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		if (themeWrapperElement === null) {
-			return;
-		}
-		const theme = themeContext.effectiveTheme.current;
-		applyWishlistTheme(themeWrapperElement, theme);
-		return () => {
-			if (themeWrapperElement !== null) {
-				removeWishlistTheme(themeWrapperElement);
-			}
-		};
-	});
 
 	// ── Re-fetch on route param change ───────────────────────────────────────
 
@@ -273,7 +275,6 @@
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const totalCount = $derived(giftsContext.giftCount.current);
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
-	const hasActiveFilters = $derived(giftsContext.hasActiveFilters.current);
 	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
 	const isEmpty = $derived(totalCount === 0);
 
@@ -286,7 +287,10 @@
 	// Full edit grace: a pre-share gift is fully editable for 2 minutes after sharing only.
 	// Later edits update the transparency badge but never reopen name/delete grace.
 	const selectedFullEditGraceExpiresAt = $derived.by(() => {
-		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
+		// Post-share edit locks bind the linked recipient (the person the list is for), never a
+		// správce — a moderator edits freely. Self-promotion changes only reservation visibility,
+		// so a self-promoted recipient stays subject to the lock.
+		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
 			return null;
 		}
 		return preShareOwnerFullEditGraceExpiresAt({
@@ -296,7 +300,7 @@
 	});
 
 	const selectedDeleteGraceExpiresAt = $derived.by(() => {
-		if (selectedGift === null || !isOwner || isModerator || wishlist.sharedAt === null) {
+		if (selectedGift === null || !isRecipient || wishlist.sharedAt === null) {
 			return null;
 		}
 		return ownerSharedGiftDeleteGraceExpiresAt({
@@ -361,7 +365,7 @@
 		) {
 			return false;
 		}
-		if (isOwner && !isModerator && wishlist.sharedAt !== null) {
+		if (isRecipient && wishlist.sharedAt !== null) {
 			return isSelectedGiftWithinDeleteGrace;
 		}
 		return true;
@@ -382,14 +386,13 @@
 	}
 
 	function handleSettingsOpened() {
-		void goto(localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId })));
+		settingsModalTab = WISHLIST_SETTINGS_TABS.details;
+		settingsModalOpen = true;
 	}
 
 	function handleEditImage() {
-		// resolve() handles the route; the #image fragment cannot be expressed through it.
-		void goto(
-			`${localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId }))}#image`,
-		);
+		settingsModalTab = WISHLIST_SETTINGS_TABS.image;
+		settingsModalOpen = true;
 	}
 
 	function handleShared() {
@@ -409,7 +412,11 @@
 	}
 
 	function clearFilters() {
-		giftsContext.filters.current = { availableOnly: false, withLinkOnly: false };
+		giftsContext.filters.current = {
+			availableOnly: false,
+			withLinkOnly: false,
+			likedOnly: false,
+		};
 	}
 
 	async function openCreateModal() {
@@ -420,7 +427,7 @@
 	}
 
 	async function openEditModal(gift: GiftByRole) {
-		if (!isOwnerOrModerator) {
+		if (!canManage) {
 			return;
 		}
 		await loadPriorityLevels();
@@ -517,6 +524,24 @@
 		await refreshData();
 	}
 
+	// ── Export handler ────────────────────────────────────────────────────────
+
+	// Exports gift DATA ONLY (name/notes/links/price), mirroring the import columns
+	// for a round-trip. Never emits reservation state – the recipient must not infer
+	// it, and reservations are not gift-catalog data (DECISIONS.md).
+	function handleExport() {
+		const csv = buildGiftCsv(
+			gifts.map((gift) => ({
+				name: gift.name,
+				description: gift.description,
+				links: gift.links ?? [],
+				price: gift.price,
+				currency: gift.currency,
+			})),
+		);
+		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
+	}
+
 	// ── Batch add handlers ───────────────────────────────────────────────────
 
 	function openBatchAddDialog() {
@@ -558,91 +583,32 @@
 		}
 	}
 
-	// ── Theme handlers ────────────────────────────────────────────────────────
+	// ── Palette handler (issue #102 REQ-5) ────────────────────────────────────
 
-	function handleThemePreview(theme: WishlistTheme) {
-		themeContext.startPreview(theme);
+	// Optimistic local update: the `data-palette` wrapper re-derives the whole token
+	// subtree instantly; the picker persists via setWishlistPalette (which refreshes
+	// the wishlist + dashboard queries server-side) and reverts on error.
+	function handlePaletteSelect(palette: Palette) {
+		wishlist.palette = palette;
 	}
 
-	function handleThemeCancel() {
-		themeContext.cancelPreview();
-		themeDialogOpen = false;
-	}
+	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
-	async function handleThemeSave(theme: WishlistTheme) {
-		try {
-			const themePreset = isCustomTheme(theme) ? 'custom' : theme;
-			const customThemeColor = isCustomTheme(theme) ? theme.color : null;
-
-			await updateWishlist({
-				id: wishlist.id,
-				theme: themePreset,
-				customThemeColor,
-			});
-
-			wishlist.theme = themePreset;
-			wishlist.customThemeColor = customThemeColor;
-			themeContext.cancelPreview();
-			themeDialogOpen = false;
-			toastSuccess(m.toast_theme_saved());
-			await refreshWishlistDashboards();
-		} catch (thrown) {
-			console.error('Failed to save theme:', thrown);
-			toastError(m.toast_theme_save_error());
-		}
-	}
-
-	function handleThemeDialogOpenChange(open: boolean) {
-		if (!open) {
-			themeContext.cancelPreview();
-		}
-	}
-
-	// ── Drag-and-drop handlers ────────────────────────────────────────────────
-
-	function handleDragStart(event: DragEvent, index: number) {
-		if (!isOwnerOrModerator) {
-			return;
-		}
-		draggedIndex = index;
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-			event.dataTransfer.setData('text/plain', String(index));
-		}
-	}
-
-	function handleDragOver(event: DragEvent, index: number) {
-		event.preventDefault();
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-		dragOverIndex = index;
-	}
-
-	function handleDragLeave() {
-		dragOverIndex = null;
-	}
-
-	async function handleDrop(event: DragEvent, dropIndex: number) {
-		event.preventDefault();
-		if (draggedIndex === null || draggedIndex === dropIndex) {
-			draggedIndex = null;
-			dragOverIndex = null;
+	// The card grid / list views drive reordering via pointer events (works on touch, unlike
+	// native HTML5 DnD) and keyboard arrows on the grip. Both surfaces report a source→target
+	// index pair over the rendered order and route through this single persistence path.
+	async function handleReorder(fromIndex: number, toIndex: number) {
+		if (!canManage || fromIndex === toIndex) {
 			return;
 		}
 
 		const items = [...giftsContext.effectiveGifts.current];
-		const [movedItem] = items.splice(draggedIndex, 1);
+		const [movedItem] = items.splice(fromIndex, 1);
 		if (movedItem === undefined) {
-			draggedIndex = null;
-			dragOverIndex = null;
 			return;
 		}
-		items.splice(dropIndex, 0, movedItem);
+		items.splice(toIndex, 0, movedItem);
 		giftsContext.reorderGifts(items);
-
-		draggedIndex = null;
-		dragOverIndex = null;
 
 		try {
 			const reorderItems = items.map((item, index) => ({
@@ -650,18 +616,18 @@
 				sortOrder: index,
 			}));
 			await reorderGifts(reorderItems);
-			giftsContext.clearReorderOverride();
-			await refreshData();
+			// Success: keep the optimistic override in place. Its objects are already the
+			// rendered ones, so no data refetch is needed — avoiding the wholesale object
+			// replacement that re-triggered every card's $derived (the disabled/dim flash).
+			// The next real refresh (navigation, other mutation) clears the override so the
+			// authoritative server order takes over.
 		} catch (thrown) {
+			// Failure: revert to the pre-drag order and re-sync with the server so the
+			// visible order matches persisted state (existing error handling unchanged).
 			console.error('Failed to reorder gifts:', thrown);
 			giftsContext.clearReorderOverride();
 			await refreshData();
 		}
-	}
-
-	function handleDragEnd() {
-		draggedIndex = null;
-		dragOverIndex = null;
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
@@ -720,6 +686,23 @@
 		void loadClientSideWishlistData();
 	});
 
+	// The legacy /w/<id>/settings route redirects here with ?settings=<tab>; open the
+	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
+	afterNavigate(() => {
+		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
+		if (requestedTab === null) {
+			return;
+		}
+		settingsModalTab = isWishlistSettingsTab(requestedTab)
+			? requestedTab
+			: WISHLIST_SETTINGS_TABS.details;
+		settingsModalOpen = true;
+		const cleanedUrl = new URL(page.url);
+		cleanedUrl.searchParams.delete(WISHLIST_SETTINGS_QUERY_PARAM);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
+		replaceState(cleanedUrl, {});
+	});
+
 	async function loadClientSideWishlistData() {
 		await Promise.all([
 			loadGiftData(),
@@ -738,10 +721,14 @@
 	}
 </script>
 
-<div bind:this={themeWrapperElement} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
+<!-- data-palette re-derives every color token for this subtree (see app.css), giving the
+     wishlist its own per-list identity independent of the viewer's app palette. -->
+<div data-palette={wishlist.palette} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
 	<WishlistHeader
 		title={wishlist.title}
-		ownerName={wishlist.ownerName}
+		recipientDisplayName={wishlist.recipientDisplayName}
+		{isForSomeoneElse}
+		managerNames={wishlist.managerNames}
 		description={wishlist.description}
 		imageKey={wishlist.imageKey}
 		imageSlots={wishlist.imageSlots}
@@ -750,7 +737,7 @@
 		status={wishlistStatus}
 		{role}
 		giftCount={headerGiftCount}
-		ownerIsModerator={ownerIsModeratorLocal}
+		{recipientIsModerator}
 		onshare={handleShareOpened}
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
@@ -758,58 +745,50 @@
 	/>
 
 	<WishlistDetailToolbar
-		{isOwner}
+		{canManage}
+		{role}
 		{isArchived}
-		{isOwnerOrModerator}
 		{isAuthenticated}
 		{viewMode}
 		sortOption={giftsContext.sortOption.current}
 		filters={giftsContext.filters.current}
-		{hasActiveFilters}
 		onviewmodechange={handleViewModeChange}
 		onsortchange={handleSortChange}
 		onfilterchange={handleFilterChange}
-		onthemeopen={() => (themeDialogOpen = true)}
+		onthemeopen={() => (paletteDialogOpen = true)}
 		onsettings={handleSettingsOpened}
 		onunfollow={handleUnfollow}
 		onaddgift={openCreateModal}
 		onbatchadd={openBatchAddDialog}
 		onimport={openImportWizard}
+		onexport={handleExport}
 	/>
 
 	<WishlistGiftDisplay
 		gifts={displayedGifts}
 		{role}
 		{isArchived}
-		{isOwner}
-		{isOwnerOrModerator}
 		{viewMode}
 		isLoading={isGiftDataLoading}
 		{isEmpty}
 		{isFilteredEmpty}
-		{draggedIndex}
-		{dragOverIndex}
 		onedit={openEditModal}
 		onreserve={handleOpenReserveModal}
 		onunreserve={handleUnreserve}
 		onaddgift={openCreateModal}
 		onclearfilters={clearFilters}
-		ondragstart={handleDragStart}
-		ondragover={handleDragOver}
-		ondragleave={handleDragLeave}
-		ondrop={handleDrop}
-		ondragend={handleDragEnd}
+		onreorder={handleReorder}
 	/>
 </div>
 
 <WishlistModals
-	{isOwner}
-	{isOwnerOrModerator}
+	{role}
+	{canManage}
 	{isAuthenticated}
 	wishlistId={wishlist.id}
 	wishlistTitle={wishlist.title}
 	giftCount={totalCount}
-	ownerIsModerator={ownerIsModeratorLocal}
+	{recipientIsModerator}
 	bind:giftModalOpen
 	{giftModalMode}
 	{selectedGift}
@@ -824,8 +803,8 @@
 	bind:reserveModalOpen
 	{reservingGift}
 	{isReserving}
-	bind:themeDialogOpen
-	activeTheme={themeContext.activeTheme.current}
+	bind:paletteDialogOpen
+	wishlistPalette={wishlist.palette}
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
 	bind:moderatorPanelOpen
@@ -838,16 +817,26 @@
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onshared={handleShared}
-	onthemedialogopenchange={handleThemeDialogOpenChange}
-	onthemepreview={handleThemePreview}
-	onthemesave={handleThemeSave}
-	onthemecancel={handleThemeCancel}
+	onpaletteselect={handlePaletteSelect}
 	onmoderatorselfpromoted={handleSelfPromoted}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
 
-{#if isOwnerOrModerator}
+<!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
+     non-managers and archived lists get the read-only notice inside the dialog, preserving
+     the old /w/<id>/settings deep-link behavior. -->
+<WishlistSettingsModal
+	bind:open={settingsModalOpen}
+	bind:activeTab={settingsModalTab}
+	{wishlist}
+	{canManage}
+	{themeEmoji}
+	onsaved={refreshData}
+	onpaletteselect={handlePaletteSelect}
+/>
+
+{#if canManage}
 	<ImportWizard
 		bind:open={importWizardOpen}
 		mode={WIZARD_MODE.append}
@@ -864,7 +853,7 @@
 <svelte:head>
 	<title>{wishlist.title} – Přejeme si</title>
 	<meta property="og:title" content={wishlist.title} />
-	<meta property="og:description" content="Seznam prani od {wishlist.ownerName}" />
+	<meta property="og:description" content={getSocialDescription()} />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={getWishlistPageUrl()} />
 	<meta property="og:image" content={getWishlistSocialImageUrl()} />
@@ -873,7 +862,7 @@
 	<meta property="og:image:alt" content={wishlist.title} />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={wishlist.title} />
-	<meta name="twitter:description" content="Seznam prani od {wishlist.ownerName}" />
+	<meta name="twitter:description" content={getSocialDescription()} />
 	<meta name="twitter:image" content={getWishlistSocialImageUrl()} />
 	<link rel="canonical" href={getWishlistPageUrl()} />
 </svelte:head>

@@ -3,7 +3,8 @@ import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { guardedCommand } from '$lib/server/remote.js';
 import { generateId } from '$lib/server/db/id.js';
-import { createUploadToken } from '$lib/server/crypto/upload_token.js';
+import { createUploadToken, TOKEN_PURPOSES } from '$lib/server/crypto/upload_token.js';
+import { presignUploadUrl, PRESIGNED_UPLOAD_EXPIRY_SECONDS } from '$lib/server/storage/presign.js';
 import {
 	UPLOAD_TARGETS,
 	MAX_FILE_SIZE,
@@ -11,8 +12,8 @@ import {
 	getPublicUrl,
 	type UploadTarget,
 } from '$lib/server/storage/r2.js';
-import { UPLOAD_API_BASE } from './types.js';
-import type { UploadAuthorization, DeleteAuthorization } from './types.js';
+import { UPLOAD_API_BASE, UPLOAD_MODES } from './types.js';
+import type { UploadAuthorization } from './types.js';
 
 function isUploadTarget(value: string): value is UploadTarget {
 	return value in UPLOAD_TARGETS;
@@ -33,10 +34,6 @@ const AuthorizeUploadInputSchema = v.object({
 	fileName: v.string(),
 	contentType: v.string(),
 	fileSize: v.number(),
-});
-
-const AuthorizeDeleteInputSchema = v.object({
-	objectKey: v.string(),
 });
 
 function getAuthSigningKey(): string {
@@ -75,32 +72,54 @@ export const authorizeUpload = guardedCommand(
 		const uniqueId = generateId();
 		const objectKey = `${prefix}/${uniqueId}.${extension}`;
 
-		const uploadUrl = `${UPLOAD_API_BASE}/${objectKey}`;
 		const publicUrl = getPublicUrl(objectKey);
+		const signingKey = getAuthSigningKey();
 
-		const { token, expiresAt } = await createUploadToken(
+		// The delete token lets only this uploader clean up this one object after a
+		// cancel or replacement (REQ-6) – there is no arbitrary-key delete API.
+		const { token: deleteToken } = await createUploadToken(
 			objectKey,
 			authContext.user.id,
-			getAuthSigningKey(),
+			signingKey,
+			TOKEN_PURPOSES.delete,
 		);
 
-		return { objectKey, uploadUrl, publicUrl, token, expiresAt };
-	},
-);
+		// Preferred path (REQ-1): a presigned PUT straight to R2 – the Worker never
+		// sees the request body. Falls back to the same-origin proxy route when R2
+		// S3 credentials are not configured (local dev, tests).
+		const presignedUrl = await presignUploadUrl({
+			objectKey,
+			contentType: input.contentType,
+			contentLength: input.fileSize,
+		});
 
-export const authorizeDelete = guardedCommand(
-	AuthorizeDeleteInputSchema,
-	async (authContext, input): Promise<DeleteAuthorization> => {
-		if (typeof input.objectKey !== 'string' || input.objectKey === '') {
-			error(400, 'Missing object key');
+		if (presignedUrl !== null) {
+			return {
+				objectKey,
+				uploadMode: UPLOAD_MODES.presigned,
+				uploadUrl: presignedUrl,
+				uploadToken: null,
+				deleteToken,
+				publicUrl,
+				expiresAt: Date.now() + PRESIGNED_UPLOAD_EXPIRY_SECONDS * 1000,
+			};
 		}
 
-		const { token, expiresAt } = await createUploadToken(
-			input.objectKey,
+		const { token: uploadToken, expiresAt } = await createUploadToken(
+			objectKey,
 			authContext.user.id,
-			getAuthSigningKey(),
+			signingKey,
+			TOKEN_PURPOSES.upload,
 		);
 
-		return { token, expiresAt };
+		return {
+			objectKey,
+			uploadMode: UPLOAD_MODES.proxy,
+			uploadUrl: `${UPLOAD_API_BASE}/${objectKey}`,
+			uploadToken,
+			deleteToken,
+			publicUrl,
+			expiresAt,
+		};
 	},
 );

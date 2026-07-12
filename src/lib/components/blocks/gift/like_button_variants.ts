@@ -1,30 +1,35 @@
 import { tv } from 'tailwind-variants';
 
+/**
+ * Anime-sky like control (issue #102 REQ-14 + round-2 delta): ghost ink chip
+ * with the colored heart; hover tints it with the like blush and springs it up.
+ * `md` matches the mockup card footer, `sm` the compact rows.
+ */
 export const likeButtonVariants = tv({
 	slots: {
-		root: 'group/like inline-flex items-center gap-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm',
-		icon: 'transition-all duration-200',
-		count: 'text-xs tabular-nums',
+		root: 'group/like inline-flex cursor-pointer items-center gap-1.5 rounded-lg border-2 border-transparent font-bold text-foreground transition-[background-color,transform] hover:bg-like-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-safe:hover:scale-108',
+		icon: 'text-heart transition-all duration-200',
+		count: 'tabular-nums',
 	},
 	variants: {
 		liked: {
 			true: {
-				root: 'text-liked',
-				icon: 'fill-liked',
+				icon: 'fill-heart',
 			},
 			false: {
-				root: 'text-muted-foreground hover:text-liked',
 				icon: 'fill-transparent',
 			},
 		},
 		size: {
 			sm: {
+				root: 'px-1.5 py-0.5 text-[13px]',
 				icon: 'size-3.5',
-				count: 'text-[11px]',
+				count: 'text-[12px]',
 			},
 			md: {
+				root: 'px-2 py-1 text-sm',
 				icon: 'size-4',
-				count: 'text-xs',
+				count: 'text-[13px]',
 			},
 		},
 	},

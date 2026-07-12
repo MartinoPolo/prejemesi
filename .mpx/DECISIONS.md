@@ -85,24 +85,65 @@ Rejected: Auto-archive after event date (too aggressive), time-based expiry (arb
 
 ### Owner can add gifts but not moderate by default
 
-Decided: 2026-05-29
+Decided: 2026-05-29 — **Superseded 2026-07-08** by "Recipient replaces owner" below (owner role dissolved into recipient + správce).
 What: Owner adds gifts to their wishlist and marks received. They cannot edit, remove, or see reservation state unless they self-promote to moderator.
 Why: Clean separation — the owner is the "recipient" role, not the "manager" role.
 Rejected: Owner has full edit powers (breaks surprise mechanic if they notice blocked removals).
 
 ### Moderator assigned by owner only
 
-Decided: 2026-05-29
+Decided: 2026-05-29 — **Revised 2026-07-08** by "Správci can add and revoke správci" below.
 What: Only the owner can promote users to moderator (via invite link with token or by email). Moderators cannot promote others. No limit on moderator count.
 Why: Owner controls trust chain. Preventing moderator-to-moderator promotion avoids uncontrolled access spread.
 Rejected: Moderators can promote others (security risk), single moderator limit (too restrictive for families).
 
 ### Owner self-promote to moderator with disclosure
 
-Decided: 2026-05-29
+Decided: 2026-05-29 — **Reworded 2026-07-08**: now "recipient self-promotes to správce"; mechanics (notification + permanent banner) unchanged.
 What: Owner can opt into moderator role (seeing full state), but this triggers a notification to all visitors and shows a permanent banner on the wishlist.
 Why: Maintains trust — visitors know the surprise is no longer protected for this wishlist.
 Rejected: Silent self-promote (breaks trust), no self-promote option (too restrictive for some use cases).
+
+### Recipient replaces owner: recipient + správce roles
+
+Decided: 2026-07-08
+What: The standalone "owner" role is dissolved. Every wishlist has a **Recipient** — the person gifts are for — either a linked user account or a free-text name (e.g. a child without email), plus one or more **Správci** (UI term for the `moderator` role). At creation the user picks "for me" (creator = linked recipient) or "for someone else" (creator = first správce, recipient = free-text name). No for-me ↔ for-someone conversion after creation; správci may rename a free-text recipient anytime. Nav: for-someone lists appear under Spravované for správci and under Moje seznamy for a linked recipient.
+Why: A parent managing a kid's list was impossible — `ownerId` conflated manager and recipient, and moderators lacked management rights (share/archive/metadata). One model now covers both self-lists and lists for others.
+Rejected: Display-only recipientName on top of the owner model (keeps the conflation); kid account as owner + parent as moderator (kids lack email; parent loses management rights); post-creation conversion (a self-list flip would silently grant reservation visibility).
+
+### Rights matrix: recipient vs správce
+
+Decided: 2026-07-08
+What: Recipient (with account): add gifts, edit per post-share rules, mark received, edit metadata/theme/image, share, archive, delete, manage správci — but NEVER sees reservations/likes/gifter identities and cannot reserve. Správce: all recipient rights PLUS full reservation visibility and reserving gifts (on any list). Visitors unchanged (see reserved state, not gifter identity). Removing the last správce of a for-someone list is blocked (orphan guard — a free-text recipient cannot manage anything).
+Why: "Správce sees everything, recipient sees no spoilers" is the entire role distinction; a family-trust app favors symmetric powers over hierarchy.
+Rejected: Správce without share/archive/delete (recreates the owner bottleneck this feature removes); správce unable to reserve (a parent is also a gifter on their kid's list).
+
+### Správci can add and revoke správci
+
+Decided: 2026-07-08 (revises "Moderator assigned by owner only")
+What: Any správce — and a linked recipient — can invite and revoke správci. Removing the last správce of a for-someone list is blocked.
+Why: For-someone lists have no owner to gate the trust chain, and the creator may go inactive.
+Rejected: Creator-only assignment (single point of failure).
+
+### Recipient account linking via claim token (follow-up)
+
+Decided: 2026-07-08
+What: v1 ships free-text recipients only, but the schema carries a nullable `recipientUserId` from day one. A follow-up adds a "Pozvat obdarovaného" claim link (token-based, like moderator invites): claiming links the account, shows the list in the recipient's Moje seznamy with recipient rights, and strips reservation state from their view.
+Why: Kids — the primary case — have no accounts. A claim link gives an explicit consent moment; email lookup at creation invites typos and surprises.
+Rejected: Email lookup at creation; shipping linking inside the first release (delays the headline feature).
+
+### Migration: existing lists become self-recipient
+
+Decided: 2026-07-08
+What: Existing wishlists map losslessly: former owner → linked recipient; `ownerIsModerator = true` → recipient-also-správce (disclosure banner kept, reworded „Obdarovaný je zároveň správcem"). Additive columns; renames via raw SQL (Drizzle push is interactive).
+Why: Production data must be preserved; the old model is a strict subset of the new one.
+
+### UI terminology: obdarovaný / správce; code keeps moderator
+
+Decided: 2026-07-08
+What: UI terms — cs „obdarovaný" / en "recipient"; cs „správce" / en "manager". Code and DB keep `moderator` identifiers (tables, role enum); owner→recipient identifiers are renamed during implementation.
+Why: "Moderator" is unfamiliar to the target audience; renaming the prod moderator tables is churn without user-facing gain.
+Rejected: Renaming moderator tables/enum; „příjemce" (postal register), „oslavenec" (birthday-only).
 
 ## Authentication & Users
 
@@ -122,12 +163,11 @@ Rejected: Require account for all actions (too much friction), fully anonymous w
 
 ## UI & Theming
 
-### Per-wishlist themes with 5 presets + custom
+### ~~Per-wishlist themes with 5 presets + custom~~ (superseded)
 
-Decided: 2026-05-29
-What: Each wishlist has a theme set by owner/moderator. Presets: Christmas, Birthday, Fun, Elegant, Default (yellow base). Custom = one color picker, palette auto-derived via OKLCH.
-Why: Themed wishlists feel personal and festive. OKLCH derivation ensures harmonious palettes from a single input.
-Rejected: User-level themes (wishlists should look the same for all visitors), full color customization (too complex, inconsistent results).
+Decided: 2026-05-29 — **Superseded 2026-07-10** by "Single theming system: 10 app palettes" below.
+~~What: Each wishlist has a theme set by owner/moderator. Presets: Christmas, Birthday, Fun, Elegant, Default (yellow base). Custom = one color picker, palette auto-derived via OKLCH.~~
+Replaced because: the Redesign 2026 palette system covers per-wishlist identity with 10 curated palettes; named presets and the custom color picker are removed.
 
 ### Dark/light/system mode per-user
 
@@ -308,12 +348,18 @@ What: The wishlist owner's name is displayed above the wishlist title in a large
 Why: When a visitor arrives via a shared link, they need immediate context about who this list belongs to. Previously the name was small and easy to miss.
 Rejected: Owner name in subtitle only (too subtle), owner name in nav bar (conflicts with logged-in user identity).
 
-### Sort and filter as icon-only dropdown trigger
+### Wishlist header: recipient-first on for-someone lists (variant A)
 
-Decided: 2026-05-30
-What: Sorting and filtering are accessed via a single icon-only button (funnel/sliders icon) in the top-right toolbar. Clicking opens a dropdown with sort options (owner's order, priority, price, name) and filter toggles (available only, with link only).
-Why: Keeps the toolbar compact. Sort/filter is a secondary action — most visitors use the owner's default order. Icon-only saves horizontal space for the view switcher.
-Rejected: Separate sort + filter buttons (takes too much space), inline sort controls (clutters the header).
+Decided: 2026-07-08 (extends "Owner name prominent in wishlist header")
+What: On for-someone lists the prominent name slot shows „Pro {recipient}" („Pro" in lighter weight, recipient bold), title unchanged, and the meta row gains „Spravuje {name}" / „Spravují {names}" in small muted text (`text-sm text-white/75`). Self-recipient lists are visually unchanged. OG description becomes „Seznam přání pro {recipient}". Dashboards/dropdowns/cards show the recipient as the person label (e.g. „Pro Rosie" chip).
+Why: The prominent slot answers "whose gifts are these?" — for a kid's list that is the recipient, not the manager. Validated with live DOM mockups; the author-first variant buried the key fact in metadata.
+Rejected: Author-first header with a small „Seznam pro Rosie" meta label (the current confusion, just annotated).
+
+### ~~Sort and filter as icon-only dropdown trigger~~ (superseded)
+
+Decided: 2026-05-30 — **Superseded 2026-07-10** by "Toolbar: visible sort select + 'Pouze dostupné' chip" below.
+~~What: Sorting and filtering are accessed via a single icon-only button (funnel/sliders icon) in the top-right toolbar. Clicking opens a dropdown with sort options (owner's order, priority, price, name) and filter toggles (available only, with link only).~~
+Replaced because: availability filtering is the highest-value visitor action and was buried (#101); the redesign toolbar shows the sort select and the availability chip directly.
 
 ## Design — UI Review (2026-05-30)
 
@@ -495,6 +541,13 @@ What: Creating a wishlist opens a modal with minimal fields: title (required), e
 Why: Fast creation flow — the modal keeps context, and most fields are optional at creation time.
 Rejected: Separate page (`/new-list`), multi-step wizard (over-engineered for 1-3 fields).
 
+### Creation modal: recipient choice as top segmented control
+
+Decided: 2026-07-08
+What: The create-wishlist modal gains a two-option segmented control at the top, above the title field: „Pro mě" (default) / „Pro někoho jiného". Selecting „Pro někoho jiného" reveals a required, autofocused „Jméno obdarovaného" text input (trimmed, max 100 chars) plus one muted helper line: „Seznam budete spravovat vy a uvidíte rezervace. Volbu nelze později změnit." No title auto-fill from the recipient name; no email/linking fields.
+Why: The recipient defines the list's identity, so it is decided first. A segmented control fits a binary, glanceable choice; the „Pro mě" default keeps the common path at zero added friction. The helper line covers the two non-obvious consequences (creator = správce with full visibility; choice immutable).
+Rejected: Select/radio group (heavier for two options); recipient field at the bottom (frames the title wrong); title auto-fill „Vánoce pro Rosie" (too magical); email lookup in the modal (claim-token follow-up covers linking).
+
 ## Authentication Flow
 
 ### Anonymous reservation: inline form in modal
@@ -533,19 +586,24 @@ What: Remote functions strip reservation data before returning to the owner (API
 Why: API is the security boundary. UI is defense-in-depth to prevent accidental leaks via component bugs.
 Rejected: DB-level views (unnecessary complexity), UI-only (insecure).
 
-### Client-side theme palette derivation
+### ~~Client-side theme palette derivation~~ (superseded)
 
-Decided: 2026-05-30
-What: Server returns theme name + custom color. Presets are predefined CSS variable sets. Custom themes use a JS utility to derive an OKLCH palette from a single input color and set CSS variables on the page wrapper. Live preview during editing.
-Why: Simpler than server-side computation, works reactively, enables live preview without round-trips.
-Rejected: Server-side pre-computation (adds latency, no live preview), build-time generation (can't handle dynamic custom colors).
+Decided: 2026-05-30 — **Superseded 2026-07-10** by "Single theming system: 10 app palettes" below.
+~~What: Server returns theme name + custom color. Presets are predefined CSS variable sets. Custom themes use a JS utility to derive an OKLCH palette from a single input color and set CSS variables on the page wrapper. Live preview during editing.~~
+Replaced because: custom single-color themes are removed; the 10 palettes are static primitive sets and all derived tokens are computed in CSS via `color-mix(in oklab, …)`, no JS derivation.
 
-### Server proxy for image uploads (revised from presigned R2 URLs)
+### ~~Server proxy for image uploads (revised from presigned R2 URLs)~~ (superseded)
 
-Decided: 2026-06-01 (revised from 2026-05-30)
-What: Client uploads via a same-origin PUT to `/api/upload/[objectKey]`, which proxies to R2. HMAC token (signed `{objectKey, userId, expiresAt}`, derived from AUTH_SECRET) authorizes each upload/delete. Token passed as `X-Upload-Token` header, verified server-side before storage.
-Why: Presigned R2 URLs require `aws4fetch` signing, R2 CORS config, and free-tier support verification. The proxy is simpler: session cookie auth works natively, content-type/size validation happens server-side, and HMAC binding prevents unauthorized overwrites. Acceptable for images (max 10 MB). The PRD's Known Risks section anticipated this: "R2 presigned URL support on free tier needs verification during implementation."
-Rejected: Presigned R2 URLs (CORS complexity, unverified free-tier support, requires separate signing library). Reconsider if video/large-file uploads are added.
+Decided: 2026-06-01 (revised from 2026-05-30) — **Superseded 2026-07-11** by "Presigned direct R2 uploads + optimized delivery" below (issue #107).
+~~What: Client uploads via a same-origin PUT to `/api/upload/[objectKey]`, which proxies to R2. HMAC token (signed `{objectKey, userId, expiresAt}`, derived from AUTH_SECRET) authorizes each upload/delete. Token passed as `X-Upload-Token` header, verified server-side before storage.~~
+Replaced because: proxied uploads buffer every image in Worker memory (simultaneous max-size uploads can exhaust it), and R2 presigned browser uploads + CORS are confirmed supported on the free tier. The proxy route survives only as the local-dev/fallback path.
+
+### Presigned direct R2 uploads + optimized image delivery
+
+Decided: 2026-07-11 (issue #107; restores the PRD #1 original direction)
+What: `authorizeUpload` validates target/content-type/size server-side, generates the object key, and returns a short-lived (10 min) presigned R2 PUT URL (aws4fetch SigV4, query-signed) that binds method, exact key, Content-Type, and Content-Length — the browser PUTs bytes straight to R2. Bucket CORS (`scripts/r2-cors.json`, applied via `wrangler r2 bucket cors set`) allows PUT from prod + localhost origins only. When R2 S3 credentials are absent (local dev, tests), the same-origin proxy route is used instead. Delivery: `PUBLIC_R2_URL` (client-readable rename of `R2_PUBLIC_URL`) serves originals; card/list/thumbnail/header surfaces load width-bounded `/cdn-cgi/image/` transformations (`format=auto,fit=scale-down`, `anim=false` for GIFs) with automatic client fallback to the original when a transformation fails (free tier: 5,000 unique transformations/month); detail views load originals (GIFs animate). All ImageFrame images are `loading="lazy"` `decoding="async"` except the eager header polaroid. Cleanup: replaced/removed/deleted images (gift, wishlist incl. its gifts, avatar, account deletion) are deleted from R2 server-side inside the owning mutations; cancelled/abandoned pre-save uploads are deleted client-side via an uploader-bound delete token (the arbitrary-key `authorizeDelete` command is removed — it let any logged-in user delete any known object key).
+Why: Uploads must not transit or get buffered by the Worker; original multi-MB images dominated wishlist loading; orphaned R2 objects accumulated forever.
+Rejected: Keeping the proxy for production (Worker memory ceiling); transforming external gift-image URLs (requires zone-wide any-origin resizing, quota risk); srcset/dpr variant matrices (multiplies unique transformations against the 5k/month free tier — one bounded width per surface suffices); R2 lifecycle rules for cleanup (cannot distinguish referenced from orphaned objects).
 
 ### Currencies: CZK, EUR, USD
 
@@ -779,12 +837,11 @@ What: Three distinct token layers — `data-bg-theme` attribute controls app-she
 Why: Each concern is independently themeable and must not leak into the others (e.g., wishlist accent color must not affect the app shell).
 Rejected: Shared token namespace (cross-contamination between app shell and wishlist themes).
 
-### App background theme applied server-side via data-bg-theme on <html>
+### ~~App background theme applied server-side via data-bg-theme on <html>~~ (superseded)
 
-Decided: 2026-06-02
-What: The user's `app_background_theme` preference (`default` / `golden-hour` / `twilight`) is read in `hooks.server.ts` and written as a `data-bg-theme` attribute on `<html>` before the first byte is sent.
-Why: Setting it server-side eliminates flash-of-wrong-theme on first paint — the correct theme is present in the initial HTML.
-Rejected: Client-only `onMount` application (causes visible flash of the default theme on load).
+Decided: 2026-06-02 — **Superseded 2026-07-10** by "Single theming system: 10 app palettes" + "Palette persistence" below.
+~~What: The user's `app_background_theme` preference (`default` / `golden-hour` / `twilight`) is read in `hooks.server.ts` and written as a `data-bg-theme` attribute on `<html>` before the first byte is sent.~~
+Replaced because: the background-theme axis is removed; the server-side-attribute pattern itself is retained and reused for `data-palette`.
 
 ### Native <input type=range> instead of bits-ui Slider for crop zoom control
 
@@ -800,3 +857,111 @@ What: `GiftImageCropCanvas` exposes a focusable `role="button"` crop region driv
 Why: Keyboard crop operation was deprioritized for v1; the gap was reviewed and consciously accepted rather than silently shipped. Documented here and inline in the component so it is not mistaken for an oversight.
 Rejected: Implementing keyboard nudge/resize now (deferred); silently leaving it undocumented (would read as a bug).
 Revisit: If the crop editor becomes a primary owner workflow or an accessibility audit requires AA, reopen #50 and implement keyboard operation + fix the nested-interactive handles.
+
+## Redesign 2026 — Anime Sky
+
+### Visual base: anime-sky-final mockup
+
+Decided: 2026-07-10
+What: The whole app redesign is based on `designs/redesign-2026/anime-sky-final.html` — ink borders, hard offset "sticker" shadows, notebook motifs, DynaPuff display + Geist body, playful rotations, spring-lift hovers. Pre-redesign mockup references (designs/app-shell, dashboard, landing-page, …) remain valid for layout/structure; their visual style is superseded.
+Why: Chosen from the redesign-2026 anime variants after iteration (banner padding, mint-style cards, dimmed reserved gifts, retuned hue-saturated dark mode).
+Rejected: Other redesign-2026 variants (anime-mint, original anime-sky, brutalism, terracotta, modern, …).
+
+### Single theming system: 10 app palettes
+
+Decided: 2026-07-10 (supersedes per-wishlist theme presets + custom, `data-accent` accents, `data-bg-theme` backgrounds)
+What: One palette system with 10 curated palettes — Obloha (sky, default), Máta, Broskev, Hrozen, Sakura, Oceán, Med, Malina, Matcha, Tužka. Each defines 4–6 primitives (`--p-brand`, `--p-deep`, `--p-ink`, `--p-bright`, `--p-accent`, `--p-on-accent`); ALL other tokens derive via `color-mix(in oklab, …)`. shadcn semantic token names are kept; only their values are re-derived. Dark mode derives from the same primitives (light mode stays source of truth). The owner picks one palette per wishlist (replaces Christmas/Birthday/… presets and the custom picker); the viewer's own palette themes every other surface. The 12-accent `data-accent` axis and 3-theme `data-bg-theme` axis are removed.
+Why: Three parallel theming systems would have become four; one primitive-driven system covers user preference, wishlist identity, and dark mode with a single derivation.
+Rejected: Palettes for chrome only (two coexisting systems); viewer palette everywhere (loses festive per-wishlist identity); keeping a custom picker (can return later by deriving primitives from one color).
+
+### Palette persistence: user column + cookie + SSR attribute
+
+Decided: 2026-07-10
+What: Logged-in users persist the palette on the user row (like `preferred_locale`); a cookie mirror lets `hooks.server.ts` set `data-palette` on `<html>` before first byte (the pattern `data-bg-theme` used). Anonymous users: cookie only.
+Why: Zero flash-of-wrong-palette, cross-device persistence for logged-in users, proven pattern.
+Rejected: localStorage only (no SSR, no cross-device); DB only (flash on every load).
+
+### Fonts: DynaPuff display + Geist body
+
+Decided: 2026-07-10
+What: Replace Figtree/Noto Sans with DynaPuff (headings) + Geist (body), self-hosted via fontsource with latin-ext subsets and metric-adjusted fallbacks (existing pattern). Czech diacritic coverage (ěščřžůď…) must be verified before committing to DynaPuff.
+Why: The fonts carry the anime identity.
+Rejected: DynaPuff-only with Figtree body (mixed identity); keeping current fonts (loses the character).
+
+### Motion system: tokens + gated reveals
+
+Decided: 2026-07-10
+What: Motion tokens — ~200 ms standard, 300 ms transform ease, spring `cubic-bezier(.34,1.56,.64,1)` for lifts; raise the current 75 ms global default transition duration. Hover lifts/wiggles on cards and buttons, staggered fadeUp reveals on page headers/hero, all inside `@media (prefers-reduced-motion: no-preference)`. Svelte transitions only where bits-ui built-ins don't cover.
+Why: The app has almost no motion today; the mockup's character depends on it.
+Rejected: Micro-interactions only (loses the reveal charm); full-on FLIP/page transitions (perf risk on long lists).
+
+### Wishlist header: notebook page + taped polaroid + sticky countdown
+
+Decided: 2026-07-10
+What: The header becomes the spiral-notebook panel. The wishlist image (image-slots crop feature) appears as a taped polaroid photo on the notebook. The event countdown is a taped sticky note on desktop; below ~960 px it collapses into a chip in the meta row next to the absolute-date chip; hidden when no event date; "proběhlo" once passed (owner archive prompt takes over).
+Why: Keeps the image upload/crop feature while adopting the notebook identity.
+Rejected: Full-bleed banner stacked above the notebook (two heroes); dropping the header image (dead crop UI).
+
+### Share UI: status chip + single button
+
+Decided: 2026-07-10
+What: A status chip (Koncept/Sdílený/Archivováno) in the header meta row + one "Sdílet" action button opening the share wizard (post-share it opens at the copy-link step). The full-width shared/draft strips are removed.
+Why: Three overlapping share indicators collapse into two compact ones.
+Rejected: Keeping restyled strips (heavy header); hiding share behind an overflow menu post-share.
+
+### Reservation-visibility notices: subtle reassurance, loud warning
+
+Decided: 2026-07-10
+What: Two messages, one Alert-based component with tones — moderator reassurance ("you see reservations; the owner never will") is a calm tinted disclosure; the visitor trust warning (owner self-promoted to moderator) is an accent banner (bold, warning tone, NO tape — see round-2 deltas). The bespoke purple strip in WishlistHeader is removed.
+Why: The trust warning is the one visitors must not miss; the reassurance is ambient.
+Rejected: Both subtle (warning missable); both loud (shouty for moderators on every visit).
+
+### Reserver name visible to visitors and moderators
+
+Decided: 2026-07-10
+What: Gift cards/detail show who reserved ("rezervovala Babička") to all non-owner viewers. The owner continues to see nothing (core invariant, API-stripped). Requires exposing the reserver display name in gift queries for non-owner roles.
+Why: Helps family coordination ("grandma has it covered"); lists are shared among trusted people.
+Rejected: Moderators-only (loses the gifter-view value); keeping the anonymous "Reserved" badge.
+
+### Toolbar: visible sort select + "Pouze dostupné" chip
+
+Decided: 2026-07-10 (supersedes "Sort and filter as icon-only dropdown trigger")
+What: The sort select is visible in the wishlist toolbar; "Pouze dostupné" is a toggle chip (#101); the rare "s odkazem" filter moves to a small overflow menu. The toolbar flex-wraps on narrow screens.
+Why: Availability filtering is the highest-value visitor action; burying it defeated it.
+Rejected: Icon-only dropdown (buried filters); three visible chips (toolbar overflow).
+
+### Navigation: pill states, landing anchor links, mobile control consolidation
+
+Decided: 2026-07-10
+What: Both navs use background-pill hover/active states (no underline). The landing header gains desktop-only section anchor links (no landing hamburger). Below ~768 px the palette/language/dark controls consolidate — app: into the MobileNav drawer; landing: into a single popover. The dark-mode toggle stays the 3-state cycle (light→dark→system), restyled as a bordered header button.
+Why: Consistent nav language; 390 px headers are already crowded before the palette control arrives.
+Rejected: Underline active states; all controls visible on mobile; 2-state dark toggle.
+
+### Language switcher: text trigger, flags in dropdown
+
+Decided: 2026-07-10
+What: The trigger is a text shortcut ("CZ"/"EN") + chevron — no flag. The drawn `LanguageFlag` SVGs (never emoji — Windows renders emoji flags as letters) appear only inside the dropdown items.
+Why: Lower visual weight in the header; flags stay for recognition where they don't shout.
+Rejected: Flag trigger (too eye-catching); emoji flags (Windows fallback).
+
+### Rollout: big-bang branch, single tracking issue, mockups first
+
+Decided: 2026-07-10
+What: One redesign branch merged to dev when complete, tracked by a single GitHub issue. Before implementation, dedicated anime-style mockups for: wishlist header (polaroid + share chip + alert variants), dashboard cards, gift detail modal, auth pages. Remaining surfaces are designed in code from the token system.
+Why: Coherent reveal preferred over staged PRs; the four high-traffic/high-state surfaces are worth nailing visually first.
+Rejected: Staged token-first PRs; feature-flag opt-in (double styling maintenance).
+
+### Round-2 mockup deltas (all four mockups complete)
+
+Decided: 2026-07-10 (round 2, after user review of the mockups)
+What: All four mockups live in `designs/redesign-2026/sky-final/` (anime-sky-final, anime-dashboard, anime-gift-detail-modal, anime-auth). Deltas over the round-1 base:
+
+- Primary buttons are FLAT stickers — `--brand-fill` background, ink border, hard offset shadow, white text, spring-lift hover. The gradient+glow primary (and glowPulse animation) is superseded.
+- Tape appears only on paper-like artifacts (sticky note, polaroid). The loud trust warning keeps accent bg/bold/rotation but has NO tape.
+- Gift images: real photos `object-fit: cover` by default; non-filling images letterbox with the dotted mat visible (`contain` + padding). Dotted gift-image background pans 0 0 → 24px 12px on hover (static for reserved/received).
+- Like/heart control in the gift modal action bar is a full sticker-sized button (~52 px, 21 px heart), matching the reserve button.
+- Visible Czech copy avoids em-dashes — comma, colon, or spaced en-dash instead.
+- Static text hides the caret but stays selectable (`caret-color: transparent` on html, `auto` on form fields; never `user-select: none`). App-side caret investigation found no bug (Brave caret browsing, F7); app hardening optional.
+
+Why: User review of round 1 flagged the glossy 3D primaries, misplaced tape, undersized heart, and em-dash copy; photo embeds + hover pan were requested additions.
+Rejected: Glow kept as hover accent (still off-language); `user-select: none` for the caret (kills text selection).

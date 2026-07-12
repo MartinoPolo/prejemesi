@@ -6,8 +6,8 @@ Přejeme si ("dárečky" = presents in Czech) is a shareable wishlist web app wh
 
 **Wishlist** — A collection of desired gifts created by an owner for a specific occasion.
 **Gift** — An item on a wishlist with name, optional description/URL/price/image/priority/quantity.
-**Owner** — Creator of a wishlist; can add gifts, mark received, assign moderators; cannot see reservation state.
-**Moderator** — User promoted by the owner; sees full state, can add/edit/remove gifts (except reserved ones).
+**Recipient (obdarovaný)** — The person a wishlist is for: a linked user or a free-text name (e.g. a child). Manages the list when linked, but never sees reservation state and cannot reserve.
+**Správce (manager)** — User with full management rights plus full visibility (reservations, gifter identities); can reserve gifts and manage other správci. Code role: `moderator`.
 **Visitor** — Anyone viewing a wishlist via a shared link; can reserve, unreserve, and like gifts.
 **Gifter** — A visitor who has reserved at least one gift on a wishlist.
 **Reservation** — A claim on one or more units of a gift by a visitor; prevents duplicate buying.
@@ -39,8 +39,8 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 
 ## Relationships
 
-- User 1:N Wishlist (as owner)
-- Wishlist N:N User (as moderator)
+- User 1:N Wishlist (as recipient; a recipient may instead be a free-text name with no account)
+- Wishlist N:N User (as správce/moderator)
 - Wishlist N:N User (as visitor/follower)
 - Wishlist 1:N Gift
 - Gift 1:N Reservation
@@ -76,14 +76,16 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | Bulk gift entry (shared draft grid, large dialog)                              | Done        | v1.x        |
 | Gift metadata enrichment (link → image/price/title)                            | Planned     | v1.x        |
 | Multiple links per gift (max 10)                                               | Done        | v1.x        |
+| List for someone else (recipient + správce role model)                         | In Progress | v1.x        |
+| Recipient account linking via claim token                                      | Planned     | v1.x        |
 
 ## Key Constraints
 
-- Owner NEVER sees reservation state — this is the core product invariant. Enforced at API level (strip data) + UI level (don't render).
+- The recipient NEVER sees reservation state — this is the core product invariant (role model 2026-07-08: every list has a recipient + správci; the standalone "owner" role is dissolved). Enforced at API level (strip data) + UI level (don't render). Správci see full state and may reserve gifts.
 - After sharing, the owner can edit existing gifts' presentation/info fields (image, links, price, priority) + append to the description, and raise (never lower) quantity; `name` is frozen and delete is blocked. Edits apply uniformly to all gifts (never reservation-conditional) and are surfaced via an "Upraveno po sdílení" badge. A 2-min grace after sharing allows full edit/undo only for the initial share transition; later edits never reopen delete/name grace. Gifts added after sharing can be deleted only within 2 minutes of creation and never when reserved.
 - Reserved gifts cannot be removed by moderators — must contact gifter first.
 - Editing a reserved gift by moderator notifies the gifter (email if known).
-- Owner self-promoting to moderator triggers notification to all visitors.
+- A recipient self-promoting to správce triggers notification to all visitors.
 - Themes are per-wishlist (owner/moderator sets); dark/light/system mode is per-user. Client-side OKLCH palette derivation for custom themes.
 - Global language switcher is available in both the logged-in app header and landing header, next to the color-mode toggle. It uses drawn flag icons, not emoji flags, so Windows does not fall back to country-code letters. Locale changes use client-side SvelteKit navigation after updating Paraglide's cookie, avoiding a full document reload. Czech is the base unprefixed locale; English uses `/en/...`. Logged-in explicit switches persist `user.preferred_locale`.
 - Anonymous users can visit/reserve but have no persistence (no dashboard, no followed lists). Anonymous → registered auto-links reservations by email match.

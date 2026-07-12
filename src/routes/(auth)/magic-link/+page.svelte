@@ -2,15 +2,16 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { Input } from '$lib/components/base/input/index.js';
-	import { Label } from '$lib/components/base/label/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import AuthBrandPanel from '$lib/components/blocks/auth/AuthBrandPanel.svelte';
 	import AuthBrandFeature from '$lib/components/blocks/auth/AuthBrandFeature.svelte';
 	import AuthFormCard from '$lib/components/blocks/auth/AuthFormCard.svelte';
 	import ErrorBanner from '$lib/components/blocks/auth/ErrorBanner.svelte';
+	import AuthFormField from '$lib/components/blocks/auth/AuthFormField.svelte';
 	import { authClient } from '$lib/auth_client.js';
 	import { getLocalizedAuthCallback, localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import { escapeHtml } from '$lib/utils/escape_html.js';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import SendIcon from '@lucide/svelte/icons/send';
@@ -120,7 +121,7 @@
 			<h2 class="success-title">{m.magic_sent_title()}</h2>
 			<p class="success-body">
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html m.magic_sent_body({ email: sentEmail })}
+				{@html m.magic_sent_body({ email: escapeHtml(sentEmail) })}
 			</p>
 			<p class="success-body mt-hint">
 				{m.magic_sent_check()}<br />
@@ -144,8 +145,11 @@
 
 		<form onsubmit={handleSubmit} novalidate>
 			<div class="form-stack">
-				<div class="form-field">
-					<Label for="magic-email">{m.email_label()}</Label>
+				<AuthFormField
+					fieldId="magic-email"
+					label={m.email_label()}
+					errorMessage={emailError}
+				>
 					<Input
 						id="magic-email"
 						type="email"
@@ -153,15 +157,12 @@
 						autocomplete="email"
 						bind:value={email}
 						onblur={handleEmailBlur}
+						state={emailError ? 'error' : 'default'}
 						aria-invalid={emailError ? true : undefined}
 						aria-describedby={emailError ? 'magic-email-error' : undefined}
 						disabled={loading}
-						class={emailError ? 'border-destructive! ring-destructive/20! ring-3!' : ''}
 					/>
-					{#if emailError}
-						<span class="form-error-text" id="magic-email-error">{emailError}</span>
-					{/if}
-				</div>
+				</AuthFormField>
 			</div>
 
 			<Button type="submit" class="mt-6 w-full" size="lg" disabled={loading}>
@@ -188,21 +189,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-4);
-	}
-
-	.form-field {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-
-	.form-error-text {
-		font-size: var(--text-xs);
-		color: var(--destructive);
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		line-height: var(--leading-snug);
 	}
 
 	.auth-footer {

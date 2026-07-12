@@ -15,11 +15,12 @@
 </a>
 
 <style>
+	/* Mockup wordmark: ink text, tilted brand-gradient mark with an ink border. */
 	.logo {
 		font-family: var(--font-heading);
 		font-weight: var(--weight-bold);
 		font-size: var(--text-xl);
-		color: var(--primary);
+		color: var(--ink);
 		letter-spacing: var(--tracking-tight);
 		text-decoration: none;
 		flex-shrink: 0;
@@ -35,13 +36,15 @@
 	.logo-icon-wrap {
 		width: 30px;
 		height: 30px;
-		background: oklch(from var(--primary) l c h / 12%);
-		border-radius: var(--radius-md);
+		background: linear-gradient(180deg, var(--brand), var(--brand-deep));
+		border: 2px solid var(--ink);
+		border-radius: 10px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--primary);
+		color: #fff;
 		flex-shrink: 0;
+		transform: rotate(-4deg);
 	}
 
 	.logo-text {

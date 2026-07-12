@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import type { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from '$lib/modules/images/types.js';
+import { isPalette, type Palette } from '$lib/theme/palettes.js';
 
 /** Full wishlist row from DB */
 export type Wishlist = typeof wishlist.$inferSelect;
@@ -22,18 +23,52 @@ export type WishlistTheme = (typeof WISHLIST_THEMES)[number];
 /** Default theme applied to a wishlist when none is chosen. */
 export const DEFAULT_WISHLIST_THEME: WishlistTheme = 'default';
 
-/** Input for creating a new wishlist */
-export interface CreateWishlistInput {
-	title: string;
-	eventDate?: Date | null;
-	theme?: WishlistTheme;
-}
+/** Whether a wishlist is for the creator (self) or for a free-text recipient (other). */
+export const RECIPIENT_KIND = {
+	self: 'self',
+	other: 'other',
+} as const;
 
-export const CreateWishlistInputSchema = v.object({
+export type RecipientKind = (typeof RECIPIENT_KIND)[keyof typeof RECIPIENT_KIND];
+
+/** Max length of a free-text recipient name (issue #99 creation modal). */
+export const RECIPIENT_NAME_MAX_LENGTH = 100;
+
+/**
+ * Input for creating a new wishlist. Discriminated on `recipientKind`:
+ * - `self`: the creator is the linked recipient (behaviourally identical to the old owner flow).
+ * - `other`: a free-text recipient; the creator becomes the first správce (moderator).
+ * The choice is immutable after creation — the server derives roles, never the client.
+ */
+export type CreateWishlistInput =
+	| { recipientKind: 'self'; title: string; eventDate?: Date | null; theme?: WishlistTheme }
+	| {
+			recipientKind: 'other';
+			recipientName: string;
+			title: string;
+			eventDate?: Date | null;
+			theme?: WishlistTheme;
+	  };
+
+const CreateWishlistBaseFields = {
 	title: v.pipe(v.string(), v.trim(), v.minLength(1)),
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
-});
+};
+
+export const CreateWishlistInputSchema = v.variant('recipientKind', [
+	v.object({ recipientKind: v.literal(RECIPIENT_KIND.self), ...CreateWishlistBaseFields }),
+	v.object({
+		recipientKind: v.literal(RECIPIENT_KIND.other),
+		recipientName: v.pipe(
+			v.string(),
+			v.trim(),
+			v.minLength(1),
+			v.maxLength(RECIPIENT_NAME_MAX_LENGTH),
+		),
+		...CreateWishlistBaseFields,
+	}),
+]);
 
 /** Input for updating an existing wishlist */
 export interface UpdateWishlistInput {
@@ -41,8 +76,6 @@ export interface UpdateWishlistInput {
 	title?: string;
 	description?: string | null;
 	eventDate?: Date | null;
-	theme?: WishlistTheme;
-	customThemeColor?: string | null;
 	imageKey?: string | null;
 	imageSlots?: WishlistImageSlots | null;
 }
@@ -52,20 +85,41 @@ export const UpdateWishlistInputSchema = v.object({
 	title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
-	theme: v.optional(v.picklist(WISHLIST_THEMES)),
-	customThemeColor: v.optional(v.nullable(v.string())),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
 });
 
-/** Viewer's role relative to a wishlist */
+/**
+ * Viewer's role relative to a wishlist.
+ * - `recipient`: the person the list is FOR (linked user account). Manages the list but never
+ *   sees reservation/gifter state and cannot reserve. Replaces the dissolved `owner` role.
+ * - `moderator`: a správce — full management + full reservation visibility + can reserve.
+ * - `visitor`: anyone else; sees reserved state but never gifter identity.
+ */
 export const WISHLIST_ROLES = {
-	owner: 'owner',
+	recipient: 'recipient',
 	moderator: 'moderator',
 	visitor: 'visitor',
 } as const;
 
 export type WishlistRole = (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES];
+
+/** Input for changing a wishlist's palette (Redesign 2026, issue #102). Validated via isPalette(). */
+export const SetWishlistPaletteInputSchema = v.object({
+	wishlistId: v.string(),
+	palette: v.custom<Palette>(isPalette),
+});
+
+/** Input for renaming a free-text recipient (správci only; for-someone lists only). */
+export const RenameRecipientInputSchema = v.object({
+	id: v.string(),
+	recipientName: v.pipe(
+		v.string(),
+		v.trim(),
+		v.minLength(1),
+		v.maxLength(RECIPIENT_NAME_MAX_LENGTH),
+	),
+});
 
 /** Wishlist with computed viewer role */
 export interface WishlistWithRole extends Wishlist {

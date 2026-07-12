@@ -1,6 +1,5 @@
 import { getRequestEvent } from '$app/server';
-import { env } from '$env/dynamic/private';
-import { UPLOAD_API_BASE } from '$lib/modules/uploads/types.js';
+import { imagePublicUrl } from '$lib/modules/images/public_url.js';
 
 export { isAllowedContentType } from '$lib/modules/uploads/types.js';
 
@@ -64,15 +63,10 @@ export function isR2Available(): boolean {
 
 /**
  * Constructs the public URL for a stored object.
- * Uses R2_PUBLIC_URL env var or falls back to the local dev upload path.
+ * Uses the PUBLIC_R2_URL env var or falls back to the local dev upload path.
  */
 export function getPublicUrl(objectKey: string): string {
-	const publicUrl = env.R2_PUBLIC_URL;
-	if (publicUrl != null && publicUrl !== '') {
-		return `${publicUrl.replace(/\/$/, '')}/${objectKey}`;
-	}
-	// Local dev fallback – served from the upload API route
-	return `${UPLOAD_API_BASE}/${objectKey}`;
+	return imagePublicUrl(objectKey);
 }
 
 /**
@@ -133,4 +127,26 @@ export async function deleteObject(key: string): Promise<void> {
 	}
 
 	await bucket.delete(key);
+}
+
+/**
+ * Deletes stored objects referenced by rows that were just deleted (REQ-6).
+ * Best-effort by design: the DB mutation must never fail because storage
+ * cleanup did – an unreferenced object is a cost issue, not a data issue.
+ * The R2 binding accepts up to 1000 keys per call.
+ */
+export async function deleteObjectsBestEffort(
+	keys: readonly (string | null | undefined)[],
+): Promise<void> {
+	const bucket = getR2Bucket();
+	const validKeys = keys.filter((key): key is string => key != null && key !== '');
+	if (bucket == null || validKeys.length === 0) {
+		return;
+	}
+
+	try {
+		await bucket.delete(validKeys);
+	} catch (thrown) {
+		console.error('R2 cleanup failed for keys', validKeys, thrown);
+	}
 }

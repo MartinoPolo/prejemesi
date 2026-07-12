@@ -96,6 +96,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		id: 'reservation.id',
 		giftId: 'reservation.giftId',
 		userId: 'reservation.userId',
+		anonymousName: 'reservation.anonymousName',
 		quantity: 'reservation.quantity',
 		deletedAt: 'reservation.deletedAt',
 		createdAt: 'reservation.createdAt',
@@ -111,8 +112,9 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 	wishlist: {
 		id: 'wishlist.id',
 		shortId: 'wishlist.shortId',
-		ownerId: 'wishlist.ownerId',
-		ownerIsModerator: 'wishlist.ownerIsModerator',
+		recipientUserId: 'wishlist.recipientUserId',
+		recipientName: 'wishlist.recipientName',
+		recipientIsModerator: 'wishlist.recipientIsModerator',
 		sharedAt: 'wishlist.sharedAt',
 		status: 'wishlist.status',
 		deletedAt: 'wishlist.deletedAt',
@@ -122,6 +124,13 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 		wishlistId: 'priorityLevel.wishlistId',
 		label: 'priorityLevel.label',
 		sortOrder: 'priorityLevel.sortOrder',
+	},
+}));
+
+vi.mock('$lib/server/db/auth.schema.js', () => ({
+	user: {
+		id: 'user.id',
+		name: 'user.name',
 	},
 }));
 
@@ -187,6 +196,12 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(() => mockDbInstance.db),
 }));
 
+// ── Mock R2 storage cleanup (issue #107, REQ-6) ──────────────────────────────
+
+vi.mock('$lib/server/storage/r2.js', () => ({
+	deleteObjectsBestEffort: vi.fn(() => Promise.resolve()),
+}));
+
 // ── Import the module under test (after all mocks are set up) ────────────────
 
 import {
@@ -197,11 +212,15 @@ import {
 	reorderGifts,
 	markGiftReceived,
 } from './gifts.remote.js';
-import type { GiftForOwner, GiftForVisitor } from './types.js';
+import type { GiftForRecipient, GiftForVisitor } from './types.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+
+const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
 
 // ── Test data factories ───────────────────────────────────────────────────────
 
-const OWNER_ID = 'user-owner';
+// The linked recipient: the authed user whose id matches the wishlist's recipientUserId.
+const RECIPIENT_ID = 'user-recipient';
 const VISITOR_ID = 'user-visitor';
 const MODERATOR_ID = 'user-moderator';
 const WISHLIST_ID = 'wishlist-1';
@@ -212,12 +231,16 @@ const SHARED_AT = new Date('2024-01-10T00:00:00Z');
 const BEFORE_SHARING = new Date('2024-01-05T00:00:00Z');
 const AFTER_SHARING = new Date('2024-01-15T00:00:00Z');
 
+// Default row is a self-recipient list: the recipient is the linked RECIPIENT_ID user.
+// Override `recipientUserId: null` (+ a moderatorAssignment result) for a for-someone /
+// visitor-manager scenario so the resolved role comes out as visitor/moderator.
 function makeWishlistRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
 	return {
 		id: WISHLIST_ID,
 		shortId: WISHLIST_SHORT_ID,
-		ownerId: OWNER_ID,
-		ownerIsModerator: false,
+		recipientUserId: RECIPIENT_ID,
+		recipientName: null,
+		recipientIsModerator: false,
 		sharedAt: null,
 		status: 'draft',
 		deletedAt: null,
@@ -252,8 +275,8 @@ function makeGiftRow(overrides: Record<string, unknown> = {}): Record<string, un
 	};
 }
 
-function makeOwnerAuthContext(): { user: { id: string } } {
-	return { user: { id: OWNER_ID } };
+function makeRecipientAuthContext(): { user: { id: string } } {
+	return { user: { id: RECIPIENT_ID } };
 }
 
 function makeVisitorAuthContext(): { user: { id: string } } {
@@ -307,48 +330,59 @@ beforeEach(() => {
 });
 
 describe('getGiftsByWishlistShortId', () => {
-	describe('owner without moderator role gets GiftForOwner without reservation/like data', () => {
-		it('returns role=owner and gifts without reservedCount/likeCount/isFullyReserved', async () => {
-			// DB call 1: wishlist lookup
-			mockDbInstance.pushResult([makeWishlistRow({ ownerIsModerator: false })]);
+	describe('recipient (not self-promoted) gets GiftForRecipient without reservation/like data', () => {
+		it('returns role=recipient and gifts without reservedCount/likeCount/isFullyReserved', async () => {
+			// DB call 1: wishlist lookup. recipientUserId matches the authed user, so
+			// resolveWishlistRole short-circuits to recipient with NO moderator query.
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
 			// DB call 2: gift rows
 			mockDbInstance.pushResult([makeGiftRow()]);
 
-			const result = await callGetGifts(makeOwnerAuthContext(), WISHLIST_SHORT_ID);
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
 
-			expect(result.role).toBe('owner');
+			expect(result.role).toBe('recipient');
 			expect(result.gifts).toHaveLength(1);
 
-			const gift = result.gifts[0] as GiftForOwner & Partial<GiftForVisitor>;
+			const gift = result.gifts[0] as GiftForRecipient & Partial<GiftForVisitor>;
 			expect(gift.id).toBe(GIFT_ID);
 			expect(gift.name).toBe('Test Gift');
-			// Critical invariant: no reservation/like fields present
+			// Critical invariant: no reservation/like fields present (protects the surprise)
 			expect('reservedCount' in gift).toBe(false);
 			expect('likeCount' in gift).toBe(false);
 			expect('isFullyReserved' in gift).toBe(false);
+			expect('reserverNames' in gift).toBe(false);
 		});
 	});
 
-	describe('owner with ownerIsModerator=true gets GiftForVisitor with reservation/like counts', () => {
-		it('returns role=owner and gifts with reservedCount, likeCount, isFullyReserved', async () => {
-			// DB call 1: wishlist lookup (ownerIsModerator=true)
-			mockDbInstance.pushResult([makeWishlistRow({ ownerIsModerator: true })]);
+	describe('recipient with recipientIsModerator=true (self-promoted) gets counts but never gifter identities', () => {
+		it('returns role=recipient and gifts with reservedCount, likeCount, isFullyReserved', async () => {
+			// DB call 1: wishlist lookup (recipientIsModerator=true). Still resolves to
+			// recipient (recipientUserId matches) — self-promote lifts the strip, not the role.
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: true })]);
 			// DB call 2: gift rows
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 3 })]);
-			// DB call 3: reservation counts
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 2 }]);
+			// DB call 3: reservation rows (with reserver names the DB always returns)
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
+			]);
 			// DB call 4: like counts
 			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 5 }]);
+			// DB call 5: my reservations (recipient has none)
+			mockDbInstance.pushResult([]);
 
-			const result = await callGetGifts(makeOwnerAuthContext(), WISHLIST_SHORT_ID);
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
 
-			expect(result.role).toBe('owner');
+			expect(result.role).toBe('recipient');
 			expect(result.gifts).toHaveLength(1);
 
 			const gift = result.gifts[0] as GiftForVisitor;
+			// Counts are present (visitor-shaped DTO)…
 			expect(gift.reservedCount).toBe(2);
 			expect(gift.likeCount).toBe(5);
 			expect(gift.isFullyReserved).toBe(false); // 2 reserved out of 3
+			// …but gifter identities never are: self-promote reveals counts, not names
+			// (issue #102 REQ-14 keeps the surprise of WHO for the recipient).
+			expect(gift.reserverNames).toEqual([]);
 		});
 	});
 
@@ -360,8 +394,10 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([]);
 			// DB call 3: gift rows
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 2 })]);
-			// DB call 4: reservation counts (fully reserved)
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 2 }]);
+			// DB call 4: reservation rows (fully reserved)
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
+			]);
 			// DB call 5: like counts
 			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 3 }]);
 
@@ -397,7 +433,8 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			mockDbInstance.pushResult([]); // not a moderator
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 1 }]); // reservation counts
+			// reservation rows
+			mockDbInstance.pushResult([{ giftId: GIFT_ID, quantity: 1, reserverName: 'Já' }]);
 			mockDbInstance.pushResult([]); // like counts
 			// my active reservations for these gifts
 			mockDbInstance.pushResult([{ id: 'res-mine', giftId: GIFT_ID }]);
@@ -431,8 +468,10 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
 			// DB call 3: gift rows
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 5 })]);
-			// DB call 4: reservation counts
-			mockDbInstance.pushResult([{ giftId: GIFT_ID, totalQuantity: 1 }]);
+			// DB call 4: reservation rows
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+			]);
 			// DB call 5: like counts
 			mockDbInstance.pushResult([{ giftId: GIFT_ID, count: 10 }]);
 
@@ -443,6 +482,94 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.reservedCount).toBe(1);
 			expect(gift.likeCount).toBe(10);
 			expect(gift.isFullyReserved).toBe(false);
+			// Moderators see who reserved (issue #102 REQ-14)
+			expect(gift.reserverNames).toEqual(['Babička Marie']);
+		});
+	});
+
+	describe('reserver display names (issue #102 REQ-14)', () => {
+		it('visitor sees the reserver display name on a reserved gift', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
+			// reservation rows: name coalesced from the reserver account / anonymous signature
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+			]);
+			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // my reservations
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.isFullyReserved).toBe(true);
+			expect(gift.reserverNames).toEqual(['Babička Marie']);
+		});
+
+		it('collects multiple reservers in reservation order and deduplicates repeats', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 4 })]);
+			// Same person reserving twice must appear once; order follows createdAt.
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+				{ giftId: GIFT_ID, quantity: 2, reserverName: 'Petr Svoboda' },
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
+			]);
+			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // my reservations
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.reservedCount).toBe(4);
+			expect(gift.isFullyReserved).toBe(true);
+			expect(gift.reserverNames).toEqual(['Babička Marie', 'Petr Svoboda']);
+		});
+
+		it('counts reservations without a usable name but emits no name entry for them', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 2 })]);
+			// e.g. reserver account deleted (userId set null, no anonymous signature)
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: null },
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Teta Klára' },
+			]);
+			mockDbInstance.pushResult([]); // like counts
+			mockDbInstance.pushResult([]); // my reservations
+
+			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.reservedCount).toBe(2);
+			expect(gift.reserverNames).toEqual(['Teta Klára']);
+		});
+
+		it('owner/recipient payload carries ZERO reservation fields — including reserverNames', async () => {
+			// Core product invariant: the recipient must never learn reservation state.
+			// Enumerates every visitor-only field so a future field addition that leaks
+			// past the strip fails this test.
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
+			mockDbInstance.pushResult([makeGiftRow()]);
+
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
+
+			expect(result.role).toBe('recipient');
+			const gift = result.gifts[0] as Record<string, unknown>;
+			const visitorOnlyFields = [
+				'likeCount',
+				'reservedCount',
+				'isFullyReserved',
+				'reserverNames',
+				'myReservationId',
+				'myReservationPurchasedAt',
+			];
+			for (const field of visitorOnlyFields) {
+				expect(field in gift, `field "${field}" must not leak to the recipient`).toBe(
+					false,
+				);
+			}
 		});
 	});
 
@@ -485,13 +612,13 @@ describe('getGiftsByWishlistShortId', () => {
 			bgColor: null,
 		};
 
-		it('owner (no self-promote) receives imageKey + imageMeta but no reservation data', async () => {
-			mockDbInstance.pushResult([makeWishlistRow({ ownerIsModerator: false })]);
+		it('recipient (no self-promote) receives imageKey + imageMeta but no reservation data', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
 			mockDbInstance.pushResult([makeGiftRow({ imageKey: 'gifts/cam.jpg', imageMeta })]);
 
-			const result = await callGetGifts(makeOwnerAuthContext(), WISHLIST_SHORT_ID);
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
 
-			const gift = result.gifts[0] as GiftForOwner & Partial<GiftForVisitor>;
+			const gift = result.gifts[0] as GiftForRecipient & Partial<GiftForVisitor>;
 			expect(gift.imageKey).toBe('gifts/cam.jpg');
 			expect(gift.imageMeta).toEqual(imageMeta);
 			expect('reservedCount' in gift).toBe(false);
@@ -520,13 +647,13 @@ describe('getGiftsByWishlistShortId', () => {
 			{ url: 'https://www.datart.cz/playstation-5', label: 'Datart' },
 		];
 
-		it('owner (no self-promote) receives the full links array', async () => {
-			mockDbInstance.pushResult([makeWishlistRow({ ownerIsModerator: false })]);
+		it('recipient (no self-promote) receives the full links array', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
 			mockDbInstance.pushResult([makeGiftRow({ links })]);
 
-			const result = await callGetGifts(makeOwnerAuthContext(), WISHLIST_SHORT_ID);
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
 
-			const gift = result.gifts[0] as GiftForOwner;
+			const gift = result.gifts[0] as GiftForRecipient;
 			expect(gift.links).toEqual(links);
 		});
 
@@ -552,16 +679,16 @@ describe('createGift', () => {
 		name: 'New Gift',
 	};
 
-	describe('owner can create a gift', () => {
+	describe('recipient can create a gift', () => {
 		it('returns the created gift row', async () => {
-			// verifyOwnerOrModerator: wishlist lookup
+			// verifyManagerAccess: wishlist lookup (recipientUserId matches → recipient, no moderator query)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// maxSortOrder query
 			mockDbInstance.pushResult([{ maxSort: 0 }]);
 			// insert returning
 			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
 
-			const result = await callCreateGift(makeOwnerAuthContext(), createInput);
+			const result = await callCreateGift(makeRecipientAuthContext(), createInput);
 
 			expect(result).toMatchObject({ id: 'new-gift-id', name: 'New Gift' });
 		});
@@ -577,7 +704,7 @@ describe('createGift', () => {
 			mockDbInstance.pushResult([{ maxSort: 0 }]);
 			mockDbInstance.pushResult([{ id: 'new-gift-id', ...inputWithMeta, sortOrder: 1 }]);
 
-			const result = await callCreateGift(makeOwnerAuthContext(), inputWithMeta);
+			const result = await callCreateGift(makeRecipientAuthContext(), inputWithMeta);
 
 			expect(result).toMatchObject({ id: 'new-gift-id', imageMeta });
 		});
@@ -587,7 +714,7 @@ describe('createGift', () => {
 			mockDbInstance.pushResult([{ maxSort: 0 }]);
 			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
 
-			await callCreateGift(makeOwnerAuthContext(), {
+			await callCreateGift(makeRecipientAuthContext(), {
 				...createInput,
 				links: [
 					{ url: ' javascript://example.com/%0Aalert(1)' },
@@ -611,7 +738,7 @@ describe('createGift', () => {
 				label: `Shop ${i}`,
 			}));
 
-			await callCreateGift(makeOwnerAuthContext(), { ...createInput, links: inputLinks });
+			await callCreateGift(makeRecipientAuthContext(), { ...createInput, links: inputLinks });
 
 			const giftInsertValues = mockDbInstance.calls
 				.filter((call) => call.method === 'values')
@@ -630,9 +757,9 @@ describe('createGift', () => {
 
 	describe('moderator can create a gift', () => {
 		it('returns the created gift row', async () => {
-			// verifyOwnerOrModerator: wishlist lookup (moderator user, not owner)
+			// verifyManagerAccess: wishlist lookup (moderator user, not the recipient)
 			mockDbInstance.pushResult([makeWishlistRow()]);
-			// verifyOwnerOrModerator: moderator check
+			// verifyManagerAccess: moderator check
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
 			// maxSortOrder query
 			mockDbInstance.pushResult([{ maxSort: 2 }]);
@@ -645,17 +772,18 @@ describe('createGift', () => {
 		});
 	});
 
-	describe('unauthorized user gets 403', () => {
-		it('throws 403 when user is neither owner nor moderator', async () => {
-			// verifyOwnerOrModerator: wishlist lookup (different owner)
-			mockDbInstance.pushResult([makeWishlistRow({ ownerId: 'someone-else' })]);
-			// moderator check returns empty
+	describe('unauthorized user gets 403 ACCESS_DENIED', () => {
+		it('throws 403 when user is neither recipient nor moderator', async () => {
+			// verifyManagerAccess: wishlist lookup (recipient is RECIPIENT_ID, caller is VISITOR_ID)
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			// moderator check returns empty → role resolves to visitor
 			mockDbInstance.pushResult([]);
 
 			await expect(
 				callCreateGift(makeVisitorAuthContext(), createInput),
 			).rejects.toMatchObject({
 				status: 403,
+				message: SERVER_ERROR.ACCESS_DENIED,
 			});
 		});
 	});
@@ -664,12 +792,12 @@ describe('createGift', () => {
 		it('rejects creating gifts on archived wishlists', async () => {
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
 
-			await expect(callCreateGift(makeOwnerAuthContext(), createInput)).rejects.toMatchObject(
-				{
-					status: 400,
-					message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
-				},
-			);
+			await expect(
+				callCreateGift(makeRecipientAuthContext(), createInput),
+			).rejects.toMatchObject({
+				status: 400,
+				message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
+			});
 		});
 	});
 });
@@ -677,16 +805,16 @@ describe('createGift', () => {
 describe('updateGift', () => {
 	const updateInput = { id: GIFT_ID, name: 'Updated Name' };
 
-	describe('owner can update gifts created after sharing (or unshared)', () => {
+	describe('recipient can update gifts created after sharing (or unshared)', () => {
 		it('returns updated gift when wishlist is not yet shared', async () => {
 			// gift lookup
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
-			// verifyOwnerOrModerator: wishlist lookup (not shared)
+			// verifyManagerAccess: wishlist lookup (not shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Updated Name' }]);
 
-			const result = await callUpdateGift(makeOwnerAuthContext(), updateInput);
+			const result = await callUpdateGift(makeRecipientAuthContext(), updateInput);
 
 			expect(result).toMatchObject({ id: GIFT_ID, name: 'Updated Name' });
 		});
@@ -697,7 +825,7 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, imageMeta }]);
 
-			const result = await callUpdateGift(makeOwnerAuthContext(), {
+			const result = await callUpdateGift(makeRecipientAuthContext(), {
 				id: GIFT_ID,
 				imageMeta,
 			});
@@ -705,15 +833,58 @@ describe('updateGift', () => {
 			expect(result).toMatchObject({ id: GIFT_ID, imageMeta });
 		});
 
-		it('owner can update gifts created after sharing date', async () => {
+		it('deletes the replaced uploaded image from storage (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: 'gifts/new.jpg' }]);
+
+			await callUpdateGift(makeRecipientAuthContext(), {
+				id: GIFT_ID,
+				imageKey: 'gifts/new.jpg',
+			});
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['gifts/old.jpg']);
+		});
+
+		it('deletes the old uploaded image when the image is removed (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: null }]);
+
+			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, imageKey: null });
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['gifts/old.jpg']);
+		});
+
+		it('keeps storage untouched when the image key does not change (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/same.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: 'gifts/same.jpg' }]);
+
+			await callUpdateGift(makeRecipientAuthContext(), {
+				id: GIFT_ID,
+				name: 'Updated Name',
+				imageKey: 'gifts/same.jpg',
+			});
+
+			expect(mockDeleteObjects).not.toHaveBeenCalled();
+		});
+
+		it('recipient can update gifts created after sharing date', async () => {
 			// gift lookup – created AFTER sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
-			// verifyOwnerOrModerator: wishlist lookup (shared)
+			// verifyManagerAccess: wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Updated Name' }]);
 
-			const result = await callUpdateGift(makeOwnerAuthContext(), updateInput);
+			const result = await callUpdateGift(makeRecipientAuthContext(), updateInput);
 
 			expect(result).toMatchObject({ id: GIFT_ID });
 		});
@@ -725,7 +896,7 @@ describe('updateGift', () => {
 				{ id: GIFT_ID, links: [{ url: 'https://example.com/path' }] },
 			]);
 
-			await callUpdateGift(makeOwnerAuthContext(), {
+			await callUpdateGift(makeRecipientAuthContext(), {
 				id: GIFT_ID,
 				links: [{ url: ' https://example.com/path ' }],
 			});
@@ -740,16 +911,16 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
 
-			await expect(callUpdateGift(makeOwnerAuthContext(), updateInput)).rejects.toMatchObject(
-				{
-					status: 400,
-					message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
-				},
-			);
+			await expect(
+				callUpdateGift(makeRecipientAuthContext(), updateInput),
+			).rejects.toMatchObject({
+				status: 400,
+				message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
+			});
 		});
 	});
 
-	describe('owner per-field edit of a pre-share gift on a shared wishlist', () => {
+	describe('recipient per-field edit of a pre-share gift on a shared wishlist', () => {
 		it('allows editing price/links/imageMeta/priority and flags editedAfterShareAt', async () => {
 			const imageMeta = { fitMode: 'contain-padded', bgColor: '#222222' };
 			// gift lookup – created BEFORE sharing
@@ -759,7 +930,7 @@ describe('updateGift', () => {
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
-			await callUpdateGift(makeOwnerAuthContext(), {
+			await callUpdateGift(makeRecipientAuthContext(), {
 				id: GIFT_ID,
 				price: 250,
 				links: [{ url: 'https://example.com/path' }],
@@ -783,7 +954,7 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 
 			await expect(
-				callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
+				callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
 			).rejects.toMatchObject({ status: 403, message: 'CANNOT_EDIT_AFTER_SHARING' });
 		});
 
@@ -792,7 +963,7 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
-			await callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, quantity: 5 });
+			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, quantity: 5 });
 
 			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 				?.args[0] as Record<string, unknown>;
@@ -803,13 +974,13 @@ describe('updateGift', () => {
 		it('rejects 400 QUANTITY_CANNOT_BE_LOWERED when lowering quantity, without querying reservations', async () => {
 			// Surprise-protection invariant: the rejection is driven solely by the gift's own
 			// quantity column; updateGift must never read the reservation table (which would let the
-			// owner infer reserved counts). The row shape is identical whether or not the gift is
+			// recipient infer reserved counts). The row shape is identical whether or not the gift is
 			// reserved, so this single path covers both reserved and unreserved gifts (REQ-3/5).
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING, quantity: 3 })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 
 			await expect(
-				callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, quantity: 1 }),
+				callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, quantity: 1 }),
 			).rejects.toMatchObject({ status: 400, message: 'QUANTITY_CANNOT_BE_LOWERED' });
 
 			// No `.from(reservation)` ran. The reservation table mock is identifiable by its
@@ -836,7 +1007,7 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
-			await callUpdateGift(makeOwnerAuthContext(), {
+			await callUpdateGift(makeRecipientAuthContext(), {
 				id: GIFT_ID,
 				name: 'Test Gift',
 				quantity: 3,
@@ -858,7 +1029,7 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
-			await callUpdateGift(makeOwnerAuthContext(), {
+			await callUpdateGift(makeRecipientAuthContext(), {
 				id: GIFT_ID,
 				description: 'blue variant',
 			});
@@ -884,7 +1055,7 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
-			await callUpdateGift(makeOwnerAuthContext(), {
+			await callUpdateGift(makeRecipientAuthContext(), {
 				id: GIFT_ID,
 				description: 'now has text',
 			});
@@ -900,9 +1071,9 @@ describe('updateGift', () => {
 		it('moderator bypasses the edit lock and updates the gift', async () => {
 			// gift lookup – created BEFORE sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
-			// verifyOwnerOrModerator: wishlist lookup (shared, moderator user)
+			// verifyManagerAccess: wishlist lookup (shared, caller is a moderator, not the recipient)
 			mockDbInstance.pushResult([
-				makeWishlistRow({ sharedAt: SHARED_AT, ownerId: 'someone-else' }),
+				makeWishlistRow({ sharedAt: SHARED_AT, recipientUserId: 'someone-else' }),
 			]);
 			// moderator check
 			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
@@ -922,14 +1093,14 @@ describe('updateGift', () => {
 	});
 
 	describe('editedAfterShareAt transparency for post-share-created gifts', () => {
-		it('flags editedAfterShareAt when an owner edits a gift created after sharing', async () => {
+		it('flags editedAfterShareAt when a recipient edits a gift created after sharing', async () => {
 			mockDbInstance.pushResult([
 				makeGiftRow({ createdAt: AFTER_SHARING, name: 'Original' }),
 			]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
-			await callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' });
+			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' });
 
 			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 				?.args[0] as Record<string, unknown>;
@@ -944,7 +1115,7 @@ describe('updateGift', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID }]);
 
-			await callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' });
+			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' });
 
 			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 				?.args[0] as Record<string, unknown>;
@@ -969,7 +1140,7 @@ describe('updateGift – share grace window (issue #83)', () => {
 		vi.useRealTimers();
 	});
 
-	it('lets the owner change the name of a pre-share gift while the window is open', async () => {
+	it('lets the recipient change the name of a pre-share gift while the window is open', async () => {
 		mockDbInstance.pushResult([
 			makeGiftRow({
 				createdAt: BEFORE_SHARING,
@@ -980,7 +1151,7 @@ describe('updateGift – share grace window (issue #83)', () => {
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: shared60sAgo })]);
 		mockDbInstance.pushResult([{ id: GIFT_ID, name: 'Renamed' }]);
 
-		await callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' });
+		await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' });
 
 		const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 			?.args[0] as Record<string, unknown>;
@@ -1000,7 +1171,7 @@ describe('updateGift – share grace window (issue #83)', () => {
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: shared3MinAgo })]);
 
 		await expect(
-			callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
+			callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
 		).rejects.toMatchObject({ status: 403, message: 'CANNOT_EDIT_AFTER_SHARING' });
 	});
 
@@ -1015,13 +1186,13 @@ describe('updateGift – share grace window (issue #83)', () => {
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: shared3MinAgo })]);
 
 		await expect(
-			callUpdateGift(makeOwnerAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
+			callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, name: 'Renamed' }),
 		).rejects.toMatchObject({ status: 403, message: 'CANNOT_EDIT_AFTER_SHARING' });
 	});
 });
 
 describe('deleteGift', () => {
-	describe('owner can delete unreserved gifts created after sharing only during creation grace', () => {
+	describe('recipient can delete unreserved gifts created after sharing only during creation grace', () => {
 		const nowFake = new Date('2024-03-01T12:00:00.000Z');
 
 		beforeEach(() => {
@@ -1043,7 +1214,27 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([]);
 			mockDbInstance.pushResult([]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).resolves.not.toThrow();
+			await expect(
+				callDeleteGift(makeRecipientAuthContext(), GIFT_ID),
+			).resolves.not.toThrow();
+		});
+
+		it('deletes the uploaded image from storage on delete (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: new Date(nowFake.getTime() - 60_000),
+					imageKey: 'gifts/img.jpg',
+				}),
+			]);
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
+			]);
+			mockDbInstance.pushResult([]);
+			mockDbInstance.pushResult([]);
+
+			await callDeleteGift(makeRecipientAuthContext(), GIFT_ID);
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['gifts/img.jpg']);
 		});
 
 		it('blocks a post-share-created gift after its creation grace closes', async () => {
@@ -1054,28 +1245,32 @@ describe('deleteGift', () => {
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
 			]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
-				status: 403,
-				message: 'CANNOT_DELETE_AFTER_SHARING',
-			});
+			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
+				{
+					status: 403,
+					message: 'CANNOT_DELETE_AFTER_SHARING',
+				},
+			);
 		});
 	});
 
-	describe('owner CANNOT delete gifts created before sharing (edit lock)', () => {
+	describe('recipient CANNOT delete gifts created before sharing (edit lock)', () => {
 		it('throws 403 when gift was created before wishlist was shared', async () => {
 			// gift lookup – created BEFORE sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: BEFORE_SHARING })]);
-			// verifyOwnerOrModerator: wishlist lookup (shared)
+			// verifyManagerAccess: wishlist lookup (shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
-				status: 403,
-				message: 'CANNOT_DELETE_AFTER_SHARING',
-			});
+			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
+				{
+					status: 403,
+					message: 'CANNOT_DELETE_AFTER_SHARING',
+				},
+			);
 		});
 	});
 
-	describe('owner CAN delete a pre-share gift within the share grace window (issue #83)', () => {
+	describe('recipient CAN delete a pre-share gift within the share grace window (issue #83)', () => {
 		const nowFake = new Date('2024-03-01T12:00:00.000Z');
 
 		beforeEach(() => {
@@ -1100,7 +1295,9 @@ describe('deleteGift', () => {
 			// soft-delete update
 			mockDbInstance.pushResult([]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).resolves.not.toThrow();
+			await expect(
+				callDeleteGift(makeRecipientAuthContext(), GIFT_ID),
+			).resolves.not.toThrow();
 		});
 
 		it('blocks deletion once the window has closed (stale client cannot bypass server)', async () => {
@@ -1112,10 +1309,12 @@ describe('deleteGift', () => {
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 3 * 60_000) }),
 			]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
-				status: 403,
-				message: 'CANNOT_DELETE_AFTER_SHARING',
-			});
+			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
+				{
+					status: 403,
+					message: 'CANNOT_DELETE_AFTER_SHARING',
+				},
+			);
 		});
 
 		it('does not reopen pre-share gift deletion via a recent post-share edit', async () => {
@@ -1129,10 +1328,12 @@ describe('deleteGift', () => {
 				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 3 * 60_000) }),
 			]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
-				status: 403,
-				message: 'CANNOT_DELETE_AFTER_SHARING',
-			});
+			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
+				{
+					status: 403,
+					message: 'CANNOT_DELETE_AFTER_SHARING',
+				},
+			);
 		});
 
 		it('still blocks deleting a reserved gift even within the window', async () => {
@@ -1145,10 +1346,12 @@ describe('deleteGift', () => {
 			// reservation check – has a reservation
 			mockDbInstance.pushResult([{ id: 'reservation-1' }]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
-				status: 400,
-				message: 'CANNOT_DELETE_RESERVED_GIFT',
-			});
+			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
+				{
+					status: 400,
+					message: 'CANNOT_DELETE_RESERVED_GIFT',
+				},
+			);
 		});
 	});
 
@@ -1167,12 +1370,12 @@ describe('deleteGift', () => {
 				]);
 				mockDbInstance.pushResult([{ id: 'reservation-1' }]);
 
-				await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject(
-					{
-						status: 400,
-						message: 'CANNOT_DELETE_RESERVED_GIFT',
-					},
-				);
+				await expect(
+					callDeleteGift(makeRecipientAuthContext(), GIFT_ID),
+				).rejects.toMatchObject({
+					status: 400,
+					message: 'CANNOT_DELETE_RESERVED_GIFT',
+				});
 			} finally {
 				vi.useRealTimers();
 			}
@@ -1185,7 +1388,7 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([]);
 
 			await expect(
-				callDeleteGift(makeOwnerAuthContext(), 'ghost-gift'),
+				callDeleteGift(makeRecipientAuthContext(), 'ghost-gift'),
 			).rejects.toMatchObject({
 				status: 404,
 				message: 'GIFT_NOT_FOUND',
@@ -1198,10 +1401,12 @@ describe('deleteGift', () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
 
-			await expect(callDeleteGift(makeOwnerAuthContext(), GIFT_ID)).rejects.toMatchObject({
-				status: 400,
-				message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
-			});
+			await expect(callDeleteGift(makeRecipientAuthContext(), GIFT_ID)).rejects.toMatchObject(
+				{
+					status: 400,
+					message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
+				},
+			);
 		});
 	});
 });
@@ -1216,7 +1421,7 @@ describe('reorderGifts', () => {
 		]);
 
 		await expect(
-			callReorderGifts(makeOwnerAuthContext(), [
+			callReorderGifts(makeRecipientAuthContext(), [
 				{ id: GIFT_ID, sortOrder: 0 },
 				{ id: 'gift-from-other-wishlist', sortOrder: 1 },
 			]),
@@ -1231,7 +1436,7 @@ describe('reorderGifts', () => {
 		mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
 
 		await expect(
-			callReorderGifts(makeOwnerAuthContext(), [{ id: GIFT_ID, sortOrder: 0 }]),
+			callReorderGifts(makeRecipientAuthContext(), [{ id: GIFT_ID, sortOrder: 0 }]),
 		).rejects.toMatchObject({
 			status: 400,
 			message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
@@ -1244,7 +1449,7 @@ describe('reorderGifts', () => {
 		mockDbInstance.pushResult([{ id: GIFT_ID, wishlistId: WISHLIST_ID }]);
 		mockDbInstance.pushResult([]);
 
-		await callReorderGifts(makeOwnerAuthContext(), [{ id: GIFT_ID, sortOrder: 2 }]);
+		await callReorderGifts(makeRecipientAuthContext(), [{ id: GIFT_ID, sortOrder: 2 }]);
 
 		const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 			?.args[0] as Record<string, unknown>;
@@ -1255,16 +1460,16 @@ describe('reorderGifts', () => {
 describe('markGiftReceived', () => {
 	const markInput = { giftId: GIFT_ID, received: true };
 
-	describe('owner can mark as received', () => {
+	describe('recipient can mark as received', () => {
 		it('returns updated gift with received=true', async () => {
 			// gift lookup
 			mockDbInstance.pushResult([makeGiftRow()]);
-			// wishlist lookup
+			// verifyManagerAccess: wishlist lookup (recipientUserId matches → recipient)
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			// update returning
 			mockDbInstance.pushResult([{ id: GIFT_ID, received: true }]);
 
-			const result = await callMarkReceived(makeOwnerAuthContext(), markInput);
+			const result = await callMarkReceived(makeRecipientAuthContext(), markInput);
 
 			expect(result).toMatchObject({ id: GIFT_ID, received: true });
 		});
@@ -1274,7 +1479,7 @@ describe('markGiftReceived', () => {
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT })]);
 			mockDbInstance.pushResult([{ id: GIFT_ID, received: true }]);
 
-			await callMarkReceived(makeOwnerAuthContext(), markInput);
+			await callMarkReceived(makeRecipientAuthContext(), markInput);
 
 			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 				?.args[0] as Record<string, unknown>;
@@ -1282,18 +1487,20 @@ describe('markGiftReceived', () => {
 		});
 	});
 
-	describe('non-owner gets 403', () => {
-		it('throws 403 when caller is not the wishlist owner', async () => {
+	describe('non-manager gets 403 ACCESS_DENIED', () => {
+		it('throws 403 when caller is neither recipient nor moderator', async () => {
 			// gift lookup
 			mockDbInstance.pushResult([makeGiftRow()]);
-			// wishlist lookup (owned by OWNER_ID, caller is VISITOR_ID)
+			// verifyManagerAccess: wishlist lookup (recipient is RECIPIENT_ID, caller is VISITOR_ID)
 			mockDbInstance.pushResult([makeWishlistRow()]);
+			// moderator check returns empty → role resolves to visitor → ACCESS_DENIED
+			mockDbInstance.pushResult([]);
 
 			await expect(
 				callMarkReceived(makeVisitorAuthContext(), markInput),
 			).rejects.toMatchObject({
 				status: 403,
-				message: 'ONLY_OWNER_CAN_MARK_RECEIVED',
+				message: SERVER_ERROR.ACCESS_DENIED,
 			});
 		});
 	});
@@ -1303,12 +1510,12 @@ describe('markGiftReceived', () => {
 			mockDbInstance.pushResult([makeGiftRow()]);
 			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
 
-			await expect(callMarkReceived(makeOwnerAuthContext(), markInput)).rejects.toMatchObject(
-				{
-					status: 400,
-					message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
-				},
-			);
+			await expect(
+				callMarkReceived(makeRecipientAuthContext(), markInput),
+			).rejects.toMatchObject({
+				status: 400,
+				message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
+			});
 		});
 	});
 });

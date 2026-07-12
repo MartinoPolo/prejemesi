@@ -72,9 +72,14 @@ export const SelfPromoteInputSchema = v.object({
 	wishlistId: v.string(),
 });
 
-/** Result of getting moderators for a wishlist */
+/** Result of getting moderators (správci) for a wishlist */
 export interface ModeratorsData {
 	moderators: ModeratorWithUser[];
 	pendingInvites: PendingInvite[];
-	ownerIsModerator: boolean;
+	/** True when the linked recipient has self-promoted to also see reservation state. */
+	recipientIsModerator: boolean;
+	/** True when the list is for a free-text recipient (no linked account); enables rename + orphan guard. */
+	isForSomeoneElse: boolean;
+	/** Current free-text recipient name (for-someone lists only); pre-fills the rename input. Null on self lists. */
+	recipientName: string | null;
 }

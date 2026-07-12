@@ -1,24 +1,28 @@
 import * as m from '$lib/paraglide/messages.js';
 import type { Wishlist } from './types.js';
 
-/** Wishlist with owner name for moderated/followed views */
-export interface WishlistWithOwner extends Wishlist {
-	ownerName: string;
+/**
+ * Wishlist with the recipient's display name for moderated/followed views.
+ * `recipientDisplayName` resolves the linked recipient's account name or the free-text recipient
+ * name — i.e. "who the list is for" — replacing the old owner-name projection (issue #99).
+ */
+export interface WishlistWithRecipient extends Wishlist {
+	recipientDisplayName: string;
 }
 
-/** Owner's own wishlist with gift count (no reservation data – owner invariant) */
+/** Recipient's own wishlist with gift count (no reservation data – recipient invariant) */
 export interface MyWishlist extends Wishlist {
 	totalGifts: number;
 }
 
 /** Moderated wishlist with reservation progress */
-export interface ModeratedWishlist extends WishlistWithOwner {
+export interface ModeratedWishlist extends WishlistWithRecipient {
 	totalGifts: number;
 	reservedGifts: number;
 }
 
 /** Followed wishlist with available gifts and own reservation/purchase progress */
-export interface FollowedWishlist extends WishlistWithOwner {
+export interface FollowedWishlist extends WishlistWithRecipient {
 	availableGifts: number;
 	myReservations: number;
 	myPurchased: number;

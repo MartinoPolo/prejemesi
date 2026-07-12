@@ -4,24 +4,24 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const badgeVariants = tv({
-	base: 'inline-flex items-center justify-center gap-1 font-medium border tracking-[0.01em] whitespace-nowrap',
+	base: 'inline-flex items-center justify-center gap-1 font-bold border-2 tracking-[0.01em] whitespace-nowrap [&_[data-icon]]:shrink-0',
 	variants: {
 		tone: {
-			neutral: 'bg-surface-2 text-foreground-muted border-border',
+			neutral: 'bg-card text-foreground-muted border-ink',
 			success:
-				'bg-[color-mix(in_oklch,var(--status-success)_14%,transparent)] text-status-success border-[color-mix(in_oklch,var(--status-success)_30%,transparent)]',
+				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success border-ink',
 			warning:
-				'bg-[color-mix(in_oklch,var(--status-warning)_14%,transparent)] text-[color-mix(in_oklch,var(--status-warning)_70%,var(--foreground))] border-[color-mix(in_oklch,var(--status-warning)_30%,transparent)]',
-			danger: 'bg-[color-mix(in_oklch,var(--status-danger)_14%,transparent)] text-status-danger border-[color-mix(in_oklch,var(--status-danger)_30%,transparent)]',
-			info: 'bg-[color-mix(in_oklch,var(--status-info)_14%,transparent)] text-status-info border-[color-mix(in_oklch,var(--status-info)_30%,transparent)]',
+				'bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))] text-[color-mix(in_oklab,var(--status-warning)_70%,var(--foreground))] border-ink',
+			danger: 'bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))] text-status-danger border-ink',
+			info: 'bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))] text-status-info border-ink',
 			primary:
-				'bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-primary border-[color-mix(in_oklch,var(--primary)_30%,transparent)]',
-			accent: 'bg-accent text-accent-foreground border-[color-mix(in_oklab,var(--accent-foreground)_20%,transparent)]',
+				'bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))] text-primary border-ink',
+			accent: 'bg-accent-loud text-accent-loud-foreground border-ink',
 		},
 		badgeStyle: {
 			outlined: '',
 			subtle: 'border-transparent',
-			solid: 'border-transparent',
+			solid: 'border-ink',
 		},
 		format: {
 			default: '',
@@ -30,6 +30,8 @@ export const badgeVariants = tv({
 		size: {
 			default: 'h-5 px-1.75 text-[11px] rounded-full',
 			compact: 'px-1.5 py-0.5 text-[10px] leading-tight rounded',
+			/** Matches Button `sm` metrics — for prominent chips (e.g. wishlist header meta row). */
+			lg: 'h-(--size-control-sm) gap-1.5 px-2.5 text-(length:--text-sm) rounded-full [&_[data-icon]]:size-3.5',
 		},
 	},
 	compoundVariants: [
@@ -38,7 +40,11 @@ export const badgeVariants = tv({
 		{ badgeStyle: 'solid', tone: 'danger', class: 'bg-status-danger text-white' },
 		{ badgeStyle: 'solid', tone: 'info', class: 'bg-status-info text-white' },
 		{ badgeStyle: 'solid', tone: 'primary', class: 'bg-primary text-primary-foreground' },
-		{ badgeStyle: 'solid', tone: 'accent', class: 'bg-accent-foreground text-accent' },
+		{
+			badgeStyle: 'solid',
+			tone: 'accent',
+			class: 'bg-accent-loud text-accent-loud-foreground',
+		},
 		{ badgeStyle: 'solid', tone: 'neutral', class: 'bg-foreground-muted text-background' },
 	],
 	defaultVariants: {
