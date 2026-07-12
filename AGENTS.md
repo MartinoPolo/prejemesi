@@ -44,10 +44,19 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
   workspace, so package commands may need sandbox escalation.
 - `pnpm run dev` -- dev server
 - `pnpm run check` -- typecheck
-- `pnpm run check:all` -- full check suite (format + lint + typecheck + stylelint + fallow)
+- `pnpm run check:all` -- full check suite (format + lint + typecheck + stylelint + fallow + migration safety)
 - `pnpm run test` -- unit tests
 - `pnpm run test:e2e` -- E2E tests
 - `pnpm run db:seed` -- populate DB with test data (idempotent, safe to re-run)
+- `pnpm loadtest --profile smoke|sustained-10|burst-100|contention` -- load tests (fixtures:
+  `pnpm loadtest:setup` / `pnpm loadtest:cleanup`; runbook: `docs/LOAD_TESTING.md`)
+
+## Deployment
+
+- Production deploys are gated: push to `production` → checks for the exact SHA → GitHub
+  `production` environment approval → `wrangler deploy`. Schema changes follow
+  expand → migrate → deploy → contract, enforced by `pnpm check:migrations`.
+  Runbook: `docs/DEPLOYMENT.md`.
 
 ## Git Workflow
 

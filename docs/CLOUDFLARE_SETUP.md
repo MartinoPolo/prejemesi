@@ -274,20 +274,16 @@ after changing bindings to regenerate types.
 
 ---
 
-## 5. Deploy / CI-CD (pick one)
+## 5. Deploy / CI-CD
 
-**Recommended – Workers Builds (git-push deploys):** Dashboard → your Worker →
-**Settings → Builds → Connect repo**. Build command `pnpm run build`, deploy
-command `npx wrangler deploy`, production branch `dev` (your main branch). Every
-push auto-deploys; PRs get preview URLs. Secrets live in Cloudflare, not in CI.
-Lowest-maintenance, fits the existing `dev`-as-main convention.
+Production deploys are **gated GitHub Actions** (issue #110): pushing to the
+`production` branch runs the full check suite for the exact commit, then waits
+for the `production` environment approval before `wrangler deploy`. The full
+pipeline, the expand → migrate → deploy → contract migration sequence, and
+rollback are documented in **`docs/DEPLOYMENT.md`**.
 
-**Alternative – manual:** run `pnpm run deploy` when you want to ship.
-
-**Alternative – GitHub Actions:** `ci.yml` currently only checks/tests (no
-deploy). Add a deploy job using `cloudflare/wrangler-action` with a
-`CLOUDFLARE_API_TOKEN` secret. More moving parts than Workers Builds; only worth
-it to gate deploys behind existing CI.
+`pnpm run deploy` remains available for emergency manual deploys from a
+trusted working tree, but the gated workflow is the standard path.
 
 ---
 

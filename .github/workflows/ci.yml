@@ -1,23 +1,17 @@
 name: CI
 
+# Push to `production` is intentionally not listed: deploy.yml runs the same
+# reusable checks as its `verify` job for the exact deployed commit (issue #110).
+#
+# e2e is intentionally skipped here (checks.yml's `run_e2e` defaults to false)
+# to keep PR/dev feedback fast; deploy.yml's `verify` call still requires it.
+
 on:
     pull_request:
         branches: [dev, production]
     push:
-        branches: [dev, production]
+        branches: [dev]
 
 jobs:
     checks:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
-            - run: pnpm run cf:types
-            - run: pnpm run check:all
-            - run: pnpm exec playwright install --with-deps chromium
-            - run: pnpm run test -- --coverage
+        uses: ./.github/workflows/checks.yml
