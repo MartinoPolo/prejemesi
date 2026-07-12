@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const badgeVariants = tv({
-	base: 'inline-flex items-center justify-center gap-1 font-bold border-2 tracking-[0.01em] whitespace-nowrap',
+	base: 'inline-flex items-center justify-center gap-1 font-bold border-2 tracking-[0.01em] whitespace-nowrap [&_[data-icon]]:shrink-0',
 	variants: {
 		tone: {
 			neutral: 'bg-card text-foreground-muted border-ink',
@@ -30,6 +30,8 @@ export const badgeVariants = tv({
 		size: {
 			default: 'h-5 px-1.75 text-[11px] rounded-full',
 			compact: 'px-1.5 py-0.5 text-[10px] leading-tight rounded',
+			/** Matches Button `sm` metrics — for prominent chips (e.g. wishlist header meta row). */
+			lg: 'h-(--size-control-sm) gap-1.5 px-2.5 text-(length:--text-sm) rounded-full [&_[data-icon]]:size-3.5',
 		},
 	},
 	compoundVariants: [

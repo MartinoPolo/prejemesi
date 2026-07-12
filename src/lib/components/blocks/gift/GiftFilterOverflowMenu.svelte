@@ -8,17 +8,25 @@
 
 	interface GiftFilterOverflowMenuProps {
 		filters: GiftFilters;
+		/** Whether the viewer can have likes (authenticated non-recipient) — gates „Oblíbené". */
+		showLikedFilter: boolean;
 		onfilterchange: (filters: GiftFilters) => void;
 	}
 
-	let { filters, onfilterchange }: GiftFilterOverflowMenuProps = $props();
+	let { filters, showLikedFilter, onfilterchange }: GiftFilterOverflowMenuProps = $props();
+
+	const hasActiveMenuFilter = $derived(filters.withLinkOnly || filters.likedOnly);
 
 	function toggleWithLinkOnly() {
 		onfilterchange({ ...filters, withLinkOnly: !filters.withLinkOnly });
 	}
+
+	function toggleLikedOnly() {
+		onfilterchange({ ...filters, likedOnly: !filters.likedOnly });
+	}
 </script>
 
-<!-- Small overflow menu for the rare „s odkazem" filter (issue #101 / #102 REQ-15);
+<!-- Small overflow menu for the rare filters („s odkazem", „oblíbené") per issue #101 / #102 REQ-15;
      „Pouze dostupné" was promoted to a standalone toolbar chip. -->
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
@@ -27,11 +35,11 @@
 				{...props}
 				size="icon"
 				intent="outline"
-				class={cn('relative', filters.withLinkOnly && 'border-primary')}
+				class={cn('relative', hasActiveMenuFilter && 'border-primary')}
 				aria-label={m.gift_filter()}
 			>
 				<FilterIcon />
-				{#if filters.withLinkOnly}
+				{#if hasActiveMenuFilter}
 					<span
 						class="absolute -top-1 -right-1 size-2.5 rounded-full bg-primary"
 						aria-hidden="true"
@@ -51,6 +59,14 @@
 				>
 					{m.gift_filter_with_link()}
 				</DropdownMenu.CheckboxItem>
+				{#if showLikedFilter}
+					<DropdownMenu.CheckboxItem
+						checked={filters.likedOnly}
+						onclick={toggleLikedOnly}
+					>
+						{m.gift_filter_liked()}
+					</DropdownMenu.CheckboxItem>
+				{/if}
 			</DropdownMenu.Group>
 		</DropdownMenu.Content>
 	</DropdownMenu.Portal>

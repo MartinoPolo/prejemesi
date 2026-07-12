@@ -57,6 +57,8 @@ export const shareWizardVariants = tv({
 			'flex size-20 rotate-3 items-center justify-center rounded-2xl border-[2.5px] border-ink bg-tint text-primary shadow-sticker',
 		successTitle: 'font-heading text-2xl font-semibold tracking-tight text-foreground',
 		successSub: 'max-w-[360px] text-sm leading-relaxed text-ink-soft',
+		successLinkRow: 'flex w-full min-w-0 items-center justify-center gap-1.5',
+		successLinkText: 'min-w-0 truncate text-sm font-bold text-foreground',
 		permissionsCard: 'rounded-panel border-[2.5px] border-ink bg-tint px-5 py-4',
 		permissionsCardLabel: 'mb-3 text-[11px] font-bold uppercase tracking-wider text-ink-soft',
 		permissionsHeading: 'mb-3 text-sm font-semibold leading-snug text-foreground',

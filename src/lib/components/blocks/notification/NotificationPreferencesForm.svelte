@@ -2,7 +2,6 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { Switch } from '$lib/components/base/switch/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
-	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import {
 		NOTIFICATION_TYPE,
@@ -14,15 +13,16 @@
 	} from '$lib/modules/notifications/types.js';
 
 	interface NotificationPreferencesFormProps {
+		/** Id of the rendered form element, so an external submit button can target it via the `form` attribute. */
+		formId: string;
 		initialPreferences?: NotificationPreferences;
 		onSave: (preferences: NotificationPreferences) => void;
-		isSaving?: boolean;
 	}
 
 	let {
+		formId,
 		initialPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
 		onSave,
-		isSaving = false,
 	}: NotificationPreferencesFormProps = $props();
 
 	// svelte-ignore state_referenced_locally (intentional one-time seed: form edits a local copy; parent remounts per entity)
@@ -34,12 +34,13 @@
 		return EMAIL_NOTIFICATION_TYPES.includes(type);
 	}
 
-	function handleSave() {
+	function handleSubmit(event: SubmitEvent) {
+		event.preventDefault();
 		onSave($state.snapshot(preferences));
 	}
 </script>
 
-<div class="flex flex-col gap-4">
+<form id={formId} class="flex flex-col gap-4" onsubmit={handleSubmit}>
 	<div class="flex flex-col gap-1">
 		<h3 class="text-base font-semibold">{m.notification_prefs_title()}</h3>
 		<p class="text-sm text-muted-foreground">{m.notification_prefs_description()}</p>
@@ -78,12 +79,4 @@
 			</div>
 		</div>
 	{/each}
-
-	<Separator />
-
-	<div class="flex justify-end">
-		<Button onclick={handleSave} disabled={isSaving}>
-			{isSaving ? m.saving() : m.notification_prefs_save()}
-		</Button>
-	</div>
-</div>
+</form>

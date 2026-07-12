@@ -108,9 +108,11 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 		await expect(card(page, title)).toBeVisible({ timeout: 10_000 });
 		await expect(card(page, title).locator('img')).toHaveCount(0);
 
-		// Assign an image in the settings crop editor and save.
-		await page.goto(`/w/${shortId}/settings`);
-		await page.waitForLoadState('networkidle');
+		// Assign an image in the settings modal's crop editor and save. The legacy
+		// settings URL redirects to the wishlist page and opens the modal; the #image
+		// fragment lands it on the image tab.
+		await page.goto(`/w/${shortId}/settings#image`);
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
 		const fileInput = page.locator('input[type=file]').first();
 		await expect(fileInput).toBeAttached();
 		const uploaded = waitForUpload(page);
@@ -123,6 +125,11 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 				timeout: 10_000,
 			},
 		);
+
+		// Close the settings modal so the top-nav link is clickable (the dialog overlay
+		// would otherwise intercept the click). Escape is locale-agnostic.
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).not.toBeVisible();
 
 		// Client-side navigate back – the card MUST now render the image, not the fallback.
 		await spaNavigateToMyLists(page);

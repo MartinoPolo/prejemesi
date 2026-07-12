@@ -11,6 +11,7 @@
 	import { authClient } from '$lib/auth_client.js';
 	import { getLocalizedAuthCallback, localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import { escapeHtml } from '$lib/utils/escape_html.js';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import SendIcon from '@lucide/svelte/icons/send';
@@ -120,7 +121,7 @@
 			<h2 class="success-title">{m.magic_sent_title()}</h2>
 			<p class="success-body">
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-				{@html m.magic_sent_body({ email: sentEmail })}
+				{@html m.magic_sent_body({ email: escapeHtml(sentEmail) })}
 			</p>
 			<p class="success-body mt-hint">
 				{m.magic_sent_check()}<br />
