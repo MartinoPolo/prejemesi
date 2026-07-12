@@ -1,14 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
-	import { localizeInternalHref } from '$lib/i18n/locale.js';
+	import { afterNavigate, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
+	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
+	import {
+		WISHLIST_SETTINGS_QUERY_PARAM,
+		WISHLIST_SETTINGS_TABS,
+		isWishlistSettingsTab,
+		type WishlistSettingsTab,
+	} from '$lib/components/blocks/wishlist/wishlist_settings_modal_types.js';
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
@@ -239,6 +244,11 @@
 
 	let paletteDialogOpen = $state(false);
 
+	// ── Settings modal state (per-wishlist settings, moved from /w/<id>/settings) ─
+
+	let settingsModalOpen = $state(false);
+	let settingsModalTab = $state<WishlistSettingsTab>(WISHLIST_SETTINGS_TABS.details);
+
 	// ── Reservation modal state ───────────────────────────────────────────────
 
 	let reserveModalOpen = $state(false);
@@ -376,14 +386,13 @@
 	}
 
 	function handleSettingsOpened() {
-		void goto(localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId })));
+		settingsModalTab = WISHLIST_SETTINGS_TABS.details;
+		settingsModalOpen = true;
 	}
 
 	function handleEditImage() {
-		// resolve() handles the route; the #image fragment cannot be expressed through it.
-		void goto(
-			`${localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId }))}#image`,
-		);
+		settingsModalTab = WISHLIST_SETTINGS_TABS.image;
+		settingsModalOpen = true;
 	}
 
 	function handleShared() {
@@ -677,6 +686,23 @@
 		void loadClientSideWishlistData();
 	});
 
+	// The legacy /w/<id>/settings route redirects here with ?settings=<tab>; open the
+	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
+	afterNavigate(() => {
+		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
+		if (requestedTab === null) {
+			return;
+		}
+		settingsModalTab = isWishlistSettingsTab(requestedTab)
+			? requestedTab
+			: WISHLIST_SETTINGS_TABS.details;
+		settingsModalOpen = true;
+		const cleanedUrl = new URL(page.url);
+		cleanedUrl.searchParams.delete(WISHLIST_SETTINGS_QUERY_PARAM);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
+		replaceState(cleanedUrl, {});
+	});
+
 	async function loadClientSideWishlistData() {
 		await Promise.all([
 			loadGiftData(),
@@ -795,6 +821,19 @@
 	onmoderatorselfpromoted={handleSelfPromoted}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
+/>
+
+<!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
+     non-managers and archived lists get the read-only notice inside the dialog, preserving
+     the old /w/<id>/settings deep-link behavior. -->
+<WishlistSettingsModal
+	bind:open={settingsModalOpen}
+	bind:activeTab={settingsModalTab}
+	{wishlist}
+	{canManage}
+	{themeEmoji}
+	onsaved={refreshData}
+	onpaletteselect={handlePaletteSelect}
 />
 
 {#if canManage}
