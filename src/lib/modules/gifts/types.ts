@@ -114,6 +114,7 @@ export type GiftSortOption = (typeof GIFT_SORT_OPTIONS)[keyof typeof GIFT_SORT_O
 export interface GiftFilters {
 	availableOnly: boolean;
 	withLinkOnly: boolean;
+	likedOnly: boolean;
 }
 
 /** Supported currencies */

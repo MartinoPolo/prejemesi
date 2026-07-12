@@ -49,6 +49,18 @@ vi.mock('$env/dynamic/private', () => ({
 	env: { AUTH_SECRET: 'test-auth-secret-for-hmac' },
 }));
 
+// ── Presign mock: null → proxy fallback; set a URL to exercise presigned mode ─
+const { mockPresignUploadUrl } = vi.hoisted(() => ({
+	mockPresignUploadUrl: vi.fn<(input: unknown) => Promise<string | null>>(() =>
+		Promise.resolve(null),
+	),
+}));
+
+vi.mock('$lib/server/storage/presign.js', () => ({
+	presignUploadUrl: mockPresignUploadUrl,
+	PRESIGNED_UPLOAD_EXPIRY_SECONDS: 600,
+}));
+
 vi.mock('$lib/server/storage/r2.js', async () => {
 	const types = await import('./types.js');
 	return {
@@ -69,8 +81,8 @@ vi.mock('$lib/server/storage/r2.js', async () => {
 	};
 });
 
-import { authorizeUpload, authorizeDelete } from './uploads.remote.js';
-import type { UploadAuthorization, DeleteAuthorization } from './types.js';
+import { authorizeUpload } from './uploads.remote.js';
+import type { UploadAuthorization } from './types.js';
 
 // ── Typed handler aliases ───────────────────────────────────────────────────
 const fakeAuthContext = { user: { id: 'test-user' }, session: {} };
@@ -87,15 +99,9 @@ const callAuthorizeUpload = async (input: {
 	) as Promise<UploadAuthorization>;
 };
 
-const callAuthorizeDelete = async (input: { objectKey: string }): Promise<DeleteAuthorization> => {
-	return (authorizeDelete as unknown as (...args: unknown[]) => Promise<unknown>)(
-		fakeAuthContext,
-		input,
-	) as Promise<DeleteAuthorization>;
-};
-
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockPresignUploadUrl.mockResolvedValue(null);
 });
 
 describe('authorizeUpload', () => {
@@ -127,14 +133,58 @@ describe('authorizeUpload', () => {
 				});
 
 				expect(result.objectKey).toBe(`${prefix}/test-id-123.${extension}`);
+				expect(result.uploadMode).toBe('proxy');
 				expect(result.uploadUrl).toMatch(/^\/api\/upload\//);
 				expect(result.publicUrl).toContain(result.objectKey);
-				expect(result.token).toBeTypeOf('string');
-				expect(result.token).toContain('.');
+				expect(result.uploadToken).toBeTypeOf('string');
+				expect(result.uploadToken).toContain('.');
+				expect(result.deleteToken).toBeTypeOf('string');
+				expect(result.deleteToken).toContain('.');
 				expect(result.expiresAt).toBeTypeOf('number');
 				expect(result.expiresAt).toBeGreaterThan(Date.now());
 			},
 		);
+	});
+
+	// ── Presigned mode (REQ-1) ───────────────────────────────────────────────
+
+	describe('presigned mode', () => {
+		it('returns the presigned URL with no proxy token when presigning is configured', async () => {
+			mockPresignUploadUrl.mockResolvedValue(
+				'https://account.r2.cloudflarestorage.com/bucket/gifts/test-id-123.jpg?X-Amz-Signature=abc',
+			);
+
+			const result = await callAuthorizeUpload({
+				target: 'gift-image',
+				fileName: 'photo.jpg',
+				contentType: 'image/jpeg',
+				fileSize: 1024,
+			});
+
+			expect(result.uploadMode).toBe('presigned');
+			expect(result.uploadUrl).toContain('r2.cloudflarestorage.com');
+			expect(result.uploadToken).toBeNull();
+			expect(result.deleteToken).toBeTypeOf('string');
+			expect(mockPresignUploadUrl).toHaveBeenCalledWith({
+				objectKey: 'gifts/test-id-123.jpg',
+				contentType: 'image/jpeg',
+				contentLength: 1024,
+			});
+		});
+
+		it('validation still rejects an oversized file before presigning', async () => {
+			mockPresignUploadUrl.mockResolvedValue('https://presigned.example.com/');
+
+			await expect(
+				callAuthorizeUpload({
+					target: 'gift-image',
+					fileName: 'big.jpg',
+					contentType: 'image/jpeg',
+					fileSize: 5 * 1024 * 1024 + 1,
+				}),
+			).rejects.toThrow(expect.objectContaining({ status: 400 }));
+			expect(mockPresignUploadUrl).not.toHaveBeenCalled();
+		});
 	});
 
 	// ── Object key format ────────────────────────────────────────────────────
@@ -344,25 +394,5 @@ describe('authorizeUpload', () => {
 
 			expect(result.objectKey).toBe(`gifts/test-id-123.${expectedExtension}`);
 		});
-	});
-});
-
-describe('authorizeDelete', () => {
-	it('returns a token and expiresAt for a valid object key', async () => {
-		const result = await callAuthorizeDelete({ objectKey: 'gifts/test-id-123.jpg' });
-
-		expect(result.token).toBeTypeOf('string');
-		expect(result.token).toContain('.');
-		expect(result.expiresAt).toBeTypeOf('number');
-		expect(result.expiresAt).toBeGreaterThan(Date.now());
-	});
-
-	it('throws 400 for an empty object key', async () => {
-		await expect(callAuthorizeDelete({ objectKey: '' })).rejects.toThrow(
-			expect.objectContaining({
-				status: 400,
-				message: 'Missing object key',
-			}),
-		);
 	});
 });

@@ -1,0 +1,46 @@
+<script lang="ts">
+	import { cn } from '$lib/utils.js';
+	import { ImageFrame } from '$lib/components/derived/image-frame/index.js';
+	import { avatarVariants, type AvatarSize } from './avatar_variants.js';
+
+	interface Props {
+		/** Image source. Null/empty renders the initials fallback. */
+		src?: string | null;
+		/** Accessible description. Empty string marks the avatar as decorative. */
+		alt: string;
+		/** Fallback text (user initials) shown when no image is available. */
+		initials: string;
+		/** Box size – `sm` (32px) matches the header icon controls. */
+		size?: AvatarSize;
+		/** Ink border + sticker shadow so the avatar matches neighboring header buttons. */
+		bordered?: boolean;
+		class?: string;
+	}
+
+	let {
+		src = null,
+		alt,
+		initials,
+		size = 'sm',
+		bordered = false,
+		class: className,
+	}: Props = $props();
+
+	const hasSrc = $derived(src !== null && src.trim() !== '');
+	const styles = $derived(avatarVariants({ size, bordered }));
+</script>
+
+<span class={cn(styles.root(), className)}>
+	{#if hasSrc}
+		<ImageFrame {src} {alt} shape="square" fitMode="cover-crop" class={styles.image()} />
+	{:else}
+		<span
+			class={styles.fallback()}
+			role={alt === '' ? undefined : 'img'}
+			aria-label={alt === '' ? undefined : alt}
+			aria-hidden={alt === '' ? 'true' : undefined}
+		>
+			{initials}
+		</span>
+	{/if}
+</span>

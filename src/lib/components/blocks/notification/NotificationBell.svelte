@@ -39,7 +39,7 @@
 			</Button>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content align="end" class="w-80 p-0 pt-3 pb-1">
+	<Popover.Content align="end" class="w-80 p-0">
 		<p class="sr-only">{m.notification_panel_title()}</p>
 		<NotificationPanel />
 	</Popover.Content>

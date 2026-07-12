@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import * as m from '$lib/paraglide/messages.js';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { user as userTable } from '$lib/server/db/auth.schema.js';
@@ -29,7 +30,11 @@ export const getNotifications = guardedQuery(async ({ user }) => {
 		(row): Notification => ({
 			id: row.id,
 			type: row.type as NotificationType,
-			message: (NOTIFICATION_MESSAGES[row.type as NotificationType] ?? (() => row.type))(),
+			// Unknown/legacy types fall back to a generic localized label instead of
+			// leaking the raw DB string to users.
+			message: (
+				NOTIFICATION_MESSAGES[row.type as NotificationType] ?? m.notification_type_unknown
+			)(),
 			wishlistId: row.wishlistId,
 			giftId: row.giftId,
 			actorName: row.actorName,

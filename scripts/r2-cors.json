@@ -1,0 +1,18 @@
+{
+	"rules": [
+		{
+			"allowed": {
+				"origins": [
+					"https://prejemesi.cz",
+					"https://www.prejemesi.cz",
+					"http://localhost:5173",
+					"http://localhost:4173"
+				],
+				"methods": ["PUT"],
+				"headers": ["Content-Type"]
+			},
+			"exposeHeaders": ["ETag"],
+			"maxAgeSeconds": 3600
+		}
+	]
+}

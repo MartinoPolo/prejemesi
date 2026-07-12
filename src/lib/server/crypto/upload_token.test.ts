@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createUploadToken, verifyUploadToken, UPLOAD_TOKEN_EXPIRY_MS } from './upload_token.js';
+import {
+	createUploadToken,
+	verifyUploadToken,
+	UPLOAD_TOKEN_EXPIRY_MS,
+	DELETE_TOKEN_EXPIRY_MS,
+	TOKEN_PURPOSES,
+} from './upload_token.js';
 
 const TEST_SECRET = 'test-secret-for-hmac-signing';
 const TEST_OBJECT_KEY = 'gifts/abc123.jpg';
@@ -32,11 +38,25 @@ describe('upload token HMAC', () => {
 				TEST_OBJECT_KEY,
 				TEST_USER_ID,
 				TEST_SECRET,
+				TOKEN_PURPOSES.upload,
 				customExpiry,
 			);
 
 			expect(result.expiresAt).toBeGreaterThanOrEqual(before + customExpiry);
 			expect(result.expiresAt).toBeLessThanOrEqual(Date.now() + customExpiry);
+		});
+
+		it('delete-purpose tokens default to the 24h delete expiry', async () => {
+			const before = Date.now();
+			const result = await createUploadToken(
+				TEST_OBJECT_KEY,
+				TEST_USER_ID,
+				TEST_SECRET,
+				TOKEN_PURPOSES.delete,
+			);
+
+			expect(result.expiresAt).toBeGreaterThanOrEqual(before + DELETE_TOKEN_EXPIRY_MS);
+			expect(result.expiresAt).toBeLessThanOrEqual(Date.now() + DELETE_TOKEN_EXPIRY_MS);
 		});
 	});
 
@@ -47,7 +67,20 @@ describe('upload token HMAC', () => {
 
 			expect(payload.objectKey).toBe(TEST_OBJECT_KEY);
 			expect(payload.userId).toBe(TEST_USER_ID);
+			expect(payload.purpose).toBe(TOKEN_PURPOSES.upload);
 			expect(payload.expiresAt).toBeTypeOf('number');
+		});
+
+		it('round-trips the delete purpose', async () => {
+			const { token } = await createUploadToken(
+				TEST_OBJECT_KEY,
+				TEST_USER_ID,
+				TEST_SECRET,
+				TOKEN_PURPOSES.delete,
+			);
+			const payload = await verifyUploadToken(token, TEST_SECRET);
+
+			expect(payload.purpose).toBe(TOKEN_PURPOSES.delete);
 		});
 
 		it('rejects a token signed with a different secret', async () => {

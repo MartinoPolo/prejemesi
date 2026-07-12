@@ -69,4 +69,7 @@
 			<LanguageToggle variant="inline" />
 		</div>
 	</Card.Content>
+	<Card.Footer>
+		<p class="text-sm text-muted-foreground">{m.settings_appearance_autosave_hint()}</p>
+	</Card.Footer>
 </Card.Root>

@@ -17,6 +17,7 @@
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import UploadIcon from '@lucide/svelte/icons/upload';
+	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
 		IMAGE_ZOOM_MIN,
@@ -86,6 +87,9 @@
 	let slotState = $state<Record<WishlistImageSlot, SlotEditState>>(initSlots(imageSlots));
 	let activeSlot = $state<WishlistImageSlot>('card');
 
+	// Uploads from this editor session that are not saved yet (issue #107, REQ-6).
+	const pendingUploads = createPendingUploads();
+
 	const imageUrl = $derived(wishlistImageUrl(assignedKey));
 	const hasImage = $derived(imageUrl !== null);
 	const active = $derived(slotState[activeSlot]);
@@ -118,6 +122,7 @@
 
 	function handleUpload(result: UploadResult) {
 		assignedKey = result.objectKey;
+		pendingUploads.track(result);
 	}
 
 	function handleUploadError(uploadError: Error) {
@@ -169,11 +174,20 @@
 	});
 
 	function handleSave() {
+		// Storage cleanup (issue #107, REQ-6): uploads replaced before this save
+		// are deleted; the saved key survives. Unsaved leftovers go on unmount.
+		void pendingUploads.commit(assignedKey);
 		onsave({
 			imageKey: assignedKey,
 			imageSlots: hasImage ? buildSlots() : null,
 		});
 	}
+
+	$effect(() => {
+		return () => {
+			void pendingUploads.discardAll();
+		};
+	});
 </script>
 
 <div class="flex flex-col gap-5">

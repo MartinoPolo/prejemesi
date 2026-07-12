@@ -26,9 +26,9 @@ test.describe('Wishlist settings – non-image editing', () => {
 		const path = await createWishlistAndNavigate(page, 'Detaily před úpravou');
 		const shortId = shortIdFromPath(path);
 
+		// The legacy settings URL redirects to the wishlist page and opens the settings modal.
 		await page.goto(`/w/${shortId}/settings`);
-		await page.waitForLoadState('networkidle');
-		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
 
 		// The event date is a DatePicker popover (not a native input). Pick a deterministic
 		// date 3 months out so the calendar – which opens on the current month – needs a fixed
@@ -69,9 +69,12 @@ test.describe('Wishlist settings – non-image editing', () => {
 			timeout: 10_000,
 		});
 
-		// Changes survive a full reload / fresh SSR render.
+		// Changes survive a full reload / fresh SSR render. The redirect stripped the
+		// ?settings marker, so reopen the modal from the toolbar's settings action.
 		await page.reload();
 		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
 
 		const reloaded = detailsForm(page);
 		await expect(reloaded.getByRole('textbox', { name: 'Název' })).toHaveValue(
@@ -113,7 +116,8 @@ test.describe('Wishlist settings – non-image editing', () => {
 			visitorPage.getByRole('button', { name: 'Nastavení seznamu' }),
 		).not.toBeVisible();
 
-		// Direct navigation to the settings URL shows the manager-only notice, not the edit form.
+		// Direct navigation to the legacy settings URL redirects to the wishlist page and opens
+		// the settings modal, which shows the manager-only notice instead of the edit form.
 		// wishlist_settings_owner_only was reworded from „…pouze vlastník" to the obdarovaný/správce
 		// wording („…pouze obdarovaný nebo správce." / „Only the recipient or a manager can edit …").
 		await visitorPage.goto(`/w/${shortId}/settings`);
@@ -147,7 +151,8 @@ test.describe('Wishlist settings – non-image editing', () => {
 			page.locator('[data-sonner-toast]').filter({ hasText: 'Seznam byl archivován' }),
 		).toBeVisible({ timeout: 10_000 });
 
-		// The settings page surfaces a read-only notice and hides the edit form.
+		// The settings modal (via the legacy URL redirect) surfaces a read-only notice
+		// and hides the edit form.
 		await page.goto(`/w/${shortId}/settings`);
 		await page.waitForLoadState('networkidle');
 		await expect(

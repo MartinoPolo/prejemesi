@@ -60,16 +60,43 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...a: unknown[]) => a),
+	and: vi.fn((...a: unknown[]) => a),
+	isNull: vi.fn((...a: unknown[]) => a),
+	inArray: vi.fn((...a: unknown[]) => a),
+}));
+
+vi.mock('$lib/server/db/wishlist.schema.js', () => ({
+	wishlist: { id: 'w.id', recipientUserId: 'w.recipientUserId', imageKey: 'w.imageKey' },
+}));
+
+vi.mock('$lib/server/db/gift.schema.js', () => ({
+	gift: { wishlistId: 'g.wishlistId', imageKey: 'g.imageKey', deletedAt: 'g.deletedAt' },
+}));
+
+vi.mock('$env/dynamic/public', () => ({
+	env: {},
+}));
+
+vi.mock('$lib/server/storage/r2.js', () => ({
+	deleteObjectsBestEffort: vi.fn(() => Promise.resolve()),
 }));
 
 import * as v from 'valibot';
-import { getUserProfile, updatePreferredLocale, setUserPalette } from './settings.remote.js';
+import {
+	getUserProfile,
+	updateProfile,
+	updatePreferredLocale,
+	setUserPalette,
+	deleteAccount,
+} from './settings.remote.js';
 import { SetUserPaletteInputSchema } from './types.js';
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 
 const mockGetDb = vi.mocked(getDb);
 const mockGetRequestEvent = vi.mocked(getRequestEvent);
+const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
 
 function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 	let queryIndex = 0;
@@ -136,9 +163,26 @@ describe('getUserProfile', () => {
 			name: 'Fresh Name',
 			email: testUser.email,
 			image: 'https://example.com/fresh.jpg',
+			imageUrl: 'https://example.com/fresh.jpg',
 			isOAuthUser: false,
 			preferredLocale: null,
 		});
+	});
+
+	it('resolves an uploaded-avatar object key to a display URL', async () => {
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[{ providerId: 'credential' }],
+				[{ name: 'Fresh Name', image: 'avatars/abc.jpg', preferredLocale: null }],
+			]),
+		);
+
+		const result = (await (getUserProfile as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		)) as { image: string; imageUrl: string };
+
+		expect(result.image).toBe('avatars/abc.jpg');
+		expect(result.imageUrl).toBe('/api/upload/avatars/abc.jpg');
 	});
 
 	it('returns profile with isOAuthUser=true when has Google account', async () => {
@@ -164,9 +208,81 @@ describe('getUserProfile', () => {
 			name: testUser.name,
 			email: testUser.email,
 			image: testUser.image,
+			imageUrl: testUser.image,
 			isOAuthUser: true,
 			preferredLocale: null,
 		});
+	});
+});
+
+describe('updateProfile', () => {
+	const callUpdateProfile = (input: { name: string; image: string | null }) =>
+		(updateProfile as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext, input);
+
+	it('deletes the previous uploaded avatar object when replaced (REQ-6)', async () => {
+		mockGetDb.mockReturnValue(createMockDb([[{ image: 'avatars/old.jpg' }], []]));
+
+		await callUpdateProfile({ name: 'Name', image: 'avatars/new.jpg' });
+
+		expect(mockDeleteObjects).toHaveBeenCalledWith(['avatars/old.jpg']);
+	});
+
+	it('does not delete anything when the avatar is unchanged', async () => {
+		mockGetDb.mockReturnValue(createMockDb([[{ image: 'avatars/same.jpg' }], []]));
+
+		await callUpdateProfile({ name: 'Name', image: 'avatars/same.jpg' });
+
+		expect(mockDeleteObjects).not.toHaveBeenCalled();
+	});
+
+	it('never deletes an external URL avatar (Google profile picture)', async () => {
+		mockGetDb.mockReturnValue(
+			createMockDb([[{ image: 'https://lh3.googleusercontent.com/x' }], []]),
+		);
+
+		await callUpdateProfile({ name: 'Name', image: 'avatars/new.jpg' });
+
+		expect(mockDeleteObjects).not.toHaveBeenCalled();
+	});
+});
+
+describe('deleteAccount', () => {
+	it('deletes the avatar plus own-wishlist and gift images from storage (REQ-6)', async () => {
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				// 1: user row (avatar is an uploaded object key)
+				[{ image: 'avatars/me.jpg' }],
+				// 2: recipient wishlists
+				[
+					{ id: 'w1', imageKey: 'wishlists/banners/w1.jpg' },
+					{ id: 'w2', imageKey: null },
+				],
+				// 3: gifts of those wishlists
+				[{ imageKey: 'gifts/g1.jpg' }, { imageKey: null }],
+				// 4: user delete
+				[],
+			]),
+		);
+
+		await (deleteAccount as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext);
+
+		expect(mockDeleteObjects).toHaveBeenCalledWith([
+			'avatars/me.jpg',
+			'wishlists/banners/w1.jpg',
+			null,
+			'gifts/g1.jpg',
+			null,
+		]);
+	});
+
+	it('skips the gift query when the user has no recipient wishlists', async () => {
+		const mockDb = createMockDb([[{ image: null }], [], []]);
+		mockGetDb.mockReturnValue(mockDb);
+
+		await (deleteAccount as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext);
+
+		expect(mockDeleteObjects).toHaveBeenCalledWith([]);
+		expect(mockDb.delete).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -215,6 +331,57 @@ describe('setUserPalette', () => {
 
 		expect(cookieSet).toHaveBeenCalledWith('app-palette', 'ocean', expect.any(Object));
 		expect(mockDb.update).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('updateProfile', () => {
+	function createRecordingDb() {
+		const setMock = vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) }));
+		const updateMock = vi.fn(() => ({ set: setMock }));
+		const selectMock = vi.fn(() => ({
+			from: vi.fn(() => ({
+				where: vi.fn(() => ({
+					limit: vi.fn(() => Promise.resolve([])),
+				})),
+			})),
+		}));
+		mockGetDb.mockReturnValue({
+			update: updateMock,
+			select: selectMock,
+		} as unknown as ReturnType<typeof getDb>);
+		return { setMock, updateMock };
+	}
+
+	it('persists the name and the public avatar URL verbatim on the user row', async () => {
+		// user.image must hold a renderable public URL — whatever the client sends
+		// as `image` is what every profile consumer will use as <img src>.
+		const { setMock, updateMock } = createRecordingDb();
+
+		await (updateProfile as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext, {
+			name: 'Fresh Name',
+			image: 'https://cdn.example.com/avatars/abc123.jpg',
+		});
+
+		expect(updateMock).toHaveBeenCalledTimes(1);
+		expect(setMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'Fresh Name',
+				image: 'https://cdn.example.com/avatars/abc123.jpg',
+			}),
+		);
+	});
+
+	it('persists a null image (no avatar) without error', async () => {
+		const { setMock } = createRecordingDb();
+
+		await (updateProfile as unknown as (...args: unknown[]) => Promise<void>)(testAuthContext, {
+			name: 'Fresh Name',
+			image: null,
+		});
+
+		expect(setMock).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Fresh Name', image: null }),
+		);
 	});
 });
 

@@ -118,9 +118,10 @@ test.describe('Wishlist crop editor', () => {
 		expect(shortIdMatch, 'wishlist short id present in URL').not.toBeNull();
 		const shortId = shortIdMatch![1];
 
-		await page.goto(`/w/${shortId}/settings`);
-		await page.waitForLoadState('networkidle');
-		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
+		// The legacy settings URL redirects to the wishlist page and opens the settings
+		// modal; the #image fragment lands it on the image tab with the crop editor.
+		await page.goto(`/w/${shortId}/settings#image`);
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
 
 		// Upload a wishlist image via the crop editor's uploader.
 		const fileInput = page.locator('input[type=file]').first();
@@ -138,14 +139,15 @@ test.describe('Wishlist crop editor', () => {
 		await thumbnailTile.click();
 		await expect(thumbnailTile).toHaveAttribute('aria-pressed', 'true');
 
-		// Save the image assignment (the settings page has several "Uložit" buttons –
-		// details, image, theme – so target the image card's save by its test id).
+		// Save the image assignment (the settings modal has several "Uložit" buttons –
+		// details, image – so target the image panel's save by its test id).
 		await page.getByTestId('wishlist-image-save').click();
 		await expect(page.getByText(/Obrázek seznamu byl uložen/)).toBeVisible({ timeout: 10_000 });
 
-		// The assignment survives a full reload / fresh SSR render.
-		await page.reload();
-		await page.waitForLoadState('networkidle');
+		// The assignment survives a full navigation / fresh SSR render (the redirect
+		// stripped the ?settings marker, so re-enter via the legacy settings URL).
+		await page.goto(`/w/${shortId}/settings#image`);
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByText(/Všechna místa/)).toBeVisible({ timeout: 10_000 });
 
 		await page.context().close();

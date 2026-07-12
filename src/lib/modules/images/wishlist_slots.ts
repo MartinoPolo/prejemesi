@@ -6,7 +6,7 @@
  * gift crop helpers in `crop.ts`.
  */
 
-import { UPLOAD_API_BASE } from '$lib/modules/uploads/types.js';
+import { imagePublicUrl } from './public_url.js';
 import { IMAGE_FIT_MODES } from './fit_modes.js';
 import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
 import {
@@ -28,16 +28,16 @@ export const WISHLIST_SLOT_ASPECT = {
 } as const satisfies Record<WishlistImageSlot, string>;
 
 /**
- * Resolve a wishlist image object key to a client-loadable URL. The upload API
- * route ({@link UPLOAD_API_BASE}) serves stored objects (R2 in production, the
- * in-memory fallback in dev), so the same-origin path works everywhere without
- * exposing storage env to the client. Returns null when no image is assigned.
+ * Resolve a wishlist image object key to a client-loadable URL. Production
+ * serves straight from the R2 public domain (PUBLIC_R2_URL) so image bytes
+ * never flow through the Worker; local dev falls back to the same-origin
+ * upload API route. Returns null when no image is assigned.
  */
 export function wishlistImageUrl(imageKey: string | null | undefined): string | null {
 	if (imageKey == null || imageKey === '') {
 		return null;
 	}
-	return `${UPLOAD_API_BASE}/${imageKey}`;
+	return imagePublicUrl(imageKey);
 }
 
 /**

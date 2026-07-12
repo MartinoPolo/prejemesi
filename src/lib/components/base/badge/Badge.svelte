@@ -57,7 +57,7 @@
 	{#if children}
 		<span
 			data-badge-text
-			class="inline-flex overflow-hidden whitespace-nowrap"
+			class="inline-flex items-center gap-[inherit] overflow-hidden whitespace-nowrap"
 			style:opacity={collapsed ? '0' : '1'}
 			style:max-width={collapsed ? '0px' : '200px'}
 			style:transition={TEXT_TRANSITION}

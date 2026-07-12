@@ -13,8 +13,8 @@ vi.mock('$app/server', () => ({
 	})),
 }));
 
-// ── Mock $env/dynamic/private ───────────────────────────────────────────────
-vi.mock('$env/dynamic/private', () => ({
+// ── Mock $env/dynamic/public (getPublicUrl resolves via PUBLIC_R2_URL) ──────
+vi.mock('$env/dynamic/public', () => ({
 	env: new Proxy(mockEnv, {
 		get: (_target, prop: string) => mockEnv[prop],
 	}),
@@ -47,26 +47,26 @@ describe('isAllowedContentType', () => {
 });
 
 describe('getPublicUrl', () => {
-	it('returns {R2_PUBLIC_URL}/{key} when env var is set', () => {
-		mockEnv['R2_PUBLIC_URL'] = 'https://cdn.example.com';
+	it('returns {PUBLIC_R2_URL}/{key} when env var is set', () => {
+		mockEnv['PUBLIC_R2_URL'] = 'https://cdn.example.com';
 
 		expect(getPublicUrl('gifts/abc123.jpg')).toBe('https://cdn.example.com/gifts/abc123.jpg');
 	});
 
-	it('strips trailing slash from R2_PUBLIC_URL', () => {
-		mockEnv['R2_PUBLIC_URL'] = 'https://cdn.example.com/';
+	it('strips trailing slash from PUBLIC_R2_URL', () => {
+		mockEnv['PUBLIC_R2_URL'] = 'https://cdn.example.com/';
 
 		expect(getPublicUrl('gifts/abc123.jpg')).toBe('https://cdn.example.com/gifts/abc123.jpg');
 	});
 
-	it('returns /api/upload/{key} when R2_PUBLIC_URL is not set', () => {
-		// mockEnv has no R2_PUBLIC_URL
+	it('returns /api/upload/{key} when PUBLIC_R2_URL is not set', () => {
+		// mockEnv has no PUBLIC_R2_URL
 
 		expect(getPublicUrl('gifts/abc123.jpg')).toBe('/api/upload/gifts/abc123.jpg');
 	});
 
-	it('returns /api/upload/{key} when R2_PUBLIC_URL is empty string', () => {
-		mockEnv['R2_PUBLIC_URL'] = '';
+	it('returns /api/upload/{key} when PUBLIC_R2_URL is empty string', () => {
+		mockEnv['PUBLIC_R2_URL'] = '';
 
 		expect(getPublicUrl('gifts/abc123.jpg')).toBe('/api/upload/gifts/abc123.jpg');
 	});

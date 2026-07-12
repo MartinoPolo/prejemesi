@@ -15,25 +15,33 @@ export function isAllowedContentType(value: string): value is AllowedContentType
 /** Base path for the upload API route. */
 export const UPLOAD_API_BASE = '/api/upload';
 
+/**
+ * How the browser delivers the file bytes. `presigned` PUTs directly to R2
+ * (REQ-1); `proxy` PUTs to the same-origin API route (local dev / fallback
+ * when R2 S3 credentials are not configured).
+ */
+export const UPLOAD_MODES = {
+	presigned: 'presigned',
+	proxy: 'proxy',
+} as const;
+
+export type UploadMode = (typeof UPLOAD_MODES)[keyof typeof UPLOAD_MODES];
+
 /** Response from the upload authorization command. */
 export interface UploadAuthorization {
 	/** The object key where the file will be stored. */
 	objectKey: string;
-	/** Upload endpoint URL (the API route that proxies to R2). */
+	/** Whether the upload goes directly to R2 or through the proxy route. */
+	uploadMode: UploadMode;
+	/** Where to PUT the file – a presigned R2 URL or the proxy API route. */
 	uploadUrl: string;
+	/** HMAC token for the proxy route; null in presigned mode. */
+	uploadToken: string | null;
+	/** HMAC token authorizing the uploader to delete this one object (cancel/replace cleanup). */
+	deleteToken: string;
 	/** Public URL to access the uploaded file after upload completes. */
 	publicUrl: string;
-	/** HMAC token authorizing this specific upload. */
-	token: string;
-	/** Token expiry as Unix millisecond timestamp. */
-	expiresAt: number;
-}
-
-/** Response from the delete authorization command. */
-export interface DeleteAuthorization {
-	/** HMAC token authorizing deletion of a specific object. */
-	token: string;
-	/** Token expiry as Unix millisecond timestamp. */
+	/** Upload authorization expiry as Unix millisecond timestamp. */
 	expiresAt: number;
 }
 
@@ -43,6 +51,8 @@ export interface UploadResult {
 	objectKey: string;
 	/** Public URL to access the uploaded file. */
 	publicUrl: string;
+	/** Token that lets this uploader delete the object if the flow is cancelled. */
+	deleteToken: string;
 }
 
 /** Upload progress state. */

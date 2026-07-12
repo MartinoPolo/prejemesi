@@ -2,7 +2,7 @@
 	import { cn } from '$lib/utils.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import { IMAGE_TOKEN_SCOPES } from '$lib/components/derived/image-frame/index.js';
-	import type { ImageFrameProps } from '$lib/modules/images/index.js';
+	import type { ImageFrameProps, ImageVariant } from '$lib/modules/images/index.js';
 	import WishlistFallbackHero from './WishlistFallbackHero.svelte';
 
 	interface Props {
@@ -14,10 +14,25 @@
 		themeEmoji: string;
 		/** Accessible description. */
 		alt: string;
+		/**
+		 * Size-appropriate delivery variant (issue #107); null loads the original
+		 * (crop-editor previews, where framing accuracy matters most).
+		 */
+		variant?: ImageVariant | null;
+		/** Eager-load above-the-fold surfaces (page banner); the rest lazy-load. */
+		eagerLoading?: boolean;
 		class?: string;
 	}
 
-	let { src, frame, themeEmoji, alt, class: className }: Props = $props();
+	let {
+		src,
+		frame,
+		themeEmoji,
+		alt,
+		variant = null,
+		eagerLoading = false,
+		class: className,
+	}: Props = $props();
 </script>
 
 <!--
@@ -31,6 +46,8 @@ presentation is identical everywhere; otherwise it shows the theme-aware fallbac
 		class={cn('size-full', className)}
 		{src}
 		{alt}
+		{variant}
+		{eagerLoading}
 		fitMode={frame.fitMode}
 		focal={frame.focal}
 		zoom={frame.zoom}

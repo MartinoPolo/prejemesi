@@ -18,7 +18,8 @@ export default defineConfig({
 		navigationTimeout: 30_000,
 	},
 	webServer: {
-		command: `pnpm run dev --port ${devServerPort}`,
+		// No `--` separator: pnpm forwards it verbatim and vite would treat the flags as positionals.
+		command: `pnpm run dev --port ${devServerPort} --strictPort`,
 		port: devServerPort,
 		reuseExistingServer: true,
 	},
