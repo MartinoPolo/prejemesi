@@ -30,6 +30,8 @@ function wrapWithRemoteMarker(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
+	// Single-flight refresh is a runtime-only concern (no-op outside remote requests).
+	singleFlightRefresh: vi.fn(),
 	publicQuery: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
@@ -1740,5 +1742,44 @@ describe('markGiftReceived', () => {
 				message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
 			});
 		});
+	});
+});
+
+// ── Statement budgets (issue #108, REQ-7) ─────────────────────────────────────
+
+describe('statement budgets (issue #108, REQ-7)', () => {
+	/** Statements = top-level select/insert/update/delete chains started on the db. */
+	function statementCount(): number {
+		return mockDbInstance.calls.filter((call) =>
+			['select', 'insert', 'update', 'delete'].includes(call.method),
+		).length;
+	}
+
+	it('getGiftsByWishlistShortId (authed visitor) stays within 6 statements', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]); // wishlist lookup
+		mockDbInstance.pushResult([]); // moderator check → visitor
+		mockDbInstance.pushResult([makeGiftRow()]); // gift rows
+		mockDbInstance.pushResult([]); // reservations
+		mockDbInstance.pushResult([]); // like counts
+		mockDbInstance.pushResult([]); // my reservations
+
+		await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+
+		expect(statementCount()).toBeLessThanOrEqual(6);
+	});
+
+	it('createGift (recipient, no followers to notify) stays within 4 statements', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]); // verifyManagerAccess: wishlist lookup
+		mockDbInstance.pushResult([{ maxSort: 0 }]); // max sortOrder
+		mockDbInstance.pushResult([{ id: 'budget-gift-id', name: 'Budget Gift' }]); // insert
+		// followers select → [] (queue default) → notification dispatch early-returns
+
+		await callCreateGift(makeRecipientAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			name: 'Budget Gift',
+			links: [],
+		});
+
+		expect(statementCount()).toBeLessThanOrEqual(4);
 	});
 });

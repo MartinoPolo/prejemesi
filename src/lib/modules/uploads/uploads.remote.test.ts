@@ -45,6 +45,17 @@ vi.mock('$lib/server/db/id.js', () => ({
 	generateId: vi.fn(() => 'test-id-123'),
 }));
 
+// Statement-budget tripwire (issue #108, REQ-7): upload authorization must issue
+// ZERO database statements. If uploads.remote.ts ever starts using the db, every
+// test in this suite fails loudly instead of silently blowing the budget.
+vi.mock('$lib/server/db/index.js', () => ({
+	getDb: vi.fn(() => {
+		throw new Error(
+			'authorizeUpload must not touch the database (issue #108: 0-statement budget)',
+		);
+	}),
+}));
+
 vi.mock('$env/dynamic/private', () => ({
 	env: { AUTH_SECRET: 'test-auth-secret-for-hmac' },
 }));
@@ -394,5 +405,23 @@ describe('authorizeUpload', () => {
 
 			expect(result.objectKey).toBe(`gifts/test-id-123.${expectedExtension}`);
 		});
+	});
+});
+
+// ── Statement budget (issue #108, REQ-7) ──────────────────────────────────────
+
+describe('statement budget (issue #108, REQ-7)', () => {
+	it('authorizeUpload issues zero database statements', async () => {
+		// Upload authorization is pure validation + token/URL signing; the getDb mock
+		// at the top of this file throws on any use, so a successful happy path here
+		// proves the 0-statement budget holds.
+		const result = await callAuthorizeUpload({
+			target: 'gift-image',
+			fileName: 'photo.jpg',
+			contentType: 'image/jpeg',
+			fileSize: 1024,
+		});
+
+		expect(result.objectKey).toBe('gifts/test-id-123.jpg');
 	});
 });

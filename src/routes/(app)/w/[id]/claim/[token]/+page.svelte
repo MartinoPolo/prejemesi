@@ -3,7 +3,6 @@
 	import * as Card from '$lib/components/base/card/index.js';
 	import { acceptClaimInvite } from '$lib/modules/claim/claim.remote.js';
 	import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
-	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -59,9 +58,8 @@
 			const result = await acceptClaimInvite({ token });
 			accepted = true;
 			toastSuccess(m.claim_toast_accepted());
-			// The list moves into the claimer's Moje seznamy — refresh the dashboards so the
-			// nav/list surfaces reflect it, then redirect to the wishlist.
-			await refreshWishlistDashboards();
+			// The command single-flight-refreshes Moje seznamy/Spravované (issue #108) —
+			// nav/list surfaces already reflect the claim by the time we redirect.
 			setTimeout(() => {
 				void goto(
 					localizeInternalHref(resolve('/(app)/w/[id]', { id: result.wishlistShortId })),

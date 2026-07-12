@@ -6,7 +6,6 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setReservationPurchased } from '$lib/modules/reservations/reservations.remote.js';
-	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 
 	interface PurchasedToggleProps {
@@ -26,8 +25,8 @@
 		giftsContext.isAuthenticated.current && gift.myReservationId !== null,
 	);
 
-	// Optimistic override wins until the underlying gift query refreshes; the nav dropdowns refresh
-	// immediately via refreshWishlistDashboards() so the resolved-state overview stays in sync.
+	// Optimistic override wins until the fresh gift data rides back on the command's
+	// single-flight refresh (issue #108); list surfaces re-fetch when next opened.
 	let optimistic = $state<boolean | null>(null);
 	const purchased = $derived(optimistic ?? gift.myReservationPurchasedAt !== null);
 	let isSaving = $state(false);
@@ -43,7 +42,6 @@
 		try {
 			await setReservationPurchased({ reservationId: gift.myReservationId, purchased: next });
 			toastSuccess(next ? m.toast_marked_bought() : m.toast_unmarked_bought());
-			await refreshWishlistDashboards();
 		} catch {
 			optimistic = !next;
 			toastError(m.toast_bought_error());

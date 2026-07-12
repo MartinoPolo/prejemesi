@@ -27,6 +27,8 @@ function wrapWithRemoteMarker(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
+	// Single-flight refresh is a runtime-only concern (no-op outside remote requests).
+	singleFlightRefresh: vi.fn(),
 	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
@@ -144,6 +146,8 @@ interface MockDb {
 	lastSetPayload: () => Record<string, unknown> | undefined;
 	/** Payload passed to the most recent `.values(...)` call (e.g. drizzle insert data). */
 	lastValuesPayload: () => Record<string, unknown> | undefined;
+	/** Number of awaited query chains so far — i.e. statements sent to the database. */
+	statementCount: () => number;
 	reset: () => void;
 }
 
@@ -189,6 +193,7 @@ function createMockDb(): MockDb {
 		pushResult: (result: unknown[]) => results.push(result),
 		lastSetPayload: () => setPayloads[setPayloads.length - 1],
 		lastValuesPayload: () => valuesPayloads[valuesPayloads.length - 1],
+		statementCount: () => indexRef.value,
 		reset: () => {
 			results.length = 0;
 			indexRef.value = 0;
@@ -1390,5 +1395,21 @@ describe('refollowWishlist', () => {
 				),
 			).resolves.not.toThrow();
 		});
+	});
+});
+
+// ── Statement budgets (issue #108, REQ-7) ─────────────────────────────────────
+
+describe('statement budgets (issue #108, REQ-7)', () => {
+	it('getWishlistByShortId (authed manager, self list) stays within 2 statements', async () => {
+		// wishlist + user leftJoin, then the moderator-assignment role check.
+		mockDbInstance.pushResult([
+			{ wishlist: makeWishlistRow(), recipientDisplayName: 'Recipient Alice' },
+		]);
+		mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+
+		await callGetWishlistByShortId(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
+
+		expect(mockDbInstance.statementCount()).toBeLessThanOrEqual(2);
 	});
 });

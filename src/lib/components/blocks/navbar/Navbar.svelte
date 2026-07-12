@@ -67,10 +67,37 @@
 
 	let shouldLoadNavDropdownData = $state(false);
 
+	// Stale-while-revalidate (issue #108): mutations no longer refresh the dashboard
+	// list queries, so each dropdown re-fetches its own data when hovered/focused
+	// again — throttled so ordinary nav mouse traffic doesn't spam requests. The
+	// previous items stay visible while the refresh is in flight.
+	const NAV_DROPDOWN_REFRESH_THROTTLE_MS = 30_000;
+	const navDropdownQueries = [
+		getMyWishlists,
+		getModeratedWishlists,
+		getFollowedWishlists,
+	] as const;
+	const navDropdownLastRefreshAt = [0, 0, 0];
+
 	function requestNavDropdownData() {
-		if (user !== null) {
+		if (user !== null && !shouldLoadNavDropdownData) {
 			shouldLoadNavDropdownData = true;
+			// The queries fetch fresh right now — start their throttle windows so the
+			// per-item hover handler doesn't immediately duplicate the initial load.
+			navDropdownLastRefreshAt.fill(Date.now());
 		}
+	}
+
+	function refreshNavDropdown(index: number) {
+		if (!canLoadNavDropdownData) {
+			return;
+		}
+		const now = Date.now();
+		if (now - navDropdownLastRefreshAt[index]! < NAV_DROPDOWN_REFRESH_THROTTLE_MS) {
+			return;
+		}
+		navDropdownLastRefreshAt[index] = now;
+		void navDropdownQueries[index]!().refresh();
 	}
 
 	const canLoadNavDropdownData = $derived(user !== null && shouldLoadNavDropdownData);
@@ -278,44 +305,53 @@
 			onfocusin={requestNavDropdownData}
 		>
 			{#each NAV_LINKS as link, i (link.href)}
-				<NavDropdown
-					title={link.label}
-					viewAllHref={link.href}
-					active={isNavActive(link.href)}
-					items={navDropdownItems[i]}
-					totalCount={navDropdownTotalCounts[i]}
-					grouped={i === 2}
-					bind:open={
-						() => openNavDropdownIndex === i, (isOpen) => setNavDropdownOpen(i, isOpen)
-					}
+				<!-- svelte-ignore a11y_no_static_element_interactions (hover/focus refresh is a
+				     non-essential data prefetch; the link + dropdown inside stay fully accessible) -->
+				<div
+					class="contents"
+					onpointerenter={() => refreshNavDropdown(i)}
+					onfocusin={() => refreshNavDropdown(i)}
 				>
-					{#snippet footer()}
-						{#if i === 0}
-							<button
-								class="inline-flex items-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-primary hover:underline"
-								onclick={() => (isCreateModalOpen = true)}
-							>
-								<PlusIcon class="size-3.5" />
-								{m.nav_footer_new_list()}
-							</button>
-						{:else if i === 1}
-							<span class={dropdownFooterStatClass}>
-								<GiftIcon class="size-3.5" />
-								{m.nav_footer_reserved_stats({
-									reserved: moderatedStats.reserved,
-									total: moderatedStats.total,
-								})}
-							</span>
-						{:else}
-							<span class={dropdownFooterStatClass}>
-								<GiftIcon class="size-3.5" />
-								{followedOpenCount > 0
-									? m.nav_footer_lists_need_gift({ count: followedOpenCount })
-									: m.nav_footer_all_sorted()}
-							</span>
-						{/if}
-					{/snippet}
-				</NavDropdown>
+					<NavDropdown
+						title={link.label}
+						viewAllHref={link.href}
+						active={isNavActive(link.href)}
+						items={navDropdownItems[i]}
+						totalCount={navDropdownTotalCounts[i]}
+						grouped={i === 2}
+						bind:open={
+							() => openNavDropdownIndex === i,
+							(isOpen) => setNavDropdownOpen(i, isOpen)
+						}
+					>
+						{#snippet footer()}
+							{#if i === 0}
+								<button
+									class="inline-flex items-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-primary hover:underline"
+									onclick={() => (isCreateModalOpen = true)}
+								>
+									<PlusIcon class="size-3.5" />
+									{m.nav_footer_new_list()}
+								</button>
+							{:else if i === 1}
+								<span class={dropdownFooterStatClass}>
+									<GiftIcon class="size-3.5" />
+									{m.nav_footer_reserved_stats({
+										reserved: moderatedStats.reserved,
+										total: moderatedStats.total,
+									})}
+								</span>
+							{:else}
+								<span class={dropdownFooterStatClass}>
+									<GiftIcon class="size-3.5" />
+									{followedOpenCount > 0
+										? m.nav_footer_lists_need_gift({ count: followedOpenCount })
+										: m.nav_footer_all_sorted()}
+								</span>
+							{/if}
+						{/snippet}
+					</NavDropdown>
+				</div>
 			{/each}
 		</nav>
 	{/if}
