@@ -12,8 +12,10 @@ import { registerViaApi, createAuthenticatedContext } from './fixtures/auth-help
 // warmup would time out even though the route compiled fine. `goto`'s default
 // 'load' wait already forces each route's server modules to compile; a deterministic
 // content assertion then proves the rendered output is ready.
-test('warmup: compile all route modules', async ({ page, request, browser }) => {
-	const baseURL = 'http://localhost:5173';
+test('warmup: compile all route modules', async ({ page, request, browser, baseURL }) => {
+	if (!baseURL) {
+		throw new Error('baseURL must be configured in playwright.config.ts');
+	}
 
 	await page.goto('/');
 	await page.goto('/register');
