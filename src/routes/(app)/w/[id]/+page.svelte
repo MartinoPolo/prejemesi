@@ -90,6 +90,7 @@
 			() => role,
 			() => wishlist.status === 'archived',
 			() => isAuthenticated,
+			() => likedGiftIds,
 		),
 	);
 
@@ -402,7 +403,11 @@
 	}
 
 	function clearFilters() {
-		giftsContext.filters.current = { availableOnly: false, withLinkOnly: false };
+		giftsContext.filters.current = {
+			availableOnly: false,
+			withLinkOnly: false,
+			likedOnly: false,
+		};
 	}
 
 	async function openCreateModal() {

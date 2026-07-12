@@ -60,6 +60,9 @@
 	// Role guard (issue #101 REQ-3): the recipient never sees reservation state, so
 	// an availability filter would be meaningless noise on their own list.
 	const showAvailableChip = $derived(role !== WISHLIST_ROLES.recipient);
+	// „Oblíbené" only when the viewer can actually have likes: anonymous visitors have no
+	// likes, and the linked recipient is blocked from liking server-side (likes.remote.ts).
+	const showLikedFilter = $derived(isAuthenticated && role !== WISHLIST_ROLES.recipient);
 
 	function toggleAvailableOnly() {
 		onfilterchange({ ...filters, availableOnly: !filters.availableOnly });
@@ -81,7 +84,7 @@
 		</FilterChip>
 	{/if}
 
-	<GiftFilterOverflowMenu {filters} {onfilterchange} />
+	<GiftFilterOverflowMenu {filters} {showLikedFilter} {onfilterchange} />
 
 	<div class="ml-auto flex items-center gap-2">
 		{#if canManage && !isArchived}
