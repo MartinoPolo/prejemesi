@@ -1,8 +1,23 @@
 export const UPLOAD_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
 
+/**
+ * Delete tokens outlive upload tokens: a user may keep an edit dialog open for a
+ * long time before cancelling, and the token only authorizes deleting the one
+ * object that same user uploaded moments earlier.
+ */
+export const DELETE_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+export const TOKEN_PURPOSES = {
+	upload: 'upload',
+	delete: 'delete',
+} as const;
+
+export type TokenPurpose = (typeof TOKEN_PURPOSES)[keyof typeof TOKEN_PURPOSES];
+
 export interface UploadTokenPayload {
 	objectKey: string;
 	userId: string;
+	purpose: TokenPurpose;
 	expiresAt: number;
 }
 
@@ -63,10 +78,13 @@ export async function createUploadToken(
 	objectKey: string,
 	userId: string,
 	signingKey: string,
-	expiryMs: number = UPLOAD_TOKEN_EXPIRY_MS,
+	purpose: TokenPurpose = TOKEN_PURPOSES.upload,
+	expiryMs: number = purpose === TOKEN_PURPOSES.delete
+		? DELETE_TOKEN_EXPIRY_MS
+		: UPLOAD_TOKEN_EXPIRY_MS,
 ): Promise<UploadTokenResult> {
 	const expiresAt = Date.now() + expiryMs;
-	const payload: UploadTokenPayload = { objectKey, userId, expiresAt };
+	const payload: UploadTokenPayload = { objectKey, userId, purpose, expiresAt };
 	const payloadBytes = encoder.encode(JSON.stringify(payload));
 
 	const key = await getSigningKey(signingKey);
@@ -119,7 +137,8 @@ export async function verifyUploadToken(
 	if (
 		typeof payload.objectKey !== 'string' ||
 		typeof payload.userId !== 'string' ||
-		typeof payload.expiresAt !== 'number'
+		typeof payload.expiresAt !== 'number' ||
+		(payload.purpose !== TOKEN_PURPOSES.upload && payload.purpose !== TOKEN_PURPOSES.delete)
 	) {
 		throw new Error('Malformed upload token payload');
 	}

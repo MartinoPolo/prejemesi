@@ -56,6 +56,7 @@
 		imageUrl={gift.imageUrl}
 		imageMeta={gift.imageMeta}
 		alt={gift.name}
+		variant="listThumb"
 	/>
 
 	<!-- Info -->

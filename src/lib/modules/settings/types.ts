@@ -7,7 +7,10 @@ export interface UserProfile {
 	id: string;
 	name: string;
 	email: string;
+	/** Raw persisted value: an external URL or an R2 object key (uploaded avatar). */
 	image: string | null;
+	/** Display URL resolved from `image` – object keys mapped to the public image host. */
+	imageUrl: string | null;
 	isOAuthUser: boolean;
 	preferredLocale: SupportedLocale | null;
 }

@@ -219,6 +219,7 @@
 							frame={item.imageFrame}
 							themeEmoji={item.emoji}
 							alt={item.name}
+							variant="thumbnail"
 						/>
 					{:else}
 						{item.emoji}

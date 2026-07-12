@@ -194,6 +194,12 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(() => mockDbInstance.db),
 }));
 
+// ── Mock R2 storage cleanup (issue #107, REQ-6) ──────────────────────────────
+
+vi.mock('$lib/server/storage/r2.js', () => ({
+	deleteObjectsBestEffort: vi.fn(() => Promise.resolve()),
+}));
+
 // ── Import the module under test (after all mocks are set up) ─────────────────
 
 import {
@@ -208,6 +214,9 @@ import {
 	getWishlistByShortId,
 	setWishlistPalette,
 } from './wishlists.remote.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+
+const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
 
 // ── Test data factories ───────────────────────────────────────────────────────
 
@@ -327,12 +336,30 @@ describe('deleteWishlist', () => {
 		it('resolves without throwing when the linked recipient deletes a draft wishlist', async () => {
 			// DB call 1: requireWishlistRow (recipientUserId matches caller → manager, no mod query)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
-			// DB call 2: soft-delete update
+			// DB call 2: gift image-key collection (issue #107 cleanup)
+			mockDbInstance.pushResult([]);
+			// DB call 3: soft-delete update
 			mockDbInstance.pushResult([]);
 
 			await expect(
 				callDeleteWishlist(makeRecipientAuthContext(), WISHLIST_ID),
 			).resolves.not.toThrow();
+		});
+
+		it('deletes the wishlist image and its gifts’ images from storage (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/w.jpg' }),
+			]);
+			mockDbInstance.pushResult([{ imageKey: 'gifts/a.jpg' }, { imageKey: null }]);
+			mockDbInstance.pushResult([]);
+
+			await callDeleteWishlist(makeRecipientAuthContext(), WISHLIST_ID);
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith([
+				'wishlists/banners/w.jpg',
+				'gifts/a.jpg',
+				null,
+			]);
 		});
 	});
 
@@ -479,6 +506,34 @@ describe('updateWishlist', () => {
 			});
 
 			expect(result).toMatchObject({ imageKey: 'wishlists/hero.jpg', imageSlots });
+		});
+
+		it('deletes the replaced uploaded image from storage (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ imageKey: 'wishlists/banners/new.jpg' })]);
+
+			await callUpdateWishlist(makeRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				imageKey: 'wishlists/banners/new.jpg',
+			});
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['wishlists/banners/old.jpg']);
+		});
+
+		it('keeps storage untouched when only crop metadata changes (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/same.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow()]);
+
+			await callUpdateWishlist(makeRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				imageSlots: { card: { fitMode: 'cover-crop' } },
+			});
+
+			expect(mockDeleteObjects).not.toHaveBeenCalled();
 		});
 	});
 

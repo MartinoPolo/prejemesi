@@ -167,6 +167,8 @@
 						frame={polaroidFrame}
 						{themeEmoji}
 						alt={title}
+						variant="banner"
+						eagerLoading
 					/>
 					{#if canManage && !isArchived}
 						<Button

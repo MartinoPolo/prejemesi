@@ -39,6 +39,7 @@
 		type UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
+	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
 		IMAGE_FIT_MODES,
@@ -121,6 +122,11 @@
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
 
+	// Uploads made in this form session that are not persisted yet (issue #107,
+	// REQ-6). The image key included in the last submit is kept on unmount.
+	const pendingUploads = createPendingUploads();
+	let submittedImageKey: string | null = null;
+
 	// Image presentation metadata (REQ-1/3). The crop rect is the editing representation;
 	// it is converted to the renderer's focal+zoom on save and retained when switching
 	// away from Crop so re-selecting it restores the region.
@@ -177,6 +183,7 @@
 		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
 		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
+		submittedImageKey = imageKey || null;
 
 		if (mode === 'create') {
 			oncreate?.({
@@ -258,6 +265,7 @@
 	function handleImageUpload(result: UploadResult) {
 		imageKey = result.objectKey;
 		imageUrl = result.publicUrl;
+		pendingUploads.track(result);
 	}
 
 	function handleImageRemove() {
@@ -268,6 +276,15 @@
 	function handleImageUploadError(uploadError: Error) {
 		console.error('Image upload failed:', uploadError.message);
 	}
+
+	// Storage cleanup (issue #107, REQ-6): uploads that were replaced, removed,
+	// or abandoned before save are deleted when the form unmounts (dialog close).
+	// The submitted key survives; a pre-existing gift image is never tracked here.
+	$effect(() => {
+		return () => {
+			void pendingUploads.commit(submittedImageKey);
+		};
+	});
 </script>
 
 <div class={styles.body()}>

@@ -63,7 +63,7 @@ class MockXMLHttpRequest {
 
 vi.stubGlobal('XMLHttpRequest', MockXMLHttpRequest);
 
-import { uploadFile } from './upload.js';
+import { uploadFile, deleteUploadedObject, createPendingUploads } from './upload.js';
 import type { UploadProgress } from './types.js';
 
 function makeFile(name: string, type: string, size = 1024): File {
@@ -76,8 +76,19 @@ function makeFile(name: string, type: string, size = 1024): File {
 
 const defaultAuthorization = {
 	objectKey: 'gifts/abc123.jpg',
+	uploadMode: 'proxy',
 	uploadUrl: '/api/upload/gifts/abc123.jpg',
+	uploadToken: 'upload-token.sig',
+	deleteToken: 'delete-token.sig',
 	publicUrl: 'https://cdn.example.com/gifts/abc123.jpg',
+};
+
+const presignedAuthorization = {
+	...defaultAuthorization,
+	uploadMode: 'presigned',
+	uploadUrl:
+		'https://account.r2.cloudflarestorage.com/bucket/gifts/abc123.jpg?X-Amz-Signature=abc',
+	uploadToken: null,
 };
 
 beforeEach(() => {
@@ -221,7 +232,7 @@ describe('uploadFile', () => {
 	// ── Successful result ────────────────────────────────────────────────────
 
 	describe('successful result', () => {
-		it('returns objectKey and publicUrl from authorization', async () => {
+		it('returns objectKey, publicUrl, and deleteToken from authorization', async () => {
 			const file = makeFile('photo.jpg', 'image/jpeg');
 
 			const promise = uploadFile(file, 'gift-image');
@@ -236,7 +247,116 @@ describe('uploadFile', () => {
 			expect(result).toEqual({
 				objectKey: 'gifts/abc123.jpg',
 				publicUrl: 'https://cdn.example.com/gifts/abc123.jpg',
+				deleteToken: 'delete-token.sig',
 			});
 		});
+	});
+
+	// ── Upload modes (issue #107, REQ-1) ─────────────────────────────────────
+
+	describe('upload modes', () => {
+		it('proxy mode PUTs to the API route with the X-Upload-Token header', async () => {
+			const file = makeFile('photo.jpg', 'image/jpeg');
+			const promise = uploadFile(file, 'gift-image');
+
+			await vi.waitFor(() => {
+				expect(currentMockXhr.send).toHaveBeenCalled();
+			});
+			currentMockXhr._triggerLoad(201);
+			await promise;
+
+			expect(currentMockXhr.open).toHaveBeenCalledWith('PUT', '/api/upload/gifts/abc123.jpg');
+			expect(currentMockXhr.setRequestHeader).toHaveBeenCalledWith(
+				'X-Upload-Token',
+				'upload-token.sig',
+			);
+		});
+
+		it('presigned mode PUTs straight to R2 without the X-Upload-Token header', async () => {
+			mockAuthorizeUpload.mockResolvedValue(presignedAuthorization);
+
+			const file = makeFile('photo.jpg', 'image/jpeg');
+			const promise = uploadFile(file, 'gift-image');
+
+			await vi.waitFor(() => {
+				expect(currentMockXhr.send).toHaveBeenCalled();
+			});
+			currentMockXhr._triggerLoad(200);
+			await promise;
+
+			expect(currentMockXhr.open).toHaveBeenCalledWith(
+				'PUT',
+				presignedAuthorization.uploadUrl,
+			);
+			expect(currentMockXhr.setRequestHeader).toHaveBeenCalledWith(
+				'Content-Type',
+				'image/jpeg',
+			);
+			expect(currentMockXhr.setRequestHeader).not.toHaveBeenCalledWith(
+				'X-Upload-Token',
+				expect.anything(),
+			);
+		});
+	});
+});
+
+// ── Cleanup helpers (issue #107, REQ-6) ─────────────────────────────────────
+
+describe('deleteUploadedObject', () => {
+	it('sends an authorized DELETE for the object and swallows failures', async () => {
+		const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+		vi.stubGlobal('fetch', fetchMock);
+
+		await deleteUploadedObject('gifts/abc.jpg', 'delete-token.sig');
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/upload/gifts/abc.jpg',
+			expect.objectContaining({
+				method: 'DELETE',
+				headers: { 'X-Upload-Token': 'delete-token.sig' },
+			}),
+		);
+
+		fetchMock.mockRejectedValue(new Error('offline'));
+		await expect(
+			deleteUploadedObject('gifts/abc.jpg', 'delete-token.sig'),
+		).resolves.toBeUndefined();
+	});
+});
+
+describe('createPendingUploads', () => {
+	const makeResult = (objectKey: string) => ({
+		objectKey,
+		publicUrl: `https://cdn.example.com/${objectKey}`,
+		deleteToken: `token-for-${objectKey}`,
+	});
+
+	it('commit deletes every tracked object except the saved one', async () => {
+		const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const pending = createPendingUploads();
+		pending.track(makeResult('gifts/a.jpg'));
+		pending.track(makeResult('gifts/b.jpg'));
+		await pending.commit('gifts/b.jpg');
+
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledWith('/api/upload/gifts/a.jpg', expect.anything());
+
+		// The tracker is cleared: a later discardAll must not delete the saved key.
+		await pending.discardAll();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('discardAll deletes everything tracked', async () => {
+		const fetchMock = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const pending = createPendingUploads();
+		pending.track(makeResult('gifts/a.jpg'));
+		pending.track(makeResult('gifts/b.jpg'));
+		await pending.discardAll();
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 	});
 });

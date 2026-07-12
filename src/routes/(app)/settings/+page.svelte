@@ -43,7 +43,8 @@
 			email={profile.email}
 			isOAuthUser={profile.isOAuthUser}
 			initialName={profile.name}
-			initialAvatarUrl={profile.image}
+			initialAvatarUrl={profile.imageUrl}
+			initialImageValue={profile.image}
 			onSave={handleProfileSave}
 		/>
 

@@ -1,14 +1,16 @@
 /**
- * Upload proxy route – intentional design choice over R2 presigned URLs.
+ * Upload API route. Since issue #107, production uploads go directly from the
+ * browser to R2 via presigned PUT URLs and never touch this Worker. This route
+ * remains for:
  *
- * Trade-off: upload bandwidth flows through the server. Acceptable for images
- * (max 10 MB). Consider presigned URLs if video/large-file uploads are added.
- *
- * Benefits of proxying:
- * - HMAC token verification binds each upload to a specific user + objectKey
- * - Session cookie auth works without CORS presigned URL complexity
- * - Content-type and size validation happens server-side before storage
- * - Simpler client code – PUT to a same-origin URL
+ * - PUT: local-dev / fallback upload proxy when R2 S3 credentials are not
+ *   configured (Miniflare's R2 binding has no S3 endpoint to presign against)
+ * - GET: serving stored objects in local dev (R2 binding, in-memory fallback,
+ *   or `.seed-uploads` seed images); production serves from PUBLIC_R2_URL
+ * - DELETE: uploader-initiated cleanup of a cancelled/replaced upload,
+ *   authorized by the delete-purpose HMAC token minted with the upload –
+ *   deletion of *persisted* images happens server-side in the owning
+ *   mutations, never through this route
  */
 import { readFile } from 'node:fs/promises';
 import { resolve, normalize } from 'node:path';
@@ -24,8 +26,8 @@ import {
 	MAX_FILE_SIZE,
 	UPLOAD_TARGETS,
 } from '$lib/server/storage/r2.js';
-import { verifyUploadToken } from '$lib/server/crypto/upload_token.js';
-import type { UploadTokenPayload } from '$lib/server/crypto/upload_token.js';
+import { verifyUploadToken, TOKEN_PURPOSES } from '$lib/server/crypto/upload_token.js';
+import type { UploadTokenPayload, TokenPurpose } from '$lib/server/crypto/upload_token.js';
 
 async function extractAndVerifyToken(request: Request): Promise<UploadTokenPayload> {
 	const tokenHeader = request.headers.get('x-upload-token');
@@ -58,12 +60,16 @@ function validateTokenBinding(
 	payload: UploadTokenPayload,
 	userId: string,
 	objectKey: string,
+	purpose: TokenPurpose,
 ): void {
 	if (payload.userId !== userId) {
 		error(403, 'Upload token user mismatch');
 	}
 	if (payload.objectKey !== objectKey) {
 		error(403, 'Upload token path mismatch');
+	}
+	if (payload.purpose !== purpose) {
+		error(403, 'Upload token purpose mismatch');
 	}
 }
 
@@ -93,7 +99,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const tokenPayload = await extractAndVerifyToken(request);
-	validateTokenBinding(tokenPayload, locals.user.id, objectKey);
+	validateTokenBinding(tokenPayload, locals.user.id, objectKey, TOKEN_PURPOSES.upload);
 
 	const target = getTargetFromPath(objectKey);
 	if (!target) {
@@ -143,7 +149,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 /**
  * GET handler – serves files from R2 (or the in-memory fallback store).
- * Used as the public URL fallback when R2_PUBLIC_URL is not set.
+ * Used as the public URL fallback when PUBLIC_R2_URL is not set.
  */
 export const GET: RequestHandler = async ({ params }) => {
 	const objectKey = params.path;
@@ -211,7 +217,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const tokenPayload = await extractAndVerifyToken(request);
-	validateTokenBinding(tokenPayload, locals.user.id, objectKey);
+	validateTokenBinding(tokenPayload, locals.user.id, objectKey, TOKEN_PURPOSES.delete);
 
 	if (isR2Available()) {
 		try {
