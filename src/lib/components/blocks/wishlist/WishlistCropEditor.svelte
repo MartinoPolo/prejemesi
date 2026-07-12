@@ -3,10 +3,9 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
-	import { Slider } from '$lib/components/base/slider/index.js';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
-	import GiftImageCropCanvas from '$lib/components/blocks/gift/GiftImageCropCanvas.svelte';
+	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
 		IMAGE_TOKEN_SCOPES,
@@ -17,24 +16,22 @@
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import UploadIcon from '@lucide/svelte/icons/upload';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
-		IMAGE_ZOOM_MIN,
-		IMAGE_ZOOM_MAX,
 		IMAGE_FIT_MODE_VALUES,
-		WISHLIST_IMAGE_SLOT_VALUES,
-		WISHLIST_SLOT_ASPECT,
+		WISHLIST_EDITOR_SLOTS,
+		WISHLIST_SLOT_SPECS,
 		FULL_CROP_RECT,
 		createDefaultWishlistSlots,
-		cropRectToFocalZoom,
 		cropStateToImageMeta,
-		focalZoomToCropRect,
+		focalZoomToWindowRect,
 		imageMetaToFrameProps,
 		wishlistImageUrl,
 		type ImageCropRect,
 		type ImageMetadata,
-		type WishlistImageSlot,
+		type WishlistEditorSlot,
 		type WishlistImageSlots,
 	} from '$lib/modules/images/index.js';
 
@@ -59,19 +56,22 @@
 		cropRect: ImageCropRect;
 	}
 
-	function initSlots(saved: WishlistImageSlots | null): Record<WishlistImageSlot, SlotEditState> {
+	function initSlots(
+		saved: WishlistImageSlots | null,
+	): Record<WishlistEditorSlot, SlotEditState> {
 		// Unset slots fall back to the shared default seed so the seeding logic lives
-		// in one place (createDefaultWishlistSlots); the same focal→cropRect conversion
-		// then derives the editor's crop-rect source of truth for every slot.
+		// in one place (createDefaultWishlistSlots). A persisted per-slot rect restores
+		// exactly; legacy focal/zoom-only rows restore their square window and the
+		// stage snaps it to the slot's real aspect once the image is measured (D5).
 		const defaults = createDefaultWishlistSlots();
-		const result = {} as Record<WishlistImageSlot, SlotEditState>;
-		for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
+		const result = {} as Record<WishlistEditorSlot, SlotEditState>;
+		for (const slot of WISHLIST_EDITOR_SLOTS) {
 			const meta = saved?.[slot] ?? defaults[slot]!;
 			let cropRect: ImageCropRect;
 			if (meta.cropRect != null) {
 				cropRect = { ...meta.cropRect };
 			} else if (meta.focal !== undefined && meta.zoom !== undefined) {
-				cropRect = focalZoomToCropRect(meta.focal, meta.zoom);
+				cropRect = focalZoomToWindowRect(meta.focal, meta.zoom, 1);
 			} else {
 				cropRect = { ...FULL_CROP_RECT };
 			}
@@ -84,8 +84,11 @@
 	// svelte-ignore state_referenced_locally
 	let assignedKey = $state<string | null>(imageKey);
 	// svelte-ignore state_referenced_locally
-	let slotState = $state<Record<WishlistImageSlot, SlotEditState>>(initSlots(imageSlots));
-	let activeSlot = $state<WishlistImageSlot>('card');
+	let slotState = $state<Record<WishlistEditorSlot, SlotEditState>>(initSlots(imageSlots));
+	let activeSlot = $state<WishlistEditorSlot>('card');
+	// Slots edited in this session; untouched slots keep their persisted metadata
+	// verbatim on save so unrelated saves never silently reframe them (#116 D5).
+	const dirtySlots = new SvelteSet<WishlistEditorSlot>();
 
 	// Uploads from this editor session that are not saved yet (issue #107, REQ-6).
 	const pendingUploads = createPendingUploads();
@@ -94,35 +97,48 @@
 	const hasImage = $derived(imageUrl !== null);
 	const active = $derived(slotState[activeSlot]);
 	const isCropMode = $derived(active.fitMode === IMAGE_FIT_MODES.coverCrop);
-	const activeZoom = $derived(cropRectToFocalZoom(active.cropRect).zoom);
 
 	const slotLabels = {
 		card: () => m.wishlist_image_slot_card(),
 		thumbnail: () => m.wishlist_image_slot_thumbnail(),
-		banner: () => m.wishlist_image_slot_banner(),
 		social: () => m.wishlist_image_slot_social(),
-	} as const satisfies Record<WishlistImageSlot, () => string>;
+	} as const satisfies Record<WishlistEditorSlot, () => string>;
 
-	function slotMeta(slot: WishlistImageSlot): ImageMetadata {
-		const state = slotState[slot];
-		return cropStateToImageMeta(state.fitMode, state.cropRect);
-	}
-
+	/**
+	 * The slot metadata exactly as a save would persist it: session-edited slots are
+	 * rebuilt from their crop state, untouched slots (and the retained `banner` data,
+	 * #116 D3/REQ-4) pass through verbatim.
+	 */
 	function buildSlots(): WishlistImageSlots {
-		const result: WishlistImageSlots = {};
-		for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
-			result[slot] = slotMeta(slot);
+		const result: WishlistImageSlots = { ...imageSlots };
+		for (const slot of WISHLIST_EDITOR_SLOTS) {
+			const existing: ImageMetadata | undefined = result[slot];
+			if (dirtySlots.has(slot) || existing === undefined) {
+				const state = slotState[slot];
+				result[slot] = cropStateToImageMeta(state.fitMode, state.cropRect);
+			}
 		}
 		return result;
 	}
 
-	function frameFor(slot: WishlistImageSlot) {
-		return imageMetaToFrameProps(slotMeta(slot));
+	/** Live preview frame for a slot – renders what a save right now would render. */
+	function frameFor(slot: WishlistEditorSlot) {
+		return imageMetaToFrameProps(buildSlots()[slot] ?? null);
+	}
+
+	function markDirty(slot: WishlistEditorSlot) {
+		dirtySlots.add(slot);
 	}
 
 	function handleUpload(result: UploadResult) {
 		assignedKey = result.objectKey;
 		pendingUploads.track(result);
+		// A replaced image starts from fresh centered crops; every editor slot is
+		// rebuilt on save (the retained banner JSON stays untouched).
+		slotState = initSlots(null);
+		for (const slot of WISHLIST_EDITOR_SLOTS) {
+			dirtySlots.add(slot);
+		}
 	}
 
 	function handleUploadError(uploadError: Error) {
@@ -133,45 +149,15 @@
 	function handleRemove() {
 		assignedKey = null;
 		slotState = initSlots(null);
+		dirtySlots.clear();
 	}
 
 	function setFitMode(value: string) {
 		if (IMAGE_FIT_MODE_VALUES.includes(value as ImageFitMode)) {
 			slotState[activeSlot].fitMode = value as ImageFitMode;
+			markDirty(activeSlot);
 		}
 	}
-
-	/** Slider/wheel zoom resizes the crop around its current centre (cover-crop only). */
-	function setZoom(zoom: number) {
-		// focalZoomToCropRect clamps the zoom to [IMAGE_ZOOM_MIN, IMAGE_ZOOM_MAX] internally.
-		const { focal } = cropRectToFocalZoom(slotState[activeSlot].cropRect);
-		slotState[activeSlot].cropRect = focalZoomToCropRect(focal, zoom);
-	}
-
-	function handleZoomChange(value: number) {
-		setZoom(value / 100);
-	}
-
-	function handleWheel(event: WheelEvent) {
-		if (!isCropMode) {
-			return;
-		}
-		event.preventDefault();
-		const delta = event.deltaY < 0 ? 0.1 : -0.1;
-		setZoom(activeZoom + delta);
-	}
-
-	// Svelte attaches inline `onwheel` as a passive listener, so `preventDefault()` would be
-	// ignored and the page would scroll while zooming. Register it imperatively as non-passive.
-	let cropStageEl = $state<HTMLDivElement | null>(null);
-	$effect(() => {
-		const el = cropStageEl;
-		if (el === null) {
-			return;
-		}
-		el.addEventListener('wheel', handleWheel, { passive: false });
-		return () => el.removeEventListener('wheel', handleWheel);
-	});
 
 	function handleSave() {
 		// Storage cleanup (issue #107, REQ-6): uploads replaced before this save
@@ -218,27 +204,32 @@
 	</div>
 
 	{#if hasImage}
-		<!-- Crop stage for the active slot -->
+		<!-- WYSIWYG stage for the active slot (#116 REQ-2): the window is locked to
+		     the slot's real surface aspect, so switching slots visibly reshapes it. -->
 		<div class="flex flex-col gap-3">
 			<Label>{slotLabels[activeSlot]()}</Label>
 			{#if isCropMode}
-				<div bind:this={cropStageEl}>
-					<GiftImageCropCanvas
-						src={imageUrl!}
-						alt={title}
-						bind:cropRect={slotState[activeSlot].cropRect}
-						hint={m.wishlist_image_crop_hint()}
-					/>
-				</div>
+				<ImageCropStage
+					class="h-80"
+					src={imageUrl!}
+					alt={title}
+					targetAspect={WISHLIST_SLOT_SPECS[activeSlot].aspect}
+					targetLabel={slotLabels[activeSlot]()}
+					realSizeText={WISHLIST_SLOT_SPECS[activeSlot].realSizeText}
+					bind:cropRect={slotState[activeSlot].cropRect}
+					onchange={() => markDirty(activeSlot)}
+				/>
 			{:else}
 				{@const frame = frameFor(activeSlot)}
 				<div class="flex justify-center">
+					<!-- Absolutely positioned frame: see SlotPreviewCard (aspect-ratio
+					     boxes stretch when a %-height child falls back to intrinsic size). -->
 					<div
-						class="w-full max-w-md"
-						style:aspect-ratio={WISHLIST_SLOT_ASPECT[activeSlot]}
+						class="relative w-full max-w-md"
+						style:aspect-ratio={WISHLIST_SLOT_SPECS[activeSlot].cssAspect}
 					>
 						<ImageFrame
-							class="size-full"
+							class="absolute inset-0"
 							src={imageUrl}
 							alt={title}
 							fitMode={frame.fitMode}
@@ -274,35 +265,15 @@
 					<HelpText>{m.gift_image_fit_auto_help()}</HelpText>
 				{/if}
 			</div>
-
-			<!-- Zoom (cover-crop only). The Slider itself carries `disabled` for a11y;
-			     a non-inherited aria-disabled on this wrapper had no effect. -->
-			<div class="flex flex-col gap-2">
-				<div class="flex items-center justify-between">
-					<Label>{m.wishlist_image_zoom_label()}</Label>
-					<span class="text-xs tabular-nums text-foreground-subtle">
-						{isCropMode ? `${Math.round(activeZoom * 100)} %` : '–'}
-					</span>
-				</div>
-				<Slider
-					value={Math.round(activeZoom * 100)}
-					min={IMAGE_ZOOM_MIN * 100}
-					max={IMAGE_ZOOM_MAX * 100}
-					step={5}
-					disabled={!isCropMode}
-					onValueChange={handleZoomChange}
-					aria-label={m.wishlist_image_zoom_label()}
-				/>
-			</div>
 		</div>
 
-		<!-- Per-slot previews (REQ-2) – clicking a tile selects it for editing -->
+		<!-- Per-slot previews (REQ-7: true consumer aspects) – clicking a tile selects it -->
 		<div class="flex flex-col gap-2">
 			<span class="text-xs font-medium tracking-wide text-foreground-subtle uppercase">
 				{m.wishlist_image_preview_strip_label()}
 			</span>
-			<ul class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-				{#each WISHLIST_IMAGE_SLOT_VALUES as slot (slot)}
+			<ul class="grid grid-cols-3 gap-3">
+				{#each WISHLIST_EDITOR_SLOTS as slot (slot)}
 					<li>
 						<SlotPreviewCard
 							{slot}

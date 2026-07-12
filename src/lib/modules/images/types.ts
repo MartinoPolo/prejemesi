@@ -36,6 +36,31 @@ export interface ImageFocalPoint {
 	y: number;
 }
 
+/**
+ * Gift crop targets (#116 D2): consumer surfaces grouped by aspect family.
+ * `card` is the wide card banner, `detail` the tall detail-modal column,
+ * `square` the 1:1 pair (list thumbnail + reservation modal).
+ */
+export const GIFT_CROP_TARGETS = {
+	card: 'card',
+	detail: 'detail',
+	square: 'square',
+} as const;
+
+export type GiftCropTarget = (typeof GIFT_CROP_TARGETS)[keyof typeof GIFT_CROP_TARGETS];
+
+export const GIFT_CROP_TARGET_VALUES = Object.values(GIFT_CROP_TARGETS);
+
+/**
+ * A manual per-target crop (#116 D1/D2): always cover-crop geometry whose rect
+ * matches the target's aspect, making the focal+zoom render lossless (D5).
+ */
+export interface ImageTargetCrop {
+	cropRect: ImageCropRect;
+	focal: ImageFocalPoint;
+	zoom: number;
+}
+
 /** Image presentation metadata persisted alongside an image key/URL. */
 export interface ImageMetadata {
 	fitMode: ImageFitMode;
@@ -43,6 +68,12 @@ export interface ImageMetadata {
 	focal?: ImageFocalPoint;
 	zoom?: number;
 	bgColor?: string | null;
+	/**
+	 * Per-target manual crop overrides (#116 REQ-8, additive extension). A target
+	 * without an entry keeps the automatic framing; rows persisted before #116
+	 * simply have no `targets` and render exactly as before.
+	 */
+	targets?: Partial<Record<GiftCropTarget, ImageTargetCrop>>;
 }
 
 const NormalizedSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(1));
@@ -60,12 +91,27 @@ const ImageFocalPointSchema = v.object({
 	y: PercentSchema,
 });
 
+const ZoomSchema = v.pipe(v.number(), v.minValue(IMAGE_ZOOM_MIN), v.maxValue(IMAGE_ZOOM_MAX));
+
+const ImageTargetCropSchema = v.object({
+	cropRect: ImageCropRectSchema,
+	focal: ImageFocalPointSchema,
+	zoom: ZoomSchema,
+});
+
 export const ImageMetadataSchema = v.object({
 	fitMode: v.picklist(IMAGE_FIT_MODE_VALUES),
 	cropRect: v.optional(v.nullable(ImageCropRectSchema)),
 	focal: v.optional(ImageFocalPointSchema),
-	zoom: v.optional(v.pipe(v.number(), v.minValue(IMAGE_ZOOM_MIN), v.maxValue(IMAGE_ZOOM_MAX))),
+	zoom: v.optional(ZoomSchema),
 	bgColor: v.optional(v.nullable(v.string())),
+	targets: v.optional(
+		v.object({
+			card: v.optional(ImageTargetCropSchema),
+			detail: v.optional(ImageTargetCropSchema),
+			square: v.optional(ImageTargetCropSchema),
+		}),
+	),
 });
 
 /** Default metadata applied to a freshly assigned image. */

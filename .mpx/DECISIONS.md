@@ -823,12 +823,18 @@ What: The persisted crop value for any image slot is `{ x, y, zoom }` (focal poi
 Why: Focal point + zoom is resolution- and aspect-ratio-independent — it produces correct framing regardless of which slot ratio is being rendered. A raw cropRect breaks when rendered at a different aspect ratio.
 Rejected: Persisting cropRect only (breaks rendering at different slot aspect ratios).
 
-### One-crop-all-slots for gifts; independent per-slot crops for wishlists
+### ~~One-crop-all-slots for gifts; independent per-slot crops for wishlists~~ (superseded)
 
-Decided: 2026-06-02
-What: A gift's `image_meta` stores a single crop (focal point + zoom) applied to all display surfaces. Wishlists use `image_slots` with independent crop metadata per named slot (`card`, `thumbnail`, `banner`, `social`).
-Why: Gift surfaces (card thumbnail, detail modal) share the same framing — one crop is sufficient. Wishlist slots have very different aspect ratios and need distinct framings.
-Rejected: Per-slot crops for gifts (unnecessary complexity), single crop for wishlist slots (poor results across divergent aspect ratios).
+Decided: 2026-06-02 — **Superseded 2026-07-12** by "WYSIWYG per-target crops" below (issue #116, D2).
+~~What: A gift's `image_meta` stores a single crop (focal point + zoom) applied to all display surfaces. Wishlists use `image_slots` with independent crop metadata per named slot (`card`, `thumbnail`, `banner`, `social`).~~
+Replaced because: one crop across surfaces with very different aspects (card ~2.78:1 vs detail ~0.5) silently discarded parts of the drawn region (#116 F7); gifts now group consumers into per-target crops by aspect family.
+
+### WYSIWYG per-target crops; exact focal derivation; banner slot retired (issue #116)
+
+Decided: 2026-07-12
+What: Manual crops are drawn PER TARGET on a stage whose window is locked to the target's real aspect ratio (single source: `crop_targets.ts`). Gift targets by aspect family: `card` (~2.78:1), `detail` (~0.5), `square` (list + reservation, 1:1), persisted as an additive `image_meta.targets` extension — only user-edited targets persist; everything else keeps automatic center cover-fit framing. Wishlist editor slots: `card` (~2.84:1), `thumbnail` (1:1), `social` (1.91:1); the orphan `banner` slot is removed from the editor (JSON retained). The header polaroid photo is exactly square and consumes the `thumbnail` slot; `card` is single-consumer (dashboard banner). Conversions are exact renderer inverses (`focal = origin/(1 − size)`, zoom binds the larger normalized side), so an aspect-matched rect round-trips losslessly — no crop can be silently discarded. Legacy focal/zoom rows render unchanged until re-edited.
+Why: The pre-#116 editor was blind to target shapes (stage used the source-image ratio) and the center-based focal derivation misplaced off-center crops; per-target aspect-locked rects make WYSIWYG true by construction.
+Rejected: One-crop-all-slots for gifts (F7 silent discard), aspect-locked rect over a full-image stage (stage shape would still not match the target), destructive `image_meta` migration (prod data must keep rendering unchanged).
 
 ### Separated token responsibilities: bg-theme / wishlist tokens / frame-fill
 

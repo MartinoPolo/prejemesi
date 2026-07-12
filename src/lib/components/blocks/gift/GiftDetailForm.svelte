@@ -12,7 +12,7 @@
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
-	import GiftImageCropCanvas from './GiftImageCropCanvas.svelte';
+	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
@@ -47,12 +47,18 @@
 		type ImageFitMode,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
-		cropStateToImageMeta,
-		imageMetaToFrameProps,
+		cropRectToFocalZoom,
+		giftTargetFrameProps,
 		FULL_CROP_RECT,
+		GIFT_CROP_TARGET_SPECS,
+		GIFT_CROP_TARGET_VALUES,
 		IMAGE_FIT_MODE_VALUES,
+		type GiftCropTarget,
 		type ImageCropRect,
+		type ImageMetadata,
+		type ImageTargetCrop,
 	} from '$lib/modules/images/index.js';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 
 	interface Props {
@@ -127,15 +133,31 @@
 	const pendingUploads = createPendingUploads();
 	let submittedImageKey: string | null = null;
 
-	// Image presentation metadata (REQ-1/3). The crop rect is the editing representation;
-	// it is converted to the renderer's focal+zoom on save and retained when switching
-	// away from Crop so re-selecting it restores the region.
+	// Image presentation metadata (#116 D1/D2). Manual crops are edited PER TARGET:
+	// each target keeps its own rect (locked to the target's aspect by the stage) and
+	// only targets the user actually edits are persisted – untouched targets keep the
+	// automatic framing, and legacy base focal/zoom rows pass through unchanged (D5).
 	// svelte-ignore state_referenced_locally
 	let fitMode = $state<ImageFitMode>(gift?.imageMeta?.fitMode ?? IMAGE_FIT_MODES.auto);
 	// svelte-ignore state_referenced_locally
-	let cropRect = $state<ImageCropRect>({ ...(gift?.imageMeta?.cropRect ?? FULL_CROP_RECT) });
-	// svelte-ignore state_referenced_locally
 	const bgColor = gift?.imageMeta?.bgColor ?? null;
+
+	function initTargetRects(meta: ImageMetadata | null | undefined) {
+		const rects = {} as Record<GiftCropTarget, ImageCropRect>;
+		for (const target of GIFT_CROP_TARGET_VALUES) {
+			// A persisted per-target rect restores exactly; otherwise start from the
+			// legacy base rect (the stage snaps it to the target aspect once measured).
+			const saved = meta?.targets?.[target]?.cropRect ?? meta?.cropRect ?? FULL_CROP_RECT;
+			rects[target] = { ...saved };
+		}
+		return rects;
+	}
+
+	// svelte-ignore state_referenced_locally
+	let targetRects = $state(initTargetRects(gift?.imageMeta));
+	let activeTarget = $state<GiftCropTarget>('card');
+	// Targets edited in this session; only these are (re)persisted on save.
+	const dirtyTargets = new SvelteSet<GiftCropTarget>();
 
 	const styles = giftDetailModalVariants();
 
@@ -160,8 +182,48 @@
 
 	const previewSrc = $derived(imageUrl.trim() !== '' ? imageUrl.trim() : null);
 	const isCropMode = $derived(fitMode === IMAGE_FIT_MODES.coverCrop);
-	const currentImageMeta = $derived(cropStateToImageMeta(fitMode, cropRect, bgColor));
-	const framePreview = $derived(imageMetaToFrameProps(currentImageMeta));
+
+	/** Persisted targets carry through a save verbatim; session edits override them. */
+	function buildTargets(): ImageMetadata['targets'] {
+		const merged: Partial<Record<GiftCropTarget, ImageTargetCrop>> = {
+			...gift?.imageMeta?.targets,
+		};
+		for (const target of dirtyTargets) {
+			const rect = targetRects[target];
+			const { focal, zoom } = cropRectToFocalZoom(rect);
+			merged[target] = { cropRect: { ...rect }, focal, zoom };
+		}
+		return Object.keys(merged).length > 0 ? merged : undefined;
+	}
+
+	// Base focal/zoom/cropRect stay exactly as persisted (legacy rows render unchanged,
+	// #116 REQ-8); the editor only changes fitMode, bgColor and per-target crops.
+	const currentImageMeta = $derived.by((): ImageMetadata => {
+		const base = gift?.imageMeta;
+		return {
+			fitMode,
+			cropRect: base?.cropRect ?? null,
+			focal: base?.focal ?? { x: 50, y: 50 },
+			zoom: base?.zoom ?? 1,
+			bgColor,
+			targets: buildTargets(),
+		};
+	});
+
+	// The image column IS the detail target surface, so it previews the detail framing.
+	const detailFrame = $derived(giftTargetFrameProps(currentImageMeta, 'detail'));
+
+	const targetLabels = {
+		card: () => m.gift_image_slot_card(),
+		detail: () => m.gift_image_slot_detail(),
+		square: () => m.gift_image_target_square(),
+	} as const satisfies Record<GiftCropTarget, () => string>;
+
+	function setActiveTarget(value: string) {
+		if ((GIFT_CROP_TARGET_VALUES as string[]).includes(value)) {
+			activeTarget = value as GiftCropTarget;
+		}
+	}
 
 	function validateForm(): boolean {
 		nameError = '';
@@ -288,25 +350,29 @@
 </script>
 
 <div class={styles.body()}>
-	<!-- Left column: image stage (crop canvas in Crop mode, else live renderer preview) -->
-	<div class={styles.imageColumn()}>
+	<!-- Left column: WYSIWYG crop stage in Crop mode (locked to the active target's
+	     real aspect, #116 REQ-2), else the live detail-target renderer preview -->
+	<div class={styles.imageColumn()} data-testid="gift-image-column">
 		{#if hasImage && previewSrc !== null && isCropMode}
-			<div class="flex size-full items-center justify-center p-4">
-				<GiftImageCropCanvas
-					src={previewSrc}
-					alt={name || m.gift_image_preview()}
-					bind:cropRect
-				/>
-			</div>
+			<ImageCropStage
+				class="size-full p-4"
+				src={previewSrc}
+				alt={name || m.gift_image_preview()}
+				targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+				targetLabel={targetLabels[activeTarget]()}
+				realSizeText={GIFT_CROP_TARGET_SPECS[activeTarget].realSizeText}
+				bind:cropRect={targetRects[activeTarget]}
+				onchange={() => dirtyTargets.add(activeTarget)}
+			/>
 		{:else if hasImage}
 			<ImageFrame
 				class="size-full"
 				src={previewSrc}
 				alt={name || m.gift_image_preview()}
-				fitMode={framePreview.fitMode}
-				focal={framePreview.focal}
-				zoom={framePreview.zoom}
-				fillColor={framePreview.fillColor}
+				fitMode={detailFrame.fitMode}
+				focal={detailFrame.focal}
+				zoom={detailFrame.zoom}
+				fillColor={detailFrame.fillColor}
 				tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 			/>
 		{:else}
@@ -545,10 +611,27 @@
 						{#if fitMode === IMAGE_FIT_MODES.auto}
 							<HelpText>{m.gift_image_fit_auto_help()}</HelpText>
 						{/if}
+						{#if isCropMode}
+							<!-- Per-target crop picker (#116 D2): the stage on the left locks
+							     to the selected target's real aspect ratio. -->
+							<Label>{m.gift_image_target_label()}</Label>
+							<ToggleGroup.Root
+								type="single"
+								value={activeTarget}
+								onValueChange={setActiveTarget}
+								aria-label={m.gift_image_target_label()}
+							>
+								{#each GIFT_CROP_TARGET_VALUES as target (target)}
+									<ToggleGroup.Item value={target}>
+										{targetLabels[target]()}
+									</ToggleGroup.Item>
+								{/each}
+							</ToggleGroup.Root>
+						{/if}
 						<GiftImagePreviewSlots
 							src={previewSrc}
 							alt={name || m.gift_image_preview()}
-							frame={framePreview}
+							imageMeta={currentImageMeta}
 						/>
 					</div>
 				{/if}

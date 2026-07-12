@@ -6,15 +6,20 @@
 		IMAGE_TOKEN_SCOPES,
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
-	import type { ImageFrameProps } from '$lib/modules/images/index.js';
+	import {
+		giftTargetFrameProps,
+		GIFT_CROP_TARGET_SPECS,
+		type GiftCropTarget,
+		type ImageMetadata,
+	} from '$lib/modules/images/index.js';
 
 	interface Props {
 		/** Source image – null renders the themed fallback in every tile. */
 		src: string | null;
 		/** Accessible description shared by every tile. */
 		alt: string;
-		/** Renderer presentation props (fit/focal/zoom/fill) shared by every tile. */
-		frame: ImageFrameProps;
+		/** Live editor metadata; each tile derives its own per-target framing. */
+		imageMeta: ImageMetadata | null;
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
@@ -24,62 +29,89 @@
 	let {
 		src,
 		alt,
-		frame,
+		imageMeta,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		loading = false,
 		class: className,
 	}: Props = $props();
 
-	// Each tile mirrors the SHAPE its real consumer renders at, so the preview never
-	// lies about how the crop will actually look (REQ-2). Proof of each real box:
-	//   card        → GiftCard imageArea `h-32 w-full` (fixed 128px height, fluid width) → gift_card_variants.ts
-	//   list        → GiftListItem `size-16` (1:1) → GiftListItem.svelte
-	//   detail      → GiftDetailForm ImageFrame fills the 45% portrait column (~3:4) → gift_detail_modal_variants.ts
-	//   reservation → ReserveModal `size-12` (1:1) → reserve_modal_variants.ts
-	// The card is fluid-width at a fixed height, so it uses `h-32 w-full` rather than a
-	// misleading fixed ratio; `ratioText` annotates that (height, not an aspect).
-	const SLOTS = [
-		{ key: 'card', label: m.gift_image_slot_card, ratioText: '128 px', sizing: 'h-32 w-full' },
-		{ key: 'list', label: m.gift_image_slot_list, ratioText: '1:1', sizing: 'aspect-square' },
+	// Each tile renders the TRUE shape and (where practical) the true size of its
+	// real consumer surface (#116 REQ-7), and its own per-target framing, so the
+	// strip never lies about how a crop will actually look. Aspect data comes from
+	// the shared crop-target registry (REQ-6); real boxes:
+	//   card        → GiftCard imageArea `h-32 w-full` (fluid width, ~356px @1280)
+	//   list        → GiftListItem `size-16` (real size)
+	//   detail      → GiftDetailForm image column (~403×806 @1280, shown at ~1/3)
+	//   reservation → ReserveModal `size-12` (real size)
+	const TILES = [
+		{
+			key: 'card',
+			target: 'card',
+			label: m.gift_image_slot_card,
+			// Explicit width: inside the flex-wrap strip a percentage width is
+			// indefinite and aspect-ratio could not resolve the tile's height.
+			sizing: 'w-52',
+			cssAspect: GIFT_CROP_TARGET_SPECS.card.cssAspect,
+		},
+		{
+			key: 'list',
+			target: 'square',
+			label: m.gift_image_slot_list,
+			sizing: 'size-16',
+			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
+		},
 		{
 			key: 'detail',
+			target: 'detail',
 			label: m.gift_image_slot_detail,
-			ratioText: '3:4',
-			sizing: 'aspect-[3/4]',
+			sizing: 'h-56',
+			cssAspect: GIFT_CROP_TARGET_SPECS.detail.cssAspect,
 		},
 		{
 			key: 'reservation',
+			target: 'square',
 			label: m.gift_image_slot_reservation,
-			ratioText: '1:1',
-			sizing: 'aspect-square',
+			sizing: 'size-12',
+			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
 		},
-	] as const;
+	] as const satisfies readonly {
+		key: string;
+		target: GiftCropTarget;
+		label: () => string;
+		sizing: string;
+		cssAspect: string;
+	}[];
 </script>
 
 <div class={cn('flex flex-col gap-2', className)}>
 	<span class="text-xs font-medium tracking-wide text-foreground-subtle uppercase">
 		{m.gift_image_preview_strip_label()}
 	</span>
-	<ul class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-		{#each SLOTS as slot (slot.key)}
-			<li class="flex flex-col gap-1.5">
-				<ImageFrame
-					class={cn('w-full', slot.sizing)}
-					{src}
-					{alt}
-					fitMode={frame.fitMode}
-					focal={frame.focal}
-					zoom={frame.zoom}
-					fillColor={frame.fillColor}
-					{tokenScope}
-					{loading}
-				/>
-				<span
-					class="flex items-baseline justify-between gap-1 text-xs text-foreground-subtle"
+	<ul class="flex flex-wrap items-end gap-x-4 gap-y-3">
+		{#each TILES as tile (tile.key)}
+			{@const frame = giftTargetFrameProps(imageMeta, tile.target)}
+			<li class="flex min-w-0 flex-col gap-1.5">
+				<!-- The frame is absolutely positioned: a %-height child inside an
+				     aspect-ratio box is circular, so the image's intrinsic height
+				     would otherwise stretch the tile past its true aspect. -->
+				<div
+					class={cn('relative', tile.sizing)}
+					style:aspect-ratio={tile.cssAspect}
+					data-testid="gift-preview-{tile.key}"
 				>
-					<span class="truncate">{slot.label()}</span>
-					<small class="text-[10px] tabular-nums opacity-70">{slot.ratioText}</small>
-				</span>
+					<ImageFrame
+						class="absolute inset-0"
+						{src}
+						{alt}
+						fitMode={frame.fitMode}
+						focal={frame.focal}
+						zoom={frame.zoom}
+						fillColor={frame.fillColor}
+						{tokenScope}
+						{loading}
+					/>
+				</div>
+				<span class="text-xs text-foreground-subtle">{tile.label()}</span>
 			</li>
 		{/each}
 	</ul>

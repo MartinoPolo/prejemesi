@@ -1,7 +1,41 @@
 import { describe, it, expect } from 'vitest';
-import { cropRectToFocalZoom, focalZoomToCropRect, imageMetaToFrameProps } from './crop.js';
-import { DEFAULT_IMAGE_METADATA, IMAGE_ZOOM_MAX } from './types.js';
+import {
+	cropRectToFocalZoom,
+	focalZoomToWindowRect,
+	normalizedCropAspect,
+	centeredCropRect,
+	panCropRect,
+	zoomCropRect,
+	fitCropRectToAspect,
+	imageMetaToFrameProps,
+	giftTargetFrameProps,
+	FULL_CROP_RECT,
+	type ImageFrameProps,
+} from './crop.js';
+import { DEFAULT_IMAGE_METADATA, IMAGE_ZOOM_MAX, type ImageCropRect } from './types.js';
+import { GIFT_CROP_TARGET_SPECS } from './crop_targets.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
+
+/** Assert two rects are equal within floating-point tolerance. */
+function expectRectClose(actual: ImageCropRect, expected: ImageCropRect) {
+	expect(actual.x).toBeCloseTo(expected.x, 10);
+	expect(actual.y).toBeCloseTo(expected.y, 10);
+	expect(actual.w).toBeCloseTo(expected.w, 10);
+	expect(actual.h).toBeCloseTo(expected.h, 10);
+}
+
+describe('normalizedCropAspect', () => {
+	it('relates the target pixel aspect to the source image ratio', () => {
+		// 1:1 target on a 16:9 image: the normalized rect is half as wide as tall.
+		expect(normalizedCropAspect(1, 16 / 9)).toBeCloseTo(9 / 16, 10);
+	});
+
+	it('falls back to square for degenerate inputs', () => {
+		expect(normalizedCropAspect(0, 1.5)).toBe(1);
+		expect(normalizedCropAspect(1.5, 0)).toBe(1);
+		expect(normalizedCropAspect(Number.NaN, 1)).toBe(1);
+	});
+});
 
 describe('cropRectToFocalZoom', () => {
 	it('maps the full frame to a centered focal point at zoom 1', () => {
@@ -18,18 +52,14 @@ describe('cropRectToFocalZoom', () => {
 		});
 	});
 
-	it('moves the focal to the centre of an off-centre crop', () => {
+	it('maps a corner-anchored crop to a corner focal (exact renderer semantics)', () => {
+		// object-position 0% pins the window to the left/top edge, so origin 0 → focal 0,
+		// NOT the rect-center 25% the pre-#116 conversion produced (which the renderer
+		// then displaced to origin 0.125).
 		expect(cropRectToFocalZoom({ x: 0, y: 0, w: 0.5, h: 0.5 })).toEqual({
-			focal: { x: 25, y: 25 },
+			focal: { x: 0, y: 0 },
 			zoom: 2,
 		});
-	});
-
-	it('derives zoom from the longer side so the whole crop stays visible', () => {
-		// max(0.6, 0.4) = 0.6 -> zoom 1/0.6
-		const result = cropRectToFocalZoom({ x: 0.1, y: 0.2, w: 0.6, h: 0.4 });
-		expect(result.focal).toEqual({ x: 40, y: 40 });
-		expect(result.zoom).toBeCloseTo(1 / 0.6, 5);
 	});
 
 	it('clamps zoom to the maximum for tiny crops', () => {
@@ -46,29 +76,110 @@ describe('cropRectToFocalZoom', () => {
 	});
 });
 
-describe('focalZoomToCropRect', () => {
-	it('returns the full frame for zoom 1', () => {
-		expect(focalZoomToCropRect({ x: 50, y: 50 }, 1)).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+describe('focalZoomToWindowRect', () => {
+	it('returns the centered cover window at zoom 1', () => {
+		// Normalized aspect 0.5 (e.g. a 1:1 slot on a 2:1 image): full height, half width.
+		expectRectClose(focalZoomToWindowRect({ x: 50, y: 50 }, 1, 0.5), {
+			x: 0.25,
+			y: 0,
+			w: 0.5,
+			h: 1,
+		});
 	});
 
-	it('returns a centred half-frame square for zoom 2 at centre focal', () => {
-		expect(focalZoomToCropRect({ x: 50, y: 50 }, 2)).toEqual({
-			x: 0.25,
-			y: 0.25,
+	it('pins the window to the edge for an edge focal point', () => {
+		expectRectClose(focalZoomToWindowRect({ x: 0, y: 0 }, 2, 1), {
+			x: 0,
+			y: 0,
 			w: 0.5,
 			h: 0.5,
 		});
 	});
 
-	it('clamps the rect inside the image bounds for an edge focal point', () => {
-		// zoom 2 -> size 0.5; focal at 0% should clamp x to 0, not -0.25
-		expect(focalZoomToCropRect({ x: 0, y: 0 }, 2)).toEqual({ x: 0, y: 0, w: 0.5, h: 0.5 });
+	it('round-trips any aspect-matched rect losslessly (REQ-3/D5)', () => {
+		// Rects drawn per target always match the target aspect; the focal+zoom
+		// persisted from them must reproduce the exact same window at render time.
+		const cases: { rect: ImageCropRect; aspect: number }[] = [
+			{ rect: { x: 0.1, y: 0, w: 0.6, h: 1 }, aspect: 0.6 },
+			{ rect: { x: 0, y: 0.3, w: 1, h: 0.4 }, aspect: 2.5 },
+			{ rect: { x: 0.42, y: 0.13, w: 0.5, h: 0.25 }, aspect: 2 },
+			{ rect: { x: 0.65, y: 0.61, w: 0.35, h: 0.39 }, aspect: 0.35 / 0.39 },
+		];
+		for (const { rect, aspect } of cases) {
+			const { focal, zoom } = cropRectToFocalZoom(rect);
+			expectRectClose(focalZoomToWindowRect(focal, zoom, aspect), rect);
+		}
 	});
 
-	it('round-trips a centred crop through both conversions', () => {
-		const rect = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 };
-		const { focal, zoom } = cropRectToFocalZoom(rect);
-		expect(focalZoomToCropRect(focal, zoom)).toEqual(rect);
+	it('never discards a full-width strip crop on a narrower slot (F7 regression)', () => {
+		// F7 worked example: a strip crop y=[0.3..0.7] over the full width. In the
+		// pre-#116 model zoom collapsed to 1 and a 1:1 slot rendered x=[0.22..0.78]
+		// full-height instead of the drawn band. Per-target rects make the drawn
+		// band exactly reproducible on its own target.
+		const strip: ImageCropRect = { x: 0, y: 0.3, w: 1, h: 0.4 };
+		const { focal, zoom } = cropRectToFocalZoom(strip);
+		expect(zoom).toBeCloseTo(1, 10);
+		// Rendered on the surface the strip was drawn for (normalized aspect 2.5):
+		const rendered = focalZoomToWindowRect(focal, zoom, 1 / 0.4);
+		expectRectClose(rendered, strip);
+	});
+});
+
+describe('centeredCropRect', () => {
+	it('produces the automatic center cover window (D1/REQ-1)', () => {
+		expectRectClose(centeredCropRect(0.5), { x: 0.25, y: 0, w: 0.5, h: 1 });
+		expectRectClose(centeredCropRect(2), { x: 0, y: 0.25, w: 1, h: 0.5 });
+		expectRectClose(centeredCropRect(1), FULL_CROP_RECT);
+	});
+});
+
+describe('panCropRect', () => {
+	it('translates and clamps inside the unit square', () => {
+		const rect: ImageCropRect = { x: 0.2, y: 0, w: 0.5, h: 1 };
+		expectRectClose(panCropRect(rect, 0.1, 0.5), { x: 0.3, y: 0, w: 0.5, h: 1 });
+		expectRectClose(panCropRect(rect, 9, 0), { x: 0.5, y: 0, w: 0.5, h: 1 });
+		expectRectClose(panCropRect(rect, -9, 0), { x: 0, y: 0, w: 0.5, h: 1 });
+	});
+});
+
+describe('zoomCropRect', () => {
+	it('resizes around the current center preserving the aspect', () => {
+		const rect: ImageCropRect = { x: 0.25, y: 0, w: 0.5, h: 1 };
+		const zoomed = zoomCropRect(rect, 0.5, 2);
+		expectRectClose(zoomed, { x: 0.375, y: 0.25, w: 0.25, h: 0.5 });
+	});
+
+	it('clamps back inside bounds when zooming out near an edge', () => {
+		const rect: ImageCropRect = { x: 0.75, y: 0.5, w: 0.25, h: 0.5 };
+		const zoomed = zoomCropRect(rect, 0.5, 1);
+		expectRectClose(zoomed, { x: 0.5, y: 0, w: 0.5, h: 1 });
+	});
+});
+
+describe('fitCropRectToAspect', () => {
+	it('returns aspect-matched rects unchanged', () => {
+		const rect: ImageCropRect = { x: 0.1, y: 0.2, w: 0.4, h: 0.8 };
+		expectRectClose(fitCropRectToAspect(rect, 0.5), rect);
+	});
+
+	it('re-shapes a legacy square rect around its center', () => {
+		// Legacy pre-#116 restore rects were square; editing a 2:1-normalized target
+		// keeps the center and covers the old extent.
+		const legacy: ImageCropRect = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 };
+		expectRectClose(fitCropRectToAspect(legacy, 2), { x: 0, y: 0.25, w: 1, h: 0.5 });
+	});
+
+	it('respects the renderer zoom bounds so no saved crop can exceed max zoom', () => {
+		const tiny: ImageCropRect = { x: 0.5, y: 0.5, w: 0.02, h: 0.02 };
+		const fitted = fitCropRectToAspect(tiny, 1);
+		expect(Math.max(fitted.w, fitted.h)).toBeGreaterThanOrEqual(1 / IMAGE_ZOOM_MAX - 1e-9);
+	});
+
+	it('falls back to the centered window for degenerate rects', () => {
+		expectRectClose(
+			fitCropRectToAspect({ x: 0, y: 0, w: 0, h: 0 }, 0.5),
+			centeredCropRect(0.5),
+		);
 	});
 });
 
@@ -97,20 +208,47 @@ describe('imageMetaToFrameProps', () => {
 		});
 	});
 
-	it('derives focal and zoom from cropRect when focal/zoom are absent', () => {
-		const props = imageMetaToFrameProps({
-			fitMode: IMAGE_FIT_MODES.coverCrop,
-			cropRect: { x: 0, y: 0, w: 0.5, h: 0.5 },
-		});
-		expect(props.focal).toEqual({ x: 25, y: 25 });
-		expect(props.zoom).toBe(2);
-	});
-
 	it('uses the default metadata without throwing', () => {
 		const props = imageMetaToFrameProps(DEFAULT_IMAGE_METADATA);
 		expect(props.fitMode).toBe(IMAGE_FIT_MODES.auto);
 		expect(props.focal).toEqual({ x: 50, y: 50 });
 		expect(props.zoom).toBe(1);
 		expect(props.fillColor).toBeNull();
+	});
+});
+
+describe('giftTargetFrameProps', () => {
+	const baseMeta = {
+		fitMode: IMAGE_FIT_MODES.auto,
+		focal: { x: 50, y: 50 },
+		zoom: 1,
+		bgColor: '#123456',
+	};
+
+	it('renders legacy rows unchanged when no per-target crop exists (REQ-8)', () => {
+		const expected: ImageFrameProps = imageMetaToFrameProps(baseMeta);
+		expect(giftTargetFrameProps(baseMeta, 'card')).toEqual(expected);
+		expect(giftTargetFrameProps(null, 'square')).toEqual(imageMetaToFrameProps(null));
+	});
+
+	it('overrides only the target that has a manual crop (D1)', () => {
+		const cardRect: ImageCropRect = {
+			x: 0,
+			y: 0.2,
+			w: 1,
+			h: 1 / GIFT_CROP_TARGET_SPECS.card.aspect,
+		};
+		const { focal, zoom } = cropRectToFocalZoom(cardRect);
+		const meta = {
+			...baseMeta,
+			targets: { card: { cropRect: cardRect, focal, zoom } },
+		};
+		const cardProps = giftTargetFrameProps(meta, 'card');
+		expect(cardProps.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+		expect(cardProps.focal).toEqual(focal);
+		expect(cardProps.zoom).toBe(zoom);
+		expect(cardProps.fillColor).toBe('#123456');
+		// The other targets keep the automatic framing.
+		expect(giftTargetFrameProps(meta, 'detail')).toEqual(imageMetaToFrameProps(meta));
 	});
 });

@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { cn } from '$lib/utils.js';
-	import { WISHLIST_SLOT_ASPECT, type ImageFrameProps } from '$lib/modules/images/index.js';
-	import type { WishlistImageSlot } from '$lib/modules/images/index.js';
+	import {
+		WISHLIST_SLOT_SPECS,
+		type ImageFrameProps,
+		type WishlistEditorSlot,
+	} from '$lib/modules/images/index.js';
 	import WishlistSlotImage from './WishlistSlotImage.svelte';
 
 	interface Props {
-		slot: WishlistImageSlot;
+		slot: WishlistEditorSlot;
 		/** Human label for the slot (localized). */
 		label: string;
 		/** Resolved image URL – null renders the themed fallback. */
@@ -33,9 +36,10 @@
 </script>
 
 <!--
-One representative preview tile for a wishlist image slot (REQ-2). Renders the slot at
-its true production aspect ratio via the shared WishlistSlotImage so the owner sees the
-exact framing each surface will use. Clicking selects the slot for editing.
+One representative preview tile for a wishlist image slot. Renders the slot at its
+TRUE production aspect ratio from the shared crop-target registry (#116 REQ-6/7)
+via the shared WishlistSlotImage, so the owner sees the exact framing the real
+surface will use. Clicking selects the slot for editing.
 -->
 <button
 	type="button"
@@ -46,17 +50,22 @@ exact framing each surface will use. Clicking selects the slot for editing.
 		className,
 	)}
 >
+	<!-- The image is absolutely positioned: a %-height child inside an aspect-ratio
+	     box is circular, so the intrinsic image height would stretch the tile. -->
 	<div
 		class={cn(
-			'w-full overflow-hidden rounded-lg border transition-colors',
+			'relative w-full overflow-hidden rounded-lg border transition-colors',
 			active ? 'border-primary ring-1 ring-primary' : 'border-border',
 		)}
-		style:aspect-ratio={WISHLIST_SLOT_ASPECT[slot]}
+		style:aspect-ratio={WISHLIST_SLOT_SPECS[slot].cssAspect}
+		data-testid="wishlist-preview-{slot}"
 	>
-		<WishlistSlotImage {src} {frame} {themeEmoji} alt={label} />
+		<WishlistSlotImage class="absolute inset-0" {src} {frame} {themeEmoji} alt={label} />
 	</div>
 	<span class="flex items-baseline justify-between gap-1 text-xs text-foreground-subtle">
 		<span class="truncate">{label}</span>
-		<small class="text-[10px] tabular-nums opacity-70">{WISHLIST_SLOT_ASPECT[slot]}</small>
+		<small class="text-[10px] tabular-nums opacity-70">
+			{WISHLIST_SLOT_SPECS[slot].realSizeText}
+		</small>
 	</span>
 </button>
