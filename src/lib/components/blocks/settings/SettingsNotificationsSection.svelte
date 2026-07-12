@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
+	import { Button } from '$lib/components/base/button/index.js';
 	import { NotificationPreferencesForm } from '$lib/components/blocks/notification/index.js';
 	import type { NotificationPreferences } from '$lib/modules/notifications/types.js';
 	import BellIcon from '@lucide/svelte/icons/bell';
@@ -9,6 +10,8 @@
 		initialPreferences: NotificationPreferences;
 		onSave: (preferences: NotificationPreferences) => Promise<void>;
 	}
+
+	const NOTIFICATION_PREFERENCES_FORM_ID = 'notification-preferences-form';
 
 	let { initialPreferences, onSave }: Props = $props();
 
@@ -36,9 +39,18 @@
 	</Card.Header>
 	<Card.Content>
 		<NotificationPreferencesForm
+			formId={NOTIFICATION_PREFERENCES_FORM_ID}
 			{initialPreferences}
 			onSave={handleSaveNotifications}
-			isSaving={notificationsSaving}
 		/>
 	</Card.Content>
+	<Card.Footer class="flex justify-end">
+		<Button
+			type="submit"
+			form={NOTIFICATION_PREFERENCES_FORM_ID}
+			disabled={notificationsSaving}
+		>
+			{notificationsSaving ? m.saving() : m.notification_prefs_save()}
+		</Button>
+	</Card.Footer>
 </Card.Root>

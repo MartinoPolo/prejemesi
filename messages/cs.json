@@ -232,6 +232,7 @@
 	"settings_notifications_description": "Nastavte si, jak chcete být informováni",
 	"settings_appearance_title": "Vzhled",
 	"settings_appearance_description": "Motiv a jazyk aplikace",
+	"settings_appearance_autosave_hint": "Změny se ukládají automaticky",
 	"settings_dark_mode_label": "Barevný režim",
 	"settings_mode_light": "Světlý",
 	"settings_mode_dark": "Tmavý",

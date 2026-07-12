@@ -232,6 +232,7 @@
 	"settings_notifications_description": "Configure how you want to be notified",
 	"settings_appearance_title": "Appearance",
 	"settings_appearance_description": "Theme and language settings",
+	"settings_appearance_autosave_hint": "Changes are saved automatically",
 	"settings_dark_mode_label": "Color mode",
 	"settings_mode_light": "Light",
 	"settings_mode_dark": "Dark",
