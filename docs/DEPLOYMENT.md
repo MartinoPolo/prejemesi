@@ -9,11 +9,13 @@ Merging `dev` → `production` (or a manual **Deploy (production)** dispatch)
 triggers `.github/workflows/deploy.yml`:
 
 1. **verify** — runs the full reusable check suite
-   (`.github/workflows/checks.yml`) for the exact commit being deployed:
-   formatting, oxlint, stylelint, fallow, svelte-check, eslint, migration
-   safety, unit + browser-mode vitest, and the Playwright e2e suite against a
-   Postgres service. A commit with any failing check never reaches the deploy
-   job.
+   (`.github/workflows/checks.yml`, called with `run_e2e: true`) for the exact
+   commit being deployed: formatting, oxlint, stylelint, fallow, svelte-check,
+   eslint, migration safety, unit + browser-mode vitest, and the Playwright
+   e2e suite against a Postgres service. A commit with any failing check never
+   reaches the deploy job. (PRs and `dev` pushes run the same suite via
+   `ci.yml` but skip e2e — `run_e2e` defaults to `false` — to keep feedback
+   fast; only the production deploy gate requires it.)
 2. **migration-review** — writes a step summary listing any new `drizzle/*.sql`
    migrations in the push, with the reminder to apply them before approving.
 3. **deploy** — waits for the GitHub **`production` environment approval**

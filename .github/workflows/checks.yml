@@ -3,9 +3,17 @@ name: Checks
 # Reusable verification suite. Called by ci.yml (PRs + dev pushes) and by
 # deploy.yml (production), so a production deploy always verifies the exact
 # commit being deployed (issue #110).
+#
+# The e2e job only runs when called with `run_e2e: true` (deploy.yml). It's
+# skipped on PRs/dev pushes to keep CI fast; production deploys still require
+# it via REQ-1.
 
 on:
     workflow_call:
+        inputs:
+            run_e2e:
+                type: boolean
+                default: false
 
 jobs:
     checks:
@@ -28,6 +36,7 @@ jobs:
             - run: pnpm run test -- --coverage
 
     e2e:
+        if: ${{ inputs.run_e2e }}
         runs-on: ubuntu-latest
         timeout-minutes: 35
         services:

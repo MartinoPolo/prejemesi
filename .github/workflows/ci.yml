@@ -2,6 +2,9 @@ name: CI
 
 # Push to `production` is intentionally not listed: deploy.yml runs the same
 # reusable checks as its `verify` job for the exact deployed commit (issue #110).
+#
+# e2e is intentionally skipped here (checks.yml's `run_e2e` defaults to false)
+# to keep PR/dev feedback fast; deploy.yml's `verify` call still requires it.
 
 on:
     pull_request:
