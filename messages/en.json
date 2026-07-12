@@ -465,7 +465,7 @@
 	"share_email_subject": "My wishlist",
 	"share_error": "Sharing failed",
 	"share_success_title": "List has been shared!",
-	"share_success_body": "{title} is now available to friends and family via link <strong>{url}</strong>.",
+	"share_success_body": "{title} is now available to friends and family via the link:",
 	"share_permissions_label": "Allowed actions overview",
 	"share_permissions_heading": "From this moment you can:",
 	"share_permissions_view": "View the list",

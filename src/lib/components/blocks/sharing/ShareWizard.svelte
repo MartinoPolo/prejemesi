@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import { escapeHtml } from '$lib/utils/escape_html.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -360,14 +359,25 @@
 					</div>
 					<div class={styles.successTitle()}>{m.share_success_title()}</div>
 					<p class={styles.successSub()}>
-						<!-- Message contains <strong>; title is user text, so it is HTML-escaped.
-						     shareUrlDisplay is safe (host + server-generated shortId). -->
-						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-						{@html m.share_success_body({
-							title: escapeHtml(wishlistTitle),
-							url: shareUrlDisplay,
-						})}
+						{m.share_success_body({ title: wishlistTitle })}
 					</p>
+					<div class={styles.successLinkRow()}>
+						<span class={styles.successLinkText()}>{shareUrlDisplay}</span>
+						<Button
+							intent={linkCopied ? 'primary' : 'outline'}
+							size="icon-sm"
+							class="flex-shrink-0"
+							aria-label={linkCopied ? m.share_link_copied() : m.share_copy()}
+							aria-live="polite"
+							onclick={() => sharing.copyLink()}
+						>
+							{#if linkCopied}
+								<CheckIcon />
+							{:else}
+								<CopyIcon />
+							{/if}
+						</Button>
+					</div>
 				</div>
 
 				<!-- Permissions guidance card -->

@@ -465,7 +465,7 @@
 	"share_email_subject": "Můj seznam přání",
 	"share_error": "Sdílení se nezdařilo",
 	"share_success_title": "Seznam byl sdílen!",
-	"share_success_body": "{title} je teď dostupný přátelům a rodině přes odkaz <strong>{url}</strong>.",
+	"share_success_body": "{title} je teď dostupný přátelům a rodině přes odkaz:",
 	"share_permissions_label": "Přehled povolených akcí",
 	"share_permissions_heading": "Od tohoto momentu můžete:",
 	"share_permissions_view": "Prohlížet seznam",
