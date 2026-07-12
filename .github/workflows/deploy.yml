@@ -1,8 +1,15 @@
 name: Deploy (production)
 
-# Auto-deploys the production branch to Cloudflare Workers.
-# Fires when production updates (i.e. when dev is merged into production)
-# and can be run manually from the Actions tab.
+# Deploys the production branch to Cloudflare Workers — gated (issue #110):
+#   1. `verify` re-runs the full check suite (format, lint, typecheck, unit +
+#      browser tests, e2e, migration safety) for the exact commit being deployed.
+#   2. `deploy` requires the GitHub `production` environment approval before it
+#      runs, and records the deployed commit (environment deployment + step
+#      summary + GIT_COMMIT_SHA Worker var).
+#
+# Schema-changing releases: apply committed migrations to Neon manually
+# (`pnpm db:migrate:prod`) BEFORE approving the deployment — see
+# docs/DEPLOYMENT.md for the expand → migrate → deploy → contract sequence.
 #
 # Requires one repository secret named CLOUDFLARE_API_TOKEN.
 #   Create at: Cloudflare dashboard -> My Profile -> API Tokens
@@ -21,8 +28,60 @@ concurrency:
     cancel-in-progress: false
 
 jobs:
-    deploy:
+    verify:
+        uses: ./.github/workflows/checks.yml
+
+    migration-review:
         runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - name: Surface schema migrations included in this release
+              env:
+                  BEFORE_SHA: ${{ github.event.before }}
+              run: |
+                  {
+                    echo "## Deploying commit"
+                    echo ""
+                    echo "\`${{ github.sha }}\` on \`${{ github.ref_name }}\`"
+                    echo ""
+                  } >> "$GITHUB_STEP_SUMMARY"
+                  if [ -n "$BEFORE_SHA" ] && git cat-file -e "$BEFORE_SHA" 2>/dev/null; then
+                    NEW_MIGRATIONS=$(git diff --name-only --diff-filter=A "$BEFORE_SHA" "${{ github.sha }}" -- 'drizzle/*.sql')
+                  else
+                    NEW_MIGRATIONS=""
+                    echo "_Manual dispatch: could not diff against the previous production commit — check \`drizzle/\` yourself._" >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                  if [ -n "$NEW_MIGRATIONS" ]; then
+                    {
+                      echo "### ⚠️ Schema-changing release"
+                      echo ""
+                      echo "New migrations in this push:"
+                      echo ""
+                      echo "$NEW_MIGRATIONS" | sed 's/^/- `/;s/$/`/'
+                      echo ""
+                      echo "Before approving the production deployment, apply them to Neon:"
+                      echo ""
+                      echo '```'
+                      echo "pnpm db:migrate:prod"
+                      echo '```'
+                      echo ""
+                      echo "Expand → migrate → deploy → contract: see docs/DEPLOYMENT.md."
+                    } >> "$GITHUB_STEP_SUMMARY"
+                  else
+                    echo "No new migrations in this release." >> "$GITHUB_STEP_SUMMARY"
+                  fi
+
+    deploy:
+        needs: [verify, migration-review]
+        runs-on: ubuntu-latest
+        # Requires the GitHub `production` environment with a required reviewer:
+        # the deployment waits for explicit approval and records the deployed
+        # commit in the environment's deployment history.
+        environment:
+            name: production
+            url: https://prejemesi.cz
         steps:
             - uses: actions/checkout@v4
             - uses: pnpm/action-setup@v4
@@ -33,7 +92,16 @@ jobs:
             - run: pnpm install --frozen-lockfile
             - run: pnpm run build
             - name: Deploy to Cloudflare Workers
-              run: pnpm exec wrangler deploy
+              run: pnpm exec wrangler deploy --var GIT_COMMIT_SHA:${{ github.sha }}
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+            - name: Record deployed commit
+              run: |
+                  {
+                    echo "## Deployed"
+                    echo ""
+                    echo "- Commit: \`${{ github.sha }}\`"
+                    echo "- Worker: \`prejemesi\` → https://prejemesi.cz"
+                    echo "- Var: \`GIT_COMMIT_SHA=${{ github.sha }}\`"
+                  } >> "$GITHUB_STEP_SUMMARY"
