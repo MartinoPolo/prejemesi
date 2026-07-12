@@ -152,68 +152,75 @@ function setRequestLocaleCookie(request: Request, locale: Locale) {
 	return new Request(request, { headers });
 }
 
-const accountLocalePreferenceHandle: Handle = async ({ event, resolve }) => {
-	if (
-		event.locals.user != null &&
-		isDatabaseConfigured(event) &&
-		!hasExplicitUrlLocale(event.url) &&
-		event.url.pathname !== '/'
-	) {
-		try {
-			const { getDb } = await import('$lib/server/db/index.js');
-			const { user } = await import('$lib/server/db/auth.schema.js');
-			const { eq } = await import('drizzle-orm');
-
-			const rows = await getDb(event)
-				.select({ preferredLocale: user.preferredLocale })
-				.from(user)
-				.where(eq(user.id, event.locals.user.id))
-				.limit(1);
-
-			const preferredLocale = rows[0]?.preferredLocale;
-			if (preferredLocale != null) {
-				event.request = setRequestLocaleCookie(event.request, preferredLocale);
-			}
-		} catch (err) {
-			console.error('[accountLocalePreferenceHandle] failed to read preferred locale', err);
-		}
-	}
-
-	return resolve(event);
-};
+/**
+ * Only HTML document loads depend on the viewer's presentation preferences
+ * (locale-aware SSR markup, the `%app.palette%` shell placeholder). Remote
+ * function calls, SvelteKit data requests, uploads and API routes must never
+ * pay a preference lookup (issue #108, REQ-1).
+ */
+function isHtmlDocumentRequest(event: Parameters<Handle>[0]['event']): boolean {
+	return (
+		event.request.method === 'GET' &&
+		!event.isDataRequest &&
+		!event.isRemoteRequest &&
+		(event.request.headers.get('accept')?.includes('text/html') ?? false)
+	);
+}
 
 /**
- * Applies the viewer's palette to the root <html> element server-side, so the
- * chosen palette is present on first paint with no flash. The cookie mirror is
- * the fast path (works for anonymous users too); logged-in users without the
- * cookie (fresh device) fall back to the palette persisted on their user row.
+ * Resolves the viewer's stable presentation preferences — preferred locale and
+ * app palette — with at most ONE database statement per HTML document request
+ * and none for any other request kind (issue #108, REQ-1/REQ-2).
+ *
+ * Locale: the account preference overrides the request's locale cookie so SSR
+ * renders the persisted language (explicit switches keep the cookie in sync,
+ * so this only matters on fresh devices / after cross-device changes).
+ *
+ * Palette: applied to the root <html> element server-side so the chosen palette
+ * is present on first paint with no flash. The cookie mirror is the fast path
+ * (works for anonymous users too); logged-in users without the cookie (fresh
+ * device) fall back to the palette persisted on their user row.
+ *
  * Sequenced after authHandle so `locals.user` is populated when the DB is
- * configured.
+ * configured, and before paraglideHandle so the locale override is seen.
  */
-const paletteHandle: Handle = async ({ event, resolve }) => {
+const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	let palette: Palette = DEFAULT_PALETTE;
 
 	const cookiePalette = event.cookies.get(PALETTE_COOKIE_NAME);
 	if (isPalette(cookiePalette)) {
 		palette = cookiePalette;
-	} else if (event.locals.user != null && isDatabaseConfigured(event)) {
-		try {
-			const { getDb } = await import('$lib/server/db/index.js');
-			const { user } = await import('$lib/server/db/auth.schema.js');
-			const { eq } = await import('drizzle-orm');
+	}
 
-			const rows = await getDb(event)
-				.select({ palette: user.palette })
-				.from(user)
-				.where(eq(user.id, event.locals.user.id))
-				.limit(1);
+	if (event.locals.user != null && isDatabaseConfigured(event) && isHtmlDocumentRequest(event)) {
+		const wantsLocale = !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/';
+		const wantsPalette = !isPalette(cookiePalette);
 
-			const stored = rows[0]?.palette;
-			if (isPalette(stored)) {
-				palette = stored;
+		if (wantsLocale || wantsPalette) {
+			try {
+				const { getDb } = await import('$lib/server/db/index.js');
+				const { user } = await import('$lib/server/db/auth.schema.js');
+				const { eq } = await import('drizzle-orm');
+
+				const rows = await getDb(event)
+					.select({ preferredLocale: user.preferredLocale, palette: user.palette })
+					.from(user)
+					.where(eq(user.id, event.locals.user.id))
+					.limit(1);
+
+				const preferences = rows[0];
+				if (wantsLocale && preferences?.preferredLocale != null) {
+					event.request = setRequestLocaleCookie(
+						event.request,
+						preferences.preferredLocale,
+					);
+				}
+				if (wantsPalette && isPalette(preferences?.palette)) {
+					palette = preferences.palette;
+				}
+			} catch (err) {
+				console.error('[userPreferencesHandle] failed to read user preferences', err);
 			}
-		} catch (err) {
-			console.error('[paletteHandle] failed to read palette, using default', err);
 		}
 	}
 
@@ -256,9 +263,8 @@ const handles: Handle[] = [
 	canonicalHostHandle,
 	botProbeHandle,
 	authHandle,
-	accountLocalePreferenceHandle,
+	userPreferencesHandle,
 	paraglideHandle,
-	paletteHandle,
 ];
 
 export const handle = sequence(...handles);
