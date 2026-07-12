@@ -64,7 +64,9 @@ export async function sendEmail({
 	const resend = getClient();
 
 	if (resend === undefined) {
-		console.log(`[Email] (not sent – RESEND_API_KEY unset) to=${to} subject="${subject}"`);
+		if (!import.meta.env.DEV) {
+			console.error('[Email] not sent: RESEND_API_KEY unset');
+		}
 		return;
 	}
 
@@ -82,7 +84,7 @@ export async function sendEmail({
 			);
 			return;
 		}
-		throw new Error(`[Email] Failed to send "${subject}" to ${to}: ${error.message}`);
+		throw new Error('[Email] dispatch failed');
 	}
 
 	// Dev-only: avoid logging recipient addresses (PII) on every send in production.

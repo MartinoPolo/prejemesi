@@ -32,6 +32,10 @@ vi.mock('$env/dynamic/private', () => ({
 	env: { DATABASE_URL: process.env.DATABASE_URL },
 }));
 
+vi.mock('$lib/server/turnstile.js', () => ({
+	verifyTurnstileToken: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 vi.mock('@sveltejs/kit', () => ({
 	error: vi.fn((status: number, message: string) => {
 		const err = new Error(message) as Error & { status: number };
@@ -210,7 +214,12 @@ describe.skipIf(!DB_READY)('reserveGift overbooking race [real DB]', () => {
 
 		const results = await Promise.allSettled([
 			reserve(visitorCtx, { giftId, quantity: 1 }),
-			reserve(null, { giftId, quantity: 1, anonymousName: 'Anon' }),
+			reserve(null, {
+				giftId,
+				quantity: 1,
+				anonymousName: 'Anon',
+				turnstileToken: 'valid-test-token',
+			}),
 		]);
 
 		const fulfilled = results.filter((r) => r.status === 'fulfilled');
@@ -230,7 +239,12 @@ describe.skipIf(!DB_READY)('reserveGift overbooking race [real DB]', () => {
 
 		const results = await Promise.allSettled([
 			reserve(visitorCtx, { giftId, quantity: 2 }),
-			reserve(null, { giftId, quantity: 2, anonymousName: 'Anon' }),
+			reserve(null, {
+				giftId,
+				quantity: 2,
+				anonymousName: 'Anon',
+				turnstileToken: 'valid-test-token',
+			}),
 		]);
 
 		const fulfilled = results.filter((r) => r.status === 'fulfilled');

@@ -13,6 +13,7 @@
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { resolve } from '$app/paths';
+	import TurnstileWidget from '$lib/components/blocks/security/TurnstileWidget.svelte';
 
 	interface RegisterFormProps {
 		callbackUrl: string;
@@ -28,6 +29,8 @@
 	let nameError = $state('');
 	let emailError = $state('');
 	let passwordError = $state('');
+	let turnstileToken = $state<string | null>(null);
+	let turnstileResetSignal = $state(0);
 
 	function validateName(): boolean {
 		if (name.trim().length < 2) {
@@ -91,12 +94,10 @@
 
 		loading = true;
 		try {
-			const result = await authClient.signUp.email({
-				name: name.trim(),
-				email: email.trim(),
-				password,
-				callbackURL: callbackUrl,
-			});
+			const result = await authClient.signUp.email(
+				{ name: name.trim(), email: email.trim(), password, callbackURL: callbackUrl },
+				{ headers: { 'x-captcha-response': turnstileToken ?? '' } },
+			);
 
 			if (result.error) {
 				if (
@@ -114,6 +115,8 @@
 			errorMessage = m.error_generic();
 		} finally {
 			loading = false;
+			turnstileToken = null;
+			turnstileResetSignal += 1;
 		}
 	}
 </script>
@@ -172,7 +175,16 @@
 		</AuthFormField>
 	</div>
 
-	<Button type="submit" class="mt-6 w-full" size="lg" disabled={loading}>
+	{#key turnstileResetSignal}
+		<TurnstileWidget bind:token={turnstileToken} />
+	{/key}
+
+	<Button
+		type="submit"
+		class="mt-6 w-full"
+		size="lg"
+		disabled={loading || turnstileToken === null}
+	>
 		{#if loading}
 			<span class="spinner"></span>
 		{/if}

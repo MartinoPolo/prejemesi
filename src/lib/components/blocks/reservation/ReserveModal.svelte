@@ -14,6 +14,7 @@
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import TurnstileWidget from '$lib/components/blocks/security/TurnstileWidget.svelte';
 
 	interface ReserveModalProps {
 		open: boolean;
@@ -41,6 +42,8 @@
 	let anonymousEmail = $state('');
 	let nameError = $state('');
 	let quantityError = $state('');
+	let turnstileToken = $state<string | null>(null);
+	let turnstileResetSignal = $state(0);
 
 	// Computed
 	const maxQuantity = $derived(gift ? (gift.quantity ?? 1) : 1);
@@ -78,12 +81,12 @@
 		return true;
 	}
 
-	function handleSubmit() {
+	async function handleSubmit() {
 		if (gift === null || !validate()) {
 			return;
 		}
 
-		onreserve?.({
+		await onreserve?.({
 			giftId: gift.id,
 			quantity,
 			anonymousName: !isAuthenticated ? anonymousName.trim() : undefined,
@@ -91,7 +94,12 @@
 				!isAuthenticated && anonymousEmail.trim() !== ''
 					? anonymousEmail.trim()
 					: undefined,
+			turnstileToken: !isAuthenticated ? (turnstileToken ?? undefined) : undefined,
 		});
+		if (!isAuthenticated) {
+			turnstileToken = null;
+			turnstileResetSignal += 1;
+		}
 	}
 
 	function handleOpenChange(newOpen: boolean) {
@@ -101,6 +109,8 @@
 			anonymousEmail = '';
 			nameError = '';
 			quantityError = '';
+			turnstileToken = null;
+			turnstileResetSignal += 1;
 		} else {
 			onclose?.();
 		}
@@ -203,6 +213,10 @@
 						/>
 					</div>
 
+					{#key turnstileResetSignal}
+						<TurnstileWidget bind:token={turnstileToken} />
+					{/key}
+
 					<div class={styles.authPrompt()}>
 						<p class={styles.authPromptText()}>
 							{m.reserve_auth_prompt()}
@@ -230,7 +244,10 @@
 					<Button intent="outline" onclick={() => handleOpenChange(false)}
 						>{m.cancel()}</Button
 					>
-					<Button disabled={isSubmitting} onclick={handleSubmit}>
+					<Button
+						disabled={isSubmitting || (!isAuthenticated && turnstileToken === null)}
+						onclick={handleSubmit}
+					>
 						{#if isSubmitting}
 							{m.reserve_submitting()}
 						{:else}

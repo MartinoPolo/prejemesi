@@ -23,6 +23,19 @@ test.describe('Anonymous visitor reservation', () => {
 		// Anonymous visitor
 		const visitorContext = await browser.newContext();
 		const visitorPage = await visitorContext.newPage();
+		await visitorPage.addInitScript(() => {
+			(window as unknown as { turnstile: unknown }).turnstile = {
+				render: (
+					_container: HTMLElement,
+					options: { callback: (token: string) => void },
+				) => {
+					queueMicrotask(() => options.callback('XXXX.DUMMY.TOKEN.XXXX'));
+					return 'playwright-turnstile';
+				},
+				reset: () => undefined,
+				remove: () => undefined,
+			};
+		});
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
 		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible();
@@ -38,7 +51,9 @@ test.describe('Anonymous visitor reservation', () => {
 		await reserveDialog
 			.getByRole('textbox', { name: /Vaše jméno/i })
 			.fill(ANONYMOUS_RESERVER.name);
-		await reserveDialog.getByRole('button', { name: /Rezervovat/ }).click();
+		const submitReservationButton = reserveDialog.getByRole('button', { name: /Rezervovat/ });
+		await expect(submitReservationButton).toBeEnabled();
+		await submitReservationButton.click();
 		await expect(visitorPage.getByText(/[Rr]ezervov/).first()).toBeVisible();
 
 		await visitorContext.close();

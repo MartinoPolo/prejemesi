@@ -1,5 +1,8 @@
 # Cloudflare Setup & Maintenance Guide
 
+For quota incidents, privacy-safe telemetry, WAF/rate-limit verification,
+Turnstile, and Smart Placement, use [Production operations](./PRODUCTION_OPERATIONS.md).
+
 How to deploy Přejeme si to Cloudflare, develop against it, and maintain it. The
 project is **already architected for Cloudflare** – the decision is settled in
 `.mpx/DECISIONS.md` (2026-05-30) and most wiring exists in code. This guide

@@ -19,6 +19,7 @@ declare global {
 				HYPERDRIVE: Hyperdrive;
 				R2: R2Bucket;
 				ASSETS: Fetcher;
+				CF_VERSION_METADATA?: { id: string; tag?: string; timestamp?: string };
 			};
 			ctx: ExecutionContext;
 			caches: CacheStorage;

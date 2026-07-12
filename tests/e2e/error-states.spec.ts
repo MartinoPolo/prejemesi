@@ -11,7 +11,7 @@ test.describe('Error states and edge cases', () => {
 
 		// Now attempt to register again with the same email via the UI
 		await page.goto('/register');
-		await page.waitForLoadState('networkidle');
+		await expect(page.getByRole('textbox', { name: /Jméno/i })).toBeVisible();
 
 		await page.getByRole('textbox', { name: /Jméno/i }).fill(user.name);
 		await page.getByLabel(/E-mail/i).fill(user.email);

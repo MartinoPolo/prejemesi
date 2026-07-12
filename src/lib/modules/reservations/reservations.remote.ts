@@ -12,6 +12,7 @@ import { dispatchNotification } from '$lib/modules/notifications/notification_di
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { resolveWishlistRole } from '$lib/modules/wishlists/wishlist_access.js';
 import { canSeeGifterIdentity } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import { verifyTurnstileToken } from '$lib/server/turnstile.js';
 import {
 	ReserveGiftInputSchema,
 	UnreserveInputSchema,
@@ -59,9 +60,32 @@ async function getActiveReservedCount(giftId: string, executor: DbExecutor): Pro
 	return Number(result[0]?.totalQuantity ?? 0);
 }
 
+async function verifyAnonymousReservationTurnstile(turnstileToken: string | undefined) {
+	const result = await verifyTurnstileToken({ token: turnstileToken });
+	if (result.success) {
+		return;
+	}
+
+	switch (result.reason) {
+		case 'missing':
+			error(400, SERVER_ERROR.TURNSTILE_REQUIRED);
+		case 'expired_or_replayed':
+			error(403, SERVER_ERROR.TURNSTILE_EXPIRED_OR_REPLAYED);
+		case 'invalid':
+			error(403, SERVER_ERROR.TURNSTILE_INVALID);
+		case 'configuration':
+		case 'unavailable':
+			error(503, SERVER_ERROR.TURNSTILE_UNAVAILABLE);
+	}
+}
+
 // ── Commands ───────────────────────────────────────────────────────────────
 
 export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authContext, input) => {
+	if (authContext === null) {
+		await verifyAnonymousReservationTurnstile(input.turnstileToken);
+	}
+
 	const database = getDb();
 	const { wishlist: wishlistRow } = await getGiftWithWishlist(input.giftId);
 

@@ -62,4 +62,39 @@ test.describe('Authentication', () => {
 			page.getByRole('heading', { level: 1, name: 'Přihlášení odkazem' }),
 		).toBeVisible();
 	});
+
+	for (const protectedRequest of [
+		{
+			name: 'registration',
+			path: '/api/auth/sign-up/email',
+			data: {
+				name: 'Turnstile Test',
+				email: 'turnstile-register@test.cz',
+				password: 'password123',
+			},
+		},
+		{
+			name: 'magic link',
+			path: '/api/auth/sign-in/magic-link',
+			data: { email: 'turnstile-magic@test.cz', callbackURL: '/my-lists' },
+		},
+		{
+			name: 'password reset request',
+			path: '/api/auth/request-password-reset',
+			data: { email: 'turnstile-reset@test.cz', redirectTo: '/reset-password' },
+		},
+	] as const) {
+		test(`${protectedRequest.name} rejects a missing Turnstile token`, async ({
+			request,
+			baseURL,
+		}) => {
+			const response = await request.post(`${baseURL}${protectedRequest.path}`, {
+				headers: { Origin: baseURL! },
+				data: protectedRequest.data,
+			});
+
+			expect(response.status()).toBe(400);
+			expect(await response.text()).toContain('Missing CAPTCHA response');
+		});
+	}
 });

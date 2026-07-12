@@ -56,6 +56,10 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(),
 }));
 
+vi.mock('$lib/server/turnstile.js', () => ({
+	verifyTurnstileToken: vi.fn(),
+}));
+
 // Drizzle ORM helpers are used only as column references in query builders.
 // We don't need their real implementations – stub them so the module loads.
 vi.mock('drizzle-orm', () => ({
@@ -69,6 +73,8 @@ vi.mock('drizzle-orm', () => ({
 
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
+import { verifyTurnstileToken } from '$lib/server/turnstile.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	reserveGift,
 	unreserveGift,
@@ -81,6 +87,7 @@ import type { ReserveGiftInput, UnreserveInput } from './types.js';
 
 const mockGetDb = vi.mocked(getDb);
 const mockGetRequestEvent = vi.mocked(getRequestEvent);
+const mockVerifyTurnstileToken = vi.mocked(verifyTurnstileToken);
 
 /** Stub getRequestEvent so the anon-visitor helper reads `cookieValue` from the cookie. */
 function mockAnonCookie(cookieValue: string | undefined) {
@@ -186,6 +193,11 @@ describe('reserveGift', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		mockVerifyTurnstileToken.mockImplementation(async ({ token }) =>
+			token == null || token === ''
+				? { success: false, reason: 'missing' }
+				: { success: true },
+		);
 	});
 
 	// reserveGift now enforces capacity atomically inside database.transaction():
@@ -215,7 +227,41 @@ describe('reserveGift', () => {
 		);
 
 		expect(result).toEqual({ id: RESERVATION_ID });
+		expect(mockVerifyTurnstileToken).not.toHaveBeenCalled();
 	});
+
+	it('anonymous reservation rejects a missing Turnstile token before DB work', async () => {
+		mockVerifyTurnstileToken.mockResolvedValue({ success: false, reason: 'missing' });
+
+		await expect(
+			(reserveGift as (...args: unknown[]) => unknown)(null, {
+				...validInput,
+				anonymousName: 'Jan Novak',
+			}),
+		).rejects.toMatchObject({ status: 400, message: SERVER_ERROR.TURNSTILE_REQUIRED });
+		expect(mockGetDb).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['invalid', 403, SERVER_ERROR.TURNSTILE_INVALID],
+		['expired_or_replayed', 403, SERVER_ERROR.TURNSTILE_EXPIRED_OR_REPLAYED],
+		['unavailable', 503, SERVER_ERROR.TURNSTILE_UNAVAILABLE],
+		['configuration', 503, SERVER_ERROR.TURNSTILE_UNAVAILABLE],
+	] as const)(
+		'anonymous reservation rejects %s Turnstile verification before DB work',
+		async (reason, status, message) => {
+			mockVerifyTurnstileToken.mockResolvedValue({ success: false, reason });
+
+			await expect(
+				(reserveGift as (...args: unknown[]) => unknown)(null, {
+					...validInput,
+					anonymousName: 'Jan Novak',
+					turnstileToken: 'rejected-token',
+				}),
+			).rejects.toMatchObject({ status, message });
+			expect(mockGetDb).not.toHaveBeenCalled();
+		},
+	);
 
 	// CI-level regression guard for the atomic structure. The real proof that
 	// concurrent reservations cannot overbook lives in reservations.race.test.ts
@@ -296,6 +342,7 @@ describe('reserveGift', () => {
 			(reserveGift as (...args: unknown[]) => unknown)(null, {
 				...validInput,
 				anonymousName: '',
+				turnstileToken: 'valid-token',
 			}),
 		).rejects.toMatchObject({ status: 400 });
 	});
@@ -312,6 +359,7 @@ describe('reserveGift', () => {
 			(reserveGift as (...args: unknown[]) => unknown)(null, {
 				...validInput,
 				anonymousName: '   ',
+				turnstileToken: 'valid-token',
 			}),
 		).rejects.toMatchObject({ status: 400 });
 	});
@@ -365,9 +413,11 @@ describe('reserveGift', () => {
 		const result = await (reserveGift as (...args: unknown[]) => unknown)(null, {
 			...validInput,
 			anonymousName: 'Jan Novak',
+			turnstileToken: 'valid-token',
 		});
 
 		expect(result).toEqual({ id: RESERVATION_ID });
+		expect(mockVerifyTurnstileToken).toHaveBeenCalledWith({ token: 'valid-token' });
 	});
 });
 
