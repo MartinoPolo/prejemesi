@@ -1,8 +1,28 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
 	import { cn } from '$lib/utils.js';
-	import { toastVariants, toastIconColors, type ToastProps } from './toast_variants.js';
+	import {
+		toastVariants,
+		toastIconColors,
+		type ToastProps,
+		type ToastTone,
+	} from './toast_variants.js';
+	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import CircleXIcon from '@lucide/svelte/icons/circle-x';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { Button } from '$lib/components/base/button/index.js';
+
+	/** Fallback icon per tone, rendered when no explicit `icon` snippet is passed. */
+	const DEFAULT_TONE_ICONS = {
+		info: InfoIcon,
+		success: CircleCheckIcon,
+		warning: TriangleAlertIcon,
+		danger: CircleXIcon,
+		loading: LoaderCircleIcon,
+	} as const satisfies Record<ToastTone, Component<{ class?: string }>>;
 
 	let {
 		ref = $bindable<HTMLDivElement | null>(null),
@@ -15,6 +35,8 @@
 		onDismiss,
 		...restProps
 	}: ToastProps = $props();
+
+	const DefaultToneIcon = $derived(DEFAULT_TONE_ICONS[tone]);
 </script>
 
 <div
@@ -26,11 +48,13 @@
 	class={cn(toastVariants({ tone }), className)}
 	{...restProps}
 >
-	{#if icon}
-		<div class={cn('shrink-0', toastIconColors[tone])}>
+	<div class={cn('shrink-0', toastIconColors[tone])}>
+		{#if icon}
 			{@render icon()}
-		</div>
-	{/if}
+		{:else}
+			<DefaultToneIcon class={cn('size-4', tone === 'loading' && 'animate-spin')} />
+		{/if}
+	</div>
 
 	<div class="min-w-0 flex-1">
 		<div class="text-[12.5px] font-semibold text-foreground">{title}</div>

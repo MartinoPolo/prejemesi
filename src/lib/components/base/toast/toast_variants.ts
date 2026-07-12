@@ -3,14 +3,19 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const toastVariants = tv({
-	base: 'flex items-center gap-3 rounded-[12px] border-[2.5px] border-ink bg-card p-3 shadow-sticker',
+	base: 'flex items-center gap-3 rounded-[12px] border-[2.5px] border-ink p-3 shadow-sticker',
 	variants: {
+		// Tinted backgrounds reuse the badge color-mix pattern (oklab — never oklch,
+		// see color-mix hue-collapse memory) so the tone reads across all palettes.
 		tone: {
-			info: 'border-l-[6px] border-l-status-info',
-			success: 'border-l-[6px] border-l-status-success',
-			warning: 'border-l-[6px] border-l-status-warning',
-			danger: 'border-l-[6px] border-l-status-danger',
-			loading: 'border-l-[6px] border-l-primary',
+			info: 'border-l-[6px] border-l-status-info bg-[color-mix(in_oklab,var(--status-info)_14%,var(--card))]',
+			success:
+				'border-l-[6px] border-l-status-success bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))]',
+			warning:
+				'border-l-[6px] border-l-status-warning bg-[color-mix(in_oklab,var(--status-warning)_14%,var(--card))]',
+			danger: 'border-l-[6px] border-l-status-danger bg-[color-mix(in_oklab,var(--status-danger)_14%,var(--card))]',
+			loading:
+				'border-l-[6px] border-l-primary bg-[color-mix(in_oklab,var(--primary)_14%,var(--card))]',
 		},
 	},
 	defaultVariants: {
