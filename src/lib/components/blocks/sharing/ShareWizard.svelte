@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import { escapeHtml } from '$lib/utils/escape_html.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -359,7 +360,13 @@
 					</div>
 					<div class={styles.successTitle()}>{m.share_success_title()}</div>
 					<p class={styles.successSub()}>
-						{m.share_success_body({ title: wishlistTitle, url: shareUrlDisplay })}
+						<!-- Message contains <strong>; title is user text, so it is HTML-escaped.
+						     shareUrlDisplay is safe (host + server-generated shortId). -->
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+						{@html m.share_success_body({
+							title: escapeHtml(wishlistTitle),
+							url: shareUrlDisplay,
+						})}
 					</p>
 				</div>
 
