@@ -13,7 +13,7 @@ import { registerViaApi, createAuthenticatedContext } from './fixtures/auth-help
 // 'load' wait already forces each route's server modules to compile; a deterministic
 // content assertion then proves the rendered output is ready.
 test('warmup: compile all route modules', async ({ page, request, browser, baseURL }) => {
-	if (!baseURL) {
+	if (baseURL == null) {
 		throw new Error('baseURL must be configured in playwright.config.ts');
 	}
 

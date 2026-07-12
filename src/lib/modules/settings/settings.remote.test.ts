@@ -338,7 +338,17 @@ describe('updateProfile', () => {
 	function createRecordingDb() {
 		const setMock = vi.fn(() => ({ where: vi.fn(() => Promise.resolve()) }));
 		const updateMock = vi.fn(() => ({ set: setMock }));
-		mockGetDb.mockReturnValue({ update: updateMock } as unknown as ReturnType<typeof getDb>);
+		const selectMock = vi.fn(() => ({
+			from: vi.fn(() => ({
+				where: vi.fn(() => ({
+					limit: vi.fn(() => Promise.resolve([])),
+				})),
+			})),
+		}));
+		mockGetDb.mockReturnValue({
+			update: updateMock,
+			select: selectMock,
+		} as unknown as ReturnType<typeof getDb>);
 		return { setMock, updateMock };
 	}
 
