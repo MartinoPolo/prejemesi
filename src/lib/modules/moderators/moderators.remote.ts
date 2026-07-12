@@ -10,6 +10,7 @@ import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 import {
 	verifyManagerAccess,
 	requireWishlistRow,
@@ -65,7 +66,7 @@ export const getModeratorsForWishlist = guardedQueryWithArgs(
 			id: row.id,
 			userId: row.userId,
 			userName: row.userName,
-			userImage: row.userImage,
+			userImage: resolveUserImageUrl(row.userImage),
 			assignedAt: row.assignedAt,
 		}));
 

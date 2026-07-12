@@ -155,14 +155,15 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 Copy `.env.example` to `.env` and configure:
 
-| Variable               | Required | Description                                                   |
-| ---------------------- | -------- | ------------------------------------------------------------- |
-| `DATABASE_URL`         | Yes      | PostgreSQL connection string                                  |
-| `AUTH_SECRET`          | Yes      | 32-byte base64 secret (`openssl rand -base64 32`)             |
-| `ORIGIN`               | No       | App URL – OAuth redirects + email links (default 5173)        |
-| `GOOGLE_CLIENT_ID`     | No       | Google OAuth client ID                                        |
-| `GOOGLE_CLIENT_SECRET` | No       | Google OAuth client secret                                    |
-| `R2_PUBLIC_URL`        | No       | Public R2 bucket URL; uploads use in-memory fallback if unset |
+| Variable                                                                      | Required | Description                                                                                                     |
+| ----------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                | Yes      | PostgreSQL connection string                                                                                    |
+| `AUTH_SECRET`                                                                 | Yes      | 32-byte base64 secret (`openssl rand -base64 32`)                                                               |
+| `ORIGIN`                                                                      | No       | App URL – OAuth redirects + email links (default 5173)                                                          |
+| `GOOGLE_CLIENT_ID`                                                            | No       | Google OAuth client ID                                                                                          |
+| `GOOGLE_CLIENT_SECRET`                                                        | No       | Google OAuth client secret                                                                                      |
+| `PUBLIC_R2_URL`                                                               | No       | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset |
+| `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                      |
 
 Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
 

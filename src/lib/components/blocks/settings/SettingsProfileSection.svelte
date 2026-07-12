@@ -9,18 +9,28 @@
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import { untrack } from 'svelte';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 
 	interface SettingsProfileSectionProps {
 		email: string;
 		isOAuthUser: boolean;
 		initialName: string;
+		/** Display URL of the current avatar (resolved from the persisted value). */
 		initialAvatarUrl: string | null;
+		/** Raw persisted `user.image` value (URL or object key) – preserved when the avatar is untouched. */
+		initialImageValue: string | null;
 		onSave: (params: { name: string; image: string | null }) => Promise<void>;
 	}
 
-	let { email, isOAuthUser, initialName, initialAvatarUrl, onSave }: SettingsProfileSectionProps =
-		$props();
+	let {
+		email,
+		isOAuthUser,
+		initialName,
+		initialAvatarUrl,
+		initialImageValue,
+		onSave,
+	}: SettingsProfileSectionProps = $props();
 
 	// untrack() is intentional: these props seed local editable state once at mount.
 	// The local state intentionally diverges from the prop after first render.
@@ -29,6 +39,10 @@
 	let avatarObjectKey = $state<string | null>(null);
 	let saving = $state(false);
 	let saved = $state(false);
+
+	// Uploads that are not saved yet; replaced/abandoned ones are deleted from
+	// storage on save or unmount (issue #107, REQ-6).
+	const pendingUploads = createPendingUploads();
 
 	function getInitials(name: string): string {
 		return name
@@ -42,13 +56,17 @@
 	function handleAvatarUpload(result: UploadResult) {
 		avatarUrl = result.publicUrl;
 		avatarObjectKey = result.objectKey;
+		pendingUploads.track(result);
 	}
 
 	async function handleSave() {
 		saving = true;
 		saved = false;
 		try {
-			await onSave({ name: displayName, image: avatarObjectKey ?? avatarUrl });
+			// An untouched avatar keeps the raw persisted value (URL or object key)
+			// so saving the profile never rewrites it into a resolved URL.
+			await onSave({ name: displayName, image: avatarObjectKey ?? initialImageValue });
+			await pendingUploads.commit(avatarObjectKey);
 			saved = true;
 			setTimeout(() => {
 				saved = false;
@@ -59,6 +77,12 @@
 			saving = false;
 		}
 	}
+
+	$effect(() => {
+		return () => {
+			void pendingUploads.discardAll();
+		};
+	});
 </script>
 
 <Card.Root>

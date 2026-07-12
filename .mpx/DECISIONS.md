@@ -592,12 +592,18 @@ Decided: 2026-05-30 — **Superseded 2026-07-10** by "Single theming system: 10 
 ~~What: Server returns theme name + custom color. Presets are predefined CSS variable sets. Custom themes use a JS utility to derive an OKLCH palette from a single input color and set CSS variables on the page wrapper. Live preview during editing.~~
 Replaced because: custom single-color themes are removed; the 10 palettes are static primitive sets and all derived tokens are computed in CSS via `color-mix(in oklab, …)`, no JS derivation.
 
-### Server proxy for image uploads (revised from presigned R2 URLs)
+### ~~Server proxy for image uploads (revised from presigned R2 URLs)~~ (superseded)
 
-Decided: 2026-06-01 (revised from 2026-05-30)
-What: Client uploads via a same-origin PUT to `/api/upload/[objectKey]`, which proxies to R2. HMAC token (signed `{objectKey, userId, expiresAt}`, derived from AUTH_SECRET) authorizes each upload/delete. Token passed as `X-Upload-Token` header, verified server-side before storage.
-Why: Presigned R2 URLs require `aws4fetch` signing, R2 CORS config, and free-tier support verification. The proxy is simpler: session cookie auth works natively, content-type/size validation happens server-side, and HMAC binding prevents unauthorized overwrites. Acceptable for images (max 10 MB). The PRD's Known Risks section anticipated this: "R2 presigned URL support on free tier needs verification during implementation."
-Rejected: Presigned R2 URLs (CORS complexity, unverified free-tier support, requires separate signing library). Reconsider if video/large-file uploads are added.
+Decided: 2026-06-01 (revised from 2026-05-30) — **Superseded 2026-07-11** by "Presigned direct R2 uploads + optimized delivery" below (issue #107).
+~~What: Client uploads via a same-origin PUT to `/api/upload/[objectKey]`, which proxies to R2. HMAC token (signed `{objectKey, userId, expiresAt}`, derived from AUTH_SECRET) authorizes each upload/delete. Token passed as `X-Upload-Token` header, verified server-side before storage.~~
+Replaced because: proxied uploads buffer every image in Worker memory (simultaneous max-size uploads can exhaust it), and R2 presigned browser uploads + CORS are confirmed supported on the free tier. The proxy route survives only as the local-dev/fallback path.
+
+### Presigned direct R2 uploads + optimized image delivery
+
+Decided: 2026-07-11 (issue #107; restores the PRD #1 original direction)
+What: `authorizeUpload` validates target/content-type/size server-side, generates the object key, and returns a short-lived (10 min) presigned R2 PUT URL (aws4fetch SigV4, query-signed) that binds method, exact key, Content-Type, and Content-Length — the browser PUTs bytes straight to R2. Bucket CORS (`scripts/r2-cors.json`, applied via `wrangler r2 bucket cors set`) allows PUT from prod + localhost origins only. When R2 S3 credentials are absent (local dev, tests), the same-origin proxy route is used instead. Delivery: `PUBLIC_R2_URL` (client-readable rename of `R2_PUBLIC_URL`) serves originals; card/list/thumbnail/header surfaces load width-bounded `/cdn-cgi/image/` transformations (`format=auto,fit=scale-down`, `anim=false` for GIFs) with automatic client fallback to the original when a transformation fails (free tier: 5,000 unique transformations/month); detail views load originals (GIFs animate). All ImageFrame images are `loading="lazy"` `decoding="async"` except the eager header polaroid. Cleanup: replaced/removed/deleted images (gift, wishlist incl. its gifts, avatar, account deletion) are deleted from R2 server-side inside the owning mutations; cancelled/abandoned pre-save uploads are deleted client-side via an uploader-bound delete token (the arbitrary-key `authorizeDelete` command is removed — it let any logged-in user delete any known object key).
+Why: Uploads must not transit or get buffered by the Worker; original multi-MB images dominated wishlist loading; orphaned R2 objects accumulated forever.
+Rejected: Keeping the proxy for production (Worker memory ceiling); transforming external gift-image URLs (requires zone-wide any-origin resizing, quota risk); srcset/dpr variant matrices (multiplies unique transformations against the 5k/month free tier — one bounded width per surface suffices); R2 lifecycle rules for cleanup (cannot distinguish referenced from orphaned objects).
 
 ### Currencies: CZK, EUR, USD
 

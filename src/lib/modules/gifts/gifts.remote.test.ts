@@ -196,6 +196,12 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(() => mockDbInstance.db),
 }));
 
+// ── Mock R2 storage cleanup (issue #107, REQ-6) ──────────────────────────────
+
+vi.mock('$lib/server/storage/r2.js', () => ({
+	deleteObjectsBestEffort: vi.fn(() => Promise.resolve()),
+}));
+
 // ── Import the module under test (after all mocks are set up) ────────────────
 
 import {
@@ -207,6 +213,9 @@ import {
 	markGiftReceived,
 } from './gifts.remote.js';
 import type { GiftForRecipient, GiftForVisitor } from './types.js';
+import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+
+const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
 
 // ── Test data factories ───────────────────────────────────────────────────────
 
@@ -824,6 +833,49 @@ describe('updateGift', () => {
 			expect(result).toMatchObject({ id: GIFT_ID, imageMeta });
 		});
 
+		it('deletes the replaced uploaded image from storage (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: 'gifts/new.jpg' }]);
+
+			await callUpdateGift(makeRecipientAuthContext(), {
+				id: GIFT_ID,
+				imageKey: 'gifts/new.jpg',
+			});
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['gifts/old.jpg']);
+		});
+
+		it('deletes the old uploaded image when the image is removed (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: null }]);
+
+			await callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, imageKey: null });
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['gifts/old.jpg']);
+		});
+
+		it('keeps storage untouched when the image key does not change (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({ createdAt: AFTER_SHARING, imageKey: 'gifts/same.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, imageKey: 'gifts/same.jpg' }]);
+
+			await callUpdateGift(makeRecipientAuthContext(), {
+				id: GIFT_ID,
+				name: 'Updated Name',
+				imageKey: 'gifts/same.jpg',
+			});
+
+			expect(mockDeleteObjects).not.toHaveBeenCalled();
+		});
+
 		it('recipient can update gifts created after sharing date', async () => {
 			// gift lookup – created AFTER sharing
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
@@ -1165,6 +1217,24 @@ describe('deleteGift', () => {
 			await expect(
 				callDeleteGift(makeRecipientAuthContext(), GIFT_ID),
 			).resolves.not.toThrow();
+		});
+
+		it('deletes the uploaded image from storage on delete (issue #107 REQ-6)', async () => {
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					createdAt: new Date(nowFake.getTime() - 60_000),
+					imageKey: 'gifts/img.jpg',
+				}),
+			]);
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: new Date(nowFake.getTime() - 10 * 60_000) }),
+			]);
+			mockDbInstance.pushResult([]);
+			mockDbInstance.pushResult([]);
+
+			await callDeleteGift(makeRecipientAuthContext(), GIFT_ID);
+
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['gifts/img.jpg']);
 		});
 
 		it('blocks a post-share-created gift after its creation grace closes', async () => {

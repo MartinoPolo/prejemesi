@@ -48,6 +48,7 @@
 						frame={thumbFrame}
 						{themeEmoji}
 						alt={item.wishlist.title}
+						variant="thumbnail"
 					/>
 				</div>
 			</div>

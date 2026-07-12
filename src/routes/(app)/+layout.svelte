@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Navbar from '$lib/components/blocks/navbar/Navbar.svelte';
 	import { setNotificationsContext } from '$lib/modules/notifications/notifications.context.svelte.js';
+	import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	import type { Snippet } from 'svelte';
@@ -38,7 +39,7 @@
 		userName={user?.name ?? m.nav_default_user()}
 		userEmail={user?.email ?? ''}
 		{userInitials}
-		userImage={user?.image}
+		userImage={resolveUserImageUrl(user?.image)}
 	/>
 	<main class="app-content">
 		<div class="app-content-inner">
