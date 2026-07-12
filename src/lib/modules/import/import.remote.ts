@@ -4,12 +4,13 @@ import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { priorityLevel } from '$lib/server/db/wishlist.schema.js';
-import { guardedCommand } from '$lib/server/remote.js';
+import { guardedCommand, singleFlightRefresh } from '$lib/server/remote.js';
 import {
 	verifyManagerAccess,
 	assertWishlistMutable,
 } from '$lib/modules/wishlists/wishlist_access.js';
 import { seedNewWishlist } from '$lib/modules/wishlists/wishlist_create.js';
+import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import {
 	DEFAULT_GIFT_CURRENCY,
 	DRAFT_PRIORITY,
@@ -141,7 +142,7 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 
 	const database = getDb();
 
-	return database.transaction(async (tx) => {
+	const created = await database.transaction(async (tx) => {
 		const maxSortRows = await tx
 			.select({ maxSort: sql<number>`COALESCE(MAX(${gift.sortOrder}), -1)` })
 			.from(gift)
@@ -164,6 +165,12 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 			)
 			.returning();
 	});
+
+	// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page (append mode)
+	// gets the new gift rows in the same round trip.
+	singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+
+	return created;
 });
 
 /**

@@ -68,10 +68,37 @@
 
 	let shouldLoadNavDropdownData = $state(false);
 
+	// Stale-while-revalidate (issue #108): mutations no longer refresh the dashboard
+	// list queries, so each dropdown re-fetches its own data when hovered/focused
+	// again — throttled so ordinary nav mouse traffic doesn't spam requests. The
+	// previous items stay visible while the refresh is in flight.
+	const NAV_DROPDOWN_REFRESH_THROTTLE_MS = 30_000;
+	const navDropdownQueries = [
+		getMyWishlists,
+		getModeratedWishlists,
+		getFollowedWishlists,
+	] as const;
+	const navDropdownLastRefreshAt = [0, 0, 0];
+
 	function requestNavDropdownData() {
-		if (user !== null) {
+		if (user !== null && !shouldLoadNavDropdownData) {
 			shouldLoadNavDropdownData = true;
+			// The queries fetch fresh right now — start their throttle windows so the
+			// per-item hover handler doesn't immediately duplicate the initial load.
+			navDropdownLastRefreshAt.fill(Date.now());
 		}
+	}
+
+	function refreshNavDropdown(index: number) {
+		if (!canLoadNavDropdownData) {
+			return;
+		}
+		const now = Date.now();
+		if (now - navDropdownLastRefreshAt[index]! < NAV_DROPDOWN_REFRESH_THROTTLE_MS) {
+			return;
+		}
+		navDropdownLastRefreshAt[index] = now;
+		void navDropdownQueries[index]!().refresh();
 	}
 
 	const canLoadNavDropdownData = $derived(user !== null && shouldLoadNavDropdownData);
@@ -267,7 +294,13 @@
 			onfocusin={requestNavDropdownData}
 		>
 			{#each NAV_LINKS as link, i (link.href)}
-				<div class="nav-item">
+				<!-- svelte-ignore a11y_no_static_element_interactions (hover/focus refresh is a
+				     non-essential data prefetch; the link + dropdown inside stay fully accessible) -->
+				<div
+					class="nav-item"
+					onpointerenter={() => refreshNavDropdown(i)}
+					onfocusin={() => refreshNavDropdown(i)}
+				>
 					<a
 						class={cn('nav-link', isNavActive(link.href) && 'is-active')}
 						href={link.href}

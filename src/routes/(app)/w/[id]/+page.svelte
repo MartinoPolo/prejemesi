@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -20,12 +21,11 @@
 		unfollowWishlist,
 		followWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
-	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import { reserveGift, unreserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
-	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
+	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
@@ -69,15 +69,25 @@
 	const shortId = $derived(page.params.id!);
 	const isAuthenticated = $derived(data.user !== null);
 
-	// ── Reactive state (declared before await for synchronous context setup) ─
+	// ── Reactive queries (issue #108) ────────────────────────────────────────
+	//
+	// The page consumes its remote queries reactively (tracked), so single-flight
+	// refreshes that mutations trigger server-side ride back on the command
+	// response and update the UI without any follow-up fetches.
 
-	let wishlist = $state<
-		Wishlist & { recipientDisplayName: string; managerNames: string[]; role: WishlistRole }
-	>(undefined!);
-	let gifts = $state<GiftByRole[]>([]);
-	let role = $state<WishlistRole>('visitor');
-	let likedGiftIds = $state.raw<string[]>([]);
-	let isGiftDataLoading = $state(true);
+	// Gift rows load client-side only, keeping the Cloudflare Worker SSR render
+	// path below the free CPU budget (the `browser` gate skips the query on SSR).
+	const giftsQuery = $derived(browser ? getGiftsByWishlistShortId(shortId) : null);
+	const giftsResult = $derived(giftsQuery?.current);
+	const gifts = $derived<GiftByRole[]>(giftsResult?.gifts ?? []);
+	const isGiftDataLoading = $derived(giftsResult === undefined);
+
+	const likesQuery = $derived(browser && isAuthenticated ? getUserLikesForWishlist() : null);
+	const likedGiftIds = $derived(likesQuery?.current ?? []);
+
+	// Optimistic palette: the override paints instantly on selection; the persisted
+	// value rides back via setWishlistPalette's single-flight refresh.
+	let paletteOverride = $state<Palette | null>(null);
 
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
@@ -110,8 +120,33 @@
 		),
 	);
 
+	// ── Remote data fetch ────────────────────────────────────────────────────
+
+	// SSR fetches only wishlist metadata for title/OG/header. The plain awaited value
+	// is required for <svelte:head> — reading post-await state through a memoized
+	// $derived there collapses to undefined during async SSR and 500s (see
+	// getSocialDescription). The reactive query shares the same client cache entry,
+	// so hydration costs no second fetch and single-flight refreshes flow into
+	// `wishlist` below; the awaited value doubles as the fallback while a new
+	// shortId is loading after in-place navigation.
+	// svelte-ignore state_referenced_locally
+	const initialWishlist = await getWishlistByShortId(shortId);
+	const wishlistQuery = $derived(getWishlistByShortId(shortId));
+	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
+
+	// Fresh server gift data is authoritative — drop any optimistic reorder layer so
+	// a stale pre-refresh order can never mask newly fetched gifts. Successful
+	// reorders don't refetch (see handleReorder), so their optimistic order survives.
+	$effect(() => {
+		if (giftsResult !== undefined) {
+			giftsContext.clearReorderOverride();
+		}
+	});
+
 	// ── Derived values ───────────────────────────────────────────────────────
 
+	const activePalette = $derived(paletteOverride ?? wishlist.palette);
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
@@ -143,78 +178,6 @@
 		return `Seznam prani od ${wishlist.recipientDisplayName}`;
 	}
 
-	// ── Remote data fetch ────────────────────────────────────────────────────
-
-	// SSR fetches only wishlist metadata for title/OG/header. Gift rows render client-side
-	// after mount to keep the Cloudflare Worker render path below the free CPU budget.
-	// svelte-ignore state_referenced_locally
-	const wishlistData = await getWishlistByShortId(shortId);
-
-	wishlist = wishlistData;
-	role = wishlistData.role;
-
-	// ── Refresh function ─────────────────────────────────────────────────────
-
-	async function refreshData() {
-		try {
-			// SvelteKit caches query results by arguments – .refresh() invalidates the cache,
-			// then we re-fetch to get the updated values
-			await Promise.all([
-				getWishlistByShortId(shortId).refresh(),
-				getGiftsByWishlistShortId(shortId).refresh(),
-			]);
-			const [freshWishlist, freshGifts] = await Promise.all([
-				getWishlistByShortId(shortId),
-				getGiftsByWishlistShortId(shortId),
-			]);
-			wishlist = freshWishlist;
-			gifts = freshGifts.gifts;
-			role = freshGifts.role;
-			// Fresh server data is authoritative — drop any optimistic reorder layer so a
-			// stale pre-refresh order can never mask the newly fetched gifts.
-			giftsContext.clearReorderOverride();
-			await refreshLikedGiftIds({ refresh: true });
-			await refreshWishlistDashboards();
-		} catch (thrown) {
-			console.error('Failed to refresh wishlist data:', thrown);
-		} finally {
-			isGiftDataLoading = false;
-		}
-	}
-
-	async function loadGiftData() {
-		isGiftDataLoading = true;
-		try {
-			const giftsData = await getGiftsByWishlistShortId(shortId);
-			gifts = giftsData.gifts;
-			role = giftsData.role;
-			// Fresh server data is authoritative — drop any optimistic reorder layer.
-			giftsContext.clearReorderOverride();
-			await refreshLikedGiftIds();
-		} catch (thrown) {
-			console.error('Failed to load wishlist gifts:', thrown);
-			toastError(translateServerError(thrown));
-		} finally {
-			isGiftDataLoading = false;
-		}
-	}
-
-	async function refreshLikedGiftIds({ refresh = false }: { refresh?: boolean } = {}) {
-		if (!isAuthenticated) {
-			likedGiftIds = [];
-			return;
-		}
-
-		try {
-			if (refresh) {
-				await getUserLikesForWishlist().refresh();
-			}
-			likedGiftIds = await getUserLikesForWishlist();
-		} catch {
-			likedGiftIds = [];
-		}
-	}
-
 	// ── Modal state ──────────────────────────────────────────────────────────
 
 	let moderatorPanelOpen = $state(false);
@@ -243,20 +206,6 @@
 	let reserveModalOpen = $state(false);
 	let reservingGift = $state<GiftForVisitor | null>(null);
 	let isReserving = $state(false);
-
-	// ── Re-fetch on route param change ───────────────────────────────────────
-
-	// svelte-ignore state_referenced_locally (intentional baseline snapshot for the change-detection effect below)
-	let lastLoadedId = shortId;
-
-	$effect(() => {
-		if (shortId === lastLoadedId) {
-			return;
-		}
-		lastLoadedId = shortId;
-		isGiftDataLoading = true;
-		void refreshData();
-	});
 
 	// ── Gift display ─────────────────────────────────────────────────────────
 
@@ -366,10 +315,6 @@
 		moderatorPanelOpen = true;
 	}
 
-	async function handleSelfPromoted() {
-		await refreshData();
-	}
-
 	function handleShareOpened() {
 		sharingContext.openWizard();
 	}
@@ -383,10 +328,6 @@
 		void goto(
 			`${localizeInternalHref(resolve('/(app)/w/[id]/settings', { id: shortId }))}#image`,
 		);
-	}
-
-	function handleShared() {
-		void refreshData();
 	}
 
 	function handleViewModeChange(mode: GiftViewMode) {
@@ -430,13 +371,17 @@
 		}
 	}
 
+	// Gift mutations rely on the command's server-side single-flight refresh: the
+	// fresh gift list rides back on the command response and the tracked query
+	// updates in place — no follow-up fetches, no metadata/likes/dashboard reloads
+	// (issue #108, REQ-3/4/5).
+
 	async function handleCreate(input: CreateGiftInput) {
 		isSubmitting = true;
 		try {
 			await createGift(input);
 			giftModalOpen = false;
 			toastSuccess(m.toast_gift_created());
-			await refreshData();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
@@ -450,7 +395,6 @@
 			await updateGiftRemote(input);
 			giftModalOpen = false;
 			toastSuccess(m.toast_gift_updated());
-			await refreshData();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
@@ -464,7 +408,6 @@
 			await deleteGift(giftId);
 			giftModalOpen = false;
 			toastSuccess(m.toast_gift_deleted());
-			await refreshData();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
@@ -475,7 +418,6 @@
 	async function handleReceived(giftId: string, received: boolean) {
 		try {
 			await markGiftReceived({ giftId, received });
-			await refreshData();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		}
@@ -504,10 +446,6 @@
 
 	function openImportWizard() {
 		importWizardOpen = true;
-	}
-
-	async function handleImportSuccess() {
-		await refreshData();
 	}
 
 	// ── Export handler ────────────────────────────────────────────────────────
@@ -540,7 +478,6 @@
 			const created = await importGifts({ wishlistId: wishlist.id, gifts: drafts });
 			batchAddDialogOpen = false;
 			toastSuccess(m.toast_batch_add_success({ count: created.length }));
-			await refreshData();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
@@ -560,9 +497,9 @@
 			return;
 		}
 		try {
+			// The command single-flight-refreshes the wishlist query (archived status).
 			await archiveWishlist(wishlist.id);
 			toastSuccess(m.toast_wishlist_archived());
-			await refreshData();
 		} catch (thrown) {
 			console.error('Failed to archive wishlist:', thrown);
 			toastError(m.toast_wishlist_archive_error());
@@ -572,10 +509,10 @@
 	// ── Palette handler (issue #102 REQ-5) ────────────────────────────────────
 
 	// Optimistic local update: the `data-palette` wrapper re-derives the whole token
-	// subtree instantly; the picker persists via setWishlistPalette (which refreshes
-	// the wishlist + dashboard queries server-side) and reverts on error.
+	// subtree instantly; the picker persists via setWishlistPalette (whose server-side
+	// single-flight refresh brings the persisted value back) and reverts on error.
 	function handlePaletteSelect(palette: Palette) {
-		wishlist.palette = palette;
+		paletteOverride = palette;
 	}
 
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
@@ -612,7 +549,7 @@
 			// visible order matches persisted state (existing error handling unchanged).
 			console.error('Failed to reorder gifts:', thrown);
 			giftsContext.clearReorderOverride();
-			await refreshData();
+			await getGiftsByWishlistShortId(shortId).refresh();
 		}
 	}
 
@@ -631,19 +568,20 @@
 	async function handleReserve(input: ReserveGiftInput) {
 		isReserving = true;
 		try {
+			// The command single-flight-refreshes the gift list (reservation state).
 			await reserveGift(input);
 			reserveModalOpen = false;
 			reservingGift = null;
 			toastSuccess(m.toast_gift_reserved());
-			await refreshData();
 		} catch (thrown) {
 			// Lost the race: someone reserved the last unit between page load and submit.
 			// Rather than a generic "not enough available" error, sync the real state and
-			// tell the visitor what actually happened.
+			// tell the visitor what actually happened. (Errors carry no single-flight
+			// payload, so this path refreshes explicitly.)
 			if (getServerErrorCode(thrown) === SERVER_ERROR.NOT_ENOUGH_AVAILABLE) {
 				reserveModalOpen = false;
 				reservingGift = null;
-				await refreshData();
+				await getGiftsByWishlistShortId(shortId).refresh();
 				toastError(m.toast_gift_just_reserved());
 			} else {
 				toastError(translateServerError(thrown));
@@ -660,7 +598,6 @@
 		try {
 			await unreserveGift({ reservationId: giftItem.myReservationId });
 			toastSuccess(m.toast_gift_unreserved());
-			await refreshData();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		}
@@ -669,30 +606,18 @@
 	// ── Lifecycle: auto-follow on mount ───────────────────────────────────────
 
 	onMount(() => {
-		void loadClientSideWishlistData();
+		if (!isAuthenticated) {
+			return;
+		}
+		followWishlist(initialWishlist.id).catch(() => {
+			// Auto-follow failure is non-critical – ignore
+		});
 	});
-
-	async function loadClientSideWishlistData() {
-		await Promise.all([
-			loadGiftData(),
-			(async () => {
-				if (!isAuthenticated) {
-					return;
-				}
-
-				try {
-					await followWishlist(wishlist.id);
-				} catch {
-					// Auto-follow failure is non-critical – ignore
-				}
-			})(),
-		]);
-	}
 </script>
 
 <!-- data-palette re-derives every color token for this subtree (see app.css), giving the
      wishlist its own per-list identity independent of the viewer's app palette. -->
-<div data-palette={wishlist.palette} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
+<div data-palette={activePalette} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
@@ -773,7 +698,7 @@
 	{reservingGift}
 	{isReserving}
 	bind:paletteDialogOpen
-	wishlistPalette={wishlist.palette}
+	wishlistPalette={activePalette}
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
 	bind:moderatorPanelOpen
@@ -785,9 +710,7 @@
 	onreceived={handleReceived}
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
-	onshared={handleShared}
 	onpaletteselect={handlePaletteSelect}
-	onmoderatorselfpromoted={handleSelfPromoted}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
@@ -802,7 +725,6 @@
 		priorityLevelCount={priorityLevels.length}
 		existingGifts={importExistingGifts}
 		suppressNavigation
-		onsuccess={handleImportSuccess}
 	/>
 {/if}
 

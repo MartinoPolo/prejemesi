@@ -22,7 +22,6 @@
 		updateWishlist,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
-	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
@@ -39,9 +38,13 @@
 
 	const shortId = $derived(page.params.id!);
 
+	// The reactive query is tracked, so updateWishlist's server-side single-flight
+	// refresh rides back on the save response and updates `wishlist` with no
+	// follow-up fetch (issue #108). The awaited value seeds SSR and the form.
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state thereafter)
 	const initial = await getWishlistByShortId(shortId);
-	let wishlist = $state(initial);
+	const wishlistQuery = $derived(getWishlistByShortId(shortId));
+	const wishlist = $derived(wishlistQuery.current ?? initial);
 
 	// Settings editing is manager-gated (recipient OR správce); non-managers see a read-only alert.
 	const canManage = $derived(canManageWishlist(wishlist.role));
@@ -83,12 +86,6 @@
 	let savingDetails = $state(false);
 	let savingImage = $state(false);
 
-	async function refresh() {
-		await getWishlistByShortId(shortId).refresh();
-		wishlist = await getWishlistByShortId(shortId);
-		await refreshWishlistDashboards();
-	}
-
 	async function handleDetailsSave(event: SubmitEvent) {
 		event.preventDefault();
 
@@ -102,6 +99,8 @@
 		savingDetails = true;
 		try {
 			const trimmedDescription = detailsDescription.trim();
+			// The command's single-flight refresh updates the tracked `wishlist` query
+			// before this await resolves — no follow-up fetch needed.
 			await updateWishlist({
 				id: wishlist.id,
 				title: trimmedTitle,
@@ -110,7 +109,6 @@
 				// authority and drops it once the window has closed (issue #83).
 				...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
 			});
-			await refresh();
 			// Re-seed the form from the canonical server values (server trims/normalizes).
 			detailsTitle = wishlist.title;
 			detailsDescription = wishlist.description ?? '';
@@ -135,7 +133,6 @@
 				imageKey: next.imageKey,
 				imageSlots: next.imageSlots,
 			});
-			await refresh();
 			toastSuccess(m.toast_wishlist_image_saved());
 		} catch (thrown) {
 			console.error('Failed to save wishlist image:', thrown);

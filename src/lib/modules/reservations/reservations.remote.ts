@@ -6,8 +6,14 @@ import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
-import { publicQuery, publicCommand, guardedCommand } from '$lib/server/remote.js';
+import {
+	publicQuery,
+	publicCommand,
+	guardedCommand,
+	singleFlightRefresh,
+} from '$lib/server/remote.js';
 import { getAnonVisitorId, getOrCreateAnonVisitorId } from '$lib/server/anonymous_visitor.js';
+import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { resolveWishlistRole } from '$lib/modules/wishlists/wishlist_access.js';
@@ -169,6 +175,7 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		giftId: input.giftId,
 		actorId: actorUserId ?? undefined,
 		actorName: actorName ?? undefined,
+		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 	});
 	await dispatchNotification({
 		type: NOTIFICATION_TYPE.GIFT_RESERVED,
@@ -177,7 +184,12 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		giftId: input.giftId,
 		actorId: actorUserId ?? undefined,
 		actorName: actorName ?? undefined,
+		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 	});
+
+	// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page tracks this
+	// query, so the fresh reservation state rides back on the command response.
+	singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
 
 	return { id: created.id };
 });
@@ -195,6 +207,10 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 	if (reservationRow === undefined) {
 		error(404, SERVER_ERROR.RESERVATION_NOT_FOUND);
 	}
+
+	// Known after the moderator branch resolves it; otherwise looked up post-update
+	// for the single-flight refresh only.
+	let wishlistShortId: string | null = null;
 
 	// Check authorization: only the reserver (or a moderator) can unreserve
 	if (reservationRow.userId !== null) {
@@ -222,6 +238,8 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 		if (!canSeeGifterIdentity(role)) {
 			error(403, SERVER_ERROR.CANNOT_CANCEL_ANONYMOUS_RESERVATION);
 		}
+
+		wishlistShortId = wishlistRow.shortId;
 	}
 
 	// Soft delete
@@ -229,6 +247,29 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 		.update(reservation)
 		.set({ deletedAt: new Date() })
 		.where(eq(reservation.id, input.reservationId));
+
+	// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page tracks this
+	// query, so the fresh reservation state rides back on the command response.
+	// Non-fatal: an unreserve left over on a deleted gift/wishlist still succeeds,
+	// just without a refresh.
+	if (wishlistShortId === null) {
+		const shortIdRows = await database
+			.select({ shortId: wishlist.shortId })
+			.from(gift)
+			.innerJoin(wishlist, eq(gift.wishlistId, wishlist.id))
+			.where(
+				and(
+					eq(gift.id, reservationRow.giftId),
+					isNull(gift.deletedAt),
+					isNull(wishlist.deletedAt),
+				),
+			)
+			.limit(1);
+		wishlistShortId = shortIdRows[0]?.shortId ?? null;
+	}
+	if (wishlistShortId !== null) {
+		singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
+	}
 
 	return { success: true };
 });
@@ -243,9 +284,16 @@ export const setReservationPurchased = guardedCommand(
 	async (authContext, input) => {
 		const database = getDb();
 
+		// The wishlist shortId joins along for the single-flight gift refresh below.
 		const rows = await database
-			.select({ id: reservation.id, userId: reservation.userId })
+			.select({
+				id: reservation.id,
+				userId: reservation.userId,
+				wishlistShortId: wishlist.shortId,
+			})
 			.from(reservation)
+			.innerJoin(gift, eq(reservation.giftId, gift.id))
+			.innerJoin(wishlist, eq(gift.wishlistId, wishlist.id))
 			.where(and(eq(reservation.id, input.reservationId), isNull(reservation.deletedAt)))
 			.limit(1);
 
@@ -263,6 +311,10 @@ export const setReservationPurchased = guardedCommand(
 			.update(reservation)
 			.set({ purchasedAt: input.purchased ? new Date() : null })
 			.where(eq(reservation.id, input.reservationId));
+
+		// Single-flight refresh (issue #108, REQ-3/4): syncs myReservationPurchasedAt on
+		// the open wishlist page in the same round trip.
+		singleFlightRefresh(getGiftsByWishlistShortId, reservationRow.wishlistShortId);
 
 		return { purchased: input.purchased };
 	},

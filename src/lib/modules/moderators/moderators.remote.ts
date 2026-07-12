@@ -9,8 +9,10 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
-import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { guardedCommand, guardedQueryWithArgs, singleFlightRefresh } from '$lib/server/remote.js';
 import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
+import { getWishlistByShortId } from '$lib/modules/wishlists/wishlists.remote.js';
+import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import {
 	verifyManagerAccess,
 	requireWishlistRow,
@@ -153,6 +155,7 @@ export const generateModeratorInviteLink = guardedCommand(
 				actorId: currentUser.id,
 				actorName: currentUser.name,
 				urlPathOverride: invitePath,
+				wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 			});
 		}
 
@@ -372,7 +375,13 @@ export const selfPromoteToModerator = guardedCommand(
 			wishlistId: input.wishlistId,
 			actorId: currentUser.id,
 			actorName: currentUser.name,
+			wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 		});
+
+		// Single-flight refresh (issue #108, REQ-3/4): self-promotion changes both the
+		// header flag and the gift shaping (counts become visible) on the open page.
+		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
+		singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
 
 		return { success: true };
 	},

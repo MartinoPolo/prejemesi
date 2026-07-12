@@ -10,7 +10,12 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
-import { guardedCommand, guardedQuery, publicQuery } from '$lib/server/remote.js';
+import {
+	guardedCommand,
+	guardedQuery,
+	publicQuery,
+	singleFlightRefresh,
+} from '$lib/server/remote.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { seedNewWishlist } from './wishlist_create.js';
@@ -298,6 +303,10 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		await deleteObjectsBestEffort([row.imageKey]);
 	}
 
+	// Single-flight refresh (issue #108, REQ-3/4): the settings/wishlist pages track
+	// this query, so the saved metadata rides back on the command response.
+	singleFlightRefresh(getWishlistByShortId, row.shortId);
+
 	return updated;
 });
 
@@ -325,6 +334,10 @@ export const renameRecipient = guardedCommand(
 			.where(eq(wishlist.id, input.id))
 			.returning();
 
+		// Single-flight refresh (issue #108, REQ-3/4): header/meta surfaces tracking the
+		// wishlist query get the renamed recipient in the same round trip.
+		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
+
 		return updated;
 	},
 );
@@ -348,16 +361,11 @@ export const setWishlistPalette = guardedCommand(
 			.where(eq(wishlist.id, input.wishlistId))
 			.returning();
 
-		// Single-flight refresh (server-side counterpart of refreshWishlistDashboards
-		// plus the wishlist page query): the open page and the dashboard/nav list cards
-		// get fresh data in the same round trip, so the palette change never leaves
-		// stale surfaces behind. Untracked queries are a no-op.
-		await Promise.allSettled([
-			getWishlistByShortId(wishlistRow.shortId).refresh(),
-			getMyWishlists().refresh(),
-			getModeratedWishlists().refresh(),
-			getFollowedWishlists().refresh(),
-		]);
+		// Single-flight refresh (issue #108, REQ-3/4): only the open wishlist page query
+		// rides back. Dashboards and nav dropdowns are NOT refreshed per mutation — those
+		// surfaces re-fetch when they are actually opened, so refreshing them here only
+		// burned three list queries per palette change.
+		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
 
 		return updated;
 	},
@@ -367,7 +375,7 @@ export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishl
 	const database = getDb();
 
 	// Any manager (recipient or správce) may archive.
-	await verifyManagerAccess(user.id, wishlistId);
+	const { wishlistRow } = await verifyManagerAccess(user.id, wishlistId);
 
 	const [archived] = await database
 		.update(wishlist)
@@ -395,6 +403,8 @@ export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishl
 			),
 		);
 
+	// Emails ride the background path inside the dispatcher (issue #108, REQ-6) —
+	// archiving never waits for outbound delivery.
 	await dispatchNotification({
 		type: NOTIFICATION_TYPE.WISHLIST_ARCHIVED,
 		targetUserIds: [...followerRows, ...moderatorRows]
@@ -403,7 +413,12 @@ export const archiveWishlist = guardedCommand(v.string(), async ({ user }, wishl
 		wishlistId,
 		actorId: user.id,
 		actorName: user.name,
+		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 	});
+
+	// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page gets the
+	// archived status in the same round trip.
+	singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
 
 	return archived;
 });
@@ -499,6 +514,10 @@ export const unfollowWishlist = guardedCommand(v.string(), async ({ user }, wish
 		.where(
 			and(eq(wishlistFollower.wishlistId, wishlistId), eq(wishlistFollower.userId, user.id)),
 		);
+
+	// Single-flight refresh (issue #108, REQ-3/4): the Sledované page tracks this
+	// query, so the updated follow state rides back on the command response.
+	singleFlightRefresh(getFollowedWishlists);
 });
 
 export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
@@ -510,4 +529,7 @@ export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wish
 		.where(
 			and(eq(wishlistFollower.wishlistId, wishlistId), eq(wishlistFollower.userId, user.id)),
 		);
+
+	// Single-flight refresh (issue #108, REQ-3/4): see unfollowWishlist.
+	singleFlightRefresh(getFollowedWishlists);
 });
