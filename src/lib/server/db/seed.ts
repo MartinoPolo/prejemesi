@@ -1501,7 +1501,7 @@ async function seed() {
 			{
 				id: 'seed-n-5',
 				userId: PETR,
-				type: 'gift_edited',
+				type: 'reserved_gift_edited',
 				wishlistId: WL_XMAS26,
 				giftId: G_PONOZKY,
 				actorName: 'Jana Dvořáková',
@@ -1512,7 +1512,7 @@ async function seed() {
 			{
 				id: 'seed-n-6',
 				userId: MARTIN,
-				type: 'moderator_joined',
+				type: 'moderator_invited',
 				wishlistId: WL_XMAS26,
 				actorId: JANA,
 				actorName: 'Jana Dvořáková',

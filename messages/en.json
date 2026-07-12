@@ -533,6 +533,7 @@
 	"notification_type_new_gift": "New gift on the list",
 	"notification_type_reserved": "Gift was reserved",
 	"notification_type_moderator_invited": "Invitation to manage a list",
+	"notification_type_unknown": "Notification",
 
 	"wishlist_palette_dialog_title": "List color palette",
 	"wishlist_palette_dialog_description": "Pick the palette this list shows to every visitor.",

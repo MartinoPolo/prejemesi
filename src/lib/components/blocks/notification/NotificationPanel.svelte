@@ -19,7 +19,7 @@
 	}
 </script>
 
-<div class="flex w-80 flex-col">
+<div class="flex w-full flex-col">
 	<!-- Header -->
 	<div class="flex items-center justify-between px-3 pb-2">
 		<h3 class="font-heading text-sm font-semibold">{m.notification_panel_title()}</h3>

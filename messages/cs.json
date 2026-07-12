@@ -533,6 +533,7 @@
 	"notification_type_new_gift": "Nový dárek na seznamu",
 	"notification_type_reserved": "Dárek byl rezervován",
 	"notification_type_moderator_invited": "Pozvánka ke správě seznamu",
+	"notification_type_unknown": "Upozornění",
 
 	"wishlist_palette_dialog_title": "Barevná paleta seznamu",
 	"wishlist_palette_dialog_description": "Vyberte paletu, ve které se tento seznam zobrazí všem návštěvníkům.",
