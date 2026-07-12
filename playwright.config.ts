@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Overridable so parallel git worktrees don't reuse each other's dev server
-// (reuseExistingServer would silently test the wrong checkout).
-const port = Number(process.env.PORT ?? 5173);
+// Override when port 5173 is held by another worktree's dev server
+// (each worktree runs its own port): PLAYWRIGHT_DEV_SERVER_PORT=5199 playwright test
+const devServerPort = Number(process.env.PLAYWRIGHT_DEV_SERVER_PORT ?? 5173);
 
 export default defineConfig({
 	testDir: 'tests/e2e',
@@ -12,15 +12,15 @@ export default defineConfig({
 	expect: { timeout: 10_000 },
 	workers: 4,
 	use: {
-		baseURL: `http://localhost:${port}`,
+		baseURL: `http://localhost:${devServerPort}`,
 		trace: 'on-first-retry',
 		actionTimeout: 15_000,
 		navigationTimeout: 30_000,
 	},
 	webServer: {
 		// No `--` separator: pnpm forwards it verbatim and vite would treat the flags as positionals.
-		command: `pnpm run dev --port ${port} --strictPort`,
-		port,
+		command: `pnpm run dev --port ${devServerPort} --strictPort`,
+		port: devServerPort,
 		reuseExistingServer: true,
 	},
 	projects: [
