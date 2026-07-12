@@ -110,4 +110,10 @@ export interface DispatchNotificationInput {
 	actorName?: string;
 	/** Overrides the email CTA link path (resolved against origin). Defaults to the wishlist URL. Use for links that aren't the plain wishlist page (e.g. an invite-acceptance URL). */
 	urlPathOverride?: string;
+	/**
+	 * Wishlist context for the email body/link. Callers that already hold the
+	 * wishlist row pass it here to spare the dispatcher its own lookup
+	 * (issue #108). Falls back to a DB read keyed on `wishlistId` when omitted.
+	 */
+	wishlist?: { title: string; shortId: string };
 }

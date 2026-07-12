@@ -5,6 +5,7 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
+import { runAfterResponse } from '$lib/server/background.js';
 import {
 	DEFAULT_NOTIFICATION_PREFERENCES,
 	EMAIL_NOTIFICATION_TYPES,
@@ -63,11 +64,14 @@ function getEmailBody(input: {
 	return `${input.message}\n\n${details.join('\n')}`;
 }
 
-async function getWishlistContext(wishlistId: string | undefined): Promise<{
-	title: string | null;
-	shortId: string | null;
-}> {
-	if (wishlistId === undefined) {
+async function getWishlistContext(
+	input: DispatchNotificationInput,
+): Promise<{ title: string | null; shortId: string | null }> {
+	// Callers holding the wishlist row pass it along – no extra statement (issue #108).
+	if (input.wishlist !== undefined) {
+		return input.wishlist;
+	}
+	if (input.wishlistId === undefined) {
 		return { title: null, shortId: null };
 	}
 
@@ -75,7 +79,7 @@ async function getWishlistContext(wishlistId: string | undefined): Promise<{
 	const rows = await database
 		.select({ title: wishlist.title, shortId: wishlist.shortId })
 		.from(wishlist)
-		.where(eq(wishlist.id, wishlistId))
+		.where(eq(wishlist.id, input.wishlistId))
 		.limit(1);
 
 	const row = rows[0];
@@ -122,7 +126,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 
 	const database = getDb();
 	const message = NOTIFICATION_MESSAGES[input.type]();
-	const wishlistContext = await getWishlistContext(input.wishlistId);
+	const wishlistContext = await getWishlistContext(input);
 	const url =
 		input.urlPathOverride !== undefined && input.urlPathOverride !== ''
 			? `${getOrigin()}${input.urlPathOverride}`
@@ -147,6 +151,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 
 	// Honor each recipient's in-app toggle: only insert a notification row for users
 	// who have in-app enabled for this type (NULL preferences fall back to defaults).
+	// In-app rows are the durable part of a dispatch and are committed before returning.
 	const inAppUserRows = userRows.filter(
 		(targetUser) =>
 			preferencesFor(targetUser.notificationPreferences)[input.type].inApp === true,
@@ -183,37 +188,47 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 			preferencesFor(targetUser.notificationPreferences)[input.type].email === true,
 	);
 
-	for (const targetUser of emailUserRows) {
-		const sent = await sendNotificationEmail({
-			to: targetUser.email,
-			type: input.type,
-			message,
-			body,
-			url,
-			notificationId: notificationIdByUserId.get(targetUser.id),
-		});
-
-		const notificationId = notificationIdByUserId.get(targetUser.id);
-		if (sent && notificationId !== undefined) {
-			await database
-				.update(notification)
-				.set({ emailSent: true })
-				.where(eq(notification.id, notificationId));
-		}
-	}
-
 	const userEmails = new Set(userRows.map((row) => row.email.toLowerCase()));
-	for (const targetEmail of targetEmails) {
-		if (userEmails.has(targetEmail.toLowerCase())) {
-			continue;
+	const externalEmails = targetEmails.filter(
+		(targetEmail) => !userEmails.has(targetEmail.toLowerCase()),
+	);
+
+	if (emailUserRows.length === 0 && externalEmails.length === 0) {
+		return;
+	}
+
+	// Email delivery happens after the response (issue #108, REQ-6): the user's
+	// mutation never waits for Resend. A failed send is observable via the error
+	// log and the notification row's emailSent flag staying false; it never rolls
+	// back the mutation or the in-app rows committed above.
+	runAfterResponse(async () => {
+		for (const targetUser of emailUserRows) {
+			const notificationId = notificationIdByUserId.get(targetUser.id);
+			const sent = await sendNotificationEmail({
+				to: targetUser.email,
+				type: input.type,
+				message,
+				body,
+				url,
+				notificationId,
+			});
+
+			if (sent && notificationId !== undefined) {
+				await database
+					.update(notification)
+					.set({ emailSent: true })
+					.where(eq(notification.id, notificationId));
+			}
 		}
 
-		await sendNotificationEmail({
-			to: targetEmail,
-			type: input.type,
-			message,
-			body,
-			url,
-		});
-	}
+		for (const targetEmail of externalEmails) {
+			await sendNotificationEmail({
+				to: targetEmail,
+				type: input.type,
+				message,
+				body,
+				url,
+			});
+		}
+	});
 }
