@@ -16,6 +16,7 @@
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import SendIcon from '@lucide/svelte/icons/send';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+	import TurnstileWidget from '$lib/components/blocks/security/TurnstileWidget.svelte';
 
 	let email = $state('');
 	let loading = $state(false);
@@ -23,6 +24,8 @@
 	let sentEmail = $state('');
 	let errorMessage = $state('');
 	let emailError = $state('');
+	let turnstileToken = $state<string | null>(null);
+	let turnstileResetSignal = $state(0);
 
 	let callbackUrl = $derived(
 		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/my-lists')),
@@ -57,10 +60,13 @@
 
 		loading = true;
 		try {
-			const result = await authClient.signIn.magicLink({
-				email: email.trim(),
-				callbackURL: callbackUrl,
-			});
+			const result = await authClient.signIn.magicLink(
+				{
+					email: email.trim(),
+					callbackURL: callbackUrl,
+				},
+				{ headers: { 'x-captcha-response': turnstileToken ?? '' } },
+			);
 
 			if (result.error) {
 				errorMessage = m.magic_error();
@@ -72,6 +78,8 @@
 			errorMessage = m.error_generic();
 		} finally {
 			loading = false;
+			turnstileToken = null;
+			turnstileResetSignal += 1;
 		}
 	}
 
@@ -165,7 +173,16 @@
 				</AuthFormField>
 			</div>
 
-			<Button type="submit" class="mt-6 w-full" size="lg" disabled={loading}>
+			{#key turnstileResetSignal}
+				<TurnstileWidget bind:token={turnstileToken} />
+			{/key}
+
+			<Button
+				type="submit"
+				class="mt-6 w-full"
+				size="lg"
+				disabled={loading || turnstileToken === null}
+			>
 				{#if loading}
 					<span class="spinner"></span>
 				{:else}

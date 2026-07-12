@@ -72,7 +72,8 @@ pnpm install
 
 # 2. Copy environment variables
 cp .env.example .env
-# Edit .env with your DATABASE_URL and AUTH_SECRET (openssl rand -base64 32)
+# Edit .env with your DATABASE_URL and AUTH_SECRET (openssl rand -base64 32).
+# Turnstile uses Cloudflare test keys automatically during local development.
 
 # 3. Start PostgreSQL (requires Docker)
 pnpm run db:start
@@ -162,10 +163,15 @@ Copy `.env.example` to `.env` and configure:
 | `ORIGIN`                                                                      | No       | App URL – OAuth redirects + email links (default 5173)                                                          |
 | `GOOGLE_CLIENT_ID`                                                            | No       | Google OAuth client ID                                                                                          |
 | `GOOGLE_CLIENT_SECRET`                                                        | No       | Google OAuth client secret                                                                                      |
+| `PUBLIC_TURNSTILE_SITE_KEY`                                                   | Prod     | Public Cloudflare Turnstile widget site key                                                                     |
+| `TURNSTILE_SECRET_KEY`                                                        | Prod     | Private Cloudflare Turnstile Siteverify secret                                                                  |
 | `PUBLIC_R2_URL`                                                               | No       | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset |
 | `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                      |
 
 Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
+Registration, magic-link, password-reset, and anonymous reservation requests are protected by
+Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the two Turnstile
+variables are blank; production fails closed when the secret is missing.
 
 ## Project Structure
 

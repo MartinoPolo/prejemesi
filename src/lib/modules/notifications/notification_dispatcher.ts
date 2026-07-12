@@ -106,8 +106,8 @@ async function sendNotificationEmail(params: {
 					: `notification:${params.type}:${params.to}:${params.url}`,
 		});
 		return true;
-	} catch (error) {
-		console.error(`[Notification] Failed to email ${params.type} to ${params.to}`, error);
+	} catch {
+		console.error(`[Notification] email dispatch failed for ${params.type}`);
 		return false;
 	}
 }

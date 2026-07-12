@@ -19,6 +19,7 @@ export interface ReserveGiftInput {
 	quantity: number;
 	anonymousName?: string;
 	anonymousEmail?: string;
+	turnstileToken?: string;
 }
 
 export const ReserveGiftInputSchema = v.object({
@@ -26,6 +27,7 @@ export const ReserveGiftInputSchema = v.object({
 	quantity: v.pipe(v.number(), v.integer(), v.minValue(1)),
 	anonymousName: v.optional(v.string()),
 	anonymousEmail: v.optional(v.string()),
+	turnstileToken: v.optional(v.string()),
 });
 
 /** Input for unreserving a gift */
