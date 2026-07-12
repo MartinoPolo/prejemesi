@@ -197,20 +197,20 @@
 					<p class={styles.description()}>{description}</p>
 				{/if}
 				<div class={styles.metaRow()}>
-					<Badge tone={statusBadgeTone}>{statusLabel}</Badge>
+					<Badge tone={statusBadgeTone} size="lg">{statusLabel}</Badge>
 					{#if giftCountLabel !== null}
-						<Badge tone="neutral">{giftCountLabel}</Badge>
+						<Badge tone="neutral" size="lg">{giftCountLabel}</Badge>
 					{/if}
 					{#if formattedDate !== null}
-						<Badge tone="neutral">
-							<CalendarIcon class="size-3" />
+						<Badge tone="neutral" size="lg">
+							<CalendarIcon data-icon="inline-start" />
 							{formattedDate}
 						</Badge>
 					{/if}
 					{#if countdownLabel !== null}
 						<!-- Stands in for the sticky note below 960 px -->
-						<Badge class={styles.countdownChip()}>
-							<HourglassIcon class="size-3" />
+						<Badge size="lg" class={styles.countdownChip()}>
+							<HourglassIcon data-icon="inline-start" />
 							{countdownLabel}
 						</Badge>
 					{/if}

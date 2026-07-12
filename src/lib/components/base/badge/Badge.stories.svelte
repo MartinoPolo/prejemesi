@@ -41,6 +41,7 @@
 <script lang="ts">
 	import type { BadgeProps } from '$lib/components/base/badge/badge_variants.js';
 	import TagIcon from '@lucide/svelte/icons/tag';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import CheckIcon from '@lucide/svelte/icons/circle-check';
 	import AlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import XIcon from '@lucide/svelte/icons/circle-x';
@@ -108,6 +109,33 @@
 			{#each BADGE_TONES as tone (tone)}
 				<Badge {tone} {...args}>{tone}</Badge>
 			{/each}
+		</div>
+	{/snippet}
+</Story>
+
+<!-- lg matches Button `sm` metrics; icons use the data-icon convention (auto-sized to 3.5). -->
+<Story name="Large">
+	{#snippet template(args: BadgeProps)}
+		<div class="flex flex-col gap-4">
+			<div class="flex flex-wrap items-center gap-3">
+				{#each BADGE_TONES as tone (tone)}
+					<Badge {tone} size="lg" {...args}>{tone}</Badge>
+				{/each}
+			</div>
+			<div class="flex flex-wrap items-center gap-3">
+				<Badge tone="info" size="lg" {...args}>
+					<CalendarIcon data-icon="inline-start" />
+					24. 12. 2026
+				</Badge>
+				<Badge tone="success" size="lg" {...args}>
+					<CheckIcon data-icon="inline-start" />
+					Aktivní
+				</Badge>
+				<Badge tone="warning" size="lg" {...args}>
+					<AlertIcon data-icon="inline-start" />
+					Za 3 dny
+				</Badge>
+			</div>
 		</div>
 	{/snippet}
 </Story>
