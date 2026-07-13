@@ -25,9 +25,14 @@ export const giftDetailModalVariants = tv({
 		// Pinned outside the scroll region – always visible in create and edit mode.
 		formActions:
 			'flex flex-col gap-2 border-t-2 border-dashed border-ink-faint px-5 py-4 sm:px-7',
-		submitButton: 'w-full',
+		// Stacked full-width buttons cancel the shared sticker hover-lift (#142):
+		// with only `gap-2` (8px) between them, the translate-based lift plus its
+		// spring overshoot can exceed the hit-area buffer at the shared edge,
+		// flickering lift/drop. Shadow-only hover keeps the sticker feel without
+		// the geometric cause; other Button usages are unaffected.
+		submitButton: 'w-full hover:translate-y-0',
 		deleteButton: 'w-full',
-		receivedButton: 'w-full',
+		receivedButton: 'w-full hover:translate-y-0',
 		imageInputRow: 'flex flex-col gap-2',
 		imageTabRow: 'flex gap-1.5',
 		imageTab:
