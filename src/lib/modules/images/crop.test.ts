@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+	containZoomForAspect,
 	cropRectToFocalZoom,
 	focalZoomToWindowRect,
 	normalizedCropAspect,
@@ -12,7 +13,12 @@ import {
 	FULL_CROP_RECT,
 	type ImageFrameProps,
 } from './crop.js';
-import { DEFAULT_IMAGE_METADATA, IMAGE_ZOOM_MAX, type ImageCropRect } from './types.js';
+import {
+	DEFAULT_IMAGE_METADATA,
+	IMAGE_ZOOM_MAX,
+	IMAGE_ZOOM_OUT_MIN,
+	type ImageCropRect,
+} from './types.js';
 import { GIFT_CROP_TARGET_SPECS } from './crop_targets.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
 
@@ -34,6 +40,23 @@ describe('normalizedCropAspect', () => {
 		expect(normalizedCropAspect(0, 1.5)).toBe(1);
 		expect(normalizedCropAspect(1.5, 0)).toBe(1);
 		expect(normalizedCropAspect(Number.NaN, 1)).toBe(1);
+	});
+});
+
+describe('containZoomForAspect', () => {
+	it('is the zoom at which the whole image exactly fits the window', () => {
+		expect(containZoomForAspect(1)).toBe(1);
+		expect(containZoomForAspect(2)).toBeCloseTo(0.5, 10);
+		expect(containZoomForAspect(0.5)).toBeCloseTo(0.5, 10);
+	});
+
+	it('never drops below the absolute zoom-out floor', () => {
+		expect(containZoomForAspect(1000)).toBe(IMAGE_ZOOM_OUT_MIN);
+	});
+
+	it('falls back to the cover baseline for degenerate aspects', () => {
+		expect(containZoomForAspect(0)).toBe(1);
+		expect(containZoomForAspect(Number.NaN)).toBe(1);
 	});
 });
 
@@ -60,6 +83,18 @@ describe('cropRectToFocalZoom', () => {
 			focal: { x: 0, y: 0 },
 			zoom: 2,
 		});
+	});
+
+	it('maps a zoomed-out (oversized) window to the same exact-inverse focal (#116 round 2)', () => {
+		// A centered contain window on normalized aspect 2: both origin and (1 - size)
+		// are negative, so focal = origin / (1 - size) still positions the image.
+		expect(cropRectToFocalZoom({ x: -0.5, y: 0, w: 2, h: 1 })).toEqual({
+			focal: { x: 50, y: 50 },
+			zoom: 0.5,
+		});
+		// Image flush with the window's left edge → focal 0, flush right → focal 100.
+		expect(cropRectToFocalZoom({ x: 0, y: 0, w: 2, h: 1 }).focal.x).toBe(0);
+		expect(cropRectToFocalZoom({ x: -1, y: 0, w: 2, h: 1 }).focal.x).toBe(100);
 	});
 
 	it('clamps zoom to the maximum for tiny crops', () => {
@@ -111,6 +146,30 @@ describe('focalZoomToWindowRect', () => {
 		}
 	});
 
+	it('round-trips zoomed-out (letterboxed) rects losslessly (#116 round 2)', () => {
+		const cases: { rect: ImageCropRect; aspect: number }[] = [
+			// Contain window on a wide normalized aspect, centered and edge-pinned.
+			{ rect: { x: -0.5, y: 0, w: 2, h: 1 }, aspect: 2 },
+			{ rect: { x: 0, y: 0, w: 2, h: 1 }, aspect: 2 },
+			// In-between zoom-out: horizontal overhang, vertical still cropped.
+			{ rect: { x: -0.125, y: 0.1875, w: 1.25, h: 0.625 }, aspect: 2 },
+			// Tall normalized aspect letterboxes vertically instead.
+			{ rect: { x: 0.2, y: -0.3, w: 0.8, h: 1.6 }, aspect: 0.5 },
+		];
+		for (const { rect, aspect } of cases) {
+			const { focal, zoom } = cropRectToFocalZoom(rect);
+			expect(zoom).toBeLessThan(1);
+			expectRectClose(focalZoomToWindowRect(focal, zoom, aspect), rect);
+		}
+	});
+
+	it('renders exactly the contain framing at the contain zoom', () => {
+		const aspect = 2.5;
+		const rect = focalZoomToWindowRect({ x: 50, y: 50 }, containZoomForAspect(aspect), aspect);
+		// The image spans the window fully on one axis and is centered on the other.
+		expectRectClose(rect, { x: -0.75, y: 0, w: 2.5, h: 1 });
+	});
+
 	it('never discards a full-width strip crop on a narrower slot (F7 regression)', () => {
 		// F7 worked example: a strip crop y=[0.3..0.7] over the full width. In the
 		// pre-#116 model zoom collapsed to 1 and a 1:1 slot rendered x=[0.22..0.78]
@@ -140,6 +199,15 @@ describe('panCropRect', () => {
 		expectRectClose(panCropRect(rect, 9, 0), { x: 0.5, y: 0, w: 0.5, h: 1 });
 		expectRectClose(panCropRect(rect, -9, 0), { x: 0, y: 0, w: 0.5, h: 1 });
 	});
+
+	it('keeps the image inside an oversized (zoomed-out) window', () => {
+		// Window twice as wide as the image: the image slides between flush-left
+		// (origin 0) and flush-right (origin 1 - size = -1), never outside.
+		const rect: ImageCropRect = { x: -0.5, y: 0, w: 2, h: 1 };
+		expectRectClose(panCropRect(rect, 0.2, 0), { x: -0.3, y: 0, w: 2, h: 1 });
+		expectRectClose(panCropRect(rect, 9, 0), { x: 0, y: 0, w: 2, h: 1 });
+		expectRectClose(panCropRect(rect, -9, 0), { x: -1, y: 0, w: 2, h: 1 });
+	});
 });
 
 describe('zoomCropRect', () => {
@@ -153,6 +221,20 @@ describe('zoomCropRect', () => {
 		const rect: ImageCropRect = { x: 0.75, y: 0.5, w: 0.25, h: 0.5 };
 		const zoomed = zoomCropRect(rect, 0.5, 1);
 		expectRectClose(zoomed, { x: 0.5, y: 0, w: 0.5, h: 1 });
+	});
+
+	it('zooms out below 100 % but floors at the contain zoom (#116 round 2)', () => {
+		const centered = centeredCropRect(2);
+		// 80 % keeps the covered axis covered while the other overhangs.
+		expectRectClose(zoomCropRect(centered, 2, 0.8), {
+			x: -0.125,
+			y: 0.1875,
+			w: 1.25,
+			h: 0.625,
+		});
+		// Requests below the contain zoom stop exactly at contain: whole image,
+		// white space on one axis only.
+		expectRectClose(zoomCropRect(centered, 2, 0.1), { x: -0.5, y: 0, w: 2, h: 1 });
 	});
 });
 
@@ -173,6 +255,17 @@ describe('fitCropRectToAspect', () => {
 		const tiny: ImageCropRect = { x: 0.5, y: 0.5, w: 0.02, h: 0.02 };
 		const fitted = fitCropRectToAspect(tiny, 1);
 		expect(Math.max(fitted.w, fitted.h)).toBeGreaterThanOrEqual(1 / IMAGE_ZOOM_MAX - 1e-9);
+	});
+
+	it('preserves aspect-matched zoomed-out rects (one-axis letterbox)', () => {
+		const contain: ImageCropRect = { x: -0.5, y: 0, w: 2, h: 1 };
+		expectRectClose(fitCropRectToAspect(contain, 2), contain);
+	});
+
+	it('shrinks a window oversized on both axes back to the contain limit', () => {
+		// White space on both axes is unrepresentable: min(w, h) must come back to 1.
+		const oversized: ImageCropRect = { x: -1, y: -1, w: 3, h: 3 };
+		expectRectClose(fitCropRectToAspect(oversized, 2), { x: -0.5, y: 0, w: 2, h: 1 });
 	});
 
 	it('falls back to the centered window for degenerate rects', () => {
@@ -206,6 +299,16 @@ describe('imageMetaToFrameProps', () => {
 			zoom: 2,
 			fillColor: '#abcdef',
 		});
+	});
+
+	it('passes a persisted zoom-out through unclamped (#116 round 2)', () => {
+		const props = imageMetaToFrameProps({
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			focal: { x: 50, y: 50 },
+			zoom: 0.8,
+		});
+		// A render-time floor of 1 would snap saved letterboxed crops back to cover.
+		expect(props.zoom).toBe(0.8);
 	});
 
 	it('uses the default metadata without throwing', () => {

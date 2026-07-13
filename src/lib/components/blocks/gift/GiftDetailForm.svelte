@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import { cn } from '$lib/utils.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
@@ -421,20 +422,38 @@
 </script>
 
 <div class={styles.body()}>
-	<!-- Left column: WYSIWYG crop stage in Crop mode (locked to the active target's
-	     real aspect, #116 REQ-2), else the live detail-target renderer preview -->
-	<div class={styles.imageColumn()} data-testid="gift-image-column">
+	<!-- Left column: WYSIWYG crop stage in Manual mode (locked to the active target's
+	     real aspect, #116 REQ-2), else the live detail-target renderer preview. The
+	     card + square live previews sit at the column's lower edge as floating tiles
+	     so they cost no form space (round 2). -->
+	<div
+		class={cn(styles.imageColumn(), isCropMode && 'h-[340px] sm:h-auto')}
+		data-testid="gift-image-column"
+	>
 		{#if hasImage && previewSrc !== null && isCropMode}
-			<ImageCropStage
-				class="size-full p-4"
-				src={previewSrc}
-				alt={name || m.gift_image_preview()}
-				targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-				targetLabel={targetLabels[activeTarget]()}
-				realSizeText={GIFT_CROP_TARGET_SPECS[activeTarget].realSizeText}
-				bind:cropRect={targetRects[activeTarget]}
-				onchange={() => dirtyTargets.add(activeTarget)}
-			/>
+			<div class="flex size-full flex-col">
+				<ImageCropStage
+					class="min-h-0 flex-1 p-4 pb-2"
+					src={previewSrc}
+					alt={name || m.gift_image_preview()}
+					targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+					targetLabel={targetLabels[activeTarget]()}
+					realSizeText={GIFT_CROP_TARGET_SPECS[activeTarget].realSizeText}
+					fillColor={bgColor}
+					tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+					bind:cropRect={targetRects[activeTarget]}
+					onchange={() => dirtyTargets.add(activeTarget)}
+				/>
+				<!-- Below the stage (not overlapping: every stage pixel matters here). -->
+				<GiftImagePreviewSlots
+					class="px-4 pb-3"
+					src={previewSrc}
+					alt={name || m.gift_image_preview()}
+					imageMeta={currentImageMeta}
+					{activeTarget}
+					onTileSelect={handleTileSelect}
+				/>
+			</div>
 		{:else if hasImage}
 			<!-- Wheel over the plain preview promotes to Manual so zooming "just works". -->
 			<div
@@ -453,6 +472,15 @@
 					tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 				/>
 			</div>
+			<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
+			<GiftImagePreviewSlots
+				class="absolute inset-x-0 bottom-3"
+				src={previewSrc}
+				alt={name || m.gift_image_preview()}
+				imageMeta={currentImageMeta}
+				activeTarget={null}
+				onTileSelect={handleTileSelect}
+			/>
 		{:else}
 			<div class={styles.imagePlaceholder()}>
 				<GiftIcon class="size-16 text-ink-faint" />
@@ -629,7 +657,64 @@
 					</div>
 				</div>
 
-				<!-- Image -->
+				<!-- Quantity -->
+				<div class="mt-3 {styles.formField()}">
+					<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
+					<Input
+						id="gift-quantity"
+						bind:value={quantity}
+						type="number"
+						min={locked ? String(currentQuantity) : '1'}
+						placeholder="1"
+					/>
+					{#if locked}
+						<HelpText
+							class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
+						>
+							{m.gift_quantity_frozen_help()}
+						</HelpText>
+					{/if}
+				</div>
+
+				<!-- Priority -->
+				{#if priorityLevels.length > 0}
+					<div class="mt-3 {styles.formField()}">
+						<Label>{m.gift_priority_label()}</Label>
+						<Select.Root type="single" bind:value={priorityLevelId}>
+							<Select.Trigger class="w-full">
+								{#if priorityLevelId}
+									{@const selectedLabel =
+										priorityLevels.find((p) => p.id === priorityLevelId)
+											?.label ?? ''}
+									{selectedLabel !== ''
+										? (getPriorityDisplay(selectedLabel)?.label() ??
+											selectedLabel)
+										: m.gift_priority_select()}
+								{:else}
+									{m.gift_priority_none()}
+								{/if}
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Group>
+									<Select.Item value="" label={m.gift_priority_none()}
+										>{m.gift_priority_none()}</Select.Item
+									>
+									{#each priorityLevels as level (level.id)}
+										{@const levelLabel =
+											getPriorityDisplay(level.label)?.label() ?? level.label}
+										<Select.Item value={level.id} label={levelLabel}>
+											{levelLabel}
+										</Select.Item>
+									{/each}
+								</Select.Group>
+							</Select.Content>
+						</Select.Root>
+					</div>
+				{/if}
+
+				<!-- Image (last field: the image bundle groups the source input with the
+			     display-mode and crop-target controls; live previews float in the
+			     image column so they cost no form space) -->
 				<div class="mt-3 {styles.formField()}">
 					<Label>{m.gift_image_label()}</Label>
 					<div class={styles.imageTabRow()}>
@@ -711,73 +796,6 @@
 						</div>
 					{/if}
 				</div>
-
-				<!-- Quantity -->
-				<div class="mt-3 {styles.formField()}">
-					<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
-					<Input
-						id="gift-quantity"
-						bind:value={quantity}
-						type="number"
-						min={locked ? String(currentQuantity) : '1'}
-						placeholder="1"
-					/>
-					{#if locked}
-						<HelpText
-							class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
-						>
-							{m.gift_quantity_frozen_help()}
-						</HelpText>
-					{/if}
-				</div>
-
-				<!-- Priority -->
-				{#if priorityLevels.length > 0}
-					<div class="mt-3 {styles.formField()}">
-						<Label>{m.gift_priority_label()}</Label>
-						<Select.Root type="single" bind:value={priorityLevelId}>
-							<Select.Trigger class="w-full">
-								{#if priorityLevelId}
-									{@const selectedLabel =
-										priorityLevels.find((p) => p.id === priorityLevelId)
-											?.label ?? ''}
-									{selectedLabel !== ''
-										? (getPriorityDisplay(selectedLabel)?.label() ??
-											selectedLabel)
-										: m.gift_priority_select()}
-								{:else}
-									{m.gift_priority_none()}
-								{/if}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Group>
-									<Select.Item value="" label={m.gift_priority_none()}
-										>{m.gift_priority_none()}</Select.Item
-									>
-									{#each priorityLevels as level (level.id)}
-										{@const levelLabel =
-											getPriorityDisplay(level.label)?.label() ?? level.label}
-										<Select.Item value={level.id} label={levelLabel}>
-											{levelLabel}
-										</Select.Item>
-									{/each}
-								</Select.Group>
-							</Select.Content>
-						</Select.Root>
-					</div>
-				{/if}
-				<!-- Live previews of every consumer surface, placed last so quantity and
-			     priority stay above; clicking a tile jumps to Manual for that target. -->
-				{#if hasImage}
-					<GiftImagePreviewSlots
-						class="mt-4"
-						src={previewSrc}
-						alt={name || m.gift_image_preview()}
-						imageMeta={currentImageMeta}
-						activeTarget={isCropMode ? activeTarget : null}
-						onTileSelect={handleTileSelect}
-					/>
-				{/if}
 			</fieldset>
 		</div>
 

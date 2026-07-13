@@ -3,6 +3,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { Skeleton } from '$lib/components/base/skeleton/index.js';
 	import {
+		coverWindowLayout,
 		resolveAutoFit,
 		resolveFrameFill,
 		IMAGE_FIT_MODES,
@@ -111,16 +112,35 @@
 
 	const styles = $derived(imageFrameVariants({ fit: effectiveFit, shape, interactive }));
 
+	// Zoomed OUT below the cover baseline (#116 round 2): object-fit clips to the
+	// element box, so the source window is rendered by positioning the image
+	// explicitly – the frame fill letterboxes the overhang on one axis. Null until
+	// the box/natural ratio are measured (the loading skeleton covers that gap).
+	const zoomOutLayout = $derived(
+		effectiveFit === IMAGE_FIT_MODES.coverCrop && zoom < 1 && naturalRatio !== null
+			? coverWindowLayout({ focal, zoom, boxWidth, boxHeight, naturalRatio })
+			: null,
+	);
+
 	// cover-crop honors the focal point (object-position) and an optional zoom that
 	// magnifies toward that same point – together they reproduce a saved manual crop.
-	const imageStyle = $derived(
-		effectiveFit === IMAGE_FIT_MODES.coverCrop
-			? `object-position: ${focal.x}% ${focal.y}%;` +
-					(zoom !== 1
-						? ` transform: scale(${zoom}); transform-origin: ${focal.x}% ${focal.y}%;`
-						: '')
-			: undefined,
-	);
+	const imageStyle = $derived.by(() => {
+		if (zoomOutLayout !== null) {
+			return (
+				`left: ${zoomOutLayout.left}px; top: ${zoomOutLayout.top}px;` +
+				` width: ${zoomOutLayout.width}px; height: ${zoomOutLayout.height}px;`
+			);
+		}
+		if (effectiveFit !== IMAGE_FIT_MODES.coverCrop) {
+			return undefined;
+		}
+		return (
+			`object-position: ${focal.x}% ${focal.y}%;` +
+			(zoom > 1
+				? ` transform: scale(${zoom}); transform-origin: ${focal.x}% ${focal.y}%;`
+				: '')
+		);
+	});
 
 	const fallbackText = $derived(alt !== '' ? alt : (fallbackLabel ?? m.image_frame_no_image()));
 
@@ -196,7 +216,7 @@
 		{#if hasSrc}
 			<img
 				{@attach trackImageLoad}
-				class={styles.image()}
+				class={zoomOutLayout !== null ? 'absolute max-w-none' : styles.image()}
 				style={imageStyle}
 				src={displaySrc}
 				{alt}

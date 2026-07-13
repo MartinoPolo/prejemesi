@@ -5,9 +5,10 @@
 	import { Slider } from '$lib/components/base/slider/index.js';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import {
-		IMAGE_ZOOM_MIN,
+		FULL_CROP_RECT,
 		IMAGE_ZOOM_MAX,
 		centeredCropRect,
+		containZoomForAspect,
 		cropRectToFocalZoom,
 		fitCropRectToAspect,
 		normalizedCropAspect,
@@ -15,6 +16,11 @@
 		zoomCropRect,
 		type ImageCropRect,
 	} from '$lib/modules/images/index.js';
+	import {
+		resolveFrameFill,
+		IMAGE_TOKEN_SCOPES,
+		type ImageTokenScope,
+	} from '$lib/components/derived/image-frame/index.js';
 
 	interface Props {
 		/** Source image being cropped. */
@@ -35,6 +41,10 @@
 		cropRect: ImageCropRect;
 		/** Notified on USER edits only (drag, zoom, keyboard, reset) – never on programmatic aspect snaps. */
 		onchange?: (rect: ImageCropRect) => void;
+		/** Letterbox fill shown where a zoomed-out window overhangs the image (tier 1). */
+		fillColor?: string | null;
+		/** Scopes the tier-2 letterbox fill token, mirroring ImageFrame (WYSIWYG). */
+		tokenScope?: ImageTokenScope;
 		class?: string;
 	}
 
@@ -46,11 +56,14 @@
 		realSizeText,
 		cropRect = $bindable(),
 		onchange,
+		fillColor = null,
+		tokenScope = IMAGE_TOKEN_SCOPES.global,
 		class: className,
 	}: Props = $props();
 
 	/** Padding between the viewport edge and the crop window. */
 	const WINDOW_PAD = 16;
+	const SLIDER_STEP = 5;
 	const WHEEL_ZOOM_STEP = 0.1;
 	const KEYBOARD_PAN_FRACTION = 0.05;
 	const RECT_EPSILON = 1e-3;
@@ -73,6 +86,18 @@
 
 	/** Normalized (0..1 space) aspect the crop rect is locked to. */
 	const normAspect = $derived(normalizedCropAspect(targetAspect, naturalRatio ?? 1));
+
+	// Zoom-out floor: the whole image fits the window exactly at the contain zoom,
+	// so the slider stops there (#116 round 2 – never white space on both axes).
+	// The slider minimum stays on the 5 %-step grid anchored at 100 % and never
+	// dips below the contain zoom.
+	const containZoom = $derived(containZoomForAspect(normAspect));
+	const sliderMinPercent = $derived(
+		100 - SLIDER_STEP * Math.floor((100 - Math.ceil(containZoom * 100)) / SLIDER_STEP),
+	);
+
+	/** Letterbox fill behind the window, identical to the renderer's frame fill. */
+	const windowFill = $derived(resolveFrameFill({ fillColor, tokenScope }));
 
 	// The bright window: largest target-aspect box that fits the viewport (centered).
 	const cropWindow = $derived.by(() => {
@@ -219,13 +244,18 @@
 
 	// Snap the bound rect to the active target's aspect once the image is measured
 	// or when the target switches. Persisted per-target rects already match and pass
-	// through untouched; legacy rects get re-shaped around their center (#116 D5).
+	// through untouched; other rects get re-shaped around their center preserving
+	// their extent (#116 D5 – since round 2 an extent wider than the image restores
+	// as a zoomed-out letterbox framing instead of being cropped away). The identity
+	// rect is the "no framing yet" seed and snaps to the centered cover default (D1).
 	// Programmatic – does not fire `onchange`.
 	$effect(() => {
 		if (!isReady) {
 			return;
 		}
-		const snapped = fitCropRectToAspect(cropRect, normAspect);
+		const snapped = rectsClose(cropRect, FULL_CROP_RECT)
+			? centeredCropRect(normAspect)
+			: fitCropRectToAspect(cropRect, normAspect);
 		if (!rectsClose(snapped, cropRect)) {
 			cropRect = snapped;
 		}
@@ -279,6 +309,14 @@
 		onpointerdown={beginDrag}
 		onkeydown={handleKeydown}
 	>
+		{#if isReady && cropWindow !== null}
+			<!-- Letterbox fill behind the image: where a zoomed-out window overhangs
+			     the image, the same fill the renderer letterboxes with shows through. -->
+			<div
+				class="pointer-events-none absolute"
+				style="left: {cropWindow.left}px; top: {cropWindow.top}px; width: {cropWindow.width}px; height: {cropWindow.height}px; background: {windowFill};"
+			></div>
+		{/if}
 		<img
 			{src}
 			{alt}
@@ -331,9 +369,9 @@
 		<Slider
 			class="flex-1"
 			value={Math.round(zoom * 100)}
-			min={IMAGE_ZOOM_MIN * 100}
+			min={sliderMinPercent}
 			max={IMAGE_ZOOM_MAX * 100}
-			step={5}
+			step={SLIDER_STEP}
 			disabled={!isReady}
 			onValueChange={(value: number) => setZoom(value / 100)}
 			aria-label={m.image_crop_zoom_label()}

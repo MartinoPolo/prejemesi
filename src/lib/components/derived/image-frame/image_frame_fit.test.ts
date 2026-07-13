@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+	coverWindowLayout,
 	resolveAutoFit,
 	resolveFrameFill,
 	AUTO_CONTAIN_RATIO_THRESHOLD,
@@ -41,6 +42,72 @@ describe('resolveAutoFit', () => {
 		expect(resolveAutoFit(Number.NaN, 1)).toBe(IMAGE_FIT_MODES.coverCrop);
 		expect(resolveAutoFit(1, 0)).toBe(IMAGE_FIT_MODES.coverCrop);
 		expect(resolveAutoFit(1, Number.POSITIVE_INFINITY)).toBe(IMAGE_FIT_MODES.coverCrop);
+	});
+});
+
+describe('coverWindowLayout', () => {
+	it('renders the contain framing at the contain zoom (letterbox on exactly one axis)', () => {
+		// Square image in a 200×100 box: normalized aspect 2, contain zoom 0.5.
+		// The whole 100×100 image sits centered with 50px fill bars left and right.
+		const layout = coverWindowLayout({
+			focal: { x: 50, y: 50 },
+			zoom: 0.5,
+			boxWidth: 200,
+			boxHeight: 100,
+			naturalRatio: 1,
+		});
+		expect(layout).toEqual({ left: 50, top: 0, width: 100, height: 100 });
+	});
+
+	it('pins the image to the window edge for an edge focal point', () => {
+		const layout = coverWindowLayout({
+			focal: { x: 0, y: 50 },
+			zoom: 0.5,
+			boxWidth: 200,
+			boxHeight: 100,
+			naturalRatio: 1,
+		});
+		// Focal 0% places the image flush with the window's left edge.
+		expect(layout).toEqual({ left: 0, top: 0, width: 100, height: 100 });
+	});
+
+	it('keeps the covered axis covered between contain and cover zooms', () => {
+		// zoom 0.8 on the same geometry: horizontal letterbox, vertical overflow.
+		const layout = coverWindowLayout({
+			focal: { x: 50, y: 50 },
+			zoom: 0.8,
+			boxWidth: 200,
+			boxHeight: 100,
+			naturalRatio: 1,
+		});
+		expect(layout).not.toBeNull();
+		expect(layout!.width).toBeCloseTo(160, 6);
+		expect(layout!.height).toBeCloseTo(160, 6);
+		expect(layout!.left).toBeCloseTo(20, 6);
+		// Vertical axis still overflows the 100px box (no fill on that axis).
+		expect(layout!.top).toBeLessThan(0);
+		expect(layout!.top + layout!.height).toBeGreaterThan(100);
+	});
+
+	it('returns null for unmeasured or degenerate geometry', () => {
+		expect(
+			coverWindowLayout({
+				focal: { x: 50, y: 50 },
+				zoom: 0.5,
+				boxWidth: 0,
+				boxHeight: 100,
+				naturalRatio: 1,
+			}),
+		).toBeNull();
+		expect(
+			coverWindowLayout({
+				focal: { x: 50, y: 50 },
+				zoom: 0.5,
+				boxWidth: 200,
+				boxHeight: 100,
+				naturalRatio: Number.NaN,
+			}),
+		).toBeNull();
 	});
 });
 

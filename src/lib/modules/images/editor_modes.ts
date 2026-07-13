@@ -12,7 +12,7 @@
 
 import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
 import { imageMetaToFrameProps } from './crop.js';
-import { IMAGE_ZOOM_MIN, type ImageMetadata } from './types.js';
+import { IMAGE_ZOOM_BASE, type ImageMetadata } from './types.js';
 
 export const IMAGE_EDITOR_MODES = {
 	fill: 'fill',
@@ -75,7 +75,7 @@ export function slotEditorModeFromMeta(meta: ImageMetadata | null | undefined): 
 	}
 	const { focal, zoom } = imageMetaToFrameProps(meta);
 	const isCentered =
-		Math.abs(zoom - IMAGE_ZOOM_MIN) < CENTERED_ZOOM_EPSILON &&
+		Math.abs(zoom - IMAGE_ZOOM_BASE) < CENTERED_ZOOM_EPSILON &&
 		Math.abs(focal.x - 50) < CENTERED_FOCAL_EPSILON &&
 		Math.abs(focal.y - 50) < CENTERED_FOCAL_EPSILON;
 	return isCentered ? IMAGE_EDITOR_MODES.fill : IMAGE_EDITOR_MODES.manual;
@@ -87,7 +87,7 @@ export function fillImageMeta(bgColor: string | null = null): ImageMetadata {
 		fitMode: IMAGE_FIT_MODES.coverCrop,
 		cropRect: null,
 		focal: { x: 50, y: 50 },
-		zoom: IMAGE_ZOOM_MIN,
+		zoom: IMAGE_ZOOM_BASE,
 		bgColor,
 	};
 }

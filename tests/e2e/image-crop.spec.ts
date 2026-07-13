@@ -21,7 +21,9 @@ import {
  * The #116 follow-up three-mode model (Fill / Whole picture / Manual) is covered
  * too: Whole picture letterboxes both axes on the real card surface, preview
  * tiles and wheel gestures promote to Manual, and the modal footer stays pinned
- * while the form body scrolls.
+ * while the form body scrolls. Round 2 adds the floating card + merged square
+ * tiles in the image column and manual zoom-out below 100 % (letterboxed on
+ * exactly one axis) surviving to the real card surface.
  */
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
@@ -117,33 +119,34 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await uploaded;
 		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
-		// Preview tiles render at the true aspect of their real surfaces (REQ-7; F3 fix:
-		// the detail tile is ~1:2, not the pre-#116 3:4 claim).
+		// The two floating preview tiles (round 2: card + ONE merged square tile for
+		// list + reservation) overlay the image column and render at the true aspect
+		// of their real surfaces (REQ-7).
 		await expectAspect(
 			dialog.getByTestId('gift-preview-card'),
 			GIFT_CROP_TARGET_SPECS.card.aspect,
-			FLUID_TOLERANCE,
+			FIXED_TOLERANCE,
 		);
 		await expectAspect(
-			dialog.getByTestId('gift-preview-list'),
+			dialog.getByTestId('gift-preview-square'),
 			GIFT_CROP_TARGET_SPECS.square.aspect,
 			FIXED_TOLERANCE,
 		);
-		await expectAspect(
-			dialog.getByTestId('gift-preview-detail'),
-			GIFT_CROP_TARGET_SPECS.detail.aspect,
-			FIXED_TOLERANCE,
-		);
-		await expectAspect(
-			dialog.getByTestId('gift-preview-reservation'),
-			GIFT_CROP_TARGET_SPECS.square.aspect,
-			FIXED_TOLERANCE,
+		// The floats live INSIDE the image column, not in the form column.
+		const imageColumnBox = await dialog.getByTestId('gift-image-column').boundingBox();
+		const cardTileBox = await dialog.getByTestId('gift-preview-card').boundingBox();
+		expect(imageColumnBox).not.toBeNull();
+		expect(cardTileBox).not.toBeNull();
+		expect(cardTileBox!.x).toBeGreaterThanOrEqual(imageColumnBox!.x);
+		expect(cardTileBox!.x + cardTileBox!.width).toBeLessThanOrEqual(
+			imageColumnBox!.x + imageColumnBox!.width + 1,
 		);
 
 		// Whole picture letterboxes BOTH axes: the preview image renders with
 		// object-fit contain instead of cropping the height (#116 follow-up).
 		await dialog.getByRole('radio', { name: /Celý obrázek/ }).click();
-		const columnImage = dialog.getByTestId('gift-image-column').locator('img');
+		// Scoped to the big preview – the floating tiles add their own img elements.
+		const columnImage = dialog.getByTestId('image-fit-preview').locator('img');
 		await expect(async () => {
 			expect(await columnImage.evaluate((el) => getComputedStyle(el).objectFit)).toBe(
 				'contain',
@@ -152,21 +155,21 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 
 		// Clicking a preview tile jumps to Manual mode with that target active and
 		// exposes the per-target picker plus the WYSIWYG stage.
-		await dialog.getByTestId('gift-preview-detail').click();
+		await dialog.getByTestId('gift-preview-square').click();
 		await expect(dialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);
-		await expect(dialog.getByRole('radio', { name: /^Detail$/ })).toHaveAttribute(
+		await expect(dialog.getByRole('radio', { name: /Seznam a rezervace/ })).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);
 		const stageWindow = dialog.getByTestId('crop-stage-window');
-		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.detail.aspect, FIXED_TOLERANCE);
+		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
 
 		// Switching targets visibly reshapes the stage window (REQ-2).
-		await dialog.getByRole('radio', { name: /Seznam a rezervace/ }).click();
-		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
+		await dialog.getByRole('radio', { name: /^Detail$/ }).click();
+		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.detail.aspect, FIXED_TOLERANCE);
 
 		// Draw a manual card crop: zoom in (slider +4 × step 5 = 120 %), then pan.
 		await dialog.getByRole('radio', { name: /Karta dárku/ }).click();
@@ -241,6 +244,38 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			expect(await wholeCardImage.evaluate((el) => getComputedStyle(el).objectFit)).toBe(
 				'contain',
 			);
+		}).toPass({ timeout: 10_000 });
+
+		// Zoom OUT below 100 % (round 2): reopen (Whole picture round-trips), switch
+		// to Manual and pull the slider under the cover baseline – the readout drops
+		// below 100 and the saved card letterboxes the image inside its frame.
+		await expect(async () => {
+			await page.getByText(giftName, { exact: true }).first().click();
+			await expect(editDialog).toBeVisible({ timeout: 2_000 });
+		}).toPass({ timeout: 15_000 });
+		await expect(editDialog.getByRole('radio', { name: /Celý obrázek/ })).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
+		await editDialog.getByRole('radio', { name: /Ručně/ }).click();
+		await expect(editDialog.getByTestId('crop-stage')).toBeVisible();
+		const zoomOutSlider = editDialog.getByRole('slider');
+		await zoomOutSlider.focus();
+		for (let step = 0; step < 4; step++) {
+			await zoomOutSlider.press('ArrowLeft');
+		}
+		await expect(editDialog.getByText('80 %')).toBeVisible();
+		await editDialog.getByRole('button', { name: 'Uložit' }).click();
+		await expect(editDialog).not.toBeVisible({ timeout: 10_000 });
+		const letterboxedImage = page.getByRole('img', { name: giftName }).first();
+		await expect(async () => {
+			const widths = await letterboxedImage.evaluate((el) => ({
+				image: el.getBoundingClientRect().width,
+				frame: el.parentElement!.getBoundingClientRect().width,
+			}));
+			// zoom 0.8 → the image spans 80 % of the frame width, fill on the sides.
+			expect(widths.image).toBeLessThan(widths.frame * 0.9);
+			expect(widths.image).toBeGreaterThan(0);
 		}).toPass({ timeout: 10_000 });
 
 		await page.context().close();

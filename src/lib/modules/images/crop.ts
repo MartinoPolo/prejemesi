@@ -7,16 +7,19 @@
  * window equals the drawn rectangle exactly. Kept framework-free so it is
  * unit-testable in isolation.
  *
- * Renderer geometry (cover-crop): `object-fit: cover` + `object-position: f%`
- * + `scale(zoom)` with `transform-origin: f%` shows a source window of
- * normalized size `w = 1/zoom` on the bounding axis, positioned at
- * `origin = f% * (1 - size)` per axis. All conversions below are exact
- * inverses of that mapping.
+ * Renderer geometry (cover-crop): the visible source window has normalized size
+ * `1/zoom` on the bounding axis and per-axis origin `f% * (1 - size)`. All
+ * conversions below are exact inverses of that mapping. Since the #116 round-2
+ * zoom-out the window may EXTEND PAST the image on one axis (size > 1, negative
+ * origin): the overhang renders as letterbox fill. The invariant is
+ * `min(w, h) <= 1` – the image always spans the window fully on at least one
+ * axis, so fill never appears on both axes at once.
  */
 
 import { IMAGE_FIT_MODES, type ImageFitMode } from './fit_modes.js';
 import {
-	IMAGE_ZOOM_MIN,
+	IMAGE_ZOOM_BASE,
+	IMAGE_ZOOM_OUT_MIN,
 	IMAGE_ZOOM_MAX,
 	type GiftCropTarget,
 	type ImageCropRect,
@@ -31,16 +34,33 @@ export const FULL_CROP_RECT: ImageCropRect = { x: 0, y: 0, w: 1, h: 1 };
 
 function clampZoom(zoom: number): number {
 	if (!Number.isFinite(zoom)) {
-		return IMAGE_ZOOM_MIN;
+		return IMAGE_ZOOM_BASE;
 	}
-	return Math.min(Math.max(zoom, IMAGE_ZOOM_MIN), IMAGE_ZOOM_MAX);
+	return Math.min(Math.max(zoom, IMAGE_ZOOM_OUT_MIN), IMAGE_ZOOM_MAX);
 }
 
 const clamp01 = (value: number) => Math.min(Math.max(value, 0), 1);
 
-/** Clamp a rect origin so the rect stays inside the unit square. */
+/**
+ * Clamp a rect origin so the image always covers the window's shorter side:
+ * a window inside the image (size <= 1) stays inside the unit square, while an
+ * oversized window (size > 1, zoomed out) keeps the image inside ITSELF – the
+ * origin may go negative down to `1 - size` but the image never leaves the window.
+ */
 const clampOrigin = (origin: number, size: number) =>
-	Math.min(Math.max(origin, 0), Math.max(1 - size, 0));
+	Math.min(Math.max(origin, Math.min(0, 1 - size)), Math.max(1 - size, 0));
+
+/**
+ * The zoom that shows the ENTIRE image inside a window of the given normalized
+ * aspect (white space on exactly one axis unless the aspects match). This is the
+ * per-aspect zoom-out floor: below it white space would appear on both axes.
+ */
+export function containZoomForAspect(normalizedAspect: number): number {
+	if (!Number.isFinite(normalizedAspect) || normalizedAspect <= 0) {
+		return IMAGE_ZOOM_BASE;
+	}
+	return Math.max(1 / Math.max(normalizedAspect, 1 / normalizedAspect), IMAGE_ZOOM_OUT_MIN);
+}
 
 /**
  * Aspect ratio of a crop rectangle in NORMALIZED (0..1) space for a target
@@ -62,7 +82,8 @@ export function normalizedCropAspect(targetAspect: number, imageRatio: number): 
 
 /**
  * Normalized rect size for a zoom level at a normalized aspect. Zoom binds the
- * axis the target does not fully cover, so `max(w, h) = 1 / zoom` always holds.
+ * axis the target does not fully cover, so `max(w, h) = 1 / zoom` always holds;
+ * zooms below 1 make that side exceed the image (letterboxed overhang).
  */
 function rectSizeForZoom(normalizedAspect: number, zoom: number): { w: number; h: number } {
 	const z = clampZoom(zoom);
@@ -76,7 +97,7 @@ function rectSizeForZoom(normalizedAspect: number, zoom: number): { w: number; h
  * target's aspect – identical to what a centered object-fit cover renders.
  */
 export function centeredCropRect(normalizedAspect: number): ImageCropRect {
-	const { w, h } = rectSizeForZoom(normalizedAspect, IMAGE_ZOOM_MIN);
+	const { w, h } = rectSizeForZoom(normalizedAspect, IMAGE_ZOOM_BASE);
 	return { x: (1 - w) / 2, y: (1 - h) / 2, w, h };
 }
 
@@ -90,13 +111,18 @@ export function panCropRect(rect: ImageCropRect, dx: number, dy: number): ImageC
 	};
 }
 
-/** Resize a crop rect to a zoom level around its current center. */
+/**
+ * Resize a crop rect to a zoom level around its current center. The zoom floor
+ * is the aspect's contain zoom, so zooming out stops exactly when the whole
+ * image is visible (never white space on both axes).
+ */
 export function zoomCropRect(
 	rect: ImageCropRect,
 	normalizedAspect: number,
 	zoom: number,
 ): ImageCropRect {
-	const { w, h } = rectSizeForZoom(normalizedAspect, zoom);
+	const flooredZoom = Math.max(zoom, containZoomForAspect(normalizedAspect));
+	const { w, h } = rectSizeForZoom(normalizedAspect, flooredZoom);
 	const centerX = rect.x + rect.w / 2;
 	const centerY = rect.y + rect.h / 2;
 	return { x: clampOrigin(centerX - w / 2, w), y: clampOrigin(centerY - h / 2, h), w, h };
@@ -115,34 +141,41 @@ export function fitCropRectToAspect(rect: ImageCropRect, normalizedAspect: numbe
 	}
 	let w = Math.max(rect.w, rect.h * normalizedAspect);
 	let h = w / normalizedAspect;
-	// Shrink to fit the unit square, then grow to respect the renderer's max zoom.
-	const shrink = Math.min(1, 1 / w, 1 / h);
-	w *= shrink;
-	h *= shrink;
-	const grow = Math.max(1, 1 / (IMAGE_ZOOM_MAX * Math.max(w, h)));
-	w = Math.min(w * grow, 1);
-	h = Math.min(h * grow, 1);
+	// Invariant min(w, h) <= 1: the image must span the window on at least one
+	// axis (zoom-out letterboxes one axis only), then respect both zoom bounds.
+	const shrinkToInvariant = Math.min(1, 1 / Math.min(w, h));
+	w *= shrinkToInvariant;
+	h *= shrinkToInvariant;
+	const shrinkToZoomFloor = Math.min(1, 1 / (IMAGE_ZOOM_OUT_MIN * Math.max(w, h)));
+	w *= shrinkToZoomFloor;
+	h *= shrinkToZoomFloor;
+	const growToMaxZoom = Math.max(1, 1 / (IMAGE_ZOOM_MAX * Math.max(w, h)));
+	w *= growToMaxZoom;
+	h *= growToMaxZoom;
 	const centerX = rect.x + rect.w / 2;
 	const centerY = rect.y + rect.h / 2;
 	return { x: clampOrigin(centerX - w / 2, w), y: clampOrigin(centerY - h / 2, h), w, h };
 }
 
 /**
- * Convert a normalized crop rectangle (0..1) into the renderer's focal point
- * (0..100%) + zoom. Exact inverse of the cover-crop window mapping: per axis
- * the window origin is `focal% * (1 - size)`, so `focal = origin / (1 - size)`;
- * zoom binds the larger normalized side. Lossless when the rect matches the
- * consumer surface's aspect (guaranteed for rects drawn since #116).
+ * Convert a normalized crop rectangle into the renderer's focal point (0..100%)
+ * + zoom. Exact inverse of the cover-crop window mapping: per axis the window
+ * origin is `focal% * (1 - size)`, so `focal = origin / (1 - size)` – for an
+ * oversized (zoomed-out) axis both terms are negative and the same formula
+ * positions the image within the letterboxed window. Zoom binds the larger
+ * normalized side. Lossless when the rect matches the consumer surface's aspect
+ * (guaranteed for rects drawn since #116).
  */
 export function cropRectToFocalZoom(rect: ImageCropRect): {
 	focal: ImageFocalPoint;
 	zoom: number;
 } {
 	if (rect.w <= 0 || rect.h <= 0) {
-		return { focal: { ...CENTERED_FOCAL }, zoom: IMAGE_ZOOM_MIN };
+		return { focal: { ...CENTERED_FOCAL }, zoom: IMAGE_ZOOM_BASE };
 	}
+	// At size 1 the axis is fully spanned and every focal renders identically.
 	const focalCoord = (origin: number, size: number): number =>
-		size >= 1 ? 50 : clamp01(origin / (1 - size)) * 100;
+		Math.abs(1 - size) < 1e-9 ? 50 : clamp01(origin / (1 - size)) * 100;
 	const focal: ImageFocalPoint = {
 		x: focalCoord(rect.x, rect.w),
 		y: focalCoord(rect.y, rect.h),
@@ -211,7 +244,7 @@ export function imageMetaToFrameProps(meta: ImageMetadata | null): ImageFramePro
 		return {
 			fitMode: IMAGE_FIT_MODES.auto,
 			focal: { ...CENTERED_FOCAL },
-			zoom: IMAGE_ZOOM_MIN,
+			zoom: IMAGE_ZOOM_BASE,
 			fillColor: null,
 		};
 	}
@@ -225,7 +258,7 @@ export function imageMetaToFrameProps(meta: ImageMetadata | null): ImageFramePro
 		({ focal, zoom } = cropRectToFocalZoom(meta.cropRect));
 	} else {
 		focal = meta.focal ?? { ...CENTERED_FOCAL };
-		zoom = clampZoom(meta.zoom ?? IMAGE_ZOOM_MIN);
+		zoom = clampZoom(meta.zoom ?? IMAGE_ZOOM_BASE);
 	}
 
 	return {

@@ -6,6 +6,8 @@
  */
 
 import { IMAGE_FIT_MODES, type ImageFitMode } from '$lib/modules/images/fit_modes.js';
+import { focalZoomToWindowRect, normalizedCropAspect } from '$lib/modules/images/crop.js';
+import type { ImageFocalPoint } from '$lib/modules/images/types.js';
 
 export { IMAGE_FIT_MODES, type ImageFitMode };
 
@@ -50,6 +52,48 @@ export function resolveAutoFit(imageRatio: number, boxRatio: number): ResolvedIm
 	return divergence > AUTO_CONTAIN_RATIO_THRESHOLD
 		? IMAGE_FIT_MODES.containPadded
 		: IMAGE_FIT_MODES.coverCrop;
+}
+
+/** Pixel geometry of an explicitly positioned image inside its frame box. */
+export interface CoverWindowLayout {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+/**
+ * Explicit pixel layout for a cover-crop frame whose zoom is below the 100 %
+ * cover baseline (#116 round 2). CSS `object-fit: cover` clips the image to the
+ * element box, so `scale(zoom < 1)` would shrink the already-cropped view with
+ * fill on BOTH axes instead of revealing more of the image. Positioning the
+ * image explicitly renders the true source window: the box letterboxes on
+ * exactly one axis (the frame fill shows through) while the other stays covered.
+ * Returns null until the box and the image's natural ratio are measured.
+ */
+export function coverWindowLayout(input: {
+	focal: ImageFocalPoint;
+	zoom: number;
+	boxWidth: number;
+	boxHeight: number;
+	naturalRatio: number;
+}): CoverWindowLayout | null {
+	const { focal, zoom, boxWidth, boxHeight, naturalRatio } = input;
+	if (boxWidth <= 0 || boxHeight <= 0 || !Number.isFinite(naturalRatio) || naturalRatio <= 0) {
+		return null;
+	}
+	const rect = focalZoomToWindowRect(
+		focal,
+		zoom,
+		normalizedCropAspect(boxWidth / boxHeight, naturalRatio),
+	);
+	if (rect.w <= 0) {
+		return null;
+	}
+	const width = boxWidth / rect.w;
+	const height = width / naturalRatio;
+	// `0 -` (instead of unary minus) keeps a zero origin as +0 for exact equality.
+	return { left: 0 - rect.x * width, top: 0 - rect.y * height, width, height };
 }
 
 /**

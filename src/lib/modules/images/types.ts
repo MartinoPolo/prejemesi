@@ -18,8 +18,15 @@ export const IMAGE_FIT_MODE_VALUES = [
 	IMAGE_FIT_MODES.coverCrop,
 ] as const satisfies readonly ImageFitMode[];
 
-/** Zoom factor bounds for `cover-crop` (1 = 100%, 3 = 300%). */
-export const IMAGE_ZOOM_MIN = 1;
+/**
+ * Zoom factor range for `cover-crop` (1 = 100 % cover baseline, 3 = 300 %).
+ * Zooming OUT below the baseline (#116 round 2) letterboxes the image inside
+ * the target window on ONE axis; the per-aspect floor is the contain zoom
+ * (`containZoomForAspect`), and `IMAGE_ZOOM_OUT_MIN` is the absolute floor that
+ * keeps degenerate aspect pairs (≥20× divergence) from persisting useless zooms.
+ */
+export const IMAGE_ZOOM_BASE = 1;
+export const IMAGE_ZOOM_OUT_MIN = 0.05;
 export const IMAGE_ZOOM_MAX = 3;
 
 /** Normalized crop rectangle in 0..1 space (origin + size). */
@@ -76,14 +83,21 @@ export interface ImageMetadata {
 	targets?: Partial<Record<GiftCropTarget, ImageTargetCrop>>;
 }
 
-const NormalizedSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(1));
 const PercentSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(100));
 
+// A zoomed-out window may extend past the image on one axis (#116 round 2):
+// its size grows up to 1/IMAGE_ZOOM_OUT_MIN and its origin goes negative down
+// to `1 - size`. The editors keep `min(w, h) <= 1`; the schema only bounds the
+// per-field ranges.
+const MAX_RECT_SIZE = 1 / IMAGE_ZOOM_OUT_MIN;
+const RectOriginSchema = v.pipe(v.number(), v.minValue(1 - MAX_RECT_SIZE), v.maxValue(1));
+const RectSizeSchema = v.pipe(v.number(), v.minValue(0), v.maxValue(MAX_RECT_SIZE));
+
 const ImageCropRectSchema = v.object({
-	x: NormalizedSchema,
-	y: NormalizedSchema,
-	w: NormalizedSchema,
-	h: NormalizedSchema,
+	x: RectOriginSchema,
+	y: RectOriginSchema,
+	w: RectSizeSchema,
+	h: RectSizeSchema,
 });
 
 const ImageFocalPointSchema = v.object({
@@ -91,7 +105,7 @@ const ImageFocalPointSchema = v.object({
 	y: PercentSchema,
 });
 
-const ZoomSchema = v.pipe(v.number(), v.minValue(IMAGE_ZOOM_MIN), v.maxValue(IMAGE_ZOOM_MAX));
+const ZoomSchema = v.pipe(v.number(), v.minValue(IMAGE_ZOOM_OUT_MIN), v.maxValue(IMAGE_ZOOM_MAX));
 
 const ImageTargetCropSchema = v.object({
 	cropRect: ImageCropRectSchema,
@@ -119,7 +133,7 @@ export const DEFAULT_IMAGE_METADATA = {
 	fitMode: IMAGE_FIT_MODES.auto,
 	cropRect: null,
 	focal: { x: 50, y: 50 },
-	zoom: IMAGE_ZOOM_MIN,
+	zoom: IMAGE_ZOOM_BASE,
 	bgColor: null,
 } as const satisfies ImageMetadata;
 

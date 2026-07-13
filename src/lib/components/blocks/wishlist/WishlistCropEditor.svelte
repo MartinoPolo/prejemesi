@@ -242,6 +242,7 @@
 					targetAspect={WISHLIST_SLOT_SPECS[activeSlot].aspect}
 					targetLabel={slotLabels[activeSlot]()}
 					realSizeText={WISHLIST_SLOT_SPECS[activeSlot].realSizeText}
+					tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 					bind:cropRect={slotState[activeSlot].cropRect}
 					onchange={() => markDirty(activeSlot)}
 				/>

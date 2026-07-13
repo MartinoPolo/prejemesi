@@ -41,43 +41,28 @@
 		class: className,
 	}: Props = $props();
 
-	// Each tile renders the TRUE shape and (where practical) the true size of its
-	// real consumer surface (#116 REQ-7), and its own per-target framing, so the
-	// strip never lies about how a crop will actually look. Aspect data comes from
-	// the shared crop-target registry (REQ-6); real boxes:
-	//   card        → GiftCard imageArea `h-32 w-full` (fluid width, ~356px @1280)
-	//   list        → GiftListItem `size-16` (real size)
-	//   detail      → GiftDetailForm image column (~403×806 @1280, shown at ~1/3)
-	//   reservation → ReserveModal `size-12` (real size)
+	// Two floating live previews rendered over/under the big detail preview (#116
+	// round 2): the wide card tile and ONE merged square tile – the list thumbnail
+	// and the reservation modal share the `square` crop target, so separate tiles
+	// only duplicated the same framing. The big image-column preview IS the detail
+	// target, so detail needs no tile. Aspect data comes from the shared crop-target
+	// registry (REQ-6); each tile renders its own per-target framing so the strip
+	// never lies about how a crop will actually look.
 	const TILES = [
 		{
 			key: 'card',
 			target: 'card',
 			label: m.gift_image_slot_card,
-			// Explicit width: inside the flex-wrap strip a percentage width is
-			// indefinite and aspect-ratio could not resolve the tile's height.
-			sizing: 'w-52',
+			// Explicit width: percentage widths are indefinite in flex rows, so
+			// aspect-ratio could not resolve the tile's height.
+			sizing: 'w-40',
 			cssAspect: GIFT_CROP_TARGET_SPECS.card.cssAspect,
 		},
 		{
-			key: 'list',
+			key: 'square',
 			target: 'square',
-			label: m.gift_image_slot_list,
-			sizing: 'size-16',
-			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
-		},
-		{
-			key: 'detail',
-			target: 'detail',
-			label: m.gift_image_slot_detail,
-			sizing: 'h-56',
-			cssAspect: GIFT_CROP_TARGET_SPECS.detail.cssAspect,
-		},
-		{
-			key: 'reservation',
-			target: 'square',
-			label: m.gift_image_slot_reservation,
-			sizing: 'size-12',
+			label: m.gift_image_target_square,
+			sizing: 'size-14',
 			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
 		},
 	] as const satisfies readonly {
@@ -89,15 +74,23 @@
 	}[];
 </script>
 
-<div class={cn('flex flex-col gap-2', className)}>
-	<span class="text-xs font-medium tracking-wide text-foreground-subtle uppercase">
-		{m.gift_image_preview_strip_label()}
-	</span>
-	<ul class="flex flex-wrap items-end gap-x-4 gap-y-3">
-		{#each TILES as tile (tile.key)}
-			{@const frame = giftTargetFrameProps(imageMeta, tile.target)}
-			<li class="flex min-w-0 flex-col gap-1.5">
-				{#snippet tileFrame()}
+<ul class={cn('pointer-events-none flex items-end justify-center gap-3', className)}>
+	{#each TILES as tile (tile.key)}
+		{@const frame = giftTargetFrameProps(imageMeta, tile.target)}
+		<li class="min-w-0">
+			{#snippet tileFace()}
+				<!-- The frame is absolutely positioned: a %-height child inside an
+				     aspect-ratio box is circular, so the image's intrinsic height
+				     would otherwise stretch the tile past its true aspect. -->
+				<div
+					class={cn(
+						'relative overflow-hidden rounded-md border-2 border-ink bg-card shadow-[3px_3px_0_var(--hard-shadow)]',
+						tile.sizing,
+						activeTarget === tile.target && 'ring-2 ring-primary',
+					)}
+					style:aspect-ratio={tile.cssAspect}
+					data-testid="gift-preview-{tile.key}"
+				>
 					<ImageFrame
 						class="absolute inset-0"
 						{src}
@@ -109,38 +102,28 @@
 						{tokenScope}
 						{loading}
 					/>
-				{/snippet}
-				<!-- The frame is absolutely positioned: a %-height child inside an
-				     aspect-ratio box is circular, so the image's intrinsic height
-				     would otherwise stretch the tile past its true aspect. A tile is
-				     a button when selectable (clicking jumps to Manual for its target). -->
-				{#if onTileSelect !== undefined}
-					<button
-						type="button"
-						onclick={() => onTileSelect?.(tile.target)}
-						aria-pressed={activeTarget === tile.target}
-						aria-label={tile.label()}
-						class={cn(
-							'relative block cursor-pointer overflow-hidden rounded-md outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring',
-							tile.sizing,
-							activeTarget === tile.target && 'ring-2 ring-primary',
-						)}
-						style:aspect-ratio={tile.cssAspect}
-						data-testid="gift-preview-{tile.key}"
-					>
-						{@render tileFrame()}
-					</button>
-				{:else}
-					<div
-						class={cn('relative overflow-hidden rounded-md', tile.sizing)}
-						style:aspect-ratio={tile.cssAspect}
-						data-testid="gift-preview-{tile.key}"
-					>
-						{@render tileFrame()}
-					</div>
-				{/if}
-				<span class="text-xs text-foreground-subtle">{tile.label()}</span>
-			</li>
-		{/each}
-	</ul>
-</div>
+				</div>
+				<span
+					class="rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-semibold text-foreground"
+				>
+					{tile.label()}
+				</span>
+			{/snippet}
+			<!-- A tile is a button when selectable (clicking jumps to Manual for its target). -->
+			{#if onTileSelect !== undefined}
+				<button
+					type="button"
+					onclick={() => onTileSelect?.(tile.target)}
+					aria-pressed={activeTarget === tile.target}
+					class="pointer-events-auto flex cursor-pointer flex-col items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				>
+					{@render tileFace()}
+				</button>
+			{:else}
+				<div class="pointer-events-auto flex flex-col items-center gap-1">
+					{@render tileFace()}
+				</div>
+			{/if}
+		</li>
+	{/each}
+</ul>
