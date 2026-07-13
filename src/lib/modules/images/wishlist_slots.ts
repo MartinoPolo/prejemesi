@@ -11,7 +11,8 @@ import { imagePublicUrl } from './public_url.js';
 import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
 import { WISHLIST_EDITOR_SLOTS } from './crop_targets.js';
 import { fillImageMeta } from './editor_modes.js';
-import type { WishlistImageSlot, WishlistImageSlots } from './types.js';
+import { socialCropImageUrl } from './variants.js';
+import type { WishlistImageSlot, WishlistImageSlots, ImageFocalPoint } from './types.js';
 
 /**
  * Resolve a wishlist image object key to a client-loadable URL. Production
@@ -53,4 +54,36 @@ export function wishlistSlotToFrameProps(
 	slot: WishlistImageSlot,
 ): ImageFrameProps {
 	return imageMetaToFrameProps(slots?.[slot] ?? null);
+}
+
+/**
+ * Resolves the focal point the `social` slot was cropped to, falling back to
+ * the centered default when the owner never opened the crop editor for it.
+ * Reuses {@link wishlistSlotToFrameProps} so this stays in lockstep with every
+ * other slot consumer's fallback rule.
+ */
+export function socialSlotFocalPoint(
+	slots: WishlistImageSlots | null | undefined,
+): ImageFocalPoint {
+	return wishlistSlotToFrameProps(slots, 'social').focal;
+}
+
+/**
+ * Resolves the Open Graph / Twitter card image URL for a wishlist (issue
+ * #117): a fixed 1200×630 crop of the assigned image honoring the `social`
+ * slot's saved focal point, or the generic fallback preview when no image is
+ * assigned. `socialFallbackImageUrl` is the caller's already-absolute
+ * `SOCIAL_PREVIEW_IMAGE_URL` (kept out of this module to avoid a dependency on
+ * `$lib/config/site`).
+ */
+export function wishlistSocialImageUrl(
+	imageKey: string | null | undefined,
+	slots: WishlistImageSlots | null | undefined,
+	socialFallbackImageUrl: string,
+): string {
+	const imagePath = wishlistImageUrl(imageKey);
+	if (imagePath === null) {
+		return socialFallbackImageUrl;
+	}
+	return socialCropImageUrl(imagePath, socialSlotFocalPoint(slots)) ?? imagePath;
 }

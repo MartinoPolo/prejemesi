@@ -36,7 +36,7 @@
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
-	import { wishlistImageUrl } from '$lib/modules/images/index.js';
+	import { wishlistSocialImageUrl } from '$lib/modules/images/index.js';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
@@ -133,22 +133,33 @@
 		return `${SITE_URL}/w/${wishlist.shortId}`;
 	}
 
+	// OG/Twitter image (issue #117): a fixed-aspect crop honoring the `social` slot's saved
+	// focal point, so the crawler-visible preview matches what the owner framed in the crop
+	// editor instead of always serving the unmodified source image.
 	function getWishlistSocialImageUrl() {
-		const imagePath = wishlistImageUrl(wishlist.imageKey);
-		return imagePath === null ? SOCIAL_PREVIEW_IMAGE_URL : `${SITE_URL}${imagePath}`;
+		const url = wishlistSocialImageUrl(
+			wishlist.imageKey,
+			wishlist.imageSlots,
+			SOCIAL_PREVIEW_IMAGE_URL,
+		);
+		return url.startsWith('http') ? url : `${SITE_URL}${url}`;
 	}
 
 	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
 	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
-	// during async SSR and 500s. For-someone lists read „…pro {recipient}"; self lists keep the
-	// original wording, sourced from recipientDisplayName.
+	// during async SSR and 500s. Localized via Paraglide `m.*` (issue #117: previously a raw,
+	// unlocalized, diacritic-stripped template string) so both locales and Czech diacritics
+	// render correctly for crawlers. For-someone lists read „…pro {recipient}"; self lists read
+	// „…od {recipient}", both sourced from recipientDisplayName.
 	function getSocialDescription() {
 		if (wishlist.recipientUserId === null) {
 			return m.wishlist_og_description_recipient({
 				recipient: wishlist.recipientDisplayName,
 			});
 		}
-		return `Seznam prani od ${wishlist.recipientDisplayName}`;
+		return m.wishlist_og_description_self({
+			recipient: wishlist.recipientDisplayName,
+		});
 	}
 
 	// ── Remote data fetch ────────────────────────────────────────────────────

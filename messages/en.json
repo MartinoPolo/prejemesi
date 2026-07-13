@@ -346,6 +346,7 @@
 	"wishlist_managed_by_many": "Managed by {names}",
 	"wishlist_recipient_chip": "For {name}",
 	"wishlist_og_description_recipient": "Wishlist for {recipient}",
+	"wishlist_og_description_self": "Wishlist from {recipient}",
 	"wishlist_archived_banner": "Archived: the list is closed. New reservations are not possible.",
 	"wishlist_shared_banner": "List is shared: wish names are locked and wishes can't be removed, but you can still update their details. Changes are visible to everyone.",
 	"wishlist_reshare": "Share again",

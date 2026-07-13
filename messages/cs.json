@@ -346,6 +346,7 @@
 	"wishlist_managed_by_many": "Spravují {names}",
 	"wishlist_recipient_chip": "Pro {name}",
 	"wishlist_og_description_recipient": "Seznam přání pro {recipient}",
+	"wishlist_og_description_self": "Seznam přání od {recipient}",
 	"wishlist_archived_banner": "Archivováno: seznam je uzavřen. Nová rezervace není možná.",
 	"wishlist_shared_banner": "Seznam je sdílený: názvy přání jsou uzamčeny a přání nelze odebírat, ale jejich detaily stále upravovat. Změny jsou viditelné pro všechny.",
 	"wishlist_reshare": "Znovu sdílet",

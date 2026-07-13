@@ -1,13 +1,37 @@
-import { describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import * as v from 'valibot';
+
+// ── Hoisted mock state (available inside vi.mock factories) ─────────────────
+const { mockEnv } = vi.hoisted(() => {
+	const mockEnv: Record<string, string | undefined> = {};
+	return { mockEnv };
+});
+
+vi.mock('$env/dynamic/public', () => ({
+	env: new Proxy(mockEnv, {
+		get: (_target, prop: string) => mockEnv[prop],
+	}),
+}));
+
 import {
 	wishlistImageUrl,
 	createDefaultWishlistSlots,
 	wishlistSlotToFrameProps,
+	socialSlotFocalPoint,
+	wishlistSocialImageUrl,
 } from './wishlist_slots.js';
 import { WISHLIST_EDITOR_SLOTS, WISHLIST_SLOT_SPECS } from './crop_targets.js';
 import { WishlistImageSlotsSchema, type WishlistImageSlots } from './types.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
+
+const PUBLIC_BASE = 'https://images.example.com';
+const FALLBACK = 'https://prejemesi.cz/social-preview.png';
+
+beforeEach(() => {
+	for (const key of Object.keys(mockEnv)) {
+		delete mockEnv[key];
+	}
+});
 
 describe('wishlistImageUrl', () => {
 	it('returns null for an unset image key', () => {
@@ -105,5 +129,48 @@ describe('WISHLIST_SLOT_SPECS', () => {
 			const [w, h] = spec.cssAspect.split('/').map((part) => Number(part.trim()));
 			expect(w! / h!).toBeCloseTo(spec.aspect, 5);
 		}
+	});
+});
+
+describe('socialSlotFocalPoint', () => {
+	it('returns the centered default when no slots are set (issue #117)', () => {
+		expect(socialSlotFocalPoint(null)).toEqual({ x: 50, y: 50 });
+		expect(socialSlotFocalPoint(undefined)).toEqual({ x: 50, y: 50 });
+		expect(socialSlotFocalPoint({})).toEqual({ x: 50, y: 50 });
+	});
+
+	it("reads the social slot's own focal point, independent of other slots", () => {
+		const slots: WishlistImageSlots = {
+			card: { fitMode: IMAGE_FIT_MODES.coverCrop, focal: { x: 10, y: 10 }, zoom: 1 },
+			social: { fitMode: IMAGE_FIT_MODES.coverCrop, focal: { x: 80, y: 20 }, zoom: 1.5 },
+		};
+		expect(socialSlotFocalPoint(slots)).toEqual({ x: 80, y: 20 });
+	});
+});
+
+describe('wishlistSocialImageUrl', () => {
+	it('returns the fallback preview when no image is assigned (issue #117)', () => {
+		expect(wishlistSocialImageUrl(null, null, FALLBACK)).toBe(FALLBACK);
+		expect(wishlistSocialImageUrl(undefined, undefined, FALLBACK)).toBe(FALLBACK);
+		expect(wishlistSocialImageUrl('', {}, FALLBACK)).toBe(FALLBACK);
+	});
+
+	it("crops the assigned image to the social slot's saved focal point", () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+		const slots: WishlistImageSlots = {
+			social: { fitMode: IMAGE_FIT_MODES.coverCrop, focal: { x: 30, y: 70 }, zoom: 1 },
+		};
+
+		expect(wishlistSocialImageUrl('wishlists/a.jpg', slots, FALLBACK)).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.30x0.70,format=jpeg/wishlists/a.jpg`,
+		);
+	});
+
+	it('falls back to a centered crop when an image is assigned but the social slot is unset', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(wishlistSocialImageUrl('wishlists/a.jpg', {}, FALLBACK)).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.50x0.50,format=jpeg/wishlists/a.jpg`,
+		);
 	});
 });
