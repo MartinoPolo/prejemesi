@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { afterNavigate, replaceState, goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
@@ -584,6 +586,16 @@
 		}
 	}
 
+	// ── Delete handler (issue #120) ────────────────────────────────────────────
+	// The confirmation + deleteWishlist call live inside WishlistSettingsModal (danger-zone
+	// tab); this callback only handles what must happen on THIS page after a successful delete:
+	// refresh the dashboard queries so cards disappear without reload, then navigate away since
+	// the wishlist no longer exists.
+	async function handleWishlistDeleted() {
+		await refreshWishlistDashboards();
+		await goto(localizeInternalHref(resolve('/my-lists')));
+	}
+
 	// ── Palette handler (issue #102 REQ-5) ────────────────────────────────────
 
 	// Optimistic local update: the `data-palette` wrapper re-derives the whole token
@@ -836,6 +848,7 @@
 	{themeEmoji}
 	onsaved={refreshData}
 	onpaletteselect={handlePaletteSelect}
+	ondeleted={handleWishlistDeleted}
 />
 
 {#if canManage}

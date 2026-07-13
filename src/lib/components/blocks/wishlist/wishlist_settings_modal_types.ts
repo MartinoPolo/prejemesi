@@ -5,6 +5,7 @@ export const WISHLIST_SETTINGS_TABS = {
 	details: 'details',
 	appearance: 'appearance',
 	image: 'image',
+	danger: 'danger',
 } as const;
 
 export type WishlistSettingsTab =
