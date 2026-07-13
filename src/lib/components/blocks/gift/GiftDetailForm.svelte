@@ -24,7 +24,11 @@
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import { getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
+	import {
+		getPriorityDisplay,
+		finalizeGiftPrice,
+		finalizeGiftQuantity,
+	} from '$lib/modules/gifts/gift_display.js';
 	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
 		giftDetailModalVariants,
@@ -114,7 +118,7 @@
 	// svelte-ignore state_referenced_locally
 	let links = $state<GiftLink[]>(ensureGiftLinkIds(gift?.links));
 	// svelte-ignore state_referenced_locally
-	let price = $state(gift?.price != null ? String(gift.price) : '');
+	let price = $state<number | null>(gift?.price ?? null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
@@ -122,7 +126,7 @@
 	// svelte-ignore state_referenced_locally
 	let imageKey = $state(gift?.imageKey ?? '');
 	// svelte-ignore state_referenced_locally
-	let quantity = $state(String(gift?.quantity ?? 1));
+	let quantity = $state<number>(gift?.quantity ?? 1);
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
@@ -309,10 +313,8 @@
 			return;
 		}
 
-		const priceStr = String(price).trim();
-		const quantityStr = String(quantity).trim();
-		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
-		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
+		const finalPrice = finalizeGiftPrice(price);
+		const finalQuantity = finalizeGiftQuantity(quantity);
 		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
 		submittedImageKey = imageKey || null;
@@ -323,12 +325,12 @@
 				name: name.trim(),
 				description: description.trim() || null,
 				links: normalizedLinks,
-				price: parsedPrice,
+				price: finalPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
 				imageMeta,
-				quantity: parsedQuantity,
+				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
 			});
 		} else if (mode === 'edit' && gift !== null) {
@@ -340,12 +342,12 @@
 				name: name.trim(),
 				description: descriptionPayload,
 				links: normalizedLinks,
-				price: parsedPrice,
+				price: finalPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
 				imageMeta,
-				quantity: parsedQuantity,
+				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
 			});
 		}
