@@ -426,11 +426,12 @@
 		giftModalOpen = true;
 	}
 
+	/** Opens the gift detail modal (issue #125): edit mode for managers, read-only for everyone
+	 *  else. Priority levels are only needed by the edit form. */
 	async function openEditModal(gift: GiftByRole) {
-		if (!canManage) {
-			return;
+		if (canManage) {
+			await loadPriorityLevels();
 		}
-		await loadPriorityLevels();
 		giftModalMode = 'edit';
 		selectedGift = gift;
 		giftModalOpen = true;

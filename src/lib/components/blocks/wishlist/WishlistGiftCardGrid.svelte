@@ -2,7 +2,6 @@
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
 	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
-	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
@@ -60,8 +59,8 @@
 			draggedIndex={reorder.draggedIndex.current}
 			dragOverIndex={reorder.dragOverIndex.current}
 			dragOverStyle="ring"
-			visitorLinkHref={normalizeGiftUrl(getPrimaryGiftLink(giftItem.links)?.url ?? null)}
-			onedit={() => onedit(giftItem)}
+			giftName={giftItem.name}
+			onopendetail={() => onedit(giftItem)}
 			onreorderpointerdown={reorder.start}
 			onreordermove={handleReorderMove}
 		>
