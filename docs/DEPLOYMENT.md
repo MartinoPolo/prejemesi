@@ -37,6 +37,9 @@ called by the production deploy with `run_e2e: true`. The separate
 If the reusable workflow's caller or aggregator job name changes, update the
 `dev` branch protection status check at the same time.
 
+Production protection uses the corresponding `verify / required` status because
+`deploy.yml` calls the reusable workflow through its `verify` job.
+
 Environment approval is configured under
 **Settings → Environments → production** (required reviewer + branch policy).
 It was created via `gh api` and can be recreated with:
