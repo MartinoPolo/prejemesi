@@ -3,9 +3,9 @@
 	import { untrack } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Input } from '$lib/components/base/input/index.js';
-	import { Label } from '$lib/components/base/label/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
+	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { detectColumns, type DetectedColumn } from '$lib/modules/import/detect_columns.js';
 	import { findDuplicates, type GiftDraft } from '$lib/modules/gifts/gift_draft.js';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
@@ -29,6 +29,12 @@
 		existingGifts?: Array<{ name: string; links: GiftLink[] }>;
 		/** Show the priority heart column (hidden when the target lacks ≥2 levels). */
 		priorityAvailable?: boolean;
+		/**
+		 * Whether the parent attempted to advance past this step with an invalid title.
+		 * Bindable so `ImportWizard` can force the inline error to surface on a blocked
+		 * "Next" click, matching the touched-on-submit-attempt pattern used elsewhere.
+		 */
+		titleTouched?: boolean;
 		onready: (data: { drafts: GiftDraft[]; title?: string }) => void;
 	}
 
@@ -38,6 +44,7 @@
 		mode,
 		existingGifts = [],
 		priorityAvailable = true,
+		titleTouched = $bindable(false),
 		onready,
 	}: ImportReviewStepProps = $props();
 
@@ -53,6 +60,12 @@
 	// untrack prevents Svelte from treating props as reactive dependencies of the $state initializer.
 	let title = $state(
 		untrack(() => (mode === WIZARD_MODE.newList ? deriveWishlistTitle(filename ?? '') : '')),
+	);
+	const trimmedTitle = $derived(title.trim());
+	const titleError = $derived(
+		mode === WIZARD_MODE.newList && titleTouched && trimmedTitle === ''
+			? m.wishlist_name_required()
+			: '',
 	);
 
 	// Data rows (respecting detection boundaries)
@@ -123,13 +136,25 @@
 	<div class="flex min-w-0 flex-1 flex-col gap-3">
 		<!-- Title field (new-list mode only) -->
 		{#if mode === WIZARD_MODE.newList}
-			<div class="flex flex-col gap-1.5">
-				<Label>{m.import_wizard_review_title_label()}</Label>
-				<Input
-					bind:value={title}
-					placeholder={m.import_wizard_review_title_placeholder()}
-				/>
-			</div>
+			<Field
+				fieldId="import-wizard-title"
+				label={m.import_wizard_review_title_label()}
+				errorMessage={titleError}
+			>
+				{#snippet children({ hasError, errorId }: FieldControlContext)}
+					<Input
+						id="import-wizard-title"
+						bind:value={title}
+						placeholder={m.import_wizard_review_title_placeholder()}
+						required
+						state={hasError ? 'error' : 'default'}
+						aria-invalid={hasError ? true : undefined}
+						aria-describedby={errorId}
+						oninput={() => (titleTouched = true)}
+						onblur={() => (titleTouched = true)}
+					/>
+				{/snippet}
+			</Field>
 		{/if}
 
 		<!-- Column mapping bar: title + status legend share one compact header,
