@@ -27,6 +27,7 @@
 		/** Recipient OR správce: gates the gift editor, share wizard, theme, správci panel, batch add. */
 		canManage: boolean;
 		isAuthenticated: boolean;
+		redirectHref: string;
 		wishlistId: string;
 		wishlistTitle: string;
 		giftCount: number;
@@ -79,6 +80,7 @@
 		role,
 		canManage,
 		isAuthenticated,
+		redirectHref,
 		wishlistId,
 		wishlistTitle,
 		giftCount,
@@ -152,6 +154,7 @@
 	<ReserveModal
 		bind:open={reserveModalOpen}
 		gift={reservingGift}
+		{redirectHref}
 		{isAuthenticated}
 		isSubmitting={isReserving}
 		{onreserve}
@@ -205,4 +208,4 @@
 {/if}
 
 <!-- Login prompt (shown when an anonymous visitor taps the like heart) -->
-<LoginPromptDialog bind:open={authPromptOpen} />
+<LoginPromptDialog bind:open={authPromptOpen} {redirectHref} />

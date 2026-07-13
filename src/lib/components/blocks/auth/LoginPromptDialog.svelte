@@ -2,17 +2,19 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import { localizeInternalHref } from '$lib/i18n/locale.js';
+	import { getLocalizedAuthHref } from '$lib/i18n/locale.js';
 	import { resolve } from '$app/paths';
 
 	interface LoginPromptDialogProps {
 		open: boolean;
+		redirectHref: string;
 		title?: string;
 		description?: string;
 	}
 
 	let {
 		open = $bindable(false),
+		redirectHref,
 		title = m.like_auth_prompt_title(),
 		description = m.like_auth_prompt_description(),
 	}: LoginPromptDialogProps = $props();
@@ -25,10 +27,13 @@
 			<Dialog.Description>{description}</Dialog.Description>
 		</Dialog.Header>
 		<div class="flex justify-end gap-2">
-			<Button intent="outline" href={localizeInternalHref(resolve('/register'))}>
+			<Button
+				intent="outline"
+				href={getLocalizedAuthHref(resolve('/register'), redirectHref)}
+			>
 				{m.reserve_register()}
 			</Button>
-			<Button href={localizeInternalHref(resolve('/login'))}>
+			<Button href={getLocalizedAuthHref(resolve('/login'), redirectHref)}>
 				{m.reserve_login()}
 			</Button>
 		</div>

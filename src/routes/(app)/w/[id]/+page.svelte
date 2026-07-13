@@ -785,6 +785,7 @@
 	{role}
 	{canManage}
 	{isAuthenticated}
+	redirectHref={page.url.pathname}
 	wishlistId={wishlist.id}
 	wishlistTitle={wishlist.title}
 	giftCount={totalCount}
