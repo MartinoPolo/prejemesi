@@ -336,6 +336,15 @@
 				<PlusIcon data-icon="inline-start" />
 				{m.nav_create()}
 			</Button>
+			<Button
+				intent="primary"
+				size="icon"
+				class="md:hidden"
+				aria-label={m.nav_create()}
+				onclick={() => (isCreateModalOpen = true)}
+			>
+				<PlusIcon />
+			</Button>
 
 			<!-- Notification bell -->
 			<NotificationBell />
