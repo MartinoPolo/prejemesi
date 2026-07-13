@@ -13,7 +13,7 @@ import { expect, type Page } from '@playwright/test';
  * close, but the separate overlay element animates out and keeps intercepting pointer
  * events until removed – so the next click can be swallowed unless we wait for it.
  */
-async function waitForOverlayGone(page: Page): Promise<void> {
+export async function waitForDialogOverlayRemoval(page: Page): Promise<void> {
 	await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0, { timeout: 5_000 });
 }
 
@@ -91,7 +91,7 @@ export async function addGift(page: Page, name: string): Promise<void> {
 	// Wait for the dialog to close so its lingering input value can't pollute later
 	// name-based locators, then confirm the gift card (an <h3> heading) rendered.
 	await expect(dialog).not.toBeVisible({ timeout: 10_000 });
-	await waitForOverlayGone(page);
+	await waitForDialogOverlayRemoval(page);
 	await expect(page.getByRole('heading', { name, level: 3 })).toBeVisible({ timeout: 10_000 });
 }
 
@@ -102,11 +102,31 @@ export async function shareWishlist(page: Page): Promise<void> {
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
 	await dialog.getByRole('button', { name: 'Sdílet seznam' }).click();
+	await expectShareMethodsStep(page);
+	await dialog.getByRole('button', { name: 'Hotovo' }).click();
 	await expect(dialog.getByText('Seznam byl sdílen!')).toBeVisible({ timeout: 5_000 });
 	await dialog.getByRole('button', { name: 'Hotovo' }).click();
 	// Wait for the dialog (and its overlay) to fully close before returning, otherwise the
 	// closing overlay can intercept clicks on header buttons in the following steps.
 	await expect(dialog).not.toBeVisible({ timeout: 5_000 });
-	await waitForOverlayGone(page);
+	await waitForDialogOverlayRemoval(page);
 	await page.waitForLoadState('networkidle');
+}
+
+/** Assert the share-methods step without invoking clipboard or external handlers. */
+export async function expectShareMethodsStep(page: Page): Promise<void> {
+	const dialog = page.getByRole('dialog');
+	await expect(dialog.getByRole('button', { name: 'Kopírovat' })).toBeVisible({ timeout: 5_000 });
+
+	const expectedMethodHrefs: ReadonlyArray<[label: string, href: RegExp]> = [
+		['WhatsApp', /^https:\/\/wa\.me\/\?text=/],
+		['Email', /^mailto:\?subject=/],
+		['Messenger', /^https:\/\/www\.facebook\.com\/dialog\/send\?link=/],
+		['Telegram', /^https:\/\/t\.me\/share\/url\?url=/],
+		['SMS', /^sms:\?body=/],
+	];
+
+	for (const [label, href] of expectedMethodHrefs) {
+		await expect(dialog.getByRole('link', { name: label })).toHaveAttribute('href', href);
+	}
 }

@@ -98,7 +98,7 @@
 		isSubmitting = true;
 		try {
 			await shareWishlist(wishlistId);
-			sharing.goToStep(SHARE_WIZARD_STEPS.success);
+			sharing.goToStep(SHARE_WIZARD_STEPS.share);
 			onshared?.();
 		} catch (thrown) {
 			toastError(translateServerError(thrown, m.share_error()));
