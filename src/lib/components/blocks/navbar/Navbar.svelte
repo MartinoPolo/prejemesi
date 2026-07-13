@@ -244,6 +244,19 @@
 
 	let isCreateModalOpen = $state(false);
 	let isImportWizardOpen = $state(false);
+
+	// A single shared "which nav dropdown is open" index guarantees at most one of the three
+	// hover dropdowns is visible: opening one closes any sibling before its own grace-period
+	// close can fire.
+	let openNavDropdownIndex = $state<number | null>(null);
+
+	function setNavDropdownOpen(index: number, isOpen: boolean) {
+		if (isOpen) {
+			openNavDropdownIndex = index;
+		} else if (openNavDropdownIndex === index) {
+			openNavDropdownIndex = null;
+		}
+	}
 </script>
 
 <header class="topbar">
@@ -271,6 +284,9 @@
 					items={navDropdownItems[i]}
 					totalCount={navDropdownTotalCounts[i]}
 					grouped={i === 2}
+					bind:open={
+						() => openNavDropdownIndex === i, (isOpen) => setNavDropdownOpen(i, isOpen)
+					}
 				>
 					{#snippet footer()}
 						{#if i === 0}
