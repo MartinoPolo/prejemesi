@@ -24,13 +24,12 @@
 		IMAGE_EDITOR_MODE_VALUES,
 		WISHLIST_EDITOR_SLOTS,
 		WISHLIST_SLOT_SPECS,
-		FULL_CROP_RECT,
 		createDefaultWishlistSlots,
 		cropStateToImageMeta,
 		fillImageMeta,
 		fitImageMeta,
-		focalZoomToWindowRect,
 		imageMetaToFrameProps,
+		seedCropRectFromLegacyMeta,
 		slotEditorModeFromMeta,
 		wishlistImageUrl,
 		type ImageCropRect,
@@ -72,14 +71,7 @@
 		const result = {} as Record<WishlistEditorSlot, SlotEditState>;
 		for (const slot of WISHLIST_EDITOR_SLOTS) {
 			const meta = saved?.[slot] ?? defaults[slot]!;
-			let cropRect: ImageCropRect;
-			if (meta.cropRect != null) {
-				cropRect = { ...meta.cropRect };
-			} else if (meta.focal !== undefined && meta.zoom !== undefined) {
-				cropRect = focalZoomToWindowRect(meta.focal, meta.zoom, 1);
-			} else {
-				cropRect = { ...FULL_CROP_RECT };
-			}
+			const cropRect = seedCropRectFromLegacyMeta(meta);
 			result[slot] = { mode: slotEditorModeFromMeta(meta), cropRect };
 		}
 		return result;

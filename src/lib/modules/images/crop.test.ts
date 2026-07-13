@@ -10,6 +10,7 @@ import {
 	fitCropRectToAspect,
 	imageMetaToFrameProps,
 	giftTargetFrameProps,
+	seedCropRectFromLegacyMeta,
 	FULL_CROP_RECT,
 	type ImageFrameProps,
 } from './crop.js';
@@ -181,6 +182,43 @@ describe('focalZoomToWindowRect', () => {
 		// Rendered on the surface the strip was drawn for (normalized aspect 2.5):
 		const rendered = focalZoomToWindowRect(focal, zoom, 1 / 0.4);
 		expectRectClose(rendered, strip);
+	});
+});
+
+describe('seedCropRectFromLegacyMeta', () => {
+	it('restores an exact per-target/slot cropRect verbatim', () => {
+		const cropRect: ImageCropRect = { x: 0.1, y: 0.2, w: 0.6, h: 0.5 };
+		expectRectClose(seedCropRectFromLegacyMeta({ cropRect }), cropRect);
+	});
+
+	it('restores a base-level cropRect verbatim', () => {
+		const cropRect: ImageCropRect = { x: 0.05, y: 0, w: 0.9, h: 1 };
+		expectRectClose(seedCropRectFromLegacyMeta({ cropRect }), cropRect);
+	});
+
+	it('issue #123: reconstructs a legacy focal/zoom row instead of discarding it', () => {
+		// An off-center legacy focal point with no cropRect must NOT seed as the
+		// always-centered FULL_CROP_RECT — that is the silent square/center-ify bug:
+		// the reconstructed rect's center must reflect the persisted focal point.
+		const focal = { x: 20, y: 80 };
+		const zoom = 1.5;
+		const seeded = seedCropRectFromLegacyMeta({ focal, zoom });
+		expect(seeded).not.toEqual(FULL_CROP_RECT);
+		expectRectClose(seeded, focalZoomToWindowRect(focal, zoom, 1));
+	});
+
+	it('falls back to FULL_CROP_RECT only when neither cropRect nor focal/zoom exist', () => {
+		expectRectClose(seedCropRectFromLegacyMeta({}), FULL_CROP_RECT);
+		expectRectClose(seedCropRectFromLegacyMeta({ focal: { x: 50, y: 50 } }), FULL_CROP_RECT);
+		expectRectClose(seedCropRectFromLegacyMeta({ zoom: 1 }), FULL_CROP_RECT);
+	});
+
+	it('prefers cropRect over focal/zoom when both are present', () => {
+		const cropRect: ImageCropRect = { x: 0.3, y: 0.3, w: 0.4, h: 0.4 };
+		expectRectClose(
+			seedCropRectFromLegacyMeta({ cropRect, focal: { x: 90, y: 10 }, zoom: 2 }),
+			cropRect,
+		);
 	});
 });
 

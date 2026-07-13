@@ -33,6 +33,7 @@
 		"db:migrate:prod": "tsx scripts/migrate-prod.ts",
 		"db:seed": "tsx src/lib/server/db/seed.ts",
 		"db:studio": "drizzle-kit studio",
+		"db:audit:crop-rects": "tsx scripts/audit-legacy-crop-rects.ts",
 		"cf:types": "wrangler types --no-include-runtime",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
 		"ports": "powershell -NoProfile -Command \"netstat -ano | Select-String ':5173 |:4173 |:6006 ' | Select-String 'LISTENING'\"",

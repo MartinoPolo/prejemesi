@@ -51,7 +51,7 @@
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
 		giftTargetFrameProps,
-		FULL_CROP_RECT,
+		seedCropRectFromLegacyMeta,
 		GIFT_CROP_TARGET_SPECS,
 		GIFT_CROP_TARGET_VALUES,
 		IMAGE_EDITOR_MODES,
@@ -170,10 +170,16 @@
 	function initTargetRects(meta: ImageMetadata | null | undefined) {
 		const rects = {} as Record<GiftCropTarget, ImageCropRect>;
 		for (const target of GIFT_CROP_TARGET_VALUES) {
-			// A persisted per-target rect restores exactly; otherwise start from the
-			// legacy base rect (the stage snaps it to the target aspect once measured).
-			const saved = meta?.targets?.[target]?.cropRect ?? meta?.cropRect ?? FULL_CROP_RECT;
-			rects[target] = { ...saved };
+			// A persisted per-target rect restores exactly; otherwise seed from the
+			// base-level metadata (issue #123: a legacy row with focal/zoom but no
+			// cropRect must reconstruct its real framing via seedCropRectFromLegacyMeta,
+			// not silently fall back to the always-centered FULL_CROP_RECT – the stage
+			// snaps this seed to the target's real aspect once the image is measured).
+			const targetCrop = meta?.targets?.[target];
+			rects[target] =
+				targetCrop !== undefined
+					? { ...targetCrop.cropRect }
+					: seedCropRectFromLegacyMeta(meta ?? {});
 		}
 		return rects;
 	}
