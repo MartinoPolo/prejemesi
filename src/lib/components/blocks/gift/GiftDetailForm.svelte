@@ -436,13 +436,13 @@
 						aria-label={m.image_fit_label()}
 						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
 					>
-						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill}>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill} class="rounded-full">
 							{m.image_fit_fill()}
 						</ToggleGroup.Item>
-						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fit}>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fit} class="rounded-full">
 							{m.image_fit_fit()}
 						</ToggleGroup.Item>
-						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual}>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual} class="rounded-full">
 							{m.image_fit_manual()}
 						</ToggleGroup.Item>
 					</ToggleGroup.Root>
