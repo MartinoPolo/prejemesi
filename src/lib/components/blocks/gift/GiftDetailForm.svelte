@@ -665,7 +665,7 @@
 					<div class={styles.formField()}>
 						<Label>{m.gift_currency_label()}</Label>
 						<Select.Root type="single" bind:value={currency}>
-							<Select.Trigger class="w-full">
+							<Select.Trigger size="sm" class="w-full">
 								{GIFT_CURRENCY_LABELS[currency]}
 							</Select.Trigger>
 							<Select.Content>
