@@ -206,6 +206,35 @@ export function focalZoomToWindowRect(
 }
 
 /**
+ * Seed an editor's crop rectangle from a persisted (whole-image or per-target/
+ * per-slot) crop, honoring priority: an exact per-target/slot `cropRect` first,
+ * then a base-level `cropRect`, then – critically – the legacy `focal`/`zoom`
+ * pair reconstructed via {@link focalZoomToWindowRect} at a square placeholder
+ * aspect (the real target aspect isn't known until the source image is
+ * measured; `ImageCropStage`'s mount effect re-shapes the seed to it via
+ * {@link fitCropRectToAspect}, which preserves this rect's CENTER – so the
+ * focal point survives even though this seed's extent is provisional). Only
+ * when NONE of `cropRect`/`focal`/`zoom` are present (a never-cropped image)
+ * does this fall back to {@link FULL_CROP_RECT} (issue #123: a legacy row
+ * that HAS focal/zoom must never seed from the always-centered identity rect,
+ * which silently discards the real focal point the moment the editor is
+ * opened and saved).
+ */
+export function seedCropRectFromLegacyMeta(saved: {
+	cropRect?: ImageCropRect | null;
+	focal?: ImageFocalPoint;
+	zoom?: number;
+}): ImageCropRect {
+	if (saved.cropRect != null) {
+		return { ...saved.cropRect };
+	}
+	if (saved.focal !== undefined && saved.zoom !== undefined) {
+		return focalZoomToWindowRect(saved.focal, saved.zoom, 1);
+	}
+	return { ...FULL_CROP_RECT };
+}
+
+/**
  * Assemble persistable {@link ImageMetadata} from an editor's fit mode + crop
  * rectangle, deriving the renderer's focal + zoom. Shared by the gift and wishlist
  * crop editors so the persisted shape stays identical across both surfaces.

@@ -10,15 +10,15 @@
 		draggedIndex: number | null;
 		dragOverIndex: number | null;
 		dragOverStyle: 'ring' | 'bg';
-		/**
-		 * Visitor-only: the gift's primary link (sanitized). When a visitor (canManage=false)
-		 * clicks/activates the card body or image, this link opens in a new tab. `null` when the
-		 * gift has no link — the card is then inert (no pointer, not focusable). Ignored for managers,
-		 * whose card click opens the edit modal via `onedit`.
-		 */
-		visitorLinkHref?: string | null;
+		/** Accessible name for the card's button role (issue #125 REQ-4). */
+		giftName: string;
 		children: Snippet;
-		onedit: () => void;
+		/**
+		 * Opens the gift detail modal (issue #125): edit mode for managers, read-only for
+		 * everyone else. The visible link chip is a separate click target (stops propagation)
+		 * and always navigates externally instead.
+		 */
+		onopendetail: () => void;
 		/** Grip pointerdown — starts a pointer-driven reorder drag (mouse + touch + pen). */
 		onreorderpointerdown: (event: PointerEvent, index: number) => void;
 		/** Keyboard reorder from the grip: move this gift one slot toward the list start/end. */
@@ -31,22 +31,15 @@
 		draggedIndex,
 		dragOverIndex,
 		dragOverStyle,
-		visitorLinkHref = null,
+		giftName,
 		children,
-		onedit,
+		onopendetail,
 		onreorderpointerdown,
 		onreordermove,
 	}: WishlistGiftDraggableWrapperProps = $props();
 
 	const isDragged = $derived(draggedIndex === index);
 	const isDragOver = $derived(dragOverIndex === index);
-
-	// A visitor can open the card only when it carries a primary link. Managers ignore this and
-	// keep their edit-modal / drag affordances.
-	const visitorLinkActivatable = $derived(!canManage && visitorLinkHref !== null);
-	// The card is interactive (clickable/focusable) either as a manager (opens edit modal) or as a
-	// visitor with a link (opens the link).
-	const isInteractive = $derived(canManage || visitorLinkActivatable);
 
 	function eventStartedInsideInteractiveElement(event: Event): boolean {
 		const target = event.target;
@@ -63,23 +56,12 @@
 		return interactiveElement !== null && interactiveElement !== currentTarget;
 	}
 
-	function activateCard() {
-		if (canManage) {
-			onedit();
-			return;
-		}
-		// Visitor: open the gift's primary link in a new tab. No-op when the gift has no link.
-		if (visitorLinkHref !== null) {
-			window.open(visitorLinkHref, '_blank', 'noopener,noreferrer');
-		}
-	}
-
 	function handleClick(event: MouseEvent) {
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
 		}
 
-		activateCard();
+		onopendetail();
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -89,7 +71,7 @@
 
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			activateCard();
+			onopendetail();
 		}
 	}
 
@@ -105,18 +87,20 @@
 	}
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- Card click/tap opens the gift detail modal for every role (issue #125): edit mode for
+     managers, read-only for visitors. The link chip inside `children` stops propagation and
+     stays the only external-navigation target. -->
 <div
 	data-gift-item
 	class={cn(
-		'relative transition-opacity',
-		isInteractive && 'cursor-pointer',
+		'relative cursor-pointer transition-opacity',
 		isDragged && 'opacity-40',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
 	)}
-	role={canManage ? 'button' : visitorLinkActivatable ? 'link' : undefined}
-	tabindex={isInteractive ? 0 : undefined}
+	role="button"
+	tabindex={0}
+	aria-label={m.gift_open_detail_aria({ name: giftName })}
 	onclick={handleClick}
 	onkeydown={handleKeydown}
 >

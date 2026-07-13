@@ -3,6 +3,7 @@
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
@@ -18,6 +19,7 @@
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
 	import GiftEditedBadge from './GiftEditedBadge.svelte';
 	import GiftDescription from './GiftDescription.svelte';
@@ -35,6 +37,8 @@
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
 		deriveGiftDisplayState(gift, role),
 	);
+	// Edit-icon hover affordance (issue #125 REQ-3): mirrors GiftCard's manager-only pencil icon.
+	const canManage = $derived(canManageWishlist(role));
 
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
@@ -46,19 +50,30 @@
 
 <div
 	class={cn(
-		'flex items-center gap-4 border-b border-border px-2 py-3 transition-colors hover:bg-muted/50',
+		'group flex items-center gap-4 border-b border-border px-2 py-3 transition-colors hover:bg-muted/50',
 		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 	)}
 >
 	<!-- Thumbnail -->
-	<GiftImage
-		class="size-16 flex-shrink-0 rounded-lg"
-		imageUrl={gift.imageUrl}
-		imageMeta={gift.imageMeta}
-		target="square"
-		alt={gift.name}
-		variant="listThumb"
-	/>
+	<div class="relative flex-shrink-0">
+		<GiftImage
+			class="size-16 rounded-lg"
+			imageUrl={gift.imageUrl}
+			imageMeta={gift.imageMeta}
+			target="square"
+			alt={gift.name}
+			variant="listThumb"
+		/>
+		{#if canManage}
+			<!-- Edit affordance (issue #125 REQ-3): decorative, the whole row is the click target. -->
+			<span
+				class="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full border-2 border-ink bg-card p-1 opacity-0 shadow-sticker transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+				aria-hidden="true"
+			>
+				<PencilIcon class="size-3" />
+			</span>
+		{/if}
+	</div>
 
 	<!-- Info -->
 	<div class="flex min-w-0 flex-1 flex-col gap-1">

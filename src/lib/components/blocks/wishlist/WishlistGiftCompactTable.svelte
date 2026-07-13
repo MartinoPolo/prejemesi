@@ -70,9 +70,7 @@
 					gift={giftItem}
 					{role}
 					{isArchived}
-					onclick={() => {
-						if (canManage) onedit(giftItem);
-					}}
+					onclick={() => onedit(giftItem)}
 					{onreserve}
 					{onunreserve}
 				/>

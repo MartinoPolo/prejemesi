@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import * as Select from '$lib/components/base/select/index.js';
@@ -18,13 +19,16 @@
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
-	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
-	import { getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
+	import {
+		getPriorityDisplay,
+		finalizeGiftPrice,
+		finalizeGiftQuantity,
+	} from '$lib/modules/gifts/gift_display.js';
 	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
 		giftDetailModalVariants,
@@ -51,7 +55,7 @@
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
 		giftTargetFrameProps,
-		FULL_CROP_RECT,
+		seedCropRectFromLegacyMeta,
 		GIFT_CROP_TARGET_SPECS,
 		GIFT_CROP_TARGET_VALUES,
 		IMAGE_EDITOR_MODES,
@@ -114,7 +118,7 @@
 	// svelte-ignore state_referenced_locally
 	let links = $state<GiftLink[]>(ensureGiftLinkIds(gift?.links));
 	// svelte-ignore state_referenced_locally
-	let price = $state(gift?.price != null ? String(gift.price) : '');
+	let price = $state<number | null>(gift?.price ?? null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
@@ -122,7 +126,7 @@
 	// svelte-ignore state_referenced_locally
 	let imageKey = $state(gift?.imageKey ?? '');
 	// svelte-ignore state_referenced_locally
-	let quantity = $state(String(gift?.quantity ?? 1));
+	let quantity = $state<number>(gift?.quantity ?? 1);
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
@@ -135,6 +139,9 @@
 	);
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
+	// Component instance ref (issue #131): lets the image-column click-to-edit
+	// affordance open the file picker owned by the Upload-tab ImageUpload.
+	let imageUploadRef: ReturnType<typeof ImageUpload> | undefined = $state();
 
 	// Uploads made in this form session that are not persisted yet (issue #107,
 	// REQ-6). The image key included in the last submit is kept on unmount.
@@ -167,10 +174,16 @@
 	function initTargetRects(meta: ImageMetadata | null | undefined) {
 		const rects = {} as Record<GiftCropTarget, ImageCropRect>;
 		for (const target of GIFT_CROP_TARGET_VALUES) {
-			// A persisted per-target rect restores exactly; otherwise start from the
-			// legacy base rect (the stage snaps it to the target aspect once measured).
-			const saved = meta?.targets?.[target]?.cropRect ?? meta?.cropRect ?? FULL_CROP_RECT;
-			rects[target] = { ...saved };
+			// A persisted per-target rect restores exactly; otherwise seed from the
+			// base-level metadata (issue #123: a legacy row with focal/zoom but no
+			// cropRect must reconstruct its real framing via seedCropRectFromLegacyMeta,
+			// not silently fall back to the always-centered FULL_CROP_RECT – the stage
+			// snaps this seed to the target's real aspect once the image is measured).
+			const targetCrop = meta?.targets?.[target];
+			rects[target] =
+				targetCrop !== undefined
+					? { ...targetCrop.cropRect }
+					: seedCropRectFromLegacyMeta(meta ?? {});
 		}
 		return rects;
 	}
@@ -300,10 +313,8 @@
 			return;
 		}
 
-		const priceStr = String(price).trim();
-		const quantityStr = String(quantity).trim();
-		const parsedPrice = priceStr !== '' ? Number(priceStr) : null;
-		const parsedQuantity = quantityStr !== '' ? Number(quantityStr) : 1;
+		const finalPrice = finalizeGiftPrice(price);
+		const finalQuantity = finalizeGiftQuantity(quantity);
 		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
 		submittedImageKey = imageKey || null;
@@ -314,12 +325,12 @@
 				name: name.trim(),
 				description: description.trim() || null,
 				links: normalizedLinks,
-				price: parsedPrice,
+				price: finalPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
 				imageMeta,
-				quantity: parsedQuantity,
+				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
 			});
 		} else if (mode === 'edit' && gift !== null) {
@@ -331,12 +342,12 @@
 				name: name.trim(),
 				description: descriptionPayload,
 				links: normalizedLinks,
-				price: parsedPrice,
+				price: finalPrice,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
 				imageMeta,
-				quantity: parsedQuantity,
+				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
 			});
 		}
@@ -407,6 +418,18 @@
 
 	function handleImageUploadError(uploadError: Error) {
 		console.error('Image upload failed:', uploadError.message);
+	}
+
+	/**
+	 * Click-to-edit affordance for the image column (issue #131): switches the
+	 * right-column image field to the Upload tab and opens the native file
+	 * picker. `ImageUpload` only mounts once `imageMode` becomes `'upload'`, so
+	 * the picker trigger waits a tick for it to render.
+	 */
+	async function openImageEditor() {
+		imageMode = 'upload';
+		await tick();
+		imageUploadRef?.openFilePicker();
 	}
 
 	// Storage cleanup (issue #107, REQ-6): uploads that were replaced, removed,
@@ -493,6 +516,19 @@
 								tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 							/>
 						</div>
+						<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
+						     without wrapping it, so wheel-zoom-to-manual and the tile switcher
+						     below stay independently interactive. -->
+						<Button
+							type="button"
+							intent="ghost-overlay"
+							size="icon-sm"
+							class="absolute top-2 right-2 rounded-full bg-surface/90 shadow-sm"
+							onclick={openImageEditor}
+							aria-label={m.gift_image_replace_cta()}
+						>
+							<PencilIcon data-icon="solo" />
+						</Button>
 						<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
 						<GiftImagePreviewSlots
 							class="absolute inset-x-0 bottom-3"
@@ -506,12 +542,20 @@
 				{/if}
 			</div>
 		{:else}
-			<div class={styles.imagePlaceholder()}>
-				<GiftIcon class="size-16 text-ink-faint" />
-				<span class="text-sm font-semibold text-ink-soft"
-					>{m.gift_image_preview_label()}</span
-				>
-			</div>
+			<!-- Empty state (issue #131 REQ-2): the whole column is an explicit
+			     clickable upload placeholder, not just a preview label. -->
+			<button
+				type="button"
+				class={styles.imagePlaceholder()}
+				onclick={openImageEditor}
+				aria-label={m.gift_image_upload_cta()}
+			>
+				<UploadIcon class="size-16 text-ink-faint" />
+				<span class="text-sm font-semibold text-ink-soft">
+					{m.gift_image_upload_cta()}
+				</span>
+				<span class="text-xs text-foreground-subtle">{m.gift_image_upload_hint()}</span>
+			</button>
 		{/if}
 	</div>
 
@@ -771,6 +815,7 @@
 						/>
 					{:else}
 						<ImageUpload
+							bind:this={imageUploadRef}
 							target="gift-image"
 							size="small"
 							initialPreviewUrl={imageUrl !== '' ? imageUrl : undefined}

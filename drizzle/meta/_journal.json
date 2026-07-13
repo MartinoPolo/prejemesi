@@ -43,6 +43,13 @@
       "when": 1783710128292,
       "tag": "0005_fair_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783948317536,
+      "tag": "0006_add_gift_pre_edit_share_snapshot",
+      "breakpoints": true
     }
   ]
 }

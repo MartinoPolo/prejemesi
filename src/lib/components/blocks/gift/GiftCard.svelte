@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
@@ -16,6 +17,7 @@
 		getPriorityDisplay,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftEditedBadge from './GiftEditedBadge.svelte';
 	import GiftDescription from './GiftDescription.svelte';
@@ -33,6 +35,9 @@
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
 		deriveGiftDisplayState(gift, role),
 	);
+	// Edit-icon hover affordance (issue #125 REQ-3): editing roles see a pencil icon appear
+	// on card hover/focus; visitors rely on the shared cursor-pointer + hover lift only.
+	const canManage = $derived(canManageWishlist(role));
 
 	// Dimmed = "don't buy this": fully reserved (visitor/moderator only — the
 	// recipient never sees reservation state) or already received.
@@ -59,6 +64,15 @@
 
 		{#if isDimmed}
 			<div class={styles.imageVeil()} aria-hidden="true"></div>
+		{/if}
+
+		{#if canManage}
+			<!-- Edit affordance (issue #125 REQ-3): hidden until the card is hovered/focused;
+			     purely decorative, the whole card is already the click target via
+			     WishlistGiftDraggableWrapper. -->
+			<span class={styles.editIcon()} aria-hidden="true">
+				<PencilIcon class="size-3.5" />
+			</span>
 		{/if}
 
 		{#if isVisitorOrModerator && isFullyReserved}

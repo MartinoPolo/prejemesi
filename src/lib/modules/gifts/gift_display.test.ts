@@ -1,9 +1,54 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
-import { czechPluralCategory, formatPieceCount } from './gift_display.js';
+import {
+	czechPluralCategory,
+	formatPieceCount,
+	finalizeGiftPrice,
+	finalizeGiftQuantity,
+} from './gift_display.js';
 
 beforeAll(() => {
 	overwriteGetLocale(() => 'cs');
+});
+
+describe('finalizeGiftPrice', () => {
+	it('passes through a finite positive price', () => {
+		expect(finalizeGiftPrice(500)).toBe(500);
+	});
+
+	it('passes through 0', () => {
+		expect(finalizeGiftPrice(0)).toBe(0);
+	});
+
+	it('returns null for null (cleared input)', () => {
+		expect(finalizeGiftPrice(null)).toBeNull();
+	});
+
+	// Regression: clearing a bound <input type="number"> sets Svelte's numeric
+	// $state to NaN, not ''. The old String(price).trim() !== '' check treated
+	// "NaN" as a non-empty value and sent Number("NaN") to the server, which
+	// rejected it (v.number() has no NaN case) with a generic error toast.
+	it('returns null for NaN (cleared numeric input)', () => {
+		expect(finalizeGiftPrice(NaN)).toBeNull();
+	});
+});
+
+describe('finalizeGiftQuantity', () => {
+	it('passes through a finite quantity', () => {
+		expect(finalizeGiftQuantity(3)).toBe(3);
+	});
+
+	it('defaults to 1 for NaN (cleared input)', () => {
+		expect(finalizeGiftQuantity(NaN)).toBe(1);
+	});
+
+	it('defaults to 1 for 0', () => {
+		expect(finalizeGiftQuantity(0)).toBe(1);
+	});
+
+	it('defaults to 1 for a negative value', () => {
+		expect(finalizeGiftQuantity(-2)).toBe(1);
+	});
 });
 
 describe('czechPluralCategory', () => {

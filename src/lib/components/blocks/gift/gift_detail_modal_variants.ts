@@ -15,7 +15,11 @@ export const giftDetailModalVariants = tv({
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
 		imageColumn:
 			'relative overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
-		imagePlaceholder: 'flex size-full flex-col items-center justify-center gap-3',
+		// Empty-state click-to-upload affordance (issue #131 REQ-2/REQ-3): a real
+		// button so it is keyboard-focusable with a visible focus ring, not just a
+		// static label.
+		imagePlaceholder:
+			'flex size-full cursor-pointer flex-col items-center justify-center gap-1 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
 		image: 'size-full object-cover',
 		detailColumn: 'flex min-h-0 flex-col gap-0 overflow-hidden',
 		detailScroll: 'min-h-0 flex-1 overflow-y-auto p-5 sm:p-7',
@@ -25,9 +29,14 @@ export const giftDetailModalVariants = tv({
 		// Pinned outside the scroll region – always visible in create and edit mode.
 		formActions:
 			'flex flex-col gap-2 border-t-2 border-dashed border-ink-faint px-5 py-4 sm:px-7',
-		submitButton: 'w-full',
+		// Stacked full-width buttons cancel the shared sticker hover-lift (#142):
+		// with only `gap-2` (8px) between them, the translate-based lift plus its
+		// spring overshoot can exceed the hit-area buffer at the shared edge,
+		// flickering lift/drop. Shadow-only hover keeps the sticker feel without
+		// the geometric cause; other Button usages are unaffected.
+		submitButton: 'w-full hover:translate-y-0',
 		deleteButton: 'w-full',
-		receivedButton: 'w-full',
+		receivedButton: 'w-full hover:translate-y-0',
 		imageInputRow: 'flex flex-col gap-2',
 		imageTabRow: 'flex gap-1.5',
 		imageTab:

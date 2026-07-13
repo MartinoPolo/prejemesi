@@ -88,6 +88,11 @@
 	let recipientKind = $state<string>(RECIPIENT_KIND.self);
 	let recipientName = $state('');
 
+	// Forced-touched flag for the review step's title field (new-list mode only), set
+	// when the user clicks "Next" while the title is blank so the inline error surfaces
+	// even without having typed into the field first.
+	let titleTouched = $state(false);
+
 	// Step index for the stepper
 	const currentStepIndex = $derived(WIZARD_STEPS.indexOf(currentStep));
 
@@ -125,6 +130,15 @@
 			recipientName.trim() !== '',
 	);
 
+	// In new-list mode a blank/whitespace-only title must never reach Confirm (it would
+	// render as an empty interpolation and 400 server-side on commit). This is NOT part of
+	// `canProceed`/the Next button's disabled state – a disabled button can't be clicked,
+	// so it could never surface the inline title error to a user on a paste/Sheets source
+	// (which starts with an empty title and no filename to derive one from). Instead Next
+	// stays clickable and `handleNext` blocks + shows the field error, matching the
+	// touched-on-submit-attempt pattern used by the create-wishlist dialog.
+	const titleValid = $derived(mode !== WIZARD_MODE.newList || (reviewTitle ?? '').trim() !== '');
+
 	// Forward gate: different per step
 	const canProceed = $derived.by(() => {
 		if (currentStep === WIZARD_STEP.source) {
@@ -149,10 +163,20 @@
 	}
 
 	async function handleCommit(): Promise<{ shortId: string }> {
+		// Defense in depth: handleNext already blocks reaching Confirm with a blank title,
+		// but never silently coerce an invalid title into a fallback string (that produced
+		// the empty-title "****" / generic-error-loop bug). If this is ever reached with an
+		// invalid title, send the user back to the field instead of retry-looping on a 400.
+		if (mode === WIZARD_MODE.newList && !titleValid) {
+			currentStep = WIZARD_STEP.review;
+			titleTouched = true;
+			throw new Error('title is required');
+		}
+
 		commitStatus = COMMIT_STATUS.committing;
 		try {
 			if (mode === WIZARD_MODE.newList) {
-				const commitTitle = reviewTitle ?? 'Import';
+				const commitTitle = (reviewTitle ?? '').trim();
 				const trimmedRecipientName = recipientName.trim();
 				const result = await createWishlistFromImport(
 					recipientKind === RECIPIENT_KIND.other
@@ -190,7 +214,15 @@
 	}
 
 	function handleNext() {
-		if (currentStep === WIZARD_STEP.review && canProceed) {
+		if (currentStep !== WIZARD_STEP.review) {
+			return;
+		}
+		if (!titleValid) {
+			// Surface the inline title error even if the user never typed into the field.
+			titleTouched = true;
+			return;
+		}
+		if (canProceed) {
 			currentStep = WIZARD_STEP.confirm;
 		}
 	}
@@ -203,6 +235,7 @@
 			currentStep = WIZARD_STEP.source;
 			parsedRows = [];
 			filename = undefined;
+			titleTouched = false;
 		}
 	}
 
@@ -217,6 +250,7 @@
 		commitStatus = COMMIT_STATUS.idle;
 		recipientKind = RECIPIENT_KIND.self;
 		recipientName = '';
+		titleTouched = false;
 	}
 
 	// Focus the recipient-name input the moment the "other" branch mounts.
@@ -359,6 +393,7 @@
 					{mode}
 					{existingGifts}
 					{priorityAvailable}
+					bind:titleTouched
 					onready={handleReviewReady}
 				/>
 			{:else if currentStep === WIZARD_STEP.confirm}

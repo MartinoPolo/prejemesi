@@ -46,6 +46,13 @@ What: Edits made after sharing are surfaced to ALL visitors uniformly (never res
 Why: Gifters should notice a gift changed, but a notification per edit is noise; uniform visual indicators leak nothing and the owner sees identical UI whether or not the gift is reserved.
 Rejected: Reservation-conditional indicators (inference leak); notifying gifters on every owner edit (noise); per-field diffs now (deferred).
 
+### Net-zero grace-window revert clears the edit-transparency badge
+
+Decided: 2026-07-12 (issue #124)
+What: Byte-identical restoration of a gift's pre-edit state, made WITHIN the 2-minute post-share grace window (`isOwnerSharedGiftDeleteGraceOpen`: 2 min from `sharedAt` for pre-share gifts, 2 min from creation for post-share-created gifts), clears `editedAfterShareAt` (no badge). The pre-edit state is captured as a snapshot (`preEditShareSnapshot`) at the FIRST in-grace edit and compared against on every later in-grace edit — not against the immediately-preceding edit, so "A → B → A" clears but "A → B → C → B" does not. Once the grace window closes, any edit sets the badge permanently, even if it later "reverts" prior content — a post-grace revert (e.g. a week-later price change back to the original) is itself a change gifters should notice.
+Why: "Kolo" → "Kolo horské" → "Kolo" within grace is a hasty correction, not information; permanently badging it is noise. Comparing against the original share-time snapshot (not the previous edit) keeps the rule precise: only a full round-trip back to what the gifter saw at share time counts as net-zero.
+Rejected: Comparing against the immediately-preceding edit instead of the original snapshot (would let unrelated back-and-forth edits "cancel out"); extending net-zero clearing past the grace window (a stale, no-longer-forgivable edit history shouldn't retroactively un-badge).
+
 ### Single reservation state (no "bought" step)
 
 Decided: 2026-05-29
