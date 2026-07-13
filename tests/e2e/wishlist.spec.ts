@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import {
+	addGift,
+	createWishlistAndNavigate,
+	expectShareMethodsStep,
+	waitForDialogOverlayRemoval,
+} from './fixtures/wishlist-helpers.js';
 
 test.describe('Wishlist page', () => {
 	test('shows draft status chip and single share action for unshared wishlist', async ({
@@ -51,39 +56,49 @@ test.describe('Wishlist page', () => {
 		await page.context().close();
 	});
 
-	test('share wizard completes three steps', async ({ browser, request, baseURL }) => {
+	test('first share visits methods before success and reopen starts at methods', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
 		const user = createTestUser('wl-share');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await createWishlistAndNavigate(page, 'Test Share');
-
-		await page
-			.getByRole('button', {
-				name: /P.idat p..n.|Pridat prani|P.idat d.rek|Pridat darek/,
-			})
-			.first()
-			.click();
-		let dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 10_000 });
-		await dialog.getByRole('textbox', { name: /N.zev|Nazev/i }).fill('Share Test Gift');
-		await dialog.getByRole('button', { name: /P.idat d.rek|Pridat darek/ }).click();
-		await expect(page.getByText('Share Test Gift')).toBeVisible({ timeout: 5_000 });
+		await addGift(page, 'Share Test Gift');
 
 		await page
 			.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ })
 			.first()
 			.click();
-		dialog = page.getByRole('dialog');
+		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		await expect(
+			dialog.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ }),
+		).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Kopírovat' })).toHaveCount(0);
 
 		await dialog.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ }).click();
-
+		await expectShareMethodsStep(page);
+		await expect(dialog.getByText(/Seznam byl sd.len!/i)).toHaveCount(0);
+		await dialog.getByRole('button', { name: 'Hotovo' }).click();
 		await expect(dialog.getByText(/Seznam byl sd.len!/i)).toBeVisible({ timeout: 5_000 });
 		await dialog.getByRole('button', { name: 'Hotovo' }).click();
+		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+		await waitForDialogOverlayRemoval(page);
 
 		await expect(page.getByRole('main').getByText(/Sd.leno|Sdileno/)).toBeVisible({
 			timeout: 5_000,
 		});
+
+		await page
+			.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ })
+			.first()
+			.click();
+		await expectShareMethodsStep(page);
+		await expect(
+			dialog.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ }),
+		).toHaveCount(0);
 
 		await page.context().close();
 	});
