@@ -12,8 +12,9 @@ export const giftDetailModalVariants = tv({
 		body: 'grid grid-cols-1 sm:grid-cols-[45%_55%] grid-rows-[auto_minmax(0,1fr)] sm:grid-rows-[minmax(0,1fr)] min-h-[400px] sm:min-h-[520px]',
 		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
 		// images keep the mat visible; a dashed ink seam separates image and form columns.
+		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
 		imageColumn:
-			'relative overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[200px] sm:h-auto',
+			'relative overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
 		imagePlaceholder: 'flex size-full flex-col items-center justify-center gap-3',
 		image: 'size-full object-cover',
 		detailColumn: 'flex min-h-0 flex-col gap-0 overflow-hidden',

@@ -1,7 +1,7 @@
 /**
  * Editor-facing image display modes (issue #116 follow-up). The gift and
  * wishlist image editors offer exactly three choices – Fill (automatic
- * centered cover), Whole picture (letterboxed on both axes) and Manual
+ * centered cover), Fit (the whole image letterboxed on both axes) and Manual
  * (user-drawn crops) – while persisted metadata keeps the renderer's
  * {@link ImageFitMode} enum: `fill` and `manual` both persist `cover-crop`
  * geometry and differ only in whether the user drew the framing. Legacy rows
@@ -16,7 +16,7 @@ import { IMAGE_ZOOM_BASE, type ImageMetadata } from './types.js';
 
 export const IMAGE_EDITOR_MODES = {
 	fill: 'fill',
-	whole: 'whole',
+	fit: 'fit',
 	manual: 'manual',
 } as const;
 
@@ -30,7 +30,7 @@ const CENTERED_ZOOM_EPSILON = 0.05;
 
 /** The persisted renderer fitMode an editor mode maps to. */
 export function fitModeForEditorMode(mode: ImageEditorMode): ImageFitMode {
-	return mode === IMAGE_EDITOR_MODES.whole
+	return mode === IMAGE_EDITOR_MODES.fit
 		? IMAGE_FIT_MODES.containPadded
 		: IMAGE_FIT_MODES.coverCrop;
 }
@@ -45,7 +45,7 @@ export function giftEditorModeFromMeta(meta: ImageMetadata | null | undefined): 
 		return IMAGE_EDITOR_MODES.fill;
 	}
 	if (meta.fitMode === IMAGE_FIT_MODES.containPadded) {
-		return IMAGE_EDITOR_MODES.whole;
+		return IMAGE_EDITOR_MODES.fit;
 	}
 	if (
 		meta.fitMode === IMAGE_FIT_MODES.coverCrop &&
@@ -67,7 +67,7 @@ export function slotEditorModeFromMeta(meta: ImageMetadata | null | undefined): 
 		return IMAGE_EDITOR_MODES.fill;
 	}
 	if (meta.fitMode === IMAGE_FIT_MODES.containPadded) {
-		return IMAGE_EDITOR_MODES.whole;
+		return IMAGE_EDITOR_MODES.fit;
 	}
 	if (meta.fitMode !== IMAGE_FIT_MODES.coverCrop) {
 		// Legacy `auto` (and any future non-crop mode) presents as Fill.
@@ -92,7 +92,7 @@ export function fillImageMeta(bgColor: string | null = null): ImageMetadata {
 	};
 }
 
-/** Whole-picture metadata: the entire image letterboxed on both axes. */
-export function wholeImageMeta(bgColor: string | null = null): ImageMetadata {
+/** Fit metadata: the entire image letterboxed on both axes. */
+export function fitImageMeta(bgColor: string | null = null): ImageMetadata {
 	return { ...fillImageMeta(bgColor), fitMode: IMAGE_FIT_MODES.containPadded };
 }

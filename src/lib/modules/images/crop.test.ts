@@ -357,8 +357,8 @@ describe('giftTargetFrameProps', () => {
 		expect(giftTargetFrameProps(meta, 'detail')).toEqual(imageMetaToFrameProps(meta));
 	});
 
-	it('ignores stale per-target crops when the base mode is whole-picture (#116 follow-up)', () => {
-		// Whole picture must letterbox both axes even when manual crops linger in
+	it('ignores stale per-target crops when the base mode is fit (#116 follow-up)', () => {
+		// Fit must letterbox both axes even when manual crops linger in
 		// the metadata; per-target crops only apply on a cover-crop base.
 		const meta = {
 			...baseMeta,

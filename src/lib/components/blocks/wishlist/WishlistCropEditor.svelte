@@ -28,10 +28,10 @@
 		createDefaultWishlistSlots,
 		cropStateToImageMeta,
 		fillImageMeta,
+		fitImageMeta,
 		focalZoomToWindowRect,
 		imageMetaToFrameProps,
 		slotEditorModeFromMeta,
-		wholeImageMeta,
 		wishlistImageUrl,
 		type ImageCropRect,
 		type ImageEditorMode,
@@ -114,7 +114,7 @@
 		if (state.mode === IMAGE_EDITOR_MODES.manual) {
 			return cropStateToImageMeta(IMAGE_FIT_MODES.coverCrop, state.cropRect);
 		}
-		return state.mode === IMAGE_EDITOR_MODES.whole ? wholeImageMeta() : fillImageMeta();
+		return state.mode === IMAGE_EDITOR_MODES.fit ? fitImageMeta() : fillImageMeta();
 	}
 
 	/**
@@ -286,8 +286,8 @@
 					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill}>
 						{m.image_fit_fill()}
 					</ToggleGroup.Item>
-					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.whole}>
-						{m.image_fit_whole()}
+					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fit}>
+						{m.image_fit_fit()}
 					</ToggleGroup.Item>
 					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual}>
 						{m.image_fit_manual()}

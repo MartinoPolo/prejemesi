@@ -18,12 +18,14 @@ import {
  * Aspect data comes from the same registry the app renders from (REQ-6), so the
  * asserts can only fail when a surface and the editor genuinely drift apart.
  *
- * The #116 follow-up three-mode model (Fill / Whole picture / Manual) is covered
- * too: Whole picture letterboxes both axes on the real card surface, preview
- * tiles and wheel gestures promote to Manual, and the modal footer stays pinned
- * while the form body scrolls. Round 2 adds the floating card + merged square
- * tiles in the image column and manual zoom-out below 100 % (letterboxed on
- * exactly one axis) surviving to the real card surface.
+ * The #116 follow-up three-mode model (Fill / Fit / Manual) is covered too: Fit
+ * letterboxes both axes on the real card surface, preview tiles and wheel
+ * gestures promote to Manual, and the modal footer stays pinned while the form
+ * body scrolls. Round 2 adds the floating card + merged square tiles in the
+ * image column and manual zoom-out below 100 % (letterboxed on exactly one
+ * axis) surviving to the real card surface. Round 3 adds the narrow detail
+ * switcher tile, moves the display-mode toggle into the image column, and
+ * removes the per-target radio picker – tiles are the only target switcher.
  */
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
@@ -119,9 +121,9 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await uploaded;
 		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
-		// The two floating preview tiles (round 2: card + ONE merged square tile for
-		// list + reservation) overlay the image column and render at the true aspect
-		// of their real surfaces (REQ-7).
+		// The three floating preview tiles (round 2–3: card, ONE merged square tile
+		// for list + reservation, and the narrow detail switcher) overlay the image
+		// column and render at the true aspect of their real surfaces (REQ-7).
 		await expectAspect(
 			dialog.getByTestId('gift-preview-card'),
 			GIFT_CROP_TARGET_SPECS.card.aspect,
@@ -132,6 +134,23 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			GIFT_CROP_TARGET_SPECS.square.aspect,
 			FIXED_TOLERANCE,
 		);
+		await expectAspect(
+			dialog.getByTestId('gift-preview-detail'),
+			GIFT_CROP_TARGET_SPECS.detail.aspect,
+			FIXED_TOLERANCE,
+		);
+		// The tiles share one height; the 1:2 detail tile is half as wide as the
+		// square tile (round 3: a switcher, not a spacious preview).
+		const squareBox = await dialog.getByTestId('gift-preview-square').boundingBox();
+		const detailBox = await dialog.getByTestId('gift-preview-detail').boundingBox();
+		expect(squareBox).not.toBeNull();
+		expect(detailBox).not.toBeNull();
+		expect(Math.abs(detailBox!.height - squareBox!.height)).toBeLessThanOrEqual(
+			squareBox!.height * 0.1,
+		);
+		expect(Math.abs(detailBox!.width - squareBox!.width / 2)).toBeLessThanOrEqual(
+			squareBox!.width * 0.1,
+		);
 		// The floats live INSIDE the image column, not in the form column.
 		const imageColumnBox = await dialog.getByTestId('gift-image-column').boundingBox();
 		const cardTileBox = await dialog.getByTestId('gift-preview-card').boundingBox();
@@ -141,10 +160,17 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		expect(cardTileBox!.x + cardTileBox!.width).toBeLessThanOrEqual(
 			imageColumnBox!.x + imageColumnBox!.width + 1,
 		);
+		// The display-mode toggle lives in the image column too (round 3).
+		const fillRadioBox = await dialog.getByRole('radio', { name: /Vyplnit/ }).boundingBox();
+		expect(fillRadioBox).not.toBeNull();
+		expect(fillRadioBox!.x).toBeGreaterThanOrEqual(imageColumnBox!.x);
+		expect(fillRadioBox!.x + fillRadioBox!.width).toBeLessThanOrEqual(
+			imageColumnBox!.x + imageColumnBox!.width + 1,
+		);
 
-		// Whole picture letterboxes BOTH axes: the preview image renders with
-		// object-fit contain instead of cropping the height (#116 follow-up).
-		await dialog.getByRole('radio', { name: /Celý obrázek/ }).click();
+		// Fit letterboxes BOTH axes: the preview image renders with object-fit
+		// contain instead of cropping the height (#116 follow-up).
+		await dialog.getByRole('radio', { name: /Přizpůsobit/ }).click();
 		// Scoped to the big preview – the floating tiles add their own img elements.
 		const columnImage = dialog.getByTestId('image-fit-preview').locator('img');
 		await expect(async () => {
@@ -154,25 +180,29 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		}).toPass({ timeout: 5_000 });
 
 		// Clicking a preview tile jumps to Manual mode with that target active and
-		// exposes the per-target picker plus the WYSIWYG stage.
+		// exposes the WYSIWYG stage. Tiles are the ONLY target switcher (round 3):
+		// the old per-target radio picker is gone.
 		await dialog.getByTestId('gift-preview-square').click();
 		await expect(dialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);
-		await expect(dialog.getByRole('radio', { name: /Seznam a rezervace/ })).toHaveAttribute(
-			'aria-checked',
+		await expect(dialog.getByTestId('gift-preview-tile-square')).toHaveAttribute(
+			'aria-pressed',
 			'true',
 		);
+		await expect(dialog.getByRole('radio', { name: /Seznam a rezervace/ })).toHaveCount(0);
 		const stageWindow = dialog.getByTestId('crop-stage-window');
 		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
 
-		// Switching targets visibly reshapes the stage window (REQ-2).
-		await dialog.getByRole('radio', { name: /^Detail$/ }).click();
+		// Switching targets via the tiles visibly reshapes the stage window (REQ-2)
+		// and the window chip names the active target.
+		await dialog.getByTestId('gift-preview-detail').click();
 		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.detail.aspect, FIXED_TOLERANCE);
+		await expect(stageWindow).toContainText('Detail');
 
 		// Draw a manual card crop: zoom in (slider +4 × step 5 = 120 %), then pan.
-		await dialog.getByRole('radio', { name: /Karta dárku/ }).click();
+		await dialog.getByTestId('gift-preview-card').click();
 		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.card.aspect, FIXED_TOLERANCE);
 		const zoomSlider = dialog.getByRole('slider');
 		await zoomSlider.focus();
@@ -234,9 +264,9 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		});
 		await expect(submitButton).toBeInViewport();
 
-		// Switch to Whole picture and save: the real card surface letterboxes the
+		// Switch to Fit and save: the real card surface letterboxes the
 		// image on both axes (object-fit contain) instead of cropping it.
-		await editDialog.getByRole('radio', { name: /Celý obrázek/ }).click();
+		await editDialog.getByRole('radio', { name: /Přizpůsobit/ }).click();
 		await submitButton.click();
 		await expect(editDialog).not.toBeVisible({ timeout: 10_000 });
 		const wholeCardImage = page.getByRole('img', { name: giftName }).first();
@@ -246,14 +276,14 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			);
 		}).toPass({ timeout: 10_000 });
 
-		// Zoom OUT below 100 % (round 2): reopen (Whole picture round-trips), switch
+		// Zoom OUT below 100 % (round 2): reopen (Fit round-trips), switch
 		// to Manual and pull the slider under the cover baseline – the readout drops
 		// below 100 and the saved card letterboxes the image inside its frame.
 		await expect(async () => {
 			await page.getByText(giftName, { exact: true }).first().click();
 			await expect(editDialog).toBeVisible({ timeout: 2_000 });
 		}).toPass({ timeout: 15_000 });
-		await expect(editDialog.getByRole('radio', { name: /Celý obrázek/ })).toHaveAttribute(
+		await expect(editDialog.getByRole('radio', { name: /Přizpůsobit/ })).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);

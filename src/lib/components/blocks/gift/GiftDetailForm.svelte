@@ -138,7 +138,7 @@
 	let submittedImageKey: string | null = null;
 
 	// Image presentation metadata (#116 D1/D2 + follow-up). The editor offers three
-	// modes – Fill / Whole picture / Manual – mapped onto the persisted fitMode enum.
+	// modes – Fill / Fit / Manual – mapped onto the persisted fitMode enum.
 	// Manual crops are edited PER TARGET: each target keeps its own rect (locked to
 	// the target's aspect by the stage) and only targets the user actually edits are
 	// persisted – untouched targets keep the automatic framing, and legacy base
@@ -218,7 +218,7 @@
 	/**
 	 * Persisted targets carry through a save verbatim; session edits override them.
 	 * Outside Manual mode there are no manual crops: leaving Manual drops them on
-	 * save (Fill/Whole picture own the framing), and a replaced image never
+	 * save (Fill/Fit own the framing), and a replaced image never
 	 * inherits crops drawn for the old pixels.
 	 */
 	function buildTargets(): ImageMetadata['targets'] {
@@ -260,12 +260,6 @@
 		detail: () => m.gift_image_slot_detail(),
 		square: () => m.gift_image_target_square(),
 	} as const satisfies Record<GiftCropTarget, () => string>;
-
-	function setActiveTarget(value: string) {
-		if ((GIFT_CROP_TARGET_VALUES as string[]).includes(value)) {
-			activeTarget = value as GiftCropTarget;
-		}
-	}
 
 	function setEditorMode(value: string) {
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
@@ -422,65 +416,91 @@
 </script>
 
 <div class={styles.body()}>
-	<!-- Left column: WYSIWYG crop stage in Manual mode (locked to the active target's
-	     real aspect, #116 REQ-2), else the live detail-target renderer preview. The
-	     card + square live previews sit at the column's lower edge as floating tiles
-	     so they cost no form space (round 2). -->
+	<!-- Left column: the display-mode control on top, then the WYSIWYG crop stage in
+	     Manual mode (locked to the active target's real aspect, #116 REQ-2), else the
+	     live detail-target renderer preview. The card + square + detail live previews
+	     sit at the column's lower edge as clickable tiles – they double as the crop
+	     target switcher (round 3) – so they cost no form space. -->
 	<div
-		class={cn(styles.imageColumn(), isCropMode && 'h-[340px] sm:h-auto')}
+		class={cn(styles.imageColumn(), isCropMode && 'h-[400px] sm:h-auto')}
 		data-testid="gift-image-column"
 	>
-		{#if hasImage && previewSrc !== null && isCropMode}
+		{#if hasImage}
 			<div class="flex size-full flex-col">
-				<ImageCropStage
-					class="min-h-0 flex-1 p-4 pb-2"
-					src={previewSrc}
-					alt={name || m.gift_image_preview()}
-					targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-					targetLabel={targetLabels[activeTarget]()}
-					realSizeText={GIFT_CROP_TARGET_SPECS[activeTarget].realSizeText}
-					fillColor={bgColor}
-					tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-					bind:cropRect={targetRects[activeTarget]}
-					onchange={() => dirtyTargets.add(activeTarget)}
-				/>
-				<!-- Below the stage (not overlapping: every stage pixel matters here). -->
-				<GiftImagePreviewSlots
-					class="px-4 pb-3"
-					src={previewSrc}
-					alt={name || m.gift_image_preview()}
-					imageMeta={currentImageMeta}
-					{activeTarget}
-					onTileSelect={handleTileSelect}
-				/>
+				<!-- Display-mode control (#116 round 3): lives with the preview it drives. -->
+				<div class="flex justify-center px-4 pt-3">
+					<ToggleGroup.Root
+						type="single"
+						value={editorMode}
+						onValueChange={setEditorMode}
+						aria-label={m.image_fit_label()}
+						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
+					>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill}>
+							{m.image_fit_fill()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fit}>
+							{m.image_fit_fit()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual}>
+							{m.image_fit_manual()}
+						</ToggleGroup.Item>
+					</ToggleGroup.Root>
+				</div>
+				{#if previewSrc !== null && isCropMode}
+					<ImageCropStage
+						class="min-h-0 flex-1 p-4 pt-2 pb-2"
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+						targetLabel={targetLabels[activeTarget]()}
+						realSizeText={GIFT_CROP_TARGET_SPECS[activeTarget].realSizeText}
+						fillColor={bgColor}
+						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+						bind:cropRect={targetRects[activeTarget]}
+						onchange={() => dirtyTargets.add(activeTarget)}
+					/>
+					<!-- Below the stage (not overlapping: every stage pixel matters here);
+					     the tiles are the only crop-target switcher (round 3). -->
+					<GiftImagePreviewSlots
+						class="px-4 pb-3"
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						imageMeta={currentImageMeta}
+						{activeTarget}
+						onTileSelect={handleTileSelect}
+					/>
+				{:else}
+					<div class="relative min-h-0 flex-1">
+						<!-- Wheel over the plain preview promotes to Manual so zooming "just works". -->
+						<div
+							class="size-full"
+							data-testid="image-fit-preview"
+							use:promoteOnWheel={promoteToManual}
+						>
+							<ImageFrame
+								class="size-full"
+								src={previewSrc}
+								alt={name || m.gift_image_preview()}
+								fitMode={detailFrame.fitMode}
+								focal={detailFrame.focal}
+								zoom={detailFrame.zoom}
+								fillColor={detailFrame.fillColor}
+								tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+							/>
+						</div>
+						<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
+						<GiftImagePreviewSlots
+							class="absolute inset-x-0 bottom-3"
+							src={previewSrc}
+							alt={name || m.gift_image_preview()}
+							imageMeta={currentImageMeta}
+							activeTarget={null}
+							onTileSelect={handleTileSelect}
+						/>
+					</div>
+				{/if}
 			</div>
-		{:else if hasImage}
-			<!-- Wheel over the plain preview promotes to Manual so zooming "just works". -->
-			<div
-				class="size-full"
-				data-testid="image-fit-preview"
-				use:promoteOnWheel={promoteToManual}
-			>
-				<ImageFrame
-					class="size-full"
-					src={previewSrc}
-					alt={name || m.gift_image_preview()}
-					fitMode={detailFrame.fitMode}
-					focal={detailFrame.focal}
-					zoom={detailFrame.zoom}
-					fillColor={detailFrame.fillColor}
-					tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-				/>
-			</div>
-			<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
-			<GiftImagePreviewSlots
-				class="absolute inset-x-0 bottom-3"
-				src={previewSrc}
-				alt={name || m.gift_image_preview()}
-				imageMeta={currentImageMeta}
-				activeTarget={null}
-				onTileSelect={handleTileSelect}
-			/>
 		{:else}
 			<div class={styles.imagePlaceholder()}>
 				<GiftIcon class="size-16 text-ink-faint" />
@@ -712,9 +732,9 @@
 					</div>
 				{/if}
 
-				<!-- Image (last field: the image bundle groups the source input with the
-			     display-mode and crop-target controls; live previews float in the
-			     image column so they cost no form space) -->
+				<!-- Image (last field: source input only – the display-mode control and
+			     the clickable target tiles live in the image column with the
+			     preview they drive, #116 round 3) -->
 				<div class="mt-3 {styles.formField()}">
 					<Label>{m.gift_image_label()}</Label>
 					<div class={styles.imageTabRow()}>
@@ -754,46 +774,6 @@
 							onError={handleImageUploadError}
 							onRemove={handleImageRemove}
 						/>
-					{/if}
-
-					<!-- Display-mode control appears once an image exists (REQ-1/2) -->
-					{#if hasImage}
-						<div class="mt-3 flex flex-col gap-2">
-							<Label>{m.image_fit_label()}</Label>
-							<ToggleGroup.Root
-								type="single"
-								value={editorMode}
-								onValueChange={setEditorMode}
-								aria-label={m.image_fit_label()}
-							>
-								<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill}>
-									{m.image_fit_fill()}
-								</ToggleGroup.Item>
-								<ToggleGroup.Item value={IMAGE_EDITOR_MODES.whole}>
-									{m.image_fit_whole()}
-								</ToggleGroup.Item>
-								<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual}>
-									{m.image_fit_manual()}
-								</ToggleGroup.Item>
-							</ToggleGroup.Root>
-							{#if isCropMode}
-								<!-- Per-target crop picker (#116 D2): the stage on the left locks
-							     to the selected target's real aspect ratio. -->
-								<Label>{m.gift_image_target_label()}</Label>
-								<ToggleGroup.Root
-									type="single"
-									value={activeTarget}
-									onValueChange={setActiveTarget}
-									aria-label={m.gift_image_target_label()}
-								>
-									{#each GIFT_CROP_TARGET_VALUES as target (target)}
-										<ToggleGroup.Item value={target}>
-											{targetLabels[target]()}
-										</ToggleGroup.Item>
-									{/each}
-								</ToggleGroup.Root>
-							{/if}
-						</div>
 					{/if}
 				</div>
 			</fieldset>

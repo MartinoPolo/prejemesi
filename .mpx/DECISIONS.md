@@ -850,6 +850,13 @@ What: Manual crops can zoom out below 100 % down to the target's contain zoom: t
 Why: Whole picture is all-or-nothing; users want to trim a bit while still seeing the entire subject (white space on one axis). The four-tile strip duplicated the square framing twice, claimed form space, and the detail tile duplicated the big left preview.
 Rejected: CSS-only zoom-out via `transform: scale(z < 1)` (object-fit clipping makes it shrink-with-margins, not reveal); zoom-out below the contain zoom (white space on both axes is never a sensible framing); a separate reservation tile (same crop target as list).
 
+### Tiles are the only crop-target switcher; mode toggle in the image column; „Whole picture" renamed „Fit" (#116 round 3)
+
+Decided: 2026-07-13
+What: The gift editor's per-target radio picker („Výřez pro") is removed — the floating preview tiles are the sole crop-target switcher, so a really narrow same-height detail tile (1:2, half the square tile's width) joins card + square as a switcher-first tile (the big left preview already previews the detail framing). The three-mode ToggleGroup moves from the form column into the image column, above the preview/stage it drives, leaving the form's image field as source input only. The second mode is renamed: en „Whole picture" → „Fit", cs „Celý obrázek" → „Přizpůsobit"; the internal editor-mode id is `fit` (message key `image_fit_fit`). Persisted fitMode values are untouched.
+Why: Two parallel switchers (radios + clickable tiles) for the same thing confused the model; the mode control belongs next to the preview it affects; without a detail tile one of three targets was unreachable by tile click.
+Rejected: Keeping the radio picker alongside clickable tiles (duplicated control); a full-size detail tile (duplicates the big left preview — the narrow tile is deliberately a switcher, not a spacious preview); renaming the persisted `contain-padded` fitMode (pointless migration).
+
 ### Separated token responsibilities: bg-theme / wishlist tokens / frame-fill
 
 Decided: 2026-06-02

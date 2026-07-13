@@ -6,14 +6,14 @@ import {
 	giftEditorModeFromMeta,
 	slotEditorModeFromMeta,
 	fillImageMeta,
-	wholeImageMeta,
+	fitImageMeta,
 } from './editor_modes.js';
 import { ImageMetadataSchema, type ImageMetadata } from './types.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
 
 describe('fitModeForEditorMode', () => {
-	it('maps whole to contain-padded and both fill and manual to cover-crop', () => {
-		expect(fitModeForEditorMode(IMAGE_EDITOR_MODES.whole)).toBe(IMAGE_FIT_MODES.containPadded);
+	it('maps fit to contain-padded and both fill and manual to cover-crop', () => {
+		expect(fitModeForEditorMode(IMAGE_EDITOR_MODES.fit)).toBe(IMAGE_FIT_MODES.containPadded);
 		expect(fitModeForEditorMode(IMAGE_EDITOR_MODES.fill)).toBe(IMAGE_FIT_MODES.coverCrop);
 		expect(fitModeForEditorMode(IMAGE_EDITOR_MODES.manual)).toBe(IMAGE_FIT_MODES.coverCrop);
 	});
@@ -28,9 +28,9 @@ describe('giftEditorModeFromMeta', () => {
 		);
 	});
 
-	it('reads contain-padded as whole picture', () => {
+	it('reads contain-padded as fit', () => {
 		expect(giftEditorModeFromMeta({ fitMode: IMAGE_FIT_MODES.containPadded })).toBe(
-			IMAGE_EDITOR_MODES.whole,
+			IMAGE_EDITOR_MODES.fit,
 		);
 	});
 
@@ -63,9 +63,9 @@ describe('slotEditorModeFromMeta', () => {
 		);
 	});
 
-	it('reads contain-padded as whole picture', () => {
+	it('reads contain-padded as fit', () => {
 		expect(slotEditorModeFromMeta({ fitMode: IMAGE_FIT_MODES.containPadded })).toBe(
-			IMAGE_EDITOR_MODES.whole,
+			IMAGE_EDITOR_MODES.fit,
 		);
 	});
 
@@ -100,10 +100,10 @@ describe('slotEditorModeFromMeta', () => {
 	});
 });
 
-describe('fillImageMeta / wholeImageMeta', () => {
+describe('fillImageMeta / fitImageMeta', () => {
 	it('produce schema-valid metadata with independent objects per call', () => {
 		expect(() => v.parse(ImageMetadataSchema, fillImageMeta())).not.toThrow();
-		expect(() => v.parse(ImageMetadataSchema, wholeImageMeta())).not.toThrow();
+		expect(() => v.parse(ImageMetadataSchema, fitImageMeta())).not.toThrow();
 		expect(fillImageMeta()).not.toBe(fillImageMeta());
 		expect(fillImageMeta().focal).not.toBe(fillImageMeta().focal);
 	});
@@ -116,6 +116,6 @@ describe('fillImageMeta / wholeImageMeta', () => {
 			zoom: 1,
 			bgColor: '#abcdef',
 		});
-		expect(wholeImageMeta().fitMode).toBe(IMAGE_FIT_MODES.containPadded);
+		expect(fitImageMeta().fitMode).toBe(IMAGE_FIT_MODES.containPadded);
 	});
 });

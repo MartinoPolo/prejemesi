@@ -41,11 +41,13 @@
 		class: className,
 	}: Props = $props();
 
-	// Two floating live previews rendered over/under the big detail preview (#116
-	// round 2): the wide card tile and ONE merged square tile – the list thumbnail
+	// Three live previews rendered over/under the big detail preview (#116
+	// rounds 2–3): the wide card tile, ONE merged square tile – the list thumbnail
 	// and the reservation modal share the `square` crop target, so separate tiles
-	// only duplicated the same framing. The big image-column preview IS the detail
-	// target, so detail needs no tile. Aspect data comes from the shared crop-target
+	// only duplicated the same framing – and a really narrow detail tile. The big
+	// image-column preview already IS the detail target, so the detail tile exists
+	// as a switcher (every target is one click away), not as extra information.
+	// All tiles share one height; aspect data comes from the shared crop-target
 	// registry (REQ-6); each tile renders its own per-target framing so the strip
 	// never lies about how a crop will actually look.
 	const TILES = [
@@ -64,6 +66,15 @@
 			label: m.gift_image_target_square,
 			sizing: 'size-14',
 			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
+		},
+		{
+			key: 'detail',
+			target: 'detail',
+			label: m.gift_image_slot_detail,
+			// Same 56px height as the square tile; the 1:2 detail aspect makes it
+			// half as wide (switcher-first, #116 round 3).
+			sizing: 'w-7',
+			cssAspect: GIFT_CROP_TARGET_SPECS.detail.cssAspect,
 		},
 	] as const satisfies readonly {
 		key: string;
@@ -115,12 +126,16 @@
 					type="button"
 					onclick={() => onTileSelect?.(tile.target)}
 					aria-pressed={activeTarget === tile.target}
+					data-testid="gift-preview-tile-{tile.key}"
 					class="pointer-events-auto flex cursor-pointer flex-col items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
 					{@render tileFace()}
 				</button>
 			{:else}
-				<div class="pointer-events-auto flex flex-col items-center gap-1">
+				<div
+					class="pointer-events-auto flex flex-col items-center gap-1"
+					data-testid="gift-preview-tile-{tile.key}"
+				>
 					{@render tileFace()}
 				</div>
 			{/if}

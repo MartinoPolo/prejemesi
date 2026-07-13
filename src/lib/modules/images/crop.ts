@@ -278,7 +278,7 @@ export function giftTargetFrameProps(
 	meta: ImageMetadata | null,
 	target: GiftCropTarget,
 ): ImageFrameProps {
-	// Manual crops only apply on a cover-crop base: Whole picture (contain-padded)
+	// Manual crops only apply on a cover-crop base: Fit (contain-padded)
 	// must letterbox both axes even when stale per-target crops linger in the
 	// metadata (#116 follow-up – the editor drops them on save, this guards rows
 	// persisted in between).
