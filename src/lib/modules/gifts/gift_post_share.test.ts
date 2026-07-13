@@ -587,6 +587,100 @@ describe('computePostShareEditTransparency', () => {
 		});
 	});
 
+	describe('jsonb round-trip key reordering (issue #124 regression)', () => {
+		// Postgres jsonb does not preserve JS key insertion order: a snapshot read back from the
+		// `pre_edit_share_snapshot` column can have different key order (including inside nested
+		// objects like `imageMeta`) than a freshly-built snapshot, even when every value matches.
+		// A raw JSON.stringify comparison treats this as "changed" and the badge never clears.
+		function reorderKeys(snapshot: PreShareGiftSnapshot): PreShareGiftSnapshot {
+			// Rebuild with reversed key order plus a differently-ordered nested object, simulating
+			// what a jsonb round-trip can produce. Only reorders existing keys - never adds/drops any,
+			// so the two objects remain value-identical.
+			const reordered = {
+				priorityLevelId: snapshot.priorityLevelId,
+				links: snapshot.links,
+				imageMeta: snapshot.imageMeta
+					? (Object.fromEntries(
+							Object.entries(snapshot.imageMeta).reverse(),
+						) as PreShareGiftSnapshot['imageMeta'])
+					: snapshot.imageMeta,
+				imageKey: snapshot.imageKey,
+				imageUrl: snapshot.imageUrl,
+				currency: snapshot.currency,
+				price: snapshot.price,
+				quantity: snapshot.quantity,
+				descriptionAppends: snapshot.descriptionAppends,
+				description: snapshot.description,
+				name: snapshot.name,
+			};
+			return reordered as PreShareGiftSnapshot;
+		}
+
+		it('clears the badge for a value-identical revert even when the existing snapshot has reordered keys', () => {
+			const shareTimeState = makeCurrent({
+				name: 'Kolo',
+				price: 1000,
+				imageMeta: { fitMode: 'cover-crop', bgColor: '#ffffff' },
+				links: [{ url: 'https://example.com/a' }, { url: 'https://example.com/b' }],
+			});
+			const outcome = computePostShareEditTransparency(
+				makeParams({
+					existingSnapshot: reorderKeys(shareTimeState),
+					graceOpen: true,
+					beforeEdit: makeCurrent({
+						name: 'Kolo horské',
+						price: 1500,
+						imageMeta: { fitMode: 'cover-crop', bgColor: '#ffffff' },
+						links: [{ url: 'https://example.com/a' }, { url: 'https://example.com/b' }],
+					}),
+					// Reverts byte-for-byte to shareTimeState (net-zero).
+					afterEdit: shareTimeState,
+				}),
+			);
+			expect(outcome.editedAfterShareAt).toBeNull();
+			expect(outcome.preEditShareSnapshot).toBeNull();
+		});
+
+		it('still keeps the badge set when a genuinely different value is compared against a reordered snapshot', () => {
+			const shareTimeState = makeCurrent({ name: 'Kolo', price: 1000 });
+			const outcome = computePostShareEditTransparency(
+				makeParams({
+					existingSnapshot: reorderKeys(shareTimeState),
+					graceOpen: true,
+					beforeEdit: makeCurrent({ name: 'Kolo horské', price: 1500 }),
+					// price does not revert -> genuinely changed, not net-zero.
+					afterEdit: makeCurrent({ name: 'Kolo', price: 1500 }),
+				}),
+			);
+			expect(outcome.editedAfterShareAt).toEqual(NOW);
+			expect(outcome.preEditShareSnapshot).toEqual(shareTimeState);
+		});
+
+		it('still treats a reordered array (same elements, different order) as a real change', () => {
+			const shareTimeState = makeCurrent({
+				name: 'Kolo',
+				links: [{ url: 'https://example.com/a' }, { url: 'https://example.com/b' }],
+			});
+			const outcome = computePostShareEditTransparency(
+				makeParams({
+					existingSnapshot: reorderKeys(shareTimeState),
+					graceOpen: true,
+					beforeEdit: makeCurrent({
+						name: 'Kolo',
+						links: [{ url: 'https://example.com/b' }, { url: 'https://example.com/a' }],
+					}),
+					// Same link objects as shareTimeState but reordered - not a net-zero revert.
+					afterEdit: makeCurrent({
+						name: 'Kolo',
+						links: [{ url: 'https://example.com/b' }, { url: 'https://example.com/a' }],
+					}),
+				}),
+			);
+			expect(outcome.editedAfterShareAt).toEqual(NOW);
+			expect(outcome.preEditShareSnapshot).toEqual(shareTimeState);
+		});
+	});
+
 	describe('REQ-3: post-grace edits always badge permanently, even if later reverted', () => {
 		it('sets the badge and does not snapshot once the grace window has closed', () => {
 			const outcome = computePostShareEditTransparency(

@@ -53,9 +53,36 @@ function normalizedText(value: string | null | undefined): string {
 	return value?.trim() ?? '';
 }
 
-/** Structural inequality for jsonb-shaped fields (links, imageMeta), normalizing null/undefined. */
+/**
+ * Recursively sorts object keys so structurally-identical values serialize identically regardless
+ * of property insertion order. Array element order is preserved (order is meaningful there —
+ * e.g. reordering `links`/`descriptionAppends` is a real change, not noise).
+ *
+ * Needed because Postgres jsonb does not preserve JS object key order: a value read back from
+ * the `pre_edit_share_snapshot` column can have different key order than a freshly-built
+ * snapshot even when every value is identical, which broke raw `JSON.stringify` comparison.
+ */
+function canonicalize(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(canonicalize);
+	}
+	if (value !== null && typeof value === 'object') {
+		const sortedKeys = Object.keys(value as Record<string, unknown>).sort();
+		const canonical: Record<string, unknown> = {};
+		for (const key of sortedKeys) {
+			canonical[key] = canonicalize((value as Record<string, unknown>)[key]);
+		}
+		return canonical;
+	}
+	return value;
+}
+
+/**
+ * Structural inequality for jsonb-shaped fields (links, imageMeta), normalizing null/undefined
+ * and order-independent for object keys (see {@link canonicalize}). Array order still matters.
+ */
 export function jsonChanged(a: unknown, b: unknown): boolean {
-	return JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
+	return JSON.stringify(canonicalize(a ?? null)) !== JSON.stringify(canonicalize(b ?? null));
 }
 
 /**
