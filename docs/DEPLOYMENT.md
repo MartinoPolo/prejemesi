@@ -26,6 +26,17 @@ The deployed commit is recorded three ways: in the environment's deployment
 history (GitHub → Environments → production), in the workflow step summary,
 and as a `GIT_COMMIT_SHA` plain-text var on the Worker.
 
+### PR and `dev` merge gate
+
+Pull requests targeting `dev` run the reusable checks through `ci.yml`. Branch
+protection requires the stable `checks / required` status. That aggregator
+requires static and unit checks, and requires E2E as well when the workflow is
+called by the production deploy with `run_e2e: true`. The separate
+`checks / e2e` status is intentionally skipped on PRs and `dev` pushes.
+
+If the reusable workflow's caller or aggregator job name changes, update the
+`dev` branch protection status check at the same time.
+
 Environment approval is configured under
 **Settings → Environments → production** (required reviewer + branch policy).
 It was created via `gh api` and can be recreated with:
