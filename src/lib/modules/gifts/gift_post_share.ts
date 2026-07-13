@@ -19,6 +19,23 @@ export interface PreShareGiftSnapshot {
 	priorityLevelId: string | null;
 }
 
+/** Extracts the {@link PreShareGiftSnapshot}-comparable fields from a full gift row. */
+export function toPreShareGiftSnapshot(giftRow: PreShareGiftSnapshot): PreShareGiftSnapshot {
+	return {
+		name: giftRow.name,
+		description: giftRow.description,
+		descriptionAppends: giftRow.descriptionAppends,
+		quantity: giftRow.quantity,
+		price: giftRow.price,
+		currency: giftRow.currency,
+		imageUrl: giftRow.imageUrl,
+		imageKey: giftRow.imageKey,
+		imageMeta: giftRow.imageMeta,
+		links: giftRow.links,
+		priorityLevelId: giftRow.priorityLevelId,
+	};
+}
+
 export interface PostShareEditOutcome {
 	/** Non-null => reject the edit with this status + leak-safe code. */
 	rejection: { status: number; code: string } | null;
@@ -189,4 +206,52 @@ export function computePreShareOwnerEdit(
 	}
 
 	return { rejection: null, updateData, changed };
+}
+
+/**
+ * Net-zero in-grace revert (issue #124): byte-identical restoration of the pre-edit state while
+ * still inside the post-share grace window clears the "Upraveno po sdílení" badge, since it
+ * carries no signal for gifters. Post-grace edits always badge permanently (REQ-3) — this is
+ * enforced by the caller only invoking this comparison while the grace window is still open.
+ */
+export interface PostShareEditTransparencyOutcome {
+	/** New value for the `editedAfterShareAt` column (null clears the badge). */
+	editedAfterShareAt: Date | null;
+	/** New value for the `preEditShareSnapshot` column (null once the badge clears/never set). */
+	preEditShareSnapshot: PreShareGiftSnapshot | null;
+}
+
+/**
+ * Determines the next `editedAfterShareAt` / `preEditShareSnapshot` pair for a post-share field
+ * edit that changed at least one tracked field (REQ-1/2).
+ *
+ * - First in-grace edit (no existing snapshot): captures `beforeEdit` as the snapshot and sets
+ *   `editedAfterShareAt` to `now`.
+ * - Later in-grace edit (existing snapshot, window still open): compares `afterEdit` against the
+ *   snapshot. Byte-identical → clears both (net-zero revert). Otherwise keeps the badge set,
+ *   preserving the original snapshot (REQ-2: snapshot is the share-time state, not the previous
+ *   edit's state).
+ * - Grace closed (`graceOpen` false): always sets/keeps the badge, no snapshot needed (REQ-3).
+ */
+export function computePostShareEditTransparency(input: {
+	existingSnapshot: PreShareGiftSnapshot | null;
+	graceOpen: boolean;
+	beforeEdit: PreShareGiftSnapshot;
+	afterEdit: PreShareGiftSnapshot;
+	now: Date;
+}): PostShareEditTransparencyOutcome {
+	const { existingSnapshot, graceOpen, beforeEdit, afterEdit, now } = input;
+
+	if (!graceOpen) {
+		// Post-grace: badge permanently, no snapshot bookkeeping needed anymore (REQ-3).
+		return { editedAfterShareAt: now, preEditShareSnapshot: null };
+	}
+
+	const snapshot = existingSnapshot ?? beforeEdit;
+	const revertedToSnapshot = !jsonChanged(afterEdit, snapshot);
+	if (revertedToSnapshot) {
+		return { editedAfterShareAt: null, preEditShareSnapshot: null };
+	}
+
+	return { editedAfterShareAt: now, preEditShareSnapshot: snapshot };
 }

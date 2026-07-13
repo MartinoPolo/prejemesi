@@ -14,6 +14,7 @@ import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { generateId } from './id.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { GiftLink, DescriptionAppend } from '$lib/modules/gifts/types.js';
+import type { PreShareGiftSnapshot } from '$lib/modules/gifts/gift_post_share.js';
 
 export const gift = pgTable(
 	'gift',
@@ -38,6 +39,11 @@ export const gift = pgTable(
 		// Set on the first post-share field edit; drives the "Upraveno po sdílení" transparency badge
 		// (REQ-6). Never set by reorder/mark-received.
 		editedAfterShareAt: timestamp('edited_after_share_at', { withTimezone: true }),
+		// Captured at the FIRST in-grace edit (issue #124): the field values right before that edit,
+		// i.e. the share-time state. Each later in-grace edit compares the gift against this snapshot;
+		// a byte-identical match clears `editedAfterShareAt` (net-zero revert carries no signal for
+		// gifters). Cleared whenever `editedAfterShareAt` is cleared or the grace window closes.
+		preEditShareSnapshot: jsonb('pre_edit_share_snapshot').$type<PreShareGiftSnapshot>(),
 		// Up to 10 purchase links; links[0] is primary (drives the domain chip / OG / "Bez odkazu").
 		links: jsonb('links')
 			.$type<GiftLink[]>()
