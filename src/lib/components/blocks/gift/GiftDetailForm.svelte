@@ -1,18 +1,19 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import { cn } from '$lib/utils.js';
 	import * as Select from '$lib/components/base/select/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
-	import { Separator } from '$lib/components/base/separator/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
-	import GiftImageCropCanvas from './GiftImageCropCanvas.svelte';
+	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
+	import { promoteOnWheel } from '$lib/components/derived/image-crop/promote_on_wheel.js';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
@@ -44,15 +45,24 @@
 	import {
 		IMAGE_FIT_MODES,
 		IMAGE_TOKEN_SCOPES,
-		type ImageFitMode,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
-		cropStateToImageMeta,
-		imageMetaToFrameProps,
+		cropRectToFocalZoom,
+		fitModeForEditorMode,
+		giftEditorModeFromMeta,
+		giftTargetFrameProps,
 		FULL_CROP_RECT,
-		IMAGE_FIT_MODE_VALUES,
+		GIFT_CROP_TARGET_SPECS,
+		GIFT_CROP_TARGET_VALUES,
+		IMAGE_EDITOR_MODES,
+		IMAGE_EDITOR_MODE_VALUES,
+		type GiftCropTarget,
 		type ImageCropRect,
+		type ImageEditorMode,
+		type ImageMetadata,
+		type ImageTargetCrop,
 	} from '$lib/modules/images/index.js';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 
 	interface Props {
@@ -127,15 +137,45 @@
 	const pendingUploads = createPendingUploads();
 	let submittedImageKey: string | null = null;
 
-	// Image presentation metadata (REQ-1/3). The crop rect is the editing representation;
-	// it is converted to the renderer's focal+zoom on save and retained when switching
-	// away from Crop so re-selecting it restores the region.
+	// Image presentation metadata (#116 D1/D2 + follow-up). The editor offers three
+	// modes – Fill / Fit / Manual – mapped onto the persisted fitMode enum.
+	// Manual crops are edited PER TARGET: each target keeps its own rect (locked to
+	// the target's aspect by the stage) and only targets the user actually edits are
+	// persisted – untouched targets keep the automatic framing, and legacy base
+	// focal/zoom rows pass through unchanged (D5).
 	// svelte-ignore state_referenced_locally
-	let fitMode = $state<ImageFitMode>(gift?.imageMeta?.fitMode ?? IMAGE_FIT_MODES.auto);
-	// svelte-ignore state_referenced_locally
-	let cropRect = $state<ImageCropRect>({ ...(gift?.imageMeta?.cropRect ?? FULL_CROP_RECT) });
+	let editorMode = $state<ImageEditorMode>(giftEditorModeFromMeta(gift?.imageMeta));
+	// Whether the user touched the display mode this session; an untouched form keeps
+	// the persisted (possibly legacy `auto`) fitMode verbatim on save (REQ-8).
+	let modeDirty = $state(false);
 	// svelte-ignore state_referenced_locally
 	const bgColor = gift?.imageMeta?.bgColor ?? null;
+	// svelte-ignore state_referenced_locally
+	const initialImageUrl = gift?.imageUrl ?? '';
+	// svelte-ignore state_referenced_locally
+	const initialImageKey = gift?.imageKey ?? '';
+	const hadImageInitially = initialImageUrl !== '' || initialImageKey !== '';
+	// svelte-ignore state_referenced_locally
+	const legacyFitMode = hadImageInitially
+		? (gift?.imageMeta?.fitMode ?? IMAGE_FIT_MODES.auto)
+		: null;
+
+	function initTargetRects(meta: ImageMetadata | null | undefined) {
+		const rects = {} as Record<GiftCropTarget, ImageCropRect>;
+		for (const target of GIFT_CROP_TARGET_VALUES) {
+			// A persisted per-target rect restores exactly; otherwise start from the
+			// legacy base rect (the stage snaps it to the target aspect once measured).
+			const saved = meta?.targets?.[target]?.cropRect ?? meta?.cropRect ?? FULL_CROP_RECT;
+			rects[target] = { ...saved };
+		}
+		return rects;
+	}
+
+	// svelte-ignore state_referenced_locally
+	let targetRects = $state(initTargetRects(gift?.imageMeta));
+	let activeTarget = $state<GiftCropTarget>('card');
+	// Targets edited in this session; only these are (re)persisted on save.
+	const dirtyTargets = new SvelteSet<GiftCropTarget>();
 
 	const styles = giftDetailModalVariants();
 
@@ -159,9 +199,88 @@
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
 	const previewSrc = $derived(imageUrl.trim() !== '' ? imageUrl.trim() : null);
-	const isCropMode = $derived(fitMode === IMAGE_FIT_MODES.coverCrop);
-	const currentImageMeta = $derived(cropStateToImageMeta(fitMode, cropRect, bgColor));
-	const framePreview = $derived(imageMetaToFrameProps(currentImageMeta));
+	const isCropMode = $derived(editorMode === IMAGE_EDITOR_MODES.manual);
+
+	// A different source invalidates the persisted geometry: crops and focal points
+	// target the old pixels, so a replaced image starts from the automatic framing.
+	const imageReplaced = $derived(
+		imageUrl.trim() !== initialImageUrl || imageKey !== initialImageKey,
+	);
+
+	// The fitMode a save would persist: legacy rows keep their stored value (incl.
+	// `auto`) until the user touches the mode or replaces the image (REQ-8).
+	const savedFitMode = $derived(
+		modeDirty || imageReplaced || legacyFitMode === null
+			? fitModeForEditorMode(editorMode)
+			: legacyFitMode,
+	);
+
+	/**
+	 * Persisted targets carry through a save verbatim; session edits override them.
+	 * Outside Manual mode there are no manual crops: leaving Manual drops them on
+	 * save (Fill/Fit own the framing), and a replaced image never
+	 * inherits crops drawn for the old pixels.
+	 */
+	function buildTargets(): ImageMetadata['targets'] {
+		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
+			return undefined;
+		}
+		const merged: Partial<Record<GiftCropTarget, ImageTargetCrop>> = imageReplaced
+			? {}
+			: { ...gift?.imageMeta?.targets };
+		for (const target of dirtyTargets) {
+			const rect = targetRects[target];
+			const { focal, zoom } = cropRectToFocalZoom(rect);
+			merged[target] = { cropRect: { ...rect }, focal, zoom };
+		}
+		return Object.keys(merged).length > 0 ? merged : undefined;
+	}
+
+	// Base focal/zoom/cropRect stay exactly as persisted for an unreplaced image so
+	// legacy rows render unchanged (#116 REQ-8). Explicitly choosing Fill re-centers
+	// the framing, and a replaced image starts from the automatic centered default.
+	const currentImageMeta = $derived.by((): ImageMetadata => {
+		const base = imageReplaced ? null : gift?.imageMeta;
+		const recentered = base == null || (modeDirty && editorMode === IMAGE_EDITOR_MODES.fill);
+		return {
+			fitMode: savedFitMode,
+			cropRect: recentered ? null : (base?.cropRect ?? null),
+			focal: recentered ? { x: 50, y: 50 } : (base?.focal ?? { x: 50, y: 50 }),
+			zoom: recentered ? 1 : (base?.zoom ?? 1),
+			bgColor,
+			targets: buildTargets(),
+		};
+	});
+
+	// The image column IS the detail target surface, so it previews the detail framing.
+	const detailFrame = $derived(giftTargetFrameProps(currentImageMeta, 'detail'));
+
+	const targetLabels = {
+		card: () => m.gift_image_slot_card(),
+		detail: () => m.gift_image_slot_detail(),
+		square: () => m.gift_image_target_square(),
+	} as const satisfies Record<GiftCropTarget, () => string>;
+
+	function setEditorMode(value: string) {
+		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
+			editorMode = value as ImageEditorMode;
+			modeDirty = true;
+		}
+	}
+
+	/** A zoom attempt on the plain preview is a manual-crop intent (#116 follow-up). */
+	function promoteToManual() {
+		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
+			editorMode = IMAGE_EDITOR_MODES.manual;
+			modeDirty = true;
+		}
+	}
+
+	/** Clicking a preview tile jumps to Manual mode with that target active. */
+	function handleTileSelect(target: GiftCropTarget) {
+		activeTarget = target;
+		promoteToManual();
+	}
 
 	function validateForm(): boolean {
 		nameError = '';
@@ -262,15 +381,24 @@
 		}
 	}
 
+	/** A new source starts from the automatic centered Fill framing. */
+	function resetCropEditing() {
+		editorMode = IMAGE_EDITOR_MODES.fill;
+		targetRects = initTargetRects(null);
+		dirtyTargets.clear();
+	}
+
 	function handleImageUpload(result: UploadResult) {
 		imageKey = result.objectKey;
 		imageUrl = result.publicUrl;
 		pendingUploads.track(result);
+		resetCropEditing();
 	}
 
 	function handleImageRemove() {
 		imageKey = '';
 		imageUrl = '';
+		resetCropEditing();
 	}
 
 	function handleImageUploadError(uploadError: Error) {
@@ -288,27 +416,91 @@
 </script>
 
 <div class={styles.body()}>
-	<!-- Left column: image stage (crop canvas in Crop mode, else live renderer preview) -->
-	<div class={styles.imageColumn()}>
-		{#if hasImage && previewSrc !== null && isCropMode}
-			<div class="flex size-full items-center justify-center p-4">
-				<GiftImageCropCanvas
-					src={previewSrc}
-					alt={name || m.gift_image_preview()}
-					bind:cropRect
-				/>
+	<!-- Left column: the display-mode control on top, then the WYSIWYG crop stage in
+	     Manual mode (locked to the active target's real aspect, #116 REQ-2), else the
+	     live detail-target renderer preview. The card + square + detail live previews
+	     sit at the column's lower edge as clickable tiles – they double as the crop
+	     target switcher (round 3) – so they cost no form space. -->
+	<div
+		class={cn(styles.imageColumn(), isCropMode && 'h-[400px] sm:h-auto')}
+		data-testid="gift-image-column"
+	>
+		{#if hasImage}
+			<div class="flex size-full flex-col">
+				<!-- Display-mode control (#116 round 3): lives with the preview it drives. -->
+				<div class="flex justify-center px-4 pt-3">
+					<ToggleGroup.Root
+						type="single"
+						value={editorMode}
+						onValueChange={setEditorMode}
+						aria-label={m.image_fit_label()}
+						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
+					>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill}>
+							{m.image_fit_fill()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fit}>
+							{m.image_fit_fit()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual}>
+							{m.image_fit_manual()}
+						</ToggleGroup.Item>
+					</ToggleGroup.Root>
+				</div>
+				{#if previewSrc !== null && isCropMode}
+					<ImageCropStage
+						class="min-h-0 flex-1 p-4 pt-2 pb-2"
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+						targetLabel={targetLabels[activeTarget]()}
+						realSizeText={GIFT_CROP_TARGET_SPECS[activeTarget].realSizeText}
+						fillColor={bgColor}
+						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+						bind:cropRect={targetRects[activeTarget]}
+						onchange={() => dirtyTargets.add(activeTarget)}
+					/>
+					<!-- Below the stage (not overlapping: every stage pixel matters here);
+					     the tiles are the only crop-target switcher (round 3). -->
+					<GiftImagePreviewSlots
+						class="px-4 pb-3"
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						imageMeta={currentImageMeta}
+						{activeTarget}
+						onTileSelect={handleTileSelect}
+					/>
+				{:else}
+					<div class="relative min-h-0 flex-1">
+						<!-- Wheel over the plain preview promotes to Manual so zooming "just works". -->
+						<div
+							class="size-full"
+							data-testid="image-fit-preview"
+							use:promoteOnWheel={promoteToManual}
+						>
+							<ImageFrame
+								class="size-full"
+								src={previewSrc}
+								alt={name || m.gift_image_preview()}
+								fitMode={detailFrame.fitMode}
+								focal={detailFrame.focal}
+								zoom={detailFrame.zoom}
+								fillColor={detailFrame.fillColor}
+								tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+							/>
+						</div>
+						<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
+						<GiftImagePreviewSlots
+							class="absolute inset-x-0 bottom-3"
+							src={previewSrc}
+							alt={name || m.gift_image_preview()}
+							imageMeta={currentImageMeta}
+							activeTarget={null}
+							onTileSelect={handleTileSelect}
+						/>
+					</div>
+				{/if}
 			</div>
-		{:else if hasImage}
-			<ImageFrame
-				class="size-full"
-				src={previewSrc}
-				alt={name || m.gift_image_preview()}
-				fitMode={framePreview.fitMode}
-				focal={framePreview.focal}
-				zoom={framePreview.zoom}
-				fillColor={framePreview.fillColor}
-				tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-			/>
 		{:else}
 			<div class={styles.imagePlaceholder()}>
 				<GiftIcon class="size-16 text-ink-faint" />
@@ -319,297 +511,275 @@
 		{/if}
 	</div>
 
-	<!-- Right column: form -->
+	<!-- Right column: form fields scroll, the action buttons stay pinned below -->
 	<div class={styles.detailColumn()}>
-		<!-- Gift grace window (issue #83): communicates temporary full-edit/delete or delete-only access. -->
-		{#if graceActive && graceExpiresAt !== null}
-			<div class="mb-3">
-				<GraceCountdown expiresAt={graceExpiresAt} now={graceNow} message={graceMessage} />
-			</div>
-		{/if}
-		<fieldset class="contents">
-			<!-- Name -->
-			<Field
-				fieldId="gift-name"
-				label={m.gift_name_label()}
-				errorMessage={nameError}
-				class={styles.formField()}
-			>
-				{#snippet children({ hasError, errorId }: FieldControlContext)}
-					{#if locked}
-						<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
-							{#snippet asChild(tooltipProps)}
-								<div {...tooltipProps} tabindex="-1" class="w-full">
-									<Input
-										id="gift-name"
-										class="pointer-events-none"
-										bind:value={name}
-										placeholder={m.gift_name_placeholder()}
-										disabled
-										state={hasError ? 'error' : 'default'}
-										aria-invalid={hasError ? true : undefined}
-										aria-describedby={errorId}
-									/>
-								</div>
-							{/snippet}
-						</SimpleTooltip>
-					{:else}
-						<Input
-							id="gift-name"
-							bind:value={name}
-							placeholder={m.gift_name_placeholder()}
-							state={hasError ? 'error' : 'default'}
-							aria-invalid={hasError ? true : undefined}
-							aria-describedby={errorId}
-						/>
-					{/if}
-				{/snippet}
-			</Field>
-
-			<!-- Description -->
-			<div class="mt-3 {styles.formField()}">
-				{#if descriptionFrozen}
-					<Label>{m.gift_description_label()}</Label>
-					<!-- Frozen base the gifter reserved against (read-only). -->
-					{#if (gift?.description ?? '').trim() !== ''}
-						<p class="text-sm whitespace-pre-line text-muted-foreground">
-							{gift?.description}
-						</p>
-					{/if}
-					<GiftDescription
-						description={null}
-						descriptionAppends={gift?.descriptionAppends ?? []}
-						maxVisibleAppends={1}
+		<div class={styles.detailScroll()} data-testid="gift-form-scroll">
+			<!-- Gift grace window (issue #83): communicates temporary full-edit/delete or delete-only access. -->
+			{#if graceActive && graceExpiresAt !== null}
+				<div class="mb-3">
+					<GraceCountdown
+						expiresAt={graceExpiresAt}
+						now={graceNow}
+						message={graceMessage}
 					/>
-					<!-- Recent description appends can be corrected only during their own grace window. -->
-					{#each gift?.descriptionAppends ?? [] as append, index (`${append.addedAt}:${index}`)}
-						{#if isWithinGraceWindow(append.addedAt, graceNow)}
-							{#if editingAppendIndex === index}
-								<div
-									class="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-2"
-								>
-									<Textarea bind:value={editingAppendText} rows={2} />
-									<div class="flex gap-2">
-										<Button
-											size="sm"
-											onclick={() => saveEditAppend(index)}
-											disabled={editingAppendText.trim() === ''}
-										>
-											{m.save()}
-										</Button>
-										<Button size="sm" intent="ghost" onclick={cancelEditAppend}>
-											{m.cancel()}
-										</Button>
-									</div>
-								</div>
-							{:else}
-								<div
-									class="flex w-fit gap-1 rounded-md border border-border bg-surface-2 p-1"
-								>
-									<Button
-										size="icon-sm"
-										intent="ghost"
-										aria-label={m.gift_description_append_edit_aria()}
-										onclick={() => startEditAppend(index, append.text)}
-									>
-										<PencilIcon />
-									</Button>
-									<Button
-										size="icon-sm"
-										intent="ghost"
-										aria-label={m.gift_description_append_delete_aria()}
-										onclick={() => deleteAppend(index)}
-									>
-										<TrashIcon />
-									</Button>
-								</div>
-							{/if}
-						{/if}
-					{/each}
-					<Label class="mt-2">{m.gift_description_add_note_label()}</Label>
-					<Textarea bind:value={descriptionAppendText} rows={2} />
-					<HelpText>{m.gift_description_add_note_help()}</HelpText>
-				{:else}
-					<Label for="gift-description">{m.gift_description_label()}</Label>
-					<Textarea
-						id="gift-description"
-						bind:value={description}
-						placeholder={m.gift_description_placeholder()}
-						rows={3}
-					/>
-				{/if}
-			</div>
-
-			<!-- Links -->
-			<div class="mt-3 {styles.formField()}">
-				<GiftLinkEditor {links} onlinkschange={(updated) => (links = updated)} />
-			</div>
-
-			<!-- Price + Currency -->
-			<div class="mt-3 {styles.formRow()}">
-				<div class={styles.formField()}>
-					<Label for="gift-price">{m.gift_price_label()}</Label>
-					<Input
-						id="gift-price"
-						bind:value={price}
-						placeholder="0"
-						type="number"
-						min="0"
-					/>
-				</div>
-				<div class={styles.formField()}>
-					<Label>{m.gift_currency_label()}</Label>
-					<Select.Root type="single" bind:value={currency}>
-						<Select.Trigger class="w-full">
-							{GIFT_CURRENCY_LABELS[currency]}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Group>
-								{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
-									<Select.Item value={val} label={GIFT_CURRENCY_LABELS[val]}>
-										{GIFT_CURRENCY_LABELS[val]}
-									</Select.Item>
-								{/each}
-							</Select.Group>
-						</Select.Content>
-					</Select.Root>
-				</div>
-			</div>
-
-			<!-- Image -->
-			<div class="mt-3 {styles.formField()}">
-				<Label>{m.gift_image_label()}</Label>
-				<div class={styles.imageTabRow()}>
-					<button
-						type="button"
-						class={giftDetailModalVariants({
-							imageTabActive: imageMode === 'url',
-						}).imageTab()}
-						onclick={() => (imageMode = 'url')}
-					>
-						<LinkIcon class="mr-1 inline size-3" />
-						URL
-					</button>
-					<button
-						type="button"
-						class={giftDetailModalVariants({
-							imageTabActive: imageMode === 'upload',
-						}).imageTab()}
-						onclick={() => (imageMode = 'upload')}
-					>
-						<UploadIcon class="mr-1 inline size-3" />
-						{m.gift_image_upload_tab()}
-					</button>
-				</div>
-				{#if imageMode === 'url'}
-					<Input
-						bind:value={imageUrl}
-						placeholder="https://example.com/image.jpg"
-						type="url"
-					/>
-				{:else}
-					<ImageUpload
-						target="gift-image"
-						size="small"
-						initialPreviewUrl={imageUrl !== '' ? imageUrl : undefined}
-						onUpload={handleImageUpload}
-						onError={handleImageUploadError}
-						onRemove={handleImageRemove}
-					/>
-				{/if}
-
-				<!-- Fit-mode controls + live multi-slot previews appear once an image exists (REQ-1/2) -->
-				{#if hasImage}
-					<div class="mt-3 flex flex-col gap-2">
-						<Label>{m.gift_image_fit_label()}</Label>
-						<ToggleGroup.Root
-							type="single"
-							value={fitMode}
-							onValueChange={(value: string) => {
-								if (IMAGE_FIT_MODE_VALUES.includes(value as ImageFitMode)) {
-									fitMode = value as ImageFitMode;
-								}
-							}}
-							aria-label={m.gift_image_fit_label()}
-						>
-							<ToggleGroup.Item value={IMAGE_FIT_MODES.auto}>
-								{m.gift_image_fit_auto()}
-							</ToggleGroup.Item>
-							<ToggleGroup.Item value={IMAGE_FIT_MODES.containPadded}>
-								{m.gift_image_fit_contain()}
-							</ToggleGroup.Item>
-							<ToggleGroup.Item value={IMAGE_FIT_MODES.coverCrop}>
-								{m.gift_image_fit_crop()}
-							</ToggleGroup.Item>
-						</ToggleGroup.Root>
-						{#if fitMode === IMAGE_FIT_MODES.auto}
-							<HelpText>{m.gift_image_fit_auto_help()}</HelpText>
-						{/if}
-						<GiftImagePreviewSlots
-							src={previewSrc}
-							alt={name || m.gift_image_preview()}
-							frame={framePreview}
-						/>
-					</div>
-				{/if}
-			</div>
-
-			<!-- Quantity -->
-			<div class="mt-3 {styles.formField()}">
-				<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
-				<Input
-					id="gift-quantity"
-					bind:value={quantity}
-					type="number"
-					min={locked ? String(currentQuantity) : '1'}
-					placeholder="1"
-				/>
-				{#if locked}
-					<HelpText class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1">
-						{m.gift_quantity_frozen_help()}
-					</HelpText>
-				{/if}
-			</div>
-
-			<!-- Priority -->
-			{#if priorityLevels.length > 0}
-				<div class="mt-3 {styles.formField()}">
-					<Label>{m.gift_priority_label()}</Label>
-					<Select.Root type="single" bind:value={priorityLevelId}>
-						<Select.Trigger class="w-full">
-							{#if priorityLevelId}
-								{@const selectedLabel =
-									priorityLevels.find((p) => p.id === priorityLevelId)?.label ??
-									''}
-								{selectedLabel !== ''
-									? (getPriorityDisplay(selectedLabel)?.label() ?? selectedLabel)
-									: m.gift_priority_select()}
-							{:else}
-								{m.gift_priority_none()}
-							{/if}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Group>
-								<Select.Item value="" label={m.gift_priority_none()}
-									>{m.gift_priority_none()}</Select.Item
-								>
-								{#each priorityLevels as level (level.id)}
-									{@const levelLabel =
-										getPriorityDisplay(level.label)?.label() ?? level.label}
-									<Select.Item value={level.id} label={levelLabel}>
-										{levelLabel}
-									</Select.Item>
-								{/each}
-							</Select.Group>
-						</Select.Content>
-					</Select.Root>
 				</div>
 			{/if}
-		</fieldset>
+			<fieldset class="contents">
+				<!-- Name -->
+				<Field
+					fieldId="gift-name"
+					label={m.gift_name_label()}
+					errorMessage={nameError}
+					class={styles.formField()}
+				>
+					{#snippet children({ hasError, errorId }: FieldControlContext)}
+						{#if locked}
+							<SimpleTooltip text={m.gift_name_frozen_hint()} side="top">
+								{#snippet asChild(tooltipProps)}
+									<div {...tooltipProps} tabindex="-1" class="w-full">
+										<Input
+											id="gift-name"
+											class="pointer-events-none"
+											bind:value={name}
+											placeholder={m.gift_name_placeholder()}
+											disabled
+											state={hasError ? 'error' : 'default'}
+											aria-invalid={hasError ? true : undefined}
+											aria-describedby={errorId}
+										/>
+									</div>
+								{/snippet}
+							</SimpleTooltip>
+						{:else}
+							<Input
+								id="gift-name"
+								bind:value={name}
+								placeholder={m.gift_name_placeholder()}
+								state={hasError ? 'error' : 'default'}
+								aria-invalid={hasError ? true : undefined}
+								aria-describedby={errorId}
+							/>
+						{/if}
+					{/snippet}
+				</Field>
 
-		<Separator class="my-4" />
+				<!-- Description -->
+				<div class="mt-3 {styles.formField()}">
+					{#if descriptionFrozen}
+						<Label>{m.gift_description_label()}</Label>
+						<!-- Frozen base the gifter reserved against (read-only). -->
+						{#if (gift?.description ?? '').trim() !== ''}
+							<p class="text-sm whitespace-pre-line text-muted-foreground">
+								{gift?.description}
+							</p>
+						{/if}
+						<GiftDescription
+							description={null}
+							descriptionAppends={gift?.descriptionAppends ?? []}
+							maxVisibleAppends={1}
+						/>
+						<!-- Recent description appends can be corrected only during their own grace window. -->
+						{#each gift?.descriptionAppends ?? [] as append, index (`${append.addedAt}:${index}`)}
+							{#if isWithinGraceWindow(append.addedAt, graceNow)}
+								{#if editingAppendIndex === index}
+									<div
+										class="flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-2"
+									>
+										<Textarea bind:value={editingAppendText} rows={2} />
+										<div class="flex gap-2">
+											<Button
+												size="sm"
+												onclick={() => saveEditAppend(index)}
+												disabled={editingAppendText.trim() === ''}
+											>
+												{m.save()}
+											</Button>
+											<Button
+												size="sm"
+												intent="ghost"
+												onclick={cancelEditAppend}
+											>
+												{m.cancel()}
+											</Button>
+										</div>
+									</div>
+								{:else}
+									<div
+										class="flex w-fit gap-1 rounded-md border border-border bg-surface-2 p-1"
+									>
+										<Button
+											size="icon-sm"
+											intent="ghost"
+											aria-label={m.gift_description_append_edit_aria()}
+											onclick={() => startEditAppend(index, append.text)}
+										>
+											<PencilIcon />
+										</Button>
+										<Button
+											size="icon-sm"
+											intent="ghost"
+											aria-label={m.gift_description_append_delete_aria()}
+											onclick={() => deleteAppend(index)}
+										>
+											<TrashIcon />
+										</Button>
+									</div>
+								{/if}
+							{/if}
+						{/each}
+						<Label class="mt-2">{m.gift_description_add_note_label()}</Label>
+						<Textarea bind:value={descriptionAppendText} rows={2} />
+						<HelpText>{m.gift_description_add_note_help()}</HelpText>
+					{:else}
+						<Label for="gift-description">{m.gift_description_label()}</Label>
+						<Textarea
+							id="gift-description"
+							bind:value={description}
+							placeholder={m.gift_description_placeholder()}
+							rows={3}
+						/>
+					{/if}
+				</div>
 
-		<!-- Actions -->
+				<!-- Links -->
+				<div class="mt-3 {styles.formField()}">
+					<GiftLinkEditor {links} onlinkschange={(updated) => (links = updated)} />
+				</div>
+
+				<!-- Price + Currency -->
+				<div class="mt-3 {styles.formRow()}">
+					<div class={styles.formField()}>
+						<Label for="gift-price">{m.gift_price_label()}</Label>
+						<Input
+							id="gift-price"
+							bind:value={price}
+							placeholder="0"
+							type="number"
+							min="0"
+						/>
+					</div>
+					<div class={styles.formField()}>
+						<Label>{m.gift_currency_label()}</Label>
+						<Select.Root type="single" bind:value={currency}>
+							<Select.Trigger class="w-full">
+								{GIFT_CURRENCY_LABELS[currency]}
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Group>
+									{#each Object.entries(GIFT_CURRENCIES) as [key, val] (key)}
+										<Select.Item value={val} label={GIFT_CURRENCY_LABELS[val]}>
+											{GIFT_CURRENCY_LABELS[val]}
+										</Select.Item>
+									{/each}
+								</Select.Group>
+							</Select.Content>
+						</Select.Root>
+					</div>
+				</div>
+
+				<!-- Quantity -->
+				<div class="mt-3 {styles.formField()}">
+					<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
+					<Input
+						id="gift-quantity"
+						bind:value={quantity}
+						type="number"
+						min={locked ? String(currentQuantity) : '1'}
+						placeholder="1"
+					/>
+					{#if locked}
+						<HelpText
+							class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
+						>
+							{m.gift_quantity_frozen_help()}
+						</HelpText>
+					{/if}
+				</div>
+
+				<!-- Priority -->
+				{#if priorityLevels.length > 0}
+					<div class="mt-3 {styles.formField()}">
+						<Label>{m.gift_priority_label()}</Label>
+						<Select.Root type="single" bind:value={priorityLevelId}>
+							<Select.Trigger class="w-full">
+								{#if priorityLevelId}
+									{@const selectedLabel =
+										priorityLevels.find((p) => p.id === priorityLevelId)
+											?.label ?? ''}
+									{selectedLabel !== ''
+										? (getPriorityDisplay(selectedLabel)?.label() ??
+											selectedLabel)
+										: m.gift_priority_select()}
+								{:else}
+									{m.gift_priority_none()}
+								{/if}
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Group>
+									<Select.Item value="" label={m.gift_priority_none()}
+										>{m.gift_priority_none()}</Select.Item
+									>
+									{#each priorityLevels as level (level.id)}
+										{@const levelLabel =
+											getPriorityDisplay(level.label)?.label() ?? level.label}
+										<Select.Item value={level.id} label={levelLabel}>
+											{levelLabel}
+										</Select.Item>
+									{/each}
+								</Select.Group>
+							</Select.Content>
+						</Select.Root>
+					</div>
+				{/if}
+
+				<!-- Image (last field: source input only – the display-mode control and
+			     the clickable target tiles live in the image column with the
+			     preview they drive, #116 round 3) -->
+				<div class="mt-3 {styles.formField()}">
+					<Label>{m.gift_image_label()}</Label>
+					<div class={styles.imageTabRow()}>
+						<button
+							type="button"
+							class={giftDetailModalVariants({
+								imageTabActive: imageMode === 'url',
+							}).imageTab()}
+							onclick={() => (imageMode = 'url')}
+						>
+							<LinkIcon class="mr-1 inline size-3" />
+							URL
+						</button>
+						<button
+							type="button"
+							class={giftDetailModalVariants({
+								imageTabActive: imageMode === 'upload',
+							}).imageTab()}
+							onclick={() => (imageMode = 'upload')}
+						>
+							<UploadIcon class="mr-1 inline size-3" />
+							{m.gift_image_upload_tab()}
+						</button>
+					</div>
+					{#if imageMode === 'url'}
+						<Input
+							bind:value={imageUrl}
+							placeholder="https://example.com/image.jpg"
+							type="url"
+						/>
+					{:else}
+						<ImageUpload
+							target="gift-image"
+							size="small"
+							initialPreviewUrl={imageUrl !== '' ? imageUrl : undefined}
+							onUpload={handleImageUpload}
+							onError={handleImageUploadError}
+							onRemove={handleImageRemove}
+						/>
+					{/if}
+				</div>
+			</fieldset>
+		</div>
+
+		<!-- Actions: pinned outside the scroll region so they are always visible -->
 		<div class={styles.formActions()}>
 			<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
 				{#if isSubmitting}

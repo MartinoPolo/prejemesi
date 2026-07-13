@@ -71,10 +71,11 @@
 
 	const styles = wishlistHeaderVariants();
 
-	// The wishlist photo (image-slots crop) renders as the taped polaroid print;
-	// the card slot's 3:2 crop is the closest match for the polaroid frame.
+	// The wishlist photo (image-slots crop) renders as the taped polaroid print.
+	// The photo area is exactly square, so it consumes the 1:1 `thumbnail` slot
+	// (#116 D4/REQ-5) – the `card` slot belongs solely to the dashboard banner.
 	const polaroidSrc = $derived(wishlistImageUrl(imageKey));
-	const polaroidFrame = $derived(wishlistSlotToFrameProps(imageSlots, 'card'));
+	const polaroidFrame = $derived(wishlistSlotToFrameProps(imageSlots, 'thumbnail'));
 	// Management actions open to any manager — the linked recipient OR a správce (issue #99).
 	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
@@ -167,7 +168,7 @@
 						frame={polaroidFrame}
 						{themeEmoji}
 						alt={title}
-						variant="banner"
+						variant="thumbnail"
 						eagerLoading
 					/>
 					{#if canManage && !isArchived}
@@ -396,7 +397,9 @@
 
 	.polaroid-img {
 		position: relative;
-		height: 138px;
+
+		/* Square photo: matches the 1:1 thumbnail slot the crop editor shows (#116 D4). */
+		aspect-ratio: 1 / 1;
 		overflow: hidden;
 		border: 2px solid rgb(0 0 0 / 14%);
 	}

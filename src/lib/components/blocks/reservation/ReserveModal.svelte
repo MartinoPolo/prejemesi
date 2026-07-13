@@ -135,6 +135,7 @@
 						class={styles.giftImage()}
 						imageUrl={gift.imageUrl}
 						imageMeta={gift.imageMeta}
+						target="square"
 						alt={gift.name}
 					/>
 					<div class={styles.giftInfo()}>

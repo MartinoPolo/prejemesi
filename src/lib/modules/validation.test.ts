@@ -467,10 +467,25 @@ describe('ImageMetadataSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects a crop rectangle outside the normalized 0..1 range', () => {
+	it('accepts a zoomed-out crop rectangle extending past the image (#116 round 2)', () => {
 		const result = parseSuccess(ImageMetadataSchema, {
 			fitMode: 'cover-crop',
-			cropRect: { x: 0, y: 0, w: 1.5, h: 1 },
+			cropRect: { x: -0.25, y: 0, w: 1.5, h: 1 },
+			targets: {
+				card: {
+					cropRect: { x: -0.125, y: 0.1875, w: 1.25, h: 0.625 },
+					focal: { x: 50, y: 50 },
+					zoom: 0.8,
+				},
+			},
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a crop rectangle beyond the zoom-out floor bounds', () => {
+		const result = parseSuccess(ImageMetadataSchema, {
+			fitMode: 'cover-crop',
+			cropRect: { x: 0, y: 0, w: 25, h: 1 },
 		});
 		expect(result.success).toBe(false);
 	});
@@ -483,8 +498,13 @@ describe('ImageMetadataSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects a zoom factor below the minimum', () => {
+	it('accepts a zoomed-out factor down to the letterbox floor (#116 round 2)', () => {
 		const result = parseSuccess(ImageMetadataSchema, { fitMode: 'cover-crop', zoom: 0.5 });
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a zoom factor below the zoom-out floor', () => {
+		const result = parseSuccess(ImageMetadataSchema, { fitMode: 'cover-crop', zoom: 0.01 });
 		expect(result.success).toBe(false);
 	});
 

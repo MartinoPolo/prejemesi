@@ -52,6 +52,7 @@
 			class="size-full bg-transparent"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
+			target="card"
 			alt={gift.name}
 			variant="card"
 		/>

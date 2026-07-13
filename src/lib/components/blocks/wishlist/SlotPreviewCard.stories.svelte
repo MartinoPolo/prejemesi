@@ -13,9 +13,10 @@
 	});
 </script>
 
+<!-- The editor offers three slots since #116 (D3): card, thumbnail, social. -->
 <Story name="All slots (fallback)">
 	{#snippet template()}
-		<div class="grid w-[28rem] grid-cols-2 gap-3 sm:grid-cols-4">
+		<div class="grid w-[28rem] grid-cols-3 gap-3">
 			<SlotPreviewCard slot="card" label="Card" src={null} {frame} themeEmoji="🎁" />
 			<SlotPreviewCard
 				slot="thumbnail"
@@ -24,7 +25,6 @@
 				{frame}
 				themeEmoji="🎁"
 			/>
-			<SlotPreviewCard slot="banner" label="Header" src={null} {frame} themeEmoji="🎁" />
 			<SlotPreviewCard slot="social" label="Social" src={null} {frame} themeEmoji="🎁" />
 		</div>
 	{/snippet}
@@ -32,7 +32,7 @@
 
 <Story name="Active selection">
 	{#snippet template()}
-		<div class="grid w-[28rem] grid-cols-2 gap-3 sm:grid-cols-4">
+		<div class="grid w-[28rem] grid-cols-3 gap-3">
 			<SlotPreviewCard slot="card" label="Card" src={null} {frame} themeEmoji="🎄" active />
 			<SlotPreviewCard
 				slot="thumbnail"
@@ -41,7 +41,6 @@
 				{frame}
 				themeEmoji="🎄"
 			/>
-			<SlotPreviewCard slot="banner" label="Header" src={null} {frame} themeEmoji="🎄" />
 			<SlotPreviewCard slot="social" label="Social" src={null} {frame} themeEmoji="🎄" />
 		</div>
 	{/snippet}

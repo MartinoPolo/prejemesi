@@ -55,6 +55,7 @@
 		class="size-16 flex-shrink-0 rounded-lg"
 		imageUrl={gift.imageUrl}
 		imageMeta={gift.imageMeta}
+		target="square"
 		alt={gift.name}
 		variant="listThumb"
 	/>
