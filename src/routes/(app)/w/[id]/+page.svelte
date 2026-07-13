@@ -383,6 +383,13 @@
 		await refreshData();
 	}
 
+	// Recipient rename (issue #119): the správci panel persists the new name but only tracks
+	// it in its own draft state — the banner reads wishlist.recipientDisplayName from THIS
+	// page's query, so it needs its own refresh to drop the cached stale name.
+	async function handleRecipientRenamed() {
+		await refreshData();
+	}
+
 	function handleShareOpened() {
 		sharingContext.openWizard();
 	}
@@ -833,6 +840,7 @@
 	onshared={handleShared}
 	onpaletteselect={handlePaletteSelect}
 	onmoderatorselfpromoted={handleSelfPromoted}
+	onrecipientrenamed={handleRecipientRenamed}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />

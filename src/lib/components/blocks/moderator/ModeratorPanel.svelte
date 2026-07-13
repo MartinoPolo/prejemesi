@@ -33,6 +33,9 @@
 		open: boolean;
 		onopenchange?: (open: boolean) => void;
 		onselfpromoted?: () => void;
+		/** Fired after a successful recipient rename so the parent can refresh the page-local
+		 *  wishlist query (the „Pro {recipient}" banner reads from it, not from this panel). */
+		onrecipientrenamed?: () => void;
 	}
 
 	let {
@@ -41,6 +44,7 @@
 		open = $bindable(false),
 		onopenchange,
 		onselfpromoted,
+		onrecipientrenamed,
 	}: ModeratorPanelProps = $props();
 
 	const styles = moderatorPanelVariants();
@@ -85,6 +89,7 @@
 			await renameRecipient({ id: wishlistId, recipientName: trimmed });
 			recipientNameDraft = trimmed;
 			toastSuccess(m.recipient_rename_toast_success());
+			onrecipientrenamed?.();
 		} catch (thrown) {
 			toastError(translateServerError(thrown, m.recipient_rename_error()));
 		} finally {
