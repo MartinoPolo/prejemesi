@@ -296,7 +296,7 @@
 
 	:global(.nav-chevron) {
 		opacity: 0.55;
-		transition: transform var(--duration-normal) var(--ease-standard);
+		transition: transform var(--duration-slow) var(--ease-standard);
 		flex-shrink: 0;
 		width: 14px;
 		height: 14px;
