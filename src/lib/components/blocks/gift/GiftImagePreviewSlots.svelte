@@ -20,6 +20,10 @@
 		alt: string;
 		/** Live editor metadata; each tile derives its own per-target framing. */
 		imageMeta: ImageMetadata | null;
+		/** Target highlighted as being edited (Manual mode) – null highlights none. */
+		activeTarget?: GiftCropTarget | null;
+		/** Makes tiles buttons: clicking one selects its crop target (#116 follow-up). */
+		onTileSelect?: (target: GiftCropTarget) => void;
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
@@ -30,6 +34,8 @@
 		src,
 		alt,
 		imageMeta,
+		activeTarget = null,
+		onTileSelect,
 		tokenScope = IMAGE_TOKEN_SCOPES.wishlist,
 		loading = false,
 		class: className,
@@ -91,14 +97,7 @@
 		{#each TILES as tile (tile.key)}
 			{@const frame = giftTargetFrameProps(imageMeta, tile.target)}
 			<li class="flex min-w-0 flex-col gap-1.5">
-				<!-- The frame is absolutely positioned: a %-height child inside an
-				     aspect-ratio box is circular, so the image's intrinsic height
-				     would otherwise stretch the tile past its true aspect. -->
-				<div
-					class={cn('relative', tile.sizing)}
-					style:aspect-ratio={tile.cssAspect}
-					data-testid="gift-preview-{tile.key}"
-				>
+				{#snippet tileFrame()}
 					<ImageFrame
 						class="absolute inset-0"
 						{src}
@@ -110,7 +109,36 @@
 						{tokenScope}
 						{loading}
 					/>
-				</div>
+				{/snippet}
+				<!-- The frame is absolutely positioned: a %-height child inside an
+				     aspect-ratio box is circular, so the image's intrinsic height
+				     would otherwise stretch the tile past its true aspect. A tile is
+				     a button when selectable (clicking jumps to Manual for its target). -->
+				{#if onTileSelect !== undefined}
+					<button
+						type="button"
+						onclick={() => onTileSelect?.(tile.target)}
+						aria-pressed={activeTarget === tile.target}
+						aria-label={tile.label()}
+						class={cn(
+							'relative block cursor-pointer overflow-hidden rounded-md outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring',
+							tile.sizing,
+							activeTarget === tile.target && 'ring-2 ring-primary',
+						)}
+						style:aspect-ratio={tile.cssAspect}
+						data-testid="gift-preview-{tile.key}"
+					>
+						{@render tileFrame()}
+					</button>
+				{:else}
+					<div
+						class={cn('relative overflow-hidden rounded-md', tile.sizing)}
+						style:aspect-ratio={tile.cssAspect}
+						data-testid="gift-preview-{tile.key}"
+					>
+						{@render tileFrame()}
+					</div>
+				{/if}
 				<span class="text-xs text-foreground-subtle">{tile.label()}</span>
 			</li>
 		{/each}

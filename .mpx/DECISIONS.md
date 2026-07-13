@@ -836,6 +836,13 @@ What: Manual crops are drawn PER TARGET on a stage whose window is locked to the
 Why: The pre-#116 editor was blind to target shapes (stage used the source-image ratio) and the center-based focal derivation misplaced off-center crops; per-target aspect-locked rects make WYSIWYG true by construction.
 Rejected: One-crop-all-slots for gifts (F7 silent discard), aspect-locked rect over a full-image stage (stage shape would still not match the target), destructive `image_meta` migration (prod data must keep rendering unchanged).
 
+### Three-mode editor model (Fill / Whole picture / Manual); legacy `auto` preserved until touched (#116 follow-up)
+
+Decided: 2026-07-13
+What: The gift and wishlist image editors offer exactly three display modes mapped by `editor_modes.ts`: Fill (`cover-crop`, automatic centered framing), Whole picture (`contain-padded`, entire image letterboxed on both axes), Manual (`cover-crop` plus drawn per-target/per-slot crops). The persisted fitMode enum is unchanged; `auto` is no longer selectable and a persisted `auto` row keeps its value verbatim until the user touches the mode or replaces the image. Per-target manual crops render only on a `cover-crop` base (Whole picture wins over stale targets) and leaving Manual drops manual crops on save. Preview tiles are buttons that jump to Manual with that target/slot active; a wheel gesture over a plain preview also promotes to Manual. The gift modal footer (create + edit share one `GiftDetailForm`) is pinned outside the scroll region (GiftDraftDialog pattern), and the preview strip sits below quantity/priority.
+Why: `cover-crop` double-dutied as both the Fill rendering and the "manual editor open" flag; `contain-padded` was effectively unreachable (gated behind the auto heuristic's 2× divergence threshold, so gift cards cropped image height); zoom was dead UI outside crop mode.
+Rejected: Renaming persisted fitMode values (pointless data migration); letterboxed manual crops (manual is cover geometry by definition); rewriting legacy `auto` rows on save (silent rendering changes on untouched forms).
+
 ### Separated token responsibilities: bg-theme / wishlist tokens / frame-fill
 
 Decided: 2026-06-02

@@ -17,6 +17,11 @@ import {
  *
  * Aspect data comes from the same registry the app renders from (REQ-6), so the
  * asserts can only fail when a surface and the editor genuinely drift apart.
+ *
+ * The #116 follow-up three-mode model (Fill / Whole picture / Manual) is covered
+ * too: Whole picture letterboxes both axes on the real card surface, preview
+ * tiles and wheel gestures promote to Manual, and the modal footer stays pinned
+ * while the form body scrolls.
  */
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
@@ -135,19 +140,37 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			FIXED_TOLERANCE,
 		);
 
-		// Crop mode exposes the per-target picker and the WYSIWYG stage.
-		await dialog.getByRole('radio', { name: /Oříznout/ }).click();
+		// Whole picture letterboxes BOTH axes: the preview image renders with
+		// object-fit contain instead of cropping the height (#116 follow-up).
+		await dialog.getByRole('radio', { name: /Celý obrázek/ }).click();
+		const columnImage = dialog.getByTestId('gift-image-column').locator('img');
+		await expect(async () => {
+			expect(await columnImage.evaluate((el) => getComputedStyle(el).objectFit)).toBe(
+				'contain',
+			);
+		}).toPass({ timeout: 5_000 });
+
+		// Clicking a preview tile jumps to Manual mode with that target active and
+		// exposes the per-target picker plus the WYSIWYG stage.
+		await dialog.getByTestId('gift-preview-detail').click();
+		await expect(dialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
+		await expect(dialog.getByRole('radio', { name: /^Detail$/ })).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
 		const stageWindow = dialog.getByTestId('crop-stage-window');
-		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.card.aspect, FIXED_TOLERANCE);
+		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.detail.aspect, FIXED_TOLERANCE);
 
 		// Switching targets visibly reshapes the stage window (REQ-2).
-		await dialog.getByRole('radio', { name: /^Detail$/ }).click();
-		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.detail.aspect, FIXED_TOLERANCE);
 		await dialog.getByRole('radio', { name: /Seznam a rezervace/ }).click();
 		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
 
 		// Draw a manual card crop: zoom in (slider +4 × step 5 = 120 %), then pan.
 		await dialog.getByRole('radio', { name: /Karta dárku/ }).click();
+		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.card.aspect, FIXED_TOLERANCE);
 		const zoomSlider = dialog.getByRole('slider');
 		await zoomSlider.focus();
 		for (let step = 0; step < 4; step++) {
@@ -188,7 +211,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			await page.getByText(giftName, { exact: true }).first().click();
 			await expect(editDialog).toBeVisible({ timeout: 2_000 });
 		}).toPass({ timeout: 15_000 });
-		await expect(editDialog.getByRole('radio', { name: /Oříznout/ })).toHaveAttribute(
+		await expect(editDialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
 			'aria-checked',
 			'true',
 		);
@@ -198,6 +221,27 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			GIFT_CROP_TARGET_SPECS.detail.aspect,
 			FLUID_TOLERANCE,
 		);
+
+		// Pinned footer: the submit button stays visible before and after the form
+		// body is scrolled to its end (the fields scroll, the actions do not).
+		const submitButton = editDialog.getByRole('button', { name: 'Uložit' });
+		await expect(submitButton).toBeInViewport();
+		await editDialog.getByTestId('gift-form-scroll').evaluate((el) => {
+			el.scrollTop = el.scrollHeight;
+		});
+		await expect(submitButton).toBeInViewport();
+
+		// Switch to Whole picture and save: the real card surface letterboxes the
+		// image on both axes (object-fit contain) instead of cropping it.
+		await editDialog.getByRole('radio', { name: /Celý obrázek/ }).click();
+		await submitButton.click();
+		await expect(editDialog).not.toBeVisible({ timeout: 10_000 });
+		const wholeCardImage = page.getByRole('img', { name: giftName }).first();
+		await expect(async () => {
+			expect(await wholeCardImage.evaluate((el) => getComputedStyle(el).objectFit)).toBe(
+				'contain',
+			);
+		}).toPass({ timeout: 10_000 });
 
 		await page.context().close();
 	});
@@ -252,9 +296,16 @@ test.describe('Wishlist per-slot crop (WYSIWYG stage)', () => {
 		const slotTile = (label: string) =>
 			page.locator('button[aria-pressed]').filter({ hasText: label });
 
-		// The stage window tracks the active slot's aspect (REQ-2).
+		// Fill is the default after upload: no stage until a manual intent. A wheel
+		// gesture over the plain preview promotes the slot to Manual (#116 follow-up)
+		// and the stage window appears locked to the active slot's aspect.
 		const stageWindow = page.getByTestId('crop-stage-window');
+		await expect(stageWindow).toHaveCount(0);
+		await page.getByTestId('image-fit-preview').hover();
+		await page.mouse.wheel(0, -100);
 		await expectAspect(stageWindow, WISHLIST_SLOT_SPECS.card.aspect, FIXED_TOLERANCE);
+
+		// Clicking a tile jumps to Manual for that slot; the stage tracks it (REQ-2).
 		await slotTile('Sdílení').click();
 		await expectAspect(stageWindow, WISHLIST_SLOT_SPECS.social.aspect, FIXED_TOLERANCE);
 

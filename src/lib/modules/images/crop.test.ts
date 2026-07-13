@@ -239,8 +239,10 @@ describe('giftTargetFrameProps', () => {
 			h: 1 / GIFT_CROP_TARGET_SPECS.card.aspect,
 		};
 		const { focal, zoom } = cropRectToFocalZoom(cardRect);
+		// Manual crops require a cover-crop base since the #116 follow-up.
 		const meta = {
 			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
 			targets: { card: { cropRect: cardRect, focal, zoom } },
 		};
 		const cardProps = giftTargetFrameProps(meta, 'card');
@@ -250,5 +252,40 @@ describe('giftTargetFrameProps', () => {
 		expect(cardProps.fillColor).toBe('#123456');
 		// The other targets keep the automatic framing.
 		expect(giftTargetFrameProps(meta, 'detail')).toEqual(imageMetaToFrameProps(meta));
+	});
+
+	it('ignores stale per-target crops when the base mode is whole-picture (#116 follow-up)', () => {
+		// Whole picture must letterbox both axes even when manual crops linger in
+		// the metadata; per-target crops only apply on a cover-crop base.
+		const meta = {
+			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.containPadded,
+			targets: {
+				card: {
+					cropRect: { x: 0, y: 0, w: 0.5, h: 0.5 },
+					focal: { x: 0, y: 0 },
+					zoom: 2,
+				},
+			},
+		};
+		const props = giftTargetFrameProps(meta, 'card');
+		expect(props).toEqual(imageMetaToFrameProps(meta));
+		expect(props.fitMode).toBe(IMAGE_FIT_MODES.containPadded);
+	});
+
+	it('honours a cover-crop base with a manual target when zoom is one', () => {
+		// A cover-crop base consults targets regardless of the base focal/zoom.
+		const meta = {
+			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			targets: {
+				square: {
+					cropRect: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 },
+					focal: { x: 20, y: 20 },
+					zoom: 2,
+				},
+			},
+		};
+		expect(giftTargetFrameProps(meta, 'square').zoom).toBe(2);
 	});
 });

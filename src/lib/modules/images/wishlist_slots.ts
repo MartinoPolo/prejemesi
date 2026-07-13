@@ -8,14 +8,10 @@
  */
 
 import { imagePublicUrl } from './public_url.js';
-import { IMAGE_FIT_MODES } from './fit_modes.js';
 import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
 import { WISHLIST_EDITOR_SLOTS } from './crop_targets.js';
-import {
-	DEFAULT_IMAGE_METADATA,
-	type WishlistImageSlot,
-	type WishlistImageSlots,
-} from './types.js';
+import { fillImageMeta } from './editor_modes.js';
+import type { WishlistImageSlot, WishlistImageSlots } from './types.js';
 
 /**
  * Resolve a wishlist image object key to a client-loadable URL. Production
@@ -31,20 +27,17 @@ export function wishlistImageUrl(imageKey: string | null | undefined): string | 
 }
 
 /**
- * Seed every editor-offered wishlist slot with centered cover-crop metadata for
- * a freshly assigned image, so each preview shows a framed result the owner can
- * refine. The orphan `banner` slot is not seeded (#116 D3) – existing banner
- * JSON is retained but no new banner metadata is created.
+ * Seed every editor-offered wishlist slot with the automatic centered Fill
+ * metadata for a freshly assigned image, so each preview shows a framed result
+ * the owner can refine. The orphan `banner` slot is not seeded (#116 D3) –
+ * existing banner JSON is retained but no new banner metadata is created.
  */
 export function createDefaultWishlistSlots(): WishlistImageSlots {
 	const slots: WishlistImageSlots = {};
 	for (const slot of WISHLIST_EDITOR_SLOTS) {
-		// Each slot gets independent objects so editing one never mutates another.
-		slots[slot] = {
-			...DEFAULT_IMAGE_METADATA,
-			fitMode: IMAGE_FIT_MODES.coverCrop,
-			focal: { ...DEFAULT_IMAGE_METADATA.focal },
-		};
+		// fillImageMeta returns independent objects, so editing one slot never
+		// mutates another.
+		slots[slot] = fillImageMeta();
 	}
 	return slots;
 }

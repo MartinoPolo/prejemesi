@@ -6,11 +6,11 @@
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
+	import { promoteOnWheel } from '$lib/components/derived/image-crop/promote_on_wheel.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
 		IMAGE_TOKEN_SCOPES,
 		IMAGE_FIT_MODES,
-		type ImageFitMode,
 	} from '$lib/components/derived/image-frame/index.js';
 	import SlotPreviewCard from './SlotPreviewCard.svelte';
 	import { toastError } from '$lib/components/base/toast/index.js';
@@ -20,16 +20,21 @@
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
-		IMAGE_FIT_MODE_VALUES,
+		IMAGE_EDITOR_MODES,
+		IMAGE_EDITOR_MODE_VALUES,
 		WISHLIST_EDITOR_SLOTS,
 		WISHLIST_SLOT_SPECS,
 		FULL_CROP_RECT,
 		createDefaultWishlistSlots,
 		cropStateToImageMeta,
+		fillImageMeta,
 		focalZoomToWindowRect,
 		imageMetaToFrameProps,
+		slotEditorModeFromMeta,
+		wholeImageMeta,
 		wishlistImageUrl,
 		type ImageCropRect,
+		type ImageEditorMode,
 		type ImageMetadata,
 		type WishlistEditorSlot,
 		type WishlistImageSlots,
@@ -52,7 +57,7 @@
 
 	/** Per-slot editing state: the crop rectangle is the source of truth; focal+zoom derive from it. */
 	interface SlotEditState {
-		fitMode: ImageFitMode;
+		mode: ImageEditorMode;
 		cropRect: ImageCropRect;
 	}
 
@@ -75,7 +80,7 @@
 			} else {
 				cropRect = { ...FULL_CROP_RECT };
 			}
-			result[slot] = { fitMode: meta.fitMode, cropRect };
+			result[slot] = { mode: slotEditorModeFromMeta(meta), cropRect };
 		}
 		return result;
 	}
@@ -96,13 +101,21 @@
 	const imageUrl = $derived(wishlistImageUrl(assignedKey));
 	const hasImage = $derived(imageUrl !== null);
 	const active = $derived(slotState[activeSlot]);
-	const isCropMode = $derived(active.fitMode === IMAGE_FIT_MODES.coverCrop);
+	const isCropMode = $derived(active.mode === IMAGE_EDITOR_MODES.manual);
 
 	const slotLabels = {
 		card: () => m.wishlist_image_slot_card(),
 		thumbnail: () => m.wishlist_image_slot_thumbnail(),
 		social: () => m.wishlist_image_slot_social(),
 	} as const satisfies Record<WishlistEditorSlot, () => string>;
+
+	/** The metadata a slot's editing state persists as (three-mode model). */
+	function slotMetaFromState(state: SlotEditState): ImageMetadata {
+		if (state.mode === IMAGE_EDITOR_MODES.manual) {
+			return cropStateToImageMeta(IMAGE_FIT_MODES.coverCrop, state.cropRect);
+		}
+		return state.mode === IMAGE_EDITOR_MODES.whole ? wholeImageMeta() : fillImageMeta();
+	}
 
 	/**
 	 * The slot metadata exactly as a save would persist it: session-edited slots are
@@ -114,8 +127,7 @@
 		for (const slot of WISHLIST_EDITOR_SLOTS) {
 			const existing: ImageMetadata | undefined = result[slot];
 			if (dirtySlots.has(slot) || existing === undefined) {
-				const state = slotState[slot];
-				result[slot] = cropStateToImageMeta(state.fitMode, state.cropRect);
+				result[slot] = slotMetaFromState(slotState[slot]);
 			}
 		}
 		return result;
@@ -152,11 +164,25 @@
 		dirtySlots.clear();
 	}
 
-	function setFitMode(value: string) {
-		if (IMAGE_FIT_MODE_VALUES.includes(value as ImageFitMode)) {
-			slotState[activeSlot].fitMode = value as ImageFitMode;
+	function setEditorMode(value: string) {
+		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
+			slotState[activeSlot].mode = value as ImageEditorMode;
 			markDirty(activeSlot);
 		}
+	}
+
+	/** A zoom attempt on the plain preview is a manual-crop intent (#116 follow-up). */
+	function promoteActiveSlotToManual() {
+		if (slotState[activeSlot].mode !== IMAGE_EDITOR_MODES.manual) {
+			slotState[activeSlot].mode = IMAGE_EDITOR_MODES.manual;
+			markDirty(activeSlot);
+		}
+	}
+
+	/** Clicking a preview tile jumps to Manual mode for that slot. */
+	function handleTileSelect(slot: WishlistEditorSlot) {
+		activeSlot = slot;
+		promoteActiveSlotToManual();
 	}
 
 	function handleSave() {
@@ -221,7 +247,12 @@
 				/>
 			{:else}
 				{@const frame = frameFor(activeSlot)}
-				<div class="flex justify-center">
+				<!-- Wheel over the plain preview promotes to Manual so zooming "just works". -->
+				<div
+					class="flex justify-center"
+					data-testid="image-fit-preview"
+					use:promoteOnWheel={promoteActiveSlotToManual}
+				>
 					<!-- Absolutely positioned frame: see SlotPreviewCard (aspect-ratio
 					     boxes stretch when a %-height child falls back to intrinsic size). -->
 					<div
@@ -242,32 +273,30 @@
 				</div>
 			{/if}
 
-			<!-- Fit mode -->
+			<!-- Display mode (three-mode model, #116 follow-up) -->
 			<div class="flex flex-col gap-2">
-				<Label>{m.wishlist_image_fit_label()}</Label>
+				<Label>{m.image_fit_label()}</Label>
 				<ToggleGroup.Root
 					type="single"
-					value={active.fitMode}
-					onValueChange={setFitMode}
-					aria-label={m.wishlist_image_fit_label()}
+					value={active.mode}
+					onValueChange={setEditorMode}
+					aria-label={m.image_fit_label()}
 				>
-					<ToggleGroup.Item value={IMAGE_FIT_MODES.auto}>
-						{m.gift_image_fit_auto()}
+					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill}>
+						{m.image_fit_fill()}
 					</ToggleGroup.Item>
-					<ToggleGroup.Item value={IMAGE_FIT_MODES.containPadded}>
-						{m.gift_image_fit_contain()}
+					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.whole}>
+						{m.image_fit_whole()}
 					</ToggleGroup.Item>
-					<ToggleGroup.Item value={IMAGE_FIT_MODES.coverCrop}>
-						{m.gift_image_fit_crop()}
+					<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual}>
+						{m.image_fit_manual()}
 					</ToggleGroup.Item>
 				</ToggleGroup.Root>
-				{#if active.fitMode === IMAGE_FIT_MODES.auto}
-					<HelpText>{m.gift_image_fit_auto_help()}</HelpText>
-				{/if}
 			</div>
 		</div>
 
-		<!-- Per-slot previews (REQ-7: true consumer aspects) – clicking a tile selects it -->
+		<!-- Per-slot previews (REQ-7: true consumer aspects) – clicking a tile jumps
+		     to Manual mode for that slot (#116 follow-up) -->
 		<div class="flex flex-col gap-2">
 			<span class="text-xs font-medium tracking-wide text-foreground-subtle uppercase">
 				{m.wishlist_image_preview_strip_label()}
@@ -282,7 +311,7 @@
 							frame={frameFor(slot)}
 							{themeEmoji}
 							active={activeSlot === slot}
-							onclick={() => (activeSlot = slot)}
+							onclick={() => handleTileSelect(slot)}
 							class="w-full"
 						/>
 					</li>
