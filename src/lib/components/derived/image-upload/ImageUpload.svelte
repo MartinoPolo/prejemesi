@@ -93,6 +93,11 @@
 		}
 	}
 
+	/** Opens the native file picker programmatically (e.g. from an external click-to-edit affordance). */
+	export function openFilePicker(): void {
+		handleClick();
+	}
+
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();

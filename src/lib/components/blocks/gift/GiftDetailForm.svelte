@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 	import * as Select from '$lib/components/base/select/index.js';
@@ -18,7 +19,6 @@
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
-	import GiftIcon from '@lucide/svelte/icons/gift';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
@@ -135,6 +135,9 @@
 	);
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
+	// Component instance ref (issue #131): lets the image-column click-to-edit
+	// affordance open the file picker owned by the Upload-tab ImageUpload.
+	let imageUploadRef: ReturnType<typeof ImageUpload> | undefined = $state();
 
 	// Uploads made in this form session that are not persisted yet (issue #107,
 	// REQ-6). The image key included in the last submit is kept on unmount.
@@ -409,6 +412,18 @@
 		console.error('Image upload failed:', uploadError.message);
 	}
 
+	/**
+	 * Click-to-edit affordance for the image column (issue #131): switches the
+	 * right-column image field to the Upload tab and opens the native file
+	 * picker. `ImageUpload` only mounts once `imageMode` becomes `'upload'`, so
+	 * the picker trigger waits a tick for it to render.
+	 */
+	async function openImageEditor() {
+		imageMode = 'upload';
+		await tick();
+		imageUploadRef?.openFilePicker();
+	}
+
 	// Storage cleanup (issue #107, REQ-6): uploads that were replaced, removed,
 	// or abandoned before save are deleted when the form unmounts (dialog close).
 	// The submitted key survives; a pre-existing gift image is never tracked here.
@@ -493,6 +508,19 @@
 								tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 							/>
 						</div>
+						<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
+						     without wrapping it, so wheel-zoom-to-manual and the tile switcher
+						     below stay independently interactive. -->
+						<Button
+							type="button"
+							intent="ghost-overlay"
+							size="icon-sm"
+							class="absolute top-2 right-2 rounded-full bg-surface/90 shadow-sm"
+							onclick={openImageEditor}
+							aria-label={m.gift_image_replace_cta()}
+						>
+							<PencilIcon data-icon="solo" />
+						</Button>
 						<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
 						<GiftImagePreviewSlots
 							class="absolute inset-x-0 bottom-3"
@@ -506,12 +534,20 @@
 				{/if}
 			</div>
 		{:else}
-			<div class={styles.imagePlaceholder()}>
-				<GiftIcon class="size-16 text-ink-faint" />
-				<span class="text-sm font-semibold text-ink-soft"
-					>{m.gift_image_preview_label()}</span
-				>
-			</div>
+			<!-- Empty state (issue #131 REQ-2): the whole column is an explicit
+			     clickable upload placeholder, not just a preview label. -->
+			<button
+				type="button"
+				class={styles.imagePlaceholder()}
+				onclick={openImageEditor}
+				aria-label={m.gift_image_upload_cta()}
+			>
+				<UploadIcon class="size-16 text-ink-faint" />
+				<span class="text-sm font-semibold text-ink-soft">
+					{m.gift_image_upload_cta()}
+				</span>
+				<span class="text-xs text-foreground-subtle">{m.gift_image_upload_hint()}</span>
+			</button>
 		{/if}
 	</div>
 
@@ -771,6 +807,7 @@
 						/>
 					{:else}
 						<ImageUpload
+							bind:this={imageUploadRef}
 							target="gift-image"
 							size="small"
 							initialPreviewUrl={imageUrl !== '' ? imageUrl : undefined}

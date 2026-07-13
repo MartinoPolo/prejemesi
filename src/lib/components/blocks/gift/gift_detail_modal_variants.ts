@@ -15,7 +15,11 @@ export const giftDetailModalVariants = tv({
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
 		imageColumn:
 			'relative overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
-		imagePlaceholder: 'flex size-full flex-col items-center justify-center gap-3',
+		// Empty-state click-to-upload affordance (issue #131 REQ-2/REQ-3): a real
+		// button so it is keyboard-focusable with a visible focus ring, not just a
+		// static label.
+		imagePlaceholder:
+			'flex size-full cursor-pointer flex-col items-center justify-center gap-1 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
 		image: 'size-full object-cover',
 		detailColumn: 'flex min-h-0 flex-col gap-0 overflow-hidden',
 		detailScroll: 'min-h-0 flex-1 overflow-y-auto p-5 sm:p-7',
