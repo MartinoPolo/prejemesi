@@ -15,7 +15,11 @@
 	import AuthFooterLink from '$lib/components/blocks/auth/AuthFooterLink.svelte';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { authClient } from '$lib/auth_client.js';
-	import { getLocalizedAuthCallback, localizeInternalHref } from '$lib/i18n/locale.js';
+	import {
+		getLocalizedAuthCallback,
+		getLocalizedAuthHref,
+		localizeInternalHref,
+	} from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import ListIcon from '@lucide/svelte/icons/list';
 	import LinkIcon from '@lucide/svelte/icons/link';
@@ -168,12 +172,12 @@
 	tabs={[
 		{
 			label: m.auth_tab_login(),
-			href: localizeInternalHref(resolve('/login')),
+			href: getLocalizedAuthHref(resolve('/login'), callbackUrl),
 			active: true,
 		},
 		{
 			label: m.auth_tab_register(),
-			href: localizeInternalHref(resolve('/register')),
+			href: getLocalizedAuthHref(resolve('/register'), callbackUrl),
 			active: false,
 		},
 	]}
@@ -265,7 +269,7 @@
 
 	<AuthFooterLink
 		promptText={m.login_no_account()}
-		linkHref={localizeInternalHref(resolve('/register'))}
+		linkHref={getLocalizedAuthHref(resolve('/register'), callbackUrl)}
 		linkText={m.login_signup_link()}
 	/>
 </AuthFormCard>
