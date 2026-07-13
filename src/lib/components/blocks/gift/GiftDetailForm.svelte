@@ -127,8 +127,12 @@
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
 	// the current image with replace/remove – not its resolved URL in the URL field.
+	// Editing a URL image (imageUrl set, no imageKey) opens on the URL tab. A brand-new
+	// gift (no image at all) defaults to Upload (issue #143).
 	// svelte-ignore state_referenced_locally
-	let imageMode = $state<'url' | 'upload'>((gift?.imageKey ?? '') !== '' ? 'upload' : 'url');
+	let imageMode = $state<'url' | 'upload'>(
+		(gift?.imageKey ?? '') !== '' || (gift?.imageUrl ?? '') === '' ? 'upload' : 'url',
+	);
 	let showDeleteConfirm = $state(false);
 	let nameError = $state('');
 
@@ -741,22 +745,22 @@
 						<button
 							type="button"
 							class={giftDetailModalVariants({
-								imageTabActive: imageMode === 'url',
-							}).imageTab()}
-							onclick={() => (imageMode = 'url')}
-						>
-							<LinkIcon class="mr-1 inline size-3" />
-							URL
-						</button>
-						<button
-							type="button"
-							class={giftDetailModalVariants({
 								imageTabActive: imageMode === 'upload',
 							}).imageTab()}
 							onclick={() => (imageMode = 'upload')}
 						>
 							<UploadIcon class="mr-1 inline size-3" />
 							{m.gift_image_upload_tab()}
+						</button>
+						<button
+							type="button"
+							class={giftDetailModalVariants({
+								imageTabActive: imageMode === 'url',
+							}).imageTab()}
+							onclick={() => (imageMode = 'url')}
+						>
+							<LinkIcon class="mr-1 inline size-3" />
+							URL
 						</button>
 					</div>
 					{#if imageMode === 'url'}
