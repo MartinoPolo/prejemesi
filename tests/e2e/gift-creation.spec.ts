@@ -133,7 +133,7 @@ test.describe('Gift image upload', () => {
 		const dialog = await openAddGiftDialog(page);
 
 		// Switch to Upload tab
-		await dialog.getByRole('button', { name: /Nahrát/i }).click();
+		await dialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
 
 		// Wait for the file input to be present in the dialog
 		const fileInput = dialog.locator('input[type=file]');
@@ -186,7 +186,7 @@ test.describe('Gift image upload', () => {
 		const dialog = await openAddGiftDialog(page);
 
 		// Switch to Upload tab but do NOT upload anything
-		await dialog.getByRole('button', { name: /Nahrát/i }).click();
+		await dialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
 
 		// Fill name and submit immediately without uploading
 		await dialog.getByRole('textbox', { name: 'Název' }).fill('Dárek bez obrázku');
