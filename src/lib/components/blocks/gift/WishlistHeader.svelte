@@ -47,6 +47,7 @@
 		onmoderators?: () => void;
 		onarchive?: () => void;
 		oneditimage?: () => void;
+		oneditrecipient?: () => void;
 	}
 
 	let {
@@ -67,6 +68,7 @@
 		onmoderators,
 		onarchive,
 		oneditimage,
+		oneditrecipient,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -80,6 +82,12 @@
 	const canManage = $derived(canManageWishlist(role));
 	const isArchived = $derived(status === 'archived');
 	const isEventPast = $derived(eventDate !== null && new Date(eventDate) < new Date());
+	// Recipient edit pencil (issue #150): free-text lists → any manager may rename; linked
+	// lists → ONLY the linked recipient may flip to free-text (no evicting by správci).
+	// Archived lists are read-only, both actions are rejected server-side.
+	const canEditRecipient = $derived(
+		!isArchived && (isForSomeoneElse ? canManage : role === WISHLIST_ROLES.recipient),
+	);
 
 	// „Spravuje {name}" (single správce) / „Spravují {names}" (multiple) — for-someone lists only.
 	const managedByLabel = $derived.by(() => {
@@ -193,7 +201,18 @@
 						<strong class={styles.recipientName()}>{recipientDisplayName}</strong
 						>{:else}<strong class={styles.recipientName()}
 							>{recipientDisplayName}</strong
-						>{/if}
+						>{/if}{#if canEditRecipient}
+						<Button
+							size="icon-sm"
+							intent="ghost"
+							class="ms-1.5 align-middle"
+							aria-label={m.wishlist_edit_recipient_label()}
+							data-testid="edit-recipient-button"
+							onclick={oneditrecipient}
+						>
+							<PencilIcon />
+						</Button>
+					{/if}
 				</p>
 				<h1 class={styles.title()}>{title}</h1>
 				{#if description}

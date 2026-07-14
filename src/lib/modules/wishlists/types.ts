@@ -34,6 +34,15 @@ export type RecipientKind = (typeof RECIPIENT_KIND)[keyof typeof RECIPIENT_KIND]
 /** Max length of a free-text recipient name (issue #99 creation modal). */
 export const RECIPIENT_NAME_MAX_LENGTH = 100;
 
+/** Free-text recipient name: trimmed, non-empty, max {@link RECIPIENT_NAME_MAX_LENGTH} chars.
+ *  Single source for creation, rename, and the linked → free-text flip (issue #150). */
+const RecipientNameSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.minLength(1),
+	v.maxLength(RECIPIENT_NAME_MAX_LENGTH),
+);
+
 /**
  * Input for creating a new wishlist. Discriminated on `recipientKind`:
  * - `self`: the creator is the linked recipient (behaviourally identical to the old owner flow).
@@ -60,12 +69,7 @@ export const CreateWishlistInputSchema = v.variant('recipientKind', [
 	v.object({ recipientKind: v.literal(RECIPIENT_KIND.self), ...CreateWishlistBaseFields }),
 	v.object({
 		recipientKind: v.literal(RECIPIENT_KIND.other),
-		recipientName: v.pipe(
-			v.string(),
-			v.trim(),
-			v.minLength(1),
-			v.maxLength(RECIPIENT_NAME_MAX_LENGTH),
-		),
+		recipientName: RecipientNameSchema,
 		...CreateWishlistBaseFields,
 	}),
 ]);
@@ -113,12 +117,17 @@ export const SetWishlistPaletteInputSchema = v.object({
 /** Input for renaming a free-text recipient (správci only; for-someone lists only). */
 export const RenameRecipientInputSchema = v.object({
 	id: v.string(),
-	recipientName: v.pipe(
-		v.string(),
-		v.trim(),
-		v.minLength(1),
-		v.maxLength(RECIPIENT_NAME_MAX_LENGTH),
-	),
+	recipientName: RecipientNameSchema,
+});
+
+/**
+ * Input for flipping a linked recipient to a free-text recipient (issue #150, decision
+ * 2026-07-14). Only the linked recipient may execute; `recipientName` becomes the new
+ * free-text name (trimmed, non-empty, max 100 chars).
+ */
+export const FlipRecipientToFreeTextInputSchema = v.object({
+	id: v.string(),
+	recipientName: RecipientNameSchema,
 });
 
 /** Wishlist with computed viewer role */

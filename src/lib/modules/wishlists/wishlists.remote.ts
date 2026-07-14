@@ -17,12 +17,14 @@ import { seedNewWishlist } from './wishlist_create.js';
 import {
 	resolveWishlistRole,
 	verifyManagerAccess,
+	verifyLinkedRecipientAccess,
 	assertWishlistMutable,
 } from './wishlist_access.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
 	RenameRecipientInputSchema,
+	FlipRecipientToFreeTextInputSchema,
 	SetWishlistPaletteInputSchema,
 	type WishlistRole,
 } from './types.js';
@@ -324,6 +326,76 @@ export const renameRecipient = guardedCommand(
 			.set({ recipientName: input.recipientName, updatedAt: new Date() })
 			.where(eq(wishlist.id, input.id))
 			.returning();
+
+		return updated;
+	},
+);
+
+/**
+ * Flip a linked recipient to a free-text recipient (issue #150, decision 2026-07-14).
+ * Only the LINKED RECIPIENT may convert their OWN list — správci cannot (no evicting a
+ * linked recipient). The flip clears `recipientUserId`, sets the free-text name, resets
+ * the self-promote disclosure flag (the trust banner disappears; the always-visible
+ * „Spravuje {name}" line is the ongoing disclosure), and gives the ex-recipient an active
+ * správce assignment (keeps management, satisfies the orphan guard). Shared lists notify
+ * followers via the existing self-promote channel (email + in-app) that the actor now
+ * sees reservations; drafts stay silent; archived lists are rejected. One-way: linking a
+ * recipient back requires the claim link.
+ */
+export const flipRecipientToFreeText = guardedCommand(
+	FlipRecipientToFreeTextInputSchema,
+	async ({ user: currentUser }, input) => {
+		const database = getDb();
+
+		const wishlistRow = await verifyLinkedRecipientAccess(currentUser.id, input.id);
+		assertWishlistMutable(wishlistRow);
+
+		const updated = await database.transaction(async (tx) => {
+			const [row] = await tx
+				.update(wishlist)
+				.set({
+					recipientUserId: null,
+					recipientName: input.recipientName,
+					recipientIsModerator: false,
+					updatedAt: new Date(),
+				})
+				.where(eq(wishlist.id, input.id))
+				.returning();
+
+			// The ex-recipient keeps managing as a regular správce with normal správce
+			// visibility. A linked recipient can never already hold an active assignment
+			// (acceptModeratorInvite rejects the recipient), so a plain insert is safe.
+			await tx.insert(moderatorAssignment).values({
+				wishlistId: input.id,
+				userId: currentUser.id,
+			});
+
+			return row;
+		});
+
+		// Shared list: followers learn the actor now sees reservations — same channel and
+		// copy as recipient self-promote. Draft: silent. Archived was rejected above.
+		if (wishlistRow.sharedAt !== null) {
+			const followerRows = await database
+				.select({ userId: wishlistFollower.userId })
+				.from(wishlistFollower)
+				.where(
+					and(
+						eq(wishlistFollower.wishlistId, input.id),
+						isNull(wishlistFollower.unfollowedAt),
+					),
+				);
+
+			await dispatchNotification({
+				type: NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
+				targetUserIds: followerRows
+					.map((row) => row.userId)
+					.filter((targetUserId) => targetUserId !== currentUser.id),
+				wishlistId: input.id,
+				actorId: currentUser.id,
+				actorName: currentUser.name,
+			});
+		}
 
 		return updated;
 	},

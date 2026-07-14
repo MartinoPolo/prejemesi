@@ -10,6 +10,7 @@
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
+	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import {
 		WISHLIST_SETTINGS_QUERY_PARAM,
 		WISHLIST_SETTINGS_TABS,
@@ -262,6 +263,11 @@
 	let settingsModalOpen = $state(false);
 	let settingsModalTab = $state<WishlistSettingsTab>(WISHLIST_SETTINGS_TABS.details);
 
+	// ── Edit-recipient dialog state (issue #150): one shared dialog, two entry points
+	//    (header pencil + settings modal recipient row) ────────────────────────
+
+	let recipientEditDialogOpen = $state(false);
+
 	// ── Reservation modal state ───────────────────────────────────────────────
 
 	let reserveModalOpen = $state(false);
@@ -398,6 +404,17 @@
 	// it in its own draft state — the banner reads wishlist.recipientDisplayName from THIS
 	// page's query, so it needs its own refresh to drop the cached stale name.
 	async function handleRecipientRenamed() {
+		await refreshData();
+	}
+
+	function handleEditRecipientOpened() {
+		recipientEditDialogOpen = true;
+	}
+
+	// Recipient change via the shared dialog (issue #150): refreshData re-fetches the page
+	// query (role flips recipient → moderator, trust banner drops, „Spravuje" line appears)
+	// AND calls refreshWishlistDashboards() — the list moves from Moje seznamy to Spravované.
+	async function handleRecipientChanged() {
 		await refreshData();
 	}
 
@@ -773,6 +790,7 @@
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
 		oneditimage={handleEditImage}
+		oneditrecipient={handleEditRecipientOpened}
 	/>
 
 	<WishlistDetailToolbar
@@ -864,10 +882,24 @@
 	bind:activeTab={settingsModalTab}
 	{wishlist}
 	{canManage}
+	{role}
+	recipientDisplayName={wishlist.recipientDisplayName}
 	{themeEmoji}
 	onsaved={refreshData}
 	onpaletteselect={handlePaletteSelect}
 	ondeleted={handleWishlistDeleted}
+	oneditrecipient={handleEditRecipientOpened}
+/>
+
+<!-- Shared recipient dialog (issue #150): linked lists get the one-way flip with consequence
+     copy (linked recipient only); free-text lists get the plain rename (any správce). -->
+<EditRecipientDialog
+	bind:open={recipientEditDialogOpen}
+	wishlistId={wishlist.id}
+	isLinkedRecipient={!isForSomeoneElse}
+	recipientDisplayName={wishlist.recipientDisplayName}
+	isShared={wishlist.sharedAt !== null}
+	onchanged={handleRecipientChanged}
 />
 
 {#if canManage}

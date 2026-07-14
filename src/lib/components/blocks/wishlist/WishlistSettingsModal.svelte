@@ -13,6 +13,7 @@
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
@@ -24,7 +25,11 @@
 	import { updateWishlist, deleteWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
-	import type { Wishlist } from '$lib/modules/wishlists/types.js';
+	import {
+		WISHLIST_ROLES,
+		type Wishlist,
+		type WishlistRole,
+	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 
@@ -35,6 +40,10 @@
 		wishlist: Wishlist;
 		/** Recipient OR správce; non-managers get a read-only notice instead of the forms. */
 		canManage: boolean;
+		/** Viewer role: on linked lists only the linked recipient may edit the recipient (issue #150). */
+		role: WishlistRole;
+		/** Who the list is for: linked account name or free-text name (shown in the recipient row). */
+		recipientDisplayName: string;
 		/** Theme-derived fallback emoji for the crop editor previews. */
 		themeEmoji: string;
 		/** Awaited page refresh after a save so the form can re-seed from fresh values. */
@@ -43,6 +52,8 @@
 		onpaletteselect?: (palette: Palette) => void;
 		/** Fires after a successful delete so the page can navigate away + refresh dashboards. */
 		ondeleted?: () => void;
+		/** Opens the shared edit-recipient dialog (issue #150) — the page renders it. */
+		oneditrecipient?: () => void;
 	}
 
 	/** Normalize a stored event date to a `Date` for the `DatePicker`, or `null` when unset/invalid. */
@@ -59,14 +70,22 @@
 		activeTab = $bindable(WISHLIST_SETTINGS_TABS.details),
 		wishlist,
 		canManage,
+		role,
+		recipientDisplayName,
 		themeEmoji,
 		onsaved,
 		onpaletteselect,
 		ondeleted,
+		oneditrecipient,
 	}: WishlistSettingsModalProps = $props();
 
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isShared = $derived(wishlist.sharedAt !== null);
+	// Recipient edit affordance (issue #150): free-text lists → any manager may rename;
+	// linked lists → ONLY the linked recipient may flip to free-text (no evicting by správci).
+	const canEditRecipient = $derived(
+		wishlist.recipientUserId === null || role === WISHLIST_ROLES.recipient,
+	);
 
 	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
 	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back
@@ -264,6 +283,31 @@
 					<p class="text-sm text-muted-foreground">
 						{m.wishlist_settings_details_hint()}
 					</p>
+
+					<!-- Recipient row (issue #150): shows who the list is for; the edit button opens
+					     the shared dialog (flip on linked lists, rename on free-text lists). -->
+					<div
+						class="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2"
+					>
+						<div class="min-w-0">
+							<p class="text-sm font-medium">{m.recipient_section_title()}</p>
+							<p class="truncate text-sm text-muted-foreground">
+								{recipientDisplayName}
+							</p>
+						</div>
+						{#if canEditRecipient}
+							<Button
+								size="sm"
+								intent="outline"
+								data-testid="settings-edit-recipient"
+								onclick={oneditrecipient}
+							>
+								<PencilIcon data-icon="inline-start" />
+								{m.wishlist_edit_recipient_label()}
+							</Button>
+						{/if}
+					</div>
+
 					<form onsubmit={handleDetailsSave} class="flex flex-col gap-4">
 						<Field
 							fieldId="wishlist-title"
