@@ -113,7 +113,7 @@ Rejected: Silent self-promote (breaks trust), no self-promote option (too restri
 
 ### Recipient replaces owner: recipient + správce roles
 
-Decided: 2026-07-08
+Decided: 2026-07-08 — **Revised 2026-07-14** by "Recipient reassignment: linked → free-text flip" below (the no-conversion rule is relaxed one way).
 What: The standalone "owner" role is dissolved. Every wishlist has a **Recipient** — the person gifts are for — either a linked user account or a free-text name (e.g. a child without email), plus one or more **Správci** (UI term for the `moderator` role). At creation the user picks "for me" (creator = linked recipient) or "for someone else" (creator = first správce, recipient = free-text name). No for-me ↔ for-someone conversion after creation; správci may rename a free-text recipient anytime. Nav: for-someone lists appear under Spravované for správci and under Moje seznamy for a linked recipient.
 Why: A parent managing a kid's list was impossible — `ownerId` conflated manager and recipient, and moderators lacked management rights (share/archive/metadata). One model now covers both self-lists and lists for others.
 Rejected: Display-only recipientName on top of the owner model (keeps the conflation); kid account as owner + parent as moderator (kids lack email; parent loses management rights); post-creation conversion (a self-list flip would silently grant reservation visibility).
@@ -134,7 +134,7 @@ Rejected: Creator-only assignment (single point of failure).
 
 ### Recipient account linking via claim token (follow-up)
 
-Decided: 2026-07-08
+Decided: 2026-07-08 — **Refined 2026-07-14** by "Claim token: semantics and spoiler guards" below; ships with recipient reassignment, no longer a follow-up.
 What: v1 ships free-text recipients only, but the schema carries a nullable `recipientUserId` from day one. A follow-up adds a "Pozvat obdarovaného" claim link (token-based, like moderator invites): claiming links the account, shows the list in the recipient's Moje seznamy with recipient rights, and strips reservation state from their view.
 Why: Kids — the primary case — have no accounts. A claim link gives an explicit consent moment; email lookup at creation invites typos and surprises.
 Rejected: Email lookup at creation; shipping linking inside the first release (delays the headline feature).
@@ -151,6 +151,34 @@ Decided: 2026-07-08
 What: UI terms — cs „obdarovaný" / en "recipient"; cs „správce" / en "manager". Code and DB keep `moderator` identifiers (tables, role enum); owner→recipient identifiers are renamed during implementation.
 Why: "Moderator" is unfamiliar to the target audience; renaming the prod moderator tables is churn without user-facing gain.
 Rejected: Renaming moderator tables/enum; „příjemce" (postal register), „oslavenec" (birthday-only).
+
+### Recipient reassignment: linked → free-text flip
+
+Decided: 2026-07-14 (relaxes the "no for-me ↔ for-someone conversion" rule from 2026-07-08)
+What: A linked recipient can convert their OWN list to a free-text recipient (the migrated-parent-list case, e.g. Martin → „Rosie"). Správci cannot (no evicting a linked recipient). On flip: `recipientUserId` cleared, `recipientName` set, ex-recipient gets an automatic active `moderator_assignment` row (keeps management, gains normal správce visibility), `recipientIsModerator` resets to false — the trust banner disappears; the always-visible „Spravuje {name}" line is the ongoing disclosure. Shared list: followers notified via the self-promote channel (email + in-app) that the actor now sees reservations. Draft: silent. Archived: rejected. Free-text rename unchanged (any správce). UI: pencil icon next to the header „Pro: {name}" (managers only; on linked lists only the linked recipient) + a recipient row in the settings modal — both open one dialog with consequence copy.
+Why: Migrated production lists conflate creator and recipient. Actor-only flip builds consent in — the person gaining reservation visibility is the person clicking, and gifters are notified.
+Rejected: správce-initiated flip (evicts a linked recipient, silently changes whose spoilers are protected); linked → linked transfer (claim token covers linking); permanent "recipient changed" banner (one-time notification + visible „Spravuje" line suffice).
+
+### Claim token: semantics and spoiler guards
+
+Decided: 2026-07-14 (implements + refines "Recipient account linking via claim token"; ships with recipient reassignment)
+What: Any správce of a free-text-recipient list generates a claim link (token table mirroring `moderator_invite`; optional email send, both modes). Claiming (logged-in) sets `recipientUserId` = claimer and CLEARS `recipientName` — the account name becomes canonical. The list moves to the claimer's Moje seznamy; reservation state is stripped from their view. Guards: reject if the claimer ever held správce access after the list was shared (assignment history incl. soft-deleted rows — prevents flip → claim-back laundering of reservation visibility) and reject if the claimer has active reservations on the list (cancel first). Správci get an in-app notification on claim (no email). Správce panel shows a nudge: „Má obdarovaný vlastní účet? Pošlete mu odkaz na propojení."
+Why: Explicit consent moment; the post-share-správce guard keeps "recipient never saw reservations" honest — otherwise flip + claim-back would erase the permanent-disclosure promise.
+Rejected: keeping `recipientName` as display override after claim (two names for one person); allowing ex-správci to claim with a warning banner (complex, weak guarantee); friends/user-search system (heavy social graph; claim link covers the need).
+
+### Revert to draft: správce when clean, admin when reserved
+
+Decided: 2026-07-14
+What: An active shared list can revert to draft. Zero reservations: any správce, silent (no notifications). With reservations: app admin only — cancels all reservations and notifies reservers (email to registered + anonymous-with-email; in-app for registered; anonymous without email is unreachable, accepted). The recipient NEVER sees the revert option (a self list without správce cannot be reverted at all). Revert clears `sharedAt` (full edit rights return, event-date lock released), clears „Upraveno po sdílení" badges, DISCARDS description appends (the share-time description text is kept), keeps likes + followers. Non-managers on `/w/<id>` see a friendly „Seznam se připravuje" page; the same URL works again after re-share. Re-share is a full share transition (fresh grace, name re-freeze). Archived lists must be unarchived first. UI: danger tab above delete; a non-admin správce sees the reserved variant disabled with „Seznam už má rezervace, vrácení může provést jen administrátor."
+Why: Fixes premature-share mistakes. Hiding the option from recipients avoids the leak where seeing WHICH revert variant renders reveals whether reservations exist; admin gating keeps reservation-cancelling power away from every správce.
+Rejected: recipient-accessible revert with uniform no-leak copy (hiding entirely is simpler and leak-free); správce-wide reserved revert (too destructive); notifying followers on a clean revert (nothing at stake).
+
+### App admin via ADMIN_EMAILS env var
+
+Decided: 2026-07-14
+What: Comma-separated `ADMIN_EMAILS` env var; a server-side helper matches the session user's email. Grants exactly: reserved-list revert + the settings gear visible on any list (danger/admin actions only). Admin is NOT a správce — never appears in headers or panels.
+Why: Single-operator production app; zero schema change; changing admins = redeploy, which is rare and fine.
+Rejected: `user.isAdmin` DB column (buys nothing without an admin UI); admin-implies-správce (too broad, would surface in list UI).
 
 ## Authentication & Users
 
@@ -357,10 +385,17 @@ Rejected: Owner name in subtitle only (too subtle), owner name in nav bar (confl
 
 ### Wishlist header: recipient-first on for-someone lists (variant A)
 
-Decided: 2026-07-08 (extends "Owner name prominent in wishlist header")
+Decided: 2026-07-08 (extends "Owner name prominent in wishlist header") — **Revised 2026-07-14** by "Header: recipient-first on all lists" below (self lists no longer visually unchanged).
 What: On for-someone lists the prominent name slot shows „Pro {recipient}" („Pro" in lighter weight, recipient bold), title unchanged, and the meta row gains „Spravuje {name}" / „Spravují {names}" in small muted text (`text-sm text-white/75`). Self-recipient lists are visually unchanged. OG description becomes „Seznam přání pro {recipient}". Dashboards/dropdowns/cards show the recipient as the person label (e.g. „Pro Rosie" chip).
 Why: The prominent slot answers "whose gifts are these?" — for a kid's list that is the recipient, not the manager. Validated with live DOM mockups; the author-first variant buried the key fact in metadata.
 Rejected: Author-first header with a small „Seznam pro Rosie" meta label (the current confusion, just annotated).
+
+### Header: recipient-first on all lists, caption dedup, správci always visible
+
+Decided: 2026-07-14 (revises variant A's "self-recipient lists visually unchanged")
+What: Every wishlist header — self lists included — shows „Pro: {name}" (colon form, nominative) above the title. The polaroid caption drops the recipient name: event date only („červenec 2026") when set, otherwise no caption. The „Spravuje/Spravují {names}" meta line renders whenever správci exist, on self lists too, and INCLUDES a self-promoted recipient (the trust banner stays as well). OG description keeps the sentence form „Seznam přání pro {name}" on all lists (no colon in prose). Dashboard cards and nav dropdowns unchanged.
+Why: One consistent answer to "whose gifts are these"; the caption duplicated `recipientDisplayName` verbatim next to the recipient line; managers should be visible everywhere, not only on for-someone lists.
+Rejected: automatic Czech name declension for „Pro {name}" (not reliably possible; the colon form reads fine with nominative); „Pro" chips on self-list dashboard cards (noise on your own page).
 
 ### ~~Sort and filter as icon-only dropdown trigger~~ (superseded)
 
