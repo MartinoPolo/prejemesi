@@ -14,6 +14,10 @@ export const NOTIFICATION_TYPE = {
 	NEW_GIFT_ADDED: 'new_gift_added',
 	GIFT_RESERVED: 'gift_reserved',
 	MODERATOR_INVITED: 'moderator_invited',
+	// Claim invite (issue #150): a správce emailed a „Pozvat obdarovaného" link.
+	CLAIM_INVITED: 'claim_invited',
+	// The free-text recipient claimed their list — in-app heads-up to the active správci.
+	RECIPIENT_CLAIMED: 'recipient_claimed',
 } as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPE)[keyof typeof NOTIFICATION_TYPE];
@@ -25,12 +29,14 @@ export const EMAIL_NOTIFICATION_TYPES: readonly NotificationType[] = [
 	NOTIFICATION_TYPE.WISHLIST_ARCHIVED,
 	NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
 	NOTIFICATION_TYPE.MODERATOR_INVITED,
+	NOTIFICATION_TYPE.CLAIM_INVITED,
 ] as const;
 
 /** Types that are in-app only (non-critical) */
 export const IN_APP_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = [
 	NOTIFICATION_TYPE.NEW_GIFT_ADDED,
 	NOTIFICATION_TYPE.GIFT_RESERVED,
+	NOTIFICATION_TYPE.RECIPIENT_CLAIMED,
 ] as const;
 
 // ── Notification Messages (Czech) ───────────────────────────────────────────
@@ -43,6 +49,8 @@ export const NOTIFICATION_MESSAGES = {
 	new_gift_added: () => m.notification_type_new_gift(),
 	gift_reserved: () => m.notification_type_reserved(),
 	moderator_invited: () => m.notification_type_moderator_invited(),
+	claim_invited: () => m.notification_type_claim_invited(),
+	recipient_claimed: () => m.notification_type_recipient_claimed(),
 } satisfies Record<NotificationType, () => string>;
 
 // ── DB Row Type ─────────────────────────────────────────────────────────────
@@ -79,6 +87,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 	new_gift_added: { email: false, inApp: true },
 	gift_reserved: { email: false, inApp: true },
 	moderator_invited: { email: true, inApp: true },
+	claim_invited: { email: true, inApp: true },
+	recipient_claimed: { email: false, inApp: true },
 } satisfies Record<NotificationType, NotificationPreferenceEntry>;
 
 // ── Preferences Input Validation ────────────────────────────────────────────

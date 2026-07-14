@@ -18,6 +18,11 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.CANNOT_INVITE_ON_ARCHIVED]: () => m.server_error_cannot_invite_on_archived(),
 	[SERVER_ERROR.CANNOT_REMOVE_LAST_MANAGER]: () => m.server_error_cannot_remove_last_manager(),
 	[SERVER_ERROR.ALREADY_SEEING_RESERVATIONS]: () => m.server_error_already_seeing_reservations(),
+	[SERVER_ERROR.CLAIM_NOT_FOR_LINKED_RECIPIENT]: () =>
+		m.server_error_claim_not_for_linked_recipient(),
+	[SERVER_ERROR.CLAIM_ALREADY_LINKED]: () => m.server_error_claim_already_linked(),
+	[SERVER_ERROR.CLAIM_EX_MANAGER]: () => m.server_error_claim_ex_manager(),
+	[SERVER_ERROR.CLAIM_HAS_RESERVATIONS]: () => m.server_error_claim_has_reservations(),
 
 	[SERVER_ERROR.GIFT_NOT_FOUND]: () => m.server_error_gift_not_found(),
 	[SERVER_ERROR.CANNOT_RESERVE_ON_ARCHIVED]: () => m.server_error_cannot_reserve_on_archived(),
