@@ -2,8 +2,9 @@ name: Deploy (production)
 
 # Deploys the production branch to Cloudflare Workers — gated (issue #110):
 #   1. `verify` re-runs the full check suite (format, lint, typecheck, unit +
-#      browser tests, migration safety) *and* e2e (`run_e2e: true` — skipped on
-#      PRs/dev pushes for speed, required here) for the exact deployed commit.
+#      browser tests, migration safety) *and* e2e (`run_e2e: true`) for the
+#      exact deployed commit. PRs and `dev` pushes run the same suite (incl.
+#      e2e) via ci.yml; this re-verification pins the deployed SHA.
 #   2. `deploy` requires the GitHub `production` environment approval before it
 #      runs, and records the deployed commit (environment deployment + step
 #      summary + GIT_COMMIT_SHA Worker var).

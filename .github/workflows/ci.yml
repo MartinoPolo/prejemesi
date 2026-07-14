@@ -3,8 +3,10 @@ name: CI
 # Push to `production` is intentionally not listed: deploy.yml runs the same
 # reusable checks as its `verify` job for the exact deployed commit (issue #110).
 #
-# e2e is intentionally skipped here (checks.yml's `run_e2e` defaults to false)
-# to keep PR/dev feedback fast; deploy.yml's `verify` call still requires it.
+# e2e runs here too (`run_e2e: true`): the full suite, including the Playwright
+# e2e job, gates every PR and `dev` push so regressions are caught before the
+# merge rather than only at the production deploy gate. deploy.yml still re-runs
+# the same suite for the exact deployed commit.
 
 on:
     pull_request:
@@ -15,3 +17,5 @@ on:
 jobs:
     checks:
         uses: ./.github/workflows/checks.yml
+        with:
+            run_e2e: true
