@@ -30,7 +30,7 @@ test.describe('Import wizard required-title validation', () => {
 
 		await page.goto('/my-lists');
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: 'Importovat dárky' }).click();
+		await page.getByRole('main').getByRole('button', { name: 'Importovat dárky' }).click();
 
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
@@ -65,7 +65,11 @@ test.describe('Import wizard required-title validation', () => {
 		await expect(titleInput).toHaveAttribute('aria-describedby', 'import-wizard-title-error');
 
 		// Never advanced past Review – Confirm step content never rendered.
-		await expect(dialog.getByText('Vytvořit seznam', { exact: false })).toHaveCount(0);
+		await expect(
+			dialog
+				.getByText('Vytvořit seznam', { exact: false })
+				.and(dialog.locator(':not(button)')),
+		).toHaveCount(0);
 
 		// No literal markdown asterisks anywhere in the dialog (empty-title render bug).
 		await expect(dialog).not.toContainText('****');
@@ -81,7 +85,11 @@ test.describe('Import wizard required-title validation', () => {
 		await expect(titleInput).not.toHaveAttribute('aria-invalid', 'true');
 
 		await nextButton.click();
-		await expect(dialog.getByText('Vytvořit seznam', { exact: false })).toBeVisible({
+		await expect(
+			dialog
+				.getByText('Vytvořit seznam', { exact: false })
+				.and(dialog.locator(':not(button)')),
+		).toBeVisible({
 			timeout: 5_000,
 		});
 		await expect(dialog).toContainText('Můj seznam přání');

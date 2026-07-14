@@ -1,12 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import {
-	createWishlistAndNavigate,
-	addGift,
-	shareWishlist,
-	waitForDialogOverlayRemoval,
-} from './fixtures/wishlist-helpers.js';
+import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
 
 test.describe('Wishlist delete (issue #120)', () => {
 	test('recipient can delete an unshared list from settings, and it disappears from /my-lists without reload', async ({
@@ -87,7 +82,6 @@ test.describe('Wishlist delete (issue #120)', () => {
 		).toBeVisible({ timeout: 5_000 });
 		await expect(dialog.getByRole('button', { name: 'Smazat seznam' })).not.toBeVisible();
 
-		await waitForDialogOverlayRemoval(page);
 		await page.context().close();
 	});
 });
