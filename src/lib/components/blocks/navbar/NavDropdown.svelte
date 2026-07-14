@@ -23,6 +23,9 @@
 		active?: boolean;
 		/** Render with the panel already open (Storybook/demo only – open is hover-driven). */
 		defaultOpen?: boolean;
+		/** Controlled open state – the navbar binds this so at most one nav dropdown is
+		 *  open at a time (opening one immediately closes any sibling). */
+		open?: boolean;
 		footer?: Snippet;
 	}
 
@@ -34,6 +37,7 @@
 		grouped = false,
 		active = false,
 		defaultOpen = false,
+		open = $bindable(false),
 		footer,
 	}: NavDropdownProps = $props();
 
@@ -68,7 +72,6 @@
 	// The trigger is a real link (click navigates – settled decision), so it cannot be a
 	// bits-ui DropdownMenu.Trigger (that would hijack click/Enter to toggle). Instead the
 	// menu is controlled: hover opens it, and the panel anchors to the link via customAnchor.
-	let open = $state(false);
 	let triggerElement = $state<HTMLAnchorElement | null>(null);
 	let contentElement = $state<HTMLElement | null>(null);
 	let closeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -296,7 +299,7 @@
 
 	:global(.nav-chevron) {
 		opacity: 0.55;
-		transition: transform var(--duration-normal) var(--ease-standard);
+		transition: transform var(--duration-slow) var(--ease-standard);
 		flex-shrink: 0;
 		width: 14px;
 		height: 14px;

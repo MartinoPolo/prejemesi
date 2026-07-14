@@ -156,13 +156,13 @@
 				     single ink left divider (immune to state) to avoid a double-thick middle border. -->
 				<ToggleGroup.Item
 					value={RECIPIENT_KIND.self}
-					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:shadow-none! data-[state=on]:border-transparent"
+					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:scale-100 active:shadow-none! data-[state=on]:border-transparent"
 				>
 					{m.create_for_toggle_self()}
 				</ToggleGroup.Item>
 				<ToggleGroup.Item
 					value={RECIPIENT_KIND.other}
-					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:shadow-none! border-l-ink border-l-2 data-[state=on]:border-transparent data-[state=on]:border-l-ink"
+					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:scale-100 active:shadow-none! border-l-ink border-l-2 data-[state=on]:border-transparent data-[state=on]:border-l-ink"
 				>
 					{m.create_for_toggle_other()}
 				</ToggleGroup.Item>

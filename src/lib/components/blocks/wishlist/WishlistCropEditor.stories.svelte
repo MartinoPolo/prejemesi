@@ -44,16 +44,18 @@
 		},
 	} satisfies WishlistImageSlots;
 
-	// REQ-4: the preview workflow. Four slot tiles render, exactly one is active (the card
-	// slot by default), and selecting another tile moves the active selection. The fit-mode
-	// control offers the three modes for the active slot.
+	// The preview workflow since #116 (D3 + follow-up): three slot tiles render (banner
+	// removed from the editor; its persisted JSON above is retained), exactly one is
+	// active (the card slot by default), and selecting another tile moves the active
+	// selection and promotes that slot to Manual mode. The display-mode control offers
+	// Fill / Fit / Manual for the active slot.
 	const playSlotSelection = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
 		const canvas = within(canvasElement);
 
-		// Four per-slot preview tiles (aria-pressed buttons), one active by default.
+		// Three per-slot preview tiles (aria-pressed buttons), one active by default.
 		await waitFor(() => {
 			expect(canvas.getAllByRole('button', { pressed: true })).toHaveLength(1);
-			expect(canvas.getAllByRole('button', { pressed: false })).toHaveLength(3);
+			expect(canvas.getAllByRole('button', { pressed: false })).toHaveLength(2);
 		});
 
 		// Fit-mode control exposes the three modes for the active slot.

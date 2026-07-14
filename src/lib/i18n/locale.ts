@@ -7,6 +7,7 @@ import {
 } from '$lib/paraglide/runtime.js';
 
 const DEFAULT_LOCALE: Locale = 'cs';
+const INTERNAL_APPLICATION_ORIGIN = 'https://internal.prejemesi.invalid';
 export const SUPPORTED_LOCALES = ['cs', 'en'] as const satisfies readonly Locale[];
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
@@ -31,11 +32,36 @@ export function getLocalizedAuthCallback(
 	fallbackHref: string,
 	locale?: Locale,
 ): string {
-	if (redirectParameter !== null && redirectParameter !== '') {
+	if (
+		redirectParameter !== null &&
+		redirectParameter !== '' &&
+		isInternalApplicationHref(redirectParameter)
+	) {
 		return redirectParameter;
 	}
 
 	return localizeInternalHref(fallbackHref, locale);
+}
+
+function isInternalApplicationHref(href: string): boolean {
+	if (!href.startsWith('/')) {
+		return false;
+	}
+
+	try {
+		return new URL(href, INTERNAL_APPLICATION_ORIGIN).origin === INTERNAL_APPLICATION_ORIGIN;
+	} catch {
+		return false;
+	}
+}
+
+export function getLocalizedAuthHref(
+	authenticationHref: string,
+	redirectHref: string,
+	locale?: Locale,
+): string {
+	const localizedAuthenticationHref = localizeInternalHref(authenticationHref, locale);
+	return `${localizedAuthenticationHref}?${new URLSearchParams({ redirect: redirectHref })}`;
 }
 
 export function resolveLocalePreference(

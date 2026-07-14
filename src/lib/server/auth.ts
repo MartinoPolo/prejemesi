@@ -2,10 +2,12 @@ import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { magicLink } from 'better-auth/plugins/magic-link';
+import { captcha } from 'better-auth/plugins';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { getDb } from './db/index.js';
 import { sendEmail, renderActionEmailParts } from './email.js';
+import { getTurnstileSecretKey } from './turnstile.js';
 import type { RequestEvent } from '@sveltejs/kit';
 
 // Dev: Vite picks the next free port (5174, 5175, ...) when 5173 is taken.
@@ -25,6 +27,7 @@ export function createAuth(event?: RequestEvent) {
 		baseURL: env.ORIGIN ?? 'http://localhost:5173',
 		secret: env.AUTH_SECRET,
 		trustedOrigins: devTrustedOrigins,
+		logger: { disabled: !import.meta.env.DEV },
 
 		database: drizzleAdapter(getDb(event), { provider: 'pg' }),
 
@@ -90,6 +93,11 @@ export function createAuth(event?: RequestEvent) {
 		},
 
 		plugins: [
+			captcha({
+				provider: 'cloudflare-turnstile',
+				secretKey: getTurnstileSecretKey(),
+				endpoints: ['/sign-up/email', '/sign-in/magic-link', '/request-password-reset'],
+			}),
 			sveltekitCookies(getRequestEvent),
 			magicLink({
 				sendMagicLink: async ({ email, url }) => {

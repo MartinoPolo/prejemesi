@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { afterNavigate, replaceState } from '$app/navigation';
+	import { afterNavigate, replaceState, goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
+	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
@@ -34,7 +36,7 @@
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
-	import { wishlistImageUrl } from '$lib/modules/images/index.js';
+	import { wishlistSocialImageUrl } from '$lib/modules/images/index.js';
 	import { SITE_URL, SOCIAL_PREVIEW_IMAGE_URL } from '$lib/config/site.js';
 	import { untrack } from 'svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
@@ -131,22 +133,33 @@
 		return `${SITE_URL}/w/${wishlist.shortId}`;
 	}
 
+	// OG/Twitter image (issue #117): a fixed-aspect crop honoring the `social` slot's saved
+	// focal point, so the crawler-visible preview matches what the owner framed in the crop
+	// editor instead of always serving the unmodified source image.
 	function getWishlistSocialImageUrl() {
-		const imagePath = wishlistImageUrl(wishlist.imageKey);
-		return imagePath === null ? SOCIAL_PREVIEW_IMAGE_URL : `${SITE_URL}${imagePath}`;
+		const url = wishlistSocialImageUrl(
+			wishlist.imageKey,
+			wishlist.imageSlots,
+			SOCIAL_PREVIEW_IMAGE_URL,
+		);
+		return url.startsWith('http') ? url : `${SITE_URL}${url}`;
 	}
 
 	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
 	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
-	// during async SSR and 500s. For-someone lists read „…pro {recipient}"; self lists keep the
-	// original wording, sourced from recipientDisplayName.
+	// during async SSR and 500s. Localized via Paraglide `m.*` (issue #117: previously a raw,
+	// unlocalized, diacritic-stripped template string) so both locales and Czech diacritics
+	// render correctly for crawlers. For-someone lists read „…pro {recipient}"; self lists read
+	// „…od {recipient}", both sourced from recipientDisplayName.
 	function getSocialDescription() {
 		if (wishlist.recipientUserId === null) {
 			return m.wishlist_og_description_recipient({
 				recipient: wishlist.recipientDisplayName,
 			});
 		}
-		return `Seznam prani od ${wishlist.recipientDisplayName}`;
+		return m.wishlist_og_description_self({
+			recipient: wishlist.recipientDisplayName,
+		});
 	}
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
@@ -381,6 +394,13 @@
 		await refreshData();
 	}
 
+	// Recipient rename (issue #119): the správci panel persists the new name but only tracks
+	// it in its own draft state — the banner reads wishlist.recipientDisplayName from THIS
+	// page's query, so it needs its own refresh to drop the cached stale name.
+	async function handleRecipientRenamed() {
+		await refreshData();
+	}
+
 	function handleShareOpened() {
 		sharingContext.openWizard();
 	}
@@ -426,11 +446,12 @@
 		giftModalOpen = true;
 	}
 
+	/** Opens the gift detail modal (issue #125): edit mode for managers, read-only for everyone
+	 *  else. Priority levels are only needed by the edit form. */
 	async function openEditModal(gift: GiftByRole) {
-		if (!canManage) {
-			return;
+		if (canManage) {
+			await loadPriorityLevels();
 		}
-		await loadPriorityLevels();
 		giftModalMode = 'edit';
 		selectedGift = gift;
 		giftModalOpen = true;
@@ -581,6 +602,16 @@
 			console.error('Failed to archive wishlist:', thrown);
 			toastError(m.toast_wishlist_archive_error());
 		}
+	}
+
+	// ── Delete handler (issue #120) ────────────────────────────────────────────
+	// The confirmation + deleteWishlist call live inside WishlistSettingsModal (danger-zone
+	// tab); this callback only handles what must happen on THIS page after a successful delete:
+	// refresh the dashboard queries so cards disappear without reload, then navigate away since
+	// the wishlist no longer exists.
+	async function handleWishlistDeleted() {
+		await refreshWishlistDashboards();
+		await goto(localizeInternalHref(resolve('/my-lists')));
 	}
 
 	// ── Palette handler (issue #102 REQ-5) ────────────────────────────────────
@@ -785,6 +816,7 @@
 	{role}
 	{canManage}
 	{isAuthenticated}
+	redirectHref={page.url.pathname}
 	wishlistId={wishlist.id}
 	wishlistTitle={wishlist.title}
 	giftCount={totalCount}
@@ -819,6 +851,7 @@
 	onshared={handleShared}
 	onpaletteselect={handlePaletteSelect}
 	onmoderatorselfpromoted={handleSelfPromoted}
+	onrecipientrenamed={handleRecipientRenamed}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
@@ -834,6 +867,7 @@
 	{themeEmoji}
 	onsaved={refreshData}
 	onpaletteselect={handlePaletteSelect}
+	ondeleted={handleWishlistDeleted}
 />
 
 {#if canManage}

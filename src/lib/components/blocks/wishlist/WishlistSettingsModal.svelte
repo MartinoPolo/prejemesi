@@ -3,6 +3,7 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import * as Tabs from '$lib/components/base/tabs/index.js';
+	import * as Card from '$lib/components/base/card/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
@@ -12,14 +13,17 @@
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		type WishlistSettingsTab,
 	} from './wishlist_settings_modal_types.js';
-	import { updateWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
+	import { updateWishlist, deleteWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
+	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
@@ -37,6 +41,8 @@
 		onsaved: () => Promise<void>;
 		/** Optimistic palette update so the page's data-palette subtree re-themes instantly. */
 		onpaletteselect?: (palette: Palette) => void;
+		/** Fires after a successful delete so the page can navigate away + refresh dashboards. */
+		ondeleted?: () => void;
 	}
 
 	/** Normalize a stored event date to a `Date` for the `DatePicker`, or `null` when unset/invalid. */
@@ -56,6 +62,7 @@
 		themeEmoji,
 		onsaved,
 		onpaletteselect,
+		ondeleted,
 	}: WishlistSettingsModalProps = $props();
 
 	const isArchived = $derived(wishlist.status === 'archived');
@@ -166,6 +173,29 @@
 			savingImage = false;
 		}
 	}
+
+	// ── Delete handler (issue #120) ────────────────────────────────────────────
+	// Delete is only possible for an unshared (draft) wishlist – the same rule the
+	// `deleteWishlist` command enforces server-side; a shared list must be archived instead.
+
+	let deleteConfirmOpen = $state(false);
+	let deleting = $state(false);
+
+	async function handleDeleteConfirmed() {
+		deleting = true;
+		try {
+			await deleteWishlist(wishlist.id);
+			deleteConfirmOpen = false;
+			open = false;
+			toastSuccess(m.toast_wishlist_deleted());
+			ondeleted?.();
+		} catch (thrown) {
+			console.error('Failed to delete wishlist:', thrown);
+			toastError(translateServerError(thrown, m.toast_wishlist_delete_error()));
+		} finally {
+			deleting = false;
+		}
+	}
 </script>
 
 <!-- Per-wishlist settings modal (UX rework of the old /w/<id>/settings page): Podrobnosti /
@@ -212,6 +242,14 @@
 					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.image)}
 				>
 					{m.wishlist_settings_image_section()}
+				</Tabs.Tab>
+				<Tabs.Tab
+					id="wishlist-settings-tab-danger"
+					aria-controls="wishlist-settings-panel-danger"
+					active={activeTab === WISHLIST_SETTINGS_TABS.danger}
+					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.danger)}
+				>
+					{m.wishlist_settings_danger_tab()}
 				</Tabs.Tab>
 			</Tabs.Root>
 
@@ -328,6 +366,80 @@
 					/>
 				</div>
 			</div>
+
+			<!-- Nebezpečná zóna: delete is only offered for an unshared list (issue #120), a
+			     shared list must be archived instead, matching the deleteWishlist server guard. -->
+			<div
+				role="tabpanel"
+				id="wishlist-settings-panel-danger"
+				aria-labelledby="wishlist-settings-tab-danger"
+				hidden={activeTab !== WISHLIST_SETTINGS_TABS.danger}
+			>
+				{#if isShared}
+					<Alert.Root tone="warning">
+						<Alert.Description
+							>{m.wishlist_settings_danger_shared_notice()}</Alert.Description
+						>
+					</Alert.Root>
+				{:else}
+					<Card.Root class="border-destructive/30">
+						<Card.Header>
+							<div class="flex items-center gap-2">
+								<TriangleAlertIcon class="size-5 text-destructive" />
+								<div>
+									<Card.Title class="text-destructive">
+										{m.wishlist_settings_danger_tab()}
+									</Card.Title>
+									<Card.Description
+										>{m.wishlist_settings_danger_hint()}</Card.Description
+									>
+								</div>
+							</div>
+						</Card.Header>
+						<Card.Content>
+							<div class="flex items-center justify-between gap-4">
+								<div>
+									<p class="text-sm font-medium">{m.wishlist_delete_button()}</p>
+									<p class="text-xs text-muted-foreground">
+										{m.wishlist_delete_confirm_description()}
+									</p>
+								</div>
+								<Button
+									intent="danger"
+									size="sm"
+									onclick={() => (deleteConfirmOpen = true)}
+								>
+									<TrashIcon data-icon="inline-start" />
+									{m.wishlist_delete_button()}
+								</Button>
+							</div>
+						</Card.Content>
+					</Card.Root>
+				{/if}
+			</div>
 		{/if}
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Delete confirmation dialog (issue #120) -->
+<Dialog.Root bind:open={deleteConfirmOpen}>
+	<Dialog.Content class="max-w-md">
+		<Dialog.Header>
+			<Dialog.Title>{m.wishlist_delete_confirm_title({ title: wishlist.title })}</Dialog.Title
+			>
+			<Dialog.Description>{m.wishlist_delete_confirm_description()}</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="flex gap-2">
+			<Button
+				intent="outline"
+				onclick={() => (deleteConfirmOpen = false)}
+				disabled={deleting}
+			>
+				{m.cancel()}
+			</Button>
+			<Button intent="danger" onclick={handleDeleteConfirmed} disabled={deleting}>
+				{deleting ? m.deleting() : m.wishlist_delete_confirm_action()}
+			</Button>
+		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

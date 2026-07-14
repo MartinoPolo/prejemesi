@@ -21,6 +21,7 @@ export default [
 			'coverage',
 			'node_modules',
 			'src/lib/paraglide',
+			'test-results',
 			'**/*.config.*',
 			'**/*.d.ts',
 			'scripts/**',

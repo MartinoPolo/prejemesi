@@ -24,6 +24,11 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.RECIPIENT_CANNOT_RESERVE_OWN_GIFTS]: () =>
 		m.server_error_recipient_cannot_reserve_own_gifts(),
 	[SERVER_ERROR.ANONYMOUS_NAME_REQUIRED]: () => m.server_error_anonymous_name_required(),
+	[SERVER_ERROR.TURNSTILE_REQUIRED]: () => m.server_error_turnstile_required(),
+	[SERVER_ERROR.TURNSTILE_INVALID]: () => m.server_error_turnstile_invalid(),
+	[SERVER_ERROR.TURNSTILE_EXPIRED_OR_REPLAYED]: () =>
+		m.server_error_turnstile_expired_or_replayed(),
+	[SERVER_ERROR.TURNSTILE_UNAVAILABLE]: () => m.server_error_turnstile_unavailable(),
 	[SERVER_ERROR.QUANTITY_MUST_BE_AT_LEAST_ONE]: () =>
 		m.server_error_quantity_must_be_at_least_one(),
 	[SERVER_ERROR.NOT_ENOUGH_AVAILABLE]: (params) =>

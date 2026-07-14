@@ -31,7 +31,12 @@ import {
 	type GiftForVisitor,
 } from './types.js';
 import { normalizeGiftLinks } from './gift_url.js';
-import { computePreShareOwnerEdit, jsonChanged } from './gift_post_share.js';
+import {
+	computePreShareOwnerEdit,
+	computePostShareEditTransparency,
+	toPreShareGiftSnapshot,
+	jsonChanged,
+} from './gift_post_share.js';
 import {
 	isOwnerSharedGiftDeleteGraceOpen,
 	isPreShareOwnerFullEditGraceOpen,
@@ -312,6 +317,40 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 	return created;
 });
 
+/**
+ * Root of the "Upraveno po sdílení" transparency tracking (issue #124): given a changed gift edit,
+ * decides the next `editedAfterShareAt` / `preEditShareSnapshot` values and writes them onto
+ * `updateData`. Shared by both `updateGift` write paths (per-field pre-share engine and the
+ * general full-write path) so the net-zero revert behaves identically regardless of role or
+ * which fields were editable.
+ */
+function applyPostShareEditTransparency(params: {
+	giftRow: typeof gift.$inferSelect;
+	updateData: Partial<typeof gift.$inferInsert>;
+	now: Date;
+	wishlistRow: typeof wishlist.$inferSelect;
+}): void {
+	const { giftRow, updateData, now, wishlistRow } = params;
+
+	const graceOpen = isOwnerSharedGiftDeleteGraceOpen(
+		{ wishlistSharedAt: wishlistRow.sharedAt, giftCreatedAt: giftRow.createdAt },
+		now,
+	);
+	const beforeEdit = toPreShareGiftSnapshot(giftRow);
+	const afterEdit = toPreShareGiftSnapshot({ ...giftRow, ...updateData });
+
+	const outcome = computePostShareEditTransparency({
+		existingSnapshot: giftRow.preEditShareSnapshot,
+		graceOpen,
+		beforeEdit,
+		afterEdit,
+		now,
+	});
+
+	updateData.editedAfterShareAt = outcome.editedAfterShareAt;
+	updateData.preEditShareSnapshot = outcome.preEditShareSnapshot;
+}
+
 export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
@@ -365,7 +404,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 			updatedAt: now,
 		};
 		if (outcome.changed) {
-			updateData.editedAfterShareAt = now;
+			applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
 		}
 
 		const [updated] = await database
@@ -425,9 +464,10 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	}
 
 	// Transparency: any post-share edit (moderator, or recipient on a post-share-created gift) that
-	// actually changes a field flags the gift as edited after sharing (REQ-6).
+	// actually changes a field flags the gift as edited after sharing (REQ-6), unless it nets out to
+	// a byte-identical revert within the post-share grace window (REQ-1/2, issue #124).
 	if (isShared && didChange) {
-		updateData.editedAfterShareAt = now;
+		applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
 	}
 
 	const [updated] = await database

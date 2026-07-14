@@ -7,7 +7,9 @@
 	} from './gift_detail_modal_variants.js';
 	import type { GiftByRole, CreateGiftInput, UpdateGiftInput } from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
+	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import GiftDetailForm from './GiftDetailForm.svelte';
+	import GiftDetailView from './GiftDetailView.svelte';
 
 	interface Props {
 		open: boolean;
@@ -16,6 +18,10 @@
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
 		isOwner?: boolean;
+		/** Viewer role, needed only for the read-only view's reservation display. */
+		role?: WishlistRole;
+		/** Visitors/non-managers (issue #125): renders the read-only {@link GiftDetailView} instead of the edit form. */
+		readOnly?: boolean;
 		postShareLocked?: boolean;
 		canDelete?: boolean;
 		graceExpiresAt?: Date | null;
@@ -37,6 +43,8 @@
 		wishlistId,
 		priorityLevels,
 		isOwner = false,
+		role = 'visitor',
+		readOnly = false,
 		postShareLocked = false,
 		canDelete = true,
 		graceExpiresAt = null,
@@ -53,7 +61,9 @@
 
 	const styles = giftDetailModalVariants();
 	const isEdit = $derived(mode === 'edit');
-	const title = $derived(isEdit ? m.gift_edit_title() : m.gift_add_title());
+	const title = $derived(
+		readOnly ? m.gift_detail_view_title() : isEdit ? m.gift_edit_title() : m.gift_add_title(),
+	);
 
 	function handleOpenChange(newOpen: boolean) {
 		if (!newOpen) {
@@ -67,26 +77,34 @@
 	<Dialog.Content class={styles.content()} showCloseButton={true}>
 		<Dialog.Title class="sr-only">{title}</Dialog.Title>
 		<Dialog.Description class="sr-only">
-			{isEdit ? m.gift_edit_description() : m.gift_add_description()}
+			{readOnly
+				? m.gift_detail_view_description()
+				: isEdit
+					? m.gift_edit_description()
+					: m.gift_add_description()}
 		</Dialog.Description>
 
-		<GiftDetailForm
-			{mode}
-			{gift}
-			{wishlistId}
-			{priorityLevels}
-			{isOwner}
-			{postShareLocked}
-			{canDelete}
-			{graceExpiresAt}
-			{graceMessage}
-			{graceNow}
-			{isSubmitting}
-			{isDeleting}
-			{oncreate}
-			{onupdate}
-			{ondelete}
-			{onreceived}
-		/>
+		{#if readOnly && gift !== null}
+			<GiftDetailView {gift} {role} />
+		{:else}
+			<GiftDetailForm
+				{mode}
+				{gift}
+				{wishlistId}
+				{priorityLevels}
+				{isOwner}
+				{postShareLocked}
+				{canDelete}
+				{graceExpiresAt}
+				{graceMessage}
+				{graceNow}
+				{isSubmitting}
+				{isDeleting}
+				{oncreate}
+				{onupdate}
+				{ondelete}
+				{onreceived}
+			/>
+		{/if}
 	</Dialog.Content>
 </Dialog.Root>

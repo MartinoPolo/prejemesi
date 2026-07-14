@@ -1,31 +1,18 @@
 /**
  * Wishlist per-slot image helpers (REQ-2). A single assigned wishlist image is
- * cropped independently per consumer slot (dashboard card, list thumbnail, page
- * banner, social preview); each slot persists its own {@link ImageMetadata}. These
- * helpers are framework-free so they stay unit-testable in isolation, mirroring the
- * gift crop helpers in `crop.ts`.
+ * cropped independently per consumer slot (dashboard card banner, thumbnail
+ * family, social preview – see `crop_targets.ts` for the aspect specs); each
+ * slot persists its own {@link ImageMetadata}. These helpers are framework-free
+ * so they stay unit-testable in isolation, mirroring the gift crop helpers in
+ * `crop.ts`.
  */
 
 import { imagePublicUrl } from './public_url.js';
-import { IMAGE_FIT_MODES } from './fit_modes.js';
 import { imageMetaToFrameProps, type ImageFrameProps } from './crop.js';
-import {
-	DEFAULT_IMAGE_METADATA,
-	WISHLIST_IMAGE_SLOT_VALUES,
-	type WishlistImageSlot,
-	type WishlistImageSlots,
-} from './types.js';
-
-/**
- * Per-slot display aspect ratios (CSS `aspect-ratio` strings) used by the crop
- * editor previews and every consumer surface so framing matches production.
- */
-export const WISHLIST_SLOT_ASPECT = {
-	card: '3 / 2',
-	thumbnail: '1 / 1',
-	banner: '16 / 6',
-	social: '1.91 / 1',
-} as const satisfies Record<WishlistImageSlot, string>;
+import { WISHLIST_EDITOR_SLOTS } from './crop_targets.js';
+import { fillImageMeta } from './editor_modes.js';
+import { socialCropImageUrl } from './variants.js';
+import type { WishlistImageSlot, WishlistImageSlots, ImageFocalPoint } from './types.js';
 
 /**
  * Resolve a wishlist image object key to a client-loadable URL. Production
@@ -41,19 +28,17 @@ export function wishlistImageUrl(imageKey: string | null | undefined): string | 
 }
 
 /**
- * Seed every wishlist slot with centered cover-crop metadata for a freshly
- * assigned image, so each preview shows a framed result the owner can refine.
- * Each slot gets an independent object so editing one never mutates another.
+ * Seed every editor-offered wishlist slot with the automatic centered Fill
+ * metadata for a freshly assigned image, so each preview shows a framed result
+ * the owner can refine. The orphan `banner` slot is not seeded (#116 D3) –
+ * existing banner JSON is retained but no new banner metadata is created.
  */
 export function createDefaultWishlistSlots(): WishlistImageSlots {
 	const slots: WishlistImageSlots = {};
-	for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
-		// Each slot gets independent objects so editing one never mutates another.
-		slots[slot] = {
-			...DEFAULT_IMAGE_METADATA,
-			fitMode: IMAGE_FIT_MODES.coverCrop,
-			focal: { ...DEFAULT_IMAGE_METADATA.focal },
-		};
+	for (const slot of WISHLIST_EDITOR_SLOTS) {
+		// fillImageMeta returns independent objects, so editing one slot never
+		// mutates another.
+		slots[slot] = fillImageMeta();
 	}
 	return slots;
 }
@@ -69,4 +54,36 @@ export function wishlistSlotToFrameProps(
 	slot: WishlistImageSlot,
 ): ImageFrameProps {
 	return imageMetaToFrameProps(slots?.[slot] ?? null);
+}
+
+/**
+ * Resolves the focal point the `social` slot was cropped to, falling back to
+ * the centered default when the owner never opened the crop editor for it.
+ * Reuses {@link wishlistSlotToFrameProps} so this stays in lockstep with every
+ * other slot consumer's fallback rule.
+ */
+export function socialSlotFocalPoint(
+	slots: WishlistImageSlots | null | undefined,
+): ImageFocalPoint {
+	return wishlistSlotToFrameProps(slots, 'social').focal;
+}
+
+/**
+ * Resolves the Open Graph / Twitter card image URL for a wishlist (issue
+ * #117): a fixed 1200×630 crop of the assigned image honoring the `social`
+ * slot's saved focal point, or the generic fallback preview when no image is
+ * assigned. `socialFallbackImageUrl` is the caller's already-absolute
+ * `SOCIAL_PREVIEW_IMAGE_URL` (kept out of this module to avoid a dependency on
+ * `$lib/config/site`).
+ */
+export function wishlistSocialImageUrl(
+	imageKey: string | null | undefined,
+	slots: WishlistImageSlots | null | undefined,
+	socialFallbackImageUrl: string,
+): string {
+	const imagePath = wishlistImageUrl(imageKey);
+	if (imagePath === null) {
+		return socialFallbackImageUrl;
+	}
+	return socialCropImageUrl(imagePath, socialSlotFocalPoint(slots)) ?? imagePath;
 }

@@ -1,17 +1,37 @@
-import { describe, it, expect } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import * as v from 'valibot';
+
+// ── Hoisted mock state (available inside vi.mock factories) ─────────────────
+const { mockEnv } = vi.hoisted(() => {
+	const mockEnv: Record<string, string | undefined> = {};
+	return { mockEnv };
+});
+
+vi.mock('$env/dynamic/public', () => ({
+	env: new Proxy(mockEnv, {
+		get: (_target, prop: string) => mockEnv[prop],
+	}),
+}));
+
 import {
 	wishlistImageUrl,
 	createDefaultWishlistSlots,
 	wishlistSlotToFrameProps,
-	WISHLIST_SLOT_ASPECT,
+	socialSlotFocalPoint,
+	wishlistSocialImageUrl,
 } from './wishlist_slots.js';
-import {
-	WISHLIST_IMAGE_SLOT_VALUES,
-	WishlistImageSlotsSchema,
-	type WishlistImageSlots,
-} from './types.js';
+import { WISHLIST_EDITOR_SLOTS, WISHLIST_SLOT_SPECS } from './crop_targets.js';
+import { WishlistImageSlotsSchema, type WishlistImageSlots } from './types.js';
 import { IMAGE_FIT_MODES } from '$lib/components/derived/image-frame/index.js';
+
+const PUBLIC_BASE = 'https://images.example.com';
+const FALLBACK = 'https://prejemesi.cz/social-preview.png';
+
+beforeEach(() => {
+	for (const key of Object.keys(mockEnv)) {
+		delete mockEnv[key];
+	}
+});
 
 describe('wishlistImageUrl', () => {
 	it('returns null for an unset image key', () => {
@@ -28,14 +48,18 @@ describe('wishlistImageUrl', () => {
 });
 
 describe('createDefaultWishlistSlots', () => {
-	it('seeds every wishlist slot with centered cover-crop metadata', () => {
+	it('seeds every editor slot with centered cover-crop metadata', () => {
 		const slots = createDefaultWishlistSlots();
-		for (const slot of WISHLIST_IMAGE_SLOT_VALUES) {
+		for (const slot of WISHLIST_EDITOR_SLOTS) {
 			const meta = slots[slot];
 			expect(meta).toBeDefined();
 			expect(meta?.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
 			expect(meta?.focal).toEqual({ x: 50, y: 50 });
 		}
+	});
+
+	it('does not seed the orphan banner slot (#116 D3)', () => {
+		expect(createDefaultWishlistSlots().banner).toBeUndefined();
 	});
 
 	it('produces metadata that validates against the persisted schema', () => {
@@ -65,7 +89,7 @@ describe('wishlistSlotToFrameProps', () => {
 		});
 	});
 
-	it('selects each slot independently', () => {
+	it('selects each slot independently and still renders retained banner data', () => {
 		const slots: WishlistImageSlots = {
 			card: {
 				fitMode: IMAGE_FIT_MODES.coverCrop,
@@ -85,13 +109,68 @@ describe('wishlistSlotToFrameProps', () => {
 	});
 });
 
-describe('WISHLIST_SLOT_ASPECT', () => {
-	it('maps each slot to its production display aspect ratio', () => {
-		expect(WISHLIST_SLOT_ASPECT).toEqual({
-			card: '3 / 2',
-			thumbnail: '1 / 1',
-			banner: '16 / 6',
-			social: '1.91 / 1',
-		});
+describe('WISHLIST_SLOT_SPECS', () => {
+	it('offers exactly the three editor slots (banner removed, D3)', () => {
+		expect(WISHLIST_EDITOR_SLOTS).toEqual(['card', 'thumbnail', 'social']);
+	});
+
+	it('maps each editor slot to its real consumer aspect (REQ-6/REQ-7)', () => {
+		// Dashboard card banner: h-32 fixed at ~364px grid width (issue #116 measurements).
+		expect(WISHLIST_SLOT_SPECS.card.aspect).toBeCloseTo(364 / 128, 5);
+		// Thumbnail family (header polaroid, nav dropdown, list row) is square.
+		expect(WISHLIST_SLOT_SPECS.thumbnail.aspect).toBe(1);
+		// Social preview renders at the Open Graph 1200×630 ratio (~1.91:1).
+		expect(WISHLIST_SLOT_SPECS.social.aspect).toBeCloseTo(1200 / 630, 5);
+	});
+
+	it('keeps cssAspect consistent with the numeric aspect', () => {
+		for (const slot of WISHLIST_EDITOR_SLOTS) {
+			const spec = WISHLIST_SLOT_SPECS[slot];
+			const [w, h] = spec.cssAspect.split('/').map((part) => Number(part.trim()));
+			expect(w! / h!).toBeCloseTo(spec.aspect, 5);
+		}
+	});
+});
+
+describe('socialSlotFocalPoint', () => {
+	it('returns the centered default when no slots are set (issue #117)', () => {
+		expect(socialSlotFocalPoint(null)).toEqual({ x: 50, y: 50 });
+		expect(socialSlotFocalPoint(undefined)).toEqual({ x: 50, y: 50 });
+		expect(socialSlotFocalPoint({})).toEqual({ x: 50, y: 50 });
+	});
+
+	it("reads the social slot's own focal point, independent of other slots", () => {
+		const slots: WishlistImageSlots = {
+			card: { fitMode: IMAGE_FIT_MODES.coverCrop, focal: { x: 10, y: 10 }, zoom: 1 },
+			social: { fitMode: IMAGE_FIT_MODES.coverCrop, focal: { x: 80, y: 20 }, zoom: 1.5 },
+		};
+		expect(socialSlotFocalPoint(slots)).toEqual({ x: 80, y: 20 });
+	});
+});
+
+describe('wishlistSocialImageUrl', () => {
+	it('returns the fallback preview when no image is assigned (issue #117)', () => {
+		expect(wishlistSocialImageUrl(null, null, FALLBACK)).toBe(FALLBACK);
+		expect(wishlistSocialImageUrl(undefined, undefined, FALLBACK)).toBe(FALLBACK);
+		expect(wishlistSocialImageUrl('', {}, FALLBACK)).toBe(FALLBACK);
+	});
+
+	it("crops the assigned image to the social slot's saved focal point", () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+		const slots: WishlistImageSlots = {
+			social: { fitMode: IMAGE_FIT_MODES.coverCrop, focal: { x: 30, y: 70 }, zoom: 1 },
+		};
+
+		expect(wishlistSocialImageUrl('wishlists/a.jpg', slots, FALLBACK)).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.30x0.70,format=jpeg/wishlists/a.jpg`,
+		);
+	});
+
+	it('falls back to a centered crop when an image is assigned but the social slot is unset', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(wishlistSocialImageUrl('wishlists/a.jpg', {}, FALLBACK)).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=1200,height=630,fit=cover,gravity=0.50x0.50,format=jpeg/wishlists/a.jpg`,
+		);
 	});
 });

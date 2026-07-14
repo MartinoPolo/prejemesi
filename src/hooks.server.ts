@@ -1,11 +1,12 @@
 import { dev } from '$app/environment';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
 import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
+import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
 import {
 	DEFAULT_PALETTE,
 	PALETTE_COOKIE_NAME,
@@ -174,8 +175,8 @@ const accountLocalePreferenceHandle: Handle = async ({ event, resolve }) => {
 			if (preferredLocale != null) {
 				event.request = setRequestLocaleCookie(event.request, preferredLocale);
 			}
-		} catch (err) {
-			console.error('[accountLocalePreferenceHandle] failed to read preferred locale', err);
+		} catch {
+			console.error('[accountLocalePreferenceHandle] failed to read preferred locale');
 		}
 	}
 
@@ -212,8 +213,8 @@ const paletteHandle: Handle = async ({ event, resolve }) => {
 			if (isPalette(stored)) {
 				palette = stored;
 			}
-		} catch (err) {
-			console.error('[paletteHandle] failed to read palette, using default', err);
+		} catch {
+			console.error('[paletteHandle] failed to read palette, using default');
 		}
 	}
 
@@ -252,6 +253,7 @@ const authHandle: Handle = async ({ event, resolve }) => {
 };
 
 const handles: Handle[] = [
+	requestTelemetryHandle,
 	securityHeadersHandle,
 	canonicalHostHandle,
 	botProbeHandle,
@@ -262,3 +264,15 @@ const handles: Handle[] = [
 ];
 
 export const handle = sequence(...handles);
+
+export const handleError: HandleServerError = ({ event, status, message }) => {
+	console.error({
+		event: 'server_error',
+		routeId: event.route.id ?? 'unmatched',
+		method: event.request.method,
+		status,
+		deploymentVersionId: event.platform?.env.CF_VERSION_METADATA?.id ?? 'local',
+	});
+
+	return { message };
+};

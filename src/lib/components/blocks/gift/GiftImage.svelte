@@ -5,7 +5,8 @@
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
-		imageMetaToFrameProps,
+		giftTargetFrameProps,
+		type GiftCropTarget,
 		type ImageMetadata,
 		type ImageVariant,
 	} from '$lib/modules/images/index.js';
@@ -15,6 +16,13 @@
 		imageUrl: string | null;
 		/** Persisted presentation metadata (fit mode + crop/focal + bg fill). */
 		imageMeta: ImageMetadata | null;
+		/**
+		 * Which crop target this surface belongs to (#116 D2): `card` for the card
+		 * banner, `detail` for the detail modal column, `square` for the 1:1
+		 * list/reservation thumbnails. A manual per-target crop overrides the
+		 * automatic framing for this surface only.
+		 */
+		target: GiftCropTarget;
 		/** Accessible description (the gift name). */
 		alt: string;
 		/**
@@ -33,6 +41,7 @@
 	let {
 		imageUrl,
 		imageMeta,
+		target,
 		alt,
 		variant = null,
 		eagerLoading = false,
@@ -42,7 +51,7 @@
 
 	// Single integration point: every gift image consumer renders through the shared
 	// #34 renderer with the saved metadata, so presentation is identical everywhere.
-	const frame = $derived(imageMetaToFrameProps(imageMeta));
+	const frame = $derived(giftTargetFrameProps(imageMeta, target));
 </script>
 
 <ImageFrame

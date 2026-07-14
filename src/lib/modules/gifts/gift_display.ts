@@ -92,6 +92,25 @@ export function formatAppendDate(iso: string): string {
 	}).format(new Date(iso));
 }
 
+/**
+ * Finalize a gift form's price `$state` for submission. Number-typed price
+ * state goes `NaN`/`null` when the user clears a bound `<input type="number">`
+ * (Svelte's numeric binding never yields `''`); this always resolves to a
+ * finite price or `null`, never `NaN`, so it can never fail server validation.
+ */
+export function finalizeGiftPrice(price: number | null): number | null {
+	return Number.isFinite(price) ? price : null;
+}
+
+/**
+ * Finalize a gift form's quantity `$state` for submission. Same `NaN`/`null`
+ * risk as {@link finalizeGiftPrice}; falls back to the default quantity of 1
+ * when blank/invalid, matching the server's minimum of 1.
+ */
+export function finalizeGiftQuantity(quantity: number): number {
+	return Number.isFinite(quantity) && quantity >= 1 ? quantity : 1;
+}
+
 /** Select Czech plural category for count. */
 export function czechPluralCategory(count: number): 'one' | 'few' | 'other' {
 	if (count === 1) {

@@ -46,6 +46,13 @@ What: Edits made after sharing are surfaced to ALL visitors uniformly (never res
 Why: Gifters should notice a gift changed, but a notification per edit is noise; uniform visual indicators leak nothing and the owner sees identical UI whether or not the gift is reserved.
 Rejected: Reservation-conditional indicators (inference leak); notifying gifters on every owner edit (noise); per-field diffs now (deferred).
 
+### Net-zero grace-window revert clears the edit-transparency badge
+
+Decided: 2026-07-12 (issue #124)
+What: Byte-identical restoration of a gift's pre-edit state, made WITHIN the 2-minute post-share grace window (`isOwnerSharedGiftDeleteGraceOpen`: 2 min from `sharedAt` for pre-share gifts, 2 min from creation for post-share-created gifts), clears `editedAfterShareAt` (no badge). The pre-edit state is captured as a snapshot (`preEditShareSnapshot`) at the FIRST in-grace edit and compared against on every later in-grace edit — not against the immediately-preceding edit, so "A → B → A" clears but "A → B → C → B" does not. Once the grace window closes, any edit sets the badge permanently, even if it later "reverts" prior content — a post-grace revert (e.g. a week-later price change back to the original) is itself a change gifters should notice.
+Why: "Kolo" → "Kolo horské" → "Kolo" within grace is a hasty correction, not information; permanently badging it is noise. Comparing against the original share-time snapshot (not the previous edit) keeps the rule precise: only a full round-trip back to what the gifter saw at share time counts as net-zero.
+Rejected: Comparing against the immediately-preceding edit instead of the original snapshot (would let unrelated back-and-forth edits "cancel out"); extending net-zero clearing past the grace window (a stale, no-longer-forgivable edit history shouldn't retroactively un-badge).
+
 ### Single reservation state (no "bought" step)
 
 Decided: 2026-05-29
@@ -823,12 +830,39 @@ What: The persisted crop value for any image slot is `{ x, y, zoom }` (focal poi
 Why: Focal point + zoom is resolution- and aspect-ratio-independent — it produces correct framing regardless of which slot ratio is being rendered. A raw cropRect breaks when rendered at a different aspect ratio.
 Rejected: Persisting cropRect only (breaks rendering at different slot aspect ratios).
 
-### One-crop-all-slots for gifts; independent per-slot crops for wishlists
+### ~~One-crop-all-slots for gifts; independent per-slot crops for wishlists~~ (superseded)
 
-Decided: 2026-06-02
-What: A gift's `image_meta` stores a single crop (focal point + zoom) applied to all display surfaces. Wishlists use `image_slots` with independent crop metadata per named slot (`card`, `thumbnail`, `banner`, `social`).
-Why: Gift surfaces (card thumbnail, detail modal) share the same framing — one crop is sufficient. Wishlist slots have very different aspect ratios and need distinct framings.
-Rejected: Per-slot crops for gifts (unnecessary complexity), single crop for wishlist slots (poor results across divergent aspect ratios).
+Decided: 2026-06-02 — **Superseded 2026-07-12** by "WYSIWYG per-target crops" below (issue #116, D2).
+~~What: A gift's `image_meta` stores a single crop (focal point + zoom) applied to all display surfaces. Wishlists use `image_slots` with independent crop metadata per named slot (`card`, `thumbnail`, `banner`, `social`).~~
+Replaced because: one crop across surfaces with very different aspects (card ~2.78:1 vs detail ~0.5) silently discarded parts of the drawn region (#116 F7); gifts now group consumers into per-target crops by aspect family.
+
+### WYSIWYG per-target crops; exact focal derivation; banner slot retired (issue #116)
+
+Decided: 2026-07-12
+What: Manual crops are drawn PER TARGET on a stage whose window is locked to the target's real aspect ratio (single source: `crop_targets.ts`). Gift targets by aspect family: `card` (~2.78:1), `detail` (~0.5), `square` (list + reservation, 1:1), persisted as an additive `image_meta.targets` extension — only user-edited targets persist; everything else keeps automatic center cover-fit framing. Wishlist editor slots: `card` (~2.84:1), `thumbnail` (1:1), `social` (1.91:1); the orphan `banner` slot is removed from the editor (JSON retained). The header polaroid photo is exactly square and consumes the `thumbnail` slot; `card` is single-consumer (dashboard banner). Conversions are exact renderer inverses (`focal = origin/(1 − size)`, zoom binds the larger normalized side), so an aspect-matched rect round-trips losslessly — no crop can be silently discarded. Legacy focal/zoom rows render unchanged until re-edited.
+Why: The pre-#116 editor was blind to target shapes (stage used the source-image ratio) and the center-based focal derivation misplaced off-center crops; per-target aspect-locked rects make WYSIWYG true by construction.
+Rejected: One-crop-all-slots for gifts (F7 silent discard), aspect-locked rect over a full-image stage (stage shape would still not match the target), destructive `image_meta` migration (prod data must keep rendering unchanged).
+
+### Three-mode editor model (Fill / Whole picture / Manual); legacy `auto` preserved until touched (#116 follow-up)
+
+Decided: 2026-07-13
+What: The gift and wishlist image editors offer exactly three display modes mapped by `editor_modes.ts`: Fill (`cover-crop`, automatic centered framing), Whole picture (`contain-padded`, entire image letterboxed on both axes), Manual (`cover-crop` plus drawn per-target/per-slot crops). The persisted fitMode enum is unchanged; `auto` is no longer selectable and a persisted `auto` row keeps its value verbatim until the user touches the mode or replaces the image. Per-target manual crops render only on a `cover-crop` base (Whole picture wins over stale targets) and leaving Manual drops manual crops on save. Preview tiles are buttons that jump to Manual with that target/slot active; a wheel gesture over a plain preview also promotes to Manual. The gift modal footer (create + edit share one `GiftDetailForm`) is pinned outside the scroll region (GiftDraftDialog pattern), and the preview strip sits below quantity/priority.
+Why: `cover-crop` double-dutied as both the Fill rendering and the "manual editor open" flag; `contain-padded` was effectively unreachable (gated behind the auto heuristic's 2× divergence threshold, so gift cards cropped image height); zoom was dead UI outside crop mode.
+Rejected: Renaming persisted fitMode values (pointless data migration); letterboxed manual crops (manual is cover geometry by definition — superseded by the round-2 zoom-out decision below); rewriting legacy `auto` rows on save (silent rendering changes on untouched forms).
+
+### Manual zoom-out to the contain limit; floating gift previews; merged square tile (#116 round 2)
+
+Decided: 2026-07-13
+What: Manual crops can zoom out below 100 % down to the target's contain zoom: the crop window may extend past the image on ONE axis (invariant `min(w, h) ≤ 1` — never letterboxed on both axes), `focal = origin / (1 − size)` extends unchanged to oversized axes, and the persisted zoom floor drops to `IMAGE_ZOOM_OUT_MIN` (0.05, additive schema relaxation). Rendering zoom < 1 positions the image explicitly (`coverWindowLayout`) because CSS `object-fit: cover` clips to the element box, so `scale(z < 1)` would shrink the crop with fill on both axes instead of revealing more image. Gift form field order is Name → Description → Links → Price/Currency → Quantity → Priority → Image bundle; the preview strip is replaced by two floating tiles (card + ONE merged square tile for list + reservation, which share the `square` target) at the bottom of the image column — overlaying the plain preview, below the stage in Manual. The stage seeds an unframed (identity) rect as centered cover; non-identity rects snap extent-preservingly, so a wider-than-image extent restores as a zoomed-out letterbox instead of being cropped.
+Why: Whole picture is all-or-nothing; users want to trim a bit while still seeing the entire subject (white space on one axis). The four-tile strip duplicated the square framing twice, claimed form space, and the detail tile duplicated the big left preview.
+Rejected: CSS-only zoom-out via `transform: scale(z < 1)` (object-fit clipping makes it shrink-with-margins, not reveal); zoom-out below the contain zoom (white space on both axes is never a sensible framing); a separate reservation tile (same crop target as list).
+
+### Tiles are the only crop-target switcher; mode toggle in the image column; „Whole picture" renamed „Fit" (#116 round 3)
+
+Decided: 2026-07-13
+What: The gift editor's per-target radio picker („Výřez pro") is removed — the floating preview tiles are the sole crop-target switcher, so a really narrow same-height detail tile (1:2, half the square tile's width) joins card + square as a switcher-first tile (the big left preview already previews the detail framing). The three-mode ToggleGroup moves from the form column into the image column, above the preview/stage it drives, leaving the form's image field as source input only. The second mode is renamed: en „Whole picture" → „Fit", cs „Celý obrázek" → „Přizpůsobit"; the internal editor-mode id is `fit` (message key `image_fit_fit`). Persisted fitMode values are untouched.
+Why: Two parallel switchers (radios + clickable tiles) for the same thing confused the model; the mode control belongs next to the preview it affects; without a detail tile one of three targets was unreachable by tile click.
+Rejected: Keeping the radio picker alongside clickable tiles (duplicated control); a full-size detail tile (duplicates the big left preview — the narrow tile is deliberately a switcher, not a spacious preview); renaming the persisted `contain-padded` fitMode (pointless migration).
 
 ### Separated token responsibilities: bg-theme / wishlist tokens / frame-fill
 

@@ -5,7 +5,12 @@ import {
 	registerViaApi,
 	createAuthenticatedContext,
 } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
+import {
+	createWishlistAndNavigate,
+	createWishlistForSomeoneAndNavigate,
+	addGift,
+	shareWishlist,
+} from './fixtures/wishlist-helpers.js';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -216,5 +221,44 @@ test.describe('Moderator system', () => {
 		).toBeVisible({ timeout: 10_000 });
 
 		await visitorContext.close();
+	});
+
+	test('recipient rename reflects in the wishlist banner without reload', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		// Issue #119: renaming a free-text recipient from the správci panel persisted correctly
+		// but the page's own banner (data-testid="wishlist-banner", driven by the page-local
+		// getWishlistByShortId query) kept showing the old name until a hard reload — the save
+		// handler never refreshed that query. Regression: assert the banner updates in place.
+		const manager = createTestUser('mod-recipient-rename');
+		const page = await registerAndGetPage(browser, request, baseURL!, manager);
+
+		await createWishlistForSomeoneAndNavigate(page, {
+			title: 'Recipient Rename Test',
+			recipientName: 'Rosie',
+		});
+
+		const banner = page.getByTestId('wishlist-banner');
+		await expect(banner).toContainText('Rosie');
+
+		const panel = await openModeratorPanel(page);
+		const recipientInput = panel.getByLabel(/Jméno obdarovaného|Recipient name/);
+		await expect(recipientInput).toHaveValue('Rosie');
+		await recipientInput.fill('Rosalie');
+		await panel.getByRole('button', { name: /Uložit jméno|Save name/ }).click();
+
+		await expect(
+			page.getByText(/Jméno obdarovaného bylo změněno|Recipient name updated/),
+		).toBeVisible({
+			timeout: 5_000,
+		});
+
+		// No page.reload() – the banner must update from the refreshed query alone.
+		await expect(banner).toContainText('Rosalie', { timeout: 5_000 });
+		await expect(banner).not.toContainText('Rosie po');
+
+		await page.context().close();
 	});
 });

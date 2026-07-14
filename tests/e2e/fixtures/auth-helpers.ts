@@ -14,7 +14,7 @@ export async function registerViaApi(
 	const response = await request.post(`${baseURL}/api/auth/sign-up/email`, {
 		// better-auth rejects state-changing requests without an Origin header
 		// (MISSING_OR_NULL_ORIGIN); Playwright's APIRequestContext omits it by default.
-		headers: { Origin: baseURL },
+		headers: { Origin: baseURL, 'x-captcha-response': 'XXXX.DUMMY.TOKEN.XXXX' },
 		data: { name: user.name, email: user.email, password: user.password },
 	});
 

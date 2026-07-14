@@ -61,6 +61,7 @@
 	}}
 	role={onclick ? 'button' : undefined}
 	tabindex={onclick ? 0 : undefined}
+	aria-label={onclick ? m.gift_open_detail_aria({ name: gift.name }) : undefined}
 >
 	<td class="px-3 py-1.5">
 		<span class="text-sm font-medium text-foreground">

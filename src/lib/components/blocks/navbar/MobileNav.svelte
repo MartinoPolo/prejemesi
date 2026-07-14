@@ -26,7 +26,7 @@
 		{#snippet child({ props })}
 			<Button
 				{...props}
-				intent="ghost"
+				intent="outline"
 				size="icon"
 				aria-label={m.nav_open_menu()}
 				class="md:hidden"

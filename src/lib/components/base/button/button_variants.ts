@@ -6,9 +6,17 @@ import { asExhaustiveArray } from '$lib/utils/variants.js';
 const FILLED_BUTTON_KBD_CLASSES =
 	'[&_[data-slot=kbd]]:border-[color-mix(in_oklab,currentColor_28%,transparent)] [&_[data-slot=kbd]]:bg-[color-mix(in_oklab,currentColor_16%,transparent)] [&_[data-slot=kbd]]:text-current';
 
+/**
+ * Keeps the hover hit area stable while a hover lift translates the button up:
+ * an always-present pseudo-element extends the hover zone below the button by
+ * the lift distance, so hovering the bottom edge cannot flicker (lift →
+ * un-hover → drop → re-hover loop).
+ */
+const LIFT_HIT_AREA_CLASSES =
+	"relative after:absolute after:inset-x-0 after:top-full after:h-1 after:content-['']";
+
 /** Flat sticker button: ink border, hard offset shadow, spring lift on hover, press-down on active. */
-const STICKER_BUTTON_CLASSES =
-	'border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm';
+const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm ${LIFT_HIT_AREA_CLASSES}`;
 
 export const buttonVariants = tv({
 	base: 'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-btn border-[2.5px] border-transparent font-semibold leading-none outline-none select-none cursor-pointer transition-[background-color,border-color,color,transform,box-shadow] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 [&_[data-icon]]:pointer-events-none [&_[data-icon]]:shrink-0',
@@ -21,8 +29,7 @@ export const buttonVariants = tv({
 				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
 			danger: 'bg-card text-status-danger border-status-danger shadow-sticker-sm hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
 			'primary-destructive': `bg-status-danger text-white hover:bg-[color-mix(in_oklab,var(--status-danger)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
-			outline:
-				'border-ink bg-card text-foreground shadow-sticker-sm hover:bg-accent hover:text-accent-foreground hover:-translate-y-px',
+			outline: `border-ink bg-card text-foreground shadow-sticker-sm hover:bg-accent hover:text-accent-foreground hover:-translate-y-px ${LIFT_HIT_AREA_CLASSES}`,
 			link: 'text-primary underline-offset-4 hover:underline',
 		},
 		size: {

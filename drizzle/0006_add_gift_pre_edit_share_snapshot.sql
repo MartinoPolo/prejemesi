@@ -1,0 +1,1 @@
+ALTER TABLE "gift" ADD COLUMN "pre_edit_share_snapshot" jsonb;

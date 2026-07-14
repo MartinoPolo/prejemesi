@@ -29,6 +29,9 @@ export const giftCardVariants = tv({
 		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-ink-soft',
 		receivedSticker:
 			'absolute top-2.5 right-2.5 z-10 flex rotate-4 items-center gap-1 rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11.5px] font-extrabold text-primary-foreground',
+		/** Edit-icon hover affordance for managers (issue #125 REQ-3): hidden until card hover/focus. */
+		editIcon:
+			'absolute top-2.5 right-2.5 z-10 flex items-center justify-center rounded-full border-2 border-ink bg-card p-1.5 opacity-0 shadow-sticker transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100',
 	},
 	variants: {
 		dimmed: {

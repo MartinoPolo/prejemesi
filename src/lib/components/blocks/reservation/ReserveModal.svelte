@@ -9,15 +9,17 @@
 	import MinusIcon from '@lucide/svelte/icons/minus';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import { resolve } from '$app/paths';
-	import { localizeInternalHref } from '$lib/i18n/locale.js';
+	import { getLocalizedAuthHref } from '$lib/i18n/locale.js';
 	import { reserveModalVariants } from './reserve_modal_variants.js';
 	import { formatPrice } from '$lib/modules/gifts/gift_display.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import TurnstileWidget from '$lib/components/blocks/security/TurnstileWidget.svelte';
 
 	interface ReserveModalProps {
 		open: boolean;
 		gift: GiftForVisitor | null;
+		redirectHref: string;
 		isAuthenticated: boolean;
 		isSubmitting?: boolean;
 		onreserve?: (input: ReserveGiftInput) => void;
@@ -27,6 +29,7 @@
 	let {
 		open = $bindable(false),
 		gift,
+		redirectHref,
 		isAuthenticated,
 		isSubmitting = false,
 		onreserve,
@@ -41,6 +44,8 @@
 	let anonymousEmail = $state('');
 	let nameError = $state('');
 	let quantityError = $state('');
+	let turnstileToken = $state<string | null>(null);
+	let turnstileResetSignal = $state(0);
 
 	// Computed
 	const maxQuantity = $derived(gift ? (gift.quantity ?? 1) : 1);
@@ -78,12 +83,12 @@
 		return true;
 	}
 
-	function handleSubmit() {
+	async function handleSubmit() {
 		if (gift === null || !validate()) {
 			return;
 		}
 
-		onreserve?.({
+		await onreserve?.({
 			giftId: gift.id,
 			quantity,
 			anonymousName: !isAuthenticated ? anonymousName.trim() : undefined,
@@ -91,7 +96,12 @@
 				!isAuthenticated && anonymousEmail.trim() !== ''
 					? anonymousEmail.trim()
 					: undefined,
+			turnstileToken: !isAuthenticated ? (turnstileToken ?? undefined) : undefined,
 		});
+		if (!isAuthenticated) {
+			turnstileToken = null;
+			turnstileResetSignal += 1;
+		}
 	}
 
 	function handleOpenChange(newOpen: boolean) {
@@ -101,6 +111,8 @@
 			anonymousEmail = '';
 			nameError = '';
 			quantityError = '';
+			turnstileToken = null;
+			turnstileResetSignal += 1;
 		} else {
 			onclose?.();
 		}
@@ -123,6 +135,7 @@
 						class={styles.giftImage()}
 						imageUrl={gift.imageUrl}
 						imageMeta={gift.imageMeta}
+						target="square"
 						alt={gift.name}
 					/>
 					<div class={styles.giftInfo()}>
@@ -203,20 +216,24 @@
 						/>
 					</div>
 
+					{#key turnstileResetSignal}
+						<TurnstileWidget bind:token={turnstileToken} />
+					{/key}
+
 					<div class={styles.authPrompt()}>
 						<p class={styles.authPromptText()}>
 							{m.reserve_auth_prompt()}
 						</p>
 						<div class={styles.authPromptLinks()}>
 							<a
-								href={localizeInternalHref(resolve('/login'))}
+								href={getLocalizedAuthHref(resolve('/login'), redirectHref)}
 								class="text-primary hover:underline"
 							>
 								{m.reserve_login()}
 							</a>
 							<span class={styles.separator()}>{m.or()}</span>
 							<a
-								href={localizeInternalHref(resolve('/register'))}
+								href={getLocalizedAuthHref(resolve('/register'), redirectHref)}
 								class="text-primary hover:underline"
 							>
 								{m.reserve_register()}
@@ -230,7 +247,10 @@
 					<Button intent="outline" onclick={() => handleOpenChange(false)}
 						>{m.cancel()}</Button
 					>
-					<Button disabled={isSubmitting} onclick={handleSubmit}>
+					<Button
+						disabled={isSubmitting || (!isAuthenticated && turnstileToken === null)}
+						onclick={handleSubmit}
+					>
 						{#if isSubmitting}
 							{m.reserve_submitting()}
 						{:else}

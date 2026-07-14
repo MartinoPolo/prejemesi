@@ -12,7 +12,13 @@ vi.mock('$env/dynamic/public', () => ({
 	}),
 }));
 
-import { transformedImageUrl, IMAGE_VARIANTS } from './variants.js';
+import {
+	transformedImageUrl,
+	socialCropImageUrl,
+	IMAGE_VARIANTS,
+	OG_IMAGE_WIDTH,
+	OG_IMAGE_HEIGHT,
+} from './variants.js';
 import { imagePublicUrl, resolveUserImageUrl, isStoredObjectKey } from './public_url.js';
 
 const PUBLIC_BASE = 'https://images.example.com';
@@ -94,5 +100,56 @@ describe('transformedImageUrl', () => {
 
 	it('handles null src', () => {
 		expect(transformedImageUrl(null, 'card')).toBeNull();
+	});
+});
+
+describe('socialCropImageUrl', () => {
+	it('builds a fixed 1200x630 cover crop with gravity from the focal point (issue #117)', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(socialCropImageUrl(`${PUBLIC_BASE}/wishlists/a.jpg`, { x: 25, y: 75 })).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=${String(OG_IMAGE_WIDTH)},height=${String(OG_IMAGE_HEIGHT)},fit=cover,gravity=0.25x0.75,format=jpeg/wishlists/a.jpg`,
+		);
+	});
+
+	it('defaults to a centered gravity for an unset (centered) focal point', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(socialCropImageUrl(`${PUBLIC_BASE}/wishlists/a.jpg`, { x: 50, y: 50 })).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=${String(OG_IMAGE_WIDTH)},height=${String(OG_IMAGE_HEIGHT)},fit=cover,gravity=0.50x0.50,format=jpeg/wishlists/a.jpg`,
+		);
+	});
+
+	it('clamps out-of-range focal percentages into 0..1 gravity fractions', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(socialCropImageUrl(`${PUBLIC_BASE}/wishlists/a.jpg`, { x: -10, y: 140 })).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=${String(OG_IMAGE_WIDTH)},height=${String(OG_IMAGE_HEIGHT)},fit=cover,gravity=0.00x1.00,format=jpeg/wishlists/a.jpg`,
+		);
+	});
+
+	it('adds anim=false for GIF sources', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(socialCropImageUrl(`${PUBLIC_BASE}/wishlists/a.GIF`, { x: 50, y: 50 })).toBe(
+			`${PUBLIC_BASE}/cdn-cgi/image/width=${String(OG_IMAGE_WIDTH)},height=${String(OG_IMAGE_HEIGHT)},fit=cover,gravity=0.50x0.50,format=jpeg,anim=false/wishlists/a.GIF`,
+		);
+	});
+
+	it('passes external URLs through untouched', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+		const external = 'https://cdn.alza.cz/products/x.jpg';
+
+		expect(socialCropImageUrl(external, { x: 50, y: 50 })).toBe(external);
+	});
+
+	it('passes local-dev proxy paths through untouched (no transformations in dev)', () => {
+		expect(socialCropImageUrl('/api/upload/wishlists/a.jpg', { x: 50, y: 50 })).toBe(
+			'/api/upload/wishlists/a.jpg',
+		);
+	});
+
+	it('handles null src', () => {
+		expect(socialCropImageUrl(null, { x: 50, y: 50 })).toBeNull();
 	});
 });

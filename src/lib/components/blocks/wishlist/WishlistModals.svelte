@@ -27,6 +27,7 @@
 		/** Recipient OR správce: gates the gift editor, share wizard, theme, správci panel, batch add. */
 		canManage: boolean;
 		isAuthenticated: boolean;
+		redirectHref: string;
 		wishlistId: string;
 		wishlistTitle: string;
 		giftCount: number;
@@ -71,6 +72,7 @@
 		onshared: () => void;
 		onpaletteselect: (palette: Palette) => void;
 		onmoderatorselfpromoted: () => void;
+		onrecipientrenamed: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
 	}
@@ -79,6 +81,7 @@
 		role,
 		canManage,
 		isAuthenticated,
+		redirectHref,
 		wishlistId,
 		wishlistTitle,
 		giftCount,
@@ -113,6 +116,7 @@
 		onshared,
 		onpaletteselect,
 		onmoderatorselfpromoted,
+		onrecipientrenamed,
 		onbatchsubmit,
 		onbatchdialogopenchange,
 	}: WishlistModalsProps = $props();
@@ -121,37 +125,39 @@
 	const canReserve = $derived(canReserveGift(role));
 </script>
 
-<!-- Gift Detail Modal (managers only: recipient or správce).
-     GiftDetailModal's legacy `isOwner` prop only gates the manager-only "mark received" button,
-     so it maps to canManage in the new role model, not to the recipient specifically. -->
-{#if canManage}
-	<GiftDetailModal
-		bind:open={giftModalOpen}
-		mode={giftModalMode}
-		gift={selectedGift}
-		{wishlistId}
-		{priorityLevels}
-		isOwner={canManage}
-		{postShareLocked}
-		canDelete={canDeleteSelectedGift}
-		{graceExpiresAt}
-		{graceMessage}
-		{graceNow}
-		{isSubmitting}
-		{isDeleting}
-		{oncreate}
-		{onupdate}
-		{ondelete}
-		{onreceived}
-		onclose={ongiftmodalclose}
-	/>
-{/if}
+<!-- Gift Detail Modal (issue #125: opens for every role — edit mode for managers, read-only
+     for everyone else). GiftDetailModal's legacy `isOwner` prop only gates the manager-only
+     "mark received" button, so it maps to canManage in the new role model, not to the
+     recipient specifically. -->
+<GiftDetailModal
+	bind:open={giftModalOpen}
+	mode={giftModalMode}
+	gift={selectedGift}
+	{wishlistId}
+	{priorityLevels}
+	isOwner={canManage}
+	{role}
+	readOnly={!canManage}
+	{postShareLocked}
+	canDelete={canDeleteSelectedGift}
+	{graceExpiresAt}
+	{graceMessage}
+	{graceNow}
+	{isSubmitting}
+	{isDeleting}
+	{oncreate}
+	{onupdate}
+	{ondelete}
+	{onreceived}
+	onclose={ongiftmodalclose}
+/>
 
 <!-- Reserve Modal (everyone who may reserve — recipient excluded, they don't spoil their surprise) -->
 {#if canReserve}
 	<ReserveModal
 		bind:open={reserveModalOpen}
 		gift={reservingGift}
+		{redirectHref}
 		{isAuthenticated}
 		isSubmitting={isReserving}
 		{onreserve}
@@ -189,6 +195,7 @@
 		{recipientIsModerator}
 		bind:open={moderatorPanelOpen}
 		onselfpromoted={onmoderatorselfpromoted}
+		{onrecipientrenamed}
 	/>
 {/if}
 
@@ -205,4 +212,4 @@
 {/if}
 
 <!-- Login prompt (shown when an anonymous visitor taps the like heart) -->
-<LoginPromptDialog bind:open={authPromptOpen} />
+<LoginPromptDialog bind:open={authPromptOpen} {redirectHref} />
