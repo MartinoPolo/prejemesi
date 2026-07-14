@@ -449,7 +449,10 @@
 	     sit at the column's lower edge as clickable tiles – they double as the crop
 	     target switcher (round 3) – so they cost no form space. -->
 	<div
-		class={cn(styles.imageColumn(), isCropMode && 'h-[400px] sm:h-auto')}
+		class={cn(
+			styles.imageColumn(),
+			isCropMode && 'sticky top-0 z-10 h-[400px] sm:static sm:h-auto',
+		)}
 		data-testid="gift-image-column"
 	>
 		{#if hasImage}
