@@ -223,16 +223,16 @@ test.describe('Moderator system', () => {
 		await visitorContext.close();
 	});
 
-	test('recipient rename reflects in the wishlist banner without reload', async ({
+	test('recipient rename via the header pencil reflects in the wishlist banner without reload', async ({
 		browser,
 		request,
 		baseURL,
 	}) => {
-		// Issue #119: renaming a free-text recipient from the správci panel persisted correctly
-		// but the page's own banner (data-testid="wishlist-banner", driven by the page-local
-		// getWishlistByShortId query) kept showing the old name until a hard reload — the save
-		// handler never refreshed that query. Regression: assert the banner updates in place.
-		const manager = createTestUser('mod-recipient-rename');
+		// Issue #150 relocated recipient editing out of the správci panel: the header „Pro: {name}"
+		// pencil opens the shared EditRecipientDialog (rename mode on free-text lists). Regression
+		// (issue #119): the page banner (data-testid="wishlist-banner", driven by the page-local
+		// getWishlistByShortId query) must update in place — the old panel save never refreshed it.
+		const manager = createTestUser('recipient-rename-header');
 		const page = await registerAndGetPage(browser, request, baseURL!, manager);
 
 		await createWishlistForSomeoneAndNavigate(page, {
@@ -243,11 +243,14 @@ test.describe('Moderator system', () => {
 		const banner = page.getByTestId('wishlist-banner');
 		await expect(banner).toContainText('Rosie');
 
-		const panel = await openModeratorPanel(page);
-		const recipientInput = panel.getByLabel(/Jméno obdarovaného|Recipient name/);
+		// Open the header recipient-edit pencil → shared dialog (rename mode on free-text lists).
+		await page.getByTestId('edit-recipient-button').click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		const recipientInput = dialog.getByLabel(/Jméno obdarovaného|Recipient name/);
 		await expect(recipientInput).toHaveValue('Rosie');
 		await recipientInput.fill('Rosalie');
-		await panel.getByRole('button', { name: /Uložit jméno|Save name/ }).click();
+		await dialog.getByRole('button', { name: /Uložit jméno|Save name/ }).click();
 
 		await expect(
 			page.getByText(/Jméno obdarovaného bylo změněno|Recipient name updated/),

@@ -19,11 +19,16 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
+	import RecipientPreview from './RecipientPreview.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		type WishlistSettingsTab,
 	} from './wishlist_settings_modal_types.js';
-	import { updateWishlist, deleteWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
+	import {
+		updateWishlist,
+		deleteWishlist,
+		renameRecipient,
+	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { revertWishlistToDraft } from '$lib/modules/sharing/sharing.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
@@ -32,6 +37,7 @@
 		type RevertCapability,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
+		RECIPIENT_NAME_MAX_LENGTH,
 		WISHLIST_ROLES,
 		type Wishlist,
 		type WishlistRole,
@@ -97,11 +103,12 @@
 	// An app admin who does not manage this list still reaches the danger zone for the revert
 	// action only (issue #150). Non-hidden capability for a non-manager ⟺ admin on a reserved list.
 	const isAdminRevertOnly = $derived(!canManage && revertCapability !== REVERT_CAPABILITY.hidden);
-	// Recipient edit affordance (issue #150): free-text lists → any manager may rename;
-	// linked lists → ONLY the linked recipient may flip to free-text (no evicting by správci).
-	const canEditRecipient = $derived(
-		wishlist.recipientUserId === null || role === WISHLIST_ROLES.recipient,
-	);
+	// Recipient edit affordance (issue #150): free-text lists → the recipient name is an inline
+	// field any manager edits and saves with the details form; linked lists → the name is read-only,
+	// and ONLY the linked recipient may flip to a free-text recipient (no evicting by správci) via
+	// the shared dialog.
+	const isFreeTextRecipient = $derived(wishlist.recipientUserId === null);
+	const canFlipRecipient = $derived(role === WISHLIST_ROLES.recipient);
 
 	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
 	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back
@@ -137,6 +144,9 @@
 	let detailsDescription = $state(wishlist.description ?? '');
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsEventDate = $state(toEventDate(wishlist.eventDate));
+	// Free-text recipient name (issue #150): an inline field saved alongside the details form.
+	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
+	let recipientNameDraft = $state(recipientDisplayName);
 	let detailsError = $state('');
 	let savingDetails = $state(false);
 	let savingImage = $state(false);
@@ -146,6 +156,7 @@
 		detailsTitle = wishlist.title;
 		detailsDescription = wishlist.description ?? '';
 		detailsEventDate = toEventDate(wishlist.eventDate);
+		recipientNameDraft = recipientDisplayName;
 		detailsError = '';
 	}
 
@@ -177,6 +188,17 @@
 				// authority and drops it once the window has closed (issue #83).
 				...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
 			});
+			// Free-text recipient rename rides the same Save (issue #150): reuses the renameRecipient
+			// command (rejects linked lists server-side). Only persist an actual change to skip a
+			// redundant call; a failure surfaces via the shared catch/toast below.
+			const trimmedRecipientName = recipientNameDraft.trim();
+			if (
+				isFreeTextRecipient &&
+				trimmedRecipientName !== '' &&
+				trimmedRecipientName !== recipientDisplayName
+			) {
+				await renameRecipient({ id: wishlist.id, recipientName: trimmedRecipientName });
+			}
 			await onsaved();
 			seedDetailsForm();
 			toastSuccess(m.toast_wishlist_details_saved());
@@ -374,31 +396,49 @@
 						{m.wishlist_settings_details_hint()}
 					</p>
 
-					<!-- Recipient row (issue #150): shows who the list is for; the edit button opens
-					     the shared dialog (flip on linked lists, rename on free-text lists). -->
-					<div
-						class="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2"
-					>
-						<div class="min-w-0">
-							<p class="text-sm font-medium">{m.recipient_section_title()}</p>
-							<p class="truncate text-sm text-muted-foreground">
-								{recipientDisplayName}
-							</p>
-						</div>
-						{#if canEditRecipient}
-							<Button
-								size="sm"
-								intent="outline"
-								data-testid="settings-edit-recipient"
-								onclick={oneditrecipient}
-							>
-								<PencilIcon data-icon="inline-start" />
-								{m.wishlist_edit_recipient_label()}
-							</Button>
-						{/if}
-					</div>
-
 					<form onsubmit={handleDetailsSave} class="flex flex-col gap-4">
+						<!-- Recipient (issue #150): free-text lists get an inline name field saved with
+						     this form; linked lists show a read-only name, and only the linked recipient
+						     may flip to a free-text recipient (no evicting by správci) via the dialog. -->
+						{#if isFreeTextRecipient}
+							<div class="flex flex-col gap-2">
+								<Label for="wishlist-settings-recipient"
+									>{m.recipient_section_title()}</Label
+								>
+								<Input
+									id="wishlist-settings-recipient"
+									bind:value={recipientNameDraft}
+									placeholder={m.create_recipient_name_placeholder()}
+									maxlength={RECIPIENT_NAME_MAX_LENGTH}
+									disabled={savingDetails}
+								/>
+								<RecipientPreview name={recipientNameDraft} />
+							</div>
+						{:else}
+							<div
+								class="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2"
+							>
+								<div class="min-w-0">
+									<p class="text-sm font-medium">{m.recipient_section_title()}</p>
+									<p class="truncate text-sm text-muted-foreground">
+										{recipientDisplayName}
+									</p>
+								</div>
+								{#if canFlipRecipient}
+									<Button
+										type="button"
+										size="sm"
+										intent="outline"
+										data-testid="settings-edit-recipient"
+										onclick={oneditrecipient}
+									>
+										<PencilIcon data-icon="inline-start" />
+										{m.wishlist_edit_recipient_label()}
+									</Button>
+								{/if}
+							</div>
+						{/if}
+
 						<Field
 							fieldId="wishlist-title"
 							label={m.wishlist_name_label()}

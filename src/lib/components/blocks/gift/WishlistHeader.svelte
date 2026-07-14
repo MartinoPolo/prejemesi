@@ -210,7 +210,7 @@
 					>{#if canEditRecipient}
 						<Button
 							size="icon-sm"
-							intent="ghost"
+							intent="secondary"
 							class="ms-1.5 align-middle"
 							aria-label={m.wishlist_edit_recipient_label()}
 							data-testid="edit-recipient-button"

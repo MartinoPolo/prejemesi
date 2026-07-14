@@ -19,7 +19,6 @@
 		generateClaimInviteLink,
 		revokeClaimInvite,
 	} from '$lib/modules/claim/claim.remote.js';
-	import { renameRecipient } from '$lib/modules/wishlists/wishlists.remote.js';
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
 	import type { PendingClaimInvite } from '$lib/modules/claim/types.js';
 	import { toastSuccess, toastError, toastInfo } from '$lib/components/base/toast/index.js';
@@ -39,9 +38,6 @@
 		open: boolean;
 		onopenchange?: (open: boolean) => void;
 		onselfpromoted?: () => void;
-		/** Fired after a successful recipient rename so the parent can refresh the page-local
-		 *  wishlist query (the „Pro {recipient}" banner reads from it, not from this panel). */
-		onrecipientrenamed?: () => void;
 	}
 
 	let {
@@ -50,22 +46,19 @@
 		open = $bindable(false),
 		onopenchange,
 		onselfpromoted,
-		onrecipientrenamed,
 	}: ModeratorPanelProps = $props();
 
 	const styles = moderatorPanelVariants();
 
 	let moderators = $state.raw<ModeratorWithUser[]>([]);
 	let pendingInvites = $state.raw<PendingInvite[]>([]);
-	// For-someone lists (free-text recipient) expose a rename section pre-filled with the current name.
+	// For-someone lists (free-text recipient) show the claim-link section.
 	let isForSomeoneElse = $state(false);
-	let recipientNameDraft = $state('');
 	let isLoading = $state(false);
 	let isGenerating = $state(false);
 	let isRemoving = $state(false);
 	let isRevokingId = $state<string | null>(null);
 	let isSelfPromoting = $state(false);
-	let isRenamingRecipient = $state(false);
 	let linkCopied = $state(false);
 	let generatedInvitePath = $state<string | null>(null);
 	let inviteEmail = $state('');
@@ -89,30 +82,11 @@
 			moderators = data.moderators;
 			pendingInvites = data.pendingInvites;
 			isForSomeoneElse = data.isForSomeoneElse;
-			recipientNameDraft = data.recipientName ?? '';
 			claimInvites = claimData.pendingInvites;
 		} catch (thrown) {
 			console.error('Failed to load moderators:', thrown);
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function handleRenameRecipient() {
-		const trimmed = recipientNameDraft.trim();
-		if (trimmed === '') {
-			return;
-		}
-		isRenamingRecipient = true;
-		try {
-			await renameRecipient({ id: wishlistId, recipientName: trimmed });
-			recipientNameDraft = trimmed;
-			toastSuccess(m.recipient_rename_toast_success());
-			onrecipientrenamed?.();
-		} catch (thrown) {
-			toastError(translateServerError(thrown, m.recipient_rename_error()));
-		} finally {
-			isRenamingRecipient = false;
 		}
 	}
 
@@ -300,34 +274,7 @@
 		</Dialog.Header>
 
 		<div class="flex flex-col gap-6">
-			<!-- Rename recipient (for-someone lists only): edit the free-text obdarovaný name -->
 			{#if isForSomeoneElse}
-				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>{m.recipient_section_title()}</div>
-					<div class="flex flex-col gap-1.5">
-						<label for="recipient-name" class="text-sm text-muted-foreground">
-							{m.recipient_rename_label()}
-						</label>
-						<div class="flex items-center gap-2">
-							<Input
-								id="recipient-name"
-								bind:value={recipientNameDraft}
-								disabled={isRenamingRecipient}
-							/>
-							<Button
-								size="sm"
-								intent="outline"
-								disabled={isRenamingRecipient || recipientNameDraft.trim() === ''}
-								onclick={handleRenameRecipient}
-							>
-								{m.recipient_rename_button()}
-							</Button>
-						</div>
-					</div>
-				</div>
-
-				<Separator />
-
 				<!-- Claim link (issue #150): nudge to link the free-text recipient's real account.
 				     Mirrors the správce-invite generate/email/copy/revoke flow. -->
 				<div class={styles.section()}>
@@ -378,8 +325,9 @@
 					</div>
 
 					<Button
-						size="sm"
-						intent="outline"
+						size="lg"
+						intent="primary"
+						class="w-full"
 						disabled={isGeneratingClaim}
 						onclick={handleGenerateClaim}
 					>
@@ -491,8 +439,9 @@
 				</div>
 
 				<Button
-					size="sm"
-					intent="outline"
+					size="lg"
+					intent="primary"
+					class="w-full"
 					disabled={isGenerating}
 					onclick={handleGenerateInvite}
 				>
