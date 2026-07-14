@@ -1,7 +1,8 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, sql, count } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
+import { isAppAdmin } from '$lib/server/admin.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
@@ -20,12 +21,14 @@ import {
 	verifyLinkedRecipientAccess,
 	assertWishlistMutable,
 } from './wishlist_access.js';
+import { resolveRevertCapability } from './wishlist_capabilities.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
 	RenameRecipientInputSchema,
 	FlipRecipientToFreeTextInputSchema,
 	SetWishlistPaletteInputSchema,
+	WISHLIST_ROLES,
 	type WishlistRole,
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
@@ -112,11 +115,42 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 		managerNames.unshift(row.recipientDisplayName);
 	}
 
+	// Revert-to-draft affordance for THIS viewer (issue #150). Server-computed so the client
+	// (settings gear + danger tab) renders the exact variant without any admin logic of its own.
+	// The reservation count is consulted only for a manager/admin on an active list.
+	const isAdmin = isAppAdmin(authContext?.user.email);
+	const needsReservationCheck =
+		row.wishlist.status === 'active' &&
+		role !== WISHLIST_ROLES.recipient &&
+		(role === WISHLIST_ROLES.moderator || isAdmin);
+	let hasReservations = false;
+	if (needsReservationCheck) {
+		const reservationCountRows = await database
+			.select({ value: count() })
+			.from(reservation)
+			.innerJoin(gift, eq(reservation.giftId, gift.id))
+			.where(
+				and(
+					eq(gift.wishlistId, row.wishlist.id),
+					isNull(reservation.deletedAt),
+					isNull(gift.deletedAt),
+				),
+			);
+		hasReservations = (reservationCountRows[0]?.value ?? 0) > 0;
+	}
+	const revertCapability = resolveRevertCapability({
+		role,
+		status: row.wishlist.status,
+		isAdmin,
+		hasReservations,
+	});
+
 	return {
 		...row.wishlist,
 		recipientDisplayName: row.recipientDisplayName,
 		managerNames,
 		role,
+		revertCapability,
 	} as const;
 });
 

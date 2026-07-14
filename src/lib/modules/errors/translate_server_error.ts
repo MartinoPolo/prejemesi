@@ -61,6 +61,9 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.FAILED_TO_CREATE_WISHLIST]: () => m.server_error_failed_to_create_wishlist(),
 	[SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST]: () =>
 		m.server_error_cannot_modify_archived_wishlist(),
+	[SERVER_ERROR.CANNOT_REVERT_ARCHIVED]: () => m.server_error_cannot_revert_archived(),
+	// Reuses the exact disabled-button copy so the toast and the UI hint read identically.
+	[SERVER_ERROR.REVERT_REQUIRES_ADMIN]: () => m.wishlist_revert_reserved_admin_only(),
 
 	[SERVER_ERROR.SHEETS_LINK_INVALID]: () => m.server_error_sheets_link_invalid(),
 	[SERVER_ERROR.SHEETS_LINK_NOT_A_SHEET]: () => m.server_error_sheets_link_not_a_sheet(),

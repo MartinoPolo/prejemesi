@@ -18,6 +18,10 @@ export const NOTIFICATION_TYPE = {
 	CLAIM_INVITED: 'claim_invited',
 	// The free-text recipient claimed their list — in-app heads-up to the active správci.
 	RECIPIENT_CLAIMED: 'recipient_claimed',
+	// A shared list was reverted to draft by an app admin — the reserver's reservation was
+	// cancelled (issue #150). Emailed to registered + anonymous-with-email reservers; in-app for
+	// registered. Anonymous reservers without an email are unreachable (accepted).
+	RESERVATION_CANCELLED: 'reservation_cancelled',
 } as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPE)[keyof typeof NOTIFICATION_TYPE];
@@ -30,6 +34,8 @@ export const EMAIL_NOTIFICATION_TYPES: readonly NotificationType[] = [
 	NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
 	NOTIFICATION_TYPE.MODERATOR_INVITED,
 	NOTIFICATION_TYPE.CLAIM_INVITED,
+	// Email-capable so anonymous-with-email reservers (who have no in-app inbox) are reached.
+	NOTIFICATION_TYPE.RESERVATION_CANCELLED,
 ] as const;
 
 /** Types that are in-app only (non-critical) */
@@ -51,6 +57,7 @@ export const NOTIFICATION_MESSAGES = {
 	moderator_invited: () => m.notification_type_moderator_invited(),
 	claim_invited: () => m.notification_type_claim_invited(),
 	recipient_claimed: () => m.notification_type_recipient_claimed(),
+	reservation_cancelled: () => m.notification_type_reservation_cancelled(),
 } satisfies Record<NotificationType, () => string>;
 
 // ── DB Row Type ─────────────────────────────────────────────────────────────
@@ -89,6 +96,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 	moderator_invited: { email: true, inApp: true },
 	claim_invited: { email: true, inApp: true },
 	recipient_claimed: { email: false, inApp: true },
+	reservation_cancelled: { email: true, inApp: true },
 } satisfies Record<NotificationType, NotificationPreferenceEntry>;
 
 // ── Preferences Input Validation ────────────────────────────────────────────

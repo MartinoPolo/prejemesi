@@ -13,6 +13,7 @@
 	import UserPlusIcon from '@lucide/svelte/icons/user-plus';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UserCheckIcon from '@lucide/svelte/icons/user-check';
+	import BookmarkXIcon from '@lucide/svelte/icons/bookmark-x';
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
@@ -35,6 +36,7 @@
 		moderator_invited: UserPlusIcon,
 		claim_invited: LinkIcon,
 		recipient_claimed: UserCheckIcon,
+		reservation_cancelled: BookmarkXIcon,
 	} as const;
 
 	const IconComponent = $derived(ICON_MAP[notification.type] ?? BellIcon);

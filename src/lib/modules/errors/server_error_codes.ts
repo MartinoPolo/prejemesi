@@ -52,6 +52,11 @@ export const SERVER_ERROR = {
 	CANNOT_INVITE_ON_ARCHIVED: 'CANNOT_INVITE_ON_ARCHIVED',
 	CANNOT_SELF_PROMOTE_ON_ARCHIVED: 'CANNOT_SELF_PROMOTE_ON_ARCHIVED',
 
+	// Revert shared list to draft (issue #150): an archived list must be unarchived first; a
+	// reserved list can only be reverted by an app admin (a non-admin správce is rejected).
+	CANNOT_REVERT_ARCHIVED: 'CANNOT_REVERT_ARCHIVED',
+	REVERT_REQUIRES_ADMIN: 'REVERT_REQUIRES_ADMIN',
+
 	SHEETS_LINK_INVALID: 'SHEETS_LINK_INVALID',
 	SHEETS_LINK_NOT_A_SHEET: 'SHEETS_LINK_NOT_A_SHEET',
 	SHEETS_PRIVATE: 'SHEETS_PRIVATE',

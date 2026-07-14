@@ -8,6 +8,7 @@
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
+	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
@@ -35,7 +36,11 @@
 	import { reserveGift, unreserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import {
+		canManageWishlist,
+		REVERT_CAPABILITY,
+		type RevertCapability,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistSocialImageUrl } from '$lib/modules/images/index.js';
@@ -81,7 +86,12 @@
 	// ── Reactive state (declared before await for synchronous context setup) ─
 
 	let wishlist = $state<
-		Wishlist & { recipientDisplayName: string; managerNames: string[]; role: WishlistRole }
+		Wishlist & {
+			recipientDisplayName: string;
+			managerNames: string[];
+			role: WishlistRole;
+			revertCapability: RevertCapability;
+		}
 	>(undefined!);
 	let gifts = $state<GiftByRole[]>([]);
 	let role = $state<WishlistRole>('visitor');
@@ -127,6 +137,14 @@
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
 	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
+	// Non-managers see a friendly „Seznam se připravuje" page on a draft list (never-shared or
+	// reverted, issue #150) instead of the toolbar + gifts; the URL revives on (re-)share.
+	const isPreparing = $derived(wishlistStatus === 'draft' && !canManage);
+	// App admin with a revert action but no management rights: surface the settings gear so they
+	// can reach the danger-only revert (issue #150). Non-hidden capability for a non-manager ⟺ admin.
+	const adminSettingsAvailable = $derived(
+		!canManage && wishlist.revertCapability !== REVERT_CAPABILITY.hidden,
+	);
 	const recipientIsModerator = $derived(wishlist.recipientIsModerator);
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
 	const isForSomeoneElse = $derived(wishlist.recipientUserId === null);
@@ -785,41 +803,46 @@
 		oneditrecipient={handleEditRecipientOpened}
 	/>
 
-	<WishlistDetailToolbar
-		{canManage}
-		{role}
-		{isArchived}
-		{isAuthenticated}
-		{viewMode}
-		sortOption={giftsContext.sortOption.current}
-		filters={giftsContext.filters.current}
-		onviewmodechange={handleViewModeChange}
-		onsortchange={handleSortChange}
-		onfilterchange={handleFilterChange}
-		onthemeopen={() => (paletteDialogOpen = true)}
-		onsettings={handleSettingsOpened}
-		onunfollow={handleUnfollow}
-		onaddgift={openCreateModal}
-		onbatchadd={openBatchAddDialog}
-		onimport={openImportWizard}
-		onexport={handleExport}
-	/>
+	{#if isPreparing}
+		<WishlistPreparingNotice />
+	{:else}
+		<WishlistDetailToolbar
+			{canManage}
+			{adminSettingsAvailable}
+			{role}
+			{isArchived}
+			{isAuthenticated}
+			{viewMode}
+			sortOption={giftsContext.sortOption.current}
+			filters={giftsContext.filters.current}
+			onviewmodechange={handleViewModeChange}
+			onsortchange={handleSortChange}
+			onfilterchange={handleFilterChange}
+			onthemeopen={() => (paletteDialogOpen = true)}
+			onsettings={handleSettingsOpened}
+			onunfollow={handleUnfollow}
+			onaddgift={openCreateModal}
+			onbatchadd={openBatchAddDialog}
+			onimport={openImportWizard}
+			onexport={handleExport}
+		/>
 
-	<WishlistGiftDisplay
-		gifts={displayedGifts}
-		{role}
-		{isArchived}
-		{viewMode}
-		isLoading={isGiftDataLoading}
-		{isEmpty}
-		{isFilteredEmpty}
-		onedit={openEditModal}
-		onreserve={handleOpenReserveModal}
-		onunreserve={handleUnreserve}
-		onaddgift={openCreateModal}
-		onclearfilters={clearFilters}
-		onreorder={handleReorder}
-	/>
+		<WishlistGiftDisplay
+			gifts={displayedGifts}
+			{role}
+			{isArchived}
+			{viewMode}
+			isLoading={isGiftDataLoading}
+			{isEmpty}
+			{isFilteredEmpty}
+			onedit={openEditModal}
+			onreserve={handleOpenReserveModal}
+			onunreserve={handleUnreserve}
+			onaddgift={openCreateModal}
+			onclearfilters={clearFilters}
+			onreorder={handleReorder}
+		/>
+	{/if}
 </div>
 
 <WishlistModals
@@ -875,11 +898,13 @@
 	{wishlist}
 	{canManage}
 	{role}
+	revertCapability={wishlist.revertCapability}
 	recipientDisplayName={wishlist.recipientDisplayName}
 	{themeEmoji}
 	onsaved={refreshData}
 	onpaletteselect={handlePaletteSelect}
 	ondeleted={handleWishlistDeleted}
+	onreverted={refreshData}
 	oneditrecipient={handleEditRecipientOpened}
 />
 
