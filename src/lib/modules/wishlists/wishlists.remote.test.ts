@@ -1162,13 +1162,15 @@ describe('followWishlist', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('getWishlistByShortId', () => {
 	describe('recipient role', () => {
-		it('returns role=recipient when the authed user is the linked recipient (self list, no managerNames)', async () => {
+		it('returns role=recipient when the authed user is the linked recipient (self list, no správci)', async () => {
 			const wishlistRow = makeWishlistRow();
 			// DB call 1: wishlist + user leftJoin → coalesced recipientDisplayName
 			mockDbInstance.pushResult([
 				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
 			]);
-			// No mod query (recipient match); no managerNames query (recipientUserId is set)
+			// No mod query (recipient match)
+			// DB call 2: managerNames query (fetched for ALL lists, 2026-07-14 decision) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
 				makeRecipientAuthContext(),
@@ -1177,8 +1179,47 @@ describe('getWishlistByShortId', () => {
 
 			expect(result.role).toBe('recipient');
 			expect(result.recipientDisplayName).toBe('Recipient Alice');
-			// Self lists surface the recipient directly, so no manager label is fetched.
+			// No správci and no self-promotion → no manager names, no „Spravuje" line.
 			expect(result.managerNames).toEqual([]);
+		});
+	});
+
+	describe('manager names on linked-recipient (self) lists — 2026-07-14 header decision', () => {
+		it('fetches manager names even when recipientUserId is set (správci render on self lists too)', async () => {
+			const wishlistRow = makeWishlistRow();
+			// DB call 1: wishlist + user leftJoin
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			// No mod query (recipient match)
+			// DB call 2: managerNames query — a správce exists on this self list
+			mockDbInstance.pushResult([{ name: 'Jana' }]);
+
+			const result = (await callGetWishlistByShortId(
+				makeRecipientAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { managerNames: string[] };
+
+			expect(result.managerNames).toEqual(['Jana']);
+		});
+
+		it('includes the self-promoted recipient in managerNames despite no moderator_assignment row', async () => {
+			const wishlistRow = makeWishlistRow({ recipientIsModerator: true });
+			// DB call 1: wishlist + user leftJoin
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			// No mod query (recipient match)
+			// DB call 2: managerNames query — one regular správce
+			mockDbInstance.pushResult([{ name: 'Jana' }]);
+
+			const result = (await callGetWishlistByShortId(
+				makeRecipientAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { managerNames: string[] };
+
+			// recipientIsModerator=true counts the recipient as a správce in the header line.
+			expect(result.managerNames).toEqual(['Recipient Alice', 'Jana']);
 		});
 	});
 
@@ -1191,6 +1232,8 @@ describe('getWishlistByShortId', () => {
 			]);
 			// DB call 2: hasActiveModeratorAssignment → found
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+			// DB call 3: managerNames query (runs for all lists) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
 				makeModeratorAuthContext(),
@@ -1208,7 +1251,7 @@ describe('getWishlistByShortId', () => {
 			mockDbInstance.pushResult([{ wishlist: wishlistRow, recipientDisplayName: 'Grandma' }]);
 			// DB call 2: hasActiveModeratorAssignment → found (caller is a správce)
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
-			// DB call 3: managerNames query (only runs when recipientUserId === null)
+			// DB call 3: managerNames query (runs for all lists)
 			mockDbInstance.pushResult([{ name: 'Martin' }, { name: 'Jana' }]);
 
 			const result = (await callGetWishlistByShortId(
@@ -1231,6 +1274,8 @@ describe('getWishlistByShortId', () => {
 			]);
 			// DB call 2: hasActiveModeratorAssignment → none found
 			mockDbInstance.pushResult([]);
+			// DB call 3: managerNames query (runs for all lists) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
 				makeOtherAuthContext(),
@@ -1249,6 +1294,8 @@ describe('getWishlistByShortId', () => {
 				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
 			]);
 			// No moderator check when unauthenticated
+			// DB call 2: managerNames query (runs for all lists) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(null, WISHLIST_SHORT_ID)) as {
 				role: string;

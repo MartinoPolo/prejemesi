@@ -92,22 +92,24 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 	// Determine role
 	const role: WishlistRole = await resolveWishlistRole(authContext, row.wishlist);
 
-	// Manager names power the header "Spravuje {name}" meta row. Only fetched for for-someone lists
-	// (free-text recipient); self lists show the recipient prominently and need no manager label.
-	let managerNames: string[] = [];
-	if (row.wishlist.recipientUserId === null) {
-		const managerRows = await database
-			.select({ name: user.name })
-			.from(moderatorAssignment)
-			.innerJoin(user, eq(moderatorAssignment.userId, user.id))
-			.where(
-				and(
-					eq(moderatorAssignment.wishlistId, row.wishlist.id),
-					isNull(moderatorAssignment.deletedAt),
-				),
-			)
-			.orderBy(moderatorAssignment.assignedAt);
-		managerNames = managerRows.map((manager) => manager.name);
+	// Manager names power the header „Spravuje/Spravují {names}" meta row — fetched for ALL
+	// lists, self lists included (2026-07-14 header decision). A self-promoted linked
+	// recipient counts as a správce in this line even though they have no
+	// moderator_assignment row (`recipientIsModerator` flag).
+	const managerRows = await database
+		.select({ name: user.name })
+		.from(moderatorAssignment)
+		.innerJoin(user, eq(moderatorAssignment.userId, user.id))
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, row.wishlist.id),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		)
+		.orderBy(moderatorAssignment.assignedAt);
+	const managerNames = managerRows.map((manager) => manager.name);
+	if (row.wishlist.recipientUserId !== null && row.wishlist.recipientIsModerator) {
+		managerNames.unshift(row.recipientDisplayName);
 	}
 
 	return {

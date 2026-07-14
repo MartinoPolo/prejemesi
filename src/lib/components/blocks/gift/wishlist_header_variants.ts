@@ -10,7 +10,7 @@ export const wishlistHeaderVariants = tv({
 	slots: {
 		root: 'flex flex-col gap-3',
 		headerText: 'min-w-0 flex-1',
-		/** „Pro {recipient}" line above the title (name bold, prefix lighter). */
+		/** „Pro: {recipient}" line above the title (name bold, prefix lighter) — all lists. */
 		recipientLine: 'reveal text-[17px] text-ink-soft',
 		recipientName: 'font-heading text-[26px] font-semibold text-ink',
 		title: 'reveal reveal-2 mt-0.5 text-[clamp(28px,4vw,42px)] leading-tight font-semibold',

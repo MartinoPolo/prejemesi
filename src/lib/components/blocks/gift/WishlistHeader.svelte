@@ -28,9 +28,12 @@
 		title: string;
 		/** Who the list is for: linked recipient's account name or the free-text recipient name. */
 		recipientDisplayName: string;
-		/** True for a free-text (for-someone-else) list; drives the „Pro {recipient}" name slot + managed-by line. */
+		/** True for a free-text (for-someone-else) list; drives the recipient-edit pencil gating. */
 		isForSomeoneElse: boolean;
-		/** Names of the správci managing a for-someone list (empty on self lists). Powers „Spravuje/Spravují". */
+		/**
+		 * Names of the správci managing the list (all lists, self included; a self-promoted
+		 * recipient is included by the server). Powers „Spravuje/Spravují".
+		 */
 		managerNames: string[];
 		description: string | null;
 		imageKey: string | null;
@@ -89,9 +92,10 @@
 		!isArchived && (isForSomeoneElse ? canManage : role === WISHLIST_ROLES.recipient),
 	);
 
-	// „Spravuje {name}" (single správce) / „Spravují {names}" (multiple) — for-someone lists only.
+	// „Spravuje {name}" (single správce) / „Spravují {names}" (multiple) — rendered whenever
+	// správci exist, self lists included (2026-07-14 header decision).
 	const managedByLabel = $derived.by(() => {
-		if (!isForSomeoneElse || managerNames.length === 0) {
+		if (managerNames.length === 0) {
 			return null;
 		}
 		if (managerNames.length === 1) {
@@ -128,19 +132,20 @@
 		return m.wishlist_countdown_passed();
 	});
 
-	// Polaroid caption mimics a handwritten photo label: „Anička · září 2026".
+	// Polaroid caption mimics a handwritten photo label: event date only („červenec 2026").
+	// The recipient name lives in the „Pro: {name}" line, never in the caption (2026-07-14
+	// dedup decision) — without an event date the polaroid has no caption at all.
 	const polaroidCaption = $derived.by(() => {
 		if (eventDate === null) {
-			return recipientDisplayName;
+			return null;
 		}
 		try {
-			const monthYear = new Intl.DateTimeFormat(getLocale(), {
+			return new Intl.DateTimeFormat(getLocale(), {
 				month: 'long',
 				year: 'numeric',
 			}).format(new Date(eventDate));
-			return `${recipientDisplayName} · ${monthYear}`;
 		} catch {
-			return recipientDisplayName;
+			return null;
 		}
 	});
 
@@ -191,17 +196,18 @@
 						</Button>
 					{/if}
 				</div>
-				<figcaption>{polaroidCaption}</figcaption>
+				{#if polaroidCaption !== null}
+					<figcaption>{polaroidCaption}</figcaption>
+				{/if}
 			</figure>
 
 			<div class={styles.headerText()}>
-				<!-- For-someone lists lead with „Pro {recipient}"; self lists show the name plain. -->
+				<!-- Every list leads with „Pro: {recipient}" — colon form, prefix lighter, name bold
+				     (2026-07-14 header decision, self lists included). -->
 				<p class={styles.recipientLine()}>
-					{#if isForSomeoneElse}{m.wishlist_header_for_prefix()}
-						<strong class={styles.recipientName()}>{recipientDisplayName}</strong
-						>{:else}<strong class={styles.recipientName()}
-							>{recipientDisplayName}</strong
-						>{/if}{#if canEditRecipient}
+					{m.wishlist_header_for_prefix()}
+					<strong class={styles.recipientName()}>{recipientDisplayName}</strong
+					>{#if canEditRecipient}
 						<Button
 							size="icon-sm"
 							intent="ghost"

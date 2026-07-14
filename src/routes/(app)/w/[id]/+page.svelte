@@ -22,6 +22,7 @@
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
+	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
 	import {
 		getWishlistByShortId,
 		archiveWishlist,
@@ -148,19 +149,10 @@
 
 	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
 	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
-	// during async SSR and 500s. Localized via Paraglide `m.*` (issue #117: previously a raw,
-	// unlocalized, diacritic-stripped template string) so both locales and Czech diacritics
-	// render correctly for crawlers. For-someone lists read „…pro {recipient}"; self lists read
-	// „…od {recipient}", both sourced from recipientDisplayName.
+	// during async SSR and 500s. Localized via Paraglide (issue #117). Sentence form
+	// „Seznam přání pro {recipient}" on ALL lists — self lists included (2026-07-14 decision).
 	function getSocialDescription() {
-		if (wishlist.recipientUserId === null) {
-			return m.wishlist_og_description_recipient({
-				recipient: wishlist.recipientDisplayName,
-			});
-		}
-		return m.wishlist_og_description_self({
-			recipient: wishlist.recipientDisplayName,
-		});
+		return wishlistSocialDescription(wishlist.recipientDisplayName);
 	}
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
