@@ -113,7 +113,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await dialog.locator('#gift-name').fill(giftName);
 
 		// Upload a gift image so the fit-mode controls appear.
-		await dialog.getByRole('button', { name: /Nahrát/i }).click();
+		await dialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
 		const fileInput = dialog.locator('input[type=file]');
 		await expect(fileInput).toBeAttached();
 		const uploaded = waitForUpload(page);
