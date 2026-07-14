@@ -11,6 +11,7 @@
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
+	import RecipientPreview from './RecipientPreview.svelte';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
@@ -195,6 +196,7 @@
 						</p>
 					{/snippet}
 				</Field>
+				<RecipientPreview name={recipientName} />
 			{/if}
 
 			<Field

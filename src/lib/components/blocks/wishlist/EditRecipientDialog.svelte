@@ -14,6 +14,7 @@
 	import { RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
+	import RecipientPreview from './RecipientPreview.svelte';
 
 	interface EditRecipientDialogProps {
 		open: boolean;
@@ -121,6 +122,7 @@
 					required
 					disabled={isSaving}
 				/>
+				<RecipientPreview name={nameDraft} />
 			</div>
 			<Dialog.Footer class="flex gap-2">
 				<Button
