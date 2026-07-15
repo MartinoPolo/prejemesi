@@ -94,6 +94,22 @@ export async function verifyManagerAccess(
 	return { role, wishlistRow };
 }
 
+/**
+ * Resolve access for recipient-only actions (self-promote, the linked → free-text flip).
+ * Only the LINKED RECIPIENT passes — správci and visitors get 403 (no evicting a linked
+ * recipient, issue #150). Throws 404 if the wishlist is missing/deleted.
+ */
+export async function verifyLinkedRecipientAccess(
+	userId: string,
+	wishlistId: string,
+): Promise<typeof wishlist.$inferSelect> {
+	const wishlistRow = await requireWishlistRow(wishlistId);
+	if (wishlistRow.recipientUserId !== userId) {
+		error(403, SERVER_ERROR.ACCESS_DENIED);
+	}
+	return wishlistRow;
+}
+
 /** Count of active (non-revoked) správci for a wishlist. Backs the orphan guard. */
 async function countActiveModerators(wishlistId: string): Promise<number> {
 	const database = getDb();

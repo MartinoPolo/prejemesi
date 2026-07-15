@@ -8,8 +8,10 @@
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
+	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
+	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import {
 		WISHLIST_SETTINGS_QUERY_PARAM,
 		WISHLIST_SETTINGS_TABS,
@@ -21,6 +23,7 @@
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
+	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
 	import {
 		getWishlistByShortId,
 		archiveWishlist,
@@ -33,7 +36,11 @@
 	import { reserveGift, unreserveGift } from '$lib/modules/reservations/reservations.remote.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { Wishlist, WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import {
+		canManageWishlist,
+		REVERT_CAPABILITY,
+		type RevertCapability,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
 	import { wishlistSocialImageUrl } from '$lib/modules/images/index.js';
@@ -78,8 +85,22 @@
 
 	// ── Reactive state (declared before await for synchronous context setup) ─
 
+	// `wishlist` is undefined until the top-level `await` below resolves. Under
+	// experimental.async the client still hydrates the template synchronously in
+	// that window and eagerly evaluates any derived/context-getter NOT statically
+	// tied to the awaited value (context getters hide their `wishlist` read inside
+	// a closure the compiler can't see, and {#if} branch conditions must resolve to
+	// pick a hydration branch). So every reactive read that feeds a context getter
+	// or a block condition MUST be null-safe (`wishlist?.…`); direct markup/head/
+	// handler reads run only after resolution and stay unguarded. Removing a guard
+	// or adding an unguarded eager read reintroduces a hard hydration crash.
 	let wishlist = $state<
-		Wishlist & { recipientDisplayName: string; managerNames: string[]; role: WishlistRole }
+		Wishlist & {
+			recipientDisplayName: string;
+			managerNames: string[];
+			role: WishlistRole;
+			revertCapability: RevertCapability;
+		}
 	>(undefined!);
 	let gifts = $state<GiftByRole[]>([]);
 	let role = $state<WishlistRole>('visitor');
@@ -95,7 +116,7 @@
 		setGiftsContext(
 			() => gifts,
 			() => role,
-			() => wishlist.status === 'archived',
+			() => wishlist?.status === 'archived',
 			() => isAuthenticated,
 			() => likedGiftIds,
 		),
@@ -113,22 +134,30 @@
 
 	const sharingContext = untrack(() =>
 		setSharingContext(
-			() => wishlist.shortId,
-			() => wishlist.sharedAt !== null,
+			() => wishlist?.shortId ?? '',
+			() => wishlist?.sharedAt != null,
 		),
 	);
 
 	// ── Derived values ───────────────────────────────────────────────────────
 
-	const isArchived = $derived(wishlist.status === 'archived');
+	const isArchived = $derived(wishlist?.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
-	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
-	const recipientIsModerator = $derived(wishlist.recipientIsModerator);
+	const wishlistStatus = $derived(wishlist?.status as 'draft' | 'active' | 'archived');
+	// Non-managers see a friendly „Seznam se připravuje" page on a draft list (never-shared or
+	// reverted, issue #150) instead of the toolbar + gifts; the URL revives on (re-)share.
+	const isPreparing = $derived(wishlistStatus === 'draft' && !canManage);
+	// App admin with a revert action but no management rights: surface the settings gear so they
+	// can reach the danger-only revert (issue #150). Non-hidden capability for a non-manager ⟺ admin.
+	const adminSettingsAvailable = $derived(
+		!canManage && wishlist?.revertCapability !== REVERT_CAPABILITY.hidden,
+	);
+	const recipientIsModerator = $derived(wishlist?.recipientIsModerator);
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
-	const isForSomeoneElse = $derived(wishlist.recipientUserId === null);
-	const themeEmoji = $derived(getWishlistEmoji(wishlist.theme));
+	const isForSomeoneElse = $derived(wishlist?.recipientUserId == null);
+	const themeEmoji = $derived(getWishlistEmoji(wishlist?.theme));
 	function getWishlistPageUrl() {
 		return `${SITE_URL}/w/${wishlist.shortId}`;
 	}
@@ -147,19 +176,10 @@
 
 	// OG/Twitter description. A plain function (evaluated at render), NOT a $derived — reading
 	// post-await state through a memoized $derived inside <svelte:head> collapses to undefined
-	// during async SSR and 500s. Localized via Paraglide `m.*` (issue #117: previously a raw,
-	// unlocalized, diacritic-stripped template string) so both locales and Czech diacritics
-	// render correctly for crawlers. For-someone lists read „…pro {recipient}"; self lists read
-	// „…od {recipient}", both sourced from recipientDisplayName.
+	// during async SSR and 500s. Localized via Paraglide (issue #117). Sentence form
+	// „Seznam přání pro {recipient}" on ALL lists — self lists included (2026-07-14 decision).
 	function getSocialDescription() {
-		if (wishlist.recipientUserId === null) {
-			return m.wishlist_og_description_recipient({
-				recipient: wishlist.recipientDisplayName,
-			});
-		}
-		return m.wishlist_og_description_self({
-			recipient: wishlist.recipientDisplayName,
-		});
+		return wishlistSocialDescription(wishlist.recipientDisplayName);
 	}
 
 	// ── Remote data fetch ────────────────────────────────────────────────────
@@ -261,6 +281,11 @@
 
 	let settingsModalOpen = $state(false);
 	let settingsModalTab = $state<WishlistSettingsTab>(WISHLIST_SETTINGS_TABS.details);
+
+	// ── Edit-recipient dialog state (issue #150): one shared dialog, two entry points
+	//    (header pencil + settings modal recipient row) ────────────────────────
+
+	let recipientEditDialogOpen = $state(false);
 
 	// ── Reservation modal state ───────────────────────────────────────────────
 
@@ -394,10 +419,14 @@
 		await refreshData();
 	}
 
-	// Recipient rename (issue #119): the správci panel persists the new name but only tracks
-	// it in its own draft state — the banner reads wishlist.recipientDisplayName from THIS
-	// page's query, so it needs its own refresh to drop the cached stale name.
-	async function handleRecipientRenamed() {
+	function handleEditRecipientOpened() {
+		recipientEditDialogOpen = true;
+	}
+
+	// Recipient change via the shared dialog (issue #150): refreshData re-fetches the page
+	// query (role flips recipient → moderator, trust banner drops, „Spravuje" line appears)
+	// AND calls refreshWishlistDashboards() — the list moves from Moje seznamy to Spravované.
+	async function handleRecipientChanged() {
 		await refreshData();
 	}
 
@@ -773,43 +802,49 @@
 		onmoderators={handleModeratorsOpened}
 		onarchive={handleArchive}
 		oneditimage={handleEditImage}
+		oneditrecipient={handleEditRecipientOpened}
 	/>
 
-	<WishlistDetailToolbar
-		{canManage}
-		{role}
-		{isArchived}
-		{isAuthenticated}
-		{viewMode}
-		sortOption={giftsContext.sortOption.current}
-		filters={giftsContext.filters.current}
-		onviewmodechange={handleViewModeChange}
-		onsortchange={handleSortChange}
-		onfilterchange={handleFilterChange}
-		onthemeopen={() => (paletteDialogOpen = true)}
-		onsettings={handleSettingsOpened}
-		onunfollow={handleUnfollow}
-		onaddgift={openCreateModal}
-		onbatchadd={openBatchAddDialog}
-		onimport={openImportWizard}
-		onexport={handleExport}
-	/>
+	{#if isPreparing}
+		<WishlistPreparingNotice />
+	{:else}
+		<WishlistDetailToolbar
+			{canManage}
+			{adminSettingsAvailable}
+			{role}
+			{isArchived}
+			{isAuthenticated}
+			{viewMode}
+			sortOption={giftsContext.sortOption.current}
+			filters={giftsContext.filters.current}
+			onviewmodechange={handleViewModeChange}
+			onsortchange={handleSortChange}
+			onfilterchange={handleFilterChange}
+			onthemeopen={() => (paletteDialogOpen = true)}
+			onsettings={handleSettingsOpened}
+			onunfollow={handleUnfollow}
+			onaddgift={openCreateModal}
+			onbatchadd={openBatchAddDialog}
+			onimport={openImportWizard}
+			onexport={handleExport}
+		/>
 
-	<WishlistGiftDisplay
-		gifts={displayedGifts}
-		{role}
-		{isArchived}
-		{viewMode}
-		isLoading={isGiftDataLoading}
-		{isEmpty}
-		{isFilteredEmpty}
-		onedit={openEditModal}
-		onreserve={handleOpenReserveModal}
-		onunreserve={handleUnreserve}
-		onaddgift={openCreateModal}
-		onclearfilters={clearFilters}
-		onreorder={handleReorder}
-	/>
+		<WishlistGiftDisplay
+			gifts={displayedGifts}
+			{role}
+			{isArchived}
+			{viewMode}
+			isLoading={isGiftDataLoading}
+			{isEmpty}
+			{isFilteredEmpty}
+			onedit={openEditModal}
+			onreserve={handleOpenReserveModal}
+			onunreserve={handleUnreserve}
+			onaddgift={openCreateModal}
+			onclearfilters={clearFilters}
+			onreorder={handleReorder}
+		/>
+	{/if}
 </div>
 
 <WishlistModals
@@ -851,7 +886,6 @@
 	onshared={handleShared}
 	onpaletteselect={handlePaletteSelect}
 	onmoderatorselfpromoted={handleSelfPromoted}
-	onrecipientrenamed={handleRecipientRenamed}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 />
@@ -864,10 +898,26 @@
 	bind:activeTab={settingsModalTab}
 	{wishlist}
 	{canManage}
+	{role}
+	revertCapability={wishlist.revertCapability}
+	recipientDisplayName={wishlist.recipientDisplayName}
 	{themeEmoji}
 	onsaved={refreshData}
 	onpaletteselect={handlePaletteSelect}
 	ondeleted={handleWishlistDeleted}
+	onreverted={refreshData}
+	oneditrecipient={handleEditRecipientOpened}
+/>
+
+<!-- Shared recipient dialog (issue #150): linked lists get the one-way flip with consequence
+     copy (linked recipient only); free-text lists get the plain rename (any správce). -->
+<EditRecipientDialog
+	bind:open={recipientEditDialogOpen}
+	wishlistId={wishlist.id}
+	isLinkedRecipient={!isForSomeoneElse}
+	recipientDisplayName={wishlist.recipientDisplayName}
+	isShared={wishlist.sharedAt !== null}
+	onchanged={handleRecipientChanged}
 />
 
 {#if canManage}

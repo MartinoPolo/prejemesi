@@ -13,18 +13,35 @@
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
+	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
+	import RecipientPreview from './RecipientPreview.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		type WishlistSettingsTab,
 	} from './wishlist_settings_modal_types.js';
-	import { updateWishlist, deleteWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
+	import {
+		updateWishlist,
+		deleteWishlist,
+		renameRecipient,
+	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { revertWishlistToDraft } from '$lib/modules/sharing/sharing.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
-	import type { Wishlist } from '$lib/modules/wishlists/types.js';
+	import {
+		REVERT_CAPABILITY,
+		type RevertCapability,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import {
+		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_ROLES,
+		type Wishlist,
+		type WishlistRole,
+	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 
@@ -35,6 +52,13 @@
 		wishlist: Wishlist;
 		/** Recipient OR správce; non-managers get a read-only notice instead of the forms. */
 		canManage: boolean;
+		/** Viewer role: on linked lists only the linked recipient may edit the recipient (issue #150). */
+		role: WishlistRole;
+		/** Server-computed revert-to-draft affordance (issue #150): drives the danger-zone revert
+		 *  action and — for an app admin who does not manage the list — the admin-only settings view. */
+		revertCapability: RevertCapability;
+		/** Who the list is for: linked account name or free-text name (shown in the recipient row). */
+		recipientDisplayName: string;
 		/** Theme-derived fallback emoji for the crop editor previews. */
 		themeEmoji: string;
 		/** Awaited page refresh after a save so the form can re-seed from fresh values. */
@@ -43,6 +67,10 @@
 		onpaletteselect?: (palette: Palette) => void;
 		/** Fires after a successful delete so the page can navigate away + refresh dashboards. */
 		ondeleted?: () => void;
+		/** Awaited page refresh after a successful revert-to-draft (issue #150). */
+		onreverted?: () => Promise<void>;
+		/** Opens the shared edit-recipient dialog (issue #150) — the page renders it. */
+		oneditrecipient?: () => void;
 	}
 
 	/** Normalize a stored event date to a `Date` for the `DatePicker`, or `null` when unset/invalid. */
@@ -59,14 +87,28 @@
 		activeTab = $bindable(WISHLIST_SETTINGS_TABS.details),
 		wishlist,
 		canManage,
+		role,
+		revertCapability,
+		recipientDisplayName,
 		themeEmoji,
 		onsaved,
 		onpaletteselect,
 		ondeleted,
+		onreverted,
+		oneditrecipient,
 	}: WishlistSettingsModalProps = $props();
 
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isShared = $derived(wishlist.sharedAt !== null);
+	// An app admin who does not manage this list still reaches the danger zone for the revert
+	// action only (issue #150). Non-hidden capability for a non-manager ⟺ admin on a reserved list.
+	const isAdminRevertOnly = $derived(!canManage && revertCapability !== REVERT_CAPABILITY.hidden);
+	// Recipient edit affordance (issue #150): free-text lists → the recipient name is an inline
+	// field any manager edits and saves with the details form; linked lists → the name is read-only,
+	// and ONLY the linked recipient may flip to a free-text recipient (no evicting by správci) via
+	// the shared dialog.
+	const isFreeTextRecipient = $derived(wishlist.recipientUserId === null);
+	const canFlipRecipient = $derived(role === WISHLIST_ROLES.recipient);
 
 	// Event-date grace window (issue #83): after sharing, the event date stays editable for a
 	// debounced 2-min window before it locks. `eventDateEditedAt` drives the debounce, falling back
@@ -102,6 +144,9 @@
 	let detailsDescription = $state(wishlist.description ?? '');
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let detailsEventDate = $state(toEventDate(wishlist.eventDate));
+	// Free-text recipient name (issue #150): an inline field saved alongside the details form.
+	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
+	let recipientNameDraft = $state(recipientDisplayName);
 	let detailsError = $state('');
 	let savingDetails = $state(false);
 	let savingImage = $state(false);
@@ -111,6 +156,7 @@
 		detailsTitle = wishlist.title;
 		detailsDescription = wishlist.description ?? '';
 		detailsEventDate = toEventDate(wishlist.eventDate);
+		recipientNameDraft = recipientDisplayName;
 		detailsError = '';
 	}
 
@@ -142,6 +188,17 @@
 				// authority and drops it once the window has closed (issue #83).
 				...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
 			});
+			// Free-text recipient rename rides the same Save (issue #150): reuses the renameRecipient
+			// command (rejects linked lists server-side). Only persist an actual change to skip a
+			// redundant call; a failure surfaces via the shared catch/toast below.
+			const trimmedRecipientName = recipientNameDraft.trim();
+			if (
+				isFreeTextRecipient &&
+				trimmedRecipientName !== '' &&
+				trimmedRecipientName !== recipientDisplayName
+			) {
+				await renameRecipient({ id: wishlist.id, recipientName: trimmedRecipientName });
+			}
 			await onsaved();
 			seedDetailsForm();
 			toastSuccess(m.toast_wishlist_details_saved());
@@ -196,7 +253,89 @@
 			deleting = false;
 		}
 	}
+
+	// ── Revert-to-draft handler (issue #150) ───────────────────────────────────
+	// A shared list can return to draft: a správce silently when reservation-free, an app admin
+	// when reserved (cancels reservations + notifies). The reserved variant confirm dialog spells
+	// out the cancellation; the server re-checks the capability as the security boundary.
+
+	let revertConfirmOpen = $state(false);
+	let reverting = $state(false);
+
+	async function handleRevertConfirmed() {
+		reverting = true;
+		try {
+			await revertWishlistToDraft(wishlist.id);
+			revertConfirmOpen = false;
+			open = false;
+			toastSuccess(m.toast_wishlist_reverted());
+			await onreverted?.();
+		} catch (thrown) {
+			console.error('Failed to revert wishlist:', thrown);
+			toastError(translateServerError(thrown, m.toast_wishlist_revert_error()));
+		} finally {
+			reverting = false;
+		}
+	}
 </script>
+
+<!-- Revert-to-draft card (issue #150). Rendered per the server-computed capability: enabled for a
+     clean/reserved-admin revert, DISABLED with the „jen administrátor" copy for a non-admin správce
+     on a reserved list, and nothing at all when hidden. Reused by the manager danger panel and the
+     admin-only view. -->
+{#snippet revertSection()}
+	{#if revertCapability !== REVERT_CAPABILITY.hidden}
+		<Card.Root class="border-destructive/30">
+			<Card.Header>
+				<div class="flex items-center gap-2">
+					<RotateCcwIcon class="size-5 text-destructive" />
+					<div>
+						<Card.Title class="text-destructive">
+							{m.wishlist_settings_revert_title()}
+						</Card.Title>
+						<Card.Description>{m.wishlist_settings_revert_hint()}</Card.Description>
+					</div>
+				</div>
+			</Card.Header>
+			<Card.Content>
+				{#if revertCapability === REVERT_CAPABILITY.reservedBlocked}
+					<div class="flex flex-col gap-3">
+						<Alert.Root tone="warning">
+							<Alert.Description>
+								{m.wishlist_revert_reserved_admin_only()}
+							</Alert.Description>
+						</Alert.Root>
+						<div class="flex justify-end">
+							<Button intent="danger" size="sm" disabled>
+								<RotateCcwIcon data-icon="inline-start" />
+								{m.wishlist_revert_button()}
+							</Button>
+						</div>
+					</div>
+				{:else}
+					<div class="flex flex-col gap-3">
+						{#if revertCapability === REVERT_CAPABILITY.reservedAdmin}
+							<p class="text-xs text-muted-foreground">
+								{m.wishlist_revert_reserved_warning()}
+							</p>
+						{/if}
+						<div class="flex justify-end">
+							<Button
+								intent="danger"
+								size="sm"
+								data-testid="settings-revert-to-draft"
+								onclick={() => (revertConfirmOpen = true)}
+							>
+								<RotateCcwIcon data-icon="inline-start" />
+								{m.wishlist_revert_button()}
+							</Button>
+						</div>
+					</div>
+				{/if}
+			</Card.Content>
+		</Card.Root>
+	{/if}
+{/snippet}
 
 <!-- Per-wishlist settings modal (UX rework of the old /w/<id>/settings page): Podrobnosti /
      Vzhled / Obrázek tabs. Panels hide via the `hidden` attribute instead of unmounting so
@@ -209,15 +348,7 @@
 			<Dialog.Description>{wishlist.title}</Dialog.Description>
 		</Dialog.Header>
 
-		{#if !canManage}
-			<Alert.Root tone="warning">
-				<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
-			</Alert.Root>
-		{:else if isArchived}
-			<Alert.Root tone="warning">
-				<Alert.Description>{m.wishlist_settings_archived_readonly()}</Alert.Description>
-			</Alert.Root>
-		{:else}
+		{#if canManage && !isArchived}
 			<Tabs.Root aria-label={m.wishlist_settings_title()} class="justify-self-start">
 				<Tabs.Tab
 					id="wishlist-settings-tab-details"
@@ -264,7 +395,50 @@
 					<p class="text-sm text-muted-foreground">
 						{m.wishlist_settings_details_hint()}
 					</p>
+
 					<form onsubmit={handleDetailsSave} class="flex flex-col gap-4">
+						<!-- Recipient (issue #150): free-text lists get an inline name field saved with
+						     this form; linked lists show a read-only name, and only the linked recipient
+						     may flip to a free-text recipient (no evicting by správci) via the dialog. -->
+						{#if isFreeTextRecipient}
+							<div class="flex flex-col gap-2">
+								<Label for="wishlist-settings-recipient"
+									>{m.recipient_section_title()}</Label
+								>
+								<Input
+									id="wishlist-settings-recipient"
+									bind:value={recipientNameDraft}
+									placeholder={m.create_recipient_name_placeholder()}
+									maxlength={RECIPIENT_NAME_MAX_LENGTH}
+									disabled={savingDetails}
+								/>
+								<RecipientPreview name={recipientNameDraft} />
+							</div>
+						{:else}
+							<div
+								class="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2"
+							>
+								<div class="min-w-0">
+									<p class="text-sm font-medium">{m.recipient_section_title()}</p>
+									<p class="truncate text-sm text-muted-foreground">
+										{recipientDisplayName}
+									</p>
+								</div>
+								{#if canFlipRecipient}
+									<Button
+										type="button"
+										size="sm"
+										intent="outline"
+										data-testid="settings-edit-recipient"
+										onclick={oneditrecipient}
+									>
+										<PencilIcon data-icon="inline-start" />
+										{m.wishlist_edit_recipient_label()}
+									</Button>
+								{/if}
+							</div>
+						{/if}
+
 						<Field
 							fieldId="wishlist-title"
 							label={m.wishlist_name_label()}
@@ -375,48 +549,71 @@
 				aria-labelledby="wishlist-settings-tab-danger"
 				hidden={activeTab !== WISHLIST_SETTINGS_TABS.danger}
 			>
-				{#if isShared}
-					<Alert.Root tone="warning">
-						<Alert.Description
-							>{m.wishlist_settings_danger_shared_notice()}</Alert.Description
-						>
-					</Alert.Root>
-				{:else}
-					<Card.Root class="border-destructive/30">
-						<Card.Header>
-							<div class="flex items-center gap-2">
-								<TriangleAlertIcon class="size-5 text-destructive" />
-								<div>
-									<Card.Title class="text-destructive">
-										{m.wishlist_settings_danger_tab()}
-									</Card.Title>
-									<Card.Description
-										>{m.wishlist_settings_danger_hint()}</Card.Description
+				<div class="flex flex-col gap-4">
+					<!-- Revert to draft (issue #150): shown for a shared list per the server-computed
+					     capability; sits above delete. Delete stays draft-only (issue #120). -->
+					{@render revertSection()}
+					{#if isShared}
+						<Alert.Root tone="warning">
+							<Alert.Description
+								>{m.wishlist_settings_danger_shared_notice()}</Alert.Description
+							>
+						</Alert.Root>
+					{:else}
+						<Card.Root class="border-destructive/30">
+							<Card.Header>
+								<div class="flex items-center gap-2">
+									<TriangleAlertIcon class="size-5 text-destructive" />
+									<div>
+										<Card.Title class="text-destructive">
+											{m.wishlist_settings_danger_tab()}
+										</Card.Title>
+										<Card.Description
+											>{m.wishlist_settings_danger_hint()}</Card.Description
+										>
+									</div>
+								</div>
+							</Card.Header>
+							<Card.Content>
+								<div class="flex items-center justify-between gap-4">
+									<div>
+										<p class="text-sm font-medium">
+											{m.wishlist_delete_button()}
+										</p>
+										<p class="text-xs text-muted-foreground">
+											{m.wishlist_delete_confirm_description()}
+										</p>
+									</div>
+									<Button
+										intent="danger"
+										size="sm"
+										onclick={() => (deleteConfirmOpen = true)}
 									>
+										<TrashIcon data-icon="inline-start" />
+										{m.wishlist_delete_button()}
+									</Button>
 								</div>
-							</div>
-						</Card.Header>
-						<Card.Content>
-							<div class="flex items-center justify-between gap-4">
-								<div>
-									<p class="text-sm font-medium">{m.wishlist_delete_button()}</p>
-									<p class="text-xs text-muted-foreground">
-										{m.wishlist_delete_confirm_description()}
-									</p>
-								</div>
-								<Button
-									intent="danger"
-									size="sm"
-									onclick={() => (deleteConfirmOpen = true)}
-								>
-									<TrashIcon data-icon="inline-start" />
-									{m.wishlist_delete_button()}
-								</Button>
-							</div>
-						</Card.Content>
-					</Card.Root>
-				{/if}
+							</Card.Content>
+						</Card.Root>
+					{/if}
+				</div>
 			</div>
+		{:else if isAdminRevertOnly}
+			<!-- App admin who does not manage this list: danger/admin actions only (revert). -->
+			<div class="flex flex-col gap-4">
+				<p class="text-sm text-muted-foreground">
+					{m.wishlist_settings_admin_only_hint()}
+				</p>
+				{@render revertSection()}
+			</div>
+		{:else if isArchived}
+			<Alert.Root tone="warning">
+				<Alert.Description>{m.wishlist_settings_archived_readonly()}</Alert.Description>
+			</Alert.Root>
+		{:else}
+			<Alert.Root tone="warning">
+				<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
+			</Alert.Root>
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>
@@ -439,6 +636,33 @@
 			</Button>
 			<Button intent="danger" onclick={handleDeleteConfirmed} disabled={deleting}>
 				{deleting ? m.deleting() : m.wishlist_delete_confirm_action()}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<!-- Revert-to-draft confirmation dialog (issue #150): the reserved variant spells out that all
+     reservations are cancelled and reservers notified; the clean variant is silent. -->
+<Dialog.Root bind:open={revertConfirmOpen}>
+	<Dialog.Content class="max-w-md">
+		<Dialog.Header>
+			<Dialog.Title>{m.wishlist_revert_confirm_title()}</Dialog.Title>
+			<Dialog.Description>
+				{revertCapability === REVERT_CAPABILITY.reservedAdmin
+					? m.wishlist_revert_confirm_reserved_description()
+					: m.wishlist_revert_confirm_clean_description()}
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="flex gap-2">
+			<Button
+				intent="outline"
+				onclick={() => (revertConfirmOpen = false)}
+				disabled={reverting}
+			>
+				{m.cancel()}
+			</Button>
+			<Button intent="danger" onclick={handleRevertConfirmed} disabled={reverting}>
+				{reverting ? m.wishlist_reverting() : m.wishlist_revert_confirm_action()}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

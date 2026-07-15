@@ -14,8 +14,13 @@
 		removeModerator,
 		selfPromoteToModerator,
 	} from '$lib/modules/moderators/moderators.remote.js';
-	import { renameRecipient } from '$lib/modules/wishlists/wishlists.remote.js';
+	import {
+		getClaimInvitesForWishlist,
+		generateClaimInviteLink,
+		revokeClaimInvite,
+	} from '$lib/modules/claim/claim.remote.js';
 	import type { ModeratorWithUser, PendingInvite } from '$lib/modules/moderators/types.js';
+	import type { PendingClaimInvite } from '$lib/modules/claim/types.js';
 	import { toastSuccess, toastError, toastInfo } from '$lib/components/base/toast/index.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import { getApplicationUrl } from '$lib/config/site.js';
@@ -33,9 +38,6 @@
 		open: boolean;
 		onopenchange?: (open: boolean) => void;
 		onselfpromoted?: () => void;
-		/** Fired after a successful recipient rename so the parent can refresh the page-local
-		 *  wishlist query (the „Pro {recipient}" banner reads from it, not from this panel). */
-		onrecipientrenamed?: () => void;
 	}
 
 	let {
@@ -44,56 +46,47 @@
 		open = $bindable(false),
 		onopenchange,
 		onselfpromoted,
-		onrecipientrenamed,
 	}: ModeratorPanelProps = $props();
 
 	const styles = moderatorPanelVariants();
 
 	let moderators = $state.raw<ModeratorWithUser[]>([]);
 	let pendingInvites = $state.raw<PendingInvite[]>([]);
-	// For-someone lists (free-text recipient) expose a rename section pre-filled with the current name.
+	// For-someone lists (free-text recipient) show the claim-link section.
 	let isForSomeoneElse = $state(false);
-	let recipientNameDraft = $state('');
 	let isLoading = $state(false);
 	let isGenerating = $state(false);
 	let isRemoving = $state(false);
 	let isRevokingId = $state<string | null>(null);
 	let isSelfPromoting = $state(false);
-	let isRenamingRecipient = $state(false);
 	let linkCopied = $state(false);
 	let generatedInvitePath = $state<string | null>(null);
 	let inviteEmail = $state('');
 
+	// Claim link („Pozvat obdarovaného", issue #150): only for-someone lists. Links a free-text
+	// recipient's real account. Mirrors the správce-invite generate/email/copy/revoke flow.
+	let claimInvites = $state.raw<PendingClaimInvite[]>([]);
+	let isGeneratingClaim = $state(false);
+	let isRevokingClaimId = $state<string | null>(null);
+	let claimLinkCopied = $state(false);
+	let generatedClaimPath = $state<string | null>(null);
+	let claimEmail = $state('');
+
 	async function loadModerators() {
 		isLoading = true;
 		try {
-			const data = await getModeratorsForWishlist(wishlistId);
+			const [data, claimData] = await Promise.all([
+				getModeratorsForWishlist(wishlistId),
+				getClaimInvitesForWishlist(wishlistId),
+			]);
 			moderators = data.moderators;
 			pendingInvites = data.pendingInvites;
 			isForSomeoneElse = data.isForSomeoneElse;
-			recipientNameDraft = data.recipientName ?? '';
+			claimInvites = claimData.pendingInvites;
 		} catch (thrown) {
 			console.error('Failed to load moderators:', thrown);
 		} finally {
 			isLoading = false;
-		}
-	}
-
-	async function handleRenameRecipient() {
-		const trimmed = recipientNameDraft.trim();
-		if (trimmed === '') {
-			return;
-		}
-		isRenamingRecipient = true;
-		try {
-			await renameRecipient({ id: wishlistId, recipientName: trimmed });
-			recipientNameDraft = trimmed;
-			toastSuccess(m.recipient_rename_toast_success());
-			onrecipientrenamed?.();
-		} catch (thrown) {
-			toastError(translateServerError(thrown, m.recipient_rename_error()));
-		} finally {
-			isRenamingRecipient = false;
 		}
 	}
 
@@ -161,6 +154,67 @@
 		}
 	}
 
+	async function handleGenerateClaim() {
+		isGeneratingClaim = true;
+		claimLinkCopied = false;
+		generatedClaimPath = null;
+		try {
+			const trimmed = claimEmail.trim();
+			const result = await generateClaimInviteLink(
+				trimmed === '' ? { wishlistId } : { wishlistId, email: trimmed },
+			);
+			generatedClaimPath = result.claimPath;
+			await loadModerators();
+			if (trimmed === '') {
+				toastSuccess(m.claim_toast_generated());
+			} else {
+				toastSuccess(m.claim_toast_sent({ email: trimmed }));
+				if (result.unregisteredInvitee) {
+					toastInfo(
+						m.claim_invite_unregistered_title(),
+						m.claim_invite_unregistered_body(),
+					);
+				}
+				claimEmail = '';
+			}
+		} catch (thrown) {
+			toastError(translateServerError(thrown, m.claim_error_generate()));
+		} finally {
+			isGeneratingClaim = false;
+		}
+	}
+
+	async function handleCopyClaimLink() {
+		if (generatedClaimPath === null) {
+			return;
+		}
+		try {
+			const fullUrl = getApplicationUrl(generatedClaimPath, window.location.origin);
+			await navigator.clipboard.writeText(fullUrl);
+			claimLinkCopied = true;
+			toastSuccess(m.claim_toast_link_copied());
+			setTimeout(() => {
+				claimLinkCopied = false;
+			}, 3000);
+		} catch {
+			toastError(m.claim_error_copy());
+		}
+	}
+
+	async function handleRevokeClaim(inviteId: string) {
+		isRevokingClaimId = inviteId;
+		try {
+			await revokeClaimInvite({ inviteId });
+			await loadModerators();
+			generatedClaimPath = null;
+			toastSuccess(m.claim_toast_revoked());
+		} catch (thrown) {
+			toastError(translateServerError(thrown, m.claim_error_revoke()));
+		} finally {
+			isRevokingClaimId = null;
+		}
+	}
+
 	async function handleRemoveModerator(assignmentId: string) {
 		isRemoving = true;
 		try {
@@ -205,6 +259,9 @@
 			generatedInvitePath = null;
 			linkCopied = false;
 			inviteEmail = '';
+			generatedClaimPath = null;
+			claimLinkCopied = false;
+			claimEmail = '';
 		}
 	});
 </script>
@@ -217,30 +274,99 @@
 		</Dialog.Header>
 
 		<div class="flex flex-col gap-6">
-			<!-- Rename recipient (for-someone lists only): edit the free-text obdarovaný name -->
 			{#if isForSomeoneElse}
+				<!-- Claim link (issue #150): nudge to link the free-text recipient's real account.
+				     Mirrors the správce-invite generate/email/copy/revoke flow. -->
 				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>{m.recipient_section_title()}</div>
-					<div class="flex flex-col gap-1.5">
-						<label for="recipient-name" class="text-sm text-muted-foreground">
-							{m.recipient_rename_label()}
-						</label>
-						<div class="flex items-center gap-2">
-							<Input
-								id="recipient-name"
-								bind:value={recipientNameDraft}
-								disabled={isRenamingRecipient}
-							/>
-							<Button
-								size="sm"
-								intent="outline"
-								disabled={isRenamingRecipient || recipientNameDraft.trim() === ''}
-								onclick={handleRenameRecipient}
-							>
-								{m.recipient_rename_button()}
-							</Button>
+					<div class={styles.sectionTitle()}>{m.claim_section_title()}</div>
+					<div class={styles.disclosureBanner()}>
+						<LinkIcon class="size-4 flex-shrink-0" />
+						<div class="flex flex-col gap-0.5">
+							<span class="font-medium">{m.claim_nudge_title()}</span>
+							<span class="text-xs">{m.claim_nudge_description()}</span>
 						</div>
 					</div>
+
+					{#if generatedClaimPath !== null}
+						<div class="flex items-center gap-2">
+							<div
+								class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
+								data-testid="claim-link"
+							>
+								{getApplicationUrl(generatedClaimPath, window.location.origin)}
+							</div>
+							<Button
+								size="sm"
+								intent={claimLinkCopied ? 'primary' : 'outline'}
+								aria-label={m.claim_copy_link()}
+								data-testid="copy-claim-link"
+								onclick={handleCopyClaimLink}
+							>
+								{#if claimLinkCopied}
+									<CheckIcon class="size-4" />
+								{:else}
+									<CopyIcon class="size-4" />
+								{/if}
+							</Button>
+						</div>
+					{/if}
+
+					<div class="flex flex-col gap-1.5">
+						<label for="claim-email" class="text-sm text-muted-foreground">
+							{m.claim_email_label()}
+						</label>
+						<Input
+							id="claim-email"
+							type="email"
+							placeholder={m.claim_email_placeholder()}
+							bind:value={claimEmail}
+							disabled={isGeneratingClaim}
+						/>
+					</div>
+
+					<Button
+						size="lg"
+						intent="primary"
+						class="w-full"
+						disabled={isGeneratingClaim}
+						onclick={handleGenerateClaim}
+					>
+						<LinkIcon data-icon="inline-start" />
+						{isGeneratingClaim ? m.claim_generating() : m.claim_generate_button()}
+					</Button>
+
+					{#if claimInvites.length > 0}
+						<div class={styles.sectionTitle()}>
+							{m.claim_pending_title({ count: claimInvites.length })}
+						</div>
+						{#each claimInvites as invite (invite.id)}
+							<div class={styles.inviteRow()}>
+								<div class="min-w-0 flex-1">
+									<div class={styles.inviteToken()}>
+										...{invite.token.slice(-8)}
+									</div>
+									<div class={styles.inviteDate()}>
+										{new Intl.DateTimeFormat(getLocale(), {
+											day: 'numeric',
+											month: 'short',
+											hour: '2-digit',
+											minute: '2-digit',
+										}).format(new Date(invite.createdAt))}
+									</div>
+								</div>
+								<Button
+									size="sm"
+									intent="ghost"
+									class="text-destructive hover:text-destructive"
+									disabled={isRevokingClaimId === invite.id}
+									aria-label={m.claim_revoke_invite()}
+									onclick={() => handleRevokeClaim(invite.id)}
+								>
+									<XIcon class="size-4" />
+								</Button>
+							</div>
+						{/each}
+					{/if}
 				</div>
 
 				<Separator />
@@ -313,8 +439,9 @@
 				</div>
 
 				<Button
-					size="sm"
-					intent="outline"
+					size="lg"
+					intent="primary"
+					class="w-full"
 					disabled={isGenerating}
 					onclick={handleGenerateInvite}
 				>

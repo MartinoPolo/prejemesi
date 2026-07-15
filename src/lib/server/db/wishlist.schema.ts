@@ -67,9 +67,12 @@ export const wishlist = pgTable(
 			.on(table.recipientUserId, table.status)
 			.where(sql`${table.deletedAt} IS NULL`),
 		shortIdIdx: uniqueIndex('wishlist_short_id_idx').on(table.shortId),
+		// Exactly one recipient identity must be set: a linked account (self/claimed lists) XOR a
+		// free-text name (for-someone lists). Tightened from OR to XOR (issue #150) so the claim flow
+		// clearing `recipientName` when it links `recipientUserId` can never leave both set.
 		recipientPresence: check(
 			'wishlist_recipient_presence_check',
-			sql`${table.recipientUserId} IS NOT NULL OR ${table.recipientName} IS NOT NULL`,
+			sql`num_nonnulls(${table.recipientUserId}, ${table.recipientName}) = 1`,
 		),
 	}),
 );

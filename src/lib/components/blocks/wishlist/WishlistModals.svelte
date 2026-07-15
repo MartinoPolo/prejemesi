@@ -72,7 +72,6 @@
 		onshared: () => void;
 		onpaletteselect: (palette: Palette) => void;
 		onmoderatorselfpromoted: () => void;
-		onrecipientrenamed: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
 	}
@@ -116,7 +115,6 @@
 		onshared,
 		onpaletteselect,
 		onmoderatorselfpromoted,
-		onrecipientrenamed,
 		onbatchsubmit,
 		onbatchdialogopenchange,
 	}: WishlistModalsProps = $props();
@@ -195,7 +193,6 @@
 		{recipientIsModerator}
 		bind:open={moderatorPanelOpen}
 		onselfpromoted={onmoderatorselfpromoted}
-		{onrecipientrenamed}
 	/>
 {/if}
 

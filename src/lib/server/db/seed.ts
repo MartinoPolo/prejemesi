@@ -24,6 +24,7 @@ import { user, account } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
 import { gift, reservation, giftLike } from './gift.schema.js';
 import { moderatorAssignment } from './moderator.schema.js';
+import { claimInvite } from './claim.schema.js';
 import { wishlistFollower } from './follower.schema.js';
 import { notification } from './notification.schema.js';
 
@@ -167,6 +168,11 @@ const WL_CHATA = 'seed-wl-chata'; // Tomáš – Martin: bought
 // For-someone lists (issue #99) – free-text recipient, managed via moderatorAssignment.
 const WL_ROSIE = 'seed-wl-rosie'; // recipient "Rosie" (child) – single správce: Martin
 const WL_MIMINKO = 'seed-wl-miminko'; // recipient "Miminko" (baby) – multi správce: Martin + Jana
+// Claim-token fixture (issue #150): free-text recipient "Klára", správce Jana, with a pending
+// claim invite Eva can accept — Eva has no správce history nor reservations here, so no guard trips.
+const WL_KLARA = 'seed-wl-klara';
+const CLAIM_KLARA = 'seed-ci-klara'; // pending claim invite on WL_KLARA (created by Jana)
+const CLAIM_KLARA_TOKEN = 'seed-claim-klara-token';
 
 // Priority level suffix helpers
 const plId = (wl: string, level: 'h' | 'm' | 'l') => `seed-pl-${wl}-${level}`;
@@ -252,6 +258,15 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 	// they block the final user delete. Other tables cascade from user/wishlist.
 	await db.execute(sql`
 		DELETE FROM moderator_invite
+		WHERE id LIKE 'seed-%'
+			OR wishlist_id LIKE 'seed-%'
+			OR created_by_user_id LIKE 'seed-%'
+			OR used_by_user_id LIKE 'seed-%'
+	`);
+	// claim_invite FKs to user have no ON DELETE action (same as moderator_invite): match via
+	// FK columns too so runtime-created invites don't block the final user delete.
+	await db.execute(sql`
+		DELETE FROM claim_invite
 		WHERE id LIKE 'seed-%'
 			OR wishlist_id LIKE 'seed-%'
 			OR created_by_user_id LIKE 'seed-%'
@@ -619,6 +634,24 @@ async function seed() {
 				createdAt: d('2026-06-15T11:00:00Z'),
 				updatedAt: d('2026-06-20T15:00:00Z'),
 			},
+			// Klára – claim-token fixture (issue #150). Free-text recipient, single správce (Jana),
+			// active + shared. A pending claim invite (seeded below) lets Eva link her account and
+			// take the list over (no správce history / reservations → guards pass).
+			{
+				id: WL_KLARA,
+				shortId: 'klarawl1',
+				recipientUserId: null,
+				recipientName: 'Klára',
+				title: 'Klářin adventní seznam',
+				description: 'Seznam přání pro Kláru – čeká na propojení jejího účtu',
+				eventDate: d('2026-12-24T00:00:00Z'),
+				status: 'active',
+				theme: 'christmas',
+				palette: 'sky',
+				sharedAt: d('2026-06-22T09:00:00Z'),
+				createdAt: d('2026-06-20T11:00:00Z'),
+				updatedAt: d('2026-06-22T15:00:00Z'),
+			},
 		]);
 
 		// ---------------------------------------------------------------
@@ -641,6 +674,7 @@ async function seed() {
 			WL_CHATA,
 			WL_ROSIE,
 			WL_MIMINKO,
+			WL_KLARA,
 		];
 		const priorityRows = allWishlists.flatMap((wlId) => {
 			const short = wlId.replace('seed-wl-', '');
@@ -1390,6 +1424,29 @@ async function seed() {
 				wishlistId: WL_MIMINKO,
 				userId: JANA,
 				assignedAt: d('2026-06-16T09:00:00Z'),
+			},
+			// Klára – single správce (Jana). The claim invite below lets Eva take it over.
+			{
+				id: 'seed-ma-6',
+				wishlistId: WL_KLARA,
+				userId: JANA,
+				assignedAt: d('2026-06-20T11:00:00Z'),
+			},
+		]);
+
+		// ---------------------------------------------------------------
+		// Claim invites (issue #150) – pending „Pozvat obdarovaného" link
+		// ---------------------------------------------------------------
+		console.log('Seeding claim invites...');
+		await db.insert(claimInvite).values([
+			// Pending claim link on Klára's list, created by správce Jana. Eva can open
+			// /w/klarawl1/claim/<token>, sign in, and link her account as the recipient.
+			{
+				id: CLAIM_KLARA,
+				wishlistId: WL_KLARA,
+				token: CLAIM_KLARA_TOKEN,
+				createdByUserId: JANA,
+				createdAt: d('2026-06-23T09:00:00Z'),
 			},
 		]);
 

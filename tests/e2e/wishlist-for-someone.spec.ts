@@ -33,8 +33,9 @@ test.describe('Create a wishlist for someone else', () => {
 		// ── Header variant A: recipient-first name slot + managed-by meta line ──────────
 		const banner = page.getByTestId('wishlist-banner');
 
-		// The prominent name slot reads „Pro Rosie" (prefix „Pro" is „For" in the en base locale).
-		await expect(banner.getByText(/(Pro|For)\s+Rosie/)).toBeVisible({ timeout: 10_000 });
+		// The prominent name slot reads „Pro: Rosie" — colon form on all lists since the
+		// 2026-07-14 header decision (prefix „Pro:" is „For:" in the en base locale).
+		await expect(banner.getByText(/(Pro|For):\s+Rosie/)).toBeVisible({ timeout: 10_000 });
 
 		// „Spravuje {creator}" / „Managed by {creator}" — the creator is the sole správce, and
 		// their account name (createTestUser → „E2E for-someone-creator") appears in the meta row.

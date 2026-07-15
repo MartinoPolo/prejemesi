@@ -141,6 +141,8 @@ interface MockDb {
 	pushResult: (result: unknown[]) => void;
 	/** Payload passed to the most recent `.set(...)` call (e.g. drizzle update data). */
 	lastSetPayload: () => Record<string, unknown> | undefined;
+	/** Payload passed to the most recent `.values(...)` call (e.g. drizzle insert data). */
+	lastValuesPayload: () => Record<string, unknown> | undefined;
 	reset: () => void;
 }
 
@@ -148,6 +150,7 @@ function createMockDb(): MockDb {
 	const results: unknown[][] = [];
 	const indexRef = { value: 0 };
 	const setPayloads: Record<string, unknown>[] = [];
+	const valuesPayloads: Record<string, unknown>[] = [];
 
 	const chain: Record<string | symbol, unknown> = new Proxy(
 		{},
@@ -169,6 +172,12 @@ function createMockDb(): MockDb {
 						return chain;
 					});
 				}
+				if (prop === 'values') {
+					return vi.fn((payload: Record<string, unknown>) => {
+						valuesPayloads.push(payload);
+						return chain;
+					});
+				}
 				return vi.fn(() => chain);
 			},
 		},
@@ -178,10 +187,12 @@ function createMockDb(): MockDb {
 		db: chain,
 		pushResult: (result: unknown[]) => results.push(result),
 		lastSetPayload: () => setPayloads[setPayloads.length - 1],
+		lastValuesPayload: () => valuesPayloads[valuesPayloads.length - 1],
 		reset: () => {
 			results.length = 0;
 			indexRef.value = 0;
 			setPayloads.length = 0;
+			valuesPayloads.length = 0;
 		},
 	};
 }
@@ -202,21 +213,27 @@ vi.mock('$lib/server/storage/r2.js', () => ({
 
 // ── Import the module under test (after all mocks are set up) ─────────────────
 
+import * as v from 'valibot';
 import {
 	deleteWishlist,
 	updateWishlist,
 	archiveWishlist,
 	createWishlist,
 	renameRecipient,
+	flipRecipientToFreeText,
 	followWishlist,
 	unfollowWishlist,
 	refollowWishlist,
 	getWishlistByShortId,
 	setWishlistPalette,
 } from './wishlists.remote.js';
+import { FlipRecipientToFreeTextInputSchema } from './types.js';
+import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 
 const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
+const mockDispatchNotification = vi.mocked(dispatchNotification);
 
 // ── Test data factories ───────────────────────────────────────────────────────
 
@@ -309,6 +326,10 @@ type RenameRecipientHandler = (
 	auth: AuthContext,
 	input: { id: string; recipientName: string },
 ) => Promise<unknown>;
+type FlipRecipientToFreeTextHandler = (
+	auth: AuthContext & { user: { name?: string } },
+	input: { id: string; recipientName: string },
+) => Promise<unknown>;
 type SetWishlistPaletteHandler = (
 	auth: AuthContext,
 	input: { wishlistId: string; palette: string },
@@ -319,6 +340,8 @@ const callUpdateWishlist = updateWishlist as unknown as UpdateWishlistHandler;
 const callArchiveWishlist = archiveWishlist as unknown as ArchiveWishlistHandler;
 const callCreateWishlist = createWishlist as unknown as CreateWishlistHandler;
 const callRenameRecipient = renameRecipient as unknown as RenameRecipientHandler;
+const callFlipRecipientToFreeText =
+	flipRecipientToFreeText as unknown as FlipRecipientToFreeTextHandler;
 const callFollowWishlist = followWishlist as unknown as FollowWishlistHandler;
 const callGetWishlistByShortId = getWishlistByShortId as unknown as GetWishlistByShortIdHandler;
 const callSetWishlistPalette = setWishlistPalette as unknown as SetWishlistPaletteHandler;
@@ -785,6 +808,185 @@ describe('renameRecipient', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+describe('flipRecipientToFreeText', () => {
+	/** Auth context for the linked recipient incl. name (used as notification actorName). */
+	function makeNamedRecipientAuthContext(): { user: { id: string; name: string } } {
+		return { user: { id: RECIPIENT_ID, name: 'Recipient Alice' } };
+	}
+
+	describe('the linked recipient converts their own list', () => {
+		it('clears recipientUserId, sets the free-text name, and resets recipientIsModerator', async () => {
+			const flippedRow = makeForSomeoneWishlistRow({ recipientName: 'Rosie' });
+			// DB call 1: requireWishlistRow (caller IS the linked recipient; self-promoted before)
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: true })]);
+			// DB call 2 (in tx): update wishlist returning
+			mockDbInstance.pushResult([flippedRow]);
+			// DB call 3 (in tx): insert moderatorAssignment
+			mockDbInstance.pushResult([]);
+
+			const result = await callFlipRecipientToFreeText(makeNamedRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				recipientName: 'Rosie',
+			});
+
+			expect(mockDbInstance.lastSetPayload()).toMatchObject({
+				recipientUserId: null,
+				recipientName: 'Rosie',
+				// The trust banner must disappear — the flag resets even when previously self-promoted.
+				recipientIsModerator: false,
+			});
+			expect(result).toMatchObject({ recipientUserId: null, recipientName: 'Rosie' });
+		});
+
+		it('auto-inserts an active správce assignment for the ex-recipient (orphan guard stays satisfied)', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow({ recipientName: 'Rosie' })]);
+			mockDbInstance.pushResult([]);
+
+			await callFlipRecipientToFreeText(makeNamedRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				recipientName: 'Rosie',
+			});
+
+			expect(mockDbInstance.lastValuesPayload()).toMatchObject({
+				wishlistId: WISHLIST_ID,
+				userId: RECIPIENT_ID,
+			});
+		});
+	});
+
+	describe('actor gating: only the linked recipient may flip', () => {
+		it('throws 403 ACCESS_DENIED for a správce (no evicting a linked recipient)', async () => {
+			// DB call 1: requireWishlistRow — caller is MODERATOR_ID, recipient is RECIPIENT_ID.
+			// Rejected before any moderator-assignment lookup: správce status is irrelevant.
+			mockDbInstance.pushResult([makeWishlistRow()]);
+
+			await expect(
+				callFlipRecipientToFreeText(makeModeratorAuthContext(), {
+					id: WISHLIST_ID,
+					recipientName: 'Rosie',
+				}),
+			).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
+		});
+
+		it('throws 403 ACCESS_DENIED for a visitor', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+
+			await expect(
+				callFlipRecipientToFreeText(makeOtherAuthContext(), {
+					id: WISHLIST_ID,
+					recipientName: 'Rosie',
+				}),
+			).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
+		});
+
+		it('throws 403 ACCESS_DENIED on a for-someone list (no linked recipient to flip)', async () => {
+			// A free-text list has recipientUserId = null — nobody matches, even a správce.
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow()]);
+
+			await expect(
+				callFlipRecipientToFreeText(makeModeratorAuthContext(), {
+					id: WISHLIST_ID,
+					recipientName: 'Rosie',
+				}),
+			).rejects.toMatchObject({ status: 403, message: 'ACCESS_DENIED' });
+		});
+	});
+
+	describe('archived list is rejected', () => {
+		it('throws 400 CANNOT_MODIFY_ARCHIVED_WISHLIST before touching the recipient', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+			await expect(
+				callFlipRecipientToFreeText(makeNamedRecipientAuthContext(), {
+					id: WISHLIST_ID,
+					recipientName: 'Rosie',
+				}),
+			).rejects.toMatchObject({ status: 400, message: 'CANNOT_MODIFY_ARCHIVED_WISHLIST' });
+		});
+	});
+
+	describe('notification: shared list notifies followers, draft stays silent', () => {
+		it('dispatches the self-promote-channel notification to followers, excluding the actor', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: new Date('2024-01-10T00:00:00Z'), status: 'active' }),
+			]);
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow({ recipientName: 'Rosie' })]);
+			mockDbInstance.pushResult([]); // insert assignment
+			// DB call 4: active followers — includes the actor, who must be filtered out
+			mockDbInstance.pushResult([{ userId: OTHER_USER_ID }, { userId: RECIPIENT_ID }]);
+
+			await callFlipRecipientToFreeText(makeNamedRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				recipientName: 'Rosie',
+			});
+
+			expect(mockDispatchNotification).toHaveBeenCalledTimes(1);
+			expect(mockDispatchNotification).toHaveBeenCalledWith({
+				type: NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
+				targetUserIds: [OTHER_USER_ID],
+				wishlistId: WISHLIST_ID,
+				actorId: RECIPIENT_ID,
+				actorName: 'Recipient Alice',
+			});
+		});
+
+		it('stays silent on a draft (sharedAt is null)', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([makeForSomeoneWishlistRow({ recipientName: 'Rosie' })]);
+			mockDbInstance.pushResult([]); // insert assignment
+
+			await callFlipRecipientToFreeText(makeNamedRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				recipientName: 'Rosie',
+			});
+
+			expect(mockDispatchNotification).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('input validation (FlipRecipientToFreeTextInputSchema)', () => {
+		it('trims the recipient name', () => {
+			const parsed = v.parse(FlipRecipientToFreeTextInputSchema, {
+				id: WISHLIST_ID,
+				recipientName: '  Rosie  ',
+			});
+			expect(parsed.recipientName).toBe('Rosie');
+		});
+
+		it('rejects an empty or whitespace-only name', () => {
+			expect(
+				v.safeParse(FlipRecipientToFreeTextInputSchema, {
+					id: WISHLIST_ID,
+					recipientName: '',
+				}).success,
+			).toBe(false);
+			expect(
+				v.safeParse(FlipRecipientToFreeTextInputSchema, {
+					id: WISHLIST_ID,
+					recipientName: '   ',
+				}).success,
+			).toBe(false);
+		});
+
+		it('rejects a name longer than 100 characters and accepts exactly 100', () => {
+			expect(
+				v.safeParse(FlipRecipientToFreeTextInputSchema, {
+					id: WISHLIST_ID,
+					recipientName: 'a'.repeat(101),
+				}).success,
+			).toBe(false);
+			expect(
+				v.safeParse(FlipRecipientToFreeTextInputSchema, {
+					id: WISHLIST_ID,
+					recipientName: 'a'.repeat(100),
+				}).success,
+			).toBe(true);
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe('archiveWishlist', () => {
 	describe('recipient can archive', () => {
 		it('returns the archived wishlist row', async () => {
@@ -960,13 +1162,15 @@ describe('followWishlist', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('getWishlistByShortId', () => {
 	describe('recipient role', () => {
-		it('returns role=recipient when the authed user is the linked recipient (self list, no managerNames)', async () => {
+		it('returns role=recipient when the authed user is the linked recipient (self list, no správci)', async () => {
 			const wishlistRow = makeWishlistRow();
 			// DB call 1: wishlist + user leftJoin → coalesced recipientDisplayName
 			mockDbInstance.pushResult([
 				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
 			]);
-			// No mod query (recipient match); no managerNames query (recipientUserId is set)
+			// No mod query (recipient match)
+			// DB call 2: managerNames query (fetched for ALL lists, 2026-07-14 decision) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
 				makeRecipientAuthContext(),
@@ -975,8 +1179,47 @@ describe('getWishlistByShortId', () => {
 
 			expect(result.role).toBe('recipient');
 			expect(result.recipientDisplayName).toBe('Recipient Alice');
-			// Self lists surface the recipient directly, so no manager label is fetched.
+			// No správci and no self-promotion → no manager names, no „Spravuje" line.
 			expect(result.managerNames).toEqual([]);
+		});
+	});
+
+	describe('manager names on linked-recipient (self) lists — 2026-07-14 header decision', () => {
+		it('fetches manager names even when recipientUserId is set (správci render on self lists too)', async () => {
+			const wishlistRow = makeWishlistRow();
+			// DB call 1: wishlist + user leftJoin
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			// No mod query (recipient match)
+			// DB call 2: managerNames query — a správce exists on this self list
+			mockDbInstance.pushResult([{ name: 'Jana' }]);
+
+			const result = (await callGetWishlistByShortId(
+				makeRecipientAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { managerNames: string[] };
+
+			expect(result.managerNames).toEqual(['Jana']);
+		});
+
+		it('includes the self-promoted recipient in managerNames despite no moderator_assignment row', async () => {
+			const wishlistRow = makeWishlistRow({ recipientIsModerator: true });
+			// DB call 1: wishlist + user leftJoin
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			// No mod query (recipient match)
+			// DB call 2: managerNames query — one regular správce
+			mockDbInstance.pushResult([{ name: 'Jana' }]);
+
+			const result = (await callGetWishlistByShortId(
+				makeRecipientAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { managerNames: string[] };
+
+			// recipientIsModerator=true counts the recipient as a správce in the header line.
+			expect(result.managerNames).toEqual(['Recipient Alice', 'Jana']);
 		});
 	});
 
@@ -989,6 +1232,8 @@ describe('getWishlistByShortId', () => {
 			]);
 			// DB call 2: hasActiveModeratorAssignment → found
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+			// DB call 3: managerNames query (runs for all lists) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
 				makeModeratorAuthContext(),
@@ -1006,7 +1251,7 @@ describe('getWishlistByShortId', () => {
 			mockDbInstance.pushResult([{ wishlist: wishlistRow, recipientDisplayName: 'Grandma' }]);
 			// DB call 2: hasActiveModeratorAssignment → found (caller is a správce)
 			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
-			// DB call 3: managerNames query (only runs when recipientUserId === null)
+			// DB call 3: managerNames query (runs for all lists)
 			mockDbInstance.pushResult([{ name: 'Martin' }, { name: 'Jana' }]);
 
 			const result = (await callGetWishlistByShortId(
@@ -1029,6 +1274,8 @@ describe('getWishlistByShortId', () => {
 			]);
 			// DB call 2: hasActiveModeratorAssignment → none found
 			mockDbInstance.pushResult([]);
+			// DB call 3: managerNames query (runs for all lists) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(
 				makeOtherAuthContext(),
@@ -1047,6 +1294,8 @@ describe('getWishlistByShortId', () => {
 				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
 			]);
 			// No moderator check when unauthenticated
+			// DB call 2: managerNames query (runs for all lists) → none
+			mockDbInstance.pushResult([]);
 
 			const result = (await callGetWishlistByShortId(null, WISHLIST_SHORT_ID)) as {
 				role: string;

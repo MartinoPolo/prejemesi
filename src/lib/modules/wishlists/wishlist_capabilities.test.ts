@@ -6,6 +6,10 @@ import {
 	canSeeReserverNames,
 	canReserveGift,
 	canLikeGift,
+	resolveRevertCapability,
+	REVERT_CAPABILITY,
+	type RevertCapability,
+	type WishlistStatus,
 } from './wishlist_capabilities.js';
 import { WISHLIST_ROLES, type WishlistRole } from './types.js';
 
@@ -152,4 +156,51 @@ describe('wishlist capabilities rights matrix', () => {
 			expect(canLikeGift(WISHLIST_ROLES.recipient)).toBe(false);
 		});
 	});
+});
+
+/**
+ * Revert-to-draft capability matrix (issue #150). Expected truths derive from
+ * DECISIONS.md §"Revert to draft: správce when clean, admin when reserved" and
+ * §"App admin via ADMIN_EMAILS", NOT from the implementation:
+ *
+ *   - Only an ACTIVE (shared) list can revert; draft/archived → hidden.
+ *   - The RECIPIENT never sees the option (leak-safe), even when also an admin.
+ *   - A správce reverts a clean list silently (`clean`); on a reserved list they are
+ *     BLOCKED (`reserved-blocked`) unless they are also an admin (`reserved-admin`).
+ *   - An app admin's grant is EXACTLY the reserved-list revert (`reserved-admin`),
+ *     including on lists they do not manage; a clean list they don't manage → hidden.
+ *   - A plain visitor (no admin) → hidden.
+ */
+describe('resolveRevertCapability — revert-to-draft matrix (issue #150)', () => {
+	const cases: ReadonlyArray<[WishlistRole, WishlistStatus, boolean, boolean, RevertCapability]> =
+		[
+			// role, status, isAdmin, hasReservations → capability
+			// Recipient: never, under any combination (leak guard).
+			[WISHLIST_ROLES.recipient, 'active', false, false, REVERT_CAPABILITY.hidden],
+			[WISHLIST_ROLES.recipient, 'active', false, true, REVERT_CAPABILITY.hidden],
+			[WISHLIST_ROLES.recipient, 'active', true, true, REVERT_CAPABILITY.hidden],
+			// Správce (moderator) on an active list.
+			[WISHLIST_ROLES.moderator, 'active', false, false, REVERT_CAPABILITY.clean],
+			[WISHLIST_ROLES.moderator, 'active', false, true, REVERT_CAPABILITY.reservedBlocked],
+			[WISHLIST_ROLES.moderator, 'active', true, true, REVERT_CAPABILITY.reservedAdmin],
+			[WISHLIST_ROLES.moderator, 'active', true, false, REVERT_CAPABILITY.clean],
+			// Non-managing visitor: admin's grant is reserved-only; clean → hidden.
+			[WISHLIST_ROLES.visitor, 'active', true, true, REVERT_CAPABILITY.reservedAdmin],
+			[WISHLIST_ROLES.visitor, 'active', true, false, REVERT_CAPABILITY.hidden],
+			[WISHLIST_ROLES.visitor, 'active', false, true, REVERT_CAPABILITY.hidden],
+			[WISHLIST_ROLES.visitor, 'active', false, false, REVERT_CAPABILITY.hidden],
+			// Non-active lists never expose the option, even to an admin with reservations.
+			[WISHLIST_ROLES.moderator, 'draft', true, true, REVERT_CAPABILITY.hidden],
+			[WISHLIST_ROLES.moderator, 'archived', true, true, REVERT_CAPABILITY.hidden],
+			[WISHLIST_ROLES.visitor, 'archived', true, true, REVERT_CAPABILITY.hidden],
+		];
+
+	it.each(cases)(
+		'role=%s status=%s admin=%s reserved=%s → %s',
+		(role, status, isAdmin, hasReservations, expected) => {
+			expect(resolveRevertCapability({ role, status, isAdmin, hasReservations })).toBe(
+				expected,
+			);
+		},
+	);
 });
