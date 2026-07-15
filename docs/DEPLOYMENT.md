@@ -14,8 +14,8 @@ triggers `.github/workflows/deploy.yml`:
    eslint, migration safety, unit + browser-mode vitest, and the Playwright
    e2e suite against a Postgres service. A commit with any failing check never
    reaches the deploy job. (PRs and `dev` pushes run the same suite via
-   `ci.yml` but skip e2e — `run_e2e` defaults to `false` — to keep feedback
-   fast; only the production deploy gate requires it.)
+   `ci.yml`, also called with `run_e2e: true`, so e2e runs there too; this
+   `verify` step re-runs it to pin the exact deployed commit.)
 2. **migration-review** — writes a step summary listing any new `drizzle/*.sql`
    migrations in the push, with the reminder to apply them before approving.
 3. **deploy** — waits for the GitHub **`production` environment approval**
@@ -28,17 +28,24 @@ and as a `GIT_COMMIT_SHA` plain-text var on the Worker.
 
 ### PR and `dev` merge gate
 
-Pull requests targeting `dev` run the reusable checks through `ci.yml`. Branch
-protection requires the stable `checks / required` status. That aggregator
-requires static and unit checks, and requires E2E as well when the workflow is
-called by the production deploy with `run_e2e: true`. The separate
-`checks / e2e` status is intentionally skipped on PRs and `dev` pushes.
+Pull requests targeting `dev` (and `dev` pushes) run the reusable checks through
+`ci.yml`, now called with `run_e2e: true` — so the full suite **including the
+Playwright e2e job** runs on every PR and `dev` push. Branch protection requires
+the stable `checks / required` aggregator, which fails if the static/unit checks
+fail or (when `run_e2e: true`) if e2e fails. Feedback is slower than the old
+e2e-skipped setup, but regressions are caught before the merge rather than only
+at the production deploy gate.
 
 If the reusable workflow's caller or aggregator job name changes, update the
-`dev` branch protection status check at the same time.
+branch protection status check on both `dev` and `production` at the same time.
 
-Production protection uses the corresponding `verify / required` status because
-`deploy.yml` calls the reusable workflow through its `verify` job.
+Production protection also requires `checks / required`: release PRs
+(`dev` → `production`) run `ci.yml` the same way, so the same aggregator gates
+the merge. The production **push** then re-runs the suite through `deploy.yml`'s
+`verify` job before the environment-approval deploy step. (Historically this
+required `verify / required`, a status that only appears on the production push,
+never on the release PR — so it could never be satisfied pre-merge; it was
+repointed to `checks / required`.)
 
 Environment approval is configured under
 **Settings → Environments → production** (required reviewer + branch policy).

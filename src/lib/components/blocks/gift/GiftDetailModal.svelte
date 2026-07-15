@@ -74,7 +74,11 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content class={styles.content()} showCloseButton={true}>
+	<Dialog.Content
+		class={styles.content()}
+		showCloseButton={true}
+		onOpenAutoFocus={(event) => event.preventDefault()}
+	>
 		<Dialog.Title class="sr-only">{title}</Dialog.Title>
 		<Dialog.Description class="sr-only">
 			{readOnly

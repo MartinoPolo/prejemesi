@@ -326,7 +326,7 @@
 			<Button
 				intent="outline"
 				size="md"
-				class="hidden md:inline-flex"
+				class="hidden min-[1040px]:inline-flex"
 				onclick={() => (isImportWizardOpen = true)}
 			>
 				<FileUpIcon data-icon="inline-start" />
@@ -335,7 +335,7 @@
 			<Button
 				intent="outline"
 				size="icon"
-				class="md:hidden"
+				class="min-[1040px]:hidden"
 				aria-label={m.import_wizard_title()}
 				onclick={() => (isImportWizardOpen = true)}
 			>
@@ -346,7 +346,7 @@
 			<Button
 				intent="primary"
 				size="md"
-				class="hidden md:inline-flex"
+				class="hidden min-[1040px]:inline-flex"
 				onclick={() => (isCreateModalOpen = true)}
 			>
 				<PlusIcon data-icon="inline-start" />
@@ -355,7 +355,7 @@
 			<Button
 				intent="primary"
 				size="icon"
-				class="md:hidden"
+				class="min-[1040px]:hidden"
 				aria-label={m.nav_create()}
 				onclick={() => (isCreateModalOpen = true)}
 			>
@@ -366,16 +366,28 @@
 			<NotificationBell />
 		{/if}
 
-		<!-- Palette / dark mode / language controls: separate buttons on desktop; below
-		     768px they consolidate into the MobileNav drawer (logged-in) or a compact
-		     popover (anonymous — no drawer exists for them). -->
-		<div class="hidden items-center gap-1 md:flex">
+		<!-- Appearance controls. ≥1040px: three separate buttons (full desktop fits).
+		     768–1039px: consolidated into one AppearanceMenu button so the header does not
+		     overflow. Logged-in users below 768px get these inside the MobileNav drawer;
+		     anonymous users have no drawer, so they keep the consolidated menu below 1040px. -->
+		<div class="hidden items-center gap-1 min-[1040px]:flex">
 			<PaletteSwitcher />
 			<LanguageToggle variant="icon" />
 			<DarkModeToggle />
 		</div>
-		{#if !user}
-			<div class="md:hidden">
+		{#if user}
+			<!-- One compound range variant, not `md:block` + `min-[1040px]:hidden` as two
+			     separate rules: Tailwind emits the arbitrary min-[1040px] media block before
+			     the named md block regardless of pixel value, so md:block would win the
+			     cascade at >=1040px and this control would stay stuck on-screen. A single
+			     min-width+max-width range has no competing rule to lose to. Uses
+			     max-[1040px] (not 1039) because Tailwind compiles arbitrary max-[Npx] to
+			     `width < Npx` (exclusive), so 1040 is the value that still includes 1039px. -->
+			<div class="hidden md:max-[1040px]:block">
+				<AppearanceMenu />
+			</div>
+		{:else}
+			<div class="min-[1040px]:hidden">
 				<AppearanceMenu />
 			</div>
 		{/if}
