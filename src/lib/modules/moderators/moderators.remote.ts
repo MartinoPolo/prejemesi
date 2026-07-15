@@ -13,6 +13,7 @@ import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
 import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 import {
 	verifyManagerAccess,
+	verifyLinkedRecipientAccess,
 	requireWishlistRow,
 	assertNotLastManager,
 	resolveWishlistRole,
@@ -331,13 +332,10 @@ export const selfPromoteToModerator = guardedCommand(
 	SelfPromoteInputSchema,
 	async ({ user: currentUser }, input) => {
 		const database = getDb();
-		const wishlistRow = await requireWishlistRow(input.wishlistId);
 
 		// Self-promote is a linked-recipient action only: it opts the recipient into seeing
 		// reservation counts. Správci already see full state; free-text recipients have no account.
-		if (wishlistRow.recipientUserId !== currentUser.id) {
-			error(403, SERVER_ERROR.ACCESS_DENIED);
-		}
+		const wishlistRow = await verifyLinkedRecipientAccess(currentUser.id, input.wishlistId);
 		if (wishlistRow.status === 'archived') {
 			error(400, SERVER_ERROR.CANNOT_SELF_PROMOTE_ON_ARCHIVED);
 		}

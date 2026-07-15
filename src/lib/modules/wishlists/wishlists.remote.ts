@@ -1,7 +1,8 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, sql, count } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
+import { isAppAdmin } from '$lib/server/admin.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
@@ -17,13 +18,17 @@ import { seedNewWishlist } from './wishlist_create.js';
 import {
 	resolveWishlistRole,
 	verifyManagerAccess,
+	verifyLinkedRecipientAccess,
 	assertWishlistMutable,
 } from './wishlist_access.js';
+import { resolveRevertCapability } from './wishlist_capabilities.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
 	RenameRecipientInputSchema,
+	FlipRecipientToFreeTextInputSchema,
 	SetWishlistPaletteInputSchema,
+	WISHLIST_ROLES,
 	type WishlistRole,
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
@@ -90,29 +95,62 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 	// Determine role
 	const role: WishlistRole = await resolveWishlistRole(authContext, row.wishlist);
 
-	// Manager names power the header "Spravuje {name}" meta row. Only fetched for for-someone lists
-	// (free-text recipient); self lists show the recipient prominently and need no manager label.
-	let managerNames: string[] = [];
-	if (row.wishlist.recipientUserId === null) {
-		const managerRows = await database
-			.select({ name: user.name })
-			.from(moderatorAssignment)
-			.innerJoin(user, eq(moderatorAssignment.userId, user.id))
+	// Manager names power the header „Spravuje/Spravují {names}" meta row — fetched for ALL
+	// lists, self lists included (2026-07-14 header decision). A self-promoted linked
+	// recipient counts as a správce in this line even though they have no
+	// moderator_assignment row (`recipientIsModerator` flag).
+	const managerRows = await database
+		.select({ name: user.name })
+		.from(moderatorAssignment)
+		.innerJoin(user, eq(moderatorAssignment.userId, user.id))
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, row.wishlist.id),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		)
+		.orderBy(moderatorAssignment.assignedAt);
+	const managerNames = managerRows.map((manager) => manager.name);
+	if (row.wishlist.recipientUserId !== null && row.wishlist.recipientIsModerator) {
+		managerNames.unshift(row.recipientDisplayName);
+	}
+
+	// Revert-to-draft affordance for THIS viewer (issue #150). Server-computed so the client
+	// (settings gear + danger tab) renders the exact variant without any admin logic of its own.
+	// The reservation count is consulted only for a manager/admin on an active list.
+	const isAdmin = isAppAdmin(authContext?.user.email);
+	const needsReservationCheck =
+		row.wishlist.status === 'active' &&
+		role !== WISHLIST_ROLES.recipient &&
+		(role === WISHLIST_ROLES.moderator || isAdmin);
+	let hasReservations = false;
+	if (needsReservationCheck) {
+		const reservationCountRows = await database
+			.select({ value: count() })
+			.from(reservation)
+			.innerJoin(gift, eq(reservation.giftId, gift.id))
 			.where(
 				and(
-					eq(moderatorAssignment.wishlistId, row.wishlist.id),
-					isNull(moderatorAssignment.deletedAt),
+					eq(gift.wishlistId, row.wishlist.id),
+					isNull(reservation.deletedAt),
+					isNull(gift.deletedAt),
 				),
-			)
-			.orderBy(moderatorAssignment.assignedAt);
-		managerNames = managerRows.map((manager) => manager.name);
+			);
+		hasReservations = (reservationCountRows[0]?.value ?? 0) > 0;
 	}
+	const revertCapability = resolveRevertCapability({
+		role,
+		status: row.wishlist.status,
+		isAdmin,
+		hasReservations,
+	});
 
 	return {
 		...row.wishlist,
 		recipientDisplayName: row.recipientDisplayName,
 		managerNames,
 		role,
+		revertCapability,
 	} as const;
 });
 
@@ -324,6 +362,76 @@ export const renameRecipient = guardedCommand(
 			.set({ recipientName: input.recipientName, updatedAt: new Date() })
 			.where(eq(wishlist.id, input.id))
 			.returning();
+
+		return updated;
+	},
+);
+
+/**
+ * Flip a linked recipient to a free-text recipient (issue #150, decision 2026-07-14).
+ * Only the LINKED RECIPIENT may convert their OWN list — správci cannot (no evicting a
+ * linked recipient). The flip clears `recipientUserId`, sets the free-text name, resets
+ * the self-promote disclosure flag (the trust banner disappears; the always-visible
+ * „Spravuje {name}" line is the ongoing disclosure), and gives the ex-recipient an active
+ * správce assignment (keeps management, satisfies the orphan guard). Shared lists notify
+ * followers via the existing self-promote channel (email + in-app) that the actor now
+ * sees reservations; drafts stay silent; archived lists are rejected. One-way: linking a
+ * recipient back requires the claim link.
+ */
+export const flipRecipientToFreeText = guardedCommand(
+	FlipRecipientToFreeTextInputSchema,
+	async ({ user: currentUser }, input) => {
+		const database = getDb();
+
+		const wishlistRow = await verifyLinkedRecipientAccess(currentUser.id, input.id);
+		assertWishlistMutable(wishlistRow);
+
+		const updated = await database.transaction(async (tx) => {
+			const [row] = await tx
+				.update(wishlist)
+				.set({
+					recipientUserId: null,
+					recipientName: input.recipientName,
+					recipientIsModerator: false,
+					updatedAt: new Date(),
+				})
+				.where(eq(wishlist.id, input.id))
+				.returning();
+
+			// The ex-recipient keeps managing as a regular správce with normal správce
+			// visibility. A linked recipient can never already hold an active assignment
+			// (acceptModeratorInvite rejects the recipient), so a plain insert is safe.
+			await tx.insert(moderatorAssignment).values({
+				wishlistId: input.id,
+				userId: currentUser.id,
+			});
+
+			return row;
+		});
+
+		// Shared list: followers learn the actor now sees reservations — same channel and
+		// copy as recipient self-promote. Draft: silent. Archived was rejected above.
+		if (wishlistRow.sharedAt !== null) {
+			const followerRows = await database
+				.select({ userId: wishlistFollower.userId })
+				.from(wishlistFollower)
+				.where(
+					and(
+						eq(wishlistFollower.wishlistId, input.id),
+						isNull(wishlistFollower.unfollowedAt),
+					),
+				);
+
+			await dispatchNotification({
+				type: NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED,
+				targetUserIds: followerRows
+					.map((row) => row.userId)
+					.filter((targetUserId) => targetUserId !== currentUser.id),
+				wishlistId: input.id,
+				actorId: currentUser.id,
+				actorName: currentUser.name,
+			});
+		}
 
 		return updated;
 	},

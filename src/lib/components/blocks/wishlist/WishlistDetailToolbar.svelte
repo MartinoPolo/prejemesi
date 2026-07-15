@@ -18,6 +18,9 @@
 	interface WishlistDetailToolbarProps {
 		/** Recipient OR správce: gates theme, settings, import, batch-add, and add-gift. */
 		canManage: boolean;
+		/** App admin with a revert action on this list but no management rights (issue #150): shows
+		 *  the settings gear (danger/admin actions only) even when {@link canManage} is false. */
+		adminSettingsAvailable?: boolean;
 		/** Viewer role: the availability chip is hidden for the recipient (reservations are hidden). */
 		role: WishlistRole;
 		isArchived: boolean;
@@ -39,6 +42,7 @@
 
 	let {
 		canManage,
+		adminSettingsAvailable = false,
 		role,
 		isArchived,
 		isAuthenticated,
@@ -98,6 +102,10 @@
 					<PaletteIcon />
 				</Button>
 			</SimpleTooltip>
+		{/if}
+		<!-- Settings gear: for managers (full settings) and for an app admin with a danger action
+		     on this list (revert only), even when they do not manage it (issue #150). -->
+		{#if (canManage && !isArchived) || adminSettingsAvailable}
 			<SimpleTooltip text={m.wishlist_settings_title()}>
 				<Button
 					size="icon"
