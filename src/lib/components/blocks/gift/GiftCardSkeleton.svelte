@@ -7,7 +7,7 @@
 	class="flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
 >
 	<!-- Image area -->
-	<Skeleton class="h-32 w-full rounded-none border-b-[2.5px] border-ink" />
+	<Skeleton class="aspect-[356/128] max-h-40 w-full rounded-none border-b-[2.5px] border-ink" />
 
 	<!-- Body -->
 	<div class="flex flex-1 flex-col gap-2 p-4">
