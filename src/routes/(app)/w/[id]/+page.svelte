@@ -85,6 +85,15 @@
 
 	// ── Reactive state (declared before await for synchronous context setup) ─
 
+	// `wishlist` is undefined until the top-level `await` below resolves. Under
+	// experimental.async the client still hydrates the template synchronously in
+	// that window and eagerly evaluates any derived/context-getter NOT statically
+	// tied to the awaited value (context getters hide their `wishlist` read inside
+	// a closure the compiler can't see, and {#if} branch conditions must resolve to
+	// pick a hydration branch). So every reactive read that feeds a context getter
+	// or a block condition MUST be null-safe (`wishlist?.…`); direct markup/head/
+	// handler reads run only after resolution and stay unguarded. Removing a guard
+	// or adding an unguarded eager read reintroduces a hard hydration crash.
 	let wishlist = $state<
 		Wishlist & {
 			recipientDisplayName: string;
@@ -107,7 +116,7 @@
 		setGiftsContext(
 			() => gifts,
 			() => role,
-			() => wishlist.status === 'archived',
+			() => wishlist?.status === 'archived',
 			() => isAuthenticated,
 			() => likedGiftIds,
 		),
@@ -125,30 +134,30 @@
 
 	const sharingContext = untrack(() =>
 		setSharingContext(
-			() => wishlist.shortId,
-			() => wishlist.sharedAt !== null,
+			() => wishlist?.shortId ?? '',
+			() => wishlist?.sharedAt != null,
 		),
 	);
 
 	// ── Derived values ───────────────────────────────────────────────────────
 
-	const isArchived = $derived(wishlist.status === 'archived');
+	const isArchived = $derived(wishlist?.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
-	const wishlistStatus = $derived(wishlist.status as 'draft' | 'active' | 'archived');
+	const wishlistStatus = $derived(wishlist?.status as 'draft' | 'active' | 'archived');
 	// Non-managers see a friendly „Seznam se připravuje" page on a draft list (never-shared or
 	// reverted, issue #150) instead of the toolbar + gifts; the URL revives on (re-)share.
 	const isPreparing = $derived(wishlistStatus === 'draft' && !canManage);
 	// App admin with a revert action but no management rights: surface the settings gear so they
 	// can reach the danger-only revert (issue #150). Non-hidden capability for a non-manager ⟺ admin.
 	const adminSettingsAvailable = $derived(
-		!canManage && wishlist.revertCapability !== REVERT_CAPABILITY.hidden,
+		!canManage && wishlist?.revertCapability !== REVERT_CAPABILITY.hidden,
 	);
-	const recipientIsModerator = $derived(wishlist.recipientIsModerator);
+	const recipientIsModerator = $derived(wishlist?.recipientIsModerator);
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
-	const isForSomeoneElse = $derived(wishlist.recipientUserId === null);
-	const themeEmoji = $derived(getWishlistEmoji(wishlist.theme));
+	const isForSomeoneElse = $derived(wishlist?.recipientUserId == null);
+	const themeEmoji = $derived(getWishlistEmoji(wishlist?.theme));
 	function getWishlistPageUrl() {
 		return `${SITE_URL}/w/${wishlist.shortId}`;
 	}
