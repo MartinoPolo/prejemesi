@@ -20,11 +20,6 @@
 When debugging or analyzing issues related to third-party libraries, delegate exploration to a sub-agent pointing at the cloned source in `C:\_MP_github_cloned\`
 **Available**: svelte (+sveltekit), bits-ui, shadcn-svelte, storybook, fallow, lucide, tailwindcss
 
-## Svelte
-
-Before finalizing any .svelte or .svelte.ts file, run svelte-autofixer and iterate until no issues remain.
-When editing or creating Svelte code, use Svelte MCP tools (get-documentation, svelte-autofixer) for up-to-date API reference.
-
 ## Testing
 
 - When writing tests, always derive expected behavior from requirements (GitHub issue descriptions and comments, `DECISIONS.md`, `CONTEXT.md`, or other docs) — never adapt tests to match the implementation. If a test reveals a bug, report it to the user or fix it immediately.
@@ -62,25 +57,17 @@ When editing or creating Svelte code, use Svelte MCP tools (get-documentation, s
 
 - For verified branch-delete-only pushes, use `git push --no-verify origin --delete ...` unless the user explicitly wants hooks run.
 
-## Svelte Rules
-
-- Before finalizing any .svelte or .svelte.ts file, run svelte-autofixer and iterate until no issues remain.
-- When editing or creating Svelte code, use Svelte MCP tools (get-documentation, svelte-autofixer) for up-to-date API reference.
-
 ## Database
 
 - Drizzle with `strict: true` -- always enabled to prevent data loss on renames.
 - Schema in `src/lib/server/db/schema.ts`
 - Seed script: `src/lib/server/db/seed.ts` — run `pnpm db:seed` to populate test data.
 
-### Test Accounts (password: see `SEED_PASSWORD` in seed.ts — "password" + "123")
+### Test Accounts (password: `SEED_PASSWORD` in seed.ts — "password" + "123")
 
-| Email          | Name           | Role                                                                         |
-| -------------- | -------------- | ---------------------------------------------------------------------------- |
-| martin@test.cz | Martin Novák   | Recipient — 4 self-lists (active/draft/archived); správce of Rosie + Miminko |
-| jana@test.cz   | Jana Dvořáková | Recipient + moderator on Martin's lists; co-správce of Miminko               |
-| petr@test.cz   | Petr Svoboda   | Active gifter — many reservations                                            |
-| eva@test.cz    | Eva Králová    | Casual visitor — mostly likes                                                |
-| tomas@test.cz  | Tomáš Černý    | Mostly inactive — 1 archived + 1 active list                                 |
+Two most-used personas below (recipient + gifter). For the full roster (jana/eva/tomas), fixture layout, and which UI states each exercises, read `src/lib/server/db/seed.ts` — seed IDs are prefixed `seed-`.
 
-Seed includes 16 wishlists, 53 gifts, 27 reservations (2 marked bought/purchased), 10 likes, moderator assignments, one pending claim invite, followers (incl. unfollowed), and notifications. Martin follows 6 active lists spanning all gifter states — open (Petr, Eva), reserved (Jana svátek, Tomáš knihy), bought (Jana Vánoce, Tomáš chata) — to exercise the Sledované dropdown sections + truncation. Two "for-someone" lists (issue #99) exercise the „Pro {recipient}" header + orphan guard: recipient **Rosie** (single správce Martin) and recipient **Miminko** (multi správce Martin + Jana, plural „Spravují {names}"). A third for-someone list (issue #150) exercises the claim token: recipient **Klára** (single správce Jana) carries a pending claim invite (`/w/klarawl1/claim/seed-claim-klara-token`) that Eva can accept to link her account as recipient (no správce history / reservations, so no spoiler guard trips). All seed IDs are prefixed `seed-` for easy identification/cleanup.
+| Email          | Name         | Role                                                    |
+| -------------- | ------------ | ------------------------------------------------------- |
+| martin@test.cz | Martin Novák | Primary recipient — owns self-lists + for-someone lists |
+| petr@test.cz   | Petr Svoboda | Active gifter — many reservations                       |
