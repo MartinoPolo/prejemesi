@@ -53,6 +53,8 @@
 <div class={styles.card()}>
 	<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
 	<div class={styles.imageArea()}>
+		<div class={styles.imagePattern()} aria-hidden="true"></div>
+
 		<GiftImage
 			class="size-full bg-transparent"
 			imageUrl={gift.imageUrl}
