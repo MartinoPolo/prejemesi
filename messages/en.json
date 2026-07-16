@@ -863,7 +863,6 @@
 	"import_wizard_next": "Continue",
 	"import_wizard_back": "Back",
 	"import_wizard_cancel": "Cancel",
-	"import_wizard_close": "Close",
 	"import_wizard_source_file": "File",
 	"import_wizard_source_paste": "Paste",
 	"import_wizard_source_sheets": "Google Sheets",

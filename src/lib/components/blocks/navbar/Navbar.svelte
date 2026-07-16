@@ -54,6 +54,8 @@
 	}: NavbarProps = $props();
 
 	const MAX_DROPDOWN_ITEMS = 5;
+	const dropdownFooterStatClass =
+		'inline-flex items-center gap-1.5 text-sm text-muted-foreground';
 
 	const STATUS_BADGE: Record<
 		Wishlist['status'],
@@ -298,9 +300,7 @@
 								{m.nav_footer_new_list()}
 							</button>
 						{:else if i === 1}
-							<span
-								class="inline-flex items-center gap-1.5 text-sm text-muted-foreground"
-							>
+							<span class={dropdownFooterStatClass}>
 								<GiftIcon class="size-3.5" />
 								{m.nav_footer_reserved_stats({
 									reserved: moderatedStats.reserved,
@@ -308,9 +308,7 @@
 								})}
 							</span>
 						{:else}
-							<span
-								class="inline-flex items-center gap-1.5 text-sm text-muted-foreground"
-							>
+							<span class={dropdownFooterStatClass}>
 								<GiftIcon class="size-3.5" />
 								{followedOpenCount > 0
 									? m.nav_footer_lists_need_gift({ count: followedOpenCount })

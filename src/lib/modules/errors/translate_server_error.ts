@@ -55,6 +55,8 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.QUANTITY_CANNOT_BE_LOWERED]: () => m.server_error_quantity_cannot_be_lowered(),
 	[SERVER_ERROR.CANNOT_DELETE_AFTER_SHARING]: () => m.server_error_cannot_delete_after_sharing(),
 	[SERVER_ERROR.CANNOT_DELETE_RESERVED_GIFT]: () => m.server_error_cannot_delete_reserved_gift(),
+	// Reuses the form's own range-error copy so toast and inline hint read identically.
+	[SERVER_ERROR.INVALID_PRICE_RANGE]: () => m.gift_price_range_invalid(),
 
 	[SERVER_ERROR.RECIPIENT_RENAME_NOT_ALLOWED]: () =>
 		m.server_error_recipient_rename_not_allowed(),

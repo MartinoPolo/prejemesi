@@ -426,6 +426,15 @@ describe('CreateGiftInputSchema', () => {
 			expect(result.success).toBe(false);
 			expect(result.issues).toBeDefined();
 		});
+
+		it('accepts priceMax without price (both-bounds rule is enforced by the form, not the wire schema)', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				priceMax: 1500,
+			});
+			expect(result.success).toBe(true);
+		});
 	});
 });
 

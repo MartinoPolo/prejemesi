@@ -48,7 +48,7 @@ const GiftLinksSchema = v.pipe(v.array(GiftLinkSchema), v.maxLength(MAX_GIFT_LIN
  * the upper bound may not sit below the lower bound. Either bound absent/null is always valid —
  * range mode's "both bounds required" rule is enforced client-side by the form, not the wire schema.
  */
-function isPriceRangeValid<T extends { price?: number | null; priceMax?: number | null }>(
+export function isPriceRangeValid<T extends { price?: number | null; priceMax?: number | null }>(
 	input: T,
 ): boolean {
 	return (

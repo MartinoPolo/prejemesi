@@ -863,7 +863,6 @@
 	"import_wizard_next": "Pokračovat",
 	"import_wizard_back": "Zpět",
 	"import_wizard_cancel": "Zrušit",
-	"import_wizard_close": "Zavřít",
 	"import_wizard_source_file": "Soubor",
 	"import_wizard_source_paste": "Vložit",
 	"import_wizard_source_sheets": "Google Sheets",

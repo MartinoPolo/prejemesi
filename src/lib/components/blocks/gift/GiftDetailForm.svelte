@@ -738,6 +738,7 @@
 									id="gift-price-range-switch"
 									size="sm"
 									bind:checked={isPriceRange}
+									onCheckedChange={() => (priceRangeError = '')}
 								/>
 							</div>
 						</div>
@@ -751,6 +752,11 @@
 									type="number"
 									min="0"
 									aria-label={m.gift_price_range_min_aria()}
+									state={priceRangeError !== '' ? 'error' : 'default'}
+									aria-invalid={priceRangeError !== '' ? true : undefined}
+									aria-describedby={priceRangeError !== ''
+										? 'gift-price-range-error'
+										: undefined}
 								/>
 								<span class="shrink-0 text-muted-foreground" aria-hidden="true"
 									>–</span
@@ -763,6 +769,11 @@
 									type="number"
 									min="0"
 									aria-label={m.gift_price_range_max_aria()}
+									state={priceRangeError !== '' ? 'error' : 'default'}
+									aria-invalid={priceRangeError !== '' ? true : undefined}
+									aria-describedby={priceRangeError !== ''
+										? 'gift-price-range-error'
+										: undefined}
 								/>
 							</div>
 						{:else}
@@ -775,7 +786,9 @@
 							/>
 						{/if}
 						{#if priceRangeError !== ''}
-							<HelpText state="error">{priceRangeError}</HelpText>
+							<HelpText id="gift-price-range-error" state="error"
+								>{priceRangeError}</HelpText
+							>
 						{/if}
 					</div>
 					<div class={styles.formField()}>

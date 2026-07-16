@@ -8,6 +8,8 @@
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
 	import type { Side } from './index.js';
+	import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	let {
 		ref = $bindable(null),
@@ -44,11 +46,11 @@
 					<Button
 						intent="ghost"
 						size="icon-sm"
-						class="absolute top-4 right-4 size-(--size-control-lg) rounded-full border-[2.5px] border-ink bg-card text-ink shadow-sticker-sm transition-transform duration-200 ease-spring hover:rotate-90 hover:scale-[1.08] hover:bg-card hover:text-ink motion-reduce:transition-none motion-reduce:hover:rotate-0 motion-reduce:hover:scale-100 [&_svg]:size-4"
+						class={overlayCloseButtonClass}
 						{...props}
 					>
 						<XIcon data-icon="inline-start" />
-						<span class="sr-only">Close</span>
+						<span class="sr-only">{m.close()}</span>
 					</Button>
 				{/snippet}
 			</SheetPrimitive.Close>

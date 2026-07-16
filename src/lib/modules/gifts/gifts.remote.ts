@@ -27,6 +27,7 @@ import {
 	ReorderGiftItemSchema,
 	MarkGiftReceivedInputSchema,
 	DEFAULT_GIFT_CURRENCY,
+	isPriceRangeValid,
 	type GiftForRecipient,
 	type GiftForVisitor,
 } from './types.js';
@@ -372,6 +373,14 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 
 	const { role, wishlistRow } = await verifyManagerAccess(user.id, giftRow.wishlistId);
 	assertWishlistMutable(wishlistRow);
+
+	// Cross-field guard on the MERGED row (issue #155): the wire schema only validates bounds present
+	// in the same payload, so a partial update carrying one bound must not invert the persisted range.
+	const mergedPrice = input.price !== undefined ? input.price : giftRow.price;
+	const mergedPriceMax = input.priceMax !== undefined ? input.priceMax : giftRow.priceMax;
+	if (!isPriceRangeValid({ price: mergedPrice, priceMax: mergedPriceMax })) {
+		error(400, SERVER_ERROR.INVALID_PRICE_RANGE);
+	}
 
 	const now = new Date();
 	const isShared = wishlistRow.sharedAt !== null;
