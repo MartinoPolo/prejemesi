@@ -52,7 +52,9 @@
 	const reservedCount = $derived(gift?.reservedCount ?? 0);
 	const availableCount = $derived(maxQuantity - reservedCount);
 	const showQuantitySelector = $derived(maxQuantity > 1);
-	const priceDisplay = $derived(gift ? formatPrice(gift.price, gift.currency) : '');
+	const priceDisplay = $derived(
+		gift ? formatPrice(gift.price, gift.currency, gift.priceMax) : '',
+	);
 
 	function incrementQuantity() {
 		if (quantity < availableCount) {

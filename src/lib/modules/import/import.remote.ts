@@ -93,6 +93,7 @@ function draftToGiftValues(
 		description: draft.description ?? null,
 		links: normalizeGiftLinks(draft.links),
 		price: draft.price ?? null,
+		priceMax: draft.priceMax ?? null,
 		currency: draft.currency ?? DEFAULT_GIFT_CURRENCY,
 		priorityLevelId,
 		sortOrder,

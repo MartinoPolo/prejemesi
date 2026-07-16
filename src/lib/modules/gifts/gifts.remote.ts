@@ -72,6 +72,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			editedAfterShareAt: gift.editedAfterShareAt,
 			links: gift.links,
 			price: gift.price,
+			priceMax: gift.priceMax,
 			currency: gift.currency,
 			imageUrl: gift.imageUrl,
 			imageKey: gift.imageKey,
@@ -100,6 +101,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			editedAfterShareAt: row.editedAfterShareAt,
 			links: row.links,
 			price: row.price,
+			priceMax: row.priceMax,
 			currency: row.currency,
 			imageUrl: row.imageUrl,
 			imageKey: row.imageKey,
@@ -230,6 +232,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			editedAfterShareAt: row.editedAfterShareAt,
 			links: row.links,
 			price: row.price,
+			priceMax: row.priceMax,
 			currency: row.currency,
 			imageUrl: row.imageUrl,
 			imageKey: row.imageKey,
@@ -276,6 +279,7 @@ export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user },
 			description: input.description ?? null,
 			links: normalizeGiftLinks(input.links),
 			price: input.price ?? null,
+			priceMax: input.priceMax ?? null,
 			currency: input.currency ?? DEFAULT_GIFT_CURRENCY,
 			imageUrl: input.imageUrl ?? null,
 			imageKey: input.imageKey ?? null,
@@ -436,6 +440,10 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	}
 	if (input.price !== undefined && input.price !== giftRow.price) {
 		updateData.price = input.price;
+		didChange = true;
+	}
+	if (input.priceMax !== undefined && input.priceMax !== giftRow.priceMax) {
+		updateData.priceMax = input.priceMax;
 		didChange = true;
 	}
 	if (input.currency !== undefined && input.currency !== giftRow.currency) {

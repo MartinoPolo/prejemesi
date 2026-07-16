@@ -29,7 +29,7 @@
 	);
 
 	const styles = giftDetailModalVariants();
-	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
+	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>

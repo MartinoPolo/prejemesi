@@ -11,6 +11,8 @@ export interface PreShareGiftSnapshot {
 	descriptionAppends: DescriptionAppend[];
 	quantity: number | null;
 	price: number | null;
+	/** Upper bound of a non-binding price range hint (issue #155). Null = single price (`price`). */
+	priceMax: number | null;
 	currency: string | null;
 	imageUrl: string | null;
 	imageKey: string | null;
@@ -27,6 +29,7 @@ export function toPreShareGiftSnapshot(giftRow: PreShareGiftSnapshot): PreShareG
 		descriptionAppends: giftRow.descriptionAppends,
 		quantity: giftRow.quantity,
 		price: giftRow.price,
+		priceMax: giftRow.priceMax,
 		currency: giftRow.currency,
 		imageUrl: giftRow.imageUrl,
 		imageKey: giftRow.imageKey,
@@ -190,6 +193,12 @@ export function computePreShareOwnerEdit(
 	// price
 	if (input.price !== undefined && input.price !== current.price) {
 		updateData.price = input.price;
+		changed = true;
+	}
+
+	// priceMax (non-binding range upper bound, issue #155)
+	if (input.priceMax !== undefined && input.priceMax !== current.priceMax) {
+		updateData.priceMax = input.priceMax;
 		changed = true;
 	}
 

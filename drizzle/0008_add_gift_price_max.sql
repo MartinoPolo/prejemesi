@@ -1,0 +1,1 @@
+ALTER TABLE "gift" ADD COLUMN "price_max" integer;

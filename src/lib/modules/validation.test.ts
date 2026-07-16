@@ -364,6 +364,69 @@ describe('CreateGiftInputSchema', () => {
 		});
 		expect(result.success).toBe(true);
 	});
+
+	// Issue #155 REQ-4: price_max is an additive, optional range upper bound.
+	describe('priceMax (price range)', () => {
+		it('accepts a valid range (priceMax >= price)', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				price: 1200,
+				priceMax: 1500,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('accepts equal bounds (priceMax === price)', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				price: 1000,
+				priceMax: 1000,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('accepts a gift without priceMax (single price, unaffected)', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				price: 1000,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('accepts null priceMax', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				price: 1000,
+				priceMax: null,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects priceMax below price', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				price: 1500,
+				priceMax: 1200,
+			});
+			expect(result.success).toBe(false);
+			expect(result.issues).toBeDefined();
+		});
+
+		it('rejects a negative priceMax', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				priceMax: -1,
+			});
+			expect(result.success).toBe(false);
+			expect(result.issues).toBeDefined();
+		});
+	});
 });
 
 describe('ReserveGiftInputSchema', () => {
@@ -573,6 +636,46 @@ describe('UpdateGiftInputSchema – image metadata', () => {
 		const result = parseSuccess(UpdateGiftInputSchema, {
 			id: 'gift-1',
 			imageMeta: { fitMode: 'contain-padded' },
+		});
+		expect(result.success).toBe(true);
+	});
+});
+
+// Issue #155 REQ-4: same cross-field rule as CreateGiftInputSchema, applied to the partial
+// update shape (fields absent from the payload are simply skipped by the check).
+describe('UpdateGiftInputSchema – priceMax (price range)', () => {
+	it('accepts a valid range update', () => {
+		const result = parseSuccess(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			price: 1200,
+			priceMax: 1500,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects priceMax below price', () => {
+		const result = parseSuccess(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			price: 1500,
+			priceMax: 1200,
+		});
+		expect(result.success).toBe(false);
+		expect(result.issues).toBeDefined();
+	});
+
+	it('accepts clearing the range back to a single price (priceMax: null)', () => {
+		const result = parseSuccess(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			price: 1000,
+			priceMax: null,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts updating only priceMax without price present', () => {
+		const result = parseSuccess(UpdateGiftInputSchema, {
+			id: 'gift-1',
+			priceMax: 1500,
 		});
 		expect(result.success).toBe(true);
 	});
