@@ -8,6 +8,7 @@ import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
@@ -81,6 +82,9 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 		.select({
 			wishlist: wishlist,
 			recipientDisplayName: recipientDisplayNameSql(),
+			// Raw persisted value (Google profile picture URL or uploaded object key, issue #158) –
+			// null for a free-text (for-someone-else) recipient, same as recipientDisplayName's name.
+			recipientImage: user.image,
 		})
 		.from(wishlist)
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
@@ -148,6 +152,10 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 	return {
 		...row.wishlist,
 		recipientDisplayName: row.recipientDisplayName,
+		// The recipient's avatar (issue #158). The wishlist header already shows this same
+		// recipient's name to every visitor of this public query, so surfacing their avatar
+		// picture alongside it exposes no new PII beyond what this surface already reveals.
+		recipientImage: resolveUserImageUrl(row.recipientImage),
 		managerNames,
 		role,
 		revertCapability,

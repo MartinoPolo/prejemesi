@@ -12,6 +12,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import { getInitials } from '$lib/utils/initials.js';
 	import type { Snippet } from 'svelte';
 
 	interface WishlistCardProps {
@@ -52,16 +53,6 @@
 	const variants = $derived(wishlistCardVariants({ archived: isArchived }));
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[wishlistData.status]());
 	const statusChipClass = $derived(STATUS_CHIP_CLASSES[wishlistData.status]);
-
-	function getRecipientInitials(name: string): string {
-		return name
-			.split(' ')
-			.map((part) => part[0])
-			.filter(Boolean)
-			.slice(0, 2)
-			.join('')
-			.toUpperCase();
-	}
 
 	function formatDate(date: Date | null): string {
 		if (date === null) {
@@ -109,7 +100,7 @@
 		{#if recipientDisplayName}
 			<div class={variants.ownerRow()}>
 				<div class={variants.ownerAvatar()}>
-					{getRecipientInitials(recipientDisplayName)}
+					{getInitials(recipientDisplayName)}
 				</div>
 				<span>{m.wishlist_recipient_chip({ name: recipientDisplayName })}</span>
 			</div>

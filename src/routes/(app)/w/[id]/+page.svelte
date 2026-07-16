@@ -97,6 +97,7 @@
 	let wishlist = $state<
 		Wishlist & {
 			recipientDisplayName: string;
+			recipientImage: string | null;
 			managerNames: string[];
 			role: WishlistRole;
 			revertCapability: RevertCapability;
@@ -787,6 +788,7 @@
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
+		recipientImage={wishlist.recipientImage}
 		{isForSomeoneElse}
 		managerNames={wishlist.managerNames}
 		description={wishlist.description}

@@ -11,6 +11,7 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
+	import { getInitials } from '$lib/utils/initials.js';
 
 	interface SettingsProfileSectionProps {
 		email: string;
@@ -43,15 +44,6 @@
 	// Uploads that are not saved yet; replaced/abandoned ones are deleted from
 	// storage on save or unmount (issue #107, REQ-6).
 	const pendingUploads = createPendingUploads();
-
-	function getInitials(name: string): string {
-		return name
-			.split(' ')
-			.map((part) => part[0])
-			.join('')
-			.toUpperCase()
-			.slice(0, 2);
-	}
 
 	function handleAvatarUpload(result: UploadResult) {
 		avatarUrl = result.publicUrl;

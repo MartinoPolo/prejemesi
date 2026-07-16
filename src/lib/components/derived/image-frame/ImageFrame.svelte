@@ -54,6 +54,9 @@
 		interactive?: boolean;
 		/** Force the loading skeleton (e.g. parent still fetching before `src` exists). */
 		loading?: boolean;
+		/** Fires once the image genuinely fails to load (after any transformed-variant retry). Lets a
+		 *  consumer (e.g. Avatar) swap to a fallback other than this frame's own emoji tile. */
+		onerror?: () => void;
 		class?: string;
 	}
 
@@ -72,6 +75,7 @@
 		shape = 'square',
 		interactive = false,
 		loading = false,
+		onerror,
 		class: className,
 	}: Props = $props();
 
@@ -161,6 +165,7 @@
 			transformFailedSrc = src;
 		} else {
 			erroredSrc = src;
+			onerror?.();
 		}
 	}
 
