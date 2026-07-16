@@ -181,7 +181,7 @@
 <div
 	class={cn(styles.root(), className)}
 	role="button"
-	aria-label="Nahrát obrázek"
+	aria-label={m.image_upload_aria()}
 	tabindex={progress.status === 'uploading' ? -1 : 0}
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}

@@ -73,7 +73,7 @@
 					intent="ghost"
 					size="icon-sm"
 					onclick={onmoveup}
-					aria-label="Move up"
+					aria-label={m.gift_link_move_up()}
 					disabled={!canMoveUp || disabled}
 				>
 					<ArrowUpIcon />
@@ -82,7 +82,7 @@
 					intent="ghost"
 					size="icon-sm"
 					onclick={onmovedown}
-					aria-label="Move down"
+					aria-label={m.gift_link_move_down()}
 					disabled={!canMoveDown || disabled}
 				>
 					<ArrowDownIcon />
