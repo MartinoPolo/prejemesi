@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detail dárku v3 – Varianta B – Zvětšená karta</title>
+<!--
+  Přejeme si — gift detail modal v3, VARIANT B: „Zvětšená karta dárku"
+  Vertical modal (issue #165) that literally scales up the accepted gift-card
+  hierarchy (designs/gift-card-v2/variants/variant-d.html):
+  · full-width SQUARE hero image with the heart as an image-corner overlay
+    and the reservation badge overlaying the photo when reserved
+  · content below: title, price + priority, ghost link rows, description with
+    the integrated „Upraveno po sdílení" update block
+  · card-style footer: availability left, reserve right; sticky on mobile
+  Desktop and mobile share one composition — that is the point.
+  Self-contained: inline CSS, no external requests, system font fallbacks.
+-->
+<style>
+  :root {
+    --p-brand:  #1E9BE9;
+    --p-deep:   #1265A8;
+    --p-ink:    #16385C;
+    --p-accent: #FFC93C;
+
+    --surface:      color-mix(in oklab, var(--p-brand) 11%, white);
+    --panel:        #FFFFFF;
+    --brand:        var(--p-brand);
+    --brand-fill:   var(--p-brand);
+    --ink:          var(--p-ink);
+    --ink-soft:     color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --ink-faint:    color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --link:         #7048E8;
+    --accent:       var(--p-accent);
+    --danger:       #E4574C;
+    --heart:        #E25563;
+
+    --tag-priority-bg: #FFE9AD;
+    --tag-edited-bg:   #ECE5FC;
+    --like-tint:    #FDECEC;
+    --link-tint:    #F1EDFD;
+    --reserved-note-bg: #EAF7EE;
+    --reserved-ink: #1D7A3E;
+
+    --pattern-dot:  color-mix(in oklab, var(--ink) 13%, transparent);
+    --hard-shadow:        color-mix(in oklab, var(--p-ink) 16%, transparent);
+    --hard-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+
+    --font-head: "DynaPuff", ui-rounded, "Segoe UI", system-ui, sans-serif;
+    --font-body: "Geist", "Segoe UI", system-ui, sans-serif;
+
+    --s1: 8px; --s2: 16px; --s3: 24px; --s4: 32px; --s6: 48px;
+    --r-panel: 16px; --r-btn: 7px; --border-w: 2.5px;
+    --shadow-sticker:      4px 4px 0 var(--hard-shadow);
+    --shadow-sticker-lift: 7px 7px 0 var(--hard-shadow);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+    color: var(--ink); background: var(--surface);
+    background-image: radial-gradient(var(--pattern-dot) 1.5px, transparent 1.6px);
+    background-size: 24px 24px;
+    padding-bottom: 90px;
+  }
+  h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.15; }
+  button { font-family: var(--font-body); cursor: pointer; }
+  :focus-visible { outline: 3px dashed var(--ink); outline-offset: 3px; border-radius: 4px; }
+
+  .wrap { max-width: 1240px; margin-inline: auto; padding: var(--s3); }
+  .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; }
+  .pagehead h1 { font-size: clamp(22px, 3vw, 30px); margin-bottom: 6px; }
+  .pagehead p { color: var(--ink-soft); max-width: 70ch; }
+  .anno {
+    display: inline-block; width: fit-content;
+    font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-soft); background: var(--panel);
+    border: 2px dashed color-mix(in oklab, var(--ink) 38%, transparent);
+    border-radius: 999px; padding: 3px 11px; margin: 3px 4px 3px 0;
+  }
+  .section-title { font-size: 20px; margin: var(--s4) 0 10px; }
+
+  .sticker { background: var(--panel); border: var(--border-w) solid var(--ink); border-radius: var(--r-panel); box-shadow: var(--shadow-sticker); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 700; font-size: 15px; text-decoration: none;
+    min-height: 44px; padding: 10px 20px; border-radius: var(--r-btn);
+    border: var(--border-w) solid var(--ink);
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease;
+  }
+  .btn-primary { color: #fff; background: var(--brand-fill); box-shadow: var(--shadow-sticker); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-sticker-lift); }
+  .btn-danger  { color: var(--danger); background: var(--panel); border-color: var(--danger); box-shadow: var(--shadow-sticker); }
+  .btn-danger:hover { background: #FDF0EF; transform: translateY(-2px); }
+  .btn-disabled { color: var(--ink-soft); background: var(--panel); border-style: dashed; cursor: not-allowed; }
+
+  .tag {
+    font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--panel);
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  }
+  .tag-priority { background: var(--tag-priority-bg); transform: rotate(-1.5deg); }
+  .tag-edited   { background: var(--tag-edited-bg); transform: rotate(1deg); }
+
+  /* -------------------------------------------------- backdrop gift grid */
+  .stage {
+    position: relative; overflow: hidden;
+    border: var(--border-w) solid var(--ink); border-radius: var(--r-panel);
+    padding: var(--s4) var(--s3);
+    display: grid; place-items: center;
+    background: var(--surface);
+  }
+  .stage-bg { position: absolute; inset: 0; padding: var(--s3); display: grid; gap: var(--s3); align-content: start; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .bgift { background: var(--panel); border: var(--border-w) solid var(--ink); border-radius: var(--r-panel); box-shadow: var(--shadow-sticker); overflow: hidden; }
+  .bgift-img { aspect-ratio: 1/1; max-height: 150px; width: 100%; display: grid; place-items: center; font-size: 44px; border-bottom: var(--border-w) solid var(--ink); background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; }
+  .bgift-body { padding: 10px 14px 14px; }
+  .bgift-name { font-family: var(--font-head); font-size: 15px; }
+  .bgift-price { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+  .stage-overlay { position: absolute; inset: 0; background: color-mix(in oklab, var(--p-ink) 45%, transparent); backdrop-filter: blur(2.5px); }
+
+  /* --------------------------------------------- the modal = enlarged card */
+  .card-modal {
+    position: relative; z-index: 2;
+    width: min(460px, 100%);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-close {
+    position: absolute; top: 12px; right: 12px; z-index: 4;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid var(--ink); background: var(--panel);
+    font-size: 16px; font-weight: 800; color: var(--ink);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .modal-close:hover { transform: rotate(90deg) scale(1.08); }
+
+  /* hero: frame stretches full width, the CROP stays square (REQ-5) */
+  .hero {
+    position: relative; flex: none;
+    border-bottom: var(--border-w) solid var(--ink);
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+    display: grid; place-items: center;
+  }
+  .hero-img {
+    width: 100%; max-width: 340px; aspect-ratio: 1 / 1;
+    max-height: 42vh;
+    position: relative; overflow: hidden;
+    background: #F2F0EA;
+  }
+  .plate {
+    position: absolute; inset: 12%;
+    background: #3FA548;
+    background-image: radial-gradient(circle at 40% 35%, rgba(255,255,255,.34) 0 24%, rgba(0,0,0,.14) 30% 36%, transparent 40%);
+    background-size: 19px 19px;
+    border: 2.5px solid var(--ink); border-radius: 12px;
+    box-shadow: 3px 3px 0 var(--hard-shadow);
+    transform: rotate(-3deg);
+  }
+  /* heart overlay = card parity (gift-card-v2 variant-d) */
+  .heart-overlay {
+    position: absolute; right: 10px; bottom: 10px; z-index: 2;
+    display: grid; place-items: center;
+    width: 44px; height: 44px;
+    border: 2px solid var(--ink); border-radius: 50%;
+    background: var(--panel); color: var(--heart);
+    font-size: 21px; line-height: 1;
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    transition: transform .15s ease, background-color .15s ease;
+  }
+  .heart-overlay:hover { background: var(--like-tint); transform: scale(1.08); }
+  .heart-overlay .cnt { position: absolute; right: -6px; top: -8px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; font-size: 11.5px; font-weight: 800; color: var(--ink); background: var(--like-tint); border: 2px solid var(--ink); border-radius: 999px; }
+  .heart-overlay[aria-pressed="true"] { background: var(--like-tint); }
+  .heart-overlay[aria-pressed="true"]::before { content: "♥"; }
+  .heart-overlay[aria-pressed="false"]::before { content: "♡"; }
+
+  /* reservation badge overlays the photo when reserved (ReservationBadge) */
+  .res-overlay {
+    position: absolute; left: 12px; top: 12px; z-index: 2;
+    background: var(--reserved-note-bg); border: 2px solid var(--ink); border-radius: 10px;
+    font-weight: 800; font-size: 13px; color: var(--reserved-ink);
+    padding: 5px 11px; transform: rotate(-3deg);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    display: grid; justify-items: center; line-height: 1.25;
+  }
+  .res-overlay small { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+
+  .card-body { padding: var(--s2) var(--s3) var(--s3); display: grid; gap: 12px; align-content: start; }
+  .card-title { font-size: 24px; padding-right: 12px; }
+  .facts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .price { font-size: 21px; font-weight: 800; color: var(--brand); }
+  .sub { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* ghost link rows on hairline dividers = card parity (gift-card-v2 refined) */
+  .glinks { display: grid; }
+  .glink {
+    display: flex; align-items: center; gap: 8px; min-height: 44px;
+    padding: 8px 2px; text-decoration: none;
+    color: var(--link); font-weight: 700; font-size: 14px;
+    border-bottom: 1px solid var(--ink-faint);
+    transition: background-color .15s ease;
+  }
+  .glink:last-child { border-bottom: 0; }
+  .glink:hover { background: var(--link-tint); }
+  .glink .gl-title { color: var(--ink-soft); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .desc { display: grid; gap: 8px; }
+  .desc > p { font-size: 14.5px; }
+  .desc-append {
+    border-left: 4px solid var(--accent);
+    background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    display: grid; gap: 6px;
+  }
+  .desc-append-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .desc-append-head small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .desc-append p { font-size: 14.5px; }
+  .meta-line { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+
+  /* card footer = action bar; sticky when the sheet scrolls */
+  .card-actions {
+    margin-top: auto;
+    position: sticky; bottom: 0; z-index: 3;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 12px var(--s3);
+    border-top: var(--border-w) solid var(--ink);
+    background: var(--panel);
+  }
+  .availability { font-size: 13px; font-weight: 800; color: var(--ink-soft); margin-right: auto; }
+  .availability.mine { color: var(--reserved-ink); }
+  .purchased-toggle {
+    font-size: 13px; font-weight: 700; color: var(--ink); min-height: 44px;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 999px;
+    padding: 7px 14px; transition: transform .15s ease;
+  }
+  .purchased-toggle:hover { transform: translateY(-1px); }
+
+  .is-dimmed .hero, .is-dimmed .card-body { opacity: .55; filter: grayscale(.45); }
+
+  /* --------------------------------------------------------- mobile frame */
+  .phones { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: flex-start; }
+  .phone {
+    width: 390px; max-width: 100%; height: 760px;
+    border: var(--border-w) solid var(--ink); border-radius: 24px;
+    box-shadow: var(--shadow-sticker-lift);
+    overflow: hidden; background: var(--surface);
+  }
+  .phone-scroll { height: 100%; overflow-y: auto; }
+  /* overflow must stay visible inside the phone or the sticky footer pins to the
+     card's (taller) box instead of the scrollport and gets clipped */
+  .phone .card-modal { width: 100%; min-height: 100%; border: 0; border-radius: 0; box-shadow: none; background: var(--panel); overflow: visible; }
+
+  /* ----------------------------------------------------------- state matrix */
+  .states-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: var(--s3); align-items: start; }
+  .state-col { display: grid; gap: 10px; }
+  .state-col .card-modal { width: 100%; }
+  .state-col .hero-img { max-width: 190px; }
+  .state-col .card-title { font-size: 18px; }
+  .state-col .price { font-size: 17px; }
+  .state-col .card-body { padding: 12px 14px; gap: 8px; }
+  .state-col .card-actions { padding: 10px 12px; position: static; }
+  .state-col .btn { font-size: 13.5px; padding: 8px 14px; }
+  .state-col .desc-append { padding: 8px 10px; }
+  .state-col .desc-append p { font-size: 13px; }
+  .recipient-hint {
+    padding: 10px 14px; margin-top: auto;
+    border-top: 2px dashed var(--ink-faint);
+    font-size: 12px; font-weight: 600; color: var(--ink-soft); font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap pagehead">
+  <p class="eyebrow">Varianta B · Zvětšená karta · detail dárku v3 (issue #165)</p>
+  <h1>Vertikální modal, doslova zvětšená karta dárku</h1>
+  <p>Stejná hierarchie jako přijatá mobilní karta (#163): velká čtvercová fotka nahoře, srdíčko jako
+     overlay v rohu fotky, obsah pod ní a patka s rezervací. Jedna kompozice pro desktop i mobil,
+     na desktopu jen užší a vycentrovaná nad seznamem.</p>
+  <div>
+    <span class="anno">Srdíčko v rohu fotky, stejně jako na kartě</span>
+    <span class="anno">Rezervační štítek překrývá fotku</span>
+    <span class="anno">Otočné zavírací tlačítko řeší issue #164</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 1 · DESKTOP ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">1 · Desktop, úzký vertikální modal nad ztlumeným seznamem</h2>
+  <section class="stage">
+    <div class="stage-bg" aria-hidden="true">
+      <div class="bgift"><div class="bgift-img">🚜</div><div class="bgift-body"><p class="bgift-name">LEGO Technic bagr</p><p class="bgift-price">1&nbsp;899&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🧥</div><div class="bgift-body"><p class="bgift-name">Zimní bunda</p><p class="bgift-price">1&nbsp;249&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">📚</div><div class="bgift-body"><p class="bgift-name">Harry Potter</p><p class="bgift-price">349&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🎲</div><div class="bgift-body"><p class="bgift-name">Hra Azul</p><p class="bgift-price">799&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🛴</div><div class="bgift-body"><p class="bgift-name">Koloběžka</p><p class="bgift-price">2&nbsp;490&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🖍️</div><div class="bgift-body"><p class="bgift-name">Pastelky</p><p class="bgift-price">289&nbsp;Kč</p></div></div>
+    </div>
+    <div class="stage-overlay" aria-hidden="true"></div>
+
+    <div class="card-modal sticker" role="dialog" aria-modal="true" aria-labelledby="gift-title-b">
+      <button type="button" class="modal-close" aria-label="Zavřít">✕</button>
+
+      <div class="hero">
+        <div class="hero-img" aria-label="Fotka: zelená deska pro lego duplo">
+          <div class="plate" aria-hidden="true"></div>
+          <button class="heart-overlay" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="cnt">3</span></button>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <h2 class="card-title" id="gift-title-b">Deska pro lego duplo</h2>
+        <div class="facts">
+          <span class="price">260&nbsp;Kč</span>
+          <span class="tag tag-priority">⭐ Priorita · Vysoká</span>
+        </div>
+
+        <div class="glinks">
+          <a class="glink" href="#">↗ alza.cz <span class="gl-title">LEGO DUPLO 10980 Zelená podložka na stavění</span></a>
+        </div>
+
+        <div class="desc">
+          <h3 class="sub">Popis</h3>
+          <p>Zelená podložka pod duplo kostky, rozměr 38 × 38 cm. Viz odkaz.</p>
+          <div class="desc-append">
+            <div class="desc-append-head">
+              <span class="tag tag-edited">✏️ Upraveno po sdílení</span>
+              <small>doplněno 12. července</small>
+            </div>
+            <p>Klidně i jiná barva, hlavně ať jde spojit s deskami, které už máme.</p>
+          </div>
+        </div>
+        <p class="meta-line">Přidáno 2. července</p>
+      </div>
+
+      <div class="card-actions">
+        <span class="availability">Volné k rezervaci</span>
+        <a class="btn btn-primary" href="#">Rezervovat</a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════ 2 · MOBILE 390 px ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">2 · Mobil 390 px, tatáž kompozice jako sheet</h2>
+  <p style="color:var(--ink-soft); margin-bottom:12px; max-width:70ch">Karta zabírá celou šířku, hero drží
+     čtvercový výřez s výškovým stropem, patka s rezervací je přilepená dole a obsah roluje pod ní.</p>
+  <div class="phones">
+    <div class="phone">
+      <div class="phone-scroll">
+        <div class="card-modal" role="dialog" aria-modal="true" aria-labelledby="gift-title-bm">
+          <button type="button" class="modal-close" aria-label="Zavřít">✕</button>
+          <div class="hero">
+            <div class="hero-img" aria-label="Fotka: zelená deska pro lego duplo">
+              <div class="plate" aria-hidden="true"></div>
+              <button class="heart-overlay" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="cnt">3</span></button>
+            </div>
+          </div>
+          <div class="card-body">
+            <h2 class="card-title" id="gift-title-bm">Deska pro lego duplo</h2>
+            <div class="facts">
+              <span class="price">260&nbsp;Kč</span>
+              <span class="tag tag-priority">⭐ Priorita · Vysoká</span>
+            </div>
+            <div class="glinks">
+              <a class="glink" href="#">↗ alza.cz <span class="gl-title">LEGO DUPLO 10980 Zelená podložka</span></a>
+            </div>
+            <div class="desc">
+              <h3 class="sub">Popis</h3>
+              <p>Zelená podložka pod duplo kostky, rozměr 38 × 38 cm. Viz odkaz.</p>
+              <div class="desc-append">
+                <div class="desc-append-head">
+                  <span class="tag tag-edited">✏️ Upraveno po sdílení</span>
+                  <small>doplněno 12. července</small>
+                </div>
+                <p>Klidně i jiná barva, hlavně ať jde spojit s deskami, které už máme.</p>
+              </div>
+            </div>
+            <p class="meta-line">Přidáno 2. července</p>
+          </div>
+          <div class="card-actions">
+            <span class="availability">Volné k rezervaci</span>
+            <a class="btn btn-primary" href="#" style="flex:1">Rezervovat</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <span class="anno">390 × 760, obsah roluje uvnitř rámu</span><br>
+      <span class="anno">Lajk zůstává na fotce, lišta má jen rezervaci</span><br>
+      <span class="anno">Hero: rám přes celou šířku, výřez čtvercový</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 3 · STAVOVÁ MATICE ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">3 · Stavová matice</h2>
+  <div class="states-grid">
+
+    <div class="state-col">
+      <p class="anno">1 · Volné (návštěvník)</p>
+      <div class="card-modal sticker">
+        <div class="hero">
+          <div class="hero-img"><div class="plate"></div>
+            <button class="heart-overlay" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="cnt">3</span></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">Deska pro lego duplo</h2>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <div class="card-actions">
+          <span class="availability">Volné k rezervaci</span>
+          <a class="btn btn-primary" href="#">Rezervovat</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">2 · Rezervováno mnou</p>
+      <div class="card-modal sticker">
+        <div class="hero">
+          <div class="hero-img"><div class="plate"></div>
+            <span class="res-overlay">✓ Rezervováno vámi</span>
+            <button class="heart-overlay" type="button" aria-pressed="true" aria-label="Zrušit lajk"><span class="cnt">4</span></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">Deska pro lego duplo</h2>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <div class="card-actions">
+          <span class="availability mine">✓ Rezervováno vámi</span>
+          <button class="purchased-toggle" type="button" aria-pressed="false">🛍 Koupeno</button>
+          <button class="btn btn-danger" type="button">Zrušit rezervaci</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">3 · Plně rezervováno</p>
+      <div class="card-modal sticker is-dimmed">
+        <div class="hero">
+          <div class="hero-img"><div class="plate"></div>
+            <span class="res-overlay" style="opacity:1">✓ Rezervováno<small>rezervoval Petr</small></span>
+            <button class="heart-overlay" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="cnt">3</span></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">Deska pro lego duplo</h2>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <div class="card-actions" style="opacity:1">
+          <span class="availability">Rezervoval Petr</span>
+          <button class="btn btn-disabled" type="button" disabled>Rezervováno</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">4 · Obdarovaný (bez spoilerů)</p>
+      <div class="card-modal sticker">
+        <div class="hero">
+          <div class="hero-img"><div class="plate"></div></div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">Deska pro lego duplo</h2>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <p class="recipient-hint">Bez srdíčka na fotce i bez patky: obdarovaný nevidí rezervace ani lajky.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
