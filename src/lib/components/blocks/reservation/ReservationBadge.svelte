@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import * as m from '$lib/paraglide/messages.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 
 	interface ReservationBadgeProps {
@@ -16,7 +17,7 @@
 
 	const label = $derived.by(() => {
 		if (gift.isFullyReserved) {
-			return 'Rezervovano';
+			return m.gift_reserved_overlay();
 		}
 		if (showPartial) {
 			return `${gift.reservedCount}/${maxQuantity}`;

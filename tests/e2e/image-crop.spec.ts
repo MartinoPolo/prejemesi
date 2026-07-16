@@ -110,7 +110,9 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		const dialog = await openAddGiftDialog(page);
 
 		const giftName = 'Dárek s ořezem';
+		const giftDescription = 'Popis pro mobilní rozložení';
 		await dialog.locator('#gift-name').fill(giftName);
+		await dialog.locator('#gift-description').fill(giftDescription);
 
 		// Upload a gift image so the fit-mode controls appear.
 		await dialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
@@ -121,14 +123,8 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await uploaded;
 		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
-		// The three floating preview tiles (round 2–3: card, ONE merged square tile
-		// for list + reservation, and the narrow detail switcher) overlay the image
-		// column and render at the true aspect of their real surfaces (REQ-7).
-		await expectAspect(
-			dialog.getByTestId('gift-preview-card'),
-			GIFT_CROP_TARGET_SPECS.card.aspect,
-			FIXED_TOLERANCE,
-		);
+		// The two preview tiles (shared square plus narrow detail switcher) overlay
+		// the image column and render at the true aspect of their real surfaces.
 		await expectAspect(
 			dialog.getByTestId('gift-preview-square'),
 			GIFT_CROP_TARGET_SPECS.square.aspect,
@@ -139,6 +135,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			GIFT_CROP_TARGET_SPECS.detail.aspect,
 			FIXED_TOLERANCE,
 		);
+		await expect(dialog.getByTestId('gift-preview-card')).toHaveCount(0);
 		// The tiles share one height; the 1:2 detail tile is half as wide as the
 		// square tile (round 3: a switcher, not a spacious preview).
 		const squareBox = await dialog.getByTestId('gift-preview-square').boundingBox();
@@ -153,7 +150,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		);
 		// The floats live INSIDE the image column, not in the form column.
 		const imageColumnBox = await dialog.getByTestId('gift-image-column').boundingBox();
-		const cardTileBox = await dialog.getByTestId('gift-preview-card').boundingBox();
+		const cardTileBox = await dialog.getByTestId('gift-preview-square').boundingBox();
 		expect(imageColumnBox).not.toBeNull();
 		expect(cardTileBox).not.toBeNull();
 		expect(cardTileBox!.x).toBeGreaterThanOrEqual(imageColumnBox!.x);
@@ -201,9 +198,9 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.detail.aspect, FIXED_TOLERANCE);
 		await expect(stageWindow).toContainText('Detail');
 
-		// Draw a manual card crop: zoom in (slider +4 × step 5 = 120 %), then pan.
-		await dialog.getByTestId('gift-preview-card').click();
-		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.card.aspect, FIXED_TOLERANCE);
+		// Draw a manual square crop: zoom in (slider +4 × step 5 = 120 %), then pan.
+		await dialog.getByTestId('gift-preview-square').click();
+		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
 		const zoomSlider = dialog.getByRole('slider');
 		await zoomSlider.focus();
 		for (let step = 0; step < 4; step++) {
@@ -220,7 +217,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		// the focal point moved off-center, so object-position is not 50% 50% (REQ-3 –
 		// a drawn crop is never silently discarded).
 		const cardImage = page.getByRole('img', { name: giftName }).first();
-		await expectAspect(cardImage, GIFT_CROP_TARGET_SPECS.card.aspect, FLUID_TOLERANCE);
+		await expectAspect(cardImage, GIFT_CROP_TARGET_SPECS.square.aspect, FLUID_TOLERANCE);
 		const objectPosition = await cardImage.evaluate(
 			(el) => getComputedStyle(el).objectPosition,
 		);
@@ -233,6 +230,31 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			GIFT_CROP_TARGET_SPECS.square.aspect,
 			FIXED_TOLERANCE,
 		);
+
+		// #163 mobile list: the recipient gets a 128-152px square image on the
+		// left, with all content beside it and no reservation control exposed.
+		await page.setViewportSize({ width: 390, height: 844 });
+		const mobileListImage = page.getByRole('img', { name: giftName }).first();
+		// A manual crop may zoom the <img> beyond its clipped frame. Measure the
+		// visible 1:1 ImageFrame, which is the actual list-thumbnail geometry.
+		const mobileImageFrame = mobileListImage.locator('..');
+		const mobileImageBox = await mobileImageFrame.boundingBox();
+		const mobileTitleBox = await page.getByText(giftName, { exact: true }).boundingBox();
+		const mobileDescriptionBox = await page
+			.getByText(giftDescription, { exact: true })
+			.boundingBox();
+		expect(mobileImageBox).not.toBeNull();
+		expect(mobileTitleBox).not.toBeNull();
+		expect(mobileDescriptionBox).not.toBeNull();
+		expect(mobileImageBox!.width).toBeGreaterThanOrEqual(128);
+		expect(mobileImageBox!.width).toBeLessThanOrEqual(152);
+		expect(Math.abs(mobileImageBox!.width - mobileImageBox!.height)).toBeLessThanOrEqual(1);
+		expect(mobileTitleBox!.x).toBeGreaterThan(mobileImageBox!.x + mobileImageBox!.width);
+		expect(mobileDescriptionBox!.x).toBeGreaterThanOrEqual(
+			mobileImageBox!.x + mobileImageBox!.width,
+		);
+		await expect(page.getByRole('button', { name: /^Rezervovat/ })).toHaveCount(0);
+		await page.setViewportSize({ width: 1280, height: 900 });
 
 		// Round-trip: reopening the gift restores crop mode, the card zoom, and the
 		// detail column itself measures at the aspect the stage claimed for it.
@@ -276,9 +298,8 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			);
 		}).toPass({ timeout: 10_000 });
 
-		// Zoom OUT below 100 % (round 2): reopen (Fit round-trips), switch
-		// to Manual and pull the slider under the cover baseline – the readout drops
-		// below 100 and the saved card letterboxes the image inside its frame.
+		// Zoom OUT below 100 % (round 2): reopen (Fit round-trips), switch to
+		// Manual and preserve a one-axis letterboxed detail crop through save/reopen.
 		await expect(async () => {
 			await page.getByText(giftName, { exact: true }).first().click();
 			await expect(editDialog).toBeVisible({ timeout: 2_000 });
@@ -289,23 +310,23 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		);
 		await editDialog.getByRole('radio', { name: /Ručně/ }).click();
 		await expect(editDialog.getByTestId('crop-stage')).toBeVisible();
+		// A square source cannot zoom out inside the square target without showing
+		// fill on both axes. The retained tall detail target is the honest surface
+		// for this one-axis letterbox regression.
+		await editDialog.getByTestId('gift-preview-detail').click();
 		const zoomOutSlider = editDialog.getByRole('slider');
 		await zoomOutSlider.focus();
-		for (let step = 0; step < 4; step++) {
-			await zoomOutSlider.press('ArrowLeft');
-		}
-		await expect(editDialog.getByText('80 %')).toBeVisible();
+		await zoomOutSlider.press('Home');
+		expect(Number(await zoomOutSlider.inputValue())).toBeLessThan(100);
 		await editDialog.getByRole('button', { name: 'Uložit' }).click();
 		await expect(editDialog).not.toBeVisible({ timeout: 10_000 });
-		const letterboxedImage = page.getByRole('img', { name: giftName }).first();
+		const persistedDetailTile = () => editDialog.getByTestId('gift-preview-detail');
 		await expect(async () => {
-			const widths = await letterboxedImage.evaluate((el) => ({
-				image: el.getBoundingClientRect().width,
-				frame: el.parentElement!.getBoundingClientRect().width,
-			}));
-			// zoom 0.8 → the image spans 80 % of the frame width, fill on the sides.
-			expect(widths.image).toBeLessThan(widths.frame * 0.9);
-			expect(widths.image).toBeGreaterThan(0);
+			await page.getByText(giftName, { exact: true }).first().click();
+			await expect(editDialog).toBeVisible({ timeout: 2_000 });
+			// Reopening the editor proves the detail-target zoom-out persisted.
+			await persistedDetailTile().click();
+			expect(Number(await editDialog.getByRole('slider').inputValue())).toBeLessThan(100);
 		}).toPass({ timeout: 10_000 });
 
 		await page.context().close();
