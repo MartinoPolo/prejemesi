@@ -478,6 +478,12 @@
 	<div
 		class={cn(
 			styles.imageColumn(),
+			// Edit form only (issue #156): the shared border-ink-faint dashed divider
+			// read as an unfinished thin grey line. The dotted mat + surface tint
+			// (already part of the shared imageColumn slot) carries the "mode control +
+			// preview" grouping on its own, so the seam border is dropped here without
+			// touching the shared slot used by the visitor view mode (issue #165).
+			'border-none border-b-0 sm:border-r-0',
 			isCropMode && 'sticky top-0 z-10 h-[400px] sm:static sm:h-auto',
 		)}
 		data-testid="gift-image-column"
