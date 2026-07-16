@@ -324,8 +324,9 @@ test.describe('Wishlist archival', () => {
 		// The gift should be visible
 		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible({ timeout: 10_000 });
 
-		// The "Rezervovat" button should be hidden on an archived list
-		await expect(visitorPage.getByRole('button', { name: /Rezervovat/ })).not.toBeVisible();
+		// The reserve trigger should be hidden on an archived list. Locale-agnostic:
+		// ReserveButton's label is i18n'd (issue #154), select via stable data-testid.
+		await expect(visitorPage.getByTestId('reserve-button')).not.toBeVisible();
 
 		await visitorContext.close();
 		await ownerPage.context().close();

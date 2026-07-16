@@ -40,9 +40,14 @@
 	intent="default"
 	size="icon"
 	aria-label={m.gift_view_switcher_aria()}
+	data-testid="gift-view-switcher"
 >
 	{#each modes as mode (mode.key)}
-		<ToggleGroup.Item value={mode.key} aria-label={modeLabel(mode.key)}>
+		<ToggleGroup.Item
+			value={mode.key}
+			aria-label={modeLabel(mode.key)}
+			data-testid="gift-view-{mode.key}"
+		>
 			<mode.icon />
 		</ToggleGroup.Item>
 	{/each}

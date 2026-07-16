@@ -42,6 +42,7 @@
 		intent="danger"
 		aria-label={m.reserve_button_cancel_aria({ name: gift.name })}
 		onclick={handleUnreserveClick}
+		data-testid="reserve-button"
 	>
 		{m.reserve_button_cancel()}
 	</Button>
@@ -52,6 +53,7 @@
 		disabled={isFullyReserved}
 		aria-label={m.reserve_button_reserve_aria({ name: gift.name })}
 		onclick={handleReserveClick}
+		data-testid="reserve-button"
 	>
 		{#if isFullyReserved}
 			{m.reserve_button_reserved()}

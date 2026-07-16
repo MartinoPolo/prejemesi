@@ -79,7 +79,9 @@ test.describe('Anonymous visitor reservation', () => {
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
 		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible();
-		await expect(visitorPage.getByRole('button', { name: /Rezervovat/ })).toBeVisible();
+		// Locale-agnostic: ReserveButton's label/aria-label are i18n'd (issue #154), so
+		// select the card-level trigger via its stable data-testid.
+		await expect(visitorPage.getByTestId('reserve-button').first()).toBeVisible();
 
 		// Anonymous like prompt keeps the wishlist context on both auth links.
 		await visitorPage
@@ -93,10 +95,7 @@ test.describe('Anonymous visitor reservation', () => {
 		await expect(visitorPage.locator('[data-slot="dialog-overlay"]')).toHaveCount(0);
 
 		// Reserve
-		await visitorPage
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		await visitorPage.getByTestId('reserve-button').first().click();
 		const reserveDialog = visitorPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible();
 		await expectWishlistRedirectAuthLinks(reserveDialog, baseURL!, wishlistPath);
@@ -128,11 +127,9 @@ test.describe('Anonymous visitor reservation', () => {
 		const localizedWishlistPath = `/en${wishlistPath}`;
 
 		await visitorPage.goto(localizedWishlistPath);
-		// Gift-card reserve aria-label remains intentionally Czech across locales.
-		await visitorPage
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		// Locale-agnostic: ReserveButton's label/aria-label are i18n'd (issue #154), so
+		// select the card-level trigger via its stable data-testid.
+		await visitorPage.getByTestId('reserve-button').first().click();
 		const reserveDialog = visitorPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible();
 		await expectWishlistRedirectAuthLinks(
@@ -176,10 +173,7 @@ test.describe('Anonymous visitor reservation', () => {
 		const registrationUser = createTestUser('wishlist-register');
 		await installTurnstileMock(page);
 		await page.goto(wishlistPath);
-		await page
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		await page.getByTestId('reserve-button').first().click();
 		await page.getByRole('dialog').locator('a[href*="/register"]').click();
 		await expect(page).toHaveURL(
 			(url) =>
@@ -223,10 +217,7 @@ test.describe('Anonymous visitor reservation', () => {
 		const loginUser = createTestUser('wishlist-login');
 		await registerViaApi(request, baseURL!, loginUser);
 		await page.goto(wishlistPath);
-		await page
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		await page.getByTestId('reserve-button').first().click();
 		await page.getByRole('dialog').locator('a[href*="/login"]').click();
 		await expect(page).toHaveURL(
 			(url) => url.pathname === '/login' && url.searchParams.get('redirect') === wishlistPath,

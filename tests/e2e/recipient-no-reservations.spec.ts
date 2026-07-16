@@ -32,10 +32,9 @@ test.describe('Recipient cannot see reservation state', () => {
 		const visitorPage = await visitorContext.newPage();
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
-		await visitorPage
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		// Locale-agnostic: ReserveButton's label is i18n'd (issue #154), select the
+		// card-level trigger via its stable data-testid.
+		await visitorPage.getByTestId('reserve-button').first().click();
 		const reserveDialog = visitorPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible({ timeout: 5_000 });
 		await reserveDialog
@@ -52,8 +51,9 @@ test.describe('Recipient cannot see reservation state', () => {
 		// Recipient must NOT see a „Rezervováno" badge
 		await expect(recipientPage.getByText(/Rezervov[aá]no/)).not.toBeVisible();
 
-		// Recipient must NOT see a „Rezervovat" button (recipients can't reserve their own gifts)
-		await expect(recipientPage.getByRole('button', { name: /Rezervovat/ })).not.toBeVisible();
+		// Recipient must NOT see a reserve trigger (recipients can't reserve their own gifts).
+		// Locale-agnostic: ReserveButton's label is i18n'd (issue #154).
+		await expect(recipientPage.getByTestId('reserve-button')).not.toBeVisible();
 
 		await recipientPage.context().close();
 	});

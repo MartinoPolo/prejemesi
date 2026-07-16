@@ -138,10 +138,9 @@ test.describe('Moderator system', () => {
 		await anonymousPage.goto(wishlistPath);
 		await anonymousPage.waitForLoadState('networkidle');
 
-		await anonymousPage
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		// Locale-agnostic: ReserveButton's label is i18n'd (issue #154), select the
+		// card-level trigger via its stable data-testid.
+		await anonymousPage.getByTestId('reserve-button').first().click();
 		const reserveDialog = anonymousPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible({ timeout: 5_000 });
 		await reserveDialog.getByRole('textbox', { name: /Vaše jméno/i }).fill('Anon Reserver');

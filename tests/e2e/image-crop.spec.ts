@@ -227,7 +227,8 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		expect(objectPosition).not.toBe('50% 50%');
 
 		// The list view thumbnail is the square family's real surface.
-		await page.locator('[aria-label="Seznam"]').click();
+		// Locale-agnostic: GiftViewSwitcher labels are i18n'd (issue #154).
+		await page.getByTestId('gift-view-list').click();
 		await expectAspect(
 			page.getByRole('img', { name: giftName }).first(),
 			GIFT_CROP_TARGET_SPECS.square.aspect,
@@ -236,7 +237,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 
 		// Round-trip: reopening the gift restores crop mode, the card zoom, and the
 		// detail column itself measures at the aspect the stage claimed for it.
-		await page.locator('[aria-label="Karta"]').click();
+		await page.getByTestId('gift-view-card').click();
 		const editDialog = page.getByRole('dialog');
 		// Click the gift name text (bubbles to the card wrapper that opens the editor);
 		// retried because a card-center click can land on an inner interactive control.
