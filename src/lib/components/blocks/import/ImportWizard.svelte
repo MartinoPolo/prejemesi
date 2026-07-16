@@ -283,7 +283,7 @@
 
 		<!-- Header: Title + Stepper -->
 		<div class="flex flex-col gap-3 px-6 pt-5 pb-4">
-			<div class="flex items-center justify-between pe-10">
+			<div class="flex items-center justify-between pe-12">
 				<h2 class="font-heading text-lg font-semibold text-foreground">
 					{m.import_wizard_title()}
 				</h2>
