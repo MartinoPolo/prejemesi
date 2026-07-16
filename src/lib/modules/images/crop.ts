@@ -21,10 +21,12 @@ import {
 	IMAGE_ZOOM_BASE,
 	IMAGE_ZOOM_OUT_MIN,
 	IMAGE_ZOOM_MAX,
+	type GiftEditorCropTarget,
 	type GiftCropTarget,
 	type ImageCropRect,
 	type ImageFocalPoint,
 	type ImageMetadata,
+	type ImageTargetCrop,
 } from './types.js';
 
 const CENTERED_FOCAL: ImageFocalPoint = { x: 50, y: 50 };
@@ -312,7 +314,13 @@ export function giftTargetFrameProps(
 	// metadata (#116 follow-up – the editor drops them on save, this guards rows
 	// persisted in between).
 	const targetCrop =
-		meta?.fitMode === IMAGE_FIT_MODES.coverCrop ? meta.targets?.[target] : undefined;
+		meta?.fitMode === IMAGE_FIT_MODES.coverCrop
+			? (meta.targets?.[target] ??
+				// #163: the wide card surface joined the square family. Existing manual
+				// `card` crops remain a backwards-compatible square fallback only until
+				// the editor saves an explicit square crop.
+				(target === 'square' ? meta.targets?.card : undefined))
+			: undefined;
 	if (meta != null && targetCrop !== undefined) {
 		return {
 			fitMode: IMAGE_FIT_MODES.coverCrop,
@@ -322,4 +330,20 @@ export function giftTargetFrameProps(
 		};
 	}
 	return imageMetaToFrameProps(meta);
+}
+
+/**
+ * Merge manual gift-target edits without destructively migrating untouched rows.
+ * A newly saved square crop supersedes the legacy wide-card target, while an
+ * edit to Detail alone preserves that fallback for existing square renderers.
+ */
+export function mergeGiftTargetCrops(
+	existingTargets: ImageMetadata['targets'] | undefined,
+	editedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>>,
+): ImageMetadata['targets'] {
+	const mergedTargets = { ...existingTargets, ...editedTargets };
+	if (editedTargets.square !== undefined) {
+		delete mergedTargets.card;
+	}
+	return Object.keys(mergedTargets).length > 0 ? mergedTargets : undefined;
 }

@@ -20,7 +20,11 @@ async function createSharedWishlistPath(
 	const ownerPage = await registerAndGetPage(browser, request, baseURL, owner);
 
 	await createWishlistAndNavigate(ownerPage, `Anonymous ${ownerRole}`);
-	await addGift(ownerPage, TEST_GIFT.name);
+	await addGift(ownerPage, TEST_GIFT.name, {
+		description: 'Popis pro mobilní rozložení',
+		price: String(TEST_GIFT.price),
+		primaryLink: TEST_GIFT.url,
+	});
 	await shareWishlist(ownerPage);
 
 	const wishlistPath = new URL(ownerPage.url()).pathname;
@@ -73,13 +77,46 @@ test.describe('Anonymous visitor reservation', () => {
 		);
 
 		// Anonymous visitor
-		const visitorContext = await browser.newContext();
+		const visitorContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
 		const visitorPage = await visitorContext.newPage();
 		await installTurnstileMock(visitorPage);
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
 		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible();
 		await expect(visitorPage.getByRole('button', { name: /Rezervovat/ })).toBeVisible();
+		await visitorPage.getByRole('radio', { name: 'Seznam' }).click();
+
+		const mobileListItem = visitorPage
+			.getByTestId('gift-list-item')
+			.filter({ hasText: TEST_GIFT.name });
+		const imageBounds = await mobileListItem.getByTestId('gift-list-image').boundingBox();
+		const reserveBounds = await mobileListItem
+			.getByRole('button', { name: /Rezervovat/ })
+			.boundingBox();
+		const likeBounds = await mobileListItem
+			.getByRole('button', { name: `Přidat do oblíbených: ${TEST_GIFT.name}` })
+			.boundingBox();
+		const primaryLinkBounds = await mobileListItem
+			.getByRole('link', { name: /example\.com/ })
+			.boundingBox();
+
+		expect(imageBounds).not.toBeNull();
+		expect(reserveBounds).not.toBeNull();
+		expect(likeBounds).not.toBeNull();
+		expect(primaryLinkBounds).not.toBeNull();
+		expect(imageBounds!.width).toBeGreaterThanOrEqual(128);
+		expect(imageBounds!.width).toBeLessThanOrEqual(152);
+		expect(imageBounds!.height).toBeCloseTo(imageBounds!.width, 0);
+		expect(reserveBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
+		expect(primaryLinkBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
+		expect(likeBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x);
+		expect(likeBounds!.y).toBeGreaterThanOrEqual(imageBounds!.y);
+		expect(likeBounds!.x + likeBounds!.width).toBeLessThanOrEqual(
+			imageBounds!.x + imageBounds!.width,
+		);
+		expect(likeBounds!.y + likeBounds!.height).toBeLessThanOrEqual(
+			imageBounds!.y + imageBounds!.height,
+		);
 
 		// Anonymous like prompt keeps the wishlist context on both auth links.
 		await visitorPage

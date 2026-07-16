@@ -57,7 +57,7 @@
 			class="size-full bg-transparent"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
-			target="card"
+			target="square"
 			alt={gift.name}
 			variant="card"
 		/>
@@ -103,7 +103,7 @@
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 		</div>
 
-		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />
+		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} compactOnMobile />
 
 		{#if gift.price !== null}
 			<span class={styles.price()}>{priceDisplay}</span>

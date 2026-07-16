@@ -11,7 +11,7 @@ export const giftCardVariants = tv({
 	slots: {
 		card: 'group relative flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
 		imageArea:
-			'relative aspect-[356/128] max-h-40 w-full overflow-hidden border-b-[2.5px] border-ink bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] bg-position-[0px_0px] transition-[background-position] duration-600 motion-safe:group-hover:bg-position-[24px_12px]',
+			'relative aspect-square w-full overflow-hidden border-b-[2.5px] border-ink bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] bg-position-[0px_0px] transition-[background-position] duration-600 motion-safe:group-hover:bg-position-[24px_12px]',
 		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
 		imageVeil: 'absolute inset-0 bg-reserved-veil',
 		body: 'flex flex-1 flex-col gap-2 p-4',

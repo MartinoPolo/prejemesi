@@ -32,11 +32,7 @@ test.describe('Wishlist page', () => {
 		await page.context().close();
 	});
 
-	test('view switcher toggles between card/list/compact', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
+	test('view switcher offers card and list only', async ({ browser, request, baseURL }) => {
 		const user = createTestUser('wl-views');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
@@ -50,8 +46,7 @@ test.describe('Wishlist page', () => {
 		await listBtn.click();
 		await expect(listBtn).toHaveAttribute('aria-checked', 'true');
 
-		await compactBtn.click();
-		await expect(compactBtn).toHaveAttribute('aria-checked', 'true');
+		await expect(compactBtn).toHaveCount(0);
 
 		await page.context().close();
 	});
