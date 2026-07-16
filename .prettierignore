@@ -9,5 +9,8 @@ bun.lockb
 /static/
 /drizzle/
 
+# Sibling git worktrees (other concurrent sessions' checkouts)
+.claude/worktrees/
+
 # Design mockups — reference-only artifacts, not gated source
 /designs/
