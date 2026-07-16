@@ -25,6 +25,7 @@ export default [
 			'**/*.config.*',
 			'**/*.d.ts',
 			'scripts/**',
+			'.claude/worktrees/**',
 		],
 	},
 	...tseslint.configs.recommended,
