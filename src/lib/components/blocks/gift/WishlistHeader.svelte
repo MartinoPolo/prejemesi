@@ -206,19 +206,20 @@
 				     (2026-07-14 header decision, self lists included). -->
 				<p class={styles.recipientLine()}>
 					{m.wishlist_header_for_prefix()}
-					<strong class={styles.recipientName()}>{recipientDisplayName}</strong
-					>{#if canEditRecipient}
-						<Button
-							size="icon-sm"
-							intent="secondary"
-							class="ms-1.5 align-middle"
-							aria-label={m.wishlist_edit_recipient_label()}
-							data-testid="edit-recipient-button"
-							onclick={oneditrecipient}
-						>
-							<PencilIcon />
-						</Button>
-					{/if}
+					<span class={styles.recipientNameGroup()}>
+						<strong class={styles.recipientName()}>{recipientDisplayName}</strong>
+						{#if canEditRecipient}
+							<Button
+								size="icon-sm"
+								intent="ghost"
+								aria-label={m.wishlist_edit_recipient_label()}
+								data-testid="edit-recipient-button"
+								onclick={oneditrecipient}
+							>
+								<PencilIcon />
+							</Button>
+						{/if}
+					</span>
 				</p>
 				<h1 class={styles.title()}>{title}</h1>
 				{#if description}
