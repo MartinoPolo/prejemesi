@@ -92,18 +92,19 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 
 		await screen.getByRole('button', { name: m.save() }).click();
 
-		await expect.element(screen.getByText(m.gift_price_range_invalid())).toBeVisible();
+		const errorText = screen.getByText(m.gift_price_range_invalid());
+		await expect.element(errorText).toBeVisible();
+
+		// Assert the input-to-error association contract, not the hardcoded id string.
+		const errorId = errorText.element().id;
+		expect(errorId).not.toBe('');
 
 		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
 		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
 		await expect.element(minInput).toHaveAttribute('aria-invalid', 'true');
-		await expect
-			.element(minInput)
-			.toHaveAttribute('aria-describedby', 'gift-price-range-error');
+		await expect.element(minInput).toHaveAttribute('aria-describedby', errorId);
 		await expect.element(maxInput).toHaveAttribute('aria-invalid', 'true');
-		await expect
-			.element(maxInput)
-			.toHaveAttribute('aria-describedby', 'gift-price-range-error');
+		await expect.element(maxInput).toHaveAttribute('aria-describedby', errorId);
 
 		expect(onupdate).not.toHaveBeenCalled();
 	});
