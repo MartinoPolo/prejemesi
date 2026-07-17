@@ -1,5 +1,18 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
+// Hoisted so the $lib/server/auth.js mock factory (also hoisted) can reference it.
+const { mockGetUserInfo } = vi.hoisted(() => ({ mockGetUserInfo: vi.fn() }));
+
+// Replace the real auth module so its heavy transitive imports ($env, better-auth,
+// email, turnstile) never load in the unit env; expose a controllable Google provider.
+vi.mock('$lib/server/auth.js', () => ({
+	createAuth: vi.fn(() => ({
+		$context: Promise.resolve({
+			socialProviders: [{ id: 'google', getUserInfo: mockGetUserInfo }],
+		}),
+	})),
+}));
+
 vi.mock('$app/server', () => ({
 	getRequestEvent: vi.fn(),
 	query: vi.fn((...args: unknown[]) => {
@@ -55,7 +68,12 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		preferredLocale: 'u.preferredLocale',
 		updatedAt: 'u.updatedAt',
 	},
-	account: { userId: 'a.userId', providerId: 'a.providerId' },
+	account: {
+		userId: 'a.userId',
+		providerId: 'a.providerId',
+		idToken: 'a.idToken',
+		accessToken: 'a.accessToken',
+	},
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -88,6 +106,7 @@ import {
 	updatePreferredLocale,
 	setUserPalette,
 	deleteAccount,
+	refreshGoogleAvatar,
 } from './settings.remote.js';
 import { SetUserPaletteInputSchema } from './types.js';
 import { getDb } from '$lib/server/db/index.js';
@@ -165,6 +184,7 @@ describe('getUserProfile', () => {
 			image: 'https://example.com/fresh.jpg',
 			imageUrl: 'https://example.com/fresh.jpg',
 			isOAuthUser: false,
+			hasGoogleAccount: false,
 			preferredLocale: null,
 		});
 	});
@@ -185,7 +205,7 @@ describe('getUserProfile', () => {
 		expect(result.imageUrl).toBe('/api/upload/avatars/abc.jpg');
 	});
 
-	it('returns profile with isOAuthUser=true when has Google account', async () => {
+	it('returns profile with isOAuthUser=true and hasGoogleAccount=true for a Google account', async () => {
 		mockGetDb.mockReturnValue(
 			createMockDb([
 				[{ providerId: 'credential' }, { providerId: 'google' }],
@@ -210,8 +230,75 @@ describe('getUserProfile', () => {
 			image: testUser.image,
 			imageUrl: testUser.image,
 			isOAuthUser: true,
+			hasGoogleAccount: true,
 			preferredLocale: null,
 		});
+	});
+});
+
+describe('refreshGoogleAvatar', () => {
+	const callRefresh = () =>
+		(refreshGoogleAvatar as unknown as (...args: unknown[]) => Promise<unknown>)(
+			testAuthContext,
+		);
+
+	it('returns { ok: false } and writes nothing when no Google account is linked', async () => {
+		const db = createMockDb([[]]); // no google account row
+		mockGetDb.mockReturnValue(db);
+
+		const result = await callRefresh();
+
+		expect(result).toEqual({ ok: false });
+		expect(mockGetUserInfo).not.toHaveBeenCalled();
+		expect(db.update).not.toHaveBeenCalled();
+	});
+
+	it('decodes the id_token picture claim and persists it as the avatar', async () => {
+		const db = createMockDb([
+			[{ idToken: 'id.jwt.tok', accessToken: null }], // google account
+			[{ image: null }], // previous user image
+		]);
+		mockGetDb.mockReturnValue(db);
+		mockGetUserInfo.mockResolvedValue({
+			user: { image: 'https://lh3.googleusercontent.com/newpic' },
+		});
+
+		const result = await callRefresh();
+
+		expect(mockGetUserInfo).toHaveBeenCalledWith({ idToken: 'id.jwt.tok' });
+		expect(db.update).toHaveBeenCalledTimes(1);
+		expect(result).toEqual({
+			ok: true,
+			image: 'https://lh3.googleusercontent.com/newpic',
+			imageUrl: 'https://lh3.googleusercontent.com/newpic',
+		});
+		expect(mockDeleteObjects).not.toHaveBeenCalled();
+	});
+
+	it('deletes the previous uploaded avatar object when replaced by the Google photo', async () => {
+		const db = createMockDb([
+			[{ idToken: 'id.jwt.tok', accessToken: null }],
+			[{ image: 'avatars/old.jpg' }],
+		]);
+		mockGetDb.mockReturnValue(db);
+		mockGetUserInfo.mockResolvedValue({
+			user: { image: 'https://lh3.googleusercontent.com/newpic' },
+		});
+
+		await callRefresh();
+
+		expect(mockDeleteObjects).toHaveBeenCalledWith(['avatars/old.jpg']);
+	});
+
+	it('returns { ok: false } when neither an id_token nor an access token is stored', async () => {
+		const db = createMockDb([[{ idToken: null, accessToken: null }]]);
+		mockGetDb.mockReturnValue(db);
+
+		const result = await callRefresh();
+
+		expect(result).toEqual({ ok: false });
+		expect(mockGetUserInfo).not.toHaveBeenCalled();
+		expect(db.update).not.toHaveBeenCalled();
 	});
 });
 

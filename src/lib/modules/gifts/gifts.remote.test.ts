@@ -82,6 +82,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		preEditShareSnapshot: 'gift.preEditShareSnapshot',
 		links: 'gift.links',
 		price: 'gift.price',
+		priceMax: 'gift.priceMax',
 		currency: 'gift.currency',
 		imageUrl: 'gift.imageUrl',
 		imageKey: 'gift.imageKey',
@@ -264,6 +265,7 @@ function makeGiftRow(
 		preEditShareSnapshot: null,
 		links: [],
 		price: null,
+		priceMax: null,
 		currency: 'CZK',
 		imageUrl: null,
 		imageKey: null,
@@ -714,6 +716,20 @@ describe('createGift', () => {
 			expect(result).toMatchObject({ id: 'new-gift-id', imageMeta });
 		});
 
+		it('persists priceMax on create', async () => {
+			const inputWithRange = { ...createInput, price: 1200, priceMax: 1500 };
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([{ maxSort: 0 }]);
+			mockDbInstance.pushResult([{ id: 'new-gift-id', ...inputWithRange, sortOrder: 1 }]);
+
+			await callCreateGift(makeRecipientAuthContext(), inputWithRange);
+
+			const giftInsertValues = mockDbInstance.calls
+				.filter((call) => call.method === 'values')
+				.at(0)?.args[0] as { price: number; priceMax: number };
+			expect(giftInsertValues).toMatchObject({ price: 1200, priceMax: 1500 });
+		});
+
 		it('drops links whose URL is not http or https when storing', async () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			mockDbInstance.pushResult([{ maxSort: 0 }]);
@@ -836,6 +852,35 @@ describe('updateGift', () => {
 			});
 
 			expect(result).toMatchObject({ id: GIFT_ID, imageMeta });
+		});
+
+		it('persists updated priceMax', async () => {
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, price: 1200, priceMax: 1500 }]);
+
+			const result = await callUpdateGift(makeRecipientAuthContext(), {
+				id: GIFT_ID,
+				price: 1200,
+				priceMax: 1500,
+			});
+
+			expect(result).toMatchObject({ id: GIFT_ID, price: 1200, priceMax: 1500 });
+			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
+				?.args[0] as Record<string, unknown>;
+			expect(setValues).toMatchObject({ price: 1200, priceMax: 1500 });
+		});
+
+		it('rejects a priceMax-only update that would invert the persisted range', async () => {
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING, price: 1500 })]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+
+			await expect(
+				callUpdateGift(makeRecipientAuthContext(), { id: GIFT_ID, priceMax: 1200 }),
+			).rejects.toMatchObject({
+				status: 400,
+				message: 'INVALID_PRICE_RANGE',
+			});
 		});
 
 		it('deletes the replaced uploaded image from storage (issue #107 REQ-6)', async () => {

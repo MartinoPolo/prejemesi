@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="cs">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Přejeme si – Gift list mobile – Variant D</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@500;600&family=Geist:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<style>
+			:root {
+				--p-brand: #ec5fa3;
+				--p-ink: #5f1d44;
+				--p-accent: #ffc93c;
+				--surface: color-mix(in oklab, var(--p-brand) 10%, white);
+				--panel: #fff;
+				--ink: var(--p-ink);
+				--ink-soft: color-mix(in oklab, var(--p-ink) 62%, transparent);
+				--line: color-mix(in oklab, var(--p-ink) 15%, transparent);
+				--mat-dot: color-mix(in oklab, var(--p-ink) 13%, transparent);
+				--hard-shadow: color-mix(in oklab, var(--p-ink) 18%, transparent);
+				--tag-edited: #f0e9ff;
+				--priority: #ffe1dc;
+			}
+
+			* { box-sizing: border-box; }
+			body {
+				margin: 0;
+				min-width: 320px;
+				background: var(--surface);
+				color: var(--ink);
+				font-family: 'Geist', system-ui, sans-serif;
+			}
+			.phone {
+				width: min(100%, 430px);
+				min-height: 100vh;
+				margin: 0 auto;
+				padding: 22px 16px 40px;
+				background-image: radial-gradient(var(--mat-dot) 1.3px, transparent 1.4px);
+				background-size: 22px 22px;
+			}
+			.eyebrow {
+				margin: 0 0 12px;
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: .1em;
+				text-transform: uppercase;
+				color: var(--ink-soft);
+			}
+			.toolbar {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				margin-bottom: 18px;
+				padding: 8px;
+				border: 2.5px solid var(--ink);
+				border-radius: 14px;
+				background: var(--panel);
+				box-shadow: 4px 4px 0 var(--hard-shadow);
+			}
+			.toggle, .filter {
+				display: grid;
+				place-items: center;
+				height: 38px;
+				border: 2px solid var(--ink);
+				border-radius: 8px;
+				background: white;
+				color: var(--ink);
+				font-weight: 700;
+			}
+			.toggle { width: 40px; }
+			.toggle.active { background: var(--p-brand); color: white; box-shadow: 2px 2px 0 var(--hard-shadow); }
+			.filter { margin-left: auto; padding: 0 12px; font-size: 12px; }
+			.list {
+				margin: 0;
+				padding: 0;
+				list-style: none;
+				border: 2.5px solid var(--ink);
+				border-radius: 18px;
+				background: var(--panel);
+				box-shadow: 5px 5px 0 var(--hard-shadow);
+				overflow: hidden;
+			}
+			.gift {
+				display: grid;
+				grid-template-columns: clamp(128px, 39vw, 152px) minmax(0, 1fr);
+				gap: 12px;
+				padding: 14px;
+				border-bottom: 1px solid var(--line);
+			}
+			.gift:last-child { border-bottom: 0; }
+			.photo {
+				position: relative;
+				aspect-ratio: 1;
+				align-self: stretch;
+				overflow: hidden;
+				border: 2px solid var(--ink);
+				border-radius: 12px;
+				background: white;
+				box-shadow: 3px 3px 0 var(--hard-shadow);
+			}
+			.photo::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background-image: radial-gradient(var(--mat-dot) 1.2px, transparent 1.3px);
+				background-size: 16px 16px;
+				pointer-events: none;
+			}
+			.product { position: absolute; inset: 13%; z-index: 1; }
+			.brick { position: absolute; border: 2px solid var(--ink); border-radius: 8px; box-shadow: 2px 2px 0 var(--hard-shadow); }
+			.brick.one { width: 68%; height: 33%; top: 12%; left: 6%; background: #6ed083; transform: rotate(-8deg); }
+			.brick.two { width: 55%; height: 37%; right: 1%; bottom: 10%; background: #4bb8e8; transform: rotate(9deg); }
+			.brick.three { width: 38%; height: 28%; left: 14%; bottom: 3%; background: #ffc93c; transform: rotate(7deg); }
+			.book { position: absolute; inset: 9% 22%; z-index: 1; border: 2px solid var(--ink); border-radius: 4px; background: linear-gradient(145deg, #d8f0ff 0 34%, #c6d2ff 34% 68%, #fff 68%); box-shadow: 3px 3px 0 var(--hard-shadow); transform: rotate(-5deg); }
+			.book::before { content: 'Ledové\A království'; white-space: pre; position: absolute; inset: 22% 9%; color: #295588; font-family: 'DynaPuff', sans-serif; font-size: 12px; line-height: 1.25; text-align: center; }
+			.heart {
+				position: absolute;
+				right: 7px;
+				bottom: 7px;
+				z-index: 2;
+				display: grid;
+				place-items: center;
+				width: 36px;
+				height: 36px;
+				border: 2px solid var(--ink);
+				border-radius: 50%;
+				background: white;
+				color: #e25563;
+				font-size: 20px;
+				line-height: 1;
+			}
+			.info {
+				display: grid;
+				place-items: center;
+				width: 26px;
+				height: 26px;
+				flex: 0 0 auto;
+				border: 2px solid var(--ink);
+				border-radius: 50%;
+				background: var(--tag-edited);
+				font-weight: 800;
+				font-size: 14px;
+			}
+			.info::after { content: 'i'; }
+			.content { display: flex; min-width: 0; flex-direction: column; align-items: stretch; }
+			.name-row { display: flex; align-items: flex-start; gap: 6px; }
+			h2 {
+				margin: 0;
+				font-family: 'DynaPuff', system-ui, sans-serif;
+				font-size: 16px;
+				font-weight: 600;
+				line-height: 1.22;
+			}
+			.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 7px; font-size: 13px; }
+			.price { font-weight: 800; color: var(--p-brand); }
+			.priority { padding: 3px 7px; border-radius: 999px; background: var(--priority); color: #9d2f41; font-size: 11px; font-weight: 800; }
+			.link { margin-top: 5px; color: #7048e8; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.description { margin: 6px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.35; }
+			.reserve {
+				align-self: flex-end;
+				margin-top: auto;
+				min-height: 40px;
+				padding: 0 13px;
+				border: 2.5px solid var(--ink);
+				border-radius: 8px;
+				background: var(--p-brand);
+				box-shadow: 3px 3px 0 var(--hard-shadow);
+				color: white;
+				font-family: 'Geist', sans-serif;
+				font-size: 14px;
+				font-weight: 800;
+			}
+			.caption { margin: 16px 6px 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+		</style>
+	</head>
+	<body>
+		<main class="phone">
+			<p class="eyebrow">Variant D · mobile list, 390 px</p>
+			<nav class="toolbar" aria-label="Zobrazení přání">
+				<button class="toggle" aria-label="Karty">▦</button>
+				<button class="toggle active" aria-label="Seznam">☷</button>
+				<button class="filter">Pouze dostupné</button>
+			</nav>
+
+			<ul class="list">
+				<li class="gift">
+					<div class="photo" aria-label="Náhled Lego rodinky divokých zvířat">
+						<div class="product"><span class="brick one"></span><span class="brick two"></span><span class="brick three"></span></div>
+						<button class="heart" aria-label="Oblíbit Lego rodinky divokých zvířat">♡</button>
+					</div>
+					<div class="content">
+						<div class="name-row"><h2>Lego rodinky divokých zvířat 3 v 1</h2><button class="info" aria-label="Upraveno po sdílení" title="Upraveno po sdílení"></button></div>
+						<div class="meta"><strong class="price">1 200 Kč</strong><span class="priority">Vysoká</span></div>
+						<div class="link">↗ lego.heureka.cz</div>
+						<p class="description">Včetně pand, slona a žirafy.</p>
+						<button class="reserve">Rezervovat</button>
+					</div>
+				</li>
+				<li class="gift">
+					<div class="photo" aria-label="Náhled knihy Ledové království"><span class="book"></span><button class="heart" aria-label="Oblíbit knihu Ledové království">♡</button></div>
+					<div class="content">
+						<div class="name-row"><h2>Knížka Ledové království</h2></div>
+						<div class="meta"><strong class="price">240 Kč</strong><span class="priority">Vysoká</span></div>
+						<div class="link">↗ knihy.heureka.cz</div>
+						<p class="description">Platinová kolekce, viz odkaz.</p>
+						<button class="reserve">Rezervovat</button>
+					</div>
+				</li>
+			</ul>
+			<p class="caption">Čtvercový náhled je společný pro karty, seznam i rezervaci. Informace o úpravě je dostupná přes ikonu, neplete se s editací.</p>
+		</main>
+	</body>
+</html>

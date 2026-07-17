@@ -7,7 +7,7 @@ import { tv } from 'tailwind-variants';
  */
 export const shareWizardVariants = tv({
 	slots: {
-		progressBar: 'flex items-center gap-0 px-6 pt-5',
+		progressBar: 'flex items-center gap-0 ps-6 pe-16 pt-5',
 		step: 'flex flex-shrink-0 items-center gap-2',
 		connector:
 			'mx-2 min-w-5 flex-1 border-t-2 border-dashed border-ink-faint transition-colors',

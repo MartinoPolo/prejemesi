@@ -323,6 +323,13 @@ What: Reusable `guardedQuery`, `guardedCommand`, `guardedForm` wrappers that cal
 Why: Avoids repeating auth checks in every remote function. BetterAuth handles auth flow (cookies, OAuth redirects, CSRF); remote functions handle app data.
 Rejected: Inline auth checks in each function (repetitive, error-prone), replacing BetterAuth routes with remote functions (breaks cookie/redirect flow).
 
+### Turnstile bot protection is fail-open (advisory, not a hard gate)
+
+Decided: 2026-07-16
+What: Anonymous gift reservation carries a Cloudflare Turnstile check, but the server only rejects a present-but-bad token (`invalid`, `expired_or_replayed`), or a missing token while the check is configured and running. When the check cannot run at all — secret unconfigured (`configuration`) or Cloudflare Siteverify unreachable (`unavailable`) — the reservation is allowed and logged (`[Turnstile] unverified anonymous reservation allowed (fail-open)`) instead of returning 503. The client widget degrades silently: with no site key, or when the challenge script is blocked (ad-blocker / antivirus), the submit button is not disabled.
+Why: Turnstile is defense-in-depth for a low-stakes action (no money, no account). A hard gate turned a config gap into a full outage — the keys shipped on 2026-07-12 were never deployed, so every guest hit „Bezpečnostní kontrola je dočasně nedostupná" behind a permanently disabled button. Availability of the core flow outweighs perfect bot filtering during a Turnstile outage/misconfig. Cloudflare WAF rate limiting, the required display name, and the per-browser cancel cookie remain as backstops.
+Rejected: Fail-closed (503 on config/outage) — takes reservation offline whenever Turnstile hiccups or is unconfigured, and dead-ends every visitor whose AV/ad-blocker blocks the challenge script. Test keys in production — Cloudflare forbids it and it grants no protection anyway.
+
 ## Repository Structure
 
 ### Domain modules at src/lib/modules/

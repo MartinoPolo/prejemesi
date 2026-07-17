@@ -9,27 +9,39 @@
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import { untrack } from 'svelte';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
+	import { getInitials } from '$lib/utils/initials.js';
 
 	interface SettingsProfileSectionProps {
 		email: string;
 		isOAuthUser: boolean;
+		/** Whether a Google account is linked – shows the "use Google photo" action (issue #158). */
+		hasGoogleAccount: boolean;
 		initialName: string;
 		/** Display URL of the current avatar (resolved from the persisted value). */
 		initialAvatarUrl: string | null;
 		/** Raw persisted `user.image` value (URL or object key) – preserved when the avatar is untouched. */
 		initialImageValue: string | null;
 		onSave: (params: { name: string; image: string | null }) => Promise<void>;
+		/** Pulls the avatar from the linked Google account and persists it (issue #158). */
+		onFetchGoogleAvatar: () => Promise<{
+			ok: boolean;
+			image?: string | null;
+			imageUrl?: string | null;
+		}>;
 	}
 
 	let {
 		email,
 		isOAuthUser,
+		hasGoogleAccount,
 		initialName,
 		initialAvatarUrl,
 		initialImageValue,
 		onSave,
+		onFetchGoogleAvatar,
 	}: SettingsProfileSectionProps = $props();
 
 	// untrack() is intentional: these props seed local editable state once at mount.
@@ -37,26 +49,43 @@
 	let displayName = $state(untrack(() => initialName));
 	let avatarUrl = $state<string | null>(untrack(() => initialAvatarUrl));
 	let avatarObjectKey = $state<string | null>(null);
+	// Tracks the raw persisted image value so Save preserves it after a Google fetch
+	// (which writes directly server-side) instead of reverting to the mount-time value.
+	let currentImageValue = $state<string | null>(untrack(() => initialImageValue));
 	let saving = $state(false);
 	let saved = $state(false);
+	let fetchingGoogle = $state(false);
+	let googleError = $state(false);
 
 	// Uploads that are not saved yet; replaced/abandoned ones are deleted from
 	// storage on save or unmount (issue #107, REQ-6).
 	const pendingUploads = createPendingUploads();
 
-	function getInitials(name: string): string {
-		return name
-			.split(' ')
-			.map((part) => part[0])
-			.join('')
-			.toUpperCase()
-			.slice(0, 2);
-	}
-
 	function handleAvatarUpload(result: UploadResult) {
 		avatarUrl = result.publicUrl;
 		avatarObjectKey = result.objectKey;
 		pendingUploads.track(result);
+	}
+
+	async function handleFetchGoogleAvatar() {
+		fetchingGoogle = true;
+		googleError = false;
+		try {
+			const result = await onFetchGoogleAvatar();
+			if (result.ok && result.imageUrl != null && result.imageUrl !== '') {
+				// The command already persisted the URL; reflect it locally and keep it
+				// as the value a subsequent Save would preserve.
+				avatarUrl = result.imageUrl;
+				currentImageValue = result.image ?? null;
+				avatarObjectKey = null;
+			} else {
+				googleError = true;
+			}
+		} catch {
+			googleError = true;
+		} finally {
+			fetchingGoogle = false;
+		}
 	}
 
 	async function handleSave() {
@@ -65,7 +94,7 @@
 		try {
 			// An untouched avatar keeps the raw persisted value (URL or object key)
 			// so saving the profile never rewrites it into a resolved URL.
-			await onSave({ name: displayName, image: avatarObjectKey ?? initialImageValue });
+			await onSave({ name: displayName, image: avatarObjectKey ?? currentImageValue });
 			await pendingUploads.commit(avatarObjectKey);
 			saved = true;
 			setTimeout(() => {
@@ -107,6 +136,7 @@
 							alt={displayName}
 							shape="square"
 							fitMode="cover-crop"
+							referrerPolicy="no-referrer"
 							class="size-16 rounded-xl"
 						/>
 					{:else}
@@ -116,10 +146,30 @@
 							{getInitials(displayName)}
 						</span>
 					{/if}
-					<div class="flex-1">
+					<div class="flex flex-1 flex-col gap-2">
 						<ImageUpload target="avatar" size="small" onUpload={handleAvatarUpload} />
+						{#if hasGoogleAccount}
+							<Button
+								intent="outline"
+								size="sm"
+								class="self-start"
+								onclick={handleFetchGoogleAvatar}
+								disabled={fetchingGoogle}
+							>
+								<RefreshCwIcon
+									data-icon="inline-start"
+									class={fetchingGoogle ? 'animate-spin' : undefined}
+								/>
+								{fetchingGoogle
+									? m.settings_avatar_fetching_google()
+									: m.settings_avatar_use_google()}
+							</Button>
+						{/if}
 					</div>
 				</div>
+				{#if googleError}
+					<p class="text-xs text-destructive">{m.settings_avatar_google_error()}</p>
+				{/if}
 			</div>
 
 			<Separator />

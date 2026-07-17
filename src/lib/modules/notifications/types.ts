@@ -99,6 +99,19 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 	reservation_cancelled: { email: true, inApp: true },
 } satisfies Record<NotificationType, NotificationPreferenceEntry>;
 
+/**
+ * Merges a stored preferences row over the product defaults so every current notification
+ * type has an entry. Stored rows are partial: they only hold the types that existed when the
+ * user last saved, so rows predating newer types (issue #150) would leave those types
+ * `undefined` and crash `preferences[type].inApp` reads. NULL (never customized) yields the
+ * plain defaults. Callers must run every read through here before indexing by type.
+ */
+export function normalizeNotificationPreferences(
+	stored: NotificationPreferences | null | undefined,
+): NotificationPreferences {
+	return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...stored };
+}
+
 // ── Preferences Input Validation ────────────────────────────────────────────
 
 const NotificationPreferenceEntrySchema = v.object({

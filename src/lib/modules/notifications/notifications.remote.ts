@@ -6,9 +6,9 @@ import { notification } from '$lib/server/db/notification.schema.js';
 import { user as userTable } from '$lib/server/db/auth.schema.js';
 import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
 import {
-	DEFAULT_NOTIFICATION_PREFERENCES,
 	NOTIFICATION_MESSAGES,
 	UpdateNotificationPreferencesInputSchema,
+	normalizeNotificationPreferences,
 	type Notification,
 	type NotificationPreferences,
 	type NotificationType,
@@ -65,8 +65,9 @@ export const getNotificationPreferences = guardedQuery(
 			.where(eq(userTable.id, authUser.id))
 			.limit(1);
 
-		// NULL (never customized) falls back to the product defaults.
-		return rows[0]?.preferences ?? DEFAULT_NOTIFICATION_PREFERENCES;
+		// Merge over defaults so newer types missing from an older stored row are filled in;
+		// NULL (never customized) yields the plain defaults.
+		return normalizeNotificationPreferences(rows[0]?.preferences);
 	},
 );
 

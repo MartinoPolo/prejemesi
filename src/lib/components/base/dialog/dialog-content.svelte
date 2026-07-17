@@ -7,6 +7,8 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
+	import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	let {
 		ref = $bindable(null),
@@ -37,9 +39,14 @@
 		{#if showCloseButton}
 			<DialogPrimitive.Close data-slot="dialog-close">
 				{#snippet child({ props })}
-					<Button intent="ghost" class="absolute top-4 right-4" size="icon-sm" {...props}>
+					<Button
+						intent="ghost"
+						size="icon-sm"
+						class={overlayCloseButtonClass}
+						{...props}
+					>
 						<XIcon data-icon="inline-start" />
-						<span class="sr-only">Close</span>
+						<span class="sr-only">{m.close()}</span>
 					</Button>
 				{/snippet}
 			</DialogPrimitive.Close>

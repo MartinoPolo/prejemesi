@@ -45,8 +45,9 @@ export interface ImageFocalPoint {
 
 /**
  * Gift crop targets (#116 D2): consumer surfaces grouped by aspect family.
- * `card` is the wide card banner, `detail` the tall detail-modal column,
- * `square` the 1:1 pair (list thumbnail + reservation modal).
+ * `card` is the retired wide-card target retained only to read legacy rows,
+ * `detail` the tall detail-modal column, and `square` the 1:1 card/list/
+ * reservation family.
  */
 export const GIFT_CROP_TARGETS = {
 	card: 'card',
@@ -57,6 +58,21 @@ export const GIFT_CROP_TARGETS = {
 export type GiftCropTarget = (typeof GIFT_CROP_TARGETS)[keyof typeof GIFT_CROP_TARGETS];
 
 export const GIFT_CROP_TARGET_VALUES = Object.values(GIFT_CROP_TARGETS);
+
+/**
+ * Targets offered by the gift editor. `card` remains parseable legacy metadata
+ * only; `detail` was retired the same way when the visitor detail modal moved
+ * to the `square` crop (issue #165) — its persisted `targets.detail` rows stay
+ * parseable, but the editor no longer offers it and no surface renders it.
+ */
+export const GIFT_EDITOR_CROP_TARGETS = {
+	square: GIFT_CROP_TARGETS.square,
+} as const;
+
+export type GiftEditorCropTarget =
+	(typeof GIFT_EDITOR_CROP_TARGETS)[keyof typeof GIFT_EDITOR_CROP_TARGETS];
+
+export const GIFT_EDITOR_CROP_TARGET_VALUES = Object.values(GIFT_EDITOR_CROP_TARGETS);
 
 /**
  * A manual per-target crop (#116 D1/D2): always cover-crop geometry whose rect

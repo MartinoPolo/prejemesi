@@ -75,7 +75,11 @@ import {
 	getNotificationPreferences,
 	updateNotificationPreferences,
 } from './notifications.remote.js';
-import { DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPE } from './types.js';
+import {
+	DEFAULT_NOTIFICATION_PREFERENCES,
+	NOTIFICATION_TYPE,
+	type NotificationPreferences,
+} from './types.js';
 import { getDb } from '$lib/server/db/index.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -227,6 +231,25 @@ describe('getNotificationPreferences', () => {
 		)(testAuthContext);
 
 		expect(result).toEqual(DEFAULT_NOTIFICATION_PREFERENCES);
+	});
+
+	it('fills in newer types missing from an older partial stored row', async () => {
+		// Rows saved before a type existed omit its key; the read must backfill it from
+		// defaults so the settings form never indexes an undefined entry (crash on [type].inApp).
+		const partialStored = Object.fromEntries(
+			Object.entries(DEFAULT_NOTIFICATION_PREFERENCES).filter(
+				([type]) => type !== NOTIFICATION_TYPE.RESERVATION_CANCELLED,
+			),
+		);
+		mockGetDb.mockReturnValue(createMockDb([[{ preferences: partialStored }]]));
+
+		const result = (await (
+			getNotificationPreferences as unknown as (...args: unknown[]) => unknown
+		)(testAuthContext)) as NotificationPreferences;
+
+		expect(result[NOTIFICATION_TYPE.RESERVATION_CANCELLED]).toEqual(
+			DEFAULT_NOTIFICATION_PREFERENCES[NOTIFICATION_TYPE.RESERVATION_CANCELLED],
+		);
 	});
 });
 

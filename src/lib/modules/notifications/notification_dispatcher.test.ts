@@ -154,6 +154,29 @@ describe('dispatchNotification – honoring per-user preferences', () => {
 		expect(insertedValues.map((row) => row.userId)).toEqual(['u']);
 		expect(mockSendEmail.mock.calls.map((call) => call[0].to)).toEqual(['u@test.cz']);
 	});
+
+	it('backfills a type absent from an older partial stored row (no undefined crash)', async () => {
+		// A row saved before this type existed omits its key. Dispatch must fall back to the
+		// default entry for the missing type instead of reading `undefined.inApp`.
+		const type = NOTIFICATION_TYPE.RESERVATION_CANCELLED; // default email+inApp true
+		const partialStored = Object.fromEntries(
+			Object.entries(DEFAULT_NOTIFICATION_PREFERENCES).filter(([key]) => key !== type),
+		);
+		// Cast: the stored JSONB is partial at runtime but typed complete (the bug's root cause).
+		const { db, insertedValues } = makeDispatcherDb([
+			{
+				id: 'u',
+				email: 'u@test.cz',
+				notificationPreferences: partialStored as unknown as NotificationPreferences,
+			},
+		]);
+		mockGetDb.mockReturnValue(db);
+
+		await dispatchNotification({ type, targetUserIds: ['u'] });
+
+		expect(insertedValues.map((row) => row.userId)).toEqual(['u']);
+		expect(mockSendEmail.mock.calls.map((call) => call[0].to)).toEqual(['u@test.cz']);
+	});
 });
 
 describe('dispatchNotification – urlPathOverride', () => {

@@ -45,7 +45,7 @@
 
 	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
 
-	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
+	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>
@@ -53,11 +53,13 @@
 <div class={styles.card()}>
 	<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
 	<div class={styles.imageArea()}>
+		<div class={styles.imagePattern()} aria-hidden="true"></div>
+
 		<GiftImage
 			class="size-full bg-transparent"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
-			target="card"
+			target="square"
 			alt={gift.name}
 			variant="card"
 		/>
@@ -103,7 +105,7 @@
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 		</div>
 
-		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />
+		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} compactOnMobile />
 
 		{#if gift.price !== null}
 			<span class={styles.price()}>{priceDisplay}</span>

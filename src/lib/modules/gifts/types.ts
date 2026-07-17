@@ -43,6 +43,23 @@ const GiftLinkSchema = v.object({
 /** Up to {@link MAX_GIFT_LINKS} links; order is significant (index 0 = primary). */
 const GiftLinksSchema = v.pipe(v.array(GiftLinkSchema), v.maxLength(MAX_GIFT_LINKS));
 
+/**
+ * Cross-field rule for the optional price range (issue #155 REQ-4): when both bounds are present
+ * the upper bound may not sit below the lower bound. Either bound absent/null is always valid —
+ * range mode's "both bounds required" rule is enforced client-side by the form, not the wire schema.
+ */
+export function isPriceRangeValid<T extends { price?: number | null; priceMax?: number | null }>(
+	input: T,
+): boolean {
+	return (
+		input.priceMax === undefined ||
+		input.priceMax === null ||
+		input.price === undefined ||
+		input.price === null ||
+		input.priceMax >= input.price
+	);
+}
+
 /** Shared fields present in every gift view regardless of role. */
 export interface GiftBase {
 	id: string;
@@ -53,6 +70,8 @@ export interface GiftBase {
 	editedAfterShareAt: Date | null;
 	links: GiftLink[];
 	price: number | null;
+	/** Upper bound of a non-binding price range hint (issue #155). Null = single price (`price`). */
+	priceMax: number | null;
 	currency: string | null;
 	imageUrl: string | null;
 	imageKey: string | null;
@@ -156,6 +175,8 @@ export interface CreateGiftInput {
 	description?: string | null;
 	links?: GiftLink[] | null;
 	price?: number | null;
+	/** Upper bound of a non-binding price range hint (issue #155). Null = single price (`price`). */
+	priceMax?: number | null;
 	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
 	imageKey?: string | null;
@@ -167,20 +188,24 @@ export interface CreateGiftInput {
 
 export const GIFT_CURRENCY_VALUES = Object.values(GIFT_CURRENCIES);
 
-export const CreateGiftInputSchema = v.object({
-	wishlistId: v.string(),
-	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
-	description: v.optional(v.nullable(v.string())),
-	links: v.optional(v.nullable(GiftLinksSchema)),
-	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
-	imageUrl: v.optional(v.nullable(v.string())),
-	imageKey: v.optional(v.nullable(v.string())),
-	imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
-	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
-	priorityLevelId: v.optional(v.nullable(v.string())),
-	sortOrder: v.optional(v.number()),
-});
+export const CreateGiftInputSchema = v.pipe(
+	v.object({
+		wishlistId: v.string(),
+		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
+		description: v.optional(v.nullable(v.string())),
+		links: v.optional(v.nullable(GiftLinksSchema)),
+		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+		imageUrl: v.optional(v.nullable(v.string())),
+		imageKey: v.optional(v.nullable(v.string())),
+		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
+		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
+		priorityLevelId: v.optional(v.nullable(v.string())),
+		sortOrder: v.optional(v.number()),
+	}),
+	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
+);
 
 /**
  * Wire shape of one import/batch draft committed into a real gift. Mirrors the
@@ -188,14 +213,18 @@ export const CreateGiftInputSchema = v.object({
  * quantity, sortOrder). `name` is required; everything else optional. `priority`
  * is a binary rank the server resolves to a concrete priority level at commit.
  */
-export const GiftDraftInputSchema = v.object({
-	name: v.pipe(v.string(), v.trim(), v.minLength(1)),
-	description: v.optional(v.nullable(v.string())),
-	links: v.optional(v.nullable(GiftLinksSchema)),
-	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
-	priority: v.optional(v.picklist(DRAFT_PRIORITY_VALUES), DEFAULT_DRAFT_PRIORITY),
-});
+export const GiftDraftInputSchema = v.pipe(
+	v.object({
+		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
+		description: v.optional(v.nullable(v.string())),
+		links: v.optional(v.nullable(GiftLinksSchema)),
+		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+		priority: v.optional(v.picklist(DRAFT_PRIORITY_VALUES), DEFAULT_DRAFT_PRIORITY),
+	}),
+	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
+);
 
 export type GiftDraftInput = v.InferOutput<typeof GiftDraftInputSchema>;
 
@@ -218,6 +247,8 @@ export interface UpdateGiftInput {
 	descriptionAppendEdit?: DescriptionAppendEdit;
 	links?: GiftLink[] | null;
 	price?: number | null;
+	/** Upper bound of a non-binding price range hint (issue #155). Null = single price (`price`). */
+	priceMax?: number | null;
 	currency?: GiftCurrency | null;
 	imageUrl?: string | null;
 	imageKey?: string | null;
@@ -226,25 +257,29 @@ export interface UpdateGiftInput {
 	priorityLevelId?: string | null;
 }
 
-export const UpdateGiftInputSchema = v.object({
-	id: v.string(),
-	name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
-	description: v.optional(v.nullable(v.string())),
-	descriptionAppendEdit: v.optional(
-		v.object({
-			index: v.pipe(v.number(), v.integer(), v.minValue(0)),
-			text: v.nullable(v.string()),
-		}),
-	),
-	links: v.optional(v.nullable(GiftLinksSchema)),
-	price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-	currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
-	imageUrl: v.optional(v.nullable(v.string())),
-	imageKey: v.optional(v.nullable(v.string())),
-	imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
-	quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
-	priorityLevelId: v.optional(v.nullable(v.string())),
-});
+export const UpdateGiftInputSchema = v.pipe(
+	v.object({
+		id: v.string(),
+		name: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
+		description: v.optional(v.nullable(v.string())),
+		descriptionAppendEdit: v.optional(
+			v.object({
+				index: v.pipe(v.number(), v.integer(), v.minValue(0)),
+				text: v.nullable(v.string()),
+			}),
+		),
+		links: v.optional(v.nullable(GiftLinksSchema)),
+		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+		imageUrl: v.optional(v.nullable(v.string())),
+		imageKey: v.optional(v.nullable(v.string())),
+		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
+		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
+		priorityLevelId: v.optional(v.nullable(v.string())),
+	}),
+	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
+);
 
 /** Input for reordering gifts */
 export interface ReorderGiftItem {

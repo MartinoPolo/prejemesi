@@ -242,11 +242,10 @@ describe('reserveGift', () => {
 		expect(mockGetDb).not.toHaveBeenCalled();
 	});
 
+	// A present-but-bad token is a positive bot signal → reject before any DB work.
 	it.each([
 		['invalid', 403, SERVER_ERROR.TURNSTILE_INVALID],
 		['expired_or_replayed', 403, SERVER_ERROR.TURNSTILE_EXPIRED_OR_REPLAYED],
-		['unavailable', 503, SERVER_ERROR.TURNSTILE_UNAVAILABLE],
-		['configuration', 503, SERVER_ERROR.TURNSTILE_UNAVAILABLE],
 	] as const)(
 		'anonymous reservation rejects %s Turnstile verification before DB work',
 		async (reason, status, message) => {
@@ -260,6 +259,37 @@ describe('reserveGift', () => {
 				}),
 			).rejects.toMatchObject({ status, message });
 			expect(mockGetDb).not.toHaveBeenCalled();
+		},
+	);
+
+	// The check could not RUN (secret unconfigured, or Siteverify unreachable) — an
+	// operational failure, not a bot signal. Fail open: allow the reservation but log it,
+	// so a Turnstile outage/misconfig never takes guest reservation fully offline.
+	it.each(['configuration', 'unavailable'] as const)(
+		'anonymous reservation fails open (proceeds + logs) when Turnstile cannot run: %s',
+		async (reason) => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			mockVerifyTurnstileToken.mockResolvedValue({ success: false, reason });
+
+			const database = createMultiQueryChain(
+				[{ quantity: 5 }],
+				[{ totalQuantity: 0 }],
+				[{ id: RESERVATION_ID }],
+			);
+			const wishlistDb = createChain([makeActiveWishlistRow()]);
+			mockGetDb
+				.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+				.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+
+			const result = await (reserveGift as (...args: unknown[]) => unknown)(null, {
+				...validInput,
+				anonymousName: 'Jan Novak',
+				turnstileToken: 'unverifiable-token',
+			});
+
+			expect(result).toEqual({ id: RESERVATION_ID });
+			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(reason));
+			warnSpy.mockRestore();
 		},
 	);
 

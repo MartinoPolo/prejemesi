@@ -12,6 +12,8 @@ export interface UserProfile {
 	/** Display URL resolved from `image` – object keys mapped to the public image host. */
 	imageUrl: string | null;
 	isOAuthUser: boolean;
+	/** Whether a Google account is linked – gates the "use Google photo" action (issue #158). */
+	hasGoogleAccount: boolean;
 	preferredLocale: SupportedLocale | null;
 }
 

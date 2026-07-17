@@ -25,7 +25,6 @@
 	import { findDuplicates } from '$lib/modules/gifts/gift_draft.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
-	import XIcon from '@lucide/svelte/icons/x';
 
 	/**
 	 * Props modeled as a discriminated union so callers cannot pass wishlistId
@@ -274,7 +273,6 @@
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content
 		class="{dialogWidth} flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 transition-[max-width] duration-200"
-		showCloseButton={false}
 	>
 		<Dialog.Title class="sr-only">{m.import_wizard_title()}</Dialog.Title>
 		<Dialog.Description class="sr-only">
@@ -285,18 +283,10 @@
 
 		<!-- Header: Title + Stepper -->
 		<div class="flex flex-col gap-3 px-6 pt-5 pb-4">
-			<div class="flex items-center justify-between">
+			<div class="flex items-center justify-between pe-12">
 				<h2 class="font-heading text-lg font-semibold text-foreground">
 					{m.import_wizard_title()}
 				</h2>
-				<Dialog.Close>
-					{#snippet child({ props })}
-						<Button intent="ghost" size="icon-sm" {...props}>
-							<XIcon />
-							<span class="sr-only">{m.import_wizard_close()}</span>
-						</Button>
-					{/snippet}
-				</Dialog.Close>
 			</div>
 
 			<!-- Stepper: ink-bordered dots + dashed connectors (anime-sky design language) -->

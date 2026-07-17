@@ -3,12 +3,59 @@ import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import {
 	czechPluralCategory,
 	formatPieceCount,
+	formatPrice,
 	finalizeGiftPrice,
 	finalizeGiftQuantity,
 } from './gift_display.js';
 
 beforeAll(() => {
 	overwriteGetLocale(() => 'cs');
+});
+
+/** Collapses ICU's non-breaking/narrow-no-break spaces (U+00A0, U+202F) to a plain space. */
+function normalizeSpaces(value: string): string {
+	return value.replace(/[  ]/g, ' ');
+}
+
+describe('formatPrice', () => {
+	it('returns the "not listed" hint for a null price', () => {
+		expect(formatPrice(null, 'CZK')).toBe('Cena neuvedena');
+	});
+
+	it('formats a single price with currency (no priceMax)', () => {
+		expect(normalizeSpaces(formatPrice(1000, 'CZK'))).toBe('1 000 Kč');
+	});
+
+	it('formats a single price when priceMax is null', () => {
+		expect(normalizeSpaces(formatPrice(1000, 'CZK', null))).toBe('1 000 Kč');
+	});
+
+	// REQ-3: a set range renders as "min–max <currency>" via Intl.NumberFormat.formatRange -
+	// currency shown once, locale-correct separator, no "cca"/"~" approximation marker.
+	it('formats a price range via Intl.NumberFormat.formatRange (REQ-3)', () => {
+		const result = normalizeSpaces(formatPrice(1200, 'CZK', 1500));
+		expect(result).toContain('1 200');
+		expect(result).toContain('1 500');
+		expect(result).toContain('Kč');
+		// Currency symbol appears exactly once (not duplicated per bound).
+		expect(result.match(/Kč/g)).toHaveLength(1);
+		expect(result).not.toContain('cca');
+		expect(result).not.toContain('~');
+	});
+
+	it('falls back to a single formatted price when priceMax equals price', () => {
+		expect(normalizeSpaces(formatPrice(1000, 'CZK', 1000))).toBe('1 000 Kč');
+	});
+
+	it('falls back to a single formatted price when priceMax is below price', () => {
+		// Defensive: the form/schema prevent this from ever being saved, but formatPrice
+		// itself never renders a backwards range.
+		expect(normalizeSpaces(formatPrice(1500, 'CZK', 1000))).toBe('1 500 Kč');
+	});
+
+	it('defaults to CZK when currency is null', () => {
+		expect(formatPrice(1000, null, 1500)).toContain('Kč');
+	});
 });
 
 describe('finalizeGiftPrice', () => {

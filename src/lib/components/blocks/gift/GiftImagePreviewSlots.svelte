@@ -9,7 +9,7 @@
 	import {
 		giftTargetFrameProps,
 		GIFT_CROP_TARGET_SPECS,
-		type GiftCropTarget,
+		type GiftEditorCropTarget,
 		type ImageMetadata,
 	} from '$lib/modules/images/index.js';
 
@@ -21,9 +21,9 @@
 		/** Live editor metadata; each tile derives its own per-target framing. */
 		imageMeta: ImageMetadata | null;
 		/** Target highlighted as being edited (Manual mode) – null highlights none. */
-		activeTarget?: GiftCropTarget | null;
+		activeTarget?: GiftEditorCropTarget | null;
 		/** Makes tiles buttons: clicking one selects its crop target (#116 follow-up). */
-		onTileSelect?: (target: GiftCropTarget) => void;
+		onTileSelect?: (target: GiftEditorCropTarget) => void;
 		tokenScope?: ImageTokenScope;
 		/** Force the loading skeleton across every tile. */
 		loading?: boolean;
@@ -41,25 +41,12 @@
 		class: className,
 	}: Props = $props();
 
-	// Three live previews rendered over/under the big detail preview (#116
-	// rounds 2–3): the wide card tile, ONE merged square tile – the list thumbnail
-	// and the reservation modal share the `square` crop target, so separate tiles
-	// only duplicated the same framing – and a really narrow detail tile. The big
-	// image-column preview already IS the detail target, so the detail tile exists
-	// as a switcher (every target is one click away), not as extra information.
-	// All tiles share one height; aspect data comes from the shared crop-target
-	// registry (REQ-6); each tile renders its own per-target framing so the strip
-	// never lies about how a crop will actually look.
+	// A single live preview sits under the big image-column stage (issue #165: the
+	// `detail` editor target was retired, so `square` – the shared card/list/
+	// reservation/detail-modal crop family – is the only tile left). It doubles as
+	// the crop target switcher (#116 round 3), rendering its own per-target framing
+	// so the strip never lies about how the crop will actually look.
 	const TILES = [
-		{
-			key: 'card',
-			target: 'card',
-			label: m.gift_image_slot_card,
-			// Explicit width: percentage widths are indefinite in flex rows, so
-			// aspect-ratio could not resolve the tile's height.
-			sizing: 'w-40',
-			cssAspect: GIFT_CROP_TARGET_SPECS.card.cssAspect,
-		},
 		{
 			key: 'square',
 			target: 'square',
@@ -67,18 +54,9 @@
 			sizing: 'size-14',
 			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
 		},
-		{
-			key: 'detail',
-			target: 'detail',
-			label: m.gift_image_slot_detail,
-			// Same 56px height as the square tile; the 1:2 detail aspect makes it
-			// half as wide (switcher-first, #116 round 3).
-			sizing: 'w-7',
-			cssAspect: GIFT_CROP_TARGET_SPECS.detail.cssAspect,
-		},
 	] as const satisfies readonly {
 		key: string;
-		target: GiftCropTarget;
+		target: GiftEditorCropTarget;
 		label: () => string;
 		sizing: string;
 		cssAspect: string;

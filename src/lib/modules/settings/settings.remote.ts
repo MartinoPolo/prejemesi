@@ -1,6 +1,8 @@
 import { eq, and, isNull, inArray } from 'drizzle-orm';
+import type { RequestEvent } from '@sveltejs/kit';
 import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db/index.js';
+import { createAuth } from '$lib/server/auth.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { account } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -34,6 +36,7 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 		.where(eq(account.userId, authUser.id));
 
 	const isOAuthUser = accounts.some((a) => a.providerId !== 'credential');
+	const hasGoogleAccount = accounts.some((a) => a.providerId === 'google');
 
 	// Read profile fields from the DB (source of truth). The session user is cached by
 	// better-auth and goes stale after updateProfile writes directly to the user table,
@@ -57,6 +60,7 @@ export const getUserProfile = guardedQuery(async ({ user: authUser }): Promise<U
 		image,
 		imageUrl: resolveUserImageUrl(image),
 		isOAuthUser,
+		hasGoogleAccount,
 		preferredLocale: rows[0]?.preferredLocale ?? null,
 	};
 });
@@ -95,6 +99,116 @@ export const updateProfile = guardedCommand(
 		}
 	},
 );
+
+/** Result of pulling the avatar from the connected Google account (issue #158). */
+export type RefreshGoogleAvatarResult =
+	| { ok: true; image: string; imageUrl: string | null }
+	| { ok: false };
+
+/**
+ * Reads the Google `picture` claim for the linked account and persists it as the
+ * user's avatar (issue #158). Existing accounts that link Google never get
+ * `user.image` backfilled by better-auth, so this is the on-demand recovery path.
+ *
+ * The id_token is a JWT that carries `picture`; the Google provider decodes it
+ * locally (no network, unaffected by token expiry), matching the OAuth sign-in
+ * path. When no id_token is stored we fall back to Google's userinfo endpoint
+ * with the stored (online-mode) access token, which succeeds only while unexpired.
+ */
+export const refreshGoogleAvatar = guardedCommandNoArgs(
+	async ({ user: authUser }): Promise<RefreshGoogleAvatarResult> => {
+		const event = getRequestEvent();
+		const database = getDb();
+
+		const rows = await database
+			.select({ idToken: account.idToken, accessToken: account.accessToken })
+			.from(account)
+			.where(and(eq(account.userId, authUser.id), eq(account.providerId, 'google')))
+			.limit(1);
+
+		const googleAccount = rows[0];
+		if (googleAccount === undefined) {
+			return { ok: false };
+		}
+
+		const picture = await resolveGooglePictureUrl(event, googleAccount);
+		if (picture === null) {
+			return { ok: false };
+		}
+
+		const previousRows = await database
+			.select({ image: user.image })
+			.from(user)
+			.where(eq(user.id, authUser.id))
+			.limit(1);
+		const previousImage = previousRows[0]?.image ?? null;
+
+		await database
+			.update(user)
+			.set({ image: picture, updatedAt: new Date() })
+			.where(eq(user.id, authUser.id));
+
+		// Mirror updateProfile's cleanup: replacing an uploaded avatar leaves no R2 orphan.
+		if (
+			previousImage !== null &&
+			previousImage !== picture &&
+			isStoredObjectKey(previousImage)
+		) {
+			await deleteObjectsBestEffort([previousImage]);
+		}
+
+		return { ok: true, image: picture, imageUrl: resolveUserImageUrl(picture) };
+	},
+);
+
+async function resolveGooglePictureUrl(
+	event: RequestEvent,
+	tokens: { idToken: string | null; accessToken: string | null },
+): Promise<string | null> {
+	const auth = createAuth(event);
+	const authContext = await auth.$context;
+	const googleProvider = authContext.socialProviders.find((provider) => provider.id === 'google');
+	if (googleProvider === undefined) {
+		return null;
+	}
+
+	if (tokens.idToken !== null) {
+		try {
+			const info = await googleProvider.getUserInfo({ idToken: tokens.idToken });
+			const image = info?.user.image ?? null;
+			if (image !== null && image !== '') {
+				return image;
+			}
+		} catch {
+			// Malformed/undecodable id_token – fall through to the userinfo endpoint.
+		}
+	}
+
+	if (tokens.accessToken !== null) {
+		return fetchGoogleUserinfoPicture(tokens.accessToken);
+	}
+
+	return null;
+}
+
+async function fetchGoogleUserinfoPicture(accessToken: string): Promise<string | null> {
+	try {
+		const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+			headers: { Authorization: `Bearer ${accessToken}` },
+		});
+		if (!response.ok) {
+			return null;
+		}
+		const profile: unknown = await response.json();
+		if (typeof profile !== 'object' || profile === null || !('picture' in profile)) {
+			return null;
+		}
+		const picture = (profile as { picture: unknown }).picture;
+		return typeof picture === 'string' && picture !== '' ? picture : null;
+	} catch {
+		return null;
+	}
+}
 
 export const updatePreferredLocale = guardedCommand(
 	UpdatePreferredLocaleInputSchema,

@@ -119,7 +119,7 @@
 </script>
 
 <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
-	<Dialog.Content class="max-w-[560px] gap-0 overflow-y-auto p-0" showCloseButton={false}>
+	<Dialog.Content class="max-w-[560px] gap-0 overflow-y-auto p-0">
 		<Dialog.Title class="sr-only">{m.share_dialog_title()}</Dialog.Title>
 		<Dialog.Description class="sr-only">{m.share_dialog_description()}</Dialog.Description>
 

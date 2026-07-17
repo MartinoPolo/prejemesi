@@ -7,6 +7,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Switch } from '$lib/components/base/switch/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
@@ -55,12 +56,13 @@
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
 		giftTargetFrameProps,
+		mergeGiftTargetCrops,
 		seedCropRectFromLegacyMeta,
 		GIFT_CROP_TARGET_SPECS,
-		GIFT_CROP_TARGET_VALUES,
+		GIFT_EDITOR_CROP_TARGET_VALUES,
 		IMAGE_EDITOR_MODES,
 		IMAGE_EDITOR_MODE_VALUES,
-		type GiftCropTarget,
+		type GiftEditorCropTarget,
 		type ImageCropRect,
 		type ImageEditorMode,
 		type ImageMetadata,
@@ -120,6 +122,13 @@
 	// svelte-ignore state_referenced_locally
 	let price = $state<number | null>(gift?.price ?? null);
 	// svelte-ignore state_referenced_locally
+	let priceMax = $state<number | null>(gift?.priceMax ?? null);
+	// Switch state is DERIVED on edit from `priceMax`, not its own persisted flag (issue #155 REQ-1):
+	// a saved range (price_max non-null) opens the form in range mode; everything else is single-price.
+	// svelte-ignore state_referenced_locally
+	let isPriceRange = $state((gift?.priceMax ?? null) !== null);
+	let priceRangeError = $state('');
+	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
 	let imageUrl = $state(gift?.imageUrl ?? '');
@@ -172,14 +181,15 @@
 		: null;
 
 	function initTargetRects(meta: ImageMetadata | null | undefined) {
-		const rects = {} as Record<GiftCropTarget, ImageCropRect>;
-		for (const target of GIFT_CROP_TARGET_VALUES) {
+		const rects = {} as Record<GiftEditorCropTarget, ImageCropRect>;
+		for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
 			// A persisted per-target rect restores exactly; otherwise seed from the
 			// base-level metadata (issue #123: a legacy row with focal/zoom but no
 			// cropRect must reconstruct its real framing via seedCropRectFromLegacyMeta,
 			// not silently fall back to the always-centered FULL_CROP_RECT – the stage
 			// snaps this seed to the target's real aspect once the image is measured).
-			const targetCrop = meta?.targets?.[target];
+			const targetCrop =
+				meta?.targets?.[target] ?? (target === 'square' ? meta?.targets?.card : undefined);
 			rects[target] =
 				targetCrop !== undefined
 					? { ...targetCrop.cropRect }
@@ -190,9 +200,9 @@
 
 	// svelte-ignore state_referenced_locally
 	let targetRects = $state(initTargetRects(gift?.imageMeta));
-	let activeTarget = $state<GiftCropTarget>('card');
+	let activeTarget = $state<GiftEditorCropTarget>('square');
 	// Targets edited in this session; only these are (re)persisted on save.
-	const dirtyTargets = new SvelteSet<GiftCropTarget>();
+	const dirtyTargets = new SvelteSet<GiftEditorCropTarget>();
 
 	const styles = giftDetailModalVariants();
 
@@ -242,15 +252,16 @@
 		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
 			return undefined;
 		}
-		const merged: Partial<Record<GiftCropTarget, ImageTargetCrop>> = imageReplaced
-			? {}
-			: { ...gift?.imageMeta?.targets };
+		const editedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
 		for (const target of dirtyTargets) {
 			const rect = targetRects[target];
 			const { focal, zoom } = cropRectToFocalZoom(rect);
-			merged[target] = { cropRect: { ...rect }, focal, zoom };
+			editedTargets[target] = { cropRect: { ...rect }, focal, zoom };
 		}
-		return Object.keys(merged).length > 0 ? merged : undefined;
+		return mergeGiftTargetCrops(
+			imageReplaced ? undefined : gift?.imageMeta?.targets,
+			editedTargets,
+		);
 	}
 
 	// Base focal/zoom/cropRect stay exactly as persisted for an unreplaced image so
@@ -269,14 +280,13 @@
 		};
 	});
 
-	// The image column IS the detail target surface, so it previews the detail framing.
-	const detailFrame = $derived(giftTargetFrameProps(currentImageMeta, 'detail'));
+	// The image column's main stage previews the square framing (issue #165: the
+	// `detail` editor target was retired, so `square` is the only crop target left).
+	const mainStageFrame = $derived(giftTargetFrameProps(currentImageMeta, 'square'));
 
 	const targetLabels = {
-		card: () => m.gift_image_slot_card(),
-		detail: () => m.gift_image_slot_detail(),
 		square: () => m.gift_image_target_square(),
-	} as const satisfies Record<GiftCropTarget, () => string>;
+	} as const satisfies Record<GiftEditorCropTarget, () => string>;
 
 	function setEditorMode(value: string) {
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
@@ -294,16 +304,29 @@
 	}
 
 	/** Clicking a preview tile jumps to Manual mode with that target active. */
-	function handleTileSelect(target: GiftCropTarget) {
+	function handleTileSelect(target: GiftEditorCropTarget) {
 		activeTarget = target;
 		promoteToManual();
 	}
 
 	function validateForm(): boolean {
 		nameError = '';
+		priceRangeError = '';
 		if (name.trim() === '') {
 			nameError = m.gift_name_required();
 			return false;
+		}
+		if (isPriceRange) {
+			const rangeMin = finalizeGiftPrice(price);
+			const rangeMax = finalizeGiftPrice(priceMax);
+			if (rangeMin === null || rangeMax === null) {
+				priceRangeError = m.gift_price_range_required();
+				return false;
+			}
+			if (rangeMax < rangeMin) {
+				priceRangeError = m.gift_price_range_invalid();
+				return false;
+			}
 		}
 		return true;
 	}
@@ -314,6 +337,8 @@
 		}
 
 		const finalPrice = finalizeGiftPrice(price);
+		// price_max only persists in range mode; toggling back to single mode drops it (REQ-1).
+		const finalPriceMax = isPriceRange ? finalizeGiftPrice(priceMax) : null;
 		const finalQuantity = finalizeGiftQuantity(quantity);
 		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
@@ -326,6 +351,7 @@
 				description: description.trim() || null,
 				links: normalizedLinks,
 				price: finalPrice,
+				priceMax: finalPriceMax,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
@@ -343,6 +369,7 @@
 				description: descriptionPayload,
 				links: normalizedLinks,
 				price: finalPrice,
+				priceMax: finalPriceMax,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
@@ -444,13 +471,21 @@
 
 <div class={styles.body()}>
 	<!-- Left column: the display-mode control on top, then the WYSIWYG crop stage in
-	     Manual mode (locked to the active target's real aspect, #116 REQ-2), else the
-	     live detail-target renderer preview. The card + square + detail live previews
-	     sit at the column's lower edge as clickable tiles – they double as the crop
-	     target switcher (round 3) – so they cost no form space. -->
+	     Manual mode (locked to the target's real aspect, #116 REQ-2), else the live
+	     square-target renderer preview (issue #165: `detail` retired, `square` is the
+	     only target and the only surface the visitor detail modal renders through the
+	     shared crop chain). The square live preview sits at the column's lower edge as
+	     a clickable tile – it doubles as the crop target switcher (round 3) – so it
+	     costs no form space. -->
 	<div
 		class={cn(
 			styles.imageColumn(),
+			// Edit form only (issue #156): the shared border-ink-faint dashed divider
+			// read as an unfinished thin grey line. The dotted mat + surface tint
+			// (already part of the shared imageColumn slot) carries the "mode control +
+			// preview" grouping on its own, so the seam border is dropped here without
+			// touching the shared slot used by the visitor view mode (issue #165).
+			'border-none border-b-0 sm:border-r-0',
 			isCropMode && 'sticky top-0 z-10 h-[400px] sm:static sm:h-auto',
 		)}
 		data-testid="gift-image-column"
@@ -512,10 +547,10 @@
 								class="size-full"
 								src={previewSrc}
 								alt={name || m.gift_image_preview()}
-								fitMode={detailFrame.fitMode}
-								focal={detailFrame.focal}
-								zoom={detailFrame.zoom}
-								fillColor={detailFrame.fillColor}
+								fitMode={mainStageFrame.fitMode}
+								focal={mainStageFrame.focal}
+								zoom={mainStageFrame.zoom}
+								fillColor={mainStageFrame.fillColor}
 								tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 							/>
 						</div>
@@ -700,14 +735,71 @@
 				<!-- Price + Currency -->
 				<div class="mt-3 {styles.formRow()}">
 					<div class={styles.formField()}>
-						<Label for="gift-price">{m.gift_price_label()}</Label>
-						<Input
-							id="gift-price"
-							bind:value={price}
-							placeholder="0"
-							type="number"
-							min="0"
-						/>
+						<div class="flex items-center justify-between gap-2">
+							<Label for="gift-price">{m.gift_price_label()}</Label>
+							<div class="flex items-center gap-1.5">
+								<Label
+									for="gift-price-range-switch"
+									class="text-xs font-normal text-muted-foreground"
+								>
+									{m.gift_price_range_toggle_label()}
+								</Label>
+								<Switch
+									id="gift-price-range-switch"
+									size="sm"
+									bind:checked={isPriceRange}
+									onCheckedChange={() => (priceRangeError = '')}
+								/>
+							</div>
+						</div>
+						{#if isPriceRange}
+							<div class="flex items-center gap-2">
+								<Input
+									id="gift-price"
+									class="min-w-0"
+									bind:value={price}
+									placeholder="0"
+									type="number"
+									min="0"
+									aria-label={m.gift_price_range_min_aria()}
+									state={priceRangeError !== '' ? 'error' : 'default'}
+									aria-invalid={priceRangeError !== '' ? true : undefined}
+									aria-describedby={priceRangeError !== ''
+										? 'gift-price-range-error'
+										: undefined}
+								/>
+								<span class="shrink-0 text-muted-foreground" aria-hidden="true"
+									>–</span
+								>
+								<Input
+									id="gift-price-max"
+									class="min-w-0"
+									bind:value={priceMax}
+									placeholder="0"
+									type="number"
+									min="0"
+									aria-label={m.gift_price_range_max_aria()}
+									state={priceRangeError !== '' ? 'error' : 'default'}
+									aria-invalid={priceRangeError !== '' ? true : undefined}
+									aria-describedby={priceRangeError !== ''
+										? 'gift-price-range-error'
+										: undefined}
+								/>
+							</div>
+						{:else}
+							<Input
+								id="gift-price"
+								bind:value={price}
+								placeholder="0"
+								type="number"
+								min="0"
+							/>
+						{/if}
+						{#if priceRangeError !== ''}
+							<HelpText id="gift-price-range-error" state="error"
+								>{priceRangeError}</HelpText
+							>
+						{/if}
 					</div>
 					<div class={styles.formField()}>
 						<Label>{m.gift_currency_label()}</Label>

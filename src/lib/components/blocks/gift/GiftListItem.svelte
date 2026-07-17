@@ -43,21 +43,25 @@
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
-	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
+	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>
 
 <div
+	data-testid="gift-list-item"
 	class={cn(
-		'group flex items-center gap-4 border-b border-border px-2 py-3 transition-colors hover:bg-muted/50',
+		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border px-2 py-3 transition-colors hover:bg-muted/50 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center sm:gap-4',
 		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 	)}
 >
-	<!-- Thumbnail -->
-	<div class="relative flex-shrink-0">
+	<!-- Shared square crop: large on mobile, 96px minimum from tablet upward. -->
+	<div
+		data-testid="gift-list-image"
+		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:w-24 sm:self-center"
+	>
 		<GiftImage
-			class="size-16 rounded-lg"
+			class="size-full rounded-lg"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
 			target="square"
@@ -73,12 +77,24 @@
 				<PencilIcon class="size-3" />
 			</span>
 		{/if}
+		{#if isVisitorOrModerator && visitorGift}
+			<LikeButton
+				giftId={gift.id}
+				giftName={gift.name}
+				likeCount={visitorGift.likeCount}
+				size="sm"
+				showCount={false}
+				class="absolute right-2 bottom-2 z-10 size-9 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
+			/>
+		{/if}
 	</div>
 
-	<!-- Info -->
-	<div class="flex min-w-0 flex-1 flex-col gap-1">
-		<div class="flex items-baseline gap-2">
-			<h3 class="truncate font-heading text-base font-semibold text-foreground">
+	<!-- Content and primary reservation action stay beside the image at every width. -->
+	<div class="flex min-w-0 flex-col gap-1 self-stretch">
+		<div class="flex items-start gap-1.5">
+			<h3
+				class="line-clamp-2 min-w-0 flex-1 font-heading text-base font-semibold leading-snug text-foreground"
+			>
 				{gift.name}
 			</h3>
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
@@ -88,36 +104,18 @@
 					{m.gift_received_badge()}
 				</Badge>
 			{/if}
-			<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />
+			<GiftEditedBadge
+				editedAfterShareAt={gift.editedAfterShareAt}
+				compact
+				updateText={gift.descriptionAppends.at(-1)?.text ?? null}
+			/>
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2 text-sm">
+		<div class="flex flex-wrap items-center gap-1.5 text-sm">
 			{#if gift.price !== null}
 				<span class="font-bold text-primary">{priceDisplay}</span>
 			{:else}
 				<span class="text-muted-foreground">{priceDisplay}</span>
-			{/if}
-
-			<span class="text-border">|</span>
-
-			{#if domain}
-				<a
-					href={safeGiftUrl ?? '#'}
-					target="_blank"
-					rel="external noopener noreferrer"
-					class="inline-flex items-center gap-1 text-xs text-primary"
-					onclick={(e: MouseEvent) => e.stopPropagation()}
-				>
-					<ExternalLinkIcon class="size-3" />
-					{domain}
-				</a>
-				{#if gift.links.length > 1}
-					<span class="text-xs text-muted-foreground"
-						>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span
-					>
-				{/if}
-			{:else}
-				<span class="text-xs text-muted-foreground">{m.gift_link_none()}</span>
 			{/if}
 
 			{#if priorityInfo}
@@ -134,21 +132,39 @@
 				<span class="text-xs font-semibold text-ink-soft">{reserverLine}</span>
 			{/if}
 		</div>
+
+		{#if domain}
+			<a
+				href={safeGiftUrl ?? '#'}
+				target="_blank"
+				rel="external noopener noreferrer"
+				class="inline-flex min-w-0 items-center gap-1 truncate text-xs text-primary"
+				onclick={(e: MouseEvent) => e.stopPropagation()}
+			>
+				<ExternalLinkIcon class="size-3 shrink-0" />
+				<span class="truncate">{domain}</span>
+				{#if gift.links.length > 1}
+					<span class="shrink-0 text-muted-foreground"
+						>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span
+					>
+				{/if}
+			</a>
+		{:else}
+			<span class="text-xs text-muted-foreground">{m.gift_link_none()}</span>
+		{/if}
+
 		<GiftDescription
 			description={gift.description}
 			descriptionAppends={gift.descriptionAppends}
-			maxVisibleAppends={1}
+			showAppends={false}
+			descriptionClass="line-clamp-1"
 		/>
+
+		{#if isVisitorOrModerator && visitorGift}
+			<div class="mt-auto flex items-center justify-end gap-2 pt-2">
+				<PurchasedToggle gift={visitorGift} />
+				<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
+			</div>
+		{/if}
 	</div>
-
-	<!-- Actions -->
-	{#if isVisitorOrModerator && visitorGift}
-		<div class="flex flex-shrink-0 items-center gap-2">
-			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
-
-			<PurchasedToggle gift={visitorGift} />
-
-			<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
-		</div>
-	{/if}
 </div>

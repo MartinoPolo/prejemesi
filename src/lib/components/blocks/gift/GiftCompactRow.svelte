@@ -42,7 +42,7 @@
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
-	const priceDisplay = $derived(formatPrice(gift.price, gift.currency));
+	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 </script>
 

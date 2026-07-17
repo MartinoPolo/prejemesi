@@ -10,12 +10,14 @@ import {
 	fitCropRectToAspect,
 	imageMetaToFrameProps,
 	giftTargetFrameProps,
+	mergeGiftTargetCrops,
 	seedCropRectFromLegacyMeta,
 	FULL_CROP_RECT,
 	type ImageFrameProps,
 } from './crop.js';
 import {
 	DEFAULT_IMAGE_METADATA,
+	GIFT_EDITOR_CROP_TARGET_VALUES,
 	IMAGE_ZOOM_MAX,
 	IMAGE_ZOOM_OUT_MIN,
 	type ImageCropRect,
@@ -428,5 +430,82 @@ describe('giftTargetFrameProps', () => {
 			},
 		};
 		expect(giftTargetFrameProps(meta, 'square').zoom).toBe(2);
+	});
+
+	it('uses a legacy card crop as a square-only fallback until a square crop exists (#163)', () => {
+		const legacyCardCrop = {
+			cropRect: { x: 0, y: 0.2, w: 1, h: 1 / GIFT_CROP_TARGET_SPECS.card.aspect },
+			focal: { x: 50, y: 31.25 },
+			zoom: 1,
+		};
+		const meta = {
+			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			targets: { card: legacyCardCrop },
+		};
+
+		// The card surface was replaced by the square family. Its legacy crop keeps
+		// rendering only as the square fallback, never as a detail override.
+		expect(giftTargetFrameProps(meta, 'square').focal).toEqual(legacyCardCrop.focal);
+		expect(giftTargetFrameProps(meta, 'square').zoom).toBe(legacyCardCrop.zoom);
+		expect(giftTargetFrameProps(meta, 'detail')).toEqual(imageMetaToFrameProps(meta));
+
+		const squareCrop = {
+			cropRect: { x: 0.2, y: 0.1, w: 0.6, h: 0.6 },
+			focal: { x: 50, y: 25 },
+			zoom: 1.5,
+		};
+		const migratedMeta = { ...meta, targets: { ...meta.targets, square: squareCrop } };
+		expect(giftTargetFrameProps(migratedMeta, 'square').focal).toEqual(squareCrop.focal);
+		expect(giftTargetFrameProps(migratedMeta, 'square').zoom).toBe(squareCrop.zoom);
+	});
+});
+
+describe('mergeGiftTargetCrops', () => {
+	it('replaces the legacy card target when a manual square crop is saved (#163)', () => {
+		const legacyCardCrop = {
+			cropRect: { x: 0, y: 0.2, w: 1, h: 0.36 },
+			focal: { x: 50, y: 31.25 },
+			zoom: 1,
+		};
+		const detailCrop = {
+			cropRect: { x: 0.2, y: 0, w: 0.5, h: 1 },
+			focal: { x: 40, y: 50 },
+			zoom: 1,
+		};
+		const squareCrop = {
+			cropRect: { x: 0.15, y: 0.15, w: 0.7, h: 0.7 },
+			focal: { x: 50, y: 50 },
+			zoom: 1 / 0.7,
+		};
+
+		expect(
+			mergeGiftTargetCrops(
+				{ card: legacyCardCrop, detail: detailCrop },
+				{ square: squareCrop },
+			),
+		).toEqual({ detail: detailCrop, square: squareCrop });
+	});
+
+	it('preserves a legacy card fallback when the (sole) square target is untouched this session', () => {
+		// Issue #165 retired `detail` from the editor targets, so the only two
+		// reachable `editedTargets` shapes are `{}` (nothing touched) and
+		// `{ square }` (covered above) – there is no longer a third target whose
+		// edit could leave the card fallback in place while adding its own entry.
+		const legacyCardCrop = {
+			cropRect: { x: 0, y: 0.2, w: 1, h: 0.36 },
+			focal: { x: 50, y: 31.25 },
+			zoom: 1,
+		};
+
+		expect(mergeGiftTargetCrops({ card: legacyCardCrop }, {})).toEqual({
+			card: legacyCardCrop,
+		});
+	});
+});
+
+describe('gift crop editor targets', () => {
+	it('offers only the square target after the detail target was retired (#165)', () => {
+		expect(GIFT_EDITOR_CROP_TARGET_VALUES).toEqual(['square']);
 	});
 });

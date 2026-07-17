@@ -16,6 +16,7 @@ function makeCurrent(overrides: Partial<PreShareGiftSnapshot> = {}): PreShareGif
 		descriptionAppends: [],
 		quantity: 3,
 		price: 1000,
+		priceMax: null,
 		currency: 'CZK',
 		imageUrl: null,
 		imageKey: null,
@@ -351,6 +352,26 @@ describe('computePreShareOwnerEdit', () => {
 			expect(outcome.changed).toBe(true);
 		});
 
+		it('detects priceMax change (price range upper bound, issue #155)', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({ priceMax: null }),
+				makeInput({ priceMax: 1500 }),
+				NOW,
+			);
+			expect(outcome.updateData.priceMax).toBe(1500);
+			expect(outcome.changed).toBe(true);
+		});
+
+		it('treats identical priceMax as no change', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({ priceMax: 1500 }),
+				makeInput({ priceMax: 1500 }),
+				NOW,
+			);
+			expect('priceMax' in outcome.updateData).toBe(false);
+			expect(outcome.changed).toBe(false);
+		});
+
 		it('detects currency change', () => {
 			const outcome = computePreShareOwnerEdit(
 				makeCurrent({ currency: 'CZK' }),
@@ -607,6 +628,7 @@ describe('computePostShareEditTransparency', () => {
 				imageKey: snapshot.imageKey,
 				imageUrl: snapshot.imageUrl,
 				currency: snapshot.currency,
+				priceMax: snapshot.priceMax,
 				price: snapshot.price,
 				quantity: snapshot.quantity,
 				descriptionAppends: snapshot.descriptionAppends,

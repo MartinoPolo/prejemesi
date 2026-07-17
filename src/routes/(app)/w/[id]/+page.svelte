@@ -97,6 +97,7 @@
 	let wishlist = $state<
 		Wishlist & {
 			recipientDisplayName: string;
+			recipientImage: string | null;
 			managerNames: string[];
 			role: WishlistRole;
 			revertCapability: RevertCapability;
@@ -767,7 +768,11 @@
 		await Promise.all([
 			loadGiftData(),
 			(async () => {
-				if (!isAuthenticated) {
+				// Auto-follow surfaces a shared list in the viewer's „Sledované". Skip it for anyone
+				// who already owns or co-manages the list (it lives in „Moje seznamy" / „Spravované"):
+				// the server no-ops for the recipient anyway, so this spares a wasted POST + DB
+				// round-trip on every view, and it keeps a moderator from becoming a redundant follower.
+				if (!isAuthenticated || canManage) {
 					return;
 				}
 
@@ -787,6 +792,7 @@
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}
+		recipientImage={wishlist.recipientImage}
 		{isForSomeoneElse}
 		managerNames={wishlist.managerNames}
 		description={wishlist.description}
@@ -856,6 +862,7 @@
 	wishlistTitle={wishlist.title}
 	giftCount={totalCount}
 	{recipientIsModerator}
+	{isArchived}
 	bind:giftModalOpen
 	{giftModalMode}
 	{selectedGift}
@@ -881,6 +888,8 @@
 	onupdate={handleUpdate}
 	ondelete={handleDelete}
 	onreceived={handleReceived}
+	ongiftreserve={handleOpenReserveModal}
+	ongiftunreserve={handleUnreserve}
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onshared={handleShared}

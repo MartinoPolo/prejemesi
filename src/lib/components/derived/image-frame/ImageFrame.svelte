@@ -54,6 +54,16 @@
 		interactive?: boolean;
 		/** Force the loading skeleton (e.g. parent still fetching before `src` exists). */
 		loading?: boolean;
+		/** Fires once the image genuinely fails to load (after any transformed-variant retry). Lets a
+		 *  consumer (e.g. Avatar) swap to a fallback other than this frame's own emoji tile. */
+		onerror?: () => void;
+		/**
+		 * Referrer policy for the underlying `<img>`. Avatars pass `no-referrer` so external
+		 * Google profile-picture URLs (lh3.googleusercontent.com) don't 403: Google's CDN
+		 * rejects avatar requests that carry a foreign `Referer`, which the app's global
+		 * `strict-origin-when-cross-origin` policy would otherwise send (issue #158).
+		 */
+		referrerPolicy?: ReferrerPolicy;
 		class?: string;
 	}
 
@@ -72,6 +82,8 @@
 		shape = 'square',
 		interactive = false,
 		loading = false,
+		onerror,
+		referrerPolicy,
 		class: className,
 	}: Props = $props();
 
@@ -161,6 +173,7 @@
 			transformFailedSrc = src;
 		} else {
 			erroredSrc = src;
+			onerror?.();
 		}
 	}
 
@@ -222,6 +235,7 @@
 				{alt}
 				loading={eagerLoading ? 'eager' : 'lazy'}
 				decoding="async"
+				referrerpolicy={referrerPolicy}
 				aria-hidden={alt === '' ? 'true' : undefined}
 			/>
 		{/if}

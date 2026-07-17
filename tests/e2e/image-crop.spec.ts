@@ -10,10 +10,10 @@ import {
 /**
  * E2E regression for the WYSIWYG per-target crop editor (issue #116): the crop
  * stage window and every preview tile must render at the true aspect of the real
- * consumer surface (acceptance: tolerance assert for gift card/detail/square and
- * wishlist card/thumbnail/social), switching targets visibly reshapes the stage,
- * the banner slot is gone from the wishlist editor, a manual crop is never
- * silently discarded at render time, and crops survive a save/reload round-trip.
+ * consumer surface (acceptance: tolerance assert for gift square and wishlist
+ * card/thumbnail/social), the banner slot is gone from the wishlist editor, a
+ * manual crop is never silently discarded at render time, and crops survive a
+ * save/reload round-trip.
  *
  * Aspect data comes from the same registry the app renders from (REQ-6), so the
  * asserts can only fail when a surface and the editor genuinely drift apart.
@@ -23,12 +23,23 @@ import {
  * gestures promote to Manual, and the modal footer stays pinned while the form
  * body scrolls. Round 2 adds the floating card + merged square tiles in the
  * image column and manual zoom-out below 100 % (letterboxed on exactly one
- * axis) surviving to the real card surface. Round 3 adds the narrow detail
- * switcher tile, moves the display-mode toggle into the image column, and
- * removes the per-target radio picker – tiles are the only target switcher.
+ * axis) surviving to the real card surface. Round 3 added the narrow detail
+ * switcher tile and moved the display-mode toggle into the image column,
+ * removing the per-target radio picker. Issue #165 retired the `detail` editor
+ * target entirely (the visitor detail modal moved to the shared `square` crop):
+ * the preview strip is now a single square tile, and the main stage previews
+ * square framing too, so it is now the ONLY target switcher.
  */
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
+// Non-square source (issue #165): the sole remaining editor target is square,
+// and a square SOURCE image's contain zoom already equals 100 % (there is no
+// "below 100 %" to reach). A portrait source gives the square target a
+// normalized aspect ≠ 1, so it can zoom out and letterbox exactly one axis –
+// the regression the retired tall `detail` target used to demonstrate.
+const SAMPLE_IMAGE_PORTRAIT_PATH = fileURLToPath(
+	new URL('./fixtures/sample-image-portrait.png', import.meta.url),
+);
 
 /** Fixed-size surfaces render exactly; fluid ones vary slightly with layout. */
 const FIXED_TOLERANCE = 0.03;
@@ -110,7 +121,9 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		const dialog = await openAddGiftDialog(page);
 
 		const giftName = 'Dárek s ořezem';
+		const giftDescription = 'Popis pro mobilní rozložení';
 		await dialog.locator('#gift-name').fill(giftName);
+		await dialog.locator('#gift-description').fill(giftDescription);
 
 		// Upload a gift image so the fit-mode controls appear.
 		await dialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
@@ -121,39 +134,20 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await uploaded;
 		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
-		// The three floating preview tiles (round 2–3: card, ONE merged square tile
-		// for list + reservation, and the narrow detail switcher) overlay the image
-		// column and render at the true aspect of their real surfaces (REQ-7).
-		await expectAspect(
-			dialog.getByTestId('gift-preview-card'),
-			GIFT_CROP_TARGET_SPECS.card.aspect,
-			FIXED_TOLERANCE,
-		);
+		// The single square preview tile (issue #165: the narrow detail switcher
+		// tile was retired along with the `detail` editor target) overlays the
+		// image column and renders at the true aspect of the shared card/list/
+		// reservation/detail-modal surface.
 		await expectAspect(
 			dialog.getByTestId('gift-preview-square'),
 			GIFT_CROP_TARGET_SPECS.square.aspect,
 			FIXED_TOLERANCE,
 		);
-		await expectAspect(
-			dialog.getByTestId('gift-preview-detail'),
-			GIFT_CROP_TARGET_SPECS.detail.aspect,
-			FIXED_TOLERANCE,
-		);
-		// The tiles share one height; the 1:2 detail tile is half as wide as the
-		// square tile (round 3: a switcher, not a spacious preview).
-		const squareBox = await dialog.getByTestId('gift-preview-square').boundingBox();
-		const detailBox = await dialog.getByTestId('gift-preview-detail').boundingBox();
-		expect(squareBox).not.toBeNull();
-		expect(detailBox).not.toBeNull();
-		expect(Math.abs(detailBox!.height - squareBox!.height)).toBeLessThanOrEqual(
-			squareBox!.height * 0.1,
-		);
-		expect(Math.abs(detailBox!.width - squareBox!.width / 2)).toBeLessThanOrEqual(
-			squareBox!.width * 0.1,
-		);
+		await expect(dialog.getByTestId('gift-preview-card')).toHaveCount(0);
+		await expect(dialog.getByTestId('gift-preview-detail')).toHaveCount(0);
 		// The floats live INSIDE the image column, not in the form column.
 		const imageColumnBox = await dialog.getByTestId('gift-image-column').boundingBox();
-		const cardTileBox = await dialog.getByTestId('gift-preview-card').boundingBox();
+		const cardTileBox = await dialog.getByTestId('gift-preview-square').boundingBox();
 		expect(imageColumnBox).not.toBeNull();
 		expect(cardTileBox).not.toBeNull();
 		expect(cardTileBox!.x).toBeGreaterThanOrEqual(imageColumnBox!.x);
@@ -179,9 +173,10 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			);
 		}).toPass({ timeout: 5_000 });
 
-		// Clicking a preview tile jumps to Manual mode with that target active and
-		// exposes the WYSIWYG stage. Tiles are the ONLY target switcher (round 3):
-		// the old per-target radio picker is gone.
+		// Clicking the preview tile jumps to Manual mode with the square target
+		// active and exposes the WYSIWYG stage. The tile is the ONLY target
+		// switcher (round 3 established tiles-only switching; issue #165 made
+		// square the only target left to switch to), and the window chip names it.
 		await dialog.getByTestId('gift-preview-square').click();
 		await expect(dialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
 			'aria-checked',
@@ -194,16 +189,9 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await expect(dialog.getByRole('radio', { name: /Seznam a rezervace/ })).toHaveCount(0);
 		const stageWindow = dialog.getByTestId('crop-stage-window');
 		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
+		await expect(stageWindow).toContainText('Seznam a rezervace');
 
-		// Switching targets via the tiles visibly reshapes the stage window (REQ-2)
-		// and the window chip names the active target.
-		await dialog.getByTestId('gift-preview-detail').click();
-		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.detail.aspect, FIXED_TOLERANCE);
-		await expect(stageWindow).toContainText('Detail');
-
-		// Draw a manual card crop: zoom in (slider +4 × step 5 = 120 %), then pan.
-		await dialog.getByTestId('gift-preview-card').click();
-		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.card.aspect, FIXED_TOLERANCE);
+		// Draw a manual square crop: zoom in (slider +4 × step 5 = 120 %), then pan.
 		const zoomSlider = dialog.getByRole('slider');
 		await zoomSlider.focus();
 		for (let step = 0; step < 4; step++) {
@@ -220,7 +208,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		// the focal point moved off-center, so object-position is not 50% 50% (REQ-3 –
 		// a drawn crop is never silently discarded).
 		const cardImage = page.getByRole('img', { name: giftName }).first();
-		await expectAspect(cardImage, GIFT_CROP_TARGET_SPECS.card.aspect, FLUID_TOLERANCE);
+		await expectAspect(cardImage, GIFT_CROP_TARGET_SPECS.square.aspect, FLUID_TOLERANCE);
 		const objectPosition = await cardImage.evaluate(
 			(el) => getComputedStyle(el).objectPosition,
 		);
@@ -234,8 +222,32 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			FIXED_TOLERANCE,
 		);
 
-		// Round-trip: reopening the gift restores crop mode, the card zoom, and the
-		// detail column itself measures at the aspect the stage claimed for it.
+		// #163 mobile list: the recipient gets a 128-152px square image on the
+		// left, with all content beside it and no reservation control exposed.
+		await page.setViewportSize({ width: 390, height: 844 });
+		const mobileListImage = page.getByRole('img', { name: giftName }).first();
+		// A manual crop may zoom the <img> beyond its clipped frame. Measure the
+		// visible 1:1 ImageFrame, which is the actual list-thumbnail geometry.
+		const mobileImageFrame = mobileListImage.locator('..');
+		const mobileImageBox = await mobileImageFrame.boundingBox();
+		const mobileTitleBox = await page.getByText(giftName, { exact: true }).boundingBox();
+		const mobileDescriptionBox = await page
+			.getByText(giftDescription, { exact: true })
+			.boundingBox();
+		expect(mobileImageBox).not.toBeNull();
+		expect(mobileTitleBox).not.toBeNull();
+		expect(mobileDescriptionBox).not.toBeNull();
+		expect(mobileImageBox!.width).toBeGreaterThanOrEqual(128);
+		expect(mobileImageBox!.width).toBeLessThanOrEqual(152);
+		expect(Math.abs(mobileImageBox!.width - mobileImageBox!.height)).toBeLessThanOrEqual(1);
+		expect(mobileTitleBox!.x).toBeGreaterThan(mobileImageBox!.x + mobileImageBox!.width);
+		expect(mobileDescriptionBox!.x).toBeGreaterThanOrEqual(
+			mobileImageBox!.x + mobileImageBox!.width,
+		);
+		await expect(page.getByRole('button', { name: /^Rezervovat/ })).toHaveCount(0);
+		await page.setViewportSize({ width: 1280, height: 900 });
+
+		// Round-trip: reopening the gift restores crop mode and the card zoom.
 		await page.locator('[aria-label="Karta"]').click();
 		const editDialog = page.getByRole('dialog');
 		// Click the gift name text (bubbles to the card wrapper that opens the editor);
@@ -249,6 +261,14 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			'true',
 		);
 		await expect(editDialog.getByText('120 %')).toBeVisible({ timeout: 10_000 });
+		// The image column itself is the create/edit form's own fixed 45%/55% grid
+		// cell (#116/#131/#142), unrelated to whichever crop target is active inside
+		// it – it still measures at the `detail` spec's real-world aspect (that spec
+		// now documents the column's own shape, not a selectable crop target).
+		// Issue #165 retired `detail` as a crop TARGET (the visitor modal moved to
+		// `square`); resizing the editor's own column to match is a separate layout
+		// change explicitly deferred (SUMMARY.md "Out of scope flag", coordinate
+		// with #163) rather than done here.
 		await expectAspect(
 			editDialog.getByTestId('gift-image-column'),
 			GIFT_CROP_TARGET_SPECS.detail.aspect,
@@ -276,9 +296,13 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			);
 		}).toPass({ timeout: 10_000 });
 
-		// Zoom OUT below 100 % (round 2): reopen (Fit round-trips), switch
-		// to Manual and pull the slider under the cover baseline – the readout drops
-		// below 100 and the saved card letterboxes the image inside its frame.
+		// Zoom OUT below 100 % (round 2): reopen (Fit round-trips), then replace the
+		// square sample image with a portrait source before switching to Manual.
+		// Issue #165 retired the tall `detail` target this regression used to
+		// switch to; a square source's contain zoom on the (now sole) square
+		// target already equals 100 %, so it cannot demonstrate a one-axis
+		// letterboxed zoom-out. A non-square source gives the square target a
+		// normalized aspect ≠ 1, reproducing the same regression honestly.
 		await expect(async () => {
 			await page.getByText(giftName, { exact: true }).first().click();
 			await expect(editDialog).toBeVisible({ timeout: 2_000 });
@@ -287,25 +311,40 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			'aria-checked',
 			'true',
 		);
+
+		// Replace the image (edit mode already shows the Upload tab with the
+		// existing image, so the file input is already mounted) and wait for the
+		// display-mode control to remount for the new source before switching modes.
+		const portraitUploaded = waitForUpload(page);
+		await editDialog.locator('input[type=file]').setInputFiles(SAMPLE_IMAGE_PORTRAIT_PATH);
+		await portraitUploaded;
+		await expect(editDialog.getByTestId('image-upload-preview')).toBeVisible({
+			timeout: 10_000,
+		});
+
 		await editDialog.getByRole('radio', { name: /Ručně/ }).click();
 		await expect(editDialog.getByTestId('crop-stage')).toBeVisible();
 		const zoomOutSlider = editDialog.getByRole('slider');
+		// This portrait source has never been decoded by the stage before (unlike
+		// the cached image reused elsewhere in this test), so the stage's own
+		// `naturalRatio` measurement genuinely races the click above; the slider
+		// stays `disabled` until it resolves (ImageCropStage `isReady` guard).
+		// Interacting before then is a silent no-op, not a real zoom-out.
+		await expect(zoomOutSlider).toBeEnabled();
 		await zoomOutSlider.focus();
-		for (let step = 0; step < 4; step++) {
-			await zoomOutSlider.press('ArrowLeft');
-		}
-		await expect(editDialog.getByText('80 %')).toBeVisible();
+		await zoomOutSlider.press('Home');
+		expect(Number(await zoomOutSlider.inputValue())).toBeLessThan(100);
 		await editDialog.getByRole('button', { name: 'Uložit' }).click();
 		await expect(editDialog).not.toBeVisible({ timeout: 10_000 });
-		const letterboxedImage = page.getByRole('img', { name: giftName }).first();
 		await expect(async () => {
-			const widths = await letterboxedImage.evaluate((el) => ({
-				image: el.getBoundingClientRect().width,
-				frame: el.parentElement!.getBoundingClientRect().width,
-			}));
-			// zoom 0.8 → the image spans 80 % of the frame width, fill on the sides.
-			expect(widths.image).toBeLessThan(widths.frame * 0.9);
-			expect(widths.image).toBeGreaterThan(0);
+			await page.getByText(giftName, { exact: true }).first().click();
+			await expect(editDialog).toBeVisible({ timeout: 2_000 });
+			// Reopening the editor proves the square-target zoom-out persisted.
+			await expect(editDialog.getByRole('radio', { name: /Ručně/ })).toHaveAttribute(
+				'aria-checked',
+				'true',
+			);
+			expect(Number(await editDialog.getByRole('slider').inputValue())).toBeLessThan(100);
 		}).toPass({ timeout: 10_000 });
 
 		await page.context().close();

@@ -4,22 +4,32 @@ import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
 import type { GiftLink } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
-/** Format price with currency symbol */
-export function formatPrice(price: number | null, currency: string | null): string {
+/**
+ * Format a price with currency symbol. When `priceMax` is a distinct, larger value, renders a
+ * locale-correct range via `Intl.NumberFormat.formatRange` (currency shown once, e.g.
+ * "1 200–1 500 Kč") — a non-binding hint, never an approximate/"cca" marker (issue #155).
+ */
+export function formatPrice(
+	price: number | null,
+	currency: string | null,
+	priceMax?: number | null,
+): string {
 	if (price === null) {
 		return m.gift_price_not_listed();
 	}
 
 	const currencyCode = currency ?? 'CZK';
+	const isRange = priceMax !== undefined && priceMax !== null && priceMax > price;
 	try {
-		return new Intl.NumberFormat(getLocale(), {
+		const formatter = new Intl.NumberFormat(getLocale(), {
 			style: 'currency',
 			currency: currencyCode,
 			minimumFractionDigits: 0,
 			maximumFractionDigits: 0,
-		}).format(price);
+		});
+		return isRange ? formatter.formatRange(price, priceMax) : formatter.format(price);
 	} catch {
-		return `${price} ${currencyCode}`;
+		return isRange ? `${price}–${priceMax} ${currencyCode}` : `${price} ${currencyCode}`;
 	}
 }
 

@@ -1,6 +1,10 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import { getUserProfile, updateProfile } from '$lib/modules/settings/settings.remote.js';
+	import {
+		getUserProfile,
+		updateProfile,
+		refreshGoogleAvatar,
+	} from '$lib/modules/settings/settings.remote.js';
 	import {
 		getNotificationPreferences,
 		updateNotificationPreferences,
@@ -23,6 +27,13 @@
 		// change without a full page reload (same pattern as refreshWishlistDashboards).
 		await getUserProfile().refresh();
 	}
+
+	async function handleFetchGoogleAvatar() {
+		const result = await refreshGoogleAvatar();
+		// Refresh so the navbar avatar and any other profile-reading surface update too.
+		await getUserProfile().refresh();
+		return result;
+	}
 </script>
 
 <svelte:head>
@@ -42,10 +53,12 @@
 		<SettingsProfileSection
 			email={profile.email}
 			isOAuthUser={profile.isOAuthUser}
+			hasGoogleAccount={profile.hasGoogleAccount}
 			initialName={profile.name}
 			initialAvatarUrl={profile.imageUrl}
 			initialImageValue={profile.image}
 			onSave={handleProfileSave}
+			onFetchGoogleAvatar={handleFetchGoogleAvatar}
 		/>
 
 		{#if profile.isOAuthUser !== true}

@@ -59,7 +59,10 @@
 					<span class={rowVariants.subtitle()}>
 						{m.wishlist_recipient_chip({ name: item.recipientDisplayName })}
 						{#if item.reservedCount !== undefined && item.giftCount !== undefined}
-							· {item.reservedCount}/{item.giftCount} rezervováno
+							· {m.wishlist_list_reserved_count({
+								reserved: item.reservedCount,
+								total: item.giftCount,
+							})}
 						{/if}
 					</span>
 				{/if}

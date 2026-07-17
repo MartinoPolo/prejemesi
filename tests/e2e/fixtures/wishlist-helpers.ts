@@ -76,8 +76,18 @@ export async function createWishlistForSomeoneAndNavigate(
 	return new URL(page.url()).pathname;
 }
 
-/** Add a gift (name only) to the currently open wishlist detail page. */
-export async function addGift(page: Page, name: string): Promise<void> {
+interface GiftDraftOptions {
+	description?: string;
+	price?: string;
+	primaryLink?: string;
+}
+
+/** Add a gift with the supplied details to the currently open wishlist detail page. */
+export async function addGift(
+	page: Page,
+	name: string,
+	{ description, price, primaryLink }: GiftDraftOptions = {},
+): Promise<void> {
 	await page
 		.getByRole('button', { name: /Přidat/ })
 		.first()
@@ -86,6 +96,16 @@ export async function addGift(page: Page, name: string): Promise<void> {
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible({ timeout: 5_000 });
 	await dialog.getByRole('textbox', { name: 'Název' }).fill(name);
+	if (description !== undefined) {
+		await dialog.locator('#gift-description').fill(description);
+	}
+	if (price !== undefined) {
+		await dialog.locator('#gift-price').fill(price);
+	}
+	if (primaryLink !== undefined) {
+		await dialog.getByRole('button', { name: 'Přidat odkaz' }).click();
+		await dialog.getByTestId('gift-link-url').fill(primaryLink);
+	}
 	await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
 
 	// Wait for the dialog to close so its lingering input value can't pollute later
