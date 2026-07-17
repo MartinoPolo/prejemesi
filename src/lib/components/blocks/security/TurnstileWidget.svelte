@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { dev } from '$app/environment';
 	import { env } from '$env/dynamic/public';
-	import * as m from '$lib/paraglide/messages.js';
 	import { onMount } from 'svelte';
 
 	interface TurnstileApi {
@@ -25,6 +24,13 @@
 
 	interface TurnstileWidgetProps {
 		token?: string | null;
+		/**
+		 * Bound to `true` when the challenge cannot run — either it is unconfigured for this
+		 * environment (no site key) or the widget script/render failed (blocked by an
+		 * ad-blocker / antivirus, or a Cloudflare outage). The reservation flow reads this to
+		 * fail open instead of trapping the visitor behind a check that will never complete.
+		 */
+		unavailable?: boolean;
 	}
 
 	const DEVELOPMENT_SITE_KEY = '1x00000000000000000000AA';
@@ -36,10 +42,15 @@
 			: dev
 				? DEVELOPMENT_SITE_KEY
 				: '';
-	let { token = $bindable(null) }: TurnstileWidgetProps = $props();
+	let { token = $bindable(null), unavailable = $bindable(false) }: TurnstileWidgetProps =
+		$props();
 	let container = $state<HTMLDivElement>();
-	let widgetUnavailable = $state(siteKey === '');
 	let widgetId: string | null = null;
+
+	// No site key means Turnstile is not configured for this environment — surface it
+	// synchronously so the parent never gates the submit button on a token that can't arrive.
+	// A later script/render failure flips it in onMount's catch below.
+	unavailable = siteKey === '';
 
 	function getTurnstileWindow() {
 		return window as TurnstileWindow;
@@ -88,7 +99,7 @@
 			})
 			.catch(() => {
 				if (!disposed) {
-					widgetUnavailable = true;
+					unavailable = true;
 					token = null;
 				}
 			});
@@ -101,10 +112,6 @@
 	});
 </script>
 
-{#if widgetUnavailable}
-	<p class="text-destructive text-center text-sm" role="alert">
-		{m.server_error_turnstile_unavailable()}
-	</p>
-{:else}
+{#if !unavailable}
 	<div class="flex min-h-[65px] justify-center" bind:this={container}></div>
 {/if}

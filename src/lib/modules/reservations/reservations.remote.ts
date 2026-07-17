@@ -75,7 +75,18 @@ async function verifyAnonymousReservationTurnstile(turnstileToken: string | unde
 			error(403, SERVER_ERROR.TURNSTILE_INVALID);
 		case 'configuration':
 		case 'unavailable':
-			error(503, SERVER_ERROR.TURNSTILE_UNAVAILABLE);
+			// Fail open: the bot check could not run at all — the secret is unconfigured
+			// (`configuration`) or Cloudflare Siteverify was unreachable (`unavailable`).
+			// These are operational failures, not bot signals. Blocking here takes the core
+			// guest-reservation flow fully offline whenever Turnstile is misconfigured or down
+			// (as happened in production when the keys were never deployed). The action is
+			// low-stakes (no money, no account) and other defenses remain in force: a required
+			// display name, the per-browser cancel cookie, and Cloudflare WAF rate limiting.
+			// Allow the reservation but log it so unverified traffic stays auditable.
+			console.warn(
+				`[Turnstile] unverified anonymous reservation allowed (fail-open): reason=${result.reason}`,
+			);
+			return;
 	}
 }
 
