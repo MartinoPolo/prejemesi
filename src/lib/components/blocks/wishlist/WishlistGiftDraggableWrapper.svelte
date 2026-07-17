@@ -12,6 +12,8 @@
 		dragOverStyle: 'ring' | 'bg';
 		/** Accessible name for the card's button role (issue #125 REQ-4). */
 		giftName: string;
+		/** Extra layout classes from the host view (the card grid passes its subgrid span). */
+		class?: string;
 		children: Snippet;
 		/**
 		 * Opens the gift detail modal (issue #125): edit mode for managers, read-only for
@@ -32,6 +34,7 @@
 		dragOverIndex,
 		dragOverStyle,
 		giftName,
+		class: className = undefined,
 		children,
 		onopendetail,
 		onreorderpointerdown,
@@ -94,6 +97,7 @@
 	data-gift-item
 	class={cn(
 		'relative h-full cursor-pointer transition-opacity',
+		className,
 		isDragged && 'opacity-40',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',

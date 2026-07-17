@@ -141,7 +141,7 @@
 			description={gift.description}
 			descriptionAppends={gift.descriptionAppends}
 			maxVisibleAppends={1}
-			class="mt-1"
+			class="row-start-5 mt-3"
 		/>
 	</div>
 
