@@ -41,14 +41,11 @@
 		class: className,
 	}: Props = $props();
 
-	// Two live previews sit over/under the big detail preview (#163): the shared
-	// square tile covers card, list and reservation framing, while the narrow detail
-	// tile remains the switcher for the image-column surface. The big image-column
-	// preview already IS the detail target, so the detail tile exists for switching,
-	// not as duplicate information.
-	// All tiles share one height; aspect data comes from the shared crop-target
-	// registry (REQ-6); each tile renders its own per-target framing so the strip
-	// never lies about how a crop will actually look.
+	// A single live preview sits under the big image-column stage (issue #165: the
+	// `detail` editor target was retired, so `square` – the shared card/list/
+	// reservation/detail-modal crop family – is the only tile left). It doubles as
+	// the crop target switcher (#116 round 3), rendering its own per-target framing
+	// so the strip never lies about how the crop will actually look.
 	const TILES = [
 		{
 			key: 'square',
@@ -56,15 +53,6 @@
 			label: m.gift_image_target_square,
 			sizing: 'size-14',
 			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
-		},
-		{
-			key: 'detail',
-			target: 'detail',
-			label: m.gift_image_slot_detail,
-			// Same 56px height as the square tile; the 1:2 detail aspect makes it
-			// half as wide (switcher-first, #116 round 3).
-			sizing: 'w-7',
-			cssAspect: GIFT_CROP_TARGET_SPECS.detail.cssAspect,
 		},
 	] as const satisfies readonly {
 		key: string;
