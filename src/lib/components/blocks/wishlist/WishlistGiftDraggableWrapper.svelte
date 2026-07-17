@@ -93,7 +93,7 @@
 <div
 	data-gift-item
 	class={cn(
-		'relative cursor-pointer transition-opacity',
+		'relative h-full cursor-pointer transition-opacity',
 		isDragged && 'opacity-40',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',

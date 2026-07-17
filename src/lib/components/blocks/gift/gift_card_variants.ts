@@ -9,7 +9,7 @@ import { tv } from 'tailwind-variants';
  */
 export const giftCardVariants = tv({
 	slots: {
-		card: 'group relative flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+		card: 'group relative flex h-full flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
 		imageArea:
 			'relative isolate aspect-square w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
 		/**
