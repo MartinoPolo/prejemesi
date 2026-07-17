@@ -112,6 +112,8 @@ interface ActionEmailParams {
 	readonly body: string;
 	readonly buttonLabel: string;
 	readonly url: string;
+	/** Optional localized copy for the action-link fallback; auth emails retain English. */
+	readonly copyLinkText?: string;
 }
 
 /**
@@ -120,6 +122,7 @@ interface ActionEmailParams {
  */
 export function renderActionEmail(params: ActionEmailParams): string {
 	const { heading, body, buttonLabel, url } = params;
+	const copyLinkText = params.copyLinkText ?? 'Or copy this link into your browser:';
 	const safeHeading = escapeHtml(heading);
 	const safeBody = formatTextAsHtml(body);
 	const safeButtonLabel = escapeHtml(buttonLabel);
@@ -135,7 +138,7 @@ export function renderActionEmail(params: ActionEmailParams): string {
             <h1 style="margin:0 0 16px;font-size:20px;">${safeHeading}</h1>
             <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#444;">${safeBody}</p>
             <a href="${safeUrl}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">${safeButtonLabel}</a>
-            <p style="margin:24px 0 0;font-size:13px;color:#888;">Or copy this link into your browser:<br><span style="word-break:break-all;">${safeUrl}</span></p>
+	            <p style="margin:24px 0 0;font-size:13px;color:#888;">${escapeHtml(copyLinkText)}<br><span style="word-break:break-all;">${safeUrl}</span></p>
           </td></tr>
         </table>
       </td></tr>
@@ -145,13 +148,14 @@ export function renderActionEmail(params: ActionEmailParams): string {
 }
 
 export function renderActionEmailText(params: ActionEmailParams): string {
+	const copyLinkText = params.copyLinkText ?? 'Or copy this link into your browser:';
 	return `${params.heading}
 
 ${params.body}
 
 ${params.buttonLabel}: ${params.url}
 
-Or copy this link into your browser:
+${copyLinkText}
 ${params.url}`;
 }
 

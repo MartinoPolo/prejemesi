@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 import * as m from '$lib/paraglide/messages.js';
+import type { SupportedLocale } from '$lib/i18n/locale.js';
 import type { notification } from '$lib/server/db/notification.schema.js';
 
 // ── Notification Types ──────────────────────────────────────────────────────
@@ -48,17 +49,33 @@ export const IN_APP_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = [
 // ── Notification Messages (Czech) ───────────────────────────────────────────
 
 export const NOTIFICATION_MESSAGES = {
-	liked_gift_reserved: () => m.notification_type_liked_reserved(),
-	reserved_gift_edited: () => m.notification_type_reserved_edited(),
-	wishlist_archived: () => m.notification_type_archived(),
-	owner_self_promoted: () => m.notification_type_owner_promoted(),
-	new_gift_added: () => m.notification_type_new_gift(),
-	gift_reserved: () => m.notification_type_reserved(),
-	moderator_invited: () => m.notification_type_moderator_invited(),
-	claim_invited: () => m.notification_type_claim_invited(),
-	recipient_claimed: () => m.notification_type_recipient_claimed(),
-	reservation_cancelled: () => m.notification_type_reservation_cancelled(),
-} satisfies Record<NotificationType, () => string>;
+	liked_gift_reserved: (locale?: SupportedLocale) =>
+		m.notification_type_liked_reserved({}, { locale }),
+	reserved_gift_edited: (locale?: SupportedLocale) =>
+		m.notification_type_reserved_edited({}, { locale }),
+	wishlist_archived: (locale?: SupportedLocale) => m.notification_type_archived({}, { locale }),
+	owner_self_promoted: (locale?: SupportedLocale) =>
+		m.notification_type_owner_promoted({}, { locale }),
+	new_gift_added: (locale?: SupportedLocale) => m.notification_type_new_gift({}, { locale }),
+	gift_reserved: (locale?: SupportedLocale) => m.notification_type_reserved({}, { locale }),
+	moderator_invited: (locale?: SupportedLocale) =>
+		m.notification_type_moderator_invited({}, { locale }),
+	claim_invited: (locale?: SupportedLocale) => m.notification_type_claim_invited({}, { locale }),
+	recipient_claimed: (locale?: SupportedLocale) =>
+		m.notification_type_recipient_claimed({}, { locale }),
+	reservation_cancelled: (locale?: SupportedLocale) =>
+		m.notification_type_reservation_cancelled({}, { locale }),
+} satisfies Record<NotificationType, (locale?: SupportedLocale) => string>;
+
+export function getNotificationEmailCopy(type: NotificationType, locale: SupportedLocale) {
+	return {
+		message: NOTIFICATION_MESSAGES[type](locale),
+		wishlistLabel: m.notification_email_wishlist_label({}, { locale }),
+		fromLabel: m.notification_email_from_label({}, { locale }),
+		buttonLabel: m.notification_email_open_wishlist({}, { locale }),
+		copyLinkText: m.notification_email_copy_link({}, { locale }),
+	};
+}
 
 // ── DB Row Type ─────────────────────────────────────────────────────────────
 

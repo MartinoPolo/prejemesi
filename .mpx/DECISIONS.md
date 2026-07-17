@@ -257,6 +257,13 @@ What: Critical events (liked gift reserved by someone else, reserved gift edited
 Why: Prevents notification fatigue while ensuring important events aren't missed.
 Rejected: All by email (too noisy), all in-app only (critical events missed by inactive users).
 
+### Notification email locale resolves from recipient preference
+
+Decided: 2026-07-17
+What: Notification email copy and internal links resolve at dispatch from the recipient's stored locale; Czech is the fallback for missing preferences and email-only recipients. Auth-email locale handling is unchanged.
+Why: Emails are delivered outside a request context and must respect the recipient's latest explicit choice without inferring a locale from the sender or event.
+Rejected: Ambient request locale (unavailable and wrong recipient), sender locale (recipient mismatch), email-address lookup for email-only recipients (scope and semantics expansion).
+
 ## Data & Storage
 
 ### ~~Separate banner and thumbnail uploads per wishlist~~ (superseded)

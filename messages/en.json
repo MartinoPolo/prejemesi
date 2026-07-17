@@ -1,4 +1,8 @@
 {
+	"notification_email_wishlist_label": "Wishlist",
+	"notification_email_from_label": "From",
+	"notification_email_open_wishlist": "Open wishlist",
+	"notification_email_copy_link": "Or copy this link into your browser:",
 	"app_name": "Přejeme si",
 	"email_label": "Email",
 	"password_label": "Password",

@@ -5,9 +5,10 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
+import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
 import {
 	EMAIL_NOTIFICATION_TYPES,
-	NOTIFICATION_MESSAGES,
+	getNotificationEmailCopy,
 	normalizeNotificationPreferences,
 	type DispatchNotificationInput,
 	type NotificationType,
@@ -32,22 +33,33 @@ function getOrigin(): string {
 	return (env.ORIGIN ?? 'http://localhost:5173').replace(/\/$/, '');
 }
 
-function getNotificationUrl(wishlistShortId: string | null): string {
-	if (wishlistShortId === null) {
-		return getOrigin();
-	}
+function getNotificationUrl(
+	wishlistShortId: string | null,
+	urlPathOverride: string | undefined,
+	locale: SupportedLocale,
+): string {
+	const href =
+		urlPathOverride !== undefined && urlPathOverride !== ''
+			? urlPathOverride
+			: wishlistShortId === null
+				? '/'
+				: `/w/${wishlistShortId}`;
 
-	return `${getOrigin()}/w/${wishlistShortId}`;
+	return href.startsWith('/') ? `${getOrigin()}${localizeInternalHref(href, locale)}` : href;
 }
 
 function getEmailBody(input: {
 	message: string;
 	wishlistTitle: string | null;
 	actorName: string | null | undefined;
+	wishlistLabel: string;
+	fromLabel: string;
 }): string {
 	const details = [
-		input.wishlistTitle !== null ? `Wishlist: ${input.wishlistTitle}` : null,
-		input.actorName != null && input.actorName !== '' ? `From: ${input.actorName}` : null,
+		input.wishlistTitle !== null ? `${input.wishlistLabel}: ${input.wishlistTitle}` : null,
+		input.actorName != null && input.actorName !== ''
+			? `${input.fromLabel}: ${input.actorName}`
+			: null,
 	].filter((line): line is string => line !== null);
 
 	if (details.length === 0) {
@@ -79,25 +91,38 @@ async function getWishlistContext(wishlistId: string | undefined): Promise<{
 async function sendNotificationEmail(params: {
 	to: string;
 	type: NotificationType;
-	message: string;
-	body: string;
-	url: string;
+	locale: SupportedLocale;
+	wishlistTitle: string | null;
+	wishlistShortId: string | null;
+	urlPathOverride: string | undefined;
+	actorName: string | null | undefined;
 	notificationId?: string;
 }): Promise<boolean> {
+	const emailCopy = getNotificationEmailCopy(params.type, params.locale);
+	const url = getNotificationUrl(params.wishlistShortId, params.urlPathOverride, params.locale);
+	const body = getEmailBody({
+		message: emailCopy.message,
+		wishlistTitle: params.wishlistTitle,
+		actorName: params.actorName,
+		wishlistLabel: emailCopy.wishlistLabel,
+		fromLabel: emailCopy.fromLabel,
+	});
+
 	try {
 		await sendEmail({
 			to: params.to,
-			subject: params.message,
+			subject: emailCopy.message,
 			...renderActionEmailParts({
-				heading: params.message,
-				body: params.body,
-				buttonLabel: 'Open wishlist',
-				url: params.url,
+				heading: emailCopy.message,
+				body,
+				buttonLabel: emailCopy.buttonLabel,
+				copyLinkText: emailCopy.copyLinkText,
+				url,
 			}),
 			idempotencyKey:
 				params.notificationId !== undefined
 					? `notification:${params.notificationId}`
-					: `notification:${params.type}:${params.to}:${params.url}`,
+					: `notification:${params.type}:${params.to}:${url}`,
 		});
 		return true;
 	} catch {
@@ -115,17 +140,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	}
 
 	const database = getDb();
-	const message = NOTIFICATION_MESSAGES[input.type]();
 	const wishlistContext = await getWishlistContext(input.wishlistId);
-	const url =
-		input.urlPathOverride !== undefined && input.urlPathOverride !== ''
-			? `${getOrigin()}${input.urlPathOverride}`
-			: getNotificationUrl(wishlistContext.shortId);
-	const body = getEmailBody({
-		message,
-		wishlistTitle: wishlistContext.title,
-		actorName: input.actorName,
-	});
 
 	const userRows =
 		targetUserIds.length > 0
@@ -133,6 +148,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 					.select({
 						id: user.id,
 						email: user.email,
+						preferredLocale: user.preferredLocale,
 						notificationPreferences: user.notificationPreferences,
 					})
 					.from(user)
@@ -183,9 +199,11 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 		const sent = await sendNotificationEmail({
 			to: targetUser.email,
 			type: input.type,
-			message,
-			body,
-			url,
+			locale: targetUser.preferredLocale ?? 'cs',
+			wishlistTitle: wishlistContext.title,
+			wishlistShortId: wishlistContext.shortId,
+			urlPathOverride: input.urlPathOverride,
+			actorName: input.actorName,
 			notificationId: notificationIdByUserId.get(targetUser.id),
 		});
 
@@ -207,9 +225,11 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 		await sendNotificationEmail({
 			to: targetEmail,
 			type: input.type,
-			message,
-			body,
-			url,
+			locale: 'cs',
+			wishlistTitle: wishlistContext.title,
+			wishlistShortId: wishlistContext.shortId,
+			urlPathOverride: input.urlPathOverride,
+			actorName: input.actorName,
 		});
 	}
 }
