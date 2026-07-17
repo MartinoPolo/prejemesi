@@ -1,7 +1,6 @@
 <script lang="ts">
 	import LayoutGridIcon from '@lucide/svelte/icons/layout-grid';
 	import ListIcon from '@lucide/svelte/icons/list';
-	import TableIcon from '@lucide/svelte/icons/table';
 	import { GIFT_VIEW_MODES, type GiftViewMode } from '$lib/modules/gifts/types.js';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -13,10 +12,12 @@
 
 	let { value, onchange }: GiftViewSwitcherProps = $props();
 
+	// #163 REQ-6: the switcher offers only card and list. The compact renderer is
+	// retained as a safe fallback for an already-selected compact view state, so its
+	// label mapping below stays exhaustive even though it is no longer togglable here.
 	const modes = [
 		{ key: GIFT_VIEW_MODES.card, icon: LayoutGridIcon },
 		{ key: GIFT_VIEW_MODES.list, icon: ListIcon },
-		{ key: GIFT_VIEW_MODES.compact, icon: TableIcon },
 	] as const;
 
 	function modeLabel(key: GiftViewMode): string {
