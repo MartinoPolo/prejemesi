@@ -220,13 +220,14 @@ describe('dispatchNotification – urlPathOverride', () => {
 		const overridePath = '/w/short-abc/invite/tok-xyz';
 		const testEmail = 'invitee@example.com';
 
-		// Minimal db: wishlist context returns null (no wishlistId), user query returns empty (targetEmails path)
+		// Minimal db: wishlist context returns null (no wishlistId), email-recipient query is empty.
 		const db = {
 			select: () => ({
 				from: () => ({
-					where: () => ({
-						limit: () => Promise.resolve([]),
-					}),
+					where: () => {
+						const query = Promise.resolve([]);
+						return Object.assign(query, { limit: () => Promise.resolve([]) });
+					},
 				}),
 			}),
 			insert: () => ({
@@ -338,6 +339,36 @@ describe('dispatchNotification email locale', () => {
 			expect.objectContaining({
 				heading: 'Seznam byl archivován',
 				url: 'http://localhost:5173/w/rosie-birthday',
+			}),
+		);
+	});
+
+	it('uses the stored locale when an existing recipient is addressed by email only', async () => {
+		const db = makeWishlistDispatcherDb(
+			[
+				{
+					id: 'english-invitee',
+					email: 'invitee@example.com',
+					preferredLocale: 'en',
+					notificationPreferences: null,
+				},
+			],
+			wishlistRow,
+		);
+		mockGetDb.mockReturnValue(db);
+
+		await dispatchNotification({
+			type: NOTIFICATION_TYPE.MODERATOR_INVITED,
+			targetEmails: ['invitee@example.com'],
+			wishlistId: 'wishlist-id',
+			urlPathOverride: '/w/rosie-birthday/invite/token',
+		});
+
+		expect(mockSendEmail).toHaveBeenCalledOnce();
+		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
+			expect.objectContaining({
+				buttonLabel: 'Open wishlist',
+				url: 'http://localhost:5173/en/w/rosie-birthday/invite/token',
 			}),
 		);
 	});

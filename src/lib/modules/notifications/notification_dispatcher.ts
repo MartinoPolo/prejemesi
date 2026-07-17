@@ -142,7 +142,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	const database = getDb();
 	const wishlistContext = await getWishlistContext(input.wishlistId);
 
-	const userRows =
+	const directUserRows =
 		targetUserIds.length > 0
 			? await database
 					.select({
@@ -154,10 +154,30 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 					.from(user)
 					.where(inArray(user.id, targetUserIds))
 			: [];
+	const emailMatchedUserRows =
+		targetEmails.length > 0
+			? await database
+					.select({
+						id: user.id,
+						email: user.email,
+						preferredLocale: user.preferredLocale,
+						notificationPreferences: user.notificationPreferences,
+					})
+					.from(user)
+					.where(inArray(user.email, targetEmails))
+			: [];
+	const emailUserRows = [
+		...new Map(
+			[...directUserRows, ...emailMatchedUserRows].map((targetUser) => [
+				targetUser.id,
+				targetUser,
+			]),
+		).values(),
+	];
 
 	// Honor each recipient's in-app toggle: only insert a notification row for users
 	// who have in-app enabled for this type (NULL preferences fall back to defaults).
-	const inAppUserRows = userRows.filter(
+	const inAppUserRows = directUserRows.filter(
 		(targetUser) =>
 			normalizeNotificationPreferences(targetUser.notificationPreferences)[input.type]
 				.inApp === true,
@@ -189,13 +209,13 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	);
 
 	// Honor each recipient's email toggle (within email-capable types only).
-	const emailUserRows = userRows.filter(
+	const emailEnabledUserRows = emailUserRows.filter(
 		(targetUser) =>
 			normalizeNotificationPreferences(targetUser.notificationPreferences)[input.type]
 				.email === true,
 	);
 
-	for (const targetUser of emailUserRows) {
+	for (const targetUser of emailEnabledUserRows) {
 		const sent = await sendNotificationEmail({
 			to: targetUser.email,
 			type: input.type,
@@ -216,7 +236,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 		}
 	}
 
-	const userEmails = new Set(userRows.map((row) => row.email.toLowerCase()));
+	const userEmails = new Set(emailUserRows.map((row) => row.email.toLowerCase()));
 	for (const targetEmail of targetEmails) {
 		if (userEmails.has(targetEmail.toLowerCase())) {
 			continue;
