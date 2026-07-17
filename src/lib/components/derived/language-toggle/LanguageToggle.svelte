@@ -108,7 +108,7 @@
 						{...props}
 						intent="outline"
 						size="icon"
-						class="text-(length:--text-sm) font-medium"
+						class="text-(length:--text-base)"
 						aria-label={ariaLabel}
 					>
 						{LOCALE_CODES[currentLocale]}

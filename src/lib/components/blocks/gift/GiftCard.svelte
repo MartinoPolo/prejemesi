@@ -56,7 +56,7 @@
 		<div class={styles.imagePattern()} aria-hidden="true"></div>
 
 		<GiftImage
-			class="size-full bg-transparent"
+			class="size-full rounded-none bg-transparent"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
 			target="square"
@@ -99,13 +99,17 @@
 
 	<!-- Body -->
 	<div class={styles.body()}>
-		<!-- Name + piece count -->
+		<!-- Name + piece count + compact edited-after-share info icon (the full pill would
+		     claim a whole card row; the icon keeps the hint without the prominence) -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+			{#if gift.editedAfterShareAt !== null}
+				<span class="self-center">
+					<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} compact />
+				</span>
+			{/if}
 		</div>
-
-		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} compactOnMobile />
 
 		{#if gift.price !== null}
 			<span class={styles.price()}>{priceDisplay}</span>
@@ -137,7 +141,7 @@
 			description={gift.description}
 			descriptionAppends={gift.descriptionAppends}
 			maxVisibleAppends={1}
-			class="mt-1"
+			class="row-start-5 mt-3"
 		/>
 	</div>
 

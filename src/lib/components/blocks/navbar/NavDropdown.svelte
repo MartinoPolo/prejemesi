@@ -189,16 +189,16 @@
 						{#if i > 0}
 							<DropdownMenu.Separator />
 						{/if}
-						<div>
-							<span
+						<DropdownMenu.Group>
+							<DropdownMenu.GroupHeading
 								class="block px-3 pt-2 pb-0.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
 							>
 								{section.label}
-							</span>
+							</DropdownMenu.GroupHeading>
 							{#each section.items as item (item.href)}
 								{@render itemRow(item)}
 							{/each}
-						</div>
+						</DropdownMenu.Group>
 					{/each}
 				{:else}
 					{#each items as item (item.href)}

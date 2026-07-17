@@ -29,7 +29,7 @@ export const buttonVariants = tv({
 				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
 			danger: 'bg-card text-status-danger border-status-danger shadow-sticker-sm hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
 			'primary-destructive': `bg-status-danger text-white hover:bg-[color-mix(in_oklab,var(--status-danger)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
-			outline: `border-ink bg-card text-foreground shadow-sticker-sm hover:bg-accent hover:text-accent-foreground hover:-translate-y-px ${LIFT_HIT_AREA_CLASSES}`,
+			outline: `bg-card text-foreground hover:bg-accent hover:text-accent-foreground ${STICKER_BUTTON_CLASSES}`,
 			link: 'text-primary underline-offset-4 hover:underline',
 		},
 		size: {

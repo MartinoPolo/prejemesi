@@ -15,7 +15,6 @@
 	import UserMenu from './UserMenu.svelte';
 	import MobileNav from './MobileNav.svelte';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import GiftIcon from '@lucide/svelte/icons/gift';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { czechPluralCategory } from '$lib/modules/gifts/gift_display.js';
@@ -324,26 +323,6 @@
 	<!-- Right controls -->
 	<div class="nav-right">
 		{#if user}
-			<!-- Import CTA -->
-			<Button
-				intent="outline"
-				size="md"
-				class="hidden min-[1040px]:inline-flex"
-				onclick={() => (isImportWizardOpen = true)}
-			>
-				<FileUpIcon data-icon="inline-start" />
-				{m.import_wizard_title()}
-			</Button>
-			<Button
-				intent="outline"
-				size="icon"
-				class="min-[1040px]:hidden"
-				aria-label={m.import_wizard_title()}
-				onclick={() => (isImportWizardOpen = true)}
-			>
-				<FileUpIcon />
-			</Button>
-
 			<!-- Create CTA -->
 			<Button
 				intent="primary"
