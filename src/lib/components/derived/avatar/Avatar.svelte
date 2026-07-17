@@ -43,6 +43,7 @@
 			{alt}
 			shape="square"
 			fitMode="cover-crop"
+			referrerPolicy="no-referrer"
 			class={styles.image()}
 			onerror={() => (erroredSrc = src)}
 		/>
