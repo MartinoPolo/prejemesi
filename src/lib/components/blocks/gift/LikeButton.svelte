@@ -3,7 +3,11 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { useLikes } from '$lib/modules/likes/likes.context.svelte.js';
 	import { toggleLike } from '$lib/modules/likes/likes.remote.js';
-	import { likeButtonVariants, type LikeButtonSize } from './like_button_variants.js';
+	import {
+		likeButtonVariants,
+		type LikeButtonSize,
+		type LikeButtonAppearance,
+	} from './like_button_variants.js';
 	import { cn } from '$lib/utils.js';
 
 	interface LikeButtonProps {
@@ -11,6 +15,7 @@
 		giftName: string;
 		likeCount: number;
 		size?: LikeButtonSize;
+		appearance?: LikeButtonAppearance;
 		showCount?: boolean;
 		class?: string;
 	}
@@ -20,6 +25,7 @@
 		giftName,
 		likeCount,
 		size = 'md',
+		appearance = 'ghost',
 		showCount = true,
 		class: className,
 	}: LikeButtonProps = $props();
@@ -30,7 +36,7 @@
 	let animating = $state(false);
 	let displayCount = $derived(likeCount);
 
-	const styles = $derived(likeButtonVariants({ liked, size }));
+	const styles = $derived(likeButtonVariants({ liked, size, appearance }));
 
 	async function handleClick(event: MouseEvent) {
 		event.stopPropagation();

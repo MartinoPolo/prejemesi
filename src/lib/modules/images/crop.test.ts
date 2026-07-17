@@ -487,27 +487,25 @@ describe('mergeGiftTargetCrops', () => {
 		).toEqual({ detail: detailCrop, square: squareCrop });
 	});
 
-	it('preserves a legacy card fallback until the square target is edited', () => {
+	it('preserves a legacy card fallback when the (sole) square target is untouched this session', () => {
+		// Issue #165 retired `detail` from the editor targets, so the only two
+		// reachable `editedTargets` shapes are `{}` (nothing touched) and
+		// `{ square }` (covered above) – there is no longer a third target whose
+		// edit could leave the card fallback in place while adding its own entry.
 		const legacyCardCrop = {
 			cropRect: { x: 0, y: 0.2, w: 1, h: 0.36 },
 			focal: { x: 50, y: 31.25 },
 			zoom: 1,
 		};
-		const detailCrop = {
-			cropRect: { x: 0.2, y: 0, w: 0.5, h: 1 },
-			focal: { x: 40, y: 50 },
-			zoom: 1,
-		};
 
-		expect(mergeGiftTargetCrops({ card: legacyCardCrop }, { detail: detailCrop })).toEqual({
+		expect(mergeGiftTargetCrops({ card: legacyCardCrop }, {})).toEqual({
 			card: legacyCardCrop,
-			detail: detailCrop,
 		});
 	});
 });
 
 describe('gift crop editor targets', () => {
-	it('offers only square and detail targets after the card surface moved to square (#163)', () => {
-		expect(GIFT_EDITOR_CROP_TARGET_VALUES).toEqual(['square', 'detail']);
+	it('offers only the square target after the detail target was retired (#165)', () => {
+		expect(GIFT_EDITOR_CROP_TARGET_VALUES).toEqual(['square']);
 	});
 });

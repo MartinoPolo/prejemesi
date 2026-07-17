@@ -59,10 +59,14 @@ export type GiftCropTarget = (typeof GIFT_CROP_TARGETS)[keyof typeof GIFT_CROP_T
 
 export const GIFT_CROP_TARGET_VALUES = Object.values(GIFT_CROP_TARGETS);
 
-/** Targets offered by the gift editor. `card` remains parseable legacy metadata only. */
+/**
+ * Targets offered by the gift editor. `card` remains parseable legacy metadata
+ * only; `detail` was retired the same way when the visitor detail modal moved
+ * to the `square` crop (issue #165) — its persisted `targets.detail` rows stay
+ * parseable, but the editor no longer offers it and no surface renders it.
+ */
 export const GIFT_EDITOR_CROP_TARGETS = {
 	square: GIFT_CROP_TARGETS.square,
-	detail: GIFT_CROP_TARGETS.detail,
 } as const;
 
 export type GiftEditorCropTarget =

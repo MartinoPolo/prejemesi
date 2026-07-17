@@ -858,6 +858,7 @@
 	wishlistTitle={wishlist.title}
 	giftCount={totalCount}
 	{recipientIsModerator}
+	{isArchived}
 	bind:giftModalOpen
 	{giftModalMode}
 	{selectedGift}
@@ -883,6 +884,8 @@
 	onupdate={handleUpdate}
 	ondelete={handleDelete}
 	onreceived={handleReceived}
+	ongiftreserve={handleOpenReserveModal}
+	ongiftunreserve={handleUnreserve}
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
 	onshared={handleShared}

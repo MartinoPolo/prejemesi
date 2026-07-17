@@ -17,10 +17,12 @@
 		/** Persisted presentation metadata (fit mode + crop/focal + bg fill). */
 		imageMeta: ImageMetadata | null;
 		/**
-		 * Which crop target this surface belongs to (#116 D2): `card` for the card
-		 * banner, `detail` for the detail modal column, `square` for the 1:1
-		 * list/reservation thumbnails. A manual per-target crop overrides the
-		 * automatic framing for this surface only.
+		 * Which crop target this surface belongs to (#116 D2): `square` for the 1:1
+		 * card/list/reservation/detail-modal family (issue #165: the detail modal
+		 * joined this family, retiring its own narrow `detail` target). `card` and
+		 * `detail` are retired legacy targets kept parseable for old rows only – no
+		 * surface renders through them directly anymore. A manual per-target crop
+		 * overrides the automatic framing for this surface only.
 		 */
 		target: GiftCropTarget;
 		/** Accessible description (the gift name). */

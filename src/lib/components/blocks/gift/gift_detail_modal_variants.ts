@@ -55,6 +55,37 @@ export const giftDetailModalVariants = tv({
 		imageTabRow: 'flex gap-1.5',
 		imageTab:
 			'cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-semibold transition-colors',
+
+		// ── Read-only view mode (issue #165) ──────────────────────────────────
+		// Dedicated slots instead of reusing the edit-mode `body`/`imageColumn`/
+		// `detailColumn` above: the view reads as an enlarged gift card (tighter,
+		// no `sm:min-h-[520px]` dead space), so its own composition rules apply
+		// without risking the edit-mode grid used by #116/#131/#142.
+		// Mobile: one scrolling flex column (media, content, sticky action bar).
+		// Desktop: 340px media column + fluid content column sharing row 1;
+		// the action bar is the grid's `auto` row, spanning both columns, pinned
+		// outside the content column's own scroll region (REQ-1).
+		viewGrid:
+			'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[340px_minmax(0,1fr)] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
+		// shrink-0: prevents the mobile flex column from compressing the media area
+		// (same rationale as `imageColumn`). The mobile height clamp keeps the title
+		// + facts + action bar reachable without scrolling past a tall square photo
+		// (REQ-5); desktop fills the grid's row 1 at its natural 340px column width.
+		viewMedia:
+			'relative flex shrink-0 max-h-[42vh] min-h-[240px] items-center justify-center overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] p-4 sm:max-h-none sm:min-h-0 sm:border-r-2 sm:border-b-0 sm:p-6',
+		// Positioned ancestor for the photo-overlay stack; width-capped so the mat
+		// can stretch (REQ-5) while the square photo inside stays a fixed, honest size.
+		viewPhotoFrame: 'relative w-full max-w-[260px]',
+		// Physical photo sticker (matches the `.polaroid` treatment in WishlistHeader):
+		// fixed paper/ink colors that intentionally do NOT follow the palette or dark mode.
+		viewPhoto:
+			'aspect-square w-full -rotate-2 rounded-[10px] border-2 border-[#4A443A] bg-[#FFFDF6] p-[9px] shadow-[5px_6px_0_var(--hard-shadow-strong)]',
+		viewPhotoInner:
+			'size-full overflow-hidden rounded-[6px] border-2 border-black/10 bg-[#F2F0EA]',
+		viewContent: 'flex min-h-0 flex-col sm:overflow-hidden',
+		// Desktop-only internal scroll region (REQ-1 long-description strategy); mobile
+		// flows into the outer `viewGrid` scroll behind the sticky action bar.
+		viewContentScroll: 'flex flex-col gap-3 p-4 sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:p-6',
 	},
 	variants: {
 		imageTabActive: {
@@ -66,9 +97,21 @@ export const giftDetailModalVariants = tv({
 					'border-ink bg-card text-foreground-muted hover:bg-accent hover:text-foreground',
 			},
 		},
+		// Fully-reserved-by-others dimming (REQ-3): applied to the photo and content
+		// separately so the crisp photo-overlay status note (a sibling, not a child of
+		// either) is never capped by an ancestor's reduced opacity. Matches the
+		// `giftCardVariants` dimmed treatment (issue #102).
+		viewDimmed: {
+			true: {
+				viewPhoto: 'opacity-55 grayscale-50',
+				viewContentScroll: 'opacity-55 grayscale-50',
+			},
+			false: {},
+		},
 	},
 	defaultVariants: {
 		imageTabActive: false,
+		viewDimmed: false,
 	},
 });
 

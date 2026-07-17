@@ -7,6 +7,7 @@
 	import {
 		FULL_CROP_RECT,
 		IMAGE_ZOOM_MAX,
+		IMAGE_ZOOM_OUT_MIN,
 		centeredCropRect,
 		containZoomForAspect,
 		cropRectToFocalZoom,
@@ -91,7 +92,19 @@
 	// so the slider stops there (#116 round 2 – never white space on both axes).
 	// The slider minimum stays on the 5 %-step grid anchored at 100 % and never
 	// dips below the contain zoom.
-	const containZoom = $derived(containZoomForAspect(normAspect));
+	// Before the image loads, `normAspect` falls back to a square placeholder
+	// (see above) – the REAL aspect (and thus the real contain-zoom floor) is
+	// unknown yet. Using that placeholder's floor here was a display bug: a
+	// seeded manual crop persisted below the placeholder's (too-high) floor —
+	// e.g. any non-square-normalized target/source pair – got silently clamped
+	// by the native `<input type="range">`'s own min/value invariant the instant
+	// this floor briefly overshot the seeded value, and the slider never
+	// re-synced back down once the real (lower) floor arrived a tick later,
+	// because Svelte's `value` prop never itself changed. Falling back to the
+	// absolute zoom-out floor (never above any legal persisted zoom) while
+	// `!isReady` means the slider can only clamp UP once the true floor is
+	// known, at which point `value` already reflects the correct zoom.
+	const containZoom = $derived(isReady ? containZoomForAspect(normAspect) : IMAGE_ZOOM_OUT_MIN);
 	const sliderMinPercent = $derived(
 		100 - SLIDER_STEP * Math.floor((100 - Math.ceil(containZoom * 100)) / SLIDER_STEP),
 	);
