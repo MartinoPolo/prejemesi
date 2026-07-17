@@ -33,6 +33,9 @@
 		giftCount: number;
 		/** Linked recipient self-promoted to see reservation state (passed to the správci panel). */
 		recipientIsModerator: boolean;
+		/** Archived wishlist (issue #165): the gift detail modal's reserve action
+		 *  hides unless the viewer already holds a reservation, mirroring cards. */
+		isArchived: boolean;
 		// Gift detail modal
 		giftModalOpen: boolean;
 		giftModalMode: 'create' | 'edit';
@@ -67,6 +70,11 @@
 		onupdate: (input: UpdateGiftInput) => void;
 		ondelete: (giftId: string) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		/** Gift detail modal's inline reserve action (issue #165): opens the reserve
+		 *  modal for quantity/anonymous identity input, distinct from `onreserve`
+		 *  below (the reserve modal's own submit handler). */
+		ongiftreserve: (gift: GiftForVisitor) => void;
+		ongiftunreserve: (gift: GiftForVisitor) => void;
 		onreservemodalclose: () => void;
 		onreserve: (input: ReserveGiftInput) => void;
 		onshared: () => void;
@@ -85,6 +93,7 @@
 		wishlistTitle,
 		giftCount,
 		recipientIsModerator,
+		isArchived,
 		giftModalOpen = $bindable(),
 		giftModalMode,
 		selectedGift,
@@ -110,6 +119,8 @@
 		onupdate,
 		ondelete,
 		onreceived,
+		ongiftreserve,
+		ongiftunreserve,
 		onreservemodalclose,
 		onreserve,
 		onshared,
@@ -136,6 +147,7 @@
 	isOwner={canManage}
 	{role}
 	readOnly={!canManage}
+	{isArchived}
 	{postShareLocked}
 	canDelete={canDeleteSelectedGift}
 	{graceExpiresAt}
@@ -147,6 +159,8 @@
 	{onupdate}
 	{ondelete}
 	{onreceived}
+	onreserve={ongiftreserve}
+	onunreserve={ongiftunreserve}
 	onclose={ongiftmodalclose}
 />
 

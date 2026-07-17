@@ -5,7 +5,12 @@
 		giftDetailModalVariants,
 		type GiftDetailModalMode,
 	} from './gift_detail_modal_variants.js';
-	import type { GiftByRole, CreateGiftInput, UpdateGiftInput } from '$lib/modules/gifts/types.js';
+	import type {
+		GiftByRole,
+		GiftForVisitor,
+		CreateGiftInput,
+		UpdateGiftInput,
+	} from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import GiftDetailForm from './GiftDetailForm.svelte';
@@ -22,6 +27,9 @@
 		role?: WishlistRole;
 		/** Visitors/non-managers (issue #125): renders the read-only {@link GiftDetailView} instead of the edit form. */
 		readOnly?: boolean;
+		/** Archived wishlist (issue #165): the read-only view's reserve action hides
+		 *  unless the viewer already holds a reservation (cancel-only), mirroring cards. */
+		isArchived?: boolean;
 		postShareLocked?: boolean;
 		canDelete?: boolean;
 		graceExpiresAt?: Date | null;
@@ -33,6 +41,10 @@
 		onupdate?: (input: UpdateGiftInput) => void;
 		ondelete?: (giftId: string) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		/** Read-only view's inline reserve/like action bar (issue #165): opens the
+		 *  reserve modal / cancels an existing reservation. */
+		onreserve?: (gift: GiftForVisitor) => void;
+		onunreserve?: (gift: GiftForVisitor) => void;
 		onclose?: () => void;
 	}
 
@@ -45,6 +57,7 @@
 		isOwner = false,
 		role = 'visitor',
 		readOnly = false,
+		isArchived = false,
 		postShareLocked = false,
 		canDelete = true,
 		graceExpiresAt = null,
@@ -56,6 +69,8 @@
 		onupdate,
 		ondelete,
 		onreceived,
+		onreserve,
+		onunreserve,
 		onclose,
 	}: Props = $props();
 
@@ -89,7 +104,7 @@
 		</Dialog.Description>
 
 		{#if readOnly && gift !== null}
-			<GiftDetailView {gift} {role} />
+			<GiftDetailView {gift} {role} {isArchived} {onreserve} {onunreserve} />
 		{:else}
 			<GiftDetailForm
 				{mode}

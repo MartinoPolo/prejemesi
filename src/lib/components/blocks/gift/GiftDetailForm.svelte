@@ -280,11 +280,11 @@
 		};
 	});
 
-	// The image column IS the detail target surface, so it previews the detail framing.
-	const detailFrame = $derived(giftTargetFrameProps(currentImageMeta, 'detail'));
+	// The image column's main stage previews the square framing (issue #165: the
+	// `detail` editor target was retired, so `square` is the only crop target left).
+	const mainStageFrame = $derived(giftTargetFrameProps(currentImageMeta, 'square'));
 
 	const targetLabels = {
-		detail: () => m.gift_image_slot_detail(),
 		square: () => m.gift_image_target_square(),
 	} as const satisfies Record<GiftEditorCropTarget, () => string>;
 
@@ -471,13 +471,21 @@
 
 <div class={styles.body()}>
 	<!-- Left column: the display-mode control on top, then the WYSIWYG crop stage in
-	     Manual mode (locked to the active target's real aspect, #116 REQ-2), else the
-	     live detail-target renderer preview. The card + square + detail live previews
-	     sit at the column's lower edge as clickable tiles – they double as the crop
-	     target switcher (round 3) – so they cost no form space. -->
+	     Manual mode (locked to the target's real aspect, #116 REQ-2), else the live
+	     square-target renderer preview (issue #165: `detail` retired, `square` is the
+	     only target and the only surface the visitor detail modal renders through the
+	     shared crop chain). The square live preview sits at the column's lower edge as
+	     a clickable tile – it doubles as the crop target switcher (round 3) – so it
+	     costs no form space. -->
 	<div
 		class={cn(
 			styles.imageColumn(),
+			// Edit form only (issue #156): the shared border-ink-faint dashed divider
+			// read as an unfinished thin grey line. The dotted mat + surface tint
+			// (already part of the shared imageColumn slot) carries the "mode control +
+			// preview" grouping on its own, so the seam border is dropped here without
+			// touching the shared slot used by the visitor view mode (issue #165).
+			'border-none border-b-0 sm:border-r-0',
 			isCropMode && 'sticky top-0 z-10 h-[400px] sm:static sm:h-auto',
 		)}
 		data-testid="gift-image-column"
@@ -539,10 +547,10 @@
 								class="size-full"
 								src={previewSrc}
 								alt={name || m.gift_image_preview()}
-								fitMode={detailFrame.fitMode}
-								focal={detailFrame.focal}
-								zoom={detailFrame.zoom}
-								fillColor={detailFrame.fillColor}
+								fitMode={mainStageFrame.fitMode}
+								focal={mainStageFrame.focal}
+								zoom={mainStageFrame.zoom}
+								fillColor={mainStageFrame.fillColor}
 								tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 							/>
 						</div>
