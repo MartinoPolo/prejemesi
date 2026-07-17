@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Výšky ovládacích prvků – Varianta A – čtyřstupňová škála</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&family=Geist:wght@400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../tokens.css">
+<!--
+  Přejeme si · control heights (issue #159), VARIANT A: „Čtyřstupňová škála"
+  · Specimen sheet: sm 26 / md 32 / lg 38 / xl 48 (nový token --size-control-xl),
+    typografické páry 12 / 13 / 14 / 15 px, párování kroků podle kontextu (§3.2).
+  · In-context: login karta (celý stack lg 38), dialog nového seznamu (lg 38),
+    gift edit modal (md 32 + zarovnaný řádek cena/měna), mobil 390 px.
+  · Před/po: sekce „Dnes vs. nově" (login stack 32+38 → jednotných 38),
+    škrtnuté zrušené výšky 36/44, sweep-korekce jako chipy „dnes → nově".
+  · tokens.css je nalinkován kvůli strukturním tokenům; blok .app níže zrcadlí
+    src/app.css (kanonický zdroj): sky paleta + app-kanonické výšky 26/32/38
+    a NOVÝ token --size-control-xl: 48px. Toolbar (#161) reprodukován FINAL:
+    md 32 triggery, sm 26 pilulky.
+-->
+<style>
+  /* ─────────────────────── palette primitives (src/app.css) ─────────────── */
+  .pal-sky  { --p-brand:#1e9be9; --p-deep:#1265a8; --p-ink:#16385c; --p-bright:#55b9f3; --p-accent:#ffc93c; --p-on-accent:#16385c; }
+
+  /* ── light derivation, mirrors :root/[data-palette] in src/app.css ────── */
+  .app {
+    /* app-canonical structural values (src/app.css overrides tokens.css here) */
+    --font-head: 'DynaPuff', ui-rounded, 'Segoe UI', system-ui, sans-serif;
+    --font-body: 'Geist', 'Segoe UI', system-ui, sans-serif;
+    --radius-panel: 16px;
+    --radius-btn: 7px;
+    --border-w: 2.5px;
+    --size-control-sm: 26px;
+    --size-control-md: 32px;
+    --size-control-lg: 38px;
+    --size-control-xl: 48px; /* NEW token (REQ-3) */
+    --text-xs: 11px;
+    --text-sm: 12px;
+    --text-md: 13px;
+    --text-base: 14px;
+    --text-lg: 15px;
+
+    /* color derivation */
+    --ink: var(--p-ink);
+    --ink-soft: color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --background: color-mix(in oklab, var(--p-brand) 11%, white);
+    --foreground: var(--p-ink);
+    --foreground-muted: color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --foreground-subtle: color-mix(in oklab, var(--p-ink) 55%, transparent);
+    --card: #fff;
+    --popover: #fff;
+    --surface: color-mix(in oklab, var(--p-brand) 8%, white);
+    --muted: color-mix(in oklab, var(--p-ink) 6%, white);
+    --primary: var(--p-brand);
+    --primary-foreground: #fff;
+    --accent: color-mix(in oklab, var(--p-brand) 11%, white);
+    --accent-loud: var(--p-accent);
+    --accent-loud-foreground: var(--p-on-accent);
+    --border: color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --ring: var(--p-brand);
+    --link: var(--p-deep);
+    --panel-hover: color-mix(in oklab, var(--p-brand) 6%, white);
+    --status-success: #14a56f;
+    --status-danger: #d64545;
+    --hard-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
+    --shadow-sticker-sm: 2px 2px 0 var(--hard-shadow);
+    --shadow-sticker: 4px 4px 0 var(--hard-shadow);
+    --shadow-sticker-lift: 6px 6px 0 var(--hard-shadow);
+
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    color: var(--foreground);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #eef1f5; font-family: 'Geist', 'Segoe UI', system-ui, sans-serif; color: #1f2937; padding-bottom: 64px; }
+  button { font: inherit; cursor: pointer; color: inherit; background: none; border: none; }
+  svg { display: block; }
+  .app :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* ─────────────────────── mockup scaffolding ──────────────────────────── */
+  .wrap { max-width: 1500px; margin-inline: auto; padding: 24px 24px 0; }
+  .eyebrow {
+    font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    color: #6b7280; margin-bottom: 6px;
+  }
+  .pagehead h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .pagehead p { color: #4b5563; max-width: 82ch; }
+  .anno {
+    display: inline-block; width: fit-content;
+    font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: #6b7280; background: #fff;
+    border: 2px dashed #c3cad4; border-radius: 999px;
+    padding: 3px 11px; margin: 3px 6px 3px 0;
+  }
+  .anno.dead { color: #b3423a; border-color: #e0b3af; }
+  .anno.dead s { text-decoration-thickness: 2px; }
+  .section-title { font-size: 19px; font-weight: 800; margin: 40px 0 4px; }
+  .section-note { color: #4b5563; margin-bottom: 14px; max-width: 92ch; }
+
+  .frame {
+    width: 1440px; max-width: 100%; height: 900px; overflow: hidden;
+    border: 1px solid #c3cad4; border-radius: 10px; background: var(--background);
+    box-shadow: 0 10px 28px rgb(15 23 42 / 10%);
+  }
+  .frame-strip { height: auto; }
+  .frame-390 { width: 390px; height: auto; }
+
+  /* ── height-measure bracket (right side of a control) ─────────────────── */
+  .mrow { position: relative; }
+  span.mrow { display: inline-block; vertical-align: middle; margin-right: 42px; }
+  .hm {
+    position: absolute; top: 0; bottom: 0; right: -26px; width: 8px;
+    border-block: 2px solid var(--hm-c, #5b7288); pointer-events: none;
+  }
+  .hm::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+    transform: translateX(-50%); background: var(--hm-c, #5b7288);
+  }
+  .hm::after {
+    content: attr(data-px); position: absolute; top: 50%; left: 11px; transform: translateY(-50%);
+    font-size: 10.5px; font-weight: 800; color: var(--hm-c, #5b7288);
+    font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .hm.good { --hm-c: #0f9268; }
+  .hm.bad  { --hm-c: #d24b41; }
+
+  /* ─────────────────────── control primitives (token-wired) ────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    white-space: nowrap; font-family: var(--font-body); font-weight: 600; line-height: 1;
+    border: var(--border-w) solid transparent; border-radius: var(--radius-btn);
+    transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--ink); }
+  .btn.outline { background: var(--card); color: var(--foreground); border-color: var(--ink); }
+  .btn.ghost { background: transparent; color: var(--foreground-muted); }
+  .btn.ghost:hover { background: var(--accent); color: var(--foreground); }
+  .btn.ghost-danger { background: transparent; color: var(--status-danger); }
+  .btn.primary, .btn.outline { box-shadow: var(--shadow-sticker-sm); }
+  .btn.lg.primary, .btn.lg.outline, .btn.xl.primary, .btn.xl.outline { box-shadow: var(--shadow-sticker); }
+  .btn:disabled, .btn.demo-disabled { opacity: .45; cursor: not-allowed; }
+  .btn.demo-lift { transform: translateY(-2px); box-shadow: var(--shadow-sticker-lift); }
+  .btn.demo-focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  .btn.sm { height: var(--size-control-sm); padding: 0 9px;  font-size: var(--text-sm); }
+  .btn.md { height: var(--size-control-md); padding: 0 12px; font-size: var(--text-md); }
+  .btn.lg { height: var(--size-control-lg); padding: 0 16px; font-size: var(--text-base); }
+  .btn.xl { height: var(--size-control-xl); padding: 0 20px; font-size: var(--text-lg); }
+  .btn.icon    { width: var(--size-control-md); height: var(--size-control-md); padding: 0; }
+  .btn.icon-sm { width: var(--size-control-sm); height: var(--size-control-sm); padding: 0; }
+  .btn.wfull { width: 100%; }
+
+  .lbl { display: block; font-size: 13px; font-weight: 700; color: var(--foreground); }
+  .help { font-size: 12px; color: var(--foreground-subtle); }
+  .help.err { color: var(--status-danger); font-weight: 600; }
+
+  .input {
+    display: block; width: 100%;
+    height: var(--size-control-md); padding: 0 12px;
+    font-family: var(--font-body); font-size: var(--text-md); font-weight: 500;
+    color: var(--foreground); background: var(--card);
+    border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .input::placeholder { color: var(--foreground-subtle); }
+  .input.lg { height: var(--size-control-lg); padding: 0 14px; font-size: var(--text-base); }
+  .input.demo-focus { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 22%, transparent); }
+  .input.err { border-color: var(--status-danger); box-shadow: 0 0 0 3px color-mix(in oklab, var(--status-danger) 18%, transparent); }
+  .input.ok  { border-color: var(--status-success); box-shadow: 0 0 0 3px color-mix(in oklab, var(--status-success) 18%, transparent); }
+  .inwrap { position: relative; }
+  .inwrap .tail {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--foreground-subtle); display: grid; place-items: center;
+  }
+  .inwrap.loading .input {
+    background-image: linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--primary) 12%, transparent) 50%, transparent 100%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+  }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .spin {
+    width: 15px; height: 15px; border-radius: 50%;
+    border: 2px solid color-mix(in oklab, var(--primary) 30%, transparent);
+    border-top-color: var(--primary); animation: spin .7s linear infinite;
+  }
+  .spin.sm { width: 12px; height: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .select {
+    display: inline-flex; align-items: center; justify-content: space-between; gap: 6px;
+    height: var(--size-control-md); padding: 0 8px 0 10px;
+    font-family: var(--font-body); font-size: var(--text-md); font-weight: 600; line-height: 1;
+    color: var(--foreground); background: var(--card);
+    border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn);
+  }
+  .select .chev { color: var(--foreground-muted); }
+  .select .ph { color: var(--foreground-subtle); }
+  .select.sm { height: var(--size-control-sm); font-size: var(--text-sm); padding: 0 6px 0 9px; }
+  .select.lg { height: var(--size-control-lg); font-size: var(--text-base); padding: 0 10px 0 12px; }
+  .select.wfull { width: 100%; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: var(--size-control-sm); padding: 0 4px 0 11px;
+    border: 2px solid var(--ink); border-radius: 999px;
+    background: var(--primary); color: var(--primary-foreground);
+    font-size: var(--text-sm); font-weight: 700;
+  }
+  .pill .x { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; color: inherit; }
+
+  .switch {
+    position: relative; flex: none; width: 28px; height: 16px; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--card);
+  }
+  .switch.on { background: var(--primary); }
+  .switch i {
+    position: absolute; top: 1px; left: 1px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ink);
+  }
+  .switch.on i { left: auto; right: 1px; background: #fff; }
+
+  /* ─────────────────────── specimen sheet ──────────────────────────────── */
+  .spec-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: start; }
+  .spec-card {
+    background: var(--card); border: var(--border-w) solid var(--ink);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker);
+    padding: 16px 16px 14px;
+  }
+  .spec-head { display: flex; align-items: baseline; gap: 8px; border-bottom: 1.5px solid var(--border); padding-bottom: 10px; margin-bottom: 14px; }
+  .spec-head b { font-family: var(--font-head); font-weight: 600; font-size: 21px; }
+  .spec-head .px { font-size: 13px; font-weight: 800; color: var(--primary); }
+  .spec-head .tok { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--foreground-subtle); font-family: ui-monospace, monospace; }
+  .spec-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding-right: 30px; }
+  .spec-none {
+    font-size: 11.5px; color: var(--foreground-subtle); font-weight: 600;
+    border: 1.5px dashed var(--border); border-radius: var(--radius-btn); padding: 5px 9px; margin-bottom: 10px;
+  }
+  .spec-rule { font-size: 11.5px; color: var(--foreground-muted); border-top: 1.5px solid var(--border); padding-top: 9px; margin-top: 2px; }
+  .spec-rule b { color: var(--foreground); }
+
+  .pair-strip {
+    margin-top: 16px; background: var(--card); border: var(--border-w) solid var(--ink);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker);
+    padding: 14px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .pair-strip .tag {
+    flex: none; width: 132px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--foreground-muted); line-height: 1.35;
+  }
+  .pair-strip .tag b { display: block; color: var(--primary); font-size: 13px; letter-spacing: 0; }
+  .pair-strip.hero { background: linear-gradient(155deg, #eaf5fd, #dceefb); }
+
+  /* ─────────────────────── dnes vs. nově ───────────────────────────────── */
+  .cmp { display: grid; grid-template-columns: 380px 380px; gap: 22px; align-items: start; }
+  .cmp-card {
+    background: var(--card); border: var(--border-w) solid var(--ink);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker);
+    padding: 18px 48px 18px 18px;
+  }
+  .cmp-card h3 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 12px; }
+  .cmp-card.today h3 { color: #b3423a; }
+  .cmp-card.next h3 { color: #0f9268; }
+  .cmp-card .mrow { margin-bottom: 10px; }
+  .cmp-card .mrow:last-child { margin-bottom: 0; }
+  .sweep-chips { margin-top: 16px; }
+  .chipfix {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: #fff; border: 1.5px solid #c3cad4; border-radius: 999px;
+    font-size: 12px; font-weight: 600; color: #374151;
+    padding: 5px 12px; margin: 3px 6px 3px 0;
+  }
+  .chipfix .from { color: #b3423a; text-decoration: line-through; text-decoration-thickness: 1.5px; font-weight: 700; }
+  .chipfix .to { color: #0f9268; font-weight: 800; }
+
+  /* ─────────────────────── auth surface ────────────────────────────────── */
+  .auth-split { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+  .brand-panel {
+    background: linear-gradient(165deg, #cfe9fb, #8ecdf5 70%, #7cc4f2);
+    padding: 56px 52px; display: flex; flex-direction: column; opacity: .88;
+  }
+  .brand-logo { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: var(--primary); border: 2.5px solid var(--ink);
+    display: grid; place-items: center; color: #fff; box-shadow: var(--shadow-sticker-sm);
+  }
+  .brand-word { font-family: var(--font-head); font-weight: 700; font-size: 22px; color: var(--ink); }
+  .brand-word small { font-family: var(--font-body); font-weight: 800; font-size: 14px; color: var(--p-deep); }
+  .brand-tagline { font-family: var(--font-head); font-weight: 600; font-size: 40px; line-height: 1.18; color: var(--ink); margin-top: 84px; }
+  .brand-features { margin-top: 44px; display: grid; gap: 20px; }
+  .brand-feature { display: flex; gap: 13px; align-items: flex-start; }
+  .brand-feature .fi {
+    flex: none; width: 40px; height: 40px; border-radius: 11px; background: #fff;
+    border: 2.5px solid var(--ink); box-shadow: var(--shadow-sticker-sm);
+    display: grid; place-items: center; color: var(--p-deep);
+  }
+  .brand-feature b { display: block; font-size: 15px; color: var(--ink); }
+  .brand-feature span { font-size: 13px; color: var(--ink-soft); }
+
+  .form-panel { background: var(--background); display: grid; place-items: center; padding: 40px 24px; overflow-y: auto; }
+  .auth-card {
+    position: relative; width: min(440px, 100%);
+    background: var(--card); border: var(--border-w) solid var(--ink);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker);
+    padding: 32px;
+  }
+  .free-sticker {
+    position: absolute; top: -20px; right: -12px; z-index: 2;
+    background: var(--accent-loud); color: var(--accent-loud-foreground);
+    border: 2.5px solid var(--ink); border-radius: 999px;
+    font-family: var(--font-head); font-size: 14px; padding: 8px 15px;
+    transform: rotate(6deg); box-shadow: var(--shadow-sticker);
+  }
+  .auth-tabs {
+    display: flex; gap: 4px; padding: 5px;
+    background: var(--surface); border: 2.5px solid var(--ink); border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  .auth-tabs a {
+    flex: 1; padding: 9px 14px; font-size: 15px; font-weight: 600; text-align: center;
+    text-decoration: none; border-radius: 8px; color: var(--ink-soft); border: 2px solid transparent;
+  }
+  .auth-tabs a[aria-current='page'] {
+    background: var(--card); color: var(--ink); border-color: var(--ink);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+  }
+  .form-heading { font-family: var(--font-head); font-size: 25px; font-weight: 600; color: var(--ink); margin-bottom: 4px; line-height: 1.15; }
+  .form-subheading { font-size: var(--text-sm); color: var(--ink-soft); margin-bottom: 24px; }
+  .field { margin-bottom: 16px; }
+  .field .lbl { margin-bottom: 6px; }
+  .forgot-link {
+    font-size: 13px; font-weight: 600; color: var(--link); text-decoration: underline;
+    text-underline-offset: 3px; text-align: right; display: block; margin-top: 4px;
+  }
+  .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--foreground-subtle); font-size: 12.5px; font-weight: 600; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1.5px; background: var(--border); }
+  .auth-footer { margin-top: 20px; text-align: center; font-size: 13px; color: var(--foreground-muted); }
+  .auth-footer a { color: var(--link); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ─────────────────────── dialog / modal surfaces ─────────────────────── */
+  .backdrop {
+    background: color-mix(in oklab, var(--p-ink) 42%, transparent);
+    padding: 44px 24px; display: grid; place-items: center;
+  }
+  .dlg {
+    position: relative; width: min(480px, 100%);
+    background: var(--card); border: var(--border-w) solid var(--ink);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker);
+    padding: 24px 26px;
+  }
+  .dlg.wide { width: min(720px, 100%); }
+  .dlg-title { font-family: var(--font-head); font-weight: 600; font-size: 21px; color: var(--ink); }
+  .dlg-desc { font-size: 13px; color: var(--foreground-muted); margin: 3px 0 18px; }
+  .dlg-x { position: absolute; top: 14px; right: 14px; color: var(--foreground-muted); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seg .btn.outline.off { border-color: var(--border); box-shadow: none; color: var(--foreground-muted); }
+  .seg .btn.outline.on { background: var(--accent); }
+  .dlg-foot { display: flex; align-items: center; gap: 10px; margin-top: 22px; }
+  .dlg-foot .ml { margin-left: auto; display: flex; gap: 10px; }
+
+  .formrow { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .lblrow { min-height: 26px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .lblrow .side { display: flex; align-items: center; gap: 6px; }
+  .lblrow .side .lbl { font-size: 11px; font-weight: 500; color: var(--foreground-muted); }
+  .rowguide {
+    position: absolute; left: -14px; right: -14px; top: 29px;
+    border-top: 2px dashed #0f9268; pointer-events: none;
+  }
+  .rowguide::after {
+    content: attr(data-note); position: absolute; right: 0; top: -22px;
+    font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+    color: #0f9268; background: color-mix(in oklab, #0f9268 10%, white);
+    border: 1.5px solid #0f9268; border-radius: 999px; padding: 2px 8px;
+  }
+  .crop-note {
+    border-top: 2px dashed var(--border); margin-top: 18px; padding-top: 8px;
+    font-size: 11.5px; color: var(--foreground-subtle); text-align: center;
+  }
+
+  /* ─────────────────────── states gallery ──────────────────────────────── */
+  .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start; }
+  .state-card {
+    background: var(--card); border: var(--border-w) solid var(--ink);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker);
+    padding: 16px;
+  }
+  .state-card h3 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--foreground-muted); margin-bottom: 12px; }
+  .state-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .state-row:last-child { margin-bottom: 0; }
+  .state-label { flex: none; font-size: 11.5px; color: var(--foreground-subtle); font-weight: 600; width: 92px; }
+  .state-row .grow { flex: 1; min-width: 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap pagehead">
+  <p class="eyebrow">Varianta A · čtyřstupňová škála · výšky ovládacích prvků (issue #159)</p>
+  <h1>Jedna škála výšek: sm 26 / md 32 / lg 38 / xl 48, sousední prvky vždy stejně vysoké</h1>
+  <p>Každá výška v aplikaci se nově opírá o jeden ze čtyř tokenů. Kanonická formulářová výška je
+     <strong>lg 38 px</strong>, tedy dnešní výška hlavního přihlašovacího tlačítka: vstupy, selecty i tlačítka
+     ve formulářových stacích se na ni sjednocují. Toolbary a husté editory zůstávají na md 32,
+     pilulky na sm 26 (beze změny vůči #161) a hero plochy dostávají nový krok xl 48.</p>
+  <div>
+    <span class="anno">Nový token: --size-control-xl: 48px</span>
+    <span class="anno">Nový Input size="lg", Select přepojen na tokeny (systémová část #141)</span>
+    <span class="anno">Typografie po krocích: 12 / 13 / 14 / 15 px</span>
+    <span class="anno dead">Zrušeno: <s>36 px</s> i <s>44 px</s>, nikde už neexistují</span>
+  </div>
+</div>
+
+<!-- ══════════════ 1 · SPECIMEN: čtyři kroky škály ══════════════ -->
+<div class="wrap app pal-sky" style="background: transparent;">
+  <h2 class="section-title" style="color:#1f2937">1 · Vzorník: čtyři kroky škály</h2>
+  <p class="section-note" style="color:#4b5563">Pro každý krok jsou vidět tlačítka (primary, outline, ghost), vstup, select
+     a ikonové tlačítko, pokud na daném kroku existují. Varianty, které záměrně neexistují, jsou vyznačené,
+     nepřidávají se bez skutečného spotřebitele.</p>
+
+  <div class="spec-grid">
+
+    <!-- sm 26 -->
+    <div class="spec-card">
+      <div class="spec-head"><b>sm</b><span class="px">26 px</span><span class="tok">--size-control-sm</span></div>
+      <div class="spec-row">
+        <span class="mrow"><button class="btn sm primary">Vytvořit</button><span class="hm" data-px="26"></span></span>
+        <button class="btn sm outline">Zrušit</button>
+        <button class="btn sm ghost">Zrušit filtry</button>
+      </div>
+      <div class="spec-row">
+        <button class="btn icon-sm outline" aria-label="Upravit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
+        <span class="pill"><span>Pouze dostupné</span><button class="x" aria-label="Zrušit filtr"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+        <span class="mrow"><span class="select sm">CZK (Kč)<svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span><span class="hm" data-px="26"></span></span>
+      </div>
+      <p class="spec-none">Input sm neexistuje: žádný povrch ho nepotřebuje (§11)</p>
+      <p class="spec-rule"><b>Kompaktní / sekundární:</b> pilulky filtrů (#161), drobné inline akce, icon-sm. Nikdy jediná cesta k primární akci.</p>
+    </div>
+
+    <!-- md 32 -->
+    <div class="spec-card">
+      <div class="spec-head"><b>md</b><span class="px">32 px</span><span class="tok">--size-control-md</span></div>
+      <div class="spec-row">
+        <span class="mrow"><button class="btn md primary">Vytvořit</button><span class="hm" data-px="32"></span></span>
+        <button class="btn md outline">Zrušit</button>
+        <button class="btn md ghost">Zpět</button>
+      </div>
+      <div class="spec-row">
+        <input class="input" style="width: 150px;" placeholder="Název dárku">
+        <input class="input" style="width: 92px;" value="1 899">
+      </div>
+      <div class="spec-row">
+        <span class="mrow"><span class="select">Priorita: Střední<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span><span class="hm" data-px="32"></span></span>
+        <button class="btn icon outline" aria-label="Mřížka"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+      </div>
+      <p class="spec-rule"><b>Toolbar / chrome / hustý editor:</b> výchozí krok aplikace. Lišty seznamů, navbar, gift edit modal, import. Beze změny.</p>
+    </div>
+
+    <!-- lg 38 -->
+    <div class="spec-card" style="outline: 3px solid color-mix(in oklab, var(--primary) 35%, transparent); outline-offset: 3px;">
+      <div class="spec-head"><b>lg</b><span class="px">38 px</span><span class="tok">--size-control-lg</span></div>
+      <div class="spec-row">
+        <span class="mrow"><button class="btn lg primary">Přihlásit se</button><span class="hm" data-px="38"></span></span>
+        <button class="btn lg outline">Zrušit</button>
+      </div>
+      <div class="spec-row">
+        <button class="btn lg ghost">Přihlásit se odkazem</button>
+      </div>
+      <div class="spec-row">
+        <input class="input lg" style="width: 170px;" placeholder="váš@email.cz">
+        <span class="mrow"><span class="select lg">CZK (Kč)<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span><span class="hm" data-px="38"></span></span>
+      </div>
+      <p class="spec-rule"><b>Kanonická formulářová výška:</b> samostatné formulářové stacky, auth karty, dialogy vytváření. Nový Input size="lg", 14 px text, padding 14 px.</p>
+    </div>
+
+    <!-- xl 48 -->
+    <div class="spec-card">
+      <div class="spec-head"><b>xl</b><span class="px">48 px</span><span class="tok">--size-control-xl</span></div>
+      <div class="spec-row">
+        <span class="mrow"><button class="btn xl primary">Vytvořit seznam</button><span class="hm" data-px="48"></span></span>
+      </div>
+      <div class="spec-row">
+        <button class="btn xl outline">Jak to funguje?</button>
+      </div>
+      <p class="spec-none">Input ani Select na xl neexistují, krok je jen pro hero akce</p>
+      <p class="spec-rule"><b>Hero / marketing:</b> landing CTA, dlaždice sdílení, průvodce sdílením. Formalizuje dnešní hardcode h-12, typografie 15 px (--text-lg).</p>
+    </div>
+  </div>
+
+  <!-- pairing strips -->
+  <div class="pair-strip">
+    <span class="tag"><b>lg</b>formulářový stack</span>
+    <div style="flex:1; min-width: 260px; max-width: 420px;">
+      <label class="lbl" style="margin-bottom:6px;">E-mail</label>
+      <div style="display:flex; gap:10px;">
+        <input class="input lg" placeholder="váš@email.cz">
+        <button class="btn lg primary" style="flex:none;">Přihlásit se</button>
+      </div>
+    </div>
+    <span class="anno" style="margin-left:auto;">Vstup i tlačítko na jedné výšce 38, pravidlo sousednosti</span>
+  </div>
+
+  <div class="pair-strip">
+    <span class="tag"><b>md</b>toolbar (#161, FINAL)</span>
+    <button class="btn icon outline" aria-label="Mřížka"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+    <button class="btn icon ghost" aria-label="Řádky"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+    <span class="select">Výchozí pořadí<svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span>
+    <button class="btn md outline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M7 12h10M10 18h4"/></svg>Filtrovat</button>
+    <button class="btn md primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Přidat přání</button>
+    <span class="anno" style="margin-left:auto;">Vše 32, jediná korekce: ViewToggle nástěnky 26 na 32</span>
+  </div>
+
+  <div class="pair-strip">
+    <span class="tag"><b>sm</b>pilulky (#161, FINAL)</span>
+    <span class="pill"><span>Pouze dostupné</span><button class="x" aria-label="Zrušit filtr: Pouze dostupné"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+    <span class="pill"><span>Oblíbené</span><button class="x" aria-label="Zrušit filtr: Oblíbené"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+    <button class="btn sm ghost">Zrušit filtry</button>
+    <span class="anno" style="margin-left:auto;">26 px, beze změny</span>
+  </div>
+
+  <div class="pair-strip hero">
+    <span class="tag"><b>xl</b>hero / sdílení</span>
+    <button class="btn xl primary">Vytvořit seznam</button>
+    <button class="btn xl outline">Jak to funguje?</button>
+    <button class="btn xl outline" style="min-width: 210px; justify-content: flex-start;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#14a56f" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.9-.9L3 21l2-4.9a8.4 8.4 0 1 1 16-4.6z"/></svg>WhatsApp</button>
+    <span class="anno" style="margin-left:auto;">Landing i dlaždice sdílení: Button size="xl" místo přepisů h-12 a h-11</span>
+  </div>
+</div>
+
+<!-- ══════════════ 2 · DNES VS. NOVĚ ══════════════ -->
+<div class="wrap app pal-sky" style="background: transparent;">
+  <h2 class="section-title" style="color:#1f2937">2 · Dnes vs. nově: přihlašovací stack</h2>
+  <p class="section-note" style="color:#4b5563">Jádro problému: v jednom svislém stacku dnes sousedí 32 px vstupy
+     a 38 px hlavní tlačítko. Podle pravidla „preferuj větší výšku" se všechno srovnává na lg 38.</p>
+
+  <div class="cmp">
+    <div class="cmp-card today">
+      <h3>Dnes: 32 + 38 v jednom stacku</h3>
+      <div class="mrow"><input class="input" placeholder="váš@email.cz"><span class="hm bad" data-px="32"></span></div>
+      <div class="mrow"><input class="input" type="password" value="........"><span class="hm bad" data-px="32"></span></div>
+      <div class="mrow"><button class="btn lg primary wfull">Přihlásit se</button><span class="hm bad" data-px="38"></span></div>
+      <div class="mrow"><button class="btn md outline wfull">Přihlásit přes Google</button><span class="hm bad" data-px="32"></span></div>
+      <div class="mrow"><button class="btn md ghost wfull">Přihlásit se odkazem</button><span class="hm bad" data-px="32"></span></div>
+    </div>
+    <div class="cmp-card next">
+      <h3>Nově: celý stack lg 38</h3>
+      <div class="mrow"><input class="input lg" placeholder="váš@email.cz"><span class="hm good" data-px="38"></span></div>
+      <div class="mrow"><input class="input lg" type="password" value="........"><span class="hm good" data-px="38"></span></div>
+      <div class="mrow"><button class="btn lg primary wfull">Přihlásit se</button><span class="hm good" data-px="38"></span></div>
+      <div class="mrow"><button class="btn lg outline wfull">Přihlásit přes Google</button><span class="hm good" data-px="38"></span></div>
+      <div class="mrow"><button class="btn lg ghost wfull">Přihlásit se odkazem</button><span class="hm good" data-px="38"></span></div>
+    </div>
+  </div>
+
+  <div class="sweep-chips">
+    <p class="section-note" style="margin-bottom: 6px; color:#4b5563;">Zbytek celoaplikačního sweepu (§3.7), stejná logika:</p>
+    <span class="chipfix">Priorita v gift modalu <span class="from">36</span> → <span class="to">32</span></span>
+    <span class="chipfix">ViewToggle nástěnky <span class="from">26</span> → <span class="to">32</span></span>
+    <span class="chipfix">Přihlásit se v navbaru <span class="from">26</span> → <span class="to">32</span></span>
+    <span class="chipfix">Rychlé plus u položky <span class="from">36</span> → <span class="to">32</span></span>
+    <span class="chipfix">InputGroup <span class="from">36</span> → <span class="to">32</span></span>
+    <span class="chipfix">Průvodce sdílením <span class="from">44</span> → <span class="to">48</span></span>
+    <span class="chipfix">Dlaždice sdílení <span class="from">h-12 hardcode</span> → <span class="to">xl token</span></span>
+    <span class="chipfix">Landing CTA <span class="from">lg + h-12 přepis</span> → <span class="to">xl token</span></span>
+  </div>
+</div>
+
+<!-- ══════════════ 3 · LOGIN KARTA V KONTEXTU (1440×900) ══════════════ -->
+<div class="wrap">
+  <h2 class="section-title">3 · Přihlášení, celý stack sjednocený na lg 38</h2>
+  <p class="section-note">Věrná reprodukce auth stránky: levý brand panel je kontext beze změny (ztlumeně).
+     V kartě mají e-mail, heslo, „Přihlásit se", Google i přihlášení odkazem jednu výšku 38 px.
+     Přepínač Přihlášení/Registrace je navigace, nikoli formulářový prvek, zůstává beze změny.</p>
+
+  <div class="frame app pal-sky">
+    <div class="auth-split">
+      <div class="brand-panel">
+        <div class="brand-logo">
+          <span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8c-1.5 0-2.5-1-2.5-2.5S6 3 7.5 3C10 3 12 8 12 8s2-5 4.5-5C18 3 19 4.5 19 5.5S18 8 16.5 8"/></svg></span>
+          <span class="brand-word">prejemesi<small>.cz</small></span>
+        </div>
+        <h2 class="brand-tagline">Sdílejte přání,<br>zachovejte překvapení</h2>
+        <div class="brand-features">
+          <div class="brand-feature">
+            <span class="fi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>
+            <div><b>Seznamy přání</b><span>Vytvořte a sdílejte za minutu</span></div>
+          </div>
+          <div class="brand-feature">
+            <span class="fi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 2 12s3 8 10 8a9.74 9.74 0 0 0 5.39-1.61M2 2l20 20"/></svg></span>
+            <div><b>Skryté rezervace</b><span>Překvapení zůstane zachováno</span></div>
+          </div>
+          <div class="brand-feature">
+            <span class="fi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+            <div><b>Sdílení odkazem</b><span>WhatsApp, email, Messenger...</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-panel">
+        <div class="auth-card">
+          <span class="free-sticker" aria-hidden="true">100% zdarma ✨</span>
+          <nav class="auth-tabs" aria-label="Přihlášení, nebo registrace">
+            <a href="#" aria-current="page">Přihlášení</a>
+            <a href="#">Registrace</a>
+          </nav>
+          <h1 class="form-heading">Přihlašte se</h1>
+          <p class="form-subheading">Vítejte zpět v Přejeme si</p>
+
+          <div class="field">
+            <label class="lbl" for="a-email">E-mail</label>
+            <div class="mrow">
+              <input class="input lg" id="a-email" type="email" placeholder="váš@email.cz">
+              <span class="hm good" data-px="38"></span>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom: 8px;">
+            <label class="lbl" for="a-pass">Heslo</label>
+            <div class="mrow inwrap">
+              <input class="input lg" id="a-pass" type="password" value="........" style="padding-right: 40px;">
+              <span class="tail"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+              <span class="hm good" data-px="38"></span>
+            </div>
+            <a href="#" class="forgot-link">Zapomněli jste heslo?</a>
+          </div>
+
+          <div class="mrow" style="margin-top: 18px;">
+            <button class="btn lg primary wfull">Přihlásit se</button>
+            <span class="hm good" data-px="38"></span>
+          </div>
+
+          <div class="divider">nebo</div>
+
+          <div class="mrow" style="margin-bottom: 8px;">
+            <button class="btn lg outline wfull">
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+              Přihlásit přes Google
+            </button>
+            <span class="hm good" data-px="38"></span>
+          </div>
+
+          <div class="mrow">
+            <button class="btn lg ghost wfull">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              Přihlásit se odkazem
+            </button>
+            <span class="hm good" data-px="38"></span>
+          </div>
+
+          <p class="auth-footer">Nemáte účet? <a href="#">Zaregistrujte se</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:10px">
+    <span class="anno">Input lg: 38 px, text 14 px, padding 14 px, stav state funguje beze změny</span>
+    <span class="anno">Ghost a outline tlačítka: dříve md 32, nyní lg 38 (REQ-1)</span>
+    <span class="anno">Auth taby ~40 px: navigace, mimo škálu (§9)</span>
+  </div>
+</div>
+
+<!-- ══════════════ 4 · DIALOG NOVÉHO SEZNAMU (lg 38) ══════════════ -->
+<div class="wrap">
+  <h2 class="section-title">4 · Nový seznam přání, dialog na lg 38</h2>
+  <p class="section-note">Akceptační kritérium #159: vstupy dialogu mají výšku hlavního tlačítka.
+     Segmentový přepínač, jméno obdarovaného, název, datum události i patička jsou lg 38.
+     Drobná zkratka „Importovat z tabulky" je sekundární inline akce a zůstává sm.</p>
+
+  <div class="frame frame-strip app pal-sky">
+    <div class="backdrop">
+      <div class="dlg">
+        <button class="dlg-x" aria-label="Zavřít"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        <h2 class="dlg-title">Nový seznam přání</h2>
+        <p class="dlg-desc">Zadejte název a volitelně další údaje.</p>
+
+        <div class="field">
+          <div class="mrow seg" role="radiogroup" aria-label="Pro koho je seznam">
+            <button class="btn lg outline on" aria-checked="true">Pro mě</button>
+            <button class="btn lg outline off" aria-checked="false">Pro někoho jiného</button>
+            <span class="hm good" data-px="38"></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="lbl" for="d-name">Název</label>
+          <div class="mrow">
+            <input class="input lg" id="d-name" placeholder="např. Vánoce 2026">
+            <span class="hm good" data-px="38"></span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="lbl" for="d-date">Datum události (volitelné)</label>
+          <div class="mrow">
+            <button class="btn lg outline wfull" id="d-date" style="justify-content: flex-start; font-weight: 500; color: var(--foreground-subtle); box-shadow: none;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Vyberte datum
+            </button>
+            <span class="hm good" data-px="38"></span>
+          </div>
+        </div>
+
+        <div class="dlg-foot">
+          <div class="mrow">
+            <button class="btn sm ghost">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3-3 3 3"/></svg>
+              Importovat z tabulky
+            </button>
+            <span class="hm" data-px="26"></span>
+          </div>
+          <div class="ml">
+            <button class="btn lg outline">Zrušit</button>
+            <div class="mrow">
+              <button class="btn lg primary">Vytvořit</button>
+              <span class="hm good" data-px="38"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:10px">
+    <span class="anno">ToggleGroup na lg: stejná výška jako vstupy pod ním</span>
+    <span class="anno">DatePicker přebírá size="lg" přes prop pass-through (§3.3)</span>
+    <span class="anno">Varianta „Pro někoho jiného" přidá vstup „Jméno obdarovaného", také lg</span>
+  </div>
+</div>
+
+<!-- ══════════════ 5 · GIFT EDIT MODAL (md 32 + zarovnání řádků) ══════════════ -->
+<div class="wrap">
+  <h2 class="section-title">5 · Gift edit modal: md 32 a zarovnaný řádek cena/měna (REQ-5)</h2>
+  <p class="section-note">Hustý editor zůstává na md 32, jediná změna výšky je priorita, dříve mimo škálu na 36 px.
+     Kořen zarovnání: popiskové řádky obou sloupců sdílejí min-height 26 px, takže levý sloupec s přepínačem
+     „Cenové rozpětí" už netlačí svůj vstup níž. Ovládací prvky pak začínají na stejném y a lícují.</p>
+
+  <div class="frame frame-strip app pal-sky">
+    <div class="backdrop">
+      <div class="dlg wide">
+        <button class="dlg-x" aria-label="Zavřít"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        <h2 class="dlg-title">Upravit přání</h2>
+        <p class="dlg-desc">LEGO Technic bagr · Vánoce 2026</p>
+
+        <div class="field">
+          <label class="lbl" for="g-name">Název *</label>
+          <div class="mrow">
+            <input class="input" id="g-name" value="LEGO Technic bagr">
+            <span class="hm" data-px="32"></span>
+          </div>
+        </div>
+
+        <!-- Price + Currency: THE aligned formRow -->
+        <div class="formrow">
+          <span class="rowguide" data-note="Popiskové řádky: stejná výška 26 px"></span>
+          <div>
+            <div class="lblrow">
+              <label class="lbl" for="g-price">Cena</label>
+              <span class="side">
+                <label class="lbl" for="g-price-range">Cenové rozpětí</label>
+                <span class="switch" id="g-price-range" role="switch" aria-checked="false"><i></i></span>
+              </span>
+            </div>
+            <div class="mrow">
+              <input class="input" id="g-price" type="number" placeholder="0" value="1899">
+              <span class="hm good" data-px="32"></span>
+            </div>
+          </div>
+          <div>
+            <div class="lblrow">
+              <label class="lbl">Měna</label>
+            </div>
+            <div class="mrow">
+              <span class="select wfull">CZK (Kč)<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span>
+              <span class="hm good" data-px="32"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quantity + Priority: same guarantee -->
+        <div class="formrow" style="margin-bottom: 4px;">
+          <div>
+            <div class="lblrow">
+              <label class="lbl" for="g-qty">Počet (skryto při 1)</label>
+            </div>
+            <div class="mrow">
+              <input class="input" id="g-qty" type="number" placeholder="1" value="1">
+              <span class="hm" data-px="32"></span>
+            </div>
+          </div>
+          <div>
+            <div class="lblrow">
+              <label class="lbl">Priorita</label>
+            </div>
+            <div class="mrow">
+              <span class="select wfull">Střední<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span>
+              <span class="hm good" data-px="32"></span>
+            </div>
+            <p class="help" style="margin-top: 5px; color: #b3423a;">dříve 36 px, jediná odchylka škály v modalu</p>
+          </div>
+        </div>
+
+        <div class="dlg-foot" style="margin-top: 14px;">
+          <button class="btn md ghost-danger">Smazat</button>
+          <div class="ml">
+            <button class="btn md ghost">Zrušit</button>
+            <div class="mrow">
+              <button class="btn md primary">Uložit</button>
+              <span class="hm" data-px="32"></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="crop-note">Výřez formuláře: popis, odkazy a sekce režimů (#156) pokračují beze změny výšek</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:10px">
+    <span class="anno">Měna: 32 px nově přes token md, ne přes náhodné h-8</span>
+    <span class="anno">Mechanismus: sdílená min-height popiskového řádku v každém dvousloupcovém formRow</span>
+    <span class="anno">Textarea zůstává řízená rows, mimo škálu (REQ-4)</span>
+  </div>
+</div>
+
+<!-- ══════════════ 6 · MOBIL 390 px ══════════════ -->
+<div class="wrap">
+  <h2 class="section-title">6 · Mobil 390 px: lg stack drží beze zlomu</h2>
+  <div class="frame frame-390 app pal-sky" style="padding: 26px 14px 22px;">
+    <div class="auth-card" style="width: 100%;">
+      <span class="free-sticker" style="right: 4px; top: -16px;" aria-hidden="true">100% zdarma ✨</span>
+      <nav class="auth-tabs" aria-label="Přihlášení, nebo registrace">
+        <a href="#" aria-current="page">Přihlášení</a>
+        <a href="#">Registrace</a>
+      </nav>
+      <h1 class="form-heading">Přihlašte se</h1>
+      <p class="form-subheading">Vítejte zpět v Přejeme si</p>
+      <div class="field">
+        <label class="lbl" for="m-email">E-mail</label>
+        <input class="input lg" id="m-email" type="email" placeholder="váš@email.cz">
+      </div>
+      <div class="field" style="margin-bottom: 8px;">
+        <label class="lbl" for="m-pass">Heslo</label>
+        <div class="inwrap">
+          <input class="input lg" id="m-pass" type="password" value="........" style="padding-right: 40px;">
+          <span class="tail"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+        </div>
+        <a href="#" class="forgot-link">Zapomněli jste heslo?</a>
+      </div>
+      <button class="btn lg primary wfull" style="margin-top: 16px;">Přihlásit se</button>
+      <div class="divider">nebo</div>
+      <button class="btn lg outline wfull" style="margin-bottom: 8px;">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+        Přihlásit přes Google
+      </button>
+      <button class="btn lg ghost wfull">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        Přihlásit se odkazem
+      </button>
+      <p class="auth-footer">Nemáte účet? <a href="#">Zaregistrujte se</a></p>
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <span class="anno">Karta min(440 px, 100 %): na 390 px se popisky nezalamují do polí (§6)</span>
+    <span class="anno">Dotykové cíle: lg 38 px vysoko nad minimem 24 px</span>
+  </div>
+</div>
+
+<!-- ══════════════ 7 · STAVY NAPŘÍČ KROKY ══════════════ -->
+<div class="wrap app pal-sky" style="background: transparent;">
+  <h2 class="section-title" style="color:#1f2937">7 · Stavy fungují na každém kroku beze změny</h2>
+  <div class="states">
+
+    <div class="state-card">
+      <h3>Input: state na md i lg</h3>
+      <div class="state-row">
+        <span class="state-label">error, md</span>
+        <div class="grow">
+          <input class="input err" value="váš@email" aria-invalid="true">
+          <p class="help err" style="margin-top: 4px;">Zadejte platný e-mail</p>
+        </div>
+      </div>
+      <div class="state-row">
+        <span class="state-label">success, lg</span>
+        <div class="grow"><input class="input lg ok" value="martin@test.cz"></div>
+      </div>
+      <div class="state-row">
+        <span class="state-label">loading, md</span>
+        <div class="grow inwrap loading">
+          <input class="input" value="vanoce-2026" style="padding-right: 34px;">
+          <span class="tail"><span class="spin sm"></span></span>
+        </div>
+      </div>
+      <div class="state-row">
+        <span class="state-label">loading, lg</span>
+        <div class="grow inwrap loading">
+          <input class="input lg" value="vanoce-2026" style="padding-right: 38px;">
+          <span class="tail"><span class="spin"></span></span>
+        </div>
+      </div>
+      <div class="state-row">
+        <span class="state-label">focus, lg</span>
+        <div class="grow"><input class="input lg demo-focus" placeholder="váš@email.cz"></div>
+      </div>
+    </div>
+
+    <div class="state-card">
+      <h3>Tlačítka: shodné chování na všech krocích</h3>
+      <div class="state-row">
+        <span class="state-label">hover lift</span>
+        <button class="btn md primary demo-lift">Vytvořit</button>
+        <button class="btn lg primary demo-lift">Přihlásit se</button>
+      </div>
+      <div class="state-row">
+        <span class="state-label">focus ring</span>
+        <button class="btn md outline demo-focus">Zrušit</button>
+        <button class="btn lg outline demo-focus">Zrušit</button>
+      </div>
+      <div class="state-row">
+        <span class="state-label">disabled</span>
+        <button class="btn lg primary demo-disabled" disabled><span class="spin" style="border-color: rgb(255 255 255 / 35%); border-top-color: #fff;"></span>Přihlásit se</button>
+        <button class="btn xl primary demo-disabled" disabled>Vytvořit seznam</button>
+      </div>
+      <div class="state-row">
+        <span class="state-label">select open</span>
+        <span class="select" style="background: var(--accent); box-shadow: none;">Priorita: Střední<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg></span>
+        <span class="help">položky panelu nezávislé na výšce triggeru</span>
+      </div>
+    </div>
+
+    <div class="state-card">
+      <h3>Pravidla škály</h3>
+      <div style="font-size:13px; color: var(--foreground-muted); display:grid; gap:8px;">
+        <p><b style="color: var(--foreground);">Sousednost:</b> v jedné vizuální skupině (řádek, stack, toolbar) mají všechny výškové prvky jeden krok.</p>
+        <p><b style="color: var(--foreground);">Jen tokeny:</b> po sweepu žádné h-8 / h-9 / h-11 / h-12 na ovládacích prvcích.</p>
+        <p><b style="color: var(--foreground);">Výjimky (§3.7):</b> textarea, checkbox 16, radio 16, switch 16 a 22, nav pilulky, auth taby, sticker akce gift modalu, buňky kalendáře.</p>
+        <p><b style="color: var(--foreground);">Lift a ring:</b> vzdálenost zdvihu i offset ringu jsou na všech krocích identické.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
