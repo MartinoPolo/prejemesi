@@ -56,7 +56,7 @@
 		<div class={styles.imagePattern()} aria-hidden="true"></div>
 
 		<GiftImage
-			class="size-full bg-transparent"
+			class="size-full rounded-none bg-transparent"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
 			target="square"
