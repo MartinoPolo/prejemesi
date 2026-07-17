@@ -247,9 +247,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await expect(page.getByRole('button', { name: /^Rezervovat/ })).toHaveCount(0);
 		await page.setViewportSize({ width: 1280, height: 900 });
 
-		// Round-trip: reopening the gift restores crop mode, the card zoom, and the
-		// image column itself measures at the aspect the (now sole) square target
-		// stage claims for it (issue #165: was the retired tall `detail` target).
+		// Round-trip: reopening the gift restores crop mode and the card zoom.
 		await page.locator('[aria-label="Karta"]').click();
 		const editDialog = page.getByRole('dialog');
 		// Click the gift name text (bubbles to the card wrapper that opens the editor);
@@ -263,9 +261,17 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			'true',
 		);
 		await expect(editDialog.getByText('120 %')).toBeVisible({ timeout: 10_000 });
+		// The image column itself is the create/edit form's own fixed 45%/55% grid
+		// cell (#116/#131/#142), unrelated to whichever crop target is active inside
+		// it – it still measures at the `detail` spec's real-world aspect (that spec
+		// now documents the column's own shape, not a selectable crop target).
+		// Issue #165 retired `detail` as a crop TARGET (the visitor modal moved to
+		// `square`); resizing the editor's own column to match is a separate layout
+		// change explicitly deferred (SUMMARY.md "Out of scope flag", coordinate
+		// with #163) rather than done here.
 		await expectAspect(
 			editDialog.getByTestId('gift-image-column'),
-			GIFT_CROP_TARGET_SPECS.square.aspect,
+			GIFT_CROP_TARGET_SPECS.detail.aspect,
 			FLUID_TOLERANCE,
 		);
 
@@ -319,6 +325,12 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await editDialog.getByRole('radio', { name: /Ručně/ }).click();
 		await expect(editDialog.getByTestId('crop-stage')).toBeVisible();
 		const zoomOutSlider = editDialog.getByRole('slider');
+		// This portrait source has never been decoded by the stage before (unlike
+		// the cached image reused elsewhere in this test), so the stage's own
+		// `naturalRatio` measurement genuinely races the click above; the slider
+		// stays `disabled` until it resolves (ImageCropStage `isReady` guard).
+		// Interacting before then is a silent no-op, not a real zoom-out.
+		await expect(zoomOutSlider).toBeEnabled();
 		await zoomOutSlider.focus();
 		await zoomOutSlider.press('Home');
 		expect(Number(await zoomOutSlider.inputValue())).toBeLessThan(100);
