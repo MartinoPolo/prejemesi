@@ -768,7 +768,11 @@
 		await Promise.all([
 			loadGiftData(),
 			(async () => {
-				if (!isAuthenticated) {
+				// Auto-follow surfaces a shared list in the viewer's „Sledované". Skip it for anyone
+				// who already owns or co-manages the list (it lives in „Moje seznamy" / „Spravované"):
+				// the server no-ops for the recipient anyway, so this spares a wasted POST + DB
+				// round-trip on every view, and it keeps a moderator from becoming a redundant follower.
+				if (!isAuthenticated || canManage) {
 					return;
 				}
 
