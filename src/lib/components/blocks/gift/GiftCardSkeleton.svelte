@@ -24,7 +24,7 @@
 		<Skeleton class="h-5 w-24 rounded-full" />
 
 		<!-- Link rows -->
-		<div class="mt-auto flex flex-col gap-1">
+		<div class="flex flex-col gap-1">
 			<Skeleton class="h-4 w-2/3" />
 			<Skeleton class="h-4 w-2/3" />
 		</div>

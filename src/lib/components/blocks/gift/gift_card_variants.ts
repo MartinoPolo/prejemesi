@@ -28,7 +28,7 @@ export const giftCardVariants = tv({
 		price: 'text-[15px] font-bold text-foreground',
 		priceEmpty: 'text-sm text-ink-soft italic',
 		priorityEyebrow: 'flex items-center gap-1',
-		linkList: 'mt-auto flex flex-col',
+		linkList: 'flex flex-col',
 		footer: 'flex items-center justify-between gap-2 px-4 pt-1 pb-3.5',
 		reservedSticker:
 			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
