@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detail dárku v3 – Varianta C – Překryvy a časová osa</title>
+<!--
+  Přejeme si — gift detail modal v3, VARIANT C: „Překryvy a časová osa"
+  Asymmetric sticker collage (issue #165):
+  · squarish photo left, TITLE STICKER overlapping the photo/content seam,
+    price + priority as small stickers pinned under the title
+  · the content is a notebook TIMELINE: „Popis" → „Upraveno po sdílení"
+    (the badge is a timeline event, strongest REQ-2 integration) → „Odkazy"
+  · action DOCK: a floating sticker bar overlapping the modal's bottom edge
+    with like + availability + reserve; on mobile it becomes the sticky bar
+  Self-contained: inline CSS, no external requests, system font fallbacks.
+-->
+<style>
+  :root {
+    --p-brand:  #1E9BE9;
+    --p-deep:   #1265A8;
+    --p-ink:    #16385C;
+    --p-accent: #FFC93C;
+
+    --surface:      color-mix(in oklab, var(--p-brand) 11%, white);
+    --panel:        #FFFFFF;
+    --brand:        var(--p-brand);
+    --brand-fill:   var(--p-brand);
+    --ink:          var(--p-ink);
+    --ink-soft:     color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --ink-faint:    color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --link:         #7048E8;
+    --accent:       var(--p-accent);
+    --danger:       #E4574C;
+    --heart:        #E25563;
+
+    --tag-priority-bg: #FFE9AD;
+    --tag-edited-bg:   #ECE5FC;
+    --like-tint:    #FDECEC;
+    --link-tint:    #F1EDFD;
+    --reserved-note-bg: #EAF7EE;
+    --reserved-ink: #1D7A3E;
+
+    --pattern-dot:  color-mix(in oklab, var(--ink) 13%, transparent);
+    --hard-shadow:        color-mix(in oklab, var(--p-ink) 16%, transparent);
+    --hard-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+
+    --font-head: "DynaPuff", ui-rounded, "Segoe UI", system-ui, sans-serif;
+    --font-body: "Geist", "Segoe UI", system-ui, sans-serif;
+
+    --s1: 8px; --s2: 16px; --s3: 24px; --s4: 32px; --s6: 48px;
+    --r-panel: 16px; --r-btn: 7px; --border-w: 2.5px;
+    --shadow-sticker:      4px 4px 0 var(--hard-shadow);
+    --shadow-sticker-lift: 7px 7px 0 var(--hard-shadow);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+    color: var(--ink); background: var(--surface);
+    background-image: radial-gradient(var(--pattern-dot) 1.5px, transparent 1.6px);
+    background-size: 24px 24px;
+    padding-bottom: 90px;
+  }
+  h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.15; }
+  button { font-family: var(--font-body); cursor: pointer; }
+  :focus-visible { outline: 3px dashed var(--ink); outline-offset: 3px; border-radius: 4px; }
+
+  .wrap { max-width: 1240px; margin-inline: auto; padding: var(--s3); }
+  .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; }
+  .pagehead h1 { font-size: clamp(22px, 3vw, 30px); margin-bottom: 6px; }
+  .pagehead p { color: var(--ink-soft); max-width: 70ch; }
+  .anno {
+    display: inline-block; width: fit-content;
+    font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-soft); background: var(--panel);
+    border: 2px dashed color-mix(in oklab, var(--ink) 38%, transparent);
+    border-radius: 999px; padding: 3px 11px; margin: 3px 4px 3px 0;
+  }
+  .section-title { font-size: 20px; margin: var(--s4) 0 10px; }
+
+  .sticker { background: var(--panel); border: var(--border-w) solid var(--ink); border-radius: var(--r-panel); box-shadow: var(--shadow-sticker); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 700; font-size: 15px; text-decoration: none;
+    min-height: 44px; padding: 10px 20px; border-radius: var(--r-btn);
+    border: var(--border-w) solid var(--ink);
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease;
+  }
+  .btn-primary { color: #fff; background: var(--brand-fill); box-shadow: var(--shadow-sticker); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-sticker-lift); }
+  .btn-danger  { color: var(--danger); background: var(--panel); border-color: var(--danger); box-shadow: var(--shadow-sticker); }
+  .btn-danger:hover { background: #FDF0EF; transform: translateY(-2px); }
+  .btn-disabled { color: var(--ink-soft); background: var(--panel); border-style: dashed; cursor: not-allowed; }
+
+  .like {
+    display: inline-flex; align-items: center; gap: 8px;
+    min-height: 44px; min-width: 44px;
+    font-size: 16px; font-weight: 800; color: var(--ink);
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: var(--r-btn); padding: 10px 16px;
+    box-shadow: var(--shadow-sticker);
+    transition: transform .15s ease, background-color .15s ease;
+  }
+  .like:hover { background: var(--like-tint); transform: translateY(-2px); }
+  .like .heart { color: var(--heart); font-size: 20px; line-height: 1; }
+
+  .tag {
+    font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--panel);
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  }
+  .tag-priority { background: var(--tag-priority-bg); transform: rotate(-1.5deg); }
+  .tag-edited   { background: var(--tag-edited-bg); }
+
+  /* -------------------------------------------------- backdrop gift grid */
+  .stage {
+    position: relative; overflow: hidden;
+    border: var(--border-w) solid var(--ink); border-radius: var(--r-panel);
+    padding: var(--s6) var(--s3) 72px; /* room for the overlapping dock */
+    display: grid; place-items: center;
+    background: var(--surface);
+  }
+  .stage-bg { position: absolute; inset: 0; padding: var(--s3); display: grid; gap: var(--s3); align-content: start; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .bgift { background: var(--panel); border: var(--border-w) solid var(--ink); border-radius: var(--r-panel); box-shadow: var(--shadow-sticker); overflow: hidden; }
+  .bgift-img { aspect-ratio: 1/1; max-height: 150px; width: 100%; display: grid; place-items: center; font-size: 44px; border-bottom: var(--border-w) solid var(--ink); background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; }
+  .bgift-body { padding: 10px 14px 14px; }
+  .bgift-name { font-family: var(--font-head); font-size: 15px; }
+  .bgift-price { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+  .stage-overlay { position: absolute; inset: 0; background: color-mix(in oklab, var(--p-ink) 45%, transparent); backdrop-filter: blur(2.5px); }
+
+  /* ---------------------------------------------------- collage modal */
+  .collage { position: relative; z-index: 2; width: min(800px, 100%); }
+  .collage-panel {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    align-items: start;
+  }
+  .modal-close {
+    position: absolute; top: -14px; right: -14px; z-index: 5;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid var(--ink); background: var(--panel);
+    font-size: 16px; font-weight: 800; color: var(--ink);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .modal-close:hover { transform: rotate(90deg) scale(1.08); }
+
+  .collage-media {
+    padding: var(--s3) 0 var(--s3) var(--s3);
+    align-self: stretch;
+    display: grid; place-items: center;
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+    border-radius: calc(var(--r-panel) - 3px) 0 0 calc(var(--r-panel) - 3px);
+  }
+  .photo {
+    width: 100%; max-width: 260px; aspect-ratio: 1 / 1;
+    background: #FFFDF6; border: 2px solid #4A443A; border-radius: 10px;
+    padding: 9px;
+    transform: rotate(-2.5deg);
+    box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+    position: relative; z-index: 1;
+  }
+  .photo-img { width: 100%; height: 100%; position: relative; overflow: hidden; border: 2px solid rgba(0,0,0,.14); border-radius: 6px; background: #F2F0EA; }
+  .plate {
+    position: absolute; inset: 9%;
+    background: #3FA548;
+    background-image: radial-gradient(circle at 40% 35%, rgba(255,255,255,.34) 0 24%, rgba(0,0,0,.14) 30% 36%, transparent 40%);
+    background-size: 17px 17px;
+    border: 2.5px solid var(--ink); border-radius: 10px;
+    box-shadow: 3px 3px 0 var(--hard-shadow);
+    transform: rotate(-3deg);
+  }
+
+  .collage-body { padding: var(--s3) var(--s4) var(--s4) 0; display: grid; gap: 14px; }
+
+  /* the title sticker rides over the photo/content seam */
+  .title-sticker {
+    position: relative; z-index: 2;
+    margin-left: -64px; width: fit-content; max-width: calc(100% + 24px);
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: 12px; box-shadow: var(--shadow-sticker);
+    padding: 10px 18px;
+    transform: rotate(-1.5deg);
+    display: grid; gap: 6px;
+  }
+  .title-sticker h2 { font-size: clamp(21px, 2.4vw, 26px); }
+  .title-facts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .price { font-size: 20px; font-weight: 800; color: var(--brand); }
+
+  /* notebook timeline — the update badge is an EVENT on the gift's story */
+  .timeline { display: grid; gap: 0; margin-left: 10px; }
+  .tl-item {
+    position: relative; padding: 0 0 18px 26px;
+    border-left: 2.5px dashed var(--ink-faint);
+  }
+  .tl-item:last-child { padding-bottom: 2px; border-left-color: transparent; }
+  .tl-dot {
+    position: absolute; left: -9px; top: 1px;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--panel); border: 2.5px solid var(--ink);
+  }
+  .tl-item.is-update .tl-dot { background: var(--accent); }
+  .tl-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 5px; }
+  .tl-label { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+  .tl-date { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .tl-item p { font-size: 14.5px; }
+  .tl-update-card {
+    border-left: 4px solid var(--accent);
+    background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+    border-radius: 0 10px 10px 0;
+    padding: 8px 12px;
+  }
+
+  .link-row {
+    display: flex; align-items: center; gap: 10px; min-height: 44px;
+    text-decoration: none; color: var(--ink);
+    border: 2px solid var(--ink); border-radius: 10px;
+    padding: 8px 12px; background: var(--panel); font-size: 14px;
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+  }
+  .link-row:hover { transform: translateY(-2px); box-shadow: 3px 3px 0 var(--hard-shadow); background: var(--link-tint); }
+  .link-domain { flex: none; font-size: 12.5px; font-weight: 800; color: var(--link); background: var(--link-tint); border: 2px solid var(--ink); border-radius: 999px; padding: 2px 10px; }
+  .link-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); font-weight: 600; }
+
+  /* floating action DOCK overlapping the bottom edge */
+  .dock {
+    position: relative; z-index: 3;
+    margin: -26px var(--s4) 0;
+    display: flex; align-items: center; gap: var(--s2);
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: 14px; box-shadow: var(--shadow-sticker-lift);
+    padding: 10px var(--s2);
+    transform: rotate(.6deg);
+  }
+  .availability { margin-left: auto; font-size: 13px; font-weight: 800; color: var(--ink-soft); text-align: right; }
+  .availability.mine { color: var(--reserved-ink); }
+
+  .reserved-note {
+    background: var(--reserved-note-bg); border: 2px solid var(--ink); border-radius: 10px;
+    font-weight: 800; font-size: 13.5px; color: var(--reserved-ink);
+    padding: 6px 12px; transform: rotate(-2deg);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    display: grid; justify-items: center; line-height: 1.25;
+  }
+  .reserved-note small { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+  .purchased-toggle {
+    font-size: 13px; font-weight: 700; color: var(--ink); min-height: 44px;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 999px;
+    padding: 7px 14px; transition: transform .15s ease;
+  }
+  .purchased-toggle:hover { transform: translateY(-1px); }
+
+  .is-dimmed .collage-media, .is-dimmed .collage-body { opacity: .55; filter: grayscale(.45); }
+
+  /* --------------------------------------------------------- mobile frame */
+  .phones { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: flex-start; }
+  .phone {
+    position: relative;
+    width: 390px; max-width: 100%; height: 760px;
+    border: var(--border-w) solid var(--ink); border-radius: 24px;
+    box-shadow: var(--shadow-sticker-lift);
+    overflow: hidden; background: var(--surface);
+  }
+  .phone-scroll { height: 100%; overflow-y: auto; }
+  .sheet { position: relative; background: var(--panel); min-height: 100%; display: flex; flex-direction: column; }
+  .sheet-media {
+    position: relative;
+    padding: var(--s2) var(--s2) 40px; /* room for the overlapping title sticker */
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+    border-bottom: 2px dashed var(--ink-faint);
+    display: grid; place-items: center;
+  }
+  .sheet-media .photo { max-width: 225px; }
+  /* title sticker overlaps the photo's bottom edge on mobile */
+  .sheet-title-sticker {
+    position: absolute; left: 14px; bottom: -26px; z-index: 2;
+    max-width: calc(100% - 28px);
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: 12px; box-shadow: var(--shadow-sticker);
+    padding: 8px 14px;
+    transform: rotate(-1.5deg);
+    display: grid; gap: 4px;
+  }
+  .sheet-title-sticker h2 { font-size: 20px; }
+  .sheet-body { padding: 40px var(--s2) var(--s3); display: grid; gap: 12px; }
+  .sheet-actions {
+    position: sticky; bottom: 0; z-index: 3; margin-top: auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px var(--s2);
+    border-top: var(--border-w) solid var(--ink); background: var(--panel);
+    box-shadow: 0 -6px 18px rgba(0,0,0,.12);
+  }
+  .sheet-actions .btn { flex: 1; }
+  .sheet .modal-close { top: 10px; right: 10px; }
+
+  /* ----------------------------------------------------------- state matrix */
+  .states-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s3); align-items: start; }
+  .state-col { display: grid; gap: 10px; }
+  .mini { overflow: visible; display: flex; flex-direction: column; }
+  .mini-media {
+    position: relative; display: grid; place-items: center;
+    padding: 14px 14px 34px;
+    border-bottom: 2px dashed var(--ink-faint);
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+    border-radius: calc(var(--r-panel) - 3px) calc(var(--r-panel) - 3px) 0 0;
+  }
+  .mini-media .photo { max-width: 140px; padding: 6px; }
+  .mini-title {
+    position: absolute; left: 12px; bottom: -20px; z-index: 2;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 10px;
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    padding: 5px 11px; transform: rotate(-1.5deg);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mini-title h3 { font-size: 15px; }
+  .mini-title .price { font-size: 14px; }
+  .mini-body { padding: 30px 14px 12px; display: grid; gap: 8px; }
+  .mini .tl-item { padding-bottom: 10px; }
+  .mini .tl-item p { font-size: 13px; }
+  .mini-actions {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 12px; margin-top: auto;
+    border-top: var(--border-w) solid var(--ink); background: var(--panel);
+    border-radius: 0 0 calc(var(--r-panel) - 3px) calc(var(--r-panel) - 3px);
+  }
+  .mini-actions .btn { font-size: 13.5px; padding: 8px 14px; }
+  .mini-actions .like { font-size: 14px; padding: 8px 12px; }
+  .mini-actions .availability { font-size: 12px; }
+  .mini.is-dimmed .mini-media, .mini.is-dimmed .mini-body { opacity: .55; filter: grayscale(.45); }
+  .recipient-hint {
+    padding: 10px 12px; margin-top: auto;
+    border-top: 2px dashed var(--ink-faint);
+    font-size: 12px; font-weight: 600; color: var(--ink-soft); font-style: italic;
+  }
+
+  @media (max-width: 720px) {
+    .collage-panel { grid-template-columns: 1fr; }
+    .collage-media { padding: var(--s3) var(--s3) 0; border-radius: calc(var(--r-panel) - 3px) calc(var(--r-panel) - 3px) 0 0; }
+    .collage-body { padding: var(--s2) var(--s3) var(--s4); }
+    .title-sticker { margin-left: 0; margin-top: -44px; }
+    .modal-close { top: 8px; right: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap pagehead">
+  <p class="eyebrow">Varianta C · Překryvy a časová osa · detail dárku v3 (issue #165)</p>
+  <h1>Koláž: titulní nálepka přes fotku, obsah jako zápisníková osa</h1>
+  <p>Čtvercová fotka vlevo, titulek s cenou jako nálepka přeložená přes šev. Popis, doplněk
+     „Upraveno po sdílení" a odkazy tvoří časovou osu příběhu dárku, takže úprava po sdílení je
+     přirozenou událostí, ne bloudícím štítkem. Akce plavou v doku přes spodní hranu modalu.</p>
+  <div>
+    <span class="anno">Úprava po sdílení = událost na ose (REQ-2)</span>
+    <span class="anno">Akční dok přesahuje spodní hranu</span>
+    <span class="anno">Otočné zavírací tlačítko řeší issue #164</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 1 · DESKTOP ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">1 · Desktop, koláž nad ztlumeným seznamem</h2>
+  <section class="stage">
+    <div class="stage-bg" aria-hidden="true">
+      <div class="bgift"><div class="bgift-img">🚜</div><div class="bgift-body"><p class="bgift-name">LEGO Technic bagr</p><p class="bgift-price">1&nbsp;899&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🧥</div><div class="bgift-body"><p class="bgift-name">Zimní bunda</p><p class="bgift-price">1&nbsp;249&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">📚</div><div class="bgift-body"><p class="bgift-name">Harry Potter</p><p class="bgift-price">349&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🎲</div><div class="bgift-body"><p class="bgift-name">Hra Azul</p><p class="bgift-price">799&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🛴</div><div class="bgift-body"><p class="bgift-name">Koloběžka</p><p class="bgift-price">2&nbsp;490&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🖍️</div><div class="bgift-body"><p class="bgift-name">Pastelky</p><p class="bgift-price">289&nbsp;Kč</p></div></div>
+    </div>
+    <div class="stage-overlay" aria-hidden="true"></div>
+
+    <div class="collage" role="dialog" aria-modal="true" aria-labelledby="gift-title-c">
+      <button type="button" class="modal-close" aria-label="Zavřít">✕</button>
+      <div class="collage-panel sticker">
+
+        <div class="collage-media">
+          <figure class="photo" aria-label="Fotka: zelená deska pro lego duplo">
+            <div class="photo-img"><div class="plate" aria-hidden="true"></div></div>
+          </figure>
+        </div>
+
+        <div class="collage-body">
+          <div class="title-sticker">
+            <h2 id="gift-title-c">Deska pro lego duplo</h2>
+            <div class="title-facts">
+              <span class="price">260&nbsp;Kč</span>
+              <span class="tag tag-priority">⭐ Priorita · Vysoká</span>
+            </div>
+          </div>
+
+          <div class="timeline">
+            <div class="tl-item">
+              <span class="tl-dot" aria-hidden="true"></span>
+              <div class="tl-head"><span class="tl-label">Popis</span><span class="tl-date">přidáno 2. července</span></div>
+              <p>Zelená podložka pod duplo kostky, rozměr 38 × 38 cm. Viz odkaz.</p>
+            </div>
+            <div class="tl-item is-update">
+              <span class="tl-dot" aria-hidden="true"></span>
+              <div class="tl-head">
+                <span class="tag tag-edited">✏️ Upraveno po sdílení</span>
+                <span class="tl-date">12. července</span>
+              </div>
+              <div class="tl-update-card">
+                <p>Klidně i jiná barva, hlavně ať jde spojit s deskami, které už máme.</p>
+              </div>
+            </div>
+            <div class="tl-item">
+              <span class="tl-dot" aria-hidden="true"></span>
+              <div class="tl-head"><span class="tl-label">Odkazy</span></div>
+              <a class="link-row" href="#">
+                <span class="link-domain">↗ alza.cz</span>
+                <span class="link-title">LEGO DUPLO 10980 Zelená podložka na stavění</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="dock">
+        <button class="like" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="heart" aria-hidden="true">♥</span>3</button>
+        <span class="availability">Volné k rezervaci</span>
+        <a class="btn btn-primary" href="#">Rezervovat</a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════ 2 · MOBILE 390 px ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">2 · Mobil 390 px, nálepka přes spodní hranu fotky</h2>
+  <p style="color:var(--ink-soft); margin-bottom:12px; max-width:70ch">Fotka drží čtvercový výřez, titulní
+     nálepka jí přesahuje spodní hranu. Osa pokračuje pod ní, akční dok se mění v přilepenou lištu.</p>
+  <div class="phones">
+    <div class="phone">
+      <div class="phone-scroll">
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gift-title-cm">
+          <button type="button" class="modal-close" aria-label="Zavřít">✕</button>
+          <div class="sheet-media">
+            <figure class="photo" aria-label="Fotka: zelená deska pro lego duplo">
+              <div class="photo-img"><div class="plate" aria-hidden="true"></div></div>
+            </figure>
+            <div class="sheet-title-sticker">
+              <h2 id="gift-title-cm">Deska pro lego duplo</h2>
+              <div class="title-facts">
+                <span class="price">260&nbsp;Kč</span>
+                <span class="tag tag-priority">⭐ Vysoká</span>
+              </div>
+            </div>
+          </div>
+          <div class="sheet-body">
+            <div class="timeline">
+              <div class="tl-item">
+                <span class="tl-dot" aria-hidden="true"></span>
+                <div class="tl-head"><span class="tl-label">Popis</span><span class="tl-date">přidáno 2. července</span></div>
+                <p>Zelená podložka pod duplo kostky, rozměr 38 × 38 cm. Viz odkaz.</p>
+              </div>
+              <div class="tl-item is-update">
+                <span class="tl-dot" aria-hidden="true"></span>
+                <div class="tl-head">
+                  <span class="tag tag-edited">✏️ Upraveno po sdílení</span>
+                  <span class="tl-date">12. července</span>
+                </div>
+                <div class="tl-update-card">
+                  <p>Klidně i jiná barva, hlavně ať jde spojit s deskami, které už máme.</p>
+                </div>
+              </div>
+              <div class="tl-item">
+                <span class="tl-dot" aria-hidden="true"></span>
+                <div class="tl-head"><span class="tl-label">Odkazy</span></div>
+                <a class="link-row" href="#">
+                  <span class="link-domain">↗ alza.cz</span>
+                  <span class="link-title">LEGO DUPLO 10980 Zelená podložka</span>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="sheet-actions">
+            <button class="like" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="heart" aria-hidden="true">♥</span>3</button>
+            <a class="btn btn-primary" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <span class="anno">390 × 760, obsah roluje uvnitř rámu</span><br>
+      <span class="anno">Nálepka titulku překrývá fotku, výřez zůstává 1:1</span><br>
+      <span class="anno">Dok se na mobilu mění v přilepenou lištu</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 3 · STAVOVÁ MATICE ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">3 · Stavová matice</h2>
+  <div class="states-grid">
+
+    <div class="state-col">
+      <p class="anno">1 · Volné (návštěvník)</p>
+      <div class="mini sticker">
+        <div class="mini-media">
+          <figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure>
+          <div class="mini-title"><h3>Deska pro lego duplo</h3><span class="price">260&nbsp;Kč</span></div>
+        </div>
+        <div class="mini-body">
+          <div class="timeline">
+            <div class="tl-item is-update">
+              <span class="tl-dot"></span>
+              <div class="tl-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+              <div class="tl-update-card"><p>Klidně i jiná barva.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="mini-actions">
+          <button class="like" type="button"><span class="heart">♥</span>3</button>
+          <span class="availability">Volné k rezervaci</span>
+          <a class="btn btn-primary" href="#">Rezervovat</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">2 · Rezervováno mnou</p>
+      <div class="mini sticker">
+        <div class="mini-media">
+          <figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure>
+          <div class="mini-title"><h3>Deska pro lego duplo</h3><span class="price">260&nbsp;Kč</span></div>
+        </div>
+        <div class="mini-body">
+          <div class="timeline">
+            <div class="tl-item is-update">
+              <span class="tl-dot"></span>
+              <div class="tl-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+              <div class="tl-update-card"><p>Klidně i jiná barva.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="mini-actions">
+          <button class="like" type="button" aria-pressed="true"><span class="heart">♥</span>4</button>
+          <span class="availability mine">✓ Rezervováno vámi</span>
+          <button class="btn btn-danger" type="button">Zrušit rezervaci</button>
+          <button class="purchased-toggle" type="button" aria-pressed="false">🛍 Koupeno</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">3 · Plně rezervováno</p>
+      <div class="mini sticker is-dimmed">
+        <div class="mini-media">
+          <figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure>
+          <div class="mini-title"><h3>Deska pro lego duplo</h3><span class="price">260&nbsp;Kč</span></div>
+        </div>
+        <div class="mini-body">
+          <div class="timeline">
+            <div class="tl-item is-update">
+              <span class="tl-dot"></span>
+              <div class="tl-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+              <div class="tl-update-card"><p>Klidně i jiná barva.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="mini-actions" style="opacity:1">
+          <button class="like" type="button"><span class="heart">♥</span>3</button>
+          <span class="reserved-note">✓ Rezervováno<small>rezervoval Petr</small></span>
+          <button class="btn btn-disabled" type="button" disabled>Rezervováno</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">4 · Obdarovaný (bez spoilerů)</p>
+      <div class="mini sticker">
+        <div class="mini-media">
+          <figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure>
+          <div class="mini-title"><h3>Deska pro lego duplo</h3><span class="price">260&nbsp;Kč</span></div>
+        </div>
+        <div class="mini-body">
+          <div class="timeline">
+            <div class="tl-item is-update">
+              <span class="tl-dot"></span>
+              <div class="tl-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+              <div class="tl-update-card"><p>Klidně i jiná barva.</p></div>
+            </div>
+          </div>
+        </div>
+        <p class="recipient-hint">Žádný dok ani lišta: obdarovaný nevidí rezervace ani lajky.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

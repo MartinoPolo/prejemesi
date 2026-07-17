@@ -45,6 +45,10 @@
 	let nameError = $state('');
 	let quantityError = $state('');
 	let turnstileToken = $state<string | null>(null);
+	// True when the Turnstile check cannot run (unconfigured, or blocked by an ad-blocker /
+	// antivirus / Cloudflare outage). In that case the server fails open, so the submit button
+	// must not gate on a token that will never arrive.
+	let turnstileUnavailable = $state(false);
 	let turnstileResetSignal = $state(0);
 
 	// Computed
@@ -219,7 +223,10 @@
 					</div>
 
 					{#key turnstileResetSignal}
-						<TurnstileWidget bind:token={turnstileToken} />
+						<TurnstileWidget
+							bind:token={turnstileToken}
+							bind:unavailable={turnstileUnavailable}
+						/>
 					{/key}
 
 					<div class={styles.authPrompt()}>
@@ -250,7 +257,8 @@
 						>{m.cancel()}</Button
 					>
 					<Button
-						disabled={isSubmitting || (!isAuthenticated && turnstileToken === null)}
+						disabled={isSubmitting ||
+							(!isAuthenticated && !turnstileUnavailable && turnstileToken === null)}
 						onclick={handleSubmit}
 					>
 						{#if isSubmitting}

@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detail dárku v3 – Varianta A – Sticker split</title>
+<!--
+  Přejeme si — gift detail modal v3, VARIANT A: „Sticker split"
+  Two-column sticker modal (issue #165), evolved from
+  designs/redesign-2026/sky-final/anime-gift-detail-modal.html:
+  · SQUARE photo sticker left (1:1 crop target, shared with the gift card),
+    content right, full-width action bar bottom with like + availability + reserve
+  · „Upraveno po sdílení" integrated as the header of the description append
+  · ≤ 640 px: full-width stacked sheet, sticky bottom action bar
+  Self-contained: inline CSS, no external requests, system font fallbacks.
+-->
+<style>
+  /* ------------------------------------------------ sky palette + tokens */
+  :root {
+    --p-brand:  #1E9BE9;
+    --p-deep:   #1265A8;
+    --p-ink:    #16385C;
+    --p-accent: #FFC93C;
+
+    --surface:      color-mix(in oklab, var(--p-brand) 11%, white);
+    --panel:        #FFFFFF;
+    --brand:        var(--p-brand);
+    --brand-fill:   var(--p-brand);
+    --ink:          var(--p-ink);
+    --ink-soft:     color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --ink-faint:    color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --link:         #7048E8;
+    --accent:       var(--p-accent);
+    --danger:       #E4574C;
+    --heart:        #E25563;
+
+    --tag-priority-bg: #FFE9AD;
+    --tag-edited-bg:   #ECE5FC;
+    --like-tint:    #FDECEC;
+    --link-tint:    #F1EDFD;
+    --reserved-note-bg: #EAF7EE;
+    --reserved-ink: #1D7A3E;
+
+    --pattern-dot:  color-mix(in oklab, var(--ink) 13%, transparent);
+    --hard-shadow:        color-mix(in oklab, var(--p-ink) 16%, transparent);
+    --hard-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+
+    --font-head: "DynaPuff", ui-rounded, "Segoe UI", system-ui, sans-serif;
+    --font-body: "Geist", "Segoe UI", system-ui, sans-serif;
+
+    --s1: 8px; --s2: 16px; --s3: 24px; --s4: 32px; --s6: 48px;
+    --r-panel: 16px; --r-btn: 7px; --border-w: 2.5px;
+    --shadow-sticker:      4px 4px 0 var(--hard-shadow);
+    --shadow-sticker-lift: 7px 7px 0 var(--hard-shadow);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+    color: var(--ink); background: var(--surface);
+    background-image: radial-gradient(var(--pattern-dot) 1.5px, transparent 1.6px);
+    background-size: 24px 24px;
+    padding-bottom: 90px;
+  }
+  h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.15; }
+  button { font-family: var(--font-body); cursor: pointer; }
+  :focus-visible { outline: 3px dashed var(--ink); outline-offset: 3px; border-radius: 4px; }
+
+  .wrap { max-width: 1240px; margin-inline: auto; padding: var(--s3); }
+  .eyebrow {
+    font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .pagehead h1 { font-size: clamp(22px, 3vw, 30px); margin-bottom: 6px; }
+  .pagehead p { color: var(--ink-soft); max-width: 70ch; }
+  .anno {
+    display: inline-block; width: fit-content;
+    font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-soft); background: var(--panel);
+    border: 2px dashed color-mix(in oklab, var(--ink) 38%, transparent);
+    border-radius: 999px; padding: 3px 11px; margin: 3px 4px 3px 0;
+  }
+  .section-title { font-size: 20px; margin: var(--s4) 0 10px; }
+
+  /* ------------------------------------------------------------ primitives */
+  .sticker {
+    background: var(--panel);
+    border: var(--border-w) solid var(--ink);
+    border-radius: var(--r-panel);
+    box-shadow: var(--shadow-sticker);
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 700; font-size: 15px; text-decoration: none;
+    min-height: 44px; padding: 10px 20px; border-radius: var(--r-btn);
+    border: var(--border-w) solid var(--ink);
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease;
+  }
+  .btn-primary { color: #fff; background: var(--brand-fill); box-shadow: var(--shadow-sticker); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-sticker-lift); }
+  .btn-danger  { color: var(--danger); background: var(--panel); border-color: var(--danger); box-shadow: var(--shadow-sticker); }
+  .btn-danger:hover { background: #FDF0EF; transform: translateY(-2px); }
+  .btn-disabled { color: var(--ink-soft); background: var(--panel); border-style: dashed; cursor: not-allowed; }
+
+  .like {
+    display: inline-flex; align-items: center; gap: 8px;
+    min-height: 44px; min-width: 44px;
+    font-size: 16px; font-weight: 800; color: var(--ink);
+    background: var(--panel); border: var(--border-w) solid var(--ink);
+    border-radius: var(--r-btn); padding: 10px 16px;
+    box-shadow: var(--shadow-sticker);
+    transition: transform .15s ease, background-color .15s ease;
+  }
+  .like:hover { background: var(--like-tint); transform: translateY(-2px); }
+  .like .heart { color: var(--heart); font-size: 20px; line-height: 1; }
+
+  .tag {
+    font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    border: 2px solid var(--ink); background: var(--panel);
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  }
+  .tag-priority { background: var(--tag-priority-bg); transform: rotate(-1.5deg); }
+  .tag-edited   { background: var(--tag-edited-bg); transform: rotate(1deg); }
+
+  /* -------------------------------------------------- backdrop gift grid */
+  .stage {
+    position: relative; overflow: hidden;
+    border: var(--border-w) solid var(--ink); border-radius: var(--r-panel);
+    padding: var(--s6) var(--s3);
+    display: grid; place-items: center;
+    background: var(--surface);
+  }
+  .stage-bg {
+    position: absolute; inset: 0; padding: var(--s3);
+    display: grid; gap: var(--s3); align-content: start;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  }
+  .bgift { background: var(--panel); border: var(--border-w) solid var(--ink); border-radius: var(--r-panel); box-shadow: var(--shadow-sticker); overflow: hidden; }
+  .bgift-img { aspect-ratio: 1/1; max-height: 150px; width: 100%; display: grid; place-items: center; font-size: 44px; border-bottom: var(--border-w) solid var(--ink); background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; }
+  .bgift-body { padding: 10px 14px 14px; }
+  .bgift-name { font-family: var(--font-head); font-size: 15px; }
+  .bgift-price { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+  .stage-overlay { position: absolute; inset: 0; background: color-mix(in oklab, var(--p-ink) 45%, transparent); backdrop-filter: blur(2.5px); }
+
+  /* ------------------------------------------------------------ the modal */
+  .modal {
+    position: relative; z-index: 2;
+    width: min(860px, 100%);
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    grid-template-areas: "media body" "actions actions";
+  }
+  .modal-close {
+    position: absolute; top: 12px; right: 12px; z-index: 4;
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid var(--ink); background: var(--panel);
+    font-size: 16px; font-weight: 800; color: var(--ink);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .modal-close:hover { transform: rotate(90deg) scale(1.08); }
+
+  .modal-media {
+    grid-area: media;
+    padding: var(--s3);
+    border-right: 2px dashed var(--ink-faint);
+    display: grid; place-items: center;
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+    border-radius: calc(var(--r-panel) - 3px) 0 0 0;
+  }
+  /* square photo sticker — the 1:1 crop target shared with the gift card */
+  .photo {
+    width: 100%; max-width: 280px; aspect-ratio: 1 / 1;
+    background: #FFFDF6; border: 2px solid #4A443A; border-radius: 10px;
+    padding: 9px;
+    transform: rotate(-2deg);
+    box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+    position: relative;
+  }
+  .photo-img {
+    width: 100%; height: 100%; position: relative; overflow: hidden;
+    border: 2px solid rgba(0,0,0,.14); border-radius: 6px;
+    background: #F2F0EA;
+  }
+  .plate {
+    position: absolute; inset: 9%;
+    background: #3FA548;
+    background-image: radial-gradient(circle at 40% 35%, rgba(255,255,255,.34) 0 24%, rgba(0,0,0,.14) 30% 36%, transparent 40%);
+    background-size: 17px 17px;
+    border: 2.5px solid var(--ink); border-radius: 10px;
+    box-shadow: 3px 3px 0 var(--hard-shadow);
+    transform: rotate(-3deg);
+  }
+
+  .modal-body {
+    grid-area: body; min-width: 0;
+    padding: var(--s3) var(--s4) var(--s3) var(--s3);
+    display: grid; gap: 14px; align-content: start;
+  }
+  .modal-title { font-size: clamp(22px, 2.6vw, 28px); padding-right: 52px; }
+  .facts { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .price { font-size: 22px; font-weight: 800; color: var(--brand); }
+  .sub { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+
+  .link-row {
+    display: flex; align-items: center; gap: 10px; min-height: 44px;
+    text-decoration: none; color: var(--ink);
+    border: 2px solid var(--ink); border-radius: 10px;
+    padding: 8px 12px; background: var(--panel); font-size: 14px;
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
+  }
+  .link-row:hover { transform: translateY(-2px); box-shadow: 3px 3px 0 var(--hard-shadow); background: var(--link-tint); }
+  .link-domain { flex: none; font-size: 12.5px; font-weight: 800; color: var(--link); background: var(--link-tint); border: 2px solid var(--ink); border-radius: 999px; padding: 2px 10px; }
+  .link-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); font-weight: 600; }
+
+  .desc { display: grid; gap: 8px; }
+  .desc > p { font-size: 14.5px; }
+  /* REQ-2: the post-share badge IS the header of the update block */
+  .desc-append {
+    border-left: 4px solid var(--accent);
+    background: color-mix(in oklab, var(--accent) 16%, var(--panel));
+    border-radius: 0 10px 10px 0;
+    padding: 10px 14px;
+    display: grid; gap: 6px;
+  }
+  .desc-append-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .desc-append-head small { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .desc-append p { font-size: 14.5px; }
+  .meta-line { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+
+  /* action bar — dialog footer desktop, sticky sheet bar mobile */
+  .modal-actions {
+    grid-area: actions;
+    display: flex; align-items: center; gap: var(--s2);
+    padding: 12px var(--s3);
+    border-top: var(--border-w) solid var(--ink);
+    background: var(--panel);
+    border-radius: 0 0 calc(var(--r-panel) - 3px) calc(var(--r-panel) - 3px);
+  }
+  .availability { margin-left: auto; font-size: 13px; font-weight: 800; color: var(--ink-soft); text-align: right; }
+  .availability.mine { color: var(--reserved-ink); }
+
+  .reserved-note {
+    background: var(--reserved-note-bg); border: 2px solid var(--ink); border-radius: 10px;
+    font-weight: 800; font-size: 13.5px; color: var(--reserved-ink);
+    padding: 6px 12px; transform: rotate(-2deg);
+    box-shadow: 2px 2px 0 var(--hard-shadow);
+    display: grid; justify-items: center; line-height: 1.25;
+  }
+  .reserved-note small { font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+  .purchased-toggle {
+    font-size: 13px; font-weight: 700; color: var(--ink); min-height: 44px;
+    background: var(--panel); border: 2px solid var(--ink); border-radius: 999px;
+    padding: 7px 14px; transition: transform .15s ease;
+  }
+  .purchased-toggle:hover { transform: translateY(-1px); }
+
+  .is-dimmed .modal-media, .is-dimmed .modal-body { opacity: .55; filter: grayscale(.45); }
+
+  /* --------------------------------------------------------- mobile frame */
+  .phones { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: flex-start; }
+  .phone {
+    width: 390px; max-width: 100%; height: 760px;
+    border: var(--border-w) solid var(--ink); border-radius: 24px;
+    box-shadow: var(--shadow-sticker-lift);
+    overflow: hidden; background: var(--surface); position: relative;
+  }
+  .phone-scroll { height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
+  .sheet { background: var(--panel); min-height: 100%; display: flex; flex-direction: column; }
+  .sheet-media {
+    position: relative; flex: none;
+    border-bottom: 2px dashed var(--ink-faint);
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+    display: grid; place-items: center; padding: var(--s2);
+    /* REQ-5: frame stretches full width, crop stays square; clamp keeps the bar on screen */
+    max-height: 42vh; min-height: 240px;
+  }
+  .sheet-media .photo { max-width: 235px; }
+  .sheet-body { padding: var(--s2) var(--s2) var(--s3); display: grid; gap: 12px; align-content: start; }
+  .sheet-body .modal-title { font-size: 22px; padding-right: 52px; }
+  .sheet-actions {
+    position: sticky; bottom: 0; z-index: 3; margin-top: auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px var(--s2);
+    border-top: var(--border-w) solid var(--ink); background: var(--panel);
+    box-shadow: 0 -6px 18px rgba(0,0,0,.12);
+  }
+  .sheet-actions .btn { flex: 1; }
+  .sheet-actions .like { flex: none; }
+  .sheet .modal-close { top: 10px; right: 10px; }
+
+  /* ----------------------------------------------------------- state matrix */
+  .states-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s3); align-items: start; }
+  .state-col { display: grid; gap: 10px; }
+  .mini { overflow: hidden; display: flex; flex-direction: column; }
+  .mini-media {
+    position: relative; display: grid; place-items: center; padding: 14px;
+    border-bottom: 2px dashed var(--ink-faint);
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+  }
+  .mini-media .photo { max-width: 150px; padding: 6px; }
+  .mini-body { padding: 12px 14px; display: grid; gap: 8px; }
+  .mini-body h3 { font-size: 17px; }
+  .mini .facts { gap: 8px; }
+  .mini .price { font-size: 17px; }
+  .mini .desc-append { padding: 8px 10px; }
+  .mini .desc-append p { font-size: 13px; }
+  .mini-actions {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 12px; margin-top: auto;
+    border-top: var(--border-w) solid var(--ink); background: var(--panel);
+  }
+  .mini-actions .btn { font-size: 13.5px; padding: 8px 14px; }
+  .mini-actions .like { font-size: 14px; padding: 8px 12px; }
+  .mini-actions .availability { font-size: 12px; }
+  .mini.is-dimmed .mini-media, .mini.is-dimmed .mini-body { opacity: .55; filter: grayscale(.45); }
+  .recipient-hint {
+    padding: 10px 12px; margin-top: auto;
+    border-top: 2px dashed var(--ink-faint);
+    font-size: 12px; font-weight: 600; color: var(--ink-soft); font-style: italic;
+  }
+
+  @media (max-width: 760px) {
+    .modal { grid-template-columns: 1fr; grid-template-areas: "media" "body" "actions"; }
+    .modal-media { border-right: 0; border-bottom: 2px dashed var(--ink-faint); border-radius: calc(var(--r-panel) - 3px) calc(var(--r-panel) - 3px) 0 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap pagehead">
+  <p class="eyebrow">Varianta A · Sticker split · detail dárku v3 (issue #165)</p>
+  <h1>Dvousloupcový sticker modal se čtvercovou fotkou</h1>
+  <p>Fotka je stejný čtvercový výřez jako na kartě dárku, obsah sedí vpravo bez prázdných ploch,
+     akční lišta s lajkem a rezervací drží spodní hranu. Štítek „Upraveno po sdílení" je hlavičkou
+     doplňku popisu, ne ozdobou titulku.</p>
+  <div>
+    <span class="anno">Čtvercový (1:1) výřez sdílený s kartou dárku</span>
+    <span class="anno">Otočné zavírací tlačítko řeší issue #164</span>
+    <span class="anno">Pohled návštěvníka, světlý režim</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 1 · DESKTOP ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">1 · Desktop, modal nad ztlumeným seznamem</h2>
+  <section class="stage">
+    <div class="stage-bg" aria-hidden="true">
+      <div class="bgift"><div class="bgift-img">🚜</div><div class="bgift-body"><p class="bgift-name">LEGO Technic bagr</p><p class="bgift-price">1&nbsp;899&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🧥</div><div class="bgift-body"><p class="bgift-name">Zimní bunda</p><p class="bgift-price">1&nbsp;249&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">📚</div><div class="bgift-body"><p class="bgift-name">Harry Potter</p><p class="bgift-price">349&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🎲</div><div class="bgift-body"><p class="bgift-name">Hra Azul</p><p class="bgift-price">799&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🛴</div><div class="bgift-body"><p class="bgift-name">Koloběžka</p><p class="bgift-price">2&nbsp;490&nbsp;Kč</p></div></div>
+      <div class="bgift"><div class="bgift-img">🖍️</div><div class="bgift-body"><p class="bgift-name">Pastelky</p><p class="bgift-price">289&nbsp;Kč</p></div></div>
+    </div>
+    <div class="stage-overlay" aria-hidden="true"></div>
+
+    <div class="modal sticker" role="dialog" aria-modal="true" aria-labelledby="gift-title-a">
+      <button type="button" class="modal-close" aria-label="Zavřít">✕</button>
+
+      <div class="modal-media">
+        <figure class="photo" aria-label="Fotka: zelená deska pro lego duplo">
+          <div class="photo-img"><div class="plate" aria-hidden="true"></div></div>
+        </figure>
+      </div>
+
+      <div class="modal-body">
+        <h2 class="modal-title" id="gift-title-a">Deska pro lego duplo</h2>
+        <div class="facts">
+          <span class="price">260&nbsp;Kč</span>
+          <span class="tag tag-priority">⭐ Priorita · Vysoká</span>
+        </div>
+
+        <div>
+          <h3 class="sub">Odkazy</h3>
+          <a class="link-row" href="#" style="margin-top:6px">
+            <span class="link-domain">↗ alza.cz</span>
+            <span class="link-title">LEGO DUPLO 10980 Zelená podložka na stavění</span>
+          </a>
+        </div>
+
+        <div class="desc">
+          <h3 class="sub">Popis</h3>
+          <p>Zelená podložka pod duplo kostky, rozměr 38 × 38 cm. Viz odkaz.</p>
+          <!-- REQ-2: badge integrated as the append header -->
+          <div class="desc-append">
+            <div class="desc-append-head">
+              <span class="tag tag-edited">✏️ Upraveno po sdílení</span>
+              <small>doplněno 12. července</small>
+            </div>
+            <p>Klidně i jiná barva, hlavně ať jde spojit s deskami, které už máme.</p>
+          </div>
+        </div>
+
+        <p class="meta-line">Přidáno 2. července</p>
+      </div>
+
+      <div class="modal-actions">
+        <button class="like" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="heart" aria-hidden="true">♥</span>3</button>
+        <span class="availability">Volné k rezervaci</span>
+        <a class="btn btn-primary" href="#">Rezervovat</a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════ 2 · MOBILE 390 px ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">2 · Mobil 390 px, sheet s přilepenou akční lištou</h2>
+  <p style="color:var(--ink-soft); margin-bottom:12px; max-width:70ch">Rám fotky se roztahuje na celou šířku,
+     výřez zůstává čtvercový a výška je omezená, aby titulek i lišta byly vidět bez posouvání. Obsah roluje, lišta drží dole.</p>
+  <div class="phones">
+    <div class="phone">
+      <div class="phone-scroll">
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gift-title-am">
+          <button type="button" class="modal-close" aria-label="Zavřít">✕</button>
+          <div class="sheet-media">
+            <figure class="photo" aria-label="Fotka: zelená deska pro lego duplo">
+              <div class="photo-img"><div class="plate" aria-hidden="true"></div></div>
+            </figure>
+          </div>
+          <div class="sheet-body">
+            <h2 class="modal-title" id="gift-title-am">Deska pro lego duplo</h2>
+            <div class="facts">
+              <span class="price">260&nbsp;Kč</span>
+              <span class="tag tag-priority">⭐ Priorita · Vysoká</span>
+            </div>
+            <a class="link-row" href="#">
+              <span class="link-domain">↗ alza.cz</span>
+              <span class="link-title">LEGO DUPLO 10980 Zelená podložka</span>
+            </a>
+            <div class="desc">
+              <h3 class="sub">Popis</h3>
+              <p>Zelená podložka pod duplo kostky, rozměr 38 × 38 cm. Viz odkaz.</p>
+              <div class="desc-append">
+                <div class="desc-append-head">
+                  <span class="tag tag-edited">✏️ Upraveno po sdílení</span>
+                  <small>doplněno 12. července</small>
+                </div>
+                <p>Klidně i jiná barva, hlavně ať jde spojit s deskami, které už máme.</p>
+              </div>
+            </div>
+            <p class="meta-line">Přidáno 2. července</p>
+          </div>
+          <div class="sheet-actions">
+            <button class="like" type="button" aria-pressed="false" aria-label="Líbí se 3 lidem"><span class="heart" aria-hidden="true">♥</span>3</button>
+            <a class="btn btn-primary" href="#">Rezervovat</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <span class="anno">390 × 760, obsah roluje uvnitř rámu</span><br>
+      <span class="anno">Lišta: lajk vlevo, Rezervovat přes zbytek šířky</span><br>
+      <span class="anno">Dotykové cíle ≥ 44 px</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 3 · STAVOVÁ MATICE ═══════════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">3 · Stavová matice</h2>
+  <div class="states-grid">
+
+    <div class="state-col">
+      <p class="anno">1 · Volné (návštěvník)</p>
+      <div class="mini sticker">
+        <div class="mini-media"><figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure></div>
+        <div class="mini-body">
+          <h3>Deska pro lego duplo</h3>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <div class="mini-actions">
+          <button class="like" type="button"><span class="heart">♥</span>3</button>
+          <span class="availability">Volné k rezervaci</span>
+          <a class="btn btn-primary" href="#">Rezervovat</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">2 · Rezervováno mnou</p>
+      <div class="mini sticker">
+        <div class="mini-media"><figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure></div>
+        <div class="mini-body">
+          <h3>Deska pro lego duplo</h3>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <div class="mini-actions">
+          <button class="like" type="button" aria-pressed="true"><span class="heart">♥</span>4</button>
+          <span class="availability mine">✓ Rezervováno vámi</span>
+          <button class="btn btn-danger" type="button">Zrušit rezervaci</button>
+          <button class="purchased-toggle" type="button" aria-pressed="false">🛍 Koupeno</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">3 · Plně rezervováno</p>
+      <div class="mini sticker is-dimmed">
+        <div class="mini-media">
+          <figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure>
+        </div>
+        <div class="mini-body">
+          <h3>Deska pro lego duplo</h3>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <div class="mini-actions" style="opacity:1">
+          <button class="like" type="button"><span class="heart">♥</span>3</button>
+          <span class="reserved-note">✓ Rezervováno<small>rezervoval Petr</small></span>
+          <button class="btn btn-disabled" type="button" disabled>Rezervováno</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-col">
+      <p class="anno">4 · Obdarovaný (bez spoilerů)</p>
+      <div class="mini sticker">
+        <div class="mini-media"><figure class="photo"><div class="photo-img"><div class="plate"></div></div></figure></div>
+        <div class="mini-body">
+          <h3>Deska pro lego duplo</h3>
+          <div class="facts"><span class="price">260&nbsp;Kč</span><span class="tag tag-priority">⭐ Vysoká</span></div>
+          <div class="desc-append">
+            <div class="desc-append-head"><span class="tag tag-edited">✏️ Upraveno po sdílení</span></div>
+            <p>Klidně i jiná barva.</p>
+          </div>
+        </div>
+        <p class="recipient-hint">Žádná akční lišta: obdarovaný nevidí rezervace ani lajky.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

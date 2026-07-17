@@ -11,6 +11,8 @@
 		description: string | null;
 		descriptionAppends: DescriptionAppend[];
 		maxVisibleAppends?: number | null;
+		showAppends?: boolean;
+		descriptionClass?: string;
 		class?: string;
 	}
 
@@ -18,17 +20,21 @@
 		description,
 		descriptionAppends,
 		maxVisibleAppends = null,
+		showAppends = true,
+		descriptionClass = '',
 		class: className = '',
 	}: GiftDescriptionProps = $props();
 
 	let showAllAppends = $state(false);
 
 	const hasBase = $derived((description ?? '').trim() !== '');
-	const hasAppends = $derived(descriptionAppends.length > 0);
+	const hasAppends = $derived(showAppends && descriptionAppends.length > 0);
 	const hasContent = $derived(hasBase || hasAppends);
 	const visibleAppendItems = $derived.by(() => {
 		if (maxVisibleAppends === null || showAllAppends) {
-			return descriptionAppends.map((append, index) => ({ append, index }));
+			return showAppends
+				? descriptionAppends.map((append, index) => ({ append, index }))
+				: [];
 		}
 		if (maxVisibleAppends <= 0) {
 			return [];
@@ -39,7 +45,7 @@
 			.map((append, offset) => ({ append, index: startIndex + offset }));
 	});
 	const collapsedHiddenAppendCount = $derived(
-		maxVisibleAppends === null
+		!showAppends || maxVisibleAppends === null
 			? 0
 			: Math.max(0, descriptionAppends.length - Math.max(0, maxVisibleAppends)),
 	);
@@ -54,7 +60,9 @@
 {#if hasContent}
 	<div class={cn('flex flex-col gap-1.5', className)}>
 		{#if hasBase}
-			<p class="whitespace-pre-line text-sm text-muted-foreground">{description}</p>
+			<p class={cn('whitespace-pre-line text-sm text-muted-foreground', descriptionClass)}>
+				{description}
+			</p>
 		{/if}
 		{#each visibleAppendItems as item (`${item.append.addedAt}:${item.index}`)}
 			<!-- Post-share append (issue #102, `anime-gift-detail-modal.html` desc-append):

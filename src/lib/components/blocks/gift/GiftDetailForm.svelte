@@ -56,12 +56,13 @@
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
 		giftTargetFrameProps,
+		mergeGiftTargetCrops,
 		seedCropRectFromLegacyMeta,
 		GIFT_CROP_TARGET_SPECS,
-		GIFT_CROP_TARGET_VALUES,
+		GIFT_EDITOR_CROP_TARGET_VALUES,
 		IMAGE_EDITOR_MODES,
 		IMAGE_EDITOR_MODE_VALUES,
-		type GiftCropTarget,
+		type GiftEditorCropTarget,
 		type ImageCropRect,
 		type ImageEditorMode,
 		type ImageMetadata,
@@ -180,14 +181,15 @@
 		: null;
 
 	function initTargetRects(meta: ImageMetadata | null | undefined) {
-		const rects = {} as Record<GiftCropTarget, ImageCropRect>;
-		for (const target of GIFT_CROP_TARGET_VALUES) {
+		const rects = {} as Record<GiftEditorCropTarget, ImageCropRect>;
+		for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
 			// A persisted per-target rect restores exactly; otherwise seed from the
 			// base-level metadata (issue #123: a legacy row with focal/zoom but no
 			// cropRect must reconstruct its real framing via seedCropRectFromLegacyMeta,
 			// not silently fall back to the always-centered FULL_CROP_RECT – the stage
 			// snaps this seed to the target's real aspect once the image is measured).
-			const targetCrop = meta?.targets?.[target];
+			const targetCrop =
+				meta?.targets?.[target] ?? (target === 'square' ? meta?.targets?.card : undefined);
 			rects[target] =
 				targetCrop !== undefined
 					? { ...targetCrop.cropRect }
@@ -198,9 +200,9 @@
 
 	// svelte-ignore state_referenced_locally
 	let targetRects = $state(initTargetRects(gift?.imageMeta));
-	let activeTarget = $state<GiftCropTarget>('card');
+	let activeTarget = $state<GiftEditorCropTarget>('square');
 	// Targets edited in this session; only these are (re)persisted on save.
-	const dirtyTargets = new SvelteSet<GiftCropTarget>();
+	const dirtyTargets = new SvelteSet<GiftEditorCropTarget>();
 
 	const styles = giftDetailModalVariants();
 
@@ -250,15 +252,16 @@
 		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
 			return undefined;
 		}
-		const merged: Partial<Record<GiftCropTarget, ImageTargetCrop>> = imageReplaced
-			? {}
-			: { ...gift?.imageMeta?.targets };
+		const editedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
 		for (const target of dirtyTargets) {
 			const rect = targetRects[target];
 			const { focal, zoom } = cropRectToFocalZoom(rect);
-			merged[target] = { cropRect: { ...rect }, focal, zoom };
+			editedTargets[target] = { cropRect: { ...rect }, focal, zoom };
 		}
-		return Object.keys(merged).length > 0 ? merged : undefined;
+		return mergeGiftTargetCrops(
+			imageReplaced ? undefined : gift?.imageMeta?.targets,
+			editedTargets,
+		);
 	}
 
 	// Base focal/zoom/cropRect stay exactly as persisted for an unreplaced image so
@@ -281,10 +284,9 @@
 	const detailFrame = $derived(giftTargetFrameProps(currentImageMeta, 'detail'));
 
 	const targetLabels = {
-		card: () => m.gift_image_slot_card(),
 		detail: () => m.gift_image_slot_detail(),
 		square: () => m.gift_image_target_square(),
-	} as const satisfies Record<GiftCropTarget, () => string>;
+	} as const satisfies Record<GiftEditorCropTarget, () => string>;
 
 	function setEditorMode(value: string) {
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
@@ -302,7 +304,7 @@
 	}
 
 	/** Clicking a preview tile jumps to Manual mode with that target active. */
-	function handleTileSelect(target: GiftCropTarget) {
+	function handleTileSelect(target: GiftEditorCropTarget) {
 		activeTarget = target;
 		promoteToManual();
 	}

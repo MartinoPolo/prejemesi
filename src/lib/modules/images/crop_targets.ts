@@ -25,7 +25,7 @@ export interface CropTargetSpec {
 
 /** Gift crop targets (D2), grouped by aspect family. */
 export const GIFT_CROP_TARGET_SPECS = {
-	// GiftCard imageArea: h-32 fixed, fluid width (~356px in the wishlist grid @1280).
+	// Retired wide-card crop, retained for the legacy `targets.card` square fallback.
 	card: {
 		aspect: 356 / 128,
 		cssAspect: '356 / 128',
@@ -41,13 +41,13 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realHeight: 806,
 		realSizeText: '403 × 806 px',
 	},
-	// GiftListItem size-16 (64px) + ReserveModal size-12 (48px) share the 1:1 family.
+	// GiftCard + GiftListItem + ReserveModal share the 1:1 family (#163).
 	square: {
 		aspect: 1,
 		cssAspect: '1 / 1',
-		realWidth: 64,
-		realHeight: 64,
-		realSizeText: '64 × 64 px / 48 × 48 px',
+		realWidth: 356,
+		realHeight: 356,
+		realSizeText: '356 × 356 px / 96 × 96 px / 48 × 48 px',
 	},
 } as const satisfies Record<GiftCropTarget, CropTargetSpec>;
 

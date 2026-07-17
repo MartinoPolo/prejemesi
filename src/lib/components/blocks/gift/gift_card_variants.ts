@@ -2,16 +2,24 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Anime-sky sticker gift card (issue #102 REQ-14): ink border, hard offset
- * shadow, spring lift on hover, dotted-mat image background that pans on hover.
- * `dimmed` covers fully reserved (visitor/moderator view) and received gifts —
- * the card greys out, stops lifting, and the mat stops panning; the reservation
- * sticker stays crisp on top.
+ * shadow, spring lift on hover, dotted-mat image background that brightens on
+ * hover. `dimmed` covers fully reserved (visitor/moderator view) and received
+ * gifts — the card greys out, stops lifting, and the mat stops brightening; the
+ * reservation sticker stays crisp on top.
  */
 export const giftCardVariants = tv({
 	slots: {
 		card: 'group relative flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
 		imageArea:
-			'relative aspect-[356/128] max-h-40 w-full overflow-hidden border-b-[2.5px] border-ink bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] bg-position-[0px_0px] transition-[background-position] duration-600 motion-safe:group-hover:bg-position-[24px_12px]',
+			'relative isolate aspect-square w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
+		/**
+		 * Dotted mat behind the photo (shows through letterboxed photos). Sits on
+		 * its own layer below the image so its opacity can fade up on hover —
+		 * replaces the earlier diagonal position pan, which read as distracting on
+		 * top of the card's lift.
+		 */
+		imagePattern:
+			'pointer-events-none absolute inset-0 -z-[1] bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100',
 		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
 		imageVeil: 'absolute inset-0 bg-reserved-veil',
 		body: 'flex flex-1 flex-col gap-2 p-4',
@@ -37,7 +45,7 @@ export const giftCardVariants = tv({
 		dimmed: {
 			true: {
 				card: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] hover:shadow-sticker-strong focus-within:shadow-sticker-strong motion-safe:hover:translate-y-0 motion-safe:focus-within:translate-y-0',
-				imageArea: 'motion-safe:group-hover:bg-position-[0px_0px]',
+				imagePattern: 'group-hover:opacity-60 group-focus-within:opacity-60',
 				body: 'opacity-55 grayscale-50',
 				footer: 'opacity-55 grayscale-50',
 			},

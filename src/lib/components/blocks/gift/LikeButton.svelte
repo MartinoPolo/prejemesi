@@ -11,10 +11,18 @@
 		giftName: string;
 		likeCount: number;
 		size?: LikeButtonSize;
+		showCount?: boolean;
 		class?: string;
 	}
 
-	let { giftId, giftName, likeCount, size = 'md', class: className }: LikeButtonProps = $props();
+	let {
+		giftId,
+		giftName,
+		likeCount,
+		size = 'md',
+		showCount = true,
+		class: className,
+	}: LikeButtonProps = $props();
 
 	const likesContext = useLikes();
 
@@ -70,7 +78,7 @@
 	onclick={handleClick}
 >
 	<HeartIcon class={cn(styles.icon(), animating && 'scale-125')} />
-	{#if displayCount > 0}
+	{#if showCount && displayCount > 0}
 		<span class={styles.count()}>{displayCount}</span>
 	{/if}
 </button>

@@ -3,5 +3,11 @@
 	"rules": {
 		"curly": "error"
 	},
-	"ignorePatterns": [".svelte-kit", "build", "node_modules", "src/lib/paraglide"]
+	"ignorePatterns": [
+		".svelte-kit",
+		"build",
+		"node_modules",
+		"src/lib/paraglide",
+		".claude/worktrees"
+	]
 }
