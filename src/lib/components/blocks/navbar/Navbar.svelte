@@ -54,6 +54,8 @@
 	}: NavbarProps = $props();
 
 	const MAX_DROPDOWN_ITEMS = 5;
+	const dropdownFooterStatClass =
+		'inline-flex items-center gap-1.5 text-sm text-muted-foreground';
 
 	const STATUS_BADGE: Record<
 		Wishlist['status'],
@@ -291,14 +293,14 @@
 					{#snippet footer()}
 						{#if i === 0}
 							<button
-								class="nav-dropdown-create"
+								class="inline-flex items-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-primary hover:underline"
 								onclick={() => (isCreateModalOpen = true)}
 							>
 								<PlusIcon class="size-3.5" />
 								{m.nav_footer_new_list()}
 							</button>
 						{:else if i === 1}
-							<span class="nav-dropdown-stats">
+							<span class={dropdownFooterStatClass}>
 								<GiftIcon class="size-3.5" />
 								{m.nav_footer_reserved_stats({
 									reserved: moderatedStats.reserved,
@@ -306,7 +308,7 @@
 								})}
 							</span>
 						{:else}
-							<span class="nav-dropdown-stats">
+							<span class={dropdownFooterStatClass}>
 								<GiftIcon class="size-3.5" />
 								{followedOpenCount > 0
 									? m.nav_footer_lists_need_gift({ count: followedOpenCount })
@@ -439,33 +441,6 @@
 		.nav-links {
 			display: flex;
 		}
-	}
-
-	/* Dropdown footer variants */
-	.nav-dropdown-create {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
-		color: var(--primary);
-		background: none;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-		font-family: var(--font-sans);
-	}
-
-	.nav-dropdown-create:hover {
-		text-decoration: underline;
-	}
-
-	.nav-dropdown-stats {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		font-size: var(--text-sm);
-		color: var(--muted-foreground);
 	}
 
 	/* Right side controls */

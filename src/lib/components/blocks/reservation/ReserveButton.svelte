@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 
 	interface ReserveButtonProps {
@@ -39,23 +40,25 @@
 	<Button
 		{size}
 		intent="danger"
-		aria-label="Zrušit rezervaci {gift.name}"
+		aria-label={m.reserve_button_cancel_aria({ name: gift.name })}
 		onclick={handleUnreserveClick}
+		data-testid="reserve-button"
 	>
-		Zrušit rezervaci
+		{m.reserve_button_cancel()}
 	</Button>
 {:else if !isArchived}
 	<Button
 		{size}
 		intent={isFullyReserved ? 'outline' : 'primary'}
 		disabled={isFullyReserved}
-		aria-label="Rezervovat {gift.name}"
+		aria-label={m.reserve_button_reserve_aria({ name: gift.name })}
 		onclick={handleReserveClick}
+		data-testid="reserve-button"
 	>
 		{#if isFullyReserved}
-			Rezervováno
+			{m.reserve_button_reserved()}
 		{:else}
-			Rezervovat
+			{m.reserve_button_reserve()}
 		{/if}
 	</Button>
 {/if}

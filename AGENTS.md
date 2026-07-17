@@ -63,7 +63,7 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 - Schema in `src/lib/server/db/schema.ts`
 - Seed script: `src/lib/server/db/seed.ts` — run `pnpm db:seed` to populate test data.
 
-### Test Accounts (password: `SEED_PASSWORD` in seed.ts — "password" + "123")
+### Test Accounts (shared sign-in value: `SEED_PASSWORD` in seed.ts)
 
 Two most-used personas below (recipient + gifter). For the full roster (jana/eva/tomas), fixture layout, and which UI states each exercises, read `src/lib/server/db/seed.ts` — seed IDs are prefixed `seed-`.
 

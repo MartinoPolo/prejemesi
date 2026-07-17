@@ -83,16 +83,19 @@ test.describe('Anonymous visitor reservation', () => {
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
 		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible();
-		await expect(visitorPage.getByRole('button', { name: /Rezervovat/ })).toBeVisible();
-		await visitorPage.getByRole('radio', { name: 'Seznam' }).click();
+		// Locale-agnostic: ReserveButton's label/aria-label are i18n'd (issue #154), so
+		// select the card-level trigger via its stable data-testid.
+		await expect(visitorPage.getByTestId('reserve-button').first()).toBeVisible();
+
+		// Mobile gift layout (issue #163): switch to list view and assert the image/actions
+		// arrangement. Use stable data-testids so the assertions stay locale-robust (issue #154).
+		await visitorPage.getByTestId('gift-view-list').click();
 
 		const mobileListItem = visitorPage
 			.getByTestId('gift-list-item')
 			.filter({ hasText: TEST_GIFT.name });
 		const imageBounds = await mobileListItem.getByTestId('gift-list-image').boundingBox();
-		const reserveBounds = await mobileListItem
-			.getByRole('button', { name: /Rezervovat/ })
-			.boundingBox();
+		const reserveBounds = await mobileListItem.getByTestId('reserve-button').boundingBox();
 		const likeBounds = await mobileListItem
 			.getByRole('button', { name: `Přidat do oblíbených: ${TEST_GIFT.name}` })
 			.boundingBox();
@@ -130,10 +133,7 @@ test.describe('Anonymous visitor reservation', () => {
 		await expect(visitorPage.locator('[data-slot="dialog-overlay"]')).toHaveCount(0);
 
 		// Reserve
-		await visitorPage
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		await visitorPage.getByTestId('reserve-button').first().click();
 		const reserveDialog = visitorPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible();
 		await expectWishlistRedirectAuthLinks(reserveDialog, baseURL!, wishlistPath);
@@ -165,11 +165,9 @@ test.describe('Anonymous visitor reservation', () => {
 		const localizedWishlistPath = `/en${wishlistPath}`;
 
 		await visitorPage.goto(localizedWishlistPath);
-		// Gift-card reserve aria-label remains intentionally Czech across locales.
-		await visitorPage
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		// Locale-agnostic: ReserveButton's label/aria-label are i18n'd (issue #154), so
+		// select the card-level trigger via its stable data-testid.
+		await visitorPage.getByTestId('reserve-button').first().click();
 		const reserveDialog = visitorPage.getByRole('dialog');
 		await expect(reserveDialog).toBeVisible();
 		await expectWishlistRedirectAuthLinks(
@@ -213,10 +211,7 @@ test.describe('Anonymous visitor reservation', () => {
 		const registrationUser = createTestUser('wishlist-register');
 		await installTurnstileMock(page);
 		await page.goto(wishlistPath);
-		await page
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		await page.getByTestId('reserve-button').first().click();
 		await page.getByRole('dialog').locator('a[href*="/register"]').click();
 		await expect(page).toHaveURL(
 			(url) =>
@@ -260,10 +255,7 @@ test.describe('Anonymous visitor reservation', () => {
 		const loginUser = createTestUser('wishlist-login');
 		await registerViaApi(request, baseURL!, loginUser);
 		await page.goto(wishlistPath);
-		await page
-			.getByRole('button', { name: /Rezervovat/ })
-			.first()
-			.click();
+		await page.getByTestId('reserve-button').first().click();
 		await page.getByRole('dialog').locator('a[href*="/login"]').click();
 		await expect(page).toHaveURL(
 			(url) => url.pathname === '/login' && url.searchParams.get('redirect') === wishlistPath,

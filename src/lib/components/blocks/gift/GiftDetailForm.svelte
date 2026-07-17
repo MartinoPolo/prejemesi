@@ -7,6 +7,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { Switch } from '$lib/components/base/switch/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
@@ -120,6 +121,13 @@
 	let links = $state<GiftLink[]>(ensureGiftLinkIds(gift?.links));
 	// svelte-ignore state_referenced_locally
 	let price = $state<number | null>(gift?.price ?? null);
+	// svelte-ignore state_referenced_locally
+	let priceMax = $state<number | null>(gift?.priceMax ?? null);
+	// Switch state is DERIVED on edit from `priceMax`, not its own persisted flag (issue #155 REQ-1):
+	// a saved range (price_max non-null) opens the form in range mode; everything else is single-price.
+	// svelte-ignore state_referenced_locally
+	let isPriceRange = $state((gift?.priceMax ?? null) !== null);
+	let priceRangeError = $state('');
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
@@ -303,9 +311,22 @@
 
 	function validateForm(): boolean {
 		nameError = '';
+		priceRangeError = '';
 		if (name.trim() === '') {
 			nameError = m.gift_name_required();
 			return false;
+		}
+		if (isPriceRange) {
+			const rangeMin = finalizeGiftPrice(price);
+			const rangeMax = finalizeGiftPrice(priceMax);
+			if (rangeMin === null || rangeMax === null) {
+				priceRangeError = m.gift_price_range_required();
+				return false;
+			}
+			if (rangeMax < rangeMin) {
+				priceRangeError = m.gift_price_range_invalid();
+				return false;
+			}
 		}
 		return true;
 	}
@@ -316,6 +337,8 @@
 		}
 
 		const finalPrice = finalizeGiftPrice(price);
+		// price_max only persists in range mode; toggling back to single mode drops it (REQ-1).
+		const finalPriceMax = isPriceRange ? finalizeGiftPrice(priceMax) : null;
 		const finalQuantity = finalizeGiftQuantity(quantity);
 		const normalizedLinks = normalizeGiftLinks(links);
 		const imageMeta = hasImage ? currentImageMeta : null;
@@ -328,6 +351,7 @@
 				description: description.trim() || null,
 				links: normalizedLinks,
 				price: finalPrice,
+				priceMax: finalPriceMax,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
@@ -345,6 +369,7 @@
 				description: descriptionPayload,
 				links: normalizedLinks,
 				price: finalPrice,
+				priceMax: finalPriceMax,
 				currency,
 				imageUrl: imageUrl.trim() || null,
 				imageKey: imageKey || null,
@@ -702,14 +727,71 @@
 				<!-- Price + Currency -->
 				<div class="mt-3 {styles.formRow()}">
 					<div class={styles.formField()}>
-						<Label for="gift-price">{m.gift_price_label()}</Label>
-						<Input
-							id="gift-price"
-							bind:value={price}
-							placeholder="0"
-							type="number"
-							min="0"
-						/>
+						<div class="flex items-center justify-between gap-2">
+							<Label for="gift-price">{m.gift_price_label()}</Label>
+							<div class="flex items-center gap-1.5">
+								<Label
+									for="gift-price-range-switch"
+									class="text-xs font-normal text-muted-foreground"
+								>
+									{m.gift_price_range_toggle_label()}
+								</Label>
+								<Switch
+									id="gift-price-range-switch"
+									size="sm"
+									bind:checked={isPriceRange}
+									onCheckedChange={() => (priceRangeError = '')}
+								/>
+							</div>
+						</div>
+						{#if isPriceRange}
+							<div class="flex items-center gap-2">
+								<Input
+									id="gift-price"
+									class="min-w-0"
+									bind:value={price}
+									placeholder="0"
+									type="number"
+									min="0"
+									aria-label={m.gift_price_range_min_aria()}
+									state={priceRangeError !== '' ? 'error' : 'default'}
+									aria-invalid={priceRangeError !== '' ? true : undefined}
+									aria-describedby={priceRangeError !== ''
+										? 'gift-price-range-error'
+										: undefined}
+								/>
+								<span class="shrink-0 text-muted-foreground" aria-hidden="true"
+									>–</span
+								>
+								<Input
+									id="gift-price-max"
+									class="min-w-0"
+									bind:value={priceMax}
+									placeholder="0"
+									type="number"
+									min="0"
+									aria-label={m.gift_price_range_max_aria()}
+									state={priceRangeError !== '' ? 'error' : 'default'}
+									aria-invalid={priceRangeError !== '' ? true : undefined}
+									aria-describedby={priceRangeError !== ''
+										? 'gift-price-range-error'
+										: undefined}
+								/>
+							</div>
+						{:else}
+							<Input
+								id="gift-price"
+								bind:value={price}
+								placeholder="0"
+								type="number"
+								min="0"
+							/>
+						{/if}
+						{#if priceRangeError !== ''}
+							<HelpText id="gift-price-range-error" state="error"
+								>{priceRangeError}</HelpText
+							>
+						{/if}
 					</div>
 					<div class={styles.formField()}>
 						<Label>{m.gift_currency_label()}</Label>

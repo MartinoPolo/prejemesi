@@ -47,17 +47,15 @@ test.describe('Create a wishlist for someone else', () => {
 
 		// ── Creator is a správce: reservation controls are visible + reservable ─────────
 		// Add a gift and share so the reserve footer is meaningful, then assert the creator
-		// sees the „Rezervovat" control (hardcoded CS aria-label, locale-independent).
+		// sees the reserve control. Locale-agnostic: ReserveButton's label/aria-label are
+		// i18n'd (issue #154), so select via the stable data-testid rather than the
+		// (locale-dependent) accessible name. This also sidesteps the drag-to-reorder
+		// wrapper (role="button") around each card, whose aggregated accessible name used
+		// to require an exact-name match to disambiguate from the real reserve button.
 		await addGift(page, TEST_GIFT.name);
 		await shareWishlist(page);
 
-		// The reserve button carries aria-label „Rezervovat {gift.name}" for visitors/správci.
-		// `exact: true` is required: a správce also gets a drag-to-reorder wrapper (role="button")
-		// around each card whose aggregated accessible name contains this label as a substring, so a
-		// non-exact name match resolves to two elements (the wrapper + the real button).
-		await expect(
-			page.getByRole('button', { name: `Rezervovat ${TEST_GIFT.name}`, exact: true }),
-		).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('reserve-button')).toBeVisible({ timeout: 10_000 });
 
 		await page.context().close();
 	});

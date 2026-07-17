@@ -14,6 +14,8 @@
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { Avatar } from '$lib/components/derived/avatar/index.js';
+	import { getInitials } from '$lib/utils/initials.js';
 	import {
 		WISHLIST_STATUS_LABELS,
 		WISHLIST_STATUS_BADGE_MAP,
@@ -28,6 +30,9 @@
 		title: string;
 		/** Who the list is for: linked recipient's account name or the free-text recipient name. */
 		recipientDisplayName: string;
+		/** Linked recipient's avatar (Google profile picture or uploaded avatar); null for a
+		 *  free-text recipient or when the recipient has no avatar (issue #158). */
+		recipientImage: string | null;
 		/** True for a free-text (for-someone-else) list; drives the recipient-edit pencil gating. */
 		isForSomeoneElse: boolean;
 		/**
@@ -56,6 +61,7 @@
 	let {
 		title,
 		recipientDisplayName,
+		recipientImage,
 		isForSomeoneElse,
 		managerNames,
 		description,
@@ -152,6 +158,9 @@
 	const statusLabel = $derived(WISHLIST_STATUS_LABELS[status]());
 	const statusBadgeTone = $derived(WISHLIST_STATUS_BADGE_MAP[status]);
 
+	// Fallback initials for a broken/expired recipient avatar URL (Avatar's own onerror path).
+	const recipientInitials = $derived(getInitials(recipientDisplayName));
+
 	const giftCountLabel = $derived.by(() => {
 		if (giftCount === null) {
 			return null;
@@ -203,23 +212,36 @@
 
 			<div class={styles.headerText()}>
 				<!-- Every list leads with „Pro: {recipient}" — colon form, prefix lighter, name bold
-				     (2026-07-14 header decision, self lists included). -->
-				<p class={styles.recipientLine()}>
+				     (2026-07-14 header decision, self lists included). A `<div>`, not a `<p>`: the
+				     recipient avatar below renders ImageFrame's `<div>` root, and a div nested in a
+				     `<p>` is invalid HTML – the browser's parser auto-closes the paragraph early,
+				     which desyncs SSR vs. hydrated DOM and crashes hydration (issue #158). -->
+				<div class={styles.recipientLine()}>
 					{m.wishlist_header_for_prefix()}
-					<strong class={styles.recipientName()}>{recipientDisplayName}</strong
-					>{#if canEditRecipient}
-						<Button
-							size="icon-sm"
-							intent="secondary"
-							class="ms-1.5 align-middle"
-							aria-label={m.wishlist_edit_recipient_label()}
-							data-testid="edit-recipient-button"
-							onclick={oneditrecipient}
-						>
-							<PencilIcon />
-						</Button>
-					{/if}
-				</p>
+					<span class={styles.recipientNameGroup()}>
+						{#if recipientImage !== null}
+							<Avatar
+								src={recipientImage}
+								alt=""
+								initials={recipientInitials}
+								size="sm"
+								class={styles.recipientAvatar()}
+							/>
+						{/if}
+						<strong class={styles.recipientName()}>{recipientDisplayName}</strong>
+						{#if canEditRecipient}
+							<Button
+								size="icon-sm"
+								intent="ghost"
+								aria-label={m.wishlist_edit_recipient_label()}
+								data-testid="edit-recipient-button"
+								onclick={oneditrecipient}
+							>
+								<PencilIcon />
+							</Button>
+						{/if}
+					</span>
+				</div>
 				<h1 class={styles.title()}>{title}</h1>
 				{#if description}
 					<p class={styles.description()}>{description}</p>

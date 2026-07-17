@@ -127,6 +127,7 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 	user: {
 		id: 'user.id',
 		name: 'user.name',
+		image: 'user.image',
 	},
 }));
 
@@ -1181,6 +1182,44 @@ describe('getWishlistByShortId', () => {
 			expect(result.recipientDisplayName).toBe('Recipient Alice');
 			// No správci and no self-promotion → no manager names, no „Spravuje" line.
 			expect(result.managerNames).toEqual([]);
+		});
+	});
+
+	describe('recipientImage (issue #158)', () => {
+		it('exposes the linked recipient’s avatar (e.g. a connected Google account picture)', async () => {
+			const wishlistRow = makeWishlistRow();
+			mockDbInstance.pushResult([
+				{
+					wishlist: wishlistRow,
+					recipientDisplayName: 'Recipient Alice',
+					recipientImage: 'https://lh3.googleusercontent.com/a/abc123',
+				},
+			]);
+			mockDbInstance.pushResult([]);
+
+			const result = (await callGetWishlistByShortId(
+				makeRecipientAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { recipientImage: string | null };
+
+			expect(result.recipientImage).toBe('https://lh3.googleusercontent.com/a/abc123');
+		});
+
+		it('resolves to null for a free-text (for-someone-else) recipient with no linked account', async () => {
+			const wishlistRow = makeForSomeoneWishlistRow();
+			// leftJoin on `user` finds no row → recipientImage comes back undefined/null.
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Grandma', recipientImage: null },
+			]);
+			mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+			mockDbInstance.pushResult([{ name: 'Martin' }]);
+
+			const result = (await callGetWishlistByShortId(
+				makeModeratorAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { recipientImage: string | null };
+
+			expect(result.recipientImage).toBeNull();
 		});
 	});
 

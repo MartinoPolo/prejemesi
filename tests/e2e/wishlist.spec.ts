@@ -37,9 +37,11 @@ test.describe('Wishlist page', () => {
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await createWishlistAndNavigate(page, 'Test Views');
-		const cardBtn = page.getByRole('radio', { name: 'Karta' });
-		const listBtn = page.getByRole('radio', { name: 'Seznam', exact: true });
-		const compactBtn = page.getByRole('radio', { name: 'Kompakt' });
+		// Locale-agnostic: GiftViewSwitcher labels are i18n'd (issue #154), so select via
+		// stable data-testids rather than the (locale-dependent) accessible names.
+		const cardBtn = page.getByTestId('gift-view-card');
+		const listBtn = page.getByTestId('gift-view-list');
+		const compactBtn = page.getByTestId('gift-view-compact');
 
 		await expect(cardBtn).toHaveAttribute('aria-checked', 'true');
 

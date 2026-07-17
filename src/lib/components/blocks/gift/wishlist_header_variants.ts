@@ -12,6 +12,10 @@ export const wishlistHeaderVariants = tv({
 		headerText: 'min-w-0 flex-1',
 		/** „Pro: {recipient}" line above the title (name bold, prefix lighter) — all lists. */
 		recipientLine: 'reveal text-[17px] text-ink-soft',
+		/** Groups the name with its edit pencil so the ghost button truly centers on the name's own box, not the line's mixed font sizes (issue #157). */
+		recipientNameGroup: 'inline-flex items-center gap-1.5',
+		/** Recipient's Google/uploaded avatar, shown only when one is available (issue #158). */
+		recipientAvatar: 'shrink-0',
 		recipientName: 'font-heading text-[26px] font-semibold text-ink',
 		title: 'reveal reveal-2 mt-0.5 text-[clamp(28px,4vw,42px)] leading-tight font-semibold',
 		description: 'reveal reveal-2 mt-1 max-w-2xl text-base text-ink-soft',

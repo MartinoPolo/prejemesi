@@ -3,7 +3,6 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
@@ -167,39 +166,55 @@
 		onEscapeKeydown={handleEscapeKeydown}
 	>
 		{#if items.length > 0}
-			<div class="nav-dropdown-header">
-				<span class="nav-dropdown-title">{m.nav_recent()}</span>
-				<a class="nav-dropdown-view-all" href={viewAllHref}>
+			<div class="flex items-center justify-between px-4 pt-3 pb-2">
+				<span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+					{m.nav_recent()}
+				</span>
+				<a
+					class="inline-flex items-center gap-1 text-xs font-medium text-primary no-underline hover:underline"
+					href={viewAllHref}
+				>
 					{m.nav_view_all()}
 					{#if totalCount !== undefined}
-						<span class="nav-dropdown-count">({totalCount})</span>
+						<span class="font-normal text-muted-foreground">({totalCount})</span>
 					{/if}
 					<ArrowRightIcon class="size-3" />
 				</a>
 			</div>
+			<DropdownMenu.Separator class="mx-0" />
 
-			{#if sections}
-				{#each sections as section (section.key)}
-					<div class="nav-dropdown-section">
-						<span class="nav-dropdown-section-label">{section.label}</span>
-						{#each section.items as item (item.href)}
-							{@render itemRow(item)}
-						{/each}
-					</div>
-				{/each}
-			{:else}
-				{#each items as item (item.href)}
-					{@render itemRow(item)}
-				{/each}
-			{/if}
+			<div class="p-1.5">
+				{#if sections}
+					{#each sections as section, i (section.key)}
+						{#if i > 0}
+							<DropdownMenu.Separator />
+						{/if}
+						<div>
+							<span
+								class="block px-3 pt-2 pb-0.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+							>
+								{section.label}
+							</span>
+							{#each section.items as item (item.href)}
+								{@render itemRow(item)}
+							{/each}
+						</div>
+					{/each}
+				{:else}
+					{#each items as item (item.href)}
+						{@render itemRow(item)}
+					{/each}
+				{/if}
+			</div>
 		{:else}
-			<div class="nav-dropdown-empty">
-				<span class="nav-dropdown-empty-text">{m.nav_no_lists()}</span>
+			<div class="p-4 text-center">
+				<span class="text-sm text-muted-foreground">{m.nav_no_lists()}</span>
 			</div>
 		{/if}
 
 		{#if footer}
-			<div class="nav-dropdown-footer">
+			<DropdownMenu.Separator class="mx-0" />
+			<div class="px-4 pt-2 pb-3 text-sm">
 				{@render footer()}
 			</div>
 		{/if}
@@ -207,17 +222,25 @@
 </DropdownMenu.Root>
 
 {#snippet itemRow(item: NavDropdownItem)}
-	<DropdownMenuPrimitive.Item textValue={item.name}>
+	<DropdownMenu.Item textValue={item.name}>
 		{#snippet child({ props })}
 			<a
 				{...props}
-				class={cn('nav-dropdown-item', item.resolution && 'is-resolved')}
 				href={item.href}
+				class={cn(
+					props.class as string,
+					'group',
+					item.resolution && 'opacity-60 focus:opacity-85',
+				)}
 			>
-				<span class="nav-dropdown-thumb">
+				<!-- Thumb rests on --accent (a subtle tint against the popover panel); on focus/hover
+				     the row itself turns --accent, so the thumb flips to --popover to stay legible. -->
+				<span
+					class="group relative flex size-[34px] shrink-0 items-center justify-center rounded-md bg-accent text-[17px] group-focus:bg-popover"
+				>
 					{#if item.imageUrl}
 						<WishlistSlotImage
-							class="nav-dropdown-thumb-image"
+							class="absolute inset-0 overflow-hidden rounded-md"
 							src={item.imageUrl}
 							frame={item.imageFrame}
 							themeEmoji={item.emoji}
@@ -228,15 +251,24 @@
 						{item.emoji}
 					{/if}
 					{#if item.resolution === 'bought'}
-						<span class="nav-dropdown-thumb-check"><CheckIcon class="size-2.5" /></span>
+						<span
+							class="absolute -right-[3px] -bottom-[3px] flex size-[15px] items-center justify-center rounded-full border-[1.5px] border-popover bg-primary text-primary-foreground"
+						>
+							<CheckIcon class="size-2.5" />
+						</span>
 					{/if}
 				</span>
-				<span class="nav-dropdown-info">
-					<span class="nav-dropdown-name">{item.name}</span>
-					<span class="nav-dropdown-meta">
-						<span class="nav-dropdown-meta-text">{item.meta}</span>
+				<span class="flex min-w-0 flex-1 flex-col">
+					<span class="truncate text-sm font-medium text-foreground">{item.name}</span>
+					<span
+						class="mt-px flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
+					>
+						<span class="truncate">{item.meta}</span>
 						{#if item.countdown}
-							<span class="nav-dropdown-countdown">{item.countdown}</span>
+							<span aria-hidden="true">·</span>
+							<span class="shrink-0 font-medium text-foreground"
+								>{item.countdown}</span
+							>
 						{/if}
 					</span>
 				</span>
@@ -245,21 +277,19 @@
 						tone={item.badgeVariant === 'shared' ? 'primary' : 'neutral'}
 						badgeStyle="subtle"
 						size="compact"
-						class={item.badgeVariant === 'shared'
-							? undefined
-							: 'nav-dropdown-badge-neutral'}
 					>
 						{item.badgeLabel}
 					</Badge>
 				{/if}
 			</a>
 		{/snippet}
-	</DropdownMenuPrimitive.Item>
+	</DropdownMenu.Item>
 {/snippet}
 
 <style>
 	/* Mockup pill states: hover = subtle surface pill, active = filled pill
-	   with an ink border (no underline). */
+	   with an ink border (no underline). The dropdown panel content below uses the shared
+	   DropdownMenu.* components + design-system Tailwind tokens instead of custom CSS. */
 	.nav-link {
 		display: inline-flex;
 		align-items: center;
@@ -303,201 +333,5 @@
 		flex-shrink: 0;
 		width: 14px;
 		height: 14px;
-	}
-
-	.nav-dropdown-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: var(--space-3) var(--space-4) var(--space-2);
-		border-bottom: 1px solid var(--border);
-	}
-
-	.nav-dropdown-title {
-		font-size: var(--text-xs);
-		font-weight: var(--weight-semibold);
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-	}
-
-	.nav-dropdown-view-all {
-		font-size: var(--text-xs);
-		font-weight: var(--weight-medium);
-		color: var(--primary);
-		text-decoration: none;
-		display: inline-flex;
-		align-items: center;
-		gap: 3px;
-	}
-
-	.nav-dropdown-view-all:hover {
-		text-decoration: underline;
-	}
-
-	.nav-dropdown-count {
-		color: var(--muted-foreground);
-		font-weight: var(--weight-normal);
-	}
-
-	/* [data-highlighted] mirrors :hover – bits-ui sets it for both pointer and
-	   keyboard (roving focus) so arrow-key navigation gets the same treatment. */
-	.nav-dropdown-item {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-2) var(--space-4);
-		cursor: pointer;
-		text-decoration: none;
-		color: inherit;
-		outline: none;
-		transition: background var(--duration-normal) var(--ease-standard);
-	}
-
-	.nav-dropdown-item:hover,
-	.nav-dropdown-item[data-highlighted] {
-		background: var(--accent);
-	}
-
-	.nav-dropdown-thumb {
-		position: relative;
-		width: 34px;
-		height: 34px;
-		border-radius: var(--radius-md);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 17px;
-		flex-shrink: 0;
-		background: var(--accent);
-	}
-
-	/* On hover the row adopts --accent, the thumb's own background – flip the thumb
-	   to the panel surface so it stays distinct instead of melting into the row. */
-	.nav-dropdown-item:hover .nav-dropdown-thumb,
-	.nav-dropdown-item[data-highlighted] .nav-dropdown-thumb {
-		background: var(--popover);
-	}
-
-	/* Custom cover image fills the thumb, clipped to its rounded corners. Clipping the
-	   image (not the thumb) keeps the bought-check overlay, which sits outside the box,
-	   visible. */
-	.nav-dropdown-thumb :global(.nav-dropdown-thumb-image) {
-		position: absolute;
-		inset: 0;
-		border-radius: var(--radius-md);
-		overflow: hidden;
-	}
-
-	/* Subtle neutral badge fills with --surface-2, which matches the hovered row's
-	   --accent – lift it onto the panel surface so it stays legible. (The "shared"
-	   primary badge uses a translucent tint that already reads on either surface.) */
-	.nav-dropdown-item:hover :global(.nav-dropdown-badge-neutral),
-	.nav-dropdown-item[data-highlighted] :global(.nav-dropdown-badge-neutral) {
-		background: var(--popover);
-	}
-
-	/* Followed-list category groups: a faint divider + whitespace cleanly separates
-	   "needs a gift" from "reserved" from "bought". */
-	.nav-dropdown-section:not(:first-of-type) {
-		margin-top: var(--space-1);
-		border-top: 1px solid var(--border);
-	}
-
-	.nav-dropdown-section-label {
-		display: block;
-		padding: var(--space-2) var(--space-4) 2px;
-		font-size: 10px;
-		font-weight: var(--weight-semibold);
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-	}
-
-	/* Resolved (gifter already reserved): de-emphasised so action-needed lists stand out. */
-	.nav-dropdown-item.is-resolved {
-		opacity: 0.6;
-	}
-
-	.nav-dropdown-item.is-resolved:hover,
-	.nav-dropdown-item.is-resolved[data-highlighted] {
-		opacity: 0.85;
-	}
-
-	.nav-dropdown-thumb-check {
-		position: absolute;
-		right: -3px;
-		bottom: -3px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 15px;
-		height: 15px;
-		border-radius: 9999px;
-		background: var(--primary);
-		color: var(--primary-foreground);
-		border: 1.5px solid var(--popover);
-	}
-
-	.nav-dropdown-info {
-		flex: 1;
-		min-width: 0;
-		display: flex;
-		flex-direction: column;
-	}
-
-	.nav-dropdown-name {
-		font-size: var(--text-sm);
-		font-weight: var(--weight-medium);
-		color: var(--foreground);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.nav-dropdown-meta {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		font-size: 11px;
-		color: var(--muted-foreground);
-		margin-top: 1px;
-		min-width: 0;
-	}
-
-	.nav-dropdown-meta-text {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	/* Event countdown: kept readable against the muted owner/theme text so it draws the eye. */
-	.nav-dropdown-countdown {
-		flex-shrink: 0;
-		font-weight: var(--weight-medium);
-		color: var(--foreground);
-	}
-
-	.nav-dropdown-countdown::before {
-		content: '·';
-		margin-right: 5px;
-		color: var(--muted-foreground);
-		font-weight: var(--weight-normal);
-	}
-
-	.nav-dropdown-footer {
-		padding: var(--space-2) var(--space-4) var(--space-3);
-		border-top: 1px solid var(--border);
-		font-size: var(--text-sm);
-	}
-
-	.nav-dropdown-empty {
-		padding: var(--space-4);
-		text-align: center;
-	}
-
-	.nav-dropdown-empty-text {
-		font-size: var(--text-sm);
-		color: var(--muted-foreground);
 	}
 </style>

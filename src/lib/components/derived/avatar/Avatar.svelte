@@ -26,13 +26,26 @@
 		class: className,
 	}: Props = $props();
 
-	const hasSrc = $derived(src !== null && src.trim() !== '');
+	// Tracks the src that failed to load (e.g. a revoked Google profile picture URL) so a broken
+	// image falls back to the initials chip instead of ImageFrame's own generic emoji tile.
+	// Comparing against the live `src` – rather than a boolean – auto-resets the moment the prop
+	// changes, mirroring ImageFrame's own erroredSrc tracking.
+	let erroredSrc = $state<string | null>(null);
+
+	const hasSrc = $derived(src !== null && src.trim() !== '' && src !== erroredSrc);
 	const styles = $derived(avatarVariants({ size, bordered }));
 </script>
 
 <span class={cn(styles.root(), className)}>
 	{#if hasSrc}
-		<ImageFrame {src} {alt} shape="square" fitMode="cover-crop" class={styles.image()} />
+		<ImageFrame
+			{src}
+			{alt}
+			shape="square"
+			fitMode="cover-crop"
+			class={styles.image()}
+			onerror={() => (erroredSrc = src)}
+		/>
 	{:else}
 		<span
 			class={styles.fallback()}
