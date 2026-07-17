@@ -31,11 +31,14 @@
 		"ORIGIN": "https://prejemesi.cz",
 		// PUBLIC_ prefix: the client builds image + transformation URLs from it (issue #107).
 		"PUBLIC_R2_URL": "https://images.prejemesi.cz",
-		// PUBLIC_ prefix: the client renders the Cloudflare Turnstile widget from this
-		// site key (anonymous gift reservation). Its paired secret is set via
-		// `wrangler secret put TURNSTILE_SECRET_KEY`. When absent the check fails open
-		// (advisory only) — see reservations.remote.ts and .mpx/DECISIONS.md.
-		"PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAD3OIQaYpNZUbwVc",
+		// Cloudflare Turnstile is TEMPORARILY DISABLED: an empty site key makes the client
+		// render no widget, and the paired TURNSTILE_SECRET_KEY secret is removed so the
+		// server fails open (advisory only) — see reservations.remote.ts and .mpx/DECISIONS.md.
+		// The interactive "verify you are human" challenge was too much friction for a family
+		// app and even mis-rejected legitimate visitors. Re-enable when bot traffic warrants:
+		// restore site key "0x4AAAAAAD3OIQaYpNZUbwVc" (Managed widget, hostnames prejemesi.cz +
+		// www) and run `wrangler secret put TURNSTILE_SECRET_KEY`.
+		"PUBLIC_TURNSTILE_SITE_KEY": "",
 		// Presigned direct uploads (issue #107). The two secrets that pair with these
 		// are set via `wrangler secret put R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`
 		// (an R2 API token with Object Read & Write on the bucket). Without them the
