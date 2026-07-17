@@ -6,11 +6,10 @@ import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
 import {
-	DEFAULT_NOTIFICATION_PREFERENCES,
 	EMAIL_NOTIFICATION_TYPES,
 	NOTIFICATION_MESSAGES,
+	normalizeNotificationPreferences,
 	type DispatchNotificationInput,
-	type NotificationPreferences,
 	type NotificationType,
 } from './types.js';
 
@@ -27,11 +26,6 @@ function uniqueNonEmpty(values: readonly (string | null | undefined)[]): string[
 /** Whether this notification type is ever allowed to send email (critical types only). */
 function emailTypeSupported(type: NotificationType): boolean {
 	return EMAIL_NOTIFICATION_TYPES.includes(type);
-}
-
-/** A user's stored preferences, falling back to defaults when never customized (NULL). */
-function preferencesFor(stored: NotificationPreferences | null): NotificationPreferences {
-	return stored ?? DEFAULT_NOTIFICATION_PREFERENCES;
 }
 
 function getOrigin(): string {
@@ -149,7 +143,8 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	// who have in-app enabled for this type (NULL preferences fall back to defaults).
 	const inAppUserRows = userRows.filter(
 		(targetUser) =>
-			preferencesFor(targetUser.notificationPreferences)[input.type].inApp === true,
+			normalizeNotificationPreferences(targetUser.notificationPreferences)[input.type]
+				.inApp === true,
 	);
 
 	const insertedNotifications =
@@ -180,7 +175,8 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	// Honor each recipient's email toggle (within email-capable types only).
 	const emailUserRows = userRows.filter(
 		(targetUser) =>
-			preferencesFor(targetUser.notificationPreferences)[input.type].email === true,
+			normalizeNotificationPreferences(targetUser.notificationPreferences)[input.type]
+				.email === true,
 	);
 
 	for (const targetUser of emailUserRows) {
