@@ -413,7 +413,7 @@
 			<!-- User menu -->
 			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
 		{:else}
-			<Button intent="primary" size="sm" href={localizeInternalHref(resolve('/login'))}
+			<Button intent="primary" size="md" href={localizeInternalHref(resolve('/login'))}
 				>{m.nav_login()}</Button
 			>
 		{/if}

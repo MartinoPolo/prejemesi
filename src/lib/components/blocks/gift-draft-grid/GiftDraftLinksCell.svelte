@@ -105,7 +105,7 @@
 					<span
 						class={cn(
 							'flex size-6 flex-none place-items-center',
-							invalid ? 'text-status-danger' : 'text-foreground-subtle',
+							invalid ? 'text-status-danger' : 'text-muted-foreground',
 						)}
 					>
 						<ExternalLinkIcon class="size-3.5" aria-hidden="true" />
@@ -125,7 +125,7 @@
 					intent="ghost"
 					size="icon-sm"
 					class={cn(
-						'size-6 flex-none text-foreground-subtle',
+						'size-6 flex-none text-muted-foreground',
 						DRAFT_DESTRUCTIVE_HOVER_CLASS,
 					)}
 					onclick={() => removeLink(index)}
@@ -147,7 +147,7 @@
 		<Button
 			intent="ghost"
 			size="sm"
-			class="self-start font-semibold text-foreground-muted"
+			class="self-start font-semibold text-muted-foreground"
 			onclick={addLink}
 			disabled={atLimit}
 			aria-label={m.draft_grid_add_link_aria()}

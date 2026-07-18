@@ -90,6 +90,6 @@
 	.form-helper-text {
 		font-size: 12.5px;
 		font-weight: 700;
-		color: var(--ink-soft);
+		color: var(--muted-foreground);
 	}
 </style>

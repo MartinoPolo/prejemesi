@@ -35,7 +35,7 @@ export const likeButtonVariants = tv({
 				count: 'text-[13px]',
 			},
 			lg: {
-				root: 'min-h-11 min-w-11 gap-2 px-4 text-base',
+				root: 'min-h-[52px] min-w-[52px] gap-2 px-4 text-base',
 				icon: 'size-5',
 				count: 'text-sm',
 			},

@@ -33,6 +33,7 @@
 <div class="password-wrapper">
 	<Input
 		id={fieldId}
+		size="lg"
 		type={showPassword ? 'text' : 'password'}
 		{autocomplete}
 		{placeholder}

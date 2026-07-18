@@ -79,7 +79,7 @@
 
 {#if variant === 'inline'}
 	<div role="group" aria-label={m.palette_switcher_label()} class="flex flex-col gap-1.5">
-		<span class="text-(length:--text-sm) font-semibold text-foreground-muted"
+		<span class="text-(length:--text-sm) font-semibold text-muted-foreground"
 			>{m.palette_switcher_label()}</span
 		>
 		{@render paletteGrid()}

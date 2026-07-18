@@ -2,6 +2,7 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import type { SharePlatformInfo } from '$lib/modules/sharing/types.js';
 	import type { Snippet } from 'svelte';
+	import { Button } from '$lib/components/base/button/index.js';
 
 	interface ShareMethodButtonProps {
 		platform: SharePlatformInfo;
@@ -21,8 +22,10 @@
 </script>
 
 <!-- Sticker share row (issue #102 REQ-16): ink border, hard shadow lift on hover. -->
-<a
-	class="flex h-12 cursor-pointer items-center gap-3 rounded-[10px] border-2 border-ink bg-card px-4 no-underline transition-[transform,box-shadow,background-color] hover:bg-panel-hover hover:shadow-sticker-sm motion-safe:hover:-translate-y-0.5"
+<Button
+	intent="secondary"
+	size="xl"
+	class="w-full justify-start gap-3 no-underline"
 	{href}
 	rel="external noopener noreferrer"
 	aria-label={platform.label}
@@ -33,8 +36,8 @@
 	>
 		{@render icon()}
 	</div>
-	<span class="flex-1 whitespace-nowrap text-sm font-semibold text-foreground">
+	<span class="flex-1 whitespace-nowrap text-left font-semibold text-foreground">
 		{platform.label}
 	</span>
-	<ChevronRightIcon class="size-3.5 flex-shrink-0 text-ink-soft" />
-</a>
+	<ChevronRightIcon class="size-3.5 flex-shrink-0 text-muted-foreground" />
+</Button>

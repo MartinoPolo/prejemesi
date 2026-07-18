@@ -38,7 +38,7 @@
 				: m.draft_grid_priority_toggle({ name })}
 			class={cn(
 				'border-input bg-input-surface focus-visible:border-ring focus-visible:ring-ring/50 flex size-7 shrink-0 items-center justify-center rounded-[6px] border shadow-xs outline-none transition-colors hover:border-[color-mix(in_oklch,var(--destructive)_50%,var(--border))] focus-visible:ring-3',
-				isHigh ? 'text-destructive' : 'text-foreground-muted',
+				isHigh ? 'text-destructive' : 'text-muted-foreground',
 			)}
 		>
 			<HeartIcon class={cn('size-4', isHigh && 'fill-current')} aria-hidden="true" />

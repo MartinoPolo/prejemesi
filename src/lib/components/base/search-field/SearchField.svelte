@@ -8,6 +8,7 @@
 		ref = $bindable(null),
 		value = $bindable(),
 		children,
+		size = 'md',
 		class: className,
 		...restProps
 	}: SearchFieldProps = $props();
@@ -16,13 +17,13 @@
 <div data-slot="search-field">
 	<div class="relative">
 		<SearchIcon
-			class="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-foreground-subtle"
+			class="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
 		/>
 		<input
 			bind:this={ref}
 			bind:value
 			data-slot="search-field-input"
-			class={cn(inputVariants(), 'pl-9', className)}
+			class={cn(inputVariants({ size }), 'pl-9', className)}
 			type="search"
 			{...restProps}
 		/>

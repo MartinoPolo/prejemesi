@@ -405,14 +405,14 @@
 		<div class="flex flex-col gap-6">
 			<div class="flex flex-wrap items-end gap-4">
 				<div>
-					<p class="mb-2 text-sm text-foreground-muted">Primary with Enter shortcut</p>
+					<p class="mb-2 text-sm text-muted-foreground">Primary with Enter shortcut</p>
 					<Button intent="primary" {...args}>
 						Create
 						<Kbd format="lucide" tone="inverted"><CornerDownLeftIcon /></Kbd>
 					</Button>
 				</div>
 				<div>
-					<p class="mb-2 text-sm text-foreground-muted">Primary with mono shortcut</p>
+					<p class="mb-2 text-sm text-muted-foreground">Primary with mono shortcut</p>
 					<Button intent="primary" {...args}>
 						Inspect
 						<Kbd format="mono" tone="inverted">I</Kbd>
@@ -420,28 +420,28 @@
 				</div>
 			</div>
 			<div>
-				<p class="mb-2 text-sm text-foreground-muted">Ghost with Esc shortcut</p>
+				<p class="mb-2 text-sm text-muted-foreground">Ghost with Esc shortcut</p>
 				<Button intent="ghost" {...args}>
 					Cancel
 					<Kbd format="lucide">Esc</Kbd>
 				</Button>
 			</div>
 			<div>
-				<p class="mb-2 text-sm text-foreground-muted">Ghost with Backspace shortcut</p>
+				<p class="mb-2 text-sm text-muted-foreground">Ghost with Backspace shortcut</p>
 				<Button intent="ghost" {...args}>
 					Back
 					<Kbd format="lucide"><DeleteIcon /></Kbd>
 				</Button>
 			</div>
 			<div>
-				<p class="mb-2 text-sm text-foreground-muted">Secondary with Enter shortcut</p>
+				<p class="mb-2 text-sm text-muted-foreground">Secondary with Enter shortcut</p>
 				<Button intent="secondary" {...args}>
 					Confirm
 					<Kbd format="lucide"><CornerDownLeftIcon /></Kbd>
 				</Button>
 			</div>
 			<div>
-				<p class="mb-2 text-sm text-foreground-muted">Secondary with command shortcut</p>
+				<p class="mb-2 text-sm text-muted-foreground">Secondary with command shortcut</p>
 				<Button intent="secondary" {...args}>
 					Search
 					<KbdGroup>
@@ -451,7 +451,7 @@
 				</Button>
 			</div>
 			<div>
-				<p class="mb-2 text-sm text-foreground-muted">Wizard footer example</p>
+				<p class="mb-2 text-sm text-muted-foreground">Wizard footer example</p>
 				<div class="flex items-center gap-2">
 					<Button intent="ghost" size="sm" {...args}>
 						Back

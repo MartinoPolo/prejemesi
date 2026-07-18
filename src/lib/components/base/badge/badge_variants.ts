@@ -7,7 +7,7 @@ export const badgeVariants = tv({
 	base: 'inline-flex items-center justify-center gap-1 font-bold border-2 tracking-[0.01em] whitespace-nowrap [&_[data-icon]]:shrink-0',
 	variants: {
 		tone: {
-			neutral: 'bg-card text-foreground-muted border-ink',
+			neutral: 'bg-card text-muted-foreground border-ink',
 			success:
 				'bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] text-status-success border-ink',
 			warning:
@@ -45,7 +45,7 @@ export const badgeVariants = tv({
 			tone: 'accent',
 			class: 'bg-accent-loud text-accent-loud-foreground',
 		},
-		{ badgeStyle: 'solid', tone: 'neutral', class: 'bg-foreground-muted text-background' },
+		{ badgeStyle: 'solid', tone: 'neutral', class: 'bg-muted-foreground text-background' },
 	],
 	defaultVariants: {
 		tone: 'neutral',

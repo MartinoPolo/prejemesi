@@ -22,7 +22,7 @@
 </script>
 
 {#if links.length === 0}
-	<span class="text-xs text-ink-soft italic">{m.gift_link_none()}</span>
+	<span class="text-xs text-muted-foreground italic">{m.gift_link_none()}</span>
 {:else}
 	<!-- Link tag chips (`anime-sky-final.html` .tag-link): ink pills tinted on hover.
 	     `row` display (issue #165, gift detail modal): a full-width touch target with

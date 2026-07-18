@@ -37,7 +37,9 @@
 
 <Button
 	intent="outline"
+	size="lg"
 	class="w-full"
+	data-testid="google-login"
 	disabled={loading || googleLoading}
 	onclick={handleGoogleLogin}
 >
@@ -67,7 +69,13 @@
 </Button>
 
 {#if showMagicLink}
-	<Button intent="ghost" href={localizeInternalHref(resolve('/magic-link'))} class="mt-2 w-full">
+	<Button
+		intent="ghost"
+		size="lg"
+		href={localizeInternalHref(resolve('/magic-link'))}
+		class="mt-2 w-full"
+		data-testid="magic-link-login"
+	>
 		<MailIcon data-icon="inline-start" />
 		{m.login_magic_link()}
 	</Button>

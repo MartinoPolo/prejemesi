@@ -21,7 +21,7 @@ export const giftDetailActionBarVariants = tv({
 		overlayStack: 'absolute top-2.5 left-2.5 z-10 grid justify-items-start gap-2',
 		note: 'grid -rotate-3 justify-items-center gap-0.5 rounded-[10px] border-2 border-ink bg-[color-mix(in_oklab,var(--reserved)_16%,var(--card))] px-2.5 py-1.5 text-center text-[13px] leading-tight font-extrabold text-reserved shadow-sticker-sm',
 		noteIcon: 'size-3.5',
-		noteSub: 'text-[11px] font-semibold text-ink-soft',
+		noteSub: 'text-[11px] font-semibold text-muted-foreground',
 		purchasedToggle: '-rotate-3 shadow-sticker-sm',
 	},
 });

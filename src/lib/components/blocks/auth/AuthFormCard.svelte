@@ -102,7 +102,7 @@
 		text-align: center;
 		text-decoration: none;
 		border-radius: 8px;
-		color: var(--ink-soft);
+		color: var(--muted-foreground);
 		border: 2px solid transparent;
 		transition:
 			background-color 0.15s ease,
@@ -131,7 +131,7 @@
 
 	.form-subheading {
 		font-size: var(--text-sm);
-		color: var(--ink-soft);
+		color: var(--muted-foreground);
 		margin-bottom: var(--space-6);
 		line-height: var(--leading-relaxed);
 	}

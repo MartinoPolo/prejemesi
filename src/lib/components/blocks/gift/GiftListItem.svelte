@@ -50,21 +50,21 @@
 <div
 	data-testid="gift-list-item"
 	class={cn(
-		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border px-2 py-3 transition-colors hover:bg-muted/50 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center sm:gap-4',
+		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border py-3 transition-colors hover:bg-muted/50 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center sm:gap-4',
 		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 	)}
 >
-	<!-- Shared 4:3 crop (issue #183, revises the earlier 1:1 shape): large on
+	<!-- 1:1 crop (#189, reverts the interim 4:3 list thumb from #183): large on
 	     mobile, 96px minimum width from tablet upward. -->
 	<div
 		data-testid="gift-list-image"
-		class="relative aspect-[4/3] w-[clamp(8rem,39vw,9.5rem)] self-start sm:w-24 sm:self-center"
+		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:w-24 sm:self-center"
 	>
 		<GiftImage
 			class="size-full rounded-lg"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
-			target="square"
+			target="thumb"
 			alt={gift.name}
 			variant="listThumb"
 		/>
@@ -82,9 +82,9 @@
 				giftId={gift.id}
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
-				size="sm"
+				size="md"
 				showCount={false}
-				class="absolute right-2 bottom-2 z-10 size-9 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
+				class="absolute right-2 bottom-2 z-10 size-(--size-control-md) justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
 			/>
 		{/if}
 	</div>
@@ -124,7 +124,7 @@
 			{/if}
 
 			{#if isFullyReserved && reserverLine !== null}
-				<span class="text-xs font-semibold text-ink-soft">{reserverLine}</span>
+				<span class="text-xs font-semibold text-muted-foreground">{reserverLine}</span>
 			{/if}
 		</div>
 

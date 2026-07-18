@@ -47,6 +47,7 @@
 	<Card.Footer class="flex justify-end">
 		<Button
 			type="submit"
+			size="lg"
 			form={NOTIFICATION_PREFERENCES_FORM_ID}
 			disabled={notificationsSaving}
 		>

@@ -24,7 +24,7 @@ export const buttonVariants = tv({
 		intent: {
 			primary: `bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
 			secondary: `bg-card text-ink hover:bg-panel-hover ${STICKER_BUTTON_CLASSES}`,
-			ghost: 'bg-transparent text-foreground-muted hover:bg-accent hover:text-foreground',
+			ghost: 'bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
 			'ghost-overlay':
 				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
 			danger: 'bg-card text-status-danger border-status-danger shadow-sticker-sm hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
@@ -36,6 +36,7 @@ export const buttonVariants = tv({
 			sm: 'h-(--size-control-sm) px-2.25 text-(length:--text-sm) [&_[data-icon]]:size-3.5',
 			md: 'h-(--size-control-md) px-3 text-(length:--text-md) [&_[data-icon]]:size-4',
 			lg: 'h-(--size-control-lg) px-4 text-(length:--text-base) [&_[data-icon]]:size-4',
+			xl: 'h-(--size-control-xl) px-5 text-(length:--text-lg) [&_[data-icon]]:size-5',
 			icon: 'size-(--size-control-md) p-0 [&_svg]:size-4',
 			'icon-sm': 'size-(--size-control-sm) p-0 [&_svg]:size-3.5',
 		},
@@ -51,7 +52,12 @@ export type ButtonSize = keyof typeof buttonVariants.variants.size;
 
 export const BUTTON_INTENTS = Object.keys(buttonVariants.variants.intent) as ButtonIntent[];
 
-export const BUTTON_TEXT_SIZES = ['sm', 'md', 'lg'] as const satisfies ReadonlyArray<ButtonSize>;
+export const BUTTON_TEXT_SIZES = [
+	'sm',
+	'md',
+	'lg',
+	'xl',
+] as const satisfies ReadonlyArray<ButtonSize>;
 export const BUTTON_ICON_SIZES = ['icon', 'icon-sm'] as const satisfies ReadonlyArray<ButtonSize>;
 // Exhaustiveness is enforced here: adding a new size to tv() without updating
 // BUTTON_TEXT_SIZES or BUTTON_ICON_SIZES causes a compile error on this line.

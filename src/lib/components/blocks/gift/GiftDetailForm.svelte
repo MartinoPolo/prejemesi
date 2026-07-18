@@ -56,6 +56,7 @@
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
 		mergeGiftTargetCrops,
+		resolveGiftTargetCrop,
 		seedCropRectFromLegacyMeta,
 		FULL_CROP_RECT,
 		GIFT_CROP_TARGET_SPECS,
@@ -183,13 +184,14 @@
 	function initTargetRects(meta: ImageMetadata | null | undefined) {
 		const rects = {} as Record<GiftEditorCropTarget, ImageCropRect>;
 		for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
-			// A persisted per-target rect restores exactly; otherwise seed from the
-			// base-level metadata (issue #123: a legacy row with focal/zoom but no
-			// cropRect must reconstruct its real framing via seedCropRectFromLegacyMeta,
-			// not silently fall back to the always-centered FULL_CROP_RECT – the stage
-			// snaps this seed to the target's real aspect once the image is measured).
-			const targetCrop =
-				meta?.targets?.[target] ?? (target === 'square' ? meta?.targets?.card : undefined);
+			// A persisted per-target rect restores exactly; the shared carry-over chain
+			// (`resolveGiftTargetCrop`) keeps this editor seed in lockstep with the
+			// renderer's fallback. Otherwise seed from the base-level metadata (issue
+			// #123: a legacy row with focal/zoom but no cropRect must reconstruct its
+			// real framing via seedCropRectFromLegacyMeta, not silently fall back to the
+			// always-centered FULL_CROP_RECT – the stage snaps this seed to the target's
+			// real aspect once the image is measured).
+			const targetCrop = resolveGiftTargetCrop(meta?.targets, target);
 			rects[target] =
 				targetCrop !== undefined
 					? { ...targetCrop.cropRect }
@@ -292,7 +294,8 @@
 	});
 
 	const targetLabels = {
-		square: () => m.gift_image_target_square(),
+		square: () => m.gift_image_target_card(),
+		thumb: () => m.gift_image_target_thumb(),
 	} as const satisfies Record<GiftEditorCropTarget, () => string>;
 
 	// Legacy `auto` honesty (#183 EXTRA): a persisted `auto` fitMode resolves to
@@ -343,6 +346,12 @@
 	const presentedEditorMode = $derived(
 		legacyAutoRendersAsFit ? IMAGE_EDITOR_MODES.fit : editorMode,
 	);
+
+	// Adaptive stage sizing (#189 REQ-4/5): the stage tracks the photo's natural
+	// aspect (portrait renders tall, landscape wide) within the min/max caps applied
+	// on the wrapper, so the whole photo is visible at default zoom. Falls back to the
+	// 4:3 card aspect until the probe (`measuredNaturalRatio`) resolves the real ratio.
+	const stageAspectRatio = $derived(measuredNaturalRatio ?? GIFT_CROP_TARGET_SPECS.square.aspect);
 
 	function setEditorMode(value: string) {
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
@@ -550,23 +559,26 @@
 	<div
 		class={cn(
 			styles.imageColumn(),
-			// Edit form only (issue #156): the shared border-ink-faint dashed divider
-			// read as an unfinished thin grey line. The dotted mat + surface tint
-			// (already part of the shared imageColumn slot) carries the "mode control +
-			// preview" grouping on its own, so the seam border is dropped here without
-			// touching the shared slot used by the visitor view mode (issue #165).
-			'border-none border-b-0 sm:border-r-0',
-			previewSrc !== null && 'sticky top-0 z-10 h-[400px] sm:static sm:h-auto',
+			// Photo-workshop treatment (issue #189 REQ-6): the inset sticker panel below
+			// supplies the framing, so the shared dashed column seam stays dropped in edit
+			// mode (issue #156); the column is just the dotted mat the panel floats on.
+			// `h-auto` + `justify-center`: the panel takes its intrinsic (photo-aspect,
+			// capped) height and centers on the mat — replacing the old fixed
+			// `h-[400px]` that clipped tall portraits (issue #189 REQ-5).
+			'flex h-auto flex-col justify-center border-none border-b-0 p-3 sm:border-r-0 sm:p-4',
+			previewSrc !== null && 'sticky top-0 z-10 sm:static',
 		)}
 		data-testid="gift-image-column"
 	>
 		{#if hasImage}
-			<div class="flex size-full flex-col">
-				<!-- Display-mode control (#116 round 3): lives with the preview it drives.
-				     `presentedEditorMode` (#183 EXTRA) normalizes an untouched legacy
-				     `auto` row to the mode it actually renders as, so the highlighted
-				     button never contradicts the stage below it. -->
-				<div class="flex justify-center px-4 pt-3">
+			<!-- Photo-workshop panel (issue #189 REQ-6): groups the mode pill + adaptive
+			     stage + preview tiles as one designed sticker unit on the dotted mat. -->
+			<div class={styles.modeSectionPanel()}>
+				<!-- Display-mode control (#116 round 3): lives with the preview it drives,
+				     docked on the panel's top edge. `presentedEditorMode` (#183 EXTRA)
+				     normalizes an untouched legacy `auto` row to the mode it actually
+				     renders as, so the highlighted pill never contradicts the stage below. -->
+				<div class="flex flex-none justify-center pb-2.5">
 					<ToggleGroup.Root
 						type="single"
 						value={presentedEditorMode}
@@ -586,14 +598,18 @@
 					</ToggleGroup.Root>
 				</div>
 				{#if previewSrc !== null}
-					<div class="relative min-h-0 flex-1">
-						<!-- Manual: the interactive per-target crop stage (#116 REQ-2).
-						     Fill/Fit: the SAME stage, non-interactive – a static bordered
-						     4:3 window showing exactly the cover (Fill) or contained (Fit)
-						     framing (#183 REQ-6/7); a wheel gesture still promotes to
-						     Manual, matching the previous plain-preview behavior. -->
+					<!-- Adaptive stage (issue #189 REQ-4/5): the whole photo renders
+					     contained and always fully visible; the box tracks the photo's
+					     natural aspect within min/max caps (portrait tall, landscape wide).
+					     Manual: interactive per-target crop. Fill/Fit: the SAME stage,
+					     non-interactive, showing exactly the cover (Fill) or letterboxed
+					     (Fit) framing; a wheel gesture still promotes to Manual. -->
+					<div
+						class="relative min-h-[220px] w-full max-h-[46dvh] sm:max-h-[440px]"
+						style="aspect-ratio: {stageAspectRatio};"
+					>
 						<ImageCropStage
-							class="size-full p-4 pt-2 pb-2"
+							class="size-full"
 							src={previewSrc}
 							alt={name || m.gift_image_preview()}
 							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
@@ -622,9 +638,9 @@
 							>
 								<PencilIcon data-icon="solo" />
 							</Button>
-							<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
+							<!-- Floating over the stage's lower edge; clicking one jumps to Manual. -->
 							<GiftImagePreviewSlots
-								class="absolute inset-x-0 bottom-3"
+								class="absolute inset-x-0 bottom-2"
 								src={previewSrc}
 								alt={name || m.gift_image_preview()}
 								imageMeta={currentImageMeta}
@@ -637,7 +653,7 @@
 						<!-- Below the stage (not overlapping: every stage pixel matters here);
 						     the tiles are the only crop-target switcher (round 3). -->
 						<GiftImagePreviewSlots
-							class="px-4 pb-3"
+							class="flex-none pt-2.5"
 							src={previewSrc}
 							alt={name || m.gift_image_preview()}
 							imageMeta={currentImageMeta}
@@ -649,7 +665,8 @@
 			</div>
 		{:else}
 			<!-- Empty state (issue #131 REQ-2): the whole column is an explicit
-			     clickable upload placeholder, not just a preview label. -->
+			     clickable upload placeholder, restyled as a sticker panel (issue #189
+			     REQ-6) so the empty column reads as intentional as the filled one. -->
 			<button
 				type="button"
 				class={styles.imagePlaceholder()}
@@ -657,10 +674,10 @@
 				aria-label={m.gift_image_upload_cta()}
 			>
 				<UploadIcon class="size-16 text-ink-faint" />
-				<span class="text-sm font-semibold text-ink-soft">
+				<span class="text-sm font-semibold text-muted-foreground">
 					{m.gift_image_upload_cta()}
 				</span>
-				<span class="text-xs text-foreground-subtle">{m.gift_image_upload_hint()}</span>
+				<span class="text-xs text-muted-foreground">{m.gift_image_upload_hint()}</span>
 			</button>
 		{/if}
 	</div>
@@ -805,9 +822,9 @@
 				</div>
 
 				<!-- Price + Currency -->
-				<div class="mt-3 {styles.formRow()}">
+				<div class="mt-3 {styles.formRow()}" data-testid="gift-price-currency-row">
 					<div class={styles.formField()}>
-						<div class="flex items-center justify-between gap-2">
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
 							<Label for="gift-price">{m.gift_price_label()}</Label>
 							<div class="flex items-center gap-1.5">
 								<Label
@@ -874,9 +891,11 @@
 						{/if}
 					</div>
 					<div class={styles.formField()}>
-						<Label>{m.gift_currency_label()}</Label>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label>{m.gift_currency_label()}</Label>
+						</div>
 						<Select.Root type="single" bind:value={currency}>
-							<Select.Trigger size="sm" class="w-full">
+							<Select.Trigger size="md" class="w-full">
 								{GIFT_CURRENCY_LABELS[currency]}
 							</Select.Trigger>
 							<Select.Content>
@@ -892,60 +911,69 @@
 					</div>
 				</div>
 
-				<!-- Quantity -->
-				<div class="mt-3 {styles.formField()}">
-					<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
-					<Input
-						id="gift-quantity"
-						bind:value={quantity}
-						type="number"
-						min={locked ? String(currentQuantity) : '1'}
-						placeholder="1"
-					/>
-					{#if locked}
-						<HelpText
-							class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
-						>
-							{m.gift_quantity_frozen_help()}
-						</HelpText>
+				<!-- Quantity + Priority -->
+				<div
+					class={cn('mt-3', priorityLevels.length > 0 && styles.formRow())}
+					data-testid="gift-quantity-priority-row"
+				>
+					<div class={styles.formField()}>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
+						</div>
+						<Input
+							id="gift-quantity"
+							bind:value={quantity}
+							type="number"
+							min={locked ? String(currentQuantity) : '1'}
+							placeholder="1"
+						/>
+						{#if locked}
+							<HelpText
+								class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
+							>
+								{m.gift_quantity_frozen_help()}
+							</HelpText>
+						{/if}
+					</div>
+
+					{#if priorityLevels.length > 0}
+						<div class={styles.formField()}>
+							<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+								<Label>{m.gift_priority_label()}</Label>
+							</div>
+							<Select.Root type="single" bind:value={priorityLevelId}>
+								<Select.Trigger size="md" class="w-full">
+									{#if priorityLevelId}
+										{@const selectedLabel =
+											priorityLevels.find((p) => p.id === priorityLevelId)
+												?.label ?? ''}
+										{selectedLabel !== ''
+											? (getPriorityDisplay(selectedLabel)?.label() ??
+												selectedLabel)
+											: m.gift_priority_select()}
+									{:else}
+										{m.gift_priority_none()}
+									{/if}
+								</Select.Trigger>
+								<Select.Content>
+									<Select.Group>
+										<Select.Item value="" label={m.gift_priority_none()}
+											>{m.gift_priority_none()}</Select.Item
+										>
+										{#each priorityLevels as level (level.id)}
+											{@const levelLabel =
+												getPriorityDisplay(level.label)?.label() ??
+												level.label}
+											<Select.Item value={level.id} label={levelLabel}>
+												{levelLabel}
+											</Select.Item>
+										{/each}
+									</Select.Group>
+								</Select.Content>
+							</Select.Root>
+						</div>
 					{/if}
 				</div>
-
-				<!-- Priority -->
-				{#if priorityLevels.length > 0}
-					<div class="mt-3 {styles.formField()}">
-						<Label>{m.gift_priority_label()}</Label>
-						<Select.Root type="single" bind:value={priorityLevelId}>
-							<Select.Trigger class="w-full">
-								{#if priorityLevelId}
-									{@const selectedLabel =
-										priorityLevels.find((p) => p.id === priorityLevelId)
-											?.label ?? ''}
-									{selectedLabel !== ''
-										? (getPriorityDisplay(selectedLabel)?.label() ??
-											selectedLabel)
-										: m.gift_priority_select()}
-								{:else}
-									{m.gift_priority_none()}
-								{/if}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Group>
-									<Select.Item value="" label={m.gift_priority_none()}
-										>{m.gift_priority_none()}</Select.Item
-									>
-									{#each priorityLevels as level (level.id)}
-										{@const levelLabel =
-											getPriorityDisplay(level.label)?.label() ?? level.label}
-										<Select.Item value={level.id} label={levelLabel}>
-											{levelLabel}
-										</Select.Item>
-									{/each}
-								</Select.Group>
-							</Select.Content>
-						</Select.Root>
-					</div>
-				{/if}
 
 				<!-- Image (last field: source input only – the display-mode control and
 			     the clickable target tiles live in the image column with the

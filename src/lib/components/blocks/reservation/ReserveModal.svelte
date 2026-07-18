@@ -135,13 +135,14 @@
 
 		{#if gift}
 			<div class={styles.body()}>
-				<!-- Gift summary -->
+				<!-- Gift summary: the small square icon is an EXACT 1:1 `thumb` consumer
+				     (#189) – it renders the same crop as the wishlist list row. -->
 				<div class={styles.giftSummary()}>
 					<GiftImage
 						class={styles.giftImage()}
 						imageUrl={gift.imageUrl}
 						imageMeta={gift.imageMeta}
-						target="square"
+						target="thumb"
 						alt={gift.name}
 					/>
 					<div class={styles.giftInfo()}>

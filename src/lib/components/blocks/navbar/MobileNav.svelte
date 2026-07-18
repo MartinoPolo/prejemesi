@@ -75,7 +75,7 @@
 		     instead of the topbar (DECISIONS.md, mobile control consolidation). -->
 		<div class="flex flex-col gap-3 border-t border-border p-4">
 			<span
-				class="text-(length:--text-xs) font-bold uppercase tracking-wider text-foreground-subtle"
+				class="text-(length:--text-xs) font-bold uppercase tracking-wider text-muted-foreground"
 			>
 				{m.settings_appearance_title()}
 			</span>

@@ -68,7 +68,9 @@
 	<span
 		class={cn(
 			'mt-0.5 flex size-8 shrink-0 -rotate-3 items-center justify-center rounded-[9px] border-2 border-ink',
-			notification.read ? 'bg-surface text-ink-soft' : 'bg-primary text-primary-foreground',
+			notification.read
+				? 'bg-surface text-muted-foreground'
+				: 'bg-primary text-primary-foreground',
 		)}
 	>
 		<IconComponent class="size-4" />
@@ -85,11 +87,11 @@
 			{notification.message}
 		</p>
 		{#if notification.actorName}
-			<p class="whitespace-normal break-words text-xs text-ink-soft">
+			<p class="whitespace-normal break-words text-xs text-muted-foreground">
 				{notification.actorName}
 			</p>
 		{/if}
-		<p class="truncate text-xs text-ink-soft">{relativeTime}</p>
+		<p class="truncate text-xs text-muted-foreground">{relativeTime}</p>
 	</div>
 
 	<!-- Unread dot -->

@@ -1,5 +1,10 @@
 # Control Heights (App-Wide Scale + Larger Input Variant) — Design Brief
 
+> **Status**: Refined (Variant A)
+> **Refined mockup**: `designs/control-heights/refined.html`
+> **Summary**: `designs/control-heights/SUMMARY.md`
+> **Refinements**: uniform `lg` auth stack confirmed (magic link ghost `lg`; primary does NOT step up to `xl`), circled close button (#164) kept, firmer form labels (darker/bolder token, NOT an ink flip), ink-outline segmented toggle, dialog header typography on the app's own scale (§3.9)
+
 Adjacent controls across the app render at inconsistent heights: on the login card the primary „Přihlásit se" button (38 px) towers over the Google button, magic-link button, and inputs (all 32 px); in the gift edit modal the priority select is an off-scale 36 px next to 32 px inputs, and the price/currency row misaligns because its two label rows differ in height; landing/share surfaces hardcode 44–48 px heights outside any scale. This design formalizes ONE control-height scale (tokens + component size variants), adds the missing larger Input variant, wires the Select trigger to the tokens (the systemic half of #141 that was never done — #141 closed with a local `size="sm"` fix only), and prescribes the app-wide sweep that unifies every adjacent control group.
 
 **Source**: issue #159.
@@ -126,6 +131,47 @@ Exempt: textareas (REQ-4), checkbox/radio/switch, nav pills + auth tabs (navigat
 
 No new visible copy. All Czech labels quoted here already exist. Any copy the mockup adds must never use em-dashes (—) in Czech text; use comma, colon, or spaced en-dash.
 
+### 3.9 Dialog chrome styling (added in refinement)
+
+Decisions from the refinement review of Variant A's dialog rendering — implementation scope, not
+mockup-only styling:
+
+- **Firmer form labels** (revised — supersedes the earlier "labels → ink" note): the base `Label`
+  stays muted-by-role but is darkened and emboldened — ≈62% → ≈72% ink, weight 500 → 600, size
+  unchanged (12 px). This preserves the deliberate label→value hierarchy. An app-wide ink flip was
+  rejected: it flattens dense forms (e.g. the gift-edit modal's 6+ fields become a wall of
+  equal-weight ink) and collides with the ~5 deliberately-muted spots (price-range toggle,
+  notification matrix, reserve summary) and the inverted read-only value rows. **Scope the change
+  to `Label` only** — do NOT darken the global `--muted-foreground` token; helper/meta/description
+  text must stay ~62%. Contrast is a second motivation: 62% navy at 12 px likely fails WCAG AA
+  (~3.5:1); ≈72% clears it.
+- **Segmented toggle** („Pro mě" / „Pro někoho jiného"): two separate ink-outline buttons with a
+  small gap, NOT joined solid-primary segments. Active: accent fill + ink border + sticker shadow;
+  inactive: `border-border`, muted text, no shadow. Height `lg` per §3.5.
+- **Overlay close button**: the production circled X (`overlayCloseButtonClass`, #164) stays in
+  every dialog/sheet. The variant mockup's bare `×` is rejected.
+- **Dialog header typography**: title steps up to **22 px (`text-2xl`) DynaPuff semibold** on the
+  app's own scale — NOT the mockup's off-scale 21 px / Noto Sans. (The variant links the legacy
+  `designs/tokens.css` — Noto Sans + a larger scale — which is NOT the live `src/app.css`:
+  DynaPuff headings, Geist body, scale `xs 11 · sm 12 · base 14 · lg 15 · xl 17 · 2xl 22 · 3xl 28`.)
+  **Revised after visual review**: an initial pass sized this at `text-xl` (17 px, converging on
+  `GiftDraftDialog`/`GiftDetailView`); user compared both sizes directly (devtools) and preferred
+  the larger title. Since the live scale has nothing at 21 px, `text-2xl` (22 px) — already used
+  for empty-state headings — is the nearest on-scale token, visually equivalent to 21 px without
+  inventing a bespoke value. Description stays `text-sm` (12 px) muted with a tight gap. One
+  shared change in base `Dialog.Title`.
+- **Title/heading ladder** (app-wide standard settled in this review, on the DynaPuff scale):
+  page `clamp(26–34)` → dialog & section/empty-state `text-2xl` 22 → content-card `text-xl` 17
+  → dense/utility card `text-base` 14. Fold the current card-title sprawl (12 / 14 / 16 / 17) onto
+  these two card tiers; 17 px "content heading" (gift & wishlist cards) is already the de-facto
+  standard, 14 px stays for settings/utility cards.
+- **Secondary-text consolidation** (mechanical — delegate to Haiku/Sonnet subagents): collapse to
+  one helper/description token — `muted-foreground` at 12 px (`text-sm`) — replacing the current
+  mix of `foreground-subtle` (55% / 11 px) and `ink-soft`; route field helpers through `HelpText`
+  rather than raw `<p>`; and collapse the `muted-foreground` / `ink-soft` name duplication (same
+  value, two names).
+- Button sticker shadows in dialog footers: already consistent on dev, no action from this brief.
+
 ---
 
 ## 4. States
@@ -231,7 +277,7 @@ From `src/app.css` (canonical source; `designs/tokens.css` is reference only):
 ## 11. Not Included (Scope Exclusions)
 
 - Filter dropdown + pills redesign — #161 (this brief only locks the shared height assumptions).
-- Gift edit modal segmented mode section redesign — #156.
+- Gift edit modal segmented mode section redesign — #183 (absorbed #156).
 - Navbar language-switcher typography — #181 (heights of the icon cluster are already 32 px; only type alignment remains there).
 - Nav pill link styling (36 px) and auth-tab nav — navigation, not form controls.
 - Gift modal reserve/like sticker action bar (~52 px) — bespoke hero actions per Redesign 2026 round-2 decision.

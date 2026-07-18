@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
 	import type { Attachment } from 'svelte/attachments';
@@ -304,7 +305,7 @@
 							class="flex size-6 items-center justify-center rounded-full border-2 text-xs font-bold {index <=
 							currentStepIndex
 								? 'border-ink bg-primary text-primary-foreground'
-								: 'border-ink-faint bg-surface text-ink-soft'}"
+								: 'border-ink-faint bg-surface text-muted-foreground'}"
 						>
 							{#if index < currentStepIndex}
 								<CheckIcon class="size-3.5" />
@@ -315,7 +316,7 @@
 						<span
 							class="text-xs {index === currentStepIndex
 								? 'font-bold text-foreground'
-								: 'font-semibold text-ink-soft'}"
+								: 'font-semibold text-muted-foreground'}"
 						>
 							{STEP_LABELS[index]()}
 						</span>
@@ -370,9 +371,9 @@
 									required
 									{@attach autofocusOnMount}
 								/>
-								<p class="text-muted-foreground text-sm">
+								<HelpText>
 									{m.create_recipient_name_helper()}
-								</p>
+								</HelpText>
 							</div>
 						{/if}
 					</div>

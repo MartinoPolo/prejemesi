@@ -41,16 +41,17 @@
 		class: className,
 	}: Props = $props();
 
-	// A single live preview sits under the big image-column stage (issue #165: the
-	// `detail` editor target was retired, so `square` – the shared card/list/
-	// reservation/detail-modal crop family – is the only tile left). It doubles as
-	// the crop target switcher (#116 round 3), rendering its own per-target framing
-	// so the strip never lies about how the crop will actually look.
+	// Two live preview tiles sit under the big image-column stage (#189): „Karta"
+	// (the 4:3 card family, the `square` target – a documented misnomer) and
+	// „Seznam a rezervace" (the true 1:1 `thumb` target, the EXACT wishlist-list
+	// row + reservation-thumb preview). Each tile doubles as the crop target
+	// switcher (#116 round 3), rendering its own per-target framing so the strip
+	// never lies about how the crop will actually look.
 	const TILES = [
 		{
 			key: 'square',
 			target: 'square',
-			label: m.gift_image_target_square,
+			label: m.gift_image_target_card,
 			// Height-only (issue #183): the `square` target is 4:3, not 1:1, so the
 			// width must be derived from `aspect-ratio` below rather than fixed –
 			// `size-14` (equal width+height) would leave both dimensions definite
@@ -58,6 +59,13 @@
 			// exactly one axis is definite) would never apply, rendering a square.
 			sizing: 'h-14',
 			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
+		},
+		{
+			key: 'thumb',
+			target: 'thumb',
+			label: m.gift_image_target_thumb,
+			sizing: 'size-14',
+			cssAspect: GIFT_CROP_TARGET_SPECS.thumb.cssAspect,
 		},
 	] as const satisfies readonly {
 		key: string;

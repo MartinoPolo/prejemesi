@@ -2,10 +2,10 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import { Badge } from '$lib/components/base/badge/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
-	import XIcon from '@lucide/svelte/icons/x';
+	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 
 	interface GiftLinkRowProps {
@@ -44,14 +44,26 @@
 	const urlErrorId = $derived(
 		hasUrlError ? `gift-link-${link.id ?? link.url}-url-error` : undefined,
 	);
+	const labelInputId = $derived(`gift-link-${link.id ?? link.url}-label`);
+	// The sr-only primacy hint (badge dropped, #189 refine) is wired to the URL input
+	// so it is announced in focus mode too, not only when browsing the DOM.
+	const primaryHintId = $derived(
+		isPrimary ? `gift-link-${link.id ?? link.url}-primary` : undefined,
+	);
+	const urlDescribedBy = $derived(
+		[primaryHintId, urlErrorId].filter((id) => id !== undefined).join(' ') || undefined,
+	);
 </script>
 
-<div class="flex flex-col gap-1.5 rounded-md border border-border/60 p-2.5">
+<div class="flex flex-col gap-1.5">
+	<!-- URL row: bordered input + reorder + trash to the right (issue #189 REQ-7,
+	     accepted mockup styling — dropped the heavy bordered-card wrapper). -->
 	<div class="flex items-center gap-1.5">
 		{#if isPrimary}
-			<Badge tone="neutral" badgeStyle="subtle" class="shrink-0 text-[10px]">
-				{m.gift_link_primary()}
-			</Badge>
+			<!-- First link is primary by order (issue #189 refine dropped the visible
+			     „Hlavní" badge); an sr-only hint (wired to the input via
+			     aria-describedby) keeps the primacy legible to AT. -->
+			<span id={primaryHintId} class="sr-only">{m.gift_link_primary()}</span>
 		{/if}
 
 		<Input
@@ -63,7 +75,7 @@
 			{disabled}
 			state={hasUrlError ? 'error' : 'default'}
 			aria-invalid={hasUrlError ? true : undefined}
-			aria-describedby={urlErrorId}
+			aria-describedby={urlDescribedBy}
 			oninput={(e: Event) => onurlchange((e.target as HTMLInputElement).value)}
 		/>
 
@@ -98,18 +110,27 @@
 			onclick={onremove}
 			aria-label={m.gift_link_remove()}
 		>
-			<XIcon />
+			<TrashIcon />
 		</Button>
 	</div>
 
-	<Input
-		class="text-sm"
-		value={link.label ?? ''}
-		placeholder={m.gift_link_label_placeholder()}
-		type="text"
-		{disabled}
-		oninput={(e: Event) => onlabelchange((e.target as HTMLInputElement).value)}
-	/>
+	<!-- Visible label (issue #189 REQ-7): the per-link label is the text gift cards
+	     render (defaults to the URL's domain); a visible „Viditelný popisek" label
+	     disambiguates it from the gift „Popis" (description) field above. -->
+	<div class="flex items-center gap-2 pl-0.5">
+		<Label for={labelInputId} class="shrink-0 text-xs font-medium text-muted-foreground">
+			{m.gift_link_visible_label()}
+		</Label>
+		<Input
+			id={labelInputId}
+			class="flex-1 text-sm"
+			value={link.label ?? ''}
+			placeholder={m.gift_link_label_placeholder()}
+			type="text"
+			{disabled}
+			oninput={(e: Event) => onlabelchange((e.target as HTMLInputElement).value)}
+		/>
+	</div>
 
 	{#if hasUrlError}
 		<span id={urlErrorId} class="text-xs text-destructive">{urlError}</span>

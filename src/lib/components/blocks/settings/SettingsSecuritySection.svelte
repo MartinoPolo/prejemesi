@@ -105,6 +105,7 @@
 					<div class="relative">
 						<Input
 							id="settings-current-password"
+							size="lg"
 							type={showCurrentPassword ? 'text' : 'password'}
 							autocomplete="current-password"
 							bind:value={currentPassword}
@@ -140,6 +141,7 @@
 					<div class="relative">
 						<Input
 							id="settings-new-password"
+							size="lg"
 							type={showNewPassword ? 'text' : 'password'}
 							autocomplete="new-password"
 							bind:value={newPassword}
@@ -174,6 +176,7 @@
 				{#snippet children({ hasError, errorId }: FieldControlContext)}
 					<Input
 						id="settings-confirm-password"
+						size="lg"
 						type="password"
 						autocomplete="new-password"
 						bind:value={confirmPassword}
@@ -193,6 +196,7 @@
 	</Card.Content>
 	<Card.Footer class="flex justify-end">
 		<Button
+			size="lg"
 			onclick={handleChangePassword}
 			disabled={saving || !currentPassword || !newPassword || !confirmPassword}
 		>

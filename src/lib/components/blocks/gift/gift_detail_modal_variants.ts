@@ -14,8 +14,10 @@ export const giftDetailModalVariants = tv({
 		// Mobile: a single scrolling flex column so the image and fields share one
 		// scroll region inside the 90dvh-capped dialog (issue: mobile edit dialog UX).
 		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
-		// split (issue #183 REQ-9, revises the earlier 45/55 split).
-		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:min-h-[520px] sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
+		// split (issue #183 REQ-9, revises the earlier 45/55 split). No min-height:
+		// the grid takes its height from the columns' content (form column /
+		// adaptive stage), capped at 90dvh by `content` above (#189 REQ-5).
+		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
 		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
 		// images keep the mat visible; a dashed ink seam separates image and form columns.
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
@@ -25,11 +27,18 @@ export const giftDetailModalVariants = tv({
 		// `body` scroll (mobile edit dialog UX fix).
 		imageColumn:
 			'relative shrink-0 overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
+		// Photo-workshop panel (issue #189 REQ-6): an inset sticker panel that groups
+		// the mode pill + adaptive stage + preview tiles as one designed unit on the
+		// dotted mat, visually distinct from the form column — replaces the de-seamed
+		// full-bleed mat that read as an unfinished wireframe. No thin grey seam.
+		modeSectionPanel:
+			'flex w-full min-h-0 flex-col rounded-panel border-2 border-ink bg-card p-2.5 shadow-sticker',
 		// Empty-state click-to-upload affordance (issue #131 REQ-2/REQ-3): a real
 		// button so it is keyboard-focusable with a visible focus ring, not just a
-		// static label.
+		// static label. Sticker-panel treatment (issue #189 REQ-6) so the empty column
+		// reads as intentional as the filled one.
 		imagePlaceholder:
-			'flex size-full cursor-pointer flex-col items-center justify-center gap-1 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+			'flex size-full cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border-2 border-ink bg-card shadow-sticker outline-none transition-colors hover:bg-panel-hover focus-visible:ring-2 focus-visible:ring-ring',
 		image: 'size-full object-cover',
 		// Mobile: overflow-visible so the pinned actions bar sticks to the BODY scroll
 		// instead of clipping inside this column. shrink-0 (see imageColumn): keeps this
@@ -43,6 +52,7 @@ export const giftDetailModalVariants = tv({
 		formField: 'flex flex-col gap-1.5',
 		formLabel: 'text-sm font-medium text-foreground',
 		formRow: 'grid grid-cols-2 gap-3',
+		formLabelRow: 'flex min-h-6 items-center justify-between gap-2',
 		// Pinned outside the scroll region – always visible in create and edit mode.
 		// Mobile: pinned to the bottom of the body scroll with an opaque bg so fields
 		// scroll behind it. Desktop: sm:static – already pinned by flex in the right column.
@@ -63,9 +73,9 @@ export const giftDetailModalVariants = tv({
 
 		// ── Read-only view mode (issue #165) ──────────────────────────────────
 		// Dedicated slots instead of reusing the edit-mode `body`/`imageColumn`/
-		// `detailColumn` above: the view reads as an enlarged gift card (tighter,
-		// no `sm:min-h-[520px]` dead space), so its own composition rules apply
-		// without risking the edit-mode grid used by #116/#131/#142.
+		// `detailColumn` above: the view reads as an enlarged gift card with its
+		// own composition rules, distinct from the edit-mode grid used by
+		// #116/#131/#142.
 		// Mobile: one scrolling flex column (media, content, sticky action bar).
 		// Desktop: media column + fluid content column sharing row 1 (widened
 		// from 340px alongside the ~1100px modal, issue #183 REQ-10); the action
@@ -103,7 +113,7 @@ export const giftDetailModalVariants = tv({
 			},
 			false: {
 				imageTab:
-					'border-ink bg-card text-foreground-muted hover:bg-accent hover:text-foreground',
+					'border-ink bg-card text-muted-foreground hover:bg-accent hover:text-foreground',
 			},
 		},
 		// Fully-reserved-by-others dimming (REQ-3): applied to the photo and content

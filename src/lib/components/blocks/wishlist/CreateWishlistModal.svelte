@@ -9,6 +9,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import RecipientPreview from './RecipientPreview.svelte';
@@ -132,6 +133,7 @@
 			<ToggleGroup.Root
 				type="single"
 				intent="outline"
+				size="lg"
 				value={recipientKind}
 				onValueChange={(newValue) => {
 					if (newValue !== '') recipientKind = newValue;
@@ -139,28 +141,17 @@
 					recipientTouched = false;
 				}}
 				disabled={isSubmitting}
-				class="border-ink shadow-sticker-sm rounded-btn w-full gap-0 overflow-hidden border-2"
+				class="w-full gap-2"
 			>
-				<!-- Each item drops its own sticker chrome (border/shadow/radius/lift) so the two
-				     segments read as one connected control; the outer Root carries the unified
-				     ink border, radius, and offset shadow. The shadow cancels need `!`: the
-				     sticker chrome's shadow-sticker/hover:shadow-sticker-lift/active:shadow-sticker-sm
-				     are custom theme values tailwind-merge can't dedupe, and Tailwind emits them
-				     after shadow-none, so a plain shadow-none loses the cascade and the hovered
-				     segment (stacking-context'd by hover:translate-y-0) paints its 7px offset
-				     shadow over the adjacent segment. border-transparent is repeated on the
-				     data-[state=on] variant so the active segment's `border-ink` (from the
-				     outline toggle intent) doesn't paint an inner ring. The second segment adds a
-				     single ink left divider (immune to state) to avoid a double-thick middle border. -->
 				<ToggleGroup.Item
 					value={RECIPIENT_KIND.self}
-					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:scale-100 active:shadow-none! data-[state=on]:border-transparent"
+					class="flex-1 data-[state=on]:bg-accent data-[state=on]:text-foreground"
 				>
 					{m.create_for_toggle_self()}
 				</ToggleGroup.Item>
 				<ToggleGroup.Item
 					value={RECIPIENT_KIND.other}
-					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:scale-100 active:shadow-none! border-l-ink border-l-2 data-[state=on]:border-transparent data-[state=on]:border-l-ink"
+					class="flex-1 data-[state=on]:bg-accent data-[state=on]:text-foreground"
 				>
 					{m.create_for_toggle_other()}
 				</ToggleGroup.Item>
@@ -175,6 +166,7 @@
 					{#snippet children({ hasError, errorId }: FieldControlContext)}
 						<Input
 							id="wishlist-recipient-name"
+							size="lg"
 							bind:value={recipientName}
 							placeholder={m.create_recipient_name_placeholder()}
 							maxlength={RECIPIENT_NAME_MAX_LENGTH}
@@ -188,9 +180,7 @@
 						/>
 					{/snippet}
 					{#snippet help()}
-						<p class="text-muted-foreground text-sm">
-							{m.create_recipient_name_helper()}
-						</p>
+						<HelpText>{m.create_recipient_name_helper()}</HelpText>
 					{/snippet}
 				</Field>
 				<RecipientPreview name={recipientName} />
@@ -204,6 +194,7 @@
 				{#snippet children({ hasError, errorId }: FieldControlContext)}
 					<Input
 						id="wishlist-title"
+						size="lg"
 						bind:value={title}
 						placeholder={m.wishlist_name_placeholder()}
 						required
@@ -220,6 +211,7 @@
 				<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
 				<DatePicker
 					id="wishlist-event-date"
+					size="lg"
 					bind:value={eventDate}
 					disabled={isSubmitting}
 				/>
@@ -254,12 +246,13 @@
 				<Button
 					type="button"
 					intent="outline"
+					size="lg"
 					onclick={() => handleOpenChange(false)}
 					disabled={isSubmitting}
 				>
 					{m.cancel()}
 				</Button>
-				<Button type="submit" disabled={isSubmitting}>
+				<Button type="submit" size="lg" disabled={isSubmitting}>
 					{#if isSubmitting}
 						<LoaderIcon class="animate-spin" data-icon="inline-start" />
 						{m.creating()}

@@ -87,7 +87,7 @@
 			data-testid="gift-detail-view-scroll"
 		>
 			<div class="flex flex-wrap items-center gap-2 pr-12">
-				<h2 class="font-heading text-xl font-semibold text-foreground">{gift.name}</h2>
+				<h2 class="font-heading text-2xl font-semibold text-foreground">{gift.name}</h2>
 				<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 				{#if gift.received}
 					<Badge tone="neutral" class="gap-1 text-[11px]">
@@ -101,7 +101,7 @@
 				{#if gift.price !== null}
 					<span class="text-lg font-bold text-foreground">{priceDisplay}</span>
 				{:else}
-					<span class="text-sm text-ink-soft italic">{priceDisplay}</span>
+					<span class="text-sm text-muted-foreground italic">{priceDisplay}</span>
 				{/if}
 
 				{#if priorityInfo}
