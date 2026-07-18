@@ -50,19 +50,33 @@ const RecipientNameSchema = v.pipe(
  * The choice is immutable after creation — the server derives roles, never the client.
  */
 export type CreateWishlistInput =
-	| { recipientKind: 'self'; title: string; eventDate?: Date | null; theme?: WishlistTheme }
+	| {
+			recipientKind: 'self';
+			title: string;
+			eventDate?: Date | null;
+			theme?: WishlistTheme;
+			palette?: Palette;
+			description?: string | null;
+	  }
 	| {
 			recipientKind: 'other';
 			recipientName: string;
 			title: string;
 			eventDate?: Date | null;
 			theme?: WishlistTheme;
+			palette?: Palette;
+			description?: string | null;
 	  };
+
+/** Single valibot schema for a valid {@link Palette}, shared by create + set-palette inputs. */
+const PaletteSchema = v.custom<Palette>(isPalette);
 
 const CreateWishlistBaseFields = {
 	title: v.pipe(v.string(), v.trim(), v.minLength(1)),
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
+	palette: v.optional(PaletteSchema),
+	description: v.optional(v.nullable(v.string())),
 };
 
 export const CreateWishlistInputSchema = v.variant('recipientKind', [
@@ -111,7 +125,7 @@ export type WishlistRole = (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES];
 /** Input for changing a wishlist's palette (Redesign 2026, issue #102). Validated via isPalette(). */
 export const SetWishlistPaletteInputSchema = v.object({
 	wishlistId: v.string(),
-	palette: v.custom<Palette>(isPalette),
+	palette: PaletteSchema,
 });
 
 /** Input for renaming a free-text recipient (správci only; for-someone lists only). */

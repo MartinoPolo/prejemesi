@@ -19,7 +19,7 @@
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
-	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
+	import WishlistPaletteAutoSave from './WishlistPaletteAutoSave.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
@@ -512,7 +512,7 @@
 					<p class="text-sm text-muted-foreground">
 						{m.wishlist_palette_dialog_description()}
 					</p>
-					<WishlistPalettePicker
+					<WishlistPaletteAutoSave
 						wishlistId={wishlist.id}
 						palette={wishlist.palette}
 						onselect={onpaletteselect}
