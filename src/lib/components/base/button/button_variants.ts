@@ -13,7 +13,7 @@ const FILLED_BUTTON_KBD_CLASSES =
  * un-hover → drop → re-hover loop).
  */
 const LIFT_HIT_AREA_CLASSES =
-	"relative after:absolute after:inset-x-0 after:top-full after:h-1 after:content-['']";
+	"relative after:absolute after:inset-x-0 after:top-full after:h-2 after:content-['']";
 
 /** Flat sticker button: ink border, hard offset shadow, spring lift on hover, press-down on active. */
 const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm ${LIFT_HIT_AREA_CLASSES}`;

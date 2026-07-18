@@ -1,4 +1,8 @@
 {
+	"notification_email_wishlist_label": "Seznam přání",
+	"notification_email_from_label": "Od",
+	"notification_email_open_wishlist": "Otevřít seznam",
+	"notification_email_copy_link": "Nebo zkopírujte tento odkaz do prohlížeče:",
 	"app_name": "Přejeme si",
 	"email_label": "E-mail",
 	"password_label": "Heslo",

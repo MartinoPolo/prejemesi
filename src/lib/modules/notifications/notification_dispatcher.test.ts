@@ -23,6 +23,7 @@ const mockRenderActionEmailParts = vi.mocked(renderActionEmailParts);
 interface MockUserRow {
 	id: string;
 	email: string;
+	preferredLocale?: 'cs' | 'en' | null;
 	notificationPreferences: NotificationPreferences | null;
 }
 
@@ -59,6 +60,40 @@ function makeDispatcherDb(userRows: MockUserRow[]) {
 	};
 
 	return { db: db as unknown as ReturnType<typeof getDb>, insertedValues };
+}
+
+function makeWishlistDispatcherDb(
+	userRows: MockUserRow[],
+	wishlistRow: { title: string; shortId: string },
+) {
+	let selectCount = 0;
+
+	const db = {
+		select: () => {
+			const rows = selectCount++ === 0 ? [wishlistRow] : userRows;
+			const query = Promise.resolve(rows);
+			return {
+				from: () => ({
+					where: () => Object.assign(query, { limit: () => Promise.resolve(rows) }),
+				}),
+			};
+		},
+		insert: () => ({
+			values: (rows: Array<{ userId: string }>) => ({
+				returning: () =>
+					Promise.resolve(
+						rows.map((row, index) => ({ id: `notif-${index}`, userId: row.userId })),
+					),
+			}),
+		}),
+		update: () => ({
+			set: () => ({
+				where: () => Promise.resolve(undefined),
+			}),
+		}),
+	};
+
+	return db as unknown as ReturnType<typeof getDb>;
 }
 
 /** Defaults with a single type's entry overridden. */
@@ -185,13 +220,14 @@ describe('dispatchNotification – urlPathOverride', () => {
 		const overridePath = '/w/short-abc/invite/tok-xyz';
 		const testEmail = 'invitee@example.com';
 
-		// Minimal db: wishlist context returns null (no wishlistId), user query returns empty (targetEmails path)
+		// Minimal db: wishlist context returns null (no wishlistId), email-recipient query is empty.
 		const db = {
 			select: () => ({
 				from: () => ({
-					where: () => ({
-						limit: () => Promise.resolve([]),
-					}),
+					where: () => {
+						const query = Promise.resolve([]);
+						return Object.assign(query, { limit: () => Promise.resolve([]) });
+					},
 				}),
 			}),
 			insert: () => ({
@@ -220,6 +256,120 @@ describe('dispatchNotification – urlPathOverride', () => {
 		// The url passed to renderActionEmailParts must be origin + overridePath
 		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
 			expect.objectContaining({ url: `http://localhost:5173${overridePath}` }),
+		);
+	});
+});
+
+describe('dispatchNotification email locale', () => {
+	const type = NOTIFICATION_TYPE.WISHLIST_ARCHIVED;
+	const wishlistRow = { title: "Rosie's birthday", shortId: 'rosie-birthday' };
+
+	it("renders email copy and the wishlist URL in a registered recipient's preferred locale", async () => {
+		const db = makeWishlistDispatcherDb(
+			[
+				{
+					id: 'english-recipient',
+					email: 'english@example.com',
+					preferredLocale: 'en',
+					notificationPreferences: null,
+				},
+			],
+			wishlistRow,
+		);
+		mockGetDb.mockReturnValue(db);
+
+		await dispatchNotification({
+			type,
+			targetUserIds: ['english-recipient'],
+			wishlistId: 'wishlist-id',
+			actorName: 'Martin',
+		});
+
+		expect(mockSendEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				to: 'english@example.com',
+				subject: 'List was archived',
+			}),
+		);
+		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
+			expect.objectContaining({
+				heading: 'List was archived',
+				body: expect.stringContaining("Wishlist: Rosie's birthday"),
+				buttonLabel: 'Open wishlist',
+				copyLinkText: 'Or copy this link into your browser:',
+				url: 'http://localhost:5173/en/w/rosie-birthday',
+			}),
+		);
+	});
+
+	it('falls back to Czech for recipients without a stored locale and email-only recipients', async () => {
+		const db = makeWishlistDispatcherDb(
+			[
+				{
+					id: 'default-recipient',
+					email: 'default@example.com',
+					preferredLocale: null,
+					notificationPreferences: null,
+				},
+			],
+			wishlistRow,
+		);
+		mockGetDb.mockReturnValue(db);
+
+		await dispatchNotification({
+			type,
+			targetUserIds: ['default-recipient'],
+			targetEmails: ['anonymous@example.com'],
+			wishlistId: 'wishlist-id',
+		});
+
+		expect(mockSendEmail).toHaveBeenCalledTimes(2);
+		expect(mockRenderActionEmailParts).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				heading: 'Seznam byl archivován',
+				body: expect.stringContaining("Seznam přání: Rosie's birthday"),
+				buttonLabel: 'Otevřít seznam',
+				copyLinkText: 'Nebo zkopírujte tento odkaz do prohlížeče:',
+				url: 'http://localhost:5173/w/rosie-birthday',
+			}),
+		);
+		expect(mockRenderActionEmailParts).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				heading: 'Seznam byl archivován',
+				url: 'http://localhost:5173/w/rosie-birthday',
+			}),
+		);
+	});
+
+	it('uses the stored locale when an existing recipient is addressed by email only', async () => {
+		const db = makeWishlistDispatcherDb(
+			[
+				{
+					id: 'english-invitee',
+					email: 'invitee@example.com',
+					preferredLocale: 'en',
+					notificationPreferences: null,
+				},
+			],
+			wishlistRow,
+		);
+		mockGetDb.mockReturnValue(db);
+
+		await dispatchNotification({
+			type: NOTIFICATION_TYPE.MODERATOR_INVITED,
+			targetEmails: ['invitee@example.com'],
+			wishlistId: 'wishlist-id',
+			urlPathOverride: '/w/rosie-birthday/invite/token',
+		});
+
+		expect(mockSendEmail).toHaveBeenCalledOnce();
+		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
+			expect.objectContaining({
+				buttonLabel: 'Open wishlist',
+				url: 'http://localhost:5173/en/w/rosie-birthday/invite/token',
+			}),
 		);
 	});
 });
