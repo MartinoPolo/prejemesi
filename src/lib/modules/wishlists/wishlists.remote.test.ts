@@ -144,6 +144,8 @@ interface MockDb {
 	lastSetPayload: () => Record<string, unknown> | undefined;
 	/** Payload passed to the most recent `.values(...)` call (e.g. drizzle insert data). */
 	lastValuesPayload: () => Record<string, unknown> | undefined;
+	/** Payload passed to the Nth `.values(...)` call in order (0 = first insert in the tx). */
+	valuesPayloadAt: (index: number) => Record<string, unknown> | undefined;
 	reset: () => void;
 }
 
@@ -189,6 +191,7 @@ function createMockDb(): MockDb {
 		pushResult: (result: unknown[]) => results.push(result),
 		lastSetPayload: () => setPayloads[setPayloads.length - 1],
 		lastValuesPayload: () => valuesPayloads[valuesPayloads.length - 1],
+		valuesPayloadAt: (index) => valuesPayloads[index],
 		reset: () => {
 			results.length = 0;
 			indexRef.value = 0;
@@ -228,7 +231,7 @@ import {
 	getWishlistByShortId,
 	setWishlistPalette,
 } from './wishlists.remote.js';
-import { FlipRecipientToFreeTextInputSchema } from './types.js';
+import { CreateWishlistInputSchema, FlipRecipientToFreeTextInputSchema } from './types.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
@@ -1082,6 +1085,95 @@ describe('createWishlist', () => {
 				recipientName: 'Grandma',
 			});
 		});
+	});
+
+	describe('optional palette + description at creation', () => {
+		/** Push the two tx results a self-list create expects (wishlist insert, then priority levels). */
+		function pushSelfCreateResults(): void {
+			mockDbInstance.pushResult([makeWishlistRow({ id: 'new-wishlist-id' })]);
+			mockDbInstance.pushResult([]);
+		}
+
+		it('defaults palette to "sky" and description to null when omitted (AC-1)', async () => {
+			pushSelfCreateResults();
+
+			await callCreateWishlist(makeRecipientAuthContext(), {
+				recipientKind: 'self',
+				title: 'X',
+			});
+
+			// The wishlist insert is the FIRST `.values(...)` call in the transaction.
+			expect(mockDbInstance.valuesPayloadAt(0)).toMatchObject({
+				palette: 'sky',
+				description: null,
+			});
+		});
+
+		it('persists a chosen palette (AC-2)', async () => {
+			pushSelfCreateResults();
+
+			await callCreateWishlist(makeRecipientAuthContext(), {
+				recipientKind: 'self',
+				title: 'X',
+				palette: 'ruby',
+			});
+
+			expect(mockDbInstance.valuesPayloadAt(0)).toMatchObject({ palette: 'ruby' });
+		});
+
+		it('trims a provided description (AC-3)', async () => {
+			pushSelfCreateResults();
+
+			await callCreateWishlist(makeRecipientAuthContext(), {
+				recipientKind: 'self',
+				title: 'X',
+				description: '  Moje přání  ',
+			});
+
+			expect(mockDbInstance.valuesPayloadAt(0)).toMatchObject({ description: 'Moje přání' });
+		});
+
+		it('stores null for a whitespace-only description (AC-3)', async () => {
+			pushSelfCreateResults();
+
+			await callCreateWishlist(makeRecipientAuthContext(), {
+				recipientKind: 'self',
+				title: 'X',
+				description: '   ',
+			});
+
+			expect(mockDbInstance.valuesPayloadAt(0)?.description).toBeNull();
+		});
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('CreateWishlistInputSchema', () => {
+	it('accepts an optional palette + description', () => {
+		const result = v.parse(CreateWishlistInputSchema, {
+			recipientKind: 'self',
+			title: 'X',
+			palette: 'mint',
+			description: 'hi',
+		});
+
+		expect(result).toMatchObject({ palette: 'mint', description: 'hi' });
+	});
+
+	it('accepts input with palette + description omitted', () => {
+		expect(() =>
+			v.parse(CreateWishlistInputSchema, { recipientKind: 'self', title: 'X' }),
+		).not.toThrow();
+	});
+
+	it('rejects an invalid palette value', () => {
+		expect(() =>
+			v.parse(CreateWishlistInputSchema, {
+				recipientKind: 'self',
+				title: 'X',
+				palette: 'not-a-palette',
+			}),
+		).toThrow();
 	});
 });
 

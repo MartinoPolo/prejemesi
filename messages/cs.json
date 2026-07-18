@@ -332,6 +332,8 @@
 	"create_recipient_name_required": "Zadejte jméno obdarovaného",
 	"create_recipient_name_placeholder": "Např. Rosie",
 	"create_recipient_name_helper": "Seznam budete spravovat vy a uvidíte rezervace. Volbu nelze později změnit.",
+	"create_more_settings": "Další nastavení",
+	"create_palette_label": "Barevná paleta",
 	"wishlist_gift_count_one": "1 přání",
 	"wishlist_gift_count_other": "{count} přání",
 	"wishlist_status_aria": "Stav: {status}",
