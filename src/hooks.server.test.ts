@@ -157,6 +157,7 @@ function createEvent({
 	return {
 		url,
 		request: new Request(url, { method, headers: { accept } }),
+		route: { id: path },
 		cookies: { get: (name: string) => cookies[name] },
 		locals: {} as Record<string, unknown>,
 		platform: undefined,

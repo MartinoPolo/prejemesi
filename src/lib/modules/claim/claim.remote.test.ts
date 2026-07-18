@@ -31,6 +31,16 @@ vi.mock('$lib/server/remote.js', () => ({
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
 	}),
+	singleFlightRefresh: vi.fn(),
+}));
+
+// Stubbed rather than left to import the real module: pulling in wishlists.remote.js would also
+// pull in its own module-level guardedQuery()/guardedCommand() calls, which this file's narrow
+// $lib/server/remote.js mock doesn't cover.
+vi.mock('$lib/modules/wishlists/wishlists.remote.js', () => ({
+	getMyWishlists: vi.fn(),
+	getModeratedWishlists: vi.fn(),
+	getWishlistByShortId: vi.fn(),
 }));
 
 vi.mock('$lib/server/db/index.js', () => ({

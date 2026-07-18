@@ -1401,15 +1401,18 @@ describe('refollowWishlist', () => {
 // ── Statement budgets (issue #108, REQ-7) ─────────────────────────────────────
 
 describe('statement budgets (issue #108, REQ-7)', () => {
-	it('getWishlistByShortId (authed manager, self list) stays within 2 statements', async () => {
-		// wishlist + user leftJoin, then the moderator-assignment role check.
+	it('getWishlistByShortId (authed manager, self list) stays within 3 statements', async () => {
+		// wishlist + user leftJoin, the moderator-assignment role check, and the manager-names
+		// query (fetched for ALL lists — issue #158 "Spravuje {name}" header line). A draft list
+		// skips the revert-capability reservation count (issue #150), so this is the floor.
 		mockDbInstance.pushResult([
 			{ wishlist: makeWishlistRow(), recipientDisplayName: 'Recipient Alice' },
 		]);
 		mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+		mockDbInstance.pushResult([]);
 
 		await callGetWishlistByShortId(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
 
-		expect(mockDbInstance.statementCount()).toBeLessThanOrEqual(2);
+		expect(mockDbInstance.statementCount()).toBeLessThanOrEqual(3);
 	});
 });
