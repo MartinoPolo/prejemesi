@@ -10,13 +10,18 @@ import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
-import { guardedCommand, guardedQueryWithArgs } from '$lib/server/remote.js';
+import { guardedCommand, guardedQueryWithArgs, singleFlightRefresh } from '$lib/server/remote.js';
 import {
 	verifyManagerAccess,
 	requireWishlistRow,
 	resolveWishlistRole,
 } from '$lib/modules/wishlists/wishlist_access.js';
 import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import {
+	getMyWishlists,
+	getModeratedWishlists,
+	getWishlistByShortId,
+} from '$lib/modules/wishlists/wishlists.remote.js';
 import {
 	GenerateClaimInviteInputSchema,
 	AcceptClaimInviteInputSchema,
@@ -288,6 +293,13 @@ export const acceptClaimInvite = guardedCommand(
 			actorId: currentUser.id,
 			actorName: currentUser.name,
 		});
+
+		// Single-flight refresh (issue #108, REQ-3/4): the claimed list appears in the
+		// claimer's "Moje seznamy" (and, if they held a správce assignment, disappears from
+		// "Spravované") without a reload. Untracked queries are a no-op.
+		singleFlightRefresh(getWishlistByShortId, result.wishlistShortId);
+		singleFlightRefresh(getMyWishlists);
+		singleFlightRefresh(getModeratedWishlists);
 
 		return result;
 	},

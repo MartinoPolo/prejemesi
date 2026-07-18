@@ -21,6 +21,8 @@ vi.mock('@sveltejs/kit', () => ({
 }));
 
 vi.mock('$lib/server/remote.js', () => ({
+	// Single-flight refresh is a runtime-only concern (no-op outside remote requests).
+	singleFlightRefresh: vi.fn(),
 	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
 		const wrapped = (...args: unknown[]) => handler(...args);
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'command' };
@@ -31,6 +33,18 @@ vi.mock('$lib/server/remote.js', () => ({
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
 	}),
+}));
+
+// Cross-module queries referenced only for single-flight refreshes (issue #108);
+// mocked so this suite does not load the other module's schema graph.
+vi.mock('$lib/modules/wishlists/wishlists.remote.js', () => ({
+	getWishlistByShortId: vi.fn(),
+}));
+
+// Cross-module queries referenced only for single-flight refreshes (issue #108);
+// mocked so this suite does not load the other module's schema graph.
+vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
+	getGiftsByWishlistShortId: vi.fn(),
 }));
 
 vi.mock('$lib/server/db/index.js', () => ({
@@ -422,6 +436,8 @@ describe('generateModeratorInviteLink', () => {
 			actorId: recipientUser.id,
 			actorName: undefined,
 			urlPathOverride: expectedInvitePath,
+			// Caller-held wishlist context spares the dispatcher its own lookup (issue #108).
+			wishlist: { title: activeWishlistRow.title, shortId: activeWishlistRow.shortId },
 		});
 	});
 

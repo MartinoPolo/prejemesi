@@ -77,9 +77,10 @@
 		ongiftunreserve: (gift: GiftForVisitor) => void;
 		onreservemodalclose: () => void;
 		onreserve: (input: ReserveGiftInput) => void;
-		onshared: () => void;
+		/** Optional – share/self-promote already sync the page via single-flight refreshes (issue #108). */
+		onshared?: () => void;
 		onpaletteselect: (palette: Palette) => void;
-		onmoderatorselfpromoted: () => void;
+		onmoderatorselfpromoted?: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
 	}

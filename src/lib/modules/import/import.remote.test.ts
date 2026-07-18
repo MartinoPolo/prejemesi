@@ -23,9 +23,17 @@ function wrapWithRemoteMarker(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
+	// Single-flight refresh is a runtime-only concern (no-op outside remote requests).
+	singleFlightRefresh: vi.fn(),
 	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
+}));
+
+// Cross-module queries referenced only for single-flight refreshes (issue #108);
+// mocked so this suite does not load the other module's schema graph.
+vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
+	getGiftsByWishlistShortId: vi.fn(),
 }));
 
 vi.mock('@sveltejs/kit', () => ({

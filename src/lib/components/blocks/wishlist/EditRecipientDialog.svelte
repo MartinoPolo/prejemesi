@@ -28,9 +28,10 @@
 		recipientDisplayName: string;
 		/** Shared lists notify followers on flip — drives the consequence line. */
 		isShared: boolean;
-		/** Awaited page refresh after a successful change. Must refresh the wishlist page query
-		 *  AND the dashboards (refreshWishlistDashboards) — the flip moves the list from
-		 *  Moje seznamy to Spravované and changes the actor's role. */
+		/** Awaited before the dialog closes. The mutation itself single-flight-refreshes the
+		 *  wishlist page query and, for the flip, the Moje seznamy/Spravované dashboards
+		 *  (issue #108) — this callback is a hook for callers that need extra work, not for
+		 *  refreshing data. */
 		onchanged: () => Promise<void>;
 	}
 

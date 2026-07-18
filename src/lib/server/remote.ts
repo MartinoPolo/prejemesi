@@ -85,3 +85,32 @@ export function publicCommand<TSchema extends StandardSchemaV1, TResult>(
 		return handler(authContext, arg);
 	});
 }
+
+interface RefreshableQueryResult {
+	refresh(): Promise<void>;
+}
+
+/**
+ * Single-flight refresh from inside a command handler (issue #108, REQ-3/4/5):
+ * re-runs the query on the server and sends the fresh result back on the same
+ * command response, where it updates any client-side tracked instance of the
+ * query. Untracked instances discard the payload — the client never issues a
+ * follow-up fetch either way.
+ *
+ * No-ops outside a remote request (SSR, unit tests), mirroring SvelteKit's own
+ * rule that refreshed data can only ride back on a command/form response.
+ */
+export function singleFlightRefresh<TArg>(
+	queryFunction: (arg: TArg) => RefreshableQueryResult,
+	...arg: TArg extends void ? [] : [TArg]
+): void {
+	try {
+		if (!getRequestEvent().isRemoteRequest) {
+			return;
+		}
+	} catch {
+		return;
+	}
+
+	void (queryFunction as (arg?: TArg) => RefreshableQueryResult)(arg[0]).refresh();
+}
