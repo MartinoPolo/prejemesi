@@ -1,5 +1,10 @@
 # Unified Filters (Dropdown + Active-Filter Pills) — Design Brief
 
+> **Status**: Refined (Variant A)
+> **Refined mockup**: `designs/unified-filters/refined.html`
+> **Summary**: `designs/unified-filters/SUMMARY.md`
+> **Refinements**: dashboard gap-fill pill placement (trigger moved to front of toolbar cluster, pills grow leftward), mobile (< 640 px) pill-less mode on both surfaces (count badge carries state), clear-all as dropdown item on mobile
+
 One consistent filtering pattern for both list/gift toolbars: a single **filter dropdown trigger** where the user checks filters, and each active filter becomes a **removable pill** in the toolbar. Removing a pill (its ×) or unchecking the item in the dropdown clears that filter; the two stay in sync. This replaces today's inconsistent mix: a permanent "Pouze dostupné" chip + hidden icon-menu filters with only a dot-badge (wishlist), and permanent `FilterChip` toggles (dashboard).
 
 **Source**: issue #161 (supersedes #101; relates to #104 — future category filters must plug into the same dropdown).
@@ -71,11 +76,11 @@ Full viewport, top to bottom (all FINAL except the filter area):
 
 ### 3.1 Filter dropdown trigger (REQ-1)
 
-- Exactly one trigger per toolbar, positioned where the current filter icon sits (wishlist: after sort select; dashboard: after view toggle).
+- Exactly one trigger per toolbar. Wishlist: after the sort select (where the current filter icon sits). Dashboard (refined 2026-07-18): at the FRONT of the right-aligned toolbar cluster, before the sort select, so pills can grow leftward into the title↔toolbar gap without moving sort/view controls.
 - Opens a `DropdownMenu` listing every filter available to the current viewer as checkbox items (checked = active).
 - The trigger replaces: the „Pouze dostupné" permanent chip, the wishlist overflow filter icon + dot-badge, and both dashboard `FilterChip`s.
 - Trigger must read as a filter control (lucide `list-filter` icon; label „Filtrovat" recommended — see Design Freedom for icon-only option).
-- Dot-badge-only active indication is explicitly banned (acceptance criterion); pills carry the active state.
+- Dot-badge-only active indication is explicitly banned (acceptance criterion); pills carry the active state on desktop. The trigger additionally shows a numeric count badge whenever ≥1 filter is active; on mobile (< 640 px) this labeled count badge alone carries the active state (refined 2026-07-18 — a count on a labeled „Filtrovat" button is not a dot-badge).
 
 ### 3.2 Dropdown contents per surface (REQ-4, REQ-5, REQ-7)
 
@@ -103,13 +108,15 @@ Dashboard list filters (state: `showArchived` / `showUnfollowed` page state):
 - Checking an item in the dropdown immediately applies the filter and adds a labeled pill to the toolbar; no confirm step.
 - Each pill = filter label + × remove affordance. Clicking × clears that filter and removes the pill.
 - Dropdown checkboxes and pills are two views of the same state, always in sync.
-- Pills appear in the toolbar flow adjacent to the trigger (exact placement/order = design freedom within the constraint that they are inside the existing toolbar row and wrap with it).
+- Pills appear in the toolbar flow adjacent to the trigger, growing AWAY from it into empty space (decided 2026-07-18): wishlist pills render after the trigger and grow rightward; dashboard pills render before the trigger and grow leftward into the title↔toolbar gap. First-activated pill sits closest to the trigger on both surfaces. Sort/view controls must never shift when pills toggle.
 - Zero active filters → zero pills, no reserved empty space.
+- **Mobile (< 640 px / Tailwind `sm`), both surfaces**: pills are not rendered at all; the count badge on the trigger is the sole persistent active-state indicator (decided 2026-07-18).
 
 ### 3.4 Clear all (REQ-8)
 
 - When ≥1 filter is active, a „clear all" affordance appears (existing copy candidate: „Zrušit filtry", key `wishlist_detail_clear_filters`).
 - One interaction removes every active filter on that surface.
+- **Placement (decided 2026-07-18)**: desktop = ghost button in the pill row (wishlist: after the last pill; dashboard: leftmost, before the pills). Mobile (< 640 px) = last dropdown item behind a `Separator`, rendered only when ≥1 filter is active.
 - The existing filtered-empty state (`WishlistEmptyState`: 🔍 „Žádná přání neodpovídají filtrům" + „Zrušit filtry" button) stays and must remain consistent with the toolbar's clear-all.
 
 ### 3.5 Overflow behavior (REQ-8)
@@ -153,6 +160,8 @@ Dashboard list filters (state: `showArchived` / `showUnfollowed` page state):
 | Filtered-empty result | existing `WishlistEmptyState` 🔍 + „Zrušit filtry" (unchanged, must feel connected) | filters remove all items |
 | Recipient view (wishlist) | dropdown shows only „S odkazem" (no available, no liked) | viewer is the recipient |
 | Anonymous visitor (wishlist) | dropdown shows „Pouze dostupné" + „S odkazem" (no liked) | not authenticated |
+| Mobile, filters active | no pills; count badge on trigger; „Zrušit filtry" as last dropdown item behind separator | viewport < 640 px, ≥1 filter active |
+| Mobile, no filters | trigger without count badge; no clear-all item in dropdown | viewport < 640 px, 0 filters active |
 
 ---
 
@@ -215,7 +224,8 @@ From `src/app.css` (canonical source; `designs/tokens.css` is reference only):
 ## 8. Design Constraints (Non-Negotiable)
 
 - One dropdown trigger per toolbar; no permanent filter chips remain anywhere (REQ-1, REQ-4, REQ-5).
-- Active filter = visible labeled pill with a working ×; dot-badges or icon-only active indication banned.
+- Active filter = visible labeled pill with a working × (desktop ≥ 640 px); dot-badges or icon-only active indication banned. On mobile the labeled trigger's count badge carries the state (see §3.1).
+- Dashboard: pills must never shift the sort/view controls — they grow leftward into the title↔toolbar gap (refined 2026-07-18).
 - Dropdown checkbox state and pills always in sync, both directions (REQ-3).
 - Role/context gating exactly as today (§3.2 table); gated items absent, not disabled. Recipient must never encounter „Pouze dostupné" (core surprise-protection invariant).
 - Clear-all appears when ≥1 filter active and clears everything (REQ-8).
