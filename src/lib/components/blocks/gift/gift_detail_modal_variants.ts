@@ -14,8 +14,10 @@ export const giftDetailModalVariants = tv({
 		// Mobile: a single scrolling flex column so the image and fields share one
 		// scroll region inside the 90dvh-capped dialog (issue: mobile edit dialog UX).
 		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
-		// split (issue #183 REQ-9, revises the earlier 45/55 split).
-		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:min-h-[520px] sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
+		// split (issue #183 REQ-9, revises the earlier 45/55 split). No min-height:
+		// the grid takes its height from the columns' content (form column /
+		// adaptive stage), capped at 90dvh by `content` above (#189 REQ-5).
+		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
 		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
 		// images keep the mat visible; a dashed ink seam separates image and form columns.
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
@@ -71,9 +73,9 @@ export const giftDetailModalVariants = tv({
 
 		// ── Read-only view mode (issue #165) ──────────────────────────────────
 		// Dedicated slots instead of reusing the edit-mode `body`/`imageColumn`/
-		// `detailColumn` above: the view reads as an enlarged gift card (tighter,
-		// no `sm:min-h-[520px]` dead space), so its own composition rules apply
-		// without risking the edit-mode grid used by #116/#131/#142.
+		// `detailColumn` above: the view reads as an enlarged gift card with its
+		// own composition rules, distinct from the edit-mode grid used by
+		// #116/#131/#142.
 		// Mobile: one scrolling flex column (media, content, sticky action bar).
 		// Desktop: media column + fluid content column sharing row 1 (widened
 		// from 340px alongside the ~1100px modal, issue #183 REQ-10); the action
