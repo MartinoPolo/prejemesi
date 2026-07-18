@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import PageHeader from '$lib/components/blocks/page-header/PageHeader.svelte';
 	import DashboardToolbar from '$lib/components/blocks/dashboard/DashboardToolbar.svelte';
 	import WishlistCardGrid from '$lib/components/blocks/dashboard/WishlistCardGrid.svelte';
@@ -22,24 +23,13 @@
 	let showArchived = $state(false);
 	let showUnfollowed = $state(false);
 
-	let wishlistData = $state.raw<FollowedWishlist[]>([]);
-	let isLoading = $state(true);
-
-	async function fetchWishlists(refresh = false) {
-		isLoading = true;
-		try {
-			if (refresh) {
-				await getFollowedWishlists().refresh();
-			}
-			wishlistData = await getFollowedWishlists();
-		} catch {
-			wishlistData = [];
-		} finally {
-			isLoading = false;
-		}
-	}
-
-	fetchWishlists();
+	// Tracked reactive query (issue #108): unfollow/refollow single-flight refreshes
+	// ride back on the command response, so no follow-up fetches are needed. The
+	// `browser` gate keeps the list client-rendered (as before), and the query cache
+	// is released when the page unmounts, so each visit fetches fresh data.
+	const followedQuery = $derived(browser ? getFollowedWishlists() : null);
+	const wishlistData = $derived<FollowedWishlist[]>(followedQuery?.current ?? []);
+	const isLoading = $derived(followedQuery === null || followedQuery.current === undefined);
 
 	const filteredWishlists = $derived.by(() => {
 		let filtered = showArchived
@@ -53,8 +43,8 @@
 
 	async function handleUnfollow(wishlistId: string) {
 		try {
+			// Single-flight: the updated list rides back on the command response.
 			await unfollowWishlist(wishlistId);
-			await fetchWishlists(true);
 			toastSuccess(m.toast_unfollowed());
 		} catch {
 			toastError(m.toast_unfollow_error());
@@ -64,7 +54,6 @@
 	async function handleRefollow(wishlistId: string) {
 		try {
 			await refollowWishlist(wishlistId);
-			await fetchWishlists(true);
 			toastSuccess(m.toast_refollowed());
 		} catch {
 			toastError(m.toast_refollow_error());

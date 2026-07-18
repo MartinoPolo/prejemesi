@@ -24,7 +24,7 @@
 	async function handleProfileSave(params: { name: string; image: string | null }) {
 		await updateProfile(params);
 		// Force-refresh the profile query so every surface reading it reflects the
-		// change without a full page reload (same pattern as refreshWishlistDashboards).
+		// change without a full page reload.
 		await getUserProfile().refresh();
 	}
 

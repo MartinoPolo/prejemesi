@@ -323,7 +323,11 @@ describe('dispatchNotification email locale', () => {
 			wishlistId: 'wishlist-id',
 		});
 
-		expect(mockSendEmail).toHaveBeenCalledTimes(2);
+		// Email delivery runs via runAfterResponse (issue #108, REQ-6) – detached from
+		// dispatchNotification's own return, so both sends need a moment to land.
+		await vi.waitFor(() => {
+			expect(mockSendEmail).toHaveBeenCalledTimes(2);
+		});
 		expect(mockRenderActionEmailParts).toHaveBeenNthCalledWith(
 			1,
 			expect.objectContaining({

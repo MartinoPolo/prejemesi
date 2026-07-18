@@ -27,6 +27,8 @@ function wrapWithRemoteMarker(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
+	// Single-flight refresh is a runtime-only concern (no-op outside remote requests).
+	singleFlightRefresh: vi.fn(),
 	guardedCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		wrapWithRemoteMarker(handler),
 	),
@@ -146,6 +148,8 @@ interface MockDb {
 	lastValuesPayload: () => Record<string, unknown> | undefined;
 	/** Payload passed to the Nth `.values(...)` call in order (0 = first insert in the tx). */
 	valuesPayloadAt: (index: number) => Record<string, unknown> | undefined;
+	/** Number of awaited query chains so far — i.e. statements sent to the database. */
+	statementCount: () => number;
 	reset: () => void;
 }
 
@@ -192,6 +196,7 @@ function createMockDb(): MockDb {
 		lastSetPayload: () => setPayloads[setPayloads.length - 1],
 		lastValuesPayload: () => valuesPayloads[valuesPayloads.length - 1],
 		valuesPayloadAt: (index) => valuesPayloads[index],
+		statementCount: () => indexRef.value,
 		reset: () => {
 			results.length = 0;
 			indexRef.value = 0;
@@ -1482,5 +1487,24 @@ describe('refollowWishlist', () => {
 				),
 			).resolves.not.toThrow();
 		});
+	});
+});
+
+// ── Statement budgets (issue #108, REQ-7) ─────────────────────────────────────
+
+describe('statement budgets (issue #108, REQ-7)', () => {
+	it('getWishlistByShortId (authed manager, self list) stays within 3 statements', async () => {
+		// wishlist + user leftJoin, the moderator-assignment role check, and the manager-names
+		// query (fetched for ALL lists — issue #158 "Spravuje {name}" header line). A draft list
+		// skips the revert-capability reservation count (issue #150), so this is the floor.
+		mockDbInstance.pushResult([
+			{ wishlist: makeWishlistRow(), recipientDisplayName: 'Recipient Alice' },
+		]);
+		mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+		mockDbInstance.pushResult([]);
+
+		await callGetWishlistByShortId(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
+
+		expect(mockDbInstance.statementCount()).toBeLessThanOrEqual(3);
 	});
 });

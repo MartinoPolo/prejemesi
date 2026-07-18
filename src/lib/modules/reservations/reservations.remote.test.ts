@@ -38,6 +38,8 @@ function makeRemoteWrapper(
 }
 
 vi.mock('$lib/server/remote.js', () => ({
+	// Single-flight refresh is a runtime-only concern (no-op outside remote requests).
+	singleFlightRefresh: vi.fn(),
 	publicCommand: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) =>
 		makeRemoteWrapper('command', handler),
 	),
@@ -50,6 +52,12 @@ vi.mock('$lib/server/remote.js', () => ({
 	guardedQuery: vi.fn((handler: (...args: unknown[]) => unknown) =>
 		makeRemoteWrapper('query', handler),
 	),
+}));
+
+// Cross-module queries referenced only for single-flight refreshes (issue #108);
+// mocked so this suite does not load the other module's schema graph.
+vi.mock('$lib/modules/gifts/gifts.remote.js', () => ({
+	getGiftsByWishlistShortId: vi.fn(),
 }));
 
 vi.mock('$lib/server/db/index.js', () => ({
@@ -754,5 +762,50 @@ describe('getMyReservationsForGift', () => {
 		);
 
 		expect(result).toEqual([]);
+	});
+});
+
+// ── Statement budgets (issue #108, REQ-7) ─────────────────────────────────────
+
+describe('statement budgets (issue #108, REQ-7)', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it('reserveGift (no likers/followers to notify) stays within 6 statements', async () => {
+		// Call #1: `database` – tx queue: locked gift, count, insert; then likers +
+		// followers pop empty defaults, so both notification dispatches early-return.
+		const database = createMultiQueryChain(
+			[{ quantity: 5 }],
+			[{ totalQuantity: 0 }],
+			[{ id: RESERVATION_ID }],
+		);
+		// Call #2: getGiftWithWishlist query
+		const wishlistDb = createChain([makeActiveWishlistRow()]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+
+		await (reserveGift as (...args: unknown[]) => unknown)(makeAuthContext(fakeVisitorUser), {
+			giftId: GIFT_ID,
+			quantity: 1,
+		});
+
+		const chains = [database, wishlistDb] as unknown as Record<
+			string,
+			ReturnType<typeof vi.fn>
+		>[];
+		const statements = chains
+			.flatMap((chain) =>
+				['select', 'insert', 'update', 'delete'].map(
+					(method) => chain[method]!.mock.calls.length,
+				),
+			)
+			.reduce((sum, count) => sum + count, 0);
+
+		// gift+wishlist lookup, locked gift, active count, insert, likers, followers —
+		// the gift-list refresh rides back single-flight and email work is backgrounded.
+		expect(statements).toBeLessThanOrEqual(6);
 	});
 });

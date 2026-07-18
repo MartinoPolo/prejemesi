@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import PageHeader from '$lib/components/blocks/page-header/PageHeader.svelte';
 	import DashboardToolbar from '$lib/components/blocks/dashboard/DashboardToolbar.svelte';
 	import WishlistCardGrid from '$lib/components/blocks/dashboard/WishlistCardGrid.svelte';
@@ -15,21 +16,12 @@
 	let viewMode = $state<ViewMode>('grid');
 	let showArchived = $state(false);
 
-	let wishlistData = $state.raw<ModeratedWishlist[]>([]);
-	let isLoading = $state(true);
-
-	async function fetchWishlists() {
-		isLoading = true;
-		try {
-			wishlistData = await getModeratedWishlists();
-		} catch {
-			wishlistData = [];
-		} finally {
-			isLoading = false;
-		}
-	}
-
-	fetchWishlists();
+	// Tracked reactive query (issue #108): mutations that refresh it server-side ride
+	// back in the same response; the cache is released on unmount, so each visit
+	// fetches fresh data. The `browser` gate keeps the list client-rendered.
+	const moderatedQuery = $derived(browser ? getModeratedWishlists() : null);
+	const wishlistData = $derived<ModeratedWishlist[]>(moderatedQuery?.current ?? []);
+	const isLoading = $derived(moderatedQuery === null || moderatedQuery.current === undefined);
 
 	const filteredWishlists = $derived.by(() => {
 		const filtered = showArchived

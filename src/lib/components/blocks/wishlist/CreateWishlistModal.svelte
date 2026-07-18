@@ -20,7 +20,6 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
-	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
@@ -125,10 +124,8 @@
 						},
 			);
 
-			// Refresh dashboard caches so the new wishlist appears on /my-lists and the navbar
-			// "recent" dropdowns without a manual reload.
-			await refreshWishlistDashboards();
-
+			// No dashboard refresh: we navigate straight to the new wishlist, and list
+			// surfaces (pages, nav dropdowns) re-fetch when they are next opened (issue #108).
 			open = false;
 			resetForm();
 			await goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })));
