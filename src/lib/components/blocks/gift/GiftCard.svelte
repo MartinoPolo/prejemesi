@@ -19,7 +19,6 @@
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { giftCardVariants } from './gift_card_variants.js';
-	import GiftEditedBadge from './GiftEditedBadge.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 
 	interface GiftCardProps {
@@ -99,16 +98,11 @@
 
 	<!-- Body -->
 	<div class={styles.body()}>
-		<!-- Name + piece count + compact edited-after-share info icon (the full pill would
-		     claim a whole card row; the icon keeps the hint without the prominence) -->
+		<!-- Name + piece count. Edited-after-share info surfaces only as a muted line
+		     in the gift detail modal (issue #185), not on the card. -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
-			{#if gift.editedAfterShareAt !== null}
-				<span class="self-center">
-					<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} compact />
-				</span>
-			{/if}
 		</div>
 
 		{#if gift.price !== null}

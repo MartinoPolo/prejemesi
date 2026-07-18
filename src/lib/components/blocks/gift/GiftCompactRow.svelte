@@ -15,7 +15,6 @@
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
-	import GiftEditedBadge from './GiftEditedBadge.svelte';
 
 	interface GiftCompactRowProps {
 		gift: GiftByRole;
@@ -67,7 +66,6 @@
 		<span class="text-sm font-medium text-foreground">
 			{gift.name}
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
-			<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} />
 		</span>
 	</td>
 

@@ -13,7 +13,11 @@
 	import { giftDetailModalVariants } from './gift_detail_modal_variants.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import { formatPrice, getPriorityDisplay } from '$lib/modules/gifts/gift_display.js';
+	import {
+		formatPrice,
+		formatAppendDate,
+		getPriorityDisplay,
+	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 
 	interface Props {
@@ -121,8 +125,18 @@
 				description={gift.description}
 				descriptionAppends={gift.descriptionAppends}
 				maxVisibleAppends={null}
-				editedAfterShareAt={gift.editedAfterShareAt}
 			/>
+
+			{#if gift.editedAfterShareAt !== null}
+				<!-- Edited-after-share transparency (issue #185): a single muted text
+				     line, no icon, no pill – visitors only see this once they open the
+				     detail modal deliberately. -->
+				<p class="text-xs text-muted-foreground">
+					{m.gift_edited_after_share_line({
+						date: formatAppendDate(gift.editedAfterShareAt.toISOString()),
+					})}
+				</p>
+			{/if}
 		</div>
 	</div>
 

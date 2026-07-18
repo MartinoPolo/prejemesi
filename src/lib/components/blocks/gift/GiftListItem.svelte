@@ -21,7 +21,6 @@
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
-	import GiftEditedBadge from './GiftEditedBadge.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 
 	interface GiftListItemProps {
@@ -105,11 +104,6 @@
 					{m.gift_received_badge()}
 				</Badge>
 			{/if}
-			<GiftEditedBadge
-				editedAfterShareAt={gift.editedAfterShareAt}
-				compact
-				updateText={gift.descriptionAppends.at(-1)?.text ?? null}
-			/>
 		</div>
 
 		<div class="flex flex-wrap items-center gap-1.5 text-sm">
