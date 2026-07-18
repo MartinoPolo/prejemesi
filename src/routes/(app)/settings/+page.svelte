@@ -46,7 +46,7 @@
 		<h1 class="font-heading text-[clamp(26px,3.4vw,34px)] font-semibold tracking-tight">
 			{m.settings_title()}
 		</h1>
-		<p class="mt-1 text-ink-soft">{m.settings_subtitle()}</p>
+		<p class="mt-1 text-muted-foreground">{m.settings_subtitle()}</p>
 	</div>
 
 	<div class="settings-sections stagger-pop">

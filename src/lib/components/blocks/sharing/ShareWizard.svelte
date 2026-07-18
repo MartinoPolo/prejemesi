@@ -191,8 +191,13 @@
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button intent="outline" onclick={handleClose}>{m.cancel()}</Button>
-					<Button class="flex-1" disabled={isSubmitting} onclick={handleConfirmShare}>
+					<Button intent="outline" size="xl" onclick={handleClose}>{m.cancel()}</Button>
+					<Button
+						size="xl"
+						class="flex-1"
+						disabled={isSubmitting}
+						onclick={handleConfirmShare}
+					>
 						{m.share_confirm_button()}
 						<ArrowRightIcon data-icon="inline-end" />
 					</Button>
@@ -223,14 +228,20 @@
 							</span>
 						</div>
 						{#if linkCopied}
-							<Button intent="primary" class="h-11 flex-shrink-0" aria-live="polite">
+							<Button
+								intent="primary"
+								size="xl"
+								class="flex-shrink-0"
+								aria-live="polite"
+							>
 								<CheckIcon data-icon="inline-start" />
 								{m.share_link_copied()}
 							</Button>
 						{:else}
 							<Button
 								intent="primary"
-								class="h-11 flex-shrink-0"
+								size="xl"
+								class="flex-shrink-0"
 								onclick={() => sharing.copyLink()}
 							>
 								<CopyIcon data-icon="inline-start" />
@@ -339,8 +350,9 @@
 
 				<!-- Actions -->
 				<div class={styles.actions()}>
-					<Button intent="outline" onclick={handleClose}>{m.close()}</Button>
+					<Button intent="outline" size="xl" onclick={handleClose}>{m.close()}</Button>
 					<Button
+						size="xl"
 						class="flex-1"
 						onclick={() => sharing.goToStep(SHARE_WIZARD_STEPS.success)}
 					>
@@ -440,7 +452,7 @@
 				</div>
 
 				<!-- Close CTA -->
-				<Button class="w-full" onclick={handleClose}>
+				<Button size="xl" class="w-full" onclick={handleClose}>
 					{m.share_step_done()}
 					<CheckIcon data-icon="inline-end" />
 				</Button>

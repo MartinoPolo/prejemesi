@@ -213,6 +213,7 @@
 	--size-control-sm: 26px;
 	--size-control-md: 32px;
 	--size-control-lg: 38px;
+	--size-control-xl: 48px;
 
 	/* ── Text sizes ────────────────────────────────────────── */
 	--text-2xs: 10.5px;
@@ -249,7 +250,6 @@
 
 	/* Anime-sky core */
 	--ink: var(--p-ink);
-	--ink-soft: color-mix(in oklab, var(--p-ink) 62%, transparent);
 	--ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
 	--brand: var(--p-brand);
 	--brand-deep: var(--p-deep);
@@ -331,8 +331,6 @@
 	--surface-hover: color-mix(in oklab, var(--p-brand) 11%, white);
 
 	/* Text hierarchy */
-	--foreground-muted: var(--muted-foreground);
-	--foreground-subtle: color-mix(in oklab, var(--p-ink) 55%, transparent);
 
 	/* Border */
 	--border-strong: color-mix(in oklab, var(--p-ink) 30%, transparent);
@@ -374,7 +372,6 @@
 	color-scheme: dark;
 
 	--ink: color-mix(in oklab, var(--p-bright) 28%, #fdfeff);
-	--ink-soft: color-mix(in oklab, var(--ink) 65%, transparent);
 	--ink-faint: color-mix(in oklab, var(--ink) 16%, transparent);
 	--brand: var(--p-bright);
 	--brand-deep: var(--p-deep);
@@ -456,8 +453,6 @@
 	--surface-hover: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
 
 	/* Text hierarchy (dark) */
-	--foreground-muted: var(--muted-foreground);
-	--foreground-subtle: color-mix(in oklab, var(--ink) 55%, transparent);
 
 	/* Border (dark) */
 	--border-strong: color-mix(in oklab, var(--ink) 40%, transparent);
@@ -537,8 +532,6 @@
 	--color-surface-2: var(--surface-2);
 	--color-surface-3: var(--surface-3);
 	--color-surface-hover: var(--surface-hover);
-	--color-foreground-muted: var(--foreground-muted);
-	--color-foreground-subtle: var(--foreground-subtle);
 	--color-border-strong: var(--border-strong);
 	--color-primary-soft: var(--primary-soft);
 	--color-status-success: var(--status-success);
@@ -559,7 +552,6 @@
 
 	/* Anime-sky tokens as Tailwind utilities */
 	--color-ink: var(--ink);
-	--color-ink-soft: var(--ink-soft);
 	--color-ink-faint: var(--ink-faint);
 	--color-brand: var(--brand);
 	--color-brand-deep: var(--brand-deep);

@@ -37,7 +37,7 @@
 		}
 	}}
 >
-	<Select.Trigger size="sm" aria-label={m.gift_sort_by()}>
+	<Select.Trigger size="md" aria-label={m.gift_sort_by()}>
 		<ArrowUpDownIcon class="size-3.5 text-muted-foreground" />
 		<span>{SORT_LABELS[value]()}</span>
 	</Select.Trigger>

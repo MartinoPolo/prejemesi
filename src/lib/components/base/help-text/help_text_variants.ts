@@ -3,7 +3,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const helpTextVariants = tv({
-	base: 'mt-1 text-[11px] text-foreground-subtle',
+	base: 'mt-1 text-(length:--text-sm) text-muted-foreground',
 	variants: {
 		state: {
 			default: '',

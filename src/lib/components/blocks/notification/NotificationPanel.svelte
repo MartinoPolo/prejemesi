@@ -48,7 +48,7 @@
 			{/each}
 		{:else if ctx.notifications.current.length === 0}
 			<!-- Empty state -->
-			<div class="flex flex-col items-center gap-2 py-8 text-ink-soft">
+			<div class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
 				<BellOffIcon class="size-8 opacity-70" />
 				<p class="text-sm font-semibold">{m.notification_empty()}</p>
 			</div>

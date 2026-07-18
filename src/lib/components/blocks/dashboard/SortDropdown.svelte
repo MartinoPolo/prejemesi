@@ -20,7 +20,7 @@
 </script>
 
 <Select.Root bind:value type="single">
-	<Select.Trigger size="sm" class={cn('gap-1.5', className)}>
+	<Select.Trigger size="md" class={cn('gap-1.5', className)}>
 		<ArrowUpDownIcon class="size-3.5 text-muted-foreground" />
 		<span class="text-muted-foreground">{m.dashboard_sort_label()}</span>
 		<span>{SORT_LABELS[value]()}</span>

@@ -70,7 +70,7 @@
 			<div
 				class="rounded-r-[10px] border-l-4 border-accent-loud bg-[color-mix(in_oklab,var(--accent-loud)_16%,var(--card))] px-3 py-1.5 text-sm whitespace-pre-line text-foreground"
 			>
-				<span class="text-xs font-bold text-ink-soft"
+				<span class="text-xs font-bold text-muted-foreground"
 					>{formatAppendDate(item.append.addedAt)}</span
 				>
 				<br />

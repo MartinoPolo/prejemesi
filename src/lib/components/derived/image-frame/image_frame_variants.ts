@@ -6,7 +6,7 @@ export const imageFrameVariants = tv({
 		image: 'block size-full',
 		fallback: 'flex size-full flex-col items-center justify-center gap-2 text-center',
 		fallbackIcon: 'text-4xl leading-none text-primary',
-		fallbackLabel: 'text-xs text-foreground-subtle',
+		fallbackLabel: 'text-xs text-muted-foreground',
 		skeleton: 'absolute inset-0 z-10 size-full rounded-none',
 	},
 	variants: {

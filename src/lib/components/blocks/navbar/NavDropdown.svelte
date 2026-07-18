@@ -294,7 +294,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
-		height: 36px;
+		height: var(--size-control-md);
 		padding: 0 var(--space-3);
 		border-radius: 9px;
 		font-size: var(--text-base);

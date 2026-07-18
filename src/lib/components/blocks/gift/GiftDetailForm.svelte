@@ -657,10 +657,10 @@
 				aria-label={m.gift_image_upload_cta()}
 			>
 				<UploadIcon class="size-16 text-ink-faint" />
-				<span class="text-sm font-semibold text-ink-soft">
+				<span class="text-sm font-semibold text-muted-foreground">
 					{m.gift_image_upload_cta()}
 				</span>
-				<span class="text-xs text-foreground-subtle">{m.gift_image_upload_hint()}</span>
+				<span class="text-xs text-muted-foreground">{m.gift_image_upload_hint()}</span>
 			</button>
 		{/if}
 	</div>
@@ -805,9 +805,9 @@
 				</div>
 
 				<!-- Price + Currency -->
-				<div class="mt-3 {styles.formRow()}">
+				<div class="mt-3 {styles.formRow()}" data-testid="gift-price-currency-row">
 					<div class={styles.formField()}>
-						<div class="flex items-center justify-between gap-2">
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
 							<Label for="gift-price">{m.gift_price_label()}</Label>
 							<div class="flex items-center gap-1.5">
 								<Label
@@ -874,9 +874,11 @@
 						{/if}
 					</div>
 					<div class={styles.formField()}>
-						<Label>{m.gift_currency_label()}</Label>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label>{m.gift_currency_label()}</Label>
+						</div>
 						<Select.Root type="single" bind:value={currency}>
-							<Select.Trigger size="sm" class="w-full">
+							<Select.Trigger size="md" class="w-full">
 								{GIFT_CURRENCY_LABELS[currency]}
 							</Select.Trigger>
 							<Select.Content>
@@ -892,60 +894,69 @@
 					</div>
 				</div>
 
-				<!-- Quantity -->
-				<div class="mt-3 {styles.formField()}">
-					<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
-					<Input
-						id="gift-quantity"
-						bind:value={quantity}
-						type="number"
-						min={locked ? String(currentQuantity) : '1'}
-						placeholder="1"
-					/>
-					{#if locked}
-						<HelpText
-							class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
-						>
-							{m.gift_quantity_frozen_help()}
-						</HelpText>
+				<!-- Quantity + Priority -->
+				<div
+					class={cn('mt-3', priorityLevels.length > 0 && styles.formRow())}
+					data-testid="gift-quantity-priority-row"
+				>
+					<div class={styles.formField()}>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
+						</div>
+						<Input
+							id="gift-quantity"
+							bind:value={quantity}
+							type="number"
+							min={locked ? String(currentQuantity) : '1'}
+							placeholder="1"
+						/>
+						{#if locked}
+							<HelpText
+								class="w-fit rounded-md border border-border bg-surface-2 px-2 py-1"
+							>
+								{m.gift_quantity_frozen_help()}
+							</HelpText>
+						{/if}
+					</div>
+
+					{#if priorityLevels.length > 0}
+						<div class={styles.formField()}>
+							<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+								<Label>{m.gift_priority_label()}</Label>
+							</div>
+							<Select.Root type="single" bind:value={priorityLevelId}>
+								<Select.Trigger size="md" class="w-full">
+									{#if priorityLevelId}
+										{@const selectedLabel =
+											priorityLevels.find((p) => p.id === priorityLevelId)
+												?.label ?? ''}
+										{selectedLabel !== ''
+											? (getPriorityDisplay(selectedLabel)?.label() ??
+												selectedLabel)
+											: m.gift_priority_select()}
+									{:else}
+										{m.gift_priority_none()}
+									{/if}
+								</Select.Trigger>
+								<Select.Content>
+									<Select.Group>
+										<Select.Item value="" label={m.gift_priority_none()}
+											>{m.gift_priority_none()}</Select.Item
+										>
+										{#each priorityLevels as level (level.id)}
+											{@const levelLabel =
+												getPriorityDisplay(level.label)?.label() ??
+												level.label}
+											<Select.Item value={level.id} label={levelLabel}>
+												{levelLabel}
+											</Select.Item>
+										{/each}
+									</Select.Group>
+								</Select.Content>
+							</Select.Root>
+						</div>
 					{/if}
 				</div>
-
-				<!-- Priority -->
-				{#if priorityLevels.length > 0}
-					<div class="mt-3 {styles.formField()}">
-						<Label>{m.gift_priority_label()}</Label>
-						<Select.Root type="single" bind:value={priorityLevelId}>
-							<Select.Trigger class="w-full">
-								{#if priorityLevelId}
-									{@const selectedLabel =
-										priorityLevels.find((p) => p.id === priorityLevelId)
-											?.label ?? ''}
-									{selectedLabel !== ''
-										? (getPriorityDisplay(selectedLabel)?.label() ??
-											selectedLabel)
-										: m.gift_priority_select()}
-								{:else}
-									{m.gift_priority_none()}
-								{/if}
-							</Select.Trigger>
-							<Select.Content>
-								<Select.Group>
-									<Select.Item value="" label={m.gift_priority_none()}
-										>{m.gift_priority_none()}</Select.Item
-									>
-									{#each priorityLevels as level (level.id)}
-										{@const levelLabel =
-											getPriorityDisplay(level.label)?.label() ?? level.label}
-										<Select.Item value={level.id} label={levelLabel}>
-											{levelLabel}
-										</Select.Item>
-									{/each}
-								</Select.Group>
-							</Select.Content>
-						</Select.Root>
-					</div>
-				{/if}
 
 				<!-- Image (last field: source input only – the display-mode control and
 			     the clickable target tiles live in the image column with the

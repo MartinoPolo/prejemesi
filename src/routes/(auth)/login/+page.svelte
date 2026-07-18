@@ -200,6 +200,7 @@
 			<Button
 				type="button"
 				intent="outline"
+				size="lg"
 				class="mb-5 w-full"
 				disabled={resending}
 				onclick={handleResendVerification}
@@ -217,6 +218,7 @@
 			<AuthFormField fieldId="login-email" label={m.email_label()} errorMessage={emailError}>
 				<Input
 					id="login-email"
+					size="lg"
 					type="email"
 					placeholder={m.email_placeholder()}
 					autocomplete="email"

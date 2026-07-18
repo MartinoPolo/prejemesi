@@ -56,7 +56,7 @@
 	}
 
 	.brand-feature-text span {
-		color: var(--ink-soft);
+		color: var(--muted-foreground);
 		font-size: var(--text-xs);
 	}
 </style>

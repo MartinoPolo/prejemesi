@@ -29,7 +29,7 @@
 		font-size: var(--text-xs);
 		font-weight: 800;
 		text-transform: uppercase;
-		color: var(--ink-soft);
+		color: var(--muted-foreground);
 		white-space: nowrap;
 		letter-spacing: 0.08em;
 	}

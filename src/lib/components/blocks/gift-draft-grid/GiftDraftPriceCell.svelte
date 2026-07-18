@@ -43,9 +43,9 @@
 			}}
 		>
 			<Select.Trigger
-				size="sm"
+				size="md"
 				aria-label={m.draft_grid_currency_label()}
-				class="h-full rounded-none border-0 border-l border-border-strong bg-surface-2 text-xs font-semibold text-foreground-muted shadow-none"
+				class="h-full rounded-none border-0 border-l border-border-strong bg-surface-2 text-xs font-semibold text-muted-foreground shadow-none"
 			>
 				{currency}
 			</Select.Trigger>

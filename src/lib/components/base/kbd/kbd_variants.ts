@@ -13,7 +13,7 @@ export const kbdVariants = tv({
 		},
 		tone: {
 			neutral:
-				'border-border bg-muted text-foreground-muted shadow-[1px_1px_0_var(--hard-shadow)]',
+				'border-border bg-muted text-muted-foreground shadow-[1px_1px_0_var(--hard-shadow)]',
 			accent: 'border-[color-mix(in_oklab,var(--primary)_24%,var(--border))] bg-primary-soft text-foreground shadow-[1px_1px_0_var(--hard-shadow)]',
 			inverted:
 				'border-[color-mix(in_oklab,currentColor_28%,transparent)] bg-[color-mix(in_oklab,currentColor_16%,transparent)] text-current',

@@ -412,7 +412,7 @@
 			<!-- A broken source must not present a draggable stage over a broken-image
 			     glyph; show an inert placeholder instead. -->
 			<div
-				class="pointer-events-none absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-foreground-subtle"
+				class="pointer-events-none absolute inset-0 flex items-center justify-center p-4 text-center text-xs text-muted-foreground"
 			>
 				{m.gift_image_crop_load_error()}
 			</div>
@@ -462,7 +462,7 @@
 				onValueChange={(value: number) => setZoom(value / 100)}
 				aria-label={m.image_crop_zoom_label()}
 			/>
-			<span class="w-12 text-right text-xs tabular-nums text-foreground-subtle">
+			<span class="w-12 text-right text-xs tabular-nums text-muted-foreground">
 				{Math.round(zoom * 100)} %
 			</span>
 			<Button intent="ghost" size="sm" disabled={!isReady || isDefaultRect} onclick={reset}>
@@ -471,6 +471,6 @@
 			</Button>
 		</div>
 
-		<span class="text-xs text-foreground-subtle">{m.image_crop_hint()}</span>
+		<span class="text-xs text-muted-foreground">{m.image_crop_hint()}</span>
 	{/if}
 </div>

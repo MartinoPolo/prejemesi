@@ -148,25 +148,18 @@
 				{m.landing_hero_title()}
 			</h1>
 
-			<p class="reveal reveal-3 max-w-[46ch] text-[17px] leading-relaxed text-ink-soft">
+			<p
+				class="reveal reveal-3 max-w-[46ch] text-[17px] leading-relaxed text-muted-foreground"
+			>
 				{m.landing_hero_description()}
 			</p>
 
 			<div class="reveal reveal-4 relative flex flex-wrap items-center gap-4">
-				<Button
-					size="lg"
-					class="h-12 px-5 text-[16px]"
-					href={localizeInternalHref(resolve('/register'))}
-				>
+				<Button size="xl" href={localizeInternalHref(resolve('/register'))}>
 					<GiftIcon data-icon="inline-start" />
 					{m.landing_hero_cta()}
 				</Button>
-				<Button
-					intent="secondary"
-					size="lg"
-					class="h-12 px-5 text-[16px]"
-					href="#jak-to-funguje"
-				>
+				<Button intent="secondary" size="xl" href="#jak-to-funguje">
 					{m.landing_hero_how()}
 				</Button>
 				<!-- positioned via left/top + --rot (NOT transform alone) so the bob
@@ -196,7 +189,7 @@
 			</div>
 
 			<p
-				class="reveal reveal-5 flex items-center gap-1.5 text-(length:--text-base) text-ink-soft"
+				class="reveal reveal-5 flex items-center gap-1.5 text-(length:--text-base) text-muted-foreground"
 			>
 				<span aria-hidden="true">🤍</span>
 				{m.landing_hero_no_card()}
@@ -218,7 +211,7 @@
 				<div class="mb-4 flex items-center justify-between gap-4">
 					<div>
 						<div
-							class="text-(length:--text-xs) font-semibold uppercase tracking-wide text-ink-soft"
+							class="text-(length:--text-xs) font-semibold uppercase tracking-wide text-muted-foreground"
 						>
 							{m.landing_wishes_for()}
 						</div>
@@ -238,7 +231,7 @@
 								<div class="truncate text-(length:--text-base) font-semibold">
 									{gift.name}
 								</div>
-								<div class="text-[12.5px] text-ink-soft">{gift.price}</div>
+								<div class="text-[12.5px] text-muted-foreground">{gift.price}</div>
 							</div>
 							{#if isDemoTargetGift}
 								<span class="demo-chip-slot">

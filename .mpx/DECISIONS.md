@@ -1070,3 +1070,10 @@ What: All four mockups live in `designs/redesign-2026/sky-final/` (anime-sky-fin
 
 Why: User review of round 1 flagged the glossy 3D primaries, misplaced tape, undersized heart, and em-dash copy; photo embeds + hover pan were requested additions.
 Rejected: Glow kept as hover accent (still off-language); `user-select: none` for the caret (kills text selection).
+
+### Four-step control scale and form typography (issue #159)
+
+Decided: 2026-07-18
+What: Height-bearing controls use only `sm` 26 px, `md` 32 px, `lg` 38 px, or `xl` 48 px. Toolbars, navigation chrome, import, and the gift editor use `md`; standalone auth/settings/moderator/create-list form stacks use `lg`; landing and share CTAs use `xl`; compact secondary affordances use `sm`. Neighboring controls in one row or stack share a step. Textareas remain rows-driven. The heading ladder is: page headings clamp from 26–34 px; dialog, section, and empty-state headings use the 22 px `text-2xl` step; content-card headings use the 17 px `text-xl` step; dense and utility headings use the 14 px `text-base` step. Headings are semibold. `Label` is 12 px, semibold, and muted. Field help uses `HelpText` at 12 px muted. `muted-foreground` is the single secondary-text role; the duplicate `foreground-subtle`, `foreground-muted`, and `ink-soft` tokens/utilities are removed.
+Why: One token-backed scale prevents accidental 36/44 px drift, aligns mixed controls, and makes the type hierarchy predictable across themes.
+Rejected: Per-screen raw heights; state-specific Input sizes; parallel subtle-text tokens with nearly identical meanings.

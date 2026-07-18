@@ -4,6 +4,7 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ModeratorListItem from './ModeratorListItem.svelte';
 	import { moderatorPanelVariants } from './moderator_panel_variants.js';
@@ -312,11 +313,12 @@
 					{/if}
 
 					<div class="flex flex-col gap-1.5">
-						<label for="claim-email" class="text-sm text-muted-foreground">
+						<Label for="claim-email">
 							{m.claim_email_label()}
-						</label>
+						</Label>
 						<Input
 							id="claim-email"
+							size="lg"
 							type="email"
 							placeholder={m.claim_email_placeholder()}
 							bind:value={claimEmail}
@@ -426,11 +428,12 @@
 				{/if}
 
 				<div class="flex flex-col gap-1.5">
-					<label for="invite-email" class="text-sm text-muted-foreground">
+					<Label for="invite-email">
 						{m.moderator_invite_email_label()}
-					</label>
+					</Label>
 					<Input
 						id="invite-email"
+						size="lg"
 						type="email"
 						placeholder={m.moderator_invite_email_placeholder()}
 						bind:value={inviteEmail}

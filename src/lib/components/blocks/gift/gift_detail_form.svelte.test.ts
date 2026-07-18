@@ -1,3 +1,8 @@
+// The dense-alignment suite below measures computed geometry (control heights,
+// grid columns, label-row baselines), so the real compiled Tailwind utilities must
+// be present — the bare `client` browser project doesn't load them otherwise
+// (only `.storybook/preview.ts` imports app.css). Mirror that import here.
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
@@ -217,5 +222,99 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 				imageMeta: expect.objectContaining({ fitMode: IMAGE_FIT_MODES.auto }),
 			}),
 		);
+	});
+});
+
+describe('GiftDetailForm dense control alignment (issue #159)', () => {
+	function expectAlignedControlPair(
+		rowTestId: string,
+		firstControlSelector: string,
+		secondControlSelector: string,
+	): void {
+		const row = document.querySelector<HTMLElement>(`[data-testid="${rowTestId}"]`);
+		expect(row).not.toBeNull();
+
+		const fields = [...row!.children] as HTMLElement[];
+		expect(fields).toHaveLength(2);
+		const [firstFieldRect, secondFieldRect] = fields.map((field) =>
+			field.getBoundingClientRect(),
+		);
+		expect(firstFieldRect.top).toBe(secondFieldRect.top);
+		expect(firstFieldRect.left).not.toBe(secondFieldRect.left);
+		expect(firstFieldRect.width).toBe(secondFieldRect.width);
+		expect(firstFieldRect.left).toBeLessThan(secondFieldRect.left);
+		expect(secondFieldRect.left - firstFieldRect.right).toBeGreaterThan(0);
+
+		const firstControl = fields[0]!.querySelector<HTMLElement>(firstControlSelector);
+		const secondControl = fields[1]!.querySelector<HTMLElement>(secondControlSelector);
+		expect(firstControl).not.toBeNull();
+		expect(secondControl).not.toBeNull();
+		const firstControlRect = firstControl!.getBoundingClientRect();
+		const secondControlRect = secondControl!.getBoundingClientRect();
+		expect(firstControlRect.height).toBe(32);
+		expect(secondControlRect.height).toBe(32);
+		expect(firstControlRect.top).toBe(secondControlRect.top);
+		expect(firstControlRect.bottom).toBe(secondControlRect.bottom);
+
+		const labelRows = fields.map((field) =>
+			field.querySelector<HTMLElement>('[data-slot="gift-form-label-row"]'),
+		);
+		expect(labelRows.every((labelRow) => labelRow !== null)).toBe(true);
+		const [firstLabelRowRect, secondLabelRowRect] = labelRows.map((labelRow) =>
+			labelRow!.getBoundingClientRect(),
+		);
+		expect(firstLabelRowRect.top).toBe(secondLabelRowRect.top);
+
+		const [firstLabelRect, secondLabelRect] = labelRows.map((labelRow) =>
+			labelRow!.querySelector('label')!.getBoundingClientRect(),
+		);
+		expect(firstLabelRect.top).toBe(secondLabelRect.top);
+		expect(firstLabelRect.bottom).toBe(secondLabelRect.bottom);
+	}
+
+	it('aligns paired label rows and 32px controls for price, currency, quantity, and priority', async () => {
+		await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift(),
+			priorityLevels: [
+				{
+					id: 'priority-medium',
+					wishlistId: 'wishlist-1',
+					sortOrder: 1,
+					label: 'Stredni',
+					createdAt: new Date('2026-01-01T00:00:00Z'),
+				},
+			],
+		});
+
+		expectAlignedControlPair(
+			'gift-price-currency-row',
+			'#gift-price',
+			'[data-slot="select-trigger"]',
+		);
+		expectAlignedControlPair(
+			'gift-quantity-priority-row',
+			'#gift-quantity',
+			'[data-slot="select-trigger"]',
+		);
+	});
+
+	it('keeps quantity full width when the wishlist has no priority controls', async () => {
+		await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift(),
+		});
+
+		const row = document.querySelector<HTMLElement>(
+			'[data-testid="gift-quantity-priority-row"]',
+		);
+		const quantity = row?.querySelector<HTMLElement>('#gift-quantity');
+		expect(row).not.toBeNull();
+		expect(row!.children).toHaveLength(1);
+		expect(quantity).not.toBeNull();
+		const rowRect = row!.getBoundingClientRect();
+		const quantityRect = quantity!.getBoundingClientRect();
+		expect(quantityRect.left).toBe(rowRect.left);
+		expect(quantityRect.right).toBe(rowRect.right);
 	});
 });
