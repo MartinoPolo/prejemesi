@@ -39,7 +39,6 @@
 	import {
 		canManageWishlist,
 		REVERT_CAPABILITY,
-		type RevertCapability,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
