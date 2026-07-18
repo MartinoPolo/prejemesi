@@ -18,8 +18,10 @@ import { tv } from 'tailwind-variants';
 export const giftCardVariants = tv({
 	slots: {
 		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
+		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
-			'relative isolate row-start-1 aspect-square w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
+			'relative isolate row-start-1 aspect-[4/3] w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
 		/**
 		 * Dotted mat behind the photo (shows through letterboxed photos). Sits on
 		 * its own layer below the image so its opacity can fade up on hover —

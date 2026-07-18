@@ -33,7 +33,9 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realHeight: 128,
 		realSizeText: '356 × 128 px',
 	},
-	// GiftDetailForm image column: 45% of the 900px modal, height driven by the form.
+	// Retired detail-modal crop (issue #183): the visitor detail view now renders
+	// the full uncropped photo and is no longer a crop-target consumer. Kept
+	// parseable for legacy `targets.detail` rows only.
 	detail: {
 		aspect: 403 / 806,
 		cssAspect: '1 / 2',
@@ -41,13 +43,20 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realHeight: 806,
 		realSizeText: '403 × 806 px',
 	},
-	// GiftCard + GiftListItem + ReserveModal share the 1:1 family (#163).
+	// GiftCard grid + GiftListItem share this 4:3 family (issue #183, revises the
+	// 1:1 shape #163 introduced). The name stays `square` because it is a stable
+	// persisted `image_meta.targets` key (renaming would need a data migration,
+	// which #183 explicitly avoids) — the SAME persisted focal+zoom reprojects
+	// losslessly onto the wider window with no data change (focal+zoom is
+	// resolution- and aspect-ratio-independent). ReserveModal's small 48×48
+	// summary icon also renders through this target as a further, approximate
+	// (non-WYSIWYG) cover-crop of the same framing.
 	square: {
-		aspect: 1,
-		cssAspect: '1 / 1',
+		aspect: 4 / 3,
+		cssAspect: '4 / 3',
 		realWidth: 356,
-		realHeight: 356,
-		realSizeText: '356 × 356 px / 96 × 96 px / 48 × 48 px',
+		realHeight: 267,
+		realSizeText: '356 × 267 px / 96 × 72 px',
 	},
 } as const satisfies Record<GiftCropTarget, CropTargetSpec>;
 

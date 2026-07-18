@@ -46,6 +46,30 @@
 		fillColor?: string | null;
 		/** Scopes the tier-2 letterbox fill token, mirroring ImageFrame (WYSIWYG). */
 		tokenScope?: ImageTokenScope;
+		/**
+		 * Non-interactive static preview mode (#183 REQ-6/7): hides the thirds
+		 * grid, zoom slider, reset button and hint text, and ignores
+		 * pointer/keyboard/wheel edits. Defaults to the interactive Manual-editing
+		 * behavior.
+		 */
+		interactive?: boolean;
+		/**
+		 * Renders the ENTIRE image letterboxed (contain) inside the window instead
+		 * of the cover-cropped `cropRect` (REQ-7's Fit preview). Only meaningful
+		 * when `interactive` is false.
+		 */
+		containMode?: boolean;
+		/**
+		 * Fires on a wheel gesture when `interactive` is false, mirroring
+		 * `promoteOnWheel` for the plain preview (REQ-6/7: a zoom attempt still
+		 * promotes to Manual). Ignored when `interactive` is true.
+		 */
+		onWheelPromote?: () => void;
+		/**
+		 * Shows the target-label/pixel-size chip on the window. The gift editor
+		 * removes it entirely (REQ-8); the wishlist editor keeps it.
+		 */
+		showLabelChip?: boolean;
 		class?: string;
 	}
 
@@ -59,6 +83,10 @@
 		onchange,
 		fillColor = null,
 		tokenScope = IMAGE_TOKEN_SCOPES.global,
+		interactive = true,
+		containMode = false,
+		onWheelPromote,
+		showLabelChip = true,
 		class: className,
 	}: Props = $props();
 
@@ -129,19 +157,29 @@
 		};
 	});
 
-	// The source image drawn so that `cropRect` fills the window exactly; the rest
-	// overflows dimmed. Position derives from the rect, so pan/zoom just move it.
+	// containMode (REQ-7, non-interactive only) shows the ENTIRE image regardless
+	// of `cropRect`: the rect at the aspect's contain zoom, centered – exactly the
+	// "whole image, letterboxed on one axis" framing, ignoring any drawn/persisted
+	// crop (Fit always discards framing).
+	const displayRect = $derived(
+		containMode && isReady
+			? zoomCropRect(centeredCropRect(normAspect), normAspect, containZoom)
+			: cropRect,
+	);
+
+	// The source image drawn so that `displayRect` fills the window exactly; the
+	// rest overflows dimmed. Position derives from the rect, so pan/zoom just move it.
 	const image = $derived.by(() => {
-		if (cropWindow === null || naturalRatio === null || cropRect.w <= 0) {
+		if (cropWindow === null || naturalRatio === null || displayRect.w <= 0) {
 			return null;
 		}
-		const width = cropWindow.width / cropRect.w;
+		const width = cropWindow.width / displayRect.w;
 		const height = width / naturalRatio;
 		return {
 			width,
 			height,
-			left: cropWindow.left - cropRect.x * width,
-			top: cropWindow.top - cropRect.y * height,
+			left: cropWindow.left - displayRect.x * width,
+			top: cropWindow.top - displayRect.y * height,
 		};
 	});
 
@@ -255,6 +293,19 @@
 		emit(centeredCropRect(normAspect));
 	}
 
+	// A spread object (rather than per-attribute ternaries) so the a11y linter
+	// doesn't see an independently-conditional `tabindex` without a correlated
+	// `role` – mirrors ImageFrame's `interactiveAttrs` pattern.
+	const interactiveAttrs = $derived(
+		interactive
+			? {
+					role: 'button',
+					tabindex: 0,
+					'aria-label': `${m.image_crop_region_label()}: ${targetLabel}`,
+				}
+			: {},
+	);
+
 	// Snap the bound rect to the active target's aspect once the image is measured
 	// or when the target switches. Persisted per-target rects already match and pass
 	// through untouched; other rects get re-shaped around their center preserving
@@ -263,7 +314,9 @@
 	// rect is the "no framing yet" seed and snaps to the centered cover default (D1).
 	// Programmatic – does not fire `onchange`.
 	$effect(() => {
-		if (!isReady) {
+		// containMode (Fit preview) never snaps the bound rect – its display is
+		// computed independently from `normAspect`/`containZoom` (see `displayRect`).
+		if (!isReady || containMode) {
 			return;
 		}
 		const snapped = rectsClose(cropRect, FULL_CROP_RECT)
@@ -295,32 +348,45 @@
 
 	// Svelte attaches inline `onwheel` as a passive listener, so `preventDefault()`
 	// would be ignored and the page would scroll while zooming. Register non-passive.
+	// Non-interactive (Fill/Fit preview): a wheel gesture promotes to Manual
+	// instead of zooming (#183 REQ-6/7), mirroring `promoteOnWheel`.
 	$effect(() => {
 		const el = viewportEl;
 		if (el === null) {
 			return;
 		}
-		el.addEventListener('wheel', handleWheel, { passive: false });
-		return () => el.removeEventListener('wheel', handleWheel);
+		const listener = interactive
+			? handleWheel
+			: (event: WheelEvent) => {
+					event.preventDefault();
+					onWheelPromote?.();
+				};
+		el.addEventListener('wheel', listener, { passive: false });
+		return () => el.removeEventListener('wheel', listener);
 	});
 </script>
 
 <div class={cn('flex min-h-0 flex-col gap-2', className)}>
 	<!-- WYSIWYG stage: the bright window IS the target surface (issue #116 REQ-2).
-	     Pointer-drag pans, wheel/slider zooms, arrows pan from the keyboard. The
-	     nested-handles a11y exception from #50 no longer applies: the stage is a
-	     single focusable control with keyboard pan + a keyboard-operable zoom slider. -->
+	     Interactive: pointer-drag pans, wheel/slider zooms, arrows pan from the
+	     keyboard. The nested-handles a11y exception from #50 no longer applies:
+	     the stage is a single focusable control with keyboard pan + a
+	     keyboard-operable zoom slider. Non-interactive (#183 REQ-6/7): a static
+	     preview – no focus, no drag/keyboard, only a wheel gesture (promotes to
+	     Manual). -->
 	<div
 		bind:this={viewportEl}
 		bind:clientWidth={viewportWidth}
 		bind:clientHeight={viewportHeight}
-		role="button"
-		tabindex="0"
-		aria-label={`${m.image_crop_region_label()}: ${targetLabel}`}
 		data-testid="crop-stage"
-		class="relative min-h-0 w-full flex-1 cursor-move touch-none overflow-hidden rounded-lg bg-surface-2 select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-		onpointerdown={beginDrag}
-		onkeydown={handleKeydown}
+		class={cn(
+			'relative min-h-0 w-full flex-1 overflow-hidden rounded-lg bg-surface-2 select-none',
+			interactive &&
+				'cursor-move touch-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+		)}
+		onpointerdown={interactive ? beginDrag : undefined}
+		onkeydown={interactive ? handleKeydown : undefined}
+		{...interactiveAttrs}
 	>
 		{#if isReady && cropWindow !== null}
 			<!-- Letterbox fill behind the image: where a zoomed-out window overhangs
@@ -357,46 +423,54 @@
 				style:clip-path={veilClipPath}
 			></div>
 
-			<!-- Window frame: target aspect, rule-of-thirds grid, target + real-size chip -->
+			<!-- Window frame: target aspect, rule-of-thirds grid (interactive only,
+			     #183 REQ-6/7), target + real-size chip (gift editor removes it
+			     entirely, REQ-8; the wishlist editor keeps it via `showLabelChip`) -->
 			<div
 				data-testid="crop-stage-window"
 				class="pointer-events-none absolute outline-2 outline-white/90"
 				style="left: {cropWindow.left}px; top: {cropWindow.top}px; width: {cropWindow.width}px; height: {cropWindow.height}px;"
 			>
-				<div class="absolute inset-0 grid grid-cols-3 grid-rows-3">
-					{#each GRID_CELLS as cell (cell)}
-						<div class="border border-white/25"></div>
-					{/each}
-				</div>
-				<span
-					class="absolute top-1.5 left-1.5 max-w-[calc(100%-0.75rem)] truncate rounded-sm bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white"
-				>
-					{targetLabel}{realSizeText !== undefined ? ` · ${realSizeText}` : ''}
-				</span>
+				{#if interactive}
+					<div class="absolute inset-0 grid grid-cols-3 grid-rows-3">
+						{#each GRID_CELLS as cell (cell)}
+							<div class="border border-white/25"></div>
+						{/each}
+					</div>
+				{/if}
+				{#if showLabelChip}
+					<span
+						class="absolute top-1.5 left-1.5 max-w-[calc(100%-0.75rem)] truncate rounded-sm bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white"
+					>
+						{targetLabel}{realSizeText !== undefined ? ` · ${realSizeText}` : ''}
+					</span>
+				{/if}
 			</div>
 		{/if}
 	</div>
 
-	<!-- Zoom + reset -->
-	<div class="flex items-center gap-3">
-		<Slider
-			class="flex-1"
-			value={Math.round(zoom * 100)}
-			min={sliderMinPercent}
-			max={IMAGE_ZOOM_MAX * 100}
-			step={SLIDER_STEP}
-			disabled={!isReady}
-			onValueChange={(value: number) => setZoom(value / 100)}
-			aria-label={m.image_crop_zoom_label()}
-		/>
-		<span class="w-12 text-right text-xs tabular-nums text-foreground-subtle">
-			{Math.round(zoom * 100)} %
-		</span>
-		<Button intent="ghost" size="sm" disabled={!isReady || isDefaultRect} onclick={reset}>
-			<RotateCcwIcon data-icon="inline-start" />
-			{m.gift_image_crop_reset()}
-		</Button>
-	</div>
+	{#if interactive}
+		<!-- Zoom + reset -->
+		<div class="flex items-center gap-3">
+			<Slider
+				class="flex-1"
+				value={Math.round(zoom * 100)}
+				min={sliderMinPercent}
+				max={IMAGE_ZOOM_MAX * 100}
+				step={SLIDER_STEP}
+				disabled={!isReady}
+				onValueChange={(value: number) => setZoom(value / 100)}
+				aria-label={m.image_crop_zoom_label()}
+			/>
+			<span class="w-12 text-right text-xs tabular-nums text-foreground-subtle">
+				{Math.round(zoom * 100)} %
+			</span>
+			<Button intent="ghost" size="sm" disabled={!isReady || isDefaultRect} onclick={reset}>
+				<RotateCcwIcon data-icon="inline-start" />
+				{m.gift_image_crop_reset()}
+			</Button>
+		</div>
 
-	<span class="text-xs text-foreground-subtle">{m.image_crop_hint()}</span>
+		<span class="text-xs text-foreground-subtle">{m.image_crop_hint()}</span>
+	{/if}
 </div>

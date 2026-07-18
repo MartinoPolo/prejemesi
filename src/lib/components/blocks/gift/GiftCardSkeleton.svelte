@@ -6,8 +6,8 @@
 <div
 	class="flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
 >
-	<!-- Image area -->
-	<Skeleton class="aspect-square w-full rounded-none border-b-[2.5px] border-ink" />
+	<!-- Image area: 4:3 (issue #183), mirrors gift_card_variants' imageArea -->
+	<Skeleton class="aspect-[4/3] w-full rounded-none border-b-[2.5px] border-ink" />
 
 	<!-- Body -->
 	<div class="flex flex-1 flex-col gap-2 p-4">

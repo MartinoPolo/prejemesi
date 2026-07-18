@@ -18,6 +18,13 @@
 	import type { ImageFocalPoint } from '$lib/modules/images/types.js';
 	import { transformedImageUrl, type ImageVariant } from '$lib/modules/images/variants.js';
 
+	/**
+	 * Fixed box shown for a `natural` frame while loading or falling back – its
+	 * eventual natural size is unknown until the image decodes, so there is no
+	 * "real" size to skeleton toward.
+	 */
+	const NATURAL_PLACEHOLDER_CLASS = 'aspect-square w-full max-w-[280px]';
+
 	interface Props {
 		/** Image source. Null/empty renders the themed fallback. */
 		src?: string | null;
@@ -52,6 +59,16 @@
 		shape?: ImageFrameShape;
 		/** Adds keyboard focusability + focus-visible ring (e.g. opens a crop editor). */
 		interactive?: boolean;
+		/**
+		 * Renders the image at its natural size — uncropped, ignoring
+		 * `fitMode`/`focal`/`zoom` entirely (issue #183 REQ-10). The frame box
+		 * shrink-wraps around the rendered image instead of stretching it to fill
+		 * a fixed box, so `class` should cap the image directly (e.g.
+		 * `max-h-[480px] max-w-full`) and the browser scales it down preserving
+		 * its aspect ratio. Used by the visitor gift detail view, which stops
+		 * being a crop-target consumer.
+		 */
+		natural?: boolean;
 		/** Force the loading skeleton (e.g. parent still fetching before `src` exists). */
 		loading?: boolean;
 		/** Fires once the image genuinely fails to load (after any transformed-variant retry). Lets a
@@ -81,6 +98,7 @@
 		fallbackLabel,
 		shape = 'square',
 		interactive = false,
+		natural = false,
 		loading = false,
 		onerror,
 		referrerPolicy,
@@ -134,9 +152,33 @@
 			: null,
 	);
 
+	// Natural mode (REQ-10): the frame box shrink-wraps around the rendered image
+	// once it loads (or shows a fixed placeholder while loading/falling back,
+	// since the eventual natural size is unknown until then); `className`
+	// applies to the `<img>` directly instead of the box so the caller's cap
+	// (e.g. `max-h-[480px] max-w-full`) does the actual scaling.
+	const rootClass = $derived(
+		natural
+			? cn(
+					styles.root(),
+					showFallback || showSkeleton ? NATURAL_PLACEHOLDER_CLASS : 'inline-block',
+				)
+			: cn(styles.root(), className),
+	);
+	const imageClass = $derived(
+		natural
+			? cn('block h-auto w-auto object-contain', className)
+			: zoomOutLayout !== null
+				? 'absolute max-w-none'
+				: styles.image(),
+	);
+
 	// cover-crop honors the focal point (object-position) and an optional zoom that
 	// magnifies toward that same point – together they reproduce a saved manual crop.
 	const imageStyle = $derived.by(() => {
+		if (natural) {
+			return undefined;
+		}
 		if (zoomOutLayout !== null) {
 			return (
 				`left: ${zoomOutLayout.left}px; top: ${zoomOutLayout.top}px;` +
@@ -204,7 +246,7 @@
 </script>
 
 <div
-	class={cn(styles.root(), className)}
+	class={rootClass}
 	style:--frame-fill={frameFill}
 	bind:clientWidth={boxWidth}
 	bind:clientHeight={boxHeight}
@@ -229,7 +271,7 @@
 		{#if hasSrc}
 			<img
 				{@attach trackImageLoad}
-				class={zoomOutLayout !== null ? 'absolute max-w-none' : styles.image()}
+				class={imageClass}
 				style={imageStyle}
 				src={displaySrc}
 				{alt}

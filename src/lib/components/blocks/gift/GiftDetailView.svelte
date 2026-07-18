@@ -4,7 +4,8 @@
 	import StarIcon from '@lucide/svelte/icons/star';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { cn } from '$lib/utils.js';
-	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
+	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
+	import { IMAGE_TOKEN_SCOPES } from '$lib/components/derived/image-frame/index.js';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftDescription from '$lib/components/blocks/gift/GiftDescription.svelte';
@@ -58,12 +59,16 @@
 			{/if}
 			<div class={styles.viewPhoto({ viewDimmed: isDimmed })}>
 				<div class={styles.viewPhotoInner()}>
-					<GiftImage
-						class="size-full"
-						imageUrl={gift.imageUrl}
-						imageMeta={gift.imageMeta}
-						target="square"
+					<!-- Full uncropped photo at its natural aspect ratio, height-capped
+					     (issue #183 REQ-10): the detail view stops being a crop-target
+					     consumer, so no `imageMeta`/`target` is involved – tall photos
+					     display tall, wide photos display wide. -->
+					<ImageFrame
+						natural
+						class="max-h-[300px] sm:max-h-[480px] max-w-full"
+						src={gift.imageUrl}
 						alt={gift.name}
+						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 					/>
 				</div>
 			</div>
