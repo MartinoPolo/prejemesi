@@ -1006,12 +1006,20 @@ What: Gift cards/detail show who reserved ("rezervovala Babička") to all non-ow
 Why: Helps family coordination ("grandma has it covered"); lists are shared among trusted people.
 Rejected: Moderators-only (loses the gifter-view value); keeping the anonymous "Reserved" badge.
 
-### Toolbar: visible sort select + "Pouze dostupné" chip
+### ~~Toolbar: visible sort select + "Pouze dostupné" chip~~ (superseded)
 
-Decided: 2026-07-10 (supersedes "Sort and filter as icon-only dropdown trigger")
-What: The sort select is visible in the wishlist toolbar; "Pouze dostupné" is a toggle chip (#101); the rare "s odkazem" filter moves to a small overflow menu. The toolbar flex-wraps on narrow screens.
+Decided: 2026-07-10 (supersedes "Sort and filter as icon-only dropdown trigger") — **Superseded 2026-07-15 by issue #161**.
+~~What: The sort select is visible in the wishlist toolbar; "Pouze dostupné" is a toggle chip (#101); the rare "s odkazem" filter moves to a small overflow menu. The toolbar flex-wraps on narrow screens.~~
 Why: Availability filtering is the highest-value visitor action; burying it defeated it.
 Rejected: Icon-only dropdown (buried filters); three visible chips (toolbar overflow).
+Replaced because: unified filtering needs a shared interaction across wishlists and dashboards.
+
+### Toolbar: one filter dropdown with active pills (issue #161)
+
+Decided: 2026-07-15
+What: One shared derived filter dropdown holds filter toggles. Active filters render as removable pills that fill the desktop gap after the toolbar; below 640 px pills are hidden and the trigger exposes an active count plus menu clear action. Role/auth filter gates and existing filtering semantics remain unchanged.
+Why: Keeps controls compact while retaining visible active state, one-shot clear, and accessible mobile context.
+Rejected: Per-page filter implementations; permanently visible filter chips.
 
 ### Navigation: pill states, landing anchor links, mobile control consolidation
 
