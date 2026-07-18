@@ -27,6 +27,7 @@
 		getPriorityDisplay,
 		finalizeGiftPrice,
 		finalizeGiftQuantity,
+		formatAppendDate,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
@@ -56,6 +57,7 @@
 		giftEditorModeFromMeta,
 		mergeGiftTargetCrops,
 		seedCropRectFromLegacyMeta,
+		FULL_CROP_RECT,
 		GIFT_CROP_TARGET_SPECS,
 		GIFT_EDITOR_CROP_TARGET_VALUES,
 		IMAGE_EDITOR_MODES,
@@ -219,6 +221,17 @@
 	// Reads the local seeded `description` copy (not the `gift` prop) so the frozen/append
 	// branch stays self-contained and never re-toggles from a reactive prop change.
 	const descriptionFrozen = $derived(locked && description.trim() !== '');
+	// Edited-after-share transparency (issue #185): the recipient/moderator edit
+	// surface shows the SAME muted text line as the read-only visitor detail view
+	// (`GiftDetailView.svelte`) – only the surface changed, not who can see it
+	// (REQ-5).
+	const editedAfterShareLine = $derived(
+		gift?.editedAfterShareAt != null
+			? m.gift_edited_after_share_line({
+					date: formatAppendDate(gift.editedAfterShareAt.toISOString()),
+				})
+			: null,
+	);
 	const currentQuantity = $derived(gift?.quantity ?? 1);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
@@ -333,7 +346,21 @@
 
 	function setEditorMode(value: string) {
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
-			editorMode = value as ImageEditorMode;
+			const nextMode = value as ImageEditorMode;
+			if (nextMode === IMAGE_EDITOR_MODES.fill) {
+				// Explicit Fill re-centers the framing (the `recentered` branch of
+				// `currentImageMeta` below), so the static preview must show that SAME
+				// centered framing (#183 REQ-6/7 WYSIWYG) instead of whatever rect
+				// Manual editing or a legacy seed left in `targetRects` – reset it to
+				// the "no framing yet" sentinel and let `ImageCropStage`'s own snap
+				// effect resolve it to the identical centered cover-crop
+				// (`centeredCropRect`) that Save persists. Fit and Manual are
+				// unaffected: Fit's preview is computed independently of
+				// `targetRects` (`containMode`), and Manual must keep whatever
+				// framing the user actually drew.
+				targetRects[activeTarget] = { ...FULL_CROP_RECT };
+			}
+			editorMode = nextMode;
 			modeDirty = true;
 		}
 	}
@@ -767,6 +794,10 @@
 						/>
 					{/if}
 				</div>
+
+				{#if editedAfterShareLine !== null}
+					<p class="mt-2 text-xs text-muted-foreground">{editedAfterShareLine}</p>
+				{/if}
 
 				<!-- Links -->
 				<div class="mt-3 {styles.formField()}">

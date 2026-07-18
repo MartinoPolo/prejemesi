@@ -185,6 +185,13 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			// at least one axis).
 			expect(imageBox!.width).toBeLessThanOrEqual(windowBox!.width + 1);
 			expect(imageBox!.height).toBeLessThanOrEqual(windowBox!.height + 1);
+			// An upper-bound-only check would also pass for an image rendered far
+			// too small, so also assert containment BINDS on at least one axis: the
+			// sample image is square and the window is 4:3, so true contain binds on
+			// height (image height ≈ window height).
+			expect(
+				Math.min(windowBox!.width - imageBox!.width, windowBox!.height - imageBox!.height),
+			).toBeLessThanOrEqual(2);
 		}).toPass({ timeout: 5_000 });
 
 		// Clicking the preview tile jumps to Manual mode with the square target

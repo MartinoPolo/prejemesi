@@ -2,6 +2,7 @@ import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
+import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
 
 // `GiftDetailForm` transitively imports the images module barrel, which re-exports
 // `public_url.ts`'s `$env/dynamic/public` usage. In the real app SvelteKit's page
@@ -164,6 +165,57 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		expect(onupdate).toHaveBeenCalledTimes(1);
 		expect(onupdate).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'gift-1', price: 100, priceMax: null }),
+		);
+	});
+});
+
+describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => {
+	// A wide/landscape data-URI source: its natural ratio (400/100 = 4) diverges
+	// from the 4:3 gift window (÷ 4/3 = 3.0) well past `AUTO_CONTAIN_RATIO_THRESHOLD`
+	// (2), so a real `auto` render would letterbox (Fit/contain) rather than
+	// cover-crop – exercising `resolveAutoFit` against a real measured image
+	// instead of asserting the pure function in isolation.
+	const landscapeImageUrl =
+		'data:image/svg+xml,' +
+		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="100"/>');
+
+	it('normalizes an untouched legacy auto row to the Fit toggle without dirtying the mode (REQ-8)', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({
+				imageUrl: landscapeImageUrl,
+				imageKey: 'legacy-key',
+				imageMeta: {
+					fitMode: IMAGE_FIT_MODES.auto,
+					cropRect: null,
+					focal: { x: 50, y: 50 },
+					zoom: 1,
+					bgColor: null,
+				},
+			}),
+			onupdate,
+		});
+
+		// The toggle normalizes to Fit once the natural ratio is measured – purely
+		// a presentation normalization (`presentedEditorMode`); the internal
+		// `editorMode` stays at its `giftEditorModeFromMeta` default (`fill` for
+		// any `auto` row) the whole time.
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_fit_fit() }))
+			.toHaveAttribute('aria-checked', 'true');
+
+		// Saving untouched must still persist `auto` verbatim (REQ-8). If the
+		// measurement had incorrectly dirtied the mode, `savedFitMode` would
+		// instead derive from the internal `fill` editorMode and persist
+		// `cover-crop` here.
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledTimes(1);
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				imageMeta: expect.objectContaining({ fitMode: IMAGE_FIT_MODES.auto }),
+			}),
 		);
 	});
 });
