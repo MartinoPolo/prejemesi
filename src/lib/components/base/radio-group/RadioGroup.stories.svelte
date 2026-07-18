@@ -117,31 +117,31 @@
 	{#snippet template(args: RadioGroupProps)}
 		<div class="grid grid-cols-4 gap-6">
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Rest</span>
+				<span class="text-xs text-muted-foreground">Rest</span>
 				<RadioGroup {...args}>
 					<RadioGroupItem value="x" />
 				</RadioGroup>
 			</div>
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Selected</span>
+				<span class="text-xs text-muted-foreground">Selected</span>
 				<RadioGroup value="x">
 					<RadioGroupItem value="x" />
 				</RadioGroup>
 			</div>
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Disabled</span>
+				<span class="text-xs text-muted-foreground">Disabled</span>
 				<RadioGroup disabled>
 					<RadioGroupItem value="x" />
 				</RadioGroup>
 			</div>
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Disabled + Selected</span>
+				<span class="text-xs text-muted-foreground">Disabled + Selected</span>
 				<RadioGroup value="x" disabled>
 					<RadioGroupItem value="x" />
 				</RadioGroup>
 			</div>
 			<div class="col-span-4 flex flex-col gap-2">
-				<span class="text-xs text-foreground-subtle">Group</span>
+				<span class="text-xs text-muted-foreground">Group</span>
 				<RadioGroup value="claude" class="flex flex-row gap-4">
 					<div class="flex items-center gap-1.5">
 						<RadioGroupItem value="claude" id="rs-claude" />

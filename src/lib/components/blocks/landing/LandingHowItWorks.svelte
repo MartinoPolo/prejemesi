@@ -49,7 +49,7 @@
 						<span aria-hidden="true">{step.emoji}</span>
 					</div>
 					<h3 class="mb-2 text-[19px] font-semibold">{step.title}</h3>
-					<p class="text-(length:--text-lg) leading-relaxed text-ink-soft">
+					<p class="text-(length:--text-lg) leading-relaxed text-muted-foreground">
 						{step.description}
 					</p>
 				</article>

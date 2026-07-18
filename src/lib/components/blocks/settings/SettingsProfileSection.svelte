@@ -2,6 +2,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Card from '$lib/components/base/card/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
@@ -179,6 +180,7 @@
 				<Label for="settings-display-name">{m.settings_display_name()}</Label>
 				<Input
 					id="settings-display-name"
+					size="lg"
 					type="text"
 					placeholder={m.settings_display_name_placeholder()}
 					bind:value={displayName}
@@ -190,21 +192,20 @@
 				<Label for="settings-email">{m.settings_email_label()}</Label>
 				<Input
 					id="settings-email"
+					size="lg"
 					type="email"
 					value={email}
 					disabled={isOAuthUser}
 					readonly={isOAuthUser}
 				/>
 				{#if isOAuthUser}
-					<p class="text-xs text-muted-foreground">
-						{m.settings_email_readonly_hint()}
-					</p>
+					<HelpText>{m.settings_email_readonly_hint()}</HelpText>
 				{/if}
 			</div>
 		</div>
 	</Card.Content>
 	<Card.Footer class="flex justify-end">
-		<Button onclick={handleSave} disabled={saving}>
+		<Button size="lg" onclick={handleSave} disabled={saving}>
 			{#if saving}
 				{m.saving()}
 			{:else if saved}

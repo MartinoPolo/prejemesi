@@ -45,7 +45,7 @@
 					<span aria-hidden="true">🙈</span>
 					{m.landing_feat1_title()}
 				</h3>
-				<p class="text-(length:--text-lg) leading-relaxed text-ink-soft">
+				<p class="text-(length:--text-lg) leading-relaxed text-muted-foreground">
 					{m.landing_feat1_description()}
 				</p>
 				<div class="feature-demo">
@@ -77,7 +77,7 @@
 					<span aria-hidden="true">🔗</span>
 					{m.landing_feat2_title()}
 				</h3>
-				<p class="text-(length:--text-lg) leading-relaxed text-ink-soft">
+				<p class="text-(length:--text-lg) leading-relaxed text-muted-foreground">
 					{m.landing_feat2_description()}
 				</p>
 				<div class="feature-demo">
@@ -120,7 +120,7 @@
 					<span aria-hidden="true">🎨</span>
 					{m.landing_feat3_title()}
 				</h3>
-				<p class="text-(length:--text-lg) leading-relaxed text-ink-soft">
+				<p class="text-(length:--text-lg) leading-relaxed text-muted-foreground">
 					{m.landing_feat3_description()}
 				</p>
 				<div class="feature-demo">

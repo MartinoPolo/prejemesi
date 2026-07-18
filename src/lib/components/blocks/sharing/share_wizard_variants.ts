@@ -16,8 +16,8 @@ export const shareWizardVariants = tv({
 			'flex size-[26px] flex-shrink-0 items-center justify-center rounded-full border-2 border-ink text-[11px] font-bold transition-all',
 		stepDotActive: 'bg-primary text-primary-foreground shadow-sticker-sm',
 		stepDotDone: 'bg-primary text-primary-foreground',
-		stepDotPending: 'border-ink-faint bg-surface text-ink-soft',
-		stepLabel: 'whitespace-nowrap text-[11px] font-semibold text-ink-soft',
+		stepDotPending: 'border-ink-faint bg-surface text-muted-foreground',
+		stepLabel: 'whitespace-nowrap text-[11px] font-semibold text-muted-foreground',
 		stepLabelActive: 'whitespace-nowrap text-[11px] font-bold text-foreground',
 		actions: 'flex gap-2',
 		// Step 1
@@ -25,24 +25,24 @@ export const shareWizardVariants = tv({
 		warnIconWrap:
 			'flex size-[72px] -rotate-3 items-center justify-center rounded-2xl border-[2.5px] border-accent-loud-foreground bg-accent-loud text-accent-loud-foreground shadow-sticker',
 		confirmTitle: 'font-heading text-xl font-semibold tracking-tight text-foreground',
-		confirmBodyText: 'max-w-[380px] text-sm leading-relaxed text-ink-soft',
+		confirmBodyText: 'max-w-[380px] text-sm leading-relaxed text-muted-foreground',
 		previewCard:
 			'flex items-center gap-3 rounded-[12px] border-2 border-ink bg-surface px-4 py-3',
 		previewThumb:
 			'flex size-10 flex-shrink-0 -rotate-3 items-center justify-center rounded-[10px] border-2 border-ink bg-tint text-lg',
 		previewName: 'font-heading text-sm font-semibold text-foreground',
-		previewMeta: 'mt-0.5 text-xs text-ink-soft',
+		previewMeta: 'mt-0.5 text-xs text-muted-foreground',
 		previewBadge:
 			'flex-shrink-0 rounded-full border-2 border-ink bg-card px-2.5 py-0.5 text-[11px] font-semibold text-foreground',
 		// Step 2
 		shareHeader: 'pt-2',
 		shareTitle: 'font-heading text-lg font-semibold tracking-tight text-foreground',
-		shareSub: 'mt-0.5 text-xs text-ink-soft',
-		sectionEyebrow: 'mb-2 text-[11px] font-bold uppercase tracking-wider text-ink-soft',
+		shareSub: 'mt-0.5 text-xs text-muted-foreground',
+		sectionEyebrow: 'mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground',
 		copyLinkRow: 'flex items-stretch gap-2',
 		linkInputWrap:
-			'flex h-11 flex-1 items-center overflow-hidden rounded-[10px] border-2 border-ink bg-surface px-3',
-		linkUrlText: 'truncate text-sm text-ink-soft',
+			'flex h-(--size-control-xl) flex-1 items-center overflow-hidden rounded-[10px] border-2 border-ink bg-surface px-3',
+		linkUrlText: 'truncate text-sm text-muted-foreground',
 		linkUrlDomain: 'font-bold text-foreground',
 		copiedLabel:
 			'mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-ink bg-[color-mix(in_oklab,var(--status-success)_14%,var(--card))] px-2.5 py-0.5 text-xs font-bold text-status-success',
@@ -56,11 +56,12 @@ export const shareWizardVariants = tv({
 		successIconWrap:
 			'flex size-20 rotate-3 items-center justify-center rounded-2xl border-[2.5px] border-ink bg-tint text-primary shadow-sticker',
 		successTitle: 'font-heading text-2xl font-semibold tracking-tight text-foreground',
-		successSub: 'max-w-[360px] text-sm leading-relaxed text-ink-soft',
+		successSub: 'max-w-[360px] text-sm leading-relaxed text-muted-foreground',
 		successLinkRow: 'flex w-full min-w-0 items-center justify-center gap-1.5',
 		successLinkText: 'min-w-0 truncate text-sm font-bold text-foreground',
 		permissionsCard: 'rounded-panel border-[2.5px] border-ink bg-tint px-5 py-4',
-		permissionsCardLabel: 'mb-3 text-[11px] font-bold uppercase tracking-wider text-ink-soft',
+		permissionsCardLabel:
+			'mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground',
 		permissionsHeading: 'mb-3 text-sm font-semibold leading-snug text-foreground',
 		permissionsList: 'mb-4 flex flex-col gap-2',
 		permissionRow: 'flex items-center gap-2.5',

@@ -18,14 +18,10 @@
 			<h2 class="mb-4 text-[clamp(30px,4vw,42px)] font-semibold leading-[1.15]">
 				{m.landing_cta_title()}
 			</h2>
-			<p class="mb-8 text-[17px] leading-relaxed text-ink-soft">
+			<p class="mb-8 text-[17px] leading-relaxed text-muted-foreground">
 				{m.landing_cta_description()}
 			</p>
-			<Button
-				size="lg"
-				class="h-12 px-5 text-[16px]"
-				href={localizeInternalHref(resolve('/register'))}
-			>
+			<Button size="xl" href={localizeInternalHref(resolve('/register'))}>
 				<GiftIcon data-icon="inline-start" />
 				{m.landing_hero_cta()}
 			</Button>

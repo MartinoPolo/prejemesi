@@ -3,8 +3,12 @@ import type { HTMLInputAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const inputVariants = tv({
-	base: 'h-(--size-control-md) w-full rounded-btn border-[2.5px] border-ink bg-card px-3 font-sans text-(length:--text-md) font-medium text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-foreground-subtle disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-foreground-subtle disabled:opacity-70 read-only:bg-muted read-only:text-foreground-muted focus-visible:border-ring focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_22%,transparent)]',
+	base: 'w-full rounded-btn border-[2.5px] border-ink bg-card font-sans font-medium text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70 read-only:bg-muted read-only:text-muted-foreground focus-visible:border-ring focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--ring)_22%,transparent)]',
 	variants: {
+		size: {
+			md: 'h-(--size-control-md) px-3 text-(length:--text-md)',
+			lg: 'h-(--size-control-lg) px-3.5 text-(length:--text-base)',
+		},
 		state: {
 			default: '',
 			success:
@@ -15,15 +19,19 @@ export const inputVariants = tv({
 		},
 	},
 	defaultVariants: {
+		size: 'md',
 		state: 'default',
 	},
 });
 
+export type InputSize = keyof typeof inputVariants.variants.size;
 export type InputState = keyof typeof inputVariants.variants.state;
 
+export const INPUT_SIZES = Object.keys(inputVariants.variants.size) as InputSize[];
 export const INPUT_STATES = Object.keys(inputVariants.variants.state) as InputState[];
 
-export type InputProps = WithoutChildren<WithElementRef<HTMLInputAttributes>> & {
+export type InputProps = Omit<WithoutChildren<WithElementRef<HTMLInputAttributes>>, 'size'> & {
+	size?: InputSize;
 	state?: InputState;
 	files?: FileList | null;
 };

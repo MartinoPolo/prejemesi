@@ -13,7 +13,7 @@
 
 <div
 	class={cn(
-		'flex flex-wrap text-xs text-foreground-muted',
+		'flex flex-wrap text-xs text-muted-foreground',
 		compact
 			? 'items-center gap-x-3 gap-y-1'
 			: 'gap-4 rounded-lg border border-border bg-surface px-4 py-3',

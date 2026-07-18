@@ -118,7 +118,8 @@
 							>{m.gift_reserved_overlay()}</span
 						>
 						{#if reserverLine !== null}
-							<span class="text-[10px] font-medium text-ink-soft">{reserverLine}</span
+							<span class="text-[10px] font-medium text-muted-foreground"
+								>{reserverLine}</span
 							>
 						{/if}
 					</span>

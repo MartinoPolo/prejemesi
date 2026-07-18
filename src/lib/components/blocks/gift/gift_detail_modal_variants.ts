@@ -43,6 +43,7 @@ export const giftDetailModalVariants = tv({
 		formField: 'flex flex-col gap-1.5',
 		formLabel: 'text-sm font-medium text-foreground',
 		formRow: 'grid grid-cols-2 gap-3',
+		formLabelRow: 'flex min-h-6 items-center justify-between gap-2',
 		// Pinned outside the scroll region – always visible in create and edit mode.
 		// Mobile: pinned to the bottom of the body scroll with an opaque bg so fields
 		// scroll behind it. Desktop: sm:static – already pinned by flex in the right column.
@@ -103,7 +104,7 @@ export const giftDetailModalVariants = tv({
 			},
 			false: {
 				imageTab:
-					'border-ink bg-card text-foreground-muted hover:bg-accent hover:text-foreground',
+					'border-ink bg-card text-muted-foreground hover:bg-accent hover:text-foreground',
 			},
 		},
 		// Fully-reserved-by-others dimming (REQ-3): applied to the photo and content

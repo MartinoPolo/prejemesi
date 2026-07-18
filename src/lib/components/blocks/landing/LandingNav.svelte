@@ -46,7 +46,7 @@
 			<div class="md:hidden">
 				<AppearanceMenu />
 			</div>
-			<Button intent="ghost" size="sm" href={localizeInternalHref(resolve('/login'))}
+			<Button intent="ghost" size="md" href={localizeInternalHref(resolve('/login'))}
 				>{m.landing_login()}</Button
 			>
 			<Button class="hidden sm:inline-flex" href={localizeInternalHref(resolve('/register'))}

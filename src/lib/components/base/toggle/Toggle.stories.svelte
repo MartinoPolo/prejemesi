@@ -72,11 +72,11 @@
 		<div class="flex flex-col gap-6">
 			{#each TOGGLE_INTENTS as intent (intent)}
 				<div class="flex flex-col gap-2">
-					<span class="text-xs font-medium text-foreground-subtle">{intent}</span>
+					<span class="text-xs font-medium text-muted-foreground">{intent}</span>
 					<div class="flex items-center gap-3">
 						{#each TOGGLE_SIZES as size (size)}
 							<div class="flex flex-col items-center gap-1">
-								<span class="text-[10px] text-foreground-subtle">{size}</span>
+								<span class="text-[10px] text-muted-foreground">{size}</span>
 								<Toggle {...args} {intent} {size} aria-label="Bold">
 									{#if size === 'icon' || size === 'icon-sm'}
 										<BoldIcon data-icon="inline-start" />
@@ -134,7 +134,7 @@
 	{#snippet template(args: ToggleProps)}
 		<div class="flex gap-8">
 			<div class="rounded-lg bg-background p-4">
-				<p class="mb-2 text-xs text-foreground-muted">bg-background</p>
+				<p class="mb-2 text-xs text-muted-foreground">bg-background</p>
 				<div class="flex items-center gap-3">
 					<Toggle {...args} aria-label="Bold off">
 						<BoldIcon data-icon="inline-start" />
@@ -147,7 +147,7 @@
 				</div>
 			</div>
 			<div class="rounded-lg bg-sidebar p-4">
-				<p class="mb-2 text-xs text-foreground-muted">bg-sidebar</p>
+				<p class="mb-2 text-xs text-muted-foreground">bg-sidebar</p>
 				<div class="flex items-center gap-3">
 					<Toggle {...args} aria-label="Bold off">
 						<BoldIcon data-icon="inline-start" />
@@ -160,7 +160,7 @@
 				</div>
 			</div>
 			<div class="rounded-lg bg-surface-2 p-4">
-				<p class="mb-2 text-xs text-foreground-muted">bg-surface-2</p>
+				<p class="mb-2 text-xs text-muted-foreground">bg-surface-2</p>
 				<div class="flex items-center gap-3">
 					<Toggle {...args} aria-label="Bold off">
 						<BoldIcon data-icon="inline-start" />

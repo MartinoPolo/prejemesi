@@ -36,7 +36,7 @@ export const giftCardVariants = tv({
 		nameRow: 'row-start-1 flex flex-wrap items-baseline gap-1.5',
 		name: 'line-clamp-2 font-heading text-[17px] font-semibold leading-snug text-foreground',
 		price: 'row-start-2 mt-2 text-[15px] font-bold text-foreground',
-		priceEmpty: 'row-start-2 mt-2 text-sm text-ink-soft italic',
+		priceEmpty: 'row-start-2 mt-2 text-sm text-muted-foreground italic',
 		priorityEyebrow: 'row-start-3 mt-2 flex items-center gap-1',
 		linkList: 'row-start-4 mt-2 flex flex-col',
 		footer: 'row-start-7 flex items-center justify-between gap-2 px-4 pt-1 pb-3.5',
@@ -44,7 +44,7 @@ export const giftCardVariants = tv({
 			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
 		reservedStickerLabel: 'flex items-center gap-1',
 		/** Who reserved, e.g. „rezervoval(a) Babička" (issue #102 REQ-14) — visitors/moderators only. */
-		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-ink-soft',
+		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-muted-foreground',
 		// Bottom-right + opposite tilt (issue #184): the top-right corner is the edit
 		// affordance's territory for editing roles; keep both simultaneously visible.
 		receivedSticker:

@@ -8,6 +8,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
@@ -484,9 +485,7 @@
 									message={m.wishlist_event_date_grace_hint}
 								/>
 							{:else if isShared}
-								<p class="text-sm text-muted-foreground">
-									{m.wishlist_event_date_locked_hint()}
-								</p>
+								<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
 							{/if}
 						</div>
 

@@ -87,6 +87,7 @@
 			<AuthFormField fieldId="reset-email" label={m.email_label()} errorMessage={emailError}>
 				<Input
 					id="reset-email"
+					size="lg"
 					type="email"
 					placeholder={m.email_placeholder()}
 					autocomplete="email"

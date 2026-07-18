@@ -82,9 +82,9 @@
 				giftId={gift.id}
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
-				size="sm"
+				size="md"
 				showCount={false}
-				class="absolute right-2 bottom-2 z-10 size-9 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
+				class="absolute right-2 bottom-2 z-10 size-(--size-control-md) justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
 			/>
 		{/if}
 	</div>
@@ -124,7 +124,7 @@
 			{/if}
 
 			{#if isFullyReserved && reserverLine !== null}
-				<span class="text-xs font-semibold text-ink-soft">{reserverLine}</span>
+				<span class="text-xs font-semibold text-muted-foreground">{reserverLine}</span>
 			{/if}
 		</div>
 
