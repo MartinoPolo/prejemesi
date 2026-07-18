@@ -25,11 +25,18 @@ export const giftDetailModalVariants = tv({
 		// `body` scroll (mobile edit dialog UX fix).
 		imageColumn:
 			'relative shrink-0 overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
+		// Photo-workshop panel (issue #189 REQ-6): an inset sticker panel that groups
+		// the mode pill + adaptive stage + preview tiles as one designed unit on the
+		// dotted mat, visually distinct from the form column — replaces the de-seamed
+		// full-bleed mat that read as an unfinished wireframe. No thin grey seam.
+		modeSectionPanel:
+			'flex w-full min-h-0 flex-col rounded-panel border-2 border-ink bg-card p-2.5 shadow-sticker',
 		// Empty-state click-to-upload affordance (issue #131 REQ-2/REQ-3): a real
 		// button so it is keyboard-focusable with a visible focus ring, not just a
-		// static label.
+		// static label. Sticker-panel treatment (issue #189 REQ-6) so the empty column
+		// reads as intentional as the filled one.
 		imagePlaceholder:
-			'flex size-full cursor-pointer flex-col items-center justify-center gap-1 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+			'flex size-full cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border-2 border-ink bg-card shadow-sticker outline-none transition-colors hover:bg-panel-hover focus-visible:ring-2 focus-visible:ring-ring',
 		image: 'size-full object-cover',
 		// Mobile: overflow-visible so the pinned actions bar sticks to the BODY scroll
 		// instead of clipping inside this column. shrink-0 (see imageColumn): keeps this
