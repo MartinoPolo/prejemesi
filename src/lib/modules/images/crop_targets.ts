@@ -43,20 +43,29 @@ export const GIFT_CROP_TARGET_SPECS = {
 		realHeight: 806,
 		realSizeText: '403 × 806 px',
 	},
-	// GiftCard grid + GiftListItem share this 4:3 family (issue #183, revises the
-	// 1:1 shape #163 introduced). The name stays `square` because it is a stable
+	// The GiftCard grid uses this 4:3 family (issue #183, revises the 1:1 shape
+	// #163 introduced). The name stays `square` because it is a stable
 	// persisted `image_meta.targets` key (renaming would need a data migration,
 	// which #183 explicitly avoids) — the SAME persisted focal+zoom reprojects
 	// losslessly onto the wider window with no data change (focal+zoom is
-	// resolution- and aspect-ratio-independent). ReserveModal's small 48×48
-	// summary icon also renders through this target as a further, approximate
-	// (non-WYSIWYG) cover-crop of the same framing.
+	// resolution- and aspect-ratio-independent). The reservation/list thumbnail
+	// no longer renders through this target: #189 gave it the dedicated 1:1
+	// `thumb` target below (this key remains a 4:3 misnomer for card-family only).
 	square: {
 		aspect: 4 / 3,
 		cssAspect: '4 / 3',
 		realWidth: 356,
 		realHeight: 267,
-		realSizeText: '356 × 267 px / 96 × 72 px',
+		realSizeText: '356 × 267 px',
+	},
+	// 1:1 list-thumbnail + reservation-thumb family (#189): the wishlist list row
+	// and ReserveModal's small square icon are EXACT consumers of this target.
+	thumb: {
+		aspect: 1,
+		cssAspect: '1 / 1',
+		realWidth: 146,
+		realHeight: 146,
+		realSizeText: '146 × 146 px',
 	},
 } as const satisfies Record<GiftCropTarget, CropTargetSpec>;
 

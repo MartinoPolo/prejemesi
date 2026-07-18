@@ -110,11 +110,11 @@ test.describe('Anonymous visitor reservation', () => {
 		expect(primaryLinkBounds).not.toBeNull();
 		expect(imageBounds!.width).toBeGreaterThanOrEqual(128);
 		expect(imageBounds!.width).toBeLessThanOrEqual(152);
-		// Shared 4:3 crop (issue #183, revises the earlier 1:1 shape): the thumb is
-		// no longer square, so height is derived from width via the same registry
-		// aspect the real surface renders at, not asserted equal to width.
+		// 1:1 list/reservation crop (issue #189, reverting the interim 4:3 list thumb
+		// from #183): the thumb is square again, so height ≈ width via the same
+		// registry aspect the real surface renders at.
 		expect(imageBounds!.height).toBeCloseTo(
-			imageBounds!.width / GIFT_CROP_TARGET_SPECS.square.aspect,
+			imageBounds!.width / GIFT_CROP_TARGET_SPECS.thumb.aspect,
 			0,
 		);
 		expect(reserveBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);

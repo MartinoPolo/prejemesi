@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import * as v from 'valibot';
 import {
 	containZoomForAspect,
 	cropRectToFocalZoom,
@@ -10,6 +11,7 @@ import {
 	fitCropRectToAspect,
 	imageMetaToFrameProps,
 	giftTargetFrameProps,
+	resolveGiftTargetCrop,
 	mergeGiftTargetCrops,
 	seedCropRectFromLegacyMeta,
 	FULL_CROP_RECT,
@@ -18,6 +20,7 @@ import {
 import {
 	DEFAULT_IMAGE_METADATA,
 	GIFT_EDITOR_CROP_TARGET_VALUES,
+	ImageMetadataSchema,
 	IMAGE_ZOOM_MAX,
 	IMAGE_ZOOM_OUT_MIN,
 	type ImageCropRect,
@@ -360,6 +363,32 @@ describe('imageMetaToFrameProps', () => {
 	});
 });
 
+describe('resolveGiftTargetCrop (shared carry-over chain, #189)', () => {
+	const crop = (zoom: number) => ({
+		cropRect: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 },
+		focal: { x: 20, y: 20 },
+		zoom,
+	});
+
+	it("returns the target's own crop when present", () => {
+		const targets = { square: crop(2), thumb: crop(3) };
+		expect(resolveGiftTargetCrop(targets, 'thumb')).toBe(targets.thumb);
+		expect(resolveGiftTargetCrop(targets, 'square')).toBe(targets.square);
+	});
+
+	it('falls back square→card and thumb→square without a data migration', () => {
+		expect(resolveGiftTargetCrop({ card: crop(2) }, 'square')).toEqual(crop(2));
+		expect(resolveGiftTargetCrop({ square: crop(2) }, 'thumb')).toEqual(crop(2));
+	});
+
+	it('returns undefined when neither the target nor its fallback exists', () => {
+		expect(resolveGiftTargetCrop(undefined, 'thumb')).toBeUndefined();
+		expect(resolveGiftTargetCrop({}, 'square')).toBeUndefined();
+		// `card` has no fallback of its own.
+		expect(resolveGiftTargetCrop({ thumb: crop(2) }, 'card')).toBeUndefined();
+	});
+});
+
 describe('giftTargetFrameProps', () => {
 	const baseMeta = {
 		fitMode: IMAGE_FIT_MODES.auto,
@@ -459,6 +488,58 @@ describe('giftTargetFrameProps', () => {
 		expect(giftTargetFrameProps(migratedMeta, 'square').focal).toEqual(squareCrop.focal);
 		expect(giftTargetFrameProps(migratedMeta, 'square').zoom).toBe(squareCrop.zoom);
 	});
+
+	it('renders a manual thumb crop for the 1:1 thumb target (#189 REQ-1)', () => {
+		const thumbCrop = {
+			cropRect: { x: 0.1, y: 0.1, w: 0.6, h: 0.6 },
+			focal: { x: 30, y: 40 },
+			zoom: 1.5,
+		};
+		const meta = {
+			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			targets: { thumb: thumbCrop },
+		};
+		const props = giftTargetFrameProps(meta, 'thumb');
+		expect(props.fitMode).toBe(IMAGE_FIT_MODES.coverCrop);
+		expect(props.focal).toEqual(thumbCrop.focal);
+		expect(props.zoom).toBe(thumbCrop.zoom);
+	});
+
+	it('carries a square crop over to the thumb target until a thumb crop exists (#189 REQ-3)', () => {
+		const squareCrop = {
+			cropRect: { x: 0.2, y: 0.1, w: 0.6, h: 0.6 },
+			focal: { x: 50, y: 25 },
+			zoom: 1.5,
+		};
+		const meta = {
+			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			targets: { square: squareCrop },
+		};
+		// No thumb crop yet: the 1:1 thumb reads the square framing as its
+		// render-time carry-over (no data migration), mirroring square→card.
+		expect(giftTargetFrameProps(meta, 'thumb').focal).toEqual(squareCrop.focal);
+		expect(giftTargetFrameProps(meta, 'thumb').zoom).toBe(squareCrop.zoom);
+
+		const thumbCrop = {
+			cropRect: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 },
+			focal: { x: 20, y: 20 },
+			zoom: 2,
+		};
+		const editedMeta = { ...meta, targets: { ...meta.targets, thumb: thumbCrop } };
+		// An explicit thumb crop supersedes the square carry-over.
+		expect(giftTargetFrameProps(editedMeta, 'thumb').focal).toEqual(thumbCrop.focal);
+		expect(giftTargetFrameProps(editedMeta, 'thumb').zoom).toBe(thumbCrop.zoom);
+	});
+
+	it('falls back to the base framing for thumb when neither thumb nor square exists (#189)', () => {
+		const meta = {
+			...baseMeta,
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+		};
+		expect(giftTargetFrameProps(meta, 'thumb')).toEqual(imageMetaToFrameProps(meta));
+	});
 });
 
 describe('mergeGiftTargetCrops', () => {
@@ -502,10 +583,76 @@ describe('mergeGiftTargetCrops', () => {
 			card: legacyCardCrop,
 		});
 	});
+
+	it('preserves a thumb edit alongside an existing square target (#189)', () => {
+		const squareCrop = {
+			cropRect: { x: 0.15, y: 0.15, w: 0.7, h: 0.7 },
+			focal: { x: 50, y: 50 },
+			zoom: 1 / 0.7,
+		};
+		const thumbCrop = {
+			cropRect: { x: 0.2, y: 0.2, w: 0.6, h: 0.6 },
+			focal: { x: 40, y: 40 },
+			zoom: 1 / 0.6,
+		};
+		// Editing only the thumb keeps the existing square target intact – both survive.
+		expect(mergeGiftTargetCrops({ square: squareCrop }, { thumb: thumbCrop })).toEqual({
+			square: squareCrop,
+			thumb: thumbCrop,
+		});
+	});
+
+	it('still drops the legacy card fallback when a square crop is edited beside a thumb (#189)', () => {
+		const legacyCardCrop = {
+			cropRect: { x: 0, y: 0.2, w: 1, h: 0.36 },
+			focal: { x: 50, y: 31.25 },
+			zoom: 1,
+		};
+		const squareCrop = {
+			cropRect: { x: 0.15, y: 0.15, w: 0.7, h: 0.7 },
+			focal: { x: 50, y: 50 },
+			zoom: 1 / 0.7,
+		};
+		const thumbCrop = {
+			cropRect: { x: 0.2, y: 0.2, w: 0.6, h: 0.6 },
+			focal: { x: 40, y: 40 },
+			zoom: 1 / 0.6,
+		};
+		// Editing the square still supersedes the legacy card; the thumb rides along.
+		expect(
+			mergeGiftTargetCrops(
+				{ card: legacyCardCrop },
+				{ square: squareCrop, thumb: thumbCrop },
+			),
+		).toEqual({ square: squareCrop, thumb: thumbCrop });
+	});
+});
+
+describe('thumb crop target spec + schema (#189)', () => {
+	it('exposes the thumb target as a true 1:1 aspect (REQ-1)', () => {
+		expect(GIFT_CROP_TARGET_SPECS.thumb.aspect).toBe(1);
+	});
+
+	it('accepts a persisted targets.thumb crop row', () => {
+		const meta = {
+			fitMode: IMAGE_FIT_MODES.coverCrop,
+			targets: {
+				thumb: {
+					cropRect: { x: 0.1, y: 0.1, w: 0.6, h: 0.6 },
+					focal: { x: 30, y: 40 },
+					zoom: 1.5,
+				},
+			},
+		};
+		const parsed = v.parse(ImageMetadataSchema, meta);
+		expect(parsed.targets?.thumb?.focal).toEqual({ x: 30, y: 40 });
+	});
 });
 
 describe('gift crop editor targets', () => {
-	it('offers only the square target after the detail target was retired (#165)', () => {
-		expect(GIFT_EDITOR_CROP_TARGET_VALUES).toEqual(['square']);
+	it('offers the square (4:3 card) and thumb (1:1 list + reservation) targets (#189)', () => {
+		// #165 retired `detail`, leaving only `square`; #189 adds the true 1:1
+		// `thumb` target for the wishlist-list row + reservation thumb.
+		expect(GIFT_EDITOR_CROP_TARGET_VALUES).toEqual(['square', 'thumb']);
 	});
 });
