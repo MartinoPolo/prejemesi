@@ -13,6 +13,7 @@ import {
 	giftTargetFrameProps,
 	resolveGiftTargetCrop,
 	mergeGiftTargetCrops,
+	buildManualGiftTargets,
 	seedCropRectFromLegacyMeta,
 	FULL_CROP_RECT,
 	type ImageFrameProps,
@@ -23,6 +24,7 @@ import {
 	ImageMetadataSchema,
 	IMAGE_ZOOM_MAX,
 	IMAGE_ZOOM_OUT_MIN,
+	type GiftEditorCropTarget,
 	type ImageCropRect,
 } from './types.js';
 import { GIFT_CROP_TARGET_SPECS } from './crop_targets.js';
@@ -625,6 +627,62 @@ describe('mergeGiftTargetCrops', () => {
 				{ square: squareCrop, thumb: thumbCrop },
 			),
 		).toEqual({ square: squareCrop, thumb: thumbCrop });
+	});
+});
+
+describe('buildManualGiftTargets (session independence + WYSIWYG pin-all-on-edit)', () => {
+	const squareRect: ImageCropRect = { x: 0.1, y: 0.1, w: 0.5, h: 0.5 };
+	const thumbRect: ImageCropRect = { x: 0.25, y: 0, w: 0.5, h: 1 };
+	const sessionRects: Record<GiftEditorCropTarget, ImageCropRect> = {
+		square: squareRect,
+		thumb: thumbRect,
+	};
+
+	it('passes existing targets through verbatim when the session has no manual edits', () => {
+		const existing = {
+			card: { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 },
+		};
+		expect(buildManualGiftTargets(sessionRects, false, existing)).toEqual(
+			mergeGiftTargetCrops(existing, {}),
+		);
+		// No persisted targets and no session edits: still a pass-through (undefined).
+		expect(buildManualGiftTargets(sessionRects, false, undefined)).toBeUndefined();
+	});
+
+	it('pins every editor target from its own session rect once any edit exists', () => {
+		const result = buildManualGiftTargets(sessionRects, true, undefined);
+		expect(result?.square).toEqual({
+			cropRect: { ...squareRect },
+			...cropRectToFocalZoom(squareRect),
+		});
+		// The untouched `thumb` target is pinned from ITS OWN session rect – it must
+		// reconstruct the framing its own preview tile displayed, never the square
+		// target's crop (session independence).
+		expect(result?.thumb).toEqual({
+			cropRect: { ...thumbRect },
+			...cropRectToFocalZoom(thumbRect),
+		});
+		expect(result?.thumb?.focal).not.toEqual(result?.square?.focal);
+	});
+
+	it('never inherits existing persisted targets for a replaced image', () => {
+		// GiftDetailForm.buildTargets passes `undefined` in place of the persisted
+		// targets once the source image was replaced; the pin-all branch must not
+		// resurrect any of the old target keys (e.g. a legacy `card`) regardless.
+		const result = buildManualGiftTargets(sessionRects, true, undefined);
+		expect(Object.keys(result ?? {}).sort()).toEqual(
+			[...GIFT_EDITOR_CROP_TARGET_VALUES].sort(),
+		);
+	});
+
+	it('drops the legacy card fallback when pinning over an existing card target (#163 cleanup)', () => {
+		const existing = {
+			card: { cropRect: FULL_CROP_RECT, focal: { x: 50, y: 50 }, zoom: 1 },
+		};
+		const result = buildManualGiftTargets(sessionRects, true, existing);
+		expect(result).not.toHaveProperty('card');
+		expect(result?.square).toBeDefined();
+		expect(result?.thumb).toBeDefined();
 	});
 });
 
