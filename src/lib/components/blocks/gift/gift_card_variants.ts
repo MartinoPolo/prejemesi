@@ -18,8 +18,10 @@ import { tv } from 'tailwind-variants';
 export const giftCardVariants = tv({
 	slots: {
 		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
+		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
-			'relative isolate row-start-1 aspect-square w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
+			'relative isolate row-start-1 aspect-[4/3] w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
 		/**
 		 * Dotted mat behind the photo (shows through letterboxed photos). Sits on
 		 * its own layer below the image so its opacity can fade up on hover —
@@ -43,8 +45,10 @@ export const giftCardVariants = tv({
 		reservedStickerLabel: 'flex items-center gap-1',
 		/** Who reserved, e.g. „rezervoval(a) Babička" (issue #102 REQ-14) — visitors/moderators only. */
 		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-ink-soft',
+		// Bottom-right + opposite tilt (issue #184): the top-right corner is the edit
+		// affordance's territory for editing roles; keep both simultaneously visible.
 		receivedSticker:
-			'absolute top-2.5 right-2.5 z-10 flex rotate-4 items-center gap-1 rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11.5px] font-extrabold text-primary-foreground',
+			'absolute right-2.5 bottom-2.5 z-10 flex -rotate-4 items-center gap-1 rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11.5px] font-extrabold text-primary-foreground',
 		/** Edit-icon hover affordance for managers (issue #125 REQ-3): hidden until card hover/focus. */
 		editIcon:
 			'absolute top-2.5 right-2.5 z-10 flex items-center justify-center rounded-full border-2 border-ink bg-card p-1.5 opacity-0 shadow-sticker transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100',

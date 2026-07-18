@@ -45,9 +45,12 @@ export interface ImageFocalPoint {
 
 /**
  * Gift crop targets (#116 D2): consumer surfaces grouped by aspect family.
- * `card` is the retired wide-card target retained only to read legacy rows,
- * `detail` the tall detail-modal column, and `square` the 1:1 card/list/
- * reservation family.
+ * `card` is the retired wide-card target retained only to read legacy rows;
+ * `detail` was retired the same way (issue #183 – the visitor detail modal
+ * renders the full uncropped photo instead) and stays parseable for legacy
+ * `targets.detail` rows only. `square` is the active target: the GiftCard
+ * grid + GiftListItem 4:3 family (issue #183, revising the earlier 1:1 shape
+ * #163 introduced). See `crop_targets.ts` for the concrete aspect specs.
  */
 export const GIFT_CROP_TARGETS = {
 	card: 'card',

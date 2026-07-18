@@ -21,7 +21,6 @@
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
-	import GiftEditedBadge from './GiftEditedBadge.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 
 	interface GiftListItemProps {
@@ -55,10 +54,11 @@
 		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 	)}
 >
-	<!-- Shared square crop: large on mobile, 96px minimum from tablet upward. -->
+	<!-- Shared 4:3 crop (issue #183, revises the earlier 1:1 shape): large on
+	     mobile, 96px minimum width from tablet upward. -->
 	<div
 		data-testid="gift-list-image"
-		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:w-24 sm:self-center"
+		class="relative aspect-[4/3] w-[clamp(8rem,39vw,9.5rem)] self-start sm:w-24 sm:self-center"
 	>
 		<GiftImage
 			class="size-full rounded-lg"
@@ -104,11 +104,6 @@
 					{m.gift_received_badge()}
 				</Badge>
 			{/if}
-			<GiftEditedBadge
-				editedAfterShareAt={gift.editedAfterShareAt}
-				compact
-				updateText={gift.descriptionAppends.at(-1)?.text ?? null}
-			/>
 		</div>
 
 		<div class="flex flex-wrap items-center gap-1.5 text-sm">

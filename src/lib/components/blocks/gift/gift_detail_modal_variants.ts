@@ -4,13 +4,18 @@ export const giftDetailModalVariants = tv({
 	slots: {
 		// Flex column so the body inherits a definite height when the dialog is
 		// capped at 90dvh – that lets the detail column pin its footer and scroll
-		// only the fields (#116 follow-up, GiftDraftDialog precedent).
+		// only the fields (#116 follow-up, GiftDraftDialog precedent). Widened to
+		// ~1100px (issue #183 REQ-9/REQ-10): both the edit form and the visitor
+		// detail view (view mode reuses this same slot) needed more room – the
+		// 4:3 crop preview and the full uncropped detail photo both read as
+		// cramped in the previous 900px column.
 		content:
-			'flex flex-col sm:max-w-[900px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
+			'flex flex-col sm:max-w-[1100px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
 		// Mobile: a single scrolling flex column so the image and fields share one
 		// scroll region inside the 90dvh-capped dialog (issue: mobile edit dialog UX).
-		// Desktop: restores the exact 2-col grid + its own overflow-hidden.
-		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:min-h-[520px] sm:grid-cols-[45%_55%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
+		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
+		// split (issue #183 REQ-9, revises the earlier 45/55 split).
+		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:min-h-[520px] sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
 		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
 		// images keep the mat visible; a dashed ink seam separates image and form columns.
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
@@ -62,26 +67,30 @@ export const giftDetailModalVariants = tv({
 		// no `sm:min-h-[520px]` dead space), so its own composition rules apply
 		// without risking the edit-mode grid used by #116/#131/#142.
 		// Mobile: one scrolling flex column (media, content, sticky action bar).
-		// Desktop: 340px media column + fluid content column sharing row 1;
-		// the action bar is the grid's `auto` row, spanning both columns, pinned
-		// outside the content column's own scroll region (REQ-1).
+		// Desktop: media column + fluid content column sharing row 1 (widened
+		// from 340px alongside the ~1100px modal, issue #183 REQ-10); the action
+		// bar is the grid's `auto` row, spanning both columns, pinned outside the
+		// content column's own scroll region (REQ-1).
 		viewGrid:
-			'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[340px_minmax(0,1fr)] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
+			'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[440px_minmax(0,1fr)] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
 		// shrink-0: prevents the mobile flex column from compressing the media area
-		// (same rationale as `imageColumn`). The mobile height clamp keeps the title
-		// + facts + action bar reachable without scrolling past a tall square photo
-		// (REQ-5); desktop fills the grid's row 1 at its natural 340px column width.
+		// (same rationale as `imageColumn`). Centers the (now natural-aspect, #183
+		// REQ-10) photo at any size up to its height cap; desktop fills the grid's
+		// row 1 at its natural column width.
 		viewMedia:
 			'relative flex shrink-0 max-h-[42vh] min-h-[240px] items-center justify-center overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] p-4 sm:max-h-none sm:min-h-0 sm:border-r-2 sm:border-b-0 sm:p-6',
-		// Positioned ancestor for the photo-overlay stack; width-capped so the mat
-		// can stretch (REQ-5) while the square photo inside stays a fixed, honest size.
-		viewPhotoFrame: 'relative w-full max-w-[260px]',
+		// Positioned ancestor for the photo-overlay stack (issue #183 REQ-10: no
+		// longer crop-target-sized – shrink-wraps around whatever the natural-aspect
+		// photo below renders at, so tall photos display tall and wide ones wide).
+		viewPhotoFrame: 'relative inline-block max-w-full',
 		// Physical photo sticker (matches the `.polaroid` treatment in WishlistHeader):
-		// fixed paper/ink colors that intentionally do NOT follow the palette or dark mode.
+		// fixed paper/ink colors that intentionally do NOT follow the palette or dark
+		// mode. Shrink-wraps around the natural-aspect photo (issue #183 REQ-10) instead
+		// of forcing a square crop; the photo itself carries the raised height cap.
 		viewPhoto:
-			'aspect-square w-full -rotate-2 rounded-[10px] border-2 border-[#4A443A] bg-[#FFFDF6] p-[9px] shadow-[5px_6px_0_var(--hard-shadow-strong)]',
+			'inline-block -rotate-2 rounded-[10px] border-2 border-[#4A443A] bg-[#FFFDF6] p-[9px] shadow-[5px_6px_0_var(--hard-shadow-strong)] max-w-full',
 		viewPhotoInner:
-			'size-full overflow-hidden rounded-[6px] border-2 border-black/10 bg-[#F2F0EA]',
+			'inline-block overflow-hidden rounded-[6px] border-2 border-black/10 bg-[#F2F0EA] max-w-full',
 		viewContent: 'flex min-h-0 flex-col sm:overflow-hidden',
 		// Desktop-only internal scroll region (REQ-1 long-description strategy); mobile
 		// flows into the outer `viewGrid` scroll behind the sticky action bar.

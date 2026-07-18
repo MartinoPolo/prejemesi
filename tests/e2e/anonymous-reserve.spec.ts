@@ -9,6 +9,7 @@ import {
 import { createTestUser, TEST_GIFT, ANONYMOUS_RESERVER } from './fixtures/test-data.js';
 import { registerAndGetPage, registerViaApi } from './fixtures/auth-helpers.js';
 import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
+import { GIFT_CROP_TARGET_SPECS } from '../../src/lib/modules/images/crop_targets.js';
 
 async function createSharedWishlistPath(
 	browser: Browser,
@@ -109,7 +110,13 @@ test.describe('Anonymous visitor reservation', () => {
 		expect(primaryLinkBounds).not.toBeNull();
 		expect(imageBounds!.width).toBeGreaterThanOrEqual(128);
 		expect(imageBounds!.width).toBeLessThanOrEqual(152);
-		expect(imageBounds!.height).toBeCloseTo(imageBounds!.width, 0);
+		// Shared 4:3 crop (issue #183, revises the earlier 1:1 shape): the thumb is
+		// no longer square, so height is derived from width via the same registry
+		// aspect the real surface renders at, not asserted equal to width.
+		expect(imageBounds!.height).toBeCloseTo(
+			imageBounds!.width / GIFT_CROP_TARGET_SPECS.square.aspect,
+			0,
+		);
 		expect(reserveBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
 		expect(primaryLinkBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
 		expect(likeBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x);

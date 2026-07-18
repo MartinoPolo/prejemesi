@@ -13,9 +13,7 @@
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
-	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import ImageCropStage from '$lib/components/derived/image-crop/ImageCropStage.svelte';
-	import { promoteOnWheel } from '$lib/components/derived/image-crop/promote_on_wheel.js';
 	import GiftImagePreviewSlots from './GiftImagePreviewSlots.svelte';
 	import GiftLinkEditor from './GiftLinkEditor.svelte';
 	import GiftDescription from './GiftDescription.svelte';
@@ -29,6 +27,7 @@
 		getPriorityDisplay,
 		finalizeGiftPrice,
 		finalizeGiftQuantity,
+		formatAppendDate,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 	import {
@@ -50,14 +49,15 @@
 	import {
 		IMAGE_FIT_MODES,
 		IMAGE_TOKEN_SCOPES,
+		resolveAutoFit,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
 		cropRectToFocalZoom,
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
-		giftTargetFrameProps,
 		mergeGiftTargetCrops,
 		seedCropRectFromLegacyMeta,
+		FULL_CROP_RECT,
 		GIFT_CROP_TARGET_SPECS,
 		GIFT_EDITOR_CROP_TARGET_VALUES,
 		IMAGE_EDITOR_MODES,
@@ -221,6 +221,17 @@
 	// Reads the local seeded `description` copy (not the `gift` prop) so the frozen/append
 	// branch stays self-contained and never re-toggles from a reactive prop change.
 	const descriptionFrozen = $derived(locked && description.trim() !== '');
+	// Edited-after-share transparency (issue #185): the recipient/moderator edit
+	// surface shows the SAME muted text line as the read-only visitor detail view
+	// (`GiftDetailView.svelte`) – only the surface changed, not who can see it
+	// (REQ-5).
+	const editedAfterShareLine = $derived(
+		gift?.editedAfterShareAt != null
+			? m.gift_edited_after_share_line({
+					date: formatAppendDate(gift.editedAfterShareAt.toISOString()),
+				})
+			: null,
+	);
 	const currentQuantity = $derived(gift?.quantity ?? 1);
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
@@ -280,17 +291,76 @@
 		};
 	});
 
-	// The image column's main stage previews the square framing (issue #165: the
-	// `detail` editor target was retired, so `square` is the only crop target left).
-	const mainStageFrame = $derived(giftTargetFrameProps(currentImageMeta, 'square'));
-
 	const targetLabels = {
 		square: () => m.gift_image_target_square(),
 	} as const satisfies Record<GiftEditorCropTarget, () => string>;
 
+	// Legacy `auto` honesty (#183 EXTRA): a persisted `auto` fitMode resolves to
+	// cover or contain PER IMAGE at real render time (`resolveAutoFit`, comparing
+	// the image's natural ratio against the target box ratio), while every
+	// legacy `auto` row reads as Fill in this editor (`giftEditorModeFromMeta`).
+	// Measuring the image lets the initial toggle selection – and the WYSIWYG
+	// preview below – match the real card/list render exactly, WITHOUT marking
+	// the form dirty or rewriting the persisted `auto` value: an untouched save
+	// still writes `auto` verbatim (`savedFitMode` only reads `modeDirty`).
+	let measuredNaturalRatio = $state<number | null>(null);
+
+	$effect(() => {
+		const src = previewSrc;
+		if (src === null) {
+			measuredNaturalRatio = null;
+			return;
+		}
+		let cancelled = false;
+		const probe = new Image();
+		probe.onload = () => {
+			if (!cancelled && probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+				measuredNaturalRatio = probe.naturalWidth / probe.naturalHeight;
+			}
+		};
+		probe.src = src;
+		return () => {
+			cancelled = true;
+		};
+	});
+
+	const legacyAutoRendersAsFit = $derived(
+		legacyFitMode === IMAGE_FIT_MODES.auto &&
+			!modeDirty &&
+			!imageReplaced &&
+			measuredNaturalRatio !== null &&
+			resolveAutoFit(measuredNaturalRatio, GIFT_CROP_TARGET_SPECS.square.aspect) ===
+				IMAGE_FIT_MODES.containPadded,
+	);
+
+	/**
+	 * The mode actually presented (toggle selection + static preview): normalizes
+	 * an untouched legacy `auto` row to match its real render instead of the
+	 * always-Fill default `editorMode` starts at, so the toggle never
+	 * contradicts the WYSIWYG preview. `savedFitMode`/`currentImageMeta` are
+	 * unaffected – only the presentation is normalized, never the persisted data.
+	 */
+	const presentedEditorMode = $derived(
+		legacyAutoRendersAsFit ? IMAGE_EDITOR_MODES.fit : editorMode,
+	);
+
 	function setEditorMode(value: string) {
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
-			editorMode = value as ImageEditorMode;
+			const nextMode = value as ImageEditorMode;
+			if (nextMode === IMAGE_EDITOR_MODES.fill) {
+				// Explicit Fill re-centers the framing (the `recentered` branch of
+				// `currentImageMeta` below), so the static preview must show that SAME
+				// centered framing (#183 REQ-6/7 WYSIWYG) instead of whatever rect
+				// Manual editing or a legacy seed left in `targetRects` – reset it to
+				// the "no framing yet" sentinel and let `ImageCropStage`'s own snap
+				// effect resolve it to the identical centered cover-crop
+				// (`centeredCropRect`) that Save persists. Fit and Manual are
+				// unaffected: Fit's preview is computed independently of
+				// `targetRects` (`containMode`), and Manual must keep whatever
+				// framing the user actually drew.
+				targetRects[activeTarget] = { ...FULL_CROP_RECT };
+			}
+			editorMode = nextMode;
 			modeDirty = true;
 		}
 	}
@@ -470,13 +540,13 @@
 </script>
 
 <div class={styles.body()}>
-	<!-- Left column: the display-mode control on top, then the WYSIWYG crop stage in
-	     Manual mode (locked to the target's real aspect, #116 REQ-2), else the live
-	     square-target renderer preview (issue #165: `detail` retired, `square` is the
-	     only target and the only surface the visitor detail modal renders through the
-	     shared crop chain). The square live preview sits at the column's lower edge as
-	     a clickable tile – it doubles as the crop target switcher (round 3) – so it
-	     costs no form space. -->
+	<!-- Left column: the display-mode control on top, then the WYSIWYG stage below
+	     it for all three modes (issue #183: Fill/Fit now render through the same
+	     bordered stage as Manual – a static, non-interactive preview – instead of
+	     a plain unbounded ImageFrame, so switching to Manual is visually
+	     seamless). The square live preview tile sits at the column's lower edge –
+	     it doubles as the crop target switcher (round 3) – so it costs no form
+	     space. -->
 	<div
 		class={cn(
 			styles.imageColumn(),
@@ -486,17 +556,20 @@
 			// preview" grouping on its own, so the seam border is dropped here without
 			// touching the shared slot used by the visitor view mode (issue #165).
 			'border-none border-b-0 sm:border-r-0',
-			isCropMode && 'sticky top-0 z-10 h-[400px] sm:static sm:h-auto',
+			previewSrc !== null && 'sticky top-0 z-10 h-[400px] sm:static sm:h-auto',
 		)}
 		data-testid="gift-image-column"
 	>
 		{#if hasImage}
 			<div class="flex size-full flex-col">
-				<!-- Display-mode control (#116 round 3): lives with the preview it drives. -->
+				<!-- Display-mode control (#116 round 3): lives with the preview it drives.
+				     `presentedEditorMode` (#183 EXTRA) normalizes an untouched legacy
+				     `auto` row to the mode it actually renders as, so the highlighted
+				     button never contradicts the stage below it. -->
 				<div class="flex justify-center px-4 pt-3">
 					<ToggleGroup.Root
 						type="single"
-						value={editorMode}
+						value={presentedEditorMode}
 						onValueChange={setEditorMode}
 						aria-label={m.image_fit_label()}
 						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
@@ -512,71 +585,66 @@
 						</ToggleGroup.Item>
 					</ToggleGroup.Root>
 				</div>
-				{#if previewSrc !== null && isCropMode}
-					<ImageCropStage
-						class="min-h-0 flex-1 p-4 pt-2 pb-2"
-						src={previewSrc}
-						alt={name || m.gift_image_preview()}
-						targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
-						targetLabel={targetLabels[activeTarget]()}
-						realSizeText={GIFT_CROP_TARGET_SPECS[activeTarget].realSizeText}
-						fillColor={bgColor}
-						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
-						bind:cropRect={targetRects[activeTarget]}
-						onchange={() => dirtyTargets.add(activeTarget)}
-					/>
-					<!-- Below the stage (not overlapping: every stage pixel matters here);
-					     the tiles are the only crop-target switcher (round 3). -->
-					<GiftImagePreviewSlots
-						class="px-4 pb-3"
-						src={previewSrc}
-						alt={name || m.gift_image_preview()}
-						imageMeta={currentImageMeta}
-						{activeTarget}
-						onTileSelect={handleTileSelect}
-					/>
-				{:else}
+				{#if previewSrc !== null}
 					<div class="relative min-h-0 flex-1">
-						<!-- Wheel over the plain preview promotes to Manual so zooming "just works". -->
-						<div
-							class="size-full"
-							data-testid="image-fit-preview"
-							use:promoteOnWheel={promoteToManual}
-						>
-							<ImageFrame
-								class="size-full"
+						<!-- Manual: the interactive per-target crop stage (#116 REQ-2).
+						     Fill/Fit: the SAME stage, non-interactive – a static bordered
+						     4:3 window showing exactly the cover (Fill) or contained (Fit)
+						     framing (#183 REQ-6/7); a wheel gesture still promotes to
+						     Manual, matching the previous plain-preview behavior. -->
+						<ImageCropStage
+							class="size-full p-4 pt-2 pb-2"
+							src={previewSrc}
+							alt={name || m.gift_image_preview()}
+							targetAspect={GIFT_CROP_TARGET_SPECS[activeTarget].aspect}
+							targetLabel={targetLabels[activeTarget]()}
+							fillColor={bgColor}
+							tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+							interactive={isCropMode}
+							containMode={!isCropMode &&
+								presentedEditorMode === IMAGE_EDITOR_MODES.fit}
+							showLabelChip={false}
+							bind:cropRect={targetRects[activeTarget]}
+							onchange={() => dirtyTargets.add(activeTarget)}
+							onWheelPromote={promoteToManual}
+						/>
+						{#if !isCropMode}
+							<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
+							     without wrapping it, so wheel-zoom-to-manual and the tile switcher
+							     below stay independently interactive. -->
+							<Button
+								type="button"
+								intent="ghost-overlay"
+								size="icon-sm"
+								class="absolute top-2 right-2 rounded-full bg-surface/90 shadow-sm"
+								onclick={openImageEditor}
+								aria-label={m.gift_image_replace_cta()}
+							>
+								<PencilIcon data-icon="solo" />
+							</Button>
+							<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
+							<GiftImagePreviewSlots
+								class="absolute inset-x-0 bottom-3"
 								src={previewSrc}
 								alt={name || m.gift_image_preview()}
-								fitMode={mainStageFrame.fitMode}
-								focal={mainStageFrame.focal}
-								zoom={mainStageFrame.zoom}
-								fillColor={mainStageFrame.fillColor}
-								tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
+								imageMeta={currentImageMeta}
+								activeTarget={null}
+								onTileSelect={handleTileSelect}
 							/>
-						</div>
-						<!-- Click-to-edit affordance (issue #131 REQ-1): overlays the preview
-						     without wrapping it, so wheel-zoom-to-manual and the tile switcher
-						     below stay independently interactive. -->
-						<Button
-							type="button"
-							intent="ghost-overlay"
-							size="icon-sm"
-							class="absolute top-2 right-2 rounded-full bg-surface/90 shadow-sm"
-							onclick={openImageEditor}
-							aria-label={m.gift_image_replace_cta()}
-						>
-							<PencilIcon data-icon="solo" />
-						</Button>
-						<!-- Floating over the preview's lower edge; clicking one jumps to Manual. -->
+						{/if}
+					</div>
+					{#if isCropMode}
+						<!-- Below the stage (not overlapping: every stage pixel matters here);
+						     the tiles are the only crop-target switcher (round 3). -->
 						<GiftImagePreviewSlots
-							class="absolute inset-x-0 bottom-3"
+							class="px-4 pb-3"
 							src={previewSrc}
 							alt={name || m.gift_image_preview()}
 							imageMeta={currentImageMeta}
-							activeTarget={null}
+							{activeTarget}
 							onTileSelect={handleTileSelect}
 						/>
-					</div>
+					{/if}
 				{/if}
 			</div>
 		{:else}
@@ -726,6 +794,10 @@
 						/>
 					{/if}
 				</div>
+
+				{#if editedAfterShareLine !== null}
+					<p class="mt-2 text-xs text-muted-foreground">{editedAfterShareLine}</p>
+				{/if}
 
 				<!-- Links -->
 				<div class="mt-3 {styles.formField()}">
