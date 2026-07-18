@@ -51,7 +51,12 @@
 			key: 'square',
 			target: 'square',
 			label: m.gift_image_target_square,
-			sizing: 'size-14',
+			// Height-only (issue #183): the `square` target is 4:3, not 1:1, so the
+			// width must be derived from `aspect-ratio` below rather than fixed –
+			// `size-14` (equal width+height) would leave both dimensions definite
+			// and the CSS `aspect-ratio` box-sizing rule (which only kicks in when
+			// exactly one axis is definite) would never apply, rendering a square.
+			sizing: 'h-14',
 			cssAspect: GIFT_CROP_TARGET_SPECS.square.cssAspect,
 		},
 	] as const satisfies readonly {

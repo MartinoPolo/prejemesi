@@ -290,7 +290,6 @@
 	// preview below – match the real card/list render exactly, WITHOUT marking
 	// the form dirty or rewriting the persisted `auto` value: an untouched save
 	// still writes `auto` verbatim (`savedFitMode` only reads `modeDirty`).
-	// svelte-ignore state_referenced_locally
 	let measuredNaturalRatio = $state<number | null>(null);
 
 	$effect(() => {
