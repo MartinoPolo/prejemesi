@@ -7,6 +7,7 @@
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
+	import { extractGiftUrlDomain } from '$lib/modules/gifts/gift_url.js';
 
 	interface GiftLinkRowProps {
 		link: GiftLink;
@@ -52,6 +53,11 @@
 	);
 	const urlDescribedBy = $derived(
 		[primaryHintId, urlErrorId].filter((id) => id !== undefined).join(' ') || undefined,
+	);
+	// Live preview of the auto-derived label (the URL's domain) so the placeholder
+	// always reflects what an empty label will actually render as.
+	const labelPlaceholder = $derived(
+		extractGiftUrlDomain(link.url) ?? m.gift_link_label_placeholder(),
 	);
 </script>
 
@@ -116,16 +122,19 @@
 
 	<!-- Visible label (issue #189 REQ-7): the per-link label is the text gift cards
 	     render (defaults to the URL's domain); a visible „Viditelný popisek" label
-	     disambiguates it from the gift „Popis" (description) field above. -->
+	     disambiguates it from the gift „Popis" (description) field above. The
+	     placeholder previews the auto-derived domain for the row's current URL
+	     (falling back to the generic hint when the URL is empty/invalid), and the
+	     input is capped narrower than the URL field to nudge short labels. -->
 	<div class="flex items-center gap-2 pl-0.5">
 		<Label for={labelInputId} class="shrink-0 text-xs font-medium text-muted-foreground">
 			{m.gift_link_visible_label()}
 		</Label>
 		<Input
 			id={labelInputId}
-			class="flex-1 text-sm"
+			class="max-w-56 flex-1 text-sm"
 			value={link.label ?? ''}
-			placeholder={m.gift_link_label_placeholder()}
+			placeholder={labelPlaceholder}
 			type="text"
 			{disabled}
 			oninput={(e: Event) => onlabelchange((e.target as HTMLInputElement).value)}
