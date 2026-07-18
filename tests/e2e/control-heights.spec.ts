@@ -35,6 +35,10 @@ test.describe('issue #159 control-height geometry', () => {
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 
 		await page.goto('/my-lists');
+		// Wait for hydration before clicking: the empty-state create button is
+		// SSR-rendered but its onclick attaches only once the client bundle loads,
+		// so an immediate click is dropped. Matches the wishlist-helpers fixture.
+		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: 'Vytvořit seznam' }).first().click();
 
 		const dialog = page.getByRole('dialog');
