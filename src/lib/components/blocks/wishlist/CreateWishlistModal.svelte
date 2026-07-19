@@ -137,7 +137,12 @@
 </script>
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content class="max-h-[85vh] overflow-y-auto">
+	<!-- Top-anchored (override the base's vertical centering) so height changes from the
+	     recipient toggle, the "more settings" accordion, or validation errors grow the box
+	     downward instead of re-centering it — otherwise every height change shifts the top
+	     edge and the modal "jumps". `max-h`/`overflow` still cap tall content on short/mobile
+	     viewports; horizontal centering (left-1/2, -translate-x-1/2) is inherited unchanged. -->
+	<Dialog.Content class="top-[10vh] max-h-[85vh] translate-y-0 overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_create_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_create_description()}</Dialog.Description>
@@ -157,16 +162,10 @@
 				disabled={isSubmitting}
 				class="w-full gap-2"
 			>
-				<ToggleGroup.Item
-					value={RECIPIENT_KIND.self}
-					class="flex-1 data-[state=on]:bg-accent data-[state=on]:text-foreground"
-				>
+				<ToggleGroup.Item value={RECIPIENT_KIND.self} class="flex-1">
 					{m.create_for_toggle_self()}
 				</ToggleGroup.Item>
-				<ToggleGroup.Item
-					value={RECIPIENT_KIND.other}
-					class="flex-1 data-[state=on]:bg-accent data-[state=on]:text-foreground"
-				>
+				<ToggleGroup.Item value={RECIPIENT_KIND.other} class="flex-1">
 					{m.create_for_toggle_other()}
 				</ToggleGroup.Item>
 			</ToggleGroup.Root>
@@ -222,9 +221,10 @@
 			</Field>
 
 			<div class="flex flex-col gap-2">
-				<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
+				<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label>
 				<DatePicker
 					id="wishlist-event-date"
+					ariaLabelledby="wishlist-event-date-label"
 					size="lg"
 					bind:value={eventDate}
 					disabled={isSubmitting}

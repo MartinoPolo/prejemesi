@@ -19,7 +19,7 @@
 		<span class="text-muted-foreground">{m.wishlist_header_for_prefix()}</span>
 		{#if trimmed === ''}
 			<span class="text-muted-foreground italic">
-				{m.create_recipient_name_placeholder()}
+				{m.create_recipient_name_preview_example()}
 			</span>
 		{:else}
 			<strong class="font-heading font-semibold text-foreground">{trimmed}</strong>
