@@ -12,8 +12,16 @@
 	interface DatePickerProps {
 		/** Selected date as a plain JS `Date`, or `null` when empty. */
 		value?: Date | null;
-		/** Associates a `<Label for>` with the trigger button. */
+		/** Element id of the trigger button (for tests/CSS, not label association — see `ariaLabelledby`). */
 		id?: string;
+		/**
+		 * Id of an external `<Label>` describing this control. Prefer this over a
+		 * `<Label for>`/`id` pairing: browsers forward `:hover` (and native
+		 * click-activation) from a `<label for>` to its associated labelable
+		 * element, which visibly "pre-lights" this button's hover styling
+		 * whenever the label above it is hovered.
+		 */
+		ariaLabelledby?: string;
 		/** Disables the trigger. */
 		disabled?: boolean;
 		/** Trigger text shown when no date is selected. */
@@ -27,6 +35,7 @@
 	let {
 		value = $bindable(null),
 		id,
+		ariaLabelledby,
 		disabled = false,
 		placeholder,
 		class: className,
@@ -63,7 +72,7 @@
 </script>
 
 <Popover.Root bind:open>
-	<Popover.Trigger {id} {disabled}>
+	<Popover.Trigger {id} {disabled} aria-labelledby={ariaLabelledby}>
 		{#snippet child({ props })}
 			<Button
 				{...props}
