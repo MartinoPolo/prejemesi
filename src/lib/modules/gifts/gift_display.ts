@@ -68,9 +68,9 @@ export function getPriorityDisplay(
 }
 
 /**
- * Small line naming who reserved a gift, e.g. „rezervoval(a) Babička" (issue #102
- * REQ-14). Shown to visitors and moderators only — the API already omits names for
- * recipient viewers, so this returns null exactly when nothing may be shown.
+ * Small line naming who reserved a gift, e.g. „rezervoval(a) Babička". Shown to
+ * moderators only (issue #198) — the API already omits names for everyone else
+ * (visitors, recipient), so this returns null exactly when nothing may be shown.
  */
 export function formatReserverLine(reserverNames: readonly string[]): string | null {
 	const firstName = reserverNames[0];

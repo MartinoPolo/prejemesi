@@ -133,6 +133,33 @@ export async function shareWishlist(page: Page): Promise<void> {
 	await page.waitForLoadState('networkidle');
 }
 
+/**
+ * Open the správci-management panel from the currently open wishlist detail page.
+ * The button (aria-label wishlist_moderators_label → „Správci" / „Managers") is
+ * visible only to managers (linked recipient OR správce).
+ */
+export async function openModeratorPanel(page: Page) {
+	await page
+		.getByRole('button', { name: /Správci|Managers/ })
+		.first()
+		.click();
+	const panel = page.getByRole('dialog');
+	await expect(panel).toBeVisible({ timeout: 5_000 });
+	return panel;
+}
+
+/** Open the správci panel and generate a moderator invite link, returning its full URL. */
+export async function generateInviteLink(page: Page): Promise<string> {
+	const panel = await openModeratorPanel(page);
+	await panel.getByRole('button', { name: /Generovat pozvánku/ }).click();
+
+	// Link element appears in the panel – grab the full URL shown
+	const linkBox = panel.getByTestId('invite-link');
+	await expect(linkBox).toBeVisible({ timeout: 5_000 });
+	const inviteUrl = (await linkBox.textContent()) ?? '';
+	return inviteUrl.trim();
+}
+
 /** Assert the share-methods step without invoking clipboard or external handlers. */
 export async function expectShareMethodsStep(page: Page): Promise<void> {
 	const dialog = page.getByRole('dialog');

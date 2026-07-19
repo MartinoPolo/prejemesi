@@ -130,9 +130,9 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 	// Batch fetch active reservations with reserver display names (scoped to this
 	// wishlist's gifts): account name for authenticated reservers, the signed
 	// anonymous name otherwise. Counts and names derive from the same rows so they
-	// can never disagree. Names are only emitted to viewers passing the
-	// canSeeReserverNames gate below (issue #102 REQ-14) — a self-promoted
-	// recipient reaches this branch but must see counts only, never identities.
+	// can never disagree — names are only EMITTED to moderators (issue #198) via
+	// the canSeeReserverNames gate below; every other non-recipient viewer (visitor,
+	// self-promoted recipient) still sees counts derived from these same rows.
 	const reservationCounts = new Map<string, number>();
 	const reserverNamesByGiftId = new Map<string, string[]>();
 	if (giftIds.length > 0) {

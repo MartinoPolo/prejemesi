@@ -68,6 +68,10 @@ vi.mock('$lib/server/turnstile.js', () => ({
 	verifyTurnstileToken: vi.fn(),
 }));
 
+vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
+	dispatchNotification: vi.fn(),
+}));
+
 // Drizzle ORM helpers are used only as column references in query builders.
 // We don't need their real implementations – stub them so the module loads.
 vi.mock('drizzle-orm', () => ({
@@ -82,6 +86,7 @@ vi.mock('drizzle-orm', () => ({
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
 import { verifyTurnstileToken } from '$lib/server/turnstile.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
 	reserveGift,
@@ -96,6 +101,7 @@ import type { ReserveGiftInput, UnreserveInput } from './types.js';
 const mockGetDb = vi.mocked(getDb);
 const mockGetRequestEvent = vi.mocked(getRequestEvent);
 const mockVerifyTurnstileToken = vi.mocked(verifyTurnstileToken);
+const mockDispatchNotification = vi.mocked(dispatchNotification);
 
 /** Stub getRequestEvent so the anon-visitor helper reads `cookieValue` from the cookie. */
 function mockAnonCookie(cookieValue: string | undefined) {
@@ -113,6 +119,12 @@ const RESERVATION_ID = 'reservation-1';
 
 const fakeOwnerUser = { id: OWNER_ID, email: 'owner@example.com' } as unknown as User;
 const fakeVisitorUser = { id: VISITOR_ID, email: 'visitor@example.com' } as unknown as User;
+/** A visitor with a real display name — used to prove that name never reaches a dispatch payload. */
+const fakeNamedVisitorUser = {
+	id: VISITOR_ID,
+	name: 'Petr Svoboda',
+	email: 'visitor@example.com',
+} as unknown as User;
 const fakeModeratorUser = { id: MODERATOR_ID, email: 'mod@example.com' } as unknown as User;
 const fakeSession = { id: 'session-1', userId: OWNER_ID } as unknown as Session;
 
@@ -236,6 +248,33 @@ describe('reserveGift', () => {
 
 		expect(result).toEqual({ id: RESERVATION_ID });
 		expect(mockVerifyTurnstileToken).not.toHaveBeenCalled();
+	});
+
+	// Reserver identity is personal data (issue #198): the GIFT_RESERVED / LIKED_GIFT_RESERVED
+	// dispatches must never carry the reserving user's name, only the server-side actorId.
+	it("dispatches GIFT_RESERVED and LIKED_GIFT_RESERVED without actorName and never leaks the reserver's account name", async () => {
+		const database = createMultiQueryChain(
+			[{ quantity: 5 }],
+			[{ totalQuantity: 0 }],
+			[{ id: RESERVATION_ID }],
+		);
+		const wishlistDb = createChain([makeActiveWishlistRow()]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(wishlistDb as unknown as ReturnType<typeof getDb>);
+
+		await (reserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeNamedVisitorUser),
+			validInput,
+		);
+
+		expect(mockDispatchNotification).toHaveBeenCalledTimes(2);
+		for (const [payload] of mockDispatchNotification.mock.calls) {
+			expect(payload.actorName).toBeUndefined();
+			expect(payload.actorId).toBe(VISITOR_ID);
+		}
+		expect(JSON.stringify(mockDispatchNotification.mock.calls)).not.toContain('Petr Svoboda');
 	});
 
 	it('anonymous reservation rejects a missing Turnstile token before DB work', async () => {
