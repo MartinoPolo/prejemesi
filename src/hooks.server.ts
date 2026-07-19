@@ -271,13 +271,15 @@ const handles: Handle[] = [
 
 export const handle = sequence(...handles);
 
-export const handleError: HandleServerError = ({ event, status, message }) => {
+export const handleError: HandleServerError = ({ error, event, status, message }) => {
 	console.error({
 		event: 'server_error',
 		routeId: event.route.id ?? 'unmatched',
 		method: event.request.method,
 		status,
 		deploymentVersionId: event.platform?.env.CF_VERSION_METADATA?.id ?? 'local',
+		// The thrown value itself — without it, 500s are undiagnosable in Workers logs.
+		error: error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error),
 	});
 
 	return { message };

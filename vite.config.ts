@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
+import { paraglideCompilerOptions } from './scripts/paraglide-options.mjs';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
@@ -49,20 +50,9 @@ export default defineConfig({
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
-		paraglideVitePlugin({
-			project: './project.inlang',
-			outdir: './src/lib/paraglide',
-			strategy: ['url', 'cookie', 'baseLocale'],
-			urlPatterns: [
-				{
-					pattern: '/:path(.*)?',
-					localized: [
-						['en', '/en/:path(.*)?'],
-						['cs', '/:path(.*)?'],
-					],
-				},
-			],
-		}),
+		// Options live in scripts/paraglide-options.mjs, shared with the standalone
+		// `paraglide:compile` script — see there for why cleanOutdir must stay false.
+		paraglideVitePlugin(paraglideCompilerOptions),
 		devtoolsJson(),
 	],
 	test: {
