@@ -21,6 +21,7 @@ import {
 	IMAGE_ZOOM_BASE,
 	IMAGE_ZOOM_OUT_MIN,
 	IMAGE_ZOOM_MAX,
+	GIFT_EDITOR_CROP_TARGET_VALUES,
 	type GiftEditorCropTarget,
 	type GiftCropTarget,
 	type ImageCropRect,
@@ -360,4 +361,51 @@ export function mergeGiftTargetCrops(
 		delete mergedTargets.card;
 	}
 	return Object.keys(mergedTargets).length > 0 ? mergedTargets : undefined;
+}
+
+/**
+ * Build the `targets` a Manual-mode gift image save should persist, from the
+ * editor's per-target session rects (`GiftDetailForm.targetRects`).
+ *
+ * An untouched session (no manual edits this session) is a pure pass-through:
+ * whatever was persisted before flows through `mergeGiftTargetCrops` verbatim
+ * – no metadata rewrite for a gift the user never actually edited.
+ *
+ * Once the user makes ANY manual edit, every editor target is pinned
+ * explicitly from ITS OWN current session rect, not just the target(s) the
+ * user actually dragged/zoomed. Two reasons this matters together:
+ * - Session independence: editing one target must never move another
+ *   target's live preview tile. Both tiles render through the shared
+ *   `resolveGiftTargetCrop` carry-over chain (`thumb` → `square` → `card`),
+ *   so as long as only the edited target has an explicit `targets` entry,
+ *   an untouched target with NO entry keeps re-resolving through that chain
+ *   and visibly "follows" every edit to the target it falls back to.
+ * - WYSIWYG: what a preview tile shows during the session is what a save
+ *   must make the real surfaces render. An untouched target's session rect
+ *   (seeded once at mount, and reshaped to the target's aspect by
+ *   `ImageCropStage`'s snap effect – see `GiftDetailForm.initTargetRects`)
+ *   IS exactly the framing its tile has been displaying, so pinning it there
+ *   locks in that same framing and prevents the carry-over chain from
+ *   retroactively re-framing it to the edited target's crop after save.
+ *
+ * The carry-over chain itself is untouched by this – it still gives a never-
+ * edited LEGACY row (no `targets` at all) an immediate crop with no data
+ * migration; this function only stops it from ALSO reaching across two
+ * targets edited live in the same session.
+ */
+export function buildManualGiftTargets(
+	sessionRects: Record<GiftEditorCropTarget, ImageCropRect>,
+	hasSessionEdits: boolean,
+	existingTargets: ImageMetadata['targets'] | undefined,
+): ImageMetadata['targets'] {
+	if (!hasSessionEdits) {
+		return mergeGiftTargetCrops(existingTargets, {});
+	}
+	const pinnedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
+	for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
+		const rect = sessionRects[target];
+		const { focal, zoom } = cropRectToFocalZoom(rect);
+		pinnedTargets[target] = { cropRect: { ...rect }, focal, zoom };
+	}
+	return mergeGiftTargetCrops(existingTargets, pinnedTargets);
 }

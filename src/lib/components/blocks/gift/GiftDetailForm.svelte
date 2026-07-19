@@ -52,10 +52,9 @@
 		resolveAutoFit,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
-		cropRectToFocalZoom,
+		buildManualGiftTargets,
 		fitModeForEditorMode,
 		giftEditorModeFromMeta,
-		mergeGiftTargetCrops,
 		resolveGiftTargetCrop,
 		seedCropRectFromLegacyMeta,
 		FULL_CROP_RECT,
@@ -67,7 +66,6 @@
 		type ImageCropRect,
 		type ImageEditorMode,
 		type ImageMetadata,
-		type ImageTargetCrop,
 	} from '$lib/modules/images/index.js';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
@@ -160,10 +158,12 @@
 
 	// Image presentation metadata (#116 D1/D2 + follow-up). The editor offers three
 	// modes – Fill / Fit / Manual – mapped onto the persisted fitMode enum.
-	// Manual crops are edited PER TARGET: each target keeps its own rect (locked to
-	// the target's aspect by the stage) and only targets the user actually edits are
-	// persisted – untouched targets keep the automatic framing, and legacy base
-	// focal/zoom rows pass through unchanged (D5).
+	// Manual crops are edited PER TARGET: each target keeps its own rect, locked to
+	// the target's aspect by the stage, so the two targets stay independent live
+	// (editing one never moves the other's preview tile). An untouched session
+	// passes persisted targets through verbatim (legacy base focal/zoom rows
+	// included, D5); the moment the user edits ANY target, a save pins every
+	// editor target explicitly – see `buildManualGiftTargets` for why.
 	// svelte-ignore state_referenced_locally
 	let editorMode = $state<ImageEditorMode>(giftEditorModeFromMeta(gift?.imageMeta));
 	// Whether the user touched the display mode this session; an untouched form keeps
@@ -256,24 +256,22 @@
 	);
 
 	/**
-	 * Persisted targets carry through a save verbatim; session edits override them.
 	 * Outside Manual mode there are no manual crops: leaving Manual drops them on
-	 * save (Fill/Fit own the framing), and a replaced image never
-	 * inherits crops drawn for the old pixels.
+	 * save (Fill/Fit own the framing), and a replaced image never inherits crops
+	 * drawn for the old pixels. Inside Manual mode, delegates the pin-all-on-edit
+	 * rule to `buildManualGiftTargets` (session independence + WYSIWYG vs. the
+	 * legacy carry-over chain – see its doc comment): an untouched session passes
+	 * the persisted targets through verbatim, but the moment any target is dirty
+	 * every editor target is pinned from its own current session rect.
 	 */
 	function buildTargets(): ImageMetadata['targets'] {
 		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
 			return undefined;
 		}
-		const editedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
-		for (const target of dirtyTargets) {
-			const rect = targetRects[target];
-			const { focal, zoom } = cropRectToFocalZoom(rect);
-			editedTargets[target] = { cropRect: { ...rect }, focal, zoom };
-		}
-		return mergeGiftTargetCrops(
+		return buildManualGiftTargets(
+			targetRects,
+			dirtyTargets.size > 0,
 			imageReplaced ? undefined : gift?.imageMeta?.targets,
-			editedTargets,
 		);
 	}
 

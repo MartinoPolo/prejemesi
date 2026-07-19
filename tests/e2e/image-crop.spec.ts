@@ -265,9 +265,11 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		expect(objectPosition).not.toBe('50% 50%');
 
 		// The list view thumbnail is the 1:1 `thumb` target's real surface (#189,
-		// reverting the interim 4:3 list thumb from #183). The manual square crop
-		// drawn above carries over to the thumb at render time (no data migration),
-		// so the focal point survives while the surface renders true 1:1.
+		// reverting the interim 4:3 list thumb from #183). Crop targets stay
+		// INDEPENDENT during an editing session: drawing the manual crop above only
+		// dirtied `square`, so `thumb` (never touched) was pinned at save to its own
+		// untouched centered framing instead of inheriting the square crop – it
+		// still renders at the true 1:1 aspect either way.
 		await page.locator('[aria-label="Seznam"]').click();
 		await expectAspect(
 			page.getByRole('img', { name: giftName }).first(),
