@@ -4,19 +4,24 @@
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import * as Accordion from '$lib/components/base/accordion/index.js';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import RecipientPreview from './RecipientPreview.svelte';
+	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
+	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
 	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
+	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
 
 	interface CreateWishlistModalProps {
@@ -36,6 +41,9 @@
 	// Server/submit-level error (network or createWishlist failure). Field-level
 	// "required" validation is handled by the per-field derived errors below.
 	let errorMessage = $state('');
+	// Optional metadata behind the "Další nastavení" accordion (issue #112).
+	let description = $state('');
+	let palette = $state<Palette>(DEFAULT_PALETTE);
 	// Track whether the user has interacted with each required field so validation
 	// only surfaces after a submit attempt or after the user edits then clears the
 	// field — never on a freshly opened dialog.
@@ -65,6 +73,8 @@
 		recipientName = '';
 		title = '';
 		eventDate = null;
+		description = '';
+		palette = DEFAULT_PALETTE;
 		errorMessage = '';
 		isSubmitting = false;
 		titleTouched = false;
@@ -102,11 +112,15 @@
 							recipientName: trimmedRecipientName,
 							title: trimmedTitle,
 							eventDate,
+							palette,
+							description: description.trim() || null,
 						}
 					: {
 							recipientKind: RECIPIENT_KIND.self,
 							title: trimmedTitle,
 							eventDate,
+							palette,
+							description: description.trim() || null,
 						},
 			);
 
@@ -123,7 +137,7 @@
 </script>
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content>
+	<Dialog.Content class="max-h-[85vh] overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_create_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_create_description()}</Dialog.Description>
@@ -216,6 +230,57 @@
 					disabled={isSubmitting}
 				/>
 			</div>
+
+			<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
+			     one field + title; power users can name a description and pick a palette upfront.
+			     The dashed divider above + 8px/-8px spacing make the optional zone read as a
+			     compact cluster (settled spec §4.8), tighter than the form's 16px gap-4; the
+			     solid divider below is the import Separator sibling. -->
+			<Accordion.Root
+				type="single"
+				class="border-t-2 border-dashed border-ink-faint pt-2 -mb-2"
+			>
+				<Accordion.Item value="more-settings" class="border-b-0">
+					<Accordion.Trigger
+						class="py-2 text-muted-foreground hover:text-foreground hover:no-underline"
+					>
+						<span class="flex items-center">
+							<SlidersHorizontalIcon
+								class="mr-2 size-4 shrink-0 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							{m.create_more_settings()}
+						</span>
+					</Accordion.Trigger>
+					<Accordion.Content class="pb-0">
+						<div class="flex flex-col gap-4 pt-1">
+							<div class="flex flex-col gap-2">
+								<Label for="wishlist-create-description"
+									>{m.wishlist_description_label()}</Label
+								>
+								<Textarea
+									id="wishlist-create-description"
+									bind:value={description}
+									placeholder={m.wishlist_description_placeholder()}
+									disabled={isSubmitting}
+								/>
+							</div>
+							<div class="flex flex-col gap-2">
+								<Label id="wishlist-create-palette-label"
+									>{m.create_palette_label()}</Label
+								>
+								<div role="group" aria-labelledby="wishlist-create-palette-label">
+									<WishlistPalettePicker
+										value={palette}
+										onchange={(nextPalette) => (palette = nextPalette)}
+										disabled={isSubmitting}
+									/>
+								</div>
+							</div>
+						</div>
+					</Accordion.Content>
+				</Accordion.Item>
+			</Accordion.Root>
 
 			{#if errorMessage !== ''}
 				<p class="text-destructive text-sm">{errorMessage}</p>

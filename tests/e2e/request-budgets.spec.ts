@@ -188,7 +188,9 @@ test.describe('Request budgets (issue #108)', () => {
 			.click();
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
-		await dialog.getByRole('button', { name: /Nahrát/i }).click();
+		// Exact match: the upload dropzone exposes an aria-label of "Nahrát obrázek",
+		// so a loose /Nahrát/i also matches it — target the upload-mode tab only.
+		await dialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
 		const fileInput = dialog.locator('input[type=file]');
 		await expect(fileInput).toBeAttached();
 

@@ -34,7 +34,13 @@ test.describe('Wishlist delete (issue #120)', () => {
 		await expect(page).toHaveURL(/\/my-lists$/, { timeout: 10_000 });
 
 		// The card is gone without a reload (dashboard query was refreshed by the delete flow).
-		await expect(page.getByRole('heading', { name: title })).not.toBeVisible();
+		// Assert on the card's link role (aria-label = title): during the post-delete
+		// transition the /w/[id] banner and the delete-confirm dialog both expose the title
+		// via a heading role, so a heading-name locator is ambiguous — the card is the only
+		// element that surfaces the title as a link.
+		await expect(page.getByRole('link', { name: title, exact: true })).toHaveCount(0, {
+			timeout: 10_000,
+		});
 
 		await page.context().close();
 	});

@@ -1,8 +1,4 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages.js';
-	import { toastError, toastSuccess } from '$lib/components/base/toast/index.js';
-	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
-	import { setWishlistPalette } from '$lib/modules/wishlists/wishlists.remote.js';
 	import {
 		PALETTES,
 		PALETTE_LABELS,
@@ -12,42 +8,20 @@
 	import { cn } from '$lib/utils.js';
 
 	interface WishlistPalettePickerProps {
-		wishlistId: string;
-		/** Current wishlist palette (drives aria-pressed selection). */
-		palette: Palette;
-		/** Optimistic callback so the page retitles its `data-palette` subtree instantly. */
-		onselect?: (palette: Palette) => void;
+		/** Currently selected palette (drives aria-pressed). */
+		value: Palette;
+		/** Fired with the clicked palette. Caller owns persistence/state. */
+		onchange: (palette: Palette) => void;
+		/** Disable all swatches (e.g. while a parent form submits). */
+		disabled?: boolean;
 	}
 
-	let { wishlistId, palette, onselect }: WishlistPalettePickerProps = $props();
-
-	let isSaving = $state(false);
-
-	async function selectPalette(nextPalette: Palette) {
-		if (nextPalette === palette || isSaving) {
-			return;
-		}
-
-		const previousPalette = palette;
-		// Instant feedback: the wishlist page wrapper re-derives its tokens right away.
-		onselect?.(nextPalette);
-		isSaving = true;
-		try {
-			// Server refreshes the wishlist + dashboard queries in the same round trip.
-			await setWishlistPalette({ wishlistId, palette: nextPalette });
-			toastSuccess(m.toast_palette_saved());
-		} catch (thrown) {
-			onselect?.(previousPalette);
-			toastError(translateServerError(thrown, m.toast_palette_save_error()));
-		} finally {
-			isSaving = false;
-		}
-	}
+	let { value, onchange, disabled = false }: WishlistPalettePickerProps = $props();
 </script>
 
-<!-- Wishlist palette picker (issue #102 REQ-5): the 10 curated palettes as a
-     2-column swatch grid, mirroring the header PaletteSwitcher's pattern but
-     writing the WISHLIST palette, not the viewer preference. -->
+<!-- Pure controlled wishlist palette picker (issue #102 REQ-5): the 10 curated
+     palettes as a 2-column swatch grid. Selection + persistence live entirely with
+     the caller — the auto-save-on-click flow lives in WishlistPaletteAutoSave. -->
 <div class="grid grid-cols-2 gap-1">
 	{#each PALETTES as paletteOption (paletteOption)}
 		<button
@@ -55,10 +29,12 @@
 			class={cn(
 				'flex cursor-pointer items-center gap-2 rounded-btn border-2 border-transparent px-2 py-1.5 text-left text-(length:--text-sm) font-semibold text-foreground transition-colors',
 				'hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-				paletteOption === palette && 'border-ink bg-accent',
+				'disabled:cursor-not-allowed disabled:opacity-50',
+				paletteOption === value && 'border-ink bg-accent',
 			)}
-			aria-pressed={paletteOption === palette}
-			onclick={() => selectPalette(paletteOption)}
+			aria-pressed={paletteOption === value}
+			{disabled}
+			onclick={() => onchange(paletteOption)}
 		>
 			<span
 				class="size-4 shrink-0 rounded-full border-2 border-ink"

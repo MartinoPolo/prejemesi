@@ -332,6 +332,8 @@
 	"create_recipient_name_required": "Enter the recipient's name",
 	"create_recipient_name_placeholder": "e.g. Rosie",
 	"create_recipient_name_helper": "You'll manage the list and see reservations. This choice can't be changed later.",
+	"create_more_settings": "More settings",
+	"create_palette_label": "Color palette",
 	"wishlist_gift_count_one": "1 wish",
 	"wishlist_gift_count_other": "{count} wishes",
 	"wishlist_status_aria": "Status: {status}",
