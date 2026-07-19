@@ -10,6 +10,8 @@ import {
 	createWishlistForSomeoneAndNavigate,
 	addGift,
 	shareWishlist,
+	openModeratorPanel,
+	generateInviteLink,
 } from './fixtures/wishlist-helpers.js';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -17,29 +19,6 @@ import {
 async function addGiftAndShare(page: Page, giftName: string) {
 	await addGift(page, giftName);
 	await shareWishlist(page);
-}
-
-async function openModeratorPanel(page: Page) {
-	// The správci-management button (aria-label wishlist_moderators_label → „Správci" / „Managers")
-	// is visible only to managers (linked recipient OR správce).
-	await page
-		.getByRole('button', { name: /Správci|Managers/ })
-		.first()
-		.click();
-	const panel = page.getByRole('dialog');
-	await expect(panel).toBeVisible({ timeout: 5_000 });
-	return panel;
-}
-
-async function generateInviteLink(page: Page): Promise<string> {
-	const panel = await openModeratorPanel(page);
-	await panel.getByRole('button', { name: /Generovat pozvánku/ }).click();
-
-	// Link element appears in the panel – grab the full URL shown
-	const linkBox = panel.getByTestId('invite-link');
-	await expect(linkBox).toBeVisible({ timeout: 5_000 });
-	const inviteUrl = (await linkBox.textContent()) ?? '';
-	return inviteUrl.trim();
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
