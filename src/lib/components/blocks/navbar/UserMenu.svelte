@@ -38,7 +38,7 @@
 				{...props}
 				intent="ghost"
 				size="icon"
-				class="rounded-xl border-0 hover:-translate-y-px hover:bg-transparent"
+				class="rounded-xl border-0 hover:-translate-y-px hover:bg-transparent data-[state=open]:hover:translate-y-0"
 				aria-label={m.nav_user_menu({ name: userName })}
 			>
 				<Avatar src={userImage} alt="" initials={userInitials} size="sm" bordered />

@@ -15,8 +15,13 @@ const FILLED_BUTTON_KBD_CLASSES =
 const LIFT_HIT_AREA_CLASSES =
 	"relative after:absolute after:inset-x-0 after:top-full after:h-2 after:content-['']";
 
-/** Flat sticker button: ink border, hard offset shadow, spring lift on hover, press-down on active. */
-const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm ${LIFT_HIT_AREA_CLASSES}`;
+/**
+ * Flat sticker button: ink border, hard offset shadow, spring lift on hover, press-down on active.
+ * While the button is an open overlay trigger (bits-ui sets `data-state="open"` on popover,
+ * dropdown-menu, and sheet triggers), the hover lift is suppressed — lifting the trigger would
+ * drag the anchored overlay along with it.
+ */
+const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker ${LIFT_HIT_AREA_CLASSES}`;
 
 export const buttonVariants = tv({
 	base: 'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-btn border-[2.5px] border-transparent font-semibold leading-none outline-none select-none cursor-pointer transition-[background-color,border-color,color,transform,box-shadow] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 [&_[data-icon]]:pointer-events-none [&_[data-icon]]:shrink-0',

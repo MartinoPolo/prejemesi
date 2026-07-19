@@ -12,6 +12,15 @@ describe('sticker button hover geometry', () => {
 		}
 	});
 
+	it('keeps an open overlay trigger flat so hover cannot shift the anchored dropdown', () => {
+		for (const intent of ['primary', 'secondary', 'primary-destructive', 'outline'] as const) {
+			const classNames = buttonVariants({ intent }).split(/\s+/);
+
+			expect(classNames).toContain('data-[state=open]:hover:translate-y-0');
+			expect(classNames).toContain('data-[state=open]:hover:shadow-sticker');
+		}
+	});
+
 	it('keeps the stacked gift-editor footer buttons lift-free', () => {
 		const styles = giftDetailModalVariants();
 
