@@ -472,9 +472,12 @@
 						</div>
 
 						<div class="flex flex-col gap-2">
-							<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
+							<Label id="wishlist-event-date-label"
+								>{m.wishlist_event_date_label()}</Label
+							>
 							<DatePicker
 								id="wishlist-event-date"
+								ariaLabelledby="wishlist-event-date-label"
 								bind:value={detailsEventDate}
 								disabled={savingDetails || !eventDateEditable}
 							/>
