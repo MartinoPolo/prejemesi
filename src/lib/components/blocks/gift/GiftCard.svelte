@@ -144,7 +144,7 @@
 		<div class={styles.footer()}>
 			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
 			<PurchasedToggle gift={visitorGift} />
-			<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
+			<ReserveButton gift={visitorGift} {isArchived} size="md" {onreserve} {onunreserve} />
 		</div>
 	{/if}
 </div>

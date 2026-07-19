@@ -50,15 +50,15 @@
 <div
 	data-testid="gift-list-item"
 	class={cn(
-		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border py-3 transition-colors hover:bg-muted/50 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center sm:gap-4',
+		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border py-3 transition-colors hover:bg-muted/50 sm:items-center sm:gap-4',
 		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 	)}
 >
-	<!-- 1:1 crop (#189, reverts the interim 4:3 list thumb from #183): large on
-	     mobile, 96px minimum width from tablet upward. -->
+	<!-- 1:1 crop (#189, reverts the interim 4:3 list thumb from #183): large thumb
+	     at every width (clamp maxes at 9.5rem for all viewports ≥ sm). -->
 	<div
 		data-testid="gift-list-image"
-		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:w-24 sm:self-center"
+		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:self-center"
 	>
 		<GiftImage
 			class="size-full rounded-lg"
@@ -158,7 +158,13 @@
 		{#if isVisitorOrModerator && visitorGift}
 			<div class="mt-auto flex items-center justify-end gap-2 pt-2">
 				<PurchasedToggle gift={visitorGift} />
-				<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
+				<ReserveButton
+					gift={visitorGift}
+					{isArchived}
+					size="md"
+					{onreserve}
+					{onunreserve}
+				/>
 			</div>
 		{/if}
 	</div>
