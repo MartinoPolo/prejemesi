@@ -304,9 +304,9 @@
 								onclick={handleCopyClaimLink}
 							>
 								{#if claimLinkCopied}
-									<CheckIcon class="size-4" />
+									<CheckIcon data-icon="solo" />
 								{:else}
-									<CopyIcon class="size-4" />
+									<CopyIcon data-icon="solo" />
 								{/if}
 							</Button>
 						</div>
@@ -364,7 +364,7 @@
 									aria-label={m.claim_revoke_invite()}
 									onclick={() => handleRevokeClaim(invite.id)}
 								>
-									<XIcon class="size-4" />
+									<XIcon data-icon="solo" />
 								</Button>
 							</div>
 						{/each}
@@ -419,9 +419,9 @@
 							onclick={handleCopyLink}
 						>
 							{#if linkCopied}
-								<CheckIcon class="size-4" />
+								<CheckIcon data-icon="solo" />
 							{:else}
-								<CopyIcon class="size-4" />
+								<CopyIcon data-icon="solo" />
 							{/if}
 						</Button>
 					</div>
@@ -485,7 +485,7 @@
 								aria-label={m.moderator_revoke_invite()}
 								onclick={() => handleRevokeInvite(invite.id)}
 							>
-								<XIcon class="size-4" />
+								<XIcon data-icon="solo" />
 							</Button>
 						</div>
 					{/each}

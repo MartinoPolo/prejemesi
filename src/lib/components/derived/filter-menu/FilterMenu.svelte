@@ -72,7 +72,7 @@
 						? `${triggerLabel}: ${activeCountLabel(activeDefinitions.length)}`
 						: triggerLabel}
 				>
-					<ListFilterIcon />
+					<ListFilterIcon data-icon="inline-start" />
 					<span>{triggerLabel}</span>
 					{#if activeDefinitions.length > 0}
 						<span
