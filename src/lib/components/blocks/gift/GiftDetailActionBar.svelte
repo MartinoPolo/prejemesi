@@ -72,7 +72,7 @@
 			giftId={gift.id}
 			giftName={gift.name}
 			likeCount={gift.likeCount}
-			size="lg"
+			size="md"
 			appearance="sticker"
 			class="mr-auto"
 		/>
