@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import type { Plugin } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
@@ -23,6 +24,42 @@ const gitBranch = (() => {
 const dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 const isVitest = process.env.VITEST === 'true';
+
+/**
+ * Dev-only: evaluate the SSR module graph once, uncontended, before serving
+ * requests. Vite's module runner hands out HALF-EVALUATED module exports when
+ * concurrent cold-start requests evaluate a shared module and its
+ * circular-import heuristic misfires: `cachedRequest` consults the cumulative
+ * cross-request importers graph BEFORE awaiting the module's pending
+ * evaluation promise (vite 7.3.2, dist/node/module-runner.js). hooks.server.ts
+ * then calls into a mid-evaluation $lib/server/db/index.js and the first
+ * page load 500s with "Cannot access 'runtimeConnectionString' before
+ * initialization". Only a SECOND concurrent toucher of a pending module can
+ * receive partial exports, so serializing the first evaluation of the hooks
+ * graph closes the window entirely.
+ */
+function prewarmServerModuleGraph(): Plugin {
+	let warmupPromise: Promise<void> | undefined;
+	return {
+		name: 'prewarm-server-module-graph',
+		apply: 'serve',
+		configureServer(server) {
+			const warmup = () =>
+				(warmupPromise ??= server
+					.ssrLoadModule('/src/hooks.server.ts')
+					.then(() => undefined)
+					.catch((error: unknown) => {
+						console.error('[prewarm-server-module-graph] warmup failed', error);
+					}));
+			server.httpServer?.once('listening', () => {
+				void warmup();
+			});
+			server.middlewares.use((_req, _res, next) => {
+				void warmup().then(() => next());
+			});
+		},
+	};
+}
 
 export default defineConfig({
 	server: {
@@ -54,6 +91,9 @@ export default defineConfig({
 		// `paraglide:compile` script — see there for why cleanOutdir must stay false.
 		paraglideVitePlugin(paraglideCompilerOptions),
 		devtoolsJson(),
+		// Vitest browser projects extend this config and spin up their own Vite
+		// servers; they never serve SvelteKit SSR, so skip the warmup there.
+		...(isVitest ? [] : [prewarmServerModuleGraph()]),
 	],
 	test: {
 		passWithNoTests: true,
