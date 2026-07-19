@@ -107,8 +107,11 @@ test.describe('Gift editing', () => {
 		await expect(addDialog).toBeVisible({ timeout: 5_000 });
 		await expect(addDialog.getByRole('textbox', { name: 'Název' })).toHaveValue('');
 		await expect(addDialog.getByRole('textbox', { name: /Popis/i })).toHaveValue('');
-		// The new-gift link editor starts empty – it shows the empty state, not a URL input.
-		await expect(addDialog.getByText(/Bez odkazu|No link/).first()).toBeVisible();
+		// The new-gift link editor starts empty – just the add-link button, no URL input.
+		await expect(
+			addDialog.getByRole('button', { name: /Přidat odkaz|Add link/ }),
+		).toBeVisible();
+		await expect(addDialog.getByTestId('gift-link-url')).toHaveCount(0);
 		await expect(addDialog.getByLabel(/Cena/)).toHaveValue('');
 
 		await page.context().close();
