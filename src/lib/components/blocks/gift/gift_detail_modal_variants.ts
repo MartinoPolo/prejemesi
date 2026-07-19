@@ -53,19 +53,39 @@ export const giftDetailModalVariants = tv({
 		formLabel: 'text-sm font-medium text-foreground',
 		formRow: 'grid grid-cols-2 gap-3',
 		formLabelRow: 'flex min-h-6 items-center justify-between gap-2',
-		// Pinned outside the scroll region – always visible in create and edit mode.
-		// Mobile: pinned to the bottom of the body scroll with an opaque bg so fields
-		// scroll behind it. Desktop: sm:static – already pinned by flex in the right column.
+		// Mobile: Received/Delete flow with the form scroll; Save itself is hidden
+		// here and rendered instead in `mobileSubmitFooter` below (see there for
+		// why). Desktop: sm:static – already pinned by flex in the right column,
+		// whole block bordered/bg as before.
 		formActions:
-			'sticky bottom-0 z-10 flex flex-col gap-2 border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:static sm:px-7',
+			'flex flex-col gap-2 px-5 pb-4 sm:static sm:border-t-2 sm:border-dashed sm:border-ink-faint sm:bg-card sm:px-7 sm:py-4',
+		// Desktop-only Save button, grouped with Received/Delete in the one
+		// pinned block (`sm:order-1` puts it first). Hidden on mobile: a
+		// `position: sticky` copy nested this deep in the mobile scroll can't
+		// stay visible from scroll-top – sticky only re-enters view once you've
+		// scrolled down to the element's normal flow position, so on a long form
+		// it stayed invisible until the user scrolled most of the way down
+		// (mobile edit modal scroll fix, follow-up). `mobileSubmitFooter` below
+		// is the real mobile Save button instead: a true DOM sibling outside the
+		// scrolling body, always visible regardless of scroll position.
+		submitWrapper: 'hidden sm:order-1 sm:block',
+		// Mobile-only pinned Save footer (see `submitWrapper` above for why it's
+		// a separate element): a true sibling of `body`, not nested inside its
+		// scroll, so it's always visible. Hidden on desktop, where
+		// `submitWrapper` already renders Save inline with Received/Delete.
+		mobileSubmitFooter:
+			'shrink-0 border-t-2 border-dashed border-ink-faint bg-card px-5 py-4 sm:hidden',
 		// Stacked full-width buttons cancel the shared sticker hover-lift (#142):
 		// with only `gap-2` (8px) between them, the translate-based lift plus its
 		// spring overshoot can exceed the hit-area buffer at the shared edge,
 		// flickering lift/drop. Shadow-only hover keeps the sticker feel without
 		// the geometric cause; other Button usages are unaffected.
 		submitButton: 'w-full hover:translate-y-0',
-		deleteButton: 'w-full',
-		receivedButton: 'w-full hover:translate-y-0',
+		// order-*: DOM order is [received, delete, submit] (mobile edit modal
+		// scroll fix, see `submitWrapper`); sm:order-* restores Save-first visually
+		// on desktop where all three sit in one pinned block.
+		deleteButton: 'order-2 sm:order-3 w-full',
+		receivedButton: 'order-1 sm:order-2 w-full hover:translate-y-0',
 		imageInputRow: 'flex flex-col gap-2',
 		imageTabRow: 'flex gap-1.5',
 		imageTab:

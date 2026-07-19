@@ -546,7 +546,7 @@
 	});
 </script>
 
-<div class={styles.body()}>
+<div class={styles.body()} data-testid="gift-detail-body">
 	<!-- Left column: the display-mode control on top, then the WYSIWYG stage below
 	     it for all three modes (issue #183: Fill/Fit now render through the same
 	     bordered stage as Manual – a static, non-interactive preview – instead of
@@ -564,7 +564,6 @@
 			// capped) height and centers on the mat — replacing the old fixed
 			// `h-[400px]` that clipped tall portraits (issue #189 REQ-5).
 			'flex h-auto flex-col justify-center border-none border-b-0 p-3 sm:border-r-0 sm:p-4',
-			previewSrc !== null && 'sticky top-0 z-10 sm:static',
 		)}
 		data-testid="gift-image-column"
 	>
@@ -636,29 +635,22 @@
 							>
 								<PencilIcon data-icon="solo" />
 							</Button>
-							<!-- Floating over the stage's lower edge; clicking one jumps to Manual. -->
-							<GiftImagePreviewSlots
-								class="absolute inset-x-0 bottom-2"
-								src={previewSrc}
-								alt={name || m.gift_image_preview()}
-								imageMeta={currentImageMeta}
-								activeTarget={null}
-								onTileSelect={handleTileSelect}
-							/>
 						{/if}
 					</div>
-					{#if isCropMode}
-						<!-- Below the stage (not overlapping: every stage pixel matters here);
-						     the tiles are the only crop-target switcher (round 3). -->
-						<GiftImagePreviewSlots
-							class="flex-none pt-2.5"
-							src={previewSrc}
-							alt={name || m.gift_image_preview()}
-							imageMeta={currentImageMeta}
-							{activeTarget}
-							onTileSelect={handleTileSelect}
-						/>
-					{/if}
+					<!-- Below the stage (not overlapping: every stage pixel matters here);
+					     the tiles are the only crop-target switcher (round 3). Rendered here
+					     for every mode – Fill/Fit used to float these over the stage's lower
+					     edge, clipping into the photo on short stages (mobile edit modal
+					     scroll fix); Manual keeps the same target highlighted, Fill/Fit
+					     highlight none. -->
+					<GiftImagePreviewSlots
+						class="flex-none pt-2.5"
+						src={previewSrc}
+						alt={name || m.gift_image_preview()}
+						imageMeta={currentImageMeta}
+						activeTarget={isCropMode ? activeTarget : null}
+						onTileSelect={handleTileSelect}
+					/>
 				{/if}
 			</div>
 		{:else}
@@ -1021,16 +1013,13 @@
 			</fieldset>
 		</div>
 
-		<!-- Actions: pinned outside the scroll region so they are always visible -->
+		<!-- Actions: Received/Delete render first in DOM so they scroll away with
+		     the form on mobile instead of permanently pinning all three (mobile
+		     edit modal scroll fix). Save itself is hidden here on mobile – see
+		     `mobileSubmitFooter` below for why – and only shown via `submitWrapper`
+		     on desktop, where `sm:order-*` restores the original look: all three
+		     grouped in one pinned block with Save on top, unchanged. -->
 		<div class={styles.formActions()}>
-			<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
-				{#if isSubmitting}
-					{m.saving()}
-				{:else}
-					{submitLabel}
-				{/if}
-			</Button>
-
 			{#if isEdit && gift !== null}
 				{#if isOwner}
 					<Button
@@ -1061,6 +1050,38 @@
 					</Button>
 				{/if}
 			{/if}
+
+			<div class={styles.submitWrapper()}>
+				<Button
+					class={styles.submitButton()}
+					disabled={isSubmitting}
+					onclick={handleSubmit}
+				>
+					{#if isSubmitting}
+						{m.saving()}
+					{:else}
+						{submitLabel}
+					{/if}
+				</Button>
+			</div>
 		</div>
 	</div>
+</div>
+
+<!-- Mobile-only pinned Save footer (see `submitWrapper` in
+     gift_detail_modal_variants.ts for why this is a separate element from the
+     desktop one above): a true DOM sibling OUTSIDE `body`'s scroll, so it
+     stays visible regardless of scroll position – unlike a `position: sticky`
+     copy nested inside the scroll, which only re-enters view once scrolled
+     down to it (mobile edit modal scroll fix, follow-up). Hidden on desktop,
+     where `submitWrapper` above already renders Save inline with
+     Received/Delete. -->
+<div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
+	<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
+		{#if isSubmitting}
+			{m.saving()}
+		{:else}
+			{submitLabel}
+		{/if}
+	</Button>
 </div>
