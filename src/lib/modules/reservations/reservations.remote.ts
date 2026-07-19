@@ -182,7 +182,6 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 	}
 
 	const actorUserId = authContext?.user.id ?? null;
-	const actorName = authContext?.user.name ?? created.anonymousName ?? null;
 	const likedRows = await database
 		.select({ userId: giftLike.userId })
 		.from(giftLike)
@@ -203,13 +202,14 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		.map((row) => row.userId)
 		.filter((userId) => userId !== actorUserId && userId !== wishlistRow.recipientUserId);
 
+	// Reserver identity is personal data (issue #198): these dispatches carry the server-side
+	// actorId only (for de-duplication/ownership checks), never the reserver's display name.
 	await dispatchNotification({
 		type: NOTIFICATION_TYPE.LIKED_GIFT_RESERVED,
 		targetUserIds: likedUserIds,
 		wishlistId: wishlistRow.id,
 		giftId: input.giftId,
 		actorId: actorUserId ?? undefined,
-		actorName: actorName ?? undefined,
 		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 	});
 	await dispatchNotification({
@@ -218,7 +218,6 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		wishlistId: wishlistRow.id,
 		giftId: input.giftId,
 		actorId: actorUserId ?? undefined,
-		actorName: actorName ?? undefined,
 		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 	});
 

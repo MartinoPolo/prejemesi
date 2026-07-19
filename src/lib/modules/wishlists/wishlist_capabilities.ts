@@ -28,20 +28,21 @@ export function hidesReservationState(role: WishlistRole, recipientIsModerator: 
 /**
  * Whether the caller may see the full reservation ledger and act on it (per-reservation
  * details, cancelling anonymous reservations on someone's behalf). Moderators only.
- * For the lighter "who reserved this gift" display line, see {@link canSeeReserverNames}.
+ * For the per-gift display line, see {@link canSeeReserverNames} (same moderator-only rule).
  */
 export function canSeeGifterIdentity(role: WishlistRole): boolean {
 	return role === WISHLIST_ROLES.moderator;
 }
 
 /**
- * Whether the caller may see reserver display names on gifts (issue #102 REQ-14:
- * "rezervoval(a) Babička"). Visitors and moderators — lists are shared among trusted
- * people and knowing who has a gift covered helps coordination. The recipient never
- * sees them, even self-promoted: self-promote reveals counts, not identities.
+ * Whether the caller may see reserver display names on gifts (e.g. "rezervoval(a) Babička").
+ * Moderator-only (issue #198, supersedes issue #102 REQ-14 which showed names to all
+ * non-recipients): reserver identity is personal data and belongs to gifter identity, not
+ * general reservation state. Visitors see only the anonymous reserved state (counts, no
+ * names); the recipient sees nothing, as always.
  */
 export function canSeeReserverNames(role: WishlistRole): boolean {
-	return role !== WISHLIST_ROLES.recipient;
+	return role === WISHLIST_ROLES.moderator;
 }
 
 /** Whether the caller may reserve gifts. Everyone except the recipient (their own surprise). */

@@ -1022,12 +1022,20 @@ What: Two messages, one Alert-based component with tones — moderator reassuran
 Why: The trust warning is the one visitors must not miss; the reassurance is ambient.
 Rejected: Both subtle (warning missable); both loud (shouty for moderators on every visit).
 
-### Reserver name visible to visitors and moderators
+### ~~Reserver name visible to visitors and moderators~~ (superseded)
 
-Decided: 2026-07-10
-What: Gift cards/detail show who reserved ("rezervovala Babička") to all non-owner viewers. The owner continues to see nothing (core invariant, API-stripped). Requires exposing the reserver display name in gift queries for non-owner roles.
+Decided: 2026-07-10 — **Superseded 2026-07-19 by issue #198**.
+~~What: Gift cards/detail show who reserved ("rezervovala Babička") to all non-owner viewers. The owner continues to see nothing (core invariant, API-stripped). Requires exposing the reserver display name in gift queries for non-owner roles.~~
 Why: Helps family coordination ("grandma has it covered"); lists are shared among trusted people.
 Rejected: Moderators-only (loses the gifter-view value); keeping the anonymous "Reserved" badge.
+Replaced because: reserver identity is personal data; any link holder could read authenticated users' real account names.
+
+### Reserver names are moderator-only (issue #198)
+
+Decided: 2026-07-19 (supersedes "Reserver name visible to visitors and moderators")
+What: Visitors see only the anonymous reserved state ("Rezervováno" + counts, own-reservation UX untouched); reserver display names are emitted solely to správci (`canSeeReserverNames` = moderator-only). `GIFT_RESERVED`/`LIKED_GIFT_RESERVED` notifications no longer carry the actor's name. Recipient invariant unchanged.
+Why: Reserver identity is personal data — the old rule exposed authenticated users' real account names to anyone holding the link. Gifter coordination does not require public names; správci retain full visibility.
+Rejected: Names for all non-recipients (superseded decision — privacy leak); per-viewer pseudonyms (complexity without clear value); purging historical notification actorName rows in the same change (separate data-migration decision).
 
 ### ~~Toolbar: visible sort select + "Pouze dostupné" chip~~ (superseded)
 

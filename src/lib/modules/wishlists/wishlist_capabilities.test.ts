@@ -24,7 +24,7 @@ import { WISHLIST_ROLES, type WishlistRole } from './types.js';
  *                  cannot reserve or like (their own surprise).
  *   - moderator  : all recipient management rights PLUS full reservation visibility
  *                  (incl. the reservation ledger) and can reserve + like.
- *   - visitor    : sees reserved state and reserver display names (issue #102 REQ-14)
+ *   - visitor    : sees reserved state (counts only, no reserver names — issue #198)
  *                  but never the reservation ledger; can reserve + like; cannot manage.
  *   - self-promoted recipient (recipientIsModerator = true): still role `recipient`, so
  *                  the strip gate opens (sees counts) but they still do NOT see gifter
@@ -70,11 +70,11 @@ describe('wishlist capabilities rights matrix', () => {
 		});
 	});
 
-	describe('canSeeReserverNames — everyone except recipient (issue #102 REQ-14)', () => {
+	describe('canSeeReserverNames — moderator only (issue #198)', () => {
 		const cases: ReadonlyArray<[WishlistRole, boolean]> = [
 			[WISHLIST_ROLES.recipient, false],
 			[WISHLIST_ROLES.moderator, true],
-			[WISHLIST_ROLES.visitor, true],
+			[WISHLIST_ROLES.visitor, false],
 		];
 
 		it.each(cases)('role %s → %s', (role, expected) => {

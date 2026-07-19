@@ -390,7 +390,7 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.likeCount).toBe(5);
 			expect(gift.isFullyReserved).toBe(false); // 2 reserved out of 3
 			// …but gifter identities never are: self-promote reveals counts, not names
-			// (issue #102 REQ-14 keeps the surprise of WHO for the recipient).
+			// (reserver names are moderator-only — issue #198).
 			expect(gift.reserverNames).toEqual([]);
 		});
 	});
@@ -491,17 +491,18 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.reservedCount).toBe(1);
 			expect(gift.likeCount).toBe(10);
 			expect(gift.isFullyReserved).toBe(false);
-			// Moderators see who reserved (issue #102 REQ-14)
+			// Moderators see who reserved (issue #198)
 			expect(gift.reserverNames).toEqual(['Babička Marie']);
 		});
 	});
 
-	describe('reserver display names (issue #102 REQ-14)', () => {
-		it('visitor sees the reserver display name on a reserved gift', async () => {
+	describe('reserver display names — moderator only (issue #198)', () => {
+		it('visitor sees no reserver display name on a reserved gift (counts stay intact)', async () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
 			mockDbInstance.pushResult([]); // not a moderator
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
-			// reservation rows: name coalesced from the reserver account / anonymous signature
+			// reservation rows: name coalesced from the reserver account / anonymous signature —
+			// the DB still returns it, but the visitor viewer must never receive it.
 			mockDbInstance.pushResult([
 				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Babička Marie' },
 			]);
@@ -512,12 +513,29 @@ describe('getGiftsByWishlistShortId', () => {
 
 			const gift = result.gifts[0] as GiftForVisitor;
 			expect(gift.isFullyReserved).toBe(true);
-			expect(gift.reserverNames).toEqual(['Babička Marie']);
+			expect(gift.reserverNames).toEqual([]);
 		});
 
-		it('collects multiple reservers in reservation order and deduplicates repeats', async () => {
+		it('anonymous (unauthenticated) caller sees no reserver display name on a reserved gift', async () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
-			mockDbInstance.pushResult([]); // not a moderator
+			// No moderator check: authContext is null.
+			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 1 })]);
+			mockDbInstance.pushResult([
+				{ giftId: GIFT_ID, quantity: 1, reserverName: 'Petr Svoboda' },
+			]);
+			mockDbInstance.pushResult([]); // like counts
+
+			const result = await callGetGifts(null, WISHLIST_SHORT_ID);
+
+			expect(result.role).toBe('visitor');
+			const gift = result.gifts[0] as GiftForVisitor;
+			expect(gift.isFullyReserved).toBe(true);
+			expect(gift.reserverNames).toEqual([]);
+		});
+
+		it('moderator collects multiple reservers in reservation order and deduplicates repeats', async () => {
+			mockDbInstance.pushResult([makeWishlistRow()]);
+			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]); // is a moderator
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 4 })]);
 			// Same person reserving twice must appear once; order follows createdAt.
 			mockDbInstance.pushResult([
@@ -528,7 +546,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([]); // like counts
 			mockDbInstance.pushResult([]); // my reservations
 
-			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+			const result = await callGetGifts(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
 
 			const gift = result.gifts[0] as GiftForVisitor;
 			expect(gift.reservedCount).toBe(4);
@@ -536,9 +554,9 @@ describe('getGiftsByWishlistShortId', () => {
 			expect(gift.reserverNames).toEqual(['Babička Marie', 'Petr Svoboda']);
 		});
 
-		it('counts reservations without a usable name but emits no name entry for them', async () => {
+		it('moderator counts reservations without a usable name but sees no name entry for them', async () => {
 			mockDbInstance.pushResult([makeWishlistRow()]);
-			mockDbInstance.pushResult([]); // not a moderator
+			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]); // is a moderator
 			mockDbInstance.pushResult([makeGiftRow({ id: GIFT_ID, quantity: 2 })]);
 			// e.g. reserver account deleted (userId set null, no anonymous signature)
 			mockDbInstance.pushResult([
@@ -548,7 +566,7 @@ describe('getGiftsByWishlistShortId', () => {
 			mockDbInstance.pushResult([]); // like counts
 			mockDbInstance.pushResult([]); // my reservations
 
-			const result = await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
+			const result = await callGetGifts(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
 
 			const gift = result.gifts[0] as GiftForVisitor;
 			expect(gift.reservedCount).toBe(2);

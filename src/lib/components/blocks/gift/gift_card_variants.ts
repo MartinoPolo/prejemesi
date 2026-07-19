@@ -43,7 +43,7 @@ export const giftCardVariants = tv({
 		reservedSticker:
 			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
 		reservedStickerLabel: 'flex items-center gap-1',
-		/** Who reserved, e.g. „rezervoval(a) Babička" (issue #102 REQ-14) — visitors/moderators only. */
+		/** Who reserved, e.g. „rezervoval(a) Babička" — moderators only (issue #198). */
 		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-muted-foreground',
 		// Bottom-right + opposite tilt (issue #184): the top-right corner is the edit
 		// affordance's territory for editing roles; keep both simultaneously visible.
