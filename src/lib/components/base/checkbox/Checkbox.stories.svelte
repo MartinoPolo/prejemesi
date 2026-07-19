@@ -72,27 +72,27 @@
 	{#snippet template(args: CheckboxProps)}
 		<div class="grid grid-cols-4 gap-6">
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Unchecked</span>
+				<span class="text-xs text-muted-foreground">Unchecked</span>
 				<Checkbox {...args} />
 			</div>
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Checked</span>
+				<span class="text-xs text-muted-foreground">Checked</span>
 				<Checkbox checked />
 			</div>
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Indeterminate</span>
+				<span class="text-xs text-muted-foreground">Indeterminate</span>
 				<Checkbox indeterminate />
 			</div>
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Disabled</span>
+				<span class="text-xs text-muted-foreground">Disabled</span>
 				<Checkbox disabled />
 			</div>
 			<div class="flex flex-col items-center gap-2">
-				<span class="text-xs text-foreground-subtle">Disabled + Checked</span>
+				<span class="text-xs text-muted-foreground">Disabled + Checked</span>
 				<Checkbox disabled checked />
 			</div>
 			<div class="col-span-3 flex flex-col gap-2">
-				<span class="text-xs text-foreground-subtle">With label</span>
+				<span class="text-xs text-muted-foreground">With label</span>
 				<div class="flex items-center gap-2">
 					<Checkbox id="cb-label-demo" checked />
 					<Label for="cb-label-demo" class="mb-0 cursor-pointer text-(length:--text-md)"

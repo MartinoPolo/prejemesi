@@ -6,12 +6,22 @@ import { tv } from 'tailwind-variants';
  * hover. `dimmed` covers fully reserved (visitor/moderator view) and received
  * gifts — the card greys out, stops lifting, and the mat stops brightening; the
  * reservation sticker stays crisp on top.
+ *
+ * The card is a row subgrid spanning 7 tracks (image / name / price / priority
+ * / links / description / footer) of the grid in WishlistGiftCardGrid, so the
+ * same sections sit on shared rows across every card in a grid row; a card
+ * missing a section leaves an aligned blank slot. Sections carry explicit
+ * row-start values — without them auto-placement would compact absent sections
+ * away. Vertical rhythm comes from item margins (not row gaps) so fully-empty
+ * tracks collapse.
  */
 export const giftCardVariants = tv({
 	slots: {
-		card: 'group relative flex flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
+		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
-			'relative isolate aspect-square w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
+			'relative isolate row-start-1 aspect-[4/3] w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
 		/**
 		 * Dotted mat behind the photo (shows through letterboxed photos). Sits on
 		 * its own layer below the image so its opacity can fade up on hover —
@@ -22,21 +32,23 @@ export const giftCardVariants = tv({
 			'pointer-events-none absolute inset-0 -z-[1] bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100',
 		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
 		imageVeil: 'absolute inset-0 bg-reserved-veil',
-		body: 'flex flex-1 flex-col gap-2 p-4',
-		nameRow: 'flex flex-wrap items-baseline gap-1.5',
+		body: 'row-span-5 row-start-2 grid grid-rows-subgrid p-4',
+		nameRow: 'row-start-1 flex flex-wrap items-baseline gap-1.5',
 		name: 'line-clamp-2 font-heading text-[17px] font-semibold leading-snug text-foreground',
-		price: 'text-[15px] font-bold text-foreground',
-		priceEmpty: 'text-sm text-ink-soft italic',
-		priorityEyebrow: 'flex items-center gap-1',
-		linkList: 'mt-auto flex flex-col',
-		footer: 'flex items-center justify-between gap-2 px-4 pt-1 pb-3.5',
+		price: 'row-start-2 mt-2 text-[15px] font-bold text-foreground',
+		priceEmpty: 'row-start-2 mt-2 text-sm text-muted-foreground italic',
+		priorityEyebrow: 'row-start-3 mt-2 flex items-center gap-1',
+		linkList: 'row-start-4 mt-2 flex flex-col',
+		footer: 'row-start-7 flex items-center justify-between gap-2 px-4 pt-1 pb-3.5',
 		reservedSticker:
 			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
 		reservedStickerLabel: 'flex items-center gap-1',
 		/** Who reserved, e.g. „rezervoval(a) Babička" (issue #102 REQ-14) — visitors/moderators only. */
-		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-ink-soft',
+		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-muted-foreground',
+		// Bottom-right + opposite tilt (issue #184): the top-right corner is the edit
+		// affordance's territory for editing roles; keep both simultaneously visible.
 		receivedSticker:
-			'absolute top-2.5 right-2.5 z-10 flex rotate-4 items-center gap-1 rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11.5px] font-extrabold text-primary-foreground',
+			'absolute right-2.5 bottom-2.5 z-10 flex -rotate-4 items-center gap-1 rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11.5px] font-extrabold text-primary-foreground',
 		/** Edit-icon hover affordance for managers (issue #125 REQ-3): hidden until card hover/focus. */
 		editIcon:
 			'absolute top-2.5 right-2.5 z-10 flex items-center justify-center rounded-full border-2 border-ink bg-card p-1.5 opacity-0 shadow-sticker transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100',

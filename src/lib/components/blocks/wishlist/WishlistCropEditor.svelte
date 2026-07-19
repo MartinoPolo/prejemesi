@@ -291,7 +291,7 @@
 		<!-- Per-slot previews (REQ-7: true consumer aspects) – clicking a tile jumps
 		     to Manual mode for that slot (#116 follow-up) -->
 		<div class="flex flex-col gap-2">
-			<span class="text-xs font-medium tracking-wide text-foreground-subtle uppercase">
+			<span class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
 				{m.wishlist_image_preview_strip_label()}
 			</span>
 			<ul class="grid grid-cols-3 gap-3">

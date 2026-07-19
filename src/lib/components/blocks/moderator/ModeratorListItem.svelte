@@ -65,7 +65,7 @@
 			aria-label={m.moderator_remove_label({ name: moderator.userName })}
 			onclick={() => onremove?.(moderator.id)}
 		>
-			<TrashIcon class="size-4" />
+			<TrashIcon data-icon="solo" />
 		</Button>
 	{/if}
 </div>

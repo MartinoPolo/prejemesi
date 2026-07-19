@@ -7,26 +7,39 @@
 	import { cn } from '$lib/utils.js';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import { CalendarDate, type DateValue } from '@internationalized/date';
+	import type { InputSize } from '$lib/components/base/input/index.js';
 
 	interface DatePickerProps {
 		/** Selected date as a plain JS `Date`, or `null` when empty. */
 		value?: Date | null;
-		/** Associates a `<Label for>` with the trigger button. */
+		/** Element id of the trigger button (for tests/CSS, not label association — see `ariaLabelledby`). */
 		id?: string;
+		/**
+		 * Id of an external `<Label>` describing this control. Prefer this over a
+		 * `<Label for>`/`id` pairing: browsers forward `:hover` (and native
+		 * click-activation) from a `<label for>` to its associated labelable
+		 * element, which visibly "pre-lights" this button's hover styling
+		 * whenever the label above it is hovered.
+		 */
+		ariaLabelledby?: string;
 		/** Disables the trigger. */
 		disabled?: boolean;
 		/** Trigger text shown when no date is selected. */
 		placeholder?: string;
 		/** Extra classes for the trigger button. */
 		class?: string;
+		/** Shared control-height step for the trigger button. */
+		size?: InputSize;
 	}
 
 	let {
 		value = $bindable(null),
 		id,
+		ariaLabelledby,
 		disabled = false,
 		placeholder,
 		class: className,
+		size = 'md',
 	}: DatePickerProps = $props();
 
 	/** Map the active app locale to a BCP-47 tag for `Calendar` and `Intl`. */
@@ -59,11 +72,12 @@
 </script>
 
 <Popover.Root bind:open>
-	<Popover.Trigger {id} {disabled}>
+	<Popover.Trigger {id} {disabled} aria-labelledby={ariaLabelledby}>
 		{#snippet child({ props })}
 			<Button
 				{...props}
 				intent="outline"
+				{size}
 				class={cn(
 					'w-full justify-start font-normal',
 					value === null && 'text-muted-foreground',

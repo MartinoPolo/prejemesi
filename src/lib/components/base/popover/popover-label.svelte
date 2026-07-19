@@ -19,7 +19,7 @@
 	bind:this={ref}
 	data-slot="popover-label"
 	class={cn(
-		'px-2 pb-1 pt-1.5 text-(length:--text-2xs) font-medium uppercase tracking-wider text-foreground-subtle',
+		'px-2 pb-1 pt-1.5 text-(length:--text-2xs) font-medium uppercase tracking-wider text-muted-foreground',
 		className,
 	)}
 	{...restProps}

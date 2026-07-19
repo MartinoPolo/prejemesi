@@ -4,7 +4,7 @@
 	import { GiftDraftDialog } from '$lib/components/blocks/gift-draft-grid/index.js';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
-	import WishlistPalettePicker from '$lib/components/blocks/wishlist/WishlistPalettePicker.svelte';
+	import WishlistPaletteAutoSave from '$lib/components/blocks/wishlist/WishlistPaletteAutoSave.svelte';
 	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
 	import LoginPromptDialog from '$lib/components/blocks/auth/LoginPromptDialog.svelte';
 	import type {
@@ -77,9 +77,10 @@
 		ongiftunreserve: (gift: GiftForVisitor) => void;
 		onreservemodalclose: () => void;
 		onreserve: (input: ReserveGiftInput) => void;
-		onshared: () => void;
+		/** Optional – share/self-promote already sync the page via single-flight refreshes (issue #108). */
+		onshared?: () => void;
 		onpaletteselect: (palette: Palette) => void;
-		onmoderatorselfpromoted: () => void;
+		onmoderatorselfpromoted?: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
 	}
@@ -191,7 +192,7 @@
 				<Dialog.Title>{m.wishlist_palette_dialog_title()}</Dialog.Title>
 				<Dialog.Description>{m.wishlist_palette_dialog_description()}</Dialog.Description>
 			</Dialog.Header>
-			<WishlistPalettePicker
+			<WishlistPaletteAutoSave
 				{wishlistId}
 				palette={wishlistPalette}
 				onselect={onpaletteselect}

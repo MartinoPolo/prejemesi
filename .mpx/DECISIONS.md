@@ -257,6 +257,13 @@ What: Critical events (liked gift reserved by someone else, reserved gift edited
 Why: Prevents notification fatigue while ensuring important events aren't missed.
 Rejected: All by email (too noisy), all in-app only (critical events missed by inactive users).
 
+### Notification email locale resolves from recipient preference
+
+Decided: 2026-07-17
+What: Notification email copy and internal links resolve at dispatch from the recipient's stored locale; Czech is the fallback for missing preferences and unmatched email addresses. Auth-email locale handling is unchanged.
+Why: Emails are delivered outside a request context and must respect the recipient's latest explicit choice without inferring a locale from the sender or event.
+Rejected: Ambient request locale (unavailable and wrong recipient), sender locale (recipient mismatch), email-address lookup for email-only recipients (scope and semantics expansion).
+
 ## Data & Storage
 
 ### ~~Separate banner and thumbnail uploads per wishlist~~ (superseded)
@@ -934,6 +941,29 @@ Why: Keyboard crop operation was deprioritized for v1; the gap was reviewed and 
 Rejected: Implementing keyboard nudge/resize now (deferred); silently leaving it undocumented (would read as a bug).
 Revisit: If the crop editor becomes a primary owner workflow or an accessibility audit requires AA, reopen #50 and implement keyboard operation + fix the nested-interactive handles.
 
+### Gift crop family: 4:3, WYSIWYG Fill/Fit previews, wider modals, natural detail photo (issue #183)
+
+Decided: 2026-07-18
+What: The gift `square` crop target's aspect changes from 1:1 to 4:3 (width:height) — it remains the ONLY editor crop target (no per-target switcher returns). The gift-card grid image area, the list-view thumbnail, and the editor's crop/preview stage all render at 4:3; the reservation-modal thumbnail keeps its small fixed square icon (an approximate, non-WYSIWYG consumer of the same persisted focal+zoom). Existing manual crops carry over automatically with no data migration: focal+zoom is resolution/aspect-independent (see above), so the SAME persisted values reproject onto the wider 4:3 window purely by changing the consuming surfaces' CSS aspect ratio. The editor's Fill/Fit previews are now a static, non-interactive rendering of the SAME Manual crop stage component (bordered 4:3 window, dimmed overhang outside it, no thirds grid, no label chip) instead of a plain unbounded `ImageFrame` preview, so they show exactly what the card/list actually render; a wheel gesture still promotes to Manual. The Manual stage's label/pixel chip is removed entirely (white border + thirds grid unchanged). The gift edit modal and the visitor gift detail modal both widen to ~1100px (edit: ~50/50 image/form column split, up from 45/55); the visitor detail modal drops out of the crop-target system entirely and shows the full photo at its natural aspect ratio inside a raised height cap (tall photos display tall, wide photos display wide).
+Why: Square gift cards read as too tall for typical product photography; the Fill/Fit previews rendered in an arbitrary tall column matching no real surface, so users couldn't judge the actual framing before saving; the visitor detail view cropping a photo the recipient/gifter might want to see in full was needless information loss.
+Rejected: Reintroducing a per-target aspect switcher (round 3 already settled on tiles-only, single-target editing); migrating persisted crop data to a new shape or key (focal+zoom already reprojects losslessly, and the `square` key must stay stable — renaming it would need a data migration issue #183 explicitly avoids); keeping the visitor detail view as a crop consumer (defeats the point of showing "the whole picture"); building a parallel preview component for Fill/Fit instead of reusing the Manual stage (would drift visually from Manual and duplicate the WYSIWYG windowing math).
+Superseded (partial, issue #189): "remains the ONLY editor crop target (no per-target switcher returns)" is reversed — a second 1:1 `thumb` target and a two-tile switcher return (see next entry); the interim 4:3 list thumbnail becomes 1:1. Everything else here still holds (the `square` key stays a 4:3 misnomer, focal+zoom reprojects losslessly, the visitor detail stays out of the crop system).
+
+### Gift two-target crop family + adaptive full-photo crop stage (issue #189, follow-up to #183)
+
+Decided: 2026-07-18
+What: The gift editor offers TWO crop targets, both consumed WYSIWYG: `square` (kept 4:3 misnomer key) for the grid card, and a NEW `thumb` key (true 1:1) for the wishlist list-view thumbnail and the reservation thumb. The editor shows two preview tiles — „Karta" (4:3 = `square`) and „Seznam a rezervace" (1:1 = `thumb`) — which are the ONLY crop-target switcher; clicking a tile jumps to Ručně with that target active. The list thumbnail reverts from the interim 4:3 to 1:1, and the reservation thumb (previously an approximate square consumer of the 4:3 focal+zoom) becomes an EXACT 1:1 consumer. Carry-over needs no migration: `thumb` reads `targets.thumb ?? targets.square` and reprojects the same persisted focal+zoom into the 1:1 window at render time (pre-#183 manual crops were drawn 1:1, so they render verbatim). The crop stage's sizing model is INVERTED: instead of a fixed-viewport window that scales the photo to fill it (and clips a tall portrait even at default zoom), the whole photo renders contained and ALWAYS fully visible — the stage adapts to the photo's natural aspect within min/max caps — with the active target's window overlaid on the photo (overhang dimmed, never clipped; Ručně zoom-in ≤300 % shrinks the window / tightens the crop). Fit letterboxes the whole photo inside a centered target-aspect window. The mode section gets an intentional photo-workshop sticker-panel treatment (no thin grey seam border). Link-editor rows adopt the accepted mockup styling with a visible „Viditelný popisek" label and drop the „Hlavní" badge (first link is primary by order). List-view rows align flush with the toolbar/hero edges.
+Why: 4:3 does not fit list rows or the mobile list view — 1:1 is the right shape there — so a second target had to return; the fixed-viewport stage clipped tall portraits even at default zoom, so a WYSIWYG editor could not show the whole photo; the de-seamed full-bleed mat read as an unfinished wireframe.
+Rejected: Renaming the `square` key to reflect its 4:3 shape (still needs a data migration, still rejected); migrating persisted crops for the new `thumb` target (render-time reprojection is lossless — no data change); keeping the reservation thumb as an approximate square consumer (now an exact 1:1 consumer); keeping the fixed-viewport stage-fills-photo sizing (clips portraits — the whole point being fixed); a secondary indication of the inactive target in the stage window (the tiles carry that — the window shows the active target only).
+Revisit: If a third consumer aspect appears, extend `GIFT_CROP_TARGET_SPECS` + `GIFT_EDITOR_CROP_TARGETS` and add a tile; the two-tile switcher and adaptive stage generalize to N targets.
+
+### Legacy `auto` fitMode: presented editor mode normalized to match the real render (issue #183 follow-up)
+
+Decided: 2026-07-18
+What: A gift row persisted with the legacy `fitMode: 'auto'` (every seeded gift) resolves to cover or contain PER IMAGE at real render time (`resolveAutoFit`, comparing the image's natural ratio against the target box ratio), while the editor's mode toggle reads every legacy `auto` row as Fill (`giftEditorModeFromMeta`) regardless of how it actually renders. Once the editor measures the image's natural ratio client-side, an untouched legacy `auto` row that would actually render letterboxed now PRESENTS (toggle selection + WYSIWYG preview) as Fit instead of Fill — without marking the form dirty or rewriting the persisted `auto` value: an untouched save still writes `auto` verbatim, exactly as before.
+Why: The new WYSIWYG Fill/Fit previews (see above) must never contradict the real card render, or the honesty they were built for is undermined for every legacy row. Normalizing the PRESENTED mode (not the persisted data) on measurement keeps the toggle honest while preserving the existing "no silent metadata rewrite on an untouched form" invariant.
+Rejected: Making the bordered preview literally re-derive `auto` at its own box ratio via a second code path (would duplicate `resolveAutoFit`'s resolution logic inside the new static stage instead of reusing one normalized mode value); silently rewriting the persisted `auto` fitMode to `contain-padded` on modal open (violates "no silent metadata rewrite," and would touch production rows nobody asked to change).
+
 ## Redesign 2026 — Anime Sky
 
 ### Visual base: anime-sky-final mockup
@@ -999,12 +1029,20 @@ What: Gift cards/detail show who reserved ("rezervovala Babička") to all non-ow
 Why: Helps family coordination ("grandma has it covered"); lists are shared among trusted people.
 Rejected: Moderators-only (loses the gifter-view value); keeping the anonymous "Reserved" badge.
 
-### Toolbar: visible sort select + "Pouze dostupné" chip
+### ~~Toolbar: visible sort select + "Pouze dostupné" chip~~ (superseded)
 
-Decided: 2026-07-10 (supersedes "Sort and filter as icon-only dropdown trigger")
-What: The sort select is visible in the wishlist toolbar; "Pouze dostupné" is a toggle chip (#101); the rare "s odkazem" filter moves to a small overflow menu. The toolbar flex-wraps on narrow screens.
+Decided: 2026-07-10 (supersedes "Sort and filter as icon-only dropdown trigger") — **Superseded 2026-07-15 by issue #161**.
+~~What: The sort select is visible in the wishlist toolbar; "Pouze dostupné" is a toggle chip (#101); the rare "s odkazem" filter moves to a small overflow menu. The toolbar flex-wraps on narrow screens.~~
 Why: Availability filtering is the highest-value visitor action; burying it defeated it.
 Rejected: Icon-only dropdown (buried filters); three visible chips (toolbar overflow).
+Replaced because: unified filtering needs a shared interaction across wishlists and dashboards.
+
+### Toolbar: one filter dropdown with active pills (issue #161)
+
+Decided: 2026-07-15
+What: One shared derived filter dropdown holds filter toggles. Active filters render as removable pills that fill the desktop gap after the toolbar; below 640 px pills are hidden and the trigger exposes an active count plus menu clear action. Role/auth filter gates and existing filtering semantics remain unchanged.
+Why: Keeps controls compact while retaining visible active state, one-shot clear, and accessible mobile context.
+Rejected: Per-page filter implementations; permanently visible filter chips.
 
 ### Navigation: pill states, landing anchor links, mobile control consolidation
 
@@ -1041,3 +1079,17 @@ What: All four mockups live in `designs/redesign-2026/sky-final/` (anime-sky-fin
 
 Why: User review of round 1 flagged the glossy 3D primaries, misplaced tape, undersized heart, and em-dash copy; photo embeds + hover pan were requested additions.
 Rejected: Glow kept as hover accent (still off-language); `user-select: none` for the caret (kills text selection).
+
+### Request amplification: single-flight mutations, per-HTML preference reads, background email
+
+Decided: 2026-07-12 (issue #108)
+What: Four settled rules for Worker/Hyperdrive economy. (1) Mutating commands declare their own invalidations server-side via `singleFlightRefresh(query, arg)` (src/lib/server/remote.ts) — the fresh query result rides back on the command response and updates client-side tracked queries; the client never refreshes-then-refetches (resolves finding M6 in #79). Gift mutations refresh only the gift-list query — never wishlist metadata, likes, or dashboards. (2) Pages consume remote queries reactively (`$derived(query.current)` / SSR-awaited + tracked) so single-flight payloads land without follow-up fetches; dashboard list surfaces re-fetch when opened (nav dropdowns: throttled stale-while-revalidate refresh on hover; `refreshWishlistDashboards` is deleted). (3) Server hooks read stable presentation preferences (preferred locale + palette) in ONE combined statement, only for HTML document requests (GET + Accept text/html, not isDataRequest/isRemoteRequest) — remote functions, uploads, data and API requests pay zero preference statements. (4) `dispatchNotification` commits in-app rows durably, then delivers emails after the response via `runAfterResponse` (`platform.ctx.waitUntil`; detached in dev) — mutations never wait for Resend, failures log + leave `emailSent=false`. Budgets are pinned by tests: `tests/e2e/request-budgets.spec.ts` (dynamic-request counts per flow) and per-module statement-budget unit tests.
+Why: One image-backed gift creation expanded into ~9 Worker invocations and dozens of Hyperdrive statements (auth + locale + palette reads on every request, refresh-then-refetch, three dashboard refreshes per mutation, synchronous email sends).
+Rejected: better-auth `additionalFields` cookie-cache for preferences (staleness vs. explicit-switch semantics, larger blast radius); client-side `.updates()` single-flight (kit ≥2.56 requires server-side `requested()` acceptance — server-driven refreshes survive the upgrade); refreshing dashboards on every mutation (surfaces self-heal on open).
+
+### Four-step control scale and form typography (issue #159)
+
+Decided: 2026-07-18
+What: Height-bearing controls use only `sm` 26 px, `md` 32 px, `lg` 38 px, or `xl` 48 px. Toolbars, navigation chrome, import, and the gift editor use `md`; standalone auth/settings/moderator/create-list form stacks use `lg`; landing and share CTAs use `xl`; compact secondary affordances use `sm`. Neighboring controls in one row or stack share a step. Textareas remain rows-driven. The heading ladder is: page headings clamp from 26–34 px; dialog, section, and empty-state headings use the 22 px `text-2xl` step; content-card headings use the 17 px `text-xl` step; dense and utility headings use the 14 px `text-base` step. Headings are semibold. `Label` is 12 px, semibold, and muted. Field help uses `HelpText` at 12 px muted. `muted-foreground` is the single secondary-text role; the duplicate `foreground-subtle`, `foreground-muted`, and `ink-soft` tokens/utilities are removed.
+Why: One token-backed scale prevents accidental 36/44 px drift, aligns mixed controls, and makes the type hierarchy predictable across themes.
+Rejected: Per-screen raw heights; state-specific Input sizes; parallel subtle-text tokens with nearly identical meanings.

@@ -78,17 +78,7 @@
 <div class="flex flex-col gap-2">
 	<Label>{m.gift_url_label()}</Label>
 
-	{#if links.length === 0}
-		<div
-			class="flex flex-col items-start gap-2 rounded-md border border-dashed border-border/60 p-3"
-		>
-			<span class="text-sm text-muted-foreground">{m.gift_link_none()}</span>
-			<Button intent="ghost" size="sm" {disabled} onclick={addLink}>
-				<PlusIcon data-icon="inline-start" />
-				{m.gift_link_add()}
-			</Button>
-		</div>
-	{:else}
+	{#if links.length > 0}
 		<div class="flex flex-col gap-2">
 			{#each links as link, index (link.id ?? index)}
 				<GiftLinkRow
@@ -107,20 +97,20 @@
 				/>
 			{/each}
 		</div>
-
-		<div class="flex items-center gap-2">
-			<Button intent="ghost" size="sm" disabled={isAtCap || disabled} onclick={addLink}>
-				<PlusIcon data-icon="inline-start" />
-				{m.gift_link_add()}
-			</Button>
-
-			{#if isAtCap}
-				<span class="text-xs text-muted-foreground">{m.gift_link_max_reached()}</span>
-			{:else if links.length >= 5}
-				<span class="text-xs text-muted-foreground">
-					{m.gift_link_cap_counter({ current: links.length, max: maxLinks })}
-				</span>
-			{/if}
-		</div>
 	{/if}
+
+	<div class="flex items-center gap-2">
+		<Button intent="ghost" size="sm" disabled={isAtCap || disabled} onclick={addLink}>
+			<PlusIcon data-icon="inline-start" />
+			{m.gift_link_add()}
+		</Button>
+
+		{#if isAtCap}
+			<span class="text-xs text-muted-foreground">{m.gift_link_max_reached()}</span>
+		{:else if links.length >= 5}
+			<span class="text-xs text-muted-foreground">
+				{m.gift_link_cap_counter({ current: links.length, max: maxLinks })}
+			</span>
+		{/if}
+	</div>
 </div>

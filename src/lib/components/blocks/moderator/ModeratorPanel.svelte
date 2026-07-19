@@ -4,6 +4,7 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { Label } from '$lib/components/base/label/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import ModeratorListItem from './ModeratorListItem.svelte';
 	import { moderatorPanelVariants } from './moderator_panel_variants.js';
@@ -303,20 +304,21 @@
 								onclick={handleCopyClaimLink}
 							>
 								{#if claimLinkCopied}
-									<CheckIcon class="size-4" />
+									<CheckIcon data-icon="solo" />
 								{:else}
-									<CopyIcon class="size-4" />
+									<CopyIcon data-icon="solo" />
 								{/if}
 							</Button>
 						</div>
 					{/if}
 
 					<div class="flex flex-col gap-1.5">
-						<label for="claim-email" class="text-sm text-muted-foreground">
+						<Label for="claim-email">
 							{m.claim_email_label()}
-						</label>
+						</Label>
 						<Input
 							id="claim-email"
+							size="lg"
 							type="email"
 							placeholder={m.claim_email_placeholder()}
 							bind:value={claimEmail}
@@ -362,7 +364,7 @@
 									aria-label={m.claim_revoke_invite()}
 									onclick={() => handleRevokeClaim(invite.id)}
 								>
-									<XIcon class="size-4" />
+									<XIcon data-icon="solo" />
 								</Button>
 							</div>
 						{/each}
@@ -417,20 +419,21 @@
 							onclick={handleCopyLink}
 						>
 							{#if linkCopied}
-								<CheckIcon class="size-4" />
+								<CheckIcon data-icon="solo" />
 							{:else}
-								<CopyIcon class="size-4" />
+								<CopyIcon data-icon="solo" />
 							{/if}
 						</Button>
 					</div>
 				{/if}
 
 				<div class="flex flex-col gap-1.5">
-					<label for="invite-email" class="text-sm text-muted-foreground">
+					<Label for="invite-email">
 						{m.moderator_invite_email_label()}
-					</label>
+					</Label>
 					<Input
 						id="invite-email"
+						size="lg"
 						type="email"
 						placeholder={m.moderator_invite_email_placeholder()}
 						bind:value={inviteEmail}
@@ -482,7 +485,7 @@
 								aria-label={m.moderator_revoke_invite()}
 								onclick={() => handleRevokeInvite(invite.id)}
 							>
-								<XIcon class="size-4" />
+								<XIcon data-icon="solo" />
 							</Button>
 						</div>
 					{/each}

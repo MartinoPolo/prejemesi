@@ -55,11 +55,13 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 
 ## Git Workflow
 
+- Branch model: feature PRs → `dev` (default branch); releases via PR `dev` → `production` (merge auto-deploys). `master` was deleted — do not recreate. `production` enforces the `checks` gate for admins too, so a red `dev` CI blocks releases.
 - For verified branch-delete-only pushes, use `git push --no-verify origin --delete ...` unless the user explicitly wants hooks run.
 
 ## Database
 
 - Drizzle with `strict: true` -- always enabled to prevent data loss on renames.
+- Use file-based migrations (`pnpm db:migrate`, prod: `pnpm db:migrate:prod`) -- `drizzle-kit push` prompts interactively on rename/drop and fails in non-interactive shells.
 - Schema in `src/lib/server/db/schema.ts`
 - Seed script: `src/lib/server/db/seed.ts` — run `pnpm db:seed` to populate test data.
 

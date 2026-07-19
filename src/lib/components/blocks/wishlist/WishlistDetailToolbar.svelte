@@ -8,20 +8,18 @@
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import FilterChip from '$lib/components/derived/filter-chip/FilterChip.svelte';
 	import GiftSortSelect from '$lib/components/blocks/gift/GiftSortSelect.svelte';
-	import GiftFilterOverflowMenu from '$lib/components/blocks/gift/GiftFilterOverflowMenu.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
+	import {
+		FilterMenu,
+		type FilterDefinition,
+	} from '$lib/components/derived/filter-menu/index.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
 
 	interface WishlistDetailToolbarProps {
-		/** Recipient OR správce: gates theme, settings, import, batch-add, and add-gift. */
 		canManage: boolean;
-		/** App admin with a revert action on this list but no management rights (issue #150): shows
-		 *  the settings gear (danger/admin actions only) even when {@link canManage} is false. */
 		adminSettingsAvailable?: boolean;
-		/** Viewer role: the availability chip is hidden for the recipient (reservations are hidden). */
 		role: WishlistRole;
 		isArchived: boolean;
 		isAuthenticated: boolean;
@@ -61,34 +59,59 @@
 		onexport,
 	}: WishlistDetailToolbarProps = $props();
 
-	// Role guard (issue #101 REQ-3): the recipient never sees reservation state, so
-	// an availability filter would be meaningless noise on their own list.
-	const showAvailableChip = $derived(role !== WISHLIST_ROLES.recipient);
-	// „Oblíbené" only when the viewer can actually have likes: anonymous visitors have no
-	// likes, and the linked recipient is blocked from liking server-side (likes.remote.ts).
+	const showAvailableFilter = $derived(role !== WISHLIST_ROLES.recipient);
 	const showLikedFilter = $derived(isAuthenticated && role !== WISHLIST_ROLES.recipient);
 
-	function toggleAvailableOnly() {
-		onfilterchange({ ...filters, availableOnly: !filters.availableOnly });
+	function clearGiftFilters() {
+		onfilterchange({ availableOnly: false, withLinkOnly: false, likedOnly: false });
 	}
+
+	const filterDefinitions = $derived<FilterDefinition[]>([
+		...(showAvailableFilter
+			? [
+					{
+						id: 'available-only',
+						menuLabel: m.gift_filter_available_only(),
+						checked: filters.availableOnly,
+						onchange: (availableOnly: boolean) =>
+							onfilterchange({ ...filters, availableOnly }),
+					},
+				]
+			: []),
+		{
+			id: 'with-link-only',
+			menuLabel: m.gift_filter_with_link(),
+			checked: filters.withLinkOnly,
+			onchange: (withLinkOnly: boolean) => onfilterchange({ ...filters, withLinkOnly }),
+		},
+		...(showLikedFilter
+			? [
+					{
+						id: 'liked-only',
+						menuLabel: m.gift_filter_liked(),
+						checked: filters.likedOnly,
+						onchange: (likedOnly: boolean) => onfilterchange({ ...filters, likedOnly }),
+					},
+				]
+			: []),
+	]);
 </script>
 
-<!-- Sticker toolbar panel (anime-sky wishlist view) -->
 <div
 	class="flex flex-wrap items-center gap-2.5 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
 >
 	<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
-
 	<GiftSortSelect value={sortOption} onchange={onsortchange} />
-
-	{#if showAvailableChip}
-		<!-- „Pouze dostupné" toggle chip (issue #101): filled when active, aria-pressed for AT -->
-		<FilterChip pressed={filters.availableOnly} onclick={toggleAvailableOnly}>
-			{m.gift_filter_available_only()}
-		</FilterChip>
-	{/if}
-
-	<GiftFilterOverflowMenu {filters} {showLikedFilter} {onfilterchange} />
+	<FilterMenu
+		definitions={filterDefinitions}
+		triggerLabel={m.gift_filter()}
+		menuHeading={m.gift_filter()}
+		clearAllLabel={m.wishlist_detail_clear_filters()}
+		onclearall={clearGiftFilters}
+		removeFilterLabel={(label) => m.filter_remove({ label })}
+		activeCountLabel={(count) => m.filter_active_count({ count })}
+		align="end"
+	/>
 
 	<div class="ml-auto flex items-center gap-2">
 		{#if canManage && !isArchived}
@@ -103,8 +126,6 @@
 				</Button>
 			</SimpleTooltip>
 		{/if}
-		<!-- Settings gear: for managers (full settings) and for an app admin with a danger action
-		     on this list (revert only), even when they do not manage it (issue #150). -->
 		{#if (canManage && !isArchived) || adminSettingsAvailable}
 			<SimpleTooltip text={m.wishlist_settings_title()}>
 				<Button

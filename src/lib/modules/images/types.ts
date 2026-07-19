@@ -45,14 +45,20 @@ export interface ImageFocalPoint {
 
 /**
  * Gift crop targets (#116 D2): consumer surfaces grouped by aspect family.
- * `card` is the retired wide-card target retained only to read legacy rows,
- * `detail` the tall detail-modal column, and `square` the 1:1 card/list/
- * reservation family.
+ * `card` is the retired wide-card target retained only to read legacy rows;
+ * `detail` was retired the same way (issue #183 – the visitor detail modal
+ * renders the full uncropped photo instead) and stays parseable for legacy
+ * `targets.detail` rows only. Two active targets now exist (#189): `square`
+ * is the GiftCard grid 4:3 family (a documented misnomer – the name stays a
+ * stable persisted key to avoid a data migration), and `thumb` is the true 1:1
+ * wishlist-list + reservation thumb. See `crop_targets.ts` for
+ * the concrete aspect specs.
  */
 export const GIFT_CROP_TARGETS = {
 	card: 'card',
 	detail: 'detail',
 	square: 'square',
+	thumb: 'thumb',
 } as const;
 
 export type GiftCropTarget = (typeof GIFT_CROP_TARGETS)[keyof typeof GIFT_CROP_TARGETS];
@@ -60,13 +66,16 @@ export type GiftCropTarget = (typeof GIFT_CROP_TARGETS)[keyof typeof GIFT_CROP_T
 export const GIFT_CROP_TARGET_VALUES = Object.values(GIFT_CROP_TARGETS);
 
 /**
- * Targets offered by the gift editor. `card` remains parseable legacy metadata
- * only; `detail` was retired the same way when the visitor detail modal moved
- * to the `square` crop (issue #165) — its persisted `targets.detail` rows stay
- * parseable, but the editor no longer offers it and no surface renders it.
+ * Targets offered by the gift editor: two active targets after #189 — `square`
+ * (4:3 card family, a documented misnomer) and `thumb` (true 1:1 list +
+ * reservation thumb). `card` remains parseable legacy metadata only; `detail`
+ * was retired the same way when the visitor detail modal moved to the `square`
+ * crop (issue #165) — its persisted `targets.detail` rows stay parseable, but
+ * the editor no longer offers it and no surface renders it.
  */
 export const GIFT_EDITOR_CROP_TARGETS = {
 	square: GIFT_CROP_TARGETS.square,
+	thumb: GIFT_CROP_TARGETS.thumb,
 } as const;
 
 export type GiftEditorCropTarget =
@@ -140,6 +149,7 @@ export const ImageMetadataSchema = v.object({
 			card: v.optional(ImageTargetCropSchema),
 			detail: v.optional(ImageTargetCropSchema),
 			square: v.optional(ImageTargetCropSchema),
+			thumb: v.optional(ImageTargetCropSchema),
 		}),
 	),
 });

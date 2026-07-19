@@ -4,13 +4,20 @@ export const giftDetailModalVariants = tv({
 	slots: {
 		// Flex column so the body inherits a definite height when the dialog is
 		// capped at 90dvh – that lets the detail column pin its footer and scroll
-		// only the fields (#116 follow-up, GiftDraftDialog precedent).
+		// only the fields (#116 follow-up, GiftDraftDialog precedent). Widened to
+		// ~1100px (issue #183 REQ-9/REQ-10): both the edit form and the visitor
+		// detail view (view mode reuses this same slot) needed more room – the
+		// 4:3 crop preview and the full uncropped detail photo both read as
+		// cramped in the previous 900px column.
 		content:
-			'flex flex-col sm:max-w-[900px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
+			'flex flex-col sm:max-w-[1100px] max-h-[90dvh] overflow-hidden p-0 gap-0 max-w-[calc(100%-1rem)]',
 		// Mobile: a single scrolling flex column so the image and fields share one
 		// scroll region inside the 90dvh-capped dialog (issue: mobile edit dialog UX).
-		// Desktop: restores the exact 2-col grid + its own overflow-hidden.
-		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:min-h-[520px] sm:grid-cols-[45%_55%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
+		// Desktop: restores the exact 2-col grid + its own overflow-hidden. ~50/50
+		// split (issue #183 REQ-9, revises the earlier 45/55 split). No min-height:
+		// the grid takes its height from the columns' content (form column /
+		// adaptive stage), capped at 90dvh by `content` above (#189 REQ-5).
+		body: 'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[50%_50%] sm:grid-rows-[minmax(0,1fr)] sm:flex-initial sm:overflow-hidden',
 		// Dotted notebook mat behind the photo (issue #102 round-2 delta): letterboxed
 		// images keep the mat visible; a dashed ink seam separates image and form columns.
 		// The mobile height fits the display-mode toggle + preview + tile row (#116 round 3).
@@ -20,11 +27,18 @@ export const giftDetailModalVariants = tv({
 		// `body` scroll (mobile edit dialog UX fix).
 		imageColumn:
 			'relative shrink-0 overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] sm:border-b-0 sm:border-r-2 h-[260px] sm:h-auto',
+		// Photo-workshop panel (issue #189 REQ-6): an inset sticker panel that groups
+		// the mode pill + adaptive stage + preview tiles as one designed unit on the
+		// dotted mat, visually distinct from the form column — replaces the de-seamed
+		// full-bleed mat that read as an unfinished wireframe. No thin grey seam.
+		modeSectionPanel:
+			'flex w-full min-h-0 flex-col rounded-panel border-2 border-ink bg-card p-2.5 shadow-sticker',
 		// Empty-state click-to-upload affordance (issue #131 REQ-2/REQ-3): a real
 		// button so it is keyboard-focusable with a visible focus ring, not just a
-		// static label.
+		// static label. Sticker-panel treatment (issue #189 REQ-6) so the empty column
+		// reads as intentional as the filled one.
 		imagePlaceholder:
-			'flex size-full cursor-pointer flex-col items-center justify-center gap-1 outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+			'flex size-full cursor-pointer flex-col items-center justify-center gap-2 rounded-panel border-2 border-ink bg-card shadow-sticker outline-none transition-colors hover:bg-panel-hover focus-visible:ring-2 focus-visible:ring-ring',
 		image: 'size-full object-cover',
 		// Mobile: overflow-visible so the pinned actions bar sticks to the BODY scroll
 		// instead of clipping inside this column. shrink-0 (see imageColumn): keeps this
@@ -38,6 +52,7 @@ export const giftDetailModalVariants = tv({
 		formField: 'flex flex-col gap-1.5',
 		formLabel: 'text-sm font-medium text-foreground',
 		formRow: 'grid grid-cols-2 gap-3',
+		formLabelRow: 'flex min-h-6 items-center justify-between gap-2',
 		// Pinned outside the scroll region – always visible in create and edit mode.
 		// Mobile: pinned to the bottom of the body scroll with an opaque bg so fields
 		// scroll behind it. Desktop: sm:static – already pinned by flex in the right column.
@@ -58,30 +73,34 @@ export const giftDetailModalVariants = tv({
 
 		// ── Read-only view mode (issue #165) ──────────────────────────────────
 		// Dedicated slots instead of reusing the edit-mode `body`/`imageColumn`/
-		// `detailColumn` above: the view reads as an enlarged gift card (tighter,
-		// no `sm:min-h-[520px]` dead space), so its own composition rules apply
-		// without risking the edit-mode grid used by #116/#131/#142.
+		// `detailColumn` above: the view reads as an enlarged gift card with its
+		// own composition rules, distinct from the edit-mode grid used by
+		// #116/#131/#142.
 		// Mobile: one scrolling flex column (media, content, sticky action bar).
-		// Desktop: 340px media column + fluid content column sharing row 1;
-		// the action bar is the grid's `auto` row, spanning both columns, pinned
-		// outside the content column's own scroll region (REQ-1).
+		// Desktop: media column + fluid content column sharing row 1 (widened
+		// from 340px alongside the ~1100px modal, issue #183 REQ-10); the action
+		// bar is the grid's `auto` row, spanning both columns, pinned outside the
+		// content column's own scroll region (REQ-1).
 		viewGrid:
-			'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[340px_minmax(0,1fr)] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
+			'flex min-h-0 flex-1 flex-col overflow-y-auto sm:grid sm:grid-cols-[440px_minmax(0,1fr)] sm:grid-rows-[minmax(0,1fr)_auto] sm:flex-initial sm:overflow-hidden',
 		// shrink-0: prevents the mobile flex column from compressing the media area
-		// (same rationale as `imageColumn`). The mobile height clamp keeps the title
-		// + facts + action bar reachable without scrolling past a tall square photo
-		// (REQ-5); desktop fills the grid's row 1 at its natural 340px column width.
+		// (same rationale as `imageColumn`). Centers the (now natural-aspect, #183
+		// REQ-10) photo at any size up to its height cap; desktop fills the grid's
+		// row 1 at its natural column width.
 		viewMedia:
 			'relative flex shrink-0 max-h-[42vh] min-h-[240px] items-center justify-center overflow-hidden border-b-2 border-dashed border-ink-faint bg-surface bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] p-4 sm:max-h-none sm:min-h-0 sm:border-r-2 sm:border-b-0 sm:p-6',
-		// Positioned ancestor for the photo-overlay stack; width-capped so the mat
-		// can stretch (REQ-5) while the square photo inside stays a fixed, honest size.
-		viewPhotoFrame: 'relative w-full max-w-[260px]',
+		// Positioned ancestor for the photo-overlay stack (issue #183 REQ-10: no
+		// longer crop-target-sized – shrink-wraps around whatever the natural-aspect
+		// photo below renders at, so tall photos display tall and wide ones wide).
+		viewPhotoFrame: 'relative inline-block max-w-full',
 		// Physical photo sticker (matches the `.polaroid` treatment in WishlistHeader):
-		// fixed paper/ink colors that intentionally do NOT follow the palette or dark mode.
+		// fixed paper/ink colors that intentionally do NOT follow the palette or dark
+		// mode. Shrink-wraps around the natural-aspect photo (issue #183 REQ-10) instead
+		// of forcing a square crop; the photo itself carries the raised height cap.
 		viewPhoto:
-			'aspect-square w-full -rotate-2 rounded-[10px] border-2 border-[#4A443A] bg-[#FFFDF6] p-[9px] shadow-[5px_6px_0_var(--hard-shadow-strong)]',
+			'inline-block -rotate-2 rounded-[10px] border-2 border-[#4A443A] bg-[#FFFDF6] p-[9px] shadow-[5px_6px_0_var(--hard-shadow-strong)] max-w-full',
 		viewPhotoInner:
-			'size-full overflow-hidden rounded-[6px] border-2 border-black/10 bg-[#F2F0EA]',
+			'inline-block overflow-hidden rounded-[6px] border-2 border-black/10 bg-[#F2F0EA] max-w-full',
 		viewContent: 'flex min-h-0 flex-col sm:overflow-hidden',
 		// Desktop-only internal scroll region (REQ-1 long-description strategy); mobile
 		// flows into the outer `viewGrid` scroll behind the sticky action bar.
@@ -94,7 +113,7 @@ export const giftDetailModalVariants = tv({
 			},
 			false: {
 				imageTab:
-					'border-ink bg-card text-foreground-muted hover:bg-accent hover:text-foreground',
+					'border-ink bg-card text-muted-foreground hover:bg-accent hover:text-foreground',
 			},
 		},
 		// Fully-reserved-by-others dimming (REQ-3): applied to the photo and content

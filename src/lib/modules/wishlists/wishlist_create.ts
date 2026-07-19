@@ -3,6 +3,7 @@ import type { getDb } from '$lib/server/db/index.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 import {
 	DEFAULT_PRIORITY_LEVELS,
 	DEFAULT_WISHLIST_THEME,
@@ -23,6 +24,8 @@ export type NewWishlistInput = {
 	title: string;
 	eventDate?: Date | null;
 	theme?: WishlistTheme;
+	palette?: Palette;
+	description?: string | null;
 } & ({ recipientKind: 'self' } | { recipientKind: 'other'; recipientName: string });
 
 /**
@@ -38,6 +41,9 @@ export async function seedNewWishlist(
 	input: NewWishlistInput,
 ): Promise<typeof wishlist.$inferSelect> {
 	const forSelf = input.recipientKind === RECIPIENT_KIND.self;
+	// Normalize the optional description: trim, then collapse empty/whitespace-only to null
+	// (mirrors the settings-modal save path so both write the same shape).
+	const trimmedDescription = input.description?.trim() ?? '';
 
 	const [created] = await tx
 		.insert(wishlist)
@@ -46,6 +52,8 @@ export async function seedNewWishlist(
 			recipientName: forSelf ? null : input.recipientName,
 			title: input.title,
 			eventDate: input.eventDate ?? null,
+			palette: input.palette ?? DEFAULT_PALETTE,
+			description: trimmedDescription === '' ? null : trimmedDescription,
 			theme: input.theme ?? DEFAULT_WISHLIST_THEME,
 		})
 		.returning();

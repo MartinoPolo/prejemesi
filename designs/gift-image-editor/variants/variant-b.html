@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor obrázku dárku – Varianta B – Photo-workshop (polaroid + páska)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&family=Geist:wght@400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../tokens.css">
+<!--
+  Přejeme si · editor obrázku dárku (issue #189), VARIANTA B: „Photo-workshop"
+  Kompozice §9(c): polaroid + páska, jazyk v3 vizitky. Adaptivní crop stage sedí jako
+  lehce natočená fotka na polaroidové podložce s jedním kusem accent-loud pásky v rohu;
+  pilulka režimů je dokovaný nástroj na tónované liště; dvě dlaždice jsou malé přelepené
+  mini-polaroidy. Plnoplošná tečkovaná podložka, žádný tenký šedý čárkovaný šev.
+  V Ručně stage NENÍ natočený (každý pixel výřezu se počítá) a dlaždice sedí pod ním.
+
+  tokens.css nalinkován kvůli strukturním tokenům; blok .app níže zrcadlí kanonickou
+  světlou derivaci ze src/app.css (živá škála DynaPuff/Geist, xs11..3xl28, výšky 26/32/38/48).
+  Bespoke barvy jsou POUZE uvnitř „fotky" (obsah snímku, ne UI chrome). Veškeré UI chrome
+  používá jen sémantické tokeny, takže přežije --wishlist-* přemapování i dark mode.
+-->
+<style>
+  /* palette primitives (src/app.css) */
+  .pal-sky  { --p-brand:#1e9be9; --p-deep:#1265a8; --p-ink:#16385c; --p-bright:#55b9f3; --p-accent:#ffc93c; --p-on-accent:#16385c; }
+  /* live derivation — mirrors :root/[data-palette] in src/app.css (canonical, overrides tokens.css) */
+  .app {
+    --font-head: 'DynaPuff', ui-rounded, 'Segoe UI', system-ui, sans-serif;
+    --font-body: 'Geist', 'Segoe UI', system-ui, sans-serif;
+    --radius-panel: 16px; --radius-btn: 7px; --border-w: 2.5px;
+    --size-control-sm: 26px; --size-control-md: 32px; --size-control-lg: 38px; --size-control-xl: 48px;
+    --text-xs: 11px; --text-sm: 12px; --text-md: 13px; --text-base: 14px; --text-lg: 15px; --text-xl: 17px; --text-2xl: 22px; --text-3xl: 28px;
+    --ink: var(--p-ink);
+    --ink-soft: color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --ink-label: color-mix(in oklab, var(--p-ink) 72%, transparent);
+    --background: color-mix(in oklab, var(--p-brand) 11%, white);
+    --foreground: var(--p-ink);
+    --foreground-muted: color-mix(in oklab, var(--p-ink) 62%, transparent);
+    --foreground-subtle: color-mix(in oklab, var(--p-ink) 55%, transparent);
+    --card: #fff; --popover: #fff;
+    --surface: color-mix(in oklab, var(--p-brand) 8%, white);
+    --surface-2: color-mix(in oklab, var(--p-brand) 12%, white);
+    --muted: color-mix(in oklab, var(--p-ink) 6%, white);
+    --primary: var(--p-brand); --primary-foreground: #fff;
+    --accent: color-mix(in oklab, var(--p-brand) 11%, white);
+    --accent-loud: var(--p-accent); --accent-loud-foreground: var(--p-on-accent);
+    --border: color-mix(in oklab, var(--p-ink) 12%, transparent);
+    --ring: var(--p-brand); --link: var(--p-deep);
+    --panel-hover: color-mix(in oklab, var(--p-brand) 6%, white);
+    --status-success: #14a56f; --status-danger: #d64545; --destructive: #d64545;
+    --hard-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
+    --shadow-sticker-sm: 2px 2px 0 var(--hard-shadow);
+    --shadow-sticker: 4px 4px 0 var(--hard-shadow);
+    --shadow-sticker-lift: 6px 6px 0 var(--hard-shadow);
+    --pattern-dot: color-mix(in oklab, var(--p-ink) 14%, transparent);
+    font-family: var(--font-body); font-size: var(--text-base); line-height: 1.5; color: var(--foreground);
+  }
+  body { margin:0; background:#eef1f5; font-family: var(--font-body); }
+  /* dotted notebook mat */
+  .mat { background: var(--surface); background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; }
+
+  /* ─────────────────────────── page scaffold ─────────────────────────── */
+  * { box-sizing: border-box; }
+  h1,h2,h3 { font-family: var(--font-head); }
+  button { font: inherit; cursor: pointer; color: inherit; background: none; border: none; }
+  .wrap { max-width: 1360px; margin-inline: auto; padding: 26px 24px 0; }
+  .eyebrow {
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: #0f6cad; background: #e3f1fb; border: 1.5px solid #b5d9f2; border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 12px;
+  }
+  .pagehead h1 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; line-height: 1.12; margin: 0 0 8px; }
+  .pagehead p { color: #47576b; max-width: 104ch; margin: 0; }
+  .section-title { font-size: 18px; font-weight: 600; letter-spacing: -.01em; margin: 40px 0 4px; }
+  .section-note { color: #47576b; margin: 0 0 14px; max-width: 104ch; }
+  .anno {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    color: #47576b; background: #fff; border: 1.5px dashed #a8b4c4; border-radius: 999px;
+    padding: 4px 11px; margin: 3px 5px 3px 0;
+  }
+  .frame {
+    position: relative; width: 100%; max-width: 1280px; overflow: hidden;
+    border: 1px solid #c3cad4; border-radius: 12px;
+    box-shadow: 0 12px 30px rgb(15 23 42 / 11%);
+  }
+  .frame-desktop { height: 760px; }
+  .frame-col { display: inline-flex; vertical-align: top; margin: 0 18px 0 0; width: auto; }
+  .frame-390 { width: 390px; }
+
+  /* ─────────────── backdrop wishlist (reduced fidelity) ─────────────── */
+  .stagebg { position: relative; height: 100%; display: grid; place-items: center; padding: 30px; }
+  .grid-bg {
+    position: absolute; inset: 0; padding: 24px;
+    display: grid; gap: 20px; align-content: start;
+    grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  }
+  .bgift { background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker); overflow: hidden; }
+  .bgift-img { height: 122px; display: grid; place-items: center; font-size: 40px; border-bottom: var(--border-w) solid var(--ink); background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px); background-size: 18px 18px; }
+  .bgift-body { padding: 9px 13px 13px; }
+  .bgift-name { font-family: var(--font-head); font-size: 15px; color: var(--ink); }
+  .bgift-price { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+  .scrim { position: absolute; inset: 0; background: color-mix(in oklab, var(--p-ink) 46%, transparent); backdrop-filter: blur(2.5px); }
+
+  /* ─────────────────────────── dialog shell ─────────────────────────── */
+  .modal {
+    position: relative; z-index: 2;
+    width: min(1100px, calc(100% - 48px)); height: 636px;
+    background: var(--card);
+    border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-sticker-lift);
+    display: grid; grid-template-columns: 50% 50%;
+    overflow: hidden;
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px; z-index: 30;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--card); border: var(--border-w) solid var(--ink); color: var(--ink);
+    display: grid; place-items: center;
+    box-shadow: var(--shadow-sticker-sm);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1), background-color .18s;
+  }
+  .modal-close:hover { transform: rotate(90deg); background: var(--accent); }
+  .modal-close:active { transform: rotate(90deg) scale(.94); }
+  .modal-close:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+  /* ════════════ LEFT: photo-workshop image column ════════════ */
+  .imgcol {
+    position: relative; min-height: 0; overflow: hidden;
+    background: var(--surface);
+    background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+    background-size: 18px 18px;
+  }
+
+  /* docked tool-rail — the mode pill reads as a tool on a tinted rail */
+  .toolrail {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 12;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 6px 16px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1.5px var(--border), 2px 3px 0 var(--hard-shadow);
+  }
+  .toolrail .peg { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in oklab, var(--ink) 26%, transparent); flex: none; }
+  .modepill {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: var(--card); border: var(--border-w) solid var(--ink); border-radius: 999px;
+    padding: 3px 4px; box-shadow: 3px 3px 0 var(--hard-shadow);
+  }
+  .modepill button {
+    height: var(--size-control-md); padding: 0 13px;
+    border: 2px solid transparent; border-radius: 999px;
+    font-size: var(--text-md); font-weight: 600; line-height: 1; color: var(--ink-soft);
+    transition: background-color .16s ease, color .16s ease;
+  }
+  .modepill button:hover { background: var(--accent); color: var(--foreground); }
+  .modepill button:active { transform: translateY(1px); }
+  .modepill button[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); border-color: var(--ink); }
+  .modepill button.is-focus,
+  .modepill button:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+  /* stage area holding the polaroid */
+  .stagewrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 72px 22px 22px; }
+  .stagewrap.manual { justify-content: flex-start; gap: 12px; overflow: auto; }
+
+  /* polaroid — adaptive full-photo stage sitting like a photo on a mat */
+  .polaroid {
+    position: relative; width: 300px;
+    background: var(--card);
+    border: var(--border-w) solid var(--ink); border-radius: 9px;
+    padding: 12px 12px 42px;
+    box-shadow: var(--shadow-sticker-lift);
+  }
+  .polaroid.tilt { transform: rotate(-2.4deg); }
+  .polaroid.sm { width: 250px; }
+  .polaroid.xs { width: 196px; padding: 9px 9px 32px; }
+  .polaroid .cap-hand {
+    position: absolute; left: 0; right: 0; bottom: 12px; text-align: center;
+    font-family: var(--font-head); font-size: 14px; font-weight: 500; color: var(--ink-soft);
+  }
+  .polaroid.xs .cap-hand { bottom: 9px; font-size: 12px; }
+
+  /* the accent-loud tape — ONE per stage, subtle skew */
+  .tape {
+    position: absolute; z-index: 14; width: 84px; height: 26px;
+    background: color-mix(in oklab, var(--accent-loud) 90%, transparent);
+    border: 1.5px solid color-mix(in oklab, var(--accent-loud-foreground) 20%, transparent);
+    box-shadow: 1px 1px 0 var(--hard-shadow);
+  }
+  .polaroid .tape { top: -13px; left: 22px; transform: rotate(-7deg); }
+  .polaroid.xs .tape { width: 62px; height: 20px; left: 16px; top: -10px; }
+
+  /* the crop stage: portrait photo, whole picture visible; window overlays it */
+  .stage {
+    position: relative; width: 100%; aspect-ratio: 3 / 4; overflow: hidden;
+    border-radius: 3px; background: var(--surface-2);
+  }
+  /* window = active target region; overhang dimmed (veil), never clipped at default zoom */
+  .cropwin {
+    position: absolute; z-index: 2; border-radius: 2px;
+    outline: 2px solid rgb(255 255 255 / .9);
+    box-shadow: 0 0 0 999px rgb(0 0 0 / .55);
+  }
+  .cropwin .grid3 { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+  .cropwin .grid3 i { border: 1px solid rgb(255 255 255 / .28); }
+  /* Přizpůsobit: window = target aspect, whole photo letterboxed inside with fill color */
+  .fitwin {
+    position: absolute; z-index: 2; overflow: hidden; border-radius: 2px;
+    background: #f0dcc0; /* fillColor derived from image (illustrative) */
+    outline: 2px solid rgb(255 255 255 / .9);
+    box-shadow: 0 0 0 999px rgb(0 0 0 / .55);
+  }
+
+  /* pencil click-to-edit overlay — sticker circle, top-right of the stage */
+  .pencil {
+    position: absolute; top: 8px; right: 8px; z-index: 16;
+    width: var(--size-control-sm); height: var(--size-control-sm);
+    display: grid; place-items: center; border-radius: 50%;
+    background: var(--card); border: 2px solid var(--ink); color: var(--ink);
+    box-shadow: var(--shadow-sticker-sm);
+    transition: transform .16s ease, background-color .16s ease;
+  }
+  .pencil:hover { background: var(--accent); transform: translateY(-1px); }
+  .pencil:active { transform: translateY(0) scale(.94); }
+  .pencil:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+  /* ── the two tiles: small taped mini-polaroids (the ONLY crop switcher) ── */
+  .tiledock {
+    position: absolute; left: 0; right: 0; bottom: 8px; z-index: 10;
+    display: flex; justify-content: center; align-items: flex-end; gap: 16px;
+    transform: rotate(2.4deg); /* counter the polaroid tilt so tiles read level */
+  }
+  .tilerow { display: flex; justify-content: center; align-items: flex-start; gap: 18px; }
+  .tilewrap { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .tile {
+    position: relative; padding: 4px 4px 5px;
+    background: var(--card); border: var(--border-w) solid var(--ink); border-radius: 6px;
+    box-shadow: 3px 3px 0 var(--hard-shadow);
+    transition: transform .16s ease, box-shadow .16s ease;
+  }
+  .tilewrap:nth-child(1) .tile { transform: rotate(-2deg); }
+  .tilewrap:nth-child(2) .tile { transform: rotate(1.6deg); }
+  .tile:hover { transform: translateY(-2px) rotate(0deg); }
+  .tile:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+  .tile.active { box-shadow: 0 0 0 2px var(--ring), 3px 3px 0 var(--hard-shadow); }
+  .tile .crop { position: relative; overflow: hidden; border-radius: 3px; display: block; }
+  .tile .minitape {
+    position: absolute; z-index: 3; top: -7px; left: 50%; transform: translateX(-50%) rotate(-4deg);
+    width: 34px; height: 12px;
+    background: color-mix(in oklab, var(--card) 55%, transparent);
+    border: 1px solid var(--border);
+  }
+  .tile-chip {
+    font-size: 10px; font-weight: 600; color: var(--foreground);
+    background: color-mix(in oklab, var(--surface) 90%, transparent);
+    border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+  }
+  .tile-chip.on { background: var(--primary); color: var(--primary-foreground); }
+
+  /* ── Ručně: zoom slider + reset below the stage ── */
+  .zoomrow { display: flex; align-items: center; gap: 12px; width: min(320px, 100%); }
+  .zoomtrack { position: relative; flex: 1; height: 4px; border-radius: 999px; background: var(--ink-faint); }
+  .zoomtrack .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 34%; border-radius: 999px; background: var(--primary); }
+  .zoomtrack .thumb {
+    position: absolute; left: 34%; top: 50%; transform: translate(-50%, -50%);
+    width: 15px; height: 15px; border-radius: 50%; background: var(--card); border: 2px solid var(--ink);
+    box-shadow: var(--shadow-sticker-sm);
+  }
+  .zoomval { flex: none; width: 42px; text-align: right; font-size: var(--text-sm); font-variant-numeric: tabular-nums; color: var(--foreground-subtle); }
+
+  /* ── empty state: whole column is one upload button (taped drop-note) ── */
+  .emptybtn { position: absolute; inset: 0; display: grid; place-items: center; cursor: pointer; }
+  .emptybtn:hover .dropnote { transform: rotate(-1.4deg) translateY(-2px); box-shadow: var(--shadow-sticker-lift); }
+  .emptybtn:focus-visible { outline: none; }
+  .emptybtn:focus-visible .dropnote { outline: 3px solid var(--ring); outline-offset: 4px; }
+  .dropnote {
+    position: relative; width: min(280px, 78%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 34px 24px 26px;
+    background: var(--card);
+    border: var(--border-w) dashed color-mix(in oklab, var(--ink) 40%, transparent);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-sticker);
+    transform: rotate(-1.4deg);
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+  .dropnote .upbadge {
+    width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%;
+    background: var(--surface-2); color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .dropnote b { font-size: 14px; font-weight: 600; color: var(--ink-label); }
+  .dropnote span { font-size: 12px; color: var(--foreground-subtle); text-align: center; }
+
+  /* ════════════ RIGHT: production-fidelity form column ════════════ */
+  .formcol { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--card); }
+  .formhead { flex: none; padding: 18px 26px 12px; }
+  .formhead h2 { font-family: var(--font-head); font-size: var(--text-2xl); font-weight: 600; letter-spacing: -.02em; line-height: 1.15; color: var(--foreground); margin: 0; padding-right: 44px; }
+  .formhead p { font-size: var(--text-sm); color: var(--foreground-muted); margin: 4px 0 0; }
+  .fields { position: relative; flex: 1; min-height: 0; overflow: hidden; padding: 6px 26px 0; }
+  .fields .fadeout { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; pointer-events: none; background: linear-gradient(transparent, var(--card)); }
+  .field { margin-bottom: 13px; }
+  .formrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 13px; }
+  .lbl { display: block; font-size: var(--text-sm); font-weight: 600; color: var(--ink-label); margin-bottom: 6px; }
+  .lblrow { min-height: 22px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .lblrow .lbl { margin-bottom: 0; }
+  .lblrow .side { display: flex; align-items: center; gap: 6px; }
+  .lblrow .side .lbl { font-weight: 500; color: var(--foreground-muted); font-size: var(--text-xs); }
+  .help { font-size: var(--text-xs); color: var(--foreground-subtle); }
+  .cap-meta { font-size: var(--text-xs); font-weight: 600; color: var(--foreground-subtle); font-variant-numeric: tabular-nums; }
+
+  .input, .textarea, .select {
+    display: block; width: 100%;
+    height: var(--size-control-md); padding: 0 12px;
+    font-family: var(--font-body); font-size: var(--text-md); font-weight: 500;
+    color: var(--foreground); background: var(--card);
+    border: var(--border-w) solid var(--ink); border-radius: var(--radius-btn); outline: none;
+    transition: box-shadow .15s ease;
+  }
+  .input::placeholder { color: var(--foreground-subtle); }
+  .input:focus-visible, .textarea:focus-visible, .select:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
+  .textarea { height: auto; min-height: 62px; padding: 8px 12px; line-height: 1.45; resize: none; }
+  .input.sm { height: var(--size-control-sm); font-size: var(--text-sm); }
+  .select { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; padding-right: 8px; font-weight: 600; }
+  .select .chev { color: var(--foreground-muted); flex: none; }
+  .switch { position: relative; flex: none; width: 30px; height: 17px; border-radius: 999px; border: 2px solid var(--ink); background: var(--card); }
+  .switch i { position: absolute; top: 1.5px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+
+  /* link editor — URL row + trash right + label field + ghost add */
+  .linkitem { border-radius: var(--radius-btn); margin-bottom: 9px; }
+  .linkmain { display: flex; align-items: center; gap: 7px; }
+  .linkmain .input { flex: 1; min-width: 0; }
+  .dragdot { flex: none; width: 14px; text-align: center; color: var(--foreground-subtle); font-weight: 800; letter-spacing: -3px; cursor: grab; user-select: none; }
+  .linklabel { display: flex; align-items: center; gap: 8px; margin: 6px 0 0 21px; }
+  .linklabel .input { flex: none; width: 128px; }
+  .primary-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--accent-loud-foreground); background: var(--accent-loud); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 8px; }
+  .iconbtn {
+    flex: none; width: var(--size-control-sm); height: var(--size-control-sm);
+    display: grid; place-items: center; border-radius: var(--radius-btn); color: var(--foreground-muted);
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .iconbtn:hover { background: color-mix(in oklab, var(--status-danger) 12%, white); color: var(--status-danger); }
+  .iconbtn:focus-visible { outline: 3px solid var(--ring); outline-offset: 1px; }
+
+  .imgtabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .imgtab { display: inline-flex; align-items: center; gap: 5px; border: 2px solid var(--ink); border-radius: 999px; padding: 4px 12px; font-size: var(--text-xs); font-weight: 600; }
+  .imgtab.on { background: var(--primary); color: var(--primary-foreground); }
+  .imgtab.off { background: var(--card); color: var(--foreground-muted); }
+  .uploadmini { display: flex; align-items: center; gap: 10px; border: 2px dashed var(--border); border-radius: var(--radius-btn); padding: 8px 10px; }
+  .uploadmini .umthumb { position: relative; flex: none; width: 44px; height: 44px; border-radius: 5px; overflow: hidden; border: 1.5px solid var(--border); }
+  .uploadmini .ummeta { flex: 1; min-width: 0; font-size: var(--text-sm); color: var(--foreground-subtle); }
+
+  /* buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    white-space: nowrap; font-family: var(--font-body); font-weight: 600; line-height: 1;
+    border: var(--border-w) solid transparent; border-radius: var(--radius-btn);
+    height: var(--size-control-md); padding: 0 14px; font-size: var(--text-md);
+    transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  .btn.wfull { width: 100%; }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); border-color: var(--ink); box-shadow: var(--shadow-sticker-sm); }
+  .btn.primary:hover { transform: translateY(-1px); box-shadow: var(--shadow-sticker); }
+  .btn.primary:active { transform: translateY(0); box-shadow: var(--shadow-sticker-sm); }
+  .btn.outline { background: var(--card); color: var(--foreground); border-color: var(--ink); box-shadow: var(--shadow-sticker-sm); }
+  .btn.outline:hover { background: var(--accent); transform: translateY(-1px); }
+  .btn.outline:active { transform: translateY(0); box-shadow: var(--shadow-sticker-sm); }
+  .btn.danger { background: var(--card); color: var(--status-danger); border-color: var(--status-danger); box-shadow: var(--shadow-sticker-sm); }
+  .btn.danger:hover { background: color-mix(in oklab, var(--status-danger) 12%, white); transform: translateY(-1px); }
+  .btn.ghost { background: transparent; color: var(--foreground-muted); border-color: transparent; box-shadow: none; }
+  .btn.ghost:hover { background: var(--accent); color: var(--foreground); }
+  .btn.sm { height: var(--size-control-sm); padding: 0 10px; font-size: var(--text-sm); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; pointer-events: none; }
+  .btn:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+  .footerbar { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 13px 26px; background: var(--card); border-top: 2px dashed var(--ink-faint); }
+
+  .icon { flex: none; }
+
+  /* ── the „photo": portrait teddy-bear scene (image CONTENT — bespoke colors ok) ── */
+  .scene { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; background: linear-gradient(165deg, #fbe6ce 0%, #f3d2ac 58%, #ecc79a 100%); }
+  .scene::after { content: ''; position: absolute; left: -20%; bottom: -30%; width: 140%; height: 46%; background: radial-gradient(120% 100% at 50% 0, transparent 60%, rgba(120,86,48,.16)); }
+  .b-body { position: absolute; left: 19%; top: 43%; width: 62%; height: 52%; background: #a9743f; border-radius: 46% 46% 40% 40%; }
+  .b-belly { position: absolute; left: 31%; top: 53%; width: 38%; height: 34%; background: #e9d0a6; border-radius: 50%; }
+  .b-head { position: absolute; left: 28%; top: 12%; width: 44%; height: 33%; background: #b47f47; border-radius: 50%; }
+  .b-ear { position: absolute; top: 10%; width: 17%; height: 15%; background: #a9743f; border-radius: 50%; }
+  .b-ear.l { left: 25%; } .b-ear.r { left: 58%; }
+  .b-ear::after { content: ''; position: absolute; inset: 26%; background: #e0a06a; border-radius: 50%; }
+  .b-muzzle { position: absolute; left: 37%; top: 28%; width: 26%; height: 15%; background: #ecd6ac; border-radius: 50%; }
+  .b-nose { position: absolute; left: 46%; top: 30%; width: 8%; height: 5.5%; background: #3a281a; border-radius: 50%; }
+  .b-eye { position: absolute; top: 22%; width: 5%; height: 6%; background: #2a1c11; border-radius: 50%; }
+  .b-eye.l { left: 38%; } .b-eye.r { left: 57%; }
+  .b-bow { position: absolute; left: 36%; top: 38%; width: 28%; height: 11%; background: #d64f60; border-radius: 42%; }
+  .b-bow::before, .b-bow::after { content: ''; position: absolute; top: -28%; width: 46%; height: 156%; background: #cf465a; border-radius: 50%; }
+  .b-bow::before { left: -10%; } .b-bow::after { right: -10%; }
+
+  /* ═══════════════ interaction-state gallery ═══════════════ */
+  .states { display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-end; padding: 26px; }
+  .states .one { display: flex; flex-direction: column; align-items: center; gap: 9px; }
+  .states .cap { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--foreground-subtle); }
+  .swatchpanel { background: var(--card); border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel); box-shadow: var(--shadow-sticker); }
+
+  /* ═══════════════ mobile 390 ═══════════════ */
+  .phone { position: relative; width: 390px; height: 774px; border: var(--border-w) solid var(--ink); border-radius: 26px; overflow: hidden; box-shadow: var(--shadow-sticker-lift); background: var(--card); }
+  .sheet { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+  .sheet .m-scroll { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .sheet .imgcol { position: sticky; top: 0; flex: none; height: 448px; z-index: 5; }
+  .sheet .stagewrap { padding: 62px 16px 16px; }
+  .sheet .toolrail { top: 12px; }
+  .sheet .m-fields { flex: none; padding: 14px 18px 0; }
+  .sheet .footerbar { box-shadow: 0 -6px 18px rgb(15 23 42 / 10%); }
+  .sheet .modal-close { top: 12px; right: 12px; }
+
+  @media (max-width: 900px) {
+    .modal { grid-template-columns: 1fr; height: auto; }
+  }
+</style>
+</head>
+<body class="app pal-sky">
+
+<div class="wrap pagehead">
+  <span class="eyebrow">VARIANTA B – PHOTO-WORKSHOP (polaroid + páska, jazyk v3 vizitky)</span>
+  <h1>Editor obrázku dárku, sekce režimů (issue #189)</h1>
+  <p>Levý sloupec editačního modalu je fotodílna: adaptivní crop stage sedí jako lehce natočená
+     fotka na polaroidové podložce, v rohu ji drží jeden kus žluté pásky (accent-loud). Pilulka
+     režimů je dokovaný nástroj na tónované liště, obě dlaždice výřezu jsou malé přelepené
+     mini-polaroidy. Plnoplošná tečkovaná podložka bez tenkého šedého švu, kompozice ji čte jako
+     záměrnou dílnu. V Ručně se stage narovná (0°) a dlaždice sednou pod něj, protože každý pixel
+     výřezu se počítá. Sémantické tokeny, md 32 pilulka, chování beze změny.</p>
+  <div>
+    <span class="anno">§9(c) polaroid + páska, jazyk v3 vizitky</span>
+    <span class="anno">Adaptivní stage: celá fotka vidět, okno překrývá snímek</span>
+    <span class="anno">Dva cíle: Karta 4:3 + Seznam a rezervace 1:1</span>
+    <span class="anno">Bez švu, jen kontrast podložky × bílého formuláře</span>
+    <span class="anno">Sémantické tokeny, přežije theming i dark</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ 1 · DESKTOP: VYPLNIT ═══════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">1 · Vyplnit, plný modal nad ztlumeným seznamem</h2>
+  <p class="section-note">Adaptivní stage renderuje celou portrétní fotku. Okno cíle Karta (4:3)
+     je automaticky vycentrované a statické, bez třetinové mřížky. Části snímku mimo okno jsou
+     ztmavené závojem (55 %), nikdy oříznuté. Tužka pro výměnu obrázku sedí vpravo nahoře, obě
+     dlaždice plavou nad spodní hranou stage jako přilepené mini-polaroidy.</p>
+
+  <div class="frame frame-desktop app pal-sky">
+    <div class="stagebg mat">
+      <div class="grid-bg" aria-hidden="true">
+        <div class="bgift"><div class="bgift-img">🧸</div><div class="bgift-body"><p class="bgift-name">Plyšový medvěd Bruno</p><p class="bgift-price">459&nbsp;Kč</p></div></div>
+        <div class="bgift"><div class="bgift-img">🚜</div><div class="bgift-body"><p class="bgift-name">LEGO Technic bagr</p><p class="bgift-price">1&nbsp;899&nbsp;Kč</p></div></div>
+        <div class="bgift"><div class="bgift-img">📚</div><div class="bgift-body"><p class="bgift-name">Harry Potter</p><p class="bgift-price">349&nbsp;Kč</p></div></div>
+        <div class="bgift"><div class="bgift-img">🎲</div><div class="bgift-body"><p class="bgift-name">Hra Azul</p><p class="bgift-price">799&nbsp;Kč</p></div></div>
+        <div class="bgift"><div class="bgift-img">🛴</div><div class="bgift-body"><p class="bgift-name">Koloběžka</p><p class="bgift-price">2&nbsp;490&nbsp;Kč</p></div></div>
+        <div class="bgift"><div class="bgift-img">🖍️</div><div class="bgift-body"><p class="bgift-name">Pastelky</p><p class="bgift-price">289&nbsp;Kč</p></div></div>
+        <div class="bgift"><div class="bgift-img">🧥</div><div class="bgift-body"><p class="bgift-name">Zimní bunda</p><p class="bgift-price">1&nbsp;249&nbsp;Kč</p></div></div>
+        <div class="bgift"><div class="bgift-img">🎨</div><div class="bgift-body"><p class="bgift-name">Sada temper</p><p class="bgift-price">329&nbsp;Kč</p></div></div>
+      </div>
+      <div class="scrim" aria-hidden="true"></div>
+
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ttl-1">
+        <button type="button" class="modal-close" aria-label="Zavřít">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+
+        <!-- LEFT: photo-workshop -->
+        <div class="imgcol" data-testid="gift-image-column">
+          <div class="toolrail">
+            <span class="peg" aria-hidden="true"></span>
+            <div class="modepill" role="group" aria-label="Zobrazení obrázku">
+              <button type="button" aria-pressed="true">Vyplnit</button>
+              <button type="button" aria-pressed="false">Přizpůsobit</button>
+              <button type="button" aria-pressed="false">Ručně</button>
+            </div>
+            <span class="peg" aria-hidden="true"></span>
+          </div>
+
+          <div class="stagewrap">
+            <div class="polaroid tilt">
+              <span class="tape" aria-hidden="true"></span>
+              <div class="stage" data-testid="crop-stage" role="img" aria-label="Náhled fotky, výřez Karta">
+                <span class="scene" aria-hidden="true">
+                  <span class="b-ear l"></span><span class="b-ear r"></span>
+                  <span class="b-head"></span>
+                  <span class="b-eye l"></span><span class="b-eye r"></span>
+                  <span class="b-muzzle"></span><span class="b-nose"></span>
+                  <span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span>
+                </span>
+                <!-- Karta 4:3 window, auto-centered, static, no thirds grid -->
+                <div class="cropwin" data-testid="crop-stage-window" style="left:4%; width:92%; top:24.1%; height:51.8%;"></div>
+                <button type="button" class="pencil" aria-label="Vyměnit obrázek">
+                  <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                </button>
+                <!-- two tiles float over the stage lower edge, as taped mini-polaroids -->
+                <div class="tiledock">
+                  <div class="tilewrap">
+                    <button type="button" class="tile" aria-pressed="false" data-testid="gift-preview-tile-square" aria-label="Výřez Karta">
+                      <span class="minitape" aria-hidden="true"></span>
+                      <span class="crop" style="width:60px; height:45px;"><span class="scene" style="width:60px; height:80px; top:-17.5px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span>
+                    </button>
+                    <span class="tile-chip">Karta</span>
+                  </div>
+                  <div class="tilewrap">
+                    <button type="button" class="tile" aria-pressed="false" data-testid="gift-preview-tile-thumb" aria-label="Výřez Seznam a rezervace">
+                      <span class="minitape" aria-hidden="true"></span>
+                      <span class="crop" style="width:50px; height:50px;"><span class="scene" style="width:50px; height:66.7px; top:-8.3px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span>
+                    </button>
+                    <span class="tile-chip">Seznam a rezervace</span>
+                  </div>
+                </div>
+              </div>
+              <span class="cap-hand">Bruno</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: production-fidelity form -->
+        <div class="formcol">
+          <div class="formhead">
+            <h2 id="ttl-1">Upravit dárek</h2>
+            <p>Změny se projeví všude, kde se dárek zobrazí.</p>
+          </div>
+          <div class="fields">
+            <div class="field">
+              <label class="lbl" for="f1-name">Název *</label>
+              <input class="input" id="f1-name" value="Plyšový medvěd Bruno">
+            </div>
+            <div class="field">
+              <label class="lbl" for="f1-desc">Popis</label>
+              <textarea class="textarea" id="f1-desc">Velký plyšák, výška 60 cm, měkký. Nejlépe medová barva. Viz odkaz.</textarea>
+            </div>
+            <div class="field">
+              <div class="lblrow"><label class="lbl">Odkazy</label><span class="cap-meta">2 / 5</span></div>
+              <div class="linkitem">
+                <div class="linkmain">
+                  <span class="dragdot" aria-hidden="true">⋮⋮</span>
+                  <input class="input" data-testid="gift-link-url" value="https://www.alza.cz/plysovy-medved-bruno" aria-label="URL odkazu">
+                  <button type="button" class="iconbtn" aria-label="Odebrat odkaz"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </div>
+                <div class="linklabel">
+                  <input class="input sm" value="alza.cz" aria-label="Popisek odkazu">
+                  <span class="primary-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.5 7 .6-5.3 4.6 1.6 6.8L12 17.3 5.7 20.9l1.6-6.8L2 9.5l7-.6z"/></svg>Hlavní</span>
+                </div>
+              </div>
+              <div class="linkitem">
+                <div class="linkmain">
+                  <span class="dragdot" aria-hidden="true">⋮⋮</span>
+                  <input class="input" value="https://www.sparkys.cz/medved-60cm" aria-label="URL odkazu">
+                  <button type="button" class="iconbtn" aria-label="Odebrat odkaz"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+                </div>
+                <div class="linklabel">
+                  <input class="input sm" value="sparkys.cz" aria-label="Popisek odkazu">
+                </div>
+              </div>
+              <button type="button" class="btn ghost sm" style="margin-top:2px">
+                <svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+                Přidat odkaz
+              </button>
+            </div>
+            <div class="formrow">
+              <div>
+                <div class="lblrow"><label class="lbl">Cena</label><span class="side"><span class="lbl">Rozpětí</span><span class="switch" role="switch" aria-checked="false"><i></i></span></span></div>
+                <input class="input" type="text" value="459">
+              </div>
+              <div>
+                <div class="lblrow"><label class="lbl">Měna</label></div>
+                <span class="select" role="button" tabindex="0">CZK (Kč)<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span>
+              </div>
+            </div>
+            <div class="formrow">
+              <div>
+                <div class="lblrow"><label class="lbl">Počet</label></div>
+                <input class="input" type="text" value="1">
+              </div>
+              <div>
+                <div class="lblrow"><label class="lbl">Priorita</label></div>
+                <span class="select" role="button" tabindex="0">Vysoká<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="lbl">Obrázek</label>
+              <div class="imgtabs">
+                <span class="imgtab on"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v12m0-12 4 4m-4-4L8 7M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Nahrát</span>
+                <span class="imgtab off"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>URL</span>
+              </div>
+              <div class="uploadmini">
+                <span class="umthumb"><span class="scene" style="width:44px; height:58.7px; top:-7.3px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span>
+                <span class="ummeta">Přetáhněte obrázek sem nebo klikněte pro výběr</span>
+              </div>
+            </div>
+            <div class="fadeout" aria-hidden="true"></div>
+          </div>
+          <div class="footerbar">
+            <button type="button" class="btn primary wfull">Uložit</button>
+            <button type="button" class="btn outline wfull"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg>Označit jako přijatý</button>
+            <button type="button" class="btn danger wfull"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Smazat dárek</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <span class="anno">Okno Karta 4:3 vycentrované, přesah ztmavený závojem</span>
+    <span class="anno">Pilulka = dokovaný nástroj na tónované liště</span>
+    <span class="anno">Jedna žlutá páska (accent-loud) v rohu polaroidu</span>
+    <span class="anno">Dlaždice = přelepené mini-polaroidy nad spodní hranou</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ 2 · DESKTOP: PŘIZPŮSOBIT ═══════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">2 · Přizpůsobit, celá fotka letterboxovaná v okně</h2>
+  <p class="section-note">Okno se rovná cíli Karta (4:3), celý portrétní snímek se do něj vejde
+     celý, kolem vzniknou pruhy s výplňovou barvou odvozenou z obrázku (chování ImageFrame). Portrét
+     v širokém okně 4:3 nutně nechá boční pruhy, přesně to tento režim komunikuje: nic se neoříznul,
+     ale zobrazí se s okraji. Dlaždice dál plavou nad stage.</p>
+
+  <div class="frame frame-desktop app pal-sky">
+    <div class="stagebg mat">
+      <div class="scrim" aria-hidden="true"></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ttl-2">
+        <button type="button" class="modal-close" aria-label="Zavřít"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+
+        <div class="imgcol" data-testid="gift-image-column">
+          <div class="toolrail">
+            <span class="peg" aria-hidden="true"></span>
+            <div class="modepill" role="group" aria-label="Zobrazení obrázku">
+              <button type="button" aria-pressed="false">Vyplnit</button>
+              <button type="button" aria-pressed="true">Přizpůsobit</button>
+              <button type="button" aria-pressed="false">Ručně</button>
+            </div>
+            <span class="peg" aria-hidden="true"></span>
+          </div>
+
+          <div class="stagewrap">
+            <div class="polaroid tilt">
+              <span class="tape" aria-hidden="true"></span>
+              <div class="stage" data-testid="crop-stage" role="img" aria-label="Náhled fotky, přizpůsobeno">
+                <!-- window = 4:3, whole photo letterboxed inside with fill color -->
+                <div class="fitwin" data-testid="crop-stage-window" style="left:4%; width:92%; top:24.1%; height:51.8%;">
+                  <span class="scene" style="left:21.875%; width:56.25%; height:100%; top:0;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span>
+                </div>
+                <button type="button" class="pencil" aria-label="Vyměnit obrázek"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                <div class="tiledock">
+                  <div class="tilewrap">
+                    <button type="button" class="tile" aria-pressed="false" data-testid="gift-preview-tile-square" aria-label="Výřez Karta">
+                      <span class="minitape" aria-hidden="true"></span>
+                      <span class="crop" style="width:60px; height:45px;"><span class="scene" style="width:60px; height:80px; top:-17.5px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span>
+                    </button>
+                    <span class="tile-chip">Karta</span>
+                  </div>
+                  <div class="tilewrap">
+                    <button type="button" class="tile" aria-pressed="false" data-testid="gift-preview-tile-thumb" aria-label="Výřez Seznam a rezervace">
+                      <span class="minitape" aria-hidden="true"></span>
+                      <span class="crop" style="width:50px; height:50px;"><span class="scene" style="width:50px; height:66.7px; top:-8.3px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span>
+                    </button>
+                    <span class="tile-chip">Seznam a rezervace</span>
+                  </div>
+                </div>
+              </div>
+              <span class="cap-hand">Bruno</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="formcol">
+          <div class="formhead">
+            <h2 id="ttl-2">Upravit dárek</h2>
+            <p>Změny se projeví všude, kde se dárek zobrazí.</p>
+          </div>
+          <div class="fields">
+            <div class="field"><label class="lbl">Název *</label><input class="input" value="Plyšový medvěd Bruno"></div>
+            <div class="field"><label class="lbl">Popis</label><textarea class="textarea">Velký plyšák, výška 60 cm, měkký. Nejlépe medová barva. Viz odkaz.</textarea></div>
+            <div class="field">
+              <div class="lblrow"><label class="lbl">Odkazy</label><span class="cap-meta">2 / 5</span></div>
+              <div class="linkitem">
+                <div class="linkmain"><span class="dragdot" aria-hidden="true">⋮⋮</span><input class="input" data-testid="gift-link-url" value="https://www.alza.cz/plysovy-medved-bruno" aria-label="URL odkazu"><button type="button" class="iconbtn" aria-label="Odebrat odkaz"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>
+                <div class="linklabel"><input class="input sm" value="alza.cz" aria-label="Popisek odkazu"><span class="primary-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.5 7 .6-5.3 4.6 1.6 6.8L12 17.3 5.7 20.9l1.6-6.8L2 9.5l7-.6z"/></svg>Hlavní</span></div>
+              </div>
+              <button type="button" class="btn ghost sm" style="margin-top:2px"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Přidat odkaz</button>
+            </div>
+            <div class="formrow">
+              <div><div class="lblrow"><label class="lbl">Cena</label><span class="side"><span class="lbl">Rozpětí</span><span class="switch" role="switch" aria-checked="false"><i></i></span></span></div><input class="input" type="text" value="459"></div>
+              <div><div class="lblrow"><label class="lbl">Měna</label></div><span class="select" role="button" tabindex="0">CZK (Kč)<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+            <div class="formrow">
+              <div><div class="lblrow"><label class="lbl">Počet</label></div><input class="input" type="text" value="1"></div>
+              <div><div class="lblrow"><label class="lbl">Priorita</label></div><span class="select" role="button" tabindex="0">Vysoká<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+            <div class="field">
+              <label class="lbl">Obrázek</label>
+              <div class="imgtabs"><span class="imgtab on"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v12m0-12 4 4m-4-4L8 7M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Nahrát</span><span class="imgtab off"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>URL</span></div>
+              <div class="uploadmini"><span class="umthumb"><span class="scene" style="width:44px; height:58.7px; top:-7.3px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span><span class="ummeta">Přetáhněte obrázek sem nebo klikněte pro výběr</span></div>
+            </div>
+            <div class="fadeout" aria-hidden="true"></div>
+          </div>
+          <div class="footerbar">
+            <button type="button" class="btn primary wfull">Uložit</button>
+            <button type="button" class="btn outline wfull"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg>Označit jako přijatý</button>
+            <button type="button" class="btn danger wfull"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Smazat dárek</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <span class="anno">Okno 4:3, celá fotka vevnitř, boční pruhy = fillColor z obrázku</span>
+    <span class="anno">Přesah okna dál ztmavený, ne oříznutý</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ 3 · DESKTOP: RUČNĚ ═══════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">3 · Ručně, stage narovnaný, dlaždice Seznam a rezervace 1:1 aktivní</h2>
+  <p class="section-note">V Ručně se polaroid narovná (0°), protože každý pixel výřezu se počítá.
+     Aktivní je cíl Seznam a rezervace (1:1), okno je čtvercové s třetinovou mřížkou a při základním
+     přiblížení je stále vidět celá fotka. Pod stage sedí zoom posuvník s resetem a teprve pod nimi
+     obě dlaždice, nic nepřekrývá stage. Aktivní dlaždice nese ring-primary.</p>
+
+  <div class="frame frame-desktop app pal-sky">
+    <div class="stagebg mat">
+      <div class="scrim" aria-hidden="true"></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ttl-3">
+        <button type="button" class="modal-close" aria-label="Zavřít"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+
+        <div class="imgcol" data-testid="gift-image-column">
+          <div class="toolrail">
+            <span class="peg" aria-hidden="true"></span>
+            <div class="modepill" role="group" aria-label="Zobrazení obrázku">
+              <button type="button" aria-pressed="false">Vyplnit</button>
+              <button type="button" aria-pressed="false">Přizpůsobit</button>
+              <button type="button" aria-pressed="true">Ručně</button>
+            </div>
+            <span class="peg" aria-hidden="true"></span>
+          </div>
+
+          <div class="stagewrap manual">
+            <div class="polaroid sm">
+              <span class="tape" aria-hidden="true"></span>
+              <div class="stage" data-testid="crop-stage" role="button" tabindex="0" aria-label="Oblast výřezu Seznam a rezervace, tažením posunete">
+                <span class="scene" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span>
+                <!-- 1:1 window, moved up to frame the head; thirds grid; whole photo still visible -->
+                <div class="cropwin" data-testid="crop-stage-window" style="left:4%; width:92%; top:9%; height:69%;">
+                  <span class="grid3" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                </div>
+                <button type="button" class="pencil" aria-label="Vyměnit obrázek"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+              </div>
+              <span class="cap-hand">Bruno</span>
+            </div>
+
+            <!-- zoom slider + reset, below the stage -->
+            <div class="zoomrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--foreground-subtle)" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/></svg>
+              <span class="zoomtrack" role="slider" aria-label="Přiblížení" aria-valuemin="100" aria-valuemax="300" aria-valuenow="134"><span class="fill"></span><span class="thumb"></span></span>
+              <span class="zoomval">134 %</span>
+              <button type="button" class="btn ghost sm"><svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Obnovit</button>
+            </div>
+
+            <!-- two tiles sit BELOW the stage, never overlapping it -->
+            <div class="tilerow">
+              <div class="tilewrap">
+                <button type="button" class="tile" aria-pressed="false" data-testid="gift-preview-tile-square" aria-label="Výřez Karta">
+                  <span class="minitape" aria-hidden="true"></span>
+                  <span class="crop" style="width:62px; height:46.5px;"><span class="scene" style="width:62px; height:82.7px; top:-18.1px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span>
+                </button>
+                <span class="tile-chip">Karta</span>
+              </div>
+              <div class="tilewrap">
+                <button type="button" class="tile active" aria-pressed="true" data-testid="gift-preview-tile-thumb" aria-label="Výřez Seznam a rezervace, aktivní">
+                  <span class="minitape" aria-hidden="true"></span>
+                  <span class="crop" style="width:52px; height:52px;"><span class="scene" style="width:52px; height:69.3px; top:-2px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span>
+                </button>
+                <span class="tile-chip on">Seznam a rezervace</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="formcol">
+          <div class="formhead">
+            <h2 id="ttl-3">Upravit dárek</h2>
+            <p>Změny se projeví všude, kde se dárek zobrazí.</p>
+          </div>
+          <div class="fields">
+            <div class="field"><label class="lbl">Název *</label><input class="input" value="Plyšový medvěd Bruno"></div>
+            <div class="field"><label class="lbl">Popis</label><textarea class="textarea">Velký plyšák, výška 60 cm, měkký. Nejlépe medová barva. Viz odkaz.</textarea></div>
+            <div class="field">
+              <div class="lblrow"><label class="lbl">Odkazy</label><span class="cap-meta">2 / 5</span></div>
+              <div class="linkitem">
+                <div class="linkmain"><span class="dragdot" aria-hidden="true">⋮⋮</span><input class="input" data-testid="gift-link-url" value="https://www.alza.cz/plysovy-medved-bruno" aria-label="URL odkazu"><button type="button" class="iconbtn" aria-label="Odebrat odkaz"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>
+                <div class="linklabel"><input class="input sm" value="alza.cz" aria-label="Popisek odkazu"><span class="primary-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2 3 6.5 7 .6-5.3 4.6 1.6 6.8L12 17.3 5.7 20.9l1.6-6.8L2 9.5l7-.6z"/></svg>Hlavní</span></div>
+              </div>
+              <button type="button" class="btn ghost sm" style="margin-top:2px"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Přidat odkaz</button>
+            </div>
+            <div class="formrow">
+              <div><div class="lblrow"><label class="lbl">Cena</label><span class="side"><span class="lbl">Rozpětí</span><span class="switch" role="switch" aria-checked="false"><i></i></span></span></div><input class="input" type="text" value="459"></div>
+              <div><div class="lblrow"><label class="lbl">Měna</label></div><span class="select" role="button" tabindex="0">CZK (Kč)<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+            <div class="formrow">
+              <div><div class="lblrow"><label class="lbl">Počet</label></div><input class="input" type="text" value="1"></div>
+              <div><div class="lblrow"><label class="lbl">Priorita</label></div><span class="select" role="button" tabindex="0">Vysoká<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+            <div class="field">
+              <label class="lbl">Obrázek</label>
+              <div class="imgtabs"><span class="imgtab on"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v12m0-12 4 4m-4-4L8 7M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Nahrát</span><span class="imgtab off"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>URL</span></div>
+              <div class="uploadmini"><span class="umthumb"><span class="scene" style="width:44px; height:58.7px; top:-7.3px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span><span class="ummeta">Přetáhněte obrázek sem nebo klikněte pro výběr</span></div>
+            </div>
+            <div class="fadeout" aria-hidden="true"></div>
+          </div>
+          <div class="footerbar">
+            <button type="button" class="btn primary wfull">Uložit</button>
+            <button type="button" class="btn outline wfull"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg>Označit jako přijatý</button>
+            <button type="button" class="btn danger wfull"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Smazat dárek</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <span class="anno">Stage NENÍ natočený, každý pixel výřezu se počítá</span>
+    <span class="anno">Okno 1:1 s třetinovou mřížkou, celá fotka stále vidět</span>
+    <span class="anno">Zoom ≤ 300 %, přiblížení může ořezávat</span>
+    <span class="anno">Dlaždice pod stage, aktivní = ring-primary</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ 4 · DESKTOP: PRÁZDNÝ STAV (nový dárek) ═══════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">4 · Prázdný stav, celý sloupec je jedno tlačítko</h2>
+  <p class="section-note">Bez obrázku je levý sloupec jedno velké tlačítko pro nahrání: přelepený lísteček
+     s čárkovanou drop zónou a jednou žlutou páskou drží fotodílenský jazyk i naprázdno. Bez obrázku se
+     nerenderuje pilulka ani dlaždice. Formulář vpravo je v režimu nového dárku, Uložit je zakázané,
+     dokud chybí název.</p>
+
+  <div class="frame frame-desktop app pal-sky">
+    <div class="stagebg mat">
+      <div class="scrim" aria-hidden="true"></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ttl-4">
+        <button type="button" class="modal-close" aria-label="Zavřít"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+
+        <div class="imgcol" data-testid="gift-image-column">
+          <button type="button" class="emptybtn" aria-label="Přidat obrázek">
+            <span class="dropnote">
+              <span class="tape" aria-hidden="true" style="top:-13px; left:50%; transform:translateX(-50%) rotate(-5deg);"></span>
+              <span class="upbadge" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0-12 4 4m-4-4L8 7M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
+              <b>Přidat obrázek</b>
+              <span>Klikněte pro nahrání nebo výměnu</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="formcol">
+          <div class="formhead">
+            <h2 id="ttl-4">Nový dárek</h2>
+            <p>Přidejte fotku a vyberte, jak se dárek zobrazí.</p>
+          </div>
+          <div class="fields">
+            <div class="field"><label class="lbl">Název *</label><input class="input" placeholder="Např. Plyšový medvěd Bruno"></div>
+            <div class="field"><label class="lbl">Popis</label><textarea class="textarea" placeholder="Krátký popis, velikost, barva, poznámky…"></textarea></div>
+            <div class="field">
+              <div class="lblrow"><label class="lbl">Odkazy</label><span class="cap-meta">0 / 5</span></div>
+              <button type="button" class="btn ghost sm"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Přidat odkaz</button>
+            </div>
+            <div class="formrow">
+              <div><div class="lblrow"><label class="lbl">Cena</label><span class="side"><span class="lbl">Rozpětí</span><span class="switch" role="switch" aria-checked="false"><i></i></span></span></div><input class="input" type="text" placeholder="0"></div>
+              <div><div class="lblrow"><label class="lbl">Měna</label></div><span class="select" role="button" tabindex="0">CZK (Kč)<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+            <div class="formrow">
+              <div><div class="lblrow"><label class="lbl">Počet</label></div><input class="input" type="text" value="1"></div>
+              <div><div class="lblrow"><label class="lbl">Priorita</label></div><span class="select" role="button" tabindex="0">Běžná<svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+            <div class="field">
+              <label class="lbl">Obrázek</label>
+              <div class="imgtabs"><span class="imgtab on"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v12m0-12 4 4m-4-4L8 7M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Nahrát</span><span class="imgtab off"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>URL</span></div>
+              <div class="uploadmini"><span class="umthumb" style="background:var(--surface-2)"></span><span class="ummeta">Přetáhněte obrázek sem nebo klikněte pro výběr</span></div>
+            </div>
+            <div class="fadeout" aria-hidden="true"></div>
+          </div>
+          <div class="footerbar">
+            <button type="button" class="btn primary wfull" disabled aria-disabled="true">Uložit</button>
+            <p class="help" style="text-align:center; margin:0">Vyplňte název, aby šlo dárek uložit.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <span class="anno">Celý sloupec je jedno tlačítko, hover = zvednutí lístku</span>
+    <span class="anno">Bez obrázku žádná pilulka ani dlaždice</span>
+    <span class="anno">Uložit zakázané: stav disabled tlačítka</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ 5 · MOBIL 390 px (Ručně, sticky) ═══════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">5 · Mobil 390 px, Ručně: fotodílna nahoře drží sticky</h2>
+  <p class="section-note">Na mobilu je fotodílna pásem nahoře. V Ručně sloupec drží sticky top-0, aby
+     narovnaný stage a dlaždice zůstaly vidět, zatímco pole rolují pod ním a patka s Uložit je přišpendlená
+     dole. Dotykové cíle: položky pilulky 32 px s odsazením, dlaždice přes 44 px.</p>
+
+  <div class="frame-col">
+    <div class="frame frame-390 app pal-sky">
+      <div class="phone">
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ttl-m">
+          <button type="button" class="modal-close" aria-label="Zavřít"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          <div class="m-scroll">
+            <div class="imgcol" data-testid="gift-image-column">
+              <div class="toolrail">
+                <span class="peg" aria-hidden="true"></span>
+                <div class="modepill" role="group" aria-label="Zobrazení obrázku">
+                  <button type="button" aria-pressed="false">Vyplnit</button>
+                  <button type="button" aria-pressed="false">Přizpůsobit</button>
+                  <button type="button" aria-pressed="true">Ručně</button>
+                </div>
+                <span class="peg" aria-hidden="true"></span>
+              </div>
+              <div class="stagewrap manual">
+                <div class="polaroid xs">
+                  <span class="tape" aria-hidden="true"></span>
+                  <div class="stage" data-testid="crop-stage" role="button" tabindex="0" aria-label="Oblast výřezu Seznam a rezervace">
+                    <span class="scene" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span>
+                    <div class="cropwin" data-testid="crop-stage-window" style="left:4%; width:92%; top:9%; height:69%;"><span class="grid3" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+                    <button type="button" class="pencil" aria-label="Vyměnit obrázek"><svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                  </div>
+                </div>
+                <div class="tilerow">
+                  <div class="tilewrap">
+                    <button type="button" class="tile" aria-pressed="false" data-testid="gift-preview-tile-square" aria-label="Výřez Karta"><span class="minitape" aria-hidden="true"></span><span class="crop" style="width:56px; height:42px;"><span class="scene" style="width:56px; height:74.7px; top:-16.3px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span></button>
+                    <span class="tile-chip">Karta</span>
+                  </div>
+                  <div class="tilewrap">
+                    <button type="button" class="tile active" aria-pressed="true" data-testid="gift-preview-tile-thumb" aria-label="Výřez Seznam a rezervace, aktivní"><span class="minitape" aria-hidden="true"></span><span class="crop" style="width:48px; height:48px;"><span class="scene" style="width:48px; height:64px; top:-2px;" aria-hidden="true"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-eye l"></span><span class="b-eye r"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span></button>
+                    <span class="tile-chip on">Seznam a rezervace</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="m-fields">
+              <div class="field"><label class="lbl">Název *</label><input class="input" value="Plyšový medvěd Bruno"></div>
+              <div class="field"><label class="lbl">Popis</label><textarea class="textarea">Velký plyšák, výška 60 cm, měkký. Viz odkaz.</textarea></div>
+              <div class="field">
+                <div class="lblrow"><label class="lbl">Odkazy</label><span class="cap-meta">1 / 5</span></div>
+                <div class="linkitem">
+                  <div class="linkmain"><input class="input" data-testid="gift-link-url" value="https://www.alza.cz/plysovy-medved-bruno" aria-label="URL odkazu"><button type="button" class="iconbtn" aria-label="Odebrat odkaz"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></div>
+                  <div class="linklabel" style="margin-left:0"><input class="input sm" value="alza.cz" aria-label="Popisek odkazu"><span class="primary-badge">Hlavní</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="footerbar">
+            <button type="button" class="btn primary wfull">Uložit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:10px">
+    <span class="anno">Ručně na mobilu: sloupec sticky top-0</span>
+    <span class="anno">Narovnaný stage + dlaždice pod ním zůstávají vidět</span>
+    <span class="anno">Patka Uložit přišpendlená dole</span>
+  </div>
+</div>
+
+<!-- ═══════════════════ 6 · STAVY OVLÁDACÍCH PRVKŮ ═══════════════════ -->
+<div class="wrap">
+  <h2 class="section-title">6 · Stavy prvků: pilulka, tlačítka, dlaždice</h2>
+  <p class="section-note">Pilulka režimů md 32, stisknuto = primary + ink (jazyk záložek Nahrát/URL).
+     Každé tlačítko má klid, hover, stisknuto i zakázáno. Sekundární akce (Označit jako přijatý) je
+     ghost. Dlaždice mají klid, hover a aktivní (ring-primary).</p>
+
+  <div class="swatchpanel app pal-sky">
+    <div class="states">
+      <div class="one"><div class="modepill"><button type="button" aria-pressed="false">Vyplnit</button></div><span class="cap">Pilulka: klid</span></div>
+      <div class="one"><div class="modepill"><button type="button" class="is-focus" aria-pressed="false">Vyplnit</button></div><span class="cap">Pilulka: fokus</span></div>
+      <div class="one"><div class="modepill"><button type="button" aria-pressed="true">Ručně</button></div><span class="cap">Pilulka: stisknuto</span></div>
+      <div class="one"><button type="button" class="btn primary">Uložit</button><span class="cap">Primary: klid</span></div>
+      <div class="one"><button type="button" class="btn primary" style="transform:translateY(-1px); box-shadow:var(--shadow-sticker)">Uložit</button><span class="cap">Primary: hover</span></div>
+      <div class="one"><button type="button" class="btn primary" disabled aria-disabled="true">Uložit</button><span class="cap">Primary: zakázáno</span></div>
+      <div class="one"><button type="button" class="btn outline">Označit jako přijatý</button><span class="cap">Ghost/outline sekundární</span></div>
+      <div class="one"><button type="button" class="btn danger">Smazat</button><span class="cap">Danger</span></div>
+      <div class="one">
+        <div style="display:flex; gap:14px; align-items:flex-start">
+          <div class="tilewrap"><span class="tile" style="transform:none"><span class="crop" style="width:50px; height:50px;"><span class="scene" style="width:50px; height:66.7px; top:-8.3px;"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span></span><span class="tile-chip">Klid</span></div>
+          <div class="tilewrap"><span class="tile active" style="transform:none"><span class="crop" style="width:50px; height:50px;"><span class="scene" style="width:50px; height:66.7px; top:-2px;"><span class="b-ear l"></span><span class="b-ear r"></span><span class="b-head"></span><span class="b-muzzle"></span><span class="b-nose"></span><span class="b-body"></span><span class="b-belly"></span><span class="b-bow"></span></span></span></span><span class="tile-chip on">Aktivní</span></div>
+        </div>
+        <span class="cap">Dlaždice: klid × aktivní</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px; margin-bottom:40px">
+    <span class="anno">Kompozice §9(c): polaroid + páska, dokovaná pilulka</span>
+    <span class="anno">Bez švu na hranici sloupců, jen kontrast ploch</span>
+    <span class="anno">Testovací háčky: gift-image-column · crop-stage · crop-stage-window · gift-preview-tile-square · gift-preview-tile-thumb · gift-link-url</span>
+    <span class="anno">Sémantické tokeny, bespoke jen uvnitř fotky</span>
+  </div>
+</div>
+
+</body>
+</html>

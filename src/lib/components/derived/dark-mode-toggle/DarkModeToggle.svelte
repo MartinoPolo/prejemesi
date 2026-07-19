@@ -53,7 +53,7 @@
 
 {#if variant === 'inline'}
 	<div role="group" aria-label={m.settings_dark_mode_label()} class="flex flex-col gap-1.5">
-		<span class="text-(length:--text-sm) font-semibold text-foreground-muted"
+		<span class="text-(length:--text-sm) font-semibold text-muted-foreground"
 			>{m.settings_dark_mode_label()}</span
 		>
 		<Button

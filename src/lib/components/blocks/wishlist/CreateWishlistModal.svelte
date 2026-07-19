@@ -4,19 +4,24 @@
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import * as Accordion from '$lib/components/base/accordion/index.js';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import RecipientPreview from './RecipientPreview.svelte';
+	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
+	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
-	import { refreshWishlistDashboards } from '$lib/modules/wishlists/dashboard_refresh.js';
 	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
+	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
 
 	interface CreateWishlistModalProps {
@@ -36,6 +41,9 @@
 	// Server/submit-level error (network or createWishlist failure). Field-level
 	// "required" validation is handled by the per-field derived errors below.
 	let errorMessage = $state('');
+	// Optional metadata behind the "Další nastavení" accordion (issue #112).
+	let description = $state('');
+	let palette = $state<Palette>(DEFAULT_PALETTE);
 	// Track whether the user has interacted with each required field so validation
 	// only surfaces after a submit attempt or after the user edits then clears the
 	// field — never on a freshly opened dialog.
@@ -65,6 +73,8 @@
 		recipientName = '';
 		title = '';
 		eventDate = null;
+		description = '';
+		palette = DEFAULT_PALETTE;
 		errorMessage = '';
 		isSubmitting = false;
 		titleTouched = false;
@@ -102,18 +112,20 @@
 							recipientName: trimmedRecipientName,
 							title: trimmedTitle,
 							eventDate,
+							palette,
+							description: description.trim() || null,
 						}
 					: {
 							recipientKind: RECIPIENT_KIND.self,
 							title: trimmedTitle,
 							eventDate,
+							palette,
+							description: description.trim() || null,
 						},
 			);
 
-			// Refresh dashboard caches so the new wishlist appears on /my-lists and the navbar
-			// "recent" dropdowns without a manual reload.
-			await refreshWishlistDashboards();
-
+			// No dashboard refresh: we navigate straight to the new wishlist, and list
+			// surfaces (pages, nav dropdowns) re-fetch when they are next opened (issue #108).
 			open = false;
 			resetForm();
 			await goto(localizeInternalHref(resolve('/(app)/w/[id]', { id: created.shortId })));
@@ -125,7 +137,12 @@
 </script>
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content>
+	<!-- Top-anchored (override the base's vertical centering) so height changes from the
+	     recipient toggle, the "more settings" accordion, or validation errors grow the box
+	     downward instead of re-centering it — otherwise every height change shifts the top
+	     edge and the modal "jumps". `max-h`/`overflow` still cap tall content on short/mobile
+	     viewports; horizontal centering (left-1/2, -translate-x-1/2) is inherited unchanged. -->
+	<Dialog.Content class="top-[10vh] max-h-[85vh] translate-y-0 overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_create_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_create_description()}</Dialog.Description>
@@ -135,6 +152,7 @@
 			<ToggleGroup.Root
 				type="single"
 				intent="outline"
+				size="lg"
 				value={recipientKind}
 				onValueChange={(newValue) => {
 					if (newValue !== '') recipientKind = newValue;
@@ -142,29 +160,12 @@
 					recipientTouched = false;
 				}}
 				disabled={isSubmitting}
-				class="border-ink shadow-sticker-sm rounded-btn w-full gap-0 overflow-hidden border-2"
+				class="w-full gap-2"
 			>
-				<!-- Each item drops its own sticker chrome (border/shadow/radius/lift) so the two
-				     segments read as one connected control; the outer Root carries the unified
-				     ink border, radius, and offset shadow. The shadow cancels need `!`: the
-				     sticker chrome's shadow-sticker/hover:shadow-sticker-lift/active:shadow-sticker-sm
-				     are custom theme values tailwind-merge can't dedupe, and Tailwind emits them
-				     after shadow-none, so a plain shadow-none loses the cascade and the hovered
-				     segment (stacking-context'd by hover:translate-y-0) paints its 7px offset
-				     shadow over the adjacent segment. border-transparent is repeated on the
-				     data-[state=on] variant so the active segment's `border-ink` (from the
-				     outline toggle intent) doesn't paint an inner ring. The second segment adds a
-				     single ink left divider (immune to state) to avoid a double-thick middle border. -->
-				<ToggleGroup.Item
-					value={RECIPIENT_KIND.self}
-					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:scale-100 active:shadow-none! data-[state=on]:border-transparent"
-				>
+				<ToggleGroup.Item value={RECIPIENT_KIND.self} class="flex-1">
 					{m.create_for_toggle_self()}
 				</ToggleGroup.Item>
-				<ToggleGroup.Item
-					value={RECIPIENT_KIND.other}
-					class="flex-1 rounded-none border-transparent shadow-none! hover:translate-y-0 hover:shadow-none! active:scale-100 active:shadow-none! border-l-ink border-l-2 data-[state=on]:border-transparent data-[state=on]:border-l-ink"
-				>
+				<ToggleGroup.Item value={RECIPIENT_KIND.other} class="flex-1">
 					{m.create_for_toggle_other()}
 				</ToggleGroup.Item>
 			</ToggleGroup.Root>
@@ -178,6 +179,7 @@
 					{#snippet children({ hasError, errorId }: FieldControlContext)}
 						<Input
 							id="wishlist-recipient-name"
+							size="lg"
 							bind:value={recipientName}
 							placeholder={m.create_recipient_name_placeholder()}
 							maxlength={RECIPIENT_NAME_MAX_LENGTH}
@@ -191,9 +193,7 @@
 						/>
 					{/snippet}
 					{#snippet help()}
-						<p class="text-muted-foreground text-sm">
-							{m.create_recipient_name_helper()}
-						</p>
+						<HelpText>{m.create_recipient_name_helper()}</HelpText>
 					{/snippet}
 				</Field>
 				<RecipientPreview name={recipientName} />
@@ -207,6 +207,7 @@
 				{#snippet children({ hasError, errorId }: FieldControlContext)}
 					<Input
 						id="wishlist-title"
+						size="lg"
 						bind:value={title}
 						placeholder={m.wishlist_name_placeholder()}
 						required
@@ -220,13 +221,66 @@
 			</Field>
 
 			<div class="flex flex-col gap-2">
-				<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
+				<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label>
 				<DatePicker
 					id="wishlist-event-date"
+					ariaLabelledby="wishlist-event-date-label"
+					size="lg"
 					bind:value={eventDate}
 					disabled={isSubmitting}
 				/>
 			</div>
+
+			<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
+			     one field + title; power users can name a description and pick a palette upfront.
+			     The dashed divider above + 8px/-8px spacing make the optional zone read as a
+			     compact cluster (settled spec §4.8), tighter than the form's 16px gap-4; the
+			     solid divider below is the import Separator sibling. -->
+			<Accordion.Root
+				type="single"
+				class="border-t-2 border-dashed border-ink-faint pt-2 -mb-2"
+			>
+				<Accordion.Item value="more-settings" class="border-b-0">
+					<Accordion.Trigger
+						class="py-2 text-muted-foreground hover:text-foreground hover:no-underline"
+					>
+						<span class="flex items-center">
+							<SlidersHorizontalIcon
+								class="mr-2 size-4 shrink-0 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							{m.create_more_settings()}
+						</span>
+					</Accordion.Trigger>
+					<Accordion.Content class="pb-0">
+						<div class="flex flex-col gap-4 pt-1">
+							<div class="flex flex-col gap-2">
+								<Label for="wishlist-create-description"
+									>{m.wishlist_description_label()}</Label
+								>
+								<Textarea
+									id="wishlist-create-description"
+									bind:value={description}
+									placeholder={m.wishlist_description_placeholder()}
+									disabled={isSubmitting}
+								/>
+							</div>
+							<div class="flex flex-col gap-2">
+								<Label id="wishlist-create-palette-label"
+									>{m.create_palette_label()}</Label
+								>
+								<div role="group" aria-labelledby="wishlist-create-palette-label">
+									<WishlistPalettePicker
+										value={palette}
+										onchange={(nextPalette) => (palette = nextPalette)}
+										disabled={isSubmitting}
+									/>
+								</div>
+							</div>
+						</div>
+					</Accordion.Content>
+				</Accordion.Item>
+			</Accordion.Root>
 
 			{#if errorMessage !== ''}
 				<p class="text-destructive text-sm">{errorMessage}</p>
@@ -257,12 +311,13 @@
 				<Button
 					type="button"
 					intent="outline"
+					size="lg"
 					onclick={() => handleOpenChange(false)}
 					disabled={isSubmitting}
 				>
 					{m.cancel()}
 				</Button>
-				<Button type="submit" disabled={isSubmitting}>
+				<Button type="submit" size="lg" disabled={isSubmitting}>
 					{#if isSubmitting}
 						<LoaderIcon class="animate-spin" data-icon="inline-start" />
 						{m.creating()}

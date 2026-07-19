@@ -102,11 +102,11 @@
 		<div class="flex flex-col gap-6">
 			{#each TOGGLE_INTENTS as intent (intent)}
 				<div class="flex flex-col gap-2">
-					<span class="text-xs font-medium text-foreground-subtle">{intent}</span>
+					<span class="text-xs font-medium text-muted-foreground">{intent}</span>
 					<div class="flex flex-col gap-3">
 						{#each TOGGLE_SIZES as size (size)}
 							<div class="flex items-center gap-2">
-								<span class="w-12 text-[10px] text-foreground-subtle">{size}</span>
+								<span class="w-12 text-[10px] text-muted-foreground">{size}</span>
 								<ToggleGroup.Root
 									{...args}
 									type="single"

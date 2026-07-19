@@ -5,9 +5,11 @@ import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
+import { runAfterResponse } from '$lib/server/background.js';
+import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
 import {
 	EMAIL_NOTIFICATION_TYPES,
-	NOTIFICATION_MESSAGES,
+	getNotificationEmailCopy,
 	normalizeNotificationPreferences,
 	type DispatchNotificationInput,
 	type NotificationType,
@@ -32,22 +34,33 @@ function getOrigin(): string {
 	return (env.ORIGIN ?? 'http://localhost:5173').replace(/\/$/, '');
 }
 
-function getNotificationUrl(wishlistShortId: string | null): string {
-	if (wishlistShortId === null) {
-		return getOrigin();
-	}
+function getNotificationUrl(
+	wishlistShortId: string | null,
+	urlPathOverride: string | undefined,
+	locale: SupportedLocale,
+): string {
+	const href =
+		urlPathOverride !== undefined && urlPathOverride !== ''
+			? urlPathOverride
+			: wishlistShortId === null
+				? '/'
+				: `/w/${wishlistShortId}`;
 
-	return `${getOrigin()}/w/${wishlistShortId}`;
+	return href.startsWith('/') ? `${getOrigin()}${localizeInternalHref(href, locale)}` : href;
 }
 
 function getEmailBody(input: {
 	message: string;
 	wishlistTitle: string | null;
 	actorName: string | null | undefined;
+	wishlistLabel: string;
+	fromLabel: string;
 }): string {
 	const details = [
-		input.wishlistTitle !== null ? `Wishlist: ${input.wishlistTitle}` : null,
-		input.actorName != null && input.actorName !== '' ? `From: ${input.actorName}` : null,
+		input.wishlistTitle !== null ? `${input.wishlistLabel}: ${input.wishlistTitle}` : null,
+		input.actorName != null && input.actorName !== ''
+			? `${input.fromLabel}: ${input.actorName}`
+			: null,
 	].filter((line): line is string => line !== null);
 
 	if (details.length === 0) {
@@ -57,11 +70,14 @@ function getEmailBody(input: {
 	return `${input.message}\n\n${details.join('\n')}`;
 }
 
-async function getWishlistContext(wishlistId: string | undefined): Promise<{
-	title: string | null;
-	shortId: string | null;
-}> {
-	if (wishlistId === undefined) {
+async function getWishlistContext(
+	input: DispatchNotificationInput,
+): Promise<{ title: string | null; shortId: string | null }> {
+	// Callers holding the wishlist row pass it along – no extra statement (issue #108).
+	if (input.wishlist !== undefined) {
+		return input.wishlist;
+	}
+	if (input.wishlistId === undefined) {
 		return { title: null, shortId: null };
 	}
 
@@ -69,7 +85,7 @@ async function getWishlistContext(wishlistId: string | undefined): Promise<{
 	const rows = await database
 		.select({ title: wishlist.title, shortId: wishlist.shortId })
 		.from(wishlist)
-		.where(eq(wishlist.id, wishlistId))
+		.where(eq(wishlist.id, input.wishlistId))
 		.limit(1);
 
 	const row = rows[0];
@@ -79,25 +95,38 @@ async function getWishlistContext(wishlistId: string | undefined): Promise<{
 async function sendNotificationEmail(params: {
 	to: string;
 	type: NotificationType;
-	message: string;
-	body: string;
-	url: string;
+	locale: SupportedLocale;
+	wishlistTitle: string | null;
+	wishlistShortId: string | null;
+	urlPathOverride: string | undefined;
+	actorName: string | null | undefined;
 	notificationId?: string;
 }): Promise<boolean> {
+	const emailCopy = getNotificationEmailCopy(params.type, params.locale);
+	const url = getNotificationUrl(params.wishlistShortId, params.urlPathOverride, params.locale);
+	const body = getEmailBody({
+		message: emailCopy.message,
+		wishlistTitle: params.wishlistTitle,
+		actorName: params.actorName,
+		wishlistLabel: emailCopy.wishlistLabel,
+		fromLabel: emailCopy.fromLabel,
+	});
+
 	try {
 		await sendEmail({
 			to: params.to,
-			subject: params.message,
+			subject: emailCopy.message,
 			...renderActionEmailParts({
-				heading: params.message,
-				body: params.body,
-				buttonLabel: 'Open wishlist',
-				url: params.url,
+				heading: emailCopy.message,
+				body,
+				buttonLabel: emailCopy.buttonLabel,
+				copyLinkText: emailCopy.copyLinkText,
+				url,
 			}),
 			idempotencyKey:
 				params.notificationId !== undefined
 					? `notification:${params.notificationId}`
-					: `notification:${params.type}:${params.to}:${params.url}`,
+					: `notification:${params.type}:${params.to}:${url}`,
 		});
 		return true;
 	} catch {
@@ -115,33 +144,45 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	}
 
 	const database = getDb();
-	const message = NOTIFICATION_MESSAGES[input.type]();
-	const wishlistContext = await getWishlistContext(input.wishlistId);
-	const url =
-		input.urlPathOverride !== undefined && input.urlPathOverride !== ''
-			? `${getOrigin()}${input.urlPathOverride}`
-			: getNotificationUrl(wishlistContext.shortId);
-	const body = getEmailBody({
-		message,
-		wishlistTitle: wishlistContext.title,
-		actorName: input.actorName,
-	});
+	const wishlistContext = await getWishlistContext(input);
 
-	const userRows =
+	const directUserRows =
 		targetUserIds.length > 0
 			? await database
 					.select({
 						id: user.id,
 						email: user.email,
+						preferredLocale: user.preferredLocale,
 						notificationPreferences: user.notificationPreferences,
 					})
 					.from(user)
 					.where(inArray(user.id, targetUserIds))
 			: [];
+	const emailMatchedUserRows =
+		targetEmails.length > 0
+			? await database
+					.select({
+						id: user.id,
+						email: user.email,
+						preferredLocale: user.preferredLocale,
+						notificationPreferences: user.notificationPreferences,
+					})
+					.from(user)
+					.where(inArray(user.email, targetEmails))
+			: [];
+	const emailUserRows = [
+		...new Map(
+			[...directUserRows, ...emailMatchedUserRows].map((targetUser) => [
+				targetUser.id,
+				targetUser,
+			]),
+		).values(),
+	];
 
 	// Honor each recipient's in-app toggle: only insert a notification row for users
 	// who have in-app enabled for this type (NULL preferences fall back to defaults).
-	const inAppUserRows = userRows.filter(
+	// In-app rows are the durable part of a dispatch and are committed before returning.
+	const inAppUserRows = directUserRows.filter(
 		(targetUser) =>
 			normalizeNotificationPreferences(targetUser.notificationPreferences)[input.type]
 				.inApp === true,
@@ -173,43 +214,57 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 	);
 
 	// Honor each recipient's email toggle (within email-capable types only).
-	const emailUserRows = userRows.filter(
+	const emailEnabledUserRows = emailUserRows.filter(
 		(targetUser) =>
 			normalizeNotificationPreferences(targetUser.notificationPreferences)[input.type]
 				.email === true,
 	);
 
-	for (const targetUser of emailUserRows) {
-		const sent = await sendNotificationEmail({
-			to: targetUser.email,
-			type: input.type,
-			message,
-			body,
-			url,
-			notificationId: notificationIdByUserId.get(targetUser.id),
-		});
+	const userEmails = new Set(emailUserRows.map((row) => row.email.toLowerCase()));
+	const externalEmails = targetEmails.filter(
+		(targetEmail) => !userEmails.has(targetEmail.toLowerCase()),
+	);
 
-		const notificationId = notificationIdByUserId.get(targetUser.id);
-		if (sent && notificationId !== undefined) {
-			await database
-				.update(notification)
-				.set({ emailSent: true })
-				.where(eq(notification.id, notificationId));
-		}
+	if (emailEnabledUserRows.length === 0 && externalEmails.length === 0) {
+		return;
 	}
 
-	const userEmails = new Set(userRows.map((row) => row.email.toLowerCase()));
-	for (const targetEmail of targetEmails) {
-		if (userEmails.has(targetEmail.toLowerCase())) {
-			continue;
+	// Email delivery happens after the response (issue #108, REQ-6): the user's
+	// mutation never waits for Resend. A failed send is observable via the error
+	// log and the notification row's emailSent flag staying false; it never rolls
+	// back the mutation or the in-app rows committed above.
+	runAfterResponse(async () => {
+		for (const targetUser of emailEnabledUserRows) {
+			const notificationId = notificationIdByUserId.get(targetUser.id);
+			const sent = await sendNotificationEmail({
+				to: targetUser.email,
+				type: input.type,
+				locale: targetUser.preferredLocale ?? 'cs',
+				wishlistTitle: wishlistContext.title,
+				wishlistShortId: wishlistContext.shortId,
+				urlPathOverride: input.urlPathOverride,
+				actorName: input.actorName,
+				notificationId,
+			});
+
+			if (sent && notificationId !== undefined) {
+				await database
+					.update(notification)
+					.set({ emailSent: true })
+					.where(eq(notification.id, notificationId));
+			}
 		}
 
-		await sendNotificationEmail({
-			to: targetEmail,
-			type: input.type,
-			message,
-			body,
-			url,
-		});
-	}
+		for (const targetEmail of externalEmails) {
+			await sendNotificationEmail({
+				to: targetEmail,
+				type: input.type,
+				locale: 'cs',
+				wishlistTitle: wishlistContext.title,
+				wishlistShortId: wishlistContext.shortId,
+				urlPathOverride: input.urlPathOverride,
+				actorName: input.actorName,
+			});
+		}
+	});
 }

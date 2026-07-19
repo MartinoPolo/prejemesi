@@ -8,7 +8,7 @@
 		"build": "vite build",
 		"deploy": "vite build && wrangler deploy",
 		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
-		"paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy url cookie baseLocale --emit-ts-declarations --silent",
+		"paraglide:compile": "node ./scripts/paraglide-compile.mjs",
 		"check": "pnpm paraglide:compile && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:fast": "prettier --write --log-level warn . && oxlint",
 		"check:all": "pnpm paraglide:compile && svelte-kit sync && prettier --write . && oxlint && pnpm check:migrations && stylelint \"src/**/*.{css,svelte}\" && pnpm check:fallow && svelte-check --tsconfig ./tsconfig.json && eslint --cache .",

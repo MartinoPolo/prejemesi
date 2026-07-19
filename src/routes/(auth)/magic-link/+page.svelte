@@ -160,6 +160,7 @@
 				>
 					<Input
 						id="magic-email"
+						size="lg"
 						type="email"
 						placeholder={m.email_placeholder()}
 						autocomplete="email"

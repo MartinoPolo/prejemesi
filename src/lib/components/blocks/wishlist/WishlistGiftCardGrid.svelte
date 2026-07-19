@@ -47,15 +47,20 @@
 	$effect(() => () => reorder.destroy());
 </script>
 
+<!-- Each card band spans 7 rows of this grid (see gift_card_variants.ts): the wrapper and
+     card are row subgrids, so price/priority/links/footer align across cards in a row.
+     gap-5 stays between bands; inside a band the wrapper zeroes the row gap and the card
+     sections space themselves with margins. -->
 <div
 	bind:this={gridEl}
-	class="grid items-stretch gap-5"
+	class="grid gap-5"
 	style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))"
 >
 	{#each gifts as giftItem, index (giftItem.id)}
 		<WishlistGiftDraggableWrapper
 			{index}
 			{canManage}
+			class="row-span-7 grid grid-rows-subgrid gap-y-0"
 			draggedIndex={reorder.draggedIndex.current}
 			dragOverIndex={reorder.dragOverIndex.current}
 			dragOverStyle="ring"

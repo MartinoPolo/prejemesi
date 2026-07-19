@@ -51,7 +51,7 @@
 	{#snippet template(args: InputProps)}
 		<div class="flex flex-col gap-6">
 			<div>
-				<div class="mb-2 text-xs font-semibold text-foreground-subtle">Variants</div>
+				<div class="mb-2 text-xs font-semibold text-muted-foreground">Variants</div>
 				<div class="grid max-w-2xl grid-cols-2 gap-4">
 					{#each INPUT_STATES as state (state)}
 						<div>
@@ -69,7 +69,7 @@
 				</div>
 			</div>
 			<div>
-				<div class="mb-2 text-xs font-semibold text-foreground-subtle">States</div>
+				<div class="mb-2 text-xs font-semibold text-muted-foreground">States</div>
 				<div class="grid max-w-2xl grid-cols-3 gap-4">
 					<div>
 						<Label>Default</Label>

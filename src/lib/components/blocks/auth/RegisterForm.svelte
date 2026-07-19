@@ -130,6 +130,7 @@
 		<AuthFormField fieldId="reg-name" label={m.register_name_label()} errorMessage={nameError}>
 			<Input
 				id="reg-name"
+				size="lg"
 				type="text"
 				placeholder={m.register_name_placeholder()}
 				autocomplete="name"
@@ -145,6 +146,7 @@
 		<AuthFormField fieldId="reg-email" label={m.email_label()} errorMessage={emailError}>
 			<Input
 				id="reg-email"
+				size="lg"
 				type="email"
 				placeholder={m.email_placeholder()}
 				autocomplete="email"

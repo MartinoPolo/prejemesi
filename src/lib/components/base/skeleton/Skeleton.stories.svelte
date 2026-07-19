@@ -13,11 +13,11 @@
 	{#snippet template()}
 		<div class="flex flex-col gap-8">
 			<div class="flex flex-col gap-2">
-				<span class="text-xs text-foreground-subtle">Default line</span>
+				<span class="text-xs text-muted-foreground">Default line</span>
 				<Skeleton class="h-4 w-48" />
 			</div>
 			<div class="flex flex-col gap-2">
-				<span class="text-xs text-foreground-subtle">Card</span>
+				<span class="text-xs text-muted-foreground">Card</span>
 				<div class="flex flex-col gap-3">
 					<Skeleton class="h-32 w-64 rounded-xl" />
 					<Skeleton class="h-4 w-48" />
@@ -25,7 +25,7 @@
 				</div>
 			</div>
 			<div class="flex flex-col gap-2">
-				<span class="text-xs text-foreground-subtle">Avatar & lines</span>
+				<span class="text-xs text-muted-foreground">Avatar & lines</span>
 				<div class="flex items-center gap-4">
 					<Skeleton class="size-12 rounded-full" />
 					<div class="flex flex-col gap-2">

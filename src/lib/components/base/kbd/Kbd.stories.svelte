@@ -173,7 +173,7 @@
 				<p class="text-sm font-medium text-foreground">Input field hint</p>
 				<div class="relative max-w-xs">
 					<SearchIcon
-						class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-foreground-subtle"
+						class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
 					/>
 					<Input class="pl-8 pr-16" placeholder="Search workspaces" />
 					<KbdGroup class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2">

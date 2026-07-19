@@ -94,7 +94,7 @@
 
 {#if variant === 'inline'}
 	<div role="group" aria-label={m.settings_language_label()} class="flex flex-col gap-1.5">
-		<span class="text-(length:--text-sm) font-semibold text-foreground-muted"
+		<span class="text-(length:--text-sm) font-semibold text-muted-foreground"
 			>{m.settings_language_label()}</span
 		>
 		{@render localeGrid()}
@@ -108,7 +108,7 @@
 						{...props}
 						intent="outline"
 						size="icon"
-						class="text-(length:--text-sm) font-medium"
+						class="text-(length:--text-base)"
 						aria-label={ariaLabel}
 					>
 						{LOCALE_CODES[currentLocale]}

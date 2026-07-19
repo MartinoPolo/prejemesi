@@ -22,7 +22,13 @@
 	let isCreateModalOpen = $state(false);
 	let isImportWizardOpen = $state(false);
 
-	const allWishlists = await getMyWishlists();
+	// SSR-awaited for first paint; the reactive query shares the same cache entry, so
+	// hydration costs no second fetch and server-side single-flight refreshes ride
+	// back into the list (issue #108).
+	// svelte-ignore state_referenced_locally
+	const initialWishlists = await getMyWishlists();
+	const myListsQuery = $derived(getMyWishlists());
+	const allWishlists = $derived(myListsQuery.current ?? initialWishlists);
 
 	const filteredWishlists = $derived.by(() => {
 		const filtered = showArchived

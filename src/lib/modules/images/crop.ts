@@ -21,6 +21,7 @@ import {
 	IMAGE_ZOOM_BASE,
 	IMAGE_ZOOM_OUT_MIN,
 	IMAGE_ZOOM_MAX,
+	GIFT_EDITOR_CROP_TARGET_VALUES,
 	type GiftEditorCropTarget,
 	type GiftCropTarget,
 	type ImageCropRect,
@@ -301,6 +302,24 @@ export function imageMetaToFrameProps(meta: ImageMetadata | null): ImageFramePro
 }
 
 /**
+ * Resolve a gift crop target's stored crop, following the no-migration carry-over
+ * chain: `square` falls back to the retired wide `card` crop (#163); the 1:1 `thumb`
+ * falls back to the 4:3 `square` crop (#189). The same focal+zoom reprojects onto the
+ * target's window at render time, so existing gifts get an immediate crop with no data
+ * migration. Shared by the renderer (`giftTargetFrameProps`) and the editor seed
+ * (`GiftDetailForm.initTargetRects`) so the two never desync.
+ */
+export function resolveGiftTargetCrop(
+	targets: ImageMetadata['targets'] | undefined,
+	target: GiftCropTarget,
+): ImageTargetCrop | undefined {
+	return (
+		targets?.[target] ??
+		(target === 'square' ? targets?.card : target === 'thumb' ? targets?.square : undefined)
+	);
+}
+
+/**
  * Renderer props for one gift crop target (#116 D2): a manual per-target crop
  * overrides the automatic framing for that target only; without one the gift
  * renders exactly as before the per-target extension existed (REQ-8).
@@ -309,17 +328,13 @@ export function giftTargetFrameProps(
 	meta: ImageMetadata | null,
 	target: GiftCropTarget,
 ): ImageFrameProps {
-	// Manual crops only apply on a cover-crop base: Fit (contain-padded)
-	// must letterbox both axes even when stale per-target crops linger in the
-	// metadata (#116 follow-up – the editor drops them on save, this guards rows
-	// persisted in between).
+	// Manual crops only apply on a cover-crop base: Fit (contain-padded) must
+	// letterbox both axes even when stale per-target crops linger in the metadata
+	// (#116 follow-up – the editor drops them on save, this guards rows persisted
+	// in between).
 	const targetCrop =
 		meta?.fitMode === IMAGE_FIT_MODES.coverCrop
-			? (meta.targets?.[target] ??
-				// #163: the wide card surface joined the square family. Existing manual
-				// `card` crops remain a backwards-compatible square fallback only until
-				// the editor saves an explicit square crop.
-				(target === 'square' ? meta.targets?.card : undefined))
+			? resolveGiftTargetCrop(meta.targets, target)
 			: undefined;
 	if (meta != null && targetCrop !== undefined) {
 		return {
@@ -346,4 +361,51 @@ export function mergeGiftTargetCrops(
 		delete mergedTargets.card;
 	}
 	return Object.keys(mergedTargets).length > 0 ? mergedTargets : undefined;
+}
+
+/**
+ * Build the `targets` a Manual-mode gift image save should persist, from the
+ * editor's per-target session rects (`GiftDetailForm.targetRects`).
+ *
+ * An untouched session (no manual edits this session) is a pure pass-through:
+ * whatever was persisted before flows through `mergeGiftTargetCrops` verbatim
+ * – no metadata rewrite for a gift the user never actually edited.
+ *
+ * Once the user makes ANY manual edit, every editor target is pinned
+ * explicitly from ITS OWN current session rect, not just the target(s) the
+ * user actually dragged/zoomed. Two reasons this matters together:
+ * - Session independence: editing one target must never move another
+ *   target's live preview tile. Both tiles render through the shared
+ *   `resolveGiftTargetCrop` carry-over chain (`thumb` → `square` → `card`),
+ *   so as long as only the edited target has an explicit `targets` entry,
+ *   an untouched target with NO entry keeps re-resolving through that chain
+ *   and visibly "follows" every edit to the target it falls back to.
+ * - WYSIWYG: what a preview tile shows during the session is what a save
+ *   must make the real surfaces render. An untouched target's session rect
+ *   (seeded once at mount, and reshaped to the target's aspect by
+ *   `ImageCropStage`'s snap effect – see `GiftDetailForm.initTargetRects`)
+ *   IS exactly the framing its tile has been displaying, so pinning it there
+ *   locks in that same framing and prevents the carry-over chain from
+ *   retroactively re-framing it to the edited target's crop after save.
+ *
+ * The carry-over chain itself is untouched by this – it still gives a never-
+ * edited LEGACY row (no `targets` at all) an immediate crop with no data
+ * migration; this function only stops it from ALSO reaching across two
+ * targets edited live in the same session.
+ */
+export function buildManualGiftTargets(
+	sessionRects: Record<GiftEditorCropTarget, ImageCropRect>,
+	hasSessionEdits: boolean,
+	existingTargets: ImageMetadata['targets'] | undefined,
+): ImageMetadata['targets'] {
+	if (!hasSessionEdits) {
+		return mergeGiftTargetCrops(existingTargets, {});
+	}
+	const pinnedTargets: Partial<Record<GiftEditorCropTarget, ImageTargetCrop>> = {};
+	for (const target of GIFT_EDITOR_CROP_TARGET_VALUES) {
+		const rect = sessionRects[target];
+		const { focal, zoom } = cropRectToFocalZoom(rect);
+		pinnedTargets[target] = { cropRect: { ...rect }, focal, zoom };
+	}
+	return mergeGiftTargetCrops(existingTargets, pinnedTargets);
 }

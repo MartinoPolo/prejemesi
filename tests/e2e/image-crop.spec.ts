@@ -27,16 +27,26 @@ import {
  * switcher tile and moved the display-mode toggle into the image column,
  * removing the per-target radio picker. Issue #165 retired the `detail` editor
  * target entirely (the visitor detail modal moved to the shared `square` crop):
- * the preview strip is now a single square tile, and the main stage previews
- * square framing too, so it is now the ONLY target switcher.
+ * the preview strip became a single square tile, the ONLY target switcher.
+ * Issue #189 adds a second tile back – „Karta" (the 4:3 `square` card family)
+ * and „Seznam a rezervace" (the true 1:1 `thumb` list + reservation surface) –
+ * so the strip switches between two targets again.
+ *
+ * Issue #183 changes the `square` target's aspect from 1:1 to 4:3 (read
+ * dynamically from `GIFT_CROP_TARGET_SPECS`, so the aspect asserts below need
+ * no numeric changes), widens the gift edit modal to ~1100px with a ~50/50
+ * column split, and removes the Manual stage's label/pixel chip entirely.
  */
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
-// Non-square source (issue #165): the sole remaining editor target is square,
-// and a square SOURCE image's contain zoom already equals 100 % (there is no
-// "below 100 %" to reach). A portrait source gives the square target a
-// normalized aspect ≠ 1, so it can zoom out and letterbox exactly one axis –
-// the regression the retired tall `detail` target used to demonstrate.
+// Portrait source for the zoom-out regression: the 4:3 `square` target on a
+// portrait source has a normalized aspect ≠ 1, so its contain zoom is below 100 %
+// and the window can letterbox exactly one axis. (The earlier #165 comment here
+// claimed a square SOURCE's contain zoom is already 100 %; that stopped being true
+// once #183 changed the `square` target from 1:1 to 4:3 — a square source on a 4:3
+// target also has contain zoom ≠ 100 %.) It also drives the adaptive-stage
+// full-photo-visible assertion (#189): a tall portrait is exactly what the old
+// fixed-viewport stage clipped even at default zoom.
 const SAMPLE_IMAGE_PORTRAIT_PATH = fileURLToPath(
 	new URL('./fixtures/sample-image-portrait.png', import.meta.url),
 );
@@ -94,7 +104,7 @@ async function openAddGiftDialog(page: Page): Promise<ReturnType<Page['getByRole
 	return dialog;
 }
 
-/** Drag the crop stage by a pixel delta (pans the image under the fixed window). */
+/** Drag the crop stage by a pixel delta (moves the window over the fixed photo, #189). */
 async function dragStage(page: Page, stage: Locator, dx: number, dy: number) {
 	const box = await stage.boundingBox();
 	expect(box).not.toBeNull();
@@ -134,10 +144,9 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await uploaded;
 		await expect(dialog.getByTestId('image-upload-preview')).toBeVisible({ timeout: 10_000 });
 
-		// The single square preview tile (issue #165: the narrow detail switcher
-		// tile was retired along with the `detail` editor target) overlays the
-		// image column and renders at the true aspect of the shared card/list/
-		// reservation/detail-modal surface.
+		// The „Karta" preview tile (the `square` 4:3 card family) overlays the
+		// image column and renders at that target's true aspect (issue #183: 4:3;
+		// #189 added a second „Seznam a rezervace" 1:1 `thumb` tile beside it).
 		await expectAspect(
 			dialog.getByTestId('gift-preview-square'),
 			GIFT_CROP_TARGET_SPECS.square.aspect,
@@ -145,6 +154,12 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		);
 		await expect(dialog.getByTestId('gift-preview-card')).toHaveCount(0);
 		await expect(dialog.getByTestId('gift-preview-detail')).toHaveCount(0);
+		// The second „Seznam a rezervace" tile renders at the 1:1 `thumb` aspect (#189).
+		await expectAspect(
+			dialog.getByTestId('gift-preview-thumb'),
+			GIFT_CROP_TARGET_SPECS.thumb.aspect,
+			FIXED_TOLERANCE,
+		);
 		// The floats live INSIDE the image column, not in the form column.
 		const imageColumnBox = await dialog.getByTestId('gift-image-column').boundingBox();
 		const cardTileBox = await dialog.getByTestId('gift-preview-square').boundingBox();
@@ -162,15 +177,31 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			imageColumnBox!.x + imageColumnBox!.width + 1,
 		);
 
-		// Fit letterboxes BOTH axes: the preview image renders with object-fit
-		// contain instead of cropping the height (#116 follow-up).
+		// Fit letterboxes BOTH axes (#116 follow-up). Since issue #183 the editor's
+		// Fit preview is the shared WYSIWYG stage in a static, non-interactive mode
+		// (not a plain `object-fit` toggle any more – the stage always positions the
+		// image with explicit pixel geometry), so containment is asserted via the
+		// rendered image's bounding box staying within the bordered window instead.
 		await dialog.getByRole('radio', { name: /Přizpůsobit/ }).click();
-		// Scoped to the big preview – the floating tiles add their own img elements.
-		const columnImage = dialog.getByTestId('image-fit-preview').locator('img');
+		const fitWindow = dialog.getByTestId('crop-stage-window');
+		const fitImage = dialog.getByTestId('crop-stage').locator('img');
 		await expect(async () => {
-			expect(await columnImage.evaluate((el) => getComputedStyle(el).objectFit)).toBe(
-				'contain',
-			);
+			const windowBox = await fitWindow.boundingBox();
+			const imageBox = await fitImage.boundingBox();
+			expect(windowBox).not.toBeNull();
+			expect(imageBox).not.toBeNull();
+			// Contain: the image never exceeds the window on either axis (unlike
+			// Fill/cover, which always fully covers – and typically exceeds – it on
+			// at least one axis).
+			expect(imageBox!.width).toBeLessThanOrEqual(windowBox!.width + 1);
+			expect(imageBox!.height).toBeLessThanOrEqual(windowBox!.height + 1);
+			// An upper-bound-only check would also pass for an image rendered far
+			// too small, so also assert containment BINDS on at least one axis: the
+			// sample image is square and the window is 4:3, so true contain binds on
+			// height (image height ≈ window height).
+			expect(
+				Math.min(windowBox!.width - imageBox!.width, windowBox!.height - imageBox!.height),
+			).toBeLessThanOrEqual(2);
 		}).toPass({ timeout: 5_000 });
 
 		// Clicking the preview tile jumps to Manual mode with the square target
@@ -189,7 +220,26 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		await expect(dialog.getByRole('radio', { name: /Seznam a rezervace/ })).toHaveCount(0);
 		const stageWindow = dialog.getByTestId('crop-stage-window');
 		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
-		await expect(stageWindow).toContainText('Seznam a rezervace');
+		// The label/pixel chip is removed from the gift Manual stage entirely
+		// (issue #183 REQ-8); the white border + thirds grid stay.
+		await expect(stageWindow).not.toContainText('Seznam a rezervace');
+		await expect(stageWindow.locator('.grid-cols-3')).toBeVisible();
+
+		// The 1:1 „Seznam a rezervace" tile switches the active target to `thumb` and
+		// the stage window to 1:1 (#189: the second target + two-tile switcher return).
+		await dialog.getByTestId('gift-preview-tile-thumb').click();
+		await expect(dialog.getByTestId('gift-preview-tile-thumb')).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.thumb.aspect, FIXED_TOLERANCE);
+		// Switch back to „Karta" (4:3) for the crop-draw + save below.
+		await dialog.getByTestId('gift-preview-tile-square').click();
+		await expect(dialog.getByTestId('gift-preview-tile-square')).toHaveAttribute(
+			'aria-pressed',
+			'true',
+		);
+		await expectAspect(stageWindow, GIFT_CROP_TARGET_SPECS.square.aspect, FIXED_TOLERANCE);
 
 		// Draw a manual square crop: zoom in (slider +4 × step 5 = 120 %), then pan.
 		const zoomSlider = dialog.getByRole('slider');
@@ -214,20 +264,26 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		);
 		expect(objectPosition).not.toBe('50% 50%');
 
-		// The list view thumbnail is the square family's real surface.
+		// The list view thumbnail is the 1:1 `thumb` target's real surface (#189,
+		// reverting the interim 4:3 list thumb from #183). Crop targets stay
+		// INDEPENDENT during an editing session: drawing the manual crop above only
+		// dirtied `square`, so `thumb` (never touched) was pinned at save to its own
+		// untouched centered framing instead of inheriting the square crop – it
+		// still renders at the true 1:1 aspect either way.
 		await page.locator('[aria-label="Seznam"]').click();
 		await expectAspect(
 			page.getByRole('img', { name: giftName }).first(),
-			GIFT_CROP_TARGET_SPECS.square.aspect,
+			GIFT_CROP_TARGET_SPECS.thumb.aspect,
 			FIXED_TOLERANCE,
 		);
 
-		// #163 mobile list: the recipient gets a 128-152px square image on the
-		// left, with all content beside it and no reservation control exposed.
+		// #163 mobile list: the recipient gets a 128-152px-wide 1:1 image on the
+		// left (issue #189, reverting the interim 4:3 shape from #183), with all
+		// content beside it and no reservation control exposed.
 		await page.setViewportSize({ width: 390, height: 844 });
 		const mobileListImage = page.getByRole('img', { name: giftName }).first();
 		// A manual crop may zoom the <img> beyond its clipped frame. Measure the
-		// visible 1:1 ImageFrame, which is the actual list-thumbnail geometry.
+		// visible ImageFrame, which is the actual list-thumbnail geometry.
 		const mobileImageFrame = mobileListImage.locator('..');
 		const mobileImageBox = await mobileImageFrame.boundingBox();
 		const mobileTitleBox = await page.getByText(giftName, { exact: true }).boundingBox();
@@ -239,7 +295,10 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		expect(mobileDescriptionBox).not.toBeNull();
 		expect(mobileImageBox!.width).toBeGreaterThanOrEqual(128);
 		expect(mobileImageBox!.width).toBeLessThanOrEqual(152);
-		expect(Math.abs(mobileImageBox!.width - mobileImageBox!.height)).toBeLessThanOrEqual(1);
+		expect(mobileImageBox!.width / mobileImageBox!.height).toBeCloseTo(
+			GIFT_CROP_TARGET_SPECS.thumb.aspect,
+			1,
+		);
 		expect(mobileTitleBox!.x).toBeGreaterThan(mobileImageBox!.x + mobileImageBox!.width);
 		expect(mobileDescriptionBox!.x).toBeGreaterThanOrEqual(
 			mobileImageBox!.x + mobileImageBox!.width,
@@ -261,19 +320,17 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			'true',
 		);
 		await expect(editDialog.getByText('120 %')).toBeVisible({ timeout: 10_000 });
-		// The image column itself is the create/edit form's own fixed 45%/55% grid
-		// cell (#116/#131/#142), unrelated to whichever crop target is active inside
-		// it – it still measures at the `detail` spec's real-world aspect (that spec
-		// now documents the column's own shape, not a selectable crop target).
-		// Issue #165 retired `detail` as a crop TARGET (the visitor modal moved to
-		// `square`); resizing the editor's own column to match is a separate layout
-		// change explicitly deferred (SUMMARY.md "Out of scope flag", coordinate
-		// with #163) rather than done here.
-		await expectAspect(
-			editDialog.getByTestId('gift-image-column'),
-			GIFT_CROP_TARGET_SPECS.detail.aspect,
-			FLUID_TOLERANCE,
-		);
+		// The edit modal widened to ~1100px with a roughly equal 50/50 image/form
+		// column split (issue #183 REQ-9, revises the earlier 45/55 split at
+		// 900px) – assert the ratio directly rather than reusing the retired
+		// `detail` spec as an incidental stand-in for the column's own shape.
+		const editDialogBox = await editDialog.boundingBox();
+		const editImageColumnBox = await editDialog.getByTestId('gift-image-column').boundingBox();
+		expect(editDialogBox).not.toBeNull();
+		expect(editImageColumnBox).not.toBeNull();
+		const imageColumnShare = editImageColumnBox!.width / editDialogBox!.width;
+		expect(imageColumnShare).toBeGreaterThan(0.45);
+		expect(imageColumnShare).toBeLessThan(0.55);
 
 		// Pinned footer: the submit button stays visible before and after the form
 		// body is scrolled to its end (the fields scroll, the actions do not).
@@ -331,6 +388,26 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		// stays `disabled` until it resolves (ImageCropStage `isReady` guard).
 		// Interacting before then is a silent no-op, not a real zoom-out.
 		await expect(zoomOutSlider).toBeEnabled();
+		// Adaptive stage (issue #189 REQ-4): at default zoom the whole portrait is
+		// contained and fully visible — the <img> stays within the stage bounds. The
+		// old fixed-viewport stage clipped a tall portrait here even at zoom 1.
+		await expect(async () => {
+			const stageBox = await editDialog.getByTestId('crop-stage').boundingBox();
+			const photoBox = await editDialog
+				.getByTestId('crop-stage')
+				.locator('img')
+				.boundingBox();
+			expect(stageBox).not.toBeNull();
+			expect(photoBox).not.toBeNull();
+			expect(photoBox!.x).toBeGreaterThanOrEqual(stageBox!.x - 1);
+			expect(photoBox!.y).toBeGreaterThanOrEqual(stageBox!.y - 1);
+			expect(photoBox!.x + photoBox!.width).toBeLessThanOrEqual(
+				stageBox!.x + stageBox!.width + 1,
+			);
+			expect(photoBox!.y + photoBox!.height).toBeLessThanOrEqual(
+				stageBox!.y + stageBox!.height + 1,
+			);
+		}).toPass({ timeout: 5_000 });
 		await zoomOutSlider.focus();
 		await zoomOutSlider.press('Home');
 		expect(Number(await zoomOutSlider.inputValue())).toBeLessThan(100);

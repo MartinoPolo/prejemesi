@@ -94,7 +94,7 @@
 
 <button
 	type="button"
-	class="flex h-full w-full flex-col items-center justify-center gap-3 rounded-panel border-[3px] border-dashed border-ink-soft px-6 transition-colors hover:border-ink hover:bg-tint {isDragOver
+	class="flex h-full w-full flex-col items-center justify-center gap-3 rounded-panel border-[3px] border-dashed border-muted-foreground px-6 transition-colors hover:border-ink hover:bg-tint {isDragOver
 		? 'border-ink bg-tint'
 		: ''} {disabled ? 'pointer-events-none opacity-50' : 'cursor-pointer'}"
 	ondrop={handleDrop}
@@ -103,12 +103,12 @@
 	onclick={handleClick}
 	{disabled}
 >
-	<div class="text-ink-soft">
+	<div class="text-muted-foreground">
 		<UploadIcon class="size-8" />
 	</div>
 	<div class="text-center">
 		<p class="text-sm font-semibold text-foreground">{m.import_wizard_file_drop_label()}</p>
-		<p class="text-xs text-ink-soft">{m.import_wizard_file_drop_or_click()}</p>
+		<p class="text-xs text-muted-foreground">{m.import_wizard_file_drop_or_click()}</p>
 	</div>
 	<div class="flex gap-2">
 		<span

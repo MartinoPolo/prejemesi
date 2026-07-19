@@ -13,11 +13,11 @@ export const wishlistListViewVariants = tv({
 			'relative flex size-11 shrink-0 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-2 border-ink',
 		info: 'flex min-w-0 flex-1 flex-col gap-0.5',
 		title: 'truncate font-heading text-[16px] font-semibold text-foreground',
-		subtitle: 'truncate text-xs text-ink-soft',
+		subtitle: 'truncate text-xs text-muted-foreground',
 		trailing: 'flex shrink-0 items-center gap-3',
 		statusBadge:
 			'inline-flex items-center whitespace-nowrap rounded-full border-2 border-ink px-2.5 py-0.5 text-[11px] font-semibold',
-		giftCount: 'whitespace-nowrap text-[13px] font-bold text-ink-soft',
+		giftCount: 'whitespace-nowrap text-[13px] font-bold text-muted-foreground',
 	},
 	variants: {
 		archived: {

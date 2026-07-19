@@ -21,7 +21,6 @@
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
-	import GiftEditedBadge from './GiftEditedBadge.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 
 	interface GiftListItemProps {
@@ -51,20 +50,21 @@
 <div
 	data-testid="gift-list-item"
 	class={cn(
-		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border px-2 py-3 transition-colors hover:bg-muted/50 sm:grid-cols-[6rem_minmax(0,1fr)] sm:items-center sm:gap-4',
+		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border py-3 transition-colors hover:bg-muted/50 sm:items-center sm:gap-4',
 		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
 	)}
 >
-	<!-- Shared square crop: large on mobile, 96px minimum from tablet upward. -->
+	<!-- 1:1 crop (#189, reverts the interim 4:3 list thumb from #183): large thumb
+	     at every width (clamp maxes at 9.5rem for all viewports ≥ sm). -->
 	<div
 		data-testid="gift-list-image"
-		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:w-24 sm:self-center"
+		class="relative aspect-square w-[clamp(8rem,39vw,9.5rem)] self-start sm:self-center"
 	>
 		<GiftImage
 			class="size-full rounded-lg"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
-			target="square"
+			target="thumb"
 			alt={gift.name}
 			variant="listThumb"
 		/>
@@ -82,9 +82,9 @@
 				giftId={gift.id}
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
-				size="sm"
+				size="md"
 				showCount={false}
-				class="absolute right-2 bottom-2 z-10 size-9 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
+				class="absolute right-2 bottom-2 z-10 size-(--size-control-md) justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
 			/>
 		{/if}
 	</div>
@@ -104,11 +104,6 @@
 					{m.gift_received_badge()}
 				</Badge>
 			{/if}
-			<GiftEditedBadge
-				editedAfterShareAt={gift.editedAfterShareAt}
-				compact
-				updateText={gift.descriptionAppends.at(-1)?.text ?? null}
-			/>
 		</div>
 
 		<div class="flex flex-wrap items-center gap-1.5 text-sm">
@@ -129,7 +124,7 @@
 			{/if}
 
 			{#if isFullyReserved && reserverLine !== null}
-				<span class="text-xs font-semibold text-ink-soft">{reserverLine}</span>
+				<span class="text-xs font-semibold text-muted-foreground">{reserverLine}</span>
 			{/if}
 		</div>
 
@@ -163,7 +158,13 @@
 		{#if isVisitorOrModerator && visitorGift}
 			<div class="mt-auto flex items-center justify-end gap-2 pt-2">
 				<PurchasedToggle gift={visitorGift} />
-				<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
+				<ReserveButton
+					gift={visitorGift}
+					{isArchived}
+					size="md"
+					{onreserve}
+					{onunreserve}
+				/>
 			</div>
 		{/if}
 	</div>

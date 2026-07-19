@@ -21,19 +21,20 @@ export const wishlistCardVariants = tv({
 		metaRow: 'flex flex-wrap items-center gap-1.5',
 		metaChip:
 			'inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink bg-surface px-3 py-0.5 text-[13px] font-semibold text-foreground',
-		metaText: 'truncate text-[13px] text-ink-soft',
-		ownerRow: 'flex items-center gap-2 text-sm text-ink-soft',
+		metaText: 'truncate text-[13px] text-muted-foreground',
+		ownerRow: 'flex items-center gap-2 text-sm text-muted-foreground',
 		ownerAvatar:
 			'flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-primary text-[10px] font-extrabold text-primary-foreground',
 		progressWrap: 'flex flex-col gap-1.5',
-		progressLabelRow: 'flex items-center justify-between text-[13px] font-bold text-ink-soft',
+		progressLabelRow:
+			'flex items-center justify-between text-[13px] font-bold text-muted-foreground',
 		progressValue: 'font-extrabold text-primary',
 		progressTrack: 'h-3.5 overflow-hidden rounded-full border-2 border-ink bg-surface',
 		progressFill:
 			'h-full rounded-full bg-gradient-to-r from-brand to-brand-deep transition-[width] duration-slow ease-out',
 		reservationChip:
 			'inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground',
-		availableCount: 'text-[13px] font-semibold text-ink-soft',
+		availableCount: 'text-[13px] font-semibold text-muted-foreground',
 		divider: 'my-0.5 border-t-2 border-dashed border-ink-faint',
 		actions: 'flex flex-wrap items-center gap-1.5',
 		actionsEnd: 'ml-auto flex items-center gap-1.5',
@@ -57,5 +58,5 @@ export const wishlistCardVariants = tv({
 export const STATUS_CHIP_CLASSES = {
 	draft: 'bg-card text-foreground',
 	active: 'bg-primary text-primary-foreground',
-	archived: 'bg-card text-ink-soft',
+	archived: 'bg-card text-muted-foreground',
 } as const;

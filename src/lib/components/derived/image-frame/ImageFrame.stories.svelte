@@ -51,7 +51,7 @@
 		<div class="flex gap-4">
 			<div class="flex flex-col gap-1">
 				<ImageFrame class="h-36 w-48" src={NORMAL} alt="auto" fitMode="auto" />
-				<span class="text-foreground-subtle text-xs">auto</span>
+				<span class="text-muted-foreground text-xs">auto</span>
 			</div>
 			<div class="flex flex-col gap-1">
 				<ImageFrame
@@ -61,11 +61,11 @@
 					fitMode="contain-padded"
 					tokenScope="wishlist"
 				/>
-				<span class="text-foreground-subtle text-xs">contain-padded</span>
+				<span class="text-muted-foreground text-xs">contain-padded</span>
 			</div>
 			<div class="flex flex-col gap-1">
 				<ImageFrame class="h-36 w-48" src={NORMAL} alt="cover-crop" fitMode="cover-crop" />
-				<span class="text-foreground-subtle text-xs">cover-crop</span>
+				<span class="text-muted-foreground text-xs">cover-crop</span>
 			</div>
 		</div>
 	{/snippet}

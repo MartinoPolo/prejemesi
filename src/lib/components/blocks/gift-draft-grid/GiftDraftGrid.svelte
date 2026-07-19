@@ -197,7 +197,7 @@
 					{#snippet asChild(triggerProps)}
 						<span
 							{...triggerProps}
-							class="text-foreground-muted flex items-center justify-center"
+							class="text-muted-foreground flex items-center justify-center"
 						>
 							<HeartIcon class="size-3.5" aria-hidden="true" />
 							<span class="sr-only">{m.draft_grid_col_priority()}</span>
@@ -231,7 +231,7 @@
 				<button
 					type="button"
 					onclick={addRow}
-					class="flex w-full items-center justify-center gap-2.5 rounded-lg border-[1.5px] border-dashed border-border-strong px-4 py-4 text-sm font-semibold text-foreground-muted transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
+					class="flex w-full items-center justify-center gap-2.5 rounded-lg border-[1.5px] border-dashed border-border-strong px-4 py-4 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ring"
 				>
 					<PlusIcon class="size-4" aria-hidden="true" />
 					{m.draft_grid_add_row()}

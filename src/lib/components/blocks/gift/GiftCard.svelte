@@ -19,7 +19,6 @@
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { giftCardVariants } from './gift_card_variants.js';
-	import GiftEditedBadge from './GiftEditedBadge.svelte';
 	import GiftDescription from './GiftDescription.svelte';
 
 	interface GiftCardProps {
@@ -56,7 +55,7 @@
 		<div class={styles.imagePattern()} aria-hidden="true"></div>
 
 		<GiftImage
-			class="size-full bg-transparent"
+			class="size-full rounded-none bg-transparent"
 			imageUrl={gift.imageUrl}
 			imageMeta={gift.imageMeta}
 			target="square"
@@ -99,13 +98,12 @@
 
 	<!-- Body -->
 	<div class={styles.body()}>
-		<!-- Name + piece count -->
+		<!-- Name + piece count. Edited-after-share info surfaces only as a muted line
+		     in the gift detail modal (issue #185), not on the card. -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
 			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
 		</div>
-
-		<GiftEditedBadge editedAfterShareAt={gift.editedAfterShareAt} compactOnMobile />
 
 		{#if gift.price !== null}
 			<span class={styles.price()}>{priceDisplay}</span>
@@ -137,7 +135,7 @@
 			description={gift.description}
 			descriptionAppends={gift.descriptionAppends}
 			maxVisibleAppends={1}
-			class="mt-1"
+			class="row-start-5 mt-3"
 		/>
 	</div>
 
@@ -146,7 +144,7 @@
 		<div class={styles.footer()}>
 			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
 			<PurchasedToggle gift={visitorGift} />
-			<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
+			<ReserveButton gift={visitorGift} {isArchived} size="md" {onreserve} {onunreserve} />
 		</div>
 	{/if}
 </div>

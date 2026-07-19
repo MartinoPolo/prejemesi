@@ -8,6 +8,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Label } from '$lib/components/base/label/index.js';
+	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { DatePicker } from '$lib/components/derived/date-picker/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
@@ -18,7 +19,7 @@
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
-	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
+	import WishlistPaletteAutoSave from './WishlistPaletteAutoSave.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
@@ -471,9 +472,12 @@
 						</div>
 
 						<div class="flex flex-col gap-2">
-							<Label for="wishlist-event-date">{m.wishlist_event_date_label()}</Label>
+							<Label id="wishlist-event-date-label"
+								>{m.wishlist_event_date_label()}</Label
+							>
 							<DatePicker
 								id="wishlist-event-date"
+								ariaLabelledby="wishlist-event-date-label"
 								bind:value={detailsEventDate}
 								disabled={savingDetails || !eventDateEditable}
 							/>
@@ -484,9 +488,7 @@
 									message={m.wishlist_event_date_grace_hint}
 								/>
 							{:else if isShared}
-								<p class="text-sm text-muted-foreground">
-									{m.wishlist_event_date_locked_hint()}
-								</p>
+								<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
 							{/if}
 						</div>
 
@@ -513,7 +515,7 @@
 					<p class="text-sm text-muted-foreground">
 						{m.wishlist_palette_dialog_description()}
 					</p>
-					<WishlistPalettePicker
+					<WishlistPaletteAutoSave
 						wishlistId={wishlist.id}
 						palette={wishlist.palette}
 						onselect={onpaletteselect}

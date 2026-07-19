@@ -76,10 +76,10 @@
 		class="flex max-h-[90dvh] w-full max-w-[1180px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1180px]"
 	>
 		<Dialog.Header class="border-b border-border px-6 py-5 text-left">
-			<Dialog.Title class="font-heading text-xl font-bold tracking-tight">
+			<Dialog.Title class="font-heading text-2xl font-semibold tracking-tight">
 				{m.draft_grid_dialog_title()}
 			</Dialog.Title>
-			<p class="mt-1 text-xs text-foreground-muted">
+			<p class="mt-1 text-xs text-muted-foreground">
 				{#if wishlistTitle}
 					{m.batch_add_dialog_subtitle({ wishlistTitle })}
 				{:else}
@@ -102,7 +102,7 @@
 			{#if validCount === 0 && !isSubmitting}
 				<HelpText state="error" class="m-0">{m.draft_grid_commit_hint_blocking()}</HelpText>
 			{:else if validCount > 0}
-				<span class="text-xs text-foreground-muted">
+				<span class="text-xs text-muted-foreground">
 					{m.batch_add_hint_enabled({ count: validCount })}
 				</span>
 			{/if}

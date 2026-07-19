@@ -178,7 +178,7 @@
 		text-align: center;
 		font-size: var(--text-xs);
 		font-weight: 600;
-		color: var(--ink-soft);
+		color: var(--muted-foreground);
 		letter-spacing: var(--tracking-wide);
 	}
 

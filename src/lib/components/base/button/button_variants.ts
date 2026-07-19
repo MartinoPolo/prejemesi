@@ -13,10 +13,15 @@ const FILLED_BUTTON_KBD_CLASSES =
  * un-hover → drop → re-hover loop).
  */
 const LIFT_HIT_AREA_CLASSES =
-	"relative after:absolute after:inset-x-0 after:top-full after:h-1 after:content-['']";
+	"relative after:absolute after:inset-x-0 after:top-full after:h-2 after:content-['']";
 
-/** Flat sticker button: ink border, hard offset shadow, spring lift on hover, press-down on active. */
-const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm ${LIFT_HIT_AREA_CLASSES}`;
+/**
+ * Flat sticker button: ink border, hard offset shadow, spring lift on hover, press-down on active.
+ * While the button is an open overlay trigger (bits-ui sets `data-state="open"` on popover,
+ * dropdown-menu, and sheet triggers), the hover lift is suppressed — lifting the trigger would
+ * drag the anchored overlay along with it.
+ */
+const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker ${LIFT_HIT_AREA_CLASSES}`;
 
 export const buttonVariants = tv({
 	base: 'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-btn border-[2.5px] border-transparent font-semibold leading-none outline-none select-none cursor-pointer transition-[background-color,border-color,color,transform,box-shadow] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 [&_[data-icon]]:pointer-events-none [&_[data-icon]]:shrink-0',
@@ -24,18 +29,19 @@ export const buttonVariants = tv({
 		intent: {
 			primary: `bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--primary)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
 			secondary: `bg-card text-ink hover:bg-panel-hover ${STICKER_BUTTON_CLASSES}`,
-			ghost: 'bg-transparent text-foreground-muted hover:bg-accent hover:text-foreground',
+			ghost: 'bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
 			'ghost-overlay':
 				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
 			danger: 'bg-card text-status-danger border-status-danger shadow-sticker-sm hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
 			'primary-destructive': `bg-status-danger text-white hover:bg-[color-mix(in_oklab,var(--status-danger)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
-			outline: `border-ink bg-card text-foreground shadow-sticker-sm hover:bg-accent hover:text-accent-foreground hover:-translate-y-px ${LIFT_HIT_AREA_CLASSES}`,
+			outline: `bg-card text-foreground hover:bg-accent hover:text-accent-foreground ${STICKER_BUTTON_CLASSES}`,
 			link: 'text-primary underline-offset-4 hover:underline',
 		},
 		size: {
 			sm: 'h-(--size-control-sm) px-2.25 text-(length:--text-sm) [&_[data-icon]]:size-3.5',
 			md: 'h-(--size-control-md) px-3 text-(length:--text-md) [&_[data-icon]]:size-4',
 			lg: 'h-(--size-control-lg) px-4 text-(length:--text-base) [&_[data-icon]]:size-4',
+			xl: 'h-(--size-control-xl) px-5 text-(length:--text-lg) [&_[data-icon]]:size-5',
 			icon: 'size-(--size-control-md) p-0 [&_svg]:size-4',
 			'icon-sm': 'size-(--size-control-sm) p-0 [&_svg]:size-3.5',
 		},
@@ -51,7 +57,12 @@ export type ButtonSize = keyof typeof buttonVariants.variants.size;
 
 export const BUTTON_INTENTS = Object.keys(buttonVariants.variants.intent) as ButtonIntent[];
 
-export const BUTTON_TEXT_SIZES = ['sm', 'md', 'lg'] as const satisfies ReadonlyArray<ButtonSize>;
+export const BUTTON_TEXT_SIZES = [
+	'sm',
+	'md',
+	'lg',
+	'xl',
+] as const satisfies ReadonlyArray<ButtonSize>;
 export const BUTTON_ICON_SIZES = ['icon', 'icon-sm'] as const satisfies ReadonlyArray<ButtonSize>;
 // Exhaustiveness is enforced here: adding a new size to tv() without updating
 // BUTTON_TEXT_SIZES or BUTTON_ICON_SIZES causes a compile error on this line.

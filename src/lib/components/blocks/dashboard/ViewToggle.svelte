@@ -21,7 +21,7 @@
 		if (newValue !== '') value = newValue as ViewMode;
 	}}
 	intent="default"
-	size="icon-sm"
+	size="icon"
 	class={cn(className)}
 	aria-label={m.dashboard_view_label()}
 >
