@@ -1,11 +1,13 @@
 import { env } from '$env/dynamic/private';
 import { inArray, eq } from 'drizzle-orm';
+import * as m from '$lib/paraglide/messages.js';
 import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
 import { runAfterResponse } from '$lib/server/background.js';
+import { createNotificationPreferencesToken } from '$lib/server/crypto/notification_preferences_token.js';
 import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
 import {
 	EMAIL_NOTIFICATION_TYPES,
@@ -34,6 +36,62 @@ function emailTypeSupported(type: NotificationType): boolean {
 
 function getOrigin(): string {
 	return (env.ORIGIN ?? 'http://localhost:5173').replace(/\/$/, '');
+}
+
+function getAuthSigningKey(): string {
+	const key = env.AUTH_SECRET;
+	if (key == null || key === '') {
+		throw new Error(
+			'AUTH_SECRET environment variable is required for notification preferences token signing',
+		);
+	}
+	return key;
+}
+
+interface UnsubscribeFooter {
+	footerText: string;
+	unsubscribeLabel: string;
+	unsubscribeUrl: string;
+	headers: Record<string, string>;
+}
+
+/**
+ * Builds the unsubscribe footer + `List-Unsubscribe` headers for an account
+ * recipient (issue #206, REQ-1/REQ-2). Not localized to a `/en` URL prefix:
+ * the page resolves its own copy locale from the token's user at load time
+ * (see `/unsubscribe/+page.server.ts`), so a bare path works for every locale
+ * and survives being pasted into any mail client.
+ *
+ * Returns `undefined` (never throws) on a missing/misconfigured signing key so
+ * a footer-building failure degrades to a plain email instead of losing the
+ * notification entirely.
+ */
+async function buildUnsubscribeFooter(
+	userId: string,
+	locale: SupportedLocale,
+): Promise<UnsubscribeFooter | undefined> {
+	let signingKey: string;
+	try {
+		signingKey = getAuthSigningKey();
+	} catch (err) {
+		console.error('[Notification] unsubscribe footer skipped', err);
+		return undefined;
+	}
+
+	const { token } = await createNotificationPreferencesToken(userId, signingKey);
+	const tokenQuery = new URLSearchParams({ token }).toString();
+	const unsubscribeUrl = `${getOrigin()}/unsubscribe?${tokenQuery}`;
+	const oneClickUrl = `${getOrigin()}/unsubscribe/one-click?${tokenQuery}`;
+
+	return {
+		footerText: m.notification_email_footer_text({}, { locale }),
+		unsubscribeLabel: m.notification_email_unsubscribe_label({}, { locale }),
+		unsubscribeUrl,
+		headers: {
+			'List-Unsubscribe': `<${oneClickUrl}>, <${unsubscribeUrl}>`,
+			'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+		},
+	};
 }
 
 function getNotificationUrl(
@@ -104,6 +162,10 @@ async function sendNotificationEmail(params: {
 	actorName: string | null | undefined;
 	giftName: string | undefined;
 	notificationId?: string;
+	/** Present only for registered-account recipients (issue #206) - external,
+	 *  non-account emails have no user row to scope an unsubscribe token to, so
+	 *  they get no footer/List-Unsubscribe headers. */
+	userId?: string;
 }): Promise<boolean> {
 	const emailCopy = getNotificationEmailCopy(params.type, params.locale);
 	const heading = getNotificationEmailHeading(params.type, params.locale);
@@ -119,6 +181,11 @@ async function sendNotificationEmail(params: {
 		fromLabel: emailCopy.fromLabel,
 	});
 
+	const unsubscribe =
+		params.userId !== undefined
+			? await buildUnsubscribeFooter(params.userId, params.locale)
+			: undefined;
+
 	try {
 		await sendEmail({
 			to: params.to,
@@ -129,11 +196,15 @@ async function sendNotificationEmail(params: {
 				buttonLabel: emailCopy.buttonLabel,
 				copyLinkText: emailCopy.copyLinkText,
 				url,
+				footerText: unsubscribe?.footerText,
+				unsubscribeUrl: unsubscribe?.unsubscribeUrl,
+				unsubscribeLabel: unsubscribe?.unsubscribeLabel,
 			}),
 			idempotencyKey:
 				params.notificationId !== undefined
 					? `notification:${params.notificationId}`
 					: `notification:${params.type}:${params.to}:${url}`,
+			headers: unsubscribe?.headers,
 		});
 		return true;
 	} catch {
@@ -253,6 +324,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				actorName: input.actorName,
 				giftName: input.giftName,
 				notificationId,
+				userId: targetUser.id,
 			});
 
 			if (sent && notificationId !== undefined) {

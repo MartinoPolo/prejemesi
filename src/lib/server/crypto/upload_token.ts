@@ -1,3 +1,12 @@
+import {
+	createSigningKeyProvider,
+	encoder,
+	fromBase64Url,
+	signPayloadBytes,
+	toBase64Url,
+	verifyPayloadSignature,
+} from './hmac.js';
+
 export const UPLOAD_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
 
 /**
@@ -26,53 +35,7 @@ export interface UploadTokenResult {
 	expiresAt: number;
 }
 
-const KEY_PURPOSE = 'upload-token-v1';
-const encoder = new TextEncoder();
-
-let cachedSigningKey: CryptoKey | null = null;
-let cachedKeySource: string | null = null;
-
-async function getSigningKey(key: string): Promise<CryptoKey> {
-	if (cachedSigningKey !== null && cachedKeySource === key) {
-		return cachedSigningKey;
-	}
-
-	const rawKey = await crypto.subtle.importKey(
-		'raw',
-		encoder.encode(key),
-		{ name: 'HMAC', hash: 'SHA-256' },
-		false,
-		['sign'],
-	);
-
-	const derivedBytes = await crypto.subtle.sign('HMAC', rawKey, encoder.encode(KEY_PURPOSE));
-
-	const signingKey = await crypto.subtle.importKey(
-		'raw',
-		derivedBytes,
-		{ name: 'HMAC', hash: 'SHA-256' },
-		false,
-		['sign', 'verify'],
-	);
-
-	cachedSigningKey = signingKey;
-	cachedKeySource = key;
-	return signingKey;
-}
-
-function toBase64Url(bytes: Uint8Array): string {
-	return btoa(String.fromCharCode(...bytes))
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
-		.replace(/=+$/g, '');
-}
-
-function fromBase64Url(base64url: string): Uint8Array {
-	const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-	const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-	const binString = atob(padded);
-	return Uint8Array.from(binString, (char) => char.codePointAt(0)!);
-}
+const getSigningKey = createSigningKeyProvider('upload-token-v1');
 
 export async function createUploadToken(
 	objectKey: string,
@@ -88,8 +51,7 @@ export async function createUploadToken(
 	const payloadBytes = encoder.encode(JSON.stringify(payload));
 
 	const key = await getSigningKey(signingKey);
-	const signatureBuffer = await crypto.subtle.sign('HMAC', key, payloadBytes);
-	const signatureBytes = new Uint8Array(signatureBuffer);
+	const signatureBytes = await signPayloadBytes(key, payloadBytes);
 
 	const token = `${toBase64Url(payloadBytes)}.${toBase64Url(signatureBytes)}`;
 	return { token, expiresAt };
@@ -117,12 +79,7 @@ export async function verifyUploadToken(
 	}
 
 	const key = await getSigningKey(signingKey);
-	const valid = await crypto.subtle.verify(
-		'HMAC',
-		key,
-		signatureBytes as BufferSource,
-		payloadBytes as BufferSource,
-	);
+	const valid = await verifyPayloadSignature(key, signatureBytes, payloadBytes);
 	if (!valid) {
 		throw new Error('Invalid upload token signature');
 	}

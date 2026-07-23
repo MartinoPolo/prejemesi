@@ -27,6 +27,12 @@ interface SendEmailParams {
 	 * deliverable inbox. Ignored in production.
 	 */
 	readonly actionUrl?: string;
+	/**
+	 * Extra headers passed straight through to Resend (issue #206) – notification
+	 * emails set `List-Unsubscribe` / `List-Unsubscribe-Post` here so mail clients
+	 * offer their own one-click unsubscribe affordance (RFC 8058).
+	 */
+	readonly headers?: Record<string, string>;
 }
 
 let client: Resend | undefined;
@@ -54,6 +60,7 @@ export async function sendEmail({
 	text,
 	idempotencyKey,
 	actionUrl,
+	headers,
 }: SendEmailParams): Promise<void> {
 	// Dev: the Resend sandbox sender can only reach the account owner, so real sends
 	// to other recipients fail. Always surface the action link so the flow is testable.
@@ -71,7 +78,14 @@ export async function sendEmail({
 	}
 
 	const { data, error } = await resend.emails.send(
-		{ from: getFrom(), to, subject, html, text: text ?? fallbackTextFromHtml(html) },
+		{
+			from: getFrom(),
+			to,
+			subject,
+			html,
+			text: text ?? fallbackTextFromHtml(html),
+			...(headers !== undefined ? { headers } : {}),
+		},
 		idempotencyKey !== undefined ? { idempotencyKey } : {},
 	);
 
@@ -114,6 +128,13 @@ interface ActionEmailParams {
 	readonly url: string;
 	/** Optional localized copy for the action-link fallback; auth emails retain English. */
 	readonly copyLinkText?: string;
+	/**
+	 * Unsubscribe/preferences footer (issue #206). Only notification emails pass
+	 * these; auth emails (verify/magic-link/reset) omit them and get no footer.
+	 */
+	readonly footerText?: string;
+	readonly unsubscribeUrl?: string;
+	readonly unsubscribeLabel?: string;
 }
 
 /**
@@ -128,6 +149,11 @@ export function renderActionEmail(params: ActionEmailParams): string {
 	const safeButtonLabel = escapeHtml(buttonLabel);
 	const safeUrl = escapeHtml(url);
 
+	const footerHtml =
+		params.footerText !== undefined && params.unsubscribeUrl !== undefined
+			? `<p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#999;border-top:1px solid #eee;padding-top:16px;">${escapeHtml(params.footerText)} <a href="${escapeHtml(params.unsubscribeUrl)}" style="color:#999;text-decoration:underline;">${escapeHtml(params.unsubscribeLabel ?? params.unsubscribeUrl)}</a></p>`
+			: '';
+
 	return `<!doctype html>
 <html>
   <body style="margin:0;padding:24px;background:#f6f6f6;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;">
@@ -139,6 +165,7 @@ export function renderActionEmail(params: ActionEmailParams): string {
             <p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:#444;">${safeBody}</p>
             <a href="${safeUrl}" style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:15px;">${safeButtonLabel}</a>
 	            <p style="margin:24px 0 0;font-size:13px;color:#888;">${escapeHtml(copyLinkText)}<br><span style="word-break:break-all;">${safeUrl}</span></p>
+            ${footerHtml}
           </td></tr>
         </table>
       </td></tr>
@@ -149,6 +176,10 @@ export function renderActionEmail(params: ActionEmailParams): string {
 
 export function renderActionEmailText(params: ActionEmailParams): string {
 	const copyLinkText = params.copyLinkText ?? 'Or copy this link into your browser:';
+	const footerText =
+		params.footerText !== undefined && params.unsubscribeUrl !== undefined
+			? `\n\n${params.footerText} ${params.unsubscribeUrl}`
+			: '';
 	return `${params.heading}
 
 ${params.body}
@@ -156,7 +187,7 @@ ${params.body}
 ${params.buttonLabel}: ${params.url}
 
 ${copyLinkText}
-${params.url}`;
+${params.url}${footerText}`;
 }
 
 export function renderActionEmailParts(params: ActionEmailParams): {
