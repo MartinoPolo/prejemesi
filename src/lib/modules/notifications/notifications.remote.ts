@@ -3,6 +3,7 @@ import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import * as m from '$lib/paraglide/messages.js';
 import { getDb } from '$lib/server/db/index.js';
 import { notification } from '$lib/server/db/notification.schema.js';
+import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { user as userTable } from '$lib/server/db/auth.schema.js';
 import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
 import {
@@ -19,9 +20,22 @@ import {
 export const getNotifications = guardedQuery(async ({ user }) => {
 	const database = getDb();
 
+	// Left join so a notification whose wishlist was since deleted still returns (with a null
+	// shortId) instead of vanishing from the inbox — the in-app link route needs the shortId
+	// (not the wishlist UUID stored on the notification) to resolve `/w/[id]` (issue #204).
 	const rows = await database
-		.select()
+		.select({
+			id: notification.id,
+			type: notification.type,
+			wishlistId: notification.wishlistId,
+			wishlistShortId: wishlist.shortId,
+			giftId: notification.giftId,
+			actorName: notification.actorName,
+			read: notification.read,
+			createdAt: notification.createdAt,
+		})
 		.from(notification)
+		.leftJoin(wishlist, eq(notification.wishlistId, wishlist.id))
 		.where(eq(notification.userId, user.id))
 		.orderBy(desc(notification.createdAt))
 		.limit(50);
@@ -36,6 +50,7 @@ export const getNotifications = guardedQuery(async ({ user }) => {
 				NOTIFICATION_MESSAGES[row.type as NotificationType] ?? m.notification_type_unknown
 			)(),
 			wishlistId: row.wishlistId,
+			wishlistShortId: row.wishlistShortId ?? null,
 			giftId: row.giftId,
 			actorName: row.actorName,
 			read: row.read,

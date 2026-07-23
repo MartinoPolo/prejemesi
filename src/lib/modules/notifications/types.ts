@@ -88,6 +88,10 @@ export interface Notification {
 	type: NotificationType;
 	message: string;
 	wishlistId: string | null;
+	/** Wishlist's route-facing shortId, resolved via a join at the read path (issue #204) — the
+	 *  in-app link must navigate by shortId, never the `wishlistId` UUID. Null when the
+	 *  wishlist no longer exists. */
+	wishlistShortId: string | null;
 	giftId: string | null;
 	actorName: string | null;
 	read: boolean;

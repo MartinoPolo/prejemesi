@@ -17,6 +17,7 @@
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
+	import { WISHLIST_GIFT_QUERY_PARAM } from '$lib/modules/wishlists/wishlist_query_params.js';
 	import { cn } from '$lib/utils.js';
 
 	interface NotificationItemProps {
@@ -48,11 +49,17 @@
 			onMarkAsRead(notification.id);
 		}
 
-		if (notification.wishlistId != null && notification.wishlistId !== '') {
-			void goto(
-				localizeInternalHref(resolve('/(app)/w/[id]', { id: notification.wishlistId })),
-			);
+		// Navigate by the wishlist's shortId (the route param), never `wishlistId` (the DB UUID) —
+		// see issue #204. No shortId means the wishlist is gone (deleted); stay put.
+		if (notification.wishlistShortId == null || notification.wishlistShortId === '') {
+			return;
 		}
+		const path = resolve('/(app)/w/[id]', { id: notification.wishlistShortId });
+		const href =
+			notification.giftId != null && notification.giftId !== ''
+				? `${path}?${WISHLIST_GIFT_QUERY_PARAM}=${notification.giftId}`
+				: path;
+		void goto(localizeInternalHref(href));
 	}
 </script>
 

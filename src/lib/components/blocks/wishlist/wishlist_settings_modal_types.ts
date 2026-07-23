@@ -1,6 +1,3 @@
-/** Query param the legacy /w/<id>/settings redirect appends to open the settings modal on a tab. */
-export const WISHLIST_SETTINGS_QUERY_PARAM = 'settings';
-
 export const WISHLIST_SETTINGS_TABS = {
 	details: 'details',
 	appearance: 'appearance',
