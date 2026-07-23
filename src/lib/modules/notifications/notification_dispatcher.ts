@@ -9,7 +9,9 @@ import { runAfterResponse } from '$lib/server/background.js';
 import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
 import {
 	EMAIL_NOTIFICATION_TYPES,
+	getNotificationEmailBody,
 	getNotificationEmailCopy,
+	getNotificationEmailHeading,
 	normalizeNotificationPreferences,
 	type DispatchNotificationInput,
 	type NotificationType,
@@ -50,7 +52,7 @@ function getNotificationUrl(
 }
 
 function getEmailBody(input: {
-	message: string;
+	bodyMessage: string;
 	wishlistTitle: string | null;
 	actorName: string | null | undefined;
 	wishlistLabel: string;
@@ -64,10 +66,10 @@ function getEmailBody(input: {
 	].filter((line): line is string => line !== null);
 
 	if (details.length === 0) {
-		return input.message;
+		return input.bodyMessage;
 	}
 
-	return `${input.message}\n\n${details.join('\n')}`;
+	return `${input.bodyMessage}\n\n${details.join('\n')}`;
 }
 
 async function getWishlistContext(
@@ -100,12 +102,17 @@ async function sendNotificationEmail(params: {
 	wishlistShortId: string | null;
 	urlPathOverride: string | undefined;
 	actorName: string | null | undefined;
+	giftName: string | undefined;
 	notificationId?: string;
 }): Promise<boolean> {
 	const emailCopy = getNotificationEmailCopy(params.type, params.locale);
+	const heading = getNotificationEmailHeading(params.type, params.locale);
+	const bodyMessage = getNotificationEmailBody(params.type, params.locale, {
+		giftName: params.giftName,
+	});
 	const url = getNotificationUrl(params.wishlistShortId, params.urlPathOverride, params.locale);
 	const body = getEmailBody({
-		message: emailCopy.message,
+		bodyMessage,
 		wishlistTitle: params.wishlistTitle,
 		actorName: params.actorName,
 		wishlistLabel: emailCopy.wishlistLabel,
@@ -117,7 +124,7 @@ async function sendNotificationEmail(params: {
 			to: params.to,
 			subject: emailCopy.message,
 			...renderActionEmailParts({
-				heading: emailCopy.message,
+				heading,
 				body,
 				buttonLabel: emailCopy.buttonLabel,
 				copyLinkText: emailCopy.copyLinkText,
@@ -244,6 +251,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				wishlistShortId: wishlistContext.shortId,
 				urlPathOverride: input.urlPathOverride,
 				actorName: input.actorName,
+				giftName: input.giftName,
 				notificationId,
 			});
 
@@ -264,6 +272,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				wishlistShortId: wishlistContext.shortId,
 				urlPathOverride: input.urlPathOverride,
 				actorName: input.actorName,
+				giftName: input.giftName,
 			});
 		}
 	});

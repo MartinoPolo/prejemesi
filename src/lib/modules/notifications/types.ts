@@ -77,6 +77,83 @@ export function getNotificationEmailCopy(type: NotificationType, locale: Support
 	};
 }
 
+function assertNeverNotificationType(type: never): never {
+	throw new Error(`Unhandled notification type: ${type as string}`);
+}
+
+/**
+ * Short email card title (issue #205) – distinct from the subject line so the
+ * rendered email doesn't repeat the same sentence in the subject and the `<h1>`.
+ * In-app-only types never reach the email path (the dispatcher gates on
+ * `EMAIL_NOTIFICATION_TYPES` before calling this), so they fall back to the
+ * plain subject copy as an inert placeholder that keeps this switch exhaustive.
+ */
+export function getNotificationEmailHeading(
+	type: NotificationType,
+	locale?: SupportedLocale,
+): string {
+	switch (type) {
+		case NOTIFICATION_TYPE.LIKED_GIFT_RESERVED:
+			return m.notification_heading_liked_reserved({}, { locale });
+		case NOTIFICATION_TYPE.RESERVED_GIFT_EDITED:
+			return m.notification_heading_reserved_edited({}, { locale });
+		case NOTIFICATION_TYPE.WISHLIST_ARCHIVED:
+			return m.notification_heading_archived({}, { locale });
+		case NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED:
+			return m.notification_heading_owner_promoted({}, { locale });
+		case NOTIFICATION_TYPE.MODERATOR_INVITED:
+			return m.notification_heading_moderator_invited({}, { locale });
+		case NOTIFICATION_TYPE.CLAIM_INVITED:
+			return m.notification_heading_claim_invited({}, { locale });
+		case NOTIFICATION_TYPE.RESERVATION_CANCELLED:
+			return m.notification_heading_reservation_cancelled({}, { locale });
+		case NOTIFICATION_TYPE.NEW_GIFT_ADDED:
+		case NOTIFICATION_TYPE.GIFT_RESERVED:
+		case NOTIFICATION_TYPE.RECIPIENT_CLAIMED:
+			return NOTIFICATION_MESSAGES[type](locale);
+		default:
+			return assertNeverNotificationType(type);
+	}
+}
+
+/**
+ * Email body's leading detail sentence (issue #205) – distinct from both the subject and
+ * the heading. Gift-bearing types name the gift; a generic filler is used only as a
+ * defensive fallback (every current email-eligible gift dispatch passes `giftName`).
+ * The wishlist name is appended separately by `getEmailBody` below.
+ */
+export function getNotificationEmailBody(
+	type: NotificationType,
+	locale: SupportedLocale | undefined,
+	params: { giftName?: string },
+): string {
+	const genericGiftName = locale === 'en' ? 'the selected gift' : 'vybraný dárek';
+	const giftName = params.giftName ?? genericGiftName;
+
+	switch (type) {
+		case NOTIFICATION_TYPE.LIKED_GIFT_RESERVED:
+			return m.notification_body_liked_reserved({ giftName }, { locale });
+		case NOTIFICATION_TYPE.RESERVED_GIFT_EDITED:
+			return m.notification_body_reserved_edited({ giftName }, { locale });
+		case NOTIFICATION_TYPE.WISHLIST_ARCHIVED:
+			return m.notification_body_archived({}, { locale });
+		case NOTIFICATION_TYPE.RECIPIENT_SELF_PROMOTED:
+			return m.notification_body_owner_promoted({}, { locale });
+		case NOTIFICATION_TYPE.MODERATOR_INVITED:
+			return m.notification_body_moderator_invited({}, { locale });
+		case NOTIFICATION_TYPE.CLAIM_INVITED:
+			return m.notification_body_claim_invited({}, { locale });
+		case NOTIFICATION_TYPE.RESERVATION_CANCELLED:
+			return m.notification_body_reservation_cancelled({}, { locale });
+		case NOTIFICATION_TYPE.NEW_GIFT_ADDED:
+		case NOTIFICATION_TYPE.GIFT_RESERVED:
+		case NOTIFICATION_TYPE.RECIPIENT_CLAIMED:
+			return NOTIFICATION_MESSAGES[type](locale);
+		default:
+			return assertNeverNotificationType(type);
+	}
+}
+
 // ── DB Row Type ─────────────────────────────────────────────────────────────
 
 export type NotificationRow = typeof notification.$inferSelect;
@@ -158,6 +235,9 @@ export interface DispatchNotificationInput {
 	targetEmails?: readonly string[];
 	wishlistId?: string;
 	giftId?: string;
+	/** Gift name for the email body's detail sentence (issue #205) – gift-bearing dispatches
+	 *  pass this so the body can name the gift instead of repeating the subject. */
+	giftName?: string;
 	actorId?: string;
 	actorName?: string;
 	/** Overrides the email CTA link path (resolved against origin). Defaults to the wishlist URL. Use for links that aren't the plain wishlist page (e.g. an invite-acceptance URL). */
