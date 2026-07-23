@@ -113,7 +113,7 @@
 		align="end"
 	/>
 
-	<div class="ml-auto flex items-center gap-2">
+	<div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
 		{#if canManage && !isArchived}
 			<SimpleTooltip text={m.wishlist_palette_dialog_title()}>
 				<Button
