@@ -72,15 +72,21 @@ async function buildUnsubscribeFooter(
 	const { token } = await createNotificationPreferencesToken(userId, signingKey);
 	const tokenQuery = new URLSearchParams({ token }).toString();
 	const unsubscribeUrl = `${getOrigin()}/unsubscribe?${tokenQuery}`;
-	const oneClickUrl = `${getOrigin()}/unsubscribe/one-click?${tokenQuery}`;
 
+	// Only the human `List-Unsubscribe` (GET) header is advertised. RFC 8058
+	// one-click (`List-Unsubscribe-Post` + POST to /unsubscribe/one-click) is
+	// intentionally NOT emitted: SvelteKit's CSRF origin check runs before any
+	// server hook and rejects the mail-provider POST (no Origin header, form
+	// content-type) with 403 in production, so advertising it would only surface
+	// failed one-click attempts to mailbox providers. True one-click needs a
+	// pre-`server.respond()` interceptor (postbuild worker wrapper or a separate
+	// Cloudflare Worker route) - tracked as a follow-up to issue #206.
 	return {
 		footerText: m.notification_email_footer_text({}, { locale }),
 		unsubscribeLabel: m.notification_email_unsubscribe_label({}, { locale }),
 		unsubscribeUrl,
 		headers: {
-			'List-Unsubscribe': `<${oneClickUrl}>, <${unsubscribeUrl}>`,
-			'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+			'List-Unsubscribe': `<${unsubscribeUrl}>`,
 		},
 	};
 }
