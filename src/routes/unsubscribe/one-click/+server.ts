@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
-import { error, text } from '@sveltejs/kit';
+import { text } from '@sveltejs/kit';
+import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
 import { verifyNotificationPreferencesToken } from '$lib/server/crypto/notification_preferences_token.js';
 import { unsubscribeAllEmailForUser } from '$lib/modules/notifications/notification_preferences_public.js';
 
@@ -11,32 +11,29 @@ import { unsubscribeAllEmailForUser } from '$lib/modules/notifications/notificat
  * every notification email. No confirmation step by design (that's the point
  * of one-click); disables email for every email-capable notification type and
  * leaves in-app preferences untouched.
+ *
+ * Always responds 200 `OK` (RFC 8058): mail providers poll this endpoint
+ * unattended, and a non-2xx status hurts sender reputation. Failure paths are
+ * logged server-side and treated as a no-op instead of erroring.
  */
-
-function getAuthSigningKey(): string {
-	const key = env.AUTH_SECRET;
-	if (key == null || key === '') {
-		throw new Error(
-			'AUTH_SECRET environment variable is required for notification preferences token verification',
-		);
-	}
-	return key;
-}
 
 export const POST: RequestHandler = async ({ url }) => {
 	const token = url.searchParams.get('token');
 	if (token === null || token === '') {
-		error(400, 'Missing token');
+		console.warn('[Unsubscribe] one-click no-op: missing token');
+		return text('OK');
 	}
 
 	const verified = await verifyNotificationPreferencesToken(token, getAuthSigningKey());
 	if (verified === null) {
-		error(403, 'Invalid or expired token');
+		console.warn('[Unsubscribe] one-click no-op: invalid or expired token');
+		return text('OK');
 	}
 
 	const updated = await unsubscribeAllEmailForUser(verified.userId);
 	if (updated === null) {
-		error(404, 'User not found');
+		console.warn('[Unsubscribe] one-click no-op: user not found');
+		return text('OK');
 	}
 
 	return text('OK');

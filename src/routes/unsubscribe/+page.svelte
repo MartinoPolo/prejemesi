@@ -16,6 +16,7 @@
 
 	let saving = $state(false);
 	let saveMessage = $state<string | null>(null);
+	let saveMessageIsError = $state(false);
 
 	// svelte-ignore state_referenced_locally (one-time seed: mirrors form's own initial-preferences pattern)
 	let latestPreferences = $state<NotificationPreferences | null>(data.preferences);
@@ -44,6 +45,7 @@
 
 		saving = true;
 		saveMessage = null;
+		saveMessageIsError = false;
 		try {
 			const body = new FormData();
 			body.set('token', data.token);
@@ -55,6 +57,9 @@
 			if (result.type === 'success') {
 				latestPreferences = preferences;
 				saveMessage = m.unsubscribe_save_success();
+			} else {
+				saveMessageIsError = true;
+				saveMessage = m.error_generic();
 			}
 		} finally {
 			saving = false;
@@ -89,7 +94,13 @@
 				{saving ? m.saving() : m.notification_prefs_save()}
 			</Button>
 			{#if saveMessage !== null}
-				<p class="text-sm text-status-success">{saveMessage}</p>
+				<p
+					class={saveMessageIsError
+						? 'text-sm text-status-danger'
+						: 'text-sm text-status-success'}
+				>
+					{saveMessage}
+				</p>
 			{/if}
 		</div>
 
@@ -103,6 +114,8 @@
 			</form>
 			{#if isUnsubscribeAllSuccess(form)}
 				<p class="text-sm text-status-success">{m.unsubscribe_all_success()}</p>
+			{:else if form?.action === 'unsubscribeAll'}
+				<p class="text-sm text-status-danger">{m.unsubscribe_all_error()}</p>
 			{/if}
 		</div>
 	{/if}

@@ -7,6 +7,7 @@ import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
 import { runAfterResponse } from '$lib/server/background.js';
+import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
 import { createNotificationPreferencesToken } from '$lib/server/crypto/notification_preferences_token.js';
 import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
 import {
@@ -36,16 +37,6 @@ function emailTypeSupported(type: NotificationType): boolean {
 
 function getOrigin(): string {
 	return (env.ORIGIN ?? 'http://localhost:5173').replace(/\/$/, '');
-}
-
-function getAuthSigningKey(): string {
-	const key = env.AUTH_SECRET;
-	if (key == null || key === '') {
-		throw new Error(
-			'AUTH_SECRET environment variable is required for notification preferences token signing',
-		);
-	}
-	return key;
 }
 
 interface UnsubscribeFooter {
@@ -181,12 +172,12 @@ async function sendNotificationEmail(params: {
 		fromLabel: emailCopy.fromLabel,
 	});
 
-	const unsubscribe =
-		params.userId !== undefined
-			? await buildUnsubscribeFooter(params.userId, params.locale)
-			: undefined;
-
 	try {
+		const unsubscribe =
+			params.userId !== undefined
+				? await buildUnsubscribeFooter(params.userId, params.locale)
+				: undefined;
+
 		await sendEmail({
 			to: params.to,
 			subject: emailCopy.message,

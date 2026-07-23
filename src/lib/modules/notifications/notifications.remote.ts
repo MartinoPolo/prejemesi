@@ -6,6 +6,7 @@ import { notification } from '$lib/server/db/notification.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { user as userTable } from '$lib/server/db/auth.schema.js';
 import { guardedQuery, guardedCommand, guardedCommandNoArgs } from '$lib/server/remote.js';
+import { setNotificationPreferencesForUser } from './notification_preferences_public.js';
 import {
 	NOTIFICATION_MESSAGES,
 	UpdateNotificationPreferencesInputSchema,
@@ -113,11 +114,6 @@ export const markAllAsRead = guardedCommandNoArgs(async ({ user }) => {
 export const updateNotificationPreferences = guardedCommand(
 	UpdateNotificationPreferencesInputSchema,
 	async ({ user: authUser }, input) => {
-		const database = getDb();
-
-		await database
-			.update(userTable)
-			.set({ notificationPreferences: input.preferences, updatedAt: new Date() })
-			.where(eq(userTable.id, authUser.id));
+		await setNotificationPreferencesForUser(authUser.id, input.preferences);
 	},
 );

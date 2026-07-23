@@ -127,7 +127,7 @@ export function getNotificationEmailBody(
 	locale: SupportedLocale | undefined,
 	params: { giftName?: string },
 ): string {
-	const genericGiftName = locale === 'en' ? 'the selected gift' : 'vybraný dárek';
+	const genericGiftName = m.notification_body_generic_gift_name({}, { locale });
 	const giftName = params.giftName ?? genericGiftName;
 
 	switch (type) {

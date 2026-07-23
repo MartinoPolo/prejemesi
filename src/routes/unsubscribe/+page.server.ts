@@ -1,7 +1,7 @@
 import type { Actions, PageServerLoad } from './$types';
-import { env } from '$env/dynamic/private';
 import { fail } from '@sveltejs/kit';
 import * as v from 'valibot';
+import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
 import { verifyNotificationPreferencesToken } from '$lib/server/crypto/notification_preferences_token.js';
 import {
 	getNotificationPreferencesForUser,
@@ -19,16 +19,6 @@ import {
  * outside the `(app)` route group so it is not subject to that layout's
  * login-redirect guard.
  */
-
-function getAuthSigningKey(): string {
-	const key = env.AUTH_SECRET;
-	if (key == null || key === '') {
-		throw new Error(
-			'AUTH_SECRET environment variable is required for notification preferences token verification',
-		);
-	}
-	return key;
-}
 
 interface InvalidTokenResult {
 	valid: false;
