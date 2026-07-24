@@ -14,6 +14,7 @@ export default [
 	{
 		ignores: [
 			'.svelte-kit',
+			'.wrangler',
 			'.storybook',
 			'storybook-static',
 			'.design-probe',

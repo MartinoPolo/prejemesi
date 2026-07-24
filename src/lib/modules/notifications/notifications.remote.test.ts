@@ -53,6 +53,13 @@ vi.mock('$lib/server/db/notification.schema.js', () => ({
 	},
 }));
 
+vi.mock('$lib/server/db/wishlist.schema.js', () => ({
+	wishlist: {
+		id: 'w.id',
+		shortId: 'w.shortId',
+	},
+}));
+
 vi.mock('$lib/server/db/auth.schema.js', () => ({
 	user: {
 		id: 'user.id',
@@ -127,6 +134,7 @@ describe('getNotifications', () => {
 						id: 'notif-1',
 						type: 'gift_reserved',
 						wishlistId: 'wl-1',
+						wishlistShortId: 'short-1',
 						giftId: 'gift-1',
 						actorName: 'Alice',
 						read: false,
@@ -146,8 +154,47 @@ describe('getNotifications', () => {
 				type: 'gift_reserved',
 				message: 'Dárek byl rezervován',
 				wishlistId: 'wl-1',
+				wishlistShortId: 'short-1',
 				giftId: 'gift-1',
 				actorName: 'Alice',
+				read: false,
+				createdAt: now,
+			},
+		]);
+	});
+
+	it('returns null wishlistShortId when the wishlist no longer exists (left join)', async () => {
+		const now = new Date('2024-06-01T10:00:00Z');
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[
+					{
+						id: 'notif-2',
+						type: 'wishlist_archived',
+						wishlistId: 'wl-deleted',
+						wishlistShortId: null,
+						giftId: null,
+						actorName: null,
+						read: false,
+						createdAt: now,
+					},
+				],
+			]),
+		);
+
+		const result = await (getNotifications as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		);
+
+		expect(result).toEqual([
+			{
+				id: 'notif-2',
+				type: 'wishlist_archived',
+				message: 'Seznam byl archivován',
+				wishlistId: 'wl-deleted',
+				wishlistShortId: null,
+				giftId: null,
+				actorName: null,
 				read: false,
 				createdAt: now,
 			},

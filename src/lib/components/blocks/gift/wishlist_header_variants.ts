@@ -8,7 +8,7 @@ import { tv } from 'tailwind-variants';
  */
 export const wishlistHeaderVariants = tv({
 	slots: {
-		root: 'flex flex-col gap-3',
+		root: 'flex flex-col gap-6',
 		headerText: 'min-w-0 flex-1',
 		/** „Pro: {recipient}" line above the title (name bold, prefix lighter) — all lists. */
 		recipientLine: 'reveal text-[17px] text-muted-foreground',

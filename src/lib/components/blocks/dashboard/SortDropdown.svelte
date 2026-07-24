@@ -20,10 +20,12 @@
 </script>
 
 <Select.Root bind:value type="single">
-	<Select.Trigger size="md" class={cn('gap-1.5', className)}>
-		<ArrowUpDownIcon class="size-3.5 text-muted-foreground" />
-		<span class="text-muted-foreground">{m.dashboard_sort_label()}</span>
-		<span>{SORT_LABELS[value]()}</span>
+	<Select.Trigger size="md" class={cn('min-w-0 max-w-full gap-1.5', className)}>
+		<ArrowUpDownIcon class="size-3.5 shrink-0 text-muted-foreground" />
+		<span class="min-w-0 truncate">
+			<span class="text-muted-foreground">{m.dashboard_sort_label()}</span>
+			{SORT_LABELS[value]()}
+		</span>
 	</Select.Trigger>
 	<Select.Content>
 		<Select.Group>

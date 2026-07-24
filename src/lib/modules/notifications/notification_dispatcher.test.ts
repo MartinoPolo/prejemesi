@@ -293,7 +293,7 @@ describe('dispatchNotification email locale', () => {
 		);
 		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
 			expect.objectContaining({
-				heading: 'List was archived',
+				heading: 'List archived',
 				body: expect.stringContaining("Wishlist: Rosie's birthday"),
 				buttonLabel: 'Open wishlist',
 				copyLinkText: 'Or copy this link into your browser:',
@@ -331,7 +331,7 @@ describe('dispatchNotification email locale', () => {
 		expect(mockRenderActionEmailParts).toHaveBeenNthCalledWith(
 			1,
 			expect.objectContaining({
-				heading: 'Seznam byl archivován',
+				heading: 'Archivace seznamu',
 				body: expect.stringContaining("Seznam přání: Rosie's birthday"),
 				buttonLabel: 'Otevřít seznam',
 				copyLinkText: 'Nebo zkopírujte tento odkaz do prohlížeče:',
@@ -341,7 +341,7 @@ describe('dispatchNotification email locale', () => {
 		expect(mockRenderActionEmailParts).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
-				heading: 'Seznam byl archivován',
+				heading: 'Archivace seznamu',
 				url: 'http://localhost:5173/w/rosie-birthday',
 			}),
 		);

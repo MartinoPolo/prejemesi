@@ -1,8 +1,8 @@
 import * as v from 'valibot';
 import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
 import { guardedCommand } from '$lib/server/remote.js';
 import { generateId } from '$lib/server/db/id.js';
+import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
 import { createUploadToken, TOKEN_PURPOSES } from '$lib/server/crypto/upload_token.js';
 import { presignUploadUrl, PRESIGNED_UPLOAD_EXPIRY_SECONDS } from '$lib/server/storage/presign.js';
 import {
@@ -35,14 +35,6 @@ const AuthorizeUploadInputSchema = v.object({
 	contentType: v.string(),
 	fileSize: v.number(),
 });
-
-function getAuthSigningKey(): string {
-	const key = env.AUTH_SECRET;
-	if (key == null || key === '') {
-		throw new Error('AUTH_SECRET environment variable is required for upload token signing');
-	}
-	return key;
-}
 
 export const authorizeUpload = guardedCommand(
 	AuthorizeUploadInputSchema,

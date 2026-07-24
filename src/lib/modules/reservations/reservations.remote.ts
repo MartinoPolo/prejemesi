@@ -137,9 +137,9 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 	// Lock the gift row (SELECT ... FOR UPDATE) so concurrent reservations for the
 	// same gift serialize: each request recounts active reservations under the lock
 	// before inserting.
-	const created = await database.transaction(async (tx) => {
+	const { created, giftName } = await database.transaction(async (tx) => {
 		const [lockedGift] = await tx
-			.select({ quantity: gift.quantity })
+			.select({ quantity: gift.quantity, name: gift.name })
 			.from(gift)
 			.where(and(eq(gift.id, input.giftId), isNull(gift.deletedAt)))
 			.for('update')
@@ -174,7 +174,7 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 			})
 			.returning();
 
-		return row;
+		return { created: row, giftName: lockedGift.name };
 	});
 
 	if (created === undefined) {
@@ -209,6 +209,7 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		targetUserIds: likedUserIds,
 		wishlistId: wishlistRow.id,
 		giftId: input.giftId,
+		giftName,
 		actorId: actorUserId ?? undefined,
 		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 	});
@@ -217,6 +218,7 @@ export const reserveGift = publicCommand(ReserveGiftInputSchema, async (authCont
 		targetUserIds: followerUserIds,
 		wishlistId: wishlistRow.id,
 		giftId: input.giftId,
+		giftName,
 		actorId: actorUserId ?? undefined,
 		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
 	});
