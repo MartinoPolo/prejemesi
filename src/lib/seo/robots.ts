@@ -1,6 +1,14 @@
 export const ROBOTS_NOINDEX_CONTENT = 'noindex, nofollow, noarchive';
 
-const AUTH_PAGE_PATHS = new Set(['/login', '/register', '/magic-link', '/reset-password']);
+// '/unsubscribe' is public-but-token-scoped (issue #206) - not an auth page, but
+// equally uninteresting to search engines.
+const AUTH_PAGE_PATHS = new Set([
+	'/login',
+	'/register',
+	'/magic-link',
+	'/reset-password',
+	'/unsubscribe',
+]);
 const PRIVATE_PAGE_PATHS = new Set(['/my-lists', '/moderated', '/followed', '/settings']);
 
 function localizedPathname(pathname: string): string {

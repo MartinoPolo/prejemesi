@@ -1,15 +1,20 @@
 import { env } from '$env/dynamic/private';
 import { inArray, eq } from 'drizzle-orm';
+import * as m from '$lib/paraglide/messages.js';
 import { getDb } from '$lib/server/db/index.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { notification } from '$lib/server/db/notification.schema.js';
 import { renderActionEmailParts, sendEmail } from '$lib/server/email.js';
 import { runAfterResponse } from '$lib/server/background.js';
+import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
+import { createNotificationPreferencesToken } from '$lib/server/crypto/notification_preferences_token.js';
 import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
 import {
 	EMAIL_NOTIFICATION_TYPES,
+	getNotificationEmailBody,
 	getNotificationEmailCopy,
+	getNotificationEmailHeading,
 	normalizeNotificationPreferences,
 	type DispatchNotificationInput,
 	type NotificationType,
@@ -34,6 +39,58 @@ function getOrigin(): string {
 	return (env.ORIGIN ?? 'http://localhost:5173').replace(/\/$/, '');
 }
 
+interface UnsubscribeFooter {
+	footerText: string;
+	unsubscribeLabel: string;
+	unsubscribeUrl: string;
+	headers: Record<string, string>;
+}
+
+/**
+ * Builds the unsubscribe footer + `List-Unsubscribe` headers for an account
+ * recipient (issue #206, REQ-1/REQ-2). Not localized to a `/en` URL prefix:
+ * the page resolves its own copy locale from the token's user at load time
+ * (see `/unsubscribe/+page.server.ts`), so a bare path works for every locale
+ * and survives being pasted into any mail client.
+ *
+ * Returns `undefined` (never throws) on a missing/misconfigured signing key so
+ * a footer-building failure degrades to a plain email instead of losing the
+ * notification entirely.
+ */
+async function buildUnsubscribeFooter(
+	userId: string,
+	locale: SupportedLocale,
+): Promise<UnsubscribeFooter | undefined> {
+	let signingKey: string;
+	try {
+		signingKey = getAuthSigningKey();
+	} catch (err) {
+		console.error('[Notification] unsubscribe footer skipped', err);
+		return undefined;
+	}
+
+	const { token } = await createNotificationPreferencesToken(userId, signingKey);
+	const tokenQuery = new URLSearchParams({ token }).toString();
+	const unsubscribeUrl = `${getOrigin()}/unsubscribe?${tokenQuery}`;
+
+	// Only the human `List-Unsubscribe` (GET) header is advertised. RFC 8058
+	// one-click (`List-Unsubscribe-Post` + POST to /unsubscribe/one-click) is
+	// intentionally NOT emitted: SvelteKit's CSRF origin check runs before any
+	// server hook and rejects the mail-provider POST (no Origin header, form
+	// content-type) with 403 in production, so advertising it would only surface
+	// failed one-click attempts to mailbox providers. True one-click needs a
+	// pre-`server.respond()` interceptor (postbuild worker wrapper or a separate
+	// Cloudflare Worker route) - tracked as a follow-up to issue #206.
+	return {
+		footerText: m.notification_email_footer_text({}, { locale }),
+		unsubscribeLabel: m.notification_email_unsubscribe_label({}, { locale }),
+		unsubscribeUrl,
+		headers: {
+			'List-Unsubscribe': `<${unsubscribeUrl}>`,
+		},
+	};
+}
+
 function getNotificationUrl(
 	wishlistShortId: string | null,
 	urlPathOverride: string | undefined,
@@ -50,7 +107,7 @@ function getNotificationUrl(
 }
 
 function getEmailBody(input: {
-	message: string;
+	bodyMessage: string;
 	wishlistTitle: string | null;
 	actorName: string | null | undefined;
 	wishlistLabel: string;
@@ -64,10 +121,10 @@ function getEmailBody(input: {
 	].filter((line): line is string => line !== null);
 
 	if (details.length === 0) {
-		return input.message;
+		return input.bodyMessage;
 	}
 
-	return `${input.message}\n\n${details.join('\n')}`;
+	return `${input.bodyMessage}\n\n${details.join('\n')}`;
 }
 
 async function getWishlistContext(
@@ -100,12 +157,21 @@ async function sendNotificationEmail(params: {
 	wishlistShortId: string | null;
 	urlPathOverride: string | undefined;
 	actorName: string | null | undefined;
+	giftName: string | undefined;
 	notificationId?: string;
+	/** Present only for registered-account recipients (issue #206) - external,
+	 *  non-account emails have no user row to scope an unsubscribe token to, so
+	 *  they get no footer/List-Unsubscribe headers. */
+	userId?: string;
 }): Promise<boolean> {
 	const emailCopy = getNotificationEmailCopy(params.type, params.locale);
+	const heading = getNotificationEmailHeading(params.type, params.locale);
+	const bodyMessage = getNotificationEmailBody(params.type, params.locale, {
+		giftName: params.giftName,
+	});
 	const url = getNotificationUrl(params.wishlistShortId, params.urlPathOverride, params.locale);
 	const body = getEmailBody({
-		message: emailCopy.message,
+		bodyMessage,
 		wishlistTitle: params.wishlistTitle,
 		actorName: params.actorName,
 		wishlistLabel: emailCopy.wishlistLabel,
@@ -113,20 +179,29 @@ async function sendNotificationEmail(params: {
 	});
 
 	try {
+		const unsubscribe =
+			params.userId !== undefined
+				? await buildUnsubscribeFooter(params.userId, params.locale)
+				: undefined;
+
 		await sendEmail({
 			to: params.to,
 			subject: emailCopy.message,
 			...renderActionEmailParts({
-				heading: emailCopy.message,
+				heading,
 				body,
 				buttonLabel: emailCopy.buttonLabel,
 				copyLinkText: emailCopy.copyLinkText,
 				url,
+				footerText: unsubscribe?.footerText,
+				unsubscribeUrl: unsubscribe?.unsubscribeUrl,
+				unsubscribeLabel: unsubscribe?.unsubscribeLabel,
 			}),
 			idempotencyKey:
 				params.notificationId !== undefined
 					? `notification:${params.notificationId}`
 					: `notification:${params.type}:${params.to}:${url}`,
+			headers: unsubscribe?.headers,
 		});
 		return true;
 	} catch {
@@ -244,7 +319,9 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				wishlistShortId: wishlistContext.shortId,
 				urlPathOverride: input.urlPathOverride,
 				actorName: input.actorName,
+				giftName: input.giftName,
 				notificationId,
+				userId: targetUser.id,
 			});
 
 			if (sent && notificationId !== undefined) {
@@ -264,6 +341,7 @@ export async function dispatchNotification(input: DispatchNotificationInput): Pr
 				wishlistShortId: wishlistContext.shortId,
 				urlPathOverride: input.urlPathOverride,
 				actorName: input.actorName,
+				giftName: input.giftName,
 			});
 		}
 	});

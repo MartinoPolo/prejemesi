@@ -29,4 +29,70 @@ describe('action email rendering', () => {
 
 		expect(text).toContain('Sign in: https://prejemesi.cz/magic');
 	});
+
+	// issue #206: the unsubscribe footer is opt-in per call so auth emails
+	// (verify/magic-link/reset) never render it, while notification emails do.
+	describe('unsubscribe footer (issue #206)', () => {
+		const baseParams = {
+			heading: 'Gift reserved',
+			body: 'Someone reserved a gift.',
+			buttonLabel: 'Open wishlist',
+			url: 'https://prejemesi.cz/w/test',
+		};
+
+		it('omits the footer from the HTML when no footer params are given (auth emails)', () => {
+			expect.assertions(1);
+
+			const html = renderActionEmail(baseParams);
+
+			expect(html).not.toContain('unsubscribe');
+		});
+
+		it('omits the footer from the plain text when no footer params are given (auth emails)', () => {
+			expect.assertions(1);
+
+			const text = renderActionEmailText(baseParams);
+
+			expect(text).not.toContain('unsubscribe');
+		});
+
+		it('renders the footer text and unsubscribe link in the HTML when provided', () => {
+			expect.assertions(2);
+
+			const html = renderActionEmail({
+				...baseParams,
+				footerText: 'Do not want these emails?',
+				unsubscribeUrl: 'https://prejemesi.cz/unsubscribe?token=abc',
+				unsubscribeLabel: 'Manage notifications',
+			});
+
+			expect(html).toContain('Do not want these emails?');
+			expect(html).toContain('https://prejemesi.cz/unsubscribe?token=abc');
+		});
+
+		it('escapes the footer text and unsubscribe URL in the HTML', () => {
+			expect.assertions(1);
+
+			const html = renderActionEmail({
+				...baseParams,
+				footerText: '<script>alert(1)</script>',
+				unsubscribeUrl: 'https://prejemesi.cz/unsubscribe?token=abc',
+			});
+
+			expect(html).not.toContain('<script>alert(1)</script>');
+		});
+
+		it('appends the footer text and unsubscribe URL to the plain-text version when provided', () => {
+			expect.assertions(2);
+
+			const text = renderActionEmailText({
+				...baseParams,
+				footerText: 'Do not want these emails?',
+				unsubscribeUrl: 'https://prejemesi.cz/unsubscribe?token=abc',
+			});
+
+			expect(text).toContain('Do not want these emails?');
+			expect(text).toContain('https://prejemesi.cz/unsubscribe?token=abc');
+		});
+	});
 });

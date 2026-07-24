@@ -14,11 +14,14 @@
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
 	import {
-		WISHLIST_SETTINGS_QUERY_PARAM,
 		WISHLIST_SETTINGS_TABS,
 		isWishlistSettingsTab,
 		type WishlistSettingsTab,
 	} from '$lib/components/blocks/wishlist/wishlist_settings_modal_types.js';
+	import {
+		WISHLIST_SETTINGS_QUERY_PARAM,
+		WISHLIST_GIFT_QUERY_PARAM,
+	} from '$lib/modules/wishlists/wishlist_query_params.js';
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
@@ -687,6 +690,26 @@
 		settingsModalOpen = true;
 		const cleanedUrl = new URL(page.url);
 		cleanedUrl.searchParams.delete(WISHLIST_SETTINGS_QUERY_PARAM);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
+		replaceState(cleanedUrl, {});
+	});
+
+	// Gift deep-link from an in-app notification (issue #204): /w/<shortId>?gift=<id> opens
+	// that gift's detail modal. Gifts load client-side only (see giftsQuery above), so this is
+	// an $effect (not afterNavigate) — it must re-run once that query settles, not just on
+	// navigation. A gift missing from the loaded list (deleted/archived, REQ-3) is not an
+	// error: the marker is cleared and the visitor simply stays on the wishlist.
+	$effect(() => {
+		const requestedGiftId = page.url.searchParams.get(WISHLIST_GIFT_QUERY_PARAM);
+		if (requestedGiftId === null || isGiftDataLoading) {
+			return;
+		}
+		const matchedGift = gifts.find((gift) => gift.id === requestedGiftId);
+		if (matchedGift !== undefined) {
+			void openEditModal(matchedGift);
+		}
+		const cleanedUrl = new URL(page.url);
+		cleanedUrl.searchParams.delete(WISHLIST_GIFT_QUERY_PARAM);
 		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
 		replaceState(cleanedUrl, {});
 	});

@@ -4,10 +4,8 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
-	import {
-		WISHLIST_SETTINGS_QUERY_PARAM,
-		WISHLIST_SETTINGS_TABS,
-	} from '$lib/components/blocks/wishlist/wishlist_settings_modal_types.js';
+	import { WISHLIST_SETTINGS_TABS } from '$lib/components/blocks/wishlist/wishlist_settings_modal_types.js';
+	import { WISHLIST_SETTINGS_QUERY_PARAM } from '$lib/modules/wishlists/wishlist_query_params.js';
 
 	// The standalone settings page became a modal on the wishlist page (UX rework).
 	// Old deep links redirect to /w/<id>?settings=<tab>; the legacy #image fragment maps
