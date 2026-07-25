@@ -90,7 +90,7 @@
      modal recipient row. On linked lists it spells out the flip consequences before the
      one-way conversion; on free-text lists it is a plain rename. -->
 <Dialog.Root bind:open>
-	<Dialog.Content class="sm:max-w-md">
+	<Dialog.Content size="md">
 		<Dialog.Header>
 			<Dialog.Title>
 				{isLinkedRecipient

@@ -343,7 +343,7 @@
      unsaved edits (typed details, uploaded-but-unsaved image) survive tab switches; closing
      the dialog unmounts everything, matching the old leave-the-page reset. -->
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+	<Dialog.Content size="2xl" class="max-h-[85vh] overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_settings_title()}</Dialog.Title>
 			<Dialog.Description>{wishlist.title}</Dialog.Description>
@@ -622,7 +622,7 @@
 
 <!-- Delete confirmation dialog (issue #120) -->
 <Dialog.Root bind:open={deleteConfirmOpen}>
-	<Dialog.Content class="max-w-md">
+	<Dialog.Content size="md">
 		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_delete_confirm_title({ title: wishlist.title })}</Dialog.Title
 			>
@@ -646,7 +646,7 @@
 <!-- Revert-to-draft confirmation dialog (issue #150): the reserved variant spells out that all
      reservations are cancelled and reservers notified; the clean variant is silent. -->
 <Dialog.Root bind:open={revertConfirmOpen}>
-	<Dialog.Content class="max-w-md">
+	<Dialog.Content size="md">
 		<Dialog.Header>
 			<Dialog.Title>{m.wishlist_revert_confirm_title()}</Dialog.Title>
 			<Dialog.Description>

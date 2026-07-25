@@ -2,8 +2,8 @@ import { tv } from 'tailwind-variants';
 
 export const reserveModalVariants = tv({
 	slots: {
-		// Repeats `sm:` to beat the base Dialog's `sm:max-w-lg` — tailwind-merge won't override across modifiers otherwise (#210).
-		content: 'max-w-md sm:max-w-md',
+		// max-w now comes from Dialog.Content's `size="md"` prop (#210) — no more sm: duplication workaround needed.
+		content: '',
 		// min-w-0: grid items don't shrink below content size by default (unlike flex); the nowrap gift name would else widen the dialog.
 		body: 'min-w-0 flex flex-col gap-4 px-6 pb-6 pt-2',
 		giftSummary: 'flex items-center gap-3 rounded-[12px] border-2 border-ink bg-surface p-3',

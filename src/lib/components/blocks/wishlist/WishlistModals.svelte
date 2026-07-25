@@ -187,7 +187,7 @@
      theme-preset/custom-color picker with the 10-palette swatch grid. -->
 {#if canManage}
 	<Dialog.Root bind:open={paletteDialogOpen}>
-		<Dialog.Content class="sm:max-w-md">
+		<Dialog.Content size="md">
 			<Dialog.Header>
 				<Dialog.Title>{m.wishlist_palette_dialog_title()}</Dialog.Title>
 				<Dialog.Description>{m.wishlist_palette_dialog_description()}</Dialog.Description>

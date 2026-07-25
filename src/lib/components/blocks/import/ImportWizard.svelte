@@ -98,8 +98,9 @@
 
 	// Dialog width based on step. The review step holds the table-like draft grid;
 	// append mode adds a ~280px existing-items side panel, so it needs extra room.
-	// NOTE: the sm: prefix is required – Dialog.Content's base class sets `sm:max-w-lg`,
-	// and only a same-breakpoint `sm:` override is deduped past it by tailwind-merge.
+	// NOTE: the sm: prefix is required – these widths are off the Dialog.Content `size`
+	// scale (sm/md/lg/xl/2xl), so they must stay at the same `sm:` modifier as the
+	// default `size="lg"` (`sm:max-w-lg`) for tailwind-merge to override it.
 	// Below sm the base `max-w-[calc(100%-2rem)]` keeps the dialog viewport-bound.
 	const dialogWidth = $derived.by(() => {
 		if (currentStep !== WIZARD_STEP.review) {

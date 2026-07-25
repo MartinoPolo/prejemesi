@@ -9,16 +9,19 @@
 	import type { ComponentProps } from 'svelte';
 	import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
 	import * as m from '$lib/paraglide/messages.js';
+	import { dialogContentVariants, type DialogContentSize } from './dialog_variants.js';
 
 	let {
 		ref = $bindable(null),
 		class: className,
+		size,
 		showCloseButton = true,
 		portalProps,
 		children,
 		...restProps
 	}: WithoutChildrenOrChild<DialogPrimitive.ContentProps> & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof DialogPortal>>;
+		size?: DialogContentSize;
 		showCloseButton?: boolean;
 		children: Snippet;
 	} = $props();
@@ -29,10 +32,7 @@
 	<DialogPrimitive.Content
 		bind:ref
 		data-slot="dialog-content"
-		class={cn(
-			'bg-card text-card-foreground data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-[50%] left-[50%] z-(--z-modal) grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-panel border-[2.5px] border-ink p-6 shadow-sticker duration-200 sm:max-w-lg',
-			className,
-		)}
+		class={cn(dialogContentVariants({ size }), className)}
 		{...restProps}
 	>
 		{@render children?.()}
