@@ -12,6 +12,20 @@
 
 	let { value, onchange }: GiftViewSwitcherProps = $props();
 
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (which it
+	// briefly sets to "" before the empty-value guard below runs). Passing `value`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone and the radiogroup renders with nothing checked. Binding to a
+	// local `selected` state -- kept in sync with the `value` prop -- makes the
+	// rendered state always resolvable from `value`, and resetting `selected`
+	// inside onValueChange undoes the deselect before Svelte flushes the DOM.
+	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
+	let selected = $state(value);
+	$effect(() => {
+		selected = value;
+	});
+
 	// #163 REQ-6: the switcher offers only card and list. The compact renderer is
 	// retained as a safe fallback for an already-selected compact view state, so its
 	// label mapping below stays exhaustive even though it is no longer togglable here.
@@ -34,9 +48,13 @@
 
 <ToggleGroup.Root
 	type="single"
-	{value}
+	bind:value={selected}
 	onValueChange={(newValue) => {
-		if (newValue !== '') onchange(newValue as GiftViewMode);
+		if (newValue === '') {
+			selected = value;
+			return;
+		}
+		onchange(newValue as GiftViewMode);
 	}}
 	intent="default"
 	size="icon"

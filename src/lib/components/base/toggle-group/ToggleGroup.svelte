@@ -10,6 +10,7 @@
 		size = 'md',
 		children,
 		ref = $bindable(null),
+		value = $bindable(),
 		...restProps
 	}: ToggleGroupProps = $props();
 
@@ -21,6 +22,7 @@
 
 <ToggleGroupPrimitive.Root
 	bind:ref
+	bind:value={value as never}
 	data-slot="toggle-group"
 	class={cn('flex items-center gap-0.5', className)}
 	{...restProps}
