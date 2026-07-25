@@ -39,7 +39,21 @@ export const giftCardVariants = tv({
 		priceEmpty: 'row-start-2 mt-2 text-sm text-muted-foreground italic',
 		priorityEyebrow: 'row-start-3 mt-2 flex items-center gap-1',
 		linkList: 'row-start-4 mt-2 flex flex-col',
-		footer: 'row-start-7 flex items-center justify-between gap-2 px-4 pt-1 pb-3.5',
+		// `min-w-0` (issue #211, same root cause as #210/cebc741): the footer is a
+		// CSS Grid item (row-start-7 of the card's row-subgrid), which unlike a flex
+		// item gets an automatic minimum size on BOTH axes. Without it, the
+		// unwrappable button pair (`whitespace-nowrap` text) sets this row's
+		// min-content width as a floor that can exceed the grid column and drag
+		// the whole card — including the title/description rows — wider.
+		footer: 'row-start-7 flex min-w-0 items-center justify-between gap-2 px-4 pt-1 pb-3.5',
+		// Wrapper for the reservation actions (mark-as-bought + cancel, issue #211
+		// REQ-1/2): stacks the pair vertically instead of side by side. Stays a
+		// shrink-to-fit flex column (no `w-full`/`flex-1` on itself) so its own
+		// width is driven by its widest child; both buttons are then given
+		// `w-full` by the caller so they match that width. Degrades gracefully
+		// when only one (or neither) button renders — the column shrinks to that
+		// single button's width, or collapses to nothing.
+		reservationActions: 'flex flex-col gap-1.5',
 		reservedSticker:
 			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
 		reservedStickerLabel: 'flex items-center gap-1',

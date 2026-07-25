@@ -7,6 +7,9 @@
 		gift: GiftForVisitor;
 		isArchived?: boolean;
 		size?: 'md' | 'sm';
+		/** Extra classes on the underlying Button (issue #211: stacking this button
+		 *  with PurchasedToggle at equal width needs a `w-full` from the caller). */
+		class?: string;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 	}
@@ -15,6 +18,7 @@
 		gift,
 		isArchived = false,
 		size = 'sm',
+		class: className,
 		onreserve,
 		onunreserve,
 	}: ReserveButtonProps = $props();
@@ -43,6 +47,7 @@
 		aria-label={m.reserve_button_cancel_aria({ name: gift.name })}
 		onclick={handleUnreserveClick}
 		data-testid="reserve-button"
+		class={className}
 	>
 		{m.reserve_button_cancel()}
 	</Button>
@@ -54,6 +59,7 @@
 		aria-label={m.reserve_button_reserve_aria({ name: gift.name })}
 		onclick={handleReserveClick}
 		data-testid="reserve-button"
+		class={className}
 	>
 		{#if isFullyReserved}
 			{m.reserve_button_reserved()}
