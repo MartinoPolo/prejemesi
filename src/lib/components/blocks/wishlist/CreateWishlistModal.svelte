@@ -20,7 +20,11 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
-	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
+	import {
+		RECIPIENT_KIND,
+		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_TITLE_MAX_LENGTH,
+	} from '$lib/modules/wishlists/types.js';
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
 
@@ -211,6 +215,7 @@
 						bind:value={title}
 						placeholder={m.wishlist_name_placeholder()}
 						required
+						maxlength={WISHLIST_TITLE_MAX_LENGTH}
 						disabled={isSubmitting}
 						state={hasError ? 'error' : 'default'}
 						aria-invalid={hasError ? true : undefined}

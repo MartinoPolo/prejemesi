@@ -39,6 +39,7 @@
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import {
 		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_TITLE_MAX_LENGTH,
 		WISHLIST_ROLES,
 		type Wishlist,
 		type WishlistRole,
@@ -451,6 +452,7 @@
 									bind:value={detailsTitle}
 									placeholder={m.wishlist_name_placeholder()}
 									required
+									maxlength={WISHLIST_TITLE_MAX_LENGTH}
 									disabled={savingDetails}
 									state={hasError ? 'error' : 'default'}
 									aria-invalid={hasError ? true : undefined}

@@ -19,6 +19,7 @@
 	} from '$lib/components/blocks/gift-draft-grid/gift_draft_grid_model.js';
 	import { buildDraftRows } from '$lib/modules/import/import_draft_builder.js';
 	import { deriveWishlistTitle } from '$lib/modules/import/import_title_derivation.js';
+	import { WISHLIST_TITLE_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
 	import { WIZARD_MODE, normalizeColumnRoles, type WizardMode } from './import_wizard_types.js';
 	import AlertCircleIcon from '@lucide/svelte/icons/circle-alert';
 
@@ -147,6 +148,7 @@
 						bind:value={title}
 						placeholder={m.import_wizard_review_title_placeholder()}
 						required
+						maxlength={WISHLIST_TITLE_MAX_LENGTH}
 						state={hasError ? 'error' : 'default'}
 						aria-invalid={hasError ? true : undefined}
 						aria-describedby={errorId}
