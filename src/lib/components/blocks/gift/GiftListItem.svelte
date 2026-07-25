@@ -156,11 +156,7 @@
 		/>
 
 		{#if isVisitorOrModerator && visitorGift}
-			<!-- `self-end` (issue #211): this row's parent is a `flex-col` with the
-			     default `align-items: stretch`, which would otherwise force this
-			     wrapper to the full content width. Opting out lets it shrink-wrap to
-			     its widest child (mirrors GiftCard's `reservationActions` slot) while
-			     staying right-aligned like the previous single-row layout. -->
+			<!-- self-end: opts out of the parent flex-col's stretch so this shrink-wraps to its widest child, right-aligned (#211). -->
 			<div class="mt-auto flex flex-col gap-1.5 self-end pt-2">
 				<PurchasedToggle gift={visitorGift} class="w-full" />
 				<ReserveButton
