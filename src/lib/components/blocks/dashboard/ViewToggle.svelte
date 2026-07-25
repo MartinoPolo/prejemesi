@@ -12,13 +12,29 @@
 	}
 
 	let { value = $bindable(), class: className }: ViewToggleProps = $props();
+
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `value` as a
+	// plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A writable `$derived` local, kept in sync with the `value`
+	// prop automatically, makes the rendered state always resolvable; resetting it
+	// inside onValueChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selected = $derived(value);
 </script>
 
 <ToggleGroup.Root
 	type="single"
-	{value}
+	bind:value={selected}
 	onValueChange={(newValue) => {
-		if (newValue !== '') value = newValue as ViewMode;
+		if (newValue === '') {
+			selected = value;
+			return;
+		}
+		value = newValue as ViewMode;
 	}}
 	intent="default"
 	size="icon"

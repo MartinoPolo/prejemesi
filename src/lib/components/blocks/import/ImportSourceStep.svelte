@@ -28,6 +28,18 @@
 	let parseStatus = $state<ParseStatus>(PARSE_STATUS.idle);
 	let errorMessage = $state<string | null>(null);
 
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `sourceMethod`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A writable `$derived` local, kept in sync with `sourceMethod`
+	// automatically, makes the rendered state always resolvable, and resetting it
+	// inside onValueChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selectedSourceMethod = $derived(sourceMethod);
+
 	const isDisabled = $derived(parseStatus === PARSE_STATUS.parsing);
 
 	function handleError(message: string) {
@@ -62,13 +74,15 @@
 	<!-- Source method toggle -->
 	<ToggleGroup.Root
 		type="single"
-		value={sourceMethod}
+		bind:value={selectedSourceMethod}
 		onValueChange={(value) => {
-			if (value !== undefined && value !== '') {
-				sourceMethod = value as SourceMethod;
-				errorMessage = null;
-				parseStatus = PARSE_STATUS.idle;
+			if (value === '') {
+				selectedSourceMethod = sourceMethod;
+				return;
 			}
+			sourceMethod = value as SourceMethod;
+			errorMessage = null;
+			parseStatus = PARSE_STATUS.idle;
 		}}
 		class="grid w-full grid-cols-3"
 	>

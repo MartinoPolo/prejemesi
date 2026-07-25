@@ -156,14 +156,16 @@
 		/>
 
 		{#if isVisitorOrModerator && visitorGift}
-			<div class="mt-auto flex items-center justify-end gap-2 pt-2">
-				<PurchasedToggle gift={visitorGift} />
+			<!-- self-end: opts out of the parent flex-col's stretch so this shrink-wraps to its widest child, right-aligned (#211). -->
+			<div class="mt-auto flex flex-col gap-1.5 self-end pt-2">
+				<PurchasedToggle gift={visitorGift} class="w-full" />
 				<ReserveButton
 					gift={visitorGift}
 					{isArchived}
 					size="md"
 					{onreserve}
 					{onunreserve}
+					class="w-full"
 				/>
 			</div>
 		{/if}

@@ -127,7 +127,7 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content class={styles.content()} showCloseButton={true}>
+	<Dialog.Content size="md" class={styles.content()} showCloseButton={true}>
 		<Dialog.Header>
 			<Dialog.Title>{m.reserve_title()}</Dialog.Title>
 			<Dialog.Description class="sr-only">{m.reserve_description()}</Dialog.Description>

@@ -50,7 +50,7 @@
 
 <!-- Delete account confirmation dialog -->
 <Dialog.Root bind:open={deleteDialogOpen}>
-	<Dialog.Content class="max-w-md">
+	<Dialog.Content size="md">
 		<Dialog.Header>
 			<Dialog.Title>{m.settings_delete_confirm_title()}</Dialog.Title>
 			<Dialog.Description>

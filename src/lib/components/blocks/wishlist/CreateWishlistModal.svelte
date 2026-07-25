@@ -20,7 +20,11 @@
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import { createWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
-	import { RECIPIENT_KIND, RECIPIENT_NAME_MAX_LENGTH } from '$lib/modules/wishlists/types.js';
+	import {
+		RECIPIENT_KIND,
+		RECIPIENT_NAME_MAX_LENGTH,
+		WISHLIST_TITLE_MAX_LENGTH,
+	} from '$lib/modules/wishlists/types.js';
 	import { DEFAULT_PALETTE, type Palette } from '$lib/theme/palettes.js';
 	import type { Attachment } from 'svelte/attachments';
 
@@ -34,6 +38,18 @@
 	// Typed as string (not RecipientKind) because ToggleGroup's single-select
 	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
 	let recipientKind = $state<string>(RECIPIENT_KIND.self);
+
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `recipientKind`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A writable `$derived` local, kept in sync with `recipientKind`
+	// automatically, makes the rendered state always resolvable, and resetting it
+	// inside onValueChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selectedRecipientKind = $derived(recipientKind);
 	let recipientName = $state('');
 	let title = $state('');
 	let eventDate = $state<Date | null>(null);
@@ -153,9 +169,13 @@
 				type="single"
 				intent="outline"
 				size="lg"
-				value={recipientKind}
+				bind:value={selectedRecipientKind}
 				onValueChange={(newValue) => {
-					if (newValue !== '') recipientKind = newValue;
+					if (newValue === '') {
+						selectedRecipientKind = recipientKind;
+						return;
+					}
+					recipientKind = newValue;
 					// Treat each switch into the recipient field as a fresh start — no error on appear.
 					recipientTouched = false;
 				}}
@@ -211,6 +231,7 @@
 						bind:value={title}
 						placeholder={m.wishlist_name_placeholder()}
 						required
+						maxlength={WISHLIST_TITLE_MAX_LENGTH}
 						disabled={isSubmitting}
 						state={hasError ? 'error' : 'default'}
 						aria-invalid={hasError ? true : undefined}

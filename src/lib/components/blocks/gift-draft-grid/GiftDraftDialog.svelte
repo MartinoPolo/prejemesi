@@ -73,7 +73,7 @@
 
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
 	<Dialog.Content
-		class="flex max-h-[90dvh] w-full max-w-[1180px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1180px]"
+		class="flex max-h-[90dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[1180px]"
 	>
 		<Dialog.Header class="border-b border-border px-6 py-5 text-left">
 			<Dialog.Title class="font-heading text-2xl font-semibold tracking-tight">

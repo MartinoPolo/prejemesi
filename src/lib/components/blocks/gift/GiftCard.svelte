@@ -143,8 +143,17 @@
 	{#if isVisitorOrModerator && visitorGift}
 		<div class={styles.footer()}>
 			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
-			<PurchasedToggle gift={visitorGift} />
-			<ReserveButton gift={visitorGift} {isArchived} size="md" {onreserve} {onunreserve} />
+			<div class={styles.reservationActions()}>
+				<PurchasedToggle gift={visitorGift} class="w-full" />
+				<ReserveButton
+					gift={visitorGift}
+					{isArchived}
+					size="md"
+					{onreserve}
+					{onunreserve}
+					class="w-full"
+				/>
+			</div>
 		</div>
 	{/if}
 </div>

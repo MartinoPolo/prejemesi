@@ -268,7 +268,7 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content class="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+	<Dialog.Content size="2xl" class="max-h-[85vh] overflow-y-auto">
 		<Dialog.Header>
 			<Dialog.Title>{m.moderator_title()}</Dialog.Title>
 			<Dialog.Description>{m.moderator_description()}</Dialog.Description>
