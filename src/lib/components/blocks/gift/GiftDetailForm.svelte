@@ -349,15 +349,13 @@
 	// on every click, including a re-click of the already-active item (see
 	// GiftViewSwitcher.svelte for the full root-cause note). Passing
 	// `presentedEditorMode` as a plain prop leaves the group uncontrolled, so that
-	// transient deselect is never undone. A local `selectedEditorMode` kept in
-	// sync with `presentedEditorMode` makes the rendered state always resolvable,
-	// and resetting it inside setEditorMode undoes the deselect before Svelte
-	// flushes the DOM.
-	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
-	let selectedEditorMode = $state<ImageEditorMode>(presentedEditorMode);
-	$effect(() => {
-		selectedEditorMode = presentedEditorMode;
-	});
+	// transient deselect is never undone. A writable `$derived` local, kept in
+	// sync with `presentedEditorMode` automatically, makes the rendered state
+	// always resolvable, and resetting it inside setEditorMode undoes the
+	// deselect. That reset always overwrites a value the two-way binding just set
+	// to "" (Bits UI writes through the bound value before calling onValueChange),
+	// so it's a genuine change and always re-renders.
+	let selectedEditorMode = $derived(presentedEditorMode);
 
 	// Adaptive stage sizing (#189 REQ-4/5): the stage tracks the photo's natural
 	// aspect (portrait renders tall, landscape wide) within the min/max caps applied

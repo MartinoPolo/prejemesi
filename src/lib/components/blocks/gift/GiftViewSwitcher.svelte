@@ -17,14 +17,13 @@
 	// briefly sets to "" before the empty-value guard below runs). Passing `value`
 	// as a plain prop leaves the group uncontrolled, so that transient deselect is
 	// never undone and the radiogroup renders with nothing checked. Binding to a
-	// local `selected` state -- kept in sync with the `value` prop -- makes the
-	// rendered state always resolvable from `value`, and resetting `selected`
-	// inside onValueChange undoes the deselect before Svelte flushes the DOM.
-	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
-	let selected = $state(value);
-	$effect(() => {
-		selected = value;
-	});
+	// writable `$derived` local -- kept in sync with the `value` prop automatically
+	// -- makes the rendered state always resolvable from `value`, and resetting it
+	// inside onValueChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selected = $derived(value);
 
 	// #163 REQ-6: the switcher offers only card and list. The compact renderer is
 	// retained as a safe fallback for an already-selected compact view state, so its

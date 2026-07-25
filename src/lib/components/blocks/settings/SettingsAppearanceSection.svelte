@@ -20,14 +20,13 @@
 	// on every click, including a re-click of the already-active item (see
 	// GiftViewSwitcher.svelte for the full root-cause note). Passing `currentMode`
 	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A local `selected` state kept in sync with `currentMode` makes
-	// the rendered state always resolvable, and resetting `selected` inside
-	// handleModeChange undoes the deselect before Svelte flushes the DOM.
-	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
-	let selected = $state(currentMode);
-	$effect(() => {
-		selected = currentMode;
-	});
+	// never undone. A writable `$derived` local, kept in sync with `currentMode`
+	// automatically, makes the rendered state always resolvable, and resetting it
+	// inside handleModeChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selected = $derived(currentMode);
 
 	function handleModeChange(value: string) {
 		if (value === '') {

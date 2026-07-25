@@ -32,14 +32,13 @@
 	// on every click, including a re-click of the already-active item (see
 	// GiftViewSwitcher.svelte for the full root-cause note). Passing `sourceMethod`
 	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A local `selectedSourceMethod` kept in sync with `sourceMethod`
-	// makes the rendered state always resolvable, and resetting it inside
-	// onValueChange undoes the deselect before Svelte flushes the DOM.
-	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
-	let selectedSourceMethod = $state<SourceMethod>(sourceMethod);
-	$effect(() => {
-		selectedSourceMethod = sourceMethod;
-	});
+	// never undone. A writable `$derived` local, kept in sync with `sourceMethod`
+	// automatically, makes the rendered state always resolvable, and resetting it
+	// inside onValueChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selectedSourceMethod = $derived(sourceMethod);
 
 	const isDisabled = $derived(parseStatus === PARSE_STATUS.parsing);
 

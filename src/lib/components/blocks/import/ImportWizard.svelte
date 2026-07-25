@@ -92,14 +92,13 @@
 	// on every click, including a re-click of the already-active item (see
 	// GiftViewSwitcher.svelte for the full root-cause note). Passing `recipientKind`
 	// as a plain prop leaves the group uncontrolled, so that transient deselect is
-	// never undone. A local `selectedRecipientKind` kept in sync with
-	// `recipientKind` makes the rendered state always resolvable, and resetting it
-	// inside onValueChange undoes the deselect before Svelte flushes the DOM.
-	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
-	let selectedRecipientKind = $state<string>(recipientKind);
-	$effect(() => {
-		selectedRecipientKind = recipientKind;
-	});
+	// never undone. A writable `$derived` local, kept in sync with `recipientKind`
+	// automatically, makes the rendered state always resolvable, and resetting it
+	// inside onValueChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selectedRecipientKind = $derived(recipientKind);
 
 	// Forced-touched flag for the review step's title field (new-list mode only), set
 	// when the user clicks "Next" while the title is blank so the inline error surfaces
