@@ -95,6 +95,19 @@
 	const active = $derived(slotState[activeSlot]);
 	const isCropMode = $derived(active.mode === IMAGE_EDITOR_MODES.manual);
 
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `active.mode`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A local `selectedEditorMode` kept in sync with `active.mode`
+	// makes the rendered state always resolvable, and resetting it inside
+	// setEditorMode undoes the deselect before Svelte flushes the DOM.
+	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
+	let selectedEditorMode = $state<ImageEditorMode>(active.mode);
+	$effect(() => {
+		selectedEditorMode = active.mode;
+	});
+
 	const slotLabels = {
 		card: () => m.wishlist_image_slot_card(),
 		thumbnail: () => m.wishlist_image_slot_thumbnail(),
@@ -157,6 +170,10 @@
 	}
 
 	function setEditorMode(value: string) {
+		if (value === '') {
+			selectedEditorMode = active.mode;
+			return;
+		}
 		if ((IMAGE_EDITOR_MODE_VALUES as string[]).includes(value)) {
 			slotState[activeSlot].mode = value as ImageEditorMode;
 			markDirty(activeSlot);
@@ -271,7 +288,7 @@
 				<Label>{m.image_fit_label()}</Label>
 				<ToggleGroup.Root
 					type="single"
-					value={active.mode}
+					bind:value={selectedEditorMode}
 					onValueChange={setEditorMode}
 					aria-label={m.image_fit_label()}
 				>

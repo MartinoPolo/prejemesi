@@ -38,6 +38,19 @@
 	// Typed as string (not RecipientKind) because ToggleGroup's single-select
 	// value binding is `string`; comparisons against RECIPIENT_KIND narrow it.
 	let recipientKind = $state<string>(RECIPIENT_KIND.self);
+
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `recipientKind`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A local `selectedRecipientKind` kept in sync with
+	// `recipientKind` makes the rendered state always resolvable, and resetting it
+	// inside onValueChange undoes the deselect before Svelte flushes the DOM.
+	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
+	let selectedRecipientKind = $state<string>(recipientKind);
+	$effect(() => {
+		selectedRecipientKind = recipientKind;
+	});
 	let recipientName = $state('');
 	let title = $state('');
 	let eventDate = $state<Date | null>(null);
@@ -157,9 +170,13 @@
 				type="single"
 				intent="outline"
 				size="lg"
-				value={recipientKind}
+				bind:value={selectedRecipientKind}
 				onValueChange={(newValue) => {
-					if (newValue !== '') recipientKind = newValue;
+					if (newValue === '') {
+						selectedRecipientKind = recipientKind;
+						return;
+					}
+					recipientKind = newValue;
 					// Treat each switch into the recipient field as a fresh start — no error on appear.
 					recipientTouched = false;
 				}}

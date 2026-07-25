@@ -28,6 +28,19 @@
 	let parseStatus = $state<ParseStatus>(PARSE_STATUS.idle);
 	let errorMessage = $state<string | null>(null);
 
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `sourceMethod`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A local `selectedSourceMethod` kept in sync with `sourceMethod`
+	// makes the rendered state always resolvable, and resetting it inside
+	// onValueChange undoes the deselect before Svelte flushes the DOM.
+	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
+	let selectedSourceMethod = $state<SourceMethod>(sourceMethod);
+	$effect(() => {
+		selectedSourceMethod = sourceMethod;
+	});
+
 	const isDisabled = $derived(parseStatus === PARSE_STATUS.parsing);
 
 	function handleError(message: string) {
@@ -62,13 +75,15 @@
 	<!-- Source method toggle -->
 	<ToggleGroup.Root
 		type="single"
-		value={sourceMethod}
+		bind:value={selectedSourceMethod}
 		onValueChange={(value) => {
-			if (value !== undefined && value !== '') {
-				sourceMethod = value as SourceMethod;
-				errorMessage = null;
-				parseStatus = PARSE_STATUS.idle;
+			if (value === '') {
+				selectedSourceMethod = sourceMethod;
+				return;
 			}
+			sourceMethod = value as SourceMethod;
+			errorMessage = null;
+			parseStatus = PARSE_STATUS.idle;
 		}}
 		class="grid w-full grid-cols-3"
 	>

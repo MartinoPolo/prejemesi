@@ -16,7 +16,24 @@
 
 	const currentMode = $derived((userPrefersMode.current ?? 'system') as Mode);
 
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `currentMode`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A local `selected` state kept in sync with `currentMode` makes
+	// the rendered state always resolvable, and resetting `selected` inside
+	// handleModeChange undoes the deselect before Svelte flushes the DOM.
+	// svelte-ignore state_referenced_locally (intentional one-time seed; kept in sync below)
+	let selected = $state(currentMode);
+	$effect(() => {
+		selected = currentMode;
+	});
+
 	function handleModeChange(value: string) {
+		if (value === '') {
+			selected = currentMode;
+			return;
+		}
 		if (value === 'light' || value === 'dark' || value === 'system') {
 			setMode(value);
 		}
@@ -40,7 +57,7 @@
 				<Label>{m.settings_dark_mode_label()}</Label>
 				<ToggleGroup.Root
 					type="single"
-					value={currentMode}
+					bind:value={selected}
 					onValueChange={handleModeChange}
 				>
 					<ToggleGroup.Item value="light" aria-label={m.settings_mode_light()}>
