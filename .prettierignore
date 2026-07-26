@@ -9,8 +9,10 @@ bun.lockb
 /static/
 /drizzle/
 
-# Sibling git worktrees (other concurrent sessions' checkouts)
-.claude/worktrees/
+# Agent tooling. The files under .claude/rules/ are symlinks whose link-target
+# text prettier rewrites as markdown (escaping `_` in paths), breaking them on
+# every check:all run.
+.claude/
 
 # Design mockups — reference-only artifacts, not gated source
 /designs/

@@ -1401,6 +1401,61 @@ describe('getWishlistByShortId', () => {
 		});
 	});
 
+	/**
+	 * Issue #213, REQ-7: the release affordance must be decided on the server and shipped as a
+	 * capability, because the administrator identity (`ADMIN_EMAILS`) is a private secret that
+	 * must never reach the client. No `ADMIN_EMAILS` is configured in this suite, so these cases
+	 * pin the non-administrator reach: a správce gets guest-only, everyone else nothing.
+	 */
+	describe('reservationReleaseCapability (issue #213)', () => {
+		it('a správce gets guestOnly — today’s reach, computed server-side', async () => {
+			const wishlistRow = makeWishlistRow();
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			mockDbInstance.pushResult([{ id: 'assignment-1' }]); // moderator assignment
+			mockDbInstance.pushResult([]); // managerNames
+
+			const result = (await callGetWishlistByShortId(
+				makeModeratorAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { reservationReleaseCapability: string };
+
+			expect(result.reservationReleaseCapability).toBe('guestOnly');
+		});
+
+		it('the obdarovaný gets none', async () => {
+			const wishlistRow = makeWishlistRow();
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			mockDbInstance.pushResult([]); // managerNames
+
+			const result = (await callGetWishlistByShortId(
+				makeRecipientAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { reservationReleaseCapability: string };
+
+			expect(result.reservationReleaseCapability).toBe('none');
+		});
+
+		it('a plain visitor gets none', async () => {
+			const wishlistRow = makeWishlistRow();
+			mockDbInstance.pushResult([
+				{ wishlist: wishlistRow, recipientDisplayName: 'Recipient Alice' },
+			]);
+			mockDbInstance.pushResult([]); // no moderator assignment
+			mockDbInstance.pushResult([]); // managerNames
+
+			const result = (await callGetWishlistByShortId(
+				makeOtherAuthContext(),
+				WISHLIST_SHORT_ID,
+			)) as { reservationReleaseCapability: string };
+
+			expect(result.reservationReleaseCapability).toBe('none');
+		});
+	});
+
 	describe('visitor role – authenticated non-recipient/non-moderator', () => {
 		it('returns role=visitor when the authed user has no special assignment', async () => {
 			const wishlistRow = makeWishlistRow();

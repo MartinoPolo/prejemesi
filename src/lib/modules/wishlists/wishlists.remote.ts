@@ -27,7 +27,10 @@ import {
 	verifyLinkedRecipientAccess,
 	assertWishlistMutable,
 } from './wishlist_access.js';
-import { resolveRevertCapability } from './wishlist_capabilities.js';
+import {
+	resolveRevertCapability,
+	resolveReservationReleaseCapability,
+} from './wishlist_capabilities.js';
 import {
 	CreateWishlistInputSchema,
 	UpdateWishlistInputSchema,
@@ -153,6 +156,10 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 		isAdmin,
 		hasReservations,
 	});
+	// How far this viewer's reservation-release reach extends (issue #213, REQ-7). Reuses the
+	// `isAdmin`/`role` already resolved above, so it costs no extra query; the administrator
+	// identity itself (`ADMIN_EMAILS`) never leaves the server.
+	const reservationReleaseCapability = resolveReservationReleaseCapability({ role, isAdmin });
 
 	return {
 		...row.wishlist,
@@ -164,6 +171,7 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 		managerNames,
 		role,
 		revertCapability,
+		reservationReleaseCapability,
 	} as const;
 });
 

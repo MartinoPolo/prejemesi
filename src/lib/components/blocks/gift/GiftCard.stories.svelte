@@ -85,9 +85,11 @@
 <script lang="ts">
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
+	import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
-	// GiftCard's footer reads `useLikes()`/`useGifts()`, which only the real wishlist
-	// page provides. Stand in with minimal contexts so every story below can render.
+	// GiftCard's footer reads `useLikes()`/`useGifts()`/`useReservations()`, which only the
+	// real wishlist page provides. Stand in with minimal contexts so every story below can render.
 	setLikesContext(
 		() => [],
 		() => true,
@@ -99,6 +101,13 @@
 		() => false,
 		() => true,
 		() => [],
+	);
+	// No release reach in isolation: these harnesses exercise the card/row itself, not the
+	// administrator override (see ReleaseReservationTestHost.svelte for that flow).
+	setReservationsContext(
+		() => RESERVATION_RELEASE_CAPABILITY.none,
+		() => [],
+		async () => false,
 	);
 </script>
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -16,7 +16,7 @@ import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
 
 const SAMPLE_IMAGE_PATH = fileURLToPath(new URL('./fixtures/sample-image.jpg', import.meta.url));
 
-function waitForUpload(page: import('@playwright/test').Page) {
+function waitForUpload(page: Page) {
 	return page.waitForResponse(
 		(response) =>
 			response.request().method() === 'PUT' &&

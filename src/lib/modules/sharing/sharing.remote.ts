@@ -148,7 +148,9 @@ export const revertWishlistToDraft = guardedCommand(v.string(), async ({ user },
 			if (reservationIds.length > 0) {
 				await tx
 					.update(reservation)
-					.set({ deletedAt: now })
+					// Record the reverting admin as the canceller (issue #213, REQ-10) so a bulk
+					// cancellation is as attributable as a single release.
+					.set({ deletedAt: now, cancelledByUserId: user.id })
 					.where(inArray(reservation.id, reservationIds));
 			}
 		}

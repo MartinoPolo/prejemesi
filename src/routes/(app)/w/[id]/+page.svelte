@@ -36,12 +36,21 @@
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
-	import { reserveGift, unreserveGift } from '$lib/modules/reservations/reservations.remote.js';
-	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
+	import {
+		reserveGift,
+		unreserveGift,
+		getReservationsForGift,
+	} from '$lib/modules/reservations/reservations.remote.js';
+	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
+	import type {
+		ReserveGiftInput,
+		ReservationForModerator,
+	} from '$lib/modules/reservations/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		canManageWishlist,
 		REVERT_CAPABILITY,
+		RESERVATION_RELEASE_CAPABILITY,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
@@ -137,6 +146,16 @@
 		),
 	);
 
+	// Release wiring for every gift surface (issue #213). The capability is server-computed —
+	// the administrator identity never reaches the client (REQ-7).
+	untrack(() =>
+		setReservationsContext(
+			() => wishlist.reservationReleaseCapability,
+			(giftId) => releaseLedgers[giftId] ?? [],
+			handleRelease,
+		),
+	);
+
 	// ── Remote data fetch ────────────────────────────────────────────────────
 
 	// SSR fetches only wishlist metadata for title/OG/header. The plain awaited value
@@ -151,6 +170,27 @@
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
+
+	// Per-gift release ledgers (issue #213). Fetched only for a viewer who has SOME release reach
+	// and only for gifts that actually hold reservations, so the common visitor/obdarovaný path
+	// (capability `none`) costs nothing at all. Each row already excludes the viewer's own
+	// reservation, so an empty ledger means the release control stays hidden on that gift.
+	const releaseLedgers = $derived.by(() => {
+		const byGiftId: Record<string, ReservationForModerator[]> = {};
+		if (wishlist.reservationReleaseCapability === RESERVATION_RELEASE_CAPABILITY.none) {
+			return byGiftId;
+		}
+		for (const giftItem of gifts) {
+			if (!('reservedCount' in giftItem) || giftItem.reservedCount === 0) {
+				continue;
+			}
+			const rows = getReservationsForGift(giftItem.id).current?.reservations;
+			if (rows !== undefined && rows.length > 0) {
+				byGiftId[giftItem.id] = rows;
+			}
+		}
+		return byGiftId;
+	});
 
 	// Fresh server gift data is authoritative — drop any optimistic reorder layer so
 	// a stale pre-refresh order can never mask newly fetched gifts. Successful
@@ -659,6 +699,25 @@
 			toastSuccess(m.toast_gift_unreserved());
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
+		}
+	}
+
+	/**
+	 * Releasing SOMEONE ELSE's reservation (issue #213). The server re-checks the capability, so
+	 * this path carries no authorization of its own. Returns whether the release went through, so
+	 * the confirmation dialog stays open on a rejection.
+	 */
+	async function handleRelease(giftId: string, reservationId: string): Promise<boolean> {
+		try {
+			// The command single-flight-refreshes the gift list, so the freed capacity lands
+			// immediately; the ledger is a separate query and has to drop the row explicitly.
+			await unreserveGift({ reservationId });
+			await getReservationsForGift(giftId).refresh();
+			toastSuccess(m.toast_reservation_released());
+			return true;
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+			return false;
 		}
 	}
 
