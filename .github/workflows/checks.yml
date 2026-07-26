@@ -71,6 +71,10 @@ jobs:
             # Apply the committed migrations (production path) instead of
             # `db:push`, so e2e also fails when migrations lag behind schema.ts.
             - run: pnpm run db:migrate
+            # Most specs register fresh users via the API, but admin-release-reservation.spec.ts
+            # (issue #213) depends on the seeded personas (petr@test.cz, tomas@test.cz). Seed is
+            # idempotent, so this is safe to run unconditionally.
+            - run: pnpm run db:seed
             - run: pnpm run test:e2e
             - uses: actions/upload-artifact@v4
               if: failure()
