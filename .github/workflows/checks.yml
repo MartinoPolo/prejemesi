@@ -74,6 +74,13 @@ jobs:
             # Most specs register fresh users via the API, but admin-release-reservation.spec.ts
             # (issue #213) depends on the seeded personas (petr@test.cz, tomas@test.cz). Seed is
             # idempotent, so this is safe to run unconditionally.
+            #
+            # seed.ts is executed directly via tsx (no Vite), so it needs the generated
+            # `$lib` path mapping (`svelte-kit sync`) and the compiled Paraglide runtime
+            # (`paraglide:compile`, gitignored) already on disk before it runs — the `checks`
+            # job produces both as a side effect of `check:all`, but this is a separate runner.
+            - run: pnpm run paraglide:compile
+            - run: pnpm exec svelte-kit sync
             - run: pnpm run db:seed
             - run: pnpm run test:e2e
             - uses: actions/upload-artifact@v4
