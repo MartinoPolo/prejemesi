@@ -2,9 +2,12 @@ import { env } from '$env/dynamic/private';
 
 /**
  * App-admin resolution (issue #150, decision 2026-07-14). A single operator is designated via the
- * comma-separated `ADMIN_EMAILS` env var. Being an app admin grants EXACTLY the reserved-list
- * revert-to-draft power plus the settings gear on active lists (danger actions only). An admin is
- * NOT a správce — this never grants management rights and never surfaces in list/header/panel UI.
+ * comma-separated `ADMIN_EMAILS` env var. Being an app admin grants the reserved-list
+ * revert-to-draft power, the settings gear on active lists (danger actions only), and — since
+ * issue #213 — releasing any single reservation on any list plus reading that list's reservation
+ * ledger. Every grant stops at the obdarovaný: an admin gets nothing on a list they are the
+ * obdarovaný of. An admin is NOT a správce — this never grants management rights and never
+ * surfaces in list/header/panel UI.
  *
  * Server-side only: `ADMIN_EMAILS` is a private env var, never shipped to the client. The client
  * learns whether an action is available through the server-computed capability, not this helper.

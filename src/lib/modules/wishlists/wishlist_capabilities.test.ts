@@ -2,13 +2,16 @@ import { describe, it, expect } from 'vitest';
 import {
 	canManageWishlist,
 	hidesReservationState,
-	canSeeGifterIdentity,
 	canSeeReserverNames,
 	canReserveGift,
 	canLikeGift,
 	resolveRevertCapability,
 	REVERT_CAPABILITY,
+	resolveReservationReleaseCapability,
+	canReleaseReservation,
+	RESERVATION_RELEASE_CAPABILITY,
 	type RevertCapability,
+	type ReservationReleaseCapability,
 	type WishlistStatus,
 } from './wishlist_capabilities.js';
 import { WISHLIST_ROLES, type WishlistRole } from './types.js';
@@ -47,22 +50,6 @@ describe('wishlist capabilities rights matrix', () => {
 
 		it.each(cases)('role %s → %s', (role, expected) => {
 			expect(canManageWishlist(role)).toBe(expected);
-		});
-
-		it('covers every role literal', () => {
-			expect(cases.map(([role]) => role)).toEqual([...ALL_ROLES]);
-		});
-	});
-
-	describe('canSeeGifterIdentity — moderator ONLY', () => {
-		const cases: ReadonlyArray<[WishlistRole, boolean]> = [
-			[WISHLIST_ROLES.recipient, false],
-			[WISHLIST_ROLES.moderator, true],
-			[WISHLIST_ROLES.visitor, false],
-		];
-
-		it.each(cases)('role %s → %s', (role, expected) => {
-			expect(canSeeGifterIdentity(role)).toBe(expected);
 		});
 
 		it('covers every role literal', () => {
@@ -147,7 +134,6 @@ describe('wishlist capabilities rights matrix', () => {
 	describe('self-promoted recipient sees counts but not identities and still cannot reserve/like', () => {
 		it('strip gate opens but identity stays hidden', () => {
 			expect(hidesReservationState(WISHLIST_ROLES.recipient, true)).toBe(false);
-			expect(canSeeGifterIdentity(WISHLIST_ROLES.recipient)).toBe(false);
 			expect(canSeeReserverNames(WISHLIST_ROLES.recipient)).toBe(false);
 		});
 
@@ -203,4 +189,68 @@ describe('resolveRevertCapability — revert-to-draft matrix (issue #150)', () =
 			);
 		},
 	);
+});
+
+/**
+ * Reservation-release capability matrix (issue #213). Expected truths derive from the issue's
+ * REQ-1/REQ-2/REQ-5/REQ-6, NOT from the implementation:
+ *
+ *   - REQ-6: the obdarovaný (recipient) of the list gets NOTHING — checked FIRST, so a recipient
+ *     who is ALSO the app administrator still sees no ledger and can release nothing. Rendering
+ *     the control would disclose whether reservations exist on their own surprise list.
+ *   - REQ-1/REQ-5: an app administrator releases ANY reservation (guest or signed-in) and reads
+ *     the ledger on ANY wishlist, regardless of their role on it.
+ *   - REQ-2: a správce keeps exactly today's reach — guest (anonymous) reservations only.
+ *   - Everyone else (plain visitor, anonymous caller) gets nothing.
+ */
+describe('resolveReservationReleaseCapability — release matrix (issue #213)', () => {
+	const cases: ReadonlyArray<[WishlistRole, boolean, ReservationReleaseCapability]> = [
+		// role, isAdmin → capability
+		// Recipient: never, even as the app administrator (REQ-6 leak guard).
+		[WISHLIST_ROLES.recipient, false, RESERVATION_RELEASE_CAPABILITY.none],
+		[WISHLIST_ROLES.recipient, true, RESERVATION_RELEASE_CAPABILITY.none],
+		// Administrator on any non-recipient role reaches every reservation (REQ-1/REQ-5).
+		[WISHLIST_ROLES.moderator, true, RESERVATION_RELEASE_CAPABILITY.any],
+		[WISHLIST_ROLES.visitor, true, RESERVATION_RELEASE_CAPABILITY.any],
+		// Správce without admin keeps today's guest-only reach (REQ-2).
+		[WISHLIST_ROLES.moderator, false, RESERVATION_RELEASE_CAPABILITY.guestOnly],
+		// Plain visitor: nothing.
+		[WISHLIST_ROLES.visitor, false, RESERVATION_RELEASE_CAPABILITY.none],
+	];
+
+	it.each(cases)('role=%s admin=%s → %s', (role, isAdmin, expected) => {
+		expect(resolveReservationReleaseCapability({ role, isAdmin })).toBe(expected);
+	});
+
+	it('covers every (role × isAdmin) combination', () => {
+		expect(cases).toHaveLength(ALL_ROLES.length * 2);
+	});
+
+	// The headline REQ-6 case, stated on its own so a regression names itself.
+	it('the recipient who is ALSO the app administrator still gets none', () => {
+		expect(
+			resolveReservationReleaseCapability({ role: WISHLIST_ROLES.recipient, isAdmin: true }),
+		).toBe(RESERVATION_RELEASE_CAPABILITY.none);
+	});
+});
+
+/**
+ * Per-row release predicate (issue #213). A capability alone does not decide a row: REQ-2 keeps the
+ * správce's reach at GUEST reservations only, while REQ-1 gives the administrator every row.
+ */
+describe('canReleaseReservation — capability × row kind', () => {
+	const cases: ReadonlyArray<[ReservationReleaseCapability, boolean, boolean]> = [
+		// capability, reservationIsGuest → releasable
+		[RESERVATION_RELEASE_CAPABILITY.any, true, true],
+		[RESERVATION_RELEASE_CAPABILITY.any, false, true],
+		[RESERVATION_RELEASE_CAPABILITY.guestOnly, true, true],
+		// A správce sees a signed-in gifter's row in the ledger but cannot release it (REQ-2).
+		[RESERVATION_RELEASE_CAPABILITY.guestOnly, false, false],
+		[RESERVATION_RELEASE_CAPABILITY.none, true, false],
+		[RESERVATION_RELEASE_CAPABILITY.none, false, false],
+	];
+
+	it.each(cases)('capability=%s guest=%s → %s', (capability, isGuest, expected) => {
+		expect(canReleaseReservation(capability, isGuest)).toBe(expected);
+	});
 });

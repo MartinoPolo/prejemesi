@@ -26,15 +26,6 @@ export function hidesReservationState(role: WishlistRole, recipientIsModerator: 
 }
 
 /**
- * Whether the caller may see the full reservation ledger and act on it (per-reservation
- * details, cancelling anonymous reservations on someone's behalf). Moderators only.
- * For the per-gift display line, see {@link canSeeReserverNames} (same moderator-only rule).
- */
-export function canSeeGifterIdentity(role: WishlistRole): boolean {
-	return role === WISHLIST_ROLES.moderator;
-}
-
-/**
  * Whether the caller may see reserver display names on gifts (e.g. "rezervoval(a) Babička").
  * Moderator-only (issue #198, supersedes issue #102 REQ-14 which showed names to all
  * non-recipients): reserver identity is personal data and belongs to gifter identity, not
@@ -108,4 +99,63 @@ export function resolveRevertCapability(input: {
 		return REVERT_CAPABILITY.reservedAdmin;
 	}
 	return REVERT_CAPABILITY.hidden;
+}
+
+/**
+ * How far a viewer's reservation-release reach extends on a wishlist (issue #213). Single source of
+ * truth so the admin check never scatters: the ledger query, the `unreserveGift` guard and the gift
+ * surfaces all switch on this. Pure and client-safe — the caller supplies the server-resolved
+ * `isAdmin` (from `isAppAdmin`), which never itself reaches the client.
+ *
+ * - `none`: no ledger, no release control — the obdarovaný (even when they are the app admin) and
+ *   any plain visitor.
+ * - `guestOnly`: today's správce reach — may release GUEST (anonymous) reservations only; a
+ *   signed-in gifter's row is visible in the ledger but not releasable.
+ * - `any`: the app admin's grant — every reservation on every wishlist they are not the
+ *   obdarovaný of.
+ */
+export const RESERVATION_RELEASE_CAPABILITY = {
+	none: 'none',
+	guestOnly: 'guestOnly',
+	any: 'any',
+} as const;
+
+export type ReservationReleaseCapability =
+	(typeof RESERVATION_RELEASE_CAPABILITY)[keyof typeof RESERVATION_RELEASE_CAPABILITY];
+
+export function resolveReservationReleaseCapability(input: {
+	role: WishlistRole;
+	isAdmin: boolean;
+}): ReservationReleaseCapability {
+	// The recipient is checked FIRST (REQ-6): a recipient who is also the app admin still gets
+	// nothing, because the mere presence of the ledger/control would leak that their own surprise
+	// list holds reservations.
+	if (input.role === WISHLIST_ROLES.recipient) {
+		return RESERVATION_RELEASE_CAPABILITY.none;
+	}
+	if (input.isAdmin) {
+		return RESERVATION_RELEASE_CAPABILITY.any;
+	}
+	if (input.role === WISHLIST_ROLES.moderator) {
+		return RESERVATION_RELEASE_CAPABILITY.guestOnly;
+	}
+	return RESERVATION_RELEASE_CAPABILITY.none;
+}
+
+/**
+ * Whether `capability` reaches one concrete reservation row. `guestOnly` stops at a signed-in
+ * gifter's row — the správce still SEES it in the ledger (so a disabled control leaks nothing),
+ * but the server rejects the release.
+ */
+export function canReleaseReservation(
+	capability: ReservationReleaseCapability,
+	reservationIsGuest: boolean,
+): boolean {
+	if (capability === RESERVATION_RELEASE_CAPABILITY.any) {
+		return true;
+	}
+	if (capability === RESERVATION_RELEASE_CAPABILITY.guestOnly) {
+		return reservationIsGuest;
+	}
+	return false;
 }

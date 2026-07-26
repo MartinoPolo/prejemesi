@@ -5,6 +5,7 @@
 	import LikeButton from './LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
+	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import { formatReserverLine } from '$lib/modules/gifts/gift_display.js';
 	import { giftDetailActionBarVariants } from './gift_detail_action_bar_variants.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
@@ -81,5 +82,8 @@
 				<ReserveButton {gift} {isArchived} size="md" {onreserve} {onunreserve} />
 			</div>
 		{/if}
+		<!-- Outside the branch above: the bar drops the reserve control once someone else holds
+		     the gift, which is exactly when a release is wanted (issue #213 REQ-3). -->
+		<ReleaseReservationButton {gift} size="md" />
 	</div>
 {/if}

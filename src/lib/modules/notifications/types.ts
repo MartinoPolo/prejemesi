@@ -144,7 +144,12 @@ export function getNotificationEmailBody(
 		case NOTIFICATION_TYPE.CLAIM_INVITED:
 			return m.notification_body_claim_invited({}, { locale });
 		case NOTIFICATION_TYPE.RESERVATION_CANCELLED:
-			return m.notification_body_reservation_cancelled({}, { locale });
+			// One type, two events (issue #213): a SINGLE release always knows which gift it
+			// freed, while the BULK revert-to-draft (issue #150) sweeps a whole list and names
+			// none — so the gift name is exactly the discriminator between the two copies.
+			return params.giftName === undefined
+				? m.notification_body_reservation_cancelled({}, { locale })
+				: m.notification_body_reservation_released({ giftName }, { locale });
 		case NOTIFICATION_TYPE.NEW_GIFT_ADDED:
 		case NOTIFICATION_TYPE.GIFT_RESERVED:
 		case NOTIFICATION_TYPE.RECIPIENT_CLAIMED:

@@ -64,6 +64,13 @@
 			"when": 1784215788783,
 			"tag": "0008_add_gift_price_max",
 			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "7",
+			"when": 1785081621805,
+			"tag": "0009_add_reservation_cancelled_by",
+			"breakpoints": true
 		}
 	]
 }
