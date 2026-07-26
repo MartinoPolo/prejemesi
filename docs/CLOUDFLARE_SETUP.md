@@ -142,7 +142,17 @@ wrangler secret put RESEND_API_KEY
 wrangler secret put GOOGLE_CLIENT_SECRET  # only if using Google
 wrangler secret put R2_ACCESS_KEY_ID      # presigned uploads (issue #107)
 wrangler secret put R2_SECRET_ACCESS_KEY  # presigned uploads (issue #107)
+wrangler secret put ADMIN_EMAILS          # app admin(s), issues #150 + #213
 ```
+
+`ADMIN_EMAILS` is a comma-separated email list, matched case-insensitively
+against the session user's email (`src/lib/server/admin.ts`). It is a secret
+rather than a `wrangler.jsonc` var to keep a personal address out of git — the
+repo is slated to go public (§7). Consequence: a fresh Worker created from the
+config alone will NOT have it, and `isAppAdmin()` then silently returns `false`
+everywhere, disabling the reserved-list revert-to-draft and the admin
+reservation release with no error. Re-run the line above after any re-provision.
+Unset it to remove all admins; changing admins does not need a redeploy.
 
 **Plain vars** (non-sensitive – add a `"vars"` block to `wrangler.jsonc`):
 
