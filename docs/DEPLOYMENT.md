@@ -47,6 +47,22 @@ required `verify / required`, a status that only appears on the production push,
 never on the release PR — so it could never be satisfied pre-merge; it was
 repointed to `checks / required`.)
 
+Production protection is **strict** (branch must be up to date) and applies to
+admins, so every release PR opens as `BEHIND`: merging `dev` → `production`
+leaves the merge commit only on `production`, so `dev` always lacks it by the
+next release. Sync before merging — GitHub's **Update branch**, or:
+
+```powershell
+gh api -X PUT repos/MartinoPolo/prejemesi/pulls/<pr>/update-branch
+```
+
+This merges `production` back into `dev` and re-triggers the PR checks; do it
+**before** waiting on CI so the suite runs once, on the final merged tree.
+`BEHIND` here carries no unique content — verify with
+`git diff origin/dev...origin/production` (expected: empty). Merge the release
+with a **merge commit**, never squash: squashing rewrites the shared commits and
+breaks the ancestry (see `b31fe5b`).
+
 Environment approval is configured under
 **Settings → Environments → production** (required reviewer + branch policy).
 It was created via `gh api` and can be recreated with:
@@ -103,7 +119,12 @@ Example: `drizzle/0003_recipient_role_model_expand.sql` (expand) +
 
 - [ ] Migration generated via `pnpm db:generate`, reviewed, committed.
 - [ ] `pnpm check:migrations` passes (or the contract is acknowledged).
-- [ ] Merge to `production`; wait for **verify** to go green.
+- [ ] Any **new env var/secret** the release reads is set on the Worker
+      (`wrangler secret list` + `wrangler versions view <id>`). A missing one
+      does not fail the deploy — the feature just silently stays off, which is
+      how `ADMIN_EMAILS` sat unset from #150 until the #213 release.
+- [ ] Sync the release PR (`update-branch`) — it opens `BEHIND` every time.
+- [ ] Merge to `production` (merge commit, not squash); wait for **verify**.
 - [ ] Apply migrations: `pnpm db:migrate:prod`.
 - [ ] Approve the `production` environment deployment.
 - [ ] Verify: https://prejemesi.cz responds; `wrangler tail` shows no errors.
