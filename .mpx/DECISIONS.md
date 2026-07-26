@@ -176,7 +176,7 @@ Rejected: recipient-accessible revert with uniform no-leak copy (hiding entirely
 ### App admin via ADMIN_EMAILS env var
 
 Decided: 2026-07-14
-What: Comma-separated `ADMIN_EMAILS` env var; a server-side helper matches the session user's email. Grants exactly: reserved-list revert + the settings gear visible on any list (danger/admin actions only). Admin is NOT a správce — never appears in headers or panels.
+What: Comma-separated `ADMIN_EMAILS` env var; a server-side helper matches the session user's email. Grants: reserved-list revert + the settings gear visible on any list (danger/admin actions only), and — since issue #213 — releasing any SINGLE reservation on any list plus reading that list's reservation ledger. Both grants stop at the obdarovaný: an administrator gets nothing on a list they are the obdarovaný of, because the rendered control would leak whether their own surprise list holds reservations. The UI never learns who the administrator is; both surfaces switch on a server-computed capability (`resolveRevertCapability`, `resolveReservationReleaseCapability`). Admin is NOT a správce — never appears in headers or panels.
 Why: Single-operator production app; zero schema change; changing admins = redeploy, which is rare and fine.
 Rejected: `user.isAdmin` DB column (buys nothing without an admin UI); admin-implies-správce (too broad, would surface in list UI).
 

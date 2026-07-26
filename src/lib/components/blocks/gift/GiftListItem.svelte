@@ -9,6 +9,7 @@
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
+	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -156,15 +157,18 @@
 		/>
 
 		{#if isVisitorOrModerator && visitorGift}
-			<div class="mt-auto flex items-center justify-end gap-2 pt-2">
-				<PurchasedToggle gift={visitorGift} />
+			<!-- self-end: opts out of the parent flex-col's stretch so this shrink-wraps to its widest child, right-aligned (#211). -->
+			<div class="mt-auto flex flex-col gap-1.5 self-end pt-2">
+				<PurchasedToggle gift={visitorGift} class="w-full" />
 				<ReserveButton
 					gift={visitorGift}
 					{isArchived}
 					size="md"
 					{onreserve}
 					{onunreserve}
+					class="w-full"
 				/>
+				<ReleaseReservationButton gift={visitorGift} size="md" class="w-full" />
 			</div>
 		{/if}
 	</div>

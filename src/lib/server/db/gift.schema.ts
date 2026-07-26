@@ -93,6 +93,13 @@ export const reservation = pgTable(
 		// Gifter-private "I already bought this" marker. Optional self-tracking flag set by the
 		// authenticated reserver; never exposed to the wishlist owner. Null = reserved-not-bought.
 		purchasedAt: timestamp('purchased_at', { withTimezone: true }),
+		// Who cancelled this reservation (issue #213, REQ-10). Written on every cancellation path;
+		// stays NULL for a guest self-cancel (a guest has no account to record). An OVERRIDE is
+		// therefore `cancelledByUserId !== null && cancelledByUserId !== userId` — that is what
+		// distinguishes a správce/administrator release from the gifter cancelling their own.
+		cancelledByUserId: text('cancelled_by_user_id').references(() => user.id, {
+			onDelete: 'set null',
+		}),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 	},

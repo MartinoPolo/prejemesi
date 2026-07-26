@@ -1,0 +1,38 @@
+<script lang="ts">
+	import type { ComponentProps } from 'svelte';
+	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
+	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
+	import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import GiftCard from './GiftCard.svelte';
+
+	/**
+	 * Test/story-only harness: `GiftCard`'s footer (`LikeButton` + `PurchasedToggle`) reads
+	 * `useLikes()`/`useGifts()`, which only the real wishlist page (`/w/[id]/+page.svelte`)
+	 * provides via `setLikesContext`/`setGiftsContext`. This stands in for that page so
+	 * `GiftCard` can be rendered in isolation.
+	 */
+	let props: ComponentProps<typeof GiftCard> = $props();
+
+	setLikesContext(
+		() => [],
+		() => true,
+		() => {},
+	);
+	setGiftsContext(
+		() => [props.gift],
+		() => props.role,
+		() => props.isArchived ?? false,
+		() => true,
+		() => [],
+	);
+	// No release reach in isolation: these harnesses exercise the card/row itself, not the
+	// administrator override (see ReleaseReservationTestHost.svelte for that flow).
+	setReservationsContext(
+		() => RESERVATION_RELEASE_CAPABILITY.none,
+		() => [],
+		async () => false,
+	);
+</script>
+
+<GiftCard {...props} />

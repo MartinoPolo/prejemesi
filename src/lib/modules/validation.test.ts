@@ -5,6 +5,7 @@ import {
 	UpdateWishlistInputSchema,
 	WISHLIST_THEMES,
 	RECIPIENT_NAME_MAX_LENGTH,
+	WISHLIST_TITLE_MAX_LENGTH,
 } from './wishlists/types.js';
 import {
 	CreateGiftInputSchema,
@@ -195,6 +196,25 @@ describe('CreateWishlistInputSchema', () => {
 				recipientKind: 'other',
 				recipientName: 'Rosie',
 				title: '',
+			});
+			expect(result.success).toBe(false);
+			expect(result.issues).toBeDefined();
+		});
+
+		it(`accepts a title at the ${WISHLIST_TITLE_MAX_LENGTH}-char maximum (issue #210)`, () => {
+			const result = parseSuccess(CreateWishlistInputSchema, {
+				recipientKind: 'other',
+				recipientName: 'Rosie',
+				title: 'a'.repeat(WISHLIST_TITLE_MAX_LENGTH),
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it(`rejects a title over ${WISHLIST_TITLE_MAX_LENGTH} chars (issue #210)`, () => {
+			const result = parseSuccess(CreateWishlistInputSchema, {
+				recipientKind: 'other',
+				recipientName: 'Rosie',
+				title: 'a'.repeat(WISHLIST_TITLE_MAX_LENGTH + 1),
 			});
 			expect(result.success).toBe(false);
 			expect(result.issues).toBeDefined();
@@ -725,5 +745,24 @@ describe('UpdateWishlistInputSchema – image assignment', () => {
 		// the schema must still validate without them present.
 		const result = parseSuccess(UpdateWishlistInputSchema, { id: 'wl-1' });
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('UpdateWishlistInputSchema – title length (issue #210)', () => {
+	it(`accepts a title at the ${WISHLIST_TITLE_MAX_LENGTH}-char maximum`, () => {
+		const result = parseSuccess(UpdateWishlistInputSchema, {
+			id: 'wl-1',
+			title: 'a'.repeat(WISHLIST_TITLE_MAX_LENGTH),
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it(`rejects a title over ${WISHLIST_TITLE_MAX_LENGTH} chars`, () => {
+		const result = parseSuccess(UpdateWishlistInputSchema, {
+			id: 'wl-1',
+			title: 'a'.repeat(WISHLIST_TITLE_MAX_LENGTH + 1),
+		});
+		expect(result.success).toBe(false);
+		expect(result.issues).toBeDefined();
 	});
 });

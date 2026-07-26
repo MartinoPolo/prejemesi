@@ -4,12 +4,20 @@ import type { reservation } from '$lib/server/db/gift.schema.js';
 /** Full reservation row from DB */
 export type Reservation = typeof reservation.$inferSelect;
 
-/** Reservation visible to moderator */
+/**
+ * One row of the release ledger for a gift (issue #213) — visible to a správce (guest rows
+ * releasable) and to the app administrator (every row). Never to the obdarovaný.
+ */
 export interface ReservationForModerator {
 	id: string;
 	giftId: string;
 	quantity: number;
-	displayName: string;
+	/** The guest's typed name, or a signed-in gifter's account name. Null only when the gifter's
+	 *  account was deleted, leaving the row with no identity to show. */
+	displayName: string | null;
+	/** Whether THIS viewer may release THIS row. A správce sees a signed-in gifter's row but
+	 *  cannot act on it, so the control renders disabled with a reason instead of vanishing. */
+	releasable: boolean;
 	createdAt: Date;
 }
 

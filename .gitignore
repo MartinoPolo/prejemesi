@@ -82,5 +82,6 @@ worker-configuration.d.ts
 # Session handoff artifacts
 HANDOFF.md
 HANDOFF-*.md
+REVIEW.md
 .mpx/BOARD.md
 .mpx/board-files/

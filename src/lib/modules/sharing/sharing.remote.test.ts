@@ -101,6 +101,13 @@ const mockGetDb = vi.mocked(getDb);
 const mockDispatchNotification = vi.mocked(dispatchNotification);
 
 /**
+ * Every `.set({...})` payload passed to the mock DB during the current test, in call order.
+ * The chain proxy hands out a fresh spy per property access, so update payloads have to be
+ * recorded centrally to be assertable. Reset in `beforeEach`.
+ */
+const recordedSetPayloads: unknown[] = [];
+
+/**
  * Creates a mock database whose methods return queryResults in order.
  * Each element in queryResults is the resolved value for one awaited query chain.
  */
@@ -116,6 +123,12 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 						const result = queryResults[queryIndex] ?? [];
 						queryIndex++;
 						return (resolve: (value: unknown) => void) => resolve(result);
+					}
+					if (prop === 'set') {
+						return vi.fn((payload: unknown) => {
+							recordedSetPayloads.push(payload);
+							return createChain();
+						});
 					}
 					return vi.fn(() => createChain());
 				},
@@ -148,6 +161,7 @@ const callShareWishlist = (authContext: typeof testAuthContext, id: string) =>
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	recordedSetPayloads.length = 0;
 });
 
 describe('shareWishlist', () => {
@@ -341,6 +355,28 @@ describe('revertWishlistToDraft', () => {
 				wishlistId,
 				actorId: adminUser.id,
 			}),
+		);
+	});
+
+	// Issue #213 REQ-10: every cancellation path records who cancelled, the bulk revert included,
+	// so a released reservation is always attributable.
+	it('records the reverting admin as the canceller on the bulk reservation cancel', async () => {
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[activeForSomeone], // requireWishlistRow
+				[], // hasActiveModeratorAssignment → none
+				[{ value: 1 }], // reservation count → reserved
+				[{ id: 'r1', userId: 'gifter-1', anonymousEmail: null }], // tx: active reservations
+				[], // tx: reservation soft-delete
+				[], // tx: gift reset update
+				[], // tx: wishlist update
+			]),
+		);
+
+		await callRevert({ user: adminUser }, wishlistId);
+
+		expect(recordedSetPayloads).toContainEqual(
+			expect.objectContaining({ cancelledByUserId: adminUser.id }),
 		);
 	});
 

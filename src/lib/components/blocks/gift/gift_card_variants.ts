@@ -39,7 +39,10 @@ export const giftCardVariants = tv({
 		priceEmpty: 'row-start-2 mt-2 text-sm text-muted-foreground italic',
 		priorityEyebrow: 'row-start-3 mt-2 flex items-center gap-1',
 		linkList: 'row-start-4 mt-2 flex flex-col',
-		footer: 'row-start-7 flex items-center justify-between gap-2 px-4 pt-1 pb-3.5',
+		// min-w-0: grid items (unlike flex) get an automatic min-content floor that can force the row wider (#211).
+		footer: 'row-start-7 flex min-w-0 items-center justify-between gap-2 px-4 pt-1 pb-3.5',
+		// Stacks mark-as-bought + cancel vertically; shrink-to-fit column, buttons get `w-full` from the caller (#211).
+		reservationActions: 'flex flex-col gap-1.5',
 		reservedSticker:
 			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
 		reservedStickerLabel: 'flex items-center gap-1',

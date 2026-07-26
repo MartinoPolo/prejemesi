@@ -88,6 +88,18 @@
 	let recipientKind = $state<string>(RECIPIENT_KIND.self);
 	let recipientName = $state('');
 
+	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
+	// on every click, including a re-click of the already-active item (see
+	// GiftViewSwitcher.svelte for the full root-cause note). Passing `recipientKind`
+	// as a plain prop leaves the group uncontrolled, so that transient deselect is
+	// never undone. A writable `$derived` local, kept in sync with `recipientKind`
+	// automatically, makes the rendered state always resolvable, and resetting it
+	// inside onValueChange undoes the deselect. That reset always overwrites a
+	// value the two-way binding just set to "" (Bits UI writes through the bound
+	// value before calling onValueChange), so it's a genuine change and always
+	// re-renders.
+	let selectedRecipientKind = $derived(recipientKind);
+
 	// Forced-touched flag for the review step's title field (new-list mode only), set
 	// when the user clicks "Next" while the title is blank so the inline error surfaces
 	// even without having typed into the field first.
@@ -98,8 +110,9 @@
 
 	// Dialog width based on step. The review step holds the table-like draft grid;
 	// append mode adds a ~280px existing-items side panel, so it needs extra room.
-	// NOTE: the sm: prefix is required – Dialog.Content's base class sets `sm:max-w-lg`,
-	// and only a same-breakpoint `sm:` override is deduped past it by tailwind-merge.
+	// NOTE: the sm: prefix is required – these widths are off the Dialog.Content `size`
+	// scale (sm/md/lg/xl/2xl), so they must stay at the same `sm:` modifier as the
+	// default `size="lg"` (`sm:max-w-lg`) for tailwind-merge to override it.
 	// Below sm the base `max-w-[calc(100%-2rem)]` keeps the dialog viewport-bound.
 	const dialogWidth = $derived.by(() => {
 		if (currentStep !== WIZARD_STEP.review) {
@@ -338,9 +351,13 @@
 						<ToggleGroup.Root
 							type="single"
 							intent="outline"
-							value={recipientKind}
+							bind:value={selectedRecipientKind}
 							onValueChange={(newValue) => {
-								if (newValue !== '') recipientKind = newValue;
+								if (newValue === '') {
+									selectedRecipientKind = recipientKind;
+									return;
+								}
+								recipientKind = newValue;
 							}}
 							class="w-full sm:w-fit"
 						>

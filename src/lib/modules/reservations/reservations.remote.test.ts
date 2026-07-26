@@ -72,6 +72,12 @@ vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
 	dispatchNotification: vi.fn(),
 }));
 
+// admin@example.com is the app admin (issue #150 / #213). The visitor and moderator personas
+// below deliberately do NOT match, so every pre-#213 case keeps its original meaning.
+vi.mock('$env/dynamic/private', () => ({
+	env: { ADMIN_EMAILS: 'admin@example.com' },
+}));
+
 // Drizzle ORM helpers are used only as column references in query builders.
 // We don't need their real implementations – stub them so the module loads.
 vi.mock('drizzle-orm', () => ({
@@ -88,6 +94,7 @@ import { getRequestEvent } from '$app/server';
 import { verifyTurnstileToken } from '$lib/server/turnstile.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import {
 	reserveGift,
 	unreserveGift,
@@ -113,11 +120,26 @@ function mockAnonCookie(cookieValue: string | undefined) {
 const OWNER_ID = 'user-owner';
 const VISITOR_ID = 'user-visitor';
 const MODERATOR_ID = 'user-moderator';
+const ADMIN_ID = 'user-admin';
 const GIFT_ID = 'gift-1';
+const GIFT_NAME = 'Kávovar';
 const WISHLIST_ID = 'wishlist-1';
+const WISHLIST_SHORT_ID = 'abc123';
 const RESERVATION_ID = 'reservation-1';
 
 const fakeOwnerUser = { id: OWNER_ID, email: 'owner@example.com' } as unknown as User;
+/** Matches the mocked ADMIN_EMAILS — the app administrator (issue #213). */
+const fakeAdminUser = {
+	id: ADMIN_ID,
+	name: 'Admin Adminová',
+	email: 'admin@example.com',
+} as unknown as User;
+/** The app administrator signed in on a list where THEY are the obdarovaný (REQ-6). */
+const fakeAdminRecipientUser = {
+	id: OWNER_ID,
+	name: 'Admin Adminová',
+	email: 'admin@example.com',
+} as unknown as User;
 const fakeVisitorUser = { id: VISITOR_ID, email: 'visitor@example.com' } as unknown as User;
 /** A visitor with a real display name — used to prove that name never reaches a dispatch payload. */
 const fakeNamedVisitorUser = {
@@ -191,12 +213,15 @@ function makeActiveWishlistRow() {
 		gift: {
 			id: GIFT_ID,
 			wishlistId: WISHLIST_ID,
+			name: GIFT_NAME,
 			quantity: 5,
 			deletedAt: null,
 		},
 		wishlist: {
 			id: WISHLIST_ID,
 			recipientUserId: OWNER_ID,
+			title: 'Narozeniny',
+			shortId: WISHLIST_SHORT_ID,
 			status: 'active',
 			deletedAt: null,
 		},
@@ -655,6 +680,246 @@ describe('unreserveGift', () => {
 	});
 });
 
+// ── unreserveGift: administrator release override (issue #213) ────────────────
+
+/**
+ * Expected truths derive from issue #213's requirements, not from the implementation:
+ *   REQ-1  an app administrator releases ANY reservation on ANY wishlist;
+ *   REQ-2  a správce keeps guest-only reach — a signed-in gifter's row is rejected;
+ *   REQ-6  the obdarovaný gets nothing, even when they are the administrator;
+ *   REQ-9  the released gifter is notified; releasing one's OWN reservation notifies nobody;
+ *   REQ-10 every cancellation path records who released it.
+ */
+describe('unreserveGift — administrator release (issue #213)', () => {
+	const validInput: UnreserveInput = { reservationId: RESERVATION_ID };
+
+	/** A reservation held by a signed-in gifter (VISITOR_ID). */
+	const signedInGifterReservation = {
+		id: RESERVATION_ID,
+		giftId: GIFT_ID,
+		userId: VISITOR_ID,
+		anonymousName: null,
+		anonymousEmail: null,
+		deletedAt: null,
+	};
+
+	/** A guest reservation, optionally with a contact address. */
+	function guestReservation(anonymousEmail: string | null) {
+		return {
+			id: RESERVATION_ID,
+			giftId: GIFT_ID,
+			userId: null,
+			anonymousName: 'Babička',
+			anonymousEmail,
+			anonymousVisitorId: 'anon-token-1',
+			deletedAt: null,
+		};
+	}
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it("an app administrator releases a signed-in gifter's reservation (REQ-1)", async () => {
+		// Call #1: reservation SELECT + soft-delete UPDATE.
+		const database = createMultiQueryChain([signedInGifterReservation], []);
+		// Call #2: getGiftWithWishlist. Call #3: moderator lookup (admin manages nothing here).
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		const modDb = createChain([]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+
+		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminUser),
+			validInput,
+		);
+
+		expect(result).toEqual({ success: true });
+	});
+
+	it('an app administrator releases a guest reservation on a list they neither own nor moderate (REQ-1)', async () => {
+		const database = createMultiQueryChain([guestReservation(null)], []);
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		const modDb = createChain([]); // no moderator assignment → plain visitor role
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+
+		const result = await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminUser),
+			validInput,
+		);
+
+		expect(result).toEqual({ success: true });
+	});
+
+	// The rejection must cost NO extra query: a správce is indistinguishable from any other
+	// non-administrator here, and the administrator check is a pure env read.
+	it("a správce cannot release a signed-in gifter's reservation (REQ-2)", async () => {
+		const database = createChain([signedInGifterReservation]);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+
+		await expect(
+			(unreserveGift as (...args: unknown[]) => unknown)(
+				makeAuthContext(fakeModeratorUser),
+				validInput,
+			),
+		).rejects.toMatchObject({ status: 403, message: SERVER_ERROR.RELEASE_REQUIRES_ADMIN });
+		expect(mockGetDb).toHaveBeenCalledTimes(1);
+	});
+
+	it('the obdarovaný cannot release, even when they are the app administrator (REQ-6)', async () => {
+		const database = createChain([signedInGifterReservation]);
+		// The wishlist's linked recipient IS the caller.
+		const giftDb = createChain([makeActiveWishlistRow()]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>);
+
+		await expect(
+			(unreserveGift as (...args: unknown[]) => unknown)(
+				makeAuthContext(fakeAdminRecipientUser),
+				validInput,
+			),
+		).rejects.toMatchObject({ status: 403, message: SERVER_ERROR.ACCESS_DENIED });
+	});
+
+	it('notifies the released signed-in gifter, naming the gift (REQ-9)', async () => {
+		const database = createMultiQueryChain([signedInGifterReservation], []);
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		const modDb = createChain([]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+
+		await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminUser),
+			validInput,
+		);
+
+		expect(mockDispatchNotification).toHaveBeenCalledTimes(1);
+		expect(mockDispatchNotification).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: NOTIFICATION_TYPE.RESERVATION_CANCELLED,
+				targetUserIds: [VISITOR_ID],
+				giftId: GIFT_ID,
+				giftName: GIFT_NAME,
+				actorId: ADMIN_ID,
+			}),
+		);
+	});
+
+	it('emails a released guest who left an address (REQ-9)', async () => {
+		const database = createMultiQueryChain([guestReservation('babicka@example.com')], []);
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		const modDb = createChain([]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+
+		await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminUser),
+			validInput,
+		);
+
+		expect(mockDispatchNotification).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: NOTIFICATION_TYPE.RESERVATION_CANCELLED,
+				targetEmails: ['babicka@example.com'],
+				giftName: GIFT_NAME,
+			}),
+		);
+	});
+
+	it('notifies nobody when the released guest left no address (REQ-9)', async () => {
+		const database = createMultiQueryChain([guestReservation(null)], []);
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		const modDb = createChain([]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+
+		await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminUser),
+			validInput,
+		);
+
+		expect(mockDispatchNotification).not.toHaveBeenCalled();
+	});
+
+	it('dispatches no notification when a gifter cancels their OWN reservation (REQ-9)', async () => {
+		const database = createMultiQueryChain([signedInGifterReservation], []);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+
+		await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeVisitorUser),
+			validInput,
+		);
+
+		expect(mockDispatchNotification).not.toHaveBeenCalled();
+	});
+
+	it('records the cancelling user on a self-cancel (REQ-10)', async () => {
+		const database = createMultiQueryChain([signedInGifterReservation], []);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+
+		await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeVisitorUser),
+			validInput,
+		);
+
+		expect(database['set']).toHaveBeenCalledWith(
+			expect.objectContaining({ cancelledByUserId: VISITOR_ID }),
+		);
+	});
+
+	it('records the administrator as the canceller on a release (REQ-10)', async () => {
+		const database = createMultiQueryChain([signedInGifterReservation], []);
+		const giftDb = createChain([makeActiveWishlistRow()]);
+		const modDb = createChain([]);
+
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(giftDb as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modDb as unknown as ReturnType<typeof getDb>);
+
+		await (unreserveGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminUser),
+			validInput,
+		);
+
+		expect(database['set']).toHaveBeenCalledWith(
+			expect.objectContaining({ cancelledByUserId: ADMIN_ID }),
+		);
+	});
+
+	// A guest self-cancel has no account to record — the NULL is what makes an override
+	// (`cancelledByUserId !== null && !== userId`) distinguishable from a self-cancel.
+	it('leaves the canceller NULL on a guest self-cancel (REQ-10)', async () => {
+		const database = createMultiQueryChain([guestReservation(null)], []);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		mockAnonCookie('anon-token-1');
+
+		await (unreserveGift as (...args: unknown[]) => unknown)(null, validInput);
+
+		expect(database['set']).toHaveBeenCalledWith(
+			expect.objectContaining({ cancelledByUserId: null }),
+		);
+	});
+});
+
 // ── getReservationsForGift ────────────────────────────────────────────────────
 
 describe('getReservationsForGift', () => {
@@ -709,20 +974,27 @@ describe('getReservationsForGift', () => {
 		expect(result.role).toBe('visitor');
 	});
 
-	it('moderator gets full reservation details', async () => {
+	// REQ-4: the ledger must name the gifter. A signed-in gifter's row carries their account
+	// name (joined from `user`), NOT the „Authenticated user" placeholder the pre-#213
+	// implementation emitted — the picker cannot identify a row without a real name.
+	it('moderator gets full reservation details, with the real name of a signed-in gifter', async () => {
 		const reservationRows = [
 			{
 				id: RESERVATION_ID,
 				giftId: GIFT_ID,
 				quantity: 2,
+				userId: VISITOR_ID,
 				anonymousName: null,
+				gifterName: 'Petr Svoboda',
 				createdAt: new Date('2024-01-01'),
 			},
 			{
 				id: 'reservation-2',
 				giftId: GIFT_ID,
 				quantity: 1,
+				userId: null,
 				anonymousName: 'Jan Novak',
+				gifterName: null,
 				createdAt: new Date('2024-01-02'),
 			},
 		];
@@ -750,12 +1022,127 @@ describe('getReservationsForGift', () => {
 			id: RESERVATION_ID,
 			giftId: GIFT_ID,
 			quantity: 2,
-			displayName: 'Authenticated user',
+			displayName: 'Petr Svoboda',
 		});
 		expect(result.reservations[1]).toMatchObject({
 			id: 'reservation-2',
 			displayName: 'Jan Novak',
 		});
+	});
+});
+
+// ── getReservationsForGift: release ledger (issue #213) ───────────────────────
+
+/**
+ * REQ-4/REQ-5/REQ-6: the ledger is the picker's data source, so it must reach the app
+ * administrator on any wishlist, mark per-row releasability (a správce may act on guest rows
+ * only), stay empty for the obdarovaný, and leave the viewer's OWN reservation out — that one
+ * is cancelled through the existing single-click path, not the release path.
+ */
+describe('getReservationsForGift — release ledger (issue #213)', () => {
+	const signedInRow = {
+		id: RESERVATION_ID,
+		giftId: GIFT_ID,
+		quantity: 2,
+		userId: VISITOR_ID,
+		anonymousName: null,
+		gifterName: 'Petr Svoboda',
+		createdAt: new Date('2024-01-01'),
+	};
+	const guestRow = {
+		id: 'reservation-2',
+		giftId: GIFT_ID,
+		quantity: 1,
+		userId: null,
+		anonymousName: 'Babička',
+		gifterName: null,
+		createdAt: new Date('2024-01-02'),
+	};
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+	});
+
+	it('an app administrator reads the ledger on a list they neither own nor moderate (REQ-5)', async () => {
+		const wishlistChain = createChain([makeActiveWishlistRow()]);
+		const modChain = createChain([]); // no moderator assignment → plain visitor role
+		const reservationsChain = createChain([signedInRow, guestRow]);
+
+		mockGetDb
+			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
+
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminUser),
+			GIFT_ID,
+		)) as { reservations: Record<string, unknown>[]; role: string };
+
+		expect(result.role).toBe('visitor');
+		expect(result.reservations).toEqual([
+			expect.objectContaining({ id: RESERVATION_ID, releasable: true }),
+			expect.objectContaining({ id: 'reservation-2', releasable: true }),
+		]);
+	});
+
+	it("a správce sees a signed-in gifter's row but cannot release it (REQ-2)", async () => {
+		const wishlistChain = createChain([makeActiveWishlistRow()]);
+		const modChain = createChain([{ id: 'mod-assignment-1' }]);
+		const reservationsChain = createChain([signedInRow, guestRow]);
+
+		mockGetDb
+			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
+
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeModeratorUser),
+			GIFT_ID,
+		)) as { reservations: Record<string, unknown>[]; role: string };
+
+		expect(result.reservations).toEqual([
+			expect.objectContaining({ id: RESERVATION_ID, releasable: false }),
+			expect.objectContaining({ id: 'reservation-2', releasable: true }),
+		]);
+	});
+
+	it('the obdarovaný gets an empty ledger even when they are the app administrator (REQ-6)', async () => {
+		// resolveWishlistRole short-circuits on the linked recipient – no further queries.
+		const wishlistChain = createChain([makeActiveWishlistRow()]);
+		mockGetDb.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>);
+
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeAdminRecipientUser),
+			GIFT_ID,
+		)) as { reservations: unknown[]; role: string };
+
+		expect(result.reservations).toEqual([]);
+		expect(result.role).toBe('recipient');
+	});
+
+	it("omits the viewer's own reservation from the ledger", async () => {
+		const wishlistChain = createChain([makeActiveWishlistRow()]);
+		const modChain = createChain([{ id: 'mod-assignment-1' }]);
+		// The správce is themselves a gifter on this gift.
+		const ownRow = {
+			...guestRow,
+			id: 'reservation-3',
+			userId: MODERATOR_ID,
+			gifterName: 'Mod',
+		};
+		const reservationsChain = createChain([signedInRow, ownRow]);
+
+		mockGetDb
+			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
+
+		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeModeratorUser),
+			GIFT_ID,
+		)) as { reservations: Record<string, unknown>[]; role: string };
+
+		expect(result.reservations.map((row) => row.id)).toEqual([RESERVATION_ID]);
 	});
 });
 

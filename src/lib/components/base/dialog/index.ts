@@ -8,6 +8,8 @@ import Header from './dialog-header.svelte';
 import Footer from './dialog-footer.svelte';
 import Title from './dialog-title.svelte';
 import Description from './dialog-description.svelte';
+import { dialogContentVariants, DIALOG_CONTENT_SIZES } from './dialog_variants.js';
+import type { DialogContentSize } from './dialog_variants.js';
 
 export {
 	Root,
@@ -31,4 +33,8 @@ export {
 	Footer as DialogFooter,
 	Title as DialogTitle,
 	Description as DialogDescription,
+	//
+	dialogContentVariants,
+	DIALOG_CONTENT_SIZES,
 };
+export type { DialogContentSize };

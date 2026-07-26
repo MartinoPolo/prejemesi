@@ -46,6 +46,7 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_anonymous_cannot_cancel_reservations(),
 	[SERVER_ERROR.CANNOT_CANCEL_ANONYMOUS_RESERVATION]: () =>
 		m.server_error_cannot_cancel_anonymous_reservation(),
+	[SERVER_ERROR.RELEASE_REQUIRES_ADMIN]: () => m.server_error_release_requires_admin(),
 
 	[SERVER_ERROR.RECIPIENT_CANNOT_LIKE_OWN_GIFTS]: () =>
 		m.server_error_recipient_cannot_like_own_gifts(),

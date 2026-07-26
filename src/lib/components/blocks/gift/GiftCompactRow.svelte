@@ -5,6 +5,7 @@
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
+	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -132,6 +133,10 @@
 						{onunreserve}
 					/>
 				{/if}
+				<!-- Outside the branch above: the reserve control is replaced by a plain status
+				     label once someone else holds the gift, which is exactly when a release is
+				     wanted (issue #213 REQ-3). -->
+				<ReleaseReservationButton gift={visitorGift} size="sm" />
 			</div>
 		</td>
 	{/if}

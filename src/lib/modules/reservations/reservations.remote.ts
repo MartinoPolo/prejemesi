@@ -5,7 +5,9 @@ import { SERVER_ERROR, encodeServerError } from '$lib/modules/errors/server_erro
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike, reservation } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
+import { user } from '$lib/server/db/auth.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
+import { isAppAdmin } from '$lib/server/admin.js';
 import {
 	publicQuery,
 	publicCommand,
@@ -17,7 +19,11 @@ import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { resolveWishlistRole } from '$lib/modules/wishlists/wishlist_access.js';
-import { canSeeGifterIdentity } from '$lib/modules/wishlists/wishlist_capabilities.js';
+import {
+	canReleaseReservation,
+	resolveReservationReleaseCapability,
+	RESERVATION_RELEASE_CAPABILITY,
+} from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { verifyTurnstileToken } from '$lib/server/turnstile.js';
 import {
 	ReserveGiftInputSchema,
@@ -31,6 +37,7 @@ import {
 type Database = ReturnType<typeof getDb>;
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0];
 type DbExecutor = Database | Transaction;
+type WishlistRow = typeof wishlist.$inferSelect;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -244,17 +251,18 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 		error(404, SERVER_ERROR.RESERVATION_NOT_FOUND);
 	}
 
-	// Known after the moderator branch resolves it; otherwise looked up post-update
+	// Known after the release branch resolves it; otherwise looked up post-update
 	// for the single-flight refresh only.
 	let wishlistShortId: string | null = null;
+	// Set on the release path only — a self-cancel notifies nobody (issue #213, REQ-9).
+	let releaseContext: { wishlistRow: WishlistRow; giftName: string } | null = null;
 
-	// Check authorization: only the reserver (or a moderator) can unreserve
-	if (reservationRow.userId !== null) {
-		// Authenticated reservation – must match userId
-		if (authContext === null || authContext.user.id !== reservationRow.userId) {
+	const reservationIsGuest = reservationRow.userId === null;
+
+	if (authContext === null) {
+		if (!reservationIsGuest) {
 			error(403, SERVER_ERROR.CANNOT_CANCEL_OTHERS_RESERVATION);
 		}
-	} else if (authContext === null) {
 		// Anonymous reservation cancelled by an anonymous visitor – only the original
 		// reserver may, proven by holding the matching per-browser capability cookie.
 		const anonVisitorId = getAnonVisitorId();
@@ -265,24 +273,75 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 		) {
 			error(403, SERVER_ERROR.ANONYMOUS_CANNOT_CANCEL_RESERVATIONS);
 		}
-	} else {
-		// Anonymous reservation cancelled by an authenticated user – must be a správce (moderator),
-		// since cancelling on someone's behalf requires seeing gifter identity.
-		const { wishlist: wishlistRow } = await getGiftWithWishlist(reservationRow.giftId);
-		const role = await resolveWishlistRole(authContext, wishlistRow);
+	} else if (authContext.user.id !== reservationRow.userId) {
+		// Release path (issue #213): cancelling on someone else's behalf.
+		//
+		// The administrator check is a pure env read (`ADMIN_EMAILS`), so a non-administrator
+		// reaching for a SIGNED-IN gifter's reservation is rejected here without a single extra
+		// statement — a správce has no more reach than a plain visitor on such a row (REQ-2), so
+		// resolving their role first would only buy a query we must not spend on a denial.
+		const isAdmin = isAppAdmin(authContext.user.email);
+		if (!reservationIsGuest && !isAdmin) {
+			error(403, SERVER_ERROR.RELEASE_REQUIRES_ADMIN);
+		}
 
-		if (!canSeeGifterIdentity(role)) {
-			error(403, SERVER_ERROR.CANNOT_CANCEL_ANONYMOUS_RESERVATION);
+		const { gift: giftRow, wishlist: wishlistRow } = await getGiftWithWishlist(
+			reservationRow.giftId,
+		);
+		const role = await resolveWishlistRole(authContext, wishlistRow);
+		const capability = resolveReservationReleaseCapability({ role, isAdmin });
+
+		if (!canReleaseReservation(capability, reservationIsGuest)) {
+			// On a signed-in gifter's row only the obdarovaný-who-is-also-administrator reaches
+			// here (REQ-6) — every other non-administrator was already rejected above with
+			// RELEASE_REQUIRES_ADMIN. A guest row keeps the pre-existing „not a správce" code.
+			error(
+				403,
+				reservationIsGuest
+					? SERVER_ERROR.CANNOT_CANCEL_ANONYMOUS_RESERVATION
+					: SERVER_ERROR.ACCESS_DENIED,
+			);
 		}
 
 		wishlistShortId = wishlistRow.shortId;
+		releaseContext = { wishlistRow, giftName: giftRow.name };
 	}
 
-	// Soft delete
+	// Soft delete. `cancelledByUserId` records WHO released it on every path (REQ-10); it stays
+	// null for a guest self-cancel, which is what makes an override distinguishable.
 	await database
 		.update(reservation)
-		.set({ deletedAt: new Date() })
+		.set({ deletedAt: new Date(), cancelledByUserId: authContext?.user.id ?? null })
 		.where(eq(reservation.id, input.reservationId));
+
+	// Tell the gifter their reservation is gone (REQ-9). Only on the release path — cancelling
+	// one's own reservation notifies nobody. A guest is reachable only if they left an address.
+	if (releaseContext !== null && authContext !== null) {
+		const targetUserIds = reservationRow.userId === null ? [] : [reservationRow.userId];
+		const targetEmails =
+			reservationRow.anonymousEmail === null || reservationRow.anonymousEmail === ''
+				? []
+				: [reservationRow.anonymousEmail];
+
+		if (targetUserIds.length > 0 || targetEmails.length > 0) {
+			await dispatchNotification({
+				type: NOTIFICATION_TYPE.RESERVATION_CANCELLED,
+				targetUserIds,
+				targetEmails,
+				wishlistId: releaseContext.wishlistRow.id,
+				giftId: reservationRow.giftId,
+				// Naming the gift is what separates this copy from the bulk revert-to-draft
+				// cancellation, which sweeps a whole list and names none.
+				giftName: releaseContext.giftName,
+				actorId: authContext.user.id,
+				actorName: authContext.user.name,
+				wishlist: {
+					title: releaseContext.wishlistRow.title,
+					shortId: releaseContext.wishlistRow.shortId,
+				},
+			});
+		}
+	}
 
 	// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page tracks this
 	// query, so the fresh reservation state rides back on the command response.
@@ -361,27 +420,50 @@ export const getReservationsForGift = publicQuery(v.string(), async (authContext
 
 	const role = await resolveWishlistRole(authContext, wishlistRow);
 
-	// Only správci (moderators) see gifter identities. Recipient (even self-promoted, who sees
-	// counts) and visitors never learn who reserved what.
-	if (!canSeeGifterIdentity(role)) {
+	// Správci (guest rows only) and the app administrator (every row) see gifter identities; the
+	// obdarovaný — even when they are the administrator — and plain visitors never learn who
+	// reserved what (issue #213, REQ-5/REQ-6).
+	const capability = resolveReservationReleaseCapability({
+		role,
+		isAdmin: isAppAdmin(authContext?.user.email),
+	});
+	if (capability === RESERVATION_RELEASE_CAPABILITY.none) {
 		return { reservations: [] as ReservationForModerator[], role };
 	}
 
 	const database = getDb();
 
+	// The join resolves a signed-in gifter's real account name — the picker (REQ-4) cannot
+	// identify a row without it.
 	const rows = await database
-		.select()
+		.select({
+			id: reservation.id,
+			giftId: reservation.giftId,
+			quantity: reservation.quantity,
+			userId: reservation.userId,
+			anonymousName: reservation.anonymousName,
+			gifterName: user.name,
+			createdAt: reservation.createdAt,
+		})
 		.from(reservation)
+		.leftJoin(user, eq(reservation.userId, user.id))
 		.where(and(eq(reservation.giftId, giftId), isNull(reservation.deletedAt)))
 		.orderBy(reservation.createdAt);
 
-	const reservations: ReservationForModerator[] = rows.map((row) => ({
-		id: row.id,
-		giftId: row.giftId,
-		quantity: row.quantity,
-		displayName: row.anonymousName ?? 'Authenticated user',
-		createdAt: row.createdAt,
-	}));
+	const reservations: ReservationForModerator[] = rows
+		// The viewer's own reservation is cancelled through the single-click path on their own
+		// reserve control, never through the release ledger.
+		.filter((row) => authContext === null || row.userId !== authContext.user.id)
+		.map((row) => ({
+			id: row.id,
+			giftId: row.giftId,
+			quantity: row.quantity,
+			// Null only when the gifter's account was deleted (`user_id` drops to NULL) — the UI
+			// renders its own placeholder rather than a server-side English fallback.
+			displayName: row.anonymousName ?? row.gifterName,
+			releasable: canReleaseReservation(capability, row.userId === null),
+			createdAt: row.createdAt,
+		}));
 
 	return { reservations, role };
 });

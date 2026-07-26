@@ -22,6 +22,13 @@ export default defineConfig({
 		command: `pnpm run dev --port ${devServerPort} --strictPort`,
 		port: devServerPort,
 		reuseExistingServer: true,
+		env: {
+			// The app administrator is env-based (`isAppAdmin`), so the admin-only specs
+			// (revert-to-draft #150, release reservation #213) need a known operator address.
+			// NOTE: `reuseExistingServer` means an ALREADY RUNNING dev server keeps whatever
+			// env it was started with — restart it if those specs fail with a missing control.
+			ADMIN_EMAILS: 'tomas@test.cz',
+		},
 	},
 	projects: [
 		{

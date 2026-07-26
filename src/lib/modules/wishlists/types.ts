@@ -34,6 +34,9 @@ export type RecipientKind = (typeof RECIPIENT_KIND)[keyof typeof RECIPIENT_KIND]
 /** Max length of a free-text recipient name (issue #99 creation modal). */
 export const RECIPIENT_NAME_MAX_LENGTH = 100;
 
+/** Max length of a wishlist title (issue #210: unbounded titles overflow dialog headers). */
+export const WISHLIST_TITLE_MAX_LENGTH = 100;
+
 /** Free-text recipient name: trimmed, non-empty, max {@link RECIPIENT_NAME_MAX_LENGTH} chars.
  *  Single source for creation, rename, and the linked → free-text flip (issue #150). */
 const RecipientNameSchema = v.pipe(
@@ -41,6 +44,15 @@ const RecipientNameSchema = v.pipe(
 	v.trim(),
 	v.minLength(1),
 	v.maxLength(RECIPIENT_NAME_MAX_LENGTH),
+);
+
+/** Wishlist title: trimmed, non-empty, max {@link WISHLIST_TITLE_MAX_LENGTH} chars.
+ *  Single source for creation and update (issue #210). */
+const WishlistTitleSchema = v.pipe(
+	v.string(),
+	v.trim(),
+	v.minLength(1),
+	v.maxLength(WISHLIST_TITLE_MAX_LENGTH),
 );
 
 /**
@@ -72,7 +84,7 @@ export type CreateWishlistInput =
 const PaletteSchema = v.custom<Palette>(isPalette);
 
 const CreateWishlistBaseFields = {
-	title: v.pipe(v.string(), v.trim(), v.minLength(1)),
+	title: WishlistTitleSchema,
 	eventDate: v.optional(v.nullable(v.date())),
 	theme: v.optional(v.picklist(WISHLIST_THEMES)),
 	palette: v.optional(PaletteSchema),
@@ -100,7 +112,7 @@ export interface UpdateWishlistInput {
 
 export const UpdateWishlistInputSchema = v.object({
 	id: v.string(),
-	title: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1))),
+	title: v.optional(WishlistTitleSchema),
 	description: v.optional(v.nullable(v.string())),
 	eventDate: v.optional(v.nullable(v.date())),
 	imageKey: v.optional(v.nullable(v.string())),
