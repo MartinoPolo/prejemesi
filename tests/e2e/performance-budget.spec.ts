@@ -41,6 +41,23 @@ const FORBIDDEN_MODULE_PATH_FRAGMENTS = [
 	'/lib/components/blocks/navbar/NavDropdown.svelte',
 ];
 
+// The landing demo (issue #218, REQ-3) renders the real `GiftCard`/`GiftListItem` so the
+// demo can never drift from the shipped product, and REQ-10 keeps it server-rendered. That
+// makes this exact set of gift/wishlist presentation modules public code by design.
+// Enumerated file by file rather than as a folder-wide hole: gift/wishlist *management*
+// (drafts, deletion rules, dashboards, wishlist creation) and every `*.remote.ts` data
+// module stays forbidden, so a new fan-out still fails the gate. Landing-only — the login
+// page passes no exceptions and remains fully strict.
+const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
+	'/lib/modules/gifts/types.ts',
+	'/lib/modules/gifts/gift_display.ts',
+	'/lib/modules/gifts/gift_display_state.ts',
+	'/lib/modules/gifts/gift_url.ts',
+	'/lib/modules/gifts/gifts.context.svelte.ts',
+	'/lib/modules/wishlists/types.ts',
+	'/lib/modules/wishlists/wishlist_capabilities.ts',
+] as const;
+
 // Locale-resilient login-link selector. The base locale is cs, so the landing
 // login link renders "Přihlásit se" (cs) / "Log in" (en) — never match on that
 // text. Instead match the anchor by href: LandingNav uses
@@ -62,12 +79,13 @@ interface InitialLoadBudget {
 }
 
 // Budgets = measured dev-mode baseline + ~25% headroom (ceil(measured * 1.25)).
-// Measured 2026-07-12: landing 185 req / 9,840,032 B, login 161 req / 9,688,681 B.
+// Landing measured 2026-08-01 (after the demo section landed): 274 req / 11,996,812 B.
+// Login measured 2026-07-12: 161 req / 9,688,681 B.
 // See docs/performance-budget.md for the values and how to re-baseline after an
 // intentional change.
 const LANDING_BUDGET: InitialLoadBudget = {
-	maxJavaScriptRequests: 232,
-	maxJavaScriptBytes: 12_300_040,
+	maxJavaScriptRequests: 343,
+	maxJavaScriptBytes: 14_996_015,
 };
 const LOGIN_BUDGET: InitialLoadBudget = {
 	maxJavaScriptRequests: 202,
@@ -112,9 +130,14 @@ async function collectInitialJavaScript(
 	return { requestCount: urls.length, totalBytes, urls };
 }
 
-function findForbiddenRequests(urls: string[]): string[] {
-	return urls.filter((url) =>
-		FORBIDDEN_MODULE_PATH_FRAGMENTS.some((fragment) => url.includes(fragment)),
+function findForbiddenRequests(
+	urls: readonly string[],
+	allowedModulePaths: readonly string[] = [],
+): string[] {
+	return urls.filter(
+		(url) =>
+			FORBIDDEN_MODULE_PATH_FRAGMENTS.some((fragment) => url.includes(fragment)) &&
+			!allowedModulePaths.some((allowedPath) => url.includes(allowedPath)),
 	);
 }
 
@@ -130,7 +153,7 @@ test.describe('Initial-load performance budget', () => {
 			`[budget] landing: ${inventory.requestCount} JS requests, ${inventory.totalBytes} bytes`,
 		);
 
-		expect(findForbiddenRequests(inventory.urls)).toEqual([]);
+		expect(findForbiddenRequests(inventory.urls, LANDING_DEMO_PUBLIC_MODULE_PATHS)).toEqual([]);
 		expect(inventory.requestCount).toBeLessThanOrEqual(LANDING_BUDGET.maxJavaScriptRequests);
 		expect(inventory.totalBytes).toBeLessThanOrEqual(LANDING_BUDGET.maxJavaScriptBytes);
 	});

@@ -18,19 +18,32 @@ The gate is the automated Playwright spec
 
 | Page             | Max JS requests | Max transferred JS bytes |
 | ---------------- | --------------- | ------------------------ |
-| Landing (`/`)    | **232**         | **12,300,040**           |
+| Landing (`/`)    | **343**         | **14,996,015**           |
 | Login (`/login`) | **202**         | **12,110,852**           |
 
 Budget = **measured baseline + ~25% headroom** (`ceil(measured × 1.25)`), per
 page, for both request count and bytes. The headroom absorbs benign churn (a new
 icon, a copy string) while still catching a real code-fan-out regression.
 
-### Measured baseline (2026-07-12)
+### Measured baseline
 
-| Page    | JS requests | Transferred JS bytes |
-| ------- | ----------- | -------------------- |
-| Landing | 185         | 9,840,032            |
-| Login   | 161         | 9,688,681            |
+| Page    | Measured   | JS requests | Transferred JS bytes |
+| ------- | ---------- | ----------- | -------------------- |
+| Landing | 2026-08-01 | 274         | 11,996,812           |
+| Login   | 2026-07-12 | 161         | 9,688,681            |
+
+The landing baseline jumped on **2026-08-01** when the interactive demo section
+(issue #218) shipped: it server-renders the real `GiftCard`/`GiftListItem`
+(REQ-3, REQ-10), which pulls the gift block components and their dependencies
+into the landing module graph. That is the intended cost of a demo that cannot
+drift from the shipped product.
+
+> Measure on a **warm** dev server. The 2.5 s post-hydration settle window is a
+> fixed budget, so a cold server that is still transforming modules when it
+> expires reports a lower count (CI has been seen at 245–265 for the same tree
+> that measures a stable 274 warm). Truncation only ever _under_-counts, so it
+> cannot cause a false failure — but always baseline from the warm, higher
+> number.
 
 > **These are Vite _dev-mode_ module counts and bytes, not production chunk
 > sizes.** The e2e suite is local-only and runs against the dev server
@@ -67,6 +80,27 @@ contains `LogoMark.svelte`, a dependency-light shared logo used by the **public*
 false-positive on that shared logo, so only the true app-shell components are
 listed. `Navbar.svelte` is the shell root and transitively pulls the others, so
 gating it already covers the real authenticated chrome.
+
+### Landing-only exceptions (issue #218)
+
+The landing demo section server-renders the real `GiftCard`/`GiftListItem`
+(REQ-3: the demo must never drift from the shipped product), so these modules are
+public code by design and are allowed **on `/` only**:
+
+| Allowed on `/`                                    | Why the demo needs it              |
+| ------------------------------------------------- | ---------------------------------- |
+| `/lib/modules/gifts/types.ts`                     | Gift view types                    |
+| `/lib/modules/gifts/gift_display.ts`              | Price/label formatting             |
+| `/lib/modules/gifts/gift_display_state.ts`        | Reserved/archived render state     |
+| `/lib/modules/gifts/gift_url.ts`                  | External-link rendering            |
+| `/lib/modules/gifts/gifts.context.svelte.ts`      | Context the demo stubs locally     |
+| `/lib/modules/wishlists/types.ts`                 | `WishlistRole`                     |
+| `/lib/modules/wishlists/wishlist_capabilities.ts` | Release capability (empty in demo) |
+
+They are enumerated file by file, never folder-wide: gift/wishlist
+**management** (drafts, deletion rules, dashboards, wishlist creation) and every
+`*.remote.ts` data module stay forbidden, so a new fan-out into that code still
+fails the gate. `/login` passes **no** exceptions and remains fully strict.
 
 ---
 
@@ -125,10 +159,14 @@ dependency, etc.) and the budget assertion — not the fan-out assertion — fai
 1. **First confirm the fan-out assertion still passes.** If the test fails
    because a _forbidden_ authenticated module is now being fetched, that is a
    **real regression** to investigate, not a budget to relax. Do not raise the
-   budget to hide it.
-2. Run the spec (command above) and read the `[budget]` console lines, e.g.:
+   budget to hide it. The only way a forbidden module becomes acceptable is a
+   deliberate product decision to make it public — and then it goes into the
+   landing-only exception list above, named file by file with its reason, never
+   by deleting a folder-wide fragment.
+2. Run the spec (command above) against a **warm** dev server and read the
+   `[budget]` console lines, e.g.:
     ```
-    [budget] landing: 185 JS requests, 9840032 bytes
+    [budget] landing: 274 JS requests, 11996812 bytes
     [budget] login: 161 JS requests, 9688825 bytes
     ```
 3. Set each new budget constant in `tests/e2e/performance-budget.spec.ts`
