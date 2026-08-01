@@ -29,8 +29,17 @@ icon, a copy string) while still catching a real code-fan-out regression.
 
 | Page    | Measured   | JS requests | Transferred JS bytes |
 | ------- | ---------- | ----------- | -------------------- |
-| Landing | 2026-08-01 | 274         | 11,996,812           |
+| Landing | 2026-08-01 | 299         | 12,200,655           |
 | Login   | 2026-07-12 | 161         | 9,688,681            |
+
+The landing figure rose from 274 (the value the 343 budget was derived from) in two
+same-day steps: to 297 when the demo section gained the real `WishlistHeader` hero above
+its two panes, then to the measured 299 above when the demo's like counter became a real
+shared counter (issue #218 follow-up: `landing_demo_likes.remote.ts` plus its slug
+allowlist). The budget was **deliberately left at 343**: the existing headroom still
+covers the new baseline, and keeping the tighter ceiling preserves the gate's
+sensitivity. Re-baseline to `ceil(299 × 1.25)` only if a future intentional change
+actually needs the room.
 
 The landing baseline jumped on **2026-08-01** when the interactive demo section
 (issue #218) shipped: it server-renders the real `GiftCard`/`GiftListItem`
@@ -96,6 +105,18 @@ public code by design and are allowed **on `/` only**:
 | `/lib/modules/gifts/gifts.context.svelte.ts`      | Context the demo stubs locally     |
 | `/lib/modules/wishlists/types.ts`                 | `WishlistRole`                     |
 | `/lib/modules/wishlists/wishlist_capabilities.ts` | Release capability (empty in demo) |
+| `/lib/modules/wishlists/dashboard_types.ts`       | Status badge label + tone map      |
+| `/lib/modules/wishlists/event_countdown.ts`       | Countdown chip string              |
+
+The last two arrived with the demo's `WishlistHeader` hero (the real wishlist header
+above the two panes, rendered with `role: visitor`). Both are pure presentation helpers.
+
+The demo's own like counter needs **no** exception: `$lib/modules/likes/` and
+`$lib/modules/landing/` are not guarded folders, so `LikeButton`'s likes context and the
+demo's `landing_demo_likes.remote.ts` load on `/` without a hole in the gate. That is
+intentional — those two modules are anonymous-visitor endpoints by design, not
+authenticated app code. Reservations remain fixture-only and reach no remote function at
+all, which is what `tests/e2e/landing-demo.spec.ts` asserts.
 
 They are enumerated file by file, never folder-wide: gift/wishlist
 **management** (drafts, deletion rules, dashboards, wishlist creation) and every

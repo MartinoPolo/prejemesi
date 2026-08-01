@@ -1,15 +1,30 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { SvelteSet } from 'svelte/reactivity';
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
+	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import LandingDemoPane from './LandingDemoPane.svelte';
-	import { setLandingDemoGiftContexts } from './landing_demo_contexts.js';
+	import {
+		setLandingDemoGiftContexts,
+		type LandingDemoLikeControls,
+	} from './landing_demo_contexts.js';
 	import {
 		createLandingDemoGifts,
 		createLandingDemoPairGift,
+		createLandingDemoWishlistHeaderProps,
 		reserveDemoGift,
 		toRecipientView,
+		type LandingDemoLikeCounts,
 	} from './landing_demo_fixtures.js';
+	import {
+		landingDemoGiftIdsForSlug,
+		landingDemoGiftSlugForId,
+	} from '$lib/modules/landing/landing_demo_gift_slugs.js';
+	import {
+		getLandingDemoLikes,
+		toggleLandingDemoLike,
+	} from '$lib/modules/landing/landing_demo_likes.remote.js';
 	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import { cn } from '$lib/utils.js';
@@ -28,11 +43,32 @@
 	// active item; binding a writable $derived lets onValueChange undo that (see GiftViewSwitcher).
 	let selectedViewpoint = $derived(mobileViewpoint);
 
-	// The one source of truth for the whole demo. Plain local state: it never leaves the
-	// component, never reaches the network, and a reload starts the visitor over.
+	// Reservations are the one source of truth for the whole demo. Plain local state: they
+	// never leave the component, never reach the network, and a reload starts the visitor
+	// over. Likes are the deliberate exception below — a real, shared counter.
 	const reservedGiftIds = new SvelteSet<string>();
 
-	const demoGifts = $derived(createLandingDemoGifts());
+	// Loaded after hydration only, so the server-rendered landing page still needs no
+	// database. `LikeButton` hides a zero count, so the numbers just pop in when they land.
+	const likesQuery = $derived(browser ? getLandingDemoLikes() : null);
+	const likeCounts = $derived<LandingDemoLikeCounts>(likesQuery?.current?.counts ?? {});
+	const likedGiftIds = $derived(
+		(likesQuery?.current?.likedSlugs ?? []).flatMap(landingDemoGiftIdsForSlug),
+	);
+
+	const likeControls: LandingDemoLikeControls = {
+		getLikedGiftIds: () => likedGiftIds,
+		toggleLike: async (giftId) => {
+			const giftSlug = landingDemoGiftSlugForId(giftId);
+			if (giftSlug === null) {
+				throw new Error(`Not a landing demo gift: ${giftId}`);
+			}
+			return toggleLandingDemoLike({ giftSlug });
+		},
+	};
+
+	const wishlistHeaderProps = $derived(createLandingDemoWishlistHeaderProps());
+	const demoGifts = $derived(createLandingDemoGifts(likeCounts));
 	const gifterGifts = $derived(
 		demoGifts.map((gift) =>
 			reservedGiftIds.has(gift.id) ? reserveDemoGift(gift, true) : gift,
@@ -43,7 +79,7 @@
 	// The hook above the toggle is a frozen snapshot of one gift, reserved by someone else.
 	// `isArchived` is what the product renders for a gift nobody can act on any more, which
 	// is exactly the pair's job: show the reservation signal, offer no control.
-	const pairGift = $derived(createLandingDemoPairGift());
+	const pairGift = $derived(createLandingDemoPairGift(likeCounts));
 	const pairGifterGift = $derived(reserveDemoGift(pairGift, false));
 	const pairRecipientGift = $derived(toRecipientView(pairGift));
 
@@ -52,6 +88,7 @@
 	setLandingDemoGiftContexts(
 		() => [pairGifterGift],
 		() => WISHLIST_ROLES.visitor,
+		likeControls,
 	);
 
 	function handleReserve(gift: GiftForVisitor) {
@@ -88,6 +125,13 @@
 		<!-- Scoped palette: the demo wishlist carries its own color identity exactly like a real
 		     one, without leaking into the landing shell around it. -->
 		<div class="flex min-w-0 flex-col gap-8" data-palette={DEMO_PALETTE}>
+			<!-- The wishlist both panes below belong to, rendered by the real header component
+			     with the visitor role so every manager control stays hidden. -->
+			<div data-testid="landing-demo-wishlist-header">
+				<!-- h2: the landing hero already owns the page's single h1. -->
+				<WishlistHeader {...wishlistHeaderProps} headingLevel={2} />
+			</div>
+
 			<!-- Mobile hook: the same gift twice, side by side. Labels occupy the first row so
 			     both cards still share the gift card's 7-band row subgrid and line up. -->
 			<div class="lg:hidden">
@@ -95,14 +139,8 @@
 					{m.landing_demo_pair_title()}
 				</h3>
 				<div class="grid grid-cols-2 gap-x-3 gap-y-0" data-testid="landing-demo-pair">
-					<span class="pair-label mb-2">
-						<span aria-hidden="true">👀</span>
-						{m.landing_demo_gifter_label()}
-					</span>
-					<span class="pair-label mb-2">
-						<span aria-hidden="true">🙈</span>
-						{m.landing_demo_recipient_label()}
-					</span>
+					<span class="pair-label mb-2">{m.landing_demo_gifter_label()}</span>
+					<span class="pair-label mb-2">{m.landing_demo_recipient_label()}</span>
 					<div
 						class="row-span-7 grid grid-rows-subgrid gap-y-0"
 						data-testid="landing-demo-pair-gifter"
@@ -165,9 +203,10 @@
 				<LandingDemoPane
 					role={WISHLIST_ROLES.visitor}
 					gifts={gifterGifts}
-					emoji="👀"
 					label={m.landing_demo_gifter_label()}
 					hint={m.landing_demo_gifter_hint()}
+					note={m.landing_demo_like_note()}
+					{likeControls}
 					{reservedGiftIds}
 					testId="landing-demo-pane-gifter"
 					onreserve={handleReserve}
@@ -177,9 +216,9 @@
 				<LandingDemoPane
 					role={WISHLIST_ROLES.recipient}
 					gifts={recipientGifts}
-					emoji="🙈"
 					label={m.landing_demo_recipient_label()}
 					hint={m.landing_demo_recipient_hint()}
+					{likeControls}
 					{reservedGiftIds}
 					testId="landing-demo-pane-recipient"
 					class={cn(mobileViewpoint !== DEMO_VIEWPOINTS.recipient && 'hidden lg:flex')}
@@ -190,7 +229,6 @@
 				class="hidden text-center text-(length:--text-lg) leading-relaxed text-muted-foreground lg:block"
 				data-testid="landing-demo-note"
 			>
-				<span aria-hidden="true">🤫</span>
 				{m.landing_demo_split_note()}
 			</p>
 		</div>

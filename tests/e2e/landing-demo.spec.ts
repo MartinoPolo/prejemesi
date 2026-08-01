@@ -6,8 +6,9 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
  * The section renders a fixture birthday wishlist for "Petra" through the real gift
  * components twice — once as a gifter, once as the recipient — to demonstrate the
  * product's surprise invariant: gifters see reservation state, the recipient never does.
- * Every interaction is local Svelte state, so nothing may reach the network and a reload
- * must start the visitor over.
+ * Reservations are local Svelte state, so they may never reach the network and a reload
+ * must start the visitor over. Likes are the one deliberate exception: the heart writes to
+ * a real, shared counter and persists per browser via the anonymous visitor cookie.
  */
 
 const MOBILE_VIEWPORT = { width: 375, height: 812 } as const;
@@ -24,13 +25,14 @@ const CS = {
 	cancelReservation: 'Zrušit rezervaci',
 	invariantCaption: 'Petra nevidí, že je rezervováno — překvapení platí.',
 	splitNote: 'Rezervuj něco vlevo. Vpravo se nezmění vůbec nic — přesně o to tu jde.',
-	teapotName: 'Skleněná konvička na čaj',
+	teapotName: 'Porcelánová konvička na čaj',
+	likeNote: 'v aplikaci ti přijde e-mail, když někdo rezervuje dárek, který sis oblíbil',
 } as const;
 
 const EN = {
 	badge: 'This is a demo',
 	headline: "Friends see the reservation. Petra doesn't.",
-	teapotName: 'Glass teapot',
+	teapotName: 'Porcelain teapot',
 } as const;
 
 /**
@@ -70,6 +72,66 @@ async function toggleReservation(button: Locator, expectedLabel: string): Promis
 		await button.click();
 		await expect(button).toHaveText(expectedLabel, { timeout: 2_000 });
 	}).toPass({ timeout: 30_000 });
+}
+
+/**
+ * The demo's only like button that renders its count: the mobile hook's gifter `GiftCard`.
+ * The two panes use `GiftListItem`, which passes `showCount={false}`, so their hearts show
+ * pressed state only.
+ */
+function pairLikeButton(page: Page): Locator {
+	return page.getByTestId('landing-demo-pair-gifter').locator('button[aria-pressed]');
+}
+
+/**
+ * Resolves on the next like-counter round trip. The demo's only remote traffic is the like
+ * query and command, so any `/_app/remote/` response is one of them. Every count read has to
+ * be sequenced behind one of these: the query loads after hydration (counts pop in) and the
+ * button paints an optimistic number before the command answers, so an unsequenced read can
+ * catch either placeholder instead of the shared truth.
+ */
+function likeCounterResponse(page: Page): Promise<unknown> {
+	return page.waitForResponse((response) => response.url().includes('/_app/remote/'), {
+		timeout: 15_000,
+	});
+}
+
+/** Rendered like count; `LikeButton` hides a zero, so an empty label reads as 0. */
+async function likeCount(button: Locator): Promise<number> {
+	const label = (await button.innerText()).trim();
+	return label === '' ? 0 : Number(label);
+}
+
+/**
+ * Clicks a like button and waits for its pressed state to flip. Same retry rationale as
+ * {@link toggleReservation}: the section is server-rendered, so a click can land before
+ * hydration wires the handler.
+ */
+async function toggleLike(button: Locator, expectedPressed: boolean): Promise<void> {
+	await expect(async () => {
+		await button.click();
+		await expect(button).toHaveAttribute('aria-pressed', String(expectedPressed), {
+			timeout: 2_000,
+		});
+	}).toPass({ timeout: 30_000 });
+}
+
+/**
+ * `toggleLike` returns as soon as the OPTIMISTIC state flips, which is before the command
+ * has landed. Reloading into that gap would race the write. The anonymous visitor cookie is
+ * minted by that same command response (a query cannot set cookies), so in a fresh browser
+ * context its appearance is exact proof that the first like committed server-side.
+ */
+async function waitForFirstLikeToCommit(page: Page): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				const cookies = await page.context().cookies();
+				return cookies.some((cookie) => cookie.name === 'prejemesi_anon_id');
+			},
+			{ timeout: 15_000 },
+		)
+		.toBe(true);
 }
 
 test.describe('Landing demo section', () => {
@@ -263,6 +325,69 @@ test.describe('Landing demo section', () => {
 		await page.waitForSelector('[data-testid="landing-demo"]');
 
 		await expect(reserveButton()).toHaveText(CS.reserve);
+	});
+
+	// The one real, shared, persisted surface in the demo. Serial because the counter is
+	// global state and the config is `fullyParallel`: two like tests running at once would
+	// see each other's writes land between a snapshot and its assertion.
+	test.describe('like counter', () => {
+		test.describe.configure({ mode: 'serial' });
+
+		test('liking a demo gift moves the shared counter and unliking puts it back', async ({
+			page,
+		}) => {
+			await page.setViewportSize(MOBILE_VIEWPORT);
+			const initialCounts = likeCounterResponse(page);
+			await gotoDemo(page);
+			await initialCounts;
+
+			const likeButton = pairLikeButton(page);
+			await expect(likeButton).toHaveAttribute('aria-pressed', 'false');
+
+			// The counter is real, shared, global state — parallel workers and reruns all write
+			// to it, so only deltas against the count on screen right now can be asserted.
+			const countBeforeLike = await likeCount(likeButton);
+
+			const likeCommitted = likeCounterResponse(page);
+			await toggleLike(likeButton, true);
+			await likeCommitted;
+			await expect.poll(() => likeCount(likeButton)).toBe(countBeforeLike + 1);
+
+			const unlikeCommitted = likeCounterResponse(page);
+			await toggleLike(likeButton, false);
+			await unlikeCommitted;
+			await expect.poll(() => likeCount(likeButton)).toBe(countBeforeLike);
+		});
+
+		test('a like survives a reload (anonymous visitor cookie)', async ({ page }) => {
+			await page.setViewportSize(MOBILE_VIEWPORT);
+			await gotoDemo(page);
+
+			const likeButton = () => pairLikeButton(page);
+			await toggleLike(likeButton(), true);
+			await waitForFirstLikeToCommit(page);
+			const countAfterLike = await likeCount(likeButton());
+
+			await page.reload();
+			await page.waitForSelector('[data-testid="landing-demo"]');
+
+			// Unlike the reservation state, this one is restored from the server for this browser.
+			await expect(likeButton()).toHaveAttribute('aria-pressed', 'true');
+			await expect.poll(() => likeCount(likeButton())).toBe(countAfterLike);
+
+			// Leave the shared counter as it was found.
+			await toggleLike(likeButton(), false);
+		});
+	});
+
+	test('the demo explains the real notification rule behind a like', async ({ page }) => {
+		await page.setViewportSize(DESKTOP_VIEWPORT);
+		await gotoDemo(page);
+
+		// Plain visible text, so it is readable on a phone with no hover available.
+		const note = page.getByTestId('landing-demo-like-note');
+		await expect(note).toBeVisible();
+		await expect(note).toHaveText(new RegExp(CS.likeNote));
 	});
 
 	test('renders Czech at / and English at /en', async ({ page }) => {

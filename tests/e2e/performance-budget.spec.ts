@@ -56,6 +56,10 @@ const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
 	'/lib/modules/gifts/gifts.context.svelte.ts',
 	'/lib/modules/wishlists/types.ts',
 	'/lib/modules/wishlists/wishlist_capabilities.ts',
+	// Added when the demo gained the real `WishlistHeader` above the panes: both are
+	// pure presentation helpers (status badge labels, day-granular countdown string).
+	'/lib/modules/wishlists/dashboard_types.ts',
+	'/lib/modules/wishlists/event_countdown.ts',
 ] as const;
 
 // Locale-resilient login-link selector. The base locale is cs, so the landing
