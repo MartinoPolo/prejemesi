@@ -4,7 +4,7 @@ Přejeme si ("dárečky" = presents in Czech) is a shareable wishlist web app wh
 
 ## Domain Language
 
-**Wishlist** — A collection of desired gifts created by an owner for a specific occasion.
+**Wishlist** — A collection of desired gifts created by an owner. A wishlist may be ongoing (no date) or tied to a specific occasion; the event date is optional.
 **Gift** — An item on a wishlist with name, optional description/URL/price/image/priority/quantity.
 **Recipient (obdarovaný)** — The person a wishlist is for: a linked user or a free-text name (e.g. a child). Manages the list when linked, but never sees reservation state and cannot reserve. A linked recipient may flip their own list to a free-text recipient (becoming správce).
 **Admin** — App operator matched via `ADMIN_EMAILS` env var; the only role that can revert a reserved shared list to draft, and the only one that can release a SIGNED-IN gifter's single reservation (issue #213). Not a správce, never surfaces in list UI.

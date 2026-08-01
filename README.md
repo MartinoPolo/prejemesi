@@ -7,7 +7,7 @@ surprise intact.
 
 ## How It Works
 
-- **Create a wishlist** for an occasion, add gifts (name, link, price, image, priority, quantity), pick a
+- **Create a wishlist** — ongoing or for a specific occasion — add gifts (name, link, price, image, priority, quantity), pick a
   theme, and arrange them in your preferred order. Add gifts one at a time, **batch-add** multiple rows at
   once, or use the **import wizard** (CSV upload, paste cells, or Google Sheets link) for a 3-step
   Source → Review → Confirm flow. Each gift can carry up to 10 links (**multi-link**); the first is
