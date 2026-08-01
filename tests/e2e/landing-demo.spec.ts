@@ -24,9 +24,9 @@ const CS = {
 	reserve: 'Rezervovat',
 	cancelReservation: 'Zrušit rezervaci',
 	invariantCaption: 'Petra nevidí, že je rezervováno — překvapení platí.',
-	splitNote: 'Rezervuj něco vlevo. Vpravo se nezmění vůbec nic — přesně o to tu jde.',
+	splitNote: 'Rezervujte něco vlevo. Vpravo se nezmění vůbec nic — přesně o to tu jde.',
 	teapotName: 'Porcelánová konvička na čaj',
-	likeNote: 'v aplikaci ti přijde e-mail, když někdo rezervuje dárek, který sis oblíbil',
+	likeNote: 'v aplikaci vám přijde e-mail, když někdo rezervuje dárek, který jste si oblíbili',
 } as const;
 
 const EN = {
