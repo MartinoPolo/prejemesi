@@ -407,6 +407,7 @@
 	"wishlist_archive_confirm_title": "Archivovat tento seznam?",
 	"wishlist_archive_confirm_description": "Archivované seznamy jsou jen ke čtení. Nové rezervace nebudou možné. Tuto akci nelze vrátit.",
 	"wishlist_archive_confirm_action": "Archivovat",
+	"wishlist_archiving": "Archivuji...",
 	"wishlist_archive_event_passed": "Datum události již uplynulo. Chcete tento seznam archivovat?",
 	"gift_sort_owner_order": "Výchozí pořadí",
 	"gift_reorder_grip_label": "Přesunout dárek",
