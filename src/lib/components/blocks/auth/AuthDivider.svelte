@@ -1,14 +1,17 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages.js';
+
 	interface AuthDividerProps {
 		label?: string;
 	}
 
-	let { label = 'nebo' }: AuthDividerProps = $props();
+	let { label }: AuthDividerProps = $props();
 </script>
 
 <div class="auth-divider">
 	<div class="auth-divider-line"></div>
-	<span class="auth-divider-text">{label}</span>
+	<!-- Resolved in the markup, not as a prop default, so the label follows a locale switch. -->
+	<span class="auth-divider-text">{label ?? m.auth_divider_or()}</span>
 	<div class="auth-divider-line"></div>
 </div>
 
