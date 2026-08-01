@@ -264,35 +264,72 @@
 
 			<!-- Desktop: both panes at once, driven by the same local state. -->
 			<div class="grid min-w-0 gap-6 lg:grid-cols-2">
-				<LandingDemoPane
-					role={WISHLIST_ROLES.visitor}
-					gifts={gifterGifts}
-					label={m.landing_demo_gifter_label()}
-					hint={m.landing_demo_gifter_hint()}
-					photoSrc={asset('/demo/pane-gifter.jpg')}
-					photoAlt={m.landing_demo_gifter_photo_alt()}
-					photoObjectPosition="75% 50%"
-					{likeControls}
-					{reservedGiftIds}
-					{likePopupGiftId}
-					testId="landing-demo-pane-gifter"
-					onreserve={handleReserve}
-					onunreserve={handleUnreserve}
-					class={cn(mobileViewpoint !== DEMO_VIEWPOINTS.gifter && 'hidden lg:flex')}
-				/>
-				<LandingDemoPane
-					role={WISHLIST_ROLES.recipient}
-					gifts={recipientGifts}
-					label={m.landing_demo_recipient_label()}
-					hint={m.landing_demo_recipient_hint()}
-					photoSrc={asset('/demo/pane-recipient.jpg')}
-					photoAlt={m.landing_demo_recipient_photo_alt()}
-					photoObjectPosition="66% 50%"
-					{likeControls}
-					{reservedGiftIds}
-					testId="landing-demo-pane-recipient"
-					class={cn(mobileViewpoint !== DEMO_VIEWPOINTS.recipient && 'hidden lg:flex')}
-				/>
+				<!-- Each pane is flanked by a physical photo of the person whose viewpoint it
+				     shows: absolutely positioned outside the card on wide screens, stacked above
+				     it in normal flow when the role toggle owns the layout. -->
+				<div
+					class={cn(
+						'relative flex min-w-0 flex-col',
+						mobileViewpoint !== DEMO_VIEWPOINTS.gifter && 'hidden lg:block',
+					)}
+				>
+					<figure
+						class="demo-polaroid demo-polaroid-gifter mr-auto"
+						data-testid="landing-demo-polaroid-gifter"
+					>
+						<div class="demo-polaroid-img">
+							<img
+								src={asset('/demo/pane-gifter.jpg')}
+								alt={m.landing_demo_gifter_photo_alt()}
+								loading="lazy"
+							/>
+						</div>
+						<figcaption>{m.landing_demo_gifter_photo_caption()}</figcaption>
+					</figure>
+					<LandingDemoPane
+						role={WISHLIST_ROLES.visitor}
+						gifts={gifterGifts}
+						label={m.landing_demo_gifter_label()}
+						hint={m.landing_demo_gifter_hint()}
+						{likeControls}
+						{reservedGiftIds}
+						{likePopupGiftId}
+						testId="landing-demo-pane-gifter"
+						onreserve={handleReserve}
+						onunreserve={handleUnreserve}
+						class="h-full lg:pt-28"
+					/>
+				</div>
+				<div
+					class={cn(
+						'relative flex min-w-0 flex-col',
+						mobileViewpoint !== DEMO_VIEWPOINTS.recipient && 'hidden lg:block',
+					)}
+				>
+					<figure
+						class="demo-polaroid demo-polaroid-recipient ml-auto"
+						data-testid="landing-demo-polaroid-recipient"
+					>
+						<div class="demo-polaroid-img">
+							<img
+								src={asset('/demo/pane-recipient.jpg')}
+								alt={m.landing_demo_recipient_photo_alt()}
+								loading="lazy"
+							/>
+						</div>
+						<figcaption>{m.landing_demo_recipient_photo_caption()}</figcaption>
+					</figure>
+					<LandingDemoPane
+						role={WISHLIST_ROLES.recipient}
+						gifts={recipientGifts}
+						label={m.landing_demo_recipient_label()}
+						hint={m.landing_demo_recipient_hint()}
+						{likeControls}
+						{reservedGiftIds}
+						testId="landing-demo-pane-recipient"
+						class="h-full lg:pt-28"
+					/>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -321,6 +358,98 @@
 		letter-spacing: 0.03em;
 		text-transform: uppercase;
 		transform: rotate(-1.5deg);
+	}
+
+	/* Taped polaroid print, mirroring the wishlist hero's: a physical photo, so its frame and
+	   caption ink are fixed and do NOT follow the palette or dark mode. */
+	.demo-polaroid {
+		position: relative;
+		z-index: 10;
+		width: 148px;
+
+		/* The pane card tucks under the print's bottom edge — laid on top, not stacked. */
+		margin-bottom: -0.5rem;
+		padding: 8px 8px 0;
+		background: #fffdf6;
+		border: 2px solid #4a443a;
+		border-radius: 3px;
+		box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+	}
+
+	.demo-polaroid::before {
+		content: '';
+		position: absolute;
+		top: -12px;
+		left: 50%;
+		z-index: 1;
+		width: 72px;
+		height: 20px;
+		transform: translateX(-50%) rotate(-4deg);
+		background: var(--tape-bg);
+		border: 1.5px solid var(--tape-border);
+	}
+
+	.demo-polaroid-gifter {
+		transform: rotate(-5deg);
+	}
+
+	.demo-polaroid-recipient {
+		transform: rotate(4deg);
+	}
+
+	.demo-polaroid-img {
+		position: relative;
+
+		/* Square photo: matches the 1:1 thumbnail slot the crop editor shows (#116 D4). */
+		aspect-ratio: 1 / 1;
+		overflow: hidden;
+		border: 2px solid rgb(0 0 0 / 14%);
+	}
+
+	.demo-polaroid-img img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.demo-polaroid figcaption {
+		padding: 6px 4px 8px;
+		font-family: var(--font-head);
+		font-size: 13.5px;
+		text-align: center;
+		color: #6c6353;
+	}
+
+	/* Split view: each print hangs off its pane's outer edge. The section's 32px side
+	   padding must absorb the outward overhang PLUS the ~7px the rotation adds to the
+	   print's bounding box — 1.25rem + 7px fits, 2rem scrolled the page sideways at
+	   exactly 1024px. */
+	@media (width >= 1024px) {
+		.demo-polaroid {
+			position: absolute;
+			top: -6rem;
+			width: 172px;
+			margin-bottom: 0;
+			padding: 9px 9px 0;
+		}
+
+		.demo-polaroid-gifter {
+			left: -1.25rem;
+		}
+
+		.demo-polaroid-recipient {
+			right: -1.25rem;
+		}
+	}
+
+	@media (width >= 1280px) {
+		.demo-polaroid-gifter {
+			left: -3rem;
+		}
+
+		.demo-polaroid-recipient {
+			right: -3rem;
+		}
 	}
 
 	.pair-label {

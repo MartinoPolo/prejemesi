@@ -26,6 +26,10 @@ const CS = {
 	invariantCaption: 'Petra nevidí, že je rezervováno — překvapení platí.',
 	teapotName: 'Porcelánová konvička na čaj',
 	likePopup: 'Počítadlo je opravdové',
+	gifterPhotoAlt: 'Kamarádi s dárky',
+	recipientPhotoAlt: 'Petra',
+	gifterPhotoCaption: 'Kamarádi',
+	recipientPhotoCaption: 'Petra',
 } as const;
 
 const EN = {
@@ -285,6 +289,57 @@ test.describe('Landing demo section', () => {
 
 		await toggleReservation(reserveButton, CS.reserve);
 		await expect.poll(() => recipientGift.innerText()).toBe(recipientTextBefore);
+	});
+
+	test('each pane is flanked by its polaroid without breaking the panes alignment', async ({
+		page,
+	}) => {
+		await page.setViewportSize(DESKTOP_VIEWPORT);
+		await gotoDemo(page);
+
+		const gifterPolaroid = page.getByTestId('landing-demo-polaroid-gifter');
+		const recipientPolaroid = page.getByTestId('landing-demo-polaroid-recipient');
+		await expect(gifterPolaroid).toBeVisible();
+		await expect(recipientPolaroid).toBeVisible();
+		await expect(gifterPolaroid.getByAltText(CS.gifterPhotoAlt)).toBeVisible();
+		await expect(recipientPolaroid.getByAltText(CS.recipientPhotoAlt)).toBeVisible();
+		await expect(gifterPolaroid).toHaveText(new RegExp(CS.gifterPhotoCaption));
+		await expect(recipientPolaroid).toHaveText(new RegExp(CS.recipientPhotoCaption));
+
+		// The prints are asymmetric decoration; the two pane cards still start on one line.
+		const gifterBox = await gifterPane(page).boundingBox();
+		const recipientBox = await recipientPane(page).boundingBox();
+		expect(gifterBox).not.toBeNull();
+		expect(recipientBox).not.toBeNull();
+		expect(Math.abs((gifterBox?.y ?? 0) - (recipientBox?.y ?? 0))).toBeLessThanOrEqual(1);
+
+		// Overhanging prints must never push the page sideways. 1024px is the tightest
+		// case: the absolute-positioned prints exist but the viewport margins around the
+		// 1200px content column do not yet.
+		for (const width of [1024, DESKTOP_VIEWPORT.width]) {
+			await page.setViewportSize({ width, height: DESKTOP_VIEWPORT.height });
+			const overflow = await page.evaluate(
+				() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+			);
+			expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(0);
+		}
+	});
+
+	test('the visible pane brings its own polaroid on narrow screens', async ({ page }) => {
+		await page.setViewportSize(MOBILE_VIEWPORT);
+		await gotoDemo(page);
+
+		const gifterPolaroid = page.getByTestId('landing-demo-polaroid-gifter');
+		const recipientPolaroid = page.getByTestId('landing-demo-polaroid-recipient');
+		await expect(gifterPolaroid).toBeVisible();
+		await expect(recipientPolaroid).toBeHidden();
+
+		// Server-rendered section: the click can land before hydration wires the toggle.
+		await expect(async () => {
+			await page.getByTestId('landing-demo-role-recipient').click();
+			await expect(recipientPolaroid).toBeVisible({ timeout: 2_000 });
+		}).toPass({ timeout: 30_000 });
+		await expect(gifterPolaroid).toBeHidden();
 	});
 
 	test('reserving and unreserving fires no network mutation', async ({ page }) => {

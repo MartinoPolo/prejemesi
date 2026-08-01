@@ -14,11 +14,6 @@
 		gifts: GiftByRole[];
 		label: string;
 		hint: string;
-		/** Sticker photo shown left of the label block; both panes keep the same header height. */
-		photoSrc?: string;
-		photoAlt?: string;
-		/** Focal point of the source photo — both demo shots have an off-center subject. */
-		photoObjectPosition?: string;
 		/** Shared like counter wiring — the demo's one live remote surface. */
 		likeControls: LandingDemoLikeControls;
 		/** Ids the demo visitor has reserved — drives the recipient pane's narration only. */
@@ -36,9 +31,6 @@
 		gifts,
 		label,
 		hint,
-		photoSrc,
-		photoAlt,
-		photoObjectPosition,
 		likeControls,
 		reservedGiftIds,
 		likePopupGiftId = null,
@@ -70,26 +62,11 @@
 	)}
 	data-testid={testId}
 >
-	<!-- items-start, not items-center: both panes must keep an identical header top edge
-	     however long their hint wraps (issue #218 round 3). -->
-	<div class="flex min-w-0 items-start gap-3">
-		{#if photoSrc !== undefined}
-			<div
-				class="size-16 shrink-0 -rotate-2 overflow-hidden rounded-lg border-2 border-ink shadow-sticker md:size-20"
-			>
-				<img
-					class="size-full object-cover"
-					style:object-position={photoObjectPosition}
-					src={photoSrc}
-					alt={photoAlt}
-					loading="lazy"
-				/>
-			</div>
-		{/if}
-		<div class="flex min-w-0 flex-col gap-1">
-			<h3 class="font-heading text-[19px] font-semibold">{label}</h3>
-			<p class="text-(length:--text-base) leading-relaxed text-muted-foreground">{hint}</p>
-		</div>
+	<!-- The polaroid photos live outside the pane (LandingDemo.svelte), so the header is just
+	     the label block again. -->
+	<div class="flex min-w-0 flex-col gap-1">
+		<h3 class="font-heading text-[19px] font-semibold">{label}</h3>
+		<p class="text-(length:--text-base) leading-relaxed text-muted-foreground">{hint}</p>
 	</div>
 
 	<div class="flex min-w-0 flex-col">
