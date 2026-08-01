@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { asset } from '$app/paths';
 	import { SvelteSet } from 'svelte/reactivity';
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -26,6 +27,12 @@
 		toggleLandingDemoLike,
 	} from '$lib/modules/landing/landing_demo_likes.remote.js';
 	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+	import {
+		PALETTES,
+		PALETTE_LABELS,
+		PALETTE_SWATCHES,
+		type Palette,
+	} from '$lib/theme/palettes.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import { cn } from '$lib/utils.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -36,7 +43,13 @@
 	type DemoViewpoint = (typeof DEMO_VIEWPOINTS)[keyof typeof DEMO_VIEWPOINTS];
 
 	/** A birthday wishlist gets its own warm identity, scoped to this subtree only. */
-	const DEMO_PALETTE = 'honey';
+	const DEMO_DEFAULT_PALETTE: Palette = 'honey';
+
+	/** Shown once per session, so the explainer never nags a visitor who keeps liking. */
+	const LIKE_POPUP_SEEN_KEY = 'landing-demo-like-popup-seen';
+	const LIKE_POPUP_DURATION_MS = 7_000;
+
+	let demoPalette = $state<Palette>(DEMO_DEFAULT_PALETTE);
 
 	let mobileViewpoint = $state<DemoViewpoint>(DEMO_VIEWPOINTS.gifter);
 	// Bits UI's single ToggleGroup writes '' through its bound value on a re-click of the
@@ -56,6 +69,25 @@
 		(likesQuery?.current?.likedSlugs ?? []).flatMap(landingDemoGiftIdsForSlug),
 	);
 
+	// Gift row whose like explainer is currently open. The pair card's id matches no pane row,
+	// so a like there burns the once-per-session flag without painting a stray bubble.
+	let likePopupGiftId = $state<string | null>(null);
+	let likePopupTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function showLikePopup(giftId: string) {
+		if (sessionStorage.getItem(LIKE_POPUP_SEEN_KEY) !== null) {
+			return;
+		}
+		sessionStorage.setItem(LIKE_POPUP_SEEN_KEY, '1');
+		likePopupGiftId = giftId;
+		if (likePopupTimer !== null) {
+			clearTimeout(likePopupTimer);
+		}
+		likePopupTimer = setTimeout(() => {
+			likePopupGiftId = null;
+		}, LIKE_POPUP_DURATION_MS);
+	}
+
 	const likeControls: LandingDemoLikeControls = {
 		getLikedGiftIds: () => likedGiftIds,
 		toggleLike: async (giftId) => {
@@ -63,7 +95,11 @@
 			if (giftSlug === null) {
 				throw new Error(`Not a landing demo gift: ${giftId}`);
 			}
-			return toggleLandingDemoLike({ giftSlug });
+			const result = await toggleLandingDemoLike({ giftSlug });
+			if (result.liked) {
+				showLikePopup(giftId);
+			}
+			return result;
 		},
 	};
 
@@ -124,7 +160,35 @@
 
 		<!-- Scoped palette: the demo wishlist carries its own color identity exactly like a real
 		     one, without leaking into the landing shell around it. -->
-		<div class="flex min-w-0 flex-col gap-8" data-palette={DEMO_PALETTE}>
+		<div class="flex min-w-0 flex-col gap-8" data-palette={demoPalette}>
+			<!-- Inside the palette wrapper on purpose: picking a color retints the switcher
+			     itself along with the demo. Local state only — a reload resets it, exactly like
+			     the demo reservations. -->
+			<div
+				class="flex flex-wrap items-center justify-end gap-1.5"
+				role="group"
+				aria-label={m.landing_demo_palette_label()}
+				data-testid="landing-demo-palette-switcher"
+			>
+				<span class="text-(length:--text-sm) font-semibold text-muted-foreground">
+					{m.landing_demo_palette_label()}
+				</span>
+				{#each PALETTES as palette (palette)}
+					<button
+						type="button"
+						class={cn(
+							'size-6 cursor-pointer rounded-full border-2 border-ink transition-transform',
+							palette === demoPalette && 'scale-110 ring-2 ring-ink ring-offset-2',
+						)}
+						style:background-color={PALETTE_SWATCHES[palette]}
+						aria-pressed={palette === demoPalette}
+						aria-label={PALETTE_LABELS[palette]}
+						title={PALETTE_LABELS[palette]}
+						onclick={() => (demoPalette = palette)}
+					></button>
+				{/each}
+			</div>
+
 			<!-- The wishlist both panes below belong to, rendered by the real header component
 			     with the visitor role so every manager control stays hidden. -->
 			<div data-testid="landing-demo-wishlist-header">
@@ -205,9 +269,12 @@
 					gifts={gifterGifts}
 					label={m.landing_demo_gifter_label()}
 					hint={m.landing_demo_gifter_hint()}
-					note={m.landing_demo_like_note()}
+					photoSrc={asset('/demo/pane-gifter.jpg')}
+					photoAlt={m.landing_demo_gifter_photo_alt()}
+					photoObjectPosition="75% 50%"
 					{likeControls}
 					{reservedGiftIds}
+					{likePopupGiftId}
 					testId="landing-demo-pane-gifter"
 					onreserve={handleReserve}
 					onunreserve={handleUnreserve}
@@ -218,19 +285,15 @@
 					gifts={recipientGifts}
 					label={m.landing_demo_recipient_label()}
 					hint={m.landing_demo_recipient_hint()}
+					photoSrc={asset('/demo/pane-recipient.jpg')}
+					photoAlt={m.landing_demo_recipient_photo_alt()}
+					photoObjectPosition="66% 50%"
 					{likeControls}
 					{reservedGiftIds}
 					testId="landing-demo-pane-recipient"
 					class={cn(mobileViewpoint !== DEMO_VIEWPOINTS.recipient && 'hidden lg:flex')}
 				/>
 			</div>
-
-			<p
-				class="hidden text-center text-(length:--text-lg) leading-relaxed text-muted-foreground lg:block"
-				data-testid="landing-demo-note"
-			>
-				{m.landing_demo_split_note()}
-			</p>
 		</div>
 	</div>
 </section>

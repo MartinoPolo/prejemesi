@@ -16,6 +16,13 @@ gift photos, 1200 px for the cover); the originals are not kept in the repositor
 | `backpack.jpg`     | Leather backpack       | https://unsplash.com/photos/brown-leather-backpack-on-white-surface-3o-X8WJOP5E                          | Wiser by the Mile                | Unsplash License |
 | `watercolours.jpg` | Watercolour paint set  | https://unsplash.com/photos/multicolored-pastel-paints-lot-BpFAG6JSugE                                   | Maureen Sgro                     | Unsplash License |
 | `cover-1.jpg`      | Birthday banner set    | https://www.pexels.com/photo/happy-birthday-banner-and-balloons-7599526/                                 | Thirdman                         | Pexels License  |
+| `pane-recipient.jpg` | Woman holding a gift box | https://unsplash.com/photos/young-woman-holding-a-gift-box-NWWFuis73ho                                | Vitaly Gariev                    | Unsplash License |
+| `pane-gifter.jpg`  | Friends handing over gifts | https://www.pexels.com/photo/friends-giving-gifts-to-an-expecting-mother-7802480/                    | Kampus Production                | Pexels License  |
+
+The two `pane-*.jpg` photos are the demo pane headers; both were downloaded at 800 px on the
+long edge and are meant to be shown as a square `object-fit: cover` crop —
+`pane-recipient.jpg` with `object-position: 66% 50%` (face) and `pane-gifter.jpg` with
+`object-position: 75% 50%` (the gift being handed over).
 
 `backpack.jpg` was requested with imgix white padding (`fit=fill&fill-color=FFFFFF`) so the
 tall studio shot fits the 4:3 gift card without cropping the bag; the studio background is
