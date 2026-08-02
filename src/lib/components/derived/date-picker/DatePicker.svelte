@@ -22,6 +22,8 @@
 		 * whenever the label above it is hovered.
 		 */
 		ariaLabelledby?: string;
+		/** Id of an external `<HelpText>` explaining this control (e.g. that the date is optional). */
+		ariaDescribedby?: string;
 		/** Disables the trigger. */
 		disabled?: boolean;
 		/** Trigger text shown when no date is selected. */
@@ -36,6 +38,7 @@
 		value = $bindable(null),
 		id,
 		ariaLabelledby,
+		ariaDescribedby,
 		disabled = false,
 		placeholder,
 		class: className,
@@ -72,7 +75,12 @@
 </script>
 
 <Popover.Root bind:open>
-	<Popover.Trigger {id} {disabled} aria-labelledby={ariaLabelledby}>
+	<Popover.Trigger
+		{id}
+		{disabled}
+		aria-labelledby={ariaLabelledby}
+		aria-describedby={ariaDescribedby}
+	>
 		{#snippet child({ props })}
 			<Button
 				{...props}

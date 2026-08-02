@@ -1,7 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
+import {
+	createWishlistAndNavigate,
+	addGift,
+	shareWishlist,
+	archiveWishlist,
+} from './fixtures/wishlist-helpers.js';
 
 /** The Details card form is the only one containing the "Popis" (description) textarea. */
 function detailsForm(page: Page) {
@@ -144,9 +149,7 @@ test.describe('Wishlist settings – non-image editing', () => {
 		const path = await createWishlistAndNavigate(page, 'Archivovaný seznam');
 		const shortId = shortIdFromPath(path);
 
-		// Archiving triggers a native confirm() dialog – auto-accept it.
-		page.on('dialog', (dialog) => void dialog.accept());
-		await page.getByRole('button', { name: 'Archivovat seznam' }).click();
+		await archiveWishlist(page);
 		await expect(
 			page.locator('[data-sonner-toast]').filter({ hasText: 'Seznam byl archivován' }),
 		).toBeVisible({ timeout: 10_000 });

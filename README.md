@@ -7,9 +7,10 @@ surprise intact.
 
 ## How It Works
 
-- **Create a wishlist** for an occasion, add gifts (name, link, price, image, priority, quantity), pick a
-  theme, and arrange them in your preferred order. Add gifts one at a time, **batch-add** multiple rows at
-  once, or use the **import wizard** (CSV upload, paste cells, or Google Sheets link) for a 3-step
+- **Create a wishlist** — ongoing or for a specific occasion — then add gifts (name, link, price, image,
+  priority, quantity), pick a color, and arrange them in your preferred order. Add gifts one at a time,
+  **batch-add** multiple rows at once, or use the **import wizard** (CSV upload, paste cells, or a
+  Google Sheets link) for a 3-step
   Source → Review → Confirm flow. Each gift can carry up to 10 links (**multi-link**); the first is
   treated as the primary.
 - **Share a link.** Anyone with the link can view and reserve gifts – no account required to reserve
@@ -116,15 +117,16 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Code Quality
 
-| Script                  | Description                                                              |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `pnpm run check`        | Typecheck (paraglide compile + svelte-check)                             |
-| `pnpm run check:all`    | Full suite: format + oxlint + stylelint + fallow + svelte-check + eslint |
-| `pnpm run lint`         | OxLint                                                                   |
-| `pnpm run lint:eslint`  | ESLint (type-aware)                                                      |
-| `pnpm run lint:css`     | Stylelint for CSS and Svelte                                             |
-| `pnpm run format`       | Format with Prettier                                                     |
-| `pnpm run fallow:audit` | Fallow dead-code / boundary audit (JSON)                                 |
+| Script                  | Description                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `pnpm run check`        | Typecheck (paraglide compile + svelte-check)                                      |
+| `pnpm run check:all`    | Full suite: format + oxlint + stylelint + fallow + vykání + svelte-check + eslint |
+| `pnpm run check:vykani` | Fails if Czech copy slips into tykání (informal address)                          |
+| `pnpm run lint`         | OxLint                                                                            |
+| `pnpm run lint:eslint`  | ESLint (type-aware)                                                               |
+| `pnpm run lint:css`     | Stylelint for CSS and Svelte                                                      |
+| `pnpm run format`       | Format with Prettier                                                              |
+| `pnpm run fallow:audit` | Fallow dead-code / boundary audit (JSON)                                          |
 
 ### Testing
 
