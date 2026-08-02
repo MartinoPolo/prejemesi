@@ -130,14 +130,16 @@
 	{/snippet}
 </Story>
 
-<!-- 3. Min Max Constraint – selectable range: today-7d to today+30d -->
+<!-- 3. Min Max Constraint – selectable range: today-7d to today+1m7d.
+     maxValue must always reach past the start of next month, otherwise the next-month
+     button is disabled and playNextMonth fails (e.g. +30d on Aug 1 = Aug 31). -->
 <Story name="Min Max Constraint [play: next month navigation]" play={playNextMonth}>
 	{#snippet template()}
 		<div class="p-4">
 			<Calendar
 				type="single"
 				minValue={todayDate.subtract({ days: 7 }) as DateValue}
-				maxValue={todayDate.add({ days: 30 }) as DateValue}
+				maxValue={todayDate.add({ months: 1, days: 7 }) as DateValue}
 			/>
 		</div>
 	{/snippet}

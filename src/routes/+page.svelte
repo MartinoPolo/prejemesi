@@ -1,6 +1,7 @@
 <script lang="ts">
 	import LandingNav from '$lib/components/blocks/landing/LandingNav.svelte';
 	import LandingHero from '$lib/components/blocks/landing/LandingHero.svelte';
+	import LandingDemo from '$lib/components/blocks/landing/LandingDemo.svelte';
 	import LandingHowItWorks from '$lib/components/blocks/landing/LandingHowItWorks.svelte';
 	import LandingFeatureHighlights from '$lib/components/blocks/landing/LandingFeatureHighlights.svelte';
 	import LandingCallToAction from '$lib/components/blocks/landing/LandingCallToAction.svelte';
@@ -29,6 +30,7 @@
 
 <LandingNav />
 <LandingHero />
+<LandingDemo />
 <LandingHowItWorks />
 <LandingFeatureHighlights />
 <LandingCallToAction />

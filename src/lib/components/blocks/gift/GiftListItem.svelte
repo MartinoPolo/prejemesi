@@ -28,11 +28,19 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		showLikeCount?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false, onreserve, onunreserve }: GiftListItemProps = $props();
+	let {
+		gift,
+		role,
+		isArchived = false,
+		showLikeCount = false,
+		onreserve,
+		onunreserve,
+	}: GiftListItemProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
 		deriveGiftDisplayState(gift, role),
@@ -84,8 +92,13 @@
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
 				size="md"
-				showCount={false}
-				class="absolute right-2 bottom-2 z-10 size-(--size-control-md) justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
+				showCount={showLikeCount}
+				class={cn(
+					'absolute right-2 bottom-2 z-10 justify-center rounded-full border-2 border-ink bg-card shadow-sticker',
+					showLikeCount
+						? 'h-(--size-control-md) min-w-(--size-control-md) gap-1 px-1.5'
+						: 'size-(--size-control-md) p-0',
+				)}
 			/>
 		{/if}
 	</div>
