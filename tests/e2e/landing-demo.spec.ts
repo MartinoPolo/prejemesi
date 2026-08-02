@@ -24,9 +24,12 @@ const CS = {
 	reserve: 'Rezervovat',
 	cancelReservation: 'Zrušit rezervaci',
 	invariantCaption: 'Petra nevidí, že je rezervováno — překvapení platí.',
-	splitNote: 'Rezervujte něco vlevo. Vpravo se nezmění vůbec nic — přesně o to tu jde.',
 	teapotName: 'Porcelánová konvička na čaj',
-	likeNote: 'v aplikaci vám přijde e-mail, když někdo rezervuje dárek, který jste si oblíbili',
+	likePopup: 'Počítadlo je opravdové',
+	gifterPhotoAlt: 'Kamarádi s dárky',
+	recipientPhotoAlt: 'Petra',
+	gifterPhotoCaption: 'Kamarádi',
+	recipientPhotoCaption: 'Petra',
 } as const;
 
 const EN = {
@@ -259,10 +262,6 @@ test.describe('Landing demo section', () => {
 		await expect(gifterPane(page)).toBeVisible();
 		await expect(recipientPane(page)).toBeVisible();
 
-		const note = page.getByTestId('landing-demo-note');
-		await expect(note).toBeVisible();
-		await expect(note).toHaveText(new RegExp(CS.splitNote));
-
 		const recipientGift = demoGift(recipientPane(page));
 		const recipientTextBefore = await recipientGift.innerText();
 
@@ -290,6 +289,57 @@ test.describe('Landing demo section', () => {
 
 		await toggleReservation(reserveButton, CS.reserve);
 		await expect.poll(() => recipientGift.innerText()).toBe(recipientTextBefore);
+	});
+
+	test('each pane is flanked by its polaroid without breaking the panes alignment', async ({
+		page,
+	}) => {
+		await page.setViewportSize(DESKTOP_VIEWPORT);
+		await gotoDemo(page);
+
+		const gifterPolaroid = page.getByTestId('landing-demo-polaroid-gifter');
+		const recipientPolaroid = page.getByTestId('landing-demo-polaroid-recipient');
+		await expect(gifterPolaroid).toBeVisible();
+		await expect(recipientPolaroid).toBeVisible();
+		await expect(gifterPolaroid.getByAltText(CS.gifterPhotoAlt)).toBeVisible();
+		await expect(recipientPolaroid.getByAltText(CS.recipientPhotoAlt)).toBeVisible();
+		await expect(gifterPolaroid).toHaveText(new RegExp(CS.gifterPhotoCaption));
+		await expect(recipientPolaroid).toHaveText(new RegExp(CS.recipientPhotoCaption));
+
+		// The prints are asymmetric decoration; the two pane cards still start on one line.
+		const gifterBox = await gifterPane(page).boundingBox();
+		const recipientBox = await recipientPane(page).boundingBox();
+		expect(gifterBox).not.toBeNull();
+		expect(recipientBox).not.toBeNull();
+		expect(Math.abs((gifterBox?.y ?? 0) - (recipientBox?.y ?? 0))).toBeLessThanOrEqual(1);
+
+		// Overhanging prints must never push the page sideways. 1024px is the tightest
+		// case: the absolute-positioned prints exist but the viewport margins around the
+		// 1200px content column do not yet.
+		for (const width of [1024, DESKTOP_VIEWPORT.width]) {
+			await page.setViewportSize({ width, height: DESKTOP_VIEWPORT.height });
+			const overflow = await page.evaluate(
+				() => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+			);
+			expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(0);
+		}
+	});
+
+	test('the visible pane brings its own polaroid on narrow screens', async ({ page }) => {
+		await page.setViewportSize(MOBILE_VIEWPORT);
+		await gotoDemo(page);
+
+		const gifterPolaroid = page.getByTestId('landing-demo-polaroid-gifter');
+		const recipientPolaroid = page.getByTestId('landing-demo-polaroid-recipient');
+		await expect(gifterPolaroid).toBeVisible();
+		await expect(recipientPolaroid).toBeHidden();
+
+		// Server-rendered section: the click can land before hydration wires the toggle.
+		await expect(async () => {
+			await page.getByTestId('landing-demo-role-recipient').click();
+			await expect(recipientPolaroid).toBeVisible({ timeout: 2_000 });
+		}).toPass({ timeout: 30_000 });
+		await expect(gifterPolaroid).toBeHidden();
 	});
 
 	test('reserving and unreserving fires no network mutation', async ({ page }) => {
@@ -378,16 +428,54 @@ test.describe('Landing demo section', () => {
 			// Leave the shared counter as it was found.
 			await toggleLike(likeButton(), false);
 		});
+
+		test('a like explains the counter once per session', async ({ page }) => {
+			await page.setViewportSize(DESKTOP_VIEWPORT);
+			await gotoDemo(page);
+
+			const heart = demoGift(gifterPane(page)).locator('button[aria-pressed]');
+			const popup = page.getByTestId('landing-demo-like-popup');
+			// Nothing explains anything until the visitor actually likes something.
+			await expect(popup).toHaveCount(0);
+
+			await toggleLike(heart, true);
+			await expect(popup).toBeVisible();
+			await expect(popup).toHaveText(new RegExp(CS.likePopup));
+
+			// Restore the shared counter; unliking must never trigger the explainer.
+			await toggleLike(heart, false);
+			await expect(popup).toHaveCount(0, { timeout: 15_000 });
+
+			// Second like in the same session: the explainer has had its turn. Sequenced behind
+			// the command response, since that is what would have opened the bubble.
+			const secondLikeCommitted = likeCounterResponse(page);
+			await toggleLike(heart, true);
+			await secondLikeCommitted;
+			await expect(popup).toHaveCount(0);
+
+			await toggleLike(heart, false);
+		});
 	});
 
-	test('the demo explains the real notification rule behind a like', async ({ page }) => {
+	test('the demo wishlist can be retinted with the palette switcher', async ({ page }) => {
 		await page.setViewportSize(DESKTOP_VIEWPORT);
 		await gotoDemo(page);
 
-		// Plain visible text, so it is readable on a phone with no hover available.
-		const note = page.getByTestId('landing-demo-like-note');
-		await expect(note).toBeVisible();
-		await expect(note).toHaveText(new RegExp(CS.likeNote));
+		const switcher = page.getByTestId('landing-demo-palette-switcher');
+		const wrapper = page.locator('#ukazka [data-palette]');
+		await expect(wrapper).toHaveAttribute('data-palette', 'honey');
+
+		// Same retry rationale as `toggleReservation`: the section is server-rendered, so a
+		// click can land before hydration wires the handler.
+		await expect(async () => {
+			await switcher.getByRole('button', { name: 'Hrozen' }).click();
+			await expect(wrapper).toHaveAttribute('data-palette', 'grape', { timeout: 2_000 });
+		}).toPass({ timeout: 30_000 });
+
+		// Demo state is local only: a reload starts the visitor over, palette included.
+		await page.reload();
+		await page.waitForSelector('[data-testid="landing-demo"]');
+		await expect(wrapper).toHaveAttribute('data-palette', 'honey');
 	});
 
 	test('renders Czech at / and English at /en', async ({ page }) => {
