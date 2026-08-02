@@ -134,6 +134,32 @@ export async function shareWishlist(page: Page): Promise<void> {
 }
 
 /**
+ * Archive the currently open wishlist from its header action and confirm the in-app
+ * dialog. Archiving asked through the browser's native `confirm()` until it moved to a
+ * `Dialog.Root`, so the confirmation is now a real button inside the dialog rather than
+ * a `page.on('dialog')` handler.
+ */
+export async function archiveWishlist(page: Page): Promise<void> {
+	await page
+		.getByRole('button', { name: /Archivovat seznam|Archive list/i })
+		.first()
+		.click();
+
+	const dialog = page.getByRole('dialog');
+	await expect(dialog.getByText(/Archivovat tento seznam\?|Archive this list\?/)).toBeVisible({
+		timeout: 5_000,
+	});
+	// The confirm action is named exactly „Archivovat" – anchored so it cannot match the
+	// „Archivovat seznam" trigger behind the overlay.
+	await dialog.getByRole('button', { name: /^(Archivovat|Archive)$/ }).click();
+
+	// The dialog closes only once the archive command resolves, so its removal is the
+	// signal that the wishlist really is archived.
+	await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+	await waitForDialogOverlayRemoval(page);
+}
+
+/**
  * Open the správci-management panel from the currently open wishlist detail page.
  * The button (aria-label wishlist_moderators_label → „Správci" / „Managers") is
  * visible only to managers (linked recipient OR správce).
