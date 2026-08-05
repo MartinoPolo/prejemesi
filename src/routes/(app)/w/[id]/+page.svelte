@@ -13,6 +13,8 @@
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
 	import WishlistSettingsModal from '$lib/components/blocks/wishlist/WishlistSettingsModal.svelte';
 	import EditRecipientDialog from '$lib/components/blocks/wishlist/EditRecipientDialog.svelte';
+	import * as Dialog from '$lib/components/base/dialog/index.js';
+	import { Button } from '$lib/components/base/button/index.js';
 	import {
 		WISHLIST_SETTINGS_TABS,
 		isWishlistSettingsTab,
@@ -272,6 +274,11 @@
 
 	let settingsModalOpen = $state(false);
 	let settingsModalTab = $state<WishlistSettingsTab>(WISHLIST_SETTINGS_TABS.details);
+
+	// ── Archive confirmation dialog state ────────────────────────────────────
+
+	let archiveConfirmOpen = $state(false);
+	let archiving = $state(false);
 
 	// ── Edit-recipient dialog state (issue #150): one shared dialog, two entry points
 	//    (header pencil + settings modal recipient row) ────────────────────────
@@ -581,18 +588,22 @@
 
 	// ── Archive handler ───────────────────────────────────────────────────────
 
-	async function handleArchive() {
-		const confirmed = confirm(m.wishlist_archive_confirm_description());
-		if (!confirmed) {
-			return;
-		}
+	function handleArchive() {
+		archiveConfirmOpen = true;
+	}
+
+	async function handleArchiveConfirmed() {
+		archiving = true;
 		try {
 			// The command single-flight-refreshes the wishlist query (archived status).
 			await archiveWishlist(wishlist.id);
 			toastSuccess(m.toast_wishlist_archived());
+			archiveConfirmOpen = false;
 		} catch (thrown) {
 			console.error('Failed to archive wishlist:', thrown);
 			toastError(m.toast_wishlist_archive_error());
+		} finally {
+			archiving = false;
 		}
 	}
 
@@ -758,19 +769,29 @@
 	// an $effect (not afterNavigate) — it must re-run once that query settles, not just on
 	// navigation. A gift missing from the loaded list (deleted/archived, REQ-3) is not an
 	// error: the marker is cleared and the visitor simply stays on the wishlist.
+	//
+	// The marker is consumed exactly once, and never while the gift modal is already open.
+	// The effect also re-runs on every `gifts` refresh (including the single-flight refresh a
+	// createGift response carries), so without both guards a pending marker could hijack an
+	// open create-mode form into edit mode targeting the deep-linked gift — the mounted form
+	// keeps its typed values across that prop swap, and the next submit would overwrite the
+	// deep-linked gift with them (production data-corruption incident, 2026-08-04).
 	$effect(() => {
 		const requestedGiftId = page.url.searchParams.get(WISHLIST_GIFT_QUERY_PARAM);
 		if (requestedGiftId === null || isGiftDataLoading) {
+			return;
+		}
+		const cleanedUrl = new URL(page.url);
+		cleanedUrl.searchParams.delete(WISHLIST_GIFT_QUERY_PARAM);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
+		replaceState(cleanedUrl, {});
+		if (giftModalOpen) {
 			return;
 		}
 		const matchedGift = gifts.find((gift) => gift.id === requestedGiftId);
 		if (matchedGift !== undefined) {
 			void openEditModal(matchedGift);
 		}
-		const cleanedUrl = new URL(page.url);
-		cleanedUrl.searchParams.delete(WISHLIST_GIFT_QUERY_PARAM);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
-		replaceState(cleanedUrl, {});
 	});
 </script>
 
@@ -913,6 +934,28 @@
 	isShared={wishlist.sharedAt !== null}
 	onchanged={handleRecipientChanged}
 />
+
+<!-- Archive confirmation dialog: archiving hides the list from the dashboards, so it asks first. -->
+<Dialog.Root bind:open={archiveConfirmOpen}>
+	<Dialog.Content size="md">
+		<Dialog.Header>
+			<Dialog.Title>{m.wishlist_archive_confirm_title()}</Dialog.Title>
+			<Dialog.Description>{m.wishlist_archive_confirm_description()}</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="flex gap-2">
+			<Button
+				intent="outline"
+				onclick={() => (archiveConfirmOpen = false)}
+				disabled={archiving}
+			>
+				{m.cancel()}
+			</Button>
+			<Button intent="danger" onclick={handleArchiveConfirmed} disabled={archiving}>
+				{archiving ? m.wishlist_archiving() : m.wishlist_archive_confirm_action()}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
 
 {#if canManage}
 	<ImportWizard

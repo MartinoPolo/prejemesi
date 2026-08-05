@@ -5,7 +5,12 @@ import {
 	registerViaApi,
 	createAuthenticatedContext,
 } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
+import {
+	createWishlistAndNavigate,
+	addGift,
+	shareWishlist,
+	archiveWishlist,
+} from './fixtures/wishlist-helpers.js';
 
 // Reveals (if needed) and fills the first URL input in the multi-link editor.
 async function fillGiftUrl(dialog: Locator, url: string) {
@@ -277,12 +282,7 @@ test.describe('Wishlist archival', () => {
 		await addGift(page, TEST_GIFT.name);
 		await shareWishlist(page);
 
-		// Click the "Archivovat" button in the header action row
-		page.on('dialog', (nativeDialog) => void nativeDialog.accept());
-		await page
-			.getByRole('button', { name: /Archivovat seznam|Archivovat/i })
-			.first()
-			.click();
+		await archiveWishlist(page);
 
 		// The archived alert appears. Shipped Czech copy uses a colon ("Archivováno:")
 		// per the no-em-dash rule (the old en-dash form was retired in the redesign).
@@ -306,11 +306,7 @@ test.describe('Wishlist archival', () => {
 		const wishlistPath = new URL(ownerPage.url()).pathname;
 
 		// Archive the wishlist
-		ownerPage.on('dialog', (nativeDialog) => void nativeDialog.accept());
-		await ownerPage
-			.getByRole('button', { name: /Archivovat seznam|Archivovat/i })
-			.first()
-			.click();
+		await archiveWishlist(ownerPage);
 		await expect(ownerPage.getByText(/Archivováno: seznam je uzavřen/i)).toBeVisible({
 			timeout: 10_000,
 		});

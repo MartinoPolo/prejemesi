@@ -1,76 +1,83 @@
 {
-	"version": "7",
-	"dialect": "postgresql",
-	"entries": [
-		{
-			"idx": 0,
-			"version": "7",
-			"when": 1781274957155,
-			"tag": "0000_deep_black_panther",
-			"breakpoints": true
-		},
-		{
-			"idx": 1,
-			"version": "7",
-			"when": 1781420099024,
-			"tag": "0001_chubby_ultimatum",
-			"breakpoints": true
-		},
-		{
-			"idx": 2,
-			"version": "7",
-			"when": 1783349730301,
-			"tag": "0002_add_preferred_locale",
-			"breakpoints": true
-		},
-		{
-			"idx": 3,
-			"version": "7",
-			"when": 1783533202178,
-			"tag": "0003_recipient_role_model_expand",
-			"breakpoints": true
-		},
-		{
-			"idx": 4,
-			"version": "7",
-			"when": 1783573690028,
-			"tag": "0004_recipient_role_model_contract",
-			"breakpoints": true
-		},
-		{
-			"idx": 5,
-			"version": "7",
-			"when": 1783710128292,
-			"tag": "0005_fair_iron_lad",
-			"breakpoints": true
-		},
-		{
-			"idx": 6,
-			"version": "7",
-			"when": 1783948317536,
-			"tag": "0006_add_gift_pre_edit_share_snapshot",
-			"breakpoints": true
-		},
-		{
-			"idx": 7,
-			"version": "7",
-			"when": 1784029019351,
-			"tag": "0007_giant_wasp",
-			"breakpoints": true
-		},
-		{
-			"idx": 8,
-			"version": "7",
-			"when": 1784215788783,
-			"tag": "0008_add_gift_price_max",
-			"breakpoints": true
-		},
-		{
-			"idx": 9,
-			"version": "7",
-			"when": 1785081621805,
-			"tag": "0009_add_reservation_cancelled_by",
-			"breakpoints": true
-		}
-	]
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1781274957155,
+      "tag": "0000_deep_black_panther",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781420099024,
+      "tag": "0001_chubby_ultimatum",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783349730301,
+      "tag": "0002_add_preferred_locale",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783533202178,
+      "tag": "0003_recipient_role_model_expand",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783573690028,
+      "tag": "0004_recipient_role_model_contract",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783710128292,
+      "tag": "0005_fair_iron_lad",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783948317536,
+      "tag": "0006_add_gift_pre_edit_share_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784029019351,
+      "tag": "0007_giant_wasp",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784215788783,
+      "tag": "0008_add_gift_price_max",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785081621805,
+      "tag": "0009_add_reservation_cancelled_by",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785577673558,
+      "tag": "0010_add_landing_demo_like",
+      "breakpoints": true
+    }
+  ]
 }

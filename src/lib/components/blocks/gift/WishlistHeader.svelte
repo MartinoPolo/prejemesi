@@ -42,6 +42,13 @@
 		managerNames: string[];
 		description: string | null;
 		imageKey: string | null;
+		/**
+		 * Ready-made polaroid URL that bypasses `imageKey` resolution. Only fixture surfaces
+		 * (the landing demo) pass it: their photo is a static asset, not an R2 object, so
+		 * `wishlistImageUrl` would prepend the upload base and break the src. Unset everywhere
+		 * else, leaving the `imageKey` path untouched.
+		 */
+		imageSrc?: string | null;
 		imageSlots: WishlistImageSlots | null;
 		/** Theme-derived emoji for the no-image polaroid fallback. */
 		themeEmoji: string;
@@ -51,6 +58,12 @@
 		giftCount: number | null;
 		/** True when the linked recipient self-promoted to also see reservation state (trust warning). */
 		recipientIsModerator: boolean;
+		/**
+		 * Which heading element the title renders as. The wishlist page is the list's own
+		 * page, so the title is its `<h1>` — but on the landing page the demo header sits
+		 * under the hero's `<h1>` and must step down to `<h2>` to keep one h1 per document.
+		 */
+		headingLevel?: 1 | 2;
 		onshare?: () => void;
 		onmoderators?: () => void;
 		onarchive?: () => void;
@@ -66,6 +79,7 @@
 		managerNames,
 		description,
 		imageKey,
+		imageSrc = null,
 		imageSlots,
 		themeEmoji,
 		eventDate,
@@ -73,6 +87,7 @@
 		role,
 		giftCount,
 		recipientIsModerator,
+		headingLevel = 1,
 		onshare,
 		onmoderators,
 		onarchive,
@@ -85,7 +100,7 @@
 	// The wishlist photo (image-slots crop) renders as the taped polaroid print.
 	// The photo area is exactly square, so it consumes the 1:1 `thumbnail` slot
 	// (#116 D4/REQ-5) – the `card` slot belongs solely to the dashboard banner.
-	const polaroidSrc = $derived(wishlistImageUrl(imageKey));
+	const polaroidSrc = $derived(imageSrc ?? wishlistImageUrl(imageKey));
 	const polaroidFrame = $derived(wishlistSlotToFrameProps(imageSlots, 'thumbnail'));
 	// Management actions open to any manager — the linked recipient OR a správce (issue #99).
 	const canManage = $derived(canManageWishlist(role));
@@ -242,7 +257,9 @@
 						{/if}
 					</span>
 				</div>
-				<h1 class={styles.title()}>{title}</h1>
+				<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class={styles.title()}>
+					{title}
+				</svelte:element>
 				{#if description}
 					<p class={styles.description()}>{description}</p>
 				{/if}

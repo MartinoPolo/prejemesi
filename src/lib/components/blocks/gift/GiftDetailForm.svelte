@@ -1005,7 +1005,7 @@
 							onclick={() => (imageMode = 'url')}
 						>
 							<LinkIcon class="mr-1 inline size-3" />
-							URL
+							{m.gift_image_url_tab()}
 						</button>
 					</div>
 					{#if imageMode === 'url'}

@@ -64,7 +64,12 @@
 		}
 
 		try {
-			const result = await toggleLike({ giftId });
+			// The landing demo supplies its own persistence for fixture gifts; every other
+			// surface has none and goes straight to the real remote function.
+			const result =
+				likesContext.toggleLike === undefined
+					? await toggleLike({ giftId })
+					: await likesContext.toggleLike(giftId);
 			displayCount = result.likeCount;
 		} catch {
 			// Revert on error

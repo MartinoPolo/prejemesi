@@ -246,10 +246,13 @@
 				<DatePicker
 					id="wishlist-event-date"
 					ariaLabelledby="wishlist-event-date-label"
+					ariaDescribedby="wishlist-event-date-helper"
 					size="lg"
 					bind:value={eventDate}
 					disabled={isSubmitting}
 				/>
+				<HelpText id="wishlist-event-date-helper">{m.wishlist_event_date_helper()}</HelpText
+				>
 			</div>
 
 			<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
