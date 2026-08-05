@@ -106,24 +106,30 @@
 		{#if readOnly && gift !== null}
 			<GiftDetailView {gift} {role} {isArchived} {onreserve} {onunreserve} />
 		{:else}
-			<GiftDetailForm
-				{mode}
-				{gift}
-				{wishlistId}
-				{priorityLevels}
-				{isOwner}
-				{postShareLocked}
-				{canDelete}
-				{graceExpiresAt}
-				{graceMessage}
-				{graceNow}
-				{isSubmitting}
-				{isDeleting}
-				{oncreate}
-				{onupdate}
-				{ondelete}
-				{onreceived}
-			/>
+			<!-- The form seeds its field state once at mount (deliberately non-reactive), so a
+			     mode/gift swap while it stays mounted would submit the previous gift's typed
+			     values under the new gift's id. Keying by identity forces a remount + reseed,
+			     making that cross-gift write structurally impossible (incident 2026-08-04). -->
+			{#key `${mode}:${gift?.id ?? 'new'}`}
+				<GiftDetailForm
+					{mode}
+					{gift}
+					{wishlistId}
+					{priorityLevels}
+					{isOwner}
+					{postShareLocked}
+					{canDelete}
+					{graceExpiresAt}
+					{graceMessage}
+					{graceNow}
+					{isSubmitting}
+					{isDeleting}
+					{oncreate}
+					{onupdate}
+					{ondelete}
+					{onreceived}
+				/>
+			{/key}
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>

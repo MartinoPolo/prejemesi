@@ -758,19 +758,29 @@
 	// an $effect (not afterNavigate) — it must re-run once that query settles, not just on
 	// navigation. A gift missing from the loaded list (deleted/archived, REQ-3) is not an
 	// error: the marker is cleared and the visitor simply stays on the wishlist.
+	//
+	// The marker is consumed exactly once, and never while the gift modal is already open.
+	// The effect also re-runs on every `gifts` refresh (including the single-flight refresh a
+	// createGift response carries), so without both guards a pending marker could hijack an
+	// open create-mode form into edit mode targeting the deep-linked gift — the mounted form
+	// keeps its typed values across that prop swap, and the next submit would overwrite the
+	// deep-linked gift with them (production data-corruption incident, 2026-08-04).
 	$effect(() => {
 		const requestedGiftId = page.url.searchParams.get(WISHLIST_GIFT_QUERY_PARAM);
 		if (requestedGiftId === null || isGiftDataLoading) {
+			return;
+		}
+		const cleanedUrl = new URL(page.url);
+		cleanedUrl.searchParams.delete(WISHLIST_GIFT_QUERY_PARAM);
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
+		replaceState(cleanedUrl, {});
+		if (giftModalOpen) {
 			return;
 		}
 		const matchedGift = gifts.find((gift) => gift.id === requestedGiftId);
 		if (matchedGift !== undefined) {
 			void openEditModal(matchedGift);
 		}
-		const cleanedUrl = new URL(page.url);
-		cleanedUrl.searchParams.delete(WISHLIST_GIFT_QUERY_PARAM);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
-		replaceState(cleanedUrl, {});
 	});
 </script>
 
