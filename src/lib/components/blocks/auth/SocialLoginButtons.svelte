@@ -27,7 +27,7 @@
 		try {
 			await authClient.signIn.social({
 				provider: 'google',
-				callbackURL: callbackUrl ?? localizeInternalHref(resolve('/my-lists')),
+				callbackURL: callbackUrl ?? localizeInternalHref(resolve('/home')),
 			});
 		} catch {
 			googleLoading = false;

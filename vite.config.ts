@@ -71,6 +71,7 @@ export default defineConfig({
 			? undefined
 			: {
 					clientFiles: [
+						'./src/routes/(app)/home/+page.svelte',
 						'./src/routes/(app)/my-lists/+page.svelte',
 						'./src/routes/(app)/moderated/+page.svelte',
 						'./src/routes/(app)/followed/+page.svelte',

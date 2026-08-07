@@ -213,10 +213,24 @@ Rejected: Per-wishlist mode (visitors should control their own viewing comfort).
 
 ### Three nav pages, no Dashboard
 
-Decided: 2026-05-30 (revised from 2026-05-29)
+Decided: 2026-05-30 (revised from 2026-05-29) — **Revised 2026-08-07** by "Logged-in home: Přehled overview at /home" below (Moje seznamy is no longer the default/home page; the three nav pages themselves remain).
 What: Three first-level nav items: Moje seznamy, Spravované, Sledované — each is a separate page. No separate "Dashboard" page. "Moje seznamy" is the default/home page. Each nav item doubles as a dropdown trigger (hover shows recent items + "Zobrazit vše" link). Nav layout: Logo | Moje seznamy | Spravované | Sledované | [gap] | Vytvořit | 🔔 | 🌙 | 👤
 Why: Fills the nav naturally, no redundancy (Dashboard would duplicate the same content), each page owns its own filters/sorting, dropdowns provide quick access.
 Rejected: Single dashboard with tabs (redundant), Dashboard + three sub-pages (4 nav items, Dashboard page adds nothing).
+
+### Logged-in home: Přehled overview at /home
+
+Decided: 2026-08-07 (revises "Three nav pages, no Dashboard" — field observation of real users overturned the "Dashboard is redundant" rejection)
+What: A new overview page (`/home`, cs „Přehled", en "Overview") becomes the logged-in home: `/` redirects there, login/register default there (absent an explicit `redirect` param), and the logo links there. NOT a desktop nav item — the nav keeps its three pages, which survive unchanged as „Zobrazit vše" targets; the mobile drawer gains a „Přehled" entry at the top. Layout: up to four horizontal carousel rows with the next card peeking (desktop and mobile alike): „Nedávné" first, then fixed order Sledované → Spravované → Moje seznamy; empty rows collapse. Category rows cap at 10 cards with a trailing „Zobrazit vše" card. Cards reuse `WishlistCard` at a narrower width with today's per-role props (reservation progress on followed/moderated, gift count on own); archived lists are excluded (full pages only, behind the existing toggle). Category-row sort: upcoming event date ascending, then undated lists by recently opened (created-date fallback), past-dated unarchived last. A brand-new user (zero lists anywhere) sees a single onboarding hero: „Vytvořte první seznam" plus an explanation of following via shared links. No carousel primitive exists in the repo — one is added (embla-based shadcn-svelte Carousel is the candidate).
+Why: Observed real usage — the dominant logged-in flow is "open a specific followed list and order a gift", but every entry point (`/`, post-login, logo) landed on Moje seznamy; the nav hover dropdowns were the only quick path, are undiscoverable, and don't exist on mobile.
+Rejected: Sledované as default (wrong for recipients and správci); fourth desktop nav item (re-crowds the 390px header — may be promoted later if logo-as-home proves undiscoverable); icon-only home nav item (icons are exactly what low-tech users miss); adaptive row order (unpredictable for the users observed); vertical stacked sections on mobile (push lower rows below the fold); a dense special overview card (one card identity app-wide; revisit only if rows feel too tall on mobile); names „Domů" (sounds like a browser button) and „Nástěnka" (corporate).
+
+### Nedávné row: visit-recency tracking
+
+Decided: 2026-08-07
+What: The top Přehled row „Nedávné" mixes all three roles (followed, moderated, own), sorted by last visit descending, capped at ~6, rendered as a normal row (no oversized hero). Recency comes from a `lastVisitedAt` timestamp upserted on any logged-in visit to `/w/<id>` — own lists included; edits and reservations need no separate tracking (they imply a visit). Cold start falls back to the follow date so the row isn't empty before visits accumulate (no backfill migration). Items are NOT deduped from the category rows below — „Nedávné" is a shortcut layer; category rows stay complete.
+Why: The observed flow is returning to the list you were just at; since logged-in visitors auto-follow on first visit, the followed set already approximates "visited" — one timestamp column adds recency without a new concept.
+Rejected: Followed-only recents (a parent's visit to their own kid's list counts too); dedup against category rows (rows look mysteriously incomplete); a single extra-large most-recent hero card (spooky-prominent, wastes the viewport the rows concept is saving).
 
 ### Gift sorting: primary + secondary criteria
 
@@ -585,8 +599,8 @@ Rejected: MVP subset first (would leave holes in the core loop).
 
 ### English URL slugs
 
-Decided: 2026-05-30
-What: Routes use English slugs: `/login`, `/register`, `/magic-link`, `/reset-password`, `/my-lists`, `/moderated`, `/followed`, `/w/<short-id>`, `/settings`. Logged-in users visiting `/` redirect to `/my-lists`.
+Decided: 2026-05-30 — **Revised 2026-08-07**: `/home` joins the slug set; logged-in `/` now redirects to `/home` (see "Logged-in home: Přehled overview at /home").
+What: Routes use English slugs: `/login`, `/register`, `/magic-link`, `/reset-password`, `/home`, `/my-lists`, `/moderated`, `/followed`, `/w/<short-id>`, `/settings`. Logged-in users visiting `/` redirect to `/home`.
 Why: Cleaner URLs, no encoding issues with Czech diacritics, consistent with tech conventions.
 Rejected: Czech slugs (`/prihlaseni`, `/moje-seznamy`).
 

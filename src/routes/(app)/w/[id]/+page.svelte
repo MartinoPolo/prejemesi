@@ -34,7 +34,7 @@
 		getWishlistByShortId,
 		archiveWishlist,
 		unfollowWishlist,
-		followWishlist,
+		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
@@ -732,18 +732,18 @@
 		}
 	}
 
-	// ── Lifecycle: auto-follow on mount ───────────────────────────────────────
+	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
 	onMount(() => {
-		// Auto-follow surfaces a shared list in the viewer's „Sledované". Skip it for anyone
-		// who already owns or co-manages the list (it lives in „Moje seznamy" / „Spravované"):
-		// the server no-ops for the recipient anyway, so this spares a wasted POST + DB
-		// round-trip on every view, and it keeps a moderator from becoming a redundant follower.
-		if (!isAuthenticated || canManage) {
+		// One command per view for ANY authed user (issue #225): it upserts the visit that
+		// powers the „Nedávné" row on /home for owners and moderators too, and folds in the
+		// legacy auto-follow — the server auto-follows only non-managers, so a recipient never
+		// gains a follower row and a moderator is not turned into a redundant follower.
+		if (!isAuthenticated) {
 			return;
 		}
-		followWishlist(initialWishlist.id).catch(() => {
-			// Auto-follow failure is non-critical – ignore
+		recordWishlistVisit(initialWishlist.id).catch(() => {
+			// Visit tracking is non-critical – ignore.
 		});
 	});
 
