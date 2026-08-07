@@ -14,6 +14,8 @@
 		switch (section.kind) {
 			case GIFT_SECTION_KINDS.ownReservation:
 				return m.gift_band_own_reservations();
+			case GIFT_SECTION_KINDS.otherGifts:
+				return m.gift_band_other_gifts();
 			case GIFT_SECTION_KINDS.noPriority:
 				return m.gift_priority_none();
 			default:

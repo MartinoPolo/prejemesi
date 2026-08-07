@@ -14,6 +14,12 @@ export const GIFT_SECTION_KINDS = {
 	ownReservation: 'ownReservation',
 	/** Neutral band (grouping off): available gifts, or the recipient's whole list. No header. */
 	available: 'available',
+	/**
+	 * Available gifts that follow an own-reservation band (grouping off): same gifts as
+	 * {@link GIFT_SECTION_KINDS.available}, but carrying the „Ostatní dárky" header so the row
+	 * breaks and the viewer's own reservations sit alone above it (issue #224 follow-up).
+	 */
+	otherGifts: 'otherGifts',
 	/** Fully-reserved-not-mine gifts sunk to the bottom (grouping off, visitor only). No header. */
 	reserved: 'reserved',
 	/** One priority level's gifts (grouping on); header is the level label. */
@@ -198,17 +204,23 @@ export function computeGiftSections(
 		return sections;
 	}
 
+	// With an own-reservation band above it, the available band gets the „Ostatní dárky" header so
+	// its row breaks and the pinned own reservations stand alone (issue #224 follow-up); without one
+	// it stays a neutral headerless band.
+	const availableKind =
+		own.length > 0 ? GIFT_SECTION_KINDS.otherGifts : GIFT_SECTION_KINDS.available;
+
 	if (sinkReserved) {
 		const available = rest.filter((gift) => !isFullyReserved(gift));
 		const reserved = rest.filter((gift) => isFullyReserved(gift));
 		if (available.length > 0) {
-			sections.push({ kind: GIFT_SECTION_KINDS.available, label: null, gifts: available });
+			sections.push({ kind: availableKind, label: null, gifts: available });
 		}
 		if (reserved.length > 0) {
 			sections.push({ kind: GIFT_SECTION_KINDS.reserved, label: null, gifts: reserved });
 		}
 	} else if (rest.length > 0) {
-		sections.push({ kind: GIFT_SECTION_KINDS.available, label: null, gifts: rest });
+		sections.push({ kind: availableKind, label: null, gifts: rest });
 	}
 
 	return sections;

@@ -96,7 +96,10 @@
 <div
 	data-gift-item
 	class={cn(
-		'relative h-full cursor-pointer transition-opacity',
+		// Named hover group so the grip (an absolutely-positioned sibling of the card) and the card
+		// lift as one unit: the card's own lift also keys off this group (see gift_card_variants),
+		// so hovering/focusing the grip lifts the card too — not just the card body (issue #224 f/up).
+		'group/gift-card relative h-full cursor-pointer transition-opacity',
 		className,
 		isDragged && 'opacity-40',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
@@ -115,7 +118,7 @@
 			type="button"
 			aria-label={m.gift_reorder_grip_label()}
 			title={m.gift_reorder_keyboard_hint()}
-			class="absolute left-2 top-2 z-10 cursor-grab touch-none rounded bg-background/80 p-0.5 opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing"
+			class="absolute left-2 top-2 z-10 cursor-grab touch-none rounded bg-background/80 p-0.5 opacity-60 transition-[opacity,transform] duration-200 ease-spring hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1"
 			data-prevent-gift-card-open
 			onpointerdown={(event) => onreorderpointerdown(event, index)}
 			onkeydown={handleGripKeydown}
