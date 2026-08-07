@@ -13,6 +13,7 @@
 	import {
 		FilterMenu,
 		type FilterDefinition,
+		type FilterToggle,
 	} from '$lib/components/derived/filter-menu/index.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
@@ -26,9 +27,13 @@
 		viewMode: GiftViewMode;
 		sortOption: GiftSortOption;
 		filters: GiftFilters;
+		/** „Seskupit podle priority" state; only offered when the list has any prioritized gift. */
+		priorityGrouping: boolean;
+		showPriorityGrouping: boolean;
 		onviewmodechange: (mode: GiftViewMode) => void;
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
+		onprioritygroupingchange: (grouping: boolean) => void;
 		onthemeopen: () => void;
 		onsettings: () => void;
 		onunfollow: () => void;
@@ -47,9 +52,12 @@
 		viewMode,
 		sortOption,
 		filters,
+		priorityGrouping,
+		showPriorityGrouping,
 		onviewmodechange,
 		onsortchange,
 		onfilterchange,
+		onprioritygroupingchange,
 		onthemeopen,
 		onsettings,
 		onunfollow,
@@ -95,6 +103,19 @@
 				]
 			: []),
 	]);
+
+	const filterToggles = $derived<FilterToggle[]>(
+		showPriorityGrouping
+			? [
+					{
+						id: 'priority-grouping',
+						label: m.gift_group_by_priority(),
+						checked: priorityGrouping,
+						onchange: onprioritygroupingchange,
+					},
+				]
+			: [],
+	);
 </script>
 
 <div
@@ -104,6 +125,7 @@
 	<GiftSortSelect value={sortOption} onchange={onsortchange} />
 	<FilterMenu
 		definitions={filterDefinitions}
+		toggles={filterToggles}
 		triggerLabel={m.gift_filter()}
 		menuHeading={m.gift_filter()}
 		clearAllLabel={m.wishlist_detail_clear_filters()}

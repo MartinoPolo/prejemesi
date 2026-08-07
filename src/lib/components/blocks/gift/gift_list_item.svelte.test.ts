@@ -47,6 +47,94 @@ function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisito
 	};
 }
 
+describe('GiftListItem reserved-sticker parity (issue #224 REQ-7)', () => {
+	function renderItem(
+		gift: GiftForVisitor,
+		role: (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES],
+	) {
+		const host = document.createElement('div');
+		host.style.width = '640px';
+		document.body.appendChild(host);
+		return render(
+			GiftListItemTestHost,
+			{ gift, role, isArchived: false },
+			{ baseElement: host },
+		);
+	}
+
+	it('shows the full-text reserved sticker and a veil on the thumb for a fully-reserved gift', async () => {
+		await renderItem(
+			makeVisitorGift({ isFullyReserved: true, reservedCount: 1, myReservationId: null }),
+			WISHLIST_ROLES.visitor,
+		);
+
+		const thumb = document.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
+		expect(thumb.querySelector('[data-testid="gift-reserved-veil"]')).toBeTruthy();
+
+		const sticker = Array.from(document.querySelectorAll('span')).find((el) =>
+			el.textContent?.includes('Rezervováno'),
+		);
+		expect(sticker).toBeTruthy();
+		// Sticker lives on the thumb, not buried in the content column.
+		expect(thumb.contains(sticker!)).toBe(true);
+	});
+
+	it('dims the content column but keeps the sticker crisp (not inside a dimmed wrapper)', async () => {
+		await renderItem(
+			makeVisitorGift({ isFullyReserved: true, reservedCount: 1, myReservationId: null }),
+			WISHLIST_ROLES.visitor,
+		);
+
+		const row = document.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
+		// Row root no longer carries the dim — it moved to the content column (card semantics).
+		expect(row.className).not.toContain('opacity-55');
+
+		const dimmed = document.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
+		expect(dimmed.className).toContain('opacity-55');
+
+		const sticker = Array.from(document.querySelectorAll('span')).find((el) =>
+			el.textContent?.includes('Rezervováno'),
+		);
+		expect(dimmed.contains(sticker!)).toBe(false);
+	});
+
+	it('does not render the standalone inline reserver line (names moved into the sticker)', async () => {
+		await renderItem(
+			makeVisitorGift({ isFullyReserved: true, reservedCount: 1, myReservationId: null }),
+			WISHLIST_ROLES.visitor,
+		);
+		// The visitor never gets reserver names anywhere.
+		expect(document.body.textContent).not.toContain('rezervoval');
+	});
+
+	it('shows reserver names inside the sticker for a moderator, but not for a visitor', async () => {
+		await renderItem(
+			makeVisitorGift({
+				isFullyReserved: true,
+				reservedCount: 1,
+				reserverNames: ['Babička'],
+				myReservationId: null,
+			}),
+			WISHLIST_ROLES.moderator,
+		);
+		expect(document.body.textContent).toContain('Babička');
+		expect(document.body.textContent).toContain('Rezervováno');
+
+		document.body.innerHTML = '';
+
+		await renderItem(
+			makeVisitorGift({
+				isFullyReserved: true,
+				reservedCount: 1,
+				reserverNames: ['Babička'],
+				myReservationId: null,
+			}),
+			WISHLIST_ROLES.visitor,
+		);
+		expect(document.body.textContent).not.toContain('Babička');
+	});
+});
+
 describe('GiftListItem reservation-action layout (issue #211)', () => {
 	it('stacks the mark-as-bought and cancel-reservation actions vertically at equal width', async () => {
 		const host = document.createElement('div');

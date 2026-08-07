@@ -6,11 +6,15 @@
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
 	import type { GiftByRole, GiftForVisitor, GiftViewMode } from '$lib/modules/gifts/types.js';
+	import type { GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 	interface WishlistGiftDisplayProps {
 		gifts: GiftByRole[];
+		/** Role-aware bands/priority groups for the card & list views (issue #224); compact uses the
+		 *  flat `gifts`. */
+		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
 		viewMode: GiftViewMode;
@@ -27,6 +31,7 @@
 
 	let {
 		gifts,
+		sections,
 		role,
 		isArchived,
 		viewMode,
@@ -61,7 +66,7 @@
 	<WishlistEmptyState {isArchived} {canManage} {isFilteredEmpty} {onaddgift} {onclearfilters} />
 {:else if viewMode === 'card'}
 	<WishlistGiftCardGrid
-		{gifts}
+		{sections}
 		{role}
 		{isArchived}
 		{canManage}
@@ -72,7 +77,7 @@
 	/>
 {:else if viewMode === 'list'}
 	<WishlistGiftListView
-		{gifts}
+		{sections}
 		{role}
 		{isArchived}
 		{canManage}
