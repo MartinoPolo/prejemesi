@@ -828,6 +828,7 @@
 	"gift_priority_eyebrow": "Priority",
 	"gift_priority_badge_label": "Priority · {label}",
 	"gift_band_own_reservations": "Your reservations",
+	"gift_band_other_gifts": "Other gifts",
 	"gift_group_by_priority": "Group by priority",
 	"gift_reserved_overlay": "Reserved",
 	"gift_reserved_by_me_overlay": "Reserved by you",

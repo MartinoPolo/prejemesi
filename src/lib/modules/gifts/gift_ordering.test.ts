@@ -6,6 +6,7 @@ import {
 	GIFT_SECTION_KINDS,
 	computeGiftSections,
 	computeUnprioritizedRank,
+	giftSectionHasHeader,
 	sortGifts,
 	type GiftSection,
 } from './gift_ordering.js';
@@ -128,6 +129,88 @@ describe('computeGiftSections — bands (grouping off)', () => {
 		// No reserved section for a moderator — the foreign reserved gift keeps owner order.
 		expect(sections.some((s) => s.kind === GIFT_SECTION_KINDS.reserved)).toBe(false);
 		expect(flatIds(sections)).toEqual(['mine', 'other-res', 'avail']);
+	});
+
+	it('labels the band after an own-reservation band as „other gifts" for a visitor (behavior A1)', () => {
+		const mine = makeGift({ id: 'mine', myReservationId: 'res-1' });
+		const avail = makeGift({ id: 'avail' });
+		const foreignReserved = makeGift({ id: 'fr', isFullyReserved: true });
+		const sections = computeGiftSections(
+			[avail, mine, foreignReserved],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			false,
+			LOCALE,
+		);
+
+		expect(sections[0].kind).toBe(GIFT_SECTION_KINDS.ownReservation);
+		const otherBand = sections.find((s) => s.kind === GIFT_SECTION_KINDS.otherGifts);
+		expect(otherBand?.gifts.map((g) => g.id)).toEqual(['avail']);
+		expect(giftSectionHasHeader(otherBand!)).toBe(true);
+		// The sunk foreign-reserved band stays headerless.
+		const reservedBand = sections.find((s) => s.kind === GIFT_SECTION_KINDS.reserved);
+		expect(reservedBand?.gifts.map((g) => g.id)).toEqual(['fr']);
+		expect(giftSectionHasHeader(reservedBand!)).toBe(false);
+	});
+
+	it('labels the band after an own-reservation band as „other gifts" for a moderator (behavior A1)', () => {
+		const mine = makeGift({ id: 'mine', myReservationId: 'res-1', sortOrder: 1 });
+		const other = makeGift({ id: 'other', sortOrder: 2 });
+		const sections = computeGiftSections(
+			[mine, other],
+			WISHLIST_ROLES.moderator,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			false,
+			LOCALE,
+		);
+
+		expect(sections[0].kind).toBe(GIFT_SECTION_KINDS.ownReservation);
+		const otherBand = sections.find((s) => s.kind === GIFT_SECTION_KINDS.otherGifts);
+		expect(otherBand?.gifts.map((g) => g.id)).toEqual(['other']);
+		expect(giftSectionHasHeader(otherBand!)).toBe(true);
+	});
+
+	it('keeps the available band headerless when the viewer has no own reservation (behavior A2)', () => {
+		const avail = makeGift({ id: 'avail' });
+		const foreignReserved = makeGift({ id: 'fr', isFullyReserved: true });
+		const sections = computeGiftSections(
+			[avail, foreignReserved],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			false,
+			LOCALE,
+		);
+
+		expect(sections.some((s) => s.kind === GIFT_SECTION_KINDS.otherGifts)).toBe(false);
+		const availBand = sections.find((s) => s.kind === GIFT_SECTION_KINDS.available);
+		expect(availBand?.gifts.map((g) => g.id)).toEqual(['avail']);
+		expect(giftSectionHasHeader(availBand!)).toBe(false);
+	});
+
+	it('emits no other-gifts band when grouping is on, even with an own reservation (behavior A3)', () => {
+		const mine = makeGift({
+			id: 'mine',
+			myReservationId: 'res-1',
+			priorityLevelId: 'lvl-high',
+			priorityLabel: 'Vysoká',
+			prioritySortOrder: 1,
+		});
+		const med = makeGift({
+			id: 'm',
+			priorityLevelId: 'lvl-med',
+			priorityLabel: 'Střední',
+			prioritySortOrder: 2,
+		});
+		const sections = computeGiftSections(
+			[med, mine],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.priority,
+			true,
+			LOCALE,
+		);
+
+		expect(sections[0].kind).toBe(GIFT_SECTION_KINDS.ownReservation);
+		expect(sections.some((s) => s.kind === GIFT_SECTION_KINDS.otherGifts)).toBe(false);
 	});
 
 	it('gives the recipient one headerless section in input order (behavior 4)', () => {

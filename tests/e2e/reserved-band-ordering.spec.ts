@@ -18,6 +18,7 @@ import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wi
  */
 
 const OWN_BAND_HEADER = /Vaše rezervace|Your reservations/;
+const OTHER_BAND_HEADER = /Ostatní dárky|Other gifts/;
 
 async function switchToListView(page: Page): Promise<void> {
 	await page.getByRole('radio', { name: /Seznam|List/ }).click();
@@ -87,20 +88,27 @@ test.describe('Reserved-band ordering (issue #224)', () => {
 		await gifterPage.waitForLoadState('networkidle');
 		await switchToListView(gifterPage);
 
-		// Own-reservation band header appears, above every gift.
+		// Both band headers appear: „Vaše rezervace" first, then „Ostatní dárky" for the
+		// available gifts that follow the own-reservation band (issue #224 follow-up).
 		await expect(gifterPage.getByText(OWN_BAND_HEADER)).toBeVisible({ timeout: 10_000 });
+		await expect(gifterPage.getByText(OTHER_BAND_HEADER)).toBeVisible({ timeout: 10_000 });
 		const headerBox = await gifterPage.getByText(OWN_BAND_HEADER).first().boundingBox();
 		const headerY = headerBox?.y ?? Infinity;
+		const otherHeaderBox = await gifterPage.getByText(OTHER_BAND_HEADER).first().boundingBox();
+		const otherHeaderY = otherHeaderBox?.y ?? Infinity;
 		const bravoY = await giftTop(gifterPage, 'Bravo Gift');
 		const charlieY = await giftTop(gifterPage, 'Charlie Gift');
 		const alphaY = await giftTop(gifterPage, 'Alpha Gift');
 
-		// Own reservation (Bravo) pinned right under the header; it appears exactly once.
+		// Own reservation (Bravo) pinned right under the „Vaše rezervace" header; appears once.
 		expect(headerY).toBeLessThan(bravoY);
 		expect(bravoY).toBeLessThan(charlieY);
 		await expect(gifterPage.getByRole('heading', { name: 'Bravo Gift', level: 3 })).toHaveCount(
 			1,
 		);
+		// „Ostatní dárky" header sits below the own reservation and above the available Charlie.
+		expect(otherHeaderY).toBeGreaterThan(bravoY);
+		expect(otherHeaderY).toBeLessThan(charlieY);
 		// Foreign fully-reserved Alpha sinks below the available Charlie.
 		expect(alphaY).toBeGreaterThan(charlieY);
 
@@ -139,6 +147,39 @@ test.describe('Reserved-band ordering (issue #224)', () => {
 		expect(firstY).toBeLessThan(secondY);
 
 		await ownerPage.context().close();
+	});
+
+	test('a visitor with no reservation of their own sees neither band header', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('no-res-owner');
+		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
+		await createWishlistAndNavigate(ownerPage, 'No Reservation Bands List');
+		await addGift(ownerPage, 'Delta Gift');
+		await addGift(ownerPage, 'Echo Gift');
+		await shareWishlist(ownerPage);
+		const wishlistPath = new URL(ownerPage.url()).pathname;
+		await ownerPage.context().close();
+
+		// A fresh visitor who has reserved nothing: no own-reservation band, so no „Ostatní dárky"
+		// header either — the list stays a single neutral headerless band.
+		const visitor = createTestUser('no-res-visitor');
+		const visitorPage = await registerAndGetPage(browser, request, baseURL!, visitor);
+		await visitorPage.goto(wishlistPath);
+		await visitorPage.waitForLoadState('networkidle');
+		await switchToListView(visitorPage);
+
+		await expect(
+			visitorPage.getByRole('heading', { name: 'Delta Gift', level: 3 }),
+		).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(visitorPage.getByText(OWN_BAND_HEADER)).toHaveCount(0);
+		await expect(visitorPage.getByText(OTHER_BAND_HEADER)).toHaveCount(0);
+
+		await visitorPage.context().close();
 	});
 
 	test('priority-grouping toggle is absent until the list has a prioritized gift', async ({
