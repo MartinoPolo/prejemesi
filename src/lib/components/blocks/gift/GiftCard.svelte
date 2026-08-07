@@ -6,6 +6,7 @@
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
+	import GiftReservedSticker from '$lib/components/blocks/gift/GiftReservedSticker.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
@@ -78,15 +79,7 @@
 		{/if}
 
 		{#if isVisitorOrModerator && isFullyReserved}
-			<span class={styles.reservedSticker()}>
-				<span class={styles.reservedStickerLabel()}>
-					<CheckIcon class="size-3.5" />
-					{m.gift_reserved_overlay()}
-				</span>
-				{#if reserverLine !== null}
-					<small class={styles.reservedStickerNames()}>{reserverLine}</small>
-				{/if}
-			</span>
+			<GiftReservedSticker {reserverLine} />
 		{/if}
 
 		{#if gift.received}

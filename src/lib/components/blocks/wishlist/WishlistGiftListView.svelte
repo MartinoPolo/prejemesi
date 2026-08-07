@@ -1,12 +1,19 @@
 <script lang="ts">
 	import GiftListItem from '$lib/components/blocks/gift/GiftListItem.svelte';
+	import GiftSectionHeader from './GiftSectionHeader.svelte';
 	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
+	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import {
+		toIndexedSections,
+		countGiftsInSections,
+		sectionRenderKey,
+	} from './gift_section_rows.js';
 
 	interface WishlistGiftListViewProps {
-		gifts: GiftByRole[];
+		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
 		canManage: boolean;
@@ -17,7 +24,7 @@
 	}
 
 	let {
-		gifts,
+		sections,
 		role,
 		isArchived,
 		canManage,
@@ -29,6 +36,9 @@
 
 	let listEl = $state<HTMLElement | null>(null);
 
+	const indexedSections = $derived(toIndexedSections(sections));
+	const totalGiftCount = $derived(countGiftsInSections(sections));
+
 	const reorder = createGiftPointerReorderController({
 		getItemElements: () =>
 			listEl === null
@@ -39,7 +49,7 @@
 
 	function handleReorderMove(index: number, direction: -1 | 1) {
 		const target = index + direction;
-		if (target >= 0 && target < gifts.length) {
+		if (target >= 0 && target < totalGiftCount) {
 			onreorder(index, target);
 		}
 	}
@@ -48,19 +58,24 @@
 </script>
 
 <div bind:this={listEl} class="flex flex-col">
-	{#each gifts as giftItem, index (giftItem.id)}
-		<WishlistGiftDraggableWrapper
-			{index}
-			{canManage}
-			draggedIndex={reorder.draggedIndex.current}
-			dragOverIndex={reorder.dragOverIndex.current}
-			dragOverStyle="bg"
-			giftName={giftItem.name}
-			onopendetail={() => onedit(giftItem)}
-			onreorderpointerdown={reorder.start}
-			onreordermove={handleReorderMove}
-		>
-			<GiftListItem gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
-		</WishlistGiftDraggableWrapper>
+	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
+		{#if giftSectionHasHeader(section)}
+			<GiftSectionHeader {section} />
+		{/if}
+		{#each items as { gift: giftItem, index } (giftItem.id)}
+			<WishlistGiftDraggableWrapper
+				{index}
+				{canManage}
+				draggedIndex={reorder.draggedIndex.current}
+				dragOverIndex={reorder.dragOverIndex.current}
+				dragOverStyle="bg"
+				giftName={giftItem.name}
+				onopendetail={() => onedit(giftItem)}
+				onreorderpointerdown={reorder.start}
+				onreordermove={handleReorderMove}
+			>
+				<GiftListItem gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
+			</WishlistGiftDraggableWrapper>
+		{/each}
 	{/each}
 </div>
