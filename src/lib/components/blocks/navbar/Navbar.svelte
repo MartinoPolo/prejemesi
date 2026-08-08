@@ -385,9 +385,6 @@
 			>
 				<PlusIcon />
 			</Button>
-
-			<!-- Notification bell -->
-			<NotificationBell />
 		{/if}
 
 		<!-- Appearance controls. ≥1040px: three separate buttons (full desktop fits).
@@ -417,7 +414,10 @@
 		{/if}
 
 		{#if user}
-			<!-- User menu -->
+			<!-- Personal cluster: notifications + account sit together at the far right,
+			     apart from the square appearance buttons. The bell stays ghost so its
+			     badge never collides with a border. -->
+			<NotificationBell />
 			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
 		{:else}
 			<Button intent="primary" size="md" href={localizeInternalHref(resolve('/login'))}
