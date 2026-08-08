@@ -3,6 +3,7 @@
 	import * as Carousel from '$lib/components/base/carousel/index.js';
 	import type { CarouselAPI } from '$lib/components/base/carousel/context.js';
 	import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
+	import { ShiftWheelHorizontalScroll } from '$lib/components/base/carousel/shift_wheel_horizontal_scroll.js';
 	import ViewAllCard from './ViewAllCard.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -23,7 +24,9 @@
 	let { title, icon, viewAllHref, total = 0, visibleCount, children }: HomeShelfProps = $props();
 
 	// Plain vertical wheel keeps scrolling the page — only horizontal deltas move the shelf.
-	const plugins = [WheelGesturesPlugin({ forceWheelAxis: 'x' })];
+	// ShiftWheelHorizontalScroll bridges Chromium's Shift+wheel (which arrives as vertical
+	// deltaY) into the horizontal deltaX the WheelGesturesPlugin understands.
+	const plugins = [WheelGesturesPlugin({ forceWheelAxis: 'x' }), ShiftWheelHorizontalScroll()];
 
 	// The trailing „Zobrazit vše" card appears only when the row was capped (more lists exist).
 	const remaining = $derived(Math.max(0, total - visibleCount));
@@ -32,12 +35,16 @@
 	// The arrow pair is shown only when the row overflows (either direction scrollable). Tracked
 	// off the embla api because canScrollPrev/Next live in carousel context, not here.
 	let canScroll = $state(false);
+	// Drives the right-edge fade: while more cards exist past the viewport, a mask gradient
+	// signals scrollable content; it clears once the row is scrolled to the end (or fits).
+	let canScrollNext = $state(false);
 	function trackApi(api: CarouselAPI | undefined) {
 		if (api === undefined) {
 			return;
 		}
 		const update = () => {
-			canScroll = api.canScrollPrev() || api.canScrollNext();
+			canScrollNext = api.canScrollNext();
+			canScroll = api.canScrollPrev() || canScrollNext;
 		};
 		update();
 		api.on('select', update);
@@ -45,7 +52,7 @@
 	}
 </script>
 
-<section class="shelf" data-testid="home-shelf">
+<section class="shelf" data-testid="home-shelf" data-can-scroll-next={canScrollNext}>
 	<Carousel.Root opts={{ align: 'start' }} {plugins} setApi={trackApi}>
 		<div class="shelf-head">
 			<h2 class="shelf-title">
@@ -123,5 +130,12 @@
 	.shelf :global([data-slot='carousel-content']) {
 		margin-right: calc(var(--space-6) * -1);
 		padding: 6px 0 14px;
+	}
+
+	/* Right-edge fade signalling more cards past the clip. Only while the row can still scroll
+	   right — when scrolled to the end (or it fits), the last card renders un-faded. Desktop and
+	   mobile alike; keyed off the data attribute so it stays e2e-testable. */
+	.shelf[data-can-scroll-next='true'] :global([data-slot='carousel-content']) {
+		mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent 100%);
 	}
 </style>

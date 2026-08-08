@@ -121,6 +121,140 @@ test.describe('Home overview (issue #225)', () => {
 		await page.context().close();
 	});
 
+	test('all wishlist cards in a shelf row have equal heights', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+
+		await page.goto('/home');
+		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		const rows = page.getByTestId('home-shelf');
+		const rowCount = await rows.count();
+		expect(rowCount).toBeGreaterThan(0);
+
+		for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+			const cards = rows.nth(rowIndex).getByTestId('wishlist-card');
+			const cardCount = await cards.count();
+			if (cardCount < 2) {
+				continue;
+			}
+
+			const heights: number[] = [];
+			for (let cardIndex = 0; cardIndex < cardCount; cardIndex++) {
+				const box = await cards.nth(cardIndex).boundingBox();
+				expect(box).not.toBeNull();
+				heights.push(box!.height);
+			}
+
+			const min = Math.min(...heights);
+			const max = Math.max(...heights);
+			expect(max - min, `row ${rowIndex} card heights should be equal`).toBeLessThanOrEqual(
+				1,
+			);
+		}
+
+		await page.context().close();
+	});
+
+	test('Shift+wheel scrolls a shelf horizontally while plain wheel does not', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+
+		await page.goto('/home');
+		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		// Pick a row that actually overflows (its Next control is rendered only when scrollable).
+		const rows = page.getByTestId('home-shelf');
+		const overflowingRow = rows
+			.filter({ has: page.getByRole('button', { name: 'Další' }) })
+			.first();
+		await expect(overflowingRow).toHaveCount(1);
+
+		const track = overflowingRow.locator('[data-embla-container]');
+		const viewport = overflowingRow.locator("[data-slot='carousel-content']");
+		const transformOf = () => track.evaluate((node) => getComputedStyle(node).transform);
+
+		// Reproduce the exact wheel event Chromium delivers for a gesture (see
+		// ShiftWheelHorizontalScroll): the axis is NOT pre-swapped, so a Shift+wheel arrives as
+		// `{ deltaX: 0, deltaY, shiftKey: true }`. Playwright's `mouse.wheel` cannot carry the
+		// Shift modifier into the wheel event, so dispatch the event shape directly on the
+		// viewport — this drives the real plugin + WheelGesturesPlugin + embla in the browser.
+		const dispatchVerticalWheel = (shiftKey: boolean) =>
+			viewport.evaluate((node, shift) => {
+				node.dispatchEvent(
+					new WheelEvent('wheel', {
+						deltaX: 0,
+						deltaY: 300,
+						shiftKey: shift,
+						bubbles: true,
+						cancelable: true,
+					}),
+				);
+			}, shiftKey);
+
+		const before = await transformOf();
+
+		// Plain vertical wheel must NOT move the carousel (the page scroll container handles it).
+		await dispatchVerticalWheel(false);
+		await page.waitForTimeout(400);
+		expect(await transformOf()).toBe(before);
+
+		// Shift+wheel must move it horizontally.
+		await dispatchVerticalWheel(true);
+		await expect.poll(async () => transformOf(), { timeout: 5_000 }).not.toBe(before);
+
+		await page.context().close();
+	});
+
+	test('an overflowing shelf shows the right-edge fade until scrolled to the end', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+
+		await page.goto('/home');
+		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		const rows = page.getByTestId('home-shelf');
+		const overflowingRow = rows
+			.filter({ has: page.getByRole('button', { name: 'Další' }) })
+			.first();
+		await expect(overflowingRow).toHaveCount(1);
+
+		// Fade present at the start (more cards exist to the right).
+		await expect(overflowingRow).toHaveAttribute('data-can-scroll-next', 'true');
+
+		// Click Next until the end; the fade clears once nothing more can scroll right.
+		const next = overflowingRow.getByRole('button', { name: 'Další' });
+		for (let clicks = 0; clicks < 20; clicks++) {
+			if ((await overflowingRow.getAttribute('data-can-scroll-next')) === 'false') {
+				break;
+			}
+			if (await next.isDisabled()) {
+				break;
+			}
+			await next.click();
+			await page.waitForTimeout(150);
+		}
+
+		await expect(overflowingRow).toHaveAttribute('data-can-scroll-next', 'false');
+
+		await page.context().close();
+	});
+
 	test('opening a wishlist records a visit that surfaces in Nedávné', async ({
 		browser,
 		request,

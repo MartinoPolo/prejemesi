@@ -26,7 +26,10 @@ test.describe('Authentication', () => {
 		await page.getByRole('textbox', { name: 'Heslo' }).fill(user.password);
 		await page.getByRole('button', { name: 'Přihlásit se', exact: true }).click();
 
-		await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible({
+		// Post-login default redirect now lands on the „Přehled" overview at /home (issue #225),
+		// no longer /my-lists.
+		await expect(page).toHaveURL(/\/home\/?$/);
+		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
 			timeout: 10_000,
 		});
 	});
