@@ -54,6 +54,9 @@ const LANDING_DEMO_PUBLIC_MODULE_PATHS = [
 	'/lib/modules/gifts/gift_display_state.ts',
 	'/lib/modules/gifts/gift_url.ts',
 	'/lib/modules/gifts/gifts.context.svelte.ts',
+	// Pulled in transitively by gifts.context.svelte.ts since the reserved-band
+	// ordering refactor (#227): pure section/ordering computation, no server data.
+	'/lib/modules/gifts/gift_ordering.ts',
 	'/lib/modules/wishlists/types.ts',
 	'/lib/modules/wishlists/wishlist_capabilities.ts',
 	// Added when the demo gained the real `WishlistHeader` above the panes: both are
