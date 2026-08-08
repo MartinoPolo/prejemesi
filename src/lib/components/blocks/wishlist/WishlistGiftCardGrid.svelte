@@ -1,12 +1,19 @@
 <script lang="ts">
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
+	import GiftSectionHeader from './GiftSectionHeader.svelte';
 	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
+	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import {
+		toIndexedSections,
+		countGiftsInSections,
+		sectionRenderKey,
+	} from './gift_section_rows.js';
 
 	interface WishlistGiftCardGridProps {
-		gifts: GiftByRole[];
+		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
 		canManage: boolean;
@@ -17,7 +24,7 @@
 	}
 
 	let {
-		gifts,
+		sections,
 		role,
 		isArchived,
 		canManage,
@@ -29,6 +36,11 @@
 
 	let gridEl = $state<HTMLElement | null>(null);
 
+	// Sections carry the running global gift index, so pointer/keyboard reorder keeps mapping to
+	// the flat displayedGifts order even with pinned/grouped sections (issue #224).
+	const indexedSections = $derived(toIndexedSections(sections));
+	const totalGiftCount = $derived(countGiftsInSections(sections));
+
 	const reorder = createGiftPointerReorderController({
 		getItemElements: () =>
 			gridEl === null
@@ -39,7 +51,7 @@
 
 	function handleReorderMove(index: number, direction: -1 | 1) {
 		const target = index + direction;
-		if (target >= 0 && target < gifts.length) {
+		if (target >= 0 && target < totalGiftCount) {
 			onreorder(index, target);
 		}
 	}
@@ -56,20 +68,28 @@
 	class="grid gap-5"
 	style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))"
 >
-	{#each gifts as giftItem, index (giftItem.id)}
-		<WishlistGiftDraggableWrapper
-			{index}
-			{canManage}
-			class="row-span-7 grid grid-rows-subgrid gap-y-0"
-			draggedIndex={reorder.draggedIndex.current}
-			dragOverIndex={reorder.dragOverIndex.current}
-			dragOverStyle="ring"
-			giftName={giftItem.name}
-			onopendetail={() => onedit(giftItem)}
-			onreorderpointerdown={reorder.start}
-			onreordermove={handleReorderMove}
-		>
-			<GiftCard gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
-		</WishlistGiftDraggableWrapper>
+	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
+		{#if giftSectionHasHeader(section)}
+			<!-- Full-width band/group header breaks the auto-fill row so cards flow beneath it. -->
+			<div class="col-span-full">
+				<GiftSectionHeader {section} />
+			</div>
+		{/if}
+		{#each items as { gift: giftItem, index } (giftItem.id)}
+			<WishlistGiftDraggableWrapper
+				{index}
+				{canManage}
+				class="row-span-7 grid grid-rows-subgrid gap-y-0"
+				draggedIndex={reorder.draggedIndex.current}
+				dragOverIndex={reorder.dragOverIndex.current}
+				dragOverStyle="ring"
+				giftName={giftItem.name}
+				onopendetail={() => onedit(giftItem)}
+				onreorderpointerdown={reorder.start}
+				onreordermove={handleReorderMove}
+			>
+				<GiftCard gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
+			</WishlistGiftDraggableWrapper>
+		{/each}
 	{/each}
 </div>

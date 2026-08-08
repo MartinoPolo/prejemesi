@@ -6,10 +6,12 @@
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
 	import { cn } from '$lib/utils.js';
-	import type { FilterDefinition } from './filter_menu_types.js';
+	import type { FilterDefinition, FilterToggle } from './filter_menu_types.js';
 
 	interface FilterMenuProps {
 		definitions: readonly FilterDefinition[];
+		/** Display-preference switches in a separate dropdown group; excluded from count/pills/clear. */
+		toggles?: readonly FilterToggle[];
 		triggerLabel: string;
 		menuHeading: string;
 		clearAllLabel: string;
@@ -22,6 +24,7 @@
 
 	let {
 		definitions,
+		toggles = [],
 		triggerLabel,
 		menuHeading,
 		clearAllLabel,
@@ -100,6 +103,22 @@
 					</DropdownMenu.CheckboxItem>
 				{/each}
 			</DropdownMenu.Group>
+
+			{#if toggles.length > 0}
+				<DropdownMenu.Separator />
+				<DropdownMenu.Group>
+					{#each toggles as toggle (toggle.id)}
+						<DropdownMenu.CheckboxItem
+							bind:checked={
+								() => toggle.checked, (checked) => toggle.onchange(checked)
+							}
+							closeOnSelect={false}
+						>
+							{toggle.label}
+						</DropdownMenu.CheckboxItem>
+					{/each}
+				</DropdownMenu.Group>
+			{/if}
 
 			{#if activeDefinitions.length > 0}
 				<DropdownMenu.Separator />

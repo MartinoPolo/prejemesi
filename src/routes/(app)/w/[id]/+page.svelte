@@ -294,6 +294,7 @@
 	// ── Gift display ─────────────────────────────────────────────────────────
 
 	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
+	const giftSections = $derived(giftsContext.giftSections.current);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const totalCount = $derived(giftsContext.giftCount.current);
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
@@ -432,6 +433,10 @@
 
 	function handleFilterChange(filters: GiftFilters) {
 		giftsContext.filters.current = filters;
+	}
+
+	function handlePriorityGroupingChange(grouping: boolean) {
+		giftsContext.priorityGrouping.current = grouping;
 	}
 
 	function clearFilters() {
@@ -635,12 +640,27 @@
 			return;
 		}
 
+		// Reorder indices are positions in the rendered (banded/grouped) order. Map them to gift ids
+		// and relocate within effectiveGifts by id — a pinned own-reservation band or priority groups
+		// make rendered indices diverge from effectiveGifts positions (issue #224).
+		const rendered = giftsContext.sortedAndFilteredGifts.current;
+		const movedId = rendered[fromIndex]?.id;
+		const targetId = rendered[toIndex]?.id;
+		if (movedId === undefined || targetId === undefined) {
+			return;
+		}
+
 		const items = [...giftsContext.effectiveGifts.current];
-		const [movedItem] = items.splice(fromIndex, 1);
+		const fromPosition = items.findIndex((item) => item.id === movedId);
+		const toPosition = items.findIndex((item) => item.id === targetId);
+		if (fromPosition === -1 || toPosition === -1) {
+			return;
+		}
+		const [movedItem] = items.splice(fromPosition, 1);
 		if (movedItem === undefined) {
 			return;
 		}
-		items.splice(toIndex, 0, movedItem);
+		items.splice(toPosition, 0, movedItem);
 		giftsContext.reorderGifts(items);
 
 		try {
@@ -832,9 +852,12 @@
 			{viewMode}
 			sortOption={giftsContext.sortOption.current}
 			filters={giftsContext.filters.current}
+			priorityGrouping={giftsContext.priorityGrouping.current}
+			showPriorityGrouping={giftsContext.hasAnyPriority.current}
 			onviewmodechange={handleViewModeChange}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
+			onprioritygroupingchange={handlePriorityGroupingChange}
 			onthemeopen={() => (paletteDialogOpen = true)}
 			onsettings={handleSettingsOpened}
 			onunfollow={handleUnfollow}
@@ -846,6 +869,7 @@
 
 		<WishlistGiftDisplay
 			gifts={displayedGifts}
+			sections={giftSections}
 			{role}
 			{isArchived}
 			{viewMode}

@@ -101,6 +101,21 @@ const SEED_IMAGES: Record<string, string> = {
 		'https://images.unsplash.com/photo-1503149779833-1de50ebe5f8a?w=800&q=80',
 	'seed/g-dune.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
 	'seed/g-1984.jpg': 'https://images.unsplash.com/photo-1710578472398-1edbbd348b79?w=800&q=80',
+	// Added for the long-list fixtures (issue #224) – Martin's owned / moderated / followed lists.
+	'seed/g-ponozky.jpg': 'https://images.unsplash.com/photo-1586350977771-b3b0abd50c82?w=800&q=80',
+	'seed/g-poukaz.jpg': 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+	'seed/g-advent.jpg': 'https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=800&q=80',
+	'seed/g-kavovar.jpg': 'https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=800&q=80',
+	'seed/g-kolo.jpg': 'https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?w=800&q=80',
+	'seed/g-monitor.jpg': 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=800&q=80',
+	'seed/g-stan.jpg': 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80',
+	'seed/g-sachy.jpg': 'https://images.unsplash.com/photo-1528819622765-d6bcf132f793?w=800&q=80',
+	'seed/g-kytice.jpg': 'https://images.unsplash.com/photo-1487070183336-b863922373d4?w=800&q=80',
+	'seed/g-hodinky-d.jpg':
+		'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&q=80',
+	'seed/g-caj.jpg': 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800&q=80',
+	'seed/g-sklenice.jpg':
+		'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80',
 };
 
 async function downloadSeedImages(): Promise<void> {
@@ -227,6 +242,27 @@ const G_KASMIR = 'seed-g-kasmir';
 const G_DECKY = 'seed-g-decky';
 const G_GRIL = 'seed-g-gril';
 const G_SEKERA = 'seed-g-sekera';
+// Extra gifts for the long-list fixtures (issue #224)
+// Martin's own list – Vánoce 2026 (recipient view: 12+ gifts, images, priorities)
+const G_XM_KAVOVAR = 'seed-g-xm-kavovar';
+const G_XM_KOLO = 'seed-g-xm-kolo';
+const G_XM_MONITOR = 'seed-g-xm-monitor';
+const G_XM_STAN = 'seed-g-xm-stan';
+const G_XM_SACHY = 'seed-g-xm-sachy';
+// Knihy 2026 – Martin is správce (moderator view: full ordering-band spread)
+const G_KN_ATLAS = 'seed-g-kn-atlas';
+const G_KN_HOBIT = 'seed-g-kn-hobit';
+const G_KN_ZAKON = 'seed-g-kn-zakon';
+const G_KN_KRONIKY = 'seed-g-kn-kroniky';
+const G_KN_STOLETI = 'seed-g-kn-stoleti';
+const G_KN_MAPY = 'seed-g-kn-mapy';
+// Přání k svátku (Jana) – Martin follows as a gifter (visitor view: full ordering-band spread)
+const G_SV_HODINKY = 'seed-g-sv-hodinky';
+const G_SV_KVETINAC = 'seed-g-sv-kvetinac';
+const G_SV_KABAT = 'seed-g-sv-kabat';
+const G_SV_CAJ = 'seed-g-sv-caj';
+const G_SV_DENIK = 'seed-g-sv-denik';
+const G_SV_SKLENICE = 'seed-g-sv-sklenice';
 // Gifts on the for-someone lists (Rosie / Miminko)
 const G_PANENKA = 'seed-g-panenka';
 const G_ODRAZEDLO = 'seed-g-odrazedlo';
@@ -764,6 +800,7 @@ async function seed() {
 				price: 590,
 				currency: 'CZK',
 				quantity: 3,
+				...giftImage('seed/g-ponozky.jpg'),
 				sortOrder: 4,
 				createdAt: d('2026-06-16T09:00:00Z'),
 				updatedAt: d('2026-06-16T09:00:00Z'),
@@ -776,6 +813,7 @@ async function seed() {
 				description: 'Ideálně La Degustation nebo Alcron',
 				price: 2000,
 				currency: 'CZK',
+				...giftImage('seed/g-poukaz.jpg'),
 				sortOrder: 5,
 				createdAt: d('2026-06-17T09:00:00Z'),
 				updatedAt: d('2026-06-17T09:00:00Z'),
@@ -800,10 +838,77 @@ async function seed() {
 				name: 'Čokoládový adventní kalendář',
 				price: 350,
 				currency: 'CZK',
+				...giftImage('seed/g-advent.jpg'),
 				sortOrder: 7,
 				received: true,
 				createdAt: d('2026-06-20T09:00:00Z'),
 				updatedAt: d('2026-06-20T09:00:00Z'),
+			},
+			// Added for issue #224 – bring Martin's own list to 13 gifts (recipient view).
+			{
+				id: G_XM_KAVOVAR,
+				wishlistId: WL_XMAS26,
+				priorityLevelId: plId('xmas26', 'h'),
+				name: 'Kávovar DeLonghi',
+				description: 'Automatický, s napěňovačem mléka',
+				links: [{ url: 'https://www.alza.cz/delonghi-kavovar' }],
+				price: 12490,
+				currency: 'CZK',
+				...giftImage('seed/g-kavovar.jpg'),
+				sortOrder: 8,
+				createdAt: d('2026-06-21T09:00:00Z'),
+				updatedAt: d('2026-06-21T09:00:00Z'),
+			},
+			{
+				id: G_XM_KOLO,
+				wishlistId: WL_XMAS26,
+				priorityLevelId: plId('xmas26', 'm'),
+				name: 'Horské kolo',
+				description: 'Velikost rámu L, kotoučové brzdy',
+				price: 24990,
+				currency: 'CZK',
+				...giftImage('seed/g-kolo.jpg'),
+				sortOrder: 9,
+				createdAt: d('2026-06-21T10:00:00Z'),
+				updatedAt: d('2026-06-21T10:00:00Z'),
+			},
+			{
+				id: G_XM_MONITOR,
+				wishlistId: WL_XMAS26,
+				priorityLevelId: plId('xmas26', 'm'),
+				name: 'Herní monitor 27"',
+				description: '144 Hz, QHD rozlišení',
+				price: 6990,
+				currency: 'CZK',
+				...giftImage('seed/g-monitor.jpg'),
+				sortOrder: 10,
+				createdAt: d('2026-06-21T11:00:00Z'),
+				updatedAt: d('2026-06-21T11:00:00Z'),
+			},
+			{
+				id: G_XM_STAN,
+				wishlistId: WL_XMAS26,
+				priorityLevelId: plId('xmas26', 'l'),
+				name: 'Stan pro dva',
+				description: 'Lehký, na treky',
+				price: 3200,
+				currency: 'CZK',
+				...giftImage('seed/g-stan.jpg'),
+				sortOrder: 11,
+				createdAt: d('2026-06-21T12:00:00Z'),
+				updatedAt: d('2026-06-21T12:00:00Z'),
+			},
+			{
+				id: G_XM_SACHY,
+				wishlistId: WL_XMAS26,
+				name: 'Dřevěné šachy',
+				description: 'Ručně vyřezávané figurky',
+				price: 1490,
+				currency: 'CZK',
+				...giftImage('seed/g-sachy.jpg'),
+				sortOrder: 12,
+				createdAt: d('2026-06-21T13:00:00Z'),
+				updatedAt: d('2026-06-21T13:00:00Z'),
 			},
 
 			// --- Narozeniny Martina (5 gifts) ---
@@ -986,6 +1091,7 @@ async function seed() {
 				description: 'Kuchařka od Zdeňka Pohlreicha',
 				price: 350,
 				currency: 'CZK',
+				...giftImage('seed/g-sapiens.jpg'),
 				sortOrder: 2,
 			},
 			{
@@ -996,7 +1102,75 @@ async function seed() {
 				description: 'Pivoňky nebo tulipány',
 				price: 800,
 				currency: 'CZK',
+				...giftImage('seed/g-kytice.jpg'),
 				sortOrder: 3,
+			},
+			// Added for issue #224 – bring Přání k svátku to 10 gifts so Martin (gifter/follower)
+			// sees the full ordering-band spread on a list he only follows.
+			{
+				id: G_SV_HODINKY,
+				wishlistId: WL_SVATEK,
+				priorityLevelId: plId('svatek', 'h'),
+				name: 'Dámské hodinky',
+				description: 'Stříbrné, s koženým řemínkem',
+				price: 90,
+				currency: 'EUR',
+				...giftImage('seed/g-hodinky-d.jpg'),
+				sortOrder: 4,
+			},
+			{
+				id: G_SV_KVETINAC,
+				wishlistId: WL_SVATEK,
+				priorityLevelId: plId('svatek', 'l'),
+				name: 'Designový květináč',
+				price: 650,
+				currency: 'CZK',
+				...giftImage('seed/g-monstera.jpg'),
+				sortOrder: 5,
+			},
+			{
+				id: G_SV_KABAT,
+				wishlistId: WL_SVATEK,
+				priorityLevelId: plId('svatek', 'h'),
+				name: 'Vlněný kabát',
+				description: 'Velikost M, béžová nebo camel',
+				price: 150,
+				currency: 'EUR',
+				...giftImage('seed/g-bunda.jpg'),
+				sortOrder: 6,
+			},
+			{
+				id: G_SV_CAJ,
+				wishlistId: WL_SVATEK,
+				name: 'Sada sypaných čajů',
+				description: 'Výběr ovocných a bylinných čajů',
+				price: 690,
+				currency: 'CZK',
+				...giftImage('seed/g-caj.jpg'),
+				sortOrder: 7,
+				received: true,
+			},
+			{
+				id: G_SV_DENIK,
+				wishlistId: WL_SVATEK,
+				priorityLevelId: plId('svatek', 'm'),
+				name: 'Kožený zápisník',
+				price: 890,
+				currency: 'CZK',
+				...giftImage('seed/g-sapiens.jpg'),
+				sortOrder: 8,
+			},
+			{
+				id: G_SV_SKLENICE,
+				wishlistId: WL_SVATEK,
+				priorityLevelId: plId('svatek', 'm'),
+				name: 'Sada sklenic na víno',
+				description: 'Křišťálové, šest kusů',
+				price: 1290,
+				currency: 'CZK',
+				quantity: 3,
+				...giftImage('seed/g-sklenice.jpg'),
+				sortOrder: 9,
 			},
 
 			// --- Dětský pokoj / Jana draft (3 gifts) ---
@@ -1112,6 +1286,7 @@ async function seed() {
 				links: [{ url: 'https://www.kosmas.cz/hail-mary' }],
 				price: 420,
 				currency: 'CZK',
+				...giftImage('seed/g-kindle.jpg'),
 				sortOrder: 2,
 			},
 			{
@@ -1122,7 +1297,79 @@ async function seed() {
 				links: [{ url: 'https://www.kosmas.cz/sapiens-ilustrovana' }],
 				price: 590,
 				currency: 'CZK',
+				...giftImage('seed/g-sapiens.jpg'),
 				sortOrder: 3,
+			},
+			// Added for issue #224 – bring Knihy 2026 to 10 gifts so Martin (správce) sees
+			// the full ordering-band spread: own reservations, sunk (others), available,
+			// partial multi-qty, a received gift, and mixed/unset priorities.
+			{
+				id: G_KN_ATLAS,
+				wishlistId: WL_KNIHY,
+				priorityLevelId: plId('knihy', 'h'),
+				name: 'Atlas mraků – David Mitchell',
+				links: [{ url: 'https://www.kosmas.cz/atlas-mraku' }],
+				price: 450,
+				currency: 'CZK',
+				...giftImage('seed/g-sapiens.jpg'),
+				sortOrder: 4,
+			},
+			{
+				id: G_KN_HOBIT,
+				wishlistId: WL_KNIHY,
+				priorityLevelId: plId('knihy', 'm'),
+				name: 'Hobit – J. R. R. Tolkien',
+				links: [{ url: 'https://www.kosmas.cz/hobit' }],
+				price: 390,
+				currency: 'CZK',
+				...giftImage('seed/g-dune.jpg'),
+				sortOrder: 5,
+			},
+			{
+				id: G_KN_ZAKON,
+				wishlistId: WL_KNIHY,
+				priorityLevelId: plId('knihy', 'l'),
+				name: 'Pán prstenů – souborné vydání',
+				description: 'Ideálně vázané, dvě kopie do knihovny',
+				links: [{ url: 'https://www.kosmas.cz/pan-prstenu' }],
+				price: 990,
+				currency: 'CZK',
+				quantity: 2,
+				...giftImage('seed/g-1984.jpg'),
+				sortOrder: 6,
+			},
+			{
+				id: G_KN_KRONIKY,
+				wishlistId: WL_KNIHY,
+				name: 'Kroniky Amberu – Roger Zelazny',
+				links: [{ url: 'https://www.kosmas.cz/amber' }],
+				price: 520,
+				currency: 'CZK',
+				...giftImage('seed/g-kindle.jpg'),
+				sortOrder: 7,
+			},
+			{
+				id: G_KN_STOLETI,
+				wishlistId: WL_KNIHY,
+				name: 'Století – Ken Follett',
+				links: [{ url: 'https://www.kosmas.cz/stoleti' }],
+				price: 680,
+				currency: 'CZK',
+				...giftImage('seed/g-sapiens.jpg'),
+				sortOrder: 8,
+				received: true,
+			},
+			{
+				id: G_KN_MAPY,
+				wishlistId: WL_KNIHY,
+				priorityLevelId: plId('knihy', 'm'),
+				name: 'Mapy – Aleksandra Mizielińska',
+				description: 'Velký ilustrovaný atlas světa',
+				links: [{ url: 'https://www.kosmas.cz/mapy' }],
+				price: 690,
+				currency: 'CZK',
+				...giftImage('seed/g-dune.jpg'),
+				sortOrder: 9,
 			},
 
 			// --- Petrovy narozeniny / Petr (3 gifts, 2 free) ---
@@ -1362,6 +1609,26 @@ async function seed() {
 				quantity: 2,
 			},
 			{ id: 'seed-r-27', giftId: G_KOCAREK, userId: PETR, quantity: 1 },
+
+			// Knihy 2026 (issue #224) – Martin is správce, so he sees every band.
+			// Own reservations (beyond the existing DUNE):
+			{ id: 'seed-r-28', giftId: G_KN_ATLAS, userId: MARTIN, quantity: 1 },
+			{ id: 'seed-r-29', giftId: G_KN_MAPY, userId: MARTIN, quantity: 1 },
+			// Fully reserved by others (sunk / dimmed):
+			{ id: 'seed-r-30', giftId: G_KN_HOBIT, userId: PETR, quantity: 1 },
+			{ id: 'seed-r-31', giftId: G_KN_STOLETI, userId: EVA, quantity: 1 },
+			// Partially reserved multi-quantity (1 of 2):
+			{ id: 'seed-r-32', giftId: G_KN_ZAKON, userId: EVA, quantity: 1 },
+
+			// Přání k svátku (issue #224) – Martin follows as a gifter, sees every band.
+			// Own reservations (beyond the existing KABELKA):
+			{ id: 'seed-r-33', giftId: G_SV_HODINKY, userId: MARTIN, quantity: 1 },
+			{ id: 'seed-r-34', giftId: G_SV_KVETINAC, userId: MARTIN, quantity: 1 },
+			// Fully reserved by others (sunk / dimmed):
+			{ id: 'seed-r-35', giftId: G_SV_KABAT, userId: PETR, quantity: 1 },
+			{ id: 'seed-r-36', giftId: G_SV_CAJ, userId: EVA, quantity: 1 },
+			// Partially reserved multi-quantity (1 of 3):
+			{ id: 'seed-r-37', giftId: G_SV_SKLENICE, userId: JANA, quantity: 1 },
 		]);
 
 		// ---------------------------------------------------------------
