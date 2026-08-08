@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Přehled — refined (variant A)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&family=Geist:wght@100..900&display=swap" rel="stylesheet" />
+<style>
+	/* ── Tokens: mirrored from src/app.css (canonical source), sky palette ── */
+	:root {
+		--p-brand: #1e9be9;
+		--p-deep: #1265a8;
+		--p-ink: #16385c;
+		--p-accent: #ffc93c;
+		--p-on-accent: #16385c;
+
+		--ink: var(--p-ink);
+		--ink-faint: color-mix(in oklab, var(--p-ink) 12%, transparent);
+		--brand: var(--p-brand);
+		--brand-deep: var(--p-deep);
+		--tint: color-mix(in oklab, var(--p-brand) 21%, white);
+		--ghost-hover: rgb(255 255 255 / 50%);
+		--pattern-dot: color-mix(in oklab, var(--ink) 13%, transparent);
+		--hard-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
+
+		--background: color-mix(in oklab, var(--p-brand) 11%, white);
+		--foreground: var(--p-ink);
+		--card: #fff;
+		--primary: var(--p-brand);
+		--primary-foreground: #fff;
+		--surface: color-mix(in oklab, var(--p-brand) 6%, white);
+		--muted-foreground: color-mix(in oklab, var(--p-ink) 62%, transparent);
+
+		--shadow-sticker-sm: 2px 2px 0 var(--hard-shadow);
+		--shadow-sticker: 4px 4px 0 var(--hard-shadow);
+		--shadow-sticker-lift: 7px 7px 0 var(--hard-shadow);
+
+		--space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+		--space-8: 32px; --space-10: 40px;
+		--radius-panel: 16px;
+		--radius-btn: 7px;
+		--border-w: 2.5px;
+		--nav-height: 56px;
+		--content-max-width: 1200px;
+		--size-control-sm: 26px;
+		--size-control-md: 32px;
+		--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+		--font-head: 'DynaPuff', sans-serif;
+		--font-body: 'Geist', sans-serif;
+		--text-sm: 12px; --text-md: 13px; --text-base: 14px;
+		--text-xl: 17px; --text-2xl: 22px; --text-3xl: 28px;
+	}
+
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		font-family: var(--font-body);
+		background: var(--background);
+		color: var(--foreground);
+		font-size: var(--text-base);
+	}
+	h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; }
+	a { color: inherit; text-decoration: none; }
+
+	/* ── Eyebrow ── */
+	.eyebrow {
+		max-width: var(--content-max-width);
+		margin: 0 auto;
+		padding: 10px var(--space-6) 0;
+		font-size: 11px;
+		letter-spacing: 0.14em;
+		font-weight: 700;
+		color: var(--muted-foreground);
+	}
+
+	/* ── Topbar (FINAL chrome, reproduced) ── */
+	.topbar {
+		position: sticky; top: 0; z-index: 30;
+		height: var(--nav-height);
+		background: var(--card);
+		border-bottom: var(--border-w) solid var(--ink);
+		display: flex; align-items: center;
+		padding: 0 var(--space-6);
+		gap: var(--space-6);
+		margin-top: 8px;
+	}
+	.logo { display: flex; align-items: center; gap: 8px; font-family: var(--font-head); font-size: 19px; font-weight: 700; }
+	.logo .mark {
+		width: 30px; height: 30px; display: grid; place-items: center;
+		background: var(--primary); color: var(--primary-foreground);
+		border: 2px solid var(--ink); border-radius: 9px;
+		box-shadow: var(--shadow-sticker-sm);
+		font-size: 15px;
+	}
+	.logo .tld { color: var(--muted-foreground); font-weight: 400; margin-left: 2px; }
+	.nav-links { display: flex; gap: 4px; }
+	.pill {
+		padding: 7px 14px; border-radius: 999px;
+		font-weight: 600; font-size: var(--text-base);
+		color: var(--foreground);
+	}
+	.pill:hover { background: var(--surface); }
+	.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+	.btn-primary {
+		display: inline-flex; align-items: center; gap: 6px;
+		height: var(--size-control-md);
+		padding: 0 14px;
+		background: var(--primary); color: var(--primary-foreground);
+		border: 2px solid var(--ink); border-radius: var(--radius-btn);
+		box-shadow: var(--shadow-sticker-sm);
+		font-weight: 700; font-size: var(--text-md); font-family: var(--font-body);
+		cursor: pointer;
+		transition: transform 150ms var(--ease-spring), box-shadow 150ms var(--ease-spring);
+	}
+	.btn-primary:hover { transform: translate(-1px,-1px); box-shadow: var(--shadow-sticker); }
+	.ghost {
+		width: var(--size-control-md); height: var(--size-control-md);
+		display: grid; place-items: center;
+		border-radius: var(--radius-btn); border: none; background: transparent;
+		font-size: 15px; cursor: pointer; color: var(--foreground);
+	}
+	.ghost:hover { background: var(--surface); }
+	.ghost.lang { width: auto; padding: 0 8px; font-size: var(--text-md); font-weight: 700; }
+	.avatar {
+		width: 30px; height: 30px; border-radius: 999px;
+		display: grid; place-items: center;
+		background: var(--p-accent); color: var(--p-on-accent);
+		border: 2px solid var(--ink);
+		font-size: 11px; font-weight: 800;
+	}
+
+	/* ── Page ── */
+	.content { max-width: var(--content-max-width); margin: 0 auto; padding: var(--space-6); }
+	.page-title { font-size: var(--text-3xl); margin-bottom: var(--space-2); }
+	.page-sub { color: var(--muted-foreground); font-size: var(--text-base); margin: 0 0 var(--space-8); }
+
+	/* ── Shelf row ── */
+	.shelf { margin-bottom: var(--space-10); }
+	.shelf-head {
+		display: flex; align-items: center; gap: 10px;
+		margin-bottom: var(--space-3);
+	}
+	.shelf-title {
+		font-size: var(--text-2xl);
+		display: inline-flex; align-items: center; gap: 8px;
+	}
+	.shelf-title .ico { font-size: 16px; }
+	.shelf-link {
+		font-size: var(--text-md); font-weight: 700; color: var(--brand-deep);
+		border-bottom: 2px dotted var(--ink-faint);
+	}
+	.shelf-controls { margin-left: auto; display: flex; gap: 6px; }
+	.arrow {
+		width: var(--size-control-md); height: var(--size-control-md);
+		border: 2px solid var(--ink); border-radius: var(--radius-btn);
+		background: var(--card); box-shadow: var(--shadow-sticker-sm);
+		display: grid; place-items: center; cursor: pointer;
+		color: var(--foreground);
+		transition: transform 150ms var(--ease-spring), box-shadow 150ms var(--ease-spring);
+	}
+	.arrow svg, .viewall-card .circle svg { width: 16px; height: 16px; }
+	.arrow:hover:not(:disabled) { transform: translate(-1px,-1px); box-shadow: var(--shadow-sticker); }
+	.arrow:disabled { opacity: 0.35; box-shadow: none; cursor: default; }
+
+	/* Carousel viewport bleeds to the container padding edge → honest cut-off peek */
+	.shelf-scroller {
+		display: flex; gap: var(--space-4);
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		padding: 6px 0 14px; /* room for lift + hard shadow */
+		margin-right: calc(var(--space-6) * -1);
+		padding-right: var(--space-6);
+		scrollbar-width: none;
+	}
+	.shelf-scroller::-webkit-scrollbar { display: none; }
+
+	/* ── Wishlist card (structure mirrors WishlistCard.svelte, narrowed) ── */
+	.wcard {
+		scroll-snap-align: start;
+		/* ~3.5 cards per 1200px row: 3 full + half-cut card = permanent desktop peek */
+		flex: 0 0 320px;
+		display: flex; flex-direction: column;
+		background: var(--card);
+		border: var(--border-w) solid var(--ink);
+		border-radius: var(--radius-panel);
+		box-shadow: var(--shadow-sticker);
+		overflow: hidden;
+		transition: transform 200ms var(--ease-spring), box-shadow 200ms var(--ease-spring);
+	}
+	.wcard:hover { transform: translateY(-4px); box-shadow: var(--shadow-sticker-lift); }
+	.banner {
+		position: relative; height: 118px; flex-shrink: 0;
+		display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
+		padding: 14px;
+		border-bottom: var(--border-w) solid var(--ink);
+		background: var(--tint);
+	}
+	.banner .dots {
+		position: absolute; inset: 0;
+		background-image: radial-gradient(var(--pattern-dot) 1.4px, transparent 1.5px);
+		background-size: 18px 18px;
+	}
+	.banner .emoji { position: absolute; top: 10px; left: 14px; font-size: 30px; }
+	.banner-title {
+		position: relative; z-index: 1;
+		max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		transform: rotate(-1deg);
+		background: var(--card);
+		border: 2px solid var(--ink); border-radius: 10px;
+		padding: 4px 12px;
+		font-family: var(--font-head); font-size: var(--text-xl); font-weight: 600;
+		box-shadow: var(--shadow-sticker-sm);
+	}
+	.status {
+		position: absolute; top: 12px; right: 12px; z-index: 1;
+		border: 2px solid var(--ink); border-radius: 999px;
+		padding: 2px 12px; font-size: 12.5px; font-weight: 600;
+	}
+	.status.shared { background: var(--primary); color: var(--primary-foreground); }
+	.status.draft { background: var(--card); color: var(--foreground); }
+	.card-body { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 16px; }
+	.owner-row { display: flex; align-items: center; gap: 8px; font-size: var(--text-base); color: var(--muted-foreground); }
+	.owner-avatar {
+		width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px;
+		display: grid; place-items: center;
+		background: var(--primary); color: var(--primary-foreground);
+		border: 2px solid var(--ink);
+		font-size: 10px; font-weight: 800;
+	}
+	.meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+	.chip {
+		display: inline-flex; align-items: center; gap: 4px;
+		border: 2px solid var(--ink); border-radius: 999px;
+		background: var(--surface);
+		padding: 2px 12px; font-size: var(--text-md); font-weight: 600;
+	}
+	.chip.mine {
+		background: var(--primary); color: var(--primary-foreground);
+		font-size: 11px; font-weight: 700; padding: 2px 10px;
+	}
+	.meta-text { font-size: var(--text-md); color: var(--muted-foreground); }
+	.avail { font-size: var(--text-md); font-weight: 600; color: var(--muted-foreground); }
+	.progress-wrap { display: flex; flex-direction: column; gap: 6px; }
+	.progress-labels {
+		display: flex; justify-content: space-between;
+		font-size: var(--text-md); font-weight: 700; color: var(--muted-foreground);
+	}
+	.progress-labels b { color: var(--brand-deep); font-weight: 800; }
+	.progress-track {
+		height: 14px; border: 2px solid var(--ink); border-radius: 999px;
+		background: var(--surface); overflow: hidden;
+	}
+	.progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--brand-deep)); }
+
+	/* ── Trailing "Zobrazit vše" card ── */
+	.viewall-card {
+		scroll-snap-align: start;
+		flex: 0 0 190px;
+		display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+		border: var(--border-w) dashed var(--ink-faint);
+		border-radius: var(--radius-panel);
+		background: color-mix(in oklab, var(--card) 55%, transparent);
+		color: var(--brand-deep);
+		font-weight: 700; font-size: var(--text-base);
+		transition: transform 200ms var(--ease-spring), border-color 200ms;
+	}
+	.viewall-card:hover { transform: translateY(-4px); border-color: var(--ink); }
+	.viewall-card .circle {
+		width: 44px; height: 44px; border-radius: 999px;
+		border: 2px solid var(--ink); background: var(--card);
+		box-shadow: var(--shadow-sticker-sm);
+		display: grid; place-items: center; font-size: 18px; color: var(--foreground);
+	}
+	.viewall-card .count { font-size: var(--text-sm); font-weight: 600; color: var(--muted-foreground); }
+
+	/* ── Secondary artboards ── */
+	.artboards {
+		max-width: var(--content-max-width);
+		margin: var(--space-10) auto; padding: 0 var(--space-6);
+		display: flex; gap: var(--space-6); align-items: flex-start; flex-wrap: wrap;
+	}
+	.artboard-label {
+		font-size: 11px; letter-spacing: 0.14em; font-weight: 700;
+		color: var(--muted-foreground); margin-bottom: 8px;
+	}
+	.frame {
+		border: var(--border-w) solid var(--ink); border-radius: var(--radius-panel);
+		box-shadow: var(--shadow-sticker);
+		overflow: hidden; background: var(--background);
+	}
+	.mobile-frame { width: 390px; }
+	.mobile-frame .topbar { margin-top: 0; padding: 0 var(--space-4); gap: var(--space-3); position: static; }
+	.mobile-frame .content { padding: var(--space-4); }
+	.mobile-frame .wcard { flex: 0 0 75vw; max-width: 292px; }
+	.mobile-frame .shelf { margin-bottom: var(--space-8); }
+	.mobile-frame .shelf-scroller { margin-right: calc(var(--space-4) * -1); padding-right: var(--space-4); }
+	.mobile-frame .page-title { font-size: 26px; }
+	.hero-frame { flex: 1 1 480px; min-width: 420px; }
+	.hero {
+		display: flex; flex-direction: column; align-items: center; text-align: center;
+		gap: 12px; padding: 56px 40px;
+	}
+	.hero .glyph { font-size: 52px; }
+	.hero h2 { font-size: var(--text-2xl); }
+	.hero p { margin: 0; max-width: 46ch; color: var(--muted-foreground); line-height: 1.65; }
+	.hero .actions { display: flex; gap: 10px; margin-top: 6px; }
+	.btn-outline {
+		display: inline-flex; align-items: center; gap: 6px;
+		height: 38px; padding: 0 16px;
+		background: var(--card); color: var(--foreground);
+		border: 2px solid var(--ink); border-radius: var(--radius-btn);
+		box-shadow: var(--shadow-sticker-sm);
+		font-weight: 700; font-size: var(--text-base); font-family: var(--font-body); cursor: pointer;
+	}
+	.hero .btn-primary { height: 38px; font-size: var(--text-base); }
+</style>
+</head>
+<body>
+
+<div class="eyebrow">REFINED — VARIANT A + 3.5-CARD PEEK · COUNTS IN „ZOBRAZIT VŠE" · LUCIDE CHEVRONS · HORIZONTAL-ONLY WHEEL</div>
+
+<!-- ═══ Topbar: FINAL chrome ═══ -->
+<header class="topbar">
+	<a class="logo" href="#"><span class="mark">🎁</span>prejemesi<span class="tld">.cz</span></a>
+	<nav class="nav-links">
+		<a class="pill" href="#">Moje seznamy</a>
+		<a class="pill" href="#">Spravované</a>
+		<a class="pill" href="#">Sledované</a>
+	</nav>
+	<div class="nav-right">
+		<button class="btn-primary">+ Vytvořit</button>
+		<button class="ghost" title="Oznámení">🔔</button>
+		<button class="ghost" title="Paleta">🎨</button>
+		<button class="ghost lang">CZ ▾</button>
+		<button class="ghost" title="Tmavý režim">🌙</button>
+		<span class="avatar">MN</span>
+	</div>
+</header>
+
+<main class="content">
+	<h1 class="page-title">Přehled</h1>
+	<p class="page-sub">Všechny seznamy přání na jednom místě.</p>
+
+	<!-- ═══ Row 1: Nedávné ═══ -->
+	<section class="shelf">
+		<div class="shelf-head">
+			<h2 class="shelf-title"><span class="ico">🕐</span>Nedávné</h2>
+			<div class="shelf-controls">
+				<button class="arrow" disabled aria-label="Předchozí"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+				<button class="arrow" aria-label="Další"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+			</div>
+		</div>
+		<div class="shelf-scroller">
+			<!-- followed card -->
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🎂</span>
+					<span class="banner-title">Narozeniny — Rosie</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">R</span><span>Pro Rosie</span></div>
+					<div class="meta-row">
+						<span class="avail">🎁 5 volných dárků</span>
+						<span class="chip mine">✓ 1 rezervace</span>
+					</div>
+				</div>
+			</a>
+			<!-- own card -->
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">📝</span>
+					<span class="banner-title">Moje přání</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="meta-row">
+						<span class="chip">🎁 12 dárků</span>
+					</div>
+					<div class="meta-row"><span class="meta-text">Vytvořeno 12. 3. 2026</span></div>
+				</div>
+			</a>
+			<!-- managed card -->
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🎄</span>
+					<span class="banner-title">Vánoce — děti</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">TK</span><span>Pro Toníka</span></div>
+					<div class="progress-wrap">
+						<div class="progress-labels"><span>Rezervováno</span><b>7 / 12</b></div>
+						<div class="progress-track"><div class="progress-fill" style="width:58%"></div></div>
+					</div>
+				</div>
+			</a>
+			<!-- followed card -->
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">💍</span>
+					<span class="banner-title">Svatba Petra a Jany</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">PJ</span><span>Pro Petra a Janu</span></div>
+					<div class="meta-row">
+						<span class="avail">🎁 9 volných dárků</span>
+						<span class="meta-text">Zatím žádná rezervace</span>
+					</div>
+				</div>
+			</a>
+			<!-- cut-off card = peek affordance -->
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🏡</span>
+					<span class="banner-title">Nové bydlení</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">EK</span><span>Pro Evu</span></div>
+					<div class="meta-row"><span class="avail">🎁 3 volné dárky</span></div>
+				</div>
+			</a>
+		</div>
+	</section>
+
+	<!-- ═══ Row 2: Sledované ═══ -->
+	<section class="shelf">
+		<div class="shelf-head">
+			<h2 class="shelf-title">Sledované</h2>
+			<a class="shelf-link" href="#">Zobrazit vše (9)</a>
+			<div class="shelf-controls">
+				<button class="arrow" disabled aria-label="Předchozí"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+				<button class="arrow" aria-label="Další"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+			</div>
+		</div>
+		<div class="shelf-scroller">
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🎂</span>
+					<span class="banner-title">Narozeniny — Rosie</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">R</span><span>Pro Rosie</span></div>
+					<div class="meta-row">
+						<span class="chip">🗓 21. 9. 2026</span>
+						<span class="chip mine">✓ 1 rezervace</span>
+					</div>
+				</div>
+			</a>
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">💍</span>
+					<span class="banner-title">Svatba Petra a Jany</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">PJ</span><span>Pro Petra a Janu</span></div>
+					<div class="meta-row">
+						<span class="chip">🗓 17. 10. 2026</span>
+						<span class="meta-text">Zatím žádná rezervace</span>
+					</div>
+				</div>
+			</a>
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🎄</span>
+					<span class="banner-title">Vánoce 2026</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">MB</span><span>Pro Martina</span></div>
+					<div class="meta-row">
+						<span class="chip">🗓 24. 12. 2026</span>
+						<span class="avail">🎁 11 volných dárků</span>
+					</div>
+				</div>
+			</a>
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🏡</span>
+					<span class="banner-title">Nové bydlení</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">EK</span><span>Pro Evu</span></div>
+					<div class="meta-row"><span class="avail">🎁 3 volné dárky</span></div>
+				</div>
+			</a>
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🧸</span>
+					<span class="banner-title">Přání pro Elišku</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">E</span><span>Pro Elišku</span></div>
+					<div class="meta-row"><span class="avail">🎁 6 volných dárků</span></div>
+				</div>
+			</a>
+			<a class="viewall-card" href="#">
+				<span class="circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+				Zobrazit vše
+				<span class="count">+ 4 další seznamy</span>
+			</a>
+		</div>
+	</section>
+
+	<!-- ═══ Row 3: Spravované ═══ -->
+	<section class="shelf">
+		<div class="shelf-head">
+			<h2 class="shelf-title">Spravované</h2>
+			<a class="shelf-link" href="#">Zobrazit vše (2)</a>
+		</div>
+		<div class="shelf-scroller">
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🎄</span>
+					<span class="banner-title">Vánoce — děti</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">TK</span><span>Pro Toníka</span></div>
+					<div class="progress-wrap">
+						<div class="progress-labels"><span>Rezervováno</span><b>7 / 12</b></div>
+						<div class="progress-track"><div class="progress-fill" style="width:58%"></div></div>
+					</div>
+					<div class="meta-row"><span class="meta-text">Celkem 12 dárků</span></div>
+				</div>
+			</a>
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🎂</span>
+					<span class="banner-title">Babička — 80 let</span>
+					<span class="status draft">Koncept</span>
+				</div>
+				<div class="card-body">
+					<div class="owner-row"><span class="owner-avatar">B</span><span>Pro babičku</span></div>
+					<div class="progress-wrap">
+						<div class="progress-labels"><span>Rezervováno</span><b>0 / 5</b></div>
+						<div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+					</div>
+					<div class="meta-row"><span class="meta-text">Celkem 5 dárků</span></div>
+				</div>
+			</a>
+		</div>
+	</section>
+
+	<!-- ═══ Row 4: Moje seznamy ═══ -->
+	<section class="shelf">
+		<div class="shelf-head">
+			<h2 class="shelf-title">Moje seznamy</h2>
+			<a class="shelf-link" href="#">Zobrazit vše (3)</a>
+		</div>
+		<div class="shelf-scroller">
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">📝</span>
+					<span class="banner-title">Moje přání</span>
+					<span class="status shared">Sdíleno</span>
+				</div>
+				<div class="card-body">
+					<div class="meta-row"><span class="chip">🎁 12 dárků</span></div>
+					<div class="meta-row">
+						<span class="meta-text">Vytvořeno 12. 3. 2026</span>
+						<span class="meta-text">Upraveno 2. 8. 2026</span>
+					</div>
+				</div>
+			</a>
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">🎂</span>
+					<span class="banner-title">Narozeniny 2026</span>
+					<span class="status draft">Koncept</span>
+				</div>
+				<div class="card-body">
+					<div class="meta-row">
+						<span class="chip">🎁 4 dárky</span>
+						<span class="chip">🗓 3. 11. 2026</span>
+					</div>
+					<div class="meta-row"><span class="meta-text">Vytvořeno 28. 7. 2026</span></div>
+				</div>
+			</a>
+			<a class="wcard" href="#">
+				<div class="banner"><div class="dots"></div><span class="emoji">⛷️</span>
+					<span class="banner-title">Vybavení na hory</span>
+					<span class="status draft">Koncept</span>
+				</div>
+				<div class="card-body">
+					<div class="meta-row"><span class="chip">🎁 2 dárky</span></div>
+					<div class="meta-row"><span class="meta-text">Vytvořeno 1. 8. 2026</span></div>
+				</div>
+			</a>
+		</div>
+	</section>
+</main>
+
+<!-- ═══ Secondary artboards ═══ -->
+<div class="artboards">
+	<div>
+		<div class="artboard-label">MOBILE ~390PX — STEJNÉ ŘADY, KARTA ≈75VW, PEEK VPRAVO</div>
+		<div class="frame mobile-frame">
+			<header class="topbar">
+				<button class="ghost" title="Menu">☰</button>
+				<a class="logo" href="#"><span class="mark">🎁</span>prejemesi<span class="tld">.cz</span></a>
+				<div class="nav-right">
+					<button class="ghost">🔔</button>
+					<span class="avatar">MN</span>
+				</div>
+			</header>
+			<main class="content">
+				<h1 class="page-title">Přehled</h1>
+				<section class="shelf">
+					<div class="shelf-head"><h2 class="shelf-title"><span class="ico">🕐</span>Nedávné</h2></div>
+					<div class="shelf-scroller">
+						<a class="wcard" href="#">
+							<div class="banner"><div class="dots"></div><span class="emoji">🎂</span>
+								<span class="banner-title">Narozeniny — Rosie</span>
+								<span class="status shared">Sdíleno</span>
+							</div>
+							<div class="card-body">
+								<div class="owner-row"><span class="owner-avatar">R</span><span>Pro Rosie</span></div>
+								<div class="meta-row">
+									<span class="avail">🎁 5 volných dárků</span>
+									<span class="chip mine">✓ 1 rezervace</span>
+								</div>
+							</div>
+						</a>
+						<a class="wcard" href="#">
+							<div class="banner"><div class="dots"></div><span class="emoji">📝</span>
+								<span class="banner-title">Moje přání</span>
+								<span class="status shared">Sdíleno</span>
+							</div>
+							<div class="card-body">
+								<div class="meta-row"><span class="chip">🎁 12 dárků</span></div>
+							</div>
+						</a>
+					</div>
+				</section>
+				<section class="shelf">
+					<div class="shelf-head">
+						<h2 class="shelf-title">Sledované</h2>
+						<a class="shelf-link" href="#">Zobrazit vše (9)</a>
+					</div>
+					<div class="shelf-scroller">
+						<a class="wcard" href="#">
+							<div class="banner"><div class="dots"></div><span class="emoji">🎄</span>
+								<span class="banner-title">Vánoce 2026</span>
+								<span class="status shared">Sdíleno</span>
+							</div>
+							<div class="card-body">
+								<div class="owner-row"><span class="owner-avatar">MB</span><span>Pro Martina</span></div>
+								<div class="meta-row"><span class="chip">🗓 24. 12. 2026</span></div>
+							</div>
+						</a>
+						<a class="wcard" href="#">
+							<div class="banner"><div class="dots"></div><span class="emoji">💍</span>
+								<span class="banner-title">Svatba Petra a Jany</span>
+								<span class="status shared">Sdíleno</span>
+							</div>
+							<div class="card-body">
+								<div class="owner-row"><span class="owner-avatar">PJ</span><span>Pro Petra a Janu</span></div>
+							</div>
+						</a>
+					</div>
+				</section>
+			</main>
+		</div>
+	</div>
+	<div class="hero-frame-wrap" style="flex:1 1 480px; min-width:420px;">
+		<div class="artboard-label">EMPTY STATE — NOVÝ UŽIVATEL BEZ SEZNAMŮ</div>
+		<div class="frame hero-frame">
+			<div class="hero">
+				<span class="glyph">📝</span>
+				<h2>Vytvořte první seznam</h2>
+				<p>Seznamy, které sledujete, se zde objeví automaticky, jakmile otevřete odkaz, který vám někdo pošle. Vlastní seznam přání si můžete založit hned.</p>
+				<div class="actions">
+					<button class="btn-primary">+ Vytvořit seznam</button>
+					<button class="btn-outline">Importovat</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+</body>
+</html>

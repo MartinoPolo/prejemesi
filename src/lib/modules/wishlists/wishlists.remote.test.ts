@@ -57,7 +57,9 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
-	sql: vi.fn(),
+	// Tagged template used as `sql<T>` in subquery projections; the result is aliased via
+	// `.as(...)`, so return a chainable stub instead of a bare undefined.
+	sql: vi.fn(() => ({ as: vi.fn(() => 'sql_alias') })),
 }));
 
 // ── Mock schema imports ───────────────────────────────────────────────────────
@@ -107,6 +109,15 @@ vi.mock('$lib/server/db/follower.schema.js', () => ({
 		userId: 'wishlistFollower.userId',
 		unfollowedAt: 'wishlistFollower.unfollowedAt',
 		lastVisitedAt: 'wishlistFollower.lastVisitedAt',
+		createdAt: 'wishlistFollower.createdAt',
+	},
+}));
+
+vi.mock('$lib/server/db/wishlist_visit.schema.js', () => ({
+	wishlistVisit: {
+		wishlistId: 'wishlistVisit.wishlistId',
+		userId: 'wishlistVisit.userId',
+		lastVisitedAt: 'wishlistVisit.lastVisitedAt',
 	},
 }));
 
@@ -235,6 +246,8 @@ import {
 	refollowWishlist,
 	getWishlistByShortId,
 	setWishlistPalette,
+	recordWishlistVisit,
+	getHomeOverview,
 } from './wishlists.remote.js';
 import { CreateWishlistInputSchema, FlipRecipientToFreeTextInputSchema } from './types.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
@@ -1561,5 +1574,220 @@ describe('statement budgets (issue #108, REQ-7)', () => {
 		await callGetWishlistByShortId(makeModeratorAuthContext(), WISHLIST_SHORT_ID);
 
 		expect(mockDbInstance.statementCount()).toBeLessThanOrEqual(3);
+	});
+});
+
+// ── recordWishlistVisit (issue #225) ─────────────────────────────────────────
+
+type RecordWishlistVisitHandler = (auth: AuthContext, wishlistId: string) => Promise<void>;
+const callRecordWishlistVisit = recordWishlistVisit as unknown as RecordWishlistVisitHandler;
+
+describe('recordWishlistVisit', () => {
+	it('throws 404 when the wishlist does not exist', async () => {
+		mockDbInstance.pushResult([]); // wishlist lookup → none
+
+		await expect(
+			callRecordWishlistVisit(makeOtherAuthContext(), 'ghost'),
+		).rejects.toMatchObject({ status: 404 });
+	});
+
+	it('upserts a visit for the linked recipient and never creates a follower row', async () => {
+		// DB 1: wishlist lookup — caller IS the linked recipient
+		mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
+		// DB 2: visit upsert
+		mockDbInstance.pushResult([]);
+
+		await callRecordWishlistVisit(makeRecipientAuthContext(), WISHLIST_ID);
+
+		// The visit is the ONLY insert — the recipient must never gain a follower row.
+		expect(mockDbInstance.valuesPayloadAt(0)).toMatchObject({
+			userId: RECIPIENT_ID,
+			wishlistId: WISHLIST_ID,
+		});
+		expect(mockDbInstance.valuesPayloadAt(1)).toBeUndefined();
+	});
+
+	it('records a visit for a moderator without auto-following', async () => {
+		// DB 1: wishlist lookup — caller is not the recipient
+		mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
+		// DB 2: visit upsert
+		mockDbInstance.pushResult([]);
+		// DB 3: active moderator-assignment check → found → manager
+		mockDbInstance.pushResult([{ id: 'assignment-1' }]);
+
+		await callRecordWishlistVisit(makeModeratorAuthContext(), WISHLIST_ID);
+
+		// Visit recorded, but no follower insert for a manager.
+		expect(mockDbInstance.valuesPayloadAt(0)).toMatchObject({
+			userId: MODERATOR_ID,
+			wishlistId: WISHLIST_ID,
+		});
+		expect(mockDbInstance.valuesPayloadAt(1)).toBeUndefined();
+	});
+
+	it('auto-follows a first-time visitor after recording the visit', async () => {
+		// DB 1: wishlist lookup — caller is not the recipient
+		mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
+		// DB 2: visit upsert
+		mockDbInstance.pushResult([]);
+		// DB 3: moderator-assignment check → none
+		mockDbInstance.pushResult([]);
+		// DB 4: existing follower check → none
+		mockDbInstance.pushResult([]);
+		// DB 5: follower insert
+		mockDbInstance.pushResult([]);
+
+		await callRecordWishlistVisit(makeOtherAuthContext(), WISHLIST_ID);
+
+		// First values() is the visit, second is the auto-follow follower row.
+		expect(mockDbInstance.valuesPayloadAt(0)).toMatchObject({ userId: OTHER_USER_ID });
+		expect(mockDbInstance.valuesPayloadAt(1)).toMatchObject({
+			wishlistId: WISHLIST_ID,
+			userId: OTHER_USER_ID,
+		});
+	});
+
+	it('records a visit for an existing follower without inserting a duplicate follower', async () => {
+		// DB 1: wishlist lookup
+		mockDbInstance.pushResult([{ recipientUserId: RECIPIENT_ID }]);
+		// DB 2: visit upsert
+		mockDbInstance.pushResult([]);
+		// DB 3: moderator check → none
+		mockDbInstance.pushResult([]);
+		// DB 4: existing follower check → found
+		mockDbInstance.pushResult([{ unfollowedAt: null }]);
+
+		await callRecordWishlistVisit(makeOtherAuthContext(), WISHLIST_ID);
+
+		// Only the visit insert ran — no second follower insert.
+		expect(mockDbInstance.valuesPayloadAt(1)).toBeUndefined();
+	});
+});
+
+// ── getHomeOverview (issue #225) ─────────────────────────────────────────────
+
+type GetHomeOverviewHandler = (auth: AuthContext) => Promise<{
+	recent: unknown[];
+	own: { items: Record<string, unknown>[]; total: number };
+	moderated: { items: unknown[]; total: number };
+	followed: { items: unknown[]; total: number };
+}>;
+const callGetHomeOverview = getHomeOverview as unknown as GetHomeOverviewHandler;
+
+describe('getHomeOverview', () => {
+	function ownRow(overrides: Record<string, unknown> = {}) {
+		return {
+			wishlist: makeWishlistRow(overrides),
+			totalGifts: 3,
+			lastVisitedAt: null,
+			...overrides,
+		};
+	}
+
+	it('caps each category at 10 items while reporting the true total, excluding archived', async () => {
+		// Own: 11 active + 1 archived → total 11, items capped at 10.
+		const ownRows = [
+			...Array.from({ length: 11 }, (_unused, index) =>
+				ownRow({ id: `own-${index}`, status: 'active' }),
+			),
+			ownRow({ id: 'own-archived', status: 'archived' }),
+		];
+		mockDbInstance.pushResult(ownRows); // own select
+		mockDbInstance.pushResult([]); // moderated select
+		mockDbInstance.pushResult([]); // followed select
+
+		const result = await callGetHomeOverview(makeRecipientAuthContext());
+
+		expect(result.own.total).toBe(11);
+		expect(result.own.items).toHaveLength(10);
+	});
+
+	it('own rows expose a gift count and NO reservation fields (recipient invariant)', async () => {
+		mockDbInstance.pushResult([ownRow({ id: 'own-1', status: 'active' })]); // own
+		mockDbInstance.pushResult([]); // moderated
+		mockDbInstance.pushResult([]); // followed
+
+		const result = await callGetHomeOverview(makeRecipientAuthContext());
+
+		const item = result.own.items[0]!;
+		expect(item).toHaveProperty('totalGifts');
+		expect('reservedGifts' in item).toBe(false);
+		expect('availableGifts' in item).toBe(false);
+		expect('myReservations' in item).toBe(false);
+	});
+
+	it('builds the Nedávné row across all roles, capped at 6', async () => {
+		const ownRows = Array.from({ length: 4 }, (_unused, index) =>
+			ownRow({
+				id: `own-${index}`,
+				status: 'active',
+				lastVisitedAt: new Date(2026, 0, index + 1),
+			}),
+		);
+		const moderatedRows = Array.from({ length: 4 }, (_unused, index) => ({
+			wishlist: makeForSomeoneWishlistRow({ id: `mod-${index}`, status: 'active' }),
+			recipientDisplayName: 'Grandma',
+			totalGifts: 5,
+			reservedGifts: 2,
+			lastVisitedAt: new Date(2026, 1, index + 1),
+		}));
+		mockDbInstance.pushResult(ownRows); // own
+		mockDbInstance.pushResult(moderatedRows); // moderated
+		mockDbInstance.pushResult([]); // followed
+
+		const result = await callGetHomeOverview(makeRecipientAuthContext());
+
+		// 8 candidates across two roles, Nedávné caps at 6.
+		// Moderated rows (Feb) are strictly more recent than own rows (Jan), so all four
+		// moderated survive plus the two most-recent own; least-recent own drop off.
+		expect(result.recent).toHaveLength(6);
+		expect(result.recent.map((item) => (item as { id: string }).id)).toEqual([
+			'mod-3',
+			'mod-2',
+			'mod-1',
+			'mod-0',
+			'own-3',
+			'own-2',
+		]);
+	});
+
+	it('shows a wishlist held in multiple roles only once in Nedávné, keeping the higher-priority role', async () => {
+		const shared = { id: 'wl-shared', status: 'active' };
+		const visitedAt = new Date(2026, 5, 1);
+		mockDbInstance.pushResult([]); // own
+		mockDbInstance.pushResult([
+			{
+				wishlist: makeForSomeoneWishlistRow(shared),
+				recipientDisplayName: 'Grandma',
+				totalGifts: 5,
+				reservedGifts: 2,
+				lastVisitedAt: visitedAt,
+			},
+		]); // moderated
+		mockDbInstance.pushResult([
+			{
+				wishlist: makeForSomeoneWishlistRow(shared),
+				recipientDisplayName: 'Grandma',
+				availableGifts: 3,
+				myReservations: 1,
+				myPurchased: 0,
+				unfollowedAt: null,
+				followDate: new Date(2026, 0, 1),
+				lastVisitedAt: visitedAt,
+			},
+		]); // followed
+
+		const result = await callGetHomeOverview(makeRecipientAuthContext());
+
+		// Nedávné is a per-list recency shortcut: one card per wishlist, even when the
+		// caller both moderates and follows it. Moderator outranks follower.
+		const sharedRecent = result.recent.filter(
+			(item) => (item as { id: string }).id === 'wl-shared',
+		);
+		expect(sharedRecent).toHaveLength(1);
+		expect((sharedRecent[0] as { role: string }).role).toBe('moderated');
+		// The category rows still list it under each role independently.
+		expect(result.moderated.total).toBe(1);
+		expect(result.followed.total).toBe(1);
 	});
 });

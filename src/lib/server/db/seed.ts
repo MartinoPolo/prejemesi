@@ -26,6 +26,7 @@ import { gift, reservation, giftLike } from './gift.schema.js';
 import { moderatorAssignment } from './moderator.schema.js';
 import { claimInvite } from './claim.schema.js';
 import { wishlistFollower } from './follower.schema.js';
+import { wishlistVisit } from './wishlist_visit.schema.js';
 import { notification } from './notification.schema.js';
 
 // ---------------------------------------------------------------------------
@@ -310,6 +311,7 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 	`);
 	await db.execute(sql`DELETE FROM moderator_assignment WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM wishlist_follower WHERE wishlist_id LIKE 'seed-%'`);
+	await db.execute(sql`DELETE FROM wishlist_visit WHERE wishlist_id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM wishlist WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM session WHERE user_id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM account WHERE id LIKE 'seed-%'`);
@@ -1772,6 +1774,28 @@ async function seed() {
 			{ wishlistId: WL_KUCHYNE, userId: MARTIN, createdAt: d('2026-05-26T10:00:00Z') },
 			{ wishlistId: WL_JXMAS, userId: MARTIN, createdAt: d('2026-05-16T10:00:00Z') },
 			{ wishlistId: WL_CHATA, userId: MARTIN, createdAt: d('2026-05-29T10:00:00Z') },
+		]);
+
+		// ---------------------------------------------------------------
+		// Wishlist visits (drives the „Nedávné" row on /home, issue #225)
+		// ---------------------------------------------------------------
+		console.log('Seeding wishlist visits...');
+		await db.insert(wishlistVisit).values([
+			// Martin's recency spans all three roles so „Nedávné" mixes own + moderated +
+			// followed. Seven entries (> cap of 6) so the row exercises truncation; WL_MIMINKO
+			// is the oldest and falls off the cap.
+			{ wishlistId: WL_BDAY, userId: MARTIN, lastVisitedAt: d('2026-08-05T18:00:00Z') }, // own
+			{ wishlistId: WL_KNIHY, userId: MARTIN, lastVisitedAt: d('2026-08-04T17:00:00Z') }, // moderated
+			{ wishlistId: WL_PBDAY, userId: MARTIN, lastVisitedAt: d('2026-08-03T16:00:00Z') }, // followed
+			{ wishlistId: WL_ROSIE, userId: MARTIN, lastVisitedAt: d('2026-08-02T15:00:00Z') }, // moderated
+			{ wishlistId: WL_XMAS26, userId: MARTIN, lastVisitedAt: d('2026-08-01T14:00:00Z') }, // own
+			{ wishlistId: WL_KUCHYNE, userId: MARTIN, lastVisitedAt: d('2026-07-31T13:00:00Z') }, // followed
+			{ wishlistId: WL_MIMINKO, userId: MARTIN, lastVisitedAt: d('2026-07-30T12:00:00Z') }, // moderated
+
+			// Petr the gifter: two followed lists plus his own WL_PBDAY.
+			{ wishlistId: WL_XMAS26, userId: PETR, lastVisitedAt: d('2026-08-05T09:00:00Z') },
+			{ wishlistId: WL_BDAY, userId: PETR, lastVisitedAt: d('2026-08-04T09:00:00Z') },
+			{ wishlistId: WL_PBDAY, userId: PETR, lastVisitedAt: d('2026-08-03T09:00:00Z') },
 		]);
 
 		// ---------------------------------------------------------------

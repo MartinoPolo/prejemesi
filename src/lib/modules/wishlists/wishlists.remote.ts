@@ -1,11 +1,12 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql, count } from 'drizzle-orm';
+import { eq, and, isNull, sql, count, type SQLWrapper } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { isAppAdmin } from '$lib/server/admin.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
+import { wishlistVisit } from '$lib/server/db/wishlist_visit.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { resolveUserImageUrl } from '$lib/modules/images/public_url.js';
@@ -41,6 +42,18 @@ import {
 	type WishlistRole,
 } from './types.js';
 import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
+import { sortCategoryRow, buildRecentRow } from './home_overview_sort.js';
+import {
+	HOME_CATEGORY_CAP,
+	HOME_RECENT_CAP,
+	HOME_ROLE,
+	type HomeOverview,
+	type OwnHomeItem,
+	type ModeratedHomeItem,
+	type FollowedHomeItem,
+	type HomeCategoryRow,
+	type RecentHomeItem,
+} from './home_overview_types.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -294,6 +307,223 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 	);
 });
 
+/**
+ * Aggregated data for the Přehled overview at /home (issue #225). Reuses the three role
+ * queries' SQL bodies, each left-joined with `wishlist_visit` for the caller's last-visit
+ * recency, and returns four rows: the mixed „Nedávné" shortcut (cap 6) plus the three
+ * category rows (cap 10 + true total). Archived lists are excluded everywhere.
+ *
+ * SSR-awaited by the page (issue #108 pattern): guardedQuery reads locals during SSR.
+ */
+export const getHomeOverview = guardedQuery(
+	async ({ user: currentUser }): Promise<HomeOverview> => {
+		const database = getDb();
+
+		// The caller's last-visit timestamp per wishlist (issue #225). Left-joined into every role
+		// query so undated/Nedávné ordering has a recency signal without a follower row.
+		const visitJoin = (wishlistId: SQLWrapper) =>
+			and(eq(wishlistVisit.wishlistId, wishlistId), eq(wishlistVisit.userId, currentUser.id));
+
+		// ── Own (recipient) lists — gift count only, never reservation data (invariant). ──
+		const ownTotalGifts = database
+			.select({
+				wishlistId: gift.wishlistId,
+				count: sql<number>`count(*)`.as('home_own_total_gifts'),
+			})
+			.from(gift)
+			.where(isNull(gift.deletedAt))
+			.groupBy(gift.wishlistId)
+			.as('home_own_total_gifts_sq');
+
+		const ownRows = await database
+			.select({
+				wishlist: wishlist,
+				totalGifts: sql<number>`coalesce(${ownTotalGifts.count}, 0)`,
+				lastVisitedAt: wishlistVisit.lastVisitedAt,
+			})
+			.from(wishlist)
+			.leftJoin(ownTotalGifts, eq(ownTotalGifts.wishlistId, wishlist.id))
+			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
+			.where(and(eq(wishlist.recipientUserId, currentUser.id), isNull(wishlist.deletedAt)));
+
+		const own = ownRows.map(
+			(row): OwnHomeItem => ({
+				...row.wishlist,
+				totalGifts: Number(row.totalGifts),
+				lastVisitedAt: row.lastVisitedAt,
+			}),
+		);
+
+		// ── Moderated (správce) lists — reservation progress. ──
+		const modTotalGifts = database
+			.select({
+				wishlistId: gift.wishlistId,
+				count: sql<number>`count(*)`.as('home_mod_total_gifts'),
+			})
+			.from(gift)
+			.where(isNull(gift.deletedAt))
+			.groupBy(gift.wishlistId)
+			.as('home_mod_total_gifts_sq');
+
+		const modReservedGifts = database
+			.select({
+				wishlistId: gift.wishlistId,
+				count: sql<number>`count(distinct ${gift.id})`.as('home_mod_reserved_gifts'),
+			})
+			.from(gift)
+			.innerJoin(
+				reservation,
+				and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)),
+			)
+			.where(isNull(gift.deletedAt))
+			.groupBy(gift.wishlistId)
+			.as('home_mod_reserved_gifts_sq');
+
+		const moderatedRows = await database
+			.select({
+				wishlist: wishlist,
+				recipientDisplayName: recipientDisplayNameSql(),
+				totalGifts: sql<number>`coalesce(${modTotalGifts.count}, 0)`,
+				reservedGifts: sql<number>`coalesce(${modReservedGifts.count}, 0)`,
+				lastVisitedAt: wishlistVisit.lastVisitedAt,
+			})
+			.from(moderatorAssignment)
+			.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
+			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
+			.leftJoin(modTotalGifts, eq(modTotalGifts.wishlistId, wishlist.id))
+			.leftJoin(modReservedGifts, eq(modReservedGifts.wishlistId, wishlist.id))
+			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
+			.where(
+				and(
+					eq(moderatorAssignment.userId, currentUser.id),
+					isNull(moderatorAssignment.deletedAt),
+					isNull(wishlist.deletedAt),
+				),
+			);
+
+		const moderated = moderatedRows.map(
+			(row): ModeratedHomeItem => ({
+				...row.wishlist,
+				recipientDisplayName: row.recipientDisplayName,
+				totalGifts: Number(row.totalGifts),
+				reservedGifts: Number(row.reservedGifts),
+				lastVisitedAt: row.lastVisitedAt,
+			}),
+		);
+
+		// ── Followed lists — available gifts + own reservations. Active follows only. ──
+		const followedAvailableGifts = database
+			.select({
+				wishlistId: gift.wishlistId,
+				count: sql<number>`count(*)`.as('home_followed_available_gifts'),
+			})
+			.from(gift)
+			.leftJoin(
+				reservation,
+				and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)),
+			)
+			.where(and(isNull(gift.deletedAt), isNull(reservation.id)))
+			.groupBy(gift.wishlistId)
+			.as('home_followed_available_gifts_sq');
+
+		const followedMyReservations = database
+			.select({
+				wishlistId: gift.wishlistId,
+				count: sql<number>`count(*)`.as('home_followed_my_reservations'),
+				purchasedCount:
+					sql<number>`count(*) filter (where ${reservation.purchasedAt} is not null)`.as(
+						'home_followed_my_purchased',
+					),
+			})
+			.from(reservation)
+			.innerJoin(gift, eq(reservation.giftId, gift.id))
+			.where(
+				and(
+					eq(reservation.userId, currentUser.id),
+					isNull(reservation.deletedAt),
+					isNull(gift.deletedAt),
+				),
+			)
+			.groupBy(gift.wishlistId)
+			.as('home_followed_my_reservations_sq');
+
+		const followedRows = await database
+			.select({
+				wishlist: wishlist,
+				recipientDisplayName: recipientDisplayNameSql(),
+				availableGifts: sql<number>`coalesce(${followedAvailableGifts.count}, 0)`,
+				myReservations: sql<number>`coalesce(${followedMyReservations.count}, 0)`,
+				myPurchased: sql<number>`coalesce(${followedMyReservations.purchasedCount}, 0)`,
+				unfollowedAt: wishlistFollower.unfollowedAt,
+				followDate: wishlistFollower.createdAt,
+				lastVisitedAt: wishlistVisit.lastVisitedAt,
+			})
+			.from(wishlistFollower)
+			.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
+			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
+			.leftJoin(followedAvailableGifts, eq(followedAvailableGifts.wishlistId, wishlist.id))
+			.leftJoin(followedMyReservations, eq(followedMyReservations.wishlistId, wishlist.id))
+			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
+			.where(
+				and(
+					eq(wishlistFollower.userId, currentUser.id),
+					isNull(wishlistFollower.unfollowedAt),
+					isNull(wishlist.deletedAt),
+				),
+			);
+
+		const followed = followedRows.map(
+			(row): FollowedHomeItem => ({
+				...row.wishlist,
+				recipientDisplayName: row.recipientDisplayName,
+				availableGifts: Number(row.availableGifts),
+				myReservations: Number(row.myReservations),
+				myPurchased: Number(row.myPurchased),
+				unfollowedAt: row.unfollowedAt,
+				followDate: row.followDate,
+				lastVisitedAt: row.lastVisitedAt,
+			}),
+		);
+
+		// Archived lists never appear on /home (they live behind the full pages' toggle). Applied
+		// in JS as the single authoritative gate so caps and totals both count only live lists.
+		const isLive = <T extends { status: string }>(item: T) => item.status !== 'archived';
+		const ownLive = own.filter(isLive);
+		const moderatedLive = moderated.filter(isLive);
+		const followedLive = followed.filter(isLive);
+
+		const toRow = <T extends OwnHomeItem | ModeratedHomeItem | FollowedHomeItem>(
+			items: T[],
+		): HomeCategoryRow<T> => ({
+			items: sortCategoryRow(items).slice(0, HOME_CATEGORY_CAP),
+			total: items.length,
+		});
+
+		// „Nedávné" mixes all three roles by recency, but shows each wishlist once even when the
+		// caller holds several roles on it. Assembled own → moderated → followed and de-duplicated
+		// by keeping the first (highest-priority) role: recipient > správce > follower.
+		const seenWishlistIds = new Set<string>();
+		const recentCandidates: RecentHomeItem[] = [
+			...ownLive.map((item) => ({ ...item, role: HOME_ROLE.own }) as const),
+			...moderatedLive.map((item) => ({ ...item, role: HOME_ROLE.moderated }) as const),
+			...followedLive.map((item) => ({ ...item, role: HOME_ROLE.followed }) as const),
+		].filter((candidate) => {
+			if (seenWishlistIds.has(candidate.id)) {
+				return false;
+			}
+			seenWishlistIds.add(candidate.id);
+			return true;
+		});
+
+		return {
+			recent: buildRecentRow(recentCandidates, HOME_RECENT_CAP),
+			followed: toRow(followedLive),
+			moderated: toRow(moderatedLive),
+			own: toRow(ownLive),
+		};
+	},
+);
+
 // ── Commands ─────────────────────────────────────────────────────────────────
 
 export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({ user }, input) => {
@@ -468,6 +698,8 @@ export const flipRecipientToFreeText = guardedCommand(
 		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
 		singleFlightRefresh(getMyWishlists);
 		singleFlightRefresh(getModeratedWishlists);
+		// The Přehled overview mixes both roles — keep it in sync on the same round trip.
+		singleFlightRefresh(getHomeOverview);
 
 		return updated;
 	},
@@ -583,6 +815,8 @@ export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishli
 	// "Spravované") without a reload. Untracked queries are a no-op.
 	singleFlightRefresh(getMyWishlists);
 	singleFlightRefresh(getModeratedWishlists);
+	// The deleted list also drops off the Přehled overview without a reload.
+	singleFlightRefresh(getHomeOverview);
 });
 
 // ── Follower Commands ──────────────────────────────────────────────────────
@@ -655,6 +889,8 @@ export const unfollowWishlist = guardedCommand(v.string(), async ({ user }, wish
 	// Single-flight refresh (issue #108, REQ-3/4): the Sledované page tracks this
 	// query, so the updated follow state rides back on the command response.
 	singleFlightRefresh(getFollowedWishlists);
+	// Přehled's Sledované row + Nedávné shortcut track the same follow state.
+	singleFlightRefresh(getHomeOverview);
 });
 
 export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
@@ -669,4 +905,77 @@ export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wish
 
 	// Single-flight refresh (issue #108, REQ-3/4): see unfollowWishlist.
 	singleFlightRefresh(getFollowedWishlists);
+	singleFlightRefresh(getHomeOverview);
+});
+
+/**
+ * Record that the caller opened /w/<id> (issue #225). Fires once per view for ANY authed
+ * user and folds in the legacy auto-follow: it upserts a `wishlist_visit` row for everyone
+ * (owner, moderator, follower, first-time visitor) so the „Nedávné" row has recency, then
+ * auto-follows ONLY non-managers — the linked recipient never gains a follower row, and a
+ * moderator records a visit without becoming a redundant follower.
+ *
+ * Deliberately does NOT single-flight-refresh any dashboard query: a plain visit must not
+ * trigger list refetches (request budget, issue #108).
+ */
+export const recordWishlistVisit = guardedCommand(v.string(), async ({ user }, wishlistId) => {
+	const database = getDb();
+
+	const wishlistRows = await database
+		.select({ recipientUserId: wishlist.recipientUserId })
+		.from(wishlist)
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.limit(1);
+
+	const wishlistRow = wishlistRows[0];
+	if (wishlistRow === undefined) {
+		error(404, 'Wishlist not found');
+	}
+
+	// Upsert the visit for every authed viewer — this is what powers Nedávné recency.
+	await database
+		.insert(wishlistVisit)
+		.values({ userId: user.id, wishlistId, lastVisitedAt: new Date() })
+		.onConflictDoUpdate({
+			target: [wishlistVisit.userId, wishlistVisit.wishlistId],
+			set: { lastVisitedAt: new Date() },
+		});
+
+	// The linked recipient manages inherently and never follows their own list.
+	if (wishlistRow.recipientUserId === user.id) {
+		return;
+	}
+
+	// A moderator (správce) records the visit above but must not be auto-followed.
+	const moderatorRows = await database
+		.select({ id: moderatorAssignment.id })
+		.from(moderatorAssignment)
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, wishlistId),
+				eq(moderatorAssignment.userId, user.id),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		)
+		.limit(1);
+	if (moderatorRows[0] !== undefined) {
+		return;
+	}
+
+	// Auto-follow the visitor so the shared list surfaces in „Sledované". An existing follower
+	// row (even a previously unfollowed one) is left as-is — recency lives in wishlist_visit now.
+	const existingFollower = await database
+		.select({ unfollowedAt: wishlistFollower.unfollowedAt })
+		.from(wishlistFollower)
+		.where(
+			and(eq(wishlistFollower.wishlistId, wishlistId), eq(wishlistFollower.userId, user.id)),
+		)
+		.limit(1);
+	if (existingFollower[0] === undefined) {
+		await database.insert(wishlistFollower).values({
+			wishlistId,
+			userId: user.id,
+			lastVisitedAt: new Date(),
+		});
+	}
 });

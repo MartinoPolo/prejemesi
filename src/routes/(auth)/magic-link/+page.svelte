@@ -28,7 +28,7 @@
 	let turnstileResetSignal = $state(0);
 
 	let callbackUrl = $derived(
-		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/my-lists')),
+		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/home')),
 	);
 
 	function validateEmail(): boolean {

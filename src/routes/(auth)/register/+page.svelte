@@ -12,7 +12,7 @@
 	import UsersIcon from '@lucide/svelte/icons/users';
 
 	let callbackUrl = $derived(
-		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/my-lists')),
+		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/home')),
 	);
 </script>
 

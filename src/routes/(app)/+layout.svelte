@@ -18,7 +18,13 @@
 	// instant. Only runs for authenticated users — anonymous visitors on public
 	// wishlist pages rely on hover/tap intent preloading (data-sveltekit-preload-data
 	// on <body>) instead. See docs/performance-budget.md.
-	const AUTHENTICATED_PRIMARY_ROUTES = ['/my-lists', '/moderated', '/followed', '/settings'];
+	const AUTHENTICATED_PRIMARY_ROUTES = [
+		'/home',
+		'/my-lists',
+		'/moderated',
+		'/followed',
+		'/settings',
+	];
 	const IDLE_PRELOAD_TIMEOUT_MS = 3_000;
 
 	let { data, children }: AppLayoutProps = $props();
