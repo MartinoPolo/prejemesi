@@ -9,7 +9,7 @@ const AUTH_PAGE_PATHS = new Set([
 	'/reset-password',
 	'/unsubscribe',
 ]);
-const PRIVATE_PAGE_PATHS = new Set(['/my-lists', '/moderated', '/followed', '/settings']);
+const PRIVATE_PAGE_PATHS = new Set(['/home', '/my-lists', '/moderated', '/followed', '/settings']);
 
 function localizedPathname(pathname: string): string {
 	const withoutLocale = pathname.replace(/^\/en(?=\/|$)/, '');

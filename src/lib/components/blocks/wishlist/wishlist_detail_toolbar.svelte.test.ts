@@ -15,9 +15,12 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	viewMode: GIFT_VIEW_MODES.card,
 	sortOption: GIFT_SORT_OPTIONS.ownerOrder,
 	filters: { availableOnly: false, withLinkOnly: false, likedOnly: false },
+	priorityGrouping: false,
+	showPriorityGrouping: false,
 	onviewmodechange: () => {},
 	onsortchange: () => {},
 	onfilterchange: () => {},
+	onprioritygroupingchange: () => {},
 	onthemeopen: () => {},
 	onsettings: () => {},
 	onunfollow: () => {},
@@ -141,4 +144,41 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 		await userEvent.keyboard('{Escape}');
 		await screen.unmount();
 	});
+});
+
+describe('WishlistDetailToolbar priority-grouping toggle (issue #224 REQ-4)', () => {
+	it('shows the priority-grouping toggle when at least one gift has a priority', async () => {
+		const screen = await renderToolbar({ isAuthenticated: true, showPriorityGrouping: true });
+		await screen.getByRole('button', { name: m.gift_filter() }).click();
+		await expect
+			.element(screen.getByRole('menuitemcheckbox', { name: m.gift_group_by_priority() }))
+			.toBeVisible();
+		await userEvent.keyboard('{Escape}');
+		await screen.unmount();
+	}, 30_000);
+
+	it('hides the priority-grouping toggle when no gift has a priority', async () => {
+		const screen = await renderToolbar({ isAuthenticated: true, showPriorityGrouping: false });
+		await screen.getByRole('button', { name: m.gift_filter() }).click();
+		await expect
+			.element(screen.getByRole('menuitemcheckbox', { name: m.gift_group_by_priority() }))
+			.not.toBeInTheDocument();
+		await userEvent.keyboard('{Escape}');
+		await screen.unmount();
+	}, 30_000);
+
+	it('reports toggling the priority grouping', async () => {
+		const onprioritygroupingchange = vi.fn();
+		const screen = await renderToolbar({
+			isAuthenticated: true,
+			showPriorityGrouping: true,
+			priorityGrouping: false,
+			onprioritygroupingchange,
+		});
+		await screen.getByRole('button', { name: m.gift_filter() }).click();
+		await screen.getByRole('menuitemcheckbox', { name: m.gift_group_by_priority() }).click();
+		expect(onprioritygroupingchange).toHaveBeenCalledWith(true);
+		await userEvent.keyboard('{Escape}');
+		await screen.unmount();
+	}, 30_000);
 });

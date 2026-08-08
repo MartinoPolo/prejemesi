@@ -23,6 +23,8 @@
 <Popover.Root open={popoverOpen} onOpenChange={handleOpenChange}>
 	<Popover.Trigger>
 		{#snippet child({ props })}
+			<!-- Deliberately ghost (no sticker border): the bell sits in the personal cluster
+			     next to the avatar, and an outlined circle would collide with the badge. -->
 			<Button
 				{...props}
 				intent="ghost"

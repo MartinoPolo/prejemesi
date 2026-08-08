@@ -34,7 +34,7 @@
 		getWishlistByShortId,
 		archiveWishlist,
 		unfollowWishlist,
-		followWishlist,
+		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
@@ -294,6 +294,7 @@
 	// ── Gift display ─────────────────────────────────────────────────────────
 
 	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
+	const giftSections = $derived(giftsContext.giftSections.current);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const totalCount = $derived(giftsContext.giftCount.current);
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
@@ -432,6 +433,10 @@
 
 	function handleFilterChange(filters: GiftFilters) {
 		giftsContext.filters.current = filters;
+	}
+
+	function handlePriorityGroupingChange(grouping: boolean) {
+		giftsContext.priorityGrouping.current = grouping;
 	}
 
 	function clearFilters() {
@@ -635,12 +640,27 @@
 			return;
 		}
 
+		// Reorder indices are positions in the rendered (banded/grouped) order. Map them to gift ids
+		// and relocate within effectiveGifts by id — a pinned own-reservation band or priority groups
+		// make rendered indices diverge from effectiveGifts positions (issue #224).
+		const rendered = giftsContext.sortedAndFilteredGifts.current;
+		const movedId = rendered[fromIndex]?.id;
+		const targetId = rendered[toIndex]?.id;
+		if (movedId === undefined || targetId === undefined) {
+			return;
+		}
+
 		const items = [...giftsContext.effectiveGifts.current];
-		const [movedItem] = items.splice(fromIndex, 1);
+		const fromPosition = items.findIndex((item) => item.id === movedId);
+		const toPosition = items.findIndex((item) => item.id === targetId);
+		if (fromPosition === -1 || toPosition === -1) {
+			return;
+		}
+		const [movedItem] = items.splice(fromPosition, 1);
 		if (movedItem === undefined) {
 			return;
 		}
-		items.splice(toIndex, 0, movedItem);
+		items.splice(toPosition, 0, movedItem);
 		giftsContext.reorderGifts(items);
 
 		try {
@@ -732,18 +752,18 @@
 		}
 	}
 
-	// ── Lifecycle: auto-follow on mount ───────────────────────────────────────
+	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
 	onMount(() => {
-		// Auto-follow surfaces a shared list in the viewer's „Sledované". Skip it for anyone
-		// who already owns or co-manages the list (it lives in „Moje seznamy" / „Spravované"):
-		// the server no-ops for the recipient anyway, so this spares a wasted POST + DB
-		// round-trip on every view, and it keeps a moderator from becoming a redundant follower.
-		if (!isAuthenticated || canManage) {
+		// One command per view for ANY authed user (issue #225): it upserts the visit that
+		// powers the „Nedávné" row on /home for owners and moderators too, and folds in the
+		// legacy auto-follow — the server auto-follows only non-managers, so a recipient never
+		// gains a follower row and a moderator is not turned into a redundant follower.
+		if (!isAuthenticated) {
 			return;
 		}
-		followWishlist(initialWishlist.id).catch(() => {
-			// Auto-follow failure is non-critical – ignore
+		recordWishlistVisit(initialWishlist.id).catch(() => {
+			// Visit tracking is non-critical – ignore.
 		});
 	});
 
@@ -832,9 +852,12 @@
 			{viewMode}
 			sortOption={giftsContext.sortOption.current}
 			filters={giftsContext.filters.current}
+			priorityGrouping={giftsContext.priorityGrouping.current}
+			showPriorityGrouping={giftsContext.hasAnyPriority.current}
 			onviewmodechange={handleViewModeChange}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
+			onprioritygroupingchange={handlePriorityGroupingChange}
 			onthemeopen={() => (paletteDialogOpen = true)}
 			onsettings={handleSettingsOpened}
 			onunfollow={handleUnfollow}
@@ -846,6 +869,7 @@
 
 		<WishlistGiftDisplay
 			gifts={displayedGifts}
+			sections={giftSections}
 			{role}
 			{isArchived}
 			{viewMode}

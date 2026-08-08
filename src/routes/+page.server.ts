@@ -5,6 +5,6 @@ import { getActiveLocaleForUrl, localizeInternalHref } from '$lib/i18n/locale.js
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.session != null && locals.user != null) {
-		throw redirect(303, localizeInternalHref(resolve('/my-lists'), getActiveLocaleForUrl(url)));
+		throw redirect(303, localizeInternalHref(resolve('/home'), getActiveLocaleForUrl(url)));
 	}
 };

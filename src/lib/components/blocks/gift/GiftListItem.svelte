@@ -5,6 +5,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
+	import GiftReservedSticker from '$lib/components/blocks/gift/GiftReservedSticker.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
@@ -47,6 +48,10 @@
 	);
 	// Edit-icon hover affordance (issue #125 REQ-3): mirrors GiftCard's manager-only pencil icon.
 	const canManage = $derived(canManageWishlist(role));
+	// Card-parity dim (issue #224 REQ-7): "don't buy this" — fully reserved (visitor/moderator
+	// only) or received. The veil sits over the thumb; the dim moves to the content column so the
+	// reserved sticker stays crisp on top.
+	const isDimmed = $derived((isVisitorOrModerator && isFullyReserved) || gift.received);
 
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
@@ -58,10 +63,7 @@
 
 <div
 	data-testid="gift-list-item"
-	class={cn(
-		'group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border py-3 transition-colors hover:bg-muted/50 sm:items-center sm:gap-4',
-		(isFullyReserved || gift.received) && 'opacity-55 grayscale-50',
-	)}
+	class="group grid grid-cols-[clamp(8rem,39vw,9.5rem)_minmax(0,1fr)] items-start gap-3 border-b border-border py-3 transition-colors hover:bg-muted/50 sm:items-center sm:gap-4"
 >
 	<!-- 1:1 crop (#189, reverts the interim 4:3 list thumb from #183): large thumb
 	     at every width (clamp maxes at 9.5rem for all viewports ≥ sm). -->
@@ -77,6 +79,13 @@
 			alt={gift.name}
 			variant="listThumb"
 		/>
+		{#if isDimmed}
+			<div
+				data-testid="gift-reserved-veil"
+				class="absolute inset-0 rounded-lg bg-reserved-veil"
+				aria-hidden="true"
+			></div>
+		{/if}
 		{#if canManage}
 			<!-- Edit affordance (issue #125 REQ-3): decorative, the whole row is the click target. -->
 			<span
@@ -101,10 +110,22 @@
 				)}
 			/>
 		{/if}
+		{#if isVisitorOrModerator && isFullyReserved}
+			<!-- Reserved sticker sits above the veil, crisp (issue #224 REQ-7). Names for
+			     managers only — visitors never receive reserverNames. -->
+			<GiftReservedSticker reserverLine={canManage ? reserverLine : null} />
+		{/if}
 	</div>
 
-	<!-- Content and primary reservation action stay beside the image at every width. -->
-	<div class="flex min-w-0 flex-col gap-1 self-stretch">
+	<!-- Content and primary reservation action stay beside the image at every width. The dim
+	     lives here (not on the row) so the reserved sticker on the thumb stays crisp. -->
+	<div
+		data-testid="gift-list-content"
+		class={cn(
+			'flex min-w-0 flex-col gap-1 self-stretch',
+			isDimmed && 'opacity-55 grayscale-50',
+		)}
+	>
 		<div class="flex items-start gap-1.5">
 			<h3
 				class="line-clamp-2 min-w-0 flex-1 font-heading text-base font-semibold leading-snug text-foreground"
@@ -135,10 +156,6 @@
 				>
 					{priorityInfo.label()}
 				</Badge>
-			{/if}
-
-			{#if isFullyReserved && reserverLine !== null}
-				<span class="text-xs font-semibold text-muted-foreground">{reserverLine}</span>
 			{/if}
 		</div>
 

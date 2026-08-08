@@ -75,11 +75,42 @@ test.describe('Request budgets (issue #108)', () => {
 		tracker.stop();
 
 		const names = tracker.names();
-		// Gift rows + own likes load client-side; auto-follow fires once. Wishlist
-		// metadata is server-rendered and must NOT be re-requested by the client.
+		// Gift rows + own likes load client-side; a visit is recorded once for every
+		// viewer — owner, moderator or follower (issue #225). Wishlist metadata is
+		// server-rendered and must NOT be re-requested by the client.
 		expect(names.length, `remote requests: ${names.join(', ')}`).toBeLessThanOrEqual(3);
 		expect(countByFunction(names, 'getGiftsByWishlistShortId')).toBe(1);
+		expect(countByFunction(names, 'recordWishlistVisit')).toBe(1);
 		expect(countByFunction(names, 'getWishlistByShortId')).toBe(0);
+		expectNoDashboardQueries(names);
+
+		await page.context().close();
+	});
+
+	test('home overview: single aggregated query, no per-category dashboard fetches', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const viewer = createTestUser('budget-home');
+		const page = await registerAndGetPage(browser, request, baseURL!, viewer);
+
+		const tracker = trackRemoteRequests(page);
+		await page.goto('/home');
+		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
+			timeout: 10_000,
+		});
+		await page.waitForLoadState('networkidle');
+		tracker.stop();
+
+		const names = tracker.names();
+		// The overview is SSR-awaited and shares its cache on hydration, so a plain view
+		// costs at most one aggregated query — and never the three per-category dashboard
+		// queries it replaces (issue #225).
+		expect(
+			countByFunction(names, 'getHomeOverview'),
+			`remote requests: ${names.join(', ')}`,
+		).toBeLessThanOrEqual(1);
 		expectNoDashboardQueries(names);
 
 		await page.context().close();

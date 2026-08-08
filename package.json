@@ -48,6 +48,8 @@
 		"aws4fetch": "^1.0.20",
 		"better-auth": "~1.4.22",
 		"drizzle-orm": "^0.45.1",
+		"embla-carousel-svelte": "^8.6.0",
+		"embla-carousel-wheel-gestures": "^8.1.0",
 		"mode-watcher": "^1.1.0",
 		"nanoid": "^5.1.11",
 		"papaparse": "^5.5.3",

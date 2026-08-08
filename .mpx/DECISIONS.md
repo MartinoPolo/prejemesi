@@ -213,10 +213,24 @@ Rejected: Per-wishlist mode (visitors should control their own viewing comfort).
 
 ### Three nav pages, no Dashboard
 
-Decided: 2026-05-30 (revised from 2026-05-29)
+Decided: 2026-05-30 (revised from 2026-05-29) — **Revised 2026-08-07** by "Logged-in home: Přehled overview at /home" below (Moje seznamy is no longer the default/home page; the three nav pages themselves remain).
 What: Three first-level nav items: Moje seznamy, Spravované, Sledované — each is a separate page. No separate "Dashboard" page. "Moje seznamy" is the default/home page. Each nav item doubles as a dropdown trigger (hover shows recent items + "Zobrazit vše" link). Nav layout: Logo | Moje seznamy | Spravované | Sledované | [gap] | Vytvořit | 🔔 | 🌙 | 👤
 Why: Fills the nav naturally, no redundancy (Dashboard would duplicate the same content), each page owns its own filters/sorting, dropdowns provide quick access.
 Rejected: Single dashboard with tabs (redundant), Dashboard + three sub-pages (4 nav items, Dashboard page adds nothing).
+
+### Logged-in home: Přehled overview at /home
+
+Decided: 2026-08-07 (revises "Three nav pages, no Dashboard" — field observation of real users overturned the "Dashboard is redundant" rejection)
+What: A new overview page (`/home`, cs „Přehled", en "Overview") becomes the logged-in home: `/` redirects there, login/register default there (absent an explicit `redirect` param), and the logo links there. NOT a desktop nav item — the nav keeps its three pages, which survive unchanged as „Zobrazit vše" targets; the mobile drawer gains a „Přehled" entry at the top. Layout: up to four horizontal carousel rows with the next card peeking (desktop and mobile alike): „Nedávné" first, then fixed order Sledované → Spravované → Moje seznamy; empty rows collapse. Category rows cap at 10 cards with a trailing „Zobrazit vše" card. Cards reuse `WishlistCard` at a narrower width with today's per-role props (reservation progress on followed/moderated, gift count on own); archived lists are excluded (full pages only, behind the existing toggle). Category-row sort: upcoming event date ascending, then undated lists by recently opened (created-date fallback), past-dated unarchived last. A brand-new user (zero lists anywhere) sees a single onboarding hero: „Vytvořte první seznam" plus an explanation of following via shared links. No carousel primitive exists in the repo — one is added (embla-based shadcn-svelte Carousel is the candidate).
+Why: Observed real usage — the dominant logged-in flow is "open a specific followed list and order a gift", but every entry point (`/`, post-login, logo) landed on Moje seznamy; the nav hover dropdowns were the only quick path, are undiscoverable, and don't exist on mobile.
+Rejected: Sledované as default (wrong for recipients and správci); fourth desktop nav item (re-crowds the 390px header — may be promoted later if logo-as-home proves undiscoverable); icon-only home nav item (icons are exactly what low-tech users miss); adaptive row order (unpredictable for the users observed); vertical stacked sections on mobile (push lower rows below the fold); a dense special overview card (one card identity app-wide; revisit only if rows feel too tall on mobile); names „Domů" (sounds like a browser button) and „Nástěnka" (corporate).
+
+### Nedávné row: visit-recency tracking
+
+Decided: 2026-08-07
+What: The top Přehled row „Nedávné" mixes all three roles (followed, moderated, own), sorted by last visit descending, capped at ~6, rendered as a normal row (no oversized hero). Recency comes from a `lastVisitedAt` timestamp upserted on any logged-in visit to `/w/<id>` — own lists included; edits and reservations need no separate tracking (they imply a visit). Cold start falls back to the follow date so the row isn't empty before visits accumulate (no backfill migration). Items are NOT deduped from the category rows below — „Nedávné" is a shortcut layer; category rows stay complete.
+Why: The observed flow is returning to the list you were just at; since logged-in visitors auto-follow on first visit, the followed set already approximates "visited" — one timestamp column adds recency without a new concept.
+Rejected: Followed-only recents (a parent's visit to their own kid's list counts too); dedup against category rows (rows look mysteriously incomplete); a single extra-large most-recent hero card (spooky-prominent, wastes the viewport the rows concept is saving).
 
 ### Gift sorting: primary + secondary criteria
 
@@ -585,8 +599,8 @@ Rejected: MVP subset first (would leave holes in the core loop).
 
 ### English URL slugs
 
-Decided: 2026-05-30
-What: Routes use English slugs: `/login`, `/register`, `/magic-link`, `/reset-password`, `/my-lists`, `/moderated`, `/followed`, `/w/<short-id>`, `/settings`. Logged-in users visiting `/` redirect to `/my-lists`.
+Decided: 2026-05-30 — **Revised 2026-08-07**: `/home` joins the slug set; logged-in `/` now redirects to `/home` (see "Logged-in home: Přehled overview at /home").
+What: Routes use English slugs: `/login`, `/register`, `/magic-link`, `/reset-password`, `/home`, `/my-lists`, `/moderated`, `/followed`, `/w/<short-id>`, `/settings`. Logged-in users visiting `/` redirect to `/home`.
 Why: Cleaner URLs, no encoding issues with Czech diacritics, consistent with tech conventions.
 Rejected: Czech slugs (`/prihlaseni`, `/moje-seznamy`).
 
@@ -1108,3 +1122,24 @@ Decided: 2026-08-01 (issue #220)
 What: Wishlist copy treats an ongoing/eventless list as a first-class option, not an edge case — the event date is optional everywhere, and a list with no date is a normal, supported state rather than an unfinished occasion list. The governing principle is additive, not substitutive: wherever the UI enumerates kinds of lists, the ongoing list joins the enumeration alongside concrete occasion examples (Vánoce, narozeniny). Concrete examples are never replaced by an abstract "ongoing" label — e.g. „např. Vánoce 2026" stays a concrete example, with ongoing added beside it, not instead of it. Demo fixtures and seed data keep concrete occasions. Czech UI copy remains uniformly vykání (formal address) — tykání is not used anywhere, enforced by `pnpm check:vykani` (`scripts/check_vykani.mjs`) in `check:all`.
 Why: Users create lists with no occasion in mind (a running "stuff I want" list) as often as occasion lists; hiding that option behind purely occasion-flavored copy makes the ongoing use case feel unsupported, while dropping concrete examples in favor of an abstract label would make the copy vaguer for the common occasion case.
 Rejected: Rewriting the hero demo badge `landing_birthday` ("Narozeniny") to something abstract — loses a concrete, recognizable example for no gain; rewriting `wishlist_name_placeholder` — the occasion-flavored placeholder already reads fine as one example among others; rewriting `wishlist_create_description` — no substitution needed once the enumeration is additive; relabelling `create_more_settings` — unrelated to the date field; moving the event-date picker into the "Další nastavení" accordion — would reverse the "Wishlist creation as modal" minimal-fields decision above (event date is already optional and top-level); rewriting `landing_feat3_title` to promise per-list colours — overstates a minor feature and is out of scope for this copy pass.
+
+### Reserved-gift ordering: role-aware bands within any sort
+
+Decided: 2026-08-07
+What: Non-recipient gift order is computed in three bands: (1) the viewer's own reservations pinned to the top under a small „Vaše rezervace" header (gifts move there, never duplicate); (2) available gifts; (3) fully reserved gifts sunk to the bottom as an invisible secondary modifier — no bottom section header, the dimmed overlay already communicates the state. The user's chosen sort applies within each band, and the availability filter keeps its existing semantics. Per-role defaults: recipient sees the owner order untouched (no reservation data reaches them, so bands are structurally a no-op); visitor/gifter gets all three bands; správce gets the own-reservation pin but NO reserved sinking — they curate the owner order and the dashboards' progress bar already summarizes reservation state.
+Why: A shared list a week in otherwise greets every new visitor with a wall of reserved top gifts; the gifter's own reservation is the row they return for, so it anchors the top for every reserving role including správci.
+Rejected: Reserved-at-top for správci (fights the curated owner order); a labeled bottom „Rezervované" section (duplicates the overlay's message); duplicating pinned gifts in both their band and their sorted position; making sinking a filter (hiding ≠ deprioritizing).
+
+### Priority grouping: optional flat sections, unprioritized ranks above the lowest level
+
+Decided: 2026-08-07
+What: A „Seskupit podle priority" toggle renders flat section headers per priority level in the wishlist's level order, with the active sort applied within each group — no accordions/collapse. The toggle lives with the other display controls in the #161 filter dropdown, is persisted per device like `viewMode` (unlike sort/filters, which stay per-visit), defaults to off, and is hidden entirely when no gift on the list has a priority. Gifts without a priority form a „Bez priority" group placed above the lowest level (unprioritized means neutral, not last); the `priority` sort option adopts the same rank (replacing the sort-to-999 behavior). The own-reservation band stays above all priority groups.
+Why: Priorities are the recipient's strongest signal to gifters and deserve visual structure, but only when actually used; punishing unprioritized gifts to the bottom would misread "no priority set" as "least wanted".
+Rejected: Accordion groups (hide gifts, add taps on mobile); merging unprioritized into the middle level (hides that they carry no priority); always-on grouping (noise for unprioritized lists); per-wishlist DB persistence of the toggle (it is a viewer presentation preference).
+
+### Reserved overlay parity: list view reuses the card sticker
+
+Decided: 2026-08-07
+What: The list view shows the same full-text „Rezervováno" sticker as the card view, centered on the 1:1 thumb, with the reserver-names line for správci. The row-wide dim is restructured to match card semantics: veil over the image + dimmed content columns, sticker crisp on top. Verified by implemented screenshots at desktop and mobile widths — the full sticker fits the 8–9.5rem thumb.
+Why: The overlay is the fastest reserved signal and the two views should speak one language; the compact icon-only variant was screenshotted too but reads ambiguous (a bare check reads as "done/selected", not "reserved").
+Rejected: Icon-only compact sticker on the thumb (ambiguous); keeping the text-line-only signal in list view (weakest signal, inconsistent).

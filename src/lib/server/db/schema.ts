@@ -5,5 +5,6 @@ export * from './gift.schema.js';
 export * from './moderator.schema.js';
 export * from './claim.schema.js';
 export * from './follower.schema.js';
+export * from './wishlist_visit.schema.js';
 export * from './notification.schema.js';
 export * from './landing.schema.js';

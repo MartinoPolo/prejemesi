@@ -17,7 +17,11 @@ import { tv } from 'tailwind-variants';
  */
 export const giftCardVariants = tv({
 	slots: {
-		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+		// The `group/gift-card` triggers apply only when wrapped by WishlistGiftDraggableWrapper (which
+		// owns that named group): they let a hover/focus on the drag grip lift the card in lock-step
+		// with the grip. Standalone (dashboard/storybook) there is no such ancestor, so only the self
+		// `hover:`/`focus-within:` triggers fire — identical to before (issue #224 follow-up).
+		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
@@ -59,7 +63,7 @@ export const giftCardVariants = tv({
 	variants: {
 		dimmed: {
 			true: {
-				card: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] hover:shadow-sticker-strong focus-within:shadow-sticker-strong motion-safe:hover:translate-y-0 motion-safe:focus-within:translate-y-0',
+				card: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] hover:shadow-sticker-strong focus-within:shadow-sticker-strong group-hover/gift-card:shadow-sticker-strong group-focus-within/gift-card:shadow-sticker-strong motion-safe:hover:translate-y-0 motion-safe:focus-within:translate-y-0 motion-safe:group-hover/gift-card:translate-y-0 motion-safe:group-focus-within/gift-card:translate-y-0',
 				imagePattern: 'group-hover:opacity-60 group-focus-within:opacity-60',
 				body: 'opacity-55 grayscale-50',
 				footer: 'opacity-55 grayscale-50',

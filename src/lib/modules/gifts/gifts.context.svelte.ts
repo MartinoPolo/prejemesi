@@ -11,6 +11,7 @@ import {
 	type GiftForVisitor,
 	type GiftByRole,
 } from './types.js';
+import { computeGiftSections } from './gift_ordering.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
 
@@ -44,6 +45,10 @@ function isGiftViewMode(value: unknown): value is GiftViewMode {
 	);
 }
 
+function isBoolean(value: unknown): value is boolean {
+	return typeof value === 'boolean';
+}
+
 function createGiftsContext(
 	getGifts: () => GiftByRole[],
 	getRole: () => WishlistRole,
@@ -69,6 +74,14 @@ function createGiftsContext(
 		defaultValue: 'card',
 	});
 
+	// Per-device presentation preference (issue #224 REQ-4), persisted like viewMode — unlike
+	// sort/filters, which stay per-visit.
+	const priorityGrouping = new Persisted<boolean>({
+		key: 'prejemesi-gift-priority-grouping',
+		serde: jsonSerde(isBoolean),
+		defaultValue: false,
+	});
+
 	const sortOption = new StateRaw<GiftSortOption>(GIFT_SORT_OPTIONS.ownerOrder);
 	const filters = new StateRaw<GiftFilters>({
 		availableOnly: false,
@@ -83,7 +96,9 @@ function createGiftsContext(
 			filters.current.likedOnly,
 	);
 
-	const sortedAndFilteredGifts = new Derived<GiftByRole[]>(() => {
+	// Filter only — sorting and banding move to computeGiftSections (issue #224) so the section
+	// order and the flat sortedAndFilteredGifts stay in lockstep.
+	const filteredGifts = new Derived<GiftByRole[]>(() => {
 		let result = [...effectiveGifts.current];
 
 		const currentFilters = filters.current;
@@ -100,37 +115,30 @@ function createGiftsContext(
 			result = result.filter((giftItem) => likedIdSet.current.has(giftItem.id));
 		}
 
-		const currentSort = sortOption.current;
-		result.sort((a, b) => {
-			switch (currentSort) {
-				case GIFT_SORT_OPTIONS.ownerOrder:
-					return a.sortOrder - b.sortOrder;
-				case GIFT_SORT_OPTIONS.priority: {
-					const aPriority = a.prioritySortOrder ?? 999;
-					const bPriority = b.prioritySortOrder ?? 999;
-					return aPriority - bPriority;
-				}
-				case GIFT_SORT_OPTIONS.priceAsc: {
-					const aPrice = a.price ?? Number.MAX_SAFE_INTEGER;
-					const bPrice = b.price ?? Number.MAX_SAFE_INTEGER;
-					return aPrice - bPrice;
-				}
-				case GIFT_SORT_OPTIONS.priceDesc: {
-					const aPrice = a.price ?? -1;
-					const bPrice = b.price ?? -1;
-					return bPrice - aPrice;
-				}
-				case GIFT_SORT_OPTIONS.name:
-					return a.name.localeCompare(b.name, getLocale());
-				case GIFT_SORT_OPTIONS.dateAdded:
-					return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-				default:
-					return 0;
-			}
-		});
-
 		return result;
 	});
+
+	const giftSections = new Derived(() =>
+		computeGiftSections(
+			filteredGifts.current,
+			viewerRole.current,
+			sortOption.current,
+			priorityGrouping.current,
+			getLocale(),
+		),
+	);
+
+	// Flattened section order — the single source consumed by filteredCount/isFilteredEmpty and
+	// every existing flat-list consumer (compact view, reorder mapping).
+	const sortedAndFilteredGifts = new Derived<GiftByRole[]>(() =>
+		giftSections.current.flatMap((section) => section.gifts),
+	);
+
+	// The priority-grouping toggle is offered only when at least one gift carries a priority
+	// (issue #224 REQ-4) — measured over all gifts, not the filtered subset.
+	const hasAnyPriority = new Derived(() =>
+		effectiveGifts.current.some((giftItem) => giftItem.priorityLevelId !== null),
+	);
 
 	const giftCount = new Derived(() => effectiveGifts.current.length);
 	const filteredCount = new Derived(() => sortedAndFilteredGifts.current.length);
@@ -153,9 +161,12 @@ function createGiftsContext(
 		archived,
 		isAuthenticated,
 		viewMode,
+		priorityGrouping,
 		sortOption,
 		filters,
 		hasActiveFilters,
+		hasAnyPriority,
+		giftSections,
 		sortedAndFilteredGifts,
 		giftCount,
 		filteredCount,

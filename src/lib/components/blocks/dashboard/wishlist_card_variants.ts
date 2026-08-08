@@ -8,7 +8,7 @@ import { tv } from 'tailwind-variants';
  */
 export const wishlistCardVariants = tv({
 	slots: {
-		root: 'group/card relative flex cursor-pointer flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring',
+		root: 'group/card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring',
 		banner: 'relative flex h-32 shrink-0 flex-col items-start justify-end overflow-hidden border-b-[2.5px] border-ink p-3.5',
 		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
 		bannerPattern:

@@ -247,6 +247,13 @@
 		{ label: m.nav_followed(), href: localizeInternalHref(resolve('/(app)/followed')) },
 	] as const;
 
+	// Mobile menu leads with „Přehled" (the overview hub); desktop keeps the three
+	// category links, since the logo already covers the overview there.
+	const MOBILE_NAV_LINKS = [
+		{ label: m.home_title(), href: localizeInternalHref(resolve('/(app)/home')) },
+		...NAV_LINKS,
+	] as const;
+
 	const navDropdownItems = $derived<NavDropdownItem[][]>([
 		myListsItems,
 		moderatedItems,
@@ -290,7 +297,7 @@
 <header class="topbar">
 	<!-- Mobile hamburger -->
 	{#if user}
-		<MobileNav navLinks={NAV_LINKS} oncreate={() => (isCreateModalOpen = true)} />
+		<MobileNav navLinks={MOBILE_NAV_LINKS} oncreate={() => (isCreateModalOpen = true)} />
 	{/if}
 
 	<!-- Logo -->
@@ -378,9 +385,6 @@
 			>
 				<PlusIcon />
 			</Button>
-
-			<!-- Notification bell -->
-			<NotificationBell />
 		{/if}
 
 		<!-- Appearance controls. ≥1040px: three separate buttons (full desktop fits).
@@ -410,7 +414,10 @@
 		{/if}
 
 		{#if user}
-			<!-- User menu -->
+			<!-- Personal cluster: notifications + account sit together at the far right,
+			     apart from the square appearance buttons. The bell stays ghost so its
+			     badge never collides with a border. -->
+			<NotificationBell />
 			<UserMenu {userName} {userEmail} {userInitials} {userImage} />
 		{:else}
 			<Button intent="primary" size="md" href={localizeInternalHref(resolve('/login'))}

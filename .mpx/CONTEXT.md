@@ -38,6 +38,8 @@ Přejeme si ("dárečky" = presents in Czech) is a shareable wishlist web app wh
 **Batch add** — Adding multiple gifts at once via the shared draft grid (distinct from the import wizard, which sources data externally).
 **Piece count** — The number of pieces (quantity) for a gift, displayed on gift cards in a role-conditional way (owner sees count only, never reserved count).
 **Multi-link** — Multiple URLs attached to a single gift (up to 10); `links[0]` is treated as the primary link.
+**Přehled** — The logged-in home page at `/home`: horizontal carousel rows (Nedávné, Sledované, Spravované, Moje seznamy). Target of `/`, the post-login default, and the logo; in the mobile drawer but not the desktop nav.
+**Nedávné** — The top Přehled row: wishlists across all roles sorted by last visit (via `lastVisitedAt` upserted on logged-in wishlist visits), follow-date fallback, not deduped from the category rows.
 
 _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with time), "bookmark" for Like, "claim" for Reservation.
 
@@ -65,6 +67,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | Sharing (visitor links, moderator invite links, social buttons)                | Planned     | v1          |
 | Notification system (email critical, in-app batched)                           | Planned     | v1          |
 | Three nav pages (Moje seznamy / Spravované / Sledované, no Dashboard)          | Planned     | v1          |
+| Přehled home overview (/home: Nedávné + three carousel rows)                   | Planned     | v1.x        |
 | Theming (wishlist themes + app background theme + token separation)            | In Progress | v1          |
 | i18n (Czech primary, English secondary)                                        | In Progress | v1          |
 | Profile & settings (name, email, avatar, notification prefs, appearance theme) | In Progress | v1          |
