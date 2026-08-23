@@ -94,12 +94,34 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - run: pnpm run build
+            - name: Verify Sentry production configuration
+              run: |
+                  for variable in PUBLIC_SENTRY_DSN SENTRY_AUTH_TOKEN SENTRY_ORG SENTRY_PROJECT; do
+                    if [ -z "${!variable}" ]; then
+                      echo "$variable must be configured for production monitoring." >&2
+                      exit 1
+                    fi
+                  done
+              env:
+                  PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+            - name: Build and upload Sentry source maps
+              run: pnpm run build
+              env:
+                  PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+                  SENTRY_RELEASE: ${{ github.sha }}
+                  SENTRY_UPLOAD_SOURCE_MAPS: 'true'
             - name: Deploy to Cloudflare Workers
-              run: pnpm exec wrangler deploy --var GIT_COMMIT_SHA:${{ github.sha }}
+              run: pnpm exec wrangler deploy --var GIT_COMMIT_SHA:${{ github.sha }} --var PUBLIC_SENTRY_DSN:${PUBLIC_SENTRY_DSN}
               env:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+                  PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
             - name: Record deployed commit
               run: |
                   {

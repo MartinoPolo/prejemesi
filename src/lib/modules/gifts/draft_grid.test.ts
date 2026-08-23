@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	ROW_STATUS,
-	deriveRowStatus,
-	isRowCommittable,
-	countCommittable,
-	headerSelectionState,
-} from './draft_grid.js';
+import { ROW_STATUS, deriveRowStatus, headerSelectionState } from './draft_grid.js';
 
 describe('deriveRowStatus', () => {
 	it('blank name on a touched row is an error', () => {
@@ -56,41 +50,6 @@ describe('deriveRowStatus', () => {
 		expect(deriveRowStatus({ name: '', isDuplicate: true, pristine: true })).toBe(
 			ROW_STATUS.neutral,
 		);
-	});
-});
-
-describe('isRowCommittable', () => {
-	it('selected row with a name is committable', () => {
-		expect(isRowCommittable({ name: 'Kniha', selected: true })).toBe(true);
-	});
-
-	it('a duplicate does not block commit (advisory only)', () => {
-		// committability ignores duplicate status entirely
-		expect(isRowCommittable({ name: 'Hrnek', selected: true })).toBe(true);
-	});
-
-	it('deselected row is not committable even with a name', () => {
-		expect(isRowCommittable({ name: 'Kniha', selected: false })).toBe(false);
-	});
-
-	it('selected row with a blank name is not committable', () => {
-		expect(isRowCommittable({ name: '  ', selected: true })).toBe(false);
-	});
-});
-
-describe('countCommittable', () => {
-	it('counts only selected, validly-named rows', () => {
-		const rows = [
-			{ name: 'A', selected: true },
-			{ name: '', selected: true },
-			{ name: 'B', selected: false },
-			{ name: 'C', selected: true },
-		];
-		expect(countCommittable(rows)).toBe(2);
-	});
-
-	it('is zero for an empty grid', () => {
-		expect(countCommittable([])).toBe(0);
 	});
 });
 

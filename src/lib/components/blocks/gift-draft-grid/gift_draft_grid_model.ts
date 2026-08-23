@@ -1,4 +1,8 @@
-import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
+import {
+	validateDraft,
+	type GiftDraft,
+	type ValidatedGiftDraft,
+} from '$lib/modules/gifts/gift_draft.js';
 import {
 	DEFAULT_DRAFT_PRIORITY,
 	DEFAULT_GIFT_CURRENCY,
@@ -24,10 +28,12 @@ export interface ExistingGiftRef {
 	links?: readonly GiftLink[] | null;
 }
 
-/** Payload emitted on every change: the committable drafts and their count. */
+/** Payload emitted on every change, including selected rows that block submission. */
 export interface DraftGridChange {
-	drafts: GiftDraft[];
+	drafts: ValidatedGiftDraft[];
 	validCount: number;
+	selectedCount: number;
+	blockingCount: number;
 }
 
 /** Editor-local state for one draft row. Mirrors {@link GiftDraft} with UI-only fields. */
@@ -41,6 +47,10 @@ export interface DraftGridRow {
 	/** Raw price text (whole units); parsed to an integer on emit. */
 	price: string;
 	currency: GiftCurrency;
+	/** Raw URL remains editable; validation permits HTTPS only. */
+	imageUrl: string;
+	/** Raw quantity remains editable so invalid imports can show row feedback. */
+	quantity: string;
 	/** Binary priority toggled via the heart control; medium until set high. */
 	priority: DraftPriority;
 	selected: boolean;
@@ -62,6 +72,8 @@ export function createDraftGridRow(
 		links: (init?.links ?? []).map((link) => ({ ...link })),
 		price: init?.price != null ? String(init.price) : '',
 		currency: init?.currency ?? DEFAULT_GIFT_CURRENCY,
+		imageUrl: init?.imageUrl ?? '',
+		quantity: init?.quantity === undefined ? '1' : String(init.quantity),
 		priority: init?.priority ?? DEFAULT_DRAFT_PRIORITY,
 		selected: opts?.selected ?? true,
 		pristine: opts?.pristine ?? false,
@@ -73,12 +85,45 @@ export function createDraftGridRow(
 export function rowToDraft(row: DraftGridRow): GiftDraft {
 	const trimmedPrice = row.price.trim();
 	const parsed = trimmedPrice === '' ? null : Math.round(Number(trimmedPrice));
+	const trimmedQuantity = row.quantity.trim();
+	const parsedQuantity = Number(trimmedQuantity);
 	return {
 		name: row.name,
 		description: row.description.trim() === '' ? null : row.description,
 		links: row.links.filter((link) => link.url.trim() !== ''),
 		price: parsed !== null && Number.isFinite(parsed) ? parsed : null,
 		currency: row.currency,
+		imageUrl: row.imageUrl.trim() || null,
+		quantity:
+			trimmedQuantity !== '' && Number.isInteger(parsedQuantity)
+				? parsedQuantity
+				: row.quantity,
 		priority: row.priority,
 	};
+}
+
+/** Collect only selected, valid rows whose duplicate warning was acknowledged. */
+export function collectDraftGridChange(
+	rows: readonly DraftGridRow[],
+	hasDuplicateWarning: (row: DraftGridRow) => boolean,
+): DraftGridChange {
+	const drafts: ValidatedGiftDraft[] = [];
+	let selectedCount = 0;
+	let blockingCount = 0;
+
+	for (const row of rows) {
+		if (!row.selected) {
+			continue;
+		}
+		selectedCount++;
+		const validation = validateDraft(rowToDraft(row));
+		const unresolvedDuplicate = !row.dismissedDuplicate && hasDuplicateWarning(row);
+		if (!validation.valid || unresolvedDuplicate) {
+			blockingCount++;
+			continue;
+		}
+		drafts.push(validation.normalized);
+	}
+
+	return { drafts, validCount: drafts.length, selectedCount, blockingCount };
 }

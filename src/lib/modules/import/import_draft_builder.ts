@@ -20,6 +20,8 @@ export function buildDraftRows(
 		let description: string | null = null;
 		let price: number | null = null;
 		let currency = DEFAULT_GIFT_CURRENCY;
+		let imageUrl: string | undefined;
+		let quantity: string | undefined;
 		const links: { url: string }[] = [];
 
 		for (const column of columns) {
@@ -44,6 +46,12 @@ export function buildDraftRows(
 					currency = parsed.currency;
 					break;
 				}
+				case COLUMN_ROLE.imageUrl:
+					imageUrl = cellValue;
+					break;
+				case COLUMN_ROLE.quantity:
+					quantity = cellValue;
+					break;
 				case COLUMN_ROLE.bool:
 				case COLUMN_ROLE.ignore:
 					// Intentionally skipped
@@ -51,6 +59,15 @@ export function buildDraftRows(
 			}
 		}
 
-		return { name, description, links, price, currency, priority: DEFAULT_DRAFT_PRIORITY };
+		return {
+			name,
+			description,
+			links,
+			price,
+			currency,
+			...(imageUrl === undefined ? {} : { imageUrl }),
+			...(quantity === undefined ? {} : { quantity }),
+			priority: DEFAULT_DRAFT_PRIORITY,
+		};
 	});
 }

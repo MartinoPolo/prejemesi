@@ -48,6 +48,8 @@ vi.mock('$lib/server/db/notification.schema.js', () => ({
 		wishlistId: 'n.wishlistId',
 		giftId: 'n.giftId',
 		actorName: 'n.actorName',
+		payload: 'n.payload',
+		visibleAt: 'n.visibleAt',
 		read: 'n.read',
 		createdAt: 'n.createdAt',
 	},
@@ -67,13 +69,22 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 	},
 }));
 
-vi.mock('drizzle-orm', () => ({
-	eq: vi.fn((...a: unknown[]) => a),
-	and: vi.fn((...a: unknown[]) => a),
-	inArray: vi.fn((...a: unknown[]) => a),
-	desc: vi.fn((a: unknown) => a),
-	sql: vi.fn(),
-}));
+vi.mock('drizzle-orm', () => {
+	const expression = (operator: string, args: unknown[]) => ({ operator, args });
+	return {
+		eq: vi.fn((...args: unknown[]) => expression('eq', args)),
+		and: vi.fn((...args: unknown[]) => expression('and', args)),
+		inArray: vi.fn((...args: unknown[]) => expression('inArray', args)),
+		isNull: vi.fn((...args: unknown[]) => expression('isNull', args)),
+		lte: vi.fn((...args: unknown[]) => expression('lte', args)),
+		or: vi.fn((...args: unknown[]) => expression('or', args)),
+		desc: vi.fn((...args: unknown[]) => expression('desc', args)),
+		sql: vi.fn((...args: unknown[]) => {
+			const built = expression('sql', args);
+			return { ...built, mapWith: vi.fn(() => built) };
+		}),
+	};
+});
 
 import {
 	getNotifications,
@@ -157,6 +168,8 @@ describe('getNotifications', () => {
 				wishlistShortId: 'short-1',
 				giftId: 'gift-1',
 				actorName: 'Alice',
+				digest: null,
+				href: null,
 				read: false,
 				createdAt: now,
 			},
@@ -195,10 +208,90 @@ describe('getNotifications', () => {
 				wishlistShortId: null,
 				giftId: null,
 				actorName: null,
+				digest: null,
+				href: null,
 				read: false,
 				createdAt: now,
 			},
 		]);
+	});
+
+	it('returns the digest visibleAt as its effective public timestamp and falls back for legacy rows', async () => {
+		const openedAt = new Date('2024-06-01T10:00:00Z');
+		const visibleAt = new Date('2024-06-02T10:00:00Z');
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[
+					{
+						id: 'digest-now',
+						type: NOTIFICATION_TYPE.NEW_GIFT_ADDED,
+						wishlistId: 'wl-1',
+						wishlistShortId: 'short-1',
+						giftId: null,
+						actorName: null,
+						payload: {
+							version: 1,
+							totalCount: 1,
+							wishlistCount: 1,
+							wishlists: [
+								{
+									wishlistId: 'wl-1',
+									shortId: 'short-1',
+									title: 'List',
+									count: 1,
+									namePreviews: ['Gift'],
+								},
+							],
+						},
+						read: false,
+						createdAt: visibleAt,
+					},
+					{
+						id: 'legacy',
+						type: 'gift_reserved',
+						wishlistId: 'wl-1',
+						wishlistShortId: 'short-1',
+						giftId: 'gift-1',
+						actorName: null,
+						payload: null,
+						read: false,
+						createdAt: openedAt,
+					},
+				],
+			]),
+		);
+
+		const result = (await (getNotifications as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		)) as { id: string; createdAt: Date }[];
+		expect(result.find(({ id }) => id === 'digest-now')?.createdAt).toBe(visibleAt);
+		expect(result.find(({ id }) => id === 'legacy')?.createdAt).toBe(openedAt);
+	});
+
+	it('maps a malformed non-null digest row to the localized legacy fallback', async () => {
+		const now = new Date('2024-06-01T10:00:00Z');
+		mockGetDb.mockReturnValue(
+			createMockDb([
+				[
+					{
+						id: 'malformed-digest',
+						type: NOTIFICATION_TYPE.NEW_GIFT_ADDED,
+						wishlistId: 'wl-1',
+						wishlistShortId: 'short-1',
+						giftId: null,
+						actorName: null,
+						payload: { version: 1, totalCount: 'broken', wishlists: [] },
+						read: false,
+						createdAt: now,
+					},
+				],
+			]),
+		);
+
+		const result = (await (getNotifications as unknown as (...args: unknown[]) => unknown)(
+			testAuthContext,
+		)) as { digest: unknown; message: string }[];
+		expect(result[0]).toMatchObject({ digest: null, message: 'Nový dárek na seznamu' });
 	});
 
 	it('returns empty array when no notifications', async () => {

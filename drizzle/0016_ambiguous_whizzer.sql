@@ -1,0 +1,1 @@
+ALTER TABLE "gift_ingestion_item" ALTER COLUMN "created_gift_id" DROP NOT NULL;

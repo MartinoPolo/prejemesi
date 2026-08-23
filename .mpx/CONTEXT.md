@@ -82,6 +82,7 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 | CSV / Google Sheets import (3-step wizard)                                     | Done        | v1.x        |
 | Bulk gift entry (shared draft grid, large dialog)                              | Done        | v1.x        |
 | Gift metadata enrichment (link → image/price/title)                            | Planned     | v1.x        |
+| Production gift ingestion (fixed-target manifest API + CLI)                    | Done        | v1.x        |
 | Multiple links per gift (max 10)                                               | Done        | v1.x        |
 | List for someone else (recipient + správce role model)                         | In Progress | v1.x        |
 | Recipient account linking via claim token                                      | Planned     | v1.x        |
@@ -118,3 +119,5 @@ _Avoid_: "list" for Wishlist (ambiguous), "present" for Gift (confusing with tim
 - Gifts can carry up to 10 links (`links` jsonb array; `links[0]` is primary). Replaces the single `url` column.
 - Piece-count / reservation display on gift cards is role-conditional — the owner sees the piece count only, never the reserved count.
 - Metadata enrichment (image/price/title from a link) is per-item and progressive via an external metadata API (free tier, callable client-side). Name-based product search is best-effort and deferred.
+- Production gift ingestion mirrors selected images durably to R2 through manifest/item/hash-bound short-lived presigned PUTs. The CLI validates DNS and every HTTPS redirect, actual image bytes/MIME/dimensions, and the 5 MiB gift limit; apply verifies R2 metadata before insertion and compensates only uncommitted staged objects.
+- `.agents/skills/add-gifts/SKILL.md` is the production metadata workflow: JSON-LD → OpenGraph/canonical/page metadata → exact brand/model search, never guessing, always dry-run, and apply only after an explicit unambiguous production request. The skill never handles credentials.

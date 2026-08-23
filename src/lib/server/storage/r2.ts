@@ -1,5 +1,6 @@
 import { getRequestEvent } from '$app/server';
 import { imagePublicUrl } from '$lib/modules/images/public_url.js';
+import { MAX_GIFT_IMAGE_BYTES } from '$lib/modules/uploads/types.js';
 
 export { isAllowedContentType } from '$lib/modules/uploads/types.js';
 
@@ -39,7 +40,7 @@ export type UploadTarget = keyof typeof UPLOAD_TARGETS;
 
 /** Maximum file size per target (in bytes). */
 export const MAX_FILE_SIZE = {
-	'gift-image': 5 * 1024 * 1024, // 5 MB
+	'gift-image': MAX_GIFT_IMAGE_BYTES,
 	'wishlist-banner': 10 * 1024 * 1024, // 10 MB
 	'wishlist-thumbnail': 5 * 1024 * 1024, // 5 MB
 	avatar: 5 * 1024 * 1024, // 5 MB

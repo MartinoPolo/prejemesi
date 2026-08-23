@@ -167,6 +167,9 @@ Copy `.env.example` to `.env` and configure:
 | `GOOGLE_CLIENT_SECRET`                                                        | No       | Google OAuth client secret                                                                                      |
 | `PUBLIC_TURNSTILE_SITE_KEY`                                                   | Prod     | Public Cloudflare Turnstile widget site key                                                                     |
 | `TURNSTILE_SECRET_KEY`                                                        | Prod     | Private Cloudflare Turnstile Siteverify secret                                                                  |
+| `PUBLIC_SENTRY_DSN`                                                           | Prod     | Public Sentry DSN for browser and Worker error reporting                                                        |
+| `SENTRY_ORG`, `SENTRY_PROJECT`                                                | CI       | Sentry organization and project slugs used for source-map uploads                                               |
+| `SENTRY_AUTH_TOKEN`                                                           | CI       | Private build-only token used for source-map uploads; never expose it at runtime                                |
 | `PUBLIC_R2_URL`                                                               | No       | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset |
 | `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                      |
 
@@ -174,6 +177,13 @@ Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_C
 Registration, magic-link, password-reset, and anonymous reservation requests are protected by
 Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the two Turnstile
 variables are blank; production fails closed when the secret is missing.
+
+Production errors are reported to Sentry without user identity, cookies, headers, query strings,
+HTTP bodies, database values, or stack-frame variables. Session Replay samples 10% of sessions and
+all sessions containing captured errors while masking all text and inputs and blocking media and
+network bodies. Replays stop and are discarded on authentication, token-bearing, and query-string
+URLs. Production source maps are uploaded only when the deployment workflow explicitly enables
+uploads and all three build-only Sentry settings are available.
 
 ## Project Structure
 
@@ -212,9 +222,10 @@ tests/e2e/                   # Playwright E2E tests
 
 Each domain module exposes a small public API via `index.ts`. Client–server communication uses
 SvelteKit **remote functions** (`*.remote.ts`) – `query` for reads, `form` for progressive-enhancement
-mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. No traditional
-`+page.server.ts` load functions or `+server.ts` routes (except the BetterAuth catch-all and the upload
-proxy).
+mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. Traditional
+`+page.server.ts` load functions and general REST-style `+server.ts` routes are not used. The only
+purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, and the fixed-target
+internal gift-ingestion endpoint for authenticated machine ingestion.
 
 ## Code Conventions
 

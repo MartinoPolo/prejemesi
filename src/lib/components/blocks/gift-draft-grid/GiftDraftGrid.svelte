@@ -14,7 +14,6 @@
 	import {
 		deriveRowStatus,
 		headerSelectionState,
-		isRowCommittable,
 		type RowStatus,
 	} from '$lib/modules/gifts/draft_grid.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -28,6 +27,7 @@
 	} from './gift_draft_grid_variants.js';
 	import {
 		DRAFT_GRID_CONTEXT,
+		collectDraftGridChange,
 		createDraftGridRow,
 		rowToDraft,
 		type DraftGridChange,
@@ -90,31 +90,26 @@
 		return [];
 	}
 
-	/** A row is a possible duplicate only in import context, while not dismissed. */
-	function rowIsDuplicate(row: DraftGridRow): boolean {
-		if (
-			context !== DRAFT_GRID_CONTEXT.import ||
-			row.dismissedDuplicate ||
-			existingGifts.length === 0
-		) {
+	/** A row has a possible duplicate only in import context. */
+	function rowHasDuplicateWarning(row: DraftGridRow): boolean {
+		if (context !== DRAFT_GRID_CONTEXT.import || existingGifts.length === 0) {
 			return false;
 		}
 		return findDuplicates(rowToDraft(row), existingGifts).length > 0;
 	}
 
 	function rowStatus(row: DraftGridRow): RowStatus {
+		const validation = validateDraft(rowToDraft(row));
 		return deriveRowStatus({
 			name: row.name,
-			isDuplicate: rowIsDuplicate(row),
+			isDuplicate: !row.dismissedDuplicate && rowHasDuplicateWarning(row),
 			pristine: row.pristine,
+			hasValidationError: !validation.valid,
 		});
 	}
 
 	function emit() {
-		const drafts = rows
-			.filter(isRowCommittable)
-			.map((row) => validateDraft(rowToDraft(row)).normalized);
-		onchange?.({ drafts, validCount: drafts.length });
+		onchange?.(collectDraftGridChange(rows, rowHasDuplicateWarning));
 	}
 
 	function selectAll(checked: boolean) {
@@ -192,6 +187,8 @@
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_note()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_links()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_price()}</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_image()}</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_quantity()}</span>
 			{#if priorityAvailable}
 				<SimpleTooltip text={m.draft_grid_col_priority()} side="top">
 					{#snippet asChild(triggerProps)}

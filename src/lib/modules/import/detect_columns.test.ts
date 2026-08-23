@@ -91,6 +91,21 @@ describe('detectColumns – role heuristics', () => {
 		]);
 	});
 
+	it('maps approved English and Czech image and quantity header aliases', () => {
+		for (const imageLabel of ['image', 'image url', 'obrázek', 'foto']) {
+			for (const quantityLabel of ['quantity', 'qty', 'počet', 'kusy']) {
+				const rows = parseTabular(
+					`Name,${imageLabel},${quantityLabel}\nKniha,https://images.example.test/book.jpg,2`,
+				).rows;
+				expect(detectColumns(rows).columns.map((column) => column.role)).toEqual([
+					COLUMN_ROLE.name,
+					COLUMN_ROLE.imageUrl,
+					COLUMN_ROLE.quantity,
+				]);
+			}
+		}
+	});
+
 	it('detects boolean status columns by TRUE/FALSE values', () => {
 		const rows = parseTabular('Boty,TRUE\nKniha,FALSE\nHrnek,FALSE').rows;
 		expect(detectColumns(rows).columns.map((c) => c.role)).toEqual([

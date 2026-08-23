@@ -100,6 +100,16 @@ describe('validateDraft', () => {
 		const result = validateDraft(makeDraft({ links }));
 		expect(result.normalized.links).toHaveLength(MAX_GIFT_LINKS);
 	});
+
+	it('rejects zero, negative, fractional, and non-numeric quantities', () => {
+		for (const quantity of [0, -2, 1.5, 'many']) {
+			expect(validateDraft(makeDraft({ quantity }))).toMatchObject({
+				valid: false,
+				issues: ['quantity'],
+			});
+		}
+		expect(validateDraft(makeDraft({ quantity: '3' })).normalized.quantity).toBe(3);
+	});
 });
 
 describe('findDuplicates', () => {

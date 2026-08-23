@@ -1,4 +1,4 @@
-import { normalizeGiftLinks, normalizeGiftUrl } from './gift_url.js';
+import { canonicalGiftLinkKey, normalizeGiftLinks } from './gift_url.js';
 import {
 	DEFAULT_GIFT_CURRENCY,
 	GIFT_CURRENCIES,
@@ -14,6 +14,10 @@ export interface GiftDraft {
 	links: GiftLink[];
 	price: number | null;
 	currency: GiftCurrency;
+	/** External review image. Only HTTPS values are committable. */
+	imageUrl?: string | null;
+	/** Raw imported/editor value so invalid quantities remain reviewable. */
+	quantity?: number | string;
 	priority: DraftPriority;
 }
 
@@ -82,20 +86,66 @@ export function parsePrice(raw: string | null | undefined): {
  * Validate a draft (name required) and return a normalized copy: trimmed name,
  * trimmed description (empty → null), and sanitized links.
  */
+export type ValidatedGiftDraft = Omit<GiftDraft, 'imageUrl' | 'quantity'> & {
+	imageUrl: string | null;
+	quantity: number;
+};
+
+export type GiftDraftIssue = 'name' | 'imageUrl' | 'quantity';
+
+/** A valid external draft image is an absolute HTTPS URL. */
+export function isValidDraftImageUrl(value: string | null | undefined): boolean {
+	if (value === null || value === undefined || value.trim() === '') {
+		return true;
+	}
+	try {
+		return new URL(value.trim()).protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
+
+/** Parse a positive whole-number quantity, defaulting a blank value to one. */
+export function parseDraftQuantity(value: number | string | undefined): number | null {
+	if (value === undefined || (typeof value === 'string' && value.trim() === '')) {
+		return 1;
+	}
+	const parsed = typeof value === 'number' ? value : Number(value.trim());
+	return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 export function validateDraft(draft: Readonly<GiftDraft>): {
 	valid: boolean;
-	normalized: GiftDraft;
+	issues: GiftDraftIssue[];
+	normalized: ValidatedGiftDraft;
 } {
 	const name = draft.name.trim();
 	const description = draft.description?.trim();
+	const trimmedImageUrl = draft.imageUrl?.trim();
+	const imageUrl =
+		trimmedImageUrl !== undefined && trimmedImageUrl !== '' ? trimmedImageUrl : null;
+	const quantity = parseDraftQuantity(draft.quantity);
+	const issues: GiftDraftIssue[] = [];
+	if (name === '') {
+		issues.push('name');
+	}
+	if (!isValidDraftImageUrl(imageUrl)) {
+		issues.push('imageUrl');
+	}
+	if (quantity === null) {
+		issues.push('quantity');
+	}
 	return {
-		valid: name !== '',
+		valid: issues.length === 0,
+		issues,
 		normalized: {
 			name,
 			description: description !== undefined && description !== '' ? description : null,
 			links: normalizeGiftLinks(draft.links),
 			price: draft.price,
 			currency: draft.currency,
+			imageUrl,
+			quantity: quantity ?? 1,
 			priority: draft.priority,
 		},
 	};
@@ -111,22 +161,10 @@ function normalizeName(name: string): string {
 		.trim();
 }
 
-/** Host+path key for a link (lowercased host without `www.`, path without trailing slash), or null. */
-function linkKey(url: string): string | null {
-	const normalized = normalizeGiftUrl(url);
-	if (normalized === null) {
-		return null;
-	}
-	const parsed = new URL(normalized);
-	const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
-	const path = parsed.pathname.replace(/\/$/, '');
-	return `${host}${path}`;
-}
-
 function linkKeys(links: readonly GiftLink[] | null | undefined): Set<string> {
 	const keys = new Set<string>();
 	for (const link of links ?? []) {
-		const key = linkKey(link.url);
+		const key = canonicalGiftLinkKey(link.url);
 		if (key !== null) {
 			keys.add(key);
 		}
