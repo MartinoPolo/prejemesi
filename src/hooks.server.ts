@@ -16,15 +16,22 @@ import {
 	type Palette,
 } from '$lib/theme/palettes.js';
 
+let initializedSentryHandle: Handle | undefined;
+
 const sentryInitializationHandle: Handle = ({ event, resolve }) => {
 	const dsn = event.platform?.env.PUBLIC_SENTRY_DSN?.trim();
-	return Sentry.initCloudflareSentryHandle(
+	if (!dsn) {
+		return resolve(event);
+	}
+
+	initializedSentryHandle ??= Sentry.initCloudflareSentryHandle(
 		createSentryServerOptions({
 			dsn,
 			environment: dev ? 'development' : 'production',
 			release: event.platform?.env.GIT_COMMIT_SHA,
 		}),
-	)({ event, resolve });
+	);
+	return initializedSentryHandle({ event, resolve });
 };
 
 function setSecurityHeaders(headers: Headers, url: URL) {
