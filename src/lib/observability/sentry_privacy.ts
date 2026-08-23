@@ -140,7 +140,12 @@ export function sanitizeSentryEvent<T>(event: T): T {
 	}
 
 	delete sanitizableEvent.extra;
-	delete sanitizableEvent.tags;
+	const replayId = sanitizableEvent.tags?.replayId;
+	if (typeof replayId === 'string') {
+		sanitizableEvent.tags = { replayId };
+	} else {
+		delete sanitizableEvent.tags;
+	}
 	if (sanitizableEvent.contexts !== undefined) {
 		sanitizableEvent.contexts = Object.fromEntries(
 			Object.entries(sanitizableEvent.contexts)
