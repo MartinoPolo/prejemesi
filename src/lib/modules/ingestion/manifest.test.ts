@@ -59,6 +59,12 @@ describe('GiftIngestionManifestSchema', () => {
 	});
 
 	it('accepts only a bounded versioned add-only manifest with normalized gifts and provenance', () => {
+		expect(
+			v.parse(GiftIngestionManifestSchema, {
+				...validManifest,
+				wishlist: { ...validManifest.wishlist, shortId: '-zmeRy0r' },
+			}),
+		).toMatchObject({ wishlist: { shortId: '-zmeRy0r' } });
 		expect(v.parse(GiftIngestionManifestSchema, validManifest)).toEqual(validManifest);
 
 		const invalidCases = [
