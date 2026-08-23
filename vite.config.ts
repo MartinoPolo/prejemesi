@@ -80,6 +80,25 @@ function prewarmServerModuleGraph(): Plugin {
 }
 
 export default defineConfig({
+	optimizeDeps: {
+		include: [
+			'@lucide/svelte/icons/archive',
+			'@lucide/svelte/icons/arrow-right',
+			'@lucide/svelte/icons/bell',
+			'@lucide/svelte/icons/bookmark-check',
+			'@lucide/svelte/icons/bookmark-x',
+			'@lucide/svelte/icons/circle-alert',
+			'@lucide/svelte/icons/copy',
+			'@lucide/svelte/icons/gift',
+			'@lucide/svelte/icons/shield',
+			'@lucide/svelte/icons/sparkles',
+			'@lucide/svelte/icons/user-check',
+			'@lucide/svelte/icons/user-plus',
+			'drizzle-orm',
+			'drizzle-orm/pg-core',
+			'nanoid',
+		],
+	},
 	server: {
 		open: true,
 		watch: {
