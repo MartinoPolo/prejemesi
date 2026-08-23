@@ -9,6 +9,7 @@
 	import { browser, dev } from '$app/environment';
 	import { page } from '$app/state';
 	import { getLocaleForUrl, getTextDirection } from '$lib/paraglide/runtime.js';
+	import { SENTRY_REPLAY_NAVIGATION_EVENT } from '$lib/observability/sentry_replay_policy.js';
 
 	// Dev-only tab title prefix – injected at dev-server start from git branch (vite.config.ts define).
 	// Lets you tell apart multiple worktrees/branches running simultaneously in the browser.
@@ -33,6 +34,9 @@
 	// so we can safely prepend without the page overwriting us again.
 	// Port is read here (browser-only) so each worktree's port is included.
 	afterNavigate(() => {
+		window.dispatchEvent(
+			new CustomEvent(SENTRY_REPLAY_NAVIGATION_EVENT, { detail: window.location.href }),
+		);
 		if (dev && document.title && !document.title.startsWith('[')) {
 			const branch = shortBranch(__GIT_BRANCH__);
 			const port = window.location.port;

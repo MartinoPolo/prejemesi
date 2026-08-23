@@ -10,6 +10,7 @@
 		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
 		"paraglide:compile": "node ./scripts/paraglide-compile.mjs",
 		"check": "pnpm paraglide:compile && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"typecheck": "pnpm check",
 		"check:fast": "prettier --write --log-level warn . && oxlint",
 		"check:all": "pnpm paraglide:compile && svelte-kit sync && prettier --write . && oxlint && pnpm check:migrations && pnpm check:vykani && stylelint \"src/**/*.{css,svelte}\" && pnpm check:fallow && svelte-check --tsconfig ./tsconfig.json && eslint --cache .",
 		"check:fallow": "node scripts/fallow-check.js",
@@ -46,6 +47,8 @@
 	"dependencies": {
 		"@fontsource-variable/dynapuff": "^5.2.8",
 		"@fontsource-variable/geist": "^5.2.9",
+		"@sentry/cloudflare": "10.69.0",
+		"@sentry/sveltekit": "^10.69.0",
 		"aws4fetch": "^1.0.20",
 		"better-auth": "~1.4.22",
 		"drizzle-orm": "^0.45.1",

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import type { Plugin } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { sentrySvelteKit } from '@sentry/sveltekit';
 import tailwindcss from '@tailwindcss/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { paraglideCompilerOptions } from './scripts/paraglide-options.mjs';
@@ -23,7 +24,24 @@ const gitBranch = (() => {
 
 const dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
-const isVitest = process.env.VITEST === 'true';
+const isVitest = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+const sentryUploadEnvironmentVariables = [
+	process.env.SENTRY_AUTH_TOKEN,
+	process.env.SENTRY_ORG,
+	process.env.SENTRY_PROJECT,
+];
+const configuredSentryUploadVariables = sentryUploadEnvironmentVariables.filter(
+	(value) => value !== undefined && value !== '',
+).length;
+const shouldUploadSentrySourceMaps =
+	process.env.GITHUB_ACTIONS === 'true' &&
+	process.env.GITHUB_REF === 'refs/heads/production' &&
+	process.env.SENTRY_UPLOAD_SOURCE_MAPS === 'true';
+if (shouldUploadSentrySourceMaps && configuredSentryUploadVariables < 3) {
+	throw new Error(
+		'Sentry source-map upload requires SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT together.',
+	);
+}
 
 /**
  * Dev-only: evaluate the SSR module graph once, uncontended, before serving
@@ -86,6 +104,19 @@ export default defineConfig({
 		__GIT_BRANCH__: JSON.stringify(gitBranch),
 	},
 	plugins: [
+		...(isVitest
+			? []
+			: [
+					sentrySvelteKit({
+						adapter: 'cloudflare',
+						autoInstrument: false,
+						autoUploadSourceMaps: shouldUploadSentrySourceMaps,
+						authToken: process.env.SENTRY_AUTH_TOKEN,
+						org: process.env.SENTRY_ORG,
+						project: process.env.SENTRY_PROJECT,
+						telemetry: false,
+					}),
+				]),
 		tailwindcss(),
 		sveltekit(),
 		// Options live in scripts/paraglide-options.mjs, shared with the standalone

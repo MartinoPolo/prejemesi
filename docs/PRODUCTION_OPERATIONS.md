@@ -16,6 +16,7 @@ production; this document does not claim it is already enabled.
 | Hyperdrive                | **Hyperdrive > prejemesi-db > Metrics**                                | Query count, errors, latency, cache status, and connection-pool pressure      |
 | WAF and rate limiting     | **Security > Security rules**; results under **Security > Events**     | Confirm rule matches and mitigations before Worker execution                  |
 | Turnstile                 | **Turnstile > prejemesi > Analytics**                                  | Siteverify success/failure and challenge traffic                              |
+| Application errors        | **Sentry > Issues / Replays**                                          | Grouped browser and Worker errors, stack traces, and privacy-masked replays   |
 
 Workers Logs Free retains 200,000 log events/day for three days. Configure
 production for 10% head sampling (`head_sampling_rate: 0.1`) and custom events.
@@ -39,8 +40,44 @@ Metrics, then correlate by UTC time, deployment version, and route start.
 For every incident, record: UTC start/end, client-visible code, Metrics outcome,
 affected route ID, deployment version, request/error counts, mitigation, and
 recovery time. Use this telemetry for application exceptions, platform limits,
-and edge mitigation. Add an external error tracker separately if retained stack
-traces and alerting become necessary.
+and edge mitigation. Use Sentry for retained application stack traces and
+proactive notifications; keep Cloudflare telemetry for platform outcomes and
+resource-limit diagnosis.
+
+### Sentry
+
+The production deployment requires the following GitHub `production`
+environment settings:
+
+- Variable `PUBLIC_SENTRY_DSN`: public runtime DSN used by the browser and Worker.
+- Variables `SENTRY_ORG` and `SENTRY_PROJECT`: source-map destination slugs.
+- Secret `SENTRY_AUTH_TOKEN`: build-only token with release/source-map upload permission.
+
+The deployment fails before building if any setting is absent and is the only
+workflow that enables source-map uploads. `SENTRY_AUTH_TOKEN` must never be
+placed in Worker variables, client code, logs, or committed files. The build
+release and Worker runtime release are both the deployed Git commit SHA,
+allowing Sentry to resolve minified production frames with the matching
+uploaded source maps.
+
+Error events disable user identity, cookies, headers, query parameters, HTTP
+bodies, database values, and stack-frame variables. Additional event filtering
+removes user objects, request details beyond method and path, sensitive custom
+keys, and email addresses. Session Replay is enabled during the Sentry trial for
+10% of sessions and all sessions containing a captured error; all text and inputs
+are masked, user-facing and link/source/value attributes are masked, hidden inputs and media are
+blocked, and network bodies and headers are not recorded. Replays stop and are
+discarded on authentication routes, token-bearing routes, and URLs with query
+strings. Error-triggered buffering resumes after navigation back to a safe route;
+regular session sampling resumes on the next page load. Review the sampling
+rates and retained data before the trial ends.
+
+Configure an issue alert in Sentry for new and regressed `error` or `fatal`
+issues in the `production` environment, then verify the notification recipient.
+After deployment, create one controlled browser error and one authenticated
+Worker error, confirm both issues use the deployed release and readable source
+maps, inspect the associated replay for masking, and remove the test trigger.
+Do not expose a permanent public error-generation route.
 
 ## Resource-limit incident procedure
 
