@@ -40,14 +40,14 @@ describe('sanitizeSentryEvent', () => {
 		});
 	});
 
-	it('drops arbitrary custom data and keeps only sanitized technical context', () => {
+	it('drops arbitrary custom data while preserving safe replay correlation', () => {
 		const event = {
 			message: 'Failed for person@example.com',
 			extra: {
 				address: 'Family Street 1',
 				recipient: 'Family Member',
 			},
-			tags: { listTitle: 'Private birthday list' },
+			tags: { listTitle: 'Private birthday list', replayId: 'safe-replay-id' },
 			contexts: {
 				family: { member: 'Family Member' },
 				browser: { name: 'Firefox', version: '128' },
@@ -56,6 +56,7 @@ describe('sanitizeSentryEvent', () => {
 
 		expect(sanitizeSentryEvent(event)).toEqual({
 			message: 'Failed for [redacted-email]',
+			tags: { replayId: 'safe-replay-id' },
 			contexts: {
 				browser: { name: '[redacted]', version: '128' },
 			},
