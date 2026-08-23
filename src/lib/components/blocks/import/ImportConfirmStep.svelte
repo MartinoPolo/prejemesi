@@ -5,7 +5,7 @@
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import { Progress } from '$lib/components/base/progress/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
-	import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
+	import type { ValidatedGiftDraft } from '$lib/modules/gifts/gift_draft.js';
 	import {
 		WIZARD_MODE,
 		COMMIT_STATUS,
@@ -19,10 +19,11 @@
 
 	interface ImportConfirmStepProps {
 		mode: WizardMode;
-		selectedDrafts: GiftDraft[];
+		selectedDrafts: ValidatedGiftDraft[];
 		title?: string;
 		wishlistTitle?: string;
 		duplicateCount: number;
+		serverDuplicateCount: number;
 		oncommit: () => Promise<{ shortId: string }>;
 		commitStatus: CommitStatus;
 		suppressNavigation?: boolean;
@@ -34,6 +35,7 @@
 		title,
 		wishlistTitle,
 		duplicateCount,
+		serverDuplicateCount,
 		oncommit,
 		commitStatus,
 		suppressNavigation = false,
@@ -97,6 +99,15 @@
 				<AlertTriangleIcon class="size-4" />
 				<Alert.Description>
 					{m.import_wizard_confirm_duplicates({ count: duplicateCount })}
+				</Alert.Description>
+			</Alert.Root>
+		{/if}
+
+		{#if serverDuplicateCount > 0}
+			<Alert.Root tone="warning">
+				<AlertTriangleIcon class="size-4" />
+				<Alert.Description>
+					{m.import_wizard_server_duplicates({ count: serverDuplicateCount })}
 				</Alert.Description>
 			</Alert.Root>
 		{/if}

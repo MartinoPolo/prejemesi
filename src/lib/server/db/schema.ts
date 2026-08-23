@@ -8,3 +8,4 @@ export * from './follower.schema.js';
 export * from './wishlist_visit.schema.js';
 export * from './notification.schema.js';
 export * from './landing.schema.js';
+export * from './ingestion.schema.js';

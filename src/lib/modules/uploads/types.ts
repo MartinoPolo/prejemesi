@@ -8,6 +8,9 @@ export const ALLOWED_CONTENT_TYPES = [
 
 export type AllowedContentType = (typeof ALLOWED_CONTENT_TYPES)[number];
 
+/** Maximum bytes accepted for a gift image across uploads and ingestion. */
+export const MAX_GIFT_IMAGE_BYTES = 5 * 1024 * 1024;
+
 export function isAllowedContentType(value: string): value is AllowedContentType {
 	return (ALLOWED_CONTENT_TYPES as readonly string[]).includes(value);
 }

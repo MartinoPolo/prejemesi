@@ -1,9 +1,9 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql, asc } from 'drizzle-orm';
+import { and, eq, asc, isNull } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift } from '$lib/server/db/gift.schema.js';
-import { priorityLevel } from '$lib/server/db/wishlist.schema.js';
+import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
 import { guardedCommand, singleFlightRefresh } from '$lib/server/remote.js';
 import {
 	verifyManagerAccess,
@@ -17,8 +17,13 @@ import {
 	type DraftPriority,
 	type GiftDraftInput,
 } from '$lib/modules/gifts/types.js';
-import { normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
+import {
+	appendGiftsUsingTransaction,
+	type NormalizedGiftCreationInput,
+} from '$lib/modules/gifts/gift_creation_service.js';
+import { canonicalGiftLinkKey } from '$lib/modules/gifts/gift_url.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+import { mapGiftCreationError } from '$lib/modules/gifts/gift_creation_transport.js';
 import {
 	buildSheetsCsvExportUrl,
 	classifySheetCsvResponse,
@@ -81,23 +86,20 @@ export const fetchGoogleSheetCsv = guardedCommand(SheetLinkSchema, async (_authC
 	return csv;
 });
 
-/** Map a committed draft to a gift insert row at a fixed sortOrder position. */
-function draftToGiftValues(
-	wishlistId: string,
+function draftToGiftInput(
 	draft: GiftDraftInput,
-	sortOrder: number,
 	priorityLevelId: string | null,
-) {
+): NormalizedGiftCreationInput {
 	return {
-		wishlistId,
 		name: draft.name,
 		description: draft.description ?? null,
-		links: normalizeGiftLinks(draft.links),
+		links: draft.links,
 		price: draft.price ?? null,
 		priceMax: draft.priceMax ?? null,
 		currency: draft.currency ?? DEFAULT_GIFT_CURRENCY,
+		imageUrl: draft.imageUrl,
+		quantity: draft.quantity,
 		priorityLevelId,
-		sortOrder,
 	};
 }
 
@@ -114,18 +116,62 @@ function resolvePriorityLevelId(
 	return rankedLevelIds[rank] ?? null;
 }
 
+type SelectExecutor = Pick<ReturnType<typeof getDb>, 'select'>;
+
 /** Priority-level ids for a wishlist, ranked by sortOrder (index 0 = highest priority). */
 async function rankedPriorityLevelIds(
-	tx: Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0],
+	database: SelectExecutor,
 	wishlistId: string,
 ): Promise<string[]> {
-	const rows = await tx
+	const rows = await database
 		.select({ id: priorityLevel.id })
 		.from(priorityLevel)
 		.where(eq(priorityLevel.wishlistId, wishlistId))
 		.orderBy(asc(priorityLevel.sortOrder));
 	return rows.map((row) => row.id);
 }
+
+/**
+ * Defense-in-depth duplicate advisory at the server boundary. The review grid
+ * catches ordinary duplicates; this query catches stale or racing matches and
+ * requires a separate explicit retry before preserving every reviewed row.
+ */
+async function findCanonicalLinkDuplicateIndexes(
+	database: SelectExecutor,
+	wishlistId: string,
+	drafts: readonly GiftDraftInput[],
+): Promise<number[]> {
+	const draftKeySets = drafts.map(
+		(draft) =>
+			new Set(
+				(draft.links ?? [])
+					.map((link) => canonicalGiftLinkKey(link.url))
+					.filter((key): key is string => key !== null),
+			),
+	);
+	if (draftKeySets.every((keys) => keys.size === 0)) {
+		return [];
+	}
+
+	const existing = await database
+		.select({ links: gift.links })
+		.from(gift)
+		.where(and(eq(gift.wishlistId, wishlistId), isNull(gift.deletedAt)));
+	const existingKeys = new Set(
+		existing.flatMap((row) =>
+			(row.links ?? [])
+				.map((link) => canonicalGiftLinkKey(link.url))
+				.filter((key): key is string => key !== null),
+		),
+	);
+	return draftKeySets.flatMap((keys, index) =>
+		[...keys].some((key) => existingKeys.has(key)) ? [index] : [],
+	);
+}
+
+export type ImportGiftsResult =
+	| { status: 'duplicate-warning'; duplicateIndexes: number[] }
+	| { status: 'created'; gifts: { id: string }[] };
 
 /**
  * Append imported/batch drafts to an existing wishlist. Managers (recipient or správce) only;
@@ -138,40 +184,47 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 	assertWishlistMutable(wishlistRow);
 
 	if (input.gifts.length === 0) {
-		return [];
+		return { status: 'created', gifts: [] } satisfies ImportGiftsResult;
 	}
 
-	const database = getDb();
-
-	const created = await database.transaction(async (tx) => {
-		const maxSortRows = await tx
-			.select({ maxSort: sql<number>`COALESCE(MAX(${gift.sortOrder}), -1)` })
-			.from(gift)
-			.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
-
-		const base = Number(maxSortRows[0]?.maxSort ?? -1) + 1;
-		const rankedLevelIds = await rankedPriorityLevelIds(tx, input.wishlistId);
-
-		return tx
-			.insert(gift)
-			.values(
-				input.gifts.map((draft, i) =>
-					draftToGiftValues(
-						input.wishlistId,
-						draft,
-						base + i,
-						resolvePriorityLevelId(draft.priority, rankedLevelIds),
-					),
+	let result: ImportGiftsResult;
+	try {
+		result = await getDb().transaction(async (tx) => {
+			await tx
+				.select({ id: wishlist.id })
+				.from(wishlist)
+				.where(eq(wishlist.id, input.wishlistId))
+				.limit(1)
+				.for('update');
+			const rankedLevelIds = await rankedPriorityLevelIds(tx, input.wishlistId);
+			const duplicateIndexes = await findCanonicalLinkDuplicateIndexes(
+				tx,
+				input.wishlistId,
+				input.gifts,
+			);
+			if (duplicateIndexes.length > 0 && !input.acknowledgeDuplicates) {
+				return {
+					status: 'duplicate-warning',
+					duplicateIndexes,
+				} satisfies ImportGiftsResult;
+			}
+			const created = await appendGiftsUsingTransaction(tx, {
+				wishlistId: input.wishlistId,
+				actorId: user.id,
+				gifts: input.gifts.map((draft) =>
+					draftToGiftInput(draft, resolvePriorityLevelId(draft.priority, rankedLevelIds)),
 				),
-			)
-			.returning();
-	});
+			});
+			return { status: 'created', gifts: created } satisfies ImportGiftsResult;
+		});
+	} catch (thrown) {
+		mapGiftCreationError(thrown);
+	}
 
-	// Single-flight refresh (issue #108, REQ-3/4): the open wishlist page (append mode)
-	// gets the new gift rows in the same round trip.
-	singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
-
-	return created;
+	if (result.status === 'created') {
+		singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+	}
+	return result;
 });
 
 /**
@@ -189,18 +242,17 @@ export const createWishlistFromImport = guardedCommand(
 
 			if (input.gifts.length > 0) {
 				const rankedLevelIds = await rankedPriorityLevelIds(tx, created.id);
-				await tx
-					.insert(gift)
-					.values(
-						input.gifts.map((draft, i) =>
-							draftToGiftValues(
-								created.id,
-								draft,
-								i,
-								resolvePriorityLevelId(draft.priority, rankedLevelIds),
-							),
+				await appendGiftsUsingTransaction(tx, {
+					wishlistId: created.id,
+					actorId: user.id,
+					notifyFollowers: false,
+					gifts: input.gifts.map((draft) =>
+						draftToGiftInput(
+							draft,
+							resolvePriorityLevelId(draft.priority, rankedLevelIds),
 						),
-					);
+					),
+				});
 			}
 
 			return created;

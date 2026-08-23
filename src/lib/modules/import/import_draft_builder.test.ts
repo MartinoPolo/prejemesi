@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildDraftRows } from './import_draft_builder.js';
 import { COLUMN_ROLE, type DetectedColumn } from '$lib/modules/import/detect_columns.js';
+import { validateDraft } from '$lib/modules/gifts/gift_draft.js';
 import { DEFAULT_DRAFT_PRIORITY, GIFT_CURRENCIES } from '$lib/modules/gifts/types.js';
 
 function makeColumn(
@@ -132,5 +133,19 @@ describe('buildDraftRows', () => {
 		const drafts = buildDraftRows(rows, columns);
 
 		expect(drafts[0].links).toEqual([]);
+	});
+
+	it('keeps an unsafe imported image URL editable but marks the row invalid', () => {
+		const columns: DetectedColumn[] = [
+			makeColumn(0, COLUMN_ROLE.name, 'Name'),
+			makeColumn(1, COLUMN_ROLE.imageUrl, 'Image URL'),
+		];
+		const [draft] = buildDraftRows([['Gift', 'http://images.example.test/gift.jpg']], columns);
+
+		expect(draft.imageUrl).toBe('http://images.example.test/gift.jpg');
+		expect(validateDraft(draft)).toMatchObject({
+			valid: false,
+			issues: ['imageUrl'],
+		});
 	});
 });

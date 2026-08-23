@@ -10,8 +10,10 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
+	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import { cn } from '$lib/utils.js';
 	import { ROW_STATUS, type RowStatus } from '$lib/modules/gifts/draft_grid.js';
+	import { isValidDraftImageUrl, parseDraftQuantity } from '$lib/modules/gifts/gift_draft.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftLinksCell from './GiftDraftLinksCell.svelte';
 	import GiftDraftPriceCell from './GiftDraftPriceCell.svelte';
@@ -55,8 +57,10 @@
 
 	let editing = $state(false);
 
-	const isError = $derived(status === ROW_STATUS.error);
+	const nameInvalid = $derived(row.name.trim() === '' && !row.pristine);
 	const isDuplicate = $derived(status === ROW_STATUS.duplicate);
+	const imageUrlValid = $derived(isValidDraftImageUrl(row.imageUrl));
+	const quantityValid = $derived(parseDraftQuantity(row.quantity) !== null);
 
 	/** Any field edit marks the row touched (so a blank batch starter can turn red). */
 	function markTouched() {
@@ -142,13 +146,13 @@
 				row.name = event.currentTarget.value;
 				markTouched();
 			}}
-			state={isError ? 'error' : 'default'}
-			aria-invalid={isError}
+			state={nameInvalid ? 'error' : 'default'}
+			aria-invalid={nameInvalid}
 			placeholder={m.draft_grid_name_placeholder()}
 			aria-label={m.draft_grid_col_name()}
 			class="font-semibold"
 		/>
-		{#if isError}
+		{#if nameInvalid}
 			<HelpText state="error">
 				<CircleAlertIcon class="size-3.5" aria-hidden="true" />
 				{m.draft_grid_name_required()}
@@ -216,7 +220,62 @@
 		/>
 	</div>
 
-	<!-- Priority heart toggle (col 6, desktop) -->
+	<!-- External image URL + safe automatic thumbnail -->
+	<div class="flex min-w-0 flex-col gap-1.5">
+		<span class={cn(DRAFT_COL_LABEL_CLASS, 'md:hidden')}>
+			{m.draft_grid_col_image()}
+		</span>
+		<div class="flex items-center gap-2">
+			{#if imageUrlValid && row.imageUrl.trim() !== ''}
+				<ImageFrame
+					src={row.imageUrl.trim()}
+					alt=""
+					class="size-10 shrink-0 rounded-md"
+					referrerPolicy="no-referrer"
+				/>
+			{/if}
+			<Input
+				type="url"
+				value={row.imageUrl}
+				oninput={(event) => {
+					row.imageUrl = event.currentTarget.value;
+					markTouched();
+				}}
+				state={imageUrlValid ? 'default' : 'error'}
+				aria-invalid={!imageUrlValid}
+				placeholder="https://…"
+				aria-label={m.draft_grid_col_image()}
+			/>
+		</div>
+		{#if !imageUrlValid}
+			<HelpText state="error">{m.draft_grid_image_https_required()}</HelpText>
+		{/if}
+	</div>
+
+	<!-- Quantity -->
+	<div class="flex min-w-0 flex-col gap-1.5">
+		<span class={cn(DRAFT_COL_LABEL_CLASS, 'md:hidden')}>
+			{m.draft_grid_col_quantity()}
+		</span>
+		<Input
+			type="number"
+			min="1"
+			step="1"
+			value={row.quantity}
+			oninput={(event) => {
+				row.quantity = event.currentTarget.value;
+				markTouched();
+			}}
+			state={quantityValid ? 'default' : 'error'}
+			aria-invalid={!quantityValid}
+			aria-label={m.draft_grid_col_quantity()}
+		/>
+		{#if !quantityValid}
+			<HelpText state="error">{m.draft_grid_quantity_invalid()}</HelpText>
+		{/if}
+	</div>
+
+	<!-- Priority heart toggle -->
 	{#if showPriority}
 		<div class="hidden md:flex md:items-start md:justify-center md:pt-1">
 			<GiftDraftPriorityCell priority={row.priority} name={row.name} onchange={setPriority} />

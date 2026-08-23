@@ -13,7 +13,6 @@ import {
 } from '$lib/server/remote.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { getAnonVisitorId } from '$lib/server/anonymous_visitor.js';
-import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import {
@@ -31,7 +30,6 @@ import {
 	UpdateGiftInputSchema,
 	ReorderGiftItemSchema,
 	MarkGiftReceivedInputSchema,
-	DEFAULT_GIFT_CURRENCY,
 	isPriceRangeValid,
 	type GiftForRecipient,
 	type GiftForVisitor,
@@ -48,6 +46,8 @@ import {
 	isPreShareOwnerFullEditGraceOpen,
 } from './gift_deletion_rules.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
+import { appendGifts } from './gift_creation_service.js';
+import { mapGiftCreationError } from './gift_creation_transport.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
@@ -265,66 +265,23 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 // ── Commands ────────────────────────────────────────────────────────────────
 
 export const createGift = guardedCommand(CreateGiftInputSchema, async ({ user }, input) => {
-	const database = getDb();
 	const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
 	assertWishlistMutable(wishlistRow);
 
-	// Determine sortOrder: place at the end
-	const maxSortRows = await database
-		.select({ maxSort: sql<number>`COALESCE(MAX(${gift.sortOrder}), -1)` })
-		.from(gift)
-		.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
-
-	const nextSortOrder = input.sortOrder ?? Number(maxSortRows[0]?.maxSort ?? -1) + 1;
-
-	const [created] = await database
-		.insert(gift)
-		.values({
+	let created: typeof gift.$inferSelect | undefined;
+	try {
+		[created] = await appendGifts({
 			wishlistId: input.wishlistId,
-			name: input.name,
-			description: input.description ?? null,
-			links: normalizeGiftLinks(input.links),
-			price: input.price ?? null,
-			priceMax: input.priceMax ?? null,
-			currency: input.currency ?? DEFAULT_GIFT_CURRENCY,
-			imageUrl: input.imageUrl ?? null,
-			imageKey: input.imageKey ?? null,
-			imageMeta: input.imageMeta ?? null,
-			quantity: input.quantity ?? 1,
-			priorityLevelId: input.priorityLevelId ?? null,
-			sortOrder: nextSortOrder,
-		})
-		.returning();
+			actorId: user.id,
+			gifts: [input],
+		});
+	} catch (thrown) {
+		mapGiftCreationError(thrown);
+	}
 
 	if (created === undefined) {
 		error(500, SERVER_ERROR.FAILED_TO_CREATE_GIFT);
 	}
-
-	const followerRows = await database
-		.select({ userId: wishlistFollower.userId })
-		.from(wishlistFollower)
-		.where(
-			and(
-				eq(wishlistFollower.wishlistId, input.wishlistId),
-				isNull(wishlistFollower.unfollowedAt),
-			),
-		);
-
-	await dispatchNotification({
-		type: NOTIFICATION_TYPE.NEW_GIFT_ADDED,
-		targetUserIds: followerRows
-			.map((row) => row.userId)
-			.filter(
-				(targetUserId) =>
-					targetUserId !== user.id && targetUserId !== wishlistRow.recipientUserId,
-			),
-		wishlistId: input.wishlistId,
-		giftId: created.id,
-		giftName: created.name,
-		actorId: user.id,
-		actorName: user.name,
-		wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
-	});
 
 	// Single-flight refresh (issue #108, REQ-3/4): only the gift list rides back —
 	// wishlist metadata, likes, and dashboards are not invalidated by a new gift.

@@ -21,12 +21,17 @@ export default defineConfig({
 		// No `--` separator: pnpm forwards it verbatim and vite would treat the flags as positionals.
 		command: `pnpm run dev --port ${devServerPort} --strictPort`,
 		port: devServerPort,
-		reuseExistingServer: true,
+		// Never reuse a server that may lack the controlled local E2E environment.
+		reuseExistingServer: false,
 		env: {
+			// Local E2E signing only; this deterministic fallback is not a production secret.
+			AUTH_SECRET:
+				process.env.AUTH_SECRET ??
+				'local-e2e-only-auth-secret-never-use-in-production-2026',
+			// Keep the test server origin pinned to its assigned localhost port.
+			ORIGIN: `http://localhost:${devServerPort}`,
 			// The app administrator is env-based (`isAppAdmin`), so the admin-only specs
 			// (revert-to-draft #150, release reservation #213) need a known operator address.
-			// NOTE: `reuseExistingServer` means an ALREADY RUNNING dev server keeps whatever
-			// env it was started with — restart it if those specs fail with a missing control.
 			ADMIN_EMAILS: 'tomas@test.cz',
 		},
 	},

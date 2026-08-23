@@ -119,6 +119,9 @@ Example: `drizzle/0003_recipient_role_model_expand.sql` (expand) +
 
 - [ ] Migration generated via `pnpm db:generate`, reviewed, committed.
 - [ ] `pnpm check:migrations` passes (or the contract is acknowledged).
+- [ ] All declared Worker bindings are present in the built/deployed config. In particular,
+      `GIFT_INGESTION_RATE_LIMIT` must show the 60 requests / 60 seconds policy; ingestion fails
+      closed with HTTP 503 if the binding is absent or errors.
 - [ ] Any **new env var/secret** the release reads is set on the Worker
       (`wrangler secret list` + `wrangler versions view <id>`). A missing one
       does not fail the deploy — the feature just silently stays off, which is

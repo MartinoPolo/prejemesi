@@ -21,6 +21,8 @@ export type RowStatus = (typeof ROW_STATUS)[keyof typeof ROW_STATUS];
 interface DraftRowStatusInput {
 	name: string;
 	isDuplicate: boolean;
+	/** Any field-level validation problem (for example image URL or quantity). */
+	hasValidationError?: boolean;
 	/** A pristine row was never touched (untouched batch starter) – stays neutral while blank. */
 	pristine: boolean;
 }
@@ -30,33 +32,22 @@ interface DraftRowStatusInput {
  * blank-named pristine row is `neutral` (avoids premature-validation red on an
  * untouched batch starter); a blank-named touched row is `error`.
  */
-export function deriveRowStatus({ name, isDuplicate, pristine }: DraftRowStatusInput): RowStatus {
+export function deriveRowStatus({
+	name,
+	isDuplicate,
+	hasValidationError = false,
+	pristine,
+}: DraftRowStatusInput): RowStatus {
 	if (name.trim() === '') {
 		return pristine ? ROW_STATUS.neutral : ROW_STATUS.error;
+	}
+	if (hasValidationError) {
+		return ROW_STATUS.error;
 	}
 	if (isDuplicate) {
 		return ROW_STATUS.duplicate;
 	}
 	return ROW_STATUS.ready;
-}
-
-/**
- * A row counts toward the host's commit when it is selected and has a non-blank
- * name. Duplicate status is advisory and never blocks commit.
- */
-export function isRowCommittable(row: { name: string; selected: boolean }): boolean {
-	return row.selected && row.name.trim() !== '';
-}
-
-/** Number of rows that would be committed (selected + validly named). */
-export function countCommittable(rows: readonly { name: string; selected: boolean }[]): number {
-	let count = 0;
-	for (const row of rows) {
-		if (isRowCommittable(row)) {
-			count++;
-		}
-	}
-	return count;
 }
 
 /** Tri-state of the single global select-all header checkbox. */

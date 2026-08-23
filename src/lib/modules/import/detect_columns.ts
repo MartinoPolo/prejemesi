@@ -15,6 +15,8 @@ export const COLUMN_ROLE = {
 	notes: 'notes',
 	url: 'url',
 	price: 'price',
+	imageUrl: 'imageUrl',
+	quantity: 'quantity',
 	bool: 'bool',
 	ignore: 'ignore',
 } as const;
@@ -46,6 +48,8 @@ const HEADER_SCAN_LIMIT = 10;
 const ROLE_VALUE_THRESHOLD = 0.6;
 
 const HEADER_KEYWORDS = {
+	imageUrl: ['image url', 'image', 'obrazek', 'foto'],
+	quantity: ['quantity', 'qty', 'count', 'pocet', 'kusy', 'mnozstvi'],
 	url: ['link', 'odkaz', 'url', 'web', 'adresa', 'stranka', 'http'],
 	price: ['price', 'cena', 'cost', 'castka', 'kc', 'czk', 'eur', 'usd'],
 	bool: [
@@ -87,7 +91,15 @@ const HEADER_KEYWORDS = {
 } as const;
 
 /** Header keyword groups are tried in this order; first match wins. */
-const HEADER_ROLE_ORDER = ['url', 'price', 'bool', 'name', 'notes'] as const;
+const HEADER_ROLE_ORDER = [
+	'imageUrl',
+	'quantity',
+	'url',
+	'price',
+	'bool',
+	'name',
+	'notes',
+] as const;
 
 const BOOL_TOKENS = new Set([
 	'true',
@@ -268,7 +280,13 @@ export function detectColumns(rows: readonly string[][]): ColumnDetectionResult 
 	// Trim trailing footer/note rows using the structural (url/price/bool) columns.
 	const structuralColumns = new Set<number>();
 	roles.forEach((role, index) => {
-		if (role === COLUMN_ROLE.url || role === COLUMN_ROLE.price || role === COLUMN_ROLE.bool) {
+		if (
+			role === COLUMN_ROLE.url ||
+			role === COLUMN_ROLE.price ||
+			role === COLUMN_ROLE.imageUrl ||
+			role === COLUMN_ROLE.quantity ||
+			role === COLUMN_ROLE.bool
+		) {
 			structuralColumns.add(index);
 		}
 	});

@@ -125,6 +125,8 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'client',
+					// Sequential project groups avoid races in shared SvelteKit generated state.
+					sequence: { groupOrder: 0 },
 					// Retry once: browser-mode interaction tests can drop a simulated event
 					// under CI load. Play functions already gate keystrokes on focus to fix
 					// the root cause; this is a documented safety net so a single stray drop
@@ -147,6 +149,7 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'server',
+					sequence: { groupOrder: 1 },
 					environment: 'node',
 					include: ['src/**/*.{test,spec}.{js,ts}'],
 					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}'],
@@ -161,6 +164,7 @@ export default defineConfig({
 				],
 				test: {
 					name: 'storybook',
+					sequence: { groupOrder: 2 },
 					// See the client project: retry once as a safety net for browser-mode
 					// interaction flakiness; the real fix is in the story play functions.
 					retry: 1,

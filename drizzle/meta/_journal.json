@@ -85,6 +85,41 @@
       "when": 1786128310018,
       "tag": "0011_wakeful_captain_britain",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786215600000,
+      "tag": "0012_add_new_gift_digests",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786302000000,
+      "tag": "0013_add_gift_ingestion_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786388400000,
+      "tag": "0014_add_gift_ingestion_orphans",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786474800000,
+      "tag": "0015_add_gift_ingestion_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787501854505,
+      "tag": "0016_ambiguous_whizzer",
+      "breakpoints": true
     }
   ]
 }

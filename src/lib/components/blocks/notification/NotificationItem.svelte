@@ -49,14 +49,17 @@
 			onMarkAsRead(notification.id);
 		}
 
-		// Navigate by the wishlist's shortId (the route param), never `wishlistId` (the DB UUID) —
-		// see issue #204. No shortId means the wishlist is gone (deleted); stay put.
+		if (notification.href != null) {
+			void goto(localizeInternalHref(notification.href));
+			return;
+		}
+		// Legacy rows navigate by the wishlist's shortId, never its database UUID.
 		if (notification.wishlistShortId == null || notification.wishlistShortId === '') {
 			return;
 		}
 		const path = resolve('/(app)/w/[id]', { id: notification.wishlistShortId });
 		const href =
-			notification.giftId != null && notification.giftId !== ''
+			notification.giftId !== null && notification.giftId !== ''
 				? `${path}?${WISHLIST_GIFT_QUERY_PARAM}=${notification.giftId}`
 				: path;
 		void goto(localizeInternalHref(href));
@@ -93,7 +96,17 @@
 		>
 			{notification.message}
 		</p>
-		{#if notification.actorName}
+		{#if notification.digest}
+			<ul class="space-y-0.5 text-xs text-muted-foreground">
+				{#each notification.digest.wishlists as item (item.wishlistId)}
+					<li class="whitespace-normal break-words">
+						{item.title}: {item.count}{#if item.namePreviews.length > 0}
+							<span> · {item.namePreviews.join(', ')}</span>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{:else if notification.actorName}
 			<p class="whitespace-normal break-words text-xs text-muted-foreground">
 				{notification.actorName}
 			</p>

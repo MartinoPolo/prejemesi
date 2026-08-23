@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import * as m from '$lib/paraglide/messages.js';
 import type { SupportedLocale } from '$lib/i18n/locale.js';
 import type { notification } from '$lib/server/db/notification.schema.js';
+import type { NewGiftDigestPayload } from './new_gift_digest.js';
 
 // ── Notification Types ──────────────────────────────────────────────────────
 
@@ -176,6 +177,10 @@ export interface Notification {
 	wishlistShortId: string | null;
 	giftId: string | null;
 	actorName: string | null;
+	/** Present only for rolling new-gift digest rows. */
+	digest: NewGiftDigestPayload | null;
+	/** Digest-specific route; legacy rows continue deriving their route from wishlistShortId. */
+	href: string | null;
 	read: boolean;
 	createdAt: Date;
 }

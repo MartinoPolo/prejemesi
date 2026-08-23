@@ -10,6 +10,7 @@ import {
 export const ImportGiftsInputSchema = v.object({
 	wishlistId: v.string(),
 	gifts: v.pipe(v.array(GiftDraftInputSchema), v.maxLength(200)),
+	acknowledgeDuplicates: v.optional(v.boolean(), false),
 });
 
 export type ImportGiftsInput = v.InferOutput<typeof ImportGiftsInputSchema>;

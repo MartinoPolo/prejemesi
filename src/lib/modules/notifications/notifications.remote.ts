@@ -15,6 +15,8 @@ import {
 	type NotificationPreferences,
 	type NotificationType,
 } from './types.js';
+import { getNewGiftDigestDisplay, parseNewGiftDigestPayload } from './new_gift_digest.js';
+import { notificationIsVisible } from './notification_visibility.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -32,32 +34,47 @@ export const getNotifications = guardedQuery(async ({ user }) => {
 			wishlistShortId: wishlist.shortId,
 			giftId: notification.giftId,
 			actorName: notification.actorName,
+			payload: notification.payload,
 			read: notification.read,
-			createdAt: notification.createdAt,
+			createdAt:
+				sql<Date>`coalesce(${notification.visibleAt}, ${notification.createdAt})`.mapWith(
+					notification.createdAt,
+				),
 		})
 		.from(notification)
 		.leftJoin(wishlist, eq(notification.wishlistId, wishlist.id))
-		.where(eq(notification.userId, user.id))
-		.orderBy(desc(notification.createdAt))
+		.where(and(eq(notification.userId, user.id), notificationIsVisible()))
+		.orderBy(
+			desc(sql<Date>`coalesce(${notification.visibleAt}, ${notification.createdAt})`),
+			desc(notification.createdAt),
+			desc(notification.id),
+		)
 		.limit(50);
 
-	return rows.map(
-		(row): Notification => ({
+	return rows.map((row): Notification => {
+		const digest = parseNewGiftDigestPayload(row.payload);
+		const digestDisplay = digest === null ? null : getNewGiftDigestDisplay(digest);
+		return {
 			id: row.id,
 			type: row.type as NotificationType,
 			// Unknown/legacy types fall back to a generic localized label instead of
 			// leaking the raw DB string to users.
-			message: (
-				NOTIFICATION_MESSAGES[row.type as NotificationType] ?? m.notification_type_unknown
-			)(),
+			message:
+				digestDisplay?.message ??
+				(
+					NOTIFICATION_MESSAGES[row.type as NotificationType] ??
+					m.notification_type_unknown
+				)(),
 			wishlistId: row.wishlistId,
 			wishlistShortId: row.wishlistShortId ?? null,
 			giftId: row.giftId,
 			actorName: row.actorName,
+			digest,
+			href: digestDisplay?.href ?? null,
 			read: row.read,
 			createdAt: row.createdAt,
-		}),
-	);
+		};
+	});
 });
 
 export const getUnreadCount = guardedQuery(async ({ user }) => {
@@ -66,7 +83,13 @@ export const getUnreadCount = guardedQuery(async ({ user }) => {
 	const result = await database
 		.select({ count: sql<number>`count(*)` })
 		.from(notification)
-		.where(and(eq(notification.userId, user.id), eq(notification.read, false)));
+		.where(
+			and(
+				eq(notification.userId, user.id),
+				eq(notification.read, false),
+				notificationIsVisible(),
+			),
+		);
 
 	return Number(result[0]?.count ?? 0);
 });
@@ -99,7 +122,13 @@ export const markAsRead = guardedCommand(v.array(v.string()), async ({ user }, n
 	await database
 		.update(notification)
 		.set({ read: true })
-		.where(and(inArray(notification.id, notificationIds), eq(notification.userId, user.id)));
+		.where(
+			and(
+				inArray(notification.id, notificationIds),
+				eq(notification.userId, user.id),
+				notificationIsVisible(),
+			),
+		);
 });
 
 export const markAllAsRead = guardedCommandNoArgs(async ({ user }) => {
@@ -108,7 +137,13 @@ export const markAllAsRead = guardedCommandNoArgs(async ({ user }) => {
 	await database
 		.update(notification)
 		.set({ read: true })
-		.where(and(eq(notification.userId, user.id), eq(notification.read, false)));
+		.where(
+			and(
+				eq(notification.userId, user.id),
+				eq(notification.read, false),
+				notificationIsVisible(),
+			),
+		);
 });
 
 export const updateNotificationPreferences = guardedCommand(

@@ -74,6 +74,11 @@
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
+	import {
+		createDuplicateAwareImportState,
+		resetDuplicateAwareImportState,
+		submitDuplicateAwareImport,
+	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import {
 		ownerSharedGiftDeleteGraceExpiresAt,
@@ -261,6 +266,7 @@
 
 	let batchAddDialogOpen = $state(false);
 	let isBatchSubmitting = $state(false);
+	let batchDuplicateSubmissionState = $state(createDuplicateAwareImportState<GiftDraftInput>());
 
 	// ── Import wizard state ──────────────────────────────────────────────────
 
@@ -570,16 +576,30 @@
 
 	// ── Batch add handlers ───────────────────────────────────────────────────
 
+	function resetBatchDuplicateWarning() {
+		batchDuplicateSubmissionState = resetDuplicateAwareImportState<GiftDraftInput>();
+	}
+
 	function openBatchAddDialog() {
+		resetBatchDuplicateWarning();
 		batchAddDialogOpen = true;
 	}
 
 	async function handleBatchSubmit(drafts: GiftDraftInput[]) {
 		isBatchSubmitting = true;
 		try {
-			const created = await importGifts({ wishlistId: wishlist.id, gifts: drafts });
+			const submission = await submitDuplicateAwareImport({
+				command: (request) => importGifts(request),
+				wishlistId: wishlist.id,
+				drafts,
+				state: batchDuplicateSubmissionState,
+			});
+			batchDuplicateSubmissionState = submission.state;
+			if (submission.result.status === 'duplicate-warning') {
+				return;
+			}
 			batchAddDialogOpen = false;
-			toastSuccess(m.toast_batch_add_success({ count: created.length }));
+			toastSuccess(m.toast_batch_add_success({ count: submission.result.gifts.length }));
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
@@ -589,6 +609,9 @@
 
 	function handleBatchDialogOpenChange(open: boolean) {
 		batchAddDialogOpen = open;
+		if (!open) {
+			resetBatchDuplicateWarning();
+		}
 	}
 
 	// ── Archive handler ───────────────────────────────────────────────────────
@@ -914,6 +937,7 @@
 	wishlistPalette={activePalette}
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
+	batchServerDuplicateCount={batchDuplicateSubmissionState.duplicateCount}
 	bind:moderatorPanelOpen
 	bind:authPromptOpen
 	ongiftmodalclose={handleGiftModalClose}
@@ -928,6 +952,7 @@
 	onpaletteselect={handlePaletteSelect}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
+	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
 />
 
 <!-- Per-wishlist settings modal (details / appearance / image). Mounted for every viewer:
