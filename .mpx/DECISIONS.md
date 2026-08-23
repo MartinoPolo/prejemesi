@@ -333,9 +333,23 @@ Rejected: Railway ($5-7/mo), Fly.io (no free tier since 2024), Render (free Post
 ### SvelteKit remote functions for all client-server communication
 
 Decided: 2026-05-30
-What: Use `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions. No traditional `+page.server.ts` load functions or `+server.ts` API routes (except BetterAuth catch-all).
+What: Use `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions. No traditional `+page.server.ts` load functions or `+server.ts` API routes (except BetterAuth catch-all and the purpose-specific machine API exception below).
 Why: Remote functions provide type-safe, colocated, deduplicated client-server communication. Single-flight mutations reduce round-trips. Progressive enhancement via `form` is important for a family app used on diverse devices.
 Rejected: Traditional load + form actions (worse DX, no colocation, no dedup), tRPC (extra dependency, remote functions are built-in).
+
+### Purpose-specific machine API exception
+
+Decided: 2026-08-09
+What: `POST /api/internal/v1/gift-ingestion` is a deliberate exception to the remote-functions-only convention. A dedicated bearer token is bound by deployment configuration to one wishlist and one actor, accepts only versioned add-only manifests, defaults to side-effect-free dry-run, and invokes the shared transactional gift creation service. Durable run/item rows provide audit and idempotency. No read, update, delete, arbitrary destination, SQL, environment selection, browser-cookie authentication, or infrastructure credential input exists.
+Why: A fixed local CLI and automation skill need a stable non-browser boundary, while direct database or R2 access would bypass domain validation, notification digests, audit, and production safety.
+Rejected: BetterAuth browser cookies for machine calls; SQL generation/direct Neon access; a general-purpose CRUD API; caller-selected destination wishlists; immediate R2 mirroring.
+
+### Durable ingestion image mirroring
+
+Decided: 2026-08-10
+What: The fixed-target ingestion API prepares only validated manifest items and issues 10-minute exact-key/type/length R2 presigned PUT URLs under `gifts/ingestion/`. The CLI validates HTTPS/DNS/redirect safety, size, image signature, MIME, and dimensions before preparation, uploads directly without R2 credentials, and apply HEAD-verifies each object before atomically storing `imageKey`. Requested images are all-or-nothing. Uncommitted staged objects are cleaned best-effort; bounded orphan rows record cleanup failures. Dry-run and identical replay do no image I/O, and committed images are never compensating-deleted. The project workflow is `.agents/skills/add-gifts/SKILL.md` with evidence-ordered extraction and explicit production/HITL gates.
+Why: Retailer hotlinks are unstable and privacy-sensitive, while Worker-held presigning keeps durable storage credentials out of local automation and preserves fixed-target/idempotency boundaries.
+Rejected: Passing R2 credentials to the CLI; proxying bytes through the Worker; trusting declared MIME alone; partial image success by default; deleting images after a committed gift transaction.
 
 ### Guarded remote function wrappers for auth
 

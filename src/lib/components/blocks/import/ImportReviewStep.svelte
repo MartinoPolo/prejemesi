@@ -7,7 +7,7 @@
 	import * as Alert from '$lib/components/base/alert/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import { detectColumns, type DetectedColumn } from '$lib/modules/import/detect_columns.js';
-	import { findDuplicates, type GiftDraft } from '$lib/modules/gifts/gift_draft.js';
+	import { findDuplicates, type ValidatedGiftDraft } from '$lib/modules/gifts/gift_draft.js';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 	import ImportColumnMapping from './ImportColumnMapping.svelte';
 	import ImportExistingItemsPanel from './ImportExistingItemsPanel.svelte';
@@ -36,7 +36,7 @@
 		 * "Next" click, matching the touched-on-submit-attempt pattern used elsewhere.
 		 */
 		titleTouched?: boolean;
-		onready: (data: { drafts: GiftDraft[]; title?: string }) => void;
+		onready: (data: { drafts: ValidatedGiftDraft[]; title?: string }) => void;
 	}
 
 	let {
@@ -86,16 +86,20 @@
 	const hasNameColumn = $derived(columns.some((col) => col.role === 'name'));
 
 	// Grid change tracking
-	let gridDrafts = $state<GiftDraft[]>([]);
+	let gridDrafts = $state<ValidatedGiftDraft[]>([]);
 	let gridValidCount = $state(0);
+	let gridSelectedCount = $state(0);
+	let gridBlockingCount = $state(0);
 
 	function handleGridChange(change: DraftGridChange) {
 		gridDrafts = change.drafts;
 		gridValidCount = change.validCount;
+		gridSelectedCount = change.selectedCount;
+		gridBlockingCount = change.blockingCount;
 	}
 
-	// Forward gate: name column mapped AND >= 1 valid row from the grid
-	const canProceed = $derived(hasNameColumn && gridValidCount > 0);
+	// Forward gate: name column mapped, at least one valid row, and no selected blockers.
+	const canProceed = $derived(hasNameColumn && gridValidCount > 0 && gridBlockingCount === 0);
 
 	// Skipped rows info
 	const skippedCount = $derived(
@@ -117,14 +121,12 @@
 		return matched;
 	});
 
-	// Emit ready state whenever grid drafts or title changes
+	// Always notify the parent so a later blocking edit clears stale ready drafts.
 	$effect(() => {
-		if (canProceed) {
-			onready({
-				drafts: gridDrafts,
-				title: mode === WIZARD_MODE.newList ? title : undefined,
-			});
-		}
+		onready({
+			drafts: canProceed ? gridDrafts : [],
+			title: mode === WIZARD_MODE.newList ? title : undefined,
+		});
 	});
 
 	function handleColumnChange(updatedColumns: DetectedColumn[]) {
@@ -188,7 +190,7 @@
 		<div class="flex items-center justify-between">
 			<HelpText>
 				{m.import_wizard_selected_count({
-					selected: gridValidCount,
+					selected: gridSelectedCount,
 					total: drafts.length,
 				})}
 			</HelpText>

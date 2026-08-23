@@ -82,6 +82,7 @@ jobs:
             - run: pnpm run paraglide:compile
             - run: pnpm exec svelte-kit sync
             - run: pnpm run db:seed
+            - run: pnpm exec vitest run --project server
             - run: pnpm run test:e2e
             - uses: actions/upload-artifact@v4
               if: failure()

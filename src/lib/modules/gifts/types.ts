@@ -184,13 +184,12 @@ export interface CreateGiftInput {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
-	sortOrder?: number;
 }
 
 export const GIFT_CURRENCY_VALUES = Object.values(GIFT_CURRENCIES);
 
 export const CreateGiftInputSchema = v.pipe(
-	v.object({
+	v.strictObject({
 		wishlistId: v.string(),
 		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 		description: v.optional(v.nullable(v.string())),
@@ -203,16 +202,15 @@ export const CreateGiftInputSchema = v.pipe(
 		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 		priorityLevelId: v.optional(v.nullable(v.string())),
-		sortOrder: v.optional(v.number()),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
 
 /**
  * Wire shape of one import/batch draft committed into a real gift. Mirrors the
- * editable {@link GiftDraft} grid row minus DB-managed fields (wishlist, image,
- * quantity, sortOrder). `name` is required; everything else optional. `priority`
- * is a binary rank the server resolves to a concrete priority level at commit.
+ * editable {@link GiftDraft} grid row minus DB-managed fields (wishlist and
+ * sortOrder). `name` is required; everything else optional. `priority` is a
+ * binary rank the server resolves to a concrete priority level at commit.
  */
 export const GiftDraftInputSchema = v.pipe(
 	v.object({
@@ -222,6 +220,17 @@ export const GiftDraftInputSchema = v.pipe(
 		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
 		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
 		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
+		imageUrl: v.optional(
+			v.nullable(
+				v.pipe(
+					v.string(),
+					v.url(),
+					v.check((url) => url.startsWith('https://'), 'imageUrl must use HTTPS'),
+				),
+			),
+			null,
+		),
+		quantity: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 1),
 		priority: v.optional(v.picklist(DRAFT_PRIORITY_VALUES), DEFAULT_DRAFT_PRIORITY),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),

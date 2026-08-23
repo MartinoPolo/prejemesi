@@ -60,6 +60,7 @@
 		// Batch add dialog
 		batchAddDialogOpen: boolean;
 		isBatchSubmitting: boolean;
+		batchServerDuplicateCount: number;
 		// Moderator panel
 		moderatorPanelOpen: boolean;
 		// Login prompt (anonymous like attempt)
@@ -83,6 +84,7 @@
 		onmoderatorselfpromoted?: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
+		onbatchresetduplicatewarning: () => void;
 	}
 
 	let {
@@ -113,6 +115,7 @@
 		wishlistPalette,
 		batchAddDialogOpen = $bindable(),
 		isBatchSubmitting,
+		batchServerDuplicateCount,
 		moderatorPanelOpen = $bindable(),
 		authPromptOpen = $bindable(),
 		ongiftmodalclose,
@@ -129,6 +132,7 @@
 		onmoderatorselfpromoted,
 		onbatchsubmit,
 		onbatchdialogopenchange,
+		onbatchresetduplicatewarning,
 	}: WishlistModalsProps = $props();
 
 	// Reservation availability: everyone except the recipient (their own surprise) may reserve.
@@ -218,7 +222,9 @@
 		{wishlistTitle}
 		isSubmitting={isBatchSubmitting}
 		priorityAvailable={priorityLevels.length >= 2}
+		serverDuplicateCount={batchServerDuplicateCount}
 		onsubmit={onbatchsubmit}
+		onresetduplicatewarning={onbatchresetduplicatewarning}
 		onOpenChange={onbatchdialogopenchange}
 	/>
 {/if}

@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { RECIPIENT_KIND } from '$lib/modules/wishlists/types.js';
+import { DEFAULT_IMAGE_METADATA } from '$lib/modules/images/types.js';
 
 // ── Suppress SvelteKit's remote-function validator injected by the Vite transform
 vi.mock('@sveltejs/kit/internal', () => ({
@@ -58,6 +59,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		id: 'gift.id',
 		wishlistId: 'gift.wishlistId',
 		name: 'gift.name',
+		links: 'gift.links',
 		sortOrder: 'gift.sortOrder',
 		deletedAt: 'gift.deletedAt',
 	},
@@ -157,8 +159,8 @@ const callFetch = fetchGoogleSheetCsv as unknown as FetchHandler;
 
 type ImportGiftsHandler = (
 	authContext: { user: { id: string } },
-	input: { wishlistId: string; gifts: unknown[] },
-) => Promise<unknown[]>;
+	input: { wishlistId: string; gifts: unknown[]; acknowledgeDuplicates?: boolean },
+) => Promise<unknown>;
 const callImportGifts = importGifts as unknown as ImportGiftsHandler;
 
 type CreateFromImportHandler = (
@@ -332,10 +334,28 @@ describe('fetchGoogleSheetCsv', () => {
 });
 
 describe('importGifts', () => {
+	it('maps gift creation domain failures to the public SvelteKit status and message', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
+		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([]);
+
+		await expect(
+			callImportGifts(AUTH, { wishlistId: WISHLIST_ID, gifts: [draftA] }),
+		).rejects.toMatchObject({
+			status: 500,
+			message: SERVER_ERROR.FAILED_TO_CREATE_GIFT,
+		});
+	});
+
 	it('appends gifts atomically with sequential sortOrder continuing from the current max', async () => {
 		mockDbInstance.pushResult([makeWishlistRow()]); // verifyOwnerOrModerator: wishlist (owner)
-		mockDbInstance.pushResult([{ maxSort: 4 }]); // max sortOrder
+		mockDbInstance.pushResult([]); // advisory wishlist lock
 		mockDbInstance.pushResult(RANKED_LEVELS); // ranked priority levels
+		mockDbInstance.pushResult([makeWishlistRow()]); // service wishlist lock
+		mockDbInstance.pushResult([{ maxSort: 4 }]); // max sortOrder
 		mockDbInstance.pushResult([
 			{ id: 'g5', sortOrder: 5 },
 			{ id: 'g6', sortOrder: 6 },
@@ -353,13 +373,15 @@ describe('importGifts', () => {
 		expect(rows!.map((r) => r.name)).toEqual(['Boty', 'Kniha']);
 		// draftA = medium → rank 1, draftB = high → rank 0.
 		expect(rows!.map((r) => r.priorityLevelId)).toEqual(['pl-medium', 'pl-high']);
-		expect(result).toHaveLength(2);
+		expect(result).toMatchObject({ status: 'created', gifts: [{ id: 'g5' }, { id: 'g6' }] });
 	});
 
 	it('starts sortOrder at 0 for an empty wishlist (COALESCE -1)', async () => {
 		mockDbInstance.pushResult([makeWishlistRow()]);
-		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
 		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
 		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
 
 		await callImportGifts(AUTH, { wishlistId: WISHLIST_ID, gifts: [draftA] });
@@ -370,8 +392,10 @@ describe('importGifts', () => {
 	it('lets a moderator append gifts', async () => {
 		mockDbInstance.pushResult([makeWishlistRow({ recipientUserId: 'someone-else' })]); // not the recipient
 		mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]); // moderator check
-		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
 		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([makeWishlistRow({ recipientUserId: 'someone-else' })]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
 		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
 
 		const result = await callImportGifts(
@@ -379,13 +403,16 @@ describe('importGifts', () => {
 			{ wishlistId: WISHLIST_ID, gifts: [draftA] },
 		);
 
-		expect(result).toHaveLength(1);
+		expect(result).toMatchObject({ status: 'created', gifts: [{ id: 'g1' }] });
 	});
 
 	it('normalizes links, dropping non-http(s) URLs on insert', async () => {
 		mockDbInstance.pushResult([makeWishlistRow()]);
-		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
 		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([]); // pre-commit duplicate advisory
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
 		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
 
 		await callImportGifts(AUTH, {
@@ -402,6 +429,99 @@ describe('importGifts', () => {
 		});
 
 		expect(giftInsertRows()![0].links).toEqual([{ url: 'https://example.com/ok' }]);
+	});
+
+	it('persists reviewed image URL and quantity through the shared creation service', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
+		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
+
+		await callImportGifts(AUTH, {
+			wishlistId: WISHLIST_ID,
+			gifts: [
+				{
+					...draftA,
+					imageUrl: 'https://images.example.test/gift.jpg',
+					quantity: 4,
+				},
+			],
+		});
+
+		expect(giftInsertRows()![0]).toMatchObject({
+			imageUrl: 'https://images.example.test/gift.jpg',
+			imageKey: null,
+			imageMeta: DEFAULT_IMAGE_METADATA,
+			quantity: 4,
+		});
+	});
+
+	it('requires an explicit second acknowledgement before inserting canonical-link duplicates', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
+		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([
+			{ id: 'existing', links: [{ url: 'https://www.example.com/item/?ref=old' }] },
+		]);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]); // retry advisory wishlist lock
+		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([
+			{ id: 'existing', links: [{ url: 'https://www.example.com/item/?ref=old' }] },
+		]);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: 0 }]);
+		mockDbInstance.pushResult([{ id: 'new', sortOrder: 1 }]);
+
+		const inputDraft = {
+			...draftA,
+			links: [{ url: 'https://example.com/item?ref=new#details' }],
+		};
+		const warning = await callImportGifts(AUTH, {
+			wishlistId: WISHLIST_ID,
+			gifts: [inputDraft],
+		});
+		expect(warning).toEqual({ status: 'duplicate-warning', duplicateIndexes: [0] });
+		expect(transactionOpened()).toBe(true);
+		expect(giftInsertRows()).toBeUndefined();
+		const created = await callImportGifts(AUTH, {
+			wishlistId: WISHLIST_ID,
+			gifts: [inputDraft],
+			acknowledgeDuplicates: true,
+		});
+		expect(created).toMatchObject({ status: 'created', gifts: [{ id: 'new' }] });
+		expect(giftInsertRows()![0].links).toEqual(inputDraft.links);
+	});
+
+	it('appends an acknowledged canonical duplicate while preserving alternative links', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
+		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([
+			{ id: 'existing', links: [{ url: 'https://example.com/existing?ref=old' }] },
+		]);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: 0 }]);
+		mockDbInstance.pushResult([{ id: 'new', sortOrder: 1 }]);
+
+		const inputDraft = {
+			...draftA,
+			links: [
+				{ url: 'https://example.com/existing?ref=new' },
+				{ url: 'https://example.com/alternative' },
+			],
+		};
+		const result = await callImportGifts(AUTH, {
+			wishlistId: WISHLIST_ID,
+			gifts: [inputDraft],
+			acknowledgeDuplicates: true,
+		});
+
+		expect(result).toMatchObject({ status: 'created', gifts: [{ id: 'new' }] });
+		expect(transactionOpened()).toBe(true);
+		expect(giftInsertRows()![0].links).toEqual(inputDraft.links);
 	});
 
 	it('throws 403 when the caller is neither recipient nor moderator', async () => {
@@ -440,7 +560,7 @@ describe('importGifts', () => {
 
 		const result = await callImportGifts(AUTH, { wishlistId: WISHLIST_ID, gifts: [] });
 
-		expect(result).toEqual([]);
+		expect(result).toEqual({ status: 'created', gifts: [] });
 		expect(giftInsertRows()).toBeUndefined();
 	});
 });
@@ -475,7 +595,12 @@ describe('createWishlistFromImport', () => {
 		mockDbInstance.pushResult([createdWishlist]); // insert wishlist returning
 		mockDbInstance.pushResult([]); // insert priority levels
 		mockDbInstance.pushResult(RANKED_LEVELS); // ranked priority levels
-		mockDbInstance.pushResult([]); // insert gifts
+		mockDbInstance.pushResult([createdWishlist]); // service wishlist lock
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([
+			{ id: 'g1', name: 'Boty' },
+			{ id: 'g2', name: 'Kniha' },
+		]); // insert gifts
 
 		const result = await callCreateFromImport(AUTH, {
 			recipientKind: RECIPIENT_KIND.self,
@@ -520,7 +645,9 @@ describe('createWishlistFromImport', () => {
 		mockDbInstance.pushResult([]); // insert moderatorAssignment (creator = first správce)
 		mockDbInstance.pushResult([]); // insert priority levels
 		mockDbInstance.pushResult(RANKED_LEVELS); // ranked priority levels
-		mockDbInstance.pushResult([]); // insert gifts
+		mockDbInstance.pushResult([createdWishlist]); // service wishlist lock
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([{ id: 'g1', name: 'Boty' }]); // insert gifts
 
 		const result = await callCreateFromImport(AUTH, {
 			recipientKind: RECIPIENT_KIND.other,
@@ -582,7 +709,11 @@ describe('createWishlistFromImport', () => {
 		mockDbInstance.pushResult([{ id: 'new-wl', recipientUserId: OWNER_ID }]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult(RANKED_LEVELS);
-		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([
+			{ id: 'new-wl', shortId: 'sh', title: 'My List', recipientUserId: OWNER_ID },
+		]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([{ id: 'g1', name: 'Kniha' }]);
 
 		await callCreateFromImport(AUTH, {
 			recipientKind: RECIPIENT_KIND.self,

@@ -240,6 +240,16 @@ describe('CreateWishlistInputSchema', () => {
 });
 
 describe('CreateGiftInputSchema', () => {
+	it('rejects caller-supplied sortOrder because append ordering is server-owned', () => {
+		const result = parseSuccess(CreateGiftInputSchema, {
+			wishlistId: 'wl-1',
+			name: 'Nice Book',
+			sortOrder: 99,
+		});
+
+		expect(result.success).toBe(false);
+	});
+
 	it('accepts valid input with required fields only', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',

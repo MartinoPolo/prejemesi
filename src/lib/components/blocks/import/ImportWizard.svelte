@@ -20,9 +20,14 @@
 		type WizardStep,
 		type CommitStatus,
 	} from './import_wizard_types.js';
-	import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
+	import type { ValidatedGiftDraft } from '$lib/modules/gifts/gift_draft.js';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 	import { importGifts, createWishlistFromImport } from '$lib/modules/import/import.remote.js';
+	import {
+		createDuplicateAwareImportState,
+		resetDuplicateAwareImportState,
+		submitDuplicateAwareImport,
+	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { findDuplicates } from '$lib/modules/gifts/gift_draft.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
@@ -79,9 +84,11 @@
 	let currentStep = $state<WizardStep>(WIZARD_STEP.source);
 	let parsedRows = $state<string[][]>([]);
 	let filename = $state<string | undefined>(undefined);
-	let selectedDrafts = $state<GiftDraft[]>([]);
+	let selectedDrafts = $state<ValidatedGiftDraft[]>([]);
 	let reviewTitle = $state<string | undefined>(undefined);
 	let commitStatus = $state<CommitStatus>(COMMIT_STATUS.idle);
+	let duplicateSubmissionState = $state(createDuplicateAwareImportState<ValidatedGiftDraft>());
+	let selectedDraftSignature = $state('');
 
 	// Recipient choice (new-list mode only). Typed as string to match ToggleGroup's
 	// single-select value binding; comparisons against RECIPIENT_KIND narrow it.
@@ -163,14 +170,24 @@
 		return false;
 	});
 
+	function resetServerDuplicateAcknowledgement() {
+		duplicateSubmissionState = resetDuplicateAwareImportState<ValidatedGiftDraft>();
+	}
+
 	function handleSourceParsed(result: { rows: string[][]; filename?: string }) {
+		resetServerDuplicateAcknowledgement();
 		parsedRows = result.rows;
 		filename = result.filename;
 		// Auto-advance to review
 		currentStep = WIZARD_STEP.review;
 	}
 
-	function handleReviewReady(data: { drafts: GiftDraft[]; title?: string }) {
+	function handleReviewReady(data: { drafts: ValidatedGiftDraft[]; title?: string }) {
+		const nextSignature = JSON.stringify(data.drafts);
+		if (nextSignature !== selectedDraftSignature) {
+			resetServerDuplicateAcknowledgement();
+			selectedDraftSignature = nextSignature;
+		}
 		selectedDrafts = data.drafts;
 		reviewTitle = data.title;
 	}
@@ -212,10 +229,17 @@
 				if (wishlistId == null) {
 					throw new Error('wishlistId is required in append mode');
 				}
-				await importGifts({
+				const submission = await submitDuplicateAwareImport({
+					command: (request) => importGifts(request),
 					wishlistId,
-					gifts: selectedDrafts,
+					drafts: selectedDrafts,
+					state: duplicateSubmissionState,
 				});
+				duplicateSubmissionState = submission.state;
+				if (submission.result.status === 'duplicate-warning') {
+					commitStatus = COMMIT_STATUS.idle;
+					return { shortId: '' };
+				}
 				commitStatus = COMMIT_STATUS.success;
 				onsuccess?.();
 				return { shortId: wishlistShortId ?? wishlistId };
@@ -244,8 +268,10 @@
 		if (currentStep === WIZARD_STEP.confirm) {
 			currentStep = WIZARD_STEP.review;
 			commitStatus = COMMIT_STATUS.idle;
+			resetServerDuplicateAcknowledgement();
 		} else if (currentStep === WIZARD_STEP.review) {
 			currentStep = WIZARD_STEP.source;
+			resetServerDuplicateAcknowledgement();
 			parsedRows = [];
 			filename = undefined;
 			titleTouched = false;
@@ -261,6 +287,8 @@
 		selectedDrafts = [];
 		reviewTitle = undefined;
 		commitStatus = COMMIT_STATUS.idle;
+		resetServerDuplicateAcknowledgement();
+		selectedDraftSignature = '';
 		recipientKind = RECIPIENT_KIND.self;
 		recipientName = '';
 		titleTouched = false;
@@ -411,6 +439,7 @@
 					title={reviewTitle}
 					{wishlistTitle}
 					{duplicateCount}
+					serverDuplicateCount={duplicateSubmissionState.duplicateCount}
 					oncommit={handleCommit}
 					{commitStatus}
 					{suppressNavigation}

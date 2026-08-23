@@ -23,6 +23,7 @@
 		"format": "prettier --write .",
 		"test": "vitest",
 		"test:e2e": "playwright test",
+		"ingest:gifts": "tsx scripts/ingest-gifts.ts",
 		"loadtest": "tsx tests/load/run.ts",
 		"loadtest:setup": "tsx tests/load/setup.ts",
 		"loadtest:cleanup": "tsx tests/load/cleanup.ts",

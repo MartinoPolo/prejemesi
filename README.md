@@ -212,9 +212,10 @@ tests/e2e/                   # Playwright E2E tests
 
 Each domain module exposes a small public API via `index.ts`. Client–server communication uses
 SvelteKit **remote functions** (`*.remote.ts`) – `query` for reads, `form` for progressive-enhancement
-mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. No traditional
-`+page.server.ts` load functions or `+server.ts` routes (except the BetterAuth catch-all and the upload
-proxy).
+mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. Traditional
+`+page.server.ts` load functions and general REST-style `+server.ts` routes are not used. The only
+purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, and the fixed-target
+internal gift-ingestion endpoint for authenticated machine ingestion.
 
 ## Code Conventions
 

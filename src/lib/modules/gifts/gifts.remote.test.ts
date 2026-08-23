@@ -210,7 +210,6 @@ vi.mock('$lib/server/storage/r2.js', () => ({
 
 import {
 	getGiftsByWishlistShortId,
-	createGift,
 	updateGift,
 	deleteGift,
 	reorderGifts,
@@ -303,11 +302,6 @@ type GetGiftsHandler = (
 	shortId: string,
 ) => Promise<{ role: string; gifts: unknown[] }>;
 
-type CreateGiftHandler = (
-	authContext: { user: { id: string } },
-	input: Record<string, unknown>,
-) => Promise<unknown>;
-
 type UpdateGiftHandler = (
 	authContext: { user: { id: string } },
 	input: Record<string, unknown>,
@@ -325,7 +319,6 @@ type MarkReceivedHandler = (
 ) => Promise<unknown>;
 
 const callGetGifts = getGiftsByWishlistShortId as unknown as GetGiftsHandler;
-const callCreateGift = createGift as unknown as CreateGiftHandler;
 const callUpdateGift = updateGift as unknown as UpdateGiftHandler;
 const callDeleteGift = deleteGift as unknown as DeleteGiftHandler;
 const callReorderGifts = reorderGifts as unknown as ReorderGiftsHandler;
@@ -696,149 +689,6 @@ describe('getGiftsByWishlistShortId', () => {
 			const gift = result.gifts[0] as GiftForVisitor;
 			expect(gift.links).toEqual(links);
 			expect(gift.reservedCount).toBe(0);
-		});
-	});
-});
-
-describe('createGift', () => {
-	const createInput = {
-		wishlistId: WISHLIST_ID,
-		name: 'New Gift',
-	};
-
-	describe('recipient can create a gift', () => {
-		it('returns the created gift row', async () => {
-			// verifyManagerAccess: wishlist lookup (recipientUserId matches → recipient, no moderator query)
-			mockDbInstance.pushResult([makeWishlistRow()]);
-			// maxSortOrder query
-			mockDbInstance.pushResult([{ maxSort: 0 }]);
-			// insert returning
-			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
-
-			const result = await callCreateGift(makeRecipientAuthContext(), createInput);
-
-			expect(result).toMatchObject({ id: 'new-gift-id', name: 'New Gift' });
-		});
-
-		it('persists image metadata on create', async () => {
-			const imageMeta = {
-				fitMode: 'cover-crop',
-				focal: { x: 60, y: 40 },
-				zoom: 1.5,
-			};
-			const inputWithMeta = { ...createInput, imageKey: 'gifts/x.jpg', imageMeta };
-			mockDbInstance.pushResult([makeWishlistRow()]);
-			mockDbInstance.pushResult([{ maxSort: 0 }]);
-			mockDbInstance.pushResult([{ id: 'new-gift-id', ...inputWithMeta, sortOrder: 1 }]);
-
-			const result = await callCreateGift(makeRecipientAuthContext(), inputWithMeta);
-
-			expect(result).toMatchObject({ id: 'new-gift-id', imageMeta });
-		});
-
-		it('persists priceMax on create', async () => {
-			const inputWithRange = { ...createInput, price: 1200, priceMax: 1500 };
-			mockDbInstance.pushResult([makeWishlistRow()]);
-			mockDbInstance.pushResult([{ maxSort: 0 }]);
-			mockDbInstance.pushResult([{ id: 'new-gift-id', ...inputWithRange, sortOrder: 1 }]);
-
-			await callCreateGift(makeRecipientAuthContext(), inputWithRange);
-
-			const giftInsertValues = mockDbInstance.calls
-				.filter((call) => call.method === 'values')
-				.at(0)?.args[0] as { price: number; priceMax: number };
-			expect(giftInsertValues).toMatchObject({ price: 1200, priceMax: 1500 });
-		});
-
-		it('drops links whose URL is not http or https when storing', async () => {
-			mockDbInstance.pushResult([makeWishlistRow()]);
-			mockDbInstance.pushResult([{ maxSort: 0 }]);
-			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
-
-			await callCreateGift(makeRecipientAuthContext(), {
-				...createInput,
-				links: [
-					{ url: ' javascript://example.com/%0Aalert(1)' },
-					{ url: 'https://example.com/ok' },
-				],
-			});
-
-			const giftInsertValues = mockDbInstance.calls
-				.filter((call) => call.method === 'values')
-				.at(0)?.args[0] as { links: { url: string; label?: string }[] };
-			expect(giftInsertValues.links).toEqual([{ url: 'https://example.com/ok' }]);
-		});
-
-		it('stores up to 10 links and drops the rest, preserving order and labels', async () => {
-			mockDbInstance.pushResult([makeWishlistRow()]);
-			mockDbInstance.pushResult([{ maxSort: 0 }]);
-			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 1 }]);
-
-			const inputLinks = Array.from({ length: 12 }, (_, i) => ({
-				url: `https://example.com/${i}`,
-				label: `Shop ${i}`,
-			}));
-
-			await callCreateGift(makeRecipientAuthContext(), { ...createInput, links: inputLinks });
-
-			const giftInsertValues = mockDbInstance.calls
-				.filter((call) => call.method === 'values')
-				.at(0)?.args[0] as { links: { url: string; label?: string }[] };
-			expect(giftInsertValues.links).toHaveLength(10);
-			expect(giftInsertValues.links[0]).toEqual({
-				url: 'https://example.com/0',
-				label: 'Shop 0',
-			});
-			expect(giftInsertValues.links[9]).toEqual({
-				url: 'https://example.com/9',
-				label: 'Shop 9',
-			});
-		});
-	});
-
-	describe('moderator can create a gift', () => {
-		it('returns the created gift row', async () => {
-			// verifyManagerAccess: wishlist lookup (moderator user, not the recipient)
-			mockDbInstance.pushResult([makeWishlistRow()]);
-			// verifyManagerAccess: moderator check
-			mockDbInstance.pushResult([{ id: 'mod-assignment-1' }]);
-			// maxSortOrder query
-			mockDbInstance.pushResult([{ maxSort: 2 }]);
-			// insert returning
-			mockDbInstance.pushResult([{ id: 'new-gift-id', ...createInput, sortOrder: 3 }]);
-
-			const result = await callCreateGift(makeModeratorAuthContext(), createInput);
-
-			expect(result).toMatchObject({ id: 'new-gift-id' });
-		});
-	});
-
-	describe('unauthorized user gets 403 ACCESS_DENIED', () => {
-		it('throws 403 when user is neither recipient nor moderator', async () => {
-			// verifyManagerAccess: wishlist lookup (recipient is RECIPIENT_ID, caller is VISITOR_ID)
-			mockDbInstance.pushResult([makeWishlistRow()]);
-			// moderator check returns empty → role resolves to visitor
-			mockDbInstance.pushResult([]);
-
-			await expect(
-				callCreateGift(makeVisitorAuthContext(), createInput),
-			).rejects.toMatchObject({
-				status: 403,
-				message: SERVER_ERROR.ACCESS_DENIED,
-			});
-		});
-	});
-
-	describe('archived wishlist', () => {
-		it('rejects creating gifts on archived wishlists', async () => {
-			mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
-
-			await expect(
-				callCreateGift(makeRecipientAuthContext(), createInput),
-			).rejects.toMatchObject({
-				status: 400,
-				message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
-			});
 		});
 	});
 });
@@ -1784,20 +1634,5 @@ describe('statement budgets (issue #108, REQ-7)', () => {
 		await callGetGifts(makeVisitorAuthContext(), WISHLIST_SHORT_ID);
 
 		expect(statementCount()).toBeLessThanOrEqual(6);
-	});
-
-	it('createGift (recipient, no followers to notify) stays within 4 statements', async () => {
-		mockDbInstance.pushResult([makeWishlistRow()]); // verifyManagerAccess: wishlist lookup
-		mockDbInstance.pushResult([{ maxSort: 0 }]); // max sortOrder
-		mockDbInstance.pushResult([{ id: 'budget-gift-id', name: 'Budget Gift' }]); // insert
-		// followers select → [] (queue default) → notification dispatch early-returns
-
-		await callCreateGift(makeRecipientAuthContext(), {
-			wishlistId: WISHLIST_ID,
-			name: 'Budget Gift',
-			links: [],
-		});
-
-		expect(statementCount()).toBeLessThanOrEqual(4);
 	});
 });

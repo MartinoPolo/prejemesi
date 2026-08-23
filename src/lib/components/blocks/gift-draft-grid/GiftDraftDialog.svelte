@@ -3,7 +3,9 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
-	import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
+	import * as Alert from '$lib/components/base/alert/index.js';
+	import AlertTriangleIcon from '@lucide/svelte/icons/triangle-alert';
+	import type { ValidatedGiftDraft } from '$lib/modules/gifts/gift_draft.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftGrid from './GiftDraftGrid.svelte';
 	import { DRAFT_GRID_CONTEXT, type DraftGridChange } from './gift_draft_grid_model.js';
@@ -14,7 +16,9 @@
 		isSubmitting?: boolean;
 		/** Show the priority heart column (hidden when the wishlist lacks ≥2 levels). */
 		priorityAvailable?: boolean;
-		onsubmit?: (drafts: GiftDraft[]) => void;
+		serverDuplicateCount?: number;
+		onsubmit?: (drafts: ValidatedGiftDraft[]) => void;
+		onresetduplicatewarning?: () => void;
 		oncancel?: () => void;
 		onOpenChange?: (open: boolean) => void;
 	}
@@ -24,22 +28,33 @@
 		wishlistTitle = '',
 		isSubmitting = false,
 		priorityAvailable = true,
+		serverDuplicateCount = 0,
 		onsubmit,
+		onresetduplicatewarning,
 		oncancel,
 		onOpenChange,
 	}: Props = $props();
 
-	let drafts = $state<GiftDraft[]>([]);
+	let drafts = $state<ValidatedGiftDraft[]>([]);
 	let validCount = $state(0);
+	let blockingCount = $state(0);
+	let draftSignature = $state('');
 	let gridKey = $state(0);
+	const canSubmit = $derived(validCount > 0 && blockingCount === 0);
 
 	function handleChange(change: DraftGridChange) {
+		const nextSignature = JSON.stringify(change.drafts);
+		if (serverDuplicateCount > 0 && nextSignature !== draftSignature) {
+			onresetduplicatewarning?.();
+		}
+		draftSignature = nextSignature;
 		drafts = change.drafts;
 		validCount = change.validCount;
+		blockingCount = change.blockingCount;
 	}
 
 	function handleSubmit() {
-		if (validCount === 0) {
+		if (!canSubmit) {
 			return;
 		}
 		onsubmit?.(drafts);
@@ -66,7 +81,9 @@
 		untrack(() => {
 			gridKey++;
 			drafts = [];
+			draftSignature = '';
 			validCount = 0;
+			blockingCount = 0;
 		});
 	}
 </script>
@@ -98,8 +115,23 @@
 			{/key}
 		</div>
 
+		{#if serverDuplicateCount > 0}
+			<div class="border-t border-border px-6 pt-4">
+				<Alert.Root tone="warning">
+					<AlertTriangleIcon class="size-4" />
+					<Alert.Description>
+						{m.batch_add_server_duplicates({ count: serverDuplicateCount })}
+					</Alert.Description>
+				</Alert.Root>
+			</div>
+		{/if}
+
 		<Dialog.Footer class="flex flex-wrap items-center gap-4 border-t border-border px-6 py-4">
-			{#if validCount === 0 && !isSubmitting}
+			{#if blockingCount > 0 && !isSubmitting}
+				<HelpText state="error" class="m-0">
+					{m.draft_grid_commit_hint_blocked_rows()}
+				</HelpText>
+			{:else if validCount === 0 && !isSubmitting}
 				<HelpText state="error" class="m-0">{m.draft_grid_commit_hint_blocking()}</HelpText>
 			{:else if validCount > 0}
 				<span class="text-xs text-muted-foreground">
@@ -110,11 +142,7 @@
 			<Button intent="ghost" onclick={handleCancel} disabled={isSubmitting}>
 				{m.draft_grid_dialog_cancel()}
 			</Button>
-			<Button
-				intent="primary"
-				disabled={validCount === 0 || isSubmitting}
-				onclick={handleSubmit}
-			>
+			<Button intent="primary" disabled={!canSubmit || isSubmitting} onclick={handleSubmit}>
 				{#if isSubmitting}
 					{m.batch_add_submit_pending()}
 				{:else}

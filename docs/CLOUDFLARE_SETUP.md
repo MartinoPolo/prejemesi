@@ -276,10 +276,14 @@ pnpm dev
 Keep `.env`'s `DATABASE_URL` pointed at the local Docker DB
 (`postgres://root:mysecretpassword@localhost:5432/local`). The app auto-detects:
 no Hyperdrive/R2 bindings locally → falls back to `DATABASE_URL` + in-memory
-image store. So **local dev needs zero Cloudflare access**.
+image store. So **local dev needs zero Cloudflare access**. The internal ingestion endpoint is the
+exception: it fails closed when the Workers rate-limit binding is unavailable; use `pnpm preview`
+when locally exercising that endpoint.
 
 To test against **real Cloudflare bindings** locally: `wrangler dev --remote`
-(after `vite build`) – uses the actual Hyperdrive + R2. Run `pnpm cf:types`
+(after `vite build`) – uses the actual Hyperdrive + R2. Local Wrangler simulates the
+`GIFT_INGESTION_RATE_LIMIT` binding declared in `wrangler.jsonc`; production counters span isolates
+at a Cloudflare location and synchronize approximately across locations. Run `pnpm cf:types`
 after changing bindings to regenerate types.
 
 ---
