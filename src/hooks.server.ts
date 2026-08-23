@@ -1,18 +1,31 @@
 import { dev } from '$app/environment';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import * as Sentry from '@sentry/sveltekit';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, getTextDirection, type Locale } from '$lib/paraglide/runtime';
 import { isDatabaseConfigured, rememberDatabaseBinding } from '$lib/server/db/index.js';
 import { SITE_URL, WWW_HOSTNAME } from '$lib/config/site.js';
 import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
+import { createSentryServerOptions } from '$lib/observability/sentry_server.js';
 import {
 	DEFAULT_PALETTE,
 	PALETTE_COOKIE_NAME,
 	isPalette,
 	type Palette,
 } from '$lib/theme/palettes.js';
+
+const sentryInitializationHandle: Handle = ({ event, resolve }) => {
+	const dsn = event.platform?.env.PUBLIC_SENTRY_DSN?.trim();
+	return Sentry.initCloudflareSentryHandle(
+		createSentryServerOptions({
+			dsn,
+			environment: dev ? 'development' : 'production',
+			release: event.platform?.env.GIT_COMMIT_SHA,
+		}),
+	)({ event, resolve });
+};
 
 function setSecurityHeaders(headers: Headers, url: URL) {
 	headers.set('X-Content-Type-Options', 'nosniff');
@@ -260,6 +273,8 @@ const authHandle: Handle = async ({ event, resolve }) => {
 };
 
 const handles: Handle[] = [
+	sentryInitializationHandle,
+	Sentry.sentryHandle(),
 	requestTelemetryHandle,
 	securityHeadersHandle,
 	canonicalHostHandle,
@@ -271,7 +286,7 @@ const handles: Handle[] = [
 
 export const handle = sequence(...handles);
 
-export const handleError: HandleServerError = ({ error, event, status, message }) => {
+const logServerError: HandleServerError = ({ error, event, status, message }) => {
 	console.error({
 		event: 'server_error',
 		routeId: event.route.id ?? 'unmatched',
@@ -284,3 +299,5 @@ export const handleError: HandleServerError = ({ error, event, status, message }
 
 	return { message };
 };
+
+export const handleError = Sentry.handleErrorWithSentry(logServerError);
