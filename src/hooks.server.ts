@@ -20,7 +20,7 @@ let initializedSentryHandle: Handle | undefined;
 
 const sentryInitializationHandle: Handle = ({ event, resolve }) => {
 	const dsn = event.platform?.env.PUBLIC_SENTRY_DSN?.trim();
-	if (!dsn) {
+	if (dsn === undefined || dsn === '') {
 		return resolve(event);
 	}
 

@@ -3,10 +3,11 @@ import { env } from '$env/dynamic/public';
 import type { ClientInit, HandleClientError } from '@sveltejs/kit';
 
 const dsn = env.PUBLIC_SENTRY_DSN?.trim();
+const hasDsn = dsn !== undefined && dsn !== '';
 
 // Sentry's browser SDK and Replay pull hundreds of modules into an unbundled dev page.
 // Keep the optional integration out of the client graph when no DSN is configured.
-const sentryErrorHandlerPromise = dsn
+const sentryErrorHandlerPromise = hasDsn
 	? Promise.all([
 			import('@sentry/sveltekit'),
 			import('$lib/observability/sentry_client.js'),
