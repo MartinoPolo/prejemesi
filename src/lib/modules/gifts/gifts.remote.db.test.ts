@@ -52,7 +52,7 @@ import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift } from '$lib/server/db/gift.schema.js';
 import { newGiftDigestState, notification } from '$lib/server/db/notification.schema.js';
-import { createGift } from './gifts.remote.js';
+import { createGift, updateGift } from './gifts.remote.js';
 import { importGifts, type ImportGiftsResult } from '../import/import.remote.js';
 import { parseNewGiftDigestPayload } from '$lib/modules/notifications/new_gift_digest.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
@@ -96,6 +96,7 @@ type CreateGiftHandler = (
 	input: Record<string, unknown>,
 ) => Promise<typeof gift.$inferSelect>;
 const callCreateGift = createGift as unknown as CreateGiftHandler;
+const callUpdateGift = updateGift as unknown as CreateGiftHandler;
 type ImportGiftsHandler = (
 	auth: { user: { id: string } },
 	input: {
@@ -272,6 +273,22 @@ describe.skipIf(!DB_READY)('createGift remote boundary [real DB]', () => {
 			userId: FOLLOWER_ID,
 			windowEndsAt: digestRows[0]?.visibleAt,
 		});
+	});
+
+	it('round-trips decimal single and range prices through create and update', async () => {
+		const single = await callCreateGift(
+			{ user: { id: ACTOR_ID } },
+			{ wishlistId: WISHLIST_ID, name: 'Decimal single', price: 49.9, currency: 'EUR' },
+		);
+		let [stored] = await getDb().select().from(gift).where(eq(gift.id, single.id));
+		expect(stored).toMatchObject({ price: 49.9, priceMax: null });
+
+		await callUpdateGift(
+			{ user: { id: ACTOR_ID } },
+			{ id: single.id, price: 19.95, priceMax: 29.99 },
+		);
+		[stored] = await getDb().select().from(gift).where(eq(gift.id, single.id));
+		expect(stored).toMatchObject({ price: 19.95, priceMax: 29.99 });
 	});
 
 	it('coalesces create and import gifts across wishlists into one recipient-global digest', async () => {

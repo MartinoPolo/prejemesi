@@ -42,30 +42,6 @@ describe('consumeGiftDeepLink', () => {
 		expect(onOpen).not.toHaveBeenCalled();
 	});
 
-	it('does not reopen a consumed gift after the dialog closes and data refreshes', () => {
-		let currentUrl = new URL('https://prejemesi.cz/w/list-1?gift=gift-1');
-		let modalOpen = false;
-		const openGift = vi.fn(() => {
-			modalOpen = true;
-		});
-		const consumeCurrentMarker = () =>
-			consumeGiftDeepLink({
-				url: currentUrl,
-				gifts,
-				onConsume: (cleanedUrl) => {
-					currentUrl = cleanedUrl;
-				},
-				onOpen: openGift,
-			});
-
-		consumeCurrentMarker();
-		modalOpen = false;
-		consumeCurrentMarker();
-
-		expect(modalOpen).toBe(false);
-		expect(openGift).toHaveBeenCalledOnce();
-	});
-
 	it('opens a later gift when a new notification navigation supplies a new marker', () => {
 		let currentUrl = new URL('https://prejemesi.cz/w/list-1?gift=gift-1');
 		const openGift = vi.fn();

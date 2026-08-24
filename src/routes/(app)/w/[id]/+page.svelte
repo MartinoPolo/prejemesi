@@ -20,7 +20,10 @@
 		isWishlistSettingsTab,
 		type WishlistSettingsTab,
 	} from '$lib/components/blocks/wishlist/wishlist_settings_modal_types.js';
-	import { WISHLIST_SETTINGS_QUERY_PARAM } from '$lib/modules/wishlists/wishlist_query_params.js';
+	import {
+		WISHLIST_GIFT_QUERY_PARAM,
+		WISHLIST_SETTINGS_QUERY_PARAM,
+	} from '$lib/modules/wishlists/wishlist_query_params.js';
 	import { consumeGiftDeepLink } from '$lib/modules/wishlists/gift_deep_link.js';
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
@@ -806,7 +809,13 @@
 	});
 
 	// Gift deep-link from an in-app notification (issue #204): /w/<shortId>?gift=<id> opens
-	// that gift's detail modal. Gifts load client-side only (see giftsQuery above), so this is
+	// that gift's detail modal. Track the page URL objects already consumed because replaceState
+	// updates the address bar without synchronously replacing `page.url`; closing the modal can
+	// otherwise re-run the effect against that stale marked URL and reopen the gift. A later
+	// navigation supplies a new URL object and is therefore eligible again.
+	const consumedGiftDeepLinkUrls = new WeakSet<URL>();
+
+	// Gifts load client-side only (see giftsQuery above), so this is
 	// an $effect (not afterNavigate) — it must re-run once that query settles, not just on
 	// navigation. A gift missing from the loaded list (deleted/archived, REQ-3) is not an
 	// error: the marker is cleared and the visitor simply stays on the wishlist.
@@ -818,11 +827,15 @@
 	// keeps its typed values across that prop swap, and the next submit would overwrite the
 	// deep-linked gift with them (production data-corruption incident, 2026-08-04).
 	$effect(() => {
-		if (isGiftDataLoading) {
+		const currentUrl = page.url;
+		if (isGiftDataLoading || consumedGiftDeepLinkUrls.has(currentUrl)) {
 			return;
 		}
+		if (currentUrl.searchParams.has(WISHLIST_GIFT_QUERY_PARAM)) {
+			consumedGiftDeepLinkUrls.add(currentUrl);
+		}
 		consumeGiftDeepLink({
-			url: page.url,
+			url: currentUrl,
 			gifts,
 			canOpen: !giftModalOpen,
 			onConsume: (cleanedUrl) => {

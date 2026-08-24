@@ -50,11 +50,11 @@ export const gift = pgTable(
 			.$type<GiftLink[]>()
 			.notNull()
 			.default(sql`'[]'::jsonb`),
-		price: numeric('price', { mode: 'number' }),
+		price: numeric('price', { precision: 12, scale: 2, mode: 'number' }),
 		// Non-binding upper bound of a price range (issue #155): non-null makes `price` the lower
 		// bound and displays as "min–max <currency>" (a hint, never scraped/binding). Null = single
 		// price, matching every pre-#155 row without a migration.
-		priceMax: numeric('price_max', { mode: 'number' }),
+		priceMax: numeric('price_max', { precision: 12, scale: 2, mode: 'number' }),
 		currency: text('currency').default('CZK'),
 		imageUrl: text('image_url'),
 		imageKey: text('image_key'),

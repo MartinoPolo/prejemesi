@@ -93,7 +93,7 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		});
 
 		const priceInput = document.querySelector('#gift-price');
-		expect(priceInput).toHaveAttribute('step', 'any');
+		expect(priceInput).toHaveAttribute('step', '0.01');
 		expect(priceInput).toHaveValue(19.5);
 
 		await screen.getByRole('button', { name: m.save() }).click();
@@ -112,8 +112,8 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 
 		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
 		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
-		await expect.element(minInput).toHaveAttribute('step', 'any');
-		await expect.element(maxInput).toHaveAttribute('step', 'any');
+		await expect.element(minInput).toHaveAttribute('step', '0.01');
+		await expect.element(maxInput).toHaveAttribute('step', '0.01');
 		await expect.element(minInput).toHaveValue(19.5);
 		await expect.element(maxInput).toHaveValue(29.95);
 

@@ -35,6 +35,33 @@ const validManifest = {
 };
 
 describe('GiftIngestionManifestSchema', () => {
+	it('accepts decimal single and range prices', () => {
+		for (const gift of [
+			{ ...validManifest.items[0].gift, price: 19.95, priceMax: null },
+			{ ...validManifest.items[0].gift, price: 19.95, priceMax: 29.99 },
+		]) {
+			const manifest = {
+				...validManifest,
+				items: [{ ...validManifest.items[0], gift }],
+			};
+			expect(v.safeParse(GiftIngestionManifestSchema, manifest).success).toBe(true);
+		}
+	});
+
+	it('rejects overprecision, out-of-range prices, and reversed ranges', () => {
+		for (const gift of [
+			{ ...validManifest.items[0].gift, price: 19.999, priceMax: null },
+			{ ...validManifest.items[0].gift, price: 10_000_000_000, priceMax: null },
+			{ ...validManifest.items[0].gift, price: 29.99, priceMax: 19.95 },
+		]) {
+			const manifest = {
+				...validManifest,
+				items: [{ ...validManifest.items[0], gift }],
+			};
+			expect(v.safeParse(GiftIngestionManifestSchema, manifest).success).toBe(false);
+		}
+	});
+
 	it('accepts bounded strict ambiguities and rejects malformed or excessive entries', () => {
 		const ambiguity = {
 			itemId: 'camera-a7c',

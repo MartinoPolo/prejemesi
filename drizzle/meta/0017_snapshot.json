@@ -690,13 +690,13 @@
         },
         "price": {
           "name": "price",
-          "type": "numeric",
+          "type": "numeric(12,2)",
           "primaryKey": false,
           "notNull": false
         },
         "price_max": {
           "name": "price_max",
-          "type": "numeric",
+          "type": "numeric(12,2)",
           "primaryKey": false,
           "notNull": false
         },

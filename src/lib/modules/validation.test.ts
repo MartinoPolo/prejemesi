@@ -11,6 +11,7 @@ import {
 	CreateGiftInputSchema,
 	UpdateGiftInputSchema,
 	GIFT_CURRENCY_VALUES,
+	GiftPriceSchema,
 } from './gifts/types.js';
 import { ReserveGiftInputSchema } from './reservations/types.js';
 import {
@@ -237,6 +238,29 @@ describe('CreateWishlistInputSchema', () => {
 			expect(result.issues).toBeDefined();
 		});
 	});
+});
+
+describe('GiftPriceSchema', () => {
+	it.each([0, 2.01, 4_935_710_322.64, 1e2, 1e-2, 9_999_999_999.99])(
+		'accepts persistence-safe price %s',
+		(price) => {
+			expect(v.safeParse(GiftPriceSchema, price).success).toBe(true);
+		},
+	);
+
+	it.each([2.011, 19.999, 9_999_999_998.990001, 1e-7])(
+		'rejects price %s with more than two canonical decimal places',
+		(price) => {
+			expect(v.safeParse(GiftPriceSchema, price).success).toBe(false);
+		},
+	);
+
+	it.each([Number.POSITIVE_INFINITY, Number.NaN, -0.01, 10_000_000_000])(
+		'rejects non-finite or out-of-range price %s',
+		(price) => {
+			expect(v.safeParse(GiftPriceSchema, price).success).toBe(false);
+		},
+	);
 });
 
 describe('CreateGiftInputSchema', () => {

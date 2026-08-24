@@ -91,7 +91,7 @@ export function rowToDraft(row: DraftGridRow): GiftDraft {
 		name: row.name,
 		description: row.description.trim() === '' ? null : row.description,
 		links: row.links.filter((link) => link.url.trim() !== ''),
-		price: parsed !== null && Number.isFinite(parsed) ? parsed : null,
+		price: parsed,
 		currency: row.currency,
 		imageUrl: row.imageUrl.trim() || null,
 		quantity:
