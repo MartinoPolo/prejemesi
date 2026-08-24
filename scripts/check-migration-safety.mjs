@@ -8,20 +8,17 @@
  *
  * This script scans committed migrations in drizzle/*.sql for statements that
  * break that compatibility window (dropping/renaming tables or columns,
- * type rewrites, data deletion). Such statements are allowed only in an
- * explicitly acknowledged contract migration: the file must contain a comment
- *
- *   -- expand-contract: <why this is safe to run against the live app>
- *
- * stating why the currently deployed application no longer depends on the
- * dropped/renamed objects. Runs in check:all and CI.
+ * type rewrites, data deletion). Such statements are allowed only when the
+ * migration tag has a rationale in drizzle/meta/contract-migrations.json.
+ * Keeping the rationale outside SQL preserves the immutable hash recorded by
+ * Drizzle in production. Runs in check:all and CI.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 const MIGRATIONS_DIR = 'drizzle';
-const ACKNOWLEDGMENT_MARKER = /^\s*--\s*expand-contract:\s*\S+/m;
+const CONTRACT_MIGRATIONS_FILE = join(MIGRATIONS_DIR, 'meta', 'contract-migrations.json');
 
 /** Statements that break old-app ↔ new-schema compatibility or delete data. */
 const DESTRUCTIVE_PATTERNS = [
@@ -44,8 +41,22 @@ function stripSqlComments(sql) {
 const migrationFiles = readdirSync(MIGRATIONS_DIR)
 	.filter((name) => name.endsWith('.sql'))
 	.sort();
+const contractMigrations = JSON.parse(readFileSync(CONTRACT_MIGRATIONS_FILE, 'utf8'));
+if (
+	typeof contractMigrations !== 'object' ||
+	contractMigrations === null ||
+	Array.isArray(contractMigrations)
+) {
+	throw new Error(`${CONTRACT_MIGRATIONS_FILE} must contain an object of migration rationales`);
+}
+for (const [tag, rationale] of Object.entries(contractMigrations)) {
+	if (typeof rationale !== 'string' || rationale.trim().length === 0) {
+		throw new Error(`${CONTRACT_MIGRATIONS_FILE} has no rationale for ${tag}`);
+	}
+}
 
 const violations = [];
+const acknowledgedContracts = new Set();
 
 for (const fileName of migrationFiles) {
 	const filePath = join(MIGRATIONS_DIR, fileName);
@@ -56,9 +67,24 @@ for (const fileName of migrationFiles) {
 		pattern.test(executableSql),
 	).map(({ label }) => label);
 
-	if (matchedLabels.length > 0 && !ACKNOWLEDGMENT_MARKER.test(rawSql)) {
+	if (matchedLabels.length === 0) {
+		continue;
+	}
+	const tag = basename(fileName, '.sql');
+	if (Object.hasOwn(contractMigrations, tag)) {
+		acknowledgedContracts.add(tag);
+	} else {
 		violations.push({ filePath, matchedLabels });
 	}
+}
+
+const staleAcknowledgments = Object.keys(contractMigrations).filter(
+	(tag) => !acknowledgedContracts.has(tag),
+);
+if (staleAcknowledgments.length > 0) {
+	throw new Error(
+		`${CONTRACT_MIGRATIONS_FILE} has stale or unknown entries: ${staleAcknowledgments.join(', ')}`,
+	);
 }
 
 if (violations.length > 0) {
@@ -73,9 +99,8 @@ if (violations.length > 0) {
 			'These statements break compatibility with the currently deployed app',
 			'version or delete data. Follow expand → migrate → deploy → contract',
 			'(docs/DEPLOYMENT.md). If this migration is a deliberate contract step,',
-			'acknowledge it by adding a comment to the migration file:',
-			'',
-			'  -- expand-contract: <why the deployed app no longer uses the dropped/renamed objects>',
+			'add its tag and rationale to drizzle/meta/contract-migrations.json.',
+			'Do not edit an applied SQL file because Drizzle records its exact hash.',
 			'',
 		].join('\n'),
 	);

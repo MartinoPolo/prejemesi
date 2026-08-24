@@ -19,6 +19,7 @@
 		getPriorityDisplay,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
+	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 
 	interface Props {
 		gift: GiftByRole;
@@ -37,6 +38,7 @@
 	);
 
 	const styles = giftDetailModalVariants();
+	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	// Dimming applies to a reservation held by someone ELSE only (SUMMARY.md state
@@ -70,7 +72,7 @@
 					<ImageFrame
 						natural
 						class="max-h-[300px] sm:max-h-[480px] max-w-full"
-						src={gift.imageUrl}
+						src={imageSrc}
 						alt={gift.name}
 						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 					/>

@@ -62,7 +62,7 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 ## Database
 
 - Drizzle with `strict: true` -- always enabled to prevent data loss on renames.
-- Use file-based migrations (`pnpm db:migrate`, prod: `pnpm db:migrate:prod`) -- `drizzle-kit push` prompts interactively on rename/drop and fails in non-interactive shells.
+- Use file-based migrations (`pnpm db:migrate` locally). Before every production deployment, run `pnpm db:verify:prod`; if PENDING migrations are reviewed and explicitly authorized, run `pnpm db:migrate:prod -- --yes`, then verify again and require EXACT. DRIFT blocks migration and deployment. `drizzle-kit push` is never used in production.
 - Schema in `src/lib/server/db/schema.ts`
 - Seed script: `src/lib/server/db/seed.ts` — run `pnpm db:seed` to populate test data.
 

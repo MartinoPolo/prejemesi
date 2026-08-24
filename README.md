@@ -168,7 +168,7 @@ Copy `.env.example` to `.env` and configure:
 | `PUBLIC_TURNSTILE_SITE_KEY`                                                   | Prod     | Public Cloudflare Turnstile widget site key                                                                     |
 | `TURNSTILE_SECRET_KEY`                                                        | Prod     | Private Cloudflare Turnstile Siteverify secret                                                                  |
 | `PUBLIC_SENTRY_DSN`                                                           | Prod     | Public Sentry DSN for browser and Worker error reporting                                                        |
-| `SENTRY_ORG`, `SENTRY_PROJECT`                                                | CI       | Sentry organization and project slugs used for source-map uploads                                               |
+| `SENTRY_ORG`, `SENTRY_PROJECT`                                                | CI       | Sentry source-map destination (`martin-poloch` / `prejemesi`)                                                   |
 | `SENTRY_AUTH_TOKEN`                                                           | CI       | Private build-only token used for source-map uploads; never expose it at runtime                                |
 | `PUBLIC_R2_URL`                                                               | No       | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset |
 | `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                      |

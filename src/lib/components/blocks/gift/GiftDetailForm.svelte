@@ -69,6 +69,7 @@
 	} from '$lib/modules/images/index.js';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
+	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
@@ -238,7 +239,9 @@
 	const submitLabel = $derived(isEdit ? m.save() : m.gift_add_title());
 	const hasImage = $derived(imageUrl !== '' || imageKey !== '');
 
-	const previewSrc = $derived(imageUrl.trim() !== '' ? imageUrl.trim() : null);
+	const previewSrc = $derived(
+		resolveGiftImageUrl(imageUrl.trim() === '' ? null : imageUrl.trim(), imageKey),
+	);
 	const isCropMode = $derived(editorMode === IMAGE_EDITOR_MODES.manual);
 
 	// A different source invalidates the persisted geometry: crops and focal points
@@ -1019,7 +1022,7 @@
 							bind:this={imageUploadRef}
 							target="gift-image"
 							size="small"
-							initialPreviewUrl={imageUrl !== '' ? imageUrl : undefined}
+							initialPreviewUrl={previewSrc ?? undefined}
 							onUpload={handleImageUpload}
 							onError={handleImageUploadError}
 							onRemove={handleImageRemove}

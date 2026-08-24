@@ -19,7 +19,12 @@ import {
 	OG_IMAGE_WIDTH,
 	OG_IMAGE_HEIGHT,
 } from './variants.js';
-import { imagePublicUrl, resolveUserImageUrl, isStoredObjectKey } from './public_url.js';
+import {
+	imagePublicUrl,
+	resolveGiftImageUrl,
+	resolveUserImageUrl,
+	isStoredObjectKey,
+} from './public_url.js';
 
 const PUBLIC_BASE = 'https://images.example.com';
 
@@ -37,6 +42,26 @@ describe('imagePublicUrl', () => {
 
 	it('falls back to the upload API route in local dev', () => {
 		expect(imagePublicUrl('gifts/a.jpg')).toBe('/api/upload/gifts/a.jpg');
+	});
+});
+
+describe('resolveGiftImageUrl', () => {
+	it('resolves the stored key through PUBLIC_R2_URL before a raw retailer URL', () => {
+		mockEnv['PUBLIC_R2_URL'] = PUBLIC_BASE;
+
+		expect(resolveGiftImageUrl('https://shop.example/image.jpg', 'gifts/a.jpg')).toBe(
+			`${PUBLIC_BASE}/gifts/a.jpg`,
+		);
+	});
+
+	it('falls back to the raw retailer URL when no stored key exists', () => {
+		expect(resolveGiftImageUrl('https://shop.example/image.jpg', null)).toBe(
+			'https://shop.example/image.jpg',
+		);
+	});
+
+	it('returns null when neither image source exists', () => {
+		expect(resolveGiftImageUrl(null, null)).toBeNull();
 	});
 });
 

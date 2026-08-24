@@ -76,6 +76,19 @@ async function renderCardInGridColumn(gift: GiftForVisitor) {
 }
 
 describe('GiftCard reservation-action layout (issue #211)', () => {
+	it('renders a stored gift image key without replacing the persisted source URL', async () => {
+		await renderCardInGridColumn(
+			makeVisitorGift({
+				imageUrl: null,
+				imageKey: 'gifts/cam.jpg',
+			}),
+		);
+
+		expect(document.querySelector('img')?.getAttribute('src')).toBe(
+			'/api/upload/gifts/cam.jpg',
+		);
+	});
+
 	it('stacks the mark-as-bought and cancel-reservation actions vertically at equal width', async () => {
 		await renderCardInGridColumn(makeVisitorGift());
 

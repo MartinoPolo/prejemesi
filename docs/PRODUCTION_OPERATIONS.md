@@ -50,7 +50,8 @@ The production deployment requires the following GitHub `production`
 environment settings:
 
 - Variable `PUBLIC_SENTRY_DSN`: public runtime DSN used by the browser and Worker.
-- Variables `SENTRY_ORG` and `SENTRY_PROJECT`: source-map destination slugs.
+- Variable `SENTRY_ORG`: source-map organization slug, `martin-poloch`.
+- Variable `SENTRY_PROJECT`: source-map project slug, `prejemesi` (display name `Prejemesi`).
 - Secret `SENTRY_AUTH_TOKEN`: build-only token with release/source-map upload permission.
 
 The deployment fails before building if any setting is absent and is the only
