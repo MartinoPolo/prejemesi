@@ -21,6 +21,8 @@ export default defineConfig({
 		// No `--` separator: pnpm forwards it verbatim and vite would treat the flags as positionals.
 		command: `pnpm run dev --port ${devServerPort} --strictPort`,
 		port: devServerPort,
+		// Cold Vite/Paraglide startup can exceed Playwright's 60-second default on Windows.
+		timeout: 120_000,
 		// Never reuse a server that may lack the controlled local E2E environment.
 		reuseExistingServer: false,
 		env: {
