@@ -22,6 +22,7 @@
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { cn } from '$lib/utils.js';
 	import GiftDescription from './GiftDescription.svelte';
 
@@ -56,6 +57,7 @@
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
+	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
@@ -73,7 +75,7 @@
 	>
 		<GiftImage
 			class="size-full rounded-lg"
-			imageUrl={gift.imageUrl}
+			imageUrl={imageSrc}
 			imageMeta={gift.imageMeta}
 			target="thumb"
 			alt={gift.name}

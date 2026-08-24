@@ -1,3 +1,4 @@
+import type { LookupFunction } from 'node:net';
 import {
 	ALLOWED_CONTENT_TYPES,
 	MAX_GIFT_IMAGE_BYTES,
@@ -133,6 +134,14 @@ async function validatedAddress(
 	return address;
 }
 
+function createPinnedLookup(address: string): LookupFunction {
+	return (_hostname, options, callback) => {
+		const family = address.includes(':') ? 6 : 4;
+		const all = options.all === true;
+		callback(null, all ? [{ address, family }] : address, all ? undefined : family);
+	};
+}
+
 async function pinnedHttpsRequest(
 	url: URL,
 	address: string,
@@ -149,9 +158,7 @@ async function pinnedHttpsRequest(
 				signal,
 				servername: url.hostname,
 				headers: { host: url.host },
-				lookup: (_hostname, _options, callback) => {
-					callback(null, address, address.includes(':') ? 6 : 4);
-				},
+				lookup: createPinnedLookup(address),
 			},
 			(incoming) => {
 				const headers = new Headers();

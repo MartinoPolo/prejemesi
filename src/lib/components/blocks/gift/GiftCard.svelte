@@ -20,6 +20,7 @@
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftDescription from './GiftDescription.svelte';
 
@@ -46,6 +47,7 @@
 
 	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
 
+	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
@@ -58,7 +60,7 @@
 
 		<GiftImage
 			class="size-full rounded-none bg-transparent"
-			imageUrl={gift.imageUrl}
+			imageUrl={imageSrc}
 			imageMeta={gift.imageMeta}
 			target="square"
 			alt={gift.name}

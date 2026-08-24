@@ -1,4 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+import { Readable } from 'node:stream';
+import type { LookupFunction } from 'node:net';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { httpsRequest, httpsState } = vi.hoisted(() => ({
+	httpsRequest: vi.fn(),
+	httpsState: {
+		lookup: undefined as LookupFunction | undefined,
+		respond: undefined as (() => void) | undefined,
+	},
+}));
+
+vi.mock('node:https', () => ({ request: httpsRequest }));
+
 import {
 	SUPPORTED_INGESTION_IMAGE_TYPES,
 	downloadValidatedImage,
@@ -10,6 +23,12 @@ const png = Uint8Array.from([
 	137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 2, 0, 0, 0, 3, 8, 6, 0,
 	0, 0,
 ]);
+
+beforeEach(() => {
+	httpsRequest.mockReset();
+	httpsState.lookup = undefined;
+	httpsState.respond = undefined;
+});
 
 describe('ingestion image mirroring', () => {
 	it('exposes one shared supported MIME policy for request and validation boundaries', () => {
@@ -132,6 +151,47 @@ describe('ingestion image mirroring', () => {
 				}),
 			).rejects.toThrow(/dimensions/i);
 		}
+	});
+
+	it('pins the validated address through the default HTTPS request path', async () => {
+		httpsRequest.mockImplementation((_url, options, responseCallback) => {
+			httpsState.lookup = options.lookup;
+			httpsState.respond = () => {
+				const incoming = Readable.from([png]) as Readable & {
+					statusCode: number;
+					headers: Record<string, string>;
+				};
+				incoming.statusCode = 200;
+				incoming.headers = { 'content-type': 'image/png' };
+				responseCallback(incoming);
+			};
+			return { on: vi.fn(), end: vi.fn() };
+		});
+
+		const download = downloadValidatedImage('https://safe.example/a.png', {
+			resolve: async () => ['93.184.216.34'],
+			timeoutMs: 1000,
+		});
+		await vi.waitFor(() => expect(httpsRequest).toHaveBeenCalledTimes(1));
+
+		expect(httpsState.lookup).toBeTypeOf('function');
+		const lookupCallback = vi.fn();
+		httpsState.lookup!('safe.example', { all: true }, lookupCallback);
+		expect(lookupCallback).toHaveBeenCalledWith(
+			null,
+			[{ address: '93.184.216.34', family: 4 }],
+			undefined,
+		);
+
+		httpsState.respond!();
+		const result = await download;
+		expect(result).toMatchObject({
+			contentType: 'image/png',
+			byteLength: png.length,
+			width: 2,
+			height: 3,
+		});
+		expect(result.sha256).toMatch(/^[a-f0-9]{64}$/);
 	});
 
 	it('passes the selected validated DNS address to the pinned requester', async () => {
