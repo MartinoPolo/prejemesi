@@ -1,0 +1,3 @@
+{
+  "0004_recipient_role_model_contract": "The preceding expand migration backfilled recipient assignments, and the deployed application stopped using the removed owner columns before this contract ran."
+}

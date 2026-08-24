@@ -170,35 +170,37 @@ Unset it to remove all admins; changing admins does not need a redeploy.
 `ORIGIN` **must** be your production URL – auth redirects and email links derive
 from it (else links point to localhost).
 
-### F. Confirm the deploy script
+### F. Confirm the build tooling
 
-`package.json` includes:
-
-```json
-"deploy": "vite build && wrangler deploy"
-```
+`package.json` retains a direct deploy command for controlled recovery work, but normal
+production releases must use the gated GitHub workflow in `docs/DEPLOYMENT.md`. Do not
+run the direct command as a shortcut around exact-SHA checks, database reconciliation,
+or environment approval.
 
 ### G. Production migrations
 
-Use generated migrations for production. The current baseline lives in
-`drizzle/`; apply it to Neon before the first deploy.
+Use generated migrations for production. The committed history lives in `drizzle/`.
+Create the gitignored `.env.production` with the direct Neon URL, then reconcile before
+every deployment:
 
-```powershell
-$env:DATABASE_URL = "postgresql://USER:PASS@HOST/dbname?sslmode=verify-full"
-pnpm db:migrate
+```bash
+pnpm db:verify:prod
 ```
 
-For future schema changes: edit `schema.ts` → `pnpm db:generate` → review SQL →
-run `pnpm db:migrate` against Neon.
+If the result is PENDING, review and authorize every listed SQL file before applying it:
 
-Either way, **migrations run against Neon directly, never through Hyperdrive**
-(Hyperdrive is read-optimized/cached for the runtime).
+```bash
+pnpm db:migrate:prod -- --yes
+pnpm db:verify:prod
+```
+
+The final result must be EXACT. DRIFT blocks migration and deployment. Never migrate
+through Hyperdrive, `db:push`, or seeding.
 
 ### H. First deploy
 
-```powershell
-pnpm run deploy
-```
+Follow the gated `dev` → `production` release procedure in `docs/DEPLOYMENT.md`, including
+the production database gate and explicit GitHub environment approval.
 
 Current production Cloudflare resources:
 
@@ -296,15 +298,17 @@ for the `production` environment approval before `wrangler deploy`. The full
 pipeline, the expand → migrate → deploy → contract migration sequence, and
 rollback are documented in **`docs/DEPLOYMENT.md`**.
 
-`pnpm run deploy` remains available for emergency manual deploys from a
-trusted working tree, but the gated workflow is the standard path.
+Do not use `pnpm run deploy` as a production shortcut. Recovery deployments still use
+the gated workflow or the documented rollback procedure so the exact SHA, database
+state, approval, and deployed Worker identity remain auditable.
 
 ---
 
 ## 6. Maintaining it going forward
 
-- **Schema changes:** edit `schema.ts` → `db:generate` → review SQL →
-  `db:migrate` against Neon → deploy. (Or local `db:push` for dev iteration.)
+- **Schema changes:** edit `schema.ts` → `pnpm db:generate` → review SQL → follow
+  the reconciliation and gated release procedure in `docs/DEPLOYMENT.md`. Use
+  `pnpm db:push` only for local development iteration, never production.
 - **Secrets rotation:** `wrangler secret put NAME` creates a new version +
   deploys immediately. List with `wrangler secret list`.
 - **Logs / debugging prod:** `wrangler tail` for live logs; enable

@@ -6,70 +6,180 @@ argument-hint: '[optional release description or PR number]'
 allowed-tools: Read, Grep, Glob, Bash, AskUserQuestion
 metadata:
     author: MartinoPolo
-    version: '0.1'
+    version: '0.2'
     category: deployment
 ---
 
 # Deploy to Production
 
-Run a **gated release** from remote `dev` to `production`. Treat `docs/DEPLOYMENT.md` and `.github/workflows/deploy.yml` as the current sources of truth. Use remote refs and an isolated clean checkout so unrelated local changes never enter the release.
+Run a gated release from remote `dev` to `production`. Treat `docs/DEPLOYMENT.md`,
+`.github/workflows/deploy.yml`, and `scripts/migrate-prod.ts` as the sources of truth.
+Use remote refs and an exact-SHA clean checkout so unrelated local changes never enter
+the release. Never print credentials, connection URLs, tokens, or production data.
 
 ## 1. Qualify the Release
 
-1. Read `docs/DEPLOYMENT.md`, `.github/workflows/deploy.yml`, and `scripts/migrate-prod.ts`.
+1. Read the three sources of truth above.
 2. Fetch the remote and resolve the repository with `gh repo view --json nameWithOwner`.
-3. Compare `origin/production..origin/dev`. If it is empty, stop: there is nothing to release.
+3. Compare `origin/production..origin/dev` and inspect every changed path and commit.
+    - If changes exist, continue with a `dev` → `production` release PR.
+    - If no changes exist and the user explicitly requested a redeploy, pin the current
+      `origin/production` SHA and use the manual-dispatch path below.
+    - Otherwise stop: there is nothing to release.
 4. Record the current production SHA and Worker version as the rollback target.
-5. Inspect every changed path and commit. Classify added `drizzle/*.sql` files as a schema-changing release. A modified or deleted existing migration is a release blocker: require a new forward migration or an explicit recovery plan. Identify new or changed runtime variables and secrets without reading or printing secret values.
-6. Confirm the latest CI run for the exact `origin/dev` SHA passed.
-7. Query the GitHub `production` environment. Confirm it has a required reviewer and a branch policy restricted to `production`. If either control is absent, report the gap and obtain explicit approval before restoring it.
-8. For each required Worker setting, confirm the name exists in the correct GitHub or Cloudflare scope. For identity-bearing settings such as `ADMIN_EMAILS`, also confirm the intended production user exists and is eligible. Secret values stay out of output and shell history.
+5. Run `pnpm check:migrations` at the candidate tree. Classify added `drizzle/*.sql`
+   files, but never infer production database state from this diff. A modified or
+   deleted existing migration is a blocker requiring a forward migration or explicit
+   recovery plan.
+6. Identify runtime variable and secret changes without reading or printing secret
+   values. Verify every required name in the correct GitHub or Cloudflare scope. For
+   identity-bearing settings such as `ADMIN_EMAILS`, confirm the intended production
+   user exists and is eligible.
+7. Confirm CI passed for the exact final candidate SHA.
+8. Query the GitHub `production` environment and its branch policies:
 
-This step is complete only when the report names the exact dev SHA, rollback target, commit and file delta, migration set, migration-history integrity, required configuration changes, green CI run, and verified environment gate. Resolve every unknown before continuing.
+    ```bash
+    gh api repos/{owner}/{repo}/environments/production \
+      --jq '{protection_rules, deployment_branch_policy}'
+    gh api repos/{owner}/{repo}/environments/production/deployment-branch-policies \
+      --jq '.branch_policies[] | {name, type}'
+    ```
+
+    Require a reviewer and exactly the `production` branch policy. Missing controls are
+    a hard stop: restore them from `.github/production-environment.json`, verify both API
+    responses, and require a new run to wait for approval.
+
+Qualification is complete only when the report names the candidate SHA, rollback
+target, commit/file delta, migration-file delta, manifest integrity result, required
+configuration changes, green CI run, and verified environment gate. Production
+migration status is deliberately still unknown until checked against Neon.
 
 ## 2. Stabilize the Release PR
 
-1. Reuse the open `dev` to `production` PR or create one.
-2. Check whether `production` contains only ancestry commits missing from `dev`; `git diff origin/dev...origin/production` should be empty before syncing.
-3. If the PR is behind, update its branch:
+1. Reuse the open `dev` → `production` PR or create one.
+2. Confirm production contains no unique content; `git diff origin/dev...origin/production`
+   must be empty before syncing.
+3. If the PR is behind, update it:
 
 ```bash
 gh api -X PUT repos/{owner}/{repo}/pulls/{pr}/update-branch
 ```
 
-4. Wait for checks on the final head SHA. Re-run the release classification if syncing changed the tree.
-5. Confirm the PR is mergeable and every required check is green.
-6. Present the release plan: PR, final SHA, user-visible scope, migrations, configuration changes, rollback target, and expected production hold point. Obtain explicit user confirmation before the first production mutation unless the user already authorized this exact end-to-end release.
-7. Provision authorized missing Worker settings in the correct scope, then re-check their names and confirm the live `GIT_COMMIT_SHA` still identifies the current production code.
+4. Wait for checks on the final head SHA, then repeat release classification if syncing
+   changed the tree.
+5. Require the PR to be mergeable and every required check green.
+6. Present the PR, final head SHA, user-visible scope, migration-file delta,
+   configuration changes, rollback target, and expected production hold point. Obtain
+   explicit confirmation before merging unless the user already authorized this exact
+   release scope.
+7. Provision authorized missing settings, then recheck their names and confirm the live
+   `GIT_COMMIT_SHA` still identifies the recorded rollback version.
 
-This step is complete only when the final PR head is stable, mergeable, fully green, the exact release plan is authorized, and every required setting is present.
+## 3. Fix the Production SHA and Hold Deployment
 
-## 3. Merge and Migrate
+For a normal release:
 
-1. Merge the release PR with a **merge commit**. Preserve ancestry; this repository's branch model depends on it.
-2. Locate the `Deploy (production)` run for the resulting production SHA. Confirm `verify` and `migration-review` finish successfully for that same SHA.
-3. Confirm the `deploy` job is waiting for production environment approval. If deployment started without a hold, treat the gate as broken: restore protection and assess whether the new version must be rolled back.
-4. For a code-only release, skip database migration.
-5. For a schema-changing release:
-    - Use a clean checkout at the production SHA.
-    - Confirm `.env.production` exists and targets the direct Neon host. Do not expose its URL.
-    - Recheck that the migrations are expand-compatible with the currently running app.
-    - Run `pnpm db:migrate:prod` before approval. If `pnpm` is unavailable, stop and report the missing project package manager rather than substituting another tool.
-    - Verify the expected migrations and schema objects exist in Neon.
-6. Approve the pending GitHub production deployment only after configuration and migration checks pass. If the authenticated account cannot approve its own deployment, ask the required reviewer to approve it in GitHub and resume after approval.
+1. Merge the release PR with a merge commit; never squash.
+2. Fetch `origin/production` and record the resulting merge SHA.
 
-This step is complete only when the production merge SHA is fixed, exact-SHA verification passed, every required migration is confirmed in Neon, and the approval gate released the intended deployment.
+For an explicitly requested redeploy with no source delta:
 
-## 4. Verify the Release
+```bash
+gh workflow run deploy.yml --ref production
+```
 
-1. Wait for the workflow to finish and inspect the deploy log for the Worker version and `GIT_COMMIT_SHA` assignment.
-2. Confirm the GitHub environment deployment, live Worker version, and Worker `GIT_COMMIT_SHA` all identify the production merge SHA. A newly written secret or a successful workflow alone does not prove the intended code is live.
-3. Confirm `https://prejemesi.cz` responds successfully and exercise the smallest production smoke path covering the release.
-4. Inspect a bounded `wrangler tail` window and relevant Cloudflare metrics for new errors. Keep tokens, query strings, identities, and request data out of retained notes.
-5. Report the release PR, production SHA, workflow URL, Worker version, migrations applied or skipped, smoke result, and rollback target.
+Then:
 
-This step is complete only when every deployed-identity signal matches, the live smoke check passes, and no new production errors are present.
+1. Locate the `Deploy (production)` run for the exact production SHA.
+2. Require `verify` and `migration-review` to succeed for that SHA.
+3. Confirm `deploy` is waiting for production environment approval. If deployment
+   started without a hold, treat the gate as broken, restore protection, and assess
+   rollback before continuing.
+4. Read the migration step summary. Its success validates committed files only; it
+   does **not** prove that Neon is current.
 
-## Rollback Branch
+## 4. Reconcile and Migrate Neon for Every Release
 
-If deployment or smoke verification fails, preserve the failing run URL and UTC window. Select the recorded pre-release Worker version as the exact rollback target and obtain explicit user confirmation unless rollback of this release was pre-authorized. Roll back the app while leaving additive migrations in place, then repeat the deployed-identity, endpoint, smoke, and error checks from verification against the rollback target. Diagnose before attempting another release. Contract migrations are irreversible and must ship only in a later release after the old app no longer uses the contracted objects.
+This gate applies to schema releases, code-only hotfixes, and manual redeployments.
+
+1. Use a clean checkout at the exact production SHA. The current checkout is acceptable
+   only if it is clean and already at that SHA; otherwise use a temporary isolated
+   checkout. Make the gitignored `.env.production` available without echoing its
+   contents, and remove any temporary credential copy during cleanup.
+2. Confirm the file targets the direct Neon host. Never use a pooled `-pooler` URL,
+   Hyperdrive, `db:push`, or seeding.
+3. Run:
+
+```bash
+pnpm db:verify:prod
+```
+
+4. Act on the result:
+    - **EXACT:** record the output and continue.
+    - **PENDING:** record every listed tag. Review every corresponding SQL file against
+      the currently running app, including pending migrations from earlier releases.
+      Require expand compatibility and explicit authorization for the listed production
+      mutation, then run:
+
+        ```bash
+        pnpm db:migrate:prod -- --yes
+        pnpm db:verify:prod
+        ```
+
+        The second command must report **EXACT**.
+
+    - **DRIFT:** stop. Do not migrate or approve. Investigate the hash/timestamp/order
+      mismatch and obtain an explicit forward recovery plan.
+
+A successful migrator exit without the final EXACT result is a failure. Never skip
+this step because the current diff contains no new migration file.
+
+## 5. Approve the Exact Deployment
+
+Present the exact run URL/SHA, final **EXACT** migration result, configuration evidence,
+and rollback target. The normal action is for the required reviewer to approve in
+GitHub.
+
+An agent authenticated through the owner's `gh` credentials must not approve by
+default. GitHub cannot distinguish that agent from the owner. The agent may approve
+only after the user explicitly authorizes the exact pending run and SHA after seeing
+the final evidence. Then query the environment ID and approve:
+
+```bash
+environment_id=$(gh api \
+  repos/{owner}/{repo}/actions/runs/{run-id}/pending_deployments \
+  --jq '.[0].environment.id')
+gh api --method POST \
+  repos/{owner}/{repo}/actions/runs/{run-id}/pending_deployments \
+  -F "environment_ids[]=$environment_id" \
+  -f state=approved \
+  -f comment='Migration history EXACT for {production-sha}'
+```
+
+If exact authorization is absent or the account cannot approve, provide the pending
+run URL to the required reviewer and resume only after approval.
+
+## 6. Verify the Release
+
+1. Wait for workflow completion and inspect the deploy log for the Worker version and
+   `GIT_COMMIT_SHA` assignment.
+2. Require the GitHub environment deployment, live Worker version, Worker
+   `GIT_COMMIT_SHA`, and workflow head to identify the same production SHA.
+3. Confirm `https://prejemesi.cz` responds and exercise the smallest production smoke
+   path covering the release. Do not create production users or mutate user data unless
+   explicitly authorized.
+4. Inspect a bounded `wrangler tail` window, Sentry, and relevant Cloudflare metrics
+   for new errors without retaining tokens, query strings, identities, or request data.
+5. Report the release PR or manual dispatch, production SHA, workflow URL, Worker
+   version, migration result, smoke result, and rollback target.
+6. Remove temporary credential copies/checkouts and confirm the original checkout was
+   not changed.
+
+## Rollback
+
+If deployment or smoke verification fails, preserve the failing run URL and UTC window.
+Select the recorded pre-release Worker version and obtain explicit rollback approval
+unless rollback was already authorized. Roll back the app while leaving additive
+migrations in place, then repeat identity, endpoint, smoke, and error checks. Contract
+migrations are irreversible and belong only in a later release after the old app no
+longer uses the contracted objects.
