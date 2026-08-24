@@ -16,8 +16,10 @@ triggers `.github/workflows/deploy.yml`:
    reaches the deploy job. (PRs and `dev` pushes run the same suite via
    `ci.yml`, also called with `run_e2e: true`, so e2e runs there too; this
    `verify` step re-runs it to pin the exact deployed commit.)
-2. **migration-review** — writes a step summary listing any new `drizzle/*.sql`
-   migrations in the push, with the reminder to apply them before approving.
+2. **migration-review** — validates the complete committed migration journal and SQL
+   files, then writes a step summary. It has no production database credentials and
+   therefore cannot prove that Neon is current. Its success is only a repository
+   integrity check; production reconciliation remains mandatory for every release.
 3. **deploy** — waits for the GitHub **`production` environment approval**
    (required reviewer: repo owner; restricted to the `production` branch).
    After approval it builds and runs `wrangler deploy`.
@@ -65,47 +67,104 @@ breaks the ancestry (see `b31fe5b`).
 
 Environment approval is configured under
 **Settings → Environments → production** (required reviewer + branch policy).
-It was created via `gh api` and can be recreated with:
+A missing reviewer or production-only branch policy is a release blocker: restore
+both controls, verify them through the API, and start a new run that demonstrably
+waits for approval. The controls can be recreated with:
 
-```powershell
-gh api -X PUT repos/MartinoPolo/prejemesi/environments/production --input reviewers.json
-gh api -X POST repos/MartinoPolo/prejemesi/environments/production/deployment-branch-policies -f name=production -f type=branch
+```bash
+gh api -X PUT repos/MartinoPolo/prejemesi/environments/production \
+  --input .github/production-environment.json
+gh api -X POST repos/MartinoPolo/prejemesi/environments/production/deployment-branch-policies \
+  -f name=production -f type=branch
+gh api repos/MartinoPolo/prejemesi/environments/production \
+  --jq '{protection_rules, deployment_branch_policy}'
+gh api repos/MartinoPolo/prejemesi/environments/production/deployment-branch-policies \
+  --jq '.branch_policies[] | {name, type}'
 ```
 
-## Schema changes: expand → migrate → deploy → contract
+The final command must list only the `production` branch policy. The tracked environment
+payload intentionally keeps `prevent_self_review` disabled because the repository has a
+single required reviewer; the separate exact-run authorization rule below prevents agents
+from treating shared owner credentials as implicit approval.
+
+The normal approval is a human action in GitHub. An agent authenticated as the
+required reviewer can also approve through `gh`; GitHub cannot distinguish that
+agent from the account owner. The agent may do so only after the user explicitly
+authorizes the exact run and SHA after seeing the final migration evidence:
+
+```bash
+environment_id=$(gh api \
+  repos/MartinoPolo/prejemesi/actions/runs/<run-id>/pending_deployments \
+  --jq '.[0].environment.id')
+gh api --method POST \
+  repos/MartinoPolo/prejemesi/actions/runs/<run-id>/pending_deployments \
+  -F "environment_ids[]=$environment_id" \
+  -f state=approved \
+  -f comment='Migration history EXACT for <production-sha>'
+```
+
+Without that exact authorization, the agent stops at the pending deployment and
+provides its URL for the required reviewer to approve manually.
+
+## Database gate: reconcile → migrate → verify → deploy
 
 Migrations are intentionally **manual** and run against the **direct Neon URL**
-(never through Hyperdrive, never `db:push`, never seeding) using committed
-migration files:
+(never through Hyperdrive, never `db:push`, never seeding). Reconcile production
+before **every** deployment, including code-only hotfixes and manual dispatches.
+A diff containing no new SQL does not prove that an earlier migration was applied.
 
-```powershell
-pnpm db:migrate:prod   # reads .env.production (gitignored, Neon direct URL)
+Use a clean checkout at the exact production SHA. `.env.production` is gitignored,
+so confirm that the checkout can read the existing file without printing or copying
+its value into logs. The URL must be PostgreSQL, belong to Neon, use the direct
+(non-`-pooler`) hostname, and match the production host/database fingerprint pinned in
+the verifier. Credentials may rotate without changing that target identity.
+
+```bash
+pnpm db:verify:prod
 ```
 
-Because the migration runs while the **previous** app version is still serving
-traffic, every release must keep that window compatible:
+The verifier validates the complete journal and SQL hashes, then compares them with
+`drizzle.__drizzle_migrations`:
+
+- **EXACT** — the database ledger exactly matches the target SHA; approval may proceed.
+- **PENDING** — the database ledger is an exact prefix. Review every listed SQL file
+  for compatibility with the currently running app, obtain migration authorization,
+  then apply and verify:
+
+    ```bash
+    pnpm db:migrate:prod -- --yes
+    pnpm db:verify:prod
+    ```
+
+- **DRIFT** — an applied hash/timestamp differs, history is reordered, or the ledger
+  has unexpected rows. Stop; do not migrate or deploy until the discrepancy has an
+  explicit recovery plan.
+
+`db:migrate:prod` performs the same preflight, refuses PENDING work without `--yes`,
+blocks DRIFT, runs Drizzle on the advisory-lock-owning PostgreSQL connection without a
+child process, redacts database details from errors, and requires an EXACT postcondition.
+It is safe as a no-op when already EXACT. A successful `migration-review` workflow job or local test database migration
+is never a substitute for this production check.
+
+Because migration runs while the previous app version is serving traffic, use the
+expand → migrate → deploy → contract sequence:
 
 1. **Expand** — additive migration only (new tables/columns, nullable or with
-   defaults; backfills). Old app code must run unchanged against the new
-   schema.
-2. **Migrate** — apply the expand migration to Neon (`pnpm db:migrate:prod`)
-   **before approving the deployment** in GitHub.
+   defaults; backfills). Old app code must run unchanged against the new schema.
+2. **Migrate and verify** — reach EXACT before approving the deployment.
 3. **Deploy** — approve the environment gate; the new app version starts using
    the new schema shapes.
-4. **Contract** — only in a **later release**, after the deployed app no longer
-   reads the old objects: drop/rename in a separate migration.
+4. **Contract** — only in a later release, after the deployed app no longer reads
+   the old objects: drop/rename in a separate migration.
 
 Enforcement: `pnpm check:migrations` (part of `check:all` and CI) fails on
 destructive statements (`DROP TABLE/COLUMN/TYPE`, `RENAME`, `TRUNCATE`,
-`DELETE FROM`, `SET DATA TYPE`, `SET NOT NULL`) unless the migration file
-explicitly acknowledges the contract step:
+`DELETE FROM`, `SET DATA TYPE`, `SET NOT NULL`) unless the migration tag has a
+nonempty rationale in `drizzle/meta/contract-migrations.json`.
 
-```sql
--- expand-contract: <why the deployed app no longer uses the dropped/renamed objects>
-```
-
-Example: `drizzle/0003_recipient_role_model_expand.sql` (expand) +
-`drizzle/0004_recipient_role_model_contract.sql` (acknowledged contract).
+The acknowledgment stays outside the SQL because Drizzle records the exact SQL hash
+in production. Never add a marker comment to an applied migration. The recipient-role
+expand and contract migrations demonstrate the sequence and sidecar acknowledgment.
 
 ## Rollback
 
@@ -115,10 +174,12 @@ Example: `drizzle/0003_recipient_role_model_expand.sql` (expand) +
 - **Schema:** contract migrations are the only irreversible step; because they
   ship one release later, the previous app version always remains deployable.
 
-## Checklist for a schema-changing release
+## Production release checklist
 
-- [ ] Migration generated via `pnpm db:generate`, reviewed, committed.
-- [ ] `pnpm check:migrations` passes (or the contract is acknowledged).
+- [ ] Target SHA and rollback Worker version recorded.
+- [ ] Complete migration manifest passes `pnpm check:migrations`.
+- [ ] Any new migration was generated via `pnpm db:generate`, reviewed, committed,
+      and is expand-compatible (or a later contract is explicitly acknowledged).
 - [ ] All declared Worker bindings are present in the built/deployed config. In particular,
       `GIFT_INGESTION_RATE_LIMIT` must show the 60 requests / 60 seconds policy; ingestion fails
       closed with HTTP 503 if the binding is absent or errors.
@@ -128,6 +189,10 @@ Example: `drizzle/0003_recipient_role_model_expand.sql` (expand) +
       how `ADMIN_EMAILS` sat unset from #150 until the #213 release.
 - [ ] Sync the release PR (`update-branch`) — it opens `BEHIND` every time.
 - [ ] Merge to `production` (merge commit, not squash); wait for **verify**.
-- [ ] Apply migrations: `pnpm db:migrate:prod`.
-- [ ] Approve the `production` environment deployment.
+- [ ] From the exact production SHA, run `pnpm db:verify:prod` for every release.
+- [ ] If PENDING, review and authorize every listed migration, run
+      `pnpm db:migrate:prod -- --yes`, and verify again.
+- [ ] Record an **EXACT** result before approval.
+- [ ] Obtain explicit approval for the exact run/SHA; an agent does not approve
+      through shared owner credentials unless specifically authorized to do so.
 - [ ] Verify: https://prejemesi.cz responds; `wrangler tail` shows no errors.
