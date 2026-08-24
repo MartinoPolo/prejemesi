@@ -2,6 +2,7 @@ import { canonicalGiftLinkKey, normalizeGiftLinks } from './gift_url.js';
 import {
 	DEFAULT_GIFT_CURRENCY,
 	GIFT_CURRENCIES,
+	isValidGiftPrice,
 	type DraftPriority,
 	type GiftCurrency,
 	type GiftLink,
@@ -42,9 +43,9 @@ function detectCurrency(lowered: string): GiftCurrency {
 }
 
 /**
- * Parse a free-form price string into an integer amount and currency. Strips
+ * Parse a free-form price string into a monetary amount and currency. Strips
  * currency symbols/words and thousands separators; a trailing `.`/`,` followed
- * by 1–2 digits is treated as a decimal portion and rounded. Returns
+ * by 1–2 digits is preserved as a decimal portion. Returns
  * `{ price: null }` when no digits are present.
  */
 export function parsePrice(raw: string | null | undefined): {
@@ -79,7 +80,7 @@ export function parsePrice(raw: string | null | undefined): {
 		return { price: null, currency };
 	}
 
-	return { price: Math.round(Number(integerPart) + fraction), currency };
+	return { price: Number(integerPart) + fraction, currency };
 }
 
 /**
@@ -91,7 +92,7 @@ export type ValidatedGiftDraft = Omit<GiftDraft, 'imageUrl' | 'quantity'> & {
 	quantity: number;
 };
 
-export type GiftDraftIssue = 'name' | 'imageUrl' | 'quantity';
+export type GiftDraftIssue = 'name' | 'price' | 'imageUrl' | 'quantity';
 
 /** A valid external draft image is an absolute HTTPS URL. */
 export function isValidDraftImageUrl(value: string | null | undefined): boolean {
@@ -128,6 +129,9 @@ export function validateDraft(draft: Readonly<GiftDraft>): {
 	const issues: GiftDraftIssue[] = [];
 	if (name === '') {
 		issues.push('name');
+	}
+	if (draft.price !== null && !isValidGiftPrice(draft.price)) {
+		issues.push('price');
 	}
 	if (!isValidDraftImageUrl(imageUrl)) {
 		issues.push('imageUrl');

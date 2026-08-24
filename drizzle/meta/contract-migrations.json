@@ -1,3 +1,4 @@
 {
-  "0004_recipient_role_model_contract": "The preceding expand migration backfilled recipient assignments, and the deployed application stopped using the removed owner columns before this contract ran."
+  "0004_recipient_role_model_contract": "The preceding expand migration backfilled recipient assignments, and the deployed application stopped using the removed owner columns before this contract ran.",
+  "0017_dear_northstar": "Widening gift price columns from integer to numeric preserves every existing value and remains compatible with integer writes from the previously deployed application."
 }

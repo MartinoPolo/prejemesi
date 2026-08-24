@@ -26,6 +26,39 @@ describe('draft grid image and quantity editing', () => {
 	});
 });
 
+describe('draft grid price editing', () => {
+	it('preserves a decimal price when converting an editor row to a draft', () => {
+		const row = createDraftGridRow({ name: 'Kniha', price: 19.5 });
+
+		expect(rowToDraft(row).price).toBe(19.5);
+	});
+
+	it.each(['1.001', 'Infinity', '10000000000'])(
+		'blocks invalid manual price %s before submission',
+		(price) => {
+			const row = createDraftGridRow({ name: 'Kniha' });
+			row.price = price;
+
+			expect(collectDraftGridChange([row], () => false)).toMatchObject({
+				validCount: 0,
+				selectedCount: 1,
+				blockingCount: 1,
+			});
+		},
+	);
+
+	it('keeps a valid two-decimal manual price committable', () => {
+		const row = createDraftGridRow({ name: 'Kniha' });
+		row.price = '19.99';
+
+		expect(collectDraftGridChange([row], () => false)).toMatchObject({
+			drafts: [{ price: 19.99 }],
+			validCount: 1,
+			blockingCount: 0,
+		});
+	});
+});
+
 describe('draft grid submission gate', () => {
 	it('blocks a mixed selected valid and invalid batch until correction or deselection', () => {
 		const valid = createDraftGridRow({ name: 'Kniha' });

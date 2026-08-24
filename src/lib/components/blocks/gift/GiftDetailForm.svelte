@@ -859,6 +859,7 @@
 									placeholder="0"
 									type="number"
 									min="0"
+									step="0.01"
 									aria-label={m.gift_price_range_min_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -876,6 +877,7 @@
 									placeholder="0"
 									type="number"
 									min="0"
+									step="0.01"
 									aria-label={m.gift_price_range_max_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -891,6 +893,7 @@
 								placeholder="0"
 								type="number"
 								min="0"
+								step="0.01"
 							/>
 						{/if}
 						{#if priceRangeError !== ''}

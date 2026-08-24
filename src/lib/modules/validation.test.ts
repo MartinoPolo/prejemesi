@@ -11,6 +11,7 @@ import {
 	CreateGiftInputSchema,
 	UpdateGiftInputSchema,
 	GIFT_CURRENCY_VALUES,
+	GiftPriceSchema,
 } from './gifts/types.js';
 import { ReserveGiftInputSchema } from './reservations/types.js';
 import {
@@ -239,6 +240,29 @@ describe('CreateWishlistInputSchema', () => {
 	});
 });
 
+describe('GiftPriceSchema', () => {
+	it.each([0, 2.01, 4_935_710_322.64, 1e2, 1e-2, 9_999_999_999.99])(
+		'accepts persistence-safe price %s',
+		(price) => {
+			expect(v.safeParse(GiftPriceSchema, price).success).toBe(true);
+		},
+	);
+
+	it.each([2.011, 19.999, 9_999_999_998.990001, 1e-7])(
+		'rejects price %s with more than two canonical decimal places',
+		(price) => {
+			expect(v.safeParse(GiftPriceSchema, price).success).toBe(false);
+		},
+	);
+
+	it.each([Number.POSITIVE_INFINITY, Number.NaN, -0.01, 10_000_000_000])(
+		'rejects non-finite or out-of-range price %s',
+		(price) => {
+			expect(v.safeParse(GiftPriceSchema, price).success).toBe(false);
+		},
+	);
+});
+
 describe('CreateGiftInputSchema', () => {
 	it('rejects caller-supplied sortOrder because append ordering is server-owned', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
@@ -336,6 +360,16 @@ describe('CreateGiftInputSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts a finite non-negative decimal price (issue #250 REQ-1)', () => {
+		const result = parseSuccess(CreateGiftInputSchema, {
+			wishlistId: 'wl-1',
+			name: 'Nice Book',
+			price: 19.5,
+			currency: 'EUR',
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('rejects quantity of 0', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',
@@ -403,6 +437,17 @@ describe('CreateGiftInputSchema', () => {
 				name: 'Nice Book',
 				price: 1200,
 				priceMax: 1500,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('accepts decimal range bounds (issue #250 REQ-4)', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				price: 19.5,
+				priceMax: 29.95,
+				currency: 'EUR',
 			});
 			expect(result.success).toBe(true);
 		});

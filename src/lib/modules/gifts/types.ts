@@ -188,14 +188,43 @@ export interface CreateGiftInput {
 
 export const GIFT_CURRENCY_VALUES = Object.values(GIFT_CURRENCIES);
 
+/** Largest exact monetary value supported by the numeric(12,2) persistence columns. */
+export const MAX_GIFT_PRICE = 9_999_999_999.99;
+
+function hasAtMostTwoDecimalPlaces(value: number): boolean {
+	const [coefficient, exponentText] = value.toString().toLowerCase().split('e');
+	const fractionLength = coefficient.split('.')[1]?.length ?? 0;
+	const exponent = exponentText === undefined ? 0 : Number(exponentText);
+	return Math.max(0, fractionLength - exponent) <= 2;
+}
+
+/** Whether a price fits the finite, non-negative numeric(12,2) persistence contract. */
+export function isValidGiftPrice(value: number): boolean {
+	return (
+		Number.isFinite(value) &&
+		value >= 0 &&
+		value <= MAX_GIFT_PRICE &&
+		hasAtMostTwoDecimalPlaces(value)
+	);
+}
+
+/** Shared persistence-safe monetary validation (finite, non-negative, and at most 2 decimals). */
+export const GiftPriceSchema = v.pipe(
+	v.number(),
+	v.finite(),
+	v.minValue(0),
+	v.maxValue(MAX_GIFT_PRICE),
+	v.check(isValidGiftPrice, 'price must have at most two decimal places'),
+);
+
 export const CreateGiftInputSchema = v.pipe(
 	v.strictObject({
 		wishlistId: v.string(),
 		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 		description: v.optional(v.nullable(v.string())),
 		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		price: v.optional(v.nullable(GiftPriceSchema)),
+		priceMax: v.optional(v.nullable(GiftPriceSchema)),
 		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 		imageUrl: v.optional(v.nullable(v.string())),
 		imageKey: v.optional(v.nullable(v.string())),
@@ -217,8 +246,8 @@ export const GiftDraftInputSchema = v.pipe(
 		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 		description: v.optional(v.nullable(v.string())),
 		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		price: v.optional(v.nullable(GiftPriceSchema)),
+		priceMax: v.optional(v.nullable(GiftPriceSchema)),
 		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 		imageUrl: v.optional(
 			v.nullable(
@@ -279,8 +308,8 @@ export const UpdateGiftInputSchema = v.pipe(
 			}),
 		),
 		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		price: v.optional(v.nullable(GiftPriceSchema)),
+		priceMax: v.optional(v.nullable(GiftPriceSchema)),
 		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 		imageUrl: v.optional(v.nullable(v.string())),
 		imageKey: v.optional(v.nullable(v.string())),

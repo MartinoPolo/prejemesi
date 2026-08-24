@@ -27,11 +27,10 @@ describe('parsePrice', () => {
 		expect(parsePrice('1.299')).toEqual({ price: 1299, currency: GIFT_CURRENCIES.CZK });
 	});
 
-	it('treats a dot followed by 1–2 digits as a decimal portion', () => {
-		// Boundary opposite of the 3-digit thousands case above: 1–2 trailing
-		// digits after a separator are a decimal fraction, rounded to an integer.
-		expect(parsePrice('49.90')).toEqual({ price: 50, currency: GIFT_CURRENCIES.CZK });
-		expect(parsePrice('1.29')).toEqual({ price: 1, currency: GIFT_CURRENCIES.CZK });
+	it('preserves one- and two-digit dot decimal portions', () => {
+		expect(parsePrice('49.90')).toEqual({ price: 49.9, currency: GIFT_CURRENCIES.CZK });
+		expect(parsePrice('1.29')).toEqual({ price: 1.29, currency: GIFT_CURRENCIES.CZK });
+		expect(parsePrice('12.5')).toEqual({ price: 12.5, currency: GIFT_CURRENCIES.CZK });
 	});
 
 	it('strips a trailing Czech ,- suffix', () => {
@@ -55,8 +54,9 @@ describe('parsePrice', () => {
 		expect(parsePrice('50 USD')).toEqual({ price: 50, currency: GIFT_CURRENCIES.USD });
 	});
 
-	it('rounds a decimal portion to the nearest integer', () => {
-		expect(parsePrice('49,90 €')).toEqual({ price: 50, currency: GIFT_CURRENCIES.EUR });
+	it('preserves comma decimal portions and detected currency', () => {
+		expect(parsePrice('49,90 €')).toEqual({ price: 49.9, currency: GIFT_CURRENCIES.EUR });
+		expect(parsePrice('12,5 EUR')).toEqual({ price: 12.5, currency: GIFT_CURRENCIES.EUR });
 	});
 
 	it('returns null price with default currency for non-numeric input', () => {
@@ -109,6 +109,24 @@ describe('validateDraft', () => {
 			});
 		}
 		expect(validateDraft(makeDraft({ quantity: '3' })).normalized.quantity).toBe(3);
+	});
+
+	it.each([1.001, Number.POSITIVE_INFINITY, 10_000_000_000])(
+		'rejects invalid draft price %s',
+		(price) => {
+			expect(validateDraft(makeDraft({ price }))).toMatchObject({
+				valid: false,
+				issues: ['price'],
+			});
+		},
+	);
+
+	it('keeps blank and valid two-decimal prices committable', () => {
+		expect(validateDraft(makeDraft({ price: null })).valid).toBe(true);
+		expect(validateDraft(makeDraft({ price: 19.99 }))).toMatchObject({
+			valid: true,
+			normalized: { price: 19.99 },
+		});
 	});
 });
 
