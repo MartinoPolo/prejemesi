@@ -25,7 +25,7 @@ export function formatPrice(
 			style: 'currency',
 			currency: currencyCode,
 			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
+			maximumFractionDigits: 20,
 		});
 		return isRange ? formatter.formatRange(price, priceMax) : formatter.format(price);
 	} catch {

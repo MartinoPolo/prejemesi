@@ -26,6 +26,14 @@ describe('draft grid image and quantity editing', () => {
 	});
 });
 
+describe('draft grid price editing', () => {
+	it('preserves a decimal price when converting an editor row to a draft', () => {
+		const row = createDraftGridRow({ name: 'Kniha', price: 19.5 });
+
+		expect(rowToDraft(row).price).toBe(19.5);
+	});
+});
+
 describe('draft grid submission gate', () => {
 	it('blocks a mixed selected valid and invalid batch until correction or deselection', () => {
 		const valid = createDraftGridRow({ name: 'Kniha' });

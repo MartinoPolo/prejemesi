@@ -3,6 +3,7 @@ import {
 	index,
 	integer,
 	jsonb,
+	numeric,
 	pgTable,
 	text,
 	timestamp,
@@ -49,11 +50,11 @@ export const gift = pgTable(
 			.$type<GiftLink[]>()
 			.notNull()
 			.default(sql`'[]'::jsonb`),
-		price: integer('price'),
+		price: numeric('price', { mode: 'number' }),
 		// Non-binding upper bound of a price range (issue #155): non-null makes `price` the lower
 		// bound and displays as "min–max <currency>" (a hint, never scraped/binding). Null = single
 		// price, matching every pre-#155 row without a migration.
-		priceMax: integer('price_max'),
+		priceMax: numeric('price_max', { mode: 'number' }),
 		currency: text('currency').default('CZK'),
 		imageUrl: text('image_url'),
 		imageKey: text('image_key'),

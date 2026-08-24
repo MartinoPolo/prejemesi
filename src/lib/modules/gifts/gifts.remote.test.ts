@@ -741,6 +741,23 @@ describe('updateGift', () => {
 			expect(setValues).toMatchObject({ price: 1200, priceMax: 1500 });
 		});
 
+		it('persists decimal price range bounds (issue #250 REQ-2, REQ-4)', async () => {
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, price: 19.5, priceMax: 29.95 }]);
+
+			const result = await callUpdateGift(makeRecipientAuthContext(), {
+				id: GIFT_ID,
+				price: 19.5,
+				priceMax: 29.95,
+			});
+
+			expect(result).toMatchObject({ id: GIFT_ID, price: 19.5, priceMax: 29.95 });
+			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
+				?.args[0] as Record<string, unknown>;
+			expect(setValues).toMatchObject({ price: 19.5, priceMax: 29.95 });
+		});
+
 		it('rejects a priceMax-only update that would invert the persisted range', async () => {
 			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING, price: 1500 })]);
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);

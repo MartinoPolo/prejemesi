@@ -336,6 +336,16 @@ describe('CreateGiftInputSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
+	it('accepts a finite non-negative decimal price (issue #250 REQ-1)', () => {
+		const result = parseSuccess(CreateGiftInputSchema, {
+			wishlistId: 'wl-1',
+			name: 'Nice Book',
+			price: 19.5,
+			currency: 'EUR',
+		});
+		expect(result.success).toBe(true);
+	});
+
 	it('rejects quantity of 0', () => {
 		const result = parseSuccess(CreateGiftInputSchema, {
 			wishlistId: 'wl-1',
@@ -403,6 +413,17 @@ describe('CreateGiftInputSchema', () => {
 				name: 'Nice Book',
 				price: 1200,
 				priceMax: 1500,
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it('accepts decimal range bounds (issue #250 REQ-4)', () => {
+			const result = parseSuccess(CreateGiftInputSchema, {
+				wishlistId: 'wl-1',
+				name: 'Nice Book',
+				price: 19.5,
+				priceMax: 29.95,
+				currency: 'EUR',
 			});
 			expect(result.success).toBe(true);
 		});

@@ -84,6 +84,45 @@ describe('GiftDetailForm stored images', () => {
 });
 
 describe('GiftDetailForm price-range UI (issue #171)', () => {
+	it('reopens and submits a decimal single price (issue #250 REQ-1, REQ-4)', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 19.5, priceMax: null, currency: 'EUR' }),
+			onupdate,
+		});
+
+		const priceInput = document.querySelector('#gift-price');
+		expect(priceInput).toHaveAttribute('step', 'any');
+		expect(priceInput).toHaveValue(19.5);
+
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ price: 19.5, priceMax: null, currency: 'EUR' }),
+		);
+	});
+
+	it('reopens and submits decimal range bounds (issue #250 REQ-1, REQ-4)', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 19.5, priceMax: 29.95, currency: 'EUR' }),
+			onupdate,
+		});
+
+		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
+		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
+		await expect.element(minInput).toHaveAttribute('step', 'any');
+		await expect.element(maxInput).toHaveAttribute('step', 'any');
+		await expect.element(minInput).toHaveValue(19.5);
+		await expect.element(maxInput).toHaveValue(29.95);
+
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ price: 19.5, priceMax: 29.95, currency: 'EUR' }),
+		);
+	});
+
 	it('defaults to single-price mode when the gift has no priceMax (REQ-1)', async () => {
 		const screen = await render(GiftDetailForm, {
 			...baseProps,

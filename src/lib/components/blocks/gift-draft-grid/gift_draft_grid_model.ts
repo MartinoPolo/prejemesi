@@ -44,7 +44,7 @@ export interface DraftGridRow {
 	/** Raw textarea value; normalized to `null` when blank on emit. */
 	description: string;
 	links: GiftLink[];
-	/** Raw price text (whole units); parsed to an integer on emit. */
+	/** Raw price text; parsed to a finite number on emit. */
 	price: string;
 	currency: GiftCurrency;
 	/** Raw URL remains editable; validation permits HTTPS only. */
@@ -84,7 +84,7 @@ export function createDraftGridRow(
 /** Convert an editor row back into a wire {@link GiftDraft} (blank fields → null/empty). */
 export function rowToDraft(row: DraftGridRow): GiftDraft {
 	const trimmedPrice = row.price.trim();
-	const parsed = trimmedPrice === '' ? null : Math.round(Number(trimmedPrice));
+	const parsed = trimmedPrice === '' ? null : Number(trimmedPrice);
 	const trimmedQuantity = row.quantity.trim();
 	const parsedQuantity = Number(trimmedQuantity);
 	return {

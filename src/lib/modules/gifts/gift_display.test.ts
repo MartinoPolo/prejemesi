@@ -30,6 +30,10 @@ describe('formatPrice', () => {
 		expect(normalizeSpaces(formatPrice(1000, 'CZK', null))).toBe('1 000 Kč');
 	});
 
+	it('displays a decimal single price without rounding (issue #250 REQ-4)', () => {
+		expect(normalizeSpaces(formatPrice(19.5, 'EUR'))).toBe('19,5 €');
+	});
+
 	// REQ-3: a set range renders as "min–max <currency>" via Intl.NumberFormat.formatRange -
 	// currency shown once, locale-correct separator, no "cca"/"~" approximation marker.
 	it('formats a price range via Intl.NumberFormat.formatRange (REQ-3)', () => {
@@ -41,6 +45,12 @@ describe('formatPrice', () => {
 		expect(result.match(/Kč/g)).toHaveLength(1);
 		expect(result).not.toContain('cca');
 		expect(result).not.toContain('~');
+	});
+
+	it('displays decimal range bounds without rounding (issue #250 REQ-4)', () => {
+		const result = normalizeSpaces(formatPrice(19.5, 'EUR', 29.95));
+		expect(result).toContain('19,5');
+		expect(result).toContain('29,95');
 	});
 
 	it('falls back to a single formatted price when priceMax equals price', () => {
