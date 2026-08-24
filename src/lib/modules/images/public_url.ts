@@ -28,6 +28,16 @@ export function imagePublicUrl(objectKey: string): string {
 	return `${UPLOAD_API_BASE}/${objectKey}`;
 }
 
+export function resolveGiftImageUrl(
+	imageUrl: string | null | undefined,
+	imageKey: string | null | undefined,
+): string | null {
+	if (imageKey != null && imageKey !== '') {
+		return imagePublicUrl(imageKey);
+	}
+	return imageUrl == null || imageUrl === '' ? null : imageUrl;
+}
+
 /**
  * Whether a persisted image value is an R2 object key (e.g. `avatars/abc.jpg`)
  * rather than an already-loadable URL. `user.image` mixes both: external URLs
