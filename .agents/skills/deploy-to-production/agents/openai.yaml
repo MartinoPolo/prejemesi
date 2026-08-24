@@ -1,0 +1,5 @@
+interface:
+    display_name: 'Deploy to Production'
+    short_description: 'Run a gated Přejeme si production release'
+policy:
+    allow_implicit_invocation: false
