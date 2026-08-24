@@ -9,12 +9,11 @@ import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
 import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
 
-// `GiftDetailForm` transitively imports the images module barrel, which re-exports
-// `public_url.ts`'s `$env/dynamic/public` usage. In the real app SvelteKit's page
-// bootstrap script seeds `window.__sveltekit_dev.env` before the client entry runs;
-// vitest-browser-svelte mounts into a bare document without that bootstrap, so the
-// virtual module throws. Stub it – no production code touches this in tests.
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
+// `GiftDetailForm` transitively imports `public_url.ts`, whose public env is normally
+// seeded by SvelteKit's browser bootstrap. Vitest mounts into a bare document, so use
+// the static root as the public image base; stored demo keys then load without calling
+// the SvelteKit `/api/upload` endpoint.
+vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
 const { default: GiftDetailForm } = await import('./GiftDetailForm.svelte');
 
@@ -55,6 +54,34 @@ const baseProps = {
 	isSubmitting: false,
 	isDeleting: false,
 };
+
+describe('GiftDetailForm stored images', () => {
+	it('previews the stored key while preserving the raw retailer URL on submit', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({
+				imageUrl: 'https://shop.example/original.jpg',
+				imageKey: 'demo/backpack.jpg',
+			}),
+			onupdate,
+		});
+
+		const mainPreview = document.querySelector('[data-testid="crop-stage"] img');
+		const uploadPreview = document.querySelector('img[data-testid="image-upload-preview"]');
+		expect(mainPreview?.getAttribute('src')).toBe('/demo/backpack.jpg');
+		expect(uploadPreview?.getAttribute('src')).toBe('/demo/backpack.jpg');
+
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				imageUrl: 'https://shop.example/original.jpg',
+				imageKey: 'demo/backpack.jpg',
+			}),
+		);
+	});
+});
 
 describe('GiftDetailForm price-range UI (issue #171)', () => {
 	it('defaults to single-price mode when the gift has no priceMax (REQ-1)', async () => {
@@ -190,7 +217,6 @@ describe('GiftDetailForm legacy `auto` normalization (issue #183 EXTRA)', () => 
 			...baseProps,
 			gift: makeGift({
 				imageUrl: landscapeImageUrl,
-				imageKey: 'legacy-key',
 				imageMeta: {
 					fitMode: IMAGE_FIT_MODES.auto,
 					cropRect: null,
