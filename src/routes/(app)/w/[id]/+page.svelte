@@ -20,10 +20,8 @@
 		isWishlistSettingsTab,
 		type WishlistSettingsTab,
 	} from '$lib/components/blocks/wishlist/wishlist_settings_modal_types.js';
-	import {
-		WISHLIST_SETTINGS_QUERY_PARAM,
-		WISHLIST_GIFT_QUERY_PARAM,
-	} from '$lib/modules/wishlists/wishlist_query_params.js';
+	import { WISHLIST_SETTINGS_QUERY_PARAM } from '$lib/modules/wishlists/wishlist_query_params.js';
+	import { consumeGiftDeepLink } from '$lib/modules/wishlists/gift_deep_link.js';
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
@@ -820,21 +818,19 @@
 	// keeps its typed values across that prop swap, and the next submit would overwrite the
 	// deep-linked gift with them (production data-corruption incident, 2026-08-04).
 	$effect(() => {
-		const requestedGiftId = page.url.searchParams.get(WISHLIST_GIFT_QUERY_PARAM);
-		if (requestedGiftId === null || isGiftDataLoading) {
+		if (isGiftDataLoading) {
 			return;
 		}
-		const cleanedUrl = new URL(page.url);
-		cleanedUrl.searchParams.delete(WISHLIST_GIFT_QUERY_PARAM);
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
-		replaceState(cleanedUrl, {});
-		if (giftModalOpen) {
-			return;
-		}
-		const matchedGift = gifts.find((gift) => gift.id === requestedGiftId);
-		if (matchedGift !== undefined) {
-			void openEditModal(matchedGift);
-		}
+		consumeGiftDeepLink({
+			url: page.url,
+			gifts,
+			canOpen: !giftModalOpen,
+			onConsume: (cleanedUrl) => {
+				// eslint-disable-next-line svelte/no-navigation-without-resolve -- shallow cleanup of the current URL's query marker, not a route navigation
+				replaceState(cleanedUrl, {});
+			},
+			onOpen: (gift) => void openEditModal(gift),
+		});
 	});
 </script>
 
