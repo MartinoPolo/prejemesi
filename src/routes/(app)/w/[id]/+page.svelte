@@ -42,7 +42,7 @@
 	import {
 		reserveGift,
 		unreserveGift,
-		getReservationsForGift,
+		getReservationLedgerForWishlist,
 	} from '$lib/modules/reservations/reservations.remote.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
 	import type {
@@ -179,26 +179,16 @@
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
 
-	// Per-gift release ledgers (issue #213). Fetched only for a viewer who has SOME release reach
-	// and only for gifts that actually hold reservations, so the common visitor/obdarovaný path
-	// (capability `none`) costs nothing at all. Each row already excludes the viewer's own
-	// reservation, so an empty ledger means the release control stays hidden on that gift.
-	const releaseLedgers = $derived.by(() => {
-		const byGiftId: Record<string, ReservationForModerator[]> = {};
-		if (wishlist.reservationReleaseCapability === RESERVATION_RELEASE_CAPABILITY.none) {
-			return byGiftId;
-		}
-		for (const giftItem of gifts) {
-			if (!('reservedCount' in giftItem) || giftItem.reservedCount === 0) {
-				continue;
-			}
-			const rows = getReservationsForGift(giftItem.id).current?.reservations;
-			if (rows !== undefined && rows.length > 0) {
-				byGiftId[giftItem.id] = rows;
-			}
-		}
-		return byGiftId;
-	});
+	// One wishlist-level ledger replaces the former request per reserved gift. Unauthorized
+	// viewers never start the query; the server independently enforces the same privacy gate.
+	const releaseLedgerQuery = $derived(
+		browser && wishlist.reservationReleaseCapability !== RESERVATION_RELEASE_CAPABILITY.none
+			? getReservationLedgerForWishlist(shortId)
+			: null,
+	);
+	const releaseLedgers = $derived<Record<string, ReservationForModerator[]>>(
+		releaseLedgerQuery?.current?.reservationsByGiftId ?? {},
+	);
 
 	// Fresh server gift data is authoritative — drop any optimistic reorder layer so
 	// a stale pre-refresh order can never mask newly fetched gifts. Successful
@@ -762,12 +752,10 @@
 	 * this path carries no authorization of its own. Returns whether the release went through, so
 	 * the confirmation dialog stays open on a rejection.
 	 */
-	async function handleRelease(giftId: string, reservationId: string): Promise<boolean> {
+	async function handleRelease(_giftId: string, reservationId: string): Promise<boolean> {
 		try {
-			// The command single-flight-refreshes the gift list, so the freed capacity lands
-			// immediately; the ledger is a separate query and has to drop the row explicitly.
+			// The command single-flight-refreshes both gift state and the one wishlist ledger.
 			await unreserveGift({ reservationId });
-			await getReservationsForGift(giftId).refresh();
 			toastSuccess(m.toast_reservation_released());
 			return true;
 		} catch (thrown) {
