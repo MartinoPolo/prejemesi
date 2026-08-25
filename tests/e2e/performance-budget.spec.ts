@@ -186,19 +186,21 @@ test.describe('Initial-load performance budget', () => {
 		await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible({
 			timeout: 30_000,
 		});
-		// Let the landing page's own initial module streaming settle before hovering.
-		// On the single-threaded Vite dev server a cold page is still transforming
-		// ~140 modules right after the h1 paints; hovering into that saturation
-		// starves the preload request. A real user doesn't hover the instant the
-		// hero appears either — so wait, then measure the intent-triggered fetch.
-		await page.waitForTimeout(POST_HYDRATION_SETTLE_MILLISECONDS);
-
-		const loginModuleRequest = page.waitForRequest(
-			(request) => decodeURIComponent(request.url()).includes('/routes/(auth)/login/'),
-			{ timeout: 15_000 },
-		);
-		await loginLink(page).hover();
-		await loginModuleRequest;
+		// The h1 is server-rendered and can become visible before SvelteKit installs its
+		// hover-preload listener. Under a busy CI Vite server, a fixed delay can still
+		// finish during hydration. Retry the actual user intent instead: moving away
+		// first guarantees each attempt emits a fresh mousemove over the link, while
+		// the request assertion still proves that hover (not the later click) loaded
+		// the login route module.
+		await expect(async () => {
+			const loginModuleRequest = page.waitForRequest(
+				(request) => decodeURIComponent(request.url()).includes('/routes/(auth)/login/'),
+				{ timeout: 5_000 },
+			);
+			await page.mouse.move(0, 0);
+			await loginLink(page).hover();
+			await loginModuleRequest;
+		}).toPass({ timeout: 30_000, intervals: [250, 500, 1_000] });
 
 		// Navigation after intent-preload must still work end to end.
 		await loginLink(page).click();
