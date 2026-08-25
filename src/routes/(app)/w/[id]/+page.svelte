@@ -441,6 +441,7 @@
 			availableOnly: false,
 			withLinkOnly: false,
 			likedOnly: false,
+			showReceived: false,
 		};
 	}
 
@@ -888,7 +889,6 @@
 		/>
 
 		<WishlistGiftDisplay
-			gifts={displayedGifts}
 			sections={giftSections}
 			{role}
 			{isArchived}

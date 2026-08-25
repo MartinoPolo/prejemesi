@@ -14,7 +14,7 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	isAuthenticated: false,
 	viewMode: GIFT_VIEW_MODES.card,
 	sortOption: GIFT_SORT_OPTIONS.ownerOrder,
-	filters: { availableOnly: false, withLinkOnly: false, likedOnly: false },
+	filters: { availableOnly: false, withLinkOnly: false, likedOnly: false, showReceived: false },
 	priorityGrouping: false,
 	showPriorityGrouping: false,
 	onviewmodechange: () => {},
@@ -108,7 +108,12 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 		const onfilterchange = vi.fn();
 		const screen = await renderToolbar({
 			isAuthenticated: true,
-			filters: { availableOnly: true, withLinkOnly: true, likedOnly: true },
+			filters: {
+				availableOnly: true,
+				withLinkOnly: true,
+				likedOnly: true,
+				showReceived: true,
+			},
 			onfilterchange,
 		});
 
@@ -119,6 +124,7 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 			availableOnly: false,
 			withLinkOnly: false,
 			likedOnly: false,
+			showReceived: false,
 		});
 		await screen.unmount();
 	});
@@ -127,7 +133,12 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 		const onfilterchange = vi.fn();
 		const screen = await renderToolbar({
 			isAuthenticated: true,
-			filters: { availableOnly: false, withLinkOnly: false, likedOnly: true },
+			filters: {
+				availableOnly: false,
+				withLinkOnly: false,
+				likedOnly: true,
+				showReceived: false,
+			},
 			onfilterchange,
 		});
 
@@ -140,6 +151,7 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 			availableOnly: true,
 			withLinkOnly: false,
 			likedOnly: true,
+			showReceived: false,
 		});
 		await userEvent.keyboard('{Escape}');
 		await screen.unmount();

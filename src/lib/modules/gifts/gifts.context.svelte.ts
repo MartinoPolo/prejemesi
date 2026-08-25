@@ -87,13 +87,15 @@ function createGiftsContext(
 		availableOnly: false,
 		withLinkOnly: false,
 		likedOnly: false,
+		showReceived: false,
 	});
 
 	const hasActiveFilters = new Derived(
 		() =>
 			filters.current.availableOnly ||
 			filters.current.withLinkOnly ||
-			filters.current.likedOnly,
+			filters.current.likedOnly ||
+			filters.current.showReceived,
 	);
 
 	// Filter only — sorting and banding move to computeGiftSections (issue #224) so the section
@@ -102,6 +104,9 @@ function createGiftsContext(
 		let result = [...effectiveGifts.current];
 
 		const currentFilters = filters.current;
+		if (!currentFilters.showReceived) {
+			result = result.filter((giftItem) => !giftItem.received);
+		}
 		if (currentFilters.availableOnly && viewerRole.current !== 'recipient') {
 			result = result.filter((giftItem) => {
 				const visitorGift = giftItem as GiftForVisitor;

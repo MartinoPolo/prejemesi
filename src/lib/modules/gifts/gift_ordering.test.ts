@@ -317,6 +317,51 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 	});
 });
 
+describe('computeGiftSections — received partition (#240)', () => {
+	it('always emits one final received section under every sort, role, and grouping mode', () => {
+		const active = makeGift({ id: 'active', sortOrder: 3, isFullyReserved: true });
+		const receivedA = makeGift({ id: 'received-a', received: true, sortOrder: 2, price: 200 });
+		const receivedB = makeGift({ id: 'received-b', received: true, sortOrder: 1, price: 100 });
+
+		for (const role of Object.values(WISHLIST_ROLES)) {
+			for (const sortOption of Object.values(GIFT_SORT_OPTIONS)) {
+				for (const grouping of [false, true]) {
+					const sections = computeGiftSections(
+						[receivedA, active, receivedB],
+						role,
+						sortOption,
+						grouping,
+						LOCALE,
+					);
+					const received = sections.at(-1);
+					expect(received?.kind).toBe(GIFT_SECTION_KINDS.received);
+					expect(received?.gifts.map((gift) => gift.id).sort()).toEqual([
+						'received-a',
+						'received-b',
+					]);
+					expect(sections.slice(0, -1).flatMap((section) => section.gifts)).toEqual([
+						active,
+					]);
+					expect(giftSectionHasHeader(received!)).toBe(true);
+				}
+			}
+		}
+	});
+
+	it('sorts received gifts within their final section with owner order as the stable tie-breaker', () => {
+		const later = makeGift({ id: 'later', received: true, name: 'Same', sortOrder: 2 });
+		const earlier = makeGift({ id: 'earlier', received: true, name: 'Same', sortOrder: 1 });
+		const sections = computeGiftSections(
+			[later, earlier],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.name,
+			false,
+			LOCALE,
+		);
+		expect(flatIds(sections)).toEqual(['earlier', 'later']);
+	});
+});
+
 describe('priority rank for unprioritized gifts', () => {
 	const high = { priorityLevelId: 'lvl-high', priorityLabel: 'Vysoká', prioritySortOrder: 1 };
 	const medium = { priorityLevelId: 'lvl-med', priorityLabel: 'Střední', prioritySortOrder: 2 };

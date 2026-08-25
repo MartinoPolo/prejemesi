@@ -135,6 +135,8 @@ export interface GiftFilters {
 	availableOnly: boolean;
 	withLinkOnly: boolean;
 	likedOnly: boolean;
+	/** Received gifts are archived from ordinary browsing unless explicitly requested. */
+	showReceived: boolean;
 }
 
 /** Supported currencies */

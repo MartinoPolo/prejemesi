@@ -11,9 +11,7 @@
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 	interface WishlistGiftDisplayProps {
-		gifts: GiftByRole[];
-		/** Role-aware bands/priority groups for the card & list views (issue #224); compact uses the
-		 *  flat `gifts`. */
+		/** Shared display sections consumed identically by every view mode. */
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
@@ -30,7 +28,6 @@
 	}
 
 	let {
-		gifts,
 		sections,
 		role,
 		isArchived,
@@ -88,7 +85,7 @@
 	/>
 {:else}
 	<WishlistGiftCompactTable
-		{gifts}
+		{sections}
 		{role}
 		{isArchived}
 		{isRecipient}

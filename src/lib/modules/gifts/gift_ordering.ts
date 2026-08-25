@@ -26,6 +26,8 @@ export const GIFT_SECTION_KINDS = {
 	priorityGroup: 'priorityGroup',
 	/** Unprioritized gifts (grouping on) under the „Bez priority" header. */
 	noPriority: 'noPriority',
+	/** Received gifts, structurally isolated in the final archive-like section. */
+	received: 'received',
 } as const;
 
 export type GiftSectionKind = (typeof GIFT_SECTION_KINDS)[keyof typeof GIFT_SECTION_KINDS];
@@ -87,31 +89,39 @@ export function sortGifts(
 	const result = [...gifts];
 	const unprioritizedRank = computeUnprioritizedRank(gifts);
 	result.sort((a, b) => {
+		let comparison: number;
 		switch (sortOption) {
 			case GIFT_SORT_OPTIONS.ownerOrder:
-				return a.sortOrder - b.sortOrder;
+				comparison = a.sortOrder - b.sortOrder;
+				break;
 			case GIFT_SORT_OPTIONS.priority: {
 				const aPriority = a.prioritySortOrder ?? unprioritizedRank;
 				const bPriority = b.prioritySortOrder ?? unprioritizedRank;
-				return aPriority - bPriority;
+				comparison = aPriority - bPriority;
+				break;
 			}
 			case GIFT_SORT_OPTIONS.priceAsc: {
 				const aPrice = a.price ?? Number.MAX_SAFE_INTEGER;
 				const bPrice = b.price ?? Number.MAX_SAFE_INTEGER;
-				return aPrice - bPrice;
+				comparison = aPrice - bPrice;
+				break;
 			}
 			case GIFT_SORT_OPTIONS.priceDesc: {
 				const aPrice = a.price ?? -1;
 				const bPrice = b.price ?? -1;
-				return bPrice - aPrice;
+				comparison = bPrice - aPrice;
+				break;
 			}
 			case GIFT_SORT_OPTIONS.name:
-				return a.name.localeCompare(b.name, locale);
+				comparison = a.name.localeCompare(b.name, locale);
+				break;
 			case GIFT_SORT_OPTIONS.dateAdded:
-				return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+				comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+				break;
 			default:
-				return 0;
+				comparison = 0;
 		}
+		return comparison || a.sortOrder - b.sortOrder;
 	});
 	return result;
 }
@@ -188,7 +198,15 @@ export function computeGiftSections(
 	const pinOwnReservations = role === WISHLIST_ROLES.visitor || role === WISHLIST_ROLES.moderator;
 	const sinkReserved = role === WISHLIST_ROLES.visitor;
 
-	const sorted = sortGifts(gifts, sortOption, locale);
+	// Partition before any reservation bands or priority grouping. Received gifts can therefore
+	// never be interleaved with active browsing sections, regardless of role or presentation.
+	const activeGifts = gifts.filter((gift) => !gift.received);
+	const receivedGifts = sortGifts(
+		gifts.filter((gift) => gift.received),
+		sortOption,
+		locale,
+	);
+	const sorted = sortGifts(activeGifts, sortOption, locale);
 
 	const own = pinOwnReservations ? sorted.filter(isOwnReservation) : [];
 	const ownIds = new Set(own.map((gift) => gift.id));
@@ -201,6 +219,9 @@ export function computeGiftSections(
 
 	if (groupByPriority) {
 		sections.push(...buildPriorityGroups(rest, sinkReserved));
+		if (receivedGifts.length > 0) {
+			sections.push({ kind: GIFT_SECTION_KINDS.received, label: null, gifts: receivedGifts });
+		}
 		return sections;
 	}
 
@@ -221,6 +242,10 @@ export function computeGiftSections(
 		}
 	} else if (rest.length > 0) {
 		sections.push({ kind: availableKind, label: null, gifts: rest });
+	}
+
+	if (receivedGifts.length > 0) {
+		sections.push({ kind: GIFT_SECTION_KINDS.received, label: null, gifts: receivedGifts });
 	}
 
 	return sections;

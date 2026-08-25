@@ -71,7 +71,12 @@
 	const showLikedFilter = $derived(isAuthenticated && role !== WISHLIST_ROLES.recipient);
 
 	function clearGiftFilters() {
-		onfilterchange({ availableOnly: false, withLinkOnly: false, likedOnly: false });
+		onfilterchange({
+			availableOnly: false,
+			withLinkOnly: false,
+			likedOnly: false,
+			showReceived: false,
+		});
 	}
 
 	const filterDefinitions = $derived<FilterDefinition[]>([
@@ -102,6 +107,12 @@
 					},
 				]
 			: []),
+		{
+			id: 'show-received',
+			menuLabel: m.gift_filter_show_received(),
+			checked: filters.showReceived,
+			onchange: (showReceived: boolean) => onfilterchange({ ...filters, showReceived }),
+		},
 	]);
 
 	const filterToggles = $derived<FilterToggle[]>(
