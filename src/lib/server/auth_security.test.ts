@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	AUTH_CAPTCHA_ENDPOINTS,
-	AUTH_IP_ADDRESS_HEADERS,
-	AUTH_RATE_LIMIT,
-} from './auth_security.js';
+import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
 
 describe('BetterAuth security configuration', () => {
 	it('gates every email authentication entry point with Turnstile', () => {
@@ -15,8 +11,12 @@ describe('BetterAuth security configuration', () => {
 		]);
 	});
 
-	it('enables the Worker-compatible built-in limiter', () => {
-		expect(AUTH_RATE_LIMIT).toEqual({ enabled: true });
+	it('enables the Worker-compatible built-in limiter in production', () => {
+		expect(authRateLimit(true)).toEqual({ enabled: true });
+	});
+
+	it('disables the built-in limiter for deterministic local development and E2E', () => {
+		expect(authRateLimit(false)).toEqual({ enabled: false });
 	});
 
 	it('uses only Cloudflare trusted client IP and ignores forwarding headers', () => {

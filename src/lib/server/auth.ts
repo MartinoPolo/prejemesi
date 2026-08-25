@@ -9,11 +9,7 @@ import { getDb } from './db/index.js';
 import { sendEmail, renderActionEmailParts } from './email.js';
 import { getTurnstileSecretKey } from './turnstile.js';
 import type { RequestEvent } from '@sveltejs/kit';
-import {
-	AUTH_CAPTCHA_ENDPOINTS,
-	AUTH_IP_ADDRESS_HEADERS,
-	AUTH_RATE_LIMIT,
-} from './auth_security.js';
+import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
 
 // Dev: Vite picks the next free port (5174, 5175, ...) when 5173 is taken.
 // better-auth rejects sign-in when the request Origin doesn't match baseURL,
@@ -33,7 +29,7 @@ export function createAuth(event?: RequestEvent) {
 		secret: env.AUTH_SECRET,
 		trustedOrigins: devTrustedOrigins,
 		logger: { disabled: !import.meta.env.DEV },
-		rateLimit: AUTH_RATE_LIMIT,
+		rateLimit: authRateLimit(import.meta.env.PROD),
 		advanced: {
 			ipAddress: {
 				ipAddressHeaders: [...AUTH_IP_ADDRESS_HEADERS],
