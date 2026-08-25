@@ -1,5 +1,6 @@
 <script lang="ts">
 	import GiftCompactRow from '$lib/components/blocks/gift/GiftCompactRow.svelte';
+	import * as m from '$lib/paraglide/messages.js';
 	import GiftSectionHeader from './GiftSectionHeader.svelte';
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
@@ -39,33 +40,40 @@
 			<thead>
 				<tr class="border-b-2 border-border">
 					{#if canManage}
-						<th class="w-8 px-1"></th>
+						<th scope="col" class="w-8 px-1">
+							<span class="sr-only">{m.gift_compact_controls_header()}</span>
+						</th>
 					{/if}
 					<th
+						scope="col"
 						class="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 					>
-						Nazev
+						{m.gift_compact_name_header()}
 					</th>
 					<th
+						scope="col"
 						class="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 					>
-						Odkaz
+						{m.gift_compact_link_header()}
 					</th>
 					<th
+						scope="col"
 						class="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 					>
-						Cena
+						{m.gift_compact_price_header()}
 					</th>
 					{#if !hideReservationState}
 						<th
+							scope="col"
 							class="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 						>
-							&#9825;
+							{m.gift_compact_likes_header()}
 						</th>
 						<th
+							scope="col"
 							class="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 						>
-							Akce
+							{m.gift_compact_actions_header()}
 						</th>
 					{/if}
 				</tr>
