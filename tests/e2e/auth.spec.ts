@@ -68,6 +68,11 @@ test.describe('Authentication', () => {
 
 	for (const protectedRequest of [
 		{
+			name: 'password sign-in',
+			path: '/api/auth/sign-in/email',
+			data: { email: 'turnstile-login@test.cz', password: 'password123' },
+		},
+		{
 			name: 'registration',
 			path: '/api/auth/sign-up/email',
 			data: {

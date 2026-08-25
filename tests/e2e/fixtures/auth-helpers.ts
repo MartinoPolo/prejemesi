@@ -37,7 +37,7 @@ export async function loginViaApi(
 	user: Pick<TestUser, 'email' | 'password'>,
 ): Promise<string[]> {
 	const response = await request.post(`${baseURL}/api/auth/sign-in/email`, {
-		headers: { Origin: baseURL },
+		headers: { Origin: baseURL, 'x-captcha-response': 'XXXX.DUMMY.TOKEN.XXXX' },
 		data: { email: user.email, password: user.password },
 	});
 
