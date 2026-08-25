@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql, count, type SQLWrapper } from 'drizzle-orm';
+import { eq, and, or, ne, isNull, sql, count, type SQLWrapper } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { isAppAdmin } from '$lib/server/admin.js';
@@ -292,7 +292,13 @@ export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) =
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
 		.leftJoin(availableGiftsSubquery, eq(availableGiftsSubquery.wishlistId, wishlist.id))
 		.leftJoin(myReservationsSubquery, eq(myReservationsSubquery.wishlistId, wishlist.id))
-		.where(and(eq(wishlistFollower.userId, currentUser.id), isNull(wishlist.deletedAt)))
+		.where(
+			and(
+				eq(wishlistFollower.userId, currentUser.id),
+				or(isNull(wishlist.recipientUserId), ne(wishlist.recipientUserId, currentUser.id)),
+				isNull(wishlist.deletedAt),
+			),
+		)
 		.orderBy(wishlist.updatedAt);
 
 	return rows.map(
@@ -467,6 +473,10 @@ export const getHomeOverview = guardedQuery(
 			.where(
 				and(
 					eq(wishlistFollower.userId, currentUser.id),
+					or(
+						isNull(wishlist.recipientUserId),
+						ne(wishlist.recipientUserId, currentUser.id),
+					),
 					isNull(wishlistFollower.unfollowedAt),
 					isNull(wishlist.deletedAt),
 				),

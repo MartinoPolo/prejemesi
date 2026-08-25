@@ -40,6 +40,8 @@ vi.mock('$lib/server/remote.js', () => ({
 vi.mock('$lib/modules/wishlists/wishlists.remote.js', () => ({
 	getMyWishlists: vi.fn(),
 	getModeratedWishlists: vi.fn(),
+	getFollowedWishlists: vi.fn(),
+	getHomeOverview: vi.fn(),
 	getWishlistByShortId: vi.fn(),
 }));
 
@@ -95,6 +97,14 @@ vi.mock('$lib/server/db/moderator.schema.js', () => ({
 	},
 }));
 
+vi.mock('$lib/server/db/follower.schema.js', () => ({
+	wishlistFollower: {
+		wishlistId: 'wf.wishlistId',
+		userId: 'wf.userId',
+		unfollowedAt: 'wf.unfollowedAt',
+	},
+}));
+
 vi.mock('$lib/server/db/gift.schema.js', () => ({
 	gift: { id: 'g.id', wishlistId: 'g.wishlistId', deletedAt: 'g.deletedAt' },
 	reservation: {
@@ -125,10 +135,12 @@ const mockDispatchNotification = vi.mocked(dispatchNotification);
  * Mock database whose chained query methods resolve to sequential entries from
  * queryResults. Each awaited chain (including inside a transaction) consumes one entry.
  */
+const transactionSetPayloads: Record<string, unknown>[] = [];
+
 function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 	let queryIndex = 0;
 
-	const createChain = (): unknown =>
+	const createChain = (insideTransaction = false): unknown =>
 		new Proxy(
 			{},
 			{
@@ -138,7 +150,15 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 						queryIndex++;
 						return (resolve: (value: unknown) => void) => resolve(result);
 					}
-					return vi.fn(() => createChain());
+					if (prop === 'set') {
+						return vi.fn((payload: Record<string, unknown>) => {
+							if (insideTransaction) {
+								transactionSetPayloads.push(payload);
+							}
+							return createChain(insideTransaction);
+						});
+					}
+					return vi.fn(() => createChain(insideTransaction));
 				},
 			},
 		);
@@ -150,10 +170,10 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 		delete: vi.fn(() => createChain()),
 		transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
 			const txProxy = {
-				select: vi.fn(() => createChain()),
-				insert: vi.fn(() => createChain()),
-				update: vi.fn(() => createChain()),
-				delete: vi.fn(() => createChain()),
+				select: vi.fn(() => createChain(true)),
+				insert: vi.fn(() => createChain(true)),
+				update: vi.fn(() => createChain(true)),
+				delete: vi.fn(() => createChain(true)),
 			};
 			return callback(txProxy);
 		}),
@@ -242,6 +262,7 @@ const callRevokeClaimInvite = (authContext: typeof janaAuthContext, input: { inv
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	transactionSetPayloads.length = 0;
 });
 
 // ── generateClaimInviteLink (generation gating) ──────────────────────────────
@@ -345,6 +366,7 @@ describe('acceptClaimInvite', () => {
 				[], // tx: mark invite used
 				[], // tx: link wishlist
 				[], // tx: soft-delete claimer assignment (none)
+				[], // tx: soft-delete claimer follower row
 			]),
 		);
 
@@ -356,6 +378,9 @@ describe('acceptClaimInvite', () => {
 			wishlistTitle: forSomeoneShared.title,
 		});
 		expect(mockDispatchNotification).toHaveBeenCalledOnce();
+		expect(transactionSetPayloads).toEqual(
+			expect.arrayContaining([expect.objectContaining({ unfollowedAt: expect.any(Date) })]),
+		);
 		expect(mockDispatchNotification).toHaveBeenCalledWith({
 			type: 'recipient_claimed',
 			targetUserIds: [janaUser.id],
@@ -393,6 +418,7 @@ describe('acceptClaimInvite', () => {
 				[], // tx: mark invite used
 				[], // tx: link wishlist
 				[], // tx: soft-delete claimer's own assignment
+				[], // tx: soft-delete claimer follower row
 			]),
 		);
 
