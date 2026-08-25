@@ -17,6 +17,10 @@ import { getLocale } from '$lib/paraglide/runtime.js';
 
 type GiftsContext = ReturnType<typeof createGiftsContext>;
 
+export function shouldApplyLikedOnly(likedOnly: boolean, role: WishlistRole): boolean {
+	return likedOnly && role !== 'recipient';
+}
+
 const [useGifts, setGiftsInternal] = createContext<GiftsContext>();
 /** @public */
 export { useGifts };
@@ -116,7 +120,7 @@ function createGiftsContext(
 		if (currentFilters.withLinkOnly) {
 			result = result.filter((giftItem) => giftItem.links.length > 0);
 		}
-		if (currentFilters.likedOnly) {
+		if (shouldApplyLikedOnly(currentFilters.likedOnly, viewerRole.current)) {
 			result = result.filter((giftItem) => likedIdSet.current.has(giftItem.id));
 		}
 

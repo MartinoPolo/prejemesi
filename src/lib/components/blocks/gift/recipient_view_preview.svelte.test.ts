@@ -49,14 +49,15 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 				surface,
 			});
 
-			expect(document.body.textContent).toContain('Tajný dárek');
-			expect(document.body.textContent).not.toContain('Rezervováno');
-			expect(document.body.textContent).not.toContain('rezervováno');
-			expect(document.body.textContent).not.toContain('Babička');
-			expect(document.body.textContent).not.toContain('2 rezervováno');
-			expect(document.querySelector('[data-testid="reserve-button"]')).toBeNull();
-			expect(document.querySelector('[data-testid="release-reservation-button"]')).toBeNull();
-			expect(document.querySelector('button')).toBeNull();
+			await expect.element(screen.getByText('Tajný dárek')).toBeVisible();
+			await expect.element(screen.getByText('Rezervováno')).not.toBeInTheDocument();
+			await expect.element(screen.getByText('rezervováno')).not.toBeInTheDocument();
+			await expect.element(screen.getByText('Babička')).not.toBeInTheDocument();
+			await expect.element(screen.getByText('2 rezervováno')).not.toBeInTheDocument();
+			await expect.element(screen.getByTestId('reserve-button')).not.toBeInTheDocument();
+			await expect
+				.element(screen.getByTestId('release-reservation-button'))
+				.not.toBeInTheDocument();
 
 			await screen.unmount();
 		},
@@ -70,9 +71,10 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 			hideReservationState: false,
 		});
 
-		expect(document.body.textContent).toContain('Rezervováno');
-		expect(document.body.textContent).toContain('Babička');
-		expect(document.querySelector('[data-testid="reserve-button"]')).not.toBeNull();
+		await expect.element(screen.getByText('Rezervováno', { exact: true })).toBeVisible();
+		await expect.element(screen.getByText('Babička')).toBeVisible();
+		await expect.element(screen.getByText('2 rezervováno', { exact: true })).toBeVisible();
+		await expect.element(screen.getByTestId('reserve-button')).toBeInTheDocument();
 
 		await screen.unmount();
 	});

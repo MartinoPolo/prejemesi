@@ -28,6 +28,7 @@
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
@@ -328,6 +329,22 @@
 
 	let reorderMode = $state(false);
 	let reorderActiveIds = $state<string[] | null>(null);
+	const reorderPersistenceQueue = createLatestAsyncQueue<string[]>(
+		async (orderedIds) => {
+			await reorderGifts(
+				orderedIds.map((id, sortOrder) => ({
+					id,
+					sortOrder,
+				})),
+			);
+		},
+		async (thrown) => {
+			console.error('Failed to reorder gifts:', thrown);
+			giftsContext.clearReorderOverride();
+			await getGiftsByWishlistShortId(shortId).refresh();
+			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
+		},
+	);
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const reorderModeGifts = $derived(
 		reorderActiveIds === null
@@ -765,26 +782,14 @@
 		}
 	}
 
-	async function handleReorderCommit(orderedIds: string[]) {
+	function handleReorderCommit(orderedIds: string[]) {
 		if (!reorderMode || !canManage || isArchived || !isExactActiveGiftOrder(orderedIds)) {
 			return;
 		}
 
 		reorderActiveIds = [...orderedIds];
 		giftsContext.setActiveGiftOrder(orderedIds);
-		try {
-			await reorderGifts(
-				orderedIds.map((id, sortOrder) => ({
-					id,
-					sortOrder,
-				})),
-			);
-		} catch (thrown) {
-			console.error('Failed to reorder gifts:', thrown);
-			giftsContext.clearReorderOverride();
-			await getGiftsByWishlistShortId(shortId).refresh();
-			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
-		}
+		reorderPersistenceQueue.enqueue([...orderedIds]);
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────

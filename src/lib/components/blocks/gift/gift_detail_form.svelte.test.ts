@@ -100,27 +100,47 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 
 	it('keeps the legacy null fallback on untouched submit and exposes a localized label', async () => {
 		const onupdate = vi.fn();
-		const screen = await render(GiftDetailForm, {
-			...baseProps,
-			gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
-			onupdate,
-		});
+		const root = document.documentElement;
+		const previousValue = root.style.getPropertyValue('--secondary');
+		const previousPriority = root.style.getPropertyPriority('--secondary');
+		root.style.setProperty('--secondary', 'rgb(12, 34, 56)');
 
-		await expect
-			.element(screen.getByRole('group', { name: m.image_background_label() }))
-			.toBeVisible();
-		await screen.getByRole('button', { name: m.save() }).click();
+		try {
+			const screen = await render(GiftDetailForm, {
+				...baseProps,
+				gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
+				onupdate,
+			});
 
-		expect(onupdate).toHaveBeenCalledWith(
-			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
-		);
+			await expect
+				.element(screen.getByRole('group', { name: m.image_background_label() }))
+				.toBeVisible();
+			await vi.waitFor(() => {
+				const fill = screen.container.querySelector<HTMLElement>(
+					'[data-testid="crop-stage"] > [style*="background:"]',
+				);
+				expect(fill).not.toBeNull();
+				expect(getComputedStyle(fill!).backgroundColor).toBe('rgb(12, 34, 56)');
+			});
+
+			await screen.getByRole('button', { name: m.save() }).click();
+			expect(onupdate).toHaveBeenCalledWith(
+				expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+			);
+		} finally {
+			if (previousValue) {
+				root.style.setProperty('--secondary', previousValue, previousPriority);
+			} else {
+				root.style.removeProperty('--secondary');
+			}
+		}
 	});
 
 	it.each([
-		[m.image_background_white(), '#ffffff'],
-		[m.image_background_black(), '#000000'],
-		[m.image_background_transparent(), 'transparent'],
-	])('submits %s as the exact persisted value', async (label, value) => {
+		[m.image_background_white(), '#ffffff', 'rgb(255, 255, 255)'],
+		[m.image_background_black(), '#000000', 'rgb(0, 0, 0)'],
+		[m.image_background_transparent(), 'transparent', 'rgba(0, 0, 0, 0)'],
+	])('submits %s as the exact persisted value', async (label, value, expectedBackground) => {
 		const onupdate = vi.fn();
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
@@ -129,6 +149,13 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 		});
 
 		await screen.getByRole('radio', { name: label }).click();
+		await vi.waitFor(() => {
+			const fill = screen.container.querySelector<HTMLElement>(
+				'[data-testid="crop-stage"] > [style*="background:"]',
+			);
+			expect(fill).not.toBeNull();
+			expect(getComputedStyle(fill!).backgroundColor).toBe(expectedBackground);
+		});
 		await screen.getByRole('button', { name: m.save() }).click();
 
 		expect(onupdate).toHaveBeenCalledWith(

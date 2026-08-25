@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -48,7 +48,11 @@ test.describe('Gift detail post-#188 coverage', () => {
 
 		await createWishlistAndNavigate(page, 'Received Sticker Coverage');
 		const giftName = 'Testovaci darek prijaty';
+		const activeGiftNameOne = 'Testovaci aktivni darek prvni';
+		const activeGiftNameTwo = 'Testovaci aktivni darek druhy';
 		await addGift(page, giftName);
+		await addGift(page, activeGiftNameOne);
+		await addGift(page, activeGiftNameTwo);
 
 		const giftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
 		await giftItem.click();
@@ -67,11 +71,46 @@ test.describe('Gift detail post-#188 coverage', () => {
 		const showReceived = page.getByRole('menuitemcheckbox', { name: 'Zobrazit obdržené' });
 		await showReceived.click();
 		await expect(showReceived).toHaveAttribute('aria-checked', 'true');
+		await page.keyboard.press('Escape');
+		await expect(showReceived).not.toBeVisible();
 
 		const revealedGiftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
+		const activeGiftItemOne = page
+			.locator('[data-gift-item]')
+			.filter({ hasText: activeGiftNameOne });
+		const activeGiftItemTwo = page
+			.locator('[data-gift-item]')
+			.filter({ hasText: activeGiftNameTwo });
+		const receivedHeading = page.getByRole('heading', { name: 'Obdržené', exact: true });
+		await expect(receivedHeading).toHaveCount(1);
 		await expect(revealedGiftItem.getByText('Přijato', { exact: true })).toBeVisible({
 			timeout: 10_000,
 		});
+
+		const expectBefore = async (first: Locator, second: Locator) => {
+			const secondElement = await second.elementHandle();
+			expect(
+				secondElement,
+				'second element is attached for DOM-order comparison',
+			).not.toBeNull();
+			const secondFollowsFirst = await first.evaluate(
+				(firstElement, secondNode) =>
+					Boolean(
+						firstElement.compareDocumentPosition(secondNode) &
+						Node.DOCUMENT_POSITION_FOLLOWING,
+					),
+				secondElement!,
+			);
+			expect(
+				secondFollowsFirst,
+				'first element occurs before second element in the DOM',
+			).toBe(true);
+		};
+
+		await expectBefore(activeGiftItemOne, receivedHeading);
+		await expectBefore(activeGiftItemTwo, receivedHeading);
+		await expectBefore(receivedHeading, revealedGiftItem);
+
 		const cardBox = await revealedGiftItem.boundingBox();
 		const stickerBox = await revealedGiftItem
 			.getByText('Přijato', { exact: true })
@@ -101,6 +140,12 @@ test.describe('Gift detail post-#188 coverage', () => {
 		expect(stickerBox!.y + stickerBox!.height).toBeLessThanOrEqual(
 			cardBox!.y + cardBox!.height + 1,
 		);
+
+		await page.getByRole('radio', { name: 'Seznam', exact: true }).click();
+		await expect(page.getByRole('radio', { name: 'Seznam', exact: true })).toBeChecked();
+		await expectBefore(activeGiftItemOne, receivedHeading);
+		await expectBefore(activeGiftItemTwo, receivedHeading);
+		await expectBefore(receivedHeading, revealedGiftItem);
 	});
 
 	test('edited-after-share line appears on both the editor and the visitor detail view', async ({

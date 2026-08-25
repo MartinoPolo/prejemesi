@@ -1,0 +1,85 @@
+import { render } from 'vitest-browser-svelte';
+import { describe, expect, it, vi } from 'vitest';
+import {
+	IMAGE_FIT_MODES,
+	type GiftCropTarget,
+	type ImageMetadata,
+} from '$lib/modules/images/index.js';
+
+vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
+const { default: GiftImage } = await import('./GiftImage.svelte');
+
+const imageUrl =
+	'data:image/svg+xml,' +
+	encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>');
+
+function imageMeta(bgColor: string | null): ImageMetadata {
+	return {
+		fitMode: IMAGE_FIT_MODES.containPadded,
+		cropRect: null,
+		focal: { x: 50, y: 50 },
+		zoom: 1,
+		bgColor,
+	};
+}
+
+const targets = ['square', 'thumb'] as const satisfies readonly GiftCropTarget[];
+
+describe('GiftImage persisted background fill', () => {
+	it.each(
+		targets.flatMap(
+			(target) =>
+				[
+					[target, '#ffffff'],
+					[target, '#000000'],
+					[target, 'transparent'],
+				] as const,
+		),
+	)('renders the %s target with %s', async (target, bgColor) => {
+		const screen = await render(GiftImage, {
+			props: {
+				imageUrl,
+				imageMeta: imageMeta(bgColor),
+				target,
+				alt: `Gift ${target}`,
+			},
+		});
+
+		await expect.element(screen.getByRole('img', { name: `Gift ${target}` })).toBeVisible();
+		const frame = screen.container.querySelector<HTMLElement>('[style*="--frame-fill"]');
+		expect(frame).not.toBeNull();
+		expect(getComputedStyle(frame!).getPropertyValue('--frame-fill').trim()).toBe(bgColor);
+	});
+
+	it.each(targets)('keeps the theme fallback for the %s target', async (target) => {
+		const root = document.documentElement;
+		const previousValue = root.style.getPropertyValue('--secondary');
+		const previousPriority = root.style.getPropertyPriority('--secondary');
+		root.style.setProperty('--secondary', 'rgb(12, 34, 56)');
+
+		try {
+			const screen = await render(GiftImage, {
+				props: {
+					imageUrl,
+					imageMeta: imageMeta(null),
+					target,
+					alt: `Gift ${target}`,
+				},
+			});
+
+			await expect.element(screen.getByRole('img', { name: `Gift ${target}` })).toBeVisible();
+			const frame = screen.container.querySelector<HTMLElement>('[style*="--frame-fill"]');
+			expect(frame).not.toBeNull();
+			expect(getComputedStyle(frame!).getPropertyValue('--frame-fill').trim()).toBe(
+				'rgb(12, 34, 56)',
+			);
+		} finally {
+			if (previousValue) {
+				root.style.setProperty('--secondary', previousValue, previousPriority);
+			} else {
+				root.style.removeProperty('--secondary');
+			}
+		}
+	});
+});
