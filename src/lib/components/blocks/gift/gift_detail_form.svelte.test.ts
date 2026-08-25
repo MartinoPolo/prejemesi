@@ -7,7 +7,7 @@ import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
-import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
+import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 
 // `GiftDetailForm` transitively imports `public_url.ts`, whose public env is normally
 // seeded by SvelteKit's browser bootstrap. Vitest mounts into a bare document, so use
@@ -80,6 +80,71 @@ describe('GiftDetailForm stored images', () => {
 				imageKey: 'demo/backpack.jpg',
 			}),
 		);
+	});
+});
+
+describe('GiftDetailForm image backgrounds (issue #252)', () => {
+	const imageUrl =
+		'data:image/svg+xml,' +
+		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"/>');
+
+	function imageMeta(bgColor: string | null): ImageMetadata {
+		return {
+			fitMode: IMAGE_FIT_MODES.containPadded,
+			cropRect: null,
+			focal: { x: 50, y: 50 },
+			zoom: 1,
+			bgColor,
+		};
+	}
+
+	it('keeps the legacy null fallback on untouched submit and exposes a localized label', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
+			onupdate,
+		});
+
+		await expect
+			.element(screen.getByRole('group', { name: m.image_background_label() }))
+			.toBeVisible();
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+		);
+	});
+
+	it.each([
+		[m.image_background_white(), '#ffffff'],
+		[m.image_background_black(), '#000000'],
+		[m.image_background_transparent(), 'transparent'],
+	])('submits %s as the exact persisted value', async (label, value) => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
+			onupdate,
+		});
+
+		await screen.getByRole('radio', { name: label }).click();
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: value }) }),
+		);
+	});
+
+	it('highlights the persisted explicit choice when editing a gift', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta('#000000') }),
+		});
+
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_black() }))
+			.toHaveAttribute('aria-checked', 'true');
 	});
 });
 
