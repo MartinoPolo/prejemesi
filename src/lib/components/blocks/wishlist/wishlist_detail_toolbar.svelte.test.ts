@@ -17,6 +17,8 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	filters: { availableOnly: false, withLinkOnly: false, likedOnly: false, showReceived: false },
 	priorityGrouping: false,
 	showPriorityGrouping: false,
+	reorderMode: false,
+	onreordermodechange: () => {},
 	onviewmodechange: () => {},
 	onsortchange: () => {},
 	onfilterchange: () => {},
@@ -35,6 +37,68 @@ async function renderToolbar(
 ) {
 	return render(WishlistDetailToolbar, { ...defaultProps, ...overrides });
 }
+
+describe('WishlistDetailToolbar reorder mode (#239)', () => {
+	it('offers reorder only to managers on non-archived card and list layouts', async () => {
+		for (const viewMode of [GIFT_VIEW_MODES.card, GIFT_VIEW_MODES.list]) {
+			const screen = await renderToolbar({
+				canManage: true,
+				role: WISHLIST_ROLES.moderator,
+				viewMode,
+			});
+			await expect
+				.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+				.toBeVisible();
+			await screen.unmount();
+		}
+
+		for (const overrides of [
+			{ canManage: false },
+			{ canManage: true, role: WISHLIST_ROLES.visitor },
+			{ canManage: true, role: WISHLIST_ROLES.moderator, isArchived: true },
+			{
+				canManage: true,
+				role: WISHLIST_ROLES.recipient,
+				viewMode: GIFT_VIEW_MODES.compact,
+			},
+		]) {
+			const screen = await renderToolbar(overrides);
+			await expect
+				.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+				.not.toBeInTheDocument();
+			await screen.unmount();
+		}
+	});
+
+	it('shows Done and bypasses display modifiers without changing them', async () => {
+		const onreordermodechange = vi.fn();
+		const onsortchange = vi.fn();
+		const onfilterchange = vi.fn();
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.recipient,
+			reorderMode: true,
+			onreordermodechange,
+			onsortchange,
+			onfilterchange,
+		});
+
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_reorder_done() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_filter() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+			.not.toBeInTheDocument();
+		await screen.getByRole('button', { name: m.gift_reorder_done() }).click();
+		expect(onreordermodechange).toHaveBeenCalledWith(false);
+		expect(onsortchange).not.toHaveBeenCalled();
+		expect(onfilterchange).not.toHaveBeenCalled();
+		await screen.unmount();
+	});
+});
 
 describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 	it('shows only the recipient filter options', async () => {

@@ -41,6 +41,36 @@ export interface GiftSection {
 }
 
 /**
+ * The exact sequence exposed by reorder mode: active gifts in the recipient's persisted order.
+ * Viewer filters, alternative sorts, priority groups, and reservation state are deliberately not
+ * inputs, so a správce's own reservation behaves like every other gift while arranging the list.
+ */
+export function activeGiftsInOwnerOrder(gifts: readonly GiftByRole[]): GiftByRole[] {
+	return gifts
+		.filter((gift) => !gift.received)
+		.toSorted((firstGift, secondGift) => firstGift.sortOrder - secondGift.sortOrder);
+}
+
+/** Resolve a live reorder id sequence back to gifts without ever admitting received gifts. */
+export function resolveActiveGiftOrder(
+	gifts: readonly GiftByRole[],
+	orderedActiveIds: readonly string[],
+): GiftByRole[] {
+	const activeGifts = activeGiftsInOwnerOrder(gifts);
+	const giftsById = new Map(activeGifts.map((gift) => [gift.id, gift]));
+	const resolved = orderedActiveIds.flatMap((id) => {
+		const gift = giftsById.get(id);
+		if (gift === undefined) {
+			return [];
+		}
+		giftsById.delete(id);
+		return [gift];
+	});
+
+	return [...resolved, ...activeGifts.filter((gift) => giftsById.has(gift.id))];
+}
+
+/**
  * Whether a section carries a visible header. The neutral available band and the sunk reserved
  * band render headerless (issue #224 REQ-1): the dimmed overlay already communicates "reserved".
  */

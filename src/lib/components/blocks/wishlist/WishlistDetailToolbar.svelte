@@ -8,6 +8,8 @@
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
+	import CheckIcon from '@lucide/svelte/icons/check';
 	import GiftSortSelect from '$lib/components/blocks/gift/GiftSortSelect.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import {
@@ -30,6 +32,8 @@
 		/** „Seskupit podle priority" state; only offered when the list has any prioritized gift. */
 		priorityGrouping: boolean;
 		showPriorityGrouping: boolean;
+		reorderMode: boolean;
+		onreordermodechange: (active: boolean) => void;
 		onviewmodechange: (mode: GiftViewMode) => void;
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
@@ -54,6 +58,8 @@
 		filters,
 		priorityGrouping,
 		showPriorityGrouping,
+		reorderMode,
+		onreordermodechange,
 		onviewmodechange,
 		onsortchange,
 		onfilterchange,
@@ -68,6 +74,12 @@
 	}: WishlistDetailToolbarProps = $props();
 
 	const showAvailableFilter = $derived(role !== WISHLIST_ROLES.recipient);
+	const canReorder = $derived(
+		canManage &&
+			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
+			!isArchived &&
+			(viewMode === 'card' || viewMode === 'list'),
+	);
 	const showLikedFilter = $derived(isAuthenticated && role !== WISHLIST_ROLES.recipient);
 
 	function clearGiftFilters() {
@@ -132,85 +144,102 @@
 <div
 	class="flex flex-wrap items-center gap-2.5 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
 >
-	<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
-	<GiftSortSelect value={sortOption} onchange={onsortchange} />
-	<FilterMenu
-		definitions={filterDefinitions}
-		toggles={filterToggles}
-		triggerLabel={m.gift_filter()}
-		menuHeading={m.gift_filter()}
-		clearAllLabel={m.wishlist_detail_clear_filters()}
-		onclearall={clearGiftFilters}
-		removeFilterLabel={(label) => m.filter_remove({ label })}
-		activeCountLabel={(count) => m.filter_active_count({ count })}
-		align="end"
-	/>
-
-	<div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-		{#if canManage && !isArchived}
-			<SimpleTooltip text={m.wishlist_palette_dialog_title()}>
-				<Button
-					size="icon"
-					intent="outline"
-					aria-label={m.wishlist_palette_dialog_title()}
-					onclick={onthemeopen}
-				>
-					<PaletteIcon />
-				</Button>
-			</SimpleTooltip>
-		{/if}
-		{#if (canManage && !isArchived) || adminSettingsAvailable}
-			<SimpleTooltip text={m.wishlist_settings_title()}>
-				<Button
-					size="icon"
-					intent="outline"
-					aria-label={m.wishlist_settings_title()}
-					onclick={onsettings}
-				>
-					<SettingsIcon />
-				</Button>
-			</SimpleTooltip>
-		{/if}
-		{#if !canManage && !isArchived && isAuthenticated}
-			<Button size="sm" intent="ghost" onclick={onunfollow}
-				>{m.wishlist_detail_unfollow()}</Button
-			>
-		{/if}
-		{#if canManage && !isArchived}
-			<SimpleTooltip text={m.import_toolbar_label()}>
-				<Button
-					size="icon"
-					intent="outline"
-					aria-label={m.import_toolbar_label()}
-					onclick={onimport}
-				>
-					<FileUpIcon />
-				</Button>
-			</SimpleTooltip>
-			<SimpleTooltip text={m.export_toolbar_label()}>
-				<Button
-					size="icon"
-					intent="outline"
-					aria-label={m.export_toolbar_label()}
-					onclick={onexport}
-				>
-					<FileDownIcon />
-				</Button>
-			</SimpleTooltip>
-			<SimpleTooltip text={m.batch_add_toolbar_label()}>
-				<Button
-					size="icon"
-					intent="outline"
-					aria-label={m.batch_add_toolbar_label()}
-					onclick={onbatchadd}
-				>
-					<ListPlusIcon />
-				</Button>
-			</SimpleTooltip>
-			<Button size="md" aria-label={m.wishlist_detail_add_gift_label()} onclick={onaddgift}>
-				<PlusIcon data-icon="inline-start" />
-				{m.wishlist_detail_add_wish()}
+	{#if reorderMode && canReorder}
+		<Button size="md" onclick={() => onreordermodechange(false)}>
+			<CheckIcon data-icon="inline-start" />
+			{m.gift_reorder_done()}
+		</Button>
+	{:else}
+		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
+		<GiftSortSelect value={sortOption} onchange={onsortchange} />
+		<FilterMenu
+			definitions={filterDefinitions}
+			toggles={filterToggles}
+			triggerLabel={m.gift_filter()}
+			menuHeading={m.gift_filter()}
+			clearAllLabel={m.wishlist_detail_clear_filters()}
+			onclearall={clearGiftFilters}
+			removeFilterLabel={(label) => m.filter_remove({ label })}
+			activeCountLabel={(count) => m.filter_active_count({ count })}
+			align="end"
+		/>
+		{#if canReorder}
+			<Button size="md" intent="outline" onclick={() => onreordermodechange(true)}>
+				<ArrowUpDownIcon data-icon="inline-start" />
+				{m.gift_reorder_action()}
 			</Button>
 		{/if}
-	</div>
+
+		<div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+			{#if canManage && !isArchived}
+				<SimpleTooltip text={m.wishlist_palette_dialog_title()}>
+					<Button
+						size="icon"
+						intent="outline"
+						aria-label={m.wishlist_palette_dialog_title()}
+						onclick={onthemeopen}
+					>
+						<PaletteIcon />
+					</Button>
+				</SimpleTooltip>
+			{/if}
+			{#if (canManage && !isArchived) || adminSettingsAvailable}
+				<SimpleTooltip text={m.wishlist_settings_title()}>
+					<Button
+						size="icon"
+						intent="outline"
+						aria-label={m.wishlist_settings_title()}
+						onclick={onsettings}
+					>
+						<SettingsIcon />
+					</Button>
+				</SimpleTooltip>
+			{/if}
+			{#if !canManage && !isArchived && isAuthenticated}
+				<Button size="sm" intent="ghost" onclick={onunfollow}
+					>{m.wishlist_detail_unfollow()}</Button
+				>
+			{/if}
+			{#if canManage && !isArchived}
+				<SimpleTooltip text={m.import_toolbar_label()}>
+					<Button
+						size="icon"
+						intent="outline"
+						aria-label={m.import_toolbar_label()}
+						onclick={onimport}
+					>
+						<FileUpIcon />
+					</Button>
+				</SimpleTooltip>
+				<SimpleTooltip text={m.export_toolbar_label()}>
+					<Button
+						size="icon"
+						intent="outline"
+						aria-label={m.export_toolbar_label()}
+						onclick={onexport}
+					>
+						<FileDownIcon />
+					</Button>
+				</SimpleTooltip>
+				<SimpleTooltip text={m.batch_add_toolbar_label()}>
+					<Button
+						size="icon"
+						intent="outline"
+						aria-label={m.batch_add_toolbar_label()}
+						onclick={onbatchadd}
+					>
+						<ListPlusIcon />
+					</Button>
+				</SimpleTooltip>
+				<Button
+					size="md"
+					aria-label={m.wishlist_detail_add_gift_label()}
+					onclick={onaddgift}
+				>
+					<PlusIcon data-icon="inline-start" />
+					{m.wishlist_detail_add_wish()}
+				</Button>
+			{/if}
+		</div>
+	{/if}
 </div>

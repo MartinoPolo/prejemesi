@@ -82,6 +82,12 @@
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
 	import {
+		GIFT_SECTION_KINDS,
+		activeGiftsInOwnerOrder,
+		resolveActiveGiftOrder,
+		type GiftSection,
+	} from '$lib/modules/gifts/gift_ordering.js';
+	import {
 		ownerSharedGiftDeleteGraceExpiresAt,
 		preShareOwnerFullEditGraceExpiresAt,
 	} from '$lib/modules/gifts/gift_deletion_rules.js';
@@ -290,13 +296,39 @@
 
 	// ── Gift display ─────────────────────────────────────────────────────────
 
-	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
-	const giftSections = $derived(giftsContext.giftSections.current);
+	let reorderMode = $state(false);
+	let reorderActiveIds = $state<string[] | null>(null);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	const reorderModeGifts = $derived(
+		reorderActiveIds === null
+			? activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current)
+			: resolveActiveGiftOrder(giftsContext.effectiveGifts.current, reorderActiveIds),
+	);
+	const giftSections = $derived.by<GiftSection[]>(() => {
+		if (!reorderMode) {
+			return giftsContext.giftSections.current;
+		}
+		return reorderModeGifts.length === 0
+			? []
+			: [{ kind: GIFT_SECTION_KINDS.available, label: null, gifts: reorderModeGifts }];
+	});
+	const displayedGifts = $derived(
+		reorderMode ? reorderModeGifts : giftsContext.sortedAndFilteredGifts.current,
+	);
 	const totalCount = $derived(giftsContext.giftCount.current);
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
-	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
-	const isEmpty = $derived(totalCount === 0);
+	const isFilteredEmpty = $derived(!reorderMode && displayedGifts.length === 0 && totalCount > 0);
+	const isEmpty = $derived(reorderMode ? reorderModeGifts.length === 0 : totalCount === 0);
+
+	$effect(() => {
+		if (
+			reorderMode &&
+			(!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list'))
+		) {
+			reorderMode = false;
+			reorderActiveIds = null;
+		}
+	});
 
 	// ── Computed: can user edit/delete the selected gift? ────────────────────
 
@@ -420,8 +452,25 @@
 		settingsModalOpen = true;
 	}
 
+	function handleReorderModeChange(active: boolean) {
+		if (active) {
+			if (!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list')) {
+				return;
+			}
+			reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
+				(giftItem) => giftItem.id,
+			);
+			reorderMode = true;
+			return;
+		}
+		reorderMode = false;
+		reorderActiveIds = null;
+	}
+
 	function handleViewModeChange(mode: GiftViewMode) {
-		giftsContext.viewMode.current = mode;
+		if (!reorderMode) {
+			giftsContext.viewMode.current = mode;
+		}
 	}
 
 	function handleSortChange(sort: GiftSortOption) {
@@ -647,54 +696,50 @@
 
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
-	// The card grid / list views drive reordering via pointer events (works on touch, unlike
-	// native HTML5 DnD) and keyboard arrows on the grip. Both surfaces report a source→target
-	// index pair over the rendered order and route through this single persistence path.
-	async function handleReorder(fromIndex: number, toIndex: number) {
-		if (!canManage || fromIndex === toIndex) {
+	function isExactActiveGiftOrder(orderedIds: readonly string[]): boolean {
+		const activeIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
+			(giftItem) => giftItem.id,
+		);
+		return (
+			orderedIds.length === activeIds.length &&
+			new Set(orderedIds).size === activeIds.length &&
+			activeIds.every((id) => orderedIds.includes(id))
+		);
+	}
+
+	function handleReorderPreview(orderedIds: string[]) {
+		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+			reorderActiveIds = [...orderedIds];
+		}
+	}
+
+	function handleReorderCancel(orderedIds: string[]) {
+		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+			reorderActiveIds = [...orderedIds];
+		}
+	}
+
+	async function handleReorderCommit(orderedIds: string[]) {
+		if (!reorderMode || !canManage || isArchived || !isExactActiveGiftOrder(orderedIds)) {
 			return;
 		}
 
-		// Reorder indices are positions in the rendered (banded/grouped) order. Map them to gift ids
-		// and relocate within effectiveGifts by id — a pinned own-reservation band or priority groups
-		// make rendered indices diverge from effectiveGifts positions (issue #224).
-		const rendered = giftsContext.sortedAndFilteredGifts.current;
-		const movedId = rendered[fromIndex]?.id;
-		const targetId = rendered[toIndex]?.id;
-		if (movedId === undefined || targetId === undefined) {
-			return;
-		}
-
-		const items = [...giftsContext.effectiveGifts.current];
-		const fromPosition = items.findIndex((item) => item.id === movedId);
-		const toPosition = items.findIndex((item) => item.id === targetId);
-		if (fromPosition === -1 || toPosition === -1) {
-			return;
-		}
-		const [movedItem] = items.splice(fromPosition, 1);
-		if (movedItem === undefined) {
-			return;
-		}
-		items.splice(toPosition, 0, movedItem);
-		giftsContext.reorderGifts(items);
-
+		reorderActiveIds = [...orderedIds];
+		giftsContext.setActiveGiftOrder(orderedIds);
 		try {
-			const reorderItems = items.map((item, index) => ({
-				id: item.id,
-				sortOrder: index,
-			}));
-			await reorderGifts(reorderItems);
-			// Success: keep the optimistic override in place. Its objects are already the
-			// rendered ones, so no data refetch is needed — avoiding the wholesale object
-			// replacement that re-triggered every card's $derived (the disabled/dim flash).
-			// The next real refresh (navigation, other mutation) clears the override so the
-			// authoritative server order takes over.
+			await reorderGifts(
+				orderedIds.map((id, sortOrder) => ({
+					id,
+					sortOrder,
+				})),
+			);
 		} catch (thrown) {
-			// Failure: revert to the pre-drag order and re-sync with the server so the
-			// visible order matches persisted state (existing error handling unchanged).
 			console.error('Failed to reorder gifts:', thrown);
 			giftsContext.clearReorderOverride();
 			await getGiftsByWishlistShortId(shortId).refresh();
+			reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
+				(giftItem) => giftItem.id,
+			);
 		}
 	}
 
@@ -875,6 +920,8 @@
 			filters={giftsContext.filters.current}
 			priorityGrouping={giftsContext.priorityGrouping.current}
 			showPriorityGrouping={giftsContext.hasAnyPriority.current}
+			{reorderMode}
+			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
@@ -896,12 +943,15 @@
 			isLoading={isGiftDataLoading}
 			{isEmpty}
 			{isFilteredEmpty}
+			{reorderMode}
 			onedit={openEditModal}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
 			onaddgift={openCreateModal}
 			onclearfilters={clearFilters}
-			onreorder={handleReorder}
+			onreorderpreview={handleReorderPreview}
+			onreordercommit={handleReorderCommit}
+			onreordercancel={handleReorderCancel}
 		/>
 	{/if}
 </div>

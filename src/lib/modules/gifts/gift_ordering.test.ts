@@ -4,6 +4,8 @@ import { GIFT_SORT_OPTIONS } from './types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	GIFT_SECTION_KINDS,
+	activeGiftsInOwnerOrder,
+	resolveActiveGiftOrder,
 	computeGiftSections,
 	computeUnprioritizedRank,
 	giftSectionHasHeader,
@@ -52,6 +54,39 @@ function flatIds(sections: GiftSection[]): string[] {
 }
 
 const LOCALE = 'cs';
+
+describe('reorder mode sequence (#239)', () => {
+	it('returns one active owner-order sequence independent of reservation state', () => {
+		const ownReserved = makeGift({
+			id: 'mine',
+			sortOrder: 3,
+			myReservationId: 'reservation-1',
+			isFullyReserved: true,
+		});
+		const first = makeGift({ id: 'first', sortOrder: 1 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+		const foreignReserved = makeGift({ id: 'foreign', sortOrder: 2, isFullyReserved: true });
+
+		expect(
+			activeGiftsInOwnerOrder([ownReserved, received, foreignReserved, first]).map(
+				(gift) => gift.id,
+			),
+		).toEqual(['first', 'foreign', 'mine']);
+	});
+
+	it('resolves a live id order without admitting received, duplicate, or unknown ids', () => {
+		const first = makeGift({ id: 'first', sortOrder: 1 });
+		const second = makeGift({ id: 'second', sortOrder: 2 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+
+		expect(
+			resolveActiveGiftOrder(
+				[first, second, received],
+				['second', 'received', 'unknown', 'second', 'first'],
+			).map((gift) => gift.id),
+		).toEqual(['second', 'first']);
+	});
+});
 
 describe('computeGiftSections — bands (grouping off)', () => {
 	it('pins the visitor own reservation to the first section, appearing exactly once (behavior 1)', () => {

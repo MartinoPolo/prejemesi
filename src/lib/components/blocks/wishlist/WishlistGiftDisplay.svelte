@@ -19,12 +19,15 @@
 		isLoading?: boolean;
 		isEmpty: boolean;
 		isFilteredEmpty: boolean;
+		reorderMode: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onaddgift: () => void;
 		onclearfilters: () => void;
-		onreorder: (fromIndex: number, toIndex: number) => void;
+		onreorderpreview: (orderedIds: string[]) => void;
+		onreordercommit: (orderedIds: string[]) => void;
+		onreordercancel: (orderedIds: string[]) => void;
 	}
 
 	let {
@@ -35,12 +38,15 @@
 		isLoading = false,
 		isEmpty,
 		isFilteredEmpty,
+		reorderMode,
 		onedit,
 		onreserve,
 		onunreserve,
 		onaddgift,
 		onclearfilters,
-		onreorder,
+		onreorderpreview,
+		onreordercommit,
+		onreordercancel,
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -66,22 +72,26 @@
 		{sections}
 		{role}
 		{isArchived}
-		{canManage}
+		reorderEnabled={reorderMode && canManage && !isArchived}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{onreorder}
+		{onreorderpreview}
+		{onreordercommit}
+		{onreordercancel}
 	/>
 {:else if viewMode === 'list'}
 	<WishlistGiftListView
 		{sections}
 		{role}
 		{isArchived}
-		{canManage}
+		reorderEnabled={reorderMode && canManage && !isArchived}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{onreorder}
+		{onreorderpreview}
+		{onreordercommit}
+		{onreordercancel}
 	/>
 {:else}
 	<WishlistGiftCompactTable

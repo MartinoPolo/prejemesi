@@ -16,46 +16,58 @@
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
-		canManage: boolean;
+		reorderEnabled: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
-		onreorder: (fromIndex: number, toIndex: number) => void;
+		onreorderpreview: (orderedIds: string[]) => void;
+		onreordercommit: (orderedIds: string[]) => void;
+		onreordercancel: (orderedIds: string[]) => void;
 	}
 
 	let {
 		sections,
 		role,
 		isArchived,
-		canManage,
+		reorderEnabled,
 		onedit,
 		onreserve,
 		onunreserve,
-		onreorder,
+		onreorderpreview,
+		onreordercommit,
+		onreordercancel,
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
 
-	// Sections carry the running global gift index, so pointer/keyboard reorder keeps mapping to
-	// the flat displayedGifts order even with pinned/grouped sections (issue #224).
 	const indexedSections = $derived(toIndexedSections(sections));
 	const totalGiftCount = $derived(countGiftsInSections(sections));
 
+	function getItemElements() {
+		return gridEl === null
+			? []
+			: Array.from(gridEl.querySelectorAll<HTMLElement>('[data-gift-item]'));
+	}
+
 	const reorder = createGiftPointerReorderController({
-		getItemElements: () =>
-			gridEl === null
-				? []
-				: Array.from(gridEl.querySelectorAll<HTMLElement>('[data-gift-item]')),
-		onReorder: (fromIndex, toIndex) => onreorder(fromIndex, toIndex),
+		getItemElements,
+		getItemIds: () => getItemElements().map((element) => element.dataset.giftId!),
+		onPreviewOrder: (orderedIds) => onreorderpreview(orderedIds),
+		onCommitOrder: (orderedIds) => onreordercommit(orderedIds),
+		onCancelOrder: (orderedIds) => onreordercancel(orderedIds),
 	});
 
 	function handleReorderMove(index: number, direction: -1 | 1) {
-		const target = index + direction;
-		if (target >= 0 && target < totalGiftCount) {
-			onreorder(index, target);
+		if (index + direction >= 0 && index + direction < totalGiftCount) {
+			reorder.move(index, direction);
 		}
 	}
 
+	$effect(() => {
+		if (!reorderEnabled) {
+			reorder.cancel();
+		}
+	});
 	$effect(() => () => reorder.destroy());
 </script>
 
@@ -78,10 +90,11 @@
 		{#each items as { gift: giftItem, index } (giftItem.id)}
 			<WishlistGiftDraggableWrapper
 				{index}
-				{canManage}
+				giftId={giftItem.id}
+				{reorderEnabled}
 				class="row-span-7 grid grid-rows-subgrid gap-y-0"
-				draggedIndex={reorder.draggedIndex.current}
-				dragOverIndex={reorder.dragOverIndex.current}
+				draggedGiftId={reorder.draggedGiftId.current}
+				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="ring"
 				giftName={giftItem.name}
 				onopendetail={() => onedit(giftItem)}

@@ -377,6 +377,8 @@
 	"gift_sort_owner_order": "Výchozí pořadí",
 	"gift_reorder_grip_label": "Přesunout dárek",
 	"gift_reorder_keyboard_hint": "Šipkami změníte pořadí",
+	"gift_reorder_action": "Změnit pořadí",
+	"gift_reorder_done": "Hotovo",
 	"gift_sort_priority": "Priorita",
 	"gift_sort_price_asc": "Cena (vzestupně)",
 	"gift_sort_price_desc": "Cena (sestupně)",

@@ -377,6 +377,8 @@
 	"gift_sort_owner_order": "Default order",
 	"gift_reorder_grip_label": "Move gift",
 	"gift_reorder_keyboard_hint": "Use arrow keys to reorder",
+	"gift_reorder_action": "Reorder",
+	"gift_reorder_done": "Done",
 	"gift_sort_priority": "Priority",
 	"gift_sort_price_asc": "Price (ascending)",
 	"gift_sort_price_desc": "Price (descending)",

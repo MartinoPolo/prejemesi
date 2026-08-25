@@ -148,11 +148,14 @@ function createGiftsContext(
 	const giftCount = new Derived(() => effectiveGifts.current.length);
 	const filteredCount = new Derived(() => sortedAndFilteredGifts.current.length);
 
-	function reorderGifts(reorderedGifts: GiftByRole[]) {
-		reorderOverride.current = reorderedGifts.map((g, index) => ({
-			...g,
-			sortOrder: index,
-		}));
+	function setActiveGiftOrder(orderedActiveIds: readonly string[]) {
+		const activeOrderById = new Map(orderedActiveIds.map((id, index) => [id, index]));
+		reorderOverride.current = effectiveGifts.current.map((giftItem) => {
+			const activeSortOrder = activeOrderById.get(giftItem.id);
+			return activeSortOrder === undefined
+				? giftItem
+				: { ...giftItem, sortOrder: activeSortOrder };
+		});
 	}
 
 	function clearReorderOverride() {
@@ -175,7 +178,7 @@ function createGiftsContext(
 		sortedAndFilteredGifts,
 		giftCount,
 		filteredCount,
-		reorderGifts,
+		setActiveGiftOrder,
 		clearReorderOverride,
 	};
 }
