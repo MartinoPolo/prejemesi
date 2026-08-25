@@ -1,4 +1,5 @@
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
+import { SvelteMap } from 'svelte/reactivity';
 
 export interface GiftPointerReorderOptions {
 	getItemElements: () => HTMLElement[];
@@ -35,7 +36,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 	}
 
 	function capturePositions(): Map<string, ItemPosition> {
-		const positions = new Map<string, ItemPosition>();
+		const positions = new SvelteMap<string, ItemPosition>();
 		for (const element of options.getItemElements()) {
 			const id = element.dataset.giftId;
 			if (id === undefined) {

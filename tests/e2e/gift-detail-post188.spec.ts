@@ -56,18 +56,26 @@ test.describe('Gift detail post-#188 coverage', () => {
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 
 		await dialog.getByRole('button', { name: 'Označit jako přijatý' }).click();
-		// The modal's own `gift` prop is a one-time snapshot on open (`selectedGift`
-		// is not resynced after the mutation's refetch), so the button label does
-		// not flip within this same session — but the underlying gift card DOES
-		// re-render live from the refreshed gifts list, so wait on the card's
-		// sticker text rather than the (stale) button label.
-		await expect(page.getByText('Přijato', { exact: true })).toBeVisible({ timeout: 10_000 });
+		// Issue #240 hides received gifts by default; enabling "Zobrazit obdržené"
+		// reveals them in the final section with their received sticker.
+		await expect(giftItem).not.toBeVisible({ timeout: 10_000 });
 
 		await page.keyboard.press('Escape');
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 
-		const cardBox = await giftItem.boundingBox();
-		const stickerBox = await giftItem.getByText('Přijato', { exact: true }).boundingBox();
+		await page.getByRole('button', { name: 'Filtrovat' }).click();
+		const showReceived = page.getByRole('menuitemcheckbox', { name: 'Zobrazit obdržené' });
+		await showReceived.click();
+		await expect(showReceived).toHaveAttribute('aria-checked', 'true');
+
+		const revealedGiftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
+		await expect(revealedGiftItem.getByText('Přijato', { exact: true })).toBeVisible({
+			timeout: 10_000,
+		});
+		const cardBox = await revealedGiftItem.boundingBox();
+		const stickerBox = await revealedGiftItem
+			.getByText('Přijato', { exact: true })
+			.boundingBox();
 		expect(cardBox, 'gift card has a bounding box').not.toBeNull();
 		expect(stickerBox, 'received sticker has a bounding box').not.toBeNull();
 
