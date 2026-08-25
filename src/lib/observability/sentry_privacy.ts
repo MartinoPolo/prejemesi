@@ -24,6 +24,7 @@ const ALLOWED_CONTEXT_KEYS = new Set([
 	'cloud_resource',
 	'device',
 	'os',
+	'operational',
 	'response',
 	'runtime',
 	'trace',

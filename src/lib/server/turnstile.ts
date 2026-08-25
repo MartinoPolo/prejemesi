@@ -1,5 +1,6 @@
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
+import { reportOperationalFailure } from '$lib/observability/operational_failures.js';
 
 const TURNSTILE_SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const TURNSTILE_DEVELOPMENT_SECRET_KEY = '1x0000000000000000000000000000000AA';
@@ -47,6 +48,7 @@ export async function verifyTurnstileToken({
 	timeoutMs = 5_000,
 }: VerifyTurnstileTokenOptions): Promise<TurnstileVerificationResult> {
 	if (!secretKey) {
+		reportOperationalFailure('turnstile', 'missing_configuration');
 		return { success: false, reason: 'configuration' };
 	}
 	if (token == null || token.trim() === '') {
@@ -66,11 +68,13 @@ export async function verifyTurnstileToken({
 			signal: controller.signal,
 		});
 		if (!response.ok) {
+			reportOperationalFailure('turnstile', 'provider_unavailable');
 			return { success: false, reason: 'unavailable' };
 		}
 
 		const result = (await response.json()) as TurnstileSiteverifyResponse;
 		if (result === null || typeof result !== 'object' || Array.isArray(result)) {
+			reportOperationalFailure('turnstile', 'invalid_provider_response');
 			return { success: false, reason: 'unavailable' };
 		}
 		if (result.success === true) {
@@ -83,9 +87,11 @@ export async function verifyTurnstileToken({
 			errorCodes.includes('invalid-input-secret') ||
 			errorCodes.includes('bad-request')
 		) {
+			reportOperationalFailure('turnstile', 'invalid_configuration');
 			return { success: false, reason: 'configuration' };
 		}
 		if (errorCodes.includes('internal-error')) {
+			reportOperationalFailure('turnstile', 'provider_unavailable');
 			return { success: false, reason: 'unavailable' };
 		}
 		if (errorCodes.includes('timeout-or-duplicate')) {
@@ -93,6 +99,7 @@ export async function verifyTurnstileToken({
 		}
 		return { success: false, reason: 'invalid' };
 	} catch {
+		reportOperationalFailure('turnstile', 'provider_unavailable');
 		return { success: false, reason: 'unavailable' };
 	} finally {
 		clearTimeout(timeout);
