@@ -7,7 +7,8 @@ const recentFailures = new Map<string, true>();
 let deploymentId = 'local';
 
 export function setOperationalDeployment(id: string | undefined): void {
-	deploymentId = id?.trim() || 'local';
+	const trimmedId = id?.trim();
+	deploymentId = trimmedId !== undefined && trimmedId.length > 0 ? trimmedId : 'local';
 }
 
 function remember(key: string): boolean {
