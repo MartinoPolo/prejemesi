@@ -6,6 +6,7 @@ import { getDb } from '$lib/server/db/index.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { claimInvite } from '$lib/server/db/claim.schema.js';
 import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
+import { wishlistFollower } from '$lib/server/db/follower.schema.js';
 import { gift, reservation } from '$lib/server/db/gift.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
@@ -20,6 +21,8 @@ import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.
 import {
 	getMyWishlists,
 	getModeratedWishlists,
+	getFollowedWishlists,
+	getHomeOverview,
 	getWishlistByShortId,
 } from '$lib/modules/wishlists/wishlists.remote.js';
 import {
@@ -275,6 +278,20 @@ export const acceptClaimInvite = guardedCommand(
 					),
 				);
 
+			// A visitor may have followed this free-text-recipient list before claiming it.
+			// Soft-delete that relationship atomically so recipient-only views cannot retain
+			// reservation-derived followed-list data after the role transition.
+			await tx
+				.update(wishlistFollower)
+				.set({ unfollowedAt: new Date() })
+				.where(
+					and(
+						eq(wishlistFollower.wishlistId, invite.wishlistId),
+						eq(wishlistFollower.userId, currentUser.id),
+						isNull(wishlistFollower.unfollowedAt),
+					),
+				);
+
 			return {
 				wishlistId: invite.wishlistId,
 				wishlistShortId: wishlistRow.shortId,
@@ -300,6 +317,8 @@ export const acceptClaimInvite = guardedCommand(
 		singleFlightRefresh(getWishlistByShortId, result.wishlistShortId);
 		singleFlightRefresh(getMyWishlists);
 		singleFlightRefresh(getModeratedWishlists);
+		singleFlightRefresh(getFollowedWishlists);
+		singleFlightRefresh(getHomeOverview);
 
 		return result;
 	},

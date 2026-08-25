@@ -174,8 +174,8 @@ Copy `.env.example` to `.env` and configure:
 | `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                      |
 
 Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
-Registration, magic-link, password-reset, and anonymous reservation requests are protected by
-Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the two Turnstile
+Registration, password sign-in, magic-link, password-reset, and anonymous reservation requests are
+protected by Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the two Turnstile
 variables are blank; production fails closed when the secret is missing.
 
 Production errors are reported to Sentry without user identity, cookies, headers, query strings,

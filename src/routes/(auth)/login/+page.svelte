@@ -26,6 +26,7 @@
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import MailCheckIcon from '@lucide/svelte/icons/mail-check';
+	import TurnstileWidget from '$lib/components/blocks/security/TurnstileWidget.svelte';
 
 	const EMAIL_NOT_VERIFIED = 'EMAIL_NOT_VERIFIED';
 
@@ -40,6 +41,8 @@
 	let unverifiedEmail = $state('');
 	let resending = $state(false);
 	let resendSent = $state(false);
+	let turnstileToken = $state<string | null>(null);
+	let turnstileResetSignal = $state(0);
 
 	let callbackUrl = $derived(
 		getLocalizedAuthCallback(page.url.searchParams.get('redirect'), resolve('/home')),
@@ -93,11 +96,14 @@
 
 		loading = true;
 		try {
-			const result = await authClient.signIn.email({
-				email,
-				password,
-				callbackURL: callbackUrl,
-			});
+			const result = await authClient.signIn.email(
+				{
+					email,
+					password,
+					callbackURL: callbackUrl,
+				},
+				{ headers: { 'x-captcha-response': turnstileToken ?? '' } },
+			);
 
 			if (result.error) {
 				if (result.error.code === EMAIL_NOT_VERIFIED) {
@@ -112,6 +118,8 @@
 			errorMessage = m.error_generic();
 		} finally {
 			loading = false;
+			turnstileToken = null;
+			turnstileResetSignal += 1;
 		}
 	}
 
@@ -252,7 +260,16 @@
 			</AuthFormField>
 		</div>
 
-		<Button type="submit" class="mt-6 w-full" size="lg" disabled={loading}>
+		{#key turnstileResetSignal}
+			<TurnstileWidget bind:token={turnstileToken} />
+		{/key}
+
+		<Button
+			type="submit"
+			class="mt-6 w-full"
+			size="lg"
+			disabled={loading || turnstileToken === null}
+		>
 			{#if loading}
 				<span class="spinner"></span>
 			{/if}

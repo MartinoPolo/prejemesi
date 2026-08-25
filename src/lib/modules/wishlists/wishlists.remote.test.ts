@@ -56,6 +56,8 @@ vi.mock('@sveltejs/kit', () => ({
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
+	or: vi.fn((...args: unknown[]) => args),
+	ne: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	// Tagged template used as `sql<T>` in subquery projections; the result is aliased via
 	// `.as(...)`, so return a chainable stub instead of a bare undefined.
@@ -247,12 +249,14 @@ import {
 	getWishlistByShortId,
 	setWishlistPalette,
 	recordWishlistVisit,
+	getFollowedWishlists,
 	getHomeOverview,
 } from './wishlists.remote.js';
 import { CreateWishlistInputSchema, FlipRecipientToFreeTextInputSchema } from './types.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+import { ne } from 'drizzle-orm';
 
 const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
 const mockDispatchNotification = vi.mocked(dispatchNotification);
@@ -367,6 +371,9 @@ const callFlipRecipientToFreeText =
 const callFollowWishlist = followWishlist as unknown as FollowWishlistHandler;
 const callGetWishlistByShortId = getWishlistByShortId as unknown as GetWishlistByShortIdHandler;
 const callSetWishlistPalette = setWishlistPalette as unknown as SetWishlistPaletteHandler;
+const callGetFollowedWishlists = getFollowedWishlists as unknown as (
+	auth: AuthContext,
+) => Promise<unknown[]>;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -1664,6 +1671,18 @@ describe('recordWishlistVisit', () => {
 	});
 });
 
+// ── Followed-list recipient privacy (issue #201) ─────────────────────────────
+
+describe('getFollowedWishlists', () => {
+	it('guards stale follower rows from returning the current recipient own list', async () => {
+		mockDbInstance.pushResult([]);
+
+		await callGetFollowedWishlists(makeRecipientAuthContext());
+
+		expect(ne).toHaveBeenCalledWith('wishlist.recipientUserId', RECIPIENT_ID);
+	});
+});
+
 // ── getHomeOverview (issue #225) ─────────────────────────────────────────────
 
 type GetHomeOverviewHandler = (auth: AuthContext) => Promise<{
@@ -1675,6 +1694,16 @@ type GetHomeOverviewHandler = (auth: AuthContext) => Promise<{
 const callGetHomeOverview = getHomeOverview as unknown as GetHomeOverviewHandler;
 
 describe('getHomeOverview', () => {
+	it('guards stale followed rows from leaking a recipient own list on home', async () => {
+		mockDbInstance.pushResult([]); // own
+		mockDbInstance.pushResult([]); // moderated
+		mockDbInstance.pushResult([]); // followed
+
+		await callGetHomeOverview(makeRecipientAuthContext());
+
+		expect(ne).toHaveBeenCalledWith('wishlist.recipientUserId', RECIPIENT_ID);
+	});
+
 	function ownRow(overrides: Record<string, unknown> = {}) {
 		return {
 			wishlist: makeWishlistRow(overrides),

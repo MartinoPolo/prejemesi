@@ -1,4 +1,5 @@
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
@@ -10,6 +11,10 @@ import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
 import { createSentryServerOptions } from '$lib/observability/sentry_server.js';
 import {
+	reportOperationalFailure,
+	setOperationalDeployment,
+} from '$lib/observability/operational_failures.js';
+import {
 	DEFAULT_PALETTE,
 	PALETTE_COOKIE_NAME,
 	isPalette,
@@ -18,9 +23,23 @@ import {
 
 let initializedSentryHandle: Handle | undefined;
 
+function reportCriticalConfigurationFailures(event: Parameters<Handle>[0]['event']) {
+	if (!isDatabaseConfigured(event)) {
+		reportOperationalFailure('database', 'missing_connection');
+	}
+	if (env.AUTH_SECRET === undefined || env.AUTH_SECRET.trim() === '') {
+		reportOperationalFailure('auth', 'missing_secret');
+	}
+}
+
 const sentryInitializationHandle: Handle = ({ event, resolve }) => {
+	setOperationalDeployment(event.platform?.env.CF_VERSION_METADATA?.id);
 	const dsn = event.platform?.env.PUBLIC_SENTRY_DSN?.trim();
 	if (dsn === undefined || dsn === '') {
+		if (!dev) {
+			reportOperationalFailure('sentry', 'missing_public_dsn');
+		}
+		reportCriticalConfigurationFailures(event);
 		return resolve(event);
 	}
 
@@ -31,7 +50,13 @@ const sentryInitializationHandle: Handle = ({ event, resolve }) => {
 			release: event.platform?.env.GIT_COMMIT_SHA,
 		}),
 	);
-	return initializedSentryHandle({ event, resolve });
+	return initializedSentryHandle({
+		event,
+		resolve: (resolvedEvent, options) => {
+			reportCriticalConfigurationFailures(resolvedEvent);
+			return resolve(resolvedEvent, options);
+		},
+	});
 };
 
 function setSecurityHeaders(headers: Headers, url: URL) {

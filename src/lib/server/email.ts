@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { Resend } from 'resend';
 import { escapeHtml } from '$lib/utils/escape_html.js';
+import { reportOperationalFailure } from '$lib/observability/operational_failures.js';
 
 /**
  * Email sending wrapper around Resend.
@@ -71,25 +72,31 @@ export async function sendEmail({
 	const resend = getClient();
 
 	if (resend === undefined) {
-		if (!import.meta.env.DEV) {
-			console.error('[Email] not sent: RESEND_API_KEY unset');
-		}
+		reportOperationalFailure('resend', 'missing_configuration');
 		return;
 	}
 
-	const { data, error } = await resend.emails.send(
-		{
-			from: getFrom(),
-			to,
-			subject,
-			html,
-			text: text ?? fallbackTextFromHtml(html),
-			...(headers !== undefined ? { headers } : {}),
-		},
-		idempotencyKey !== undefined ? { idempotencyKey } : {},
-	);
+	let response: Awaited<ReturnType<typeof resend.emails.send>>;
+	try {
+		response = await resend.emails.send(
+			{
+				from: getFrom(),
+				to,
+				subject,
+				html,
+				text: text ?? fallbackTextFromHtml(html),
+				...(headers !== undefined ? { headers } : {}),
+			},
+			idempotencyKey !== undefined ? { idempotencyKey } : {},
+		);
+	} catch {
+		reportOperationalFailure('resend', 'provider_unavailable');
+		throw new Error('[Email] dispatch failed');
+	}
+	const { data, error } = response;
 
 	if (error !== null) {
+		reportOperationalFailure('resend', 'provider_rejected');
 		// Dev: a sandbox rejection is expected for non-owner recipients; the link was
 		// already logged above, so warn instead of throwing to keep sign-up unblocked.
 		if (import.meta.env.DEV) {
