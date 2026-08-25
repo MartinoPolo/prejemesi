@@ -18,6 +18,8 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	priorityGrouping: false,
 	showPriorityGrouping: false,
 	reorderMode: false,
+	recipientViewPreview: false,
+	onrecipientviewpreviewchange: () => {},
 	onreordermodechange: () => {},
 	onviewmodechange: () => {},
 	onsortchange: () => {},
@@ -37,6 +39,51 @@ async function renderToolbar(
 ) {
 	return render(WishlistDetailToolbar, { ...defaultProps, ...overrides });
 }
+
+describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
+	it('shows the switch to visitors and moderators, but never recipients', async () => {
+		for (const role of [WISHLIST_ROLES.visitor, WISHLIST_ROLES.moderator]) {
+			const screen = await renderToolbar({ role });
+			await expect
+				.element(screen.getByRole('switch', { name: m.recipient_view_preview_label() }))
+				.toBeVisible();
+			await screen.unmount();
+		}
+
+		const recipientScreen = await renderToolbar({
+			role: WISHLIST_ROLES.recipient,
+			canManage: true,
+			adminSettingsAvailable: true,
+		});
+		await expect
+			.element(
+				recipientScreen.getByRole('switch', { name: m.recipient_view_preview_label() }),
+			)
+			.not.toBeInTheDocument();
+		await recipientScreen.unmount();
+	});
+
+	it('reports the toggle without changing manager authorization or reorder state', async () => {
+		const onrecipientviewpreviewchange = vi.fn();
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+			recipientViewPreview: true,
+			onrecipientviewpreviewchange,
+		});
+
+		const previewSwitch = screen.getByRole('switch', {
+			name: m.recipient_view_preview_label(),
+		});
+		await expect.element(previewSwitch).toBeChecked();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+			.toBeVisible();
+		await previewSwitch.click();
+		expect(onrecipientviewpreviewchange).toHaveBeenCalledWith(false);
+		await screen.unmount();
+	});
+});
 
 describe('WishlistDetailToolbar reorder mode (#239)', () => {
 	it('offers reorder only to managers on non-archived card and list layouts', async () => {

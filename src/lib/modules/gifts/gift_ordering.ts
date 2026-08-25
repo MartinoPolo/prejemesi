@@ -1,4 +1,4 @@
-import type { GiftByRole, GiftSortOption } from './types.js';
+import type { GiftByRole, GiftForRecipient, GiftSortOption } from './types.js';
 import { GIFT_SORT_OPTIONS } from './types.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 
@@ -38,6 +38,51 @@ export interface GiftSection {
 	 *  copy for the other kinds is a fixed message the renderer supplies). */
 	label: string | null;
 	gifts: GiftByRole[];
+}
+
+/**
+ * Returns the role used only for gift ordering and reservation presentation. Authorization must
+ * continue using the actual role; a manager previewing the recipient view remains a manager.
+ */
+export function effectiveGiftPresentationRole(
+	actualRole: WishlistRole,
+	recipientViewPreview: boolean,
+): WishlistRole {
+	return recipientViewPreview ? WISHLIST_ROLES.recipient : actualRole;
+}
+
+/**
+ * Projects a reservation-aware gift onto the recipient-safe client shape. Listing every shared
+ * field is intentional: adding a new field to GiftBase produces a type error instead of silently
+ * forwarding a potentially sensitive server field through object spread.
+ */
+export function projectGiftForRecipient(gift: GiftByRole): GiftForRecipient {
+	return {
+		id: gift.id,
+		wishlistId: gift.wishlistId,
+		name: gift.name,
+		description: gift.description,
+		descriptionAppends: gift.descriptionAppends,
+		editedAfterShareAt: gift.editedAfterShareAt,
+		links: gift.links,
+		price: gift.price,
+		priceMax: gift.priceMax,
+		currency: gift.currency,
+		imageUrl: gift.imageUrl,
+		imageKey: gift.imageKey,
+		imageMeta: gift.imageMeta,
+		quantity: gift.quantity,
+		sortOrder: gift.sortOrder,
+		received: gift.received,
+		createdAt: gift.createdAt,
+		priorityLevelId: gift.priorityLevelId,
+		priorityLabel: gift.priorityLabel,
+		prioritySortOrder: gift.prioritySortOrder,
+	};
+}
+
+export function projectGiftsForRecipient(gifts: readonly GiftByRole[]): GiftForRecipient[] {
+	return gifts.map(projectGiftForRecipient);
 }
 
 /**

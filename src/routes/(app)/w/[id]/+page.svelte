@@ -84,6 +84,9 @@
 	import {
 		GIFT_SECTION_KINDS,
 		activeGiftsInOwnerOrder,
+		effectiveGiftPresentationRole,
+		projectGiftForRecipient,
+		projectGiftsForRecipient,
 		resolveActiveGiftOrder,
 		type GiftSection,
 	} from '$lib/modules/gifts/gift_ordering.js';
@@ -131,12 +134,16 @@
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
 
+	// Client-only presentation state. It never enters a remote command or persisted preference.
+	let recipientViewPreview = $state(false);
+	let recipientPreviewWishlistShortId = $state<string | null>(null);
+
 	// ── Context setup (must be synchronous – before any await) ───────────────
 
 	const giftsContext = untrack(() =>
 		setGiftsContext(
-			() => gifts,
-			() => role,
+			() => (recipientViewPreview ? projectGiftsForRecipient(gifts) : gifts),
+			() => effectiveGiftPresentationRole(role, recipientViewPreview),
 			() => wishlist?.status === 'archived',
 			() => isAuthenticated,
 			() => likedGiftIds,
@@ -185,10 +192,22 @@
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
 
+	$effect(() => {
+		if (recipientPreviewWishlistShortId !== shortId) {
+			recipientPreviewWishlistShortId = shortId;
+			recipientViewPreview = false;
+		}
+		if (role === 'recipient' && recipientViewPreview) {
+			recipientViewPreview = false;
+		}
+	});
+
 	// One wishlist-level ledger replaces the former request per reserved gift. Unauthorized
 	// viewers never start the query; the server independently enforces the same privacy gate.
 	const releaseLedgerQuery = $derived(
-		browser && wishlist.reservationReleaseCapability !== RESERVATION_RELEASE_CAPABILITY.none
+		browser &&
+			!recipientViewPreview &&
+			wishlist.reservationReleaseCapability !== RESERVATION_RELEASE_CAPABILITY.none
 			? getReservationLedgerForWishlist(shortId)
 			: null,
 	);
@@ -210,6 +229,7 @@
 	const activePalette = $derived(paletteOverride ?? wishlist.palette);
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
+	const hideReservationState = $derived(isRecipient || recipientViewPreview);
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
 	const wishlistStatus = $derived(wishlist?.status as 'draft' | 'active' | 'archived');
@@ -219,7 +239,12 @@
 	// App admin with a revert action but no management rights: surface the settings gear so they
 	// can reach the danger-only revert (issue #150). Non-hidden capability for a non-manager ⟺ admin.
 	const adminSettingsAvailable = $derived(
-		!canManage && wishlist?.revertCapability !== REVERT_CAPABILITY.hidden,
+		!recipientViewPreview &&
+			!canManage &&
+			wishlist?.revertCapability !== REVERT_CAPABILITY.hidden,
+	);
+	const presentationRevertCapability = $derived(
+		recipientViewPreview ? REVERT_CAPABILITY.hidden : wishlist.revertCapability,
 	);
 	const recipientIsModerator = $derived(wishlist?.recipientIsModerator);
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
@@ -255,6 +280,11 @@
 	let giftModalOpen = $state(false);
 	let giftModalMode = $state<'create' | 'edit'>('create');
 	let selectedGift = $state<GiftByRole | null>(null);
+	const selectedPresentationGift = $derived(
+		selectedGift !== null && hideReservationState
+			? projectGiftForRecipient(selectedGift)
+			: selectedGift,
+	);
 	let priorityLevels = $state.raw<GiftPriorityLevel[]>([]);
 	let isSubmitting = $state(false);
 	let isDeleting = $state(false);
@@ -301,16 +331,25 @@
 	const viewMode = $derived(giftsContext.viewMode.current);
 	const reorderModeGifts = $derived(
 		reorderActiveIds === null
-			? activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current)
-			: resolveActiveGiftOrder(giftsContext.effectiveGifts.current, reorderActiveIds),
+			? activeGiftsInOwnerOrder(gifts)
+			: resolveActiveGiftOrder(gifts, reorderActiveIds),
+	);
+	const reorderPresentationGifts = $derived(
+		recipientViewPreview ? projectGiftsForRecipient(reorderModeGifts) : reorderModeGifts,
 	);
 	const giftSections = $derived.by<GiftSection[]>(() => {
 		if (!reorderMode) {
 			return giftsContext.giftSections.current;
 		}
-		return reorderModeGifts.length === 0
+		return reorderPresentationGifts.length === 0
 			? []
-			: [{ kind: GIFT_SECTION_KINDS.available, label: null, gifts: reorderModeGifts }];
+			: [
+					{
+						kind: GIFT_SECTION_KINDS.available,
+						label: null,
+						gifts: reorderPresentationGifts,
+					},
+				];
 	});
 	const displayedGifts = $derived(
 		reorderMode ? reorderModeGifts : giftsContext.sortedAndFilteredGifts.current,
@@ -457,9 +496,7 @@
 			if (!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list')) {
 				return;
 			}
-			reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
-				(giftItem) => giftItem.id,
-			);
+			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
 			reorderMode = true;
 			return;
 		}
@@ -485,6 +522,17 @@
 		giftsContext.priorityGrouping.current = grouping;
 	}
 
+	function handleRecipientViewPreviewChange(active: boolean) {
+		if (role !== 'visitor' && role !== 'moderator') {
+			return;
+		}
+		recipientViewPreview = active;
+		if (active) {
+			reserveModalOpen = false;
+			reservingGift = null;
+		}
+	}
+
 	function clearFilters() {
 		giftsContext.filters.current = {
 			availableOnly: false,
@@ -508,7 +556,7 @@
 			await loadPriorityLevels();
 		}
 		giftModalMode = 'edit';
-		selectedGift = gift;
+		selectedGift = gifts.find((actualGift) => actualGift.id === gift.id) ?? gift;
 		giftModalOpen = true;
 	}
 
@@ -697,9 +745,7 @@
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
 	function isExactActiveGiftOrder(orderedIds: readonly string[]): boolean {
-		const activeIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
-			(giftItem) => giftItem.id,
-		);
+		const activeIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
 		return (
 			orderedIds.length === activeIds.length &&
 			new Set(orderedIds).size === activeIds.length &&
@@ -737,15 +783,16 @@
 			console.error('Failed to reorder gifts:', thrown);
 			giftsContext.clearReorderOverride();
 			await getGiftsByWishlistShortId(shortId).refresh();
-			reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(
-				(giftItem) => giftItem.id,
-			);
+			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
 		}
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
 
 	function handleOpenReserveModal(giftItem: GiftForVisitor) {
+		if (hideReservationState) {
+			return;
+		}
 		reservingGift = giftItem;
 		reserveModalOpen = true;
 	}
@@ -756,6 +803,9 @@
 	}
 
 	async function handleReserve(input: ReserveGiftInput) {
+		if (hideReservationState) {
+			return;
+		}
 		isReserving = true;
 		try {
 			// The command single-flight-refreshes the gift list (reservation state).
@@ -782,7 +832,7 @@
 	}
 
 	async function handleUnreserve(giftItem: GiftForVisitor) {
-		if (giftItem.myReservationId === null) {
+		if (hideReservationState || giftItem.myReservationId === null) {
 			return;
 		}
 		try {
@@ -921,6 +971,8 @@
 			priorityGrouping={giftsContext.priorityGrouping.current}
 			showPriorityGrouping={giftsContext.hasAnyPriority.current}
 			{reorderMode}
+			{recipientViewPreview}
+			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
 			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
 			onsortchange={handleSortChange}
@@ -939,6 +991,7 @@
 			sections={giftSections}
 			{role}
 			{isArchived}
+			{hideReservationState}
 			{viewMode}
 			isLoading={isGiftDataLoading}
 			{isEmpty}
@@ -966,9 +1019,10 @@
 	giftCount={totalCount}
 	{recipientIsModerator}
 	{isArchived}
+	{hideReservationState}
 	bind:giftModalOpen
 	{giftModalMode}
-	{selectedGift}
+	selectedGift={selectedPresentationGift}
 	{priorityLevels}
 	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
@@ -1011,7 +1065,7 @@
 	{wishlist}
 	{canManage}
 	{role}
-	revertCapability={wishlist.revertCapability}
+	revertCapability={presentationRevertCapability}
 	recipientDisplayName={wishlist.recipientDisplayName}
 	{themeEmoji}
 	onsaved={async () => {}}

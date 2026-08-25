@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
+	import { Switch } from '$lib/components/base/switch/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
@@ -33,6 +34,8 @@
 		priorityGrouping: boolean;
 		showPriorityGrouping: boolean;
 		reorderMode: boolean;
+		recipientViewPreview: boolean;
+		onrecipientviewpreviewchange: (active: boolean) => void;
 		onreordermodechange: (active: boolean) => void;
 		onviewmodechange: (mode: GiftViewMode) => void;
 		onsortchange: (sort: GiftSortOption) => void;
@@ -59,6 +62,8 @@
 		priorityGrouping,
 		showPriorityGrouping,
 		reorderMode,
+		recipientViewPreview,
+		onrecipientviewpreviewchange,
 		onreordermodechange,
 		onviewmodechange,
 		onsortchange,
@@ -73,14 +78,21 @@
 		onexport,
 	}: WishlistDetailToolbarProps = $props();
 
-	const showAvailableFilter = $derived(role !== WISHLIST_ROLES.recipient);
+	const canPreviewRecipientView = $derived(
+		role === WISHLIST_ROLES.visitor || role === WISHLIST_ROLES.moderator,
+	);
+	const showAvailableFilter = $derived(
+		role !== WISHLIST_ROLES.recipient && !recipientViewPreview,
+	);
 	const canReorder = $derived(
 		canManage &&
 			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
 			!isArchived &&
 			(viewMode === 'card' || viewMode === 'list'),
 	);
-	const showLikedFilter = $derived(isAuthenticated && role !== WISHLIST_ROLES.recipient);
+	const showLikedFilter = $derived(
+		isAuthenticated && role !== WISHLIST_ROLES.recipient && !recipientViewPreview,
+	);
 
 	function clearGiftFilters() {
 		onfilterchange({
@@ -144,6 +156,29 @@
 <div
 	class="flex flex-wrap items-center gap-2.5 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
 >
+	{#if canPreviewRecipientView}
+		<div class="flex items-center gap-2">
+			<Switch
+				id="recipient-view-preview"
+				checked={recipientViewPreview}
+				aria-label={m.recipient_view_preview_label()}
+				aria-describedby="recipient-view-preview-description recipient-view-preview-status"
+				onCheckedChange={onrecipientviewpreviewchange}
+			/>
+			<label for="recipient-view-preview" class="cursor-pointer text-sm font-medium">
+				{m.recipient_view_preview_label()}
+			</label>
+			<span id="recipient-view-preview-description" class="sr-only">
+				{m.recipient_view_preview_description()}
+			</span>
+			<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
+				{recipientViewPreview
+					? m.recipient_view_preview_status_on()
+					: m.recipient_view_preview_status_off()}
+			</span>
+		</div>
+	{/if}
+
 	{#if reorderMode && canReorder}
 		<Button size="md" onclick={() => onreordermodechange(false)}>
 			<CheckIcon data-icon="inline-start" />

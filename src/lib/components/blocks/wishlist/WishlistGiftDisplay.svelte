@@ -15,6 +15,7 @@
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
+		hideReservationState: boolean;
 		viewMode: GiftViewMode;
 		isLoading?: boolean;
 		isEmpty: boolean;
@@ -34,6 +35,7 @@
 		sections,
 		role,
 		isArchived,
+		hideReservationState,
 		viewMode,
 		isLoading = false,
 		isEmpty,
@@ -51,8 +53,11 @@
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
-	// The recipient (person the list is for) never sees the like/reserve columns — their own surprise.
-	const isRecipient = $derived(role === WISHLIST_ROLES.recipient);
+	// The recipient and recipient-view preview share one presentation gate. Actual role remains
+	// separate so manager edit/reorder affordances stay authorized normally.
+	const reservationStateHidden = $derived(
+		hideReservationState || role === WISHLIST_ROLES.recipient,
+	);
 </script>
 
 {#if isLoading}
@@ -72,6 +77,7 @@
 		{sections}
 		{role}
 		{isArchived}
+		hideReservationState={reservationStateHidden}
 		reorderEnabled={reorderMode && canManage && !isArchived}
 		{onedit}
 		{onreserve}
@@ -85,6 +91,7 @@
 		{sections}
 		{role}
 		{isArchived}
+		hideReservationState={reservationStateHidden}
 		reorderEnabled={reorderMode && canManage && !isArchived}
 		{onedit}
 		{onreserve}
@@ -98,7 +105,7 @@
 		{sections}
 		{role}
 		{isArchived}
-		{isRecipient}
+		hideReservationState={reservationStateHidden}
 		{canManage}
 		{onedit}
 		{onreserve}

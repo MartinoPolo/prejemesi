@@ -28,14 +28,22 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false, onreserve, onunreserve }: GiftCardProps = $props();
+	let {
+		gift,
+		role,
+		isArchived = false,
+		hideReservationState = false,
+		onreserve,
+		onunreserve,
+	}: GiftCardProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role),
+		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 	// Edit-icon hover affordance (issue #125 REQ-3): editing roles see a pencil icon appear
 	// on card hover/focus; visitors rely on the shared cursor-pointer + hover lift only.
@@ -98,7 +106,12 @@
 		     in the gift detail modal (issue #185), not on the card. -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+			<GiftPieceCount
+				quantity={gift.quantity}
+				role={hideReservationState ? 'recipient' : role}
+				{reservedCount}
+				hideWhenOne
+			/>
 		</div>
 
 		{#if gift.price !== null}

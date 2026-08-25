@@ -36,6 +36,7 @@
 		/** Archived wishlist (issue #165): the gift detail modal's reserve action
 		 *  hides unless the viewer already holds a reservation, mirroring cards. */
 		isArchived: boolean;
+		hideReservationState: boolean;
 		// Gift detail modal
 		giftModalOpen: boolean;
 		giftModalMode: 'create' | 'edit';
@@ -97,6 +98,7 @@
 		giftCount,
 		recipientIsModerator,
 		isArchived,
+		hideReservationState,
 		giftModalOpen = $bindable(),
 		giftModalMode,
 		selectedGift,
@@ -153,6 +155,7 @@
 	{role}
 	readOnly={!canManage}
 	{isArchived}
+	{hideReservationState}
 	{postShareLocked}
 	canDelete={canDeleteSelectedGift}
 	{graceExpiresAt}
@@ -170,7 +173,7 @@
 />
 
 <!-- Reserve Modal (everyone who may reserve — recipient excluded, they don't spoil their surprise) -->
-{#if canReserve}
+{#if canReserve && !hideReservationState}
 	<ReserveModal
 		bind:open={reserveModalOpen}
 		gift={reservingGift}

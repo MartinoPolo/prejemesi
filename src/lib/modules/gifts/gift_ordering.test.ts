@@ -5,6 +5,9 @@ import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	GIFT_SECTION_KINDS,
 	activeGiftsInOwnerOrder,
+	effectiveGiftPresentationRole,
+	projectGiftForRecipient,
+	projectGiftsForRecipient,
 	resolveActiveGiftOrder,
 	computeGiftSections,
 	computeUnprioritizedRank,
@@ -54,6 +57,62 @@ function flatIds(sections: GiftSection[]): string[] {
 }
 
 const LOCALE = 'cs';
+
+describe('recipient-view projection and ordering (#241)', () => {
+	it('strips every reservation-only field without mutating the source gift', () => {
+		const visitorGift = makeGift({
+			reservedCount: 2,
+			isFullyReserved: true,
+			reserverNames: ['Babička'],
+			myReservationId: 'reservation-1',
+			myReservationPurchasedAt: new Date('2026-01-02T00:00:00Z'),
+		});
+
+		const projected = projectGiftForRecipient(visitorGift);
+		expect(projected).not.toHaveProperty('likeCount');
+		expect(projected).not.toHaveProperty('reservedCount');
+		expect(projected).not.toHaveProperty('isFullyReserved');
+		expect(projected).not.toHaveProperty('reserverNames');
+		expect(projected).not.toHaveProperty('myReservationId');
+		expect(projected).not.toHaveProperty('myReservationPurchasedAt');
+		expect(visitorGift.reserverNames).toEqual(['Babička']);
+	});
+
+	it('uses recipient rules in preview: no own band or reserved sink, received remains final', () => {
+		const own = makeGift({
+			id: 'mine',
+			sortOrder: 3,
+			myReservationId: 'reservation-1',
+			isFullyReserved: true,
+		});
+		const foreignReserved = makeGift({ id: 'foreign', sortOrder: 1, isFullyReserved: true });
+		const available = makeGift({ id: 'available', sortOrder: 2 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+		const presentationRole = effectiveGiftPresentationRole(WISHLIST_ROLES.visitor, true);
+		const sections = computeGiftSections(
+			projectGiftsForRecipient([own, available, received, foreignReserved]),
+			presentationRole,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			false,
+			LOCALE,
+		);
+
+		expect(sections.map((section) => section.kind)).toEqual([
+			GIFT_SECTION_KINDS.available,
+			GIFT_SECTION_KINDS.received,
+		]);
+		expect(flatIds(sections)).toEqual(['foreign', 'available', 'mine', 'received']);
+	});
+
+	it('restores the actual reservation-aware role when preview is disabled', () => {
+		expect(effectiveGiftPresentationRole(WISHLIST_ROLES.visitor, false)).toBe(
+			WISHLIST_ROLES.visitor,
+		);
+		expect(effectiveGiftPresentationRole(WISHLIST_ROLES.moderator, false)).toBe(
+			WISHLIST_ROLES.moderator,
+		);
+	});
+});
 
 describe('reorder mode sequence (#239)', () => {
 	it('returns one active owner-order sequence independent of reservation state', () => {

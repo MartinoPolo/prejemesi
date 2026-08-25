@@ -9,8 +9,8 @@
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
-		/** The recipient: hide the like/reserve columns (their own surprise). */
-		isRecipient: boolean;
+		/** Recipient-safe presentation: hide the like/reserve columns and all reservation state. */
+		hideReservationState: boolean;
 		/** Recipient OR správce: show the drag/edit column + enable click-to-edit. */
 		canManage: boolean;
 		onedit: (gift: GiftByRole) => void;
@@ -22,7 +22,7 @@
 		sections,
 		role,
 		isArchived,
-		isRecipient,
+		hideReservationState,
 		canManage,
 		onedit,
 		onreserve,
@@ -56,7 +56,7 @@
 					>
 						Cena
 					</th>
-					{#if !isRecipient}
+					{#if !hideReservationState}
 						<th
 							class="px-3 py-2 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
 						>
@@ -76,6 +76,7 @@
 						gift={giftItem}
 						{role}
 						{isArchived}
+						{hideReservationState}
 						onclick={() => onedit(giftItem)}
 						{onreserve}
 						{onunreserve}

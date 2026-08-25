@@ -25,16 +25,24 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false, onreserve, onunreserve }: Props = $props();
+	let {
+		gift,
+		role,
+		isArchived = false,
+		hideReservationState = false,
+		onreserve,
+		onunreserve,
+	}: Props = $props();
 
 	// Role gating single source (SUMMARY.md invariant): the recipient sees no
 	// action area, no reservation status, no like state anywhere in this view.
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role),
+		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 
 	const styles = giftDetailModalVariants();
@@ -90,7 +98,12 @@
 		>
 			<div class="flex flex-wrap items-center gap-2 pr-12">
 				<h2 class="font-heading text-2xl font-semibold text-foreground">{gift.name}</h2>
-				<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+				<GiftPieceCount
+					quantity={gift.quantity}
+					role={hideReservationState ? 'recipient' : role}
+					{reservedCount}
+					hideWhenOne
+				/>
 				{#if gift.received}
 					<Badge tone="neutral" class="gap-1 text-[11px]">
 						<CheckIcon class="size-2.5" />

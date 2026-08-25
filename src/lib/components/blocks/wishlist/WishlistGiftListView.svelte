@@ -16,6 +16,7 @@
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
+		hideReservationState: boolean;
 		reorderEnabled: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
@@ -29,6 +30,7 @@
 		sections,
 		role,
 		isArchived,
+		hideReservationState,
 		reorderEnabled,
 		onedit,
 		onreserve,
@@ -89,7 +91,14 @@
 				onreorderpointerdown={reorder.start}
 				onreordermove={handleReorderMove}
 			>
-				<GiftListItem gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
+				<GiftListItem
+					gift={giftItem}
+					{role}
+					{isArchived}
+					{hideReservationState}
+					{onreserve}
+					{onunreserve}
+				/>
 			</WishlistGiftDraggableWrapper>
 		{/each}
 	{/each}
