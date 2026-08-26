@@ -1,4 +1,5 @@
 import { render } from 'vitest-browser-svelte';
+import { userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
@@ -80,5 +81,31 @@ describe('WishlistSettingsModal import and export tab', () => {
 
 		expect(onimport).toHaveBeenCalledOnce();
 		expect(onexport).toHaveBeenCalledOnce();
+	});
+
+	it('keeps keyboard-selected tabs visible in the mobile-width overflow', async () => {
+		const screen = renderSettings();
+		const tablist = screen
+			.getByRole('tablist', { name: m.wishlist_settings_title() })
+			.element();
+		tablist.style.cssText = 'display: flex; overflow-x: auto; width: 220px';
+		const details = screen.getByRole('tab', { name: m.wishlist_settings_details_section() });
+		const danger = screen.getByRole('tab', { name: m.wishlist_settings_danger_tab() });
+		for (const tab of screen.getByRole('tab').all()) {
+			tab.element().style.cssText = 'flex: none; width: 110px';
+		}
+
+		expect(tablist.scrollWidth).toBeGreaterThan(tablist.clientWidth);
+		await details.click();
+		const pageScrollY = window.scrollY;
+		await userEvent.keyboard('{End}');
+
+		await expect.element(danger).toHaveFocus();
+		await expect.element(danger).toHaveAttribute('aria-selected', 'true');
+		const tablistRect = tablist.getBoundingClientRect();
+		const dangerRect = danger.element().getBoundingClientRect();
+		expect(dangerRect.left).toBeGreaterThanOrEqual(tablistRect.left);
+		expect(dangerRect.right).toBeLessThanOrEqual(tablistRect.right);
+		expect(window.scrollY).toBe(pageScrollY);
 	});
 });
