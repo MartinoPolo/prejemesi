@@ -113,7 +113,13 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
 		const settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
 		await expect(settingsDialog).toBeVisible({ timeout: 10_000 });
-		await expect(settingsDialog.getByText('Import a export')).toBeVisible();
+		await expect(
+			settingsDialog.getByRole('button', { name: 'Importovat z tabulky' }),
+		).not.toBeVisible();
+		await expect(
+			settingsDialog.getByRole('button', { name: 'Exportovat do tabulky' }),
+		).not.toBeVisible();
+		await settingsDialog.getByRole('tab', { name: 'Import a export' }).click();
 
 		const downloadPromise = page.waitForEvent('download');
 		await settingsDialog.getByRole('button', { name: 'Exportovat do tabulky' }).click();

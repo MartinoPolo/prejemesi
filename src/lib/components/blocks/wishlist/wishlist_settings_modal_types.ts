@@ -1,5 +1,6 @@
 export const WISHLIST_SETTINGS_TABS = {
 	details: 'details',
+	data: 'data',
 	appearance: 'appearance',
 	image: 'image',
 	danger: 'danger',
