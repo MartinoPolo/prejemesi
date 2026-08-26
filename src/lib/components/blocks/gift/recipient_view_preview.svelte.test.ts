@@ -100,6 +100,26 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		await screen.unmount();
 	});
 
+	it.each(['card', 'list', 'compact'] as const)(
+		'shows received and omits release as browse actions on the %s surface',
+		async (surface) => {
+			const screen = await render(RecipientViewPreviewTestHost, {
+				gift: makeReservedGift(),
+				role: WISHLIST_ROLES.moderator,
+				surface,
+				hideReservationState: false,
+				onreceived: vi.fn(),
+			});
+
+			await expect.element(screen.getByTestId('gift-received-toggle')).toBeVisible();
+			await expect
+				.element(screen.getByTestId('release-reservation-button'))
+				.not.toBeInTheDocument();
+
+			await screen.unmount();
+		},
+	);
+
 	it('restores normal reservation-aware presentation when the flag is disabled', async () => {
 		const screen = await render(RecipientViewPreviewTestHost, {
 			gift: makeReservedGift(),

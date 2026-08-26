@@ -17,6 +17,7 @@
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
+		onreceived: (giftId: string, received: boolean) => void;
 	}
 
 	let {
@@ -28,7 +29,10 @@
 		onedit,
 		onreserve,
 		onunreserve,
+		onreceived,
 	}: WishlistGiftCompactTableProps = $props();
+
+	const showActions = $derived((canManage && !isArchived) || !hideReservationState);
 </script>
 
 <div class="flex flex-col gap-4 overflow-x-auto">
@@ -39,11 +43,6 @@
 		<table class="w-full">
 			<thead>
 				<tr class="border-b-2 border-border">
-					{#if canManage}
-						<th scope="col" class="w-8 px-1">
-							<span class="sr-only">{m.gift_compact_controls_header()}</span>
-						</th>
-					{/if}
 					<th
 						scope="col"
 						class="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
@@ -69,6 +68,8 @@
 						>
 							{m.gift_compact_likes_header()}
 						</th>
+					{/if}
+					{#if showActions}
 						<th
 							scope="col"
 							class="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
@@ -88,6 +89,7 @@
 						onclick={() => onedit(giftItem)}
 						{onreserve}
 						{onunreserve}
+						{onreceived}
 					/>
 				{/each}
 			</tbody>

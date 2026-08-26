@@ -19,7 +19,6 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -39,11 +38,16 @@
 		GIFT_CURRENCY_LABELS,
 		type GiftCurrency,
 		type GiftByRole,
+		type GiftForVisitor,
 		type GiftLink,
 		type CreateGiftInput,
 		type UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
+	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+	import { isGiftForVisitor } from '$lib/modules/gifts/gift_display_state.js';
+	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
@@ -77,7 +81,8 @@
 		gift: GiftByRole | null;
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
-		isOwner: boolean;
+		role: WishlistRole;
+		hideReservationState?: boolean;
 		postShareLocked: boolean;
 		canDelete: boolean;
 		/** When the active gift grace window closes (issue #83), or null when none is active. */
@@ -90,7 +95,6 @@
 		oncreate?: (input: CreateGiftInput) => void;
 		onupdate?: (input: UpdateGiftInput) => void;
 		ondelete?: (giftId: string) => void;
-		onreceived?: (giftId: string, received: boolean) => void;
 	}
 
 	let {
@@ -98,7 +102,8 @@
 		gift,
 		wishlistId,
 		priorityLevels,
-		isOwner,
+		role,
+		hideReservationState = false,
 		postShareLocked,
 		canDelete,
 		graceExpiresAt = null,
@@ -109,7 +114,6 @@
 		oncreate,
 		onupdate,
 		ondelete,
-		onreceived,
 	}: Props = $props();
 
 	// Intentional one-time seed from the `gift` prop: this form edits a local copy and Dialog.Content
@@ -221,6 +225,17 @@
 	let editingAppendText = $state('');
 
 	const isEdit = $derived(mode === 'edit');
+	const releaseGift = $derived.by((): GiftForVisitor | null => {
+		if (
+			!isEdit ||
+			gift === null ||
+			role !== WISHLIST_ROLES.moderator ||
+			!isGiftForVisitor(gift, role, hideReservationState)
+		) {
+			return null;
+		}
+		return gift;
+	});
 	const locked = $derived(isEdit && postShareLocked);
 	// Active gift grace window: full edit after sharing, or delete-only for a new post-share gift.
 	const graceActive = $derived(
@@ -538,12 +553,6 @@
 		}
 		if (gift !== null) {
 			ondelete?.(gift.id);
-		}
-	}
-
-	function handleReceived() {
-		if (gift !== null) {
-			onreceived?.(gift.id, !gift.received);
 		}
 	}
 
@@ -1082,23 +1091,16 @@
 			</fieldset>
 		</div>
 
-		<!-- Actions: Received/Delete render first in DOM so they scroll away with
-		     the form on mobile instead of permanently pinning all three (mobile
-		     edit modal scroll fix). Save itself is hidden here on mobile – see
-		     `mobileSubmitFooter` below for why – and only shown via `submitWrapper`
-		     on desktop, where `sm:order-*` restores the original look: all three
-		     grouped in one pinned block with Save on top, unchanged. -->
+		<!-- Manager actions scroll with the form on mobile. Save is hidden here on mobile
+		     and rendered by `mobileSubmitFooter` below; desktop keeps it in this block. -->
 		<div class={styles.formActions()}>
 			{#if isEdit && gift !== null}
-				{#if isOwner}
-					<Button
-						intent="outline"
-						class={styles.receivedButton()}
-						onclick={handleReceived}
-					>
-						<CheckIcon data-icon="inline-start" />
-						{gift.received ? m.gift_mark_unreceived() : m.gift_mark_received()}
-					</Button>
+				{#if releaseGift !== null}
+					<ReleaseReservationButton
+						gift={releaseGift}
+						size="md"
+						class={styles.releaseButton()}
+					/>
 				{/if}
 
 				{#if canDelete}
@@ -1143,8 +1145,8 @@
      stays visible regardless of scroll position – unlike a `position: sticky`
      copy nested inside the scroll, which only re-enters view once scrolled
      down to it (mobile edit modal scroll fix, follow-up). Hidden on desktop,
-     where `submitWrapper` above already renders Save inline with
-     Received/Delete. -->
+     where `submitWrapper` above already renders Save inline with the manager
+     actions. -->
 <div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
 	<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
 		{#if isSubmitting}

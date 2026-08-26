@@ -10,7 +10,7 @@
 	interface ReleaseReservationButtonProps {
 		gift: GiftForVisitor;
 		size?: 'md' | 'sm';
-		/** Extra classes on the underlying Button (the card/list footers stack at `w-full`). */
+		/** Extra classes on the underlying Button for stacked editor/action layouts. */
 		class?: string;
 	}
 
@@ -34,7 +34,6 @@
 	let isReleasing = $state(false);
 
 	function handleOpenClick(event: MouseEvent) {
-		// The whole card is clickable (it opens the gift detail) — keep the release flow local.
 		event.stopPropagation();
 		dialogOpen = true;
 	}
@@ -53,9 +52,7 @@
 </script>
 
 {#if canRelease}
-	<!-- Rendered independently of the reserve/cancel control and of `isArchived`: the state that
-	     needs a release is precisely "fully reserved by someone else", which two of the four gift
-	     surfaces render as a status label with no reserve button at all. -->
+	<!-- Capability and ledger gates remain owned by this component. -->
 	<Button
 		{size}
 		intent="danger"

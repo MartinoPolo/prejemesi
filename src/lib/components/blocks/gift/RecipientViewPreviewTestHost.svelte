@@ -15,9 +15,10 @@
 		role: WishlistRole;
 		surface: 'card' | 'list' | 'compact' | 'detail';
 		hideReservationState?: boolean;
+		onreceived?: (giftId: string, received: boolean) => void;
 	}
 
-	let { gift, role, surface, hideReservationState = true }: Props = $props();
+	let { gift, role, surface, hideReservationState = true, onreceived }: Props = $props();
 
 	setLikesContext(
 		() => [],
@@ -48,11 +49,13 @@
 </script>
 
 {#if surface === 'card'}
-	<GiftCard {gift} {role} {hideReservationState} />
+	<GiftCard {gift} {role} {hideReservationState} {onreceived} />
 {:else if surface === 'list'}
-	<GiftListItem {gift} {role} {hideReservationState} />
+	<GiftListItem {gift} {role} {hideReservationState} {onreceived} />
 {:else if surface === 'compact'}
-	<table><tbody><GiftCompactRow {gift} {role} {hideReservationState} /></tbody></table>
+	<table>
+		<tbody><GiftCompactRow {gift} {role} {hideReservationState} {onreceived} /></tbody>
+	</table>
 {:else}
 	<GiftDetailView {gift} {role} {hideReservationState} />
 {/if}

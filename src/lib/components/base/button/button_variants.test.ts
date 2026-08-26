@@ -25,7 +25,7 @@ describe('sticker button hover geometry', () => {
 		const styles = giftDetailModalVariants();
 
 		expect(styles.submitButton()).toContain('hover:translate-y-0');
-		expect(styles.receivedButton()).toContain('hover:translate-y-0');
+		expect(styles.releaseButton()).toContain('hover:translate-y-0');
 	});
 });
 

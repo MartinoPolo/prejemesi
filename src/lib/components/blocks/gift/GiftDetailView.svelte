@@ -170,8 +170,8 @@
 		</div>
 	</div>
 
-	<!-- Action bar: at most two elements, one line, in every state (SUMMARY.md final
-	     rules) – like left, primary action right, never any status text. Absent
+	<!-- Read-only visitor/moderator action bar: like control, reservation action when
+	     applicable, and the capability-gated app-admin release fallback. Absent
 	     entirely for the recipient. -->
 	{#if isVisitorOrModerator && visitorGift}
 		<GiftDetailActionBar

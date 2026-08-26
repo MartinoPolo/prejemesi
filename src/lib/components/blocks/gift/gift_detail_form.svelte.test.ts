@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
+import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 
 // `GiftDetailForm` transitively imports `public_url.ts`, whose public env is normally
 // seeded by SvelteKit's browser bootstrap. Vitest mounts into a bare document, so use
@@ -48,12 +49,23 @@ const baseProps = {
 	mode: 'edit' as const,
 	wishlistId: 'wishlist-1',
 	priorityLevels: [],
-	isOwner: true,
+	role: 'recipient' as const,
 	postShareLocked: false,
 	canDelete: false,
 	isSubmitting: false,
 	isDeleting: false,
 };
+
+describe('GiftDetailForm actions (issue #255)', () => {
+	it.each([WISHLIST_ROLES.recipient, WISHLIST_ROLES.moderator])(
+		'does not render the received toggle in the editor for %s',
+		async (role) => {
+			await render(GiftDetailForm, { ...baseProps, role, gift: makeGift() });
+
+			expect(document.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
+		},
+	);
+});
 
 describe('GiftDetailForm stored images', () => {
 	it('previews the stored key while preserving the raw retailer URL on submit', async () => {

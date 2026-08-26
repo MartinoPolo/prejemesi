@@ -24,6 +24,7 @@
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
+		onreceived: (giftId: string, received: boolean) => void;
 		onaddgift: () => void;
 		onclearfilters: () => void;
 		onreorderpreview: (orderedIds: string[]) => void;
@@ -44,6 +45,7 @@
 		onedit,
 		onreserve,
 		onunreserve,
+		onreceived,
 		onaddgift,
 		onclearfilters,
 		onreorderpreview,
@@ -82,6 +84,7 @@
 		{onedit}
 		{onreserve}
 		{onunreserve}
+		{onreceived}
 		{onreorderpreview}
 		{onreordercommit}
 		{onreordercancel}
@@ -96,6 +99,7 @@
 		{onedit}
 		{onreserve}
 		{onunreserve}
+		{onreceived}
 		{onreorderpreview}
 		{onreordercommit}
 		{onreordercancel}
@@ -110,5 +114,6 @@
 		{onedit}
 		{onreserve}
 		{onunreserve}
+		{onreceived}
 	/>
 {/if}
