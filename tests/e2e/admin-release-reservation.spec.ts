@@ -82,11 +82,21 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		await adminPage.goto(wishlistPath);
 		await adminPage.waitForLoadState('networkidle');
 
-		const reserveButton = adminPage.getByTestId('reserve-button').first();
-		await expect(reserveButton).toBeDisabled();
-		await expect(reserveButton).toHaveText(/Rezervováno/);
+		const giftCard = adminPage.locator('[data-gift-item]').filter({ hasText: TEST_GIFT.name });
+		// Fully reserved browse surfaces communicate status on the image and intentionally
+		// render neither the redundant disabled reserve control nor privileged release.
+		await expect(giftCard.getByTestId('reserve-button')).toHaveCount(0);
+		await expect(giftCard.getByTestId('release-reservation-button')).toHaveCount(0);
 
-		const releaseButton = adminPage.getByTestId('release-reservation-button').first();
+		await giftCard.getByRole('heading', { name: TEST_GIFT.name, exact: true }).click();
+		const giftDialog = adminPage.getByRole('dialog').filter({
+			has: adminPage.getByRole('heading', { name: TEST_GIFT.name, exact: true }),
+		});
+		await expect(giftDialog).toBeVisible({ timeout: 5_000 });
+
+		// An app administrator who does not manage this list reaches the override from the
+		// read-only gift detail modal (issue #255 REQ-7).
+		const releaseButton = giftDialog.getByTestId('release-reservation-button');
 		await expect(releaseButton).toBeVisible({ timeout: 15_000 });
 		await releaseButton.click();
 
@@ -98,15 +108,17 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		await expect(confirmation).toContainText(TEST_GIFT.name);
 
 		await adminPage.getByTestId('release-reservation-confirm-action').click();
+		await expect(confirmation).not.toBeVisible({ timeout: 10_000 });
+		await expect(releaseButton).toHaveCount(0, { timeout: 15_000 });
+
+		await adminPage.keyboard.press('Escape');
+		await expect(giftDialog).not.toBeVisible({ timeout: 5_000 });
 		await waitForDialogOverlayRemoval(adminPage);
 
-		// Released capacity returns immediately: the gift stops reading as fully reserved and
-		// there is nothing left to release.
-		await expect(adminPage.getByTestId('reserve-button').first()).toBeEnabled({
-			timeout: 15_000,
-		});
-		await expect(adminPage.getByTestId('reserve-button').first()).toHaveText(/Rezervovat/);
-		await expect(adminPage.getByTestId('release-reservation-button')).toHaveCount(0);
+		// Released capacity returns immediately on the refreshed browse surface.
+		await expect(giftCard.getByTestId('reserve-button')).toBeEnabled({ timeout: 15_000 });
+		await expect(giftCard.getByTestId('reserve-button')).toHaveText(/Rezervovat|Reserve/);
+		await expect(giftCard.getByTestId('release-reservation-button')).toHaveCount(0);
 
 		await adminPage.context().close();
 	});
@@ -130,14 +142,27 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		await reserveTheGift(gifterPage);
 		await gifterPage.context().close();
 
-		// A plain signed-in visitor: sees the reserved state, never the release control (REQ-7).
+		// A plain signed-in visitor sees the reserved status without a redundant disabled
+		// control, and never gets release on either the browse surface or read-only detail.
 		const visitor = createTestUser('release-denied-visitor');
 		const visitorPage = await registerAndGetPage(browser, request, baseURL!, visitor);
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
 
-		await expect(visitorPage.getByTestId('reserve-button').first()).toBeDisabled();
-		await expect(visitorPage.getByTestId('release-reservation-button')).toHaveCount(0);
+		const giftCard = visitorPage
+			.locator('[data-gift-item]')
+			.filter({ hasText: TEST_GIFT.name });
+		await expect(giftCard.getByText(/Rezervováno|Reserved/).first()).toBeVisible();
+		await expect(giftCard.getByTestId('reserve-button')).toHaveCount(0);
+		await expect(giftCard.getByTestId('release-reservation-button')).toHaveCount(0);
+
+		await giftCard.getByRole('heading', { name: TEST_GIFT.name, exact: true }).click();
+		const giftDialog = visitorPage.getByRole('dialog').filter({
+			has: visitorPage.getByRole('heading', { name: TEST_GIFT.name, exact: true }),
+		});
+		await expect(giftDialog).toBeVisible({ timeout: 5_000 });
+		await expect(giftDialog.getByTestId('reserve-button')).toHaveCount(0);
+		await expect(giftDialog.getByTestId('release-reservation-button')).toHaveCount(0);
 
 		await visitorPage.context().close();
 	});
