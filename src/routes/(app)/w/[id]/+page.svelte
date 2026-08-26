@@ -168,8 +168,8 @@
 		),
 	);
 
-	// Release wiring for every gift surface (issue #213). The capability is server-computed —
-	// the administrator identity never reaches the client (REQ-7).
+	// Release wiring for gift detail/editor dialogs. The capability is server-computed,
+	// so the administrator identity never reaches the client.
 	untrack(() =>
 		setReservationsContext(
 			() => wishlist.reservationReleaseCapability,
@@ -628,6 +628,12 @@
 	async function handleReceived(giftId: string, received: boolean) {
 		try {
 			await markGiftReceived({ giftId, received });
+			if (received && !giftsContext.filters.current.showReceived) {
+				giftsContext.filters.current = {
+					...giftsContext.filters.current,
+					showReceived: true,
+				};
+			}
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		}
@@ -999,6 +1005,7 @@
 			onedit={openEditModal}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
+			onreceived={handleReceived}
 			onaddgift={openCreateModal}
 			onclearfilters={clearFilters}
 			onreorderpreview={handleReorderPreview}
@@ -1042,7 +1049,6 @@
 	oncreate={handleCreate}
 	onupdate={handleUpdate}
 	ondelete={handleDelete}
-	onreceived={handleReceived}
 	ongiftreserve={handleOpenReserveModal}
 	ongiftunreserve={handleUnreserve}
 	onreservemodalclose={handleReserveModalClose}

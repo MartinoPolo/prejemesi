@@ -22,8 +22,7 @@
 		gift?: GiftByRole | null;
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
-		isOwner?: boolean;
-		/** Viewer role, needed only for the read-only view's reservation display. */
+		/** Viewer role drives reservation-safe read-only and editable manager actions. */
 		role?: WishlistRole;
 		/** Visitors/non-managers (issue #125): renders the read-only {@link GiftDetailView} instead of the edit form. */
 		readOnly?: boolean;
@@ -41,7 +40,6 @@
 		oncreate?: (input: CreateGiftInput) => void;
 		onupdate?: (input: UpdateGiftInput) => void;
 		ondelete?: (giftId: string) => void;
-		onreceived?: (giftId: string, received: boolean) => void;
 		/** Read-only view's inline reserve/like action bar (issue #165): opens the
 		 *  reserve modal / cancels an existing reservation. */
 		onreserve?: (gift: GiftForVisitor) => void;
@@ -55,7 +53,6 @@
 		gift = null,
 		wishlistId,
 		priorityLevels,
-		isOwner = false,
 		role = 'visitor',
 		readOnly = false,
 		isArchived = false,
@@ -70,7 +67,6 @@
 		oncreate,
 		onupdate,
 		ondelete,
-		onreceived,
 		onreserve,
 		onunreserve,
 		onclose,
@@ -125,7 +121,8 @@
 					{gift}
 					{wishlistId}
 					{priorityLevels}
-					{isOwner}
+					{role}
+					{hideReservationState}
 					{postShareLocked}
 					{canDelete}
 					{graceExpiresAt}
@@ -136,7 +133,6 @@
 					{oncreate}
 					{onupdate}
 					{ondelete}
-					{onreceived}
 				/>
 			{/key}
 		{/if}

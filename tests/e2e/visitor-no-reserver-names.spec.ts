@@ -21,9 +21,9 @@ import {
  * account names to anyone holding the wishlist link.
  *
  * Locale caution: SSR base locale (cs/en) can flip between requests, so the reserved
- * indicator is asserted structurally (the disabled `reserve-button`, issue #154's
- * stable data-testid) rather than via localized copy. The reserver's account NAME
- * string is locale-independent and is what actually proves/disproves the leak.
+ * indicator accepts either localized label. Fully reserved gifts intentionally omit the
+ * redundant disabled reserve control (issue #255). The reserver's account NAME string is
+ * locale-independent and is what actually proves/disproves the leak.
  */
 test.describe('Reserver names are moderator-only (issue #198)', () => {
 	test('visitor sees the reserved indicator but never the reserver name', async ({
@@ -66,11 +66,15 @@ test.describe('Reserver names are moderator-only (issue #198)', () => {
 		await visitorPage.goto(wishlistPath);
 		await visitorPage.waitForLoadState('networkidle');
 
-		// Reserved indicator: the reserve trigger is disabled once the gift is fully
-		// reserved (structural, locale-independent — see ReserveButton.svelte).
-		await expect(visitorPage.getByTestId('reserve-button').first()).toBeDisabled({
+		const giftCard = visitorPage
+			.locator('[data-gift-item]')
+			.filter({ hasText: 'Privacy Gift' });
+		// The image/status treatment remains the reservation signal, while issue #255 removes
+		// the redundant disabled reserve control from a fully reserved gift.
+		await expect(giftCard.getByText(/Rezervováno|Reserved/).first()).toBeVisible({
 			timeout: 10_000,
 		});
+		await expect(giftCard.getByTestId('reserve-button')).toHaveCount(0);
 		// The reserver's account name must appear NOWHERE on the page.
 		await expect(visitorPage.getByText(reserver.name)).toHaveCount(0);
 

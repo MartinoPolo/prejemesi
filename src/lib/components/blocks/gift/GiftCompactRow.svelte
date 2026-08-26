@@ -5,7 +5,7 @@
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
+	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -15,6 +15,7 @@
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
+	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
 
 	interface GiftCompactRowProps {
@@ -25,6 +26,7 @@
 		onclick?: () => void;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
+		onreceived?: (giftId: string, received: boolean) => void;
 	}
 
 	let {
@@ -35,12 +37,18 @@
 		onclick,
 		onreserve,
 		onunreserve,
+		onreceived,
 	}: GiftCompactRowProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
 		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 
+	const canManage = $derived(canManageWishlist(role));
+	const showActions = $derived(
+		(canManage && !isArchived && onreceived !== undefined) ||
+			(isVisitorOrModerator && visitorGift !== null),
+	);
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
@@ -116,34 +124,44 @@
 				size="sm"
 			/>
 		</td>
+	{/if}
 
+	{#if showActions}
 		<td class="px-3 py-1.5 text-right">
 			<div class="flex items-center justify-end gap-1.5">
-				<PurchasedToggle gift={visitorGift} size="sm" />
-				{#if isFullyReserved && visitorGift.myReservationId === null}
-					<span class="flex flex-col items-end leading-tight">
-						<span class="text-xs font-medium text-reserved"
-							>{m.gift_reserved_overlay()}</span
-						>
-						{#if reserverLine !== null}
-							<span class="text-[10px] font-medium text-muted-foreground"
-								>{reserverLine}</span
-							>
-						{/if}
-					</span>
-				{:else}
-					<ReserveButton
-						gift={visitorGift}
+				{#if canManage && onreceived !== undefined}
+					<GiftReceivedToggle
+						giftId={gift.id}
+						received={gift.received}
+						{role}
 						{isArchived}
 						size="sm"
-						{onreserve}
-						{onunreserve}
+						{onreceived}
 					/>
 				{/if}
-				<!-- Outside the branch above: the reserve control is replaced by a plain status
-				     label once someone else holds the gift, which is exactly when a release is
-				     wanted (issue #213 REQ-3). -->
-				<ReleaseReservationButton gift={visitorGift} size="sm" />
+				{#if isVisitorOrModerator && visitorGift}
+					<PurchasedToggle gift={visitorGift} size="sm" />
+					{#if isFullyReserved && visitorGift.myReservationId === null}
+						<span class="flex flex-col items-end leading-tight">
+							<span class="text-xs font-medium text-reserved"
+								>{m.gift_reserved_overlay()}</span
+							>
+							{#if reserverLine !== null}
+								<span class="text-[10px] font-medium text-muted-foreground"
+									>{reserverLine}</span
+								>
+							{/if}
+						</span>
+					{:else}
+						<ReserveButton
+							gift={visitorGift}
+							{isArchived}
+							size="sm"
+							{onreserve}
+							{onunreserve}
+						/>
+					{/if}
+				{/if}
 			</div>
 		</td>
 	{/if}

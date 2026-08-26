@@ -411,6 +411,12 @@ What: Visitors can switch between Card (image grid), List (thumbnail + horizonta
 Why: Different use cases — Card for browsing/visual appeal, List for scanning with context, Compact for quick overview of many items. Matches common e-commerce patterns.
 Rejected: Single fixed layout (too rigid for diverse wishlists), two views only (compact table adds real value for long lists).
 
+### Gift browse actions: received on surfaces, release in editor
+
+Decided: 2026-08-12 (issue #255; supersedes issue #213's all-surface release UI placement only, not its authorization)
+What: Mark received/unreceived is the primary manager action in card, list, and compact browse views. Marking a gift received enables the received filter so its updated action and badge remain visible. Privileged reservation release lives in the gift detail/editor dialog: správci use the edit form, while the app-admin override remains reachable from the read-only detail. Fully reserved gifts omit redundant disabled reservation actions.
+Why: Completion must react visibly from refreshed browse state, while reservation status already communicates that a gift is unavailable and privileged release belongs in deliberate gift-detail management rather than routine browsing.
+
 ### Gift link always visible
 
 Decided: 2026-05-30

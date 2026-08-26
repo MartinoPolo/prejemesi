@@ -10,7 +10,7 @@
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
+	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -33,6 +33,7 @@
 		hideReservationState?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
+		onreceived?: (giftId: string, received: boolean) => void;
 	}
 
 	let {
@@ -42,6 +43,7 @@
 		hideReservationState = false,
 		onreserve,
 		onunreserve,
+		onreceived,
 	}: GiftCardProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
@@ -164,21 +166,37 @@
 		/>
 	</div>
 
-	<!-- Footer: like + reserve (visitor/moderator only) -->
-	{#if isVisitorOrModerator && visitorGift}
+	{#if (canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift)}
 		<div class={styles.footer()}>
-			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
-			<div class={styles.reservationActions()}>
-				<PurchasedToggle gift={visitorGift} class="w-full" />
-				<ReserveButton
-					gift={visitorGift}
-					{isArchived}
-					size="md"
-					{onreserve}
-					{onunreserve}
-					class="w-full"
+			{#if isVisitorOrModerator && visitorGift}
+				<LikeButton
+					giftId={gift.id}
+					giftName={gift.name}
+					likeCount={visitorGift.likeCount}
 				/>
-				<ReleaseReservationButton gift={visitorGift} size="md" class="w-full" />
+			{/if}
+			<div class={styles.reservationActions()}>
+				{#if canManage && onreceived !== undefined}
+					<GiftReceivedToggle
+						giftId={gift.id}
+						received={gift.received}
+						{role}
+						{isArchived}
+						{onreceived}
+						class="w-full"
+					/>
+				{/if}
+				{#if isVisitorOrModerator && visitorGift}
+					<PurchasedToggle gift={visitorGift} class="w-full" />
+					<ReserveButton
+						gift={visitorGift}
+						{isArchived}
+						size="md"
+						{onreserve}
+						{onunreserve}
+						class="w-full"
+					/>
+				{/if}
 			</div>
 		</div>
 	{/if}

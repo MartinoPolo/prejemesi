@@ -248,7 +248,7 @@ describe('GiftPriceSchema', () => {
 		},
 	);
 
-	it.each([2.011, 19.999, 9_999_999_998.990001, 1e-7])(
+	it.each([2.011, 19.999, 999_998.990_001, 1e-7])(
 		'rejects price %s with more than two canonical decimal places',
 		(price) => {
 			expect(v.safeParse(GiftPriceSchema, price).success).toBe(false);

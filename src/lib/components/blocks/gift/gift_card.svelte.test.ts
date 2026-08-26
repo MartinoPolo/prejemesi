@@ -120,6 +120,29 @@ describe('GiftCard image background fill (issue #252)', () => {
 	});
 });
 
+describe('GiftCard actions (issue #255)', () => {
+	it('does not host reservation release even when the context permits it', async () => {
+		await render(GiftCardTestHost, {
+			gift: makeVisitorGift({ myReservationId: null, isFullyReserved: true }),
+			role: WISHLIST_ROLES.moderator,
+			isArchived: false,
+			releaseCapability: 'any',
+			reservations: [
+				{
+					id: 'reservation-other',
+					giftId: 'gift-1',
+					quantity: 1,
+					displayName: 'Petr',
+					releasable: true,
+					createdAt: new Date('2026-01-02'),
+				},
+			],
+		});
+
+		expect(document.querySelector('[data-testid="release-reservation-button"]')).toBeNull();
+	});
+});
+
 describe('GiftCard reservation-action layout (issue #211)', () => {
 	it('renders a stored gift image key without replacing the persisted source URL', async () => {
 		await renderCardInGridColumn(

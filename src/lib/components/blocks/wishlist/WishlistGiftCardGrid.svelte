@@ -21,6 +21,7 @@
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
+		onreceived: (giftId: string, received: boolean) => void;
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
 		onreordercancel: (orderedIds: string[]) => void;
@@ -35,6 +36,7 @@
 		onedit,
 		onreserve,
 		onunreserve,
+		onreceived,
 		onreorderpreview,
 		onreordercommit,
 		onreordercancel,
@@ -110,6 +112,7 @@
 					{hideReservationState}
 					{onreserve}
 					{onunreserve}
+					{onreceived}
 				/>
 			</WishlistGiftDraggableWrapper>
 		{/each}

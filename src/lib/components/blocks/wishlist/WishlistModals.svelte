@@ -64,7 +64,6 @@
 		oncreate: (input: CreateGiftInput) => void;
 		onupdate: (input: UpdateGiftInput) => void;
 		ondelete: (giftId: string) => void;
-		onreceived: (giftId: string, received: boolean) => void;
 		/** Gift detail modal's inline reserve action (issue #165): opens the reserve
 		 *  modal for quantity/anonymous identity input, distinct from `onreserve`
 		 *  below (the reserve modal's own submit handler). */
@@ -114,7 +113,6 @@
 		oncreate,
 		onupdate,
 		ondelete,
-		onreceived,
 		ongiftreserve,
 		ongiftunreserve,
 		onreservemodalclose,
@@ -130,17 +128,13 @@
 	const canReserve = $derived(canReserveGift(role));
 </script>
 
-<!-- Gift Detail Modal (issue #125: opens for every role — edit mode for managers, read-only
-     for everyone else). GiftDetailModal's legacy `isOwner` prop only gates the manager-only
-     "mark received" button, so it maps to canManage in the new role model, not to the
-     recipient specifically. -->
+<!-- Gift detail opens in edit mode for managers and read-only mode for everyone else. -->
 <GiftDetailModal
 	bind:open={giftModalOpen}
 	mode={giftModalMode}
 	gift={selectedGift}
 	{wishlistId}
 	{priorityLevels}
-	isOwner={canManage}
 	{role}
 	readOnly={!canManage}
 	{isArchived}
@@ -155,7 +149,6 @@
 	{oncreate}
 	{onupdate}
 	{ondelete}
-	{onreceived}
 	onreserve={ongiftreserve}
 	onunreserve={ongiftunreserve}
 	onclose={ongiftmodalclose}

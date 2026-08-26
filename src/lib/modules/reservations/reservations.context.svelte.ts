@@ -3,14 +3,10 @@ import type { ReservationReleaseCapability } from '$lib/modules/wishlists/wishli
 import type { ReservationForModerator } from './types.js';
 
 /**
- * Reservation-release wiring for the gift surfaces (issue #213). Carries three things the
- * release control cannot derive on its own: the SERVER-computed capability (REQ-7 — the
- * administrator identity never reaches the client), the per-gift release ledger, and the
- * page's release command.
- *
- * Context rather than props: `ReleaseReservationButton` mounts on four surfaces
- * (`GiftCard`, `GiftListItem`, `GiftCompactRow`, `GiftDetailActionBar`), each reached
- * through a different parent chain, so drilling the capability would touch every one of them.
+ * Reservation-release wiring for the gift detail/editor dialogs: the manager editor and the
+ * read-only app-admin fallback. Carries three things the release control cannot derive on its
+ * own: the server-computed capability (the administrator identity never reaches the client),
+ * the per-gift release ledger, and the page's release command.
  *
  * Every host must provide it — `useReservations()` throws when no provider is set, so a
  * forgotten `setReservationsContext` fails loudly instead of silently hiding the control.

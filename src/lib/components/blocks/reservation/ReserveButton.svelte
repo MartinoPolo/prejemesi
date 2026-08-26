@@ -51,20 +51,15 @@
 	>
 		{m.reserve_button_cancel()}
 	</Button>
-{:else if !isArchived}
+{:else if !isArchived && !isFullyReserved}
 	<Button
 		{size}
-		intent={isFullyReserved ? 'outline' : 'primary'}
-		disabled={isFullyReserved}
+		intent="primary"
 		aria-label={m.reserve_button_reserve_aria({ name: gift.name })}
 		onclick={handleReserveClick}
 		data-testid="reserve-button"
 		class={className}
 	>
-		{#if isFullyReserved}
-			{m.reserve_button_reserved()}
-		{:else}
-			{m.reserve_button_reserve()}
-		{/if}
+		{m.reserve_button_reserve()}
 	</Button>
 {/if}

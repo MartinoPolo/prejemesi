@@ -55,24 +55,27 @@ test.describe('Gift detail post-#188 coverage', () => {
 		await addGift(page, activeGiftNameTwo);
 
 		const giftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
-		await giftItem.click();
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		const receivedHeading = page.getByRole('heading', { name: 'Obdržené', exact: true });
+		await giftItem.getByRole('button', { name: 'Označit jako přijatý' }).click();
 
-		await dialog.getByRole('button', { name: 'Označit jako přijatý' }).click();
-		// Issue #240 hides received gifts by default; enabling "Zobrazit obdržené"
-		// reveals them in the final section with their received sticker.
-		await expect(giftItem).not.toBeVisible({ timeout: 10_000 });
+		// Issue #255 keeps the completed gift visible by enabling the received filter,
+		// then updates both the direct action and the existing sticker from refreshed data.
+		await expect(giftItem.getByText('Přijato', { exact: true })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await expect(
+			giftItem.getByRole('button', { name: 'Označit jako nepřijatý' }),
+		).toBeVisible();
+		await expect(giftItem.getByTestId('release-reservation-button')).toHaveCount(0);
 
-		await page.keyboard.press('Escape');
-		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
-
-		await page.getByRole('button', { name: 'Filtrovat' }).click();
-		const showReceived = page.getByRole('menuitemcheckbox', { name: 'Zobrazit obdržené' });
-		await showReceived.click();
-		await expect(showReceived).toHaveAttribute('aria-checked', 'true');
-		await page.keyboard.press('Escape');
-		await expect(showReceived).not.toBeVisible();
+		await giftItem.getByRole('button', { name: 'Označit jako nepřijatý' }).click();
+		await expect(giftItem.getByRole('button', { name: 'Označit jako přijatý' })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(giftItem.getByText('Přijato', { exact: true })).toHaveCount(0);
+		await expect(receivedHeading).toHaveCount(0);
+		await giftItem.getByRole('button', { name: 'Označit jako přijatý' }).click();
 
 		const revealedGiftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
 		const activeGiftItemOne = page
@@ -81,7 +84,6 @@ test.describe('Gift detail post-#188 coverage', () => {
 		const activeGiftItemTwo = page
 			.locator('[data-gift-item]')
 			.filter({ hasText: activeGiftNameTwo });
-		const receivedHeading = page.getByRole('heading', { name: 'Obdržené', exact: true });
 		await expect(receivedHeading).toHaveCount(1);
 		await expect(revealedGiftItem.getByText('Přijato', { exact: true })).toBeVisible({
 			timeout: 10_000,
@@ -146,6 +148,10 @@ test.describe('Gift detail post-#188 coverage', () => {
 		await expectBefore(activeGiftItemOne, receivedHeading);
 		await expectBefore(activeGiftItemTwo, receivedHeading);
 		await expectBefore(receivedHeading, revealedGiftItem);
+		await expect(
+			revealedGiftItem.getByRole('button', { name: 'Označit jako nepřijatý' }),
+		).toBeVisible();
+		await expect(revealedGiftItem.getByTestId('release-reservation-button')).toHaveCount(0);
 	});
 
 	test('edited-after-share line appears on both the editor and the visitor detail view', async ({

@@ -39,7 +39,6 @@ const baseProps = {
 	open: true,
 	wishlistId: 'wishlist-1',
 	priorityLevels: [],
-	isOwner: true,
 	postShareLocked: false,
 	canDelete: false,
 	isSubmitting: false,
