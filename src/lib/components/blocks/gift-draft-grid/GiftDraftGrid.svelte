@@ -155,7 +155,7 @@
 	onMount(emit);
 
 	$effect(() => {
-		resolvedImportedCategorySignature;
+		void resolvedImportedCategorySignature;
 		untrack(emit);
 	});
 </script>

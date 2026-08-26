@@ -115,15 +115,21 @@
 	let categoryResolutionDrafts = $state<Record<string, CategoryResolutionDraft>>({});
 	const presetMatches = $derived(presetLabelsByNormalizedValue());
 	const importedUnresolvedCategoryLabels = $derived.by(() => {
-		const labels = new Map<string, string>();
+		const labels: Array<{ normalized: string; label: string }> = [];
 		for (const draft of gridHasEmitted ? gridSelectedDrafts : drafts) {
 			const label = draft.importedCategoryLabel?.trim() ?? '';
 			if (label === '' || draft.categoryId != null) {
 				continue;
 			}
-			labels.set(normalizeGiftCategoryLabel(label), label);
+			const normalized = normalizeGiftCategoryLabel(label);
+			const existing = labels.find((entry) => entry.normalized === normalized);
+			if (existing) {
+				existing.label = label;
+			} else {
+				labels.push({ normalized, label });
+			}
 		}
-		return [...labels.entries()].map(([normalized, label]) => ({ normalized, label }));
+		return labels;
 	});
 
 	function categoryLabel(category: ManagedGiftCategory): string {

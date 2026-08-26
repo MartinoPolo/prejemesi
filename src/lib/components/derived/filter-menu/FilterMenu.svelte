@@ -6,11 +6,7 @@
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
 	import { cn } from '$lib/utils.js';
-	import type {
-		FilterDefinition,
-		FilterFacetGroup,
-		FilterFacetOption,
-	} from './filter_menu_types.js';
+	import type { FilterDefinition, FilterFacetGroup } from './filter_menu_types.js';
 
 	interface FilterMenuProps {
 		definitions: readonly FilterDefinition[];

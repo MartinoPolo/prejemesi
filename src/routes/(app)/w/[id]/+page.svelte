@@ -39,7 +39,7 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
-	import { getGiftCategories } from '$lib/modules/gift-categories/gift-categories.remote.js';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift_categories.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import {
 		reserveGift,

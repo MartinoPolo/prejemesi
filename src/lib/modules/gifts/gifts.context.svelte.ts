@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import { createContext } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
 import { Derived } from '$lib/reactivity/derived.svelte.js';
 import { Persisted, jsonSerde } from '$lib/reactivity/persisted.svelte.js';
@@ -62,7 +63,7 @@ class ScopedPersisted<T> {
 	}
 
 	get current(): T {
-		this.#revision.current;
+		void this.#revision.current;
 		if (!browser) {
 			return this.#defaultValue;
 		}
@@ -197,10 +198,10 @@ function categoryFilterValue(gift: GiftByRole): GiftCategoryFilterValue {
 export function giftMatchesFacetFilters(gift: GiftByRole, filters: GiftFilters): boolean {
 	const categoryMatches =
 		filters.categoryValues.length === 0 ||
-		new Set(filters.categoryValues).has(categoryFilterValue(gift));
+		filters.categoryValues.includes(categoryFilterValue(gift));
 	const priorityMatches =
 		filters.priorityValues.length === 0 ||
-		new Set(filters.priorityValues).has(priorityFilterValue(gift));
+		filters.priorityValues.includes(priorityFilterValue(gift));
 	return categoryMatches && priorityMatches;
 }
 
@@ -216,7 +217,7 @@ function createGiftsContext(
 	const viewerRole = new Derived(getRole);
 	const archived = new Derived(getIsArchived);
 	const isAuthenticated = new Derived(getIsAuthenticated);
-	const likedIdSet = new Derived(() => new Set(getLikedIds()));
+	const likedIdSet = new Derived(() => new SvelteSet(getLikedIds()));
 
 	const reorderOverride = new StateRaw<GiftByRole[] | null>(null);
 	const effectiveGifts = new Derived<GiftByRole[]>(
@@ -256,27 +257,26 @@ function createGiftsContext(
 
 	const categoryFilterOptions = new Derived<GiftFilterOption<GiftCategoryFilterValue>[]>(() => {
 		const language = getLocale().startsWith('en') ? 'en' : 'cs';
-		const optionsByCategoryId = new Map<
-			string,
+		const optionsByCategoryId: Array<
 			GiftFilterOption<GiftCategoryFilterValue> & { sortOrder: number }
-		>();
+		> = [];
 		let hasUncategorized = false;
 
 		for (const gift of effectiveGifts.current) {
 			if (hasCategoryValue(gift)) {
-				optionsByCategoryId.set(gift.categoryId!, {
-					value: gift.categoryId!,
-					label: labelForGiftCategory(gift.category!, language),
-					sortOrder: gift.category!.sortOrder,
-				});
+				if (!optionsByCategoryId.some((option) => option.value === gift.categoryId)) {
+					optionsByCategoryId.push({
+						value: gift.categoryId!,
+						label: labelForGiftCategory(gift.category!, language),
+						sortOrder: gift.category!.sortOrder,
+					});
+				}
 			} else {
 				hasUncategorized = true;
 			}
 		}
 
-		const options: GiftFilterOption<GiftCategoryFilterValue>[] = [
-			...optionsByCategoryId.values(),
-		]
+		const options: GiftFilterOption<GiftCategoryFilterValue>[] = optionsByCategoryId
 			.toSorted((a, b) => a.sortOrder - b.sortOrder)
 			.map(({ value, label }) => ({ value, label }));
 		if (hasUncategorized) {
@@ -289,27 +289,26 @@ function createGiftsContext(
 	});
 
 	const priorityFilterOptions = new Derived<GiftFilterOption<GiftPriorityFilterValue>[]>(() => {
-		const optionsByPriorityId = new Map<
-			string,
+		const optionsByPriorityId: Array<
 			GiftFilterOption<GiftPriorityFilterValue> & { sortOrder: number }
-		>();
+		> = [];
 		let hasNoPriority = false;
 
 		for (const gift of effectiveGifts.current) {
 			if (hasPriorityValue(gift)) {
-				optionsByPriorityId.set(gift.priorityLevelId!, {
-					value: gift.priorityLevelId!,
-					label: gift.priorityLabel ?? '',
-					sortOrder: gift.prioritySortOrder!,
-				});
+				if (!optionsByPriorityId.some((option) => option.value === gift.priorityLevelId)) {
+					optionsByPriorityId.push({
+						value: gift.priorityLevelId!,
+						label: gift.priorityLabel ?? '',
+						sortOrder: gift.prioritySortOrder!,
+					});
+				}
 			} else {
 				hasNoPriority = true;
 			}
 		}
 
-		const options: GiftFilterOption<GiftPriorityFilterValue>[] = [
-			...optionsByPriorityId.values(),
-		]
+		const options: GiftFilterOption<GiftPriorityFilterValue>[] = optionsByPriorityId
 			.toSorted((a, b) => a.sortOrder - b.sortOrder)
 			.map(({ value, label }) => ({ value, label }));
 		if (hasNoPriority) {
@@ -385,12 +384,9 @@ function createGiftsContext(
 	const filteredCount = new Derived(() => sortedAndFilteredGifts.current.length);
 
 	function setActiveGiftOrder(orderedActiveIds: readonly string[]) {
-		const activeOrderById = new Map(orderedActiveIds.map((id, index) => [id, index]));
 		reorderOverride.current = effectiveGifts.current.map((giftItem) => {
-			const activeSortOrder = activeOrderById.get(giftItem.id);
-			return activeSortOrder === undefined
-				? giftItem
-				: { ...giftItem, sortOrder: activeSortOrder };
+			const activeSortOrder = orderedActiveIds.indexOf(giftItem.id);
+			return activeSortOrder === -1 ? giftItem : { ...giftItem, sortOrder: activeSortOrder };
 		});
 	}
 

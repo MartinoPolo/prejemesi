@@ -12,7 +12,7 @@
 		renameCustomGiftCategoryCommand,
 		reorderGiftCategories,
 		togglePresetGiftCategory,
-	} from '$lib/modules/gift-categories/gift-categories.remote.js';
+	} from '$lib/modules/gift-categories/gift_categories.remote.js';
 	import {
 		GIFT_CATEGORY_PRESETS,
 		labelForGiftCategory,

@@ -7,7 +7,7 @@ import {
 	RECIPIENT_NAME_MAX_LENGTH,
 } from '$lib/modules/wishlists/types.js';
 
-export const ImportCategoryResolutionSchema = v.variant('action', [
+const ImportCategoryResolutionSchema = v.variant('action', [
 	v.object({
 		action: v.literal('map-existing'),
 		sourceLabel: v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(80)),
