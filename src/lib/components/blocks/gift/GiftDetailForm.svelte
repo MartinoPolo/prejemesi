@@ -49,6 +49,7 @@
 	import {
 		IMAGE_FIT_MODES,
 		IMAGE_TOKEN_SCOPES,
+		normalizeFrameFill,
 		resolveAutoFit,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
@@ -170,14 +171,12 @@
 	// Whether the user touched the display mode this session; an untouched form keeps
 	// the persisted (possibly legacy `auto`) fitMode verbatim on save (REQ-8).
 	let modeDirty = $state(false);
-	type ExplicitImageBackground = '#ffffff' | '#000000' | 'transparent';
+	type ExplicitImageBackground = '#ffffff' | '#000000';
 	const IMAGE_BACKGROUND_VALUES = ['#ffffff', '#000000', 'transparent'] as const;
-	// `null` is the untouched legacy/theme-derived fallback. It remains internal:
-	// the control offers exactly the three explicit persisted choices below.
+	// `null` is the canonical dotted/theme-derived default. Legacy metadata containing
+	// the CSS keyword `transparent` is normalized here and becomes null on the next save.
 	// svelte-ignore state_referenced_locally
-	let bgColor = $state<ExplicitImageBackground | null>(
-		(gift?.imageMeta?.bgColor as ExplicitImageBackground | null | undefined) ?? null,
-	);
+	let bgColor = $state(normalizeFrameFill(gift?.imageMeta?.bgColor));
 	// svelte-ignore state_referenced_locally
 	const initialImageUrl = gift?.imageUrl ?? '';
 	// svelte-ignore state_referenced_locally
@@ -365,10 +364,15 @@
 	// to "" (Bits UI writes through the bound value before calling onValueChange),
 	// so it's a genuine change and always re-renders.
 	let selectedEditorMode = $derived(presentedEditorMode);
-	// Keep the legacy null fallback out of the visible choices while still allowing
-	// Bits UI to render no background selected until the user explicitly picks one.
-	// A writable derived value also lets us undo Bits UI's empty re-click value.
-	let selectedBgColor = $derived(bgColor ?? '');
+	// The visible Transparent option represents the canonical null fallback. Preserve an
+	// unsupported historical literal untouched rather than falsely selecting a known fill.
+	let selectedBgColor = $derived(
+		bgColor === null
+			? 'transparent'
+			: (IMAGE_BACKGROUND_VALUES as readonly string[]).includes(bgColor)
+				? bgColor
+				: '',
+	);
 
 	// Adaptive stage sizing (#189 REQ-4/5): the stage tracks the photo's natural
 	// aspect (portrait renders tall, landscape wide) within the min/max caps applied
@@ -403,10 +407,14 @@
 
 	function setBgColor(value: string) {
 		if (value === '') {
-			selectedBgColor = bgColor ?? '';
+			selectedBgColor = bgColor ?? 'transparent';
 			return;
 		}
-		if ((IMAGE_BACKGROUND_VALUES as readonly string[]).includes(value)) {
+		if (value === 'transparent') {
+			bgColor = null;
+			return;
+		}
+		if (value === '#ffffff' || value === '#000000') {
 			bgColor = value as ExplicitImageBackground;
 		}
 	}

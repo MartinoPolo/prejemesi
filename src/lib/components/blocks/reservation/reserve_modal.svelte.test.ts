@@ -73,6 +73,22 @@ describe('ReserveModal contains an unbreakable gift name (issue #210)', () => {
 		expect(getComputedStyle(imageFrame).backgroundColor).toBe('rgb(0, 0, 0)');
 	});
 
+	it.each([null, 'transparent'])(
+		'uses the theme fallback for reservation metadata %s',
+		async (bgColor) => {
+			await render(ReserveModal, {
+				open: true,
+				gift: makeGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta(bgColor) }),
+				redirectHref: '/w/abc',
+				isAuthenticated: true,
+			});
+			const imageFrame = document.querySelector('[data-testid="image-frame"]') as HTMLElement;
+			expect(imageFrame).toBeTruthy();
+			expect(imageFrame.style.getPropertyValue('--frame-fill')).toBe('var(--secondary)');
+			expect(getComputedStyle(imageFrame).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+		},
+	);
+
 	it('does not let the gift name push Dialog.Content past its own max-width', async () => {
 		// isAuthenticated=true skips the anonymous form (and TurnstileWidget), which is
 		// irrelevant to this layout invariant.

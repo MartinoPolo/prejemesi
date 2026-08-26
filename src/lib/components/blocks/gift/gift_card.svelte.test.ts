@@ -107,9 +107,9 @@ describe('GiftCard image background fill (issue #252)', () => {
 		expect(cardFrame.querySelector('[data-testid="gift-card-image-pattern"]')).toBeNull();
 	});
 
-	it('keeps the pattern for legacy null fill', async () => {
+	it.each([null, 'transparent'])('keeps the pattern for default %s fill', async (bgColor) => {
 		const host = await renderCardInGridColumn(
-			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta(null) }),
+			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta(bgColor) }),
 		);
 
 		const cardFrame = host.querySelector(

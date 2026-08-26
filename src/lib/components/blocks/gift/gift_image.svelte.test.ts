@@ -29,7 +29,6 @@ const targets = ['square', 'thumb'] as const satisfies readonly GiftCropTarget[]
 const expectedComputedBackground = {
 	'#ffffff': 'rgb(255, 255, 255)',
 	'#000000': 'rgb(0, 0, 0)',
-	transparent: 'rgba(0, 0, 0, 0)',
 } as const;
 
 describe('GiftImage persisted background fill', () => {
@@ -39,7 +38,6 @@ describe('GiftImage persisted background fill', () => {
 				[
 					[target, '#ffffff'],
 					[target, '#000000'],
-					[target, 'transparent'],
 				] as const,
 		),
 	)('renders the %s target with %s', async (target, bgColor) => {
@@ -76,7 +74,15 @@ describe('GiftImage persisted background fill', () => {
 		expect(getComputedStyle(frame!).backgroundColor).toBe('rgb(0, 0, 0)');
 	});
 
-	it.each(targets)('keeps the theme fallback for the %s target', async (target) => {
+	it.each(
+		targets.flatMap(
+			(target) =>
+				[
+					[target, null],
+					[target, 'transparent'],
+				] as const,
+		),
+	)('keeps the theme fallback for the %s target with %s metadata', async (target, bgColor) => {
 		const root = document.documentElement;
 		const previousValue = root.style.getPropertyValue('--secondary');
 		const previousPriority = root.style.getPropertyPriority('--secondary');
@@ -86,7 +92,7 @@ describe('GiftImage persisted background fill', () => {
 			const screen = await render(GiftImage, {
 				props: {
 					imageUrl,
-					imageMeta: imageMeta(null),
+					imageMeta: imageMeta(bgColor),
 					target,
 					alt: `Gift ${target}`,
 				},
@@ -98,6 +104,7 @@ describe('GiftImage persisted background fill', () => {
 			expect(getComputedStyle(frame!).getPropertyValue('--frame-fill').trim()).toBe(
 				'rgb(12, 34, 56)',
 			);
+			expect(getComputedStyle(frame!).backgroundColor).toBe('rgb(12, 34, 56)');
 		} finally {
 			if (previousValue) {
 				root.style.setProperty('--secondary', previousValue, previousPriority);

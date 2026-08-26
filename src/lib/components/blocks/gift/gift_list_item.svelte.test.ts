@@ -88,16 +88,31 @@ describe('GiftListItem reserved-sticker parity (issue #224 REQ-7)', () => {
 		expect(getComputedStyle(imageFrame).backgroundColor).toBe('rgb(0, 0, 0)');
 	});
 
-	it('paints explicit transparent as transparent, not the theme fallback', async () => {
-		const host = await renderItem(
-			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('transparent') }),
-			WISHLIST_ROLES.visitor,
-		);
+	it.each([null, 'transparent'])(
+		'uses the theme fallback for default %s metadata',
+		async (bgColor) => {
+			const root = document.documentElement;
+			const previousValue = root.style.getPropertyValue('--secondary');
+			const previousPriority = root.style.getPropertyPriority('--secondary');
+			root.style.setProperty('--secondary', 'rgb(12, 34, 56)');
 
-		const imageFrame = host.querySelector('[data-testid="image-frame"]') as HTMLElement;
-		expect(imageFrame).toBeTruthy();
-		expect(getComputedStyle(imageFrame).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-	});
+			try {
+				const host = await renderItem(
+					makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta(bgColor) }),
+					WISHLIST_ROLES.visitor,
+				);
+				const imageFrame = host.querySelector('[data-testid="image-frame"]') as HTMLElement;
+				expect(imageFrame).toBeTruthy();
+				expect(getComputedStyle(imageFrame).backgroundColor).toBe('rgb(12, 34, 56)');
+			} finally {
+				if (previousValue) {
+					root.style.setProperty('--secondary', previousValue, previousPriority);
+				} else {
+					root.style.removeProperty('--secondary');
+				}
+			}
+		},
+	);
 
 	it('shows the full-text reserved sticker and a veil on the thumb for a fully-reserved gift', async () => {
 		await renderItem(
