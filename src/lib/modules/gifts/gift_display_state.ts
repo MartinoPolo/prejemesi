@@ -8,8 +8,13 @@ export interface GiftDisplayState {
 	reservedCount: number;
 }
 
-export function deriveGiftDisplayState(gift: GiftByRole, role: WishlistRole): GiftDisplayState {
-	const isVisitorOrModerator = role === 'visitor' || role === 'moderator';
+export function deriveGiftDisplayState(
+	gift: GiftByRole,
+	role: WishlistRole,
+	hideReservationState = false,
+): GiftDisplayState {
+	const isVisitorOrModerator =
+		!hideReservationState && (role === 'visitor' || role === 'moderator');
 	const visitorGift = isVisitorOrModerator ? (gift as GiftForVisitor) : null;
 	const isFullyReserved = visitorGift?.isFullyReserved ?? false;
 	const reservedCount = visitorGift?.reservedCount ?? 0;

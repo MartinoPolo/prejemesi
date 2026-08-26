@@ -3,6 +3,7 @@
 	import { cn } from '$lib/utils.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
 	import {
+		hasExplicitFrameFill,
 		IMAGE_TOKEN_SCOPES,
 		type ImageTokenScope,
 	} from '$lib/components/derived/image-frame/index.js';
@@ -79,6 +80,8 @@
 <ul class={cn('pointer-events-none flex items-end justify-center gap-3', className)}>
 	{#each TILES as tile (tile.key)}
 		{@const frame = giftTargetFrameProps(imageMeta, tile.target)}
+		{@const showCardPattern =
+			tile.target === 'square' && !hasExplicitFrameFill(frame.fillColor)}
 		<li class="min-w-0">
 			{#snippet tileFace()}
 				<!-- The frame is absolutely positioned: a %-height child inside an
@@ -93,8 +96,15 @@
 					style:aspect-ratio={tile.cssAspect}
 					data-testid="gift-preview-{tile.key}"
 				>
+					{#if showCardPattern}
+						<div
+							class="pointer-events-none absolute inset-0 bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60"
+							data-testid="gift-preview-card-pattern"
+							aria-hidden="true"
+						></div>
+					{/if}
 					<ImageFrame
-						class="absolute inset-0"
+						class={cn('absolute inset-0', showCardPattern && 'bg-transparent')}
 						{src}
 						{alt}
 						fitMode={frame.fitMode}

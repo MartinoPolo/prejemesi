@@ -28,6 +28,7 @@
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
@@ -42,7 +43,7 @@
 	import {
 		reserveGift,
 		unreserveGift,
-		getReservationsForGift,
+		getReservationLedgerForWishlist,
 	} from '$lib/modules/reservations/reservations.remote.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
 	import type {
@@ -81,6 +82,15 @@
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
+	import {
+		GIFT_SECTION_KINDS,
+		activeGiftsInOwnerOrder,
+		effectiveGiftPresentationRole,
+		projectGiftForRecipient,
+		projectGiftsForRecipient,
+		resolveActiveGiftOrder,
+		type GiftSection,
+	} from '$lib/modules/gifts/gift_ordering.js';
 	import {
 		ownerSharedGiftDeleteGraceExpiresAt,
 		preShareOwnerFullEditGraceExpiresAt,
@@ -125,12 +135,16 @@
 	// Opens the "log in to like" prompt when an anonymous visitor taps the heart.
 	let authPromptOpen = $state(false);
 
+	// Client-only presentation state. It never enters a remote command or persisted preference.
+	let recipientViewPreview = $state(false);
+	let recipientPreviewWishlistShortId = $state<string | null>(null);
+
 	// ── Context setup (must be synchronous – before any await) ───────────────
 
 	const giftsContext = untrack(() =>
 		setGiftsContext(
-			() => gifts,
-			() => role,
+			() => (recipientViewPreview ? projectGiftsForRecipient(gifts) : gifts),
+			() => effectiveGiftPresentationRole(role, recipientViewPreview),
 			() => wishlist?.status === 'archived',
 			() => isAuthenticated,
 			() => likedGiftIds,
@@ -179,26 +193,28 @@
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
 
-	// Per-gift release ledgers (issue #213). Fetched only for a viewer who has SOME release reach
-	// and only for gifts that actually hold reservations, so the common visitor/obdarovaný path
-	// (capability `none`) costs nothing at all. Each row already excludes the viewer's own
-	// reservation, so an empty ledger means the release control stays hidden on that gift.
-	const releaseLedgers = $derived.by(() => {
-		const byGiftId: Record<string, ReservationForModerator[]> = {};
-		if (wishlist.reservationReleaseCapability === RESERVATION_RELEASE_CAPABILITY.none) {
-			return byGiftId;
+	$effect(() => {
+		if (recipientPreviewWishlistShortId !== shortId) {
+			recipientPreviewWishlistShortId = shortId;
+			recipientViewPreview = false;
 		}
-		for (const giftItem of gifts) {
-			if (!('reservedCount' in giftItem) || giftItem.reservedCount === 0) {
-				continue;
-			}
-			const rows = getReservationsForGift(giftItem.id).current?.reservations;
-			if (rows !== undefined && rows.length > 0) {
-				byGiftId[giftItem.id] = rows;
-			}
+		if (role === 'recipient' && recipientViewPreview) {
+			recipientViewPreview = false;
 		}
-		return byGiftId;
 	});
+
+	// One wishlist-level ledger replaces the former request per reserved gift. Unauthorized
+	// viewers never start the query; the server independently enforces the same privacy gate.
+	const releaseLedgerQuery = $derived(
+		browser &&
+			!recipientViewPreview &&
+			wishlist.reservationReleaseCapability !== RESERVATION_RELEASE_CAPABILITY.none
+			? getReservationLedgerForWishlist(shortId)
+			: null,
+	);
+	const releaseLedgers = $derived<Record<string, ReservationForModerator[]>>(
+		releaseLedgerQuery?.current?.reservationsByGiftId ?? {},
+	);
 
 	// Fresh server gift data is authoritative — drop any optimistic reorder layer so
 	// a stale pre-refresh order can never mask newly fetched gifts. Successful
@@ -214,6 +230,7 @@
 	const activePalette = $derived(paletteOverride ?? wishlist.palette);
 	const isArchived = $derived(wishlist.status === 'archived');
 	const isRecipient = $derived(role === 'recipient');
+	const hideReservationState = $derived(isRecipient || recipientViewPreview);
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
 	const wishlistStatus = $derived(wishlist?.status as 'draft' | 'active' | 'archived');
@@ -223,7 +240,12 @@
 	// App admin with a revert action but no management rights: surface the settings gear so they
 	// can reach the danger-only revert (issue #150). Non-hidden capability for a non-manager ⟺ admin.
 	const adminSettingsAvailable = $derived(
-		!canManage && wishlist?.revertCapability !== REVERT_CAPABILITY.hidden,
+		!recipientViewPreview &&
+			!canManage &&
+			wishlist?.revertCapability !== REVERT_CAPABILITY.hidden,
+	);
+	const presentationRevertCapability = $derived(
+		recipientViewPreview ? REVERT_CAPABILITY.hidden : wishlist.revertCapability,
 	);
 	const recipientIsModerator = $derived(wishlist?.recipientIsModerator);
 	// For-someone-else ⇔ no linked recipient account (management is via správci rows only).
@@ -259,6 +281,11 @@
 	let giftModalOpen = $state(false);
 	let giftModalMode = $state<'create' | 'edit'>('create');
 	let selectedGift = $state<GiftByRole | null>(null);
+	const selectedPresentationGift = $derived(
+		selectedGift !== null && hideReservationState
+			? projectGiftForRecipient(selectedGift)
+			: selectedGift,
+	);
 	let priorityLevels = $state.raw<GiftPriorityLevel[]>([]);
 	let isSubmitting = $state(false);
 	let isDeleting = $state(false);
@@ -272,10 +299,6 @@
 	// ── Import wizard state ──────────────────────────────────────────────────
 
 	let importWizardOpen = $state(false);
-
-	// ── Palette dialog state (issue #102 REQ-5) ──────────────────────────────
-
-	let paletteDialogOpen = $state(false);
 
 	// ── Settings modal state (per-wishlist settings, moved from /w/<id>/settings) ─
 
@@ -300,13 +323,64 @@
 
 	// ── Gift display ─────────────────────────────────────────────────────────
 
-	const displayedGifts = $derived(giftsContext.sortedAndFilteredGifts.current);
-	const giftSections = $derived(giftsContext.giftSections.current);
+	let reorderMode = $state(false);
+	let reorderActiveIds = $state<string[] | null>(null);
+	const reorderPersistenceQueue = createLatestAsyncQueue<string[]>(
+		async (orderedIds) => {
+			await reorderGifts(
+				orderedIds.map((id, sortOrder) => ({
+					id,
+					sortOrder,
+				})),
+			);
+		},
+		async (thrown) => {
+			console.error('Failed to reorder gifts:', thrown);
+			giftsContext.clearReorderOverride();
+			await getGiftsByWishlistShortId(shortId).refresh();
+			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
+		},
+	);
 	const viewMode = $derived(giftsContext.viewMode.current);
+	const reorderModeGifts = $derived(
+		reorderActiveIds === null
+			? activeGiftsInOwnerOrder(gifts)
+			: resolveActiveGiftOrder(gifts, reorderActiveIds),
+	);
+	const reorderPresentationGifts = $derived(
+		recipientViewPreview ? projectGiftsForRecipient(reorderModeGifts) : reorderModeGifts,
+	);
+	const giftSections = $derived.by<GiftSection[]>(() => {
+		if (!reorderMode) {
+			return giftsContext.giftSections.current;
+		}
+		return reorderPresentationGifts.length === 0
+			? []
+			: [
+					{
+						kind: GIFT_SECTION_KINDS.available,
+						label: null,
+						gifts: reorderPresentationGifts,
+					},
+				];
+	});
+	const displayedGifts = $derived(
+		reorderMode ? reorderModeGifts : giftsContext.sortedAndFilteredGifts.current,
+	);
 	const totalCount = $derived(giftsContext.giftCount.current);
 	const headerGiftCount = $derived(isGiftDataLoading && gifts.length === 0 ? null : totalCount);
-	const isFilteredEmpty = $derived(displayedGifts.length === 0 && totalCount > 0);
-	const isEmpty = $derived(totalCount === 0);
+	const isFilteredEmpty = $derived(!reorderMode && displayedGifts.length === 0 && totalCount > 0);
+	const isEmpty = $derived(reorderMode ? reorderModeGifts.length === 0 : totalCount === 0);
+
+	$effect(() => {
+		if (
+			reorderMode &&
+			(!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list'))
+		) {
+			reorderMode = false;
+			reorderActiveIds = null;
+		}
+	});
 
 	// ── Computed: can user edit/delete the selected gift? ────────────────────
 
@@ -430,8 +504,23 @@
 		settingsModalOpen = true;
 	}
 
+	function handleReorderModeChange(active: boolean) {
+		if (active) {
+			if (!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list')) {
+				return;
+			}
+			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
+			reorderMode = true;
+			return;
+		}
+		reorderMode = false;
+		reorderActiveIds = null;
+	}
+
 	function handleViewModeChange(mode: GiftViewMode) {
-		giftsContext.viewMode.current = mode;
+		if (!reorderMode) {
+			giftsContext.viewMode.current = mode;
+		}
 	}
 
 	function handleSortChange(sort: GiftSortOption) {
@@ -446,11 +535,23 @@
 		giftsContext.priorityGrouping.current = grouping;
 	}
 
+	function handleRecipientViewPreviewChange(active: boolean) {
+		if (role !== 'visitor' && role !== 'moderator') {
+			return;
+		}
+		recipientViewPreview = active;
+		if (active) {
+			reserveModalOpen = false;
+			reservingGift = null;
+		}
+	}
+
 	function clearFilters() {
 		giftsContext.filters.current = {
 			availableOnly: false,
 			withLinkOnly: false,
 			likedOnly: false,
+			showReceived: false,
 		};
 	}
 
@@ -468,7 +569,7 @@
 			await loadPriorityLevels();
 		}
 		giftModalMode = 'edit';
-		selectedGift = gift;
+		selectedGift = gifts.find((actualGift) => actualGift.id === gift.id) ?? gift;
 		giftModalOpen = true;
 	}
 
@@ -554,6 +655,7 @@
 	);
 
 	function openImportWizard() {
+		settingsModalOpen = false;
 		importWizardOpen = true;
 	}
 
@@ -656,60 +758,43 @@
 
 	// ── Reorder handler (pointer + keyboard, mouse/touch/pen) ─────────────────
 
-	// The card grid / list views drive reordering via pointer events (works on touch, unlike
-	// native HTML5 DnD) and keyboard arrows on the grip. Both surfaces report a source→target
-	// index pair over the rendered order and route through this single persistence path.
-	async function handleReorder(fromIndex: number, toIndex: number) {
-		if (!canManage || fromIndex === toIndex) {
+	function isExactActiveGiftOrder(orderedIds: readonly string[]): boolean {
+		const activeIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
+		return (
+			orderedIds.length === activeIds.length &&
+			new Set(orderedIds).size === activeIds.length &&
+			activeIds.every((id) => orderedIds.includes(id))
+		);
+	}
+
+	function handleReorderPreview(orderedIds: string[]) {
+		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+			reorderActiveIds = [...orderedIds];
+		}
+	}
+
+	function handleReorderCancel(orderedIds: string[]) {
+		if (reorderMode && isExactActiveGiftOrder(orderedIds)) {
+			reorderActiveIds = [...orderedIds];
+		}
+	}
+
+	function handleReorderCommit(orderedIds: string[]) {
+		if (!reorderMode || !canManage || isArchived || !isExactActiveGiftOrder(orderedIds)) {
 			return;
 		}
 
-		// Reorder indices are positions in the rendered (banded/grouped) order. Map them to gift ids
-		// and relocate within effectiveGifts by id — a pinned own-reservation band or priority groups
-		// make rendered indices diverge from effectiveGifts positions (issue #224).
-		const rendered = giftsContext.sortedAndFilteredGifts.current;
-		const movedId = rendered[fromIndex]?.id;
-		const targetId = rendered[toIndex]?.id;
-		if (movedId === undefined || targetId === undefined) {
-			return;
-		}
-
-		const items = [...giftsContext.effectiveGifts.current];
-		const fromPosition = items.findIndex((item) => item.id === movedId);
-		const toPosition = items.findIndex((item) => item.id === targetId);
-		if (fromPosition === -1 || toPosition === -1) {
-			return;
-		}
-		const [movedItem] = items.splice(fromPosition, 1);
-		if (movedItem === undefined) {
-			return;
-		}
-		items.splice(toPosition, 0, movedItem);
-		giftsContext.reorderGifts(items);
-
-		try {
-			const reorderItems = items.map((item, index) => ({
-				id: item.id,
-				sortOrder: index,
-			}));
-			await reorderGifts(reorderItems);
-			// Success: keep the optimistic override in place. Its objects are already the
-			// rendered ones, so no data refetch is needed — avoiding the wholesale object
-			// replacement that re-triggered every card's $derived (the disabled/dim flash).
-			// The next real refresh (navigation, other mutation) clears the override so the
-			// authoritative server order takes over.
-		} catch (thrown) {
-			// Failure: revert to the pre-drag order and re-sync with the server so the
-			// visible order matches persisted state (existing error handling unchanged).
-			console.error('Failed to reorder gifts:', thrown);
-			giftsContext.clearReorderOverride();
-			await getGiftsByWishlistShortId(shortId).refresh();
-		}
+		reorderActiveIds = [...orderedIds];
+		giftsContext.setActiveGiftOrder(orderedIds);
+		reorderPersistenceQueue.enqueue([...orderedIds]);
 	}
 
 	// ── Reservation handlers ──────────────────────────────────────────────────
 
 	function handleOpenReserveModal(giftItem: GiftForVisitor) {
+		if (hideReservationState) {
+			return;
+		}
 		reservingGift = giftItem;
 		reserveModalOpen = true;
 	}
@@ -720,6 +805,9 @@
 	}
 
 	async function handleReserve(input: ReserveGiftInput) {
+		if (hideReservationState) {
+			return;
+		}
 		isReserving = true;
 		try {
 			// The command single-flight-refreshes the gift list (reservation state).
@@ -746,7 +834,7 @@
 	}
 
 	async function handleUnreserve(giftItem: GiftForVisitor) {
-		if (giftItem.myReservationId === null) {
+		if (hideReservationState || giftItem.myReservationId === null) {
 			return;
 		}
 		try {
@@ -762,12 +850,10 @@
 	 * this path carries no authorization of its own. Returns whether the release went through, so
 	 * the confirmation dialog stays open on a rejection.
 	 */
-	async function handleRelease(giftId: string, reservationId: string): Promise<boolean> {
+	async function handleRelease(_giftId: string, reservationId: string): Promise<boolean> {
 		try {
-			// The command single-flight-refreshes the gift list, so the freed capacity lands
-			// immediately; the ledger is a separate query and has to drop the row explicitly.
+			// The command single-flight-refreshes both gift state and the one wishlist ledger.
 			await unreserveGift({ reservationId });
-			await getReservationsForGift(giftId).refresh();
 			toastSuccess(m.toast_reservation_released());
 			return true;
 		} catch (thrown) {
@@ -886,34 +972,38 @@
 			filters={giftsContext.filters.current}
 			priorityGrouping={giftsContext.priorityGrouping.current}
 			showPriorityGrouping={giftsContext.hasAnyPriority.current}
+			{reorderMode}
+			{recipientViewPreview}
+			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
+			onreordermodechange={handleReorderModeChange}
 			onviewmodechange={handleViewModeChange}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			onprioritygroupingchange={handlePriorityGroupingChange}
-			onthemeopen={() => (paletteDialogOpen = true)}
 			onsettings={handleSettingsOpened}
 			onunfollow={handleUnfollow}
 			onaddgift={openCreateModal}
 			onbatchadd={openBatchAddDialog}
-			onimport={openImportWizard}
-			onexport={handleExport}
 		/>
 
 		<WishlistGiftDisplay
-			gifts={displayedGifts}
 			sections={giftSections}
 			{role}
 			{isArchived}
+			{hideReservationState}
 			{viewMode}
 			isLoading={isGiftDataLoading}
 			{isEmpty}
 			{isFilteredEmpty}
+			{reorderMode}
 			onedit={openEditModal}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
 			onaddgift={openCreateModal}
 			onclearfilters={clearFilters}
-			onreorder={handleReorder}
+			onreorderpreview={handleReorderPreview}
+			onreordercommit={handleReorderCommit}
+			onreordercancel={handleReorderCancel}
 		/>
 	{/if}
 </div>
@@ -928,9 +1018,10 @@
 	giftCount={totalCount}
 	{recipientIsModerator}
 	{isArchived}
+	{hideReservationState}
 	bind:giftModalOpen
 	{giftModalMode}
-	{selectedGift}
+	selectedGift={selectedPresentationGift}
 	{priorityLevels}
 	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
@@ -942,8 +1033,6 @@
 	bind:reserveModalOpen
 	{reservingGift}
 	{isReserving}
-	bind:paletteDialogOpen
-	wishlistPalette={activePalette}
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
 	batchServerDuplicateCount={batchDuplicateSubmissionState.duplicateCount}
@@ -958,7 +1047,6 @@
 	ongiftunreserve={handleUnreserve}
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
-	onpaletteselect={handlePaletteSelect}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
@@ -973,12 +1061,14 @@
 	{wishlist}
 	{canManage}
 	{role}
-	revertCapability={wishlist.revertCapability}
+	revertCapability={presentationRevertCapability}
 	recipientDisplayName={wishlist.recipientDisplayName}
 	{themeEmoji}
 	onsaved={async () => {}}
 	onpaletteselect={handlePaletteSelect}
 	ondeleted={handleWishlistDeleted}
+	onimport={openImportWizard}
+	onexport={handleExport}
 	oneditrecipient={handleEditRecipientOpened}
 />
 

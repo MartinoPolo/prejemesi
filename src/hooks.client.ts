@@ -7,6 +7,20 @@ const hasDsn = dsn !== undefined && dsn !== '';
 
 // Sentry's browser SDK and Replay pull hundreds of modules into an unbundled dev page.
 // Keep the optional integration out of the client graph when no DSN is configured.
+interface SentryReplayIntegration {
+	name: string;
+}
+
+interface SentryReplayControl {
+	startBuffering(): void;
+	stop(options: { flush: false }): Promise<void>;
+}
+
+interface SentryReplayApi {
+	replayIntegration?: (options: Record<string, unknown>) => SentryReplayIntegration;
+	getReplay?: () => SentryReplayControl | undefined;
+}
+
 const sentryErrorHandlerPromise = hasDsn
 	? Promise.all([
 			import('@sentry/sveltekit'),
@@ -14,7 +28,8 @@ const sentryErrorHandlerPromise = hasDsn
 			import('$lib/observability/sentry_privacy.js'),
 			import('$lib/observability/sentry_replay_policy.js'),
 		]).then(([Sentry, { createSentryClientOptions }, privacy, replayPolicy]) => {
-			const replayIntegration = Sentry.replayIntegration({
+			const sentryWithReplay = Sentry as SentryReplayApi;
+			const replayIntegration = sentryWithReplay.replayIntegration?.({
 				maskAllText: true,
 				maskAllInputs: true,
 				maskAttributes: [
@@ -43,7 +58,7 @@ const sentryErrorHandlerPromise = hasDsn
 				}),
 			);
 
-			const replay = Sentry.getReplay();
+			const replay = sentryWithReplay.getReplay?.();
 			if (replay !== undefined) {
 				const synchronizeReplay = replayPolicy.createSentryReplaySynchronizer(replay);
 				window.addEventListener(replayPolicy.SENTRY_REPLAY_NAVIGATION_EVENT, (event) => {

@@ -1,4 +1,4 @@
-import type { GiftByRole, GiftSortOption } from './types.js';
+import type { GiftByRole, GiftForRecipient, GiftSortOption } from './types.js';
 import { GIFT_SORT_OPTIONS } from './types.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 
@@ -26,6 +26,8 @@ export const GIFT_SECTION_KINDS = {
 	priorityGroup: 'priorityGroup',
 	/** Unprioritized gifts (grouping on) under the „Bez priority" header. */
 	noPriority: 'noPriority',
+	/** Received gifts, structurally isolated in the final archive-like section. */
+	received: 'received',
 } as const;
 
 export type GiftSectionKind = (typeof GIFT_SECTION_KINDS)[keyof typeof GIFT_SECTION_KINDS];
@@ -36,6 +38,81 @@ export interface GiftSection {
 	 *  copy for the other kinds is a fixed message the renderer supplies). */
 	label: string | null;
 	gifts: GiftByRole[];
+}
+
+/**
+ * Returns the role used only for gift ordering and reservation presentation. Authorization must
+ * continue using the actual role; a manager previewing the recipient view remains a manager.
+ */
+export function effectiveGiftPresentationRole(
+	actualRole: WishlistRole,
+	recipientViewPreview: boolean,
+): WishlistRole {
+	return recipientViewPreview ? WISHLIST_ROLES.recipient : actualRole;
+}
+
+/**
+ * Projects a reservation-aware gift onto the recipient-safe client shape. Listing every shared
+ * field is intentional: adding a new field to GiftBase produces a type error instead of silently
+ * forwarding a potentially sensitive server field through object spread.
+ */
+export function projectGiftForRecipient(gift: GiftByRole): GiftForRecipient {
+	return {
+		id: gift.id,
+		wishlistId: gift.wishlistId,
+		name: gift.name,
+		description: gift.description,
+		descriptionAppends: gift.descriptionAppends,
+		editedAfterShareAt: gift.editedAfterShareAt,
+		links: gift.links,
+		price: gift.price,
+		priceMax: gift.priceMax,
+		currency: gift.currency,
+		imageUrl: gift.imageUrl,
+		imageKey: gift.imageKey,
+		imageMeta: gift.imageMeta,
+		quantity: gift.quantity,
+		sortOrder: gift.sortOrder,
+		received: gift.received,
+		createdAt: gift.createdAt,
+		priorityLevelId: gift.priorityLevelId,
+		priorityLabel: gift.priorityLabel,
+		prioritySortOrder: gift.prioritySortOrder,
+	};
+}
+
+export function projectGiftsForRecipient(gifts: readonly GiftByRole[]): GiftForRecipient[] {
+	return gifts.map(projectGiftForRecipient);
+}
+
+/**
+ * The exact sequence exposed by reorder mode: active gifts in the recipient's persisted order.
+ * Viewer filters, alternative sorts, priority groups, and reservation state are deliberately not
+ * inputs, so a správce's own reservation behaves like every other gift while arranging the list.
+ */
+export function activeGiftsInOwnerOrder(gifts: readonly GiftByRole[]): GiftByRole[] {
+	return gifts
+		.filter((gift) => !gift.received)
+		.toSorted((firstGift, secondGift) => firstGift.sortOrder - secondGift.sortOrder);
+}
+
+/** Resolve a live reorder id sequence back to gifts without ever admitting received gifts. */
+export function resolveActiveGiftOrder(
+	gifts: readonly GiftByRole[],
+	orderedActiveIds: readonly string[],
+): GiftByRole[] {
+	const activeGifts = activeGiftsInOwnerOrder(gifts);
+	const giftsById = new Map(activeGifts.map((gift) => [gift.id, gift]));
+	const resolved = orderedActiveIds.flatMap((id) => {
+		const gift = giftsById.get(id);
+		if (gift === undefined) {
+			return [];
+		}
+		giftsById.delete(id);
+		return [gift];
+	});
+
+	return [...resolved, ...activeGifts.filter((gift) => giftsById.has(gift.id))];
 }
 
 /**
@@ -87,31 +164,39 @@ export function sortGifts(
 	const result = [...gifts];
 	const unprioritizedRank = computeUnprioritizedRank(gifts);
 	result.sort((a, b) => {
+		let comparison: number;
 		switch (sortOption) {
 			case GIFT_SORT_OPTIONS.ownerOrder:
-				return a.sortOrder - b.sortOrder;
+				comparison = a.sortOrder - b.sortOrder;
+				break;
 			case GIFT_SORT_OPTIONS.priority: {
 				const aPriority = a.prioritySortOrder ?? unprioritizedRank;
 				const bPriority = b.prioritySortOrder ?? unprioritizedRank;
-				return aPriority - bPriority;
+				comparison = aPriority - bPriority;
+				break;
 			}
 			case GIFT_SORT_OPTIONS.priceAsc: {
 				const aPrice = a.price ?? Number.MAX_SAFE_INTEGER;
 				const bPrice = b.price ?? Number.MAX_SAFE_INTEGER;
-				return aPrice - bPrice;
+				comparison = aPrice - bPrice;
+				break;
 			}
 			case GIFT_SORT_OPTIONS.priceDesc: {
 				const aPrice = a.price ?? -1;
 				const bPrice = b.price ?? -1;
-				return bPrice - aPrice;
+				comparison = bPrice - aPrice;
+				break;
 			}
 			case GIFT_SORT_OPTIONS.name:
-				return a.name.localeCompare(b.name, locale);
+				comparison = a.name.localeCompare(b.name, locale);
+				break;
 			case GIFT_SORT_OPTIONS.dateAdded:
-				return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+				comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+				break;
 			default:
-				return 0;
+				comparison = 0;
 		}
+		return comparison || a.sortOrder - b.sortOrder;
 	});
 	return result;
 }
@@ -188,7 +273,15 @@ export function computeGiftSections(
 	const pinOwnReservations = role === WISHLIST_ROLES.visitor || role === WISHLIST_ROLES.moderator;
 	const sinkReserved = role === WISHLIST_ROLES.visitor;
 
-	const sorted = sortGifts(gifts, sortOption, locale);
+	// Partition before any reservation bands or priority grouping. Received gifts can therefore
+	// never be interleaved with active browsing sections, regardless of role or presentation.
+	const activeGifts = gifts.filter((gift) => !gift.received);
+	const receivedGifts = sortGifts(
+		gifts.filter((gift) => gift.received),
+		sortOption,
+		locale,
+	);
+	const sorted = sortGifts(activeGifts, sortOption, locale);
 
 	const own = pinOwnReservations ? sorted.filter(isOwnReservation) : [];
 	const ownIds = new Set(own.map((gift) => gift.id));
@@ -201,6 +294,9 @@ export function computeGiftSections(
 
 	if (groupByPriority) {
 		sections.push(...buildPriorityGroups(rest, sinkReserved));
+		if (receivedGifts.length > 0) {
+			sections.push({ kind: GIFT_SECTION_KINDS.received, label: null, gifts: receivedGifts });
+		}
 		return sections;
 	}
 
@@ -221,6 +317,10 @@ export function computeGiftSections(
 		}
 	} else if (rest.length > 0) {
 		sections.push({ kind: availableKind, label: null, gifts: rest });
+	}
+
+	if (receivedGifts.length > 0) {
+		sections.push({ kind: GIFT_SECTION_KINDS.received, label: null, gifts: receivedGifts });
 	}
 
 	return sections;

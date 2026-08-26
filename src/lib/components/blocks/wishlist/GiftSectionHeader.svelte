@@ -18,6 +18,8 @@
 				return m.gift_band_other_gifts();
 			case GIFT_SECTION_KINDS.noPriority:
 				return m.gift_priority_none();
+			case GIFT_SECTION_KINDS.received:
+				return m.gift_band_received();
 			default:
 				return section.label ?? '';
 		}

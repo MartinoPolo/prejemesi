@@ -14,6 +14,8 @@
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import LoaderIcon from '@lucide/svelte/icons/loader';
+	import FileDownIcon from '@lucide/svelte/icons/file-down';
+	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
@@ -71,6 +73,10 @@
 		ondeleted?: () => void;
 		/** Awaited page refresh after a successful revert-to-draft (issue #150). */
 		onreverted?: () => Promise<void>;
+		/** Opens the append import wizard from settings while keeping manager-only visibility. */
+		onimport: () => void;
+		/** Downloads the gift spreadsheet export from settings while keeping manager-only visibility. */
+		onexport: () => void;
 		/** Opens the shared edit-recipient dialog (issue #150) — the page renders it. */
 		oneditrecipient?: () => void;
 	}
@@ -97,6 +103,8 @@
 		onpaletteselect,
 		ondeleted,
 		onreverted,
+		onimport,
+		onexport,
 		oneditrecipient,
 	}: WishlistSettingsModalProps = $props();
 
@@ -339,10 +347,10 @@
 	{/if}
 {/snippet}
 
-<!-- Per-wishlist settings modal (UX rework of the old /w/<id>/settings page): Podrobnosti /
-     Vzhled / Obrázek tabs. Panels hide via the `hidden` attribute instead of unmounting so
-     unsaved edits (typed details, uploaded-but-unsaved image) survive tab switches; closing
-     the dialog unmounts everything, matching the old leave-the-page reset. -->
+<!-- Per-wishlist settings modal (UX rework of the old /w/<id>/settings page). Panels hide via
+     the `hidden` attribute instead of unmounting so unsaved edits (typed details,
+     uploaded-but-unsaved image) survive tab switches; closing the dialog unmounts everything,
+     matching the old leave-the-page reset. -->
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
 	<Dialog.Content size="2xl" class="max-h-[85vh] overflow-y-auto">
 		<Dialog.Header>
@@ -351,7 +359,10 @@
 		</Dialog.Header>
 
 		{#if canManage && !isArchived}
-			<Tabs.Root aria-label={m.wishlist_settings_title()} class="justify-self-start">
+			<Tabs.Root
+				aria-label={m.wishlist_settings_title()}
+				class="w-full max-w-full justify-self-stretch overflow-x-auto [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap sm:w-auto sm:justify-self-start"
+			>
 				<Tabs.Tab
 					id="wishlist-settings-tab-details"
 					aria-controls="wishlist-settings-panel-details"
@@ -359,6 +370,14 @@
 					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
 				>
 					{m.wishlist_settings_details_section()}
+				</Tabs.Tab>
+				<Tabs.Tab
+					id="wishlist-settings-tab-data"
+					aria-controls="wishlist-settings-panel-data"
+					active={activeTab === WISHLIST_SETTINGS_TABS.data}
+					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
+				>
+					{m.wishlist_settings_data_title()}
 				</Tabs.Tab>
 				<Tabs.Tab
 					id="wishlist-settings-tab-appearance"
@@ -506,7 +525,31 @@
 				</div>
 			</div>
 
-			<!-- Vzhled: palette picker, auto-saves on click (same component as the toolbar quick dialog) -->
+			<!-- Import/export: uses the existing actions without duplicate card chrome or heading. -->
+			<div
+				role="tabpanel"
+				id="wishlist-settings-panel-data"
+				aria-labelledby="wishlist-settings-tab-data"
+				hidden={activeTab !== WISHLIST_SETTINGS_TABS.data}
+			>
+				<div class="flex flex-col gap-4">
+					<p class="text-sm text-muted-foreground">
+						{m.wishlist_settings_data_hint()}
+					</p>
+					<div class="flex flex-wrap gap-2">
+						<Button type="button" intent="outline" size="sm" onclick={onimport}>
+							<FileUpIcon data-icon="inline-start" />
+							{m.import_toolbar_label()}
+						</Button>
+						<Button type="button" intent="outline" size="sm" onclick={onexport}>
+							<FileDownIcon data-icon="inline-start" />
+							{m.export_toolbar_label()}
+						</Button>
+					</div>
+				</div>
+			</div>
+
+			<!-- Vzhled: palette picker, auto-saves on click. -->
 			<div
 				role="tabpanel"
 				id="wishlist-settings-panel-appearance"

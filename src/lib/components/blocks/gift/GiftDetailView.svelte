@@ -5,7 +5,10 @@
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import { cn } from '$lib/utils.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
-	import { IMAGE_TOKEN_SCOPES } from '$lib/components/derived/image-frame/index.js';
+	import {
+		IMAGE_TOKEN_SCOPES,
+		hasExplicitFrameFill,
+	} from '$lib/components/derived/image-frame/index.js';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftDescription from '$lib/components/blocks/gift/GiftDescription.svelte';
@@ -25,20 +28,32 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 	}
 
-	let { gift, role, isArchived = false, onreserve, onunreserve }: Props = $props();
+	let {
+		gift,
+		role,
+		isArchived = false,
+		hideReservationState = false,
+		onreserve,
+		onunreserve,
+	}: Props = $props();
 
 	// Role gating single source (SUMMARY.md invariant): the recipient sees no
 	// action area, no reservation status, no like state anywhere in this view.
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role),
+		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 
 	const styles = giftDetailModalVariants();
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
+	const explicitImageFrameFill = $derived.by(() => {
+		const fillColor = gift.imageMeta?.bgColor;
+		return hasExplicitFrameFill(fillColor) ? fillColor : null;
+	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	// Dimming applies to a reservation held by someone ELSE only (SUMMARY.md state
@@ -64,7 +79,14 @@
 				/>
 			{/if}
 			<div class={styles.viewPhoto({ viewDimmed: isDimmed })}>
-				<div class={styles.viewPhotoInner()}>
+				<div
+					class={cn(
+						styles.viewPhotoInner(),
+						explicitImageFrameFill !== null && 'bg-[var(--frame-fill)]',
+					)}
+					data-testid="gift-detail-image-frame"
+					style:--frame-fill={explicitImageFrameFill ?? undefined}
+				>
 					<!-- Full uncropped photo at its natural aspect ratio, height-capped
 					     (issue #183 REQ-10): the detail view stops being a crop-target
 					     consumer, so no `imageMeta`/`target` is involved – tall photos
@@ -74,6 +96,7 @@
 						class="max-h-[300px] sm:max-h-[480px] max-w-full"
 						src={imageSrc}
 						alt={gift.name}
+						fillColor={explicitImageFrameFill}
 						tokenScope={IMAGE_TOKEN_SCOPES.wishlist}
 					/>
 				</div>
@@ -90,7 +113,12 @@
 		>
 			<div class="flex flex-wrap items-center gap-2 pr-12">
 				<h2 class="font-heading text-2xl font-semibold text-foreground">{gift.name}</h2>
-				<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+				<GiftPieceCount
+					quantity={gift.quantity}
+					role={hideReservationState ? 'recipient' : role}
+					{reservedCount}
+					hideWhenOne
+				/>
 				{#if gift.received}
 					<Badge tone="neutral" class="gap-1 text-[11px]">
 						<CheckIcon class="size-2.5" />

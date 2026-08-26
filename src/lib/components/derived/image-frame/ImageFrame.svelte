@@ -6,6 +6,7 @@
 		coverWindowLayout,
 		resolveAutoFit,
 		resolveFrameFill,
+		hasExplicitFrameFill,
 		IMAGE_FIT_MODES,
 		type ImageFitMode,
 		type ImageTokenScope,
@@ -129,6 +130,9 @@
 	);
 
 	const frameFill = $derived(resolveFrameFill({ fillColor, tokenScope }));
+	const explicitFillClass = $derived(
+		hasExplicitFrameFill(fillColor) ? 'bg-[var(--frame-fill)]' : undefined,
+	);
 	// Loading takes precedence over the empty/error fallback.
 	const showFallback = $derived(!showSkeleton && (!hasSrc || errored));
 
@@ -162,8 +166,9 @@
 			? cn(
 					styles.root(),
 					showFallback || showSkeleton ? NATURAL_PLACEHOLDER_CLASS : 'inline-block',
+					explicitFillClass,
 				)
-			: cn(styles.root(), className),
+			: cn(styles.root(), className, explicitFillClass),
 	);
 	const imageClass = $derived(
 		natural
@@ -247,6 +252,7 @@
 
 <div
 	class={rootClass}
+	data-testid="image-frame"
 	style:--frame-fill={frameFill}
 	bind:clientWidth={boxWidth}
 	bind:clientHeight={boxHeight}

@@ -21,6 +21,7 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		onclick?: () => void;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
@@ -30,13 +31,14 @@
 		gift,
 		role,
 		isArchived = false,
+		hideReservationState = false,
 		onclick,
 		onreserve,
 		onunreserve,
 	}: GiftCompactRowProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role),
+		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 
 	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
@@ -66,7 +68,12 @@
 	<td class="px-3 py-1.5">
 		<span class="text-sm font-medium text-foreground">
 			{gift.name}
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+			<GiftPieceCount
+				quantity={gift.quantity}
+				role={hideReservationState ? 'recipient' : role}
+				{reservedCount}
+				hideWhenOne
+			/>
 		</span>
 	</td>
 

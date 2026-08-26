@@ -30,6 +30,7 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		showLikeCount?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
@@ -39,13 +40,14 @@
 		gift,
 		role,
 		isArchived = false,
+		hideReservationState = false,
 		showLikeCount = false,
 		onreserve,
 		onunreserve,
 	}: GiftListItemProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role),
+		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 	// Edit-icon hover affordance (issue #125 REQ-3): mirrors GiftCard's manager-only pencil icon.
 	const canManage = $derived(canManageWishlist(role));
@@ -134,7 +136,12 @@
 			>
 				{gift.name}
 			</h3>
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+			<GiftPieceCount
+				quantity={gift.quantity}
+				role={hideReservationState ? 'recipient' : role}
+				{reservedCount}
+				hideWhenOne
+			/>
 			{#if gift.received}
 				<Badge tone="neutral" class="gap-1 text-[11px]">
 					<CheckIcon class="size-2.5" />

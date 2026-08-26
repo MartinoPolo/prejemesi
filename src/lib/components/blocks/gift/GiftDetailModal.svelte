@@ -30,6 +30,7 @@
 		/** Archived wishlist (issue #165): the read-only view's reserve action hides
 		 *  unless the viewer already holds a reservation (cancel-only), mirroring cards. */
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		postShareLocked?: boolean;
 		canDelete?: boolean;
 		graceExpiresAt?: Date | null;
@@ -58,6 +59,7 @@
 		role = 'visitor',
 		readOnly = false,
 		isArchived = false,
+		hideReservationState = false,
 		postShareLocked = false,
 		canDelete = true,
 		graceExpiresAt = null,
@@ -104,7 +106,14 @@
 		</Dialog.Description>
 
 		{#if readOnly && gift !== null}
-			<GiftDetailView {gift} {role} {isArchived} {onreserve} {onunreserve} />
+			<GiftDetailView
+				{gift}
+				{role}
+				{isArchived}
+				{hideReservationState}
+				{onreserve}
+				{onunreserve}
+			/>
 		{:else}
 			<!-- The form seeds its field state once at mount (deliberately non-reactive), so a
 			     mode/gift swap while it stays mounted would submit the previous gift's typed

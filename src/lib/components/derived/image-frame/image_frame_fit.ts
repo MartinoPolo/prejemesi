@@ -24,6 +24,18 @@ export const IMAGE_TOKEN_SCOPES = {
 
 export type ImageTokenScope = (typeof IMAGE_TOKEN_SCOPES)[keyof typeof IMAGE_TOKEN_SCOPES];
 
+export function normalizeFrameFill(fillColor: string | null | undefined): string | null {
+	if (fillColor === undefined || fillColor === null) {
+		return null;
+	}
+	const normalized = fillColor.trim();
+	return normalized === '' || normalized.toLowerCase() === 'transparent' ? null : fillColor;
+}
+
+export function hasExplicitFrameFill(fillColor: string | null | undefined): fillColor is string {
+	return normalizeFrameFill(fillColor) !== null;
+}
+
 /**
  * Aspect-ratio divergence beyond which `auto` switches from cover to contain.
  * An image is "extreme" when it is more than this many times wider or taller
@@ -109,8 +121,9 @@ export function resolveFrameFill(options: {
 	tokenScope: ImageTokenScope;
 }): string {
 	const { fillColor, tokenScope } = options;
-	if (fillColor !== null && fillColor.trim() !== '') {
-		return fillColor;
+	const explicitFill = normalizeFrameFill(fillColor);
+	if (explicitFill !== null) {
+		return explicitFill;
 	}
 	if (tokenScope === IMAGE_TOKEN_SCOPES.wishlist) {
 		// Palette tokens re-derive per subtree ([data-palette] wrapper), so the

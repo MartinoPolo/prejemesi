@@ -16,22 +16,28 @@
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
-		canManage: boolean;
+		hideReservationState: boolean;
+		reorderEnabled: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
-		onreorder: (fromIndex: number, toIndex: number) => void;
+		onreorderpreview: (orderedIds: string[]) => void;
+		onreordercommit: (orderedIds: string[]) => void;
+		onreordercancel: (orderedIds: string[]) => void;
 	}
 
 	let {
 		sections,
 		role,
 		isArchived,
-		canManage,
+		hideReservationState,
+		reorderEnabled,
 		onedit,
 		onreserve,
 		onunreserve,
-		onreorder,
+		onreorderpreview,
+		onreordercommit,
+		onreordercancel,
 	}: WishlistGiftListViewProps = $props();
 
 	let listEl = $state<HTMLElement | null>(null);
@@ -39,21 +45,31 @@
 	const indexedSections = $derived(toIndexedSections(sections));
 	const totalGiftCount = $derived(countGiftsInSections(sections));
 
+	function getItemElements() {
+		return listEl === null
+			? []
+			: Array.from(listEl.querySelectorAll<HTMLElement>('[data-gift-item]'));
+	}
+
 	const reorder = createGiftPointerReorderController({
-		getItemElements: () =>
-			listEl === null
-				? []
-				: Array.from(listEl.querySelectorAll<HTMLElement>('[data-gift-item]')),
-		onReorder: (fromIndex, toIndex) => onreorder(fromIndex, toIndex),
+		getItemElements,
+		getItemIds: () => getItemElements().map((element) => element.dataset.giftId!),
+		onPreviewOrder: (orderedIds) => onreorderpreview(orderedIds),
+		onCommitOrder: (orderedIds) => onreordercommit(orderedIds),
+		onCancelOrder: (orderedIds) => onreordercancel(orderedIds),
 	});
 
 	function handleReorderMove(index: number, direction: -1 | 1) {
-		const target = index + direction;
-		if (target >= 0 && target < totalGiftCount) {
-			onreorder(index, target);
+		if (index + direction >= 0 && index + direction < totalGiftCount) {
+			reorder.move(index, direction);
 		}
 	}
 
+	$effect(() => {
+		if (!reorderEnabled) {
+			reorder.cancel();
+		}
+	});
 	$effect(() => () => reorder.destroy());
 </script>
 
@@ -65,16 +81,24 @@
 		{#each items as { gift: giftItem, index } (giftItem.id)}
 			<WishlistGiftDraggableWrapper
 				{index}
-				{canManage}
-				draggedIndex={reorder.draggedIndex.current}
-				dragOverIndex={reorder.dragOverIndex.current}
+				giftId={giftItem.id}
+				{reorderEnabled}
+				draggedGiftId={reorder.draggedGiftId.current}
+				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="bg"
 				giftName={giftItem.name}
 				onopendetail={() => onedit(giftItem)}
 				onreorderpointerdown={reorder.start}
 				onreordermove={handleReorderMove}
 			>
-				<GiftListItem gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
+				<GiftListItem
+					gift={giftItem}
+					{role}
+					{isArchived}
+					{hideReservationState}
+					{onreserve}
+					{onunreserve}
+				/>
 			</WishlistGiftDraggableWrapper>
 		{/each}
 	{/each}

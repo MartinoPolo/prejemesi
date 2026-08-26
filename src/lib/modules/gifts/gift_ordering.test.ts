@@ -4,6 +4,11 @@ import { GIFT_SORT_OPTIONS } from './types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	GIFT_SECTION_KINDS,
+	activeGiftsInOwnerOrder,
+	effectiveGiftPresentationRole,
+	projectGiftForRecipient,
+	projectGiftsForRecipient,
+	resolveActiveGiftOrder,
 	computeGiftSections,
 	computeUnprioritizedRank,
 	giftSectionHasHeader,
@@ -52,6 +57,95 @@ function flatIds(sections: GiftSection[]): string[] {
 }
 
 const LOCALE = 'cs';
+
+describe('recipient-view projection and ordering (#241)', () => {
+	it('strips every reservation-only field without mutating the source gift', () => {
+		const visitorGift = makeGift({
+			reservedCount: 2,
+			isFullyReserved: true,
+			reserverNames: ['Babička'],
+			myReservationId: 'reservation-1',
+			myReservationPurchasedAt: new Date('2026-01-02T00:00:00Z'),
+		});
+
+		const projected = projectGiftForRecipient(visitorGift);
+		expect(projected).not.toHaveProperty('likeCount');
+		expect(projected).not.toHaveProperty('reservedCount');
+		expect(projected).not.toHaveProperty('isFullyReserved');
+		expect(projected).not.toHaveProperty('reserverNames');
+		expect(projected).not.toHaveProperty('myReservationId');
+		expect(projected).not.toHaveProperty('myReservationPurchasedAt');
+		expect(visitorGift.reserverNames).toEqual(['Babička']);
+	});
+
+	it('uses recipient rules in preview: no own band or reserved sink, received remains final', () => {
+		const own = makeGift({
+			id: 'mine',
+			sortOrder: 3,
+			myReservationId: 'reservation-1',
+			isFullyReserved: true,
+		});
+		const foreignReserved = makeGift({ id: 'foreign', sortOrder: 1, isFullyReserved: true });
+		const available = makeGift({ id: 'available', sortOrder: 2 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+		const presentationRole = effectiveGiftPresentationRole(WISHLIST_ROLES.visitor, true);
+		const sections = computeGiftSections(
+			projectGiftsForRecipient([own, available, received, foreignReserved]),
+			presentationRole,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			false,
+			LOCALE,
+		);
+
+		expect(sections.map((section) => section.kind)).toEqual([
+			GIFT_SECTION_KINDS.available,
+			GIFT_SECTION_KINDS.received,
+		]);
+		expect(flatIds(sections)).toEqual(['foreign', 'available', 'mine', 'received']);
+	});
+
+	it('restores the actual reservation-aware role when preview is disabled', () => {
+		expect(effectiveGiftPresentationRole(WISHLIST_ROLES.visitor, false)).toBe(
+			WISHLIST_ROLES.visitor,
+		);
+		expect(effectiveGiftPresentationRole(WISHLIST_ROLES.moderator, false)).toBe(
+			WISHLIST_ROLES.moderator,
+		);
+	});
+});
+
+describe('reorder mode sequence (#239)', () => {
+	it('returns one active owner-order sequence independent of reservation state', () => {
+		const ownReserved = makeGift({
+			id: 'mine',
+			sortOrder: 3,
+			myReservationId: 'reservation-1',
+			isFullyReserved: true,
+		});
+		const first = makeGift({ id: 'first', sortOrder: 1 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+		const foreignReserved = makeGift({ id: 'foreign', sortOrder: 2, isFullyReserved: true });
+
+		expect(
+			activeGiftsInOwnerOrder([ownReserved, received, foreignReserved, first]).map(
+				(gift) => gift.id,
+			),
+		).toEqual(['first', 'foreign', 'mine']);
+	});
+
+	it('resolves a live id order without admitting received, duplicate, or unknown ids', () => {
+		const first = makeGift({ id: 'first', sortOrder: 1 });
+		const second = makeGift({ id: 'second', sortOrder: 2 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+
+		expect(
+			resolveActiveGiftOrder(
+				[first, second, received],
+				['second', 'received', 'unknown', 'second', 'first'],
+			).map((gift) => gift.id),
+		).toEqual(['second', 'first']);
+	});
+});
 
 describe('computeGiftSections — bands (grouping off)', () => {
 	it('pins the visitor own reservation to the first section, appearing exactly once (behavior 1)', () => {
@@ -314,6 +408,51 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 		const highGroup = sections.find((s) => s.label === 'Vysoká');
 		// Owner order preserved (sortOrder 1 then 2) — no sinking.
 		expect(highGroup?.gifts.map((g) => g.id)).toEqual(['rh', 'ah']);
+	});
+});
+
+describe('computeGiftSections — received partition (#240)', () => {
+	it('always emits one final received section under every sort, role, and grouping mode', () => {
+		const active = makeGift({ id: 'active', sortOrder: 3, isFullyReserved: true });
+		const receivedA = makeGift({ id: 'received-a', received: true, sortOrder: 2, price: 200 });
+		const receivedB = makeGift({ id: 'received-b', received: true, sortOrder: 1, price: 100 });
+
+		for (const role of Object.values(WISHLIST_ROLES)) {
+			for (const sortOption of Object.values(GIFT_SORT_OPTIONS)) {
+				for (const grouping of [false, true]) {
+					const sections = computeGiftSections(
+						[receivedA, active, receivedB],
+						role,
+						sortOption,
+						grouping,
+						LOCALE,
+					);
+					const received = sections.at(-1);
+					expect(received?.kind).toBe(GIFT_SECTION_KINDS.received);
+					expect(received?.gifts.map((gift) => gift.id).sort()).toEqual([
+						'received-a',
+						'received-b',
+					]);
+					expect(sections.slice(0, -1).flatMap((section) => section.gifts)).toEqual([
+						active,
+					]);
+					expect(giftSectionHasHeader(received!)).toBe(true);
+				}
+			}
+		}
+	});
+
+	it('sorts received gifts within their final section with owner order as the stable tie-breaker', () => {
+		const later = makeGift({ id: 'later', received: true, name: 'Same', sortOrder: 2 });
+		const earlier = makeGift({ id: 'earlier', received: true, name: 'Same', sortOrder: 1 });
+		const sections = computeGiftSections(
+			[later, earlier],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.name,
+			false,
+			LOCALE,
+		);
+		expect(flatIds(sections)).toEqual(['earlier', 'later']);
 	});
 });
 

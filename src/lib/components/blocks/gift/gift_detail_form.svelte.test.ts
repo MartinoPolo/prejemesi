@@ -7,7 +7,7 @@ import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
-import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
+import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 
 // `GiftDetailForm` transitively imports `public_url.ts`, whose public env is normally
 // seeded by SvelteKit's browser bootstrap. Vitest mounts into a bare document, so use
@@ -80,6 +80,147 @@ describe('GiftDetailForm stored images', () => {
 				imageKey: 'demo/backpack.jpg',
 			}),
 		);
+	});
+});
+
+describe('GiftDetailForm image backgrounds (issue #252)', () => {
+	const imageUrl =
+		'data:image/svg+xml,' +
+		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"/>');
+
+	function imageMeta(bgColor: string | null): ImageMetadata {
+		return {
+			fitMode: IMAGE_FIT_MODES.containPadded,
+			cropRect: null,
+			focal: { x: 50, y: 50 },
+			zoom: 1,
+			bgColor,
+		};
+	}
+
+	it('selects Transparent for null, previews the default pattern, and submits null untouched', async () => {
+		const onupdate = vi.fn();
+		const root = document.documentElement;
+		const previousValue = root.style.getPropertyValue('--secondary');
+		const previousPriority = root.style.getPropertyPriority('--secondary');
+		root.style.setProperty('--secondary', 'rgb(12, 34, 56)');
+
+		try {
+			const screen = await render(GiftDetailForm, {
+				...baseProps,
+				gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
+				onupdate,
+			});
+
+			await expect
+				.element(screen.getByRole('group', { name: m.image_background_label() }))
+				.toBeVisible();
+			await expect
+				.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
+				.toHaveAttribute('aria-checked', 'true');
+			expect(
+				screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+			).toBeTruthy();
+			await vi.waitFor(() => {
+				const fill = screen.container.querySelector<HTMLElement>(
+					'[data-testid="crop-stage"] > [style*="background:"]',
+				);
+				expect(fill).not.toBeNull();
+				expect(getComputedStyle(fill!).backgroundColor).toBe('rgb(12, 34, 56)');
+			});
+
+			await screen.getByRole('button', { name: m.save() }).click();
+			expect(onupdate).toHaveBeenCalledWith(
+				expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+			);
+		} finally {
+			if (previousValue) {
+				root.style.setProperty('--secondary', previousValue, previousPriority);
+			} else {
+				root.style.removeProperty('--secondary');
+			}
+		}
+	});
+
+	it('normalizes legacy transparent metadata to the selected default and null on save', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta('transparent') }),
+			onupdate,
+		});
+
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
+			.toHaveAttribute('aria-checked', 'true');
+		expect(
+			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+		).toBeTruthy();
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+		);
+	});
+
+	it('clicking Transparent replaces an explicit fill with canonical null', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta('#000000') }),
+			onupdate,
+		});
+
+		await screen.getByRole('radio', { name: m.image_background_transparent() }).click();
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
+			.toHaveAttribute('aria-checked', 'true');
+		expect(
+			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+		).toBeTruthy();
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+		);
+	});
+
+	it.each([
+		[m.image_background_white(), '#ffffff', 'rgb(255, 255, 255)'],
+		[m.image_background_black(), '#000000', 'rgb(0, 0, 0)'],
+	])('submits %s as the exact persisted value', async (label, value, expectedBackground) => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
+			onupdate,
+		});
+
+		await screen.getByRole('radio', { name: label }).click();
+		await vi.waitFor(() => {
+			const fill = screen.container.querySelector<HTMLElement>(
+				'[data-testid="crop-stage"] > [style*="background:"]',
+			);
+			expect(fill).not.toBeNull();
+			expect(getComputedStyle(fill!).backgroundColor).toBe(expectedBackground);
+		});
+		expect(
+			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+		).toBeNull();
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: value }) }),
+		);
+	});
+
+	it('highlights the persisted explicit choice when editing a gift', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta('#000000') }),
+		});
+
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_black() }))
+			.toHaveAttribute('aria-checked', 'true');
 	});
 });
 

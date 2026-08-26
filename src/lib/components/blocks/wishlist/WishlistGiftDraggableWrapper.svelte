@@ -6,9 +6,10 @@
 
 	interface WishlistGiftDraggableWrapperProps {
 		index: number;
-		canManage: boolean;
-		draggedIndex: number | null;
-		dragOverIndex: number | null;
+		giftId: string;
+		reorderEnabled: boolean;
+		draggedGiftId: string | null;
+		dragOverGiftId: string | null;
 		dragOverStyle: 'ring' | 'bg';
 		/** Accessible name for the card's button role (issue #125 REQ-4). */
 		giftName: string;
@@ -29,9 +30,10 @@
 
 	let {
 		index,
-		canManage,
-		draggedIndex,
-		dragOverIndex,
+		giftId,
+		reorderEnabled,
+		draggedGiftId,
+		dragOverGiftId,
 		dragOverStyle,
 		giftName,
 		class: className = undefined,
@@ -41,8 +43,8 @@
 		onreordermove,
 	}: WishlistGiftDraggableWrapperProps = $props();
 
-	const isDragged = $derived(draggedIndex === index);
-	const isDragOver = $derived(dragOverIndex === index);
+	const isDragged = $derived(draggedGiftId === giftId);
+	const isDragOver = $derived(dragOverGiftId === giftId);
 
 	function eventStartedInsideInteractiveElement(event: Event): boolean {
 		const target = event.target;
@@ -95,13 +97,14 @@
      stays the only external-navigation target. -->
 <div
 	data-gift-item
+	data-gift-id={giftId}
 	class={cn(
 		// Named hover group so the grip (an absolutely-positioned sibling of the card) and the card
 		// lift as one unit: the card's own lift also keys off this group (see gift_card_variants),
 		// so hovering/focusing the grip lifts the card too — not just the card body (issue #224 f/up).
 		'group/gift-card relative h-full cursor-pointer transition-opacity',
 		className,
-		isDragged && 'opacity-40',
+		isDragged && 'invisible',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
 	)}
@@ -111,7 +114,7 @@
 	onclick={handleClick}
 	onkeydown={handleKeydown}
 >
-	{#if canManage}
+	{#if reorderEnabled}
 		<!-- Grip is the drag handle. `touch-action: none` stops the browser hijacking the touch
 		     gesture for scrolling so pointer reordering works on phones/tablets. -->
 		<button

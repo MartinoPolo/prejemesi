@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
 	coverWindowLayout,
+	hasExplicitFrameFill,
+	normalizeFrameFill,
 	resolveAutoFit,
 	resolveFrameFill,
 	AUTO_CONTAIN_RATIO_THRESHOLD,
@@ -112,6 +114,16 @@ describe('coverWindowLayout', () => {
 });
 
 describe('resolveFrameFill', () => {
+	it('normalizes null, blank, and legacy transparent to the default fallback', () => {
+		expect(normalizeFrameFill(null)).toBeNull();
+		expect(normalizeFrameFill('   ')).toBeNull();
+		expect(normalizeFrameFill('transparent')).toBeNull();
+		expect(hasExplicitFrameFill('transparent')).toBe(false);
+		expect(resolveFrameFill({ fillColor: 'transparent', tokenScope: 'wishlist' })).toBe(
+			'var(--secondary)',
+		);
+	});
+
 	it('uses the extracted/manual color first when present (tier 1)', () => {
 		expect(resolveFrameFill({ fillColor: 'oklch(0.58 0.13 25)', tokenScope: 'wishlist' })).toBe(
 			'oklch(0.58 0.13 25)',

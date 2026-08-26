@@ -11,45 +11,53 @@
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 
 	interface WishlistGiftDisplayProps {
-		gifts: GiftByRole[];
-		/** Role-aware bands/priority groups for the card & list views (issue #224); compact uses the
-		 *  flat `gifts`. */
+		/** Shared display sections consumed identically by every view mode. */
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
+		hideReservationState: boolean;
 		viewMode: GiftViewMode;
 		isLoading?: boolean;
 		isEmpty: boolean;
 		isFilteredEmpty: boolean;
+		reorderMode: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onaddgift: () => void;
 		onclearfilters: () => void;
-		onreorder: (fromIndex: number, toIndex: number) => void;
+		onreorderpreview: (orderedIds: string[]) => void;
+		onreordercommit: (orderedIds: string[]) => void;
+		onreordercancel: (orderedIds: string[]) => void;
 	}
 
 	let {
-		gifts,
 		sections,
 		role,
 		isArchived,
+		hideReservationState,
 		viewMode,
 		isLoading = false,
 		isEmpty,
 		isFilteredEmpty,
+		reorderMode,
 		onedit,
 		onreserve,
 		onunreserve,
 		onaddgift,
 		onclearfilters,
-		onreorder,
+		onreorderpreview,
+		onreordercommit,
+		onreordercancel,
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
-	// The recipient (person the list is for) never sees the like/reserve columns — their own surprise.
-	const isRecipient = $derived(role === WISHLIST_ROLES.recipient);
+	// The recipient and recipient-view preview share one presentation gate. Actual role remains
+	// separate so manager edit/reorder affordances stay authorized normally.
+	const reservationStateHidden = $derived(
+		hideReservationState || role === WISHLIST_ROLES.recipient,
+	);
 </script>
 
 {#if isLoading}
@@ -69,29 +77,35 @@
 		{sections}
 		{role}
 		{isArchived}
-		{canManage}
+		hideReservationState={reservationStateHidden}
+		reorderEnabled={reorderMode && canManage && !isArchived}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{onreorder}
+		{onreorderpreview}
+		{onreordercommit}
+		{onreordercancel}
 	/>
 {:else if viewMode === 'list'}
 	<WishlistGiftListView
 		{sections}
 		{role}
 		{isArchived}
-		{canManage}
+		hideReservationState={reservationStateHidden}
+		reorderEnabled={reorderMode && canManage && !isArchived}
 		{onedit}
 		{onreserve}
 		{onunreserve}
-		{onreorder}
+		{onreorderpreview}
+		{onreordercommit}
+		{onreordercancel}
 	/>
 {:else}
 	<WishlistGiftCompactTable
-		{gifts}
+		{sections}
 		{role}
 		{isArchived}
-		{isRecipient}
+		hideReservationState={reservationStateHidden}
 		{canManage}
 		{onedit}
 		{onreserve}

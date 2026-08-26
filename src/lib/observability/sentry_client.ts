@@ -11,7 +11,7 @@ export function createSentryClientOptions<T extends { name: string }>({
 }: {
 	dsn?: string;
 	environment: 'development' | 'production';
-	replayIntegration: T;
+	replayIntegration?: T;
 }) {
 	return {
 		dsn,
@@ -23,7 +23,7 @@ export function createSentryClientOptions<T extends { name: string }>({
 		enableLogs: false,
 		replaysSessionSampleRate: 0.1,
 		replaysOnErrorSampleRate: 1,
-		integrations: [replayIntegration],
+		integrations: replayIntegration === undefined ? [] : [replayIntegration],
 		beforeSend: sanitizeSentryEvent,
 		beforeBreadcrumb: sanitizeSentryBreadcrumb,
 	};

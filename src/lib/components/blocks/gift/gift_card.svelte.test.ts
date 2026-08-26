@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 
 // GiftImage transitively imports the images module barrel, which reads `$env/dynamic/public`.
 // vitest-browser-svelte mounts without SvelteKit's page bootstrap, so the virtual module
@@ -20,6 +21,19 @@ const { default: GiftCardTestHost } = await import('./GiftCardTestHost.svelte');
 // the card wider either — see GiftCard.stories.svelte's hostile-name fixture.)
 const REALISTIC_LONG_NAME =
 	'Bezdrátová herní myš s RGB podsvícením a vyměnitelnými tlačítky pro praváky i leváky';
+const IMAGE_URL =
+	'data:image/svg+xml,' +
+	encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="64"/>');
+
+function imageMeta(bgColor: string | null): ImageMetadata {
+	return {
+		fitMode: IMAGE_FIT_MODES.containPadded,
+		cropRect: null,
+		focal: { x: 50, y: 50 },
+		zoom: 1,
+		bgColor,
+	};
+}
 
 function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 	return {
@@ -74,6 +88,37 @@ async function renderCardInGridColumn(gift: GiftForVisitor) {
 
 	return host;
 }
+
+describe('GiftCard image background fill (issue #252)', () => {
+	it('paints the visible outer card frame with explicit black and removes the pattern', async () => {
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#000000') }),
+		);
+
+		const cardFrame = host.querySelector(
+			'[data-testid="gift-card-image-frame"]',
+		) as HTMLElement;
+		const imageFrame = cardFrame.querySelector('[data-testid="image-frame"]') as HTMLElement;
+
+		expect(cardFrame).toBeTruthy();
+		expect(imageFrame).toBeTruthy();
+		expect(getComputedStyle(cardFrame).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(getComputedStyle(imageFrame).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(cardFrame.querySelector('[data-testid="gift-card-image-pattern"]')).toBeNull();
+	});
+
+	it.each([null, 'transparent'])('keeps the pattern for default %s fill', async (bgColor) => {
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta(bgColor) }),
+		);
+
+		const cardFrame = host.querySelector(
+			'[data-testid="gift-card-image-frame"]',
+		) as HTMLElement;
+		expect(cardFrame).toBeTruthy();
+		expect(cardFrame.querySelector('[data-testid="gift-card-image-pattern"]')).toBeTruthy();
+	});
+});
 
 describe('GiftCard reservation-action layout (issue #211)', () => {
 	it('renders a stored gift image key without replacing the persisted source URL', async () => {

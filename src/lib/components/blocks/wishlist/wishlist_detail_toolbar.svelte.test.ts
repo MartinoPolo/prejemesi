@@ -14,20 +14,21 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	isAuthenticated: false,
 	viewMode: GIFT_VIEW_MODES.card,
 	sortOption: GIFT_SORT_OPTIONS.ownerOrder,
-	filters: { availableOnly: false, withLinkOnly: false, likedOnly: false },
+	filters: { availableOnly: false, withLinkOnly: false, likedOnly: false, showReceived: false },
 	priorityGrouping: false,
 	showPriorityGrouping: false,
+	reorderMode: false,
+	recipientViewPreview: false,
+	onrecipientviewpreviewchange: () => {},
+	onreordermodechange: () => {},
 	onviewmodechange: () => {},
 	onsortchange: () => {},
 	onfilterchange: () => {},
 	onprioritygroupingchange: () => {},
-	onthemeopen: () => {},
 	onsettings: () => {},
 	onunfollow: () => {},
 	onaddgift: () => {},
 	onbatchadd: () => {},
-	onimport: () => {},
-	onexport: () => {},
 };
 
 async function renderToolbar(
@@ -35,6 +36,139 @@ async function renderToolbar(
 ) {
 	return render(WishlistDetailToolbar, { ...defaultProps, ...overrides });
 }
+
+describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
+	it('shows the compact pressed preview button to visitors and moderators, but never recipients', async () => {
+		for (const role of [WISHLIST_ROLES.visitor, WISHLIST_ROLES.moderator]) {
+			const screen = await renderToolbar({ role });
+			await expect
+				.element(screen.getByRole('button', { name: m.recipient_view_preview_turn_on() }))
+				.toBeVisible();
+			await screen.unmount();
+		}
+
+		const recipientScreen = await renderToolbar({
+			role: WISHLIST_ROLES.recipient,
+			canManage: true,
+			adminSettingsAvailable: true,
+		});
+		await expect
+			.element(
+				recipientScreen.getByRole('button', { name: m.recipient_view_preview_turn_on() }),
+			)
+			.not.toBeInTheDocument();
+		await recipientScreen.unmount();
+	});
+
+	it('reports the pressed toggle without changing manager authorization or reorder state', async () => {
+		const onrecipientviewpreviewchange = vi.fn();
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+			recipientViewPreview: true,
+			onrecipientviewpreviewchange,
+		});
+
+		const previewButton = screen.getByRole('button', {
+			name: m.recipient_view_preview_turn_off(),
+		});
+		await expect.element(previewButton).toHaveAttribute('aria-pressed', 'true');
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+			.toBeVisible();
+		await previewButton.click();
+		expect(onrecipientviewpreviewchange).toHaveBeenCalledWith(false);
+		await screen.unmount();
+	});
+});
+
+describe('WishlistDetailToolbar manager actions (#241)', () => {
+	it('keeps import, export, and palette out of the detail toolbar', async () => {
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+		});
+
+		await expect
+			.element(screen.getByRole('button', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.batch_add_toolbar_label() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.import_toolbar_label() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.export_toolbar_label() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.wishlist_palette_dialog_title() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+});
+
+describe('WishlistDetailToolbar reorder mode (#239)', () => {
+	it('offers reorder only to managers on non-archived card and list layouts', async () => {
+		for (const viewMode of [GIFT_VIEW_MODES.card, GIFT_VIEW_MODES.list]) {
+			const screen = await renderToolbar({
+				canManage: true,
+				role: WISHLIST_ROLES.moderator,
+				viewMode,
+			});
+			await expect
+				.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+				.toBeVisible();
+			await screen.unmount();
+		}
+
+		for (const overrides of [
+			{ canManage: false },
+			{ canManage: true, role: WISHLIST_ROLES.visitor },
+			{ canManage: true, role: WISHLIST_ROLES.moderator, isArchived: true },
+			{
+				canManage: true,
+				role: WISHLIST_ROLES.recipient,
+				viewMode: GIFT_VIEW_MODES.compact,
+			},
+		]) {
+			const screen = await renderToolbar(overrides);
+			await expect
+				.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+				.not.toBeInTheDocument();
+			await screen.unmount();
+		}
+	});
+
+	it('shows Done and bypasses display modifiers without changing them', async () => {
+		const onreordermodechange = vi.fn();
+		const onsortchange = vi.fn();
+		const onfilterchange = vi.fn();
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.recipient,
+			reorderMode: true,
+			onreordermodechange,
+			onsortchange,
+			onfilterchange,
+		});
+
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_reorder_done() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_filter() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
+			.not.toBeInTheDocument();
+		await screen.getByRole('button', { name: m.gift_reorder_done() }).click();
+		expect(onreordermodechange).toHaveBeenCalledWith(false);
+		expect(onsortchange).not.toHaveBeenCalled();
+		expect(onfilterchange).not.toHaveBeenCalled();
+		await screen.unmount();
+	});
+});
 
 describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 	it('shows only the recipient filter options', async () => {
@@ -108,7 +242,12 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 		const onfilterchange = vi.fn();
 		const screen = await renderToolbar({
 			isAuthenticated: true,
-			filters: { availableOnly: true, withLinkOnly: true, likedOnly: true },
+			filters: {
+				availableOnly: true,
+				withLinkOnly: true,
+				likedOnly: true,
+				showReceived: true,
+			},
 			onfilterchange,
 		});
 
@@ -119,6 +258,7 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 			availableOnly: false,
 			withLinkOnly: false,
 			likedOnly: false,
+			showReceived: false,
 		});
 		await screen.unmount();
 	});
@@ -127,7 +267,12 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 		const onfilterchange = vi.fn();
 		const screen = await renderToolbar({
 			isAuthenticated: true,
-			filters: { availableOnly: false, withLinkOnly: false, likedOnly: true },
+			filters: {
+				availableOnly: false,
+				withLinkOnly: false,
+				likedOnly: true,
+				showReceived: false,
+			},
 			onfilterchange,
 		});
 
@@ -140,6 +285,7 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 			availableOnly: true,
 			withLinkOnly: false,
 			likedOnly: true,
+			showReceived: false,
 		});
 		await userEvent.keyboard('{Escape}');
 		await screen.unmount();

@@ -364,6 +364,7 @@ export const unreserveGift = publicCommand(UnreserveInputSchema, async (authCont
 	}
 	if (wishlistShortId !== null) {
 		singleFlightRefresh(getGiftsByWishlistShortId, wishlistShortId);
+		singleFlightRefresh(getReservationLedgerForWishlist, wishlistShortId);
 	}
 
 	return { success: true };
@@ -415,58 +416,71 @@ export const setReservationPurchased = guardedCommand(
 	},
 );
 
-export const getReservationsForGift = publicQuery(v.string(), async (authContext, giftId) => {
-	const wishlistRow = (await getGiftWithWishlist(giftId)).wishlist;
+export const getReservationLedgerForWishlist = publicQuery(
+	v.string(),
+	async (authContext, shortId) => {
+		const database = getDb();
+		const wishlistRows = await database
+			.select()
+			.from(wishlist)
+			.where(and(eq(wishlist.shortId, shortId), isNull(wishlist.deletedAt)))
+			.limit(1);
+		const wishlistRow = wishlistRows[0];
+		if (wishlistRow === undefined) {
+			error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+		}
 
-	const role = await resolveWishlistRole(authContext, wishlistRow);
+		const role = await resolveWishlistRole(authContext, wishlistRow);
+		const capability = resolveReservationReleaseCapability({
+			role,
+			isAdmin: isAppAdmin(authContext?.user.email),
+		});
+		if (capability === RESERVATION_RELEASE_CAPABILITY.none) {
+			return { reservationsByGiftId: {} as Record<string, ReservationForModerator[]>, role };
+		}
 
-	// Správci (guest rows only) and the app administrator (every row) see gifter identities; the
-	// obdarovaný — even when they are the administrator — and plain visitors never learn who
-	// reserved what (issue #213, REQ-5/REQ-6).
-	const capability = resolveReservationReleaseCapability({
-		role,
-		isAdmin: isAppAdmin(authContext?.user.email),
-	});
-	if (capability === RESERVATION_RELEASE_CAPABILITY.none) {
-		return { reservations: [] as ReservationForModerator[], role };
-	}
+		// One statement loads the whole authorized ledger. Joining through gift both scopes every
+		// row to this wishlist and avoids trusting gift ids supplied by the client.
+		const rows = await database
+			.select({
+				id: reservation.id,
+				giftId: reservation.giftId,
+				quantity: reservation.quantity,
+				userId: reservation.userId,
+				anonymousName: reservation.anonymousName,
+				gifterName: user.name,
+				createdAt: reservation.createdAt,
+			})
+			.from(reservation)
+			.innerJoin(gift, eq(reservation.giftId, gift.id))
+			.leftJoin(user, eq(reservation.userId, user.id))
+			.where(
+				and(
+					eq(gift.wishlistId, wishlistRow.id),
+					isNull(gift.deletedAt),
+					isNull(reservation.deletedAt),
+				),
+			)
+			.orderBy(reservation.createdAt);
 
-	const database = getDb();
+		const reservationsByGiftId: Record<string, ReservationForModerator[]> = {};
+		for (const row of rows) {
+			if (authContext !== null && row.userId === authContext.user.id) {
+				continue;
+			}
+			(reservationsByGiftId[row.giftId] ??= []).push({
+				id: row.id,
+				giftId: row.giftId,
+				quantity: row.quantity,
+				displayName: row.anonymousName ?? row.gifterName,
+				releasable: canReleaseReservation(capability, row.userId === null),
+				createdAt: row.createdAt,
+			});
+		}
 
-	// The join resolves a signed-in gifter's real account name — the picker (REQ-4) cannot
-	// identify a row without it.
-	const rows = await database
-		.select({
-			id: reservation.id,
-			giftId: reservation.giftId,
-			quantity: reservation.quantity,
-			userId: reservation.userId,
-			anonymousName: reservation.anonymousName,
-			gifterName: user.name,
-			createdAt: reservation.createdAt,
-		})
-		.from(reservation)
-		.leftJoin(user, eq(reservation.userId, user.id))
-		.where(and(eq(reservation.giftId, giftId), isNull(reservation.deletedAt)))
-		.orderBy(reservation.createdAt);
-
-	const reservations: ReservationForModerator[] = rows
-		// The viewer's own reservation is cancelled through the single-click path on their own
-		// reserve control, never through the release ledger.
-		.filter((row) => authContext === null || row.userId !== authContext.user.id)
-		.map((row) => ({
-			id: row.id,
-			giftId: row.giftId,
-			quantity: row.quantity,
-			// Null only when the gifter's account was deleted (`user_id` drops to NULL) — the UI
-			// renders its own placeholder rather than a server-side English fallback.
-			displayName: row.anonymousName ?? row.gifterName,
-			releasable: canReleaseReservation(capability, row.userId === null),
-			createdAt: row.createdAt,
-		}));
-
-	return { reservations, role };
-});
+		return { reservationsByGiftId, role };
+	},
+);
 
 export const getMyReservationsForGift = publicQuery(v.string(), async (authContext, giftId) => {
 	if (authContext === null) {

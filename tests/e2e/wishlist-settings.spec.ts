@@ -95,6 +95,46 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await page.context().close();
 	});
 
+	test('manager import and export actions live in settings instead of the toolbar', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-data-actions');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+
+		await createWishlistAndNavigate(page, 'Datové akce');
+		await addGift(page, 'Dárek pro export');
+
+		await expect(page.getByRole('button', { name: 'Importovat z tabulky' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Exportovat do tabulky' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Barevná paleta seznamu' })).toHaveCount(0);
+
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		const settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await expect(settingsDialog).toBeVisible({ timeout: 10_000 });
+		await expect(
+			settingsDialog.getByRole('button', { name: 'Importovat z tabulky' }),
+		).not.toBeVisible();
+		await expect(
+			settingsDialog.getByRole('button', { name: 'Exportovat do tabulky' }),
+		).not.toBeVisible();
+		await settingsDialog.getByRole('tab', { name: 'Import a export' }).click();
+
+		const downloadPromise = page.waitForEvent('download');
+		await settingsDialog.getByRole('button', { name: 'Exportovat do tabulky' }).click();
+		const download = await downloadPromise;
+		expect(download.suggestedFilename()).toMatch(/\.csv$/);
+
+		await settingsDialog.getByRole('button', { name: 'Importovat z tabulky' }).click();
+		await expect(settingsDialog).not.toBeVisible({ timeout: 5_000 });
+		await expect(page.getByRole('dialog', { name: 'Importovat dárky' })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		await page.context().close();
+	});
+
 	test('non-owner cannot use the settings action and cannot edit via direct URL', async ({
 		browser,
 		request,

@@ -17,6 +17,10 @@ import { getLocale } from '$lib/paraglide/runtime.js';
 
 type GiftsContext = ReturnType<typeof createGiftsContext>;
 
+export function shouldApplyLikedOnly(likedOnly: boolean, role: WishlistRole): boolean {
+	return likedOnly && role !== 'recipient';
+}
+
 const [useGifts, setGiftsInternal] = createContext<GiftsContext>();
 /** @public */
 export { useGifts };
@@ -87,13 +91,15 @@ function createGiftsContext(
 		availableOnly: false,
 		withLinkOnly: false,
 		likedOnly: false,
+		showReceived: false,
 	});
 
 	const hasActiveFilters = new Derived(
 		() =>
 			filters.current.availableOnly ||
 			filters.current.withLinkOnly ||
-			filters.current.likedOnly,
+			filters.current.likedOnly ||
+			filters.current.showReceived,
 	);
 
 	// Filter only — sorting and banding move to computeGiftSections (issue #224) so the section
@@ -102,6 +108,9 @@ function createGiftsContext(
 		let result = [...effectiveGifts.current];
 
 		const currentFilters = filters.current;
+		if (!currentFilters.showReceived) {
+			result = result.filter((giftItem) => !giftItem.received);
+		}
 		if (currentFilters.availableOnly && viewerRole.current !== 'recipient') {
 			result = result.filter((giftItem) => {
 				const visitorGift = giftItem as GiftForVisitor;
@@ -111,7 +120,7 @@ function createGiftsContext(
 		if (currentFilters.withLinkOnly) {
 			result = result.filter((giftItem) => giftItem.links.length > 0);
 		}
-		if (currentFilters.likedOnly) {
+		if (shouldApplyLikedOnly(currentFilters.likedOnly, viewerRole.current)) {
 			result = result.filter((giftItem) => likedIdSet.current.has(giftItem.id));
 		}
 
@@ -143,11 +152,14 @@ function createGiftsContext(
 	const giftCount = new Derived(() => effectiveGifts.current.length);
 	const filteredCount = new Derived(() => sortedAndFilteredGifts.current.length);
 
-	function reorderGifts(reorderedGifts: GiftByRole[]) {
-		reorderOverride.current = reorderedGifts.map((g, index) => ({
-			...g,
-			sortOrder: index,
-		}));
+	function setActiveGiftOrder(orderedActiveIds: readonly string[]) {
+		const activeOrderById = new Map(orderedActiveIds.map((id, index) => [id, index]));
+		reorderOverride.current = effectiveGifts.current.map((giftItem) => {
+			const activeSortOrder = activeOrderById.get(giftItem.id);
+			return activeSortOrder === undefined
+				? giftItem
+				: { ...giftItem, sortOrder: activeSortOrder };
+		});
 	}
 
 	function clearReorderOverride() {
@@ -170,7 +182,7 @@ function createGiftsContext(
 		sortedAndFilteredGifts,
 		giftCount,
 		filteredCount,
-		reorderGifts,
+		setActiveGiftOrder,
 		clearReorderOverride,
 	};
 }

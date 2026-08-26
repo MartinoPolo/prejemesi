@@ -1,10 +1,8 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import GiftDetailModal from '$lib/components/blocks/gift/GiftDetailModal.svelte';
 	import { GiftDraftDialog } from '$lib/components/blocks/gift-draft-grid/index.js';
 	import ReserveModal from '$lib/components/blocks/reservation/ReserveModal.svelte';
 	import ShareWizard from '$lib/components/blocks/sharing/ShareWizard.svelte';
-	import WishlistPaletteAutoSave from '$lib/components/blocks/wishlist/WishlistPaletteAutoSave.svelte';
 	import ModeratorPanel from '$lib/components/blocks/moderator/ModeratorPanel.svelte';
 	import LoginPromptDialog from '$lib/components/blocks/auth/LoginPromptDialog.svelte';
 	import type {
@@ -15,16 +13,14 @@
 		UpdateGiftInput,
 		GiftDraftInput,
 	} from '$lib/modules/gifts/types.js';
-	import type { Palette } from '$lib/theme/palettes.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canReserveGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
-	import * as m from '$lib/paraglide/messages.js';
 
 	interface WishlistModalsProps {
 		/** Viewer role — drives the reserve gate (recipient cannot reserve). */
 		role: WishlistRole;
-		/** Recipient OR správce: gates the gift editor, share wizard, theme, správci panel, batch add. */
+		/** Recipient OR správce: gates the gift editor, share wizard, správci panel, batch add. */
 		canManage: boolean;
 		isAuthenticated: boolean;
 		redirectHref: string;
@@ -36,6 +32,7 @@
 		/** Archived wishlist (issue #165): the gift detail modal's reserve action
 		 *  hides unless the viewer already holds a reservation, mirroring cards. */
 		isArchived: boolean;
+		hideReservationState: boolean;
 		// Gift detail modal
 		giftModalOpen: boolean;
 		giftModalMode: 'create' | 'edit';
@@ -54,9 +51,6 @@
 		reserveModalOpen: boolean;
 		reservingGift: GiftForVisitor | null;
 		isReserving: boolean;
-		// Palette dialog (issue #102 REQ-5)
-		paletteDialogOpen: boolean;
-		wishlistPalette: Palette;
 		// Batch add dialog
 		batchAddDialogOpen: boolean;
 		isBatchSubmitting: boolean;
@@ -80,7 +74,6 @@
 		onreserve: (input: ReserveGiftInput) => void;
 		/** Optional – share/self-promote already sync the page via single-flight refreshes (issue #108). */
 		onshared?: () => void;
-		onpaletteselect: (palette: Palette) => void;
 		onmoderatorselfpromoted?: () => void;
 		onbatchsubmit: (drafts: GiftDraftInput[]) => void;
 		onbatchdialogopenchange: (open: boolean) => void;
@@ -97,6 +90,7 @@
 		giftCount,
 		recipientIsModerator,
 		isArchived,
+		hideReservationState,
 		giftModalOpen = $bindable(),
 		giftModalMode,
 		selectedGift,
@@ -111,8 +105,6 @@
 		reserveModalOpen = $bindable(),
 		reservingGift,
 		isReserving,
-		paletteDialogOpen = $bindable(),
-		wishlistPalette,
 		batchAddDialogOpen = $bindable(),
 		isBatchSubmitting,
 		batchServerDuplicateCount,
@@ -128,7 +120,6 @@
 		onreservemodalclose,
 		onreserve,
 		onshared,
-		onpaletteselect,
 		onmoderatorselfpromoted,
 		onbatchsubmit,
 		onbatchdialogopenchange,
@@ -153,6 +144,7 @@
 	{role}
 	readOnly={!canManage}
 	{isArchived}
+	{hideReservationState}
 	{postShareLocked}
 	canDelete={canDeleteSelectedGift}
 	{graceExpiresAt}
@@ -170,7 +162,7 @@
 />
 
 <!-- Reserve Modal (everyone who may reserve — recipient excluded, they don't spoil their surprise) -->
-{#if canReserve}
+{#if canReserve && !hideReservationState}
 	<ReserveModal
 		bind:open={reserveModalOpen}
 		gift={reservingGift}
@@ -185,24 +177,6 @@
 <!-- Share Wizard (managers only) -->
 {#if canManage}
 	<ShareWizard {wishlistId} {wishlistTitle} {giftCount} {onshared} />
-{/if}
-
-<!-- Wishlist palette dialog (managers only, issue #102 REQ-5): replaces the old
-     theme-preset/custom-color picker with the 10-palette swatch grid. -->
-{#if canManage}
-	<Dialog.Root bind:open={paletteDialogOpen}>
-		<Dialog.Content size="md">
-			<Dialog.Header>
-				<Dialog.Title>{m.wishlist_palette_dialog_title()}</Dialog.Title>
-				<Dialog.Description>{m.wishlist_palette_dialog_description()}</Dialog.Description>
-			</Dialog.Header>
-			<WishlistPaletteAutoSave
-				{wishlistId}
-				palette={wishlistPalette}
-				onselect={onpaletteselect}
-			/>
-		</Dialog.Content>
-	</Dialog.Root>
 {/if}
 
 <!-- Správci panel (managers only) -->

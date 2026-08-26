@@ -49,6 +49,7 @@
 	import {
 		IMAGE_FIT_MODES,
 		IMAGE_TOKEN_SCOPES,
+		normalizeFrameFill,
 		resolveAutoFit,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
@@ -170,8 +171,12 @@
 	// Whether the user touched the display mode this session; an untouched form keeps
 	// the persisted (possibly legacy `auto`) fitMode verbatim on save (REQ-8).
 	let modeDirty = $state(false);
+	type ExplicitImageBackground = '#ffffff' | '#000000';
+	const IMAGE_BACKGROUND_VALUES = ['#ffffff', '#000000', 'transparent'] as const;
+	// `null` is the canonical dotted/theme-derived default. Legacy metadata containing
+	// the CSS keyword `transparent` is normalized here and becomes null on the next save.
 	// svelte-ignore state_referenced_locally
-	const bgColor = gift?.imageMeta?.bgColor ?? null;
+	let bgColor = $state(normalizeFrameFill(gift?.imageMeta?.bgColor));
 	// svelte-ignore state_referenced_locally
 	const initialImageUrl = gift?.imageUrl ?? '';
 	// svelte-ignore state_referenced_locally
@@ -359,6 +364,15 @@
 	// to "" (Bits UI writes through the bound value before calling onValueChange),
 	// so it's a genuine change and always re-renders.
 	let selectedEditorMode = $derived(presentedEditorMode);
+	// The visible Transparent option represents the canonical null fallback. Preserve an
+	// unsupported historical literal untouched rather than falsely selecting a known fill.
+	let selectedBgColor = $derived(
+		bgColor === null
+			? 'transparent'
+			: (IMAGE_BACKGROUND_VALUES as readonly string[]).includes(bgColor)
+				? bgColor
+				: '',
+	);
 
 	// Adaptive stage sizing (#189 REQ-4/5): the stage tracks the photo's natural
 	// aspect (portrait renders tall, landscape wide) within the min/max caps applied
@@ -388,6 +402,20 @@
 			}
 			editorMode = nextMode;
 			modeDirty = true;
+		}
+	}
+
+	function setBgColor(value: string) {
+		if (value === '') {
+			selectedBgColor = bgColor ?? 'transparent';
+			return;
+		}
+		if (value === 'transparent') {
+			bgColor = null;
+			return;
+		}
+		if (value === '#ffffff' || value === '#000000') {
+			bgColor = value as ExplicitImageBackground;
 		}
 	}
 
@@ -610,6 +638,25 @@
 						</ToggleGroup.Item>
 						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual} class="rounded-full">
 							{m.image_fit_manual()}
+						</ToggleGroup.Item>
+					</ToggleGroup.Root>
+				</div>
+				<div class="flex flex-none justify-center pb-2.5">
+					<ToggleGroup.Root
+						type="single"
+						bind:value={selectedBgColor}
+						onValueChange={setBgColor}
+						aria-label={m.image_background_label()}
+						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
+					>
+						<ToggleGroup.Item value="#ffffff" class="rounded-full">
+							{m.image_background_white()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value="#000000" class="rounded-full">
+							{m.image_background_black()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value="transparent" class="rounded-full">
+							{m.image_background_transparent()}
 						</ToggleGroup.Item>
 					</ToggleGroup.Root>
 				</div>
