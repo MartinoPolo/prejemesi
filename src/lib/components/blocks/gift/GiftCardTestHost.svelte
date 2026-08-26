@@ -32,6 +32,7 @@
 		() => {},
 	);
 	setGiftsContext(
+		() => 'test-wishlist',
 		() => [props.gift],
 		() => props.role,
 		() => props.isArchived ?? false,

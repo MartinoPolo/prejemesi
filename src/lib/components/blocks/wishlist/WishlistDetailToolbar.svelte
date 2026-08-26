@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
+	import * as Select from '$lib/components/base/select/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
@@ -9,15 +10,27 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
+	import ListFilterIcon from '@lucide/svelte/icons/list-filter';
 	import GiftSortSelect from '$lib/components/blocks/gift/GiftSortSelect.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import {
 		FilterMenu,
 		type FilterDefinition,
-		type FilterToggle,
+		type FilterFacetGroup,
 	} from '$lib/components/derived/filter-menu/index.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
-	import type { GiftFilters, GiftSortOption, GiftViewMode } from '$lib/modules/gifts/types.js';
+	import {
+		GIFT_GROUPING_OPTIONS,
+		GIFT_SORT_OPTIONS,
+		type GiftCategoryFilterValue,
+		type GiftFilterOption,
+		type GiftFilters,
+		type GiftGroupingOption,
+		type GiftPriorityFilterValue,
+		type GiftSortOption,
+		type GiftViewMode,
+	} from '$lib/modules/gifts/types.js';
 
 	interface WishlistDetailToolbarProps {
 		canManage: boolean;
@@ -28,9 +41,10 @@
 		viewMode: GiftViewMode;
 		sortOption: GiftSortOption;
 		filters: GiftFilters;
-		/** „Seskupit podle priority" state; only offered when the list has any prioritized gift. */
-		priorityGrouping: boolean;
-		showPriorityGrouping: boolean;
+		grouping: GiftGroupingOption;
+		groupingAvailability: { priority: boolean; category: boolean };
+		categoryFilterOptions: GiftFilterOption<GiftCategoryFilterValue>[];
+		priorityFilterOptions: GiftFilterOption<GiftPriorityFilterValue>[];
 		reorderMode: boolean;
 		recipientViewPreview: boolean;
 		onrecipientviewpreviewchange: (active: boolean) => void;
@@ -38,7 +52,7 @@
 		onviewmodechange: (mode: GiftViewMode) => void;
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
-		onprioritygroupingchange: (grouping: boolean) => void;
+		ongroupingchange: (grouping: GiftGroupingOption) => void;
 		onsettings: () => void;
 		onunfollow: () => void;
 		onaddgift: () => void;
@@ -54,8 +68,10 @@
 		viewMode,
 		sortOption,
 		filters,
-		priorityGrouping,
-		showPriorityGrouping,
+		grouping,
+		groupingAvailability,
+		categoryFilterOptions,
+		priorityFilterOptions,
 		reorderMode,
 		recipientViewPreview,
 		onrecipientviewpreviewchange,
@@ -63,7 +79,7 @@
 		onviewmodechange,
 		onsortchange,
 		onfilterchange,
-		onprioritygroupingchange,
+		ongroupingchange,
 		onsettings,
 		onunfollow,
 		onaddgift,
@@ -76,23 +92,69 @@
 	const showAvailableFilter = $derived(
 		role !== WISHLIST_ROLES.recipient && !recipientViewPreview,
 	);
+	const noActiveFilters = $derived(
+		!filters.availableOnly &&
+			!filters.withLinkOnly &&
+			!filters.likedOnly &&
+			!filters.showReceived &&
+			filters.categoryValues.length === 0 &&
+			filters.priorityValues.length === 0,
+	);
 	const canReorder = $derived(
 		canManage &&
 			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
 			!isArchived &&
-			(viewMode === 'card' || viewMode === 'list'),
+			(viewMode === 'card' || viewMode === 'list') &&
+			grouping === GIFT_GROUPING_OPTIONS.none,
 	);
 	const showLikedFilter = $derived(
 		isAuthenticated && role !== WISHLIST_ROLES.recipient && !recipientViewPreview,
 	);
+	const showReset = $derived(
+		!noActiveFilters ||
+			sortOption !== GIFT_SORT_OPTIONS.ownerOrder ||
+			grouping !== GIFT_GROUPING_OPTIONS.none,
+	);
 
-	function clearGiftFilters() {
-		onfilterchange({
+	const GROUPING_LABELS = {
+		none: () => m.gift_grouping_none(),
+		priority: () => m.gift_grouping_priority(),
+		category: () => m.gift_grouping_category(),
+	} satisfies Record<GiftGroupingOption, () => string>;
+
+	function emptyFilters(): GiftFilters {
+		return {
 			availableOnly: false,
 			withLinkOnly: false,
 			likedOnly: false,
 			showReceived: false,
-		});
+			categoryValues: [],
+			priorityValues: [],
+		};
+	}
+
+	function clearGiftFilters() {
+		onfilterchange(emptyFilters());
+	}
+
+	function resetDisplayControls() {
+		onfilterchange(emptyFilters());
+		onsortchange(GIFT_SORT_OPTIONS.ownerOrder);
+		ongroupingchange(GIFT_GROUPING_OPTIONS.none);
+	}
+
+	function updateCategoryFilter(value: GiftCategoryFilterValue, checked: boolean) {
+		const values = checked
+			? [...filters.categoryValues, value]
+			: filters.categoryValues.filter((selected) => selected !== value);
+		onfilterchange({ ...filters, categoryValues: [...new Set(values)] });
+	}
+
+	function updatePriorityFilter(value: GiftPriorityFilterValue, checked: boolean) {
+		const values = checked
+			? [...filters.priorityValues, value]
+			: filters.priorityValues.filter((selected) => selected !== value);
+		onfilterchange({ ...filters, priorityValues: [...new Set(values)] });
 	}
 
 	const filterDefinitions = $derived<FilterDefinition[]>([
@@ -131,18 +193,28 @@
 		},
 	]);
 
-	const filterToggles = $derived<FilterToggle[]>(
-		showPriorityGrouping
-			? [
-					{
-						id: 'priority-grouping',
-						label: m.gift_group_by_priority(),
-						checked: priorityGrouping,
-						onchange: onprioritygroupingchange,
-					},
-				]
-			: [],
-	);
+	const filterFacets = $derived<FilterFacetGroup[]>([
+		{
+			id: 'category',
+			label: m.gift_filter_category_heading(),
+			options: categoryFilterOptions.map((option) => ({
+				value: option.value,
+				label: option.label,
+				checked: filters.categoryValues.includes(option.value),
+				onchange: (checked: boolean) => updateCategoryFilter(option.value, checked),
+			})),
+		},
+		{
+			id: 'priority',
+			label: m.gift_filter_priority_heading(),
+			options: priorityFilterOptions.map((option) => ({
+				value: option.value,
+				label: option.label,
+				checked: filters.priorityValues.includes(option.value),
+				onchange: (checked: boolean) => updatePriorityFilter(option.value, checked),
+			})),
+		},
+	]);
 </script>
 
 <div
@@ -189,9 +261,46 @@
 	{:else}
 		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
 		<GiftSortSelect value={sortOption} onchange={onsortchange} />
+		<Select.Root
+			type="single"
+			value={grouping}
+			onValueChange={(newValue) => {
+				if (Object.values(GIFT_GROUPING_OPTIONS).includes(newValue as GiftGroupingOption)) {
+					ongroupingchange(newValue as GiftGroupingOption);
+				}
+			}}
+		>
+			<Select.Trigger
+				size="md"
+				class="min-w-0 max-w-full"
+				aria-label={m.gift_grouping_label()}
+			>
+				<ListFilterIcon class="size-3.5 shrink-0 text-muted-foreground" />
+				<span class="min-w-0 truncate">{GROUPING_LABELS[grouping]()}</span>
+			</Select.Trigger>
+			<Select.Content>
+				<Select.Group>
+					<Select.GroupHeading>{m.gift_grouping_label()}</Select.GroupHeading>
+					<Select.Item
+						value={GIFT_GROUPING_OPTIONS.none}
+						label={m.gift_grouping_none()}
+					/>
+					<Select.Item
+						value={GIFT_GROUPING_OPTIONS.priority}
+						label={m.gift_grouping_priority()}
+						disabled={!groupingAvailability.priority}
+					/>
+					<Select.Item
+						value={GIFT_GROUPING_OPTIONS.category}
+						label={m.gift_grouping_category()}
+						disabled={!groupingAvailability.category}
+					/>
+				</Select.Group>
+			</Select.Content>
+		</Select.Root>
 		<FilterMenu
 			definitions={filterDefinitions}
-			toggles={filterToggles}
+			facets={filterFacets}
 			triggerLabel={m.gift_filter()}
 			menuHeading={m.gift_filter()}
 			clearAllLabel={m.wishlist_detail_clear_filters()}
@@ -200,6 +309,18 @@
 			activeCountLabel={(count) => m.filter_active_count({ count })}
 			align="end"
 		/>
+		{#if showReset}
+			<SimpleTooltip text={m.gift_display_reset_tooltip()}>
+				<Button
+					size="icon"
+					intent="ghost"
+					aria-label={m.gift_display_reset_aria()}
+					onclick={resetDisplayControls}
+				>
+					<RotateCcwIcon />
+				</Button>
+			</SimpleTooltip>
+		{/if}
 		{#if canReorder}
 			<Button size="md" intent="outline" onclick={() => onreordermodechange(true)}>
 				<ArrowUpDownIcon data-icon="inline-start" />

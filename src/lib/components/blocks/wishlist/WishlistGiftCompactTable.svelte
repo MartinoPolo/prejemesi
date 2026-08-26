@@ -36,7 +36,7 @@
 </script>
 
 <div class="flex flex-col gap-4 overflow-x-auto">
-	{#each sections as section, sectionIndex (`${section.kind}-${section.label ?? ''}-${sectionIndex}`)}
+	{#each sections as section (section.key)}
 		{#if giftSectionHasHeader(section)}
 			<GiftSectionHeader {section} />
 		{/if}

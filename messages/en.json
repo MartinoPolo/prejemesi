@@ -1030,5 +1030,14 @@
 	"import_category_resolution_custom_label": "New category name",
 	"import_category_resolution_existing_label": "Target category",
 	"import_category_resolution_missing": "Choose a resolution for category “{label}”.",
-	"import_category_resolution_bad_custom": "Enter the new category name."
+	"import_category_resolution_bad_custom": "Enter the new category name.",
+	"gift_filter_category_heading": "Category",
+	"gift_filter_priority_heading": "Priority",
+	"gift_grouping_label": "Grouping",
+	"gift_grouping_none": "No grouping",
+	"gift_grouping_priority": "By priority",
+	"gift_grouping_category": "By category",
+	"gift_display_reset_tooltip": "Reset display controls",
+	"gift_display_reset_aria": "Reset gift display controls",
+	"gift_category_uncategorized": "Uncategorized"
 }

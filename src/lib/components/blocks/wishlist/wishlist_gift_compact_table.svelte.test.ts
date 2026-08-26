@@ -30,7 +30,9 @@ const gift: GiftForRecipient = {
 
 function renderRecipientTable(isArchived: boolean) {
 	return render(WishlistGiftCompactTable, {
-		sections: [{ kind: GIFT_SECTION_KINDS.available, label: null, gifts: [gift] }],
+		sections: [
+			{ kind: GIFT_SECTION_KINDS.available, key: 'available', label: null, gifts: [gift] },
+		],
 		role: 'recipient',
 		isArchived,
 		hideReservationState: true,

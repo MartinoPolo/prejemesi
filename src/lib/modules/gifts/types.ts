@@ -133,6 +133,25 @@ export const GIFT_SORT_OPTIONS = {
 
 export type GiftSortOption = (typeof GIFT_SORT_OPTIONS)[keyof typeof GIFT_SORT_OPTIONS];
 
+export const UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE = '__uncategorized__' as const;
+export const NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE = '__no_priority__' as const;
+
+export type GiftCategoryFilterValue = string | typeof UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE;
+export type GiftPriorityFilterValue = string | typeof NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE;
+
+export const GIFT_GROUPING_OPTIONS = {
+	none: 'none',
+	priority: 'priority',
+	category: 'category',
+} as const;
+
+export type GiftGroupingOption = (typeof GIFT_GROUPING_OPTIONS)[keyof typeof GIFT_GROUPING_OPTIONS];
+
+export interface GiftFilterOption<Value extends string = string> {
+	value: Value;
+	label: string;
+}
+
 /** Filter options for gifts */
 export interface GiftFilters {
 	availableOnly: boolean;
@@ -140,6 +159,8 @@ export interface GiftFilters {
 	likedOnly: boolean;
 	/** Received gifts are archived from ordinary browsing unless explicitly requested. */
 	showReceived: boolean;
+	categoryValues: GiftCategoryFilterValue[];
+	priorityValues: GiftPriorityFilterValue[];
 }
 
 /** Supported currencies */

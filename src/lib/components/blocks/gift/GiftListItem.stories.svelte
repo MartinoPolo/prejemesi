@@ -94,6 +94,7 @@
 		() => {},
 	);
 	setGiftsContext(
+		() => 'gift-list-item-story',
 		() => [],
 		() => WISHLIST_ROLES.visitor,
 		() => false,

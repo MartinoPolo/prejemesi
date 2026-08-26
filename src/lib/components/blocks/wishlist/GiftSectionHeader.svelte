@@ -8,8 +8,7 @@
 
 	let { section }: GiftSectionHeaderProps = $props();
 
-	// Header copy in the sticker design language (issue #224): own-reservation and „Bez priority"
-	// are fixed messages; a priority group carries its level's own label.
+	// Fixed structural sections use shared copy; category/priority groups carry manager labels.
 	const label = $derived.by(() => {
 		switch (section.kind) {
 			case GIFT_SECTION_KINDS.ownReservation:
@@ -18,6 +17,8 @@
 				return m.gift_band_other_gifts();
 			case GIFT_SECTION_KINDS.noPriority:
 				return m.gift_priority_none();
+			case GIFT_SECTION_KINDS.uncategorized:
+				return m.gift_category_uncategorized();
 			case GIFT_SECTION_KINDS.received:
 				return m.gift_band_received();
 			default:

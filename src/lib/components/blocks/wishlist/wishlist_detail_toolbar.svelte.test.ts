@@ -3,7 +3,11 @@ import { userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
-import { GIFT_SORT_OPTIONS, GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
+import {
+	GIFT_GROUPING_OPTIONS,
+	GIFT_SORT_OPTIONS,
+	GIFT_VIEW_MODES,
+} from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import WishlistDetailToolbar from './WishlistDetailToolbar.svelte';
 
@@ -14,9 +18,18 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	isAuthenticated: false,
 	viewMode: GIFT_VIEW_MODES.card,
 	sortOption: GIFT_SORT_OPTIONS.ownerOrder,
-	filters: { availableOnly: false, withLinkOnly: false, likedOnly: false, showReceived: false },
-	priorityGrouping: false,
-	showPriorityGrouping: false,
+	filters: {
+		availableOnly: false,
+		withLinkOnly: false,
+		likedOnly: false,
+		showReceived: false,
+		categoryValues: [],
+		priorityValues: [],
+	},
+	grouping: GIFT_GROUPING_OPTIONS.none,
+	groupingAvailability: { priority: false, category: false },
+	categoryFilterOptions: [],
+	priorityFilterOptions: [],
 	reorderMode: false,
 	recipientViewPreview: false,
 	onrecipientviewpreviewchange: () => {},
@@ -24,7 +37,7 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	onviewmodechange: () => {},
 	onsortchange: () => {},
 	onfilterchange: () => {},
-	onprioritygroupingchange: () => {},
+	ongroupingchange: () => {},
 	onsettings: () => {},
 	onunfollow: () => {},
 	onaddgift: () => {},
@@ -247,6 +260,8 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 				withLinkOnly: true,
 				likedOnly: true,
 				showReceived: true,
+				categoryValues: ['books'],
+				priorityValues: ['high'],
 			},
 			onfilterchange,
 		});
@@ -259,6 +274,8 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 			withLinkOnly: false,
 			likedOnly: false,
 			showReceived: false,
+			categoryValues: [],
+			priorityValues: [],
 		});
 		await screen.unmount();
 	});
@@ -272,6 +289,8 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 				withLinkOnly: false,
 				likedOnly: true,
 				showReceived: false,
+				categoryValues: [],
+				priorityValues: [],
 			},
 			onfilterchange,
 		});
@@ -286,45 +305,134 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 			withLinkOnly: false,
 			likedOnly: true,
 			showReceived: false,
+			categoryValues: [],
+			priorityValues: [],
 		});
 		await userEvent.keyboard('{Escape}');
 		await screen.unmount();
 	});
 });
 
-describe('WishlistDetailToolbar priority-grouping toggle (issue #224 REQ-4)', () => {
-	it('shows the priority-grouping toggle when at least one gift has a priority', async () => {
-		const screen = await renderToolbar({ isAuthenticated: true, showPriorityGrouping: true });
-		await screen.getByRole('button', { name: m.gift_filter() }).click();
-		await expect
-			.element(screen.getByRole('menuitemcheckbox', { name: m.gift_group_by_priority() }))
-			.toBeVisible();
-		await userEvent.keyboard('{Escape}');
-		await screen.unmount();
-	}, 30_000);
-
-	it('hides the priority-grouping toggle when no gift has a priority', async () => {
-		const screen = await renderToolbar({ isAuthenticated: true, showPriorityGrouping: false });
-		await screen.getByRole('button', { name: m.gift_filter() }).click();
-		await expect
-			.element(screen.getByRole('menuitemcheckbox', { name: m.gift_group_by_priority() }))
-			.not.toBeInTheDocument();
-		await userEvent.keyboard('{Escape}');
-		await screen.unmount();
-	}, 30_000);
-
-	it('reports toggling the priority grouping', async () => {
-		const onprioritygroupingchange = vi.fn();
+describe('WishlistDetailToolbar grouping and reset controls (issue #246)', () => {
+	it('renders grouping as a separate visible selector with unavailable choices disabled', async () => {
 		const screen = await renderToolbar({
-			isAuthenticated: true,
-			showPriorityGrouping: true,
-			priorityGrouping: false,
-			onprioritygroupingchange,
+			groupingAvailability: { priority: true, category: false },
 		});
-		await screen.getByRole('button', { name: m.gift_filter() }).click();
-		await screen.getByRole('menuitemcheckbox', { name: m.gift_group_by_priority() }).click();
-		expect(onprioritygroupingchange).toHaveBeenCalledWith(true);
+
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_grouping_label() }))
+			.toBeVisible();
+		await screen.getByRole('button', { name: m.gift_grouping_label() }).click();
+		await expect
+			.element(screen.getByRole('option', { name: m.gift_grouping_priority() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('option', { name: m.gift_grouping_category() }))
+			.toHaveAttribute('data-disabled');
 		await userEvent.keyboard('{Escape}');
 		await screen.unmount();
 	}, 30_000);
+
+	it('reports grouping changes independently from filters', async () => {
+		const ongroupingchange = vi.fn();
+		const screen = await renderToolbar({
+			groupingAvailability: { priority: true, category: true },
+			ongroupingchange,
+		});
+		await screen.getByRole('button', { name: m.gift_grouping_label() }).click();
+		await screen.getByRole('option', { name: m.gift_grouping_priority() }).click();
+		expect(ongroupingchange).toHaveBeenCalledWith(GIFT_GROUPING_OPTIONS.priority);
+		await screen.unmount();
+	}, 30_000);
+
+	it('renders category and priority facets and counts selected values', async () => {
+		const onfilterchange = vi.fn();
+		const screen = await renderToolbar({
+			filters: {
+				availableOnly: false,
+				withLinkOnly: false,
+				likedOnly: false,
+				showReceived: false,
+				categoryValues: ['books'],
+				priorityValues: [],
+			},
+			categoryFilterOptions: [
+				{ value: 'books', label: 'Knihy' },
+				{ value: 'uncategorized', label: m.gift_category_uncategorized() },
+			],
+			priorityFilterOptions: [{ value: 'high', label: 'Vysoká' }],
+			onfilterchange,
+		});
+
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: `${m.gift_filter()}: ${m.filter_active_count({ count: 1 })}`,
+				}),
+			)
+			.toBeVisible();
+		await screen
+			.getByRole('button', {
+				name: `${m.gift_filter()}: ${m.filter_active_count({ count: 1 })}`,
+			})
+			.click();
+		await expect.element(screen.getByRole('menuitemcheckbox', { name: 'Knihy' })).toBeVisible();
+		await screen.getByRole('menuitemcheckbox', { name: 'Vysoká' }).click();
+		expect(onfilterchange).toHaveBeenCalledWith({
+			availableOnly: false,
+			withLinkOnly: false,
+			likedOnly: false,
+			showReceived: false,
+			categoryValues: ['books'],
+			priorityValues: ['high'],
+		});
+		await userEvent.keyboard('{Escape}');
+		await screen.unmount();
+	}, 30_000);
+
+	it('resets filters, sort, and grouping without changing view mode', async () => {
+		const onfilterchange = vi.fn();
+		const onsortchange = vi.fn();
+		const ongroupingchange = vi.fn();
+		const onviewmodechange = vi.fn();
+		const screen = await renderToolbar({
+			sortOption: GIFT_SORT_OPTIONS.name,
+			grouping: GIFT_GROUPING_OPTIONS.category,
+			groupingAvailability: { priority: true, category: true },
+			filters: {
+				availableOnly: true,
+				withLinkOnly: false,
+				likedOnly: false,
+				showReceived: false,
+				categoryValues: ['books'],
+				priorityValues: [],
+			},
+			onfilterchange,
+			onsortchange,
+			ongroupingchange,
+			onviewmodechange,
+		});
+
+		await screen.getByRole('button', { name: m.gift_display_reset_aria() }).click();
+		expect(onfilterchange).toHaveBeenCalledWith({
+			availableOnly: false,
+			withLinkOnly: false,
+			likedOnly: false,
+			showReceived: false,
+			categoryValues: [],
+			priorityValues: [],
+		});
+		expect(onsortchange).toHaveBeenCalledWith(GIFT_SORT_OPTIONS.ownerOrder);
+		expect(ongroupingchange).toHaveBeenCalledWith(GIFT_GROUPING_OPTIONS.none);
+		expect(onviewmodechange).not.toHaveBeenCalled();
+		await screen.unmount();
+	});
+
+	it('hides reset at defaults', async () => {
+		const screen = await renderToolbar();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_display_reset_aria() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
 });

@@ -1030,5 +1030,14 @@
 	"import_category_resolution_custom_label": "Název nové kategorie",
 	"import_category_resolution_existing_label": "Cílová kategorie",
 	"import_category_resolution_missing": "Vyberte řešení pro kategorii „{label}“.",
-	"import_category_resolution_bad_custom": "Zadejte název nové kategorie."
+	"import_category_resolution_bad_custom": "Zadejte název nové kategorie.",
+	"gift_filter_category_heading": "Kategorie",
+	"gift_filter_priority_heading": "Priorita",
+	"gift_grouping_label": "Seskupení",
+	"gift_grouping_none": "Bez seskupení",
+	"gift_grouping_priority": "Podle priority",
+	"gift_grouping_category": "Podle kategorie",
+	"gift_display_reset_tooltip": "Obnovit výchozí zobrazení",
+	"gift_display_reset_aria": "Obnovit výchozí zobrazení dárků",
+	"gift_category_uncategorized": "Bez kategorie"
 }

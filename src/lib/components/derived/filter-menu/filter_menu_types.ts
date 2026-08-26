@@ -6,14 +6,15 @@ export interface FilterDefinition {
 	onchange: (checked: boolean) => void;
 }
 
-/**
- * A display-preference switch shown in the same dropdown as the filters but semantically distinct
- * (issue #224): it never counts toward the active-filter badge, pills, or clear-all. Used for the
- * „Seskupit podle priority" grouping toggle.
- */
-export interface FilterToggle {
-	id: string;
+export interface FilterFacetOption {
+	value: string;
 	label: string;
 	checked: boolean;
 	onchange: (checked: boolean) => void;
+}
+
+export interface FilterFacetGroup {
+	id: string;
+	label: string;
+	options: readonly FilterFacetOption[];
 }

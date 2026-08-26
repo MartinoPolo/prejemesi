@@ -1150,12 +1150,18 @@ What: Non-recipient gift order is computed in three bands: (1) the viewer's own 
 Why: A shared list a week in otherwise greets every new visitor with a wall of reserved top gifts; the gifter's own reservation is the row they return for, so it anchors the top for every reserving role including správci.
 Rejected: Reserved-at-top for správci (fights the curated owner order); a labeled bottom „Rezervované" section (duplicates the overlay's message); duplicating pinned gifts in both their band and their sorted position; making sinking a filter (hiding ≠ deprioritizing).
 
-### Priority grouping: optional flat sections, unprioritized ranks above the lowest level
+### ~~Priority grouping: optional flat sections, unprioritized ranks above the lowest level~~ (superseded)
 
-Decided: 2026-08-07
-What: A „Seskupit podle priority" toggle renders flat section headers per priority level in the wishlist's level order, with the active sort applied within each group — no accordions/collapse. The toggle lives with the other display controls in the #161 filter dropdown, is persisted per device like `viewMode` (unlike sort/filters, which stay per-visit), defaults to off, and is hidden entirely when no gift on the list has a priority. Gifts without a priority form a „Bez priority" group placed above the lowest level (unprioritized means neutral, not last); the `priority` sort option adopts the same rank (replacing the sort-to-999 behavior). The own-reservation band stays above all priority groups.
-Why: Priorities are the recipient's strongest signal to gifters and deserve visual structure, but only when actually used; punishing unprioritized gifts to the bottom would misread "no priority set" as "least wanted".
-Rejected: Accordion groups (hide gifts, add taps on mobile); merging unprioritized into the middle level (hides that they carry no priority); always-on grouping (noise for unprioritized lists); per-wishlist DB persistence of the toggle (it is a viewer presentation preference).
+Decided: 2026-08-07 — **Superseded 2026-08-13 by "Wishlist display controls" below.**
+~~What: A „Seskupit podle priority" toggle renders flat section headers per priority level in the wishlist's level order, with the active sort applied within each group — no accordions/collapse. The toggle lives with the other display controls in the #161 filter dropdown, is persisted per device like `viewMode` (unlike sort/filters, which stay per-visit), defaults to off, and is hidden entirely when no gift on the list has a priority. Gifts without a priority form a „Bez priority" group placed above the lowest level (unprioritized means neutral, not last); the `priority` sort option adopts the same rank (replacing the sort-to-999 behavior). The own-reservation band stays above all priority groups.~~
+Replaced because: grouping is now a separate visible selector that supports both priority and category, and no-priority/uncategorized groups are explicit no-value groups placed last.
+
+### Wishlist display controls: separate grouping, facets, and per-list persistence
+
+Decided: 2026-08-13 (issue #246)
+What: Wishlist gift display has three independent control families. View mode remains the existing global per-device preference. Sort persists per wishlist on the current device. Grouping is a separate visible mutually exclusive selector (`none` / `priority` / `category`), also persisted per wishlist on the current device; unavailable grouping choices are disabled and an unavailable persisted grouping is coerced back to none. Filters live only for the current page visit. Category and priority filters are checkbox facets: multiple values within one facet are ORed, category/priority/existing facets are ANDed together, and explicit „Bez kategorie" / „Bez priority" options appear only when those gifts exist. Priority groups follow priority sort order with „Bez priority" last; category groups follow manager category sort order with „Bez kategorie" last. The chosen sort applies inside every structural section while preserving own-reservation, available/reserved, and received-final role behavior.
+Why: Grouping is a display structure, not a filter; priority and category need equal first-class treatment, while filters should stay quick to clear and should not leak across visits.
+Rejected: Keeping grouping inside the filter dropdown (confuses structure with inclusion); global grouping/sort persistence (viewers switch lists with different meanings); persisting filters (stale hidden gifts on return); treating no-priority/uncategorized as middle-ranked neutral values (explicit no-value groups read clearer at the end).
 
 ### Reserved overlay parity: list view reuses the card sticker
 

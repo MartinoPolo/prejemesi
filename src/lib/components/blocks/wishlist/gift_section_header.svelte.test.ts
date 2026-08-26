@@ -5,7 +5,7 @@ import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_or
 import GiftSectionHeader from './GiftSectionHeader.svelte';
 
 function section(kind: GiftSection['kind'], label: string | null = null): GiftSection {
-	return { kind, label, gifts: [] };
+	return { kind, key: `${kind}:${label ?? ''}`, label, gifts: [] };
 }
 
 describe('GiftSectionHeader copy (issue #224 follow-up)', () => {
@@ -29,5 +29,21 @@ describe('GiftSectionHeader copy (issue #224 follow-up)', () => {
 			.element(screen.getByRole('heading', { name: m.gift_band_own_reservations() }))
 			.toBeInTheDocument();
 		await screen.unmount();
+	});
+
+	it('renders shared no-value and manager-provided group headers', async () => {
+		const uncategorized = await render(GiftSectionHeader, {
+			section: section(GIFT_SECTION_KINDS.uncategorized),
+		});
+		await expect
+			.element(uncategorized.getByRole('heading', { name: m.gift_category_uncategorized() }))
+			.toBeInTheDocument();
+		await uncategorized.unmount();
+
+		const category = await render(GiftSectionHeader, {
+			section: section(GIFT_SECTION_KINDS.categoryGroup, 'Knihy'),
+		});
+		await expect.element(category.getByRole('heading', { name: 'Knihy' })).toBeInTheDocument();
+		await category.unmount();
 	});
 });

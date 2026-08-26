@@ -6,12 +6,15 @@
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
 	import { cn } from '$lib/utils.js';
-	import type { FilterDefinition, FilterToggle } from './filter_menu_types.js';
+	import type {
+		FilterDefinition,
+		FilterFacetGroup,
+		FilterFacetOption,
+	} from './filter_menu_types.js';
 
 	interface FilterMenuProps {
 		definitions: readonly FilterDefinition[];
-		/** Display-preference switches in a separate dropdown group; excluded from count/pills/clear. */
-		toggles?: readonly FilterToggle[];
+		facets?: readonly FilterFacetGroup[];
 		triggerLabel: string;
 		menuHeading: string;
 		clearAllLabel: string;
@@ -22,9 +25,15 @@
 		class?: string;
 	}
 
+	interface ActiveFilterItem {
+		id: string;
+		label: string;
+		onremove: () => void;
+	}
+
 	let {
 		definitions,
-		toggles = [],
+		facets = [],
 		triggerLabel,
 		menuHeading,
 		clearAllLabel,
@@ -37,7 +46,25 @@
 
 	let filterTriggerElement = $state<HTMLButtonElement | null>(null);
 	let pillRemoveButtons = $state<Record<string, HTMLButtonElement | undefined>>({});
-	const activeDefinitions = $derived(definitions.filter((definition) => definition.checked));
+
+	const activeFilters = $derived<ActiveFilterItem[]>([
+		...definitions
+			.filter((definition) => definition.checked)
+			.map((definition) => ({
+				id: definition.id,
+				label: definition.activeLabel ?? definition.menuLabel,
+				onremove: () => definition.onchange(false),
+			})),
+		...facets.flatMap((facet) =>
+			facet.options
+				.filter((option) => option.checked)
+				.map((option) => ({
+					id: `${facet.id}:${option.value}`,
+					label: option.label,
+					onremove: () => option.onchange(false),
+				})),
+		),
+	]);
 
 	async function clearAllFilters() {
 		onclearall();
@@ -45,20 +72,16 @@
 		filterTriggerElement?.focus();
 	}
 
-	async function removeActiveFilter(definition: FilterDefinition) {
-		const activeDefinitionIndex = activeDefinitions.findIndex(({ id }) => id === definition.id);
-		const nextActiveDefinition = activeDefinitions.at(activeDefinitionIndex + 1);
+	async function removeActiveFilter(item: ActiveFilterItem) {
+		const activeDefinitionIndex = activeFilters.findIndex(({ id }) => id === item.id);
+		const nextActiveDefinition = activeFilters.at(activeDefinitionIndex + 1);
 
-		definition.onchange(false);
+		item.onremove();
 		await tick();
 		(nextActiveDefinition
 			? pillRemoveButtons[nextActiveDefinition.id]
 			: filterTriggerElement
 		)?.focus();
-	}
-
-	function activeLabel(definition: FilterDefinition) {
-		return definition.activeLabel ?? definition.menuLabel;
 	}
 </script>
 
@@ -71,25 +94,25 @@
 					bind:ref={filterTriggerElement}
 					size="md"
 					intent="outline"
-					aria-label={activeDefinitions.length > 0
-						? `${triggerLabel}: ${activeCountLabel(activeDefinitions.length)}`
+					aria-label={activeFilters.length > 0
+						? `${triggerLabel}: ${activeCountLabel(activeFilters.length)}`
 						: triggerLabel}
 				>
 					<ListFilterIcon data-icon="inline-start" />
 					<span>{triggerLabel}</span>
-					{#if activeDefinitions.length > 0}
+					{#if activeFilters.length > 0}
 						<span
 							class="grid min-w-4.25 place-items-center rounded-full bg-primary px-1 text-[10.5px] leading-4 text-primary-foreground"
 							aria-hidden="true"
 						>
-							{activeDefinitions.length}
+							{activeFilters.length}
 						</span>
 					{/if}
 				</Button>
 			{/snippet}
 		</DropdownMenu.Trigger>
 
-		<DropdownMenu.Content {align} class="w-56">
+		<DropdownMenu.Content {align} class="w-64">
 			<DropdownMenu.Group>
 				<DropdownMenu.GroupHeading>{menuHeading}</DropdownMenu.GroupHeading>
 				{#each definitions as definition (definition.id)}
@@ -104,23 +127,24 @@
 				{/each}
 			</DropdownMenu.Group>
 
-			{#if toggles.length > 0}
+			{#each facets.filter((facet) => facet.options.length > 0) as facet (facet.id)}
 				<DropdownMenu.Separator />
 				<DropdownMenu.Group>
-					{#each toggles as toggle (toggle.id)}
+					<DropdownMenu.GroupHeading>{facet.label}</DropdownMenu.GroupHeading>
+					{#each facet.options as option (option.value)}
 						<DropdownMenu.CheckboxItem
 							bind:checked={
-								() => toggle.checked, (checked) => toggle.onchange(checked)
+								() => option.checked, (checked) => option.onchange(checked)
 							}
 							closeOnSelect={false}
 						>
-							{toggle.label}
+							{option.label}
 						</DropdownMenu.CheckboxItem>
 					{/each}
 				</DropdownMenu.Group>
-			{/if}
+			{/each}
 
-			{#if activeDefinitions.length > 0}
+			{#if activeFilters.length > 0}
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item class="sm:hidden" onclick={clearAllFilters}>
 					{clearAllLabel}
@@ -129,20 +153,20 @@
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>
 
-	{#if activeDefinitions.length > 0}
+	{#if activeFilters.length > 0}
 		<div class="hidden min-w-0 flex-wrap items-center gap-1.5 sm:flex" data-filter-pills>
-			{#each activeDefinitions as definition (definition.id)}
-				<SimpleTooltip text={activeLabel(definition)}>
+			{#each activeFilters as item (item.id)}
+				<SimpleTooltip text={item.label}>
 					<span
 						class="inline-flex h-(--size-control-sm) max-w-50 items-center gap-1 rounded-full border-2 border-ink bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground"
 					>
-						<span class="truncate">{activeLabel(definition)}</span>
+						<span class="truncate">{item.label}</span>
 						<button
-							bind:this={pillRemoveButtons[definition.id]}
+							bind:this={pillRemoveButtons[item.id]}
 							type="button"
 							class="grid size-6 shrink-0 place-items-center rounded-full text-current hover:bg-[color-mix(in_oklab,currentColor_24%,transparent)] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-1 focus-visible:outline-current"
-							aria-label={removeFilterLabel(activeLabel(definition))}
-							onclick={() => removeActiveFilter(definition)}
+							aria-label={removeFilterLabel(item.label)}
+							onclick={() => removeActiveFilter(item)}
 						>
 							<XIcon class="size-3.5" />
 						</button>
