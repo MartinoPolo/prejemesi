@@ -16,6 +16,11 @@ interface ItemPosition {
 	top: number;
 }
 
+interface HitTestSlot {
+	centerX: number;
+	centerY: number;
+}
+
 export function createGiftPointerReorderController(options: GiftPointerReorderOptions) {
 	const draggedGiftId = new StateRaw<string | null>(null);
 	const dragOverGiftId = new StateRaw<string | null>(null);
@@ -29,6 +34,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 	let sourceVisibility = '';
 	let pointerOffsetX = 0;
 	let pointerOffsetY = 0;
+	let hitTestSlots: HitTestSlot[] = [];
 	const runningAnimations = new WeakMap<HTMLElement, Animation>();
 
 	function prefersReducedMotion(): boolean {
@@ -81,16 +87,29 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		});
 	}
 
+	function captureHitTestSlots(elements: HTMLElement[]): HitTestSlot[] {
+		const scrollX = window.scrollX;
+		const scrollY = window.scrollY;
+
+		return elements.map((element) => {
+			const rect = element.getBoundingClientRect();
+
+			return {
+				centerX: rect.left + scrollX + rect.width / 2,
+				centerY: rect.top + scrollY + rect.height / 2,
+			};
+		});
+	}
+
 	function nearestIndex(clientX: number, clientY: number): number | null {
-		const elements = options.getItemElements();
 		let bestIndex: number | null = null;
 		let bestDistance = Number.POSITIVE_INFINITY;
+		const pageX = clientX + window.scrollX;
+		const pageY = clientY + window.scrollY;
 
-		for (let index = 0; index < elements.length; index += 1) {
-			const rect = elements[index]!.getBoundingClientRect();
-			const distance =
-				(clientX - (rect.left + rect.width / 2)) ** 2 +
-				(clientY - (rect.top + rect.height / 2)) ** 2;
+		for (let index = 0; index < hitTestSlots.length; index += 1) {
+			const slot = hitTestSlots[index]!;
+			const distance = (pageX - slot.centerX) ** 2 + (pageY - slot.centerY) ** 2;
 			if (distance < bestDistance) {
 				bestDistance = distance;
 				bestIndex = index;
@@ -195,6 +214,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		initialOrder = [];
 		currentOrder = [];
 		currentIndex = -1;
+		hitTestSlots = [];
 		if (commit) {
 			if (finalOrder.some((id, index) => id !== rollbackOrder[index])) {
 				options.onCommitOrder(finalOrder);
@@ -229,7 +249,8 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 			return;
 		}
 		const itemIds = options.getItemIds();
-		const element = options.getItemElements()[index];
+		const itemElements = options.getItemElements();
+		const element = itemElements[index];
 		const giftId = itemIds[index];
 		if (element === undefined || giftId === undefined) {
 			return;
@@ -240,6 +261,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		initialOrder = [...itemIds];
 		currentOrder = [...itemIds];
 		currentIndex = index;
+		hitTestSlots = captureHitTestSlots(itemElements);
 		draggedGiftId.current = giftId;
 		dragOverGiftId.current = giftId;
 		createOverlay(element, event);

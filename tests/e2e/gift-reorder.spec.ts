@@ -14,17 +14,76 @@ function isSuccessfulRemoteMutation(response: Response): boolean {
 	);
 }
 
-async function visibleGiftNames(page: Page): Promise<string[]> {
-	const items = page.locator('[data-gift-item]');
-	await expect(items).toHaveCount(3, { timeout: 10_000 });
+async function visibleGiftNames(page: Page, expectedCount = 3): Promise<string[]> {
+	const items = page.locator('[data-gift-item]:not([data-gift-reorder-overlay])');
+	await expect(items).toHaveCount(expectedCount, { timeout: 10_000 });
 	return items.getByRole('heading', { level: 3 }).allTextContents();
 }
 
 function giftItem(page: Page, name: string) {
-	return page.locator('[data-gift-item]').filter({
+	return page.locator('[data-gift-item]:not([data-gift-reorder-overlay])').filter({
 		has: page.getByRole('heading', { name, exact: true, level: 3 }),
 	});
 }
+
+test('card drag preview stays stable while the pointer rests on a gift boundary', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const user = createTestUser('gift-reorder-boundary');
+	const page = await registerAndGetPage(browser, request, baseURL!, user);
+	await createWishlistAndNavigate(page, 'Gift Reorder Boundary Stability');
+
+	const names = [
+		'Reorder Boundary Gift A',
+		'Reorder Boundary Gift B',
+		'Reorder Boundary Gift C',
+		'Reorder Boundary Gift D',
+		'Reorder Boundary Gift E',
+	];
+	for (const name of names) {
+		await addGift(page, name);
+	}
+
+	await expect(page.locator('[data-gift-item]')).toHaveCount(names.length, { timeout: 10_000 });
+	await page.getByRole('button', { name: REORDER_ACTION, exact: true }).click();
+
+	const aHandle = giftItem(page, names[0]!).getByRole('button', {
+		name: REORDER_HANDLE,
+		exact: true,
+	});
+	const bBox = await giftItem(page, names[1]!).boundingBox();
+	const cBox = await giftItem(page, names[2]!).boundingBox();
+	const handleBox = await aHandle.boundingBox();
+	const initialOrder = await visibleGiftNames(page, names.length);
+	expect(bBox, 'B card has a bounding box').not.toBeNull();
+	expect(cBox, 'C card has a bounding box').not.toBeNull();
+	expect(handleBox, 'A reorder handle has a bounding box').not.toBeNull();
+	const boundaryX = (bBox!.x + bBox!.width + cBox!.x) / 2;
+	const boundaryY = bBox!.y + bBox!.height / 2;
+
+	await page.mouse.move(
+		handleBox!.x + handleBox!.width / 2,
+		handleBox!.y + handleBox!.height / 2,
+	);
+	await page.mouse.down();
+	await page.mouse.move(boundaryX, boundaryY, { steps: 12 });
+
+	const sampledOrders: string[] = [];
+	for (let sample = 0; sample < 8; sample += 1) {
+		await page.mouse.move(boundaryX, boundaryY);
+		await page.waitForTimeout(60);
+		sampledOrders.push((await visibleGiftNames(page, names.length)).join('|'));
+	}
+
+	expect(new Set(sampledOrders).size).toBe(1);
+	await page.keyboard.press('Escape');
+	await page.mouse.up();
+	await expect
+		.poll(() => visibleGiftNames(page, names.length), { timeout: 10_000 })
+		.toEqual(initialOrder);
+});
 
 test('gift order persists after card drag and rapid list keyboard moves', async ({
 	browser,

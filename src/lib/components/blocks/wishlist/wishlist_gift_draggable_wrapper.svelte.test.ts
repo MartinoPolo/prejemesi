@@ -122,6 +122,60 @@ describe('gift pointer reorder controller (#239)', () => {
 		items.forEach((item) => item.remove());
 	});
 
+	it('keeps stationary boundary hit testing anchored when preview layout shifts under it', () => {
+		let renderedIds = ['a', 'b', 'c'];
+		let shiftedByPreview = false;
+		const elementsById = new Map(
+			renderedIds.map((id) => {
+				const element = document.createElement('div');
+				element.dataset.giftId = id;
+				element.textContent = id;
+				Object.defineProperty(element, 'getBoundingClientRect', {
+					value: () => {
+						const leftById = shiftedByPreview
+							? { a: 300, b: 0, c: 200 }
+							: { a: 0, b: 100, c: 200 };
+						const left = leftById[id as keyof typeof leftById];
+
+						return {
+							x: left,
+							y: 20,
+							left,
+							top: 20,
+							right: left + 80,
+							bottom: 80,
+							width: 80,
+							height: 60,
+							toJSON: () => {},
+						};
+					},
+				});
+				document.body.append(element);
+				return [id, element] as const;
+			}),
+		);
+		const previews: string[][] = [];
+		const controller = createGiftPointerReorderController({
+			getItemElements: () => renderedIds.map((id) => elementsById.get(id)!),
+			getItemIds: () => [...renderedIds],
+			onPreviewOrder: (ids) => {
+				previews.push(ids);
+				renderedIds = [...ids];
+				shiftedByPreview = true;
+			},
+			onCommitOrder: () => {},
+			onCancelOrder: () => {},
+		});
+
+		controller.start(pointer('pointerdown', 11, 20, 40), 0);
+		window.dispatchEvent(pointer('pointermove', 11, 240, 40));
+		window.dispatchEvent(pointer('pointermove', 11, 240, 40));
+
+		expect(previews).toEqual([['b', 'c', 'a']]);
+		controller.destroy();
+		elementsById.forEach((element) => element.remove());
+	});
+
 	it.each([
 		['pointercancel', () => window.dispatchEvent(pointer('pointercancel', 9, 240, 40))],
 		['Escape', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))],
