@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { assignedService } from './development-service-environment.mjs';
 
 const service = process.argv[2];
+const preview = assignedService(process.env.MPX_PREVIEW_PORT, '8301');
+const storybook = assignedService(process.env.MPX_STORYBOOK_PORT, '8302');
+
 const definitions = {
 	preview: {
 		bin: new URL('../node_modules/wrangler/bin/wrangler.js', import.meta.url),
@@ -10,12 +14,14 @@ const definitions = {
 			'dev',
 			'.svelte-kit/cloudflare/_worker.js',
 			'--port',
-			process.env.MPX_PREVIEW_PORT || '8301',
+			preview.port,
+			'--var',
+			`ORIGIN:${preview.origin}`,
 		],
 	},
 	storybook: {
 		bin: new URL('../node_modules/storybook/dist/bin/dispatcher.js', import.meta.url),
-		args: ['dev', '--port', process.env.MPX_STORYBOOK_PORT || '8302'],
+		args: ['dev', '--port', storybook.port],
 	},
 };
 const definition = definitions[service];
