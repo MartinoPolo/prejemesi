@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { resolveDevelopmentEnvironment } from './src/lib/config/mpx_development.js';
 
-// Override when port 5173 is held by another worktree's dev server
-// (each worktree runs its own port): PLAYWRIGHT_DEV_SERVER_PORT=5199 playwright test
-const devServerPort = Number(process.env.PLAYWRIGHT_DEV_SERVER_PORT ?? 5173);
+const development = resolveDevelopmentEnvironment(process.env);
+const devServerPort = development.appPort;
 
 export default defineConfig({
 	testDir: 'tests/e2e',
@@ -12,7 +12,7 @@ export default defineConfig({
 	expect: { timeout: 10_000 },
 	workers: 4,
 	use: {
-		baseURL: `http://localhost:${devServerPort}`,
+		baseURL: development.playwrightBaseUrl,
 		trace: 'on-first-retry',
 		actionTimeout: 15_000,
 		navigationTimeout: 30_000,
@@ -31,7 +31,7 @@ export default defineConfig({
 				process.env.AUTH_SECRET ??
 				'local-e2e-only-auth-secret-never-use-in-production-2026',
 			// Keep the test server origin pinned to its assigned localhost port.
-			ORIGIN: `http://localhost:${devServerPort}`,
+			ORIGIN: development.origin,
 			// The app administrator is env-based (`isAppAdmin`), so the admin-only specs
 			// (revert-to-draft #150, release reservation #213) need a known operator address.
 			ADMIN_EMAILS: 'tomas@test.cz',

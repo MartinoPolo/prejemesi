@@ -5,7 +5,7 @@ services:
         # (tests/load). Harmless otherwise.
         command: ['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']
         ports:
-            - '5432:5432'
+            - '${MPX_DATABASE_PORT:-5432}:5432'
         environment:
             POSTGRES_USER: root
             POSTGRES_PASSWORD: mysecretpassword

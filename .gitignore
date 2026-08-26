@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# MPX machine-local assigned-port projection (validated against the registry)
+.worktree-ports.json
+
 # Build outputs
 .output
 .vercel

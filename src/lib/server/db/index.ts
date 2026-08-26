@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import type { RequestEvent } from '@sveltejs/kit';
 import * as schema from './schema.js';
+import { resolveDatabaseUrl } from '$lib/config/mpx_development.js';
 
 function getHyperdriveConnectionString(event: RequestEvent | undefined): string | undefined {
 	return event?.platform?.env?.HYPERDRIVE?.connectionString as string | undefined;
@@ -23,7 +24,7 @@ export function isDatabaseConfigured(event?: RequestEvent): boolean {
 	return (
 		(hyperdriveConnectionString !== undefined && hyperdriveConnectionString !== '') ||
 		(runtimeConnectionString !== undefined && runtimeConnectionString !== '') ||
-		(env.DATABASE_URL !== undefined && env.DATABASE_URL !== '')
+		resolveDatabaseUrl(env) !== undefined
 	);
 }
 
@@ -79,7 +80,7 @@ export function getDb(event?: RequestEvent) {
 
 	const hyperdriveConnectionString = getHyperdriveConnectionString(requestEvent);
 	const connectionString =
-		hyperdriveConnectionString ?? runtimeConnectionString ?? env.DATABASE_URL;
+		hyperdriveConnectionString ?? runtimeConnectionString ?? resolveDatabaseUrl(env);
 
 	if (connectionString === undefined || connectionString === '') {
 		throw new Error('No database connection: set DATABASE_URL or configure Hyperdrive');

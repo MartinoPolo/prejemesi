@@ -8,6 +8,10 @@
  * never touch real user rows.
  */
 
+import { resolveDevelopmentEnvironment } from '../../src/lib/config/mpx_development.js';
+
+const development = resolveDevelopmentEnvironment(process.env);
+
 export const LOADTEST_ID_PREFIX = 'loadtest-';
 
 /** Reserved domain (RFC 2606 `.invalid`) — these addresses can never receive mail. */
@@ -26,8 +30,8 @@ export const MAX_VIRTUAL_USERS = 100;
 export const ARENA_VIEW_GIFT_COUNT = 12;
 
 export const TARGETS = {
-	local: 'http://localhost:5173',
-	preview: 'http://localhost:4173',
+	local: development.loadTestLocalTarget,
+	preview: development.previewOrigin,
 	production: 'https://prejemesi.cz',
 } as const;
 

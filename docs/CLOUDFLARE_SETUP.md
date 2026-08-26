@@ -99,13 +99,16 @@ the Worker.
 #### R2 CORS (presigned direct uploads – issue #107)
 
 Browsers upload straight to R2 via presigned PUT URLs, which requires CORS on
-the bucket. The rules live in `scripts/r2-cors.json`; apply them with:
+the bucket. Generate `scripts/r2-cors.json` from the MPX-assigned app and preview
+ports, then apply it:
 
 ```powershell
+pnpm r2:cors:generate
 wrangler r2 bucket cors set prejemesi-images --file scripts/r2-cors.json
 ```
 
-Re-run after editing the file (e.g. adding a new origin).
+Direct commands safely fall back to ports 8300/8301. Re-run generation before
+applying when a checkout's assignments change.
 
 #### R2 API token (presigned direct uploads – issue #107)
 

@@ -24,7 +24,7 @@
  *
  * Options:
  *   --user <martin|jana|petr|eva|tomas|none>  log in via API before loading (default: none)
- *   --base <url>          origin (default: auto-probe http://localhost:5173 then :5174)
+ *   --base <url>          origin (default: ORIGIN or the MPX-assigned app port)
  *   --vw <px> --vh <px>   viewport (default 1280x900)
  *   --mobile              iPhone 13 preset (overrides --vw/--vh)
  *   --dark                emulate prefers-color-scheme: dark
@@ -71,7 +71,8 @@ function parseArgs(argv) {
 }
 
 async function resolveBase(preferred) {
-	const candidates = preferred ? [preferred] : ['http://localhost:5173', 'http://localhost:5174'];
+	const assigned = process.env.ORIGIN || `http://localhost:${process.env.MPX_APP_PORT || '8300'}`;
+	const candidates = preferred ? [preferred] : [assigned];
 	for (const c of candidates) {
 		try {
 			await fetch(c, { method: 'HEAD' });

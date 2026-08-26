@@ -1,0 +1,55 @@
+{
+	"$schema": "https://mpx.dev/schemas/mpxconfig.schema.json",
+	"schemaVersion": 1,
+	"project": { "id": "MartinoPolo/prejemesi" },
+	"repository": { "provider": "github", "remote": "origin" },
+	"issues": { "provider": "github" },
+	"tooling": { "packageManager": "pnpm" },
+	"workflow": { "branch": { "base": "dev" } },
+	"development": {
+		"services": {
+			"app": {
+				"scope": "checkout",
+				"port": { "mode": "managed", "preferred": 8300, "family": "web" },
+				"environmentVariable": "MPX_APP_PORT",
+				"protocol": "http",
+				"start": { "type": "package-script", "script": "dev" }
+			},
+			"preview": {
+				"scope": "checkout",
+				"port": { "mode": "managed", "preferred": 8301, "family": "web" },
+				"environmentVariable": "MPX_PREVIEW_PORT",
+				"protocol": "http",
+				"start": { "type": "package-script", "script": "preview" }
+			},
+			"storybook": {
+				"scope": "checkout",
+				"port": { "mode": "managed", "preferred": 8302, "family": "web" },
+				"environmentVariable": "MPX_STORYBOOK_PORT",
+				"protocol": "http",
+				"start": { "type": "package-script", "script": "storybook" }
+			},
+			"vitest-client": {
+				"scope": "checkout",
+				"port": { "mode": "managed", "preferred": 8303, "family": "web" },
+				"environmentVariable": "MPX_VITEST_CLIENT_PORT",
+				"protocol": "http",
+				"start": { "type": "package-script", "script": "test" }
+			},
+			"vitest-storybook": {
+				"scope": "checkout",
+				"port": { "mode": "managed", "preferred": 8304, "family": "web" },
+				"environmentVariable": "MPX_VITEST_STORYBOOK_PORT",
+				"protocol": "http",
+				"start": { "type": "package-script", "script": "test" }
+			},
+			"database": {
+				"scope": "project",
+				"port": { "mode": "fixed-shared", "preferred": 5432 },
+				"environmentVariable": "MPX_DATABASE_PORT",
+				"protocol": "tcp",
+				"start": { "type": "package-script", "script": "db:start" }
+			}
+		}
+	}
+}

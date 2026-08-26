@@ -7,7 +7,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"deploy": "vite build && wrangler deploy",
-		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
+		"preview": "node scripts/run-development-service.mjs preview",
 		"paraglide:compile": "node ./scripts/paraglide-compile.mjs",
 		"check": "pnpm paraglide:compile && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"typecheck": "pnpm check",
@@ -40,10 +40,9 @@
 		"db:studio": "drizzle-kit studio",
 		"db:audit:crop-rects": "tsx scripts/audit-legacy-crop-rects.ts",
 		"cf:types": "wrangler types --no-include-runtime",
+		"r2:cors:generate": "tsx scripts/generate-r2-cors.ts",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"ports": "powershell -NoProfile -Command \"netstat -ano | Select-String ':5173 |:4173 |:6006 ' | Select-String 'LISTENING'\"",
-		"ports:kill": "powershell -NoProfile -Command \"$pids = @(); netstat -ano | Select-String ':5173 |:4173 |:6006 ' | Select-String 'LISTENING' | ForEach-Object { if ($_ -match '\\s(\\d+)$') { $pids += $Matches[1] } }; $pids = $pids | Select-Object -Unique; if ($pids.Count -eq 0) { Write-Host 'No processes on ports 5173/4173/6006' } else { $pids | ForEach-Object { Stop-Process -Id $_ -Force; Write-Host \\\"Killed PID $_\\\" } }\"",
-		"storybook": "pnpm paraglide:compile && svelte-kit sync && storybook dev -p 6006",
+		"storybook": "pnpm paraglide:compile && svelte-kit sync && node scripts/run-development-service.mjs storybook",
 		"build:storybook": "pnpm paraglide:compile && svelte-kit sync && storybook build"
 	},
 	"dependencies": {
