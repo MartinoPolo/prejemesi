@@ -1,4 +1,15 @@
-import type { BrowserOptions } from '@sentry/sveltekit';
+interface SentryDataCollectionOptions {
+	userInfo: boolean;
+	cookies: boolean;
+	httpHeaders: { request: boolean; response: boolean };
+	httpBodies: string[];
+	urlQueryParams: boolean;
+	graphQL: { document: boolean; variables: boolean };
+	genAI: { inputs: boolean; outputs: boolean };
+	databaseQueryData: boolean;
+	stackFrameVariables: boolean;
+	frameContextLines: number;
+}
 
 interface SanitizableBreadcrumb {
 	data?: Record<string, unknown>;
@@ -34,7 +45,7 @@ const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Z0-9._~+/=-]+/gi;
 const SENSITIVE_PARAMETER_PATTERN =
 	/([?&](?:authorization|code|credential|password|secret|session|token)=)[^&#\s]+/gi;
 
-export const SENTRY_DATA_COLLECTION: NonNullable<BrowserOptions['dataCollection']> = {
+export const SENTRY_DATA_COLLECTION = {
 	userInfo: false,
 	cookies: false,
 	httpHeaders: { request: false, response: false },
@@ -45,7 +56,7 @@ export const SENTRY_DATA_COLLECTION: NonNullable<BrowserOptions['dataCollection'
 	databaseQueryData: false,
 	stackFrameVariables: false,
 	frameContextLines: 0,
-};
+} satisfies SentryDataCollectionOptions;
 
 function stripUrlDetails(value: string): string {
 	try {
