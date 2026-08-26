@@ -2,7 +2,7 @@
 	import { Tooltip as TooltipPrimitive } from 'bits-ui';
 	import { cn } from '$lib/utils.js';
 	import TooltipPortal from './tooltip-portal.svelte';
-	import { tooltipContentVariants, tooltipPositionerClass } from './tooltip_variants.js';
+	import { tooltipContentShellClass, tooltipContentVariants } from './tooltip_variants.js';
 	import type { ComponentProps } from 'svelte';
 	import type { WithoutChildrenOrChild } from '$lib/utils.js';
 
@@ -27,7 +27,7 @@
 		data-slot="tooltip-content"
 		{sideOffset}
 		{side}
-		class={tooltipPositionerClass}
+		class={tooltipContentShellClass}
 		{...restProps}
 	>
 		<div class={cn(tooltipContentVariants(), className)}>
