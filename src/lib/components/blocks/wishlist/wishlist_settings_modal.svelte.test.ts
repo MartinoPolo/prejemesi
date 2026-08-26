@@ -85,27 +85,42 @@ describe('WishlistSettingsModal import and export tab', () => {
 
 	it('keeps keyboard-selected tabs visible in the mobile-width overflow', async () => {
 		const screen = renderSettings();
+		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
 		const tablist = screen
 			.getByRole('tablist', { name: m.wishlist_settings_title() })
 			.element();
+		dialog.style.cssText = 'height: 240px; overflow-y: auto; overflow-anchor: none';
 		tablist.style.cssText = 'display: flex; overflow-x: auto; width: 220px';
 		const details = screen.getByRole('tab', { name: m.wishlist_settings_details_section() });
 		const danger = screen.getByRole('tab', { name: m.wishlist_settings_danger_tab() });
+		details.element().focus();
 		for (const tab of screen.getByRole('tab').all()) {
 			tab.element().style.cssText = 'flex: none; width: 110px';
 		}
 
 		expect(tablist.scrollWidth).toBeGreaterThan(tablist.clientWidth);
-		await details.click();
+		dialog.scrollTop = 80;
+		expect(dialog.scrollTop).toBeGreaterThan(0);
+		const dialogScrollTop = dialog.scrollTop;
 		const pageScrollY = window.scrollY;
 		await userEvent.keyboard('{End}');
 
 		await expect.element(danger).toHaveFocus();
 		await expect.element(danger).toHaveAttribute('aria-selected', 'true');
-		const tablistRect = tablist.getBoundingClientRect();
+		let tablistRect = tablist.getBoundingClientRect();
 		const dangerRect = danger.element().getBoundingClientRect();
 		expect(dangerRect.left).toBeGreaterThanOrEqual(tablistRect.left);
 		expect(dangerRect.right).toBeLessThanOrEqual(tablistRect.right);
+		expect(dialog.scrollTop).toBe(dialogScrollTop);
+		expect(window.scrollY).toBe(pageScrollY);
+
+		await userEvent.keyboard('{Home}');
+		await expect.element(details).toHaveFocus();
+		tablistRect = tablist.getBoundingClientRect();
+		const detailsRect = details.element().getBoundingClientRect();
+		expect(detailsRect.left).toBeGreaterThanOrEqual(tablistRect.left);
+		expect(detailsRect.right).toBeLessThanOrEqual(tablistRect.right);
+		expect(dialog.scrollTop).toBe(dialogScrollTop);
 		expect(window.scrollY).toBe(pageScrollY);
 	});
 });

@@ -19,10 +19,9 @@
 			return;
 		}
 
+		const tablist = event.currentTarget.closest('[role="tablist"]');
 		const tabs = Array.from(
-			event.currentTarget
-				.closest('[role="tablist"]')
-				?.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)') ?? [],
+			tablist?.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)') ?? [],
 		);
 		const currentIndex = tabs.indexOf(event.currentTarget);
 		if (currentIndex < 0 || tabs.length === 0) {
@@ -51,7 +50,16 @@
 		const nextTab = tabs[nextIndex];
 		nextTab.focus({ preventScroll: true });
 		nextTab.click();
-		nextTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+		if (tablist) {
+			const tablistRect = tablist.getBoundingClientRect();
+			const nextTabRect = nextTab.getBoundingClientRect();
+			if (nextTabRect.left < tablistRect.left) {
+				tablist.scrollLeft -= tablistRect.left - nextTabRect.left;
+			} else if (nextTabRect.right > tablistRect.right) {
+				tablist.scrollLeft += nextTabRect.right - tablistRect.right;
+			}
+		}
 	}
 </script>
 
