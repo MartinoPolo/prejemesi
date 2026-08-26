@@ -106,6 +106,14 @@ describe('detectColumns – role heuristics', () => {
 		}
 	});
 
+	it('detects category columns by localized header labels', () => {
+		const rows = parseTabular('Název,Kategorie\nKostky,Hračky\nKniha,Knihy').rows;
+		expect(detectColumns(rows).columns.map((c) => c.role)).toEqual([
+			COLUMN_ROLE.name,
+			COLUMN_ROLE.category,
+		]);
+	});
+
 	it('detects boolean status columns by TRUE/FALSE values', () => {
 		const rows = parseTabular('Boty,TRUE\nKniha,FALSE\nHrnek,FALSE').rows;
 		expect(detectColumns(rows).columns.map((c) => c.role)).toEqual([

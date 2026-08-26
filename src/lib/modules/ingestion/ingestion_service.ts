@@ -50,6 +50,11 @@ export interface GiftIngestionStore {
 		tx: GiftCreationTransaction | undefined,
 		wishlistId: string,
 	): Promise<{ high: string | null; medium: string | null }>;
+	resolveCategoryLabels?(
+		tx: GiftCreationTransaction | undefined,
+		wishlistId: string,
+		labels: readonly string[],
+	): Promise<Map<string, string>>;
 	appendGifts(
 		tx: GiftCreationTransaction,
 		input: {
@@ -115,6 +120,7 @@ export interface ImagePreparationInput {
 interface PlannedItem {
 	item: GiftIngestionItem;
 	hash: string;
+	categoryId: string | null;
 }
 
 const MAX_INGESTION_WARNINGS = 50;
@@ -327,7 +333,25 @@ async function plan(
 		};
 	}
 	const itemHashes = await Promise.all(manifest.items.map(canonicalGiftIngestionItemHash));
-	const planned = manifest.items.map((item, index) => ({ item, hash: itemHashes[index]! }));
+	const requestedCategoryLabels = manifest.items
+		.map((item) => item.gift.category ?? null)
+		.filter((label): label is string => label !== null);
+	const resolvedCategoryIds =
+		store.resolveCategoryLabels === undefined
+			? new Map<string, string>()
+			: await store.resolveCategoryLabels(tx, target.id, requestedCategoryLabels);
+	const planned = manifest.items.map((item, index) => {
+		const categoryLabel = item.gift.category ?? null;
+		const categoryId =
+			categoryLabel === null ? null : (resolvedCategoryIds.get(categoryLabel) ?? null);
+		if (categoryLabel !== null && categoryId === null) {
+			throw new IngestionError(
+				'category_unknown',
+				`Category is not enabled for item ${item.itemId}`,
+			);
+		}
+		return { item, hash: itemHashes[index]!, categoryId };
+	});
 	const priorItems = await store.findItems(
 		tx,
 		planned.map(({ item }) => item.itemId),
@@ -594,11 +618,12 @@ export async function processGiftIngestion(
 					: await options.store.appendGifts(tx, {
 							wishlistId: planned.targetId,
 							actorId: options.config.actorId,
-							gifts: planned.creatable.map(({ item }) => ({
+							gifts: planned.creatable.map(({ item, categoryId }) => ({
 								...item.gift,
 								imageUrl: byItem.has(item.itemId) ? null : item.gift.imageUrl,
 								imageKey: byItem.get(item.itemId)?.key ?? null,
 								priorityLevelId: planned.priorities[item.gift.priority],
+								categoryId,
 							})),
 						});
 			const created = planned.creatable.map(({ item }, index) => ({

@@ -9,6 +9,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftGrid from './GiftDraftGrid.svelte';
 	import { DRAFT_GRID_CONTEXT, type DraftGridChange } from './gift_draft_grid_model.js';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 
 	interface Props {
 		open: boolean;
@@ -16,6 +17,7 @@
 		isSubmitting?: boolean;
 		/** Show the priority heart column (hidden when the wishlist lacks ≥2 levels). */
 		priorityAvailable?: boolean;
+		categoryOptions?: ManagedGiftCategory[];
 		serverDuplicateCount?: number;
 		onsubmit?: (drafts: ValidatedGiftDraft[]) => void;
 		onresetduplicatewarning?: () => void;
@@ -28,6 +30,7 @@
 		wishlistTitle = '',
 		isSubmitting = false,
 		priorityAvailable = true,
+		categoryOptions = [],
 		serverDuplicateCount = 0,
 		onsubmit,
 		onresetduplicatewarning,
@@ -110,6 +113,7 @@
 				<GiftDraftGrid
 					context={DRAFT_GRID_CONTEXT.batch}
 					{priorityAvailable}
+					{categoryOptions}
 					onchange={handleChange}
 				/>
 			{/key}

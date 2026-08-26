@@ -44,6 +44,9 @@ const GiftIngestionItemSchema = v.pipe(
 				imageUrl: v.optional(v.nullable(HttpsUrlSchema)),
 				quantity: v.pipe(v.number(), v.integer(), v.minValue(1)),
 				priority: v.picklist(['high', 'medium']),
+				category: v.optional(
+					v.nullable(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(80))),
+				),
 			}),
 			v.check(
 				(gift) =>

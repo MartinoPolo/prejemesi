@@ -95,6 +95,15 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		createdAt: 'gift.createdAt',
 		deletedAt: 'gift.deletedAt',
 		priorityLevelId: 'gift.priorityLevelId',
+		categoryId: 'gift.categoryId',
+	},
+	giftCategory: {
+		id: 'giftCategory.id',
+		wishlistId: 'giftCategory.wishlistId',
+		presetKey: 'giftCategory.presetKey',
+		customLabel: 'giftCategory.customLabel',
+		sortOrder: 'giftCategory.sortOrder',
+		deletedAt: 'giftCategory.deletedAt',
 	},
 	reservation: {
 		id: 'reservation.id',
@@ -279,6 +288,10 @@ function makeGiftRow(
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryId: null,
+		categoryPresetKey: null,
+		categoryCustomLabel: null,
+		categorySortOrder: null,
 		...overrides,
 	};
 }
@@ -352,6 +365,30 @@ describe('getGiftsByWishlistShortId', () => {
 			expect('reservedCount' in gift).toBe(false);
 			expect('likeCount' in gift).toBe(false);
 			expect('isFullyReserved' in gift).toBe(false);
+			expect('reserverNames' in gift).toBe(false);
+		});
+
+		it('returns category metadata without adding reservation-derived fields', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					categoryId: 'category-books',
+					categoryPresetKey: 'books',
+					categoryCustomLabel: null,
+					categorySortOrder: 2,
+				}),
+			]);
+
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
+			const gift = result.gifts[0] as Record<string, unknown>;
+
+			expect(gift.category).toEqual({
+				id: 'category-books',
+				presetKey: 'books',
+				customLabel: null,
+				sortOrder: 2,
+			});
+			expect('reservedCount' in gift).toBe(false);
 			expect('reserverNames' in gift).toBe(false);
 		});
 	});

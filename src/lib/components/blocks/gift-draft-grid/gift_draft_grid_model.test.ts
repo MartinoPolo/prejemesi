@@ -90,7 +90,7 @@ describe('draft grid submission gate', () => {
 		const duplicate = createDraftGridRow({ name: 'Stejný hrnek' });
 		const hasDuplicateWarning = () => true;
 
-		expect(collectDraftGridChange([duplicate], hasDuplicateWarning)).toEqual({
+		expect(collectDraftGridChange([duplicate], hasDuplicateWarning)).toMatchObject({
 			drafts: [],
 			validCount: 0,
 			selectedCount: 1,
@@ -106,7 +106,7 @@ describe('draft grid submission gate', () => {
 
 		duplicate.dismissedDuplicate = false;
 		duplicate.selected = false;
-		expect(collectDraftGridChange([duplicate], hasDuplicateWarning)).toEqual({
+		expect(collectDraftGridChange([duplicate], hasDuplicateWarning)).toMatchObject({
 			drafts: [],
 			validCount: 0,
 			selectedCount: 0,

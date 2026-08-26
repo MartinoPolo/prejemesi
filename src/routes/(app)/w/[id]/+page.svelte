@@ -39,6 +39,7 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift-categories.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import {
 		reserveGift,
@@ -82,6 +83,8 @@
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
+	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import {
 		GIFT_SECTION_KINDS,
 		activeGiftsInOwnerOrder,
@@ -233,6 +236,8 @@
 	const hideReservationState = $derived(isRecipient || recipientViewPreview);
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
+	const categoriesQuery = $derived(browser && canManage ? getGiftCategories(wishlist.id) : null);
+	const categoryOptions = $derived(categoriesQuery?.current ?? []);
 	const wishlistStatus = $derived(wishlist?.status as 'draft' | 'active' | 'archived');
 	// Non-managers see a friendly „Seznam se připravuje" page on a draft list (never-shared or
 	// reverted, issue #150) instead of the toolbar + gifts; the URL revives on (re-)share.
@@ -678,6 +683,13 @@
 				links: gift.links ?? [],
 				price: gift.price,
 				currency: gift.currency,
+				categoryLabel:
+					gift.category == null
+						? ''
+						: labelForGiftCategory(
+								gift.category,
+								getLocale().startsWith('en') ? 'en' : 'cs',
+							),
 			})),
 		);
 		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
@@ -1030,6 +1042,7 @@
 	{giftModalMode}
 	selectedGift={selectedPresentationGift}
 	{priorityLevels}
+	{categoryOptions}
 	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
 	graceExpiresAt={selectedActiveGraceExpiresAt}
@@ -1119,6 +1132,7 @@
 		wishlistShortId={wishlist.shortId}
 		wishlistTitle={wishlist.title}
 		priorityLevelCount={priorityLevels.length}
+		{categoryOptions}
 		existingGifts={importExistingGifts}
 		suppressNavigation
 	/>

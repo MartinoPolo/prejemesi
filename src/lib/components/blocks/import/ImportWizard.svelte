@@ -21,7 +21,9 @@
 		type CommitStatus,
 	} from './import_wizard_types.js';
 	import type { ValidatedGiftDraft } from '$lib/modules/gifts/gift_draft.js';
+	import type { ImportCategoryResolution } from '$lib/modules/import/import_types.js';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import { importGifts, createWishlistFromImport } from '$lib/modules/import/import.remote.js';
 	import {
 		createDuplicateAwareImportState,
@@ -42,6 +44,7 @@
 				open: boolean;
 				mode: typeof WIZARD_MODE.newList;
 				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+				categoryOptions?: ManagedGiftCategory[];
 				suppressNavigation?: boolean;
 				onsuccess?: () => void;
 		  }
@@ -54,6 +57,7 @@
 				/** Target wishlist's priority-level count; the heart column needs ≥2. */
 				priorityLevelCount?: number;
 				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+				categoryOptions?: ManagedGiftCategory[];
 				suppressNavigation?: boolean;
 				onsuccess?: () => void;
 		  };
@@ -62,6 +66,7 @@
 		open = $bindable(false),
 		mode,
 		existingGifts = [],
+		categoryOptions = [],
 		suppressNavigation = false,
 		onsuccess,
 		wishlistId,
@@ -73,6 +78,7 @@
 		wishlistShortId?: string;
 		wishlistTitle?: string;
 		priorityLevelCount?: number;
+		categoryOptions?: ManagedGiftCategory[];
 	} = $props();
 
 	// New-list mode always seeds the 3 default levels at commit, so priority is
@@ -85,6 +91,7 @@
 	let parsedRows = $state<string[][]>([]);
 	let filename = $state<string | undefined>(undefined);
 	let selectedDrafts = $state<ValidatedGiftDraft[]>([]);
+	let selectedCategoryResolutions = $state<ImportCategoryResolution[]>([]);
 	let reviewTitle = $state<string | undefined>(undefined);
 	let commitStatus = $state<CommitStatus>(COMMIT_STATUS.idle);
 	let duplicateSubmissionState = $state(createDuplicateAwareImportState<ValidatedGiftDraft>());
@@ -182,13 +189,21 @@
 		currentStep = WIZARD_STEP.review;
 	}
 
-	function handleReviewReady(data: { drafts: ValidatedGiftDraft[]; title?: string }) {
-		const nextSignature = JSON.stringify(data.drafts);
+	function handleReviewReady(data: {
+		drafts: ValidatedGiftDraft[];
+		title?: string;
+		categoryResolutions: ImportCategoryResolution[];
+	}) {
+		const nextSignature = JSON.stringify({
+			drafts: data.drafts,
+			categoryResolutions: data.categoryResolutions,
+		});
 		if (nextSignature !== selectedDraftSignature) {
 			resetServerDuplicateAcknowledgement();
 			selectedDraftSignature = nextSignature;
 		}
 		selectedDrafts = data.drafts;
+		selectedCategoryResolutions = data.categoryResolutions;
 		reviewTitle = data.title;
 	}
 
@@ -215,11 +230,13 @@
 								recipientName: trimmedRecipientName,
 								title: commitTitle,
 								gifts: selectedDrafts,
+								categoryResolutions: selectedCategoryResolutions,
 							}
 						: {
 								recipientKind: RECIPIENT_KIND.self,
 								title: commitTitle,
 								gifts: selectedDrafts,
+								categoryResolutions: selectedCategoryResolutions,
 							},
 				);
 				commitStatus = COMMIT_STATUS.success;
@@ -230,7 +247,11 @@
 					throw new Error('wishlistId is required in append mode');
 				}
 				const submission = await submitDuplicateAwareImport({
-					command: (request) => importGifts(request),
+					command: (request) =>
+						importGifts({
+							...request,
+							categoryResolutions: selectedCategoryResolutions,
+						}),
 					wishlistId,
 					drafts: selectedDrafts,
 					state: duplicateSubmissionState,
@@ -285,6 +306,7 @@
 		parsedRows = [];
 		filename = undefined;
 		selectedDrafts = [];
+		selectedCategoryResolutions = [];
 		reviewTitle = undefined;
 		commitStatus = COMMIT_STATUS.idle;
 		resetServerDuplicateAcknowledgement();
@@ -429,6 +451,7 @@
 					{mode}
 					{existingGifts}
 					{priorityAvailable}
+					{categoryOptions}
 					bind:titleTouched
 					onready={handleReviewReady}
 				/>

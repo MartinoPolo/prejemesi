@@ -31,6 +31,7 @@ export interface ExistingGiftRef {
 /** Payload emitted on every change, including selected rows that block submission. */
 export interface DraftGridChange {
 	drafts: ValidatedGiftDraft[];
+	selectedDrafts: GiftDraft[];
 	validCount: number;
 	selectedCount: number;
 	blockingCount: number;
@@ -53,6 +54,8 @@ export interface DraftGridRow {
 	quantity: string;
 	/** Binary priority toggled via the heart control; medium until set high. */
 	priority: DraftPriority;
+	categoryId: string;
+	importedCategoryLabel: string;
 	selected: boolean;
 	/** Untouched batch starter – suppresses the premature error tint while blank. */
 	pristine: boolean;
@@ -75,6 +78,8 @@ export function createDraftGridRow(
 		imageUrl: init?.imageUrl ?? '',
 		quantity: init?.quantity === undefined ? '1' : String(init.quantity),
 		priority: init?.priority ?? DEFAULT_DRAFT_PRIORITY,
+		categoryId: init?.categoryId ?? '',
+		importedCategoryLabel: init?.importedCategoryLabel ?? '',
 		selected: opts?.selected ?? true,
 		pristine: opts?.pristine ?? false,
 		dismissedDuplicate: false,
@@ -99,6 +104,8 @@ export function rowToDraft(row: DraftGridRow): GiftDraft {
 				? parsedQuantity
 				: row.quantity,
 		priority: row.priority,
+		categoryId: row.categoryId || null,
+		importedCategoryLabel: row.importedCategoryLabel.trim() || null,
 	};
 }
 
@@ -106,8 +113,10 @@ export function rowToDraft(row: DraftGridRow): GiftDraft {
 export function collectDraftGridChange(
 	rows: readonly DraftGridRow[],
 	hasDuplicateWarning: (row: DraftGridRow) => boolean,
+	resolvedImportedCategoryLabels: ReadonlySet<string> = new Set(),
 ): DraftGridChange {
 	const drafts: ValidatedGiftDraft[] = [];
+	const selectedDrafts: GiftDraft[] = [];
 	let selectedCount = 0;
 	let blockingCount = 0;
 
@@ -116,7 +125,9 @@ export function collectDraftGridChange(
 			continue;
 		}
 		selectedCount++;
-		const validation = validateDraft(rowToDraft(row));
+		const draft = rowToDraft(row);
+		selectedDrafts.push(draft);
+		const validation = validateDraft(draft, { resolvedImportedCategoryLabels });
 		const unresolvedDuplicate = !row.dismissedDuplicate && hasDuplicateWarning(row);
 		if (!validation.valid || unresolvedDuplicate) {
 			blockingCount++;
@@ -125,5 +136,5 @@ export function collectDraftGridChange(
 		drafts.push(validation.normalized);
 	}
 
-	return { drafts, validCount: drafts.length, selectedCount, blockingCount };
+	return { drafts, selectedDrafts, validCount: drafts.length, selectedCount, blockingCount };
 }

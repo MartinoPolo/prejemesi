@@ -2,7 +2,7 @@ import * as v from 'valibot';
 import { eq, and, isNull, sql, count as drizzleCount, inArray } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
-import { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
+import { gift, giftCategory, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
 import {
@@ -48,6 +48,10 @@ import {
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { appendGifts } from './gift_creation_service.js';
 import { mapGiftCreationError } from './gift_creation_transport.js';
+import {
+	assertActiveGiftCategoryAssignment,
+	publicGiftCategory,
+} from '$lib/modules/gift-categories/gift_categories_service.js';
 
 export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authContext, shortId) => {
 	const database = getDb();
@@ -67,7 +71,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 	// Determine role
 	const role: WishlistRole = await resolveWishlistRole(authContext, wishlistRow);
 
-	// Fetch gifts with priority info
+	// Fetch gifts with priority/category info
 	const giftRows = await database
 		.select({
 			id: gift.id,
@@ -90,11 +94,38 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			priorityLevelId: gift.priorityLevelId,
 			priorityLabel: priorityLevel.label,
 			prioritySortOrder: priorityLevel.sortOrder,
+			categoryId: gift.categoryId,
+			categoryPresetKey: giftCategory.presetKey,
+			categoryCustomLabel: giftCategory.customLabel,
+			categorySortOrder: giftCategory.sortOrder,
 		})
 		.from(gift)
 		.leftJoin(priorityLevel, eq(gift.priorityLevelId, priorityLevel.id))
+		.leftJoin(
+			giftCategory,
+			and(
+				eq(gift.categoryId, giftCategory.id),
+				eq(gift.wishlistId, giftCategory.wishlistId),
+				isNull(giftCategory.deletedAt),
+			),
+		)
 		.where(and(eq(gift.wishlistId, wishlistRow.id), isNull(gift.deletedAt)))
 		.orderBy(gift.sortOrder);
+
+	const giftCategoryForRow = (row: (typeof giftRows)[number]) =>
+		row.categoryId === null ||
+		(row.categoryPresetKey === null && row.categoryCustomLabel === null)
+			? null
+			: publicGiftCategory({
+					id: row.categoryId,
+					wishlistId: wishlistRow.id,
+					presetKey: row.categoryPresetKey,
+					customLabel: row.categoryCustomLabel,
+					sortOrder: row.categorySortOrder ?? 0,
+					deletedAt: null,
+					createdAt: new Date(0),
+					updatedAt: new Date(0),
+				});
 
 	if (hidesReservationState(role, wishlistRow.recipientIsModerator)) {
 		// Recipient without self-promote: no reservation data, no like counts (protects the surprise)
@@ -119,6 +150,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			priorityLevelId: row.priorityLevelId,
 			priorityLabel: row.priorityLabel,
 			prioritySortOrder: row.prioritySortOrder,
+			categoryId: row.categoryId ?? null,
+			category: giftCategoryForRow(row),
 		}));
 
 		return { role, gifts: recipientGifts } as const;
@@ -250,6 +283,8 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			priorityLevelId: row.priorityLevelId,
 			priorityLabel: row.priorityLabel,
 			prioritySortOrder: row.prioritySortOrder,
+			categoryId: row.categoryId ?? null,
+			category: giftCategoryForRow(row),
 			likeCount: likeCounts.get(row.id) ?? 0,
 			reservedCount: reserved,
 			isFullyReserved: reserved >= qty,
@@ -384,6 +419,13 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 			...outcome.updateData,
 			updatedAt: now,
 		};
+		if (input.categoryId !== undefined && updateData.categoryId !== undefined) {
+			updateData.categoryId = await assertActiveGiftCategoryAssignment(
+				database,
+				giftRow.wishlistId,
+				input.categoryId,
+			);
+		}
 		if (outcome.changed) {
 			applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
 		}
@@ -447,6 +489,14 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	}
 	if (input.priorityLevelId !== undefined && input.priorityLevelId !== giftRow.priorityLevelId) {
 		updateData.priorityLevelId = input.priorityLevelId;
+		didChange = true;
+	}
+	if (input.categoryId !== undefined && input.categoryId !== giftRow.categoryId) {
+		updateData.categoryId = await assertActiveGiftCategoryAssignment(
+			database,
+			giftRow.wishlistId,
+			input.categoryId,
+		);
 		didChange = true;
 	}
 

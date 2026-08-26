@@ -2,7 +2,7 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
@@ -18,6 +18,7 @@
 	} from '$lib/modules/gifts/draft_grid.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftRow from './GiftDraftRow.svelte';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import GiftDraftBulkBar from './GiftDraftBulkBar.svelte';
 	import GiftDraftStatusLegend from './GiftDraftStatusLegend.svelte';
 	import {
@@ -51,6 +52,8 @@
 		 * two ranks the toggle maps to. Defaults to true (every wishlist has them).
 		 */
 		priorityAvailable?: boolean;
+		categoryOptions?: ManagedGiftCategory[];
+		resolvedImportedCategoryLabels?: ReadonlySet<string>;
 		/** Emitted on every edit/selection change with the committable draft set. */
 		onchange?: (change: DraftGridChange) => void;
 		class?: string;
@@ -63,6 +66,8 @@
 		allowAddRow,
 		showLegend,
 		priorityAvailable = true,
+		categoryOptions = [],
+		resolvedImportedCategoryLabels = new Set(),
 		onchange,
 		class: className,
 	}: Props = $props();
@@ -99,7 +104,7 @@
 	}
 
 	function rowStatus(row: DraftGridRow): RowStatus {
-		const validation = validateDraft(rowToDraft(row));
+		const validation = validateDraft(rowToDraft(row), { resolvedImportedCategoryLabels });
 		return deriveRowStatus({
 			name: row.name,
 			isDuplicate: !row.dismissedDuplicate && rowHasDuplicateWarning(row),
@@ -108,8 +113,14 @@
 		});
 	}
 
+	const resolvedImportedCategorySignature = $derived(
+		[...resolvedImportedCategoryLabels].sort().join('|'),
+	);
+
 	function emit() {
-		onchange?.(collectDraftGridChange(rows, rowHasDuplicateWarning));
+		onchange?.(
+			collectDraftGridChange(rows, rowHasDuplicateWarning, resolvedImportedCategoryLabels),
+		);
 	}
 
 	function selectAll(checked: boolean) {
@@ -142,6 +153,11 @@
 	// Emit once after mount so hosts (e.g. the batch dialog footer) get the initial
 	// draft set + validity without waiting for the first user interaction.
 	onMount(emit);
+
+	$effect(() => {
+		resolvedImportedCategorySignature;
+		untrack(emit);
+	});
 </script>
 
 <div class={cn('flex min-h-0 flex-col', className)}>
@@ -188,6 +204,7 @@
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_links()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_price()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_image()}</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_category()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_quantity()}</span>
 			{#if priorityAvailable}
 				<SimpleTooltip text={m.draft_grid_col_priority()} side="top">
@@ -218,6 +235,8 @@
 					bind:row={rows[index]}
 					status={rowStatus(row)}
 					showPriority={priorityAvailable}
+					{categoryOptions}
+					{resolvedImportedCategoryLabels}
 					onchange={emit}
 					ondelete={() => removeRow(row.id)}
 					ondismissduplicate={() => dismissDuplicate(row)}

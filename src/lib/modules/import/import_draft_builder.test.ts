@@ -135,6 +135,35 @@ describe('buildDraftRows', () => {
 		expect(drafts[0].links).toEqual([]);
 	});
 
+	it('resolves localized active category labels during import', () => {
+		const columns: DetectedColumn[] = [
+			makeColumn(0, COLUMN_ROLE.name, 'Name'),
+			makeColumn(1, COLUMN_ROLE.category, 'Kategorie'),
+		];
+
+		const [draft] = buildDraftRows([['Kostky', 'Hračky']], columns, [
+			{ id: 'category-toys', presetKey: 'toys', customLabel: null, sortOrder: 0 },
+		]);
+
+		expect(draft.categoryId).toBe('category-toys');
+		expect(validateDraft(draft).valid).toBe(true);
+	});
+
+	it('keeps unknown imported category labels blocking until explicitly resolved', () => {
+		const columns: DetectedColumn[] = [
+			makeColumn(0, COLUMN_ROLE.name, 'Name'),
+			makeColumn(1, COLUMN_ROLE.category, 'Category'),
+		];
+
+		const [draft] = buildDraftRows([['Tent', 'Outdoor']], columns);
+
+		expect(draft.importedCategoryLabel).toBe('Outdoor');
+		expect(validateDraft(draft)).toMatchObject({ valid: false, issues: ['category'] });
+		expect(
+			validateDraft(draft, { resolvedImportedCategoryLabels: new Set(['outdoor']) }).valid,
+		).toBe(true);
+	});
+
 	it('keeps an unsafe imported image URL editable but marks the row invalid', () => {
 		const columns: DetectedColumn[] = [
 			makeColumn(0, COLUMN_ROLE.name, 'Name'),

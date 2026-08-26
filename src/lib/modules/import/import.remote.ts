@@ -24,6 +24,7 @@ import {
 import { canonicalGiftLinkKey } from '$lib/modules/gifts/gift_url.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { mapGiftCreationError } from '$lib/modules/gifts/gift_creation_transport.js';
+import { resolveImportGiftCategoryAssignments } from '$lib/modules/gift-categories/gift_categories_service.js';
 import {
 	buildSheetsCsvExportUrl,
 	classifySheetCsvResponse,
@@ -89,6 +90,7 @@ export const fetchGoogleSheetCsv = guardedCommand(SheetLinkSchema, async (_authC
 function draftToGiftInput(
 	draft: GiftDraftInput,
 	priorityLevelId: string | null,
+	categoryId: string | null,
 ): NormalizedGiftCreationInput {
 	return {
 		name: draft.name,
@@ -100,7 +102,19 @@ function draftToGiftInput(
 		imageUrl: draft.imageUrl,
 		quantity: draft.quantity,
 		priorityLevelId,
+		categoryId,
 	};
+}
+
+function resolvedDraftCategoryId(
+	draft: GiftDraftInput,
+	resolvedImportedCategories: ReadonlyMap<string, string>,
+): string | null {
+	if (draft.categoryId != null && draft.categoryId !== '') {
+		return draft.categoryId;
+	}
+	const importedLabel = draft.importedCategoryLabel?.trim() ?? '';
+	return importedLabel === '' ? null : (resolvedImportedCategories.get(importedLabel) ?? null);
 }
 
 /**
@@ -197,6 +211,12 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 				.limit(1)
 				.for('update');
 			const rankedLevelIds = await rankedPriorityLevelIds(tx, input.wishlistId);
+			const resolvedImportedCategories = await resolveImportGiftCategoryAssignments({
+				database: tx,
+				wishlistId: input.wishlistId,
+				drafts: input.gifts,
+				resolutions: input.categoryResolutions,
+			});
 			const duplicateIndexes = await findCanonicalLinkDuplicateIndexes(
 				tx,
 				input.wishlistId,
@@ -212,7 +232,11 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 				wishlistId: input.wishlistId,
 				actorId: user.id,
 				gifts: input.gifts.map((draft) =>
-					draftToGiftInput(draft, resolvePriorityLevelId(draft.priority, rankedLevelIds)),
+					draftToGiftInput(
+						draft,
+						resolvePriorityLevelId(draft.priority, rankedLevelIds),
+						resolvedDraftCategoryId(draft, resolvedImportedCategories),
+					),
 				),
 			});
 			return { status: 'created', gifts: created } satisfies ImportGiftsResult;
@@ -242,6 +266,12 @@ export const createWishlistFromImport = guardedCommand(
 
 			if (input.gifts.length > 0) {
 				const rankedLevelIds = await rankedPriorityLevelIds(tx, created.id);
+				const resolvedImportedCategories = await resolveImportGiftCategoryAssignments({
+					database: tx,
+					wishlistId: created.id,
+					drafts: input.gifts,
+					resolutions: input.categoryResolutions,
+				});
 				await appendGiftsUsingTransaction(tx, {
 					wishlistId: created.id,
 					actorId: user.id,
@@ -250,6 +280,7 @@ export const createWishlistFromImport = guardedCommand(
 						draftToGiftInput(
 							draft,
 							resolvePriorityLevelId(draft.priority, rankedLevelIds),
+							resolvedDraftCategoryId(draft, resolvedImportedCategories),
 						),
 					),
 				});

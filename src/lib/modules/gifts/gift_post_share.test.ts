@@ -60,6 +60,27 @@ describe('computePreShareOwnerEdit', () => {
 		});
 	});
 
+	describe('category', () => {
+		it('allows changing category without changing the frozen gift name', () => {
+			const outcome = computePreShareOwnerEdit(
+				makeCurrent({ categoryId: 'category-old' }),
+				makeInput({ categoryId: 'category-new', name: 'Camera' }),
+				NOW,
+			);
+
+			expect(outcome.rejection).toBeNull();
+			expect(outcome.updateData.categoryId).toBe('category-new');
+			expect('name' in outcome.updateData).toBe(false);
+			expect(outcome.changed).toBe(true);
+		});
+
+		it('keeps category assignment in the pre-share snapshot used for net-zero comparisons', () => {
+			expect(
+				toPreShareGiftSnapshot(makeCurrent({ categoryId: 'category-books' })).categoryId,
+			).toBe('category-books');
+		});
+	});
+
 	describe('quantity', () => {
 		it('allows raising quantity and writes it', () => {
 			const outcome = computePreShareOwnerEdit(

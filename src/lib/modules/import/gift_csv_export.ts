@@ -20,6 +20,7 @@ export interface ExportableGift {
 	links: GiftLink[];
 	price: number | null;
 	currency: string | null;
+	categoryLabel?: string | null;
 }
 
 /** Extra link columns beyond the first reuse the same „Odkaz"/"Link" label with a suffix. */
@@ -48,6 +49,7 @@ export function buildGiftCsv(gifts: readonly ExportableGift[]): string {
 		m.import_wizard_role_notes(),
 		...linkHeaders,
 		m.import_wizard_role_price(),
+		m.draft_grid_col_category(),
 	];
 
 	const rows = gifts.map((gift) => [
@@ -55,6 +57,7 @@ export function buildGiftCsv(gifts: readonly ExportableGift[]): string {
 		gift.description ?? '',
 		...linkHeaders.map((_, index) => gift.links[index]?.url ?? ''),
 		formatPrice(gift),
+		gift.categoryLabel ?? '',
 	]);
 
 	return Papa.unparse([header, ...rows]);

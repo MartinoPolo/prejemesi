@@ -12,7 +12,7 @@ Follow this order exactly:
 4. **Verify the existing manual paths.** In production, add one gift through the normal UI and then add a small bulk/import batch. Using a non-actor follower account, verify that both paths create/coalesce the expected single and bulk new-gift digest behavior before enabling machine ingestion.
 5. Create a dedicated actor account and choose the single fixed target wishlist. Then configure Worker secret/variables `GIFT_INGESTION_TOKEN`, `GIFT_INGESTION_TARGET_SHORT_ID`, and `GIFT_INGESTION_ACTOR_ID`. Confirm the deployed Worker also has the `GIFT_INGESTION_RATE_LIMIT` binding declared in `wrangler.jsonc` (60 requests per 60 seconds). Missing endpoint values disable the endpoint; a missing or failing rate-limit binding fails closed with HTTP 503. Do not enable ingestion before the preceding checks pass.
 6. Put `GIFT_INGESTION_TOKEN` and `GIFT_INGESTION_BASE_URL` in the ignored local file `.env.gift-ingestion.local`. The base URL is the allowlisted exact production origin: non-local HTTPS with no credentials, query, fragment, or non-root path.
-7. Prepare a schema-version-1 manifest whose short ID, title, and recipient exactly match the fixed target. Every item must have at least one gift link, and `gift.links[0].url` must exactly equal its `sourceUrl`.
+7. Prepare a schema-version-1 manifest whose short ID, title, and recipient exactly match the fixed target. Every item must have at least one gift link, and `gift.links[0].url` must exactly equal its `sourceUrl`. `gift.category` is optional; when present it must be user-provided or evidence-backed and already enabled on the fixed target wishlist. It may match an enabled custom label or either Czech/English label of an enabled preset. Unknown or disabled categories reject dry-run/apply before image preparation or insertion, and never create categories automatically.
 8. Run a dry-run and inspect the resolved short ID, title, recipient, every proposed item, warnings, skips, and conflicts. Stop on any identity mismatch, ambiguity, or conflict.
 9. Apply one controlled, reviewed gift. Verify the created gift, provenance/audit result, mirrored image when present, and follower digest before proceeding.
 10. Only after the controlled gift passes verification, process normal batches. Continue to dry-run and inspect every manifest before apply.
@@ -37,7 +37,7 @@ Dry-run is the default:
 pnpm ingest:gifts --manifest ./gifts.json --base-url https://prejemesi.example
 ```
 
-It reports the resolved identity, `wouldCreate`, `alreadyApplied`, `skipped`, warnings, and conflicts. It creates no gifts, audit rows, notifications, or uploads.
+It reports the resolved identity, category validation, `wouldCreate`, `alreadyApplied`, `skipped`, warnings, and conflicts. It creates no gifts, audit rows, notifications, or uploads.
 
 ## Apply
 
