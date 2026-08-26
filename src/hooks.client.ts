@@ -16,10 +16,10 @@ interface SentryReplayControl {
 	stop(options: { flush: false }): Promise<void>;
 }
 
-type SentryReplayApi = typeof import('@sentry/sveltekit') & {
+interface SentryReplayApi {
 	replayIntegration?: (options: Record<string, unknown>) => SentryReplayIntegration;
 	getReplay?: () => SentryReplayControl | undefined;
-};
+}
 
 const sentryErrorHandlerPromise = hasDsn
 	? Promise.all([

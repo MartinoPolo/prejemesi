@@ -41,6 +41,8 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 	}
 
 	function capturePositions(): Map<string, ItemPosition> {
+		// These FLIP snapshots are local and non-reactive; SvelteMap would add no behavior.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const positions = new Map<string, ItemPosition>();
 		for (const element of options.getItemElements()) {
 			const id = element.dataset.giftId;
