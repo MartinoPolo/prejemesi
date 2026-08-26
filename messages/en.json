@@ -379,7 +379,6 @@
 	"gift_reorder_keyboard_hint": "Use arrow keys to reorder",
 	"gift_reorder_action": "Reorder",
 	"gift_reorder_done": "Done",
-	"recipient_view_preview_label": "Recipient view preview",
 	"recipient_view_preview_turn_on": "Show as recipient",
 	"recipient_view_preview_turn_off": "Turn off recipient preview",
 	"recipient_view_preview_description": "Shows the list without reservation status, exactly as the recipient sees it.",

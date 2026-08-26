@@ -74,9 +74,9 @@
 		/** Awaited page refresh after a successful revert-to-draft (issue #150). */
 		onreverted?: () => Promise<void>;
 		/** Opens the append import wizard from settings while keeping manager-only visibility. */
-		onimport?: () => void;
+		onimport: () => void;
 		/** Downloads the gift spreadsheet export from settings while keeping manager-only visibility. */
-		onexport?: () => void;
+		onexport: () => void;
 		/** Opens the shared edit-recipient dialog (issue #150) — the page renders it. */
 		oneditrecipient?: () => void;
 	}
@@ -239,14 +239,6 @@
 		} finally {
 			savingImage = false;
 		}
-	}
-
-	function handleImportClick() {
-		onimport?.();
-	}
-
-	function handleExportClick() {
-		onexport?.();
 	}
 
 	// ── Delete handler (issue #120) ────────────────────────────────────────────
@@ -529,21 +521,11 @@
 						</Card.Header>
 						<Card.Content>
 							<div class="flex flex-wrap gap-2">
-								<Button
-									type="button"
-									intent="outline"
-									size="sm"
-									onclick={handleImportClick}
-								>
+								<Button type="button" intent="outline" size="sm" onclick={onimport}>
 									<FileUpIcon data-icon="inline-start" />
 									{m.import_toolbar_label()}
 								</Button>
-								<Button
-									type="button"
-									intent="outline"
-									size="sm"
-									onclick={handleExportClick}
-								>
+								<Button type="button" intent="outline" size="sm" onclick={onexport}>
 									<FileDownIcon data-icon="inline-start" />
 									{m.export_toolbar_label()}
 								</Button>

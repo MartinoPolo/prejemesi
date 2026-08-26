@@ -20,7 +20,7 @@
 	interface WishlistModalsProps {
 		/** Viewer role — drives the reserve gate (recipient cannot reserve). */
 		role: WishlistRole;
-		/** Recipient OR správce: gates the gift editor, share wizard, theme, správci panel, batch add. */
+		/** Recipient OR správce: gates the gift editor, share wizard, správci panel, batch add. */
 		canManage: boolean;
 		isAuthenticated: boolean;
 		redirectHref: string;
