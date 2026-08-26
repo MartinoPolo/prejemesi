@@ -77,6 +77,7 @@ test('card drag preview stays stable while the pointer rests on a gift boundary'
 		sampledOrders.push((await visibleGiftNames(page, names.length)).join('|'));
 	}
 
+	expect(sampledOrders[0]).not.toBe(initialOrder.join('|'));
 	expect(new Set(sampledOrders).size).toBe(1);
 	await page.keyboard.press('Escape');
 	await page.mouse.up();

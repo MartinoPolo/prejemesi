@@ -1,5 +1,4 @@
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
-import { SvelteMap } from 'svelte/reactivity';
 
 export interface GiftPointerReorderOptions {
 	getItemElements: () => HTMLElement[];
@@ -16,9 +15,9 @@ interface ItemPosition {
 	top: number;
 }
 
-interface HitTestSlot {
-	centerX: number;
-	centerY: number;
+interface Point {
+	x: number;
+	y: number;
 }
 
 export function createGiftPointerReorderController(options: GiftPointerReorderOptions) {
@@ -34,7 +33,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 	let sourceVisibility = '';
 	let pointerOffsetX = 0;
 	let pointerOffsetY = 0;
-	let hitTestSlots: HitTestSlot[] = [];
+	let stableHitTestCenters: Point[] = [];
 	const runningAnimations = new WeakMap<HTMLElement, Animation>();
 
 	function prefersReducedMotion(): boolean {
@@ -42,7 +41,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 	}
 
 	function capturePositions(): Map<string, ItemPosition> {
-		const positions = new SvelteMap<string, ItemPosition>();
+		const positions = new Map<string, ItemPosition>();
 		for (const element of options.getItemElements()) {
 			const id = element.dataset.giftId;
 			if (id === undefined) {
@@ -87,7 +86,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		});
 	}
 
-	function captureHitTestSlots(elements: HTMLElement[]): HitTestSlot[] {
+	function captureHitTestCenters(elements: HTMLElement[]): Point[] {
 		const scrollX = window.scrollX;
 		const scrollY = window.scrollY;
 
@@ -95,8 +94,8 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 			const rect = element.getBoundingClientRect();
 
 			return {
-				centerX: rect.left + scrollX + rect.width / 2,
-				centerY: rect.top + scrollY + rect.height / 2,
+				x: rect.left + scrollX + rect.width / 2,
+				y: rect.top + scrollY + rect.height / 2,
 			};
 		});
 	}
@@ -107,9 +106,9 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		const pageX = clientX + window.scrollX;
 		const pageY = clientY + window.scrollY;
 
-		for (let index = 0; index < hitTestSlots.length; index += 1) {
-			const slot = hitTestSlots[index]!;
-			const distance = (pageX - slot.centerX) ** 2 + (pageY - slot.centerY) ** 2;
+		for (let index = 0; index < stableHitTestCenters.length; index += 1) {
+			const center = stableHitTestCenters[index]!;
+			const distance = (pageX - center.x) ** 2 + (pageY - center.y) ** 2;
 			if (distance < bestDistance) {
 				bestDistance = distance;
 				bestIndex = index;
@@ -214,7 +213,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		initialOrder = [];
 		currentOrder = [];
 		currentIndex = -1;
-		hitTestSlots = [];
+		stableHitTestCenters = [];
 		if (commit) {
 			if (finalOrder.some((id, index) => id !== rollbackOrder[index])) {
 				options.onCommitOrder(finalOrder);
@@ -261,7 +260,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		initialOrder = [...itemIds];
 		currentOrder = [...itemIds];
 		currentIndex = index;
-		hitTestSlots = captureHitTestSlots(itemElements);
+		stableHitTestCenters = captureHitTestCenters(itemElements);
 		draggedGiftId.current = giftId;
 		dragOverGiftId.current = giftId;
 		createOverlay(element, event);
