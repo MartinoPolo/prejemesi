@@ -7,6 +7,7 @@ export {
 export {
 	resolveAutoFit,
 	resolveFrameFill,
+	hasExplicitFrameFill,
 	IMAGE_FIT_MODES,
 	IMAGE_TOKEN_SCOPES,
 	type ImageFitMode,

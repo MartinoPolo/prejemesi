@@ -1,3 +1,4 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -25,6 +26,11 @@ function imageMeta(bgColor: string | null): ImageMetadata {
 }
 
 const targets = ['square', 'thumb'] as const satisfies readonly GiftCropTarget[];
+const expectedComputedBackground = {
+	'#ffffff': 'rgb(255, 255, 255)',
+	'#000000': 'rgb(0, 0, 0)',
+	transparent: 'rgba(0, 0, 0, 0)',
+} as const;
 
 describe('GiftImage persisted background fill', () => {
 	it.each(
@@ -50,6 +56,24 @@ describe('GiftImage persisted background fill', () => {
 		const frame = screen.container.querySelector<HTMLElement>('[style*="--frame-fill"]');
 		expect(frame).not.toBeNull();
 		expect(getComputedStyle(frame!).getPropertyValue('--frame-fill').trim()).toBe(bgColor);
+		expect(getComputedStyle(frame!).backgroundColor).toBe(expectedComputedBackground[bgColor]);
+	});
+
+	it('lets an explicit fill win over caller background classes', async () => {
+		const screen = await render(GiftImage, {
+			props: {
+				class: 'size-12 bg-transparent',
+				imageUrl,
+				imageMeta: imageMeta('#000000'),
+				target: 'thumb',
+				alt: 'Gift override',
+			},
+		});
+
+		await expect.element(screen.getByRole('img', { name: 'Gift override' })).toBeVisible();
+		const frame = screen.container.querySelector<HTMLElement>('[style*="--frame-fill"]');
+		expect(frame).not.toBeNull();
+		expect(getComputedStyle(frame!).backgroundColor).toBe('rgb(0, 0, 0)');
 	});
 
 	it.each(targets)('keeps the theme fallback for the %s target', async (target) => {

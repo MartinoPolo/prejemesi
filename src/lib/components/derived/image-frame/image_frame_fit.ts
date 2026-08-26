@@ -24,6 +24,10 @@ export const IMAGE_TOKEN_SCOPES = {
 
 export type ImageTokenScope = (typeof IMAGE_TOKEN_SCOPES)[keyof typeof IMAGE_TOKEN_SCOPES];
 
+export function hasExplicitFrameFill(fillColor: string | null | undefined): fillColor is string {
+	return fillColor !== undefined && fillColor !== null && fillColor.trim() !== '';
+}
+
 /**
  * Aspect-ratio divergence beyond which `auto` switches from cover to contain.
  * An image is "extreme" when it is more than this many times wider or taller
@@ -109,7 +113,7 @@ export function resolveFrameFill(options: {
 	tokenScope: ImageTokenScope;
 }): string {
 	const { fillColor, tokenScope } = options;
-	if (fillColor !== null && fillColor.trim() !== '') {
+	if (hasExplicitFrameFill(fillColor)) {
 		return fillColor;
 	}
 	if (tokenScope === IMAGE_TOKEN_SCOPES.wishlist) {

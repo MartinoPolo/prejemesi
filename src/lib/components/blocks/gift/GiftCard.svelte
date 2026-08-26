@@ -21,6 +21,8 @@
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
+	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftDescription from './GiftDescription.svelte';
 
@@ -56,6 +58,10 @@
 	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
 
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
+	const explicitImageFrameFill = $derived.by(() => {
+		const fillColor = gift.imageMeta?.bgColor;
+		return hasExplicitFrameFill(fillColor) ? fillColor : null;
+	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
@@ -63,8 +69,18 @@
 
 <div class={styles.card()}>
 	<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
-	<div class={styles.imageArea()}>
-		<div class={styles.imagePattern()} aria-hidden="true"></div>
+	<div
+		class={cn(styles.imageArea(), explicitImageFrameFill !== null && 'bg-[var(--frame-fill)]')}
+		data-testid="gift-card-image-frame"
+		style:--frame-fill={explicitImageFrameFill ?? undefined}
+	>
+		{#if explicitImageFrameFill === null}
+			<div
+				class={styles.imagePattern()}
+				data-testid="gift-card-image-pattern"
+				aria-hidden="true"
+			></div>
+		{/if}
 
 		<GiftImage
 			class="size-full rounded-none bg-transparent"
