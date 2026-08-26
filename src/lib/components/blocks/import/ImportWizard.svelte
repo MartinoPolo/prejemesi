@@ -25,6 +25,7 @@
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
 	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import { importGifts, createWishlistFromImport } from '$lib/modules/import/import.remote.js';
+	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import {
 		createDuplicateAwareImportState,
 		resetDuplicateAwareImportState,
@@ -94,6 +95,7 @@
 	let selectedCategoryResolutions = $state<ImportCategoryResolution[]>([]);
 	let reviewTitle = $state<string | undefined>(undefined);
 	let commitStatus = $state<CommitStatus>(COMMIT_STATUS.idle);
+	let commitError = $state<string | null>(null);
 	let duplicateSubmissionState = $state(createDuplicateAwareImportState<ValidatedGiftDraft>());
 	let selectedDraftSignature = $state('');
 
@@ -219,6 +221,7 @@
 		}
 
 		commitStatus = COMMIT_STATUS.committing;
+		commitError = null;
 		try {
 			if (mode === WIZARD_MODE.newList) {
 				const commitTitle = (reviewTitle ?? '').trim();
@@ -265,9 +268,10 @@
 				onsuccess?.();
 				return { shortId: wishlistShortId ?? wishlistId };
 			}
-		} catch {
+		} catch (thrown) {
 			commitStatus = COMMIT_STATUS.error;
-			throw new Error('commit failed');
+			commitError = translateServerError(thrown, m.import_wizard_error_commit());
+			throw thrown;
 		}
 	}
 
@@ -465,6 +469,7 @@
 					serverDuplicateCount={duplicateSubmissionState.duplicateCount}
 					oncommit={handleCommit}
 					{commitStatus}
+					{commitError}
 					{suppressNavigation}
 				/>
 			{/if}

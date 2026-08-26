@@ -211,12 +211,6 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 				.limit(1)
 				.for('update');
 			const rankedLevelIds = await rankedPriorityLevelIds(tx, input.wishlistId);
-			const resolvedImportedCategories = await resolveImportGiftCategoryAssignments({
-				database: tx,
-				wishlistId: input.wishlistId,
-				drafts: input.gifts,
-				resolutions: input.categoryResolutions,
-			});
 			const duplicateIndexes = await findCanonicalLinkDuplicateIndexes(
 				tx,
 				input.wishlistId,
@@ -228,6 +222,12 @@ export const importGifts = guardedCommand(ImportGiftsInputSchema, async ({ user 
 					duplicateIndexes,
 				} satisfies ImportGiftsResult;
 			}
+			const resolvedImportedCategories = await resolveImportGiftCategoryAssignments({
+				database: tx,
+				wishlistId: input.wishlistId,
+				drafts: input.gifts,
+				resolutions: input.categoryResolutions,
+			});
 			const created = await appendGiftsUsingTransaction(tx, {
 				wishlistId: input.wishlistId,
 				actorId: user.id,

@@ -129,7 +129,9 @@ beforeEach(() => {
 });
 
 describe('gift category management service', () => {
-	it('blocks deleting a custom category while active gifts use it', async () => {
+	it('serializes deletion and blocks it while active gifts use the category', async () => {
+		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
+		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([customCategory]);
 		mockDbInstance.pushResult([{ count: 2 }]);
 
@@ -139,9 +141,13 @@ describe('gift category management service', () => {
 		});
 
 		expect(mockDbInstance.calls.filter((call) => call.method === 'update')).toHaveLength(0);
+		expect(mockDbInstance.calls.some((call) => call.method === 'transaction')).toBe(true);
+		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
 
-	it('marks assigned gifts edited when a used custom category is renamed after sharing', async () => {
+	it('serializes rename and marks assigned gifts edited when shared', async () => {
+		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
+		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([customCategory]);
 		mockDbInstance.pushResult([customCategory]);
 		mockDbInstance.pushResult([]);
@@ -156,6 +162,7 @@ describe('gift category management service', () => {
 		expect(
 			(setCalls[1]?.args[0] as { editedAfterShareAt?: unknown }).editedAfterShareAt,
 		).toBeInstanceOf(Date);
+		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
 
 	it('creates explicitly resolved custom import categories inside the caller transaction', async () => {

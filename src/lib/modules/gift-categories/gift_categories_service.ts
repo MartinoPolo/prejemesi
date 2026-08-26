@@ -24,6 +24,18 @@ function dbOrTx(database?: CategoryDatabase): CategoryDatabase {
 	return database ?? getDb();
 }
 
+async function lockWishlistCategoryStructure(
+	database: CategoryDatabase,
+	wishlistId: string,
+): Promise<void> {
+	await database
+		.select({ id: wishlist.id })
+		.from(wishlist)
+		.where(eq(wishlist.id, wishlistId))
+		.limit(1)
+		.for('update');
+}
+
 export function publicGiftCategory(row: typeof giftCategory.$inferSelect): PublicGiftCategory {
 	return {
 		id: row.id,
@@ -87,7 +99,8 @@ export async function assertActiveGiftCategoryAssignment(
 				isNull(giftCategory.deletedAt),
 			),
 		)
-		.limit(1);
+		.limit(1)
+		.for('update');
 	if (row === undefined) {
 		error(400, SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH);
 	}
@@ -289,6 +302,7 @@ export async function enablePresetGiftCategory(params: {
 		error(400, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
 	}
 	await database.transaction(async (tx) => {
+		await lockWishlistCategoryStructure(tx, params.wishlistId);
 		const [row] = await tx
 			.select()
 			.from(giftCategory)
@@ -338,7 +352,10 @@ export async function createCustomGiftCategory(params: {
 	label: string;
 }): Promise<PublicGiftCategory> {
 	const database = getDb();
-	return database.transaction((tx) => createCustomGiftCategoryWithDatabase(tx, params));
+	return database.transaction(async (tx) => {
+		await lockWishlistCategoryStructure(tx, params.wishlistId);
+		return createCustomGiftCategoryWithDatabase(tx, params);
+	});
 }
 
 export async function renameCustomGiftCategory(params: {
@@ -347,6 +364,15 @@ export async function renameCustomGiftCategory(params: {
 }): Promise<void> {
 	const database = getDb();
 	await database.transaction(async (tx) => {
+		const [categoryIdentity] = await tx
+			.select({ wishlistId: giftCategory.wishlistId })
+			.from(giftCategory)
+			.where(eq(giftCategory.id, params.categoryId))
+			.limit(1);
+		if (categoryIdentity === undefined) {
+			error(404, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
+		}
+		await lockWishlistCategoryStructure(tx, categoryIdentity.wishlistId);
 		const [row] = await tx
 			.select()
 			.from(giftCategory)
@@ -391,6 +417,15 @@ export async function renameCustomGiftCategory(params: {
 export async function deleteCustomGiftCategory(categoryId: string): Promise<void> {
 	const database = getDb();
 	await database.transaction(async (tx) => {
+		const [categoryIdentity] = await tx
+			.select({ wishlistId: giftCategory.wishlistId })
+			.from(giftCategory)
+			.where(eq(giftCategory.id, categoryId))
+			.limit(1);
+		if (categoryIdentity === undefined) {
+			error(404, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
+		}
+		await lockWishlistCategoryStructure(tx, categoryIdentity.wishlistId);
 		const [row] = await tx
 			.select()
 			.from(giftCategory)
@@ -419,6 +454,7 @@ export async function reorderActiveGiftCategories(params: {
 }): Promise<void> {
 	const database = getDb();
 	await database.transaction(async (tx) => {
+		await lockWishlistCategoryStructure(tx, params.wishlistId);
 		const rows = await tx
 			.select({ id: giftCategory.id })
 			.from(giftCategory)

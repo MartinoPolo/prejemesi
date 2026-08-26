@@ -419,22 +419,25 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 			...outcome.updateData,
 			updatedAt: now,
 		};
-		if (input.categoryId !== undefined && updateData.categoryId !== undefined) {
-			updateData.categoryId = await assertActiveGiftCategoryAssignment(
-				database,
-				giftRow.wishlistId,
-				input.categoryId,
-			);
-		}
 		if (outcome.changed) {
 			applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
 		}
 
-		const [updated] = await database
-			.update(gift)
-			.set(updateData)
-			.where(eq(gift.id, input.id))
-			.returning();
+		const updated = await database.transaction(async (tx) => {
+			if (input.categoryId !== undefined && updateData.categoryId !== undefined) {
+				updateData.categoryId = await assertActiveGiftCategoryAssignment(
+					tx,
+					giftRow.wishlistId,
+					input.categoryId,
+				);
+			}
+			const [row] = await tx
+				.update(gift)
+				.set(updateData)
+				.where(eq(gift.id, input.id))
+				.returning();
+			return row;
+		});
 
 		singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
 
@@ -492,11 +495,7 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		didChange = true;
 	}
 	if (input.categoryId !== undefined && input.categoryId !== giftRow.categoryId) {
-		updateData.categoryId = await assertActiveGiftCategoryAssignment(
-			database,
-			giftRow.wishlistId,
-			input.categoryId,
-		);
+		updateData.categoryId = input.categoryId;
 		didChange = true;
 	}
 
@@ -507,11 +506,21 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 		applyPostShareEditTransparency({ giftRow, updateData, now, wishlistRow });
 	}
 
-	const [updated] = await database
-		.update(gift)
-		.set(updateData)
-		.where(eq(gift.id, input.id))
-		.returning();
+	const updated = await database.transaction(async (tx) => {
+		if (input.categoryId !== undefined && input.categoryId !== giftRow.categoryId) {
+			updateData.categoryId = await assertActiveGiftCategoryAssignment(
+				tx,
+				giftRow.wishlistId,
+				input.categoryId,
+			);
+		}
+		const [row] = await tx
+			.update(gift)
+			.set(updateData)
+			.where(eq(gift.id, input.id))
+			.returning();
+		return row;
+	});
 
 	// Storage cleanup (issue #107, REQ-6): replacing or removing an uploaded
 	// image leaves no unreferenced R2 object behind.

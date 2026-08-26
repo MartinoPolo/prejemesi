@@ -179,6 +179,12 @@ function createMockDb(): MockDb {
 					indexRef.value++;
 					return (resolve: (value: unknown[]) => unknown) => resolve(result);
 				}
+				if (prop === 'transaction') {
+					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+						calls.push({ method: 'transaction', args: [] });
+						return callback(chain);
+					});
+				}
 				return vi.fn((...args: unknown[]) => {
 					if (typeof prop === 'string') {
 						calls.push({ method: prop, args });

@@ -68,13 +68,22 @@ class ScopedPersisted<T> {
 		}
 		const key = this.#getKey();
 		this.#onBeforeRead?.(key);
-		const value = localStorage.getItem(key);
+		let value: string | null;
+		try {
+			value = localStorage.getItem(key);
+		} catch {
+			return this.#defaultValue;
+		}
 		if (value === null) {
 			return this.#defaultValue;
 		}
 		const parsed = this.#serde.deserialize(value);
 		if (!parsed.success) {
-			localStorage.setItem(key, this.#serde.serialize(this.#defaultValue));
+			try {
+				localStorage.setItem(key, this.#serde.serialize(this.#defaultValue));
+			} catch {
+				// Repair is best effort when browser storage is unavailable.
+			}
 			return this.#defaultValue;
 		}
 		return parsed.data;
@@ -82,7 +91,11 @@ class ScopedPersisted<T> {
 
 	set current(value: T) {
 		if (browser) {
-			localStorage.setItem(this.#getKey(), this.#serde.serialize(value));
+			try {
+				localStorage.setItem(this.#getKey(), this.#serde.serialize(value));
+			} catch {
+				// Persisted preferences are best effort when browser storage is unavailable.
+			}
 		}
 		this.#revision.current += 1;
 	}
@@ -151,18 +164,18 @@ function migrateLegacyPriorityGrouping(groupingKey: string) {
 	if (!browser) {
 		return;
 	}
-	if (localStorage.getItem(groupingKey) !== null) {
-		localStorage.removeItem(LEGACY_PRIORITY_GROUPING_KEY);
-		return;
-	}
 	try {
+		if (localStorage.getItem(groupingKey) !== null) {
+			localStorage.removeItem(LEGACY_PRIORITY_GROUPING_KEY);
+			return;
+		}
 		if (JSON.parse(localStorage.getItem(LEGACY_PRIORITY_GROUPING_KEY) ?? 'false') === true) {
 			localStorage.setItem(groupingKey, JSON.stringify(GIFT_GROUPING_OPTIONS.priority));
 		}
+		localStorage.removeItem(LEGACY_PRIORITY_GROUPING_KEY);
 	} catch {
-		// Invalid legacy state is ignored below and removed with the old key.
+		// Migration is best effort when legacy state is invalid or storage is unavailable.
 	}
-	localStorage.removeItem(LEGACY_PRIORITY_GROUPING_KEY);
 }
 
 function hasPriorityValue(gift: GiftByRole): boolean {
@@ -316,15 +329,18 @@ function createGiftsContext(
 	}));
 	const effectiveGrouping = new Derived(() => {
 		const current = grouping.current;
-		if (
-			(current === GIFT_GROUPING_OPTIONS.priority &&
-				!groupingAvailability.current.priority) ||
+		return (current === GIFT_GROUPING_OPTIONS.priority &&
+			!groupingAvailability.current.priority) ||
 			(current === GIFT_GROUPING_OPTIONS.category && !groupingAvailability.current.category)
-		) {
-			grouping.current = GIFT_GROUPING_OPTIONS.none;
-			return GIFT_GROUPING_OPTIONS.none;
+			? GIFT_GROUPING_OPTIONS.none
+			: current;
+	});
+
+	$effect(() => {
+		const effective = effectiveGrouping.current;
+		if (browser && grouping.current !== effective) {
+			grouping.current = effective;
 		}
-		return current;
 	});
 
 	const filteredGifts = new Derived<GiftByRole[]>(() => {

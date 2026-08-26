@@ -26,6 +26,7 @@
 		serverDuplicateCount: number;
 		oncommit: () => Promise<{ shortId: string }>;
 		commitStatus: CommitStatus;
+		commitError?: string | null;
 		suppressNavigation?: boolean;
 	}
 
@@ -38,6 +39,7 @@
 		serverDuplicateCount,
 		oncommit,
 		commitStatus,
+		commitError = null,
 		suppressNavigation = false,
 	}: ImportConfirmStepProps = $props();
 
@@ -124,7 +126,9 @@
 		{#if isError}
 			<Alert.Root tone="destructive">
 				<AlertCircleIcon class="size-4" />
-				<Alert.Description>{m.import_wizard_error_commit()}</Alert.Description>
+				<Alert.Description
+					>{commitError ?? m.import_wizard_error_commit()}</Alert.Description
+				>
 			</Alert.Root>
 		{/if}
 
