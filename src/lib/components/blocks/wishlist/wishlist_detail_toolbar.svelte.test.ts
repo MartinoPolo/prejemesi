@@ -25,13 +25,10 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	onsortchange: () => {},
 	onfilterchange: () => {},
 	onprioritygroupingchange: () => {},
-	onthemeopen: () => {},
 	onsettings: () => {},
 	onunfollow: () => {},
 	onaddgift: () => {},
 	onbatchadd: () => {},
-	onimport: () => {},
-	onexport: () => {},
 };
 
 async function renderToolbar(
@@ -41,11 +38,11 @@ async function renderToolbar(
 }
 
 describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
-	it('shows the switch to visitors and moderators, but never recipients', async () => {
+	it('shows the compact pressed preview button to visitors and moderators, but never recipients', async () => {
 		for (const role of [WISHLIST_ROLES.visitor, WISHLIST_ROLES.moderator]) {
 			const screen = await renderToolbar({ role });
 			await expect
-				.element(screen.getByRole('switch', { name: m.recipient_view_preview_label() }))
+				.element(screen.getByRole('button', { name: m.recipient_view_preview_turn_on() }))
 				.toBeVisible();
 			await screen.unmount();
 		}
@@ -57,13 +54,13 @@ describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
 		});
 		await expect
 			.element(
-				recipientScreen.getByRole('switch', { name: m.recipient_view_preview_label() }),
+				recipientScreen.getByRole('button', { name: m.recipient_view_preview_turn_on() }),
 			)
 			.not.toBeInTheDocument();
 		await recipientScreen.unmount();
 	});
 
-	it('reports the toggle without changing manager authorization or reorder state', async () => {
+	it('reports the pressed toggle without changing manager authorization or reorder state', async () => {
 		const onrecipientviewpreviewchange = vi.fn();
 		const screen = await renderToolbar({
 			canManage: true,
@@ -72,15 +69,41 @@ describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
 			onrecipientviewpreviewchange,
 		});
 
-		const previewSwitch = screen.getByRole('switch', {
-			name: m.recipient_view_preview_label(),
+		const previewButton = screen.getByRole('button', {
+			name: m.recipient_view_preview_turn_off(),
 		});
-		await expect.element(previewSwitch).toBeChecked();
+		await expect.element(previewButton).toHaveAttribute('aria-pressed', 'true');
 		await expect
 			.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
 			.toBeVisible();
-		await previewSwitch.click();
+		await previewButton.click();
 		expect(onrecipientviewpreviewchange).toHaveBeenCalledWith(false);
+		await screen.unmount();
+	});
+});
+
+describe('WishlistDetailToolbar manager actions (#241)', () => {
+	it('keeps import, export, and palette out of the detail toolbar', async () => {
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+		});
+
+		await expect
+			.element(screen.getByRole('button', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.batch_add_toolbar_label() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.import_toolbar_label() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.export_toolbar_label() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.wishlist_palette_dialog_title() }))
+			.not.toBeInTheDocument();
 		await screen.unmount();
 	});
 });

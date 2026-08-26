@@ -1,13 +1,11 @@
 <script lang="ts">
 	import { Button } from '$lib/components/base/button/index.js';
 	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
-	import { Switch } from '$lib/components/base/switch/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import ListPlusIcon from '@lucide/svelte/icons/list-plus';
-	import FileUpIcon from '@lucide/svelte/icons/file-up';
-	import FileDownIcon from '@lucide/svelte/icons/file-down';
-	import PaletteIcon from '@lucide/svelte/icons/palette';
+	import EyeIcon from '@lucide/svelte/icons/eye';
+	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -41,13 +39,10 @@
 		onsortchange: (sort: GiftSortOption) => void;
 		onfilterchange: (filters: GiftFilters) => void;
 		onprioritygroupingchange: (grouping: boolean) => void;
-		onthemeopen: () => void;
 		onsettings: () => void;
 		onunfollow: () => void;
 		onaddgift: () => void;
 		onbatchadd: () => void;
-		onimport: () => void;
-		onexport: () => void;
 	}
 
 	let {
@@ -69,13 +64,10 @@
 		onsortchange,
 		onfilterchange,
 		onprioritygroupingchange,
-		onthemeopen,
 		onsettings,
 		onunfollow,
 		onaddgift,
 		onbatchadd,
-		onimport,
-		onexport,
 	}: WishlistDetailToolbarProps = $props();
 
 	const canPreviewRecipientView = $derived(
@@ -154,29 +146,39 @@
 </script>
 
 <div
-	class="flex flex-wrap items-center gap-2.5 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
+	class="flex flex-wrap items-center gap-2.5 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker lg:flex-nowrap"
 >
 	{#if canPreviewRecipientView}
-		<div class="flex items-center gap-2">
-			<Switch
-				id="recipient-view-preview"
-				checked={recipientViewPreview}
-				aria-label={m.recipient_view_preview_label()}
+		<SimpleTooltip
+			text={recipientViewPreview
+				? m.recipient_view_preview_turn_off()
+				: m.recipient_view_preview_turn_on()}
+		>
+			<Button
+				size="icon"
+				intent="ghost"
+				aria-label={recipientViewPreview
+					? m.recipient_view_preview_turn_off()
+					: m.recipient_view_preview_turn_on()}
+				aria-pressed={recipientViewPreview}
 				aria-describedby="recipient-view-preview-description recipient-view-preview-status"
-				onCheckedChange={onrecipientviewpreviewchange}
-			/>
-			<label for="recipient-view-preview" class="cursor-pointer text-sm font-medium">
-				{m.recipient_view_preview_label()}
-			</label>
-			<span id="recipient-view-preview-description" class="sr-only">
-				{m.recipient_view_preview_description()}
-			</span>
-			<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
-				{recipientViewPreview
-					? m.recipient_view_preview_status_on()
-					: m.recipient_view_preview_status_off()}
-			</span>
-		</div>
+				onclick={() => onrecipientviewpreviewchange(!recipientViewPreview)}
+			>
+				{#if recipientViewPreview}
+					<EyeOffIcon />
+				{:else}
+					<EyeIcon />
+				{/if}
+			</Button>
+		</SimpleTooltip>
+		<span id="recipient-view-preview-description" class="sr-only">
+			{m.recipient_view_preview_description()}
+		</span>
+		<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
+			{recipientViewPreview
+				? m.recipient_view_preview_status_on()
+				: m.recipient_view_preview_status_off()}
+		</span>
 	{/if}
 
 	{#if reorderMode && canReorder}
@@ -205,19 +207,7 @@
 			</Button>
 		{/if}
 
-		<div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-			{#if canManage && !isArchived}
-				<SimpleTooltip text={m.wishlist_palette_dialog_title()}>
-					<Button
-						size="icon"
-						intent="outline"
-						aria-label={m.wishlist_palette_dialog_title()}
-						onclick={onthemeopen}
-					>
-						<PaletteIcon />
-					</Button>
-				</SimpleTooltip>
-			{/if}
+		<div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 lg:flex-nowrap">
 			{#if (canManage && !isArchived) || adminSettingsAvailable}
 				<SimpleTooltip text={m.wishlist_settings_title()}>
 					<Button
@@ -236,26 +226,6 @@
 				>
 			{/if}
 			{#if canManage && !isArchived}
-				<SimpleTooltip text={m.import_toolbar_label()}>
-					<Button
-						size="icon"
-						intent="outline"
-						aria-label={m.import_toolbar_label()}
-						onclick={onimport}
-					>
-						<FileUpIcon />
-					</Button>
-				</SimpleTooltip>
-				<SimpleTooltip text={m.export_toolbar_label()}>
-					<Button
-						size="icon"
-						intent="outline"
-						aria-label={m.export_toolbar_label()}
-						onclick={onexport}
-					>
-						<FileDownIcon />
-					</Button>
-				</SimpleTooltip>
 				<SimpleTooltip text={m.batch_add_toolbar_label()}>
 					<Button
 						size="icon"
@@ -268,6 +238,7 @@
 				</SimpleTooltip>
 				<Button
 					size="md"
+					class="whitespace-nowrap"
 					aria-label={m.wishlist_detail_add_gift_label()}
 					onclick={onaddgift}
 				>

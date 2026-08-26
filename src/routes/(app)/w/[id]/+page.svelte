@@ -300,10 +300,6 @@
 
 	let importWizardOpen = $state(false);
 
-	// ── Palette dialog state (issue #102 REQ-5) ──────────────────────────────
-
-	let paletteDialogOpen = $state(false);
-
 	// ── Settings modal state (per-wishlist settings, moved from /w/<id>/settings) ─
 
 	let settingsModalOpen = $state(false);
@@ -659,6 +655,7 @@
 	);
 
 	function openImportWizard() {
+		settingsModalOpen = false;
 		importWizardOpen = true;
 	}
 
@@ -983,13 +980,10 @@
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
 			onprioritygroupingchange={handlePriorityGroupingChange}
-			onthemeopen={() => (paletteDialogOpen = true)}
 			onsettings={handleSettingsOpened}
 			onunfollow={handleUnfollow}
 			onaddgift={openCreateModal}
 			onbatchadd={openBatchAddDialog}
-			onimport={openImportWizard}
-			onexport={handleExport}
 		/>
 
 		<WishlistGiftDisplay
@@ -1039,8 +1033,6 @@
 	bind:reserveModalOpen
 	{reservingGift}
 	{isReserving}
-	bind:paletteDialogOpen
-	wishlistPalette={activePalette}
 	bind:batchAddDialogOpen
 	{isBatchSubmitting}
 	batchServerDuplicateCount={batchDuplicateSubmissionState.duplicateCount}
@@ -1055,7 +1047,6 @@
 	ongiftunreserve={handleUnreserve}
 	onreservemodalclose={handleReserveModalClose}
 	onreserve={handleReserve}
-	onpaletteselect={handlePaletteSelect}
 	onbatchsubmit={handleBatchSubmit}
 	onbatchdialogopenchange={handleBatchDialogOpenChange}
 	onbatchresetduplicatewarning={resetBatchDuplicateWarning}
@@ -1076,6 +1067,8 @@
 	onsaved={async () => {}}
 	onpaletteselect={handlePaletteSelect}
 	ondeleted={handleWishlistDeleted}
+	onimport={openImportWizard}
+	onexport={handleExport}
 	oneditrecipient={handleEditRecipientOpened}
 />
 
