@@ -38,7 +38,10 @@
 
 		item.onremove();
 		await tick();
-		(nextActiveFilterId ? pillRemoveButtons[nextActiveFilterId] : triggerElement)?.focus();
+		(nextActiveFilterId !== undefined
+			? pillRemoveButtons[nextActiveFilterId]
+			: triggerElement
+		)?.focus();
 	}
 </script>
 
