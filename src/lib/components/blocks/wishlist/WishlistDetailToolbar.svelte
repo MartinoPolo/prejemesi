@@ -200,7 +200,18 @@
 		},
 	]);
 
+	type OpenDisplayControl = 'sort' | 'grouping' | 'filter';
+
 	let filterTriggerElement = $state<HTMLButtonElement | null>(null);
+	let openDisplayControl = $state<OpenDisplayControl | null>(null);
+
+	function updateOpenDisplayControl(control: OpenDisplayControl, open: boolean) {
+		if (open) {
+			openDisplayControl = control;
+		} else if (openDisplayControl === control) {
+			openDisplayControl = null;
+		}
+	}
 
 	const filterFacets = $derived<FilterFacetGroup[]>([
 		{
@@ -287,13 +298,17 @@
 					data-testid="wishlist-toolbar-display-controls"
 				>
 					<GiftSortSelect
-						class="toolbar-sort-control w-full"
+						class="toolbar-sort-control"
 						value={sortOption}
 						onchange={onsortchange}
+						open={openDisplayControl === 'sort'}
+						onopenchange={(open) => updateOpenDisplayControl('sort', open)}
 					/>
 					<Select.Root
 						type="single"
 						value={grouping}
+						open={openDisplayControl === 'grouping'}
+						onOpenChange={(open) => updateOpenDisplayControl('grouping', open)}
 						onValueChange={(newValue) => {
 							if (
 								Object.values(GIFT_GROUPING_OPTIONS).includes(
@@ -307,7 +322,7 @@
 						<Select.Trigger
 							size="md"
 							class={cn(
-								'toolbar-grouping-control w-full min-w-0 px-3',
+								'toolbar-grouping-control min-w-0 px-3',
 								OUTLINE_CONTROL_SURFACE_CLASSES,
 							)}
 							aria-label={groupingCombinedLabel}
@@ -319,7 +334,7 @@
 							/>
 							<span class="min-w-0 truncate">{GROUPING_LABELS[grouping]()}</span>
 						</Select.Trigger>
-						<Select.Content>
+						<Select.Content preventScroll={false}>
 							<Select.Group>
 								<Select.GroupHeading>{m.gift_grouping_label()}</Select.GroupHeading>
 								<Select.Item
@@ -339,37 +354,41 @@
 							</Select.Group>
 						</Select.Content>
 					</Select.Root>
-					<FilterMenu
-						class="toolbar-filter-control"
-						triggerClass="w-full justify-between"
-						bind:triggerElement={filterTriggerElement}
-						definitions={filterDefinitions}
-						facets={filterFacets}
-						{activeFilters}
-						showActivePills={false}
-						alwaysShowClearAllInMenu
-						triggerLabel={m.gift_filter()}
-						menuHeading={m.gift_filter()}
-						clearAllLabel={m.wishlist_detail_clear_filters()}
-						onclearall={clearGiftFilters}
-						removeFilterLabel={(label) => m.filter_remove({ label })}
-						activeCountLabel={(count) => m.filter_active_count({ count })}
-						align="end"
-					/>
-					{#if showReset}
-						<div class="toolbar-reset-control">
-							<SimpleTooltip text={m.gift_display_reset_tooltip()}>
-								<Button
-									size="icon"
-									intent="ghost"
-									aria-label={m.gift_display_reset_aria()}
-									onclick={resetDisplayControls}
-								>
-									<RotateCcwIcon data-toolbar-icon="reset" />
-								</Button>
-							</SimpleTooltip>
-						</div>
-					{/if}
+					<div class="toolbar-filter-controls">
+						<FilterMenu
+							class="toolbar-filter-control"
+							triggerClass="w-full justify-between"
+							bind:triggerElement={filterTriggerElement}
+							definitions={filterDefinitions}
+							facets={filterFacets}
+							{activeFilters}
+							showActivePills={false}
+							alwaysShowClearAllInMenu
+							triggerLabel={m.gift_filter()}
+							menuHeading={m.gift_filter()}
+							clearAllLabel={m.wishlist_detail_clear_filters()}
+							onclearall={clearGiftFilters}
+							removeFilterLabel={(label) => m.filter_remove({ label })}
+							activeCountLabel={(count) => m.filter_active_count({ count })}
+							align="end"
+							open={openDisplayControl === 'filter'}
+							onopenchange={(open) => updateOpenDisplayControl('filter', open)}
+						/>
+						{#if showReset}
+							<div class="toolbar-reset-control">
+								<SimpleTooltip text={m.gift_display_reset_tooltip()}>
+									<Button
+										size="icon"
+										intent="ghost"
+										aria-label={m.gift_display_reset_aria()}
+										onclick={resetDisplayControls}
+									>
+										<RotateCcwIcon data-toolbar-icon="reset" />
+									</Button>
+								</SimpleTooltip>
+							</div>
+						{/if}
+					</div>
 				</div>
 
 				{#if canReorder}
@@ -497,25 +516,29 @@
 	}
 
 	.toolbar-display-controls {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		display: flex;
+		min-width: 0;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.625rem;
 	}
 
 	:global(.toolbar-sort-control),
 	:global(.toolbar-grouping-control) {
-		width: 100%;
+		width: fit-content;
+		max-width: 100%;
+	}
+
+	.toolbar-filter-controls {
+		display: flex;
+		min-width: 0;
+		max-width: 100%;
+		align-items: center;
+		gap: 0.625rem;
 	}
 
 	:global(.toolbar-filter-control) {
-		grid-column: 1;
 		width: min(9.5rem, 100%);
-	}
-
-	.toolbar-reset-control {
-		grid-column: 2;
-		justify-self: start;
 	}
 
 	.toolbar-actions {
@@ -529,7 +552,7 @@
 	}
 
 	.toolbar-active-filters {
-		display: none;
+		display: flex;
 	}
 
 	@container wishlist-toolbar (min-width: 40rem) {
@@ -540,7 +563,6 @@
 		}
 
 		.toolbar-display-controls {
-			display: flex;
 			width: min(100%, max-content);
 			flex: 0 1 auto;
 			flex-wrap: nowrap;

@@ -9,10 +9,18 @@
 	interface GiftSortSelectProps {
 		value: GiftSortOption;
 		onchange: (sort: GiftSortOption) => void;
+		open?: boolean;
+		onopenchange?: (open: boolean) => void;
 		class?: string;
 	}
 
-	let { value, onchange, class: className }: GiftSortSelectProps = $props();
+	let {
+		value,
+		onchange,
+		open = false,
+		onopenchange,
+		class: className,
+	}: GiftSortSelectProps = $props();
 
 	const SORT_LABELS = {
 		ownerOrder: () => m.gift_sort_owner_order(),
@@ -36,6 +44,8 @@
 <Select.Root
 	type="single"
 	{value}
+	{open}
+	onOpenChange={onopenchange}
 	onValueChange={(newValue) => {
 		if (isGiftSortOption(newValue)) {
 			onchange(newValue);
@@ -51,7 +61,7 @@
 		<ArrowUpDownIcon class="size-4 shrink-0 text-muted-foreground" data-toolbar-icon="sort" />
 		<span class="min-w-0 truncate">{SORT_LABELS[value]()}</span>
 	</Select.Trigger>
-	<Select.Content>
+	<Select.Content preventScroll={false}>
 		<Select.Group>
 			{#each SORT_KEYS as option (option)}
 				<Select.Item value={option} label={SORT_LABELS[option]()} />
