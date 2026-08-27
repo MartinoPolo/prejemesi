@@ -84,7 +84,7 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn(),
 	and: vi.fn(),
 	isNull: vi.fn(),
-	sql: vi.fn(),
+	sql: Object.assign(vi.fn(), { join: vi.fn() }),
 }));
 
 // ── Imports (after mocks) ────────────────────────────────────────────────────

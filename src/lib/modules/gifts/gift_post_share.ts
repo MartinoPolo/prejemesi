@@ -19,6 +19,7 @@ export interface PreShareGiftSnapshot {
 	imageMeta: ImageMetadata | null;
 	links: GiftLink[];
 	priorityLevelId: string | null;
+	categoryId?: string | null;
 }
 
 /** Extracts the {@link PreShareGiftSnapshot}-comparable fields from a full gift row. */
@@ -36,6 +37,7 @@ export function toPreShareGiftSnapshot(giftRow: PreShareGiftSnapshot): PreShareG
 		imageMeta: giftRow.imageMeta,
 		links: giftRow.links,
 		priorityLevelId: giftRow.priorityLevelId,
+		categoryId: giftRow.categoryId,
 	};
 }
 
@@ -211,6 +213,11 @@ export function computePreShareOwnerEdit(
 	// priorityLevelId
 	if (input.priorityLevelId !== undefined && input.priorityLevelId !== current.priorityLevelId) {
 		updateData.priorityLevelId = input.priorityLevelId;
+		changed = true;
+	}
+
+	if (input.categoryId !== undefined && input.categoryId !== current.categoryId) {
+		updateData.categoryId = input.categoryId;
 		changed = true;
 	}
 

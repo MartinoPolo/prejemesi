@@ -26,6 +26,7 @@
 		() => {},
 	);
 	setGiftsContext(
+		() => 'test-wishlist',
 		() => [gift],
 		() => role,
 		() => false,

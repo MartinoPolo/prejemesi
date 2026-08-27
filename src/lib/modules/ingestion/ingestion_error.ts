@@ -3,7 +3,8 @@ export type IngestionErrorCode =
 	| 'target_archived'
 	| 'target_mismatch'
 	| 'idempotency_conflict'
-	| 'ambiguity';
+	| 'ambiguity'
+	| 'category_unknown';
 
 const CONFLICT_CODES: ReadonlySet<IngestionErrorCode> = new Set([
 	'target_not_found',
@@ -11,6 +12,7 @@ const CONFLICT_CODES: ReadonlySet<IngestionErrorCode> = new Set([
 	'target_mismatch',
 	'idempotency_conflict',
 	'ambiguity',
+	'category_unknown',
 ]);
 
 export class IngestionError extends Error {

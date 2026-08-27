@@ -17,6 +17,7 @@ export const COLUMN_ROLE = {
 	price: 'price',
 	imageUrl: 'imageUrl',
 	quantity: 'quantity',
+	category: 'category',
 	bool: 'bool',
 	ignore: 'ignore',
 } as const;
@@ -50,6 +51,7 @@ const ROLE_VALUE_THRESHOLD = 0.6;
 const HEADER_KEYWORDS = {
 	imageUrl: ['image url', 'image', 'obrazek', 'foto'],
 	quantity: ['quantity', 'qty', 'count', 'pocet', 'kusy', 'mnozstvi'],
+	category: ['category', 'kategorie', 'group', 'skupina', 'typ darku', 'druh'],
 	url: ['link', 'odkaz', 'url', 'web', 'adresa', 'stranka', 'http'],
 	price: ['price', 'cena', 'cost', 'castka', 'kc', 'czk', 'eur', 'usd'],
 	bool: [
@@ -94,6 +96,7 @@ const HEADER_KEYWORDS = {
 const HEADER_ROLE_ORDER = [
 	'imageUrl',
 	'quantity',
+	'category',
 	'url',
 	'price',
 	'bool',
@@ -285,6 +288,7 @@ export function detectColumns(rows: readonly string[][]): ColumnDetectionResult 
 			role === COLUMN_ROLE.price ||
 			role === COLUMN_ROLE.imageUrl ||
 			role === COLUMN_ROLE.quantity ||
+			role === COLUMN_ROLE.category ||
 			role === COLUMN_ROLE.bool
 		) {
 			structuralColumns.add(index);

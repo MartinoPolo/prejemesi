@@ -9,6 +9,7 @@ import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 
 // `GiftDetailForm` transitively imports `public_url.ts`, whose public env is normally
 // seeded by SvelteKit's browser bootstrap. Vitest mounts into a bare document, so use
@@ -55,6 +56,63 @@ const baseProps = {
 	isSubmitting: false,
 	isDeleting: false,
 };
+
+const categoryOptions: ManagedGiftCategory[] = [
+	{
+		id: 'category-books',
+		presetKey: null,
+		customLabel: 'Books',
+		sortOrder: 0,
+		usedCount: 1,
+	},
+];
+
+describe('GiftDetailForm categories', () => {
+	it('renders category selection in create mode and submits the chosen category', async () => {
+		const oncreate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			categoryOptions,
+			oncreate,
+		});
+
+		await screen.getByRole('textbox', { name: m.gift_name_label() }).fill('New book');
+		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await screen.getByRole('option', { name: 'Books' }).click();
+		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
+
+		expect(oncreate).toHaveBeenCalledWith(
+			expect.objectContaining({ categoryId: 'category-books' }),
+		);
+	});
+
+	it('preselects an edit gift category and submits null when it is cleared', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ categoryId: 'category-books' }),
+			categoryOptions,
+			onupdate,
+		});
+
+		await screen.getByRole('button', { name: 'Books' }).click();
+		await screen.getByRole('option', { name: m.gift_category_none() }).click();
+		await screen.getByRole('button', { name: m.save() }).first().click();
+
+		expect(onupdate).toHaveBeenCalledWith(expect.objectContaining({ categoryId: null }));
+	});
+
+	it('renders a disabled empty state with settings guidance', async () => {
+		const screen = await render(GiftDetailForm, { ...baseProps, gift: makeGift() });
+
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_category_none_enabled() }))
+			.toBeDisabled();
+		await expect.element(screen.getByText(m.gift_category_none_enabled_help())).toBeVisible();
+	});
+});
 
 describe('GiftDetailForm actions (issue #255)', () => {
 	it.each([WISHLIST_ROLES.recipient, WISHLIST_ROLES.moderator])(
@@ -453,10 +511,10 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(row).not.toBeNull();
 
 		const fields = [...row!.children] as HTMLElement[];
-		expect(fields).toHaveLength(2);
-		const [firstFieldRect, secondFieldRect] = fields.map((field) =>
-			field.getBoundingClientRect(),
-		);
+		expect(fields.length).toBeGreaterThanOrEqual(2);
+		const [firstFieldRect, secondFieldRect] = fields
+			.slice(0, 2)
+			.map((field) => field.getBoundingClientRect());
 		expect(firstFieldRect.top).toBe(secondFieldRect.top);
 		expect(firstFieldRect.left).not.toBe(secondFieldRect.left);
 		expect(firstFieldRect.width).toBe(secondFieldRect.width);
@@ -490,7 +548,7 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(firstLabelRect.bottom).toBe(secondLabelRect.bottom);
 	}
 
-	it('aligns paired label rows and 32px controls for price, currency, quantity, and priority', async () => {
+	it('aligns paired label rows and 32px controls for price, currency, quantity, and category', async () => {
 		await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift(),
@@ -517,22 +575,16 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		);
 	});
 
-	it('keeps quantity full width when the wishlist has no priority controls', async () => {
+	it('keeps quantity and the empty category control aligned when no priorities exist', async () => {
 		await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift(),
 		});
 
-		const row = document.querySelector<HTMLElement>(
-			'[data-testid="gift-quantity-priority-row"]',
+		expectAlignedControlPair(
+			'gift-quantity-priority-row',
+			'#gift-quantity',
+			'[data-slot="select-trigger"]',
 		);
-		const quantity = row?.querySelector<HTMLElement>('#gift-quantity');
-		expect(row).not.toBeNull();
-		expect(row!.children).toHaveLength(1);
-		expect(quantity).not.toBeNull();
-		const rowRect = row!.getBoundingClientRect();
-		const quantityRect = quantity!.getBoundingClientRect();
-		expect(quantityRect.left).toBe(rowRect.left);
-		expect(quantityRect.right).toBe(rowRect.right);
 	});
 });

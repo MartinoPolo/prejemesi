@@ -22,6 +22,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
 	import WishlistPaletteAutoSave from './WishlistPaletteAutoSave.svelte';
+	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
@@ -380,6 +381,14 @@
 					{m.wishlist_settings_data_title()}
 				</Tabs.Tab>
 				<Tabs.Tab
+					id="wishlist-settings-tab-categories"
+					aria-controls="wishlist-settings-panel-categories"
+					active={activeTab === WISHLIST_SETTINGS_TABS.categories}
+					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.categories)}
+				>
+					{m.wishlist_settings_categories_tab()}
+				</Tabs.Tab>
+				<Tabs.Tab
 					id="wishlist-settings-tab-appearance"
 					aria-controls="wishlist-settings-panel-appearance"
 					active={activeTab === WISHLIST_SETTINGS_TABS.appearance}
@@ -547,6 +556,16 @@
 						</Button>
 					</div>
 				</div>
+			</div>
+
+			<!-- Kategorie: managed wishlist gift categories. -->
+			<div
+				role="tabpanel"
+				id="wishlist-settings-panel-categories"
+				aria-labelledby="wishlist-settings-tab-categories"
+				hidden={activeTab !== WISHLIST_SETTINGS_TABS.categories}
+			>
+				<WishlistCategorySettings wishlistId={wishlist.id} {isShared} />
 			</div>
 
 			<!-- Vzhled: palette picker, auto-saves on click. -->

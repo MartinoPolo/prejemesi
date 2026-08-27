@@ -13,6 +13,7 @@
 		UpdateGiftInput,
 		GiftDraftInput,
 	} from '$lib/modules/gifts/types.js';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import type { ReserveGiftInput } from '$lib/modules/reservations/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canReserveGift } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -38,6 +39,7 @@
 		giftModalMode: 'create' | 'edit';
 		selectedGift: GiftByRole | null;
 		priorityLevels: GiftPriorityLevel[];
+		categoryOptions?: ManagedGiftCategory[];
 		postShareLocked: boolean;
 		canDeleteSelectedGift: boolean;
 		/** When the selected gift's share grace window closes (issue #83), or null when none. */
@@ -94,6 +96,7 @@
 		giftModalMode,
 		selectedGift,
 		priorityLevels,
+		categoryOptions = [],
 		postShareLocked,
 		canDeleteSelectedGift,
 		graceExpiresAt,
@@ -135,6 +138,7 @@
 	gift={selectedGift}
 	{wishlistId}
 	{priorityLevels}
+	{categoryOptions}
 	{role}
 	readOnly={!canManage}
 	{isArchived}
@@ -189,6 +193,7 @@
 		{wishlistTitle}
 		isSubmitting={isBatchSubmitting}
 		priorityAvailable={priorityLevels.length >= 2}
+		{categoryOptions}
 		serverDuplicateCount={batchServerDuplicateCount}
 		onsubmit={onbatchsubmit}
 		onresetduplicatewarning={onbatchresetduplicatewarning}

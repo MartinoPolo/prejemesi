@@ -31,9 +31,9 @@ export function countGiftsInSections(sections: readonly GiftSection[]): number {
 }
 
 /**
- * Stable `#each` key for a rendered section: its kind + label + first gift id. Keeps grid and
- * list views from re-keying identically-shaped sections when only membership shifts (issue #224).
+ * Stable `#each` key for a rendered section: structural key plus first gift id keeps grid and
+ * list views from re-keying identically-shaped sections when only membership shifts.
  */
 export function sectionRenderKey(section: GiftSection, items: readonly IndexedGift[]): string {
-	return section.kind + (section.label ?? '') + (items[0]?.gift.id ?? '');
+	return `${section.key}:${items[0]?.gift.id ?? ''}`;
 }

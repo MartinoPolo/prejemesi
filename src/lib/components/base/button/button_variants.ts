@@ -23,6 +23,8 @@ const LIFT_HIT_AREA_CLASSES =
  */
 const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker ${LIFT_HIT_AREA_CLASSES}`;
 
+export const OUTLINE_CONTROL_SURFACE_CLASSES = `bg-card text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:border-ink focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring transition-[background-color,border-color,color,transform,box-shadow] ${STICKER_BUTTON_CLASSES}`;
+
 export const buttonVariants = tv({
 	base: 'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-btn border-[2.5px] border-transparent font-semibold leading-none outline-none select-none cursor-pointer transition-[background-color,border-color,color,transform,box-shadow] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 [&_[data-icon]]:pointer-events-none [&_[data-icon]]:shrink-0',
 	variants: {
@@ -34,7 +36,7 @@ export const buttonVariants = tv({
 				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
 			danger: 'bg-card text-status-danger border-status-danger shadow-sticker-sm hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
 			'primary-destructive': `bg-status-danger text-white hover:bg-[color-mix(in_oklab,var(--status-danger)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
-			outline: `bg-card text-foreground hover:bg-accent hover:text-accent-foreground ${STICKER_BUTTON_CLASSES}`,
+			outline: OUTLINE_CONTROL_SURFACE_CLASSES,
 			link: 'text-primary underline-offset-4 hover:underline',
 		},
 		size: {

@@ -27,7 +27,7 @@
 	import { consumeGiftDeepLink } from '$lib/modules/wishlists/gift_deep_link.js';
 	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
-	import { setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
+	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
@@ -39,6 +39,7 @@
 		recordWishlistVisit,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
+	import { getGiftCategories } from '$lib/modules/gift-categories/gift_categories.remote.js';
 	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
 	import {
 		reserveGift,
@@ -82,6 +83,8 @@
 		submitDuplicateAwareImport,
 	} from '$lib/modules/import/duplicate_aware_submission.js';
 	import { buildGiftCsv, giftCsvFilename, downloadGiftCsv } from '$lib/modules/import/index.js';
+	import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import {
 		GIFT_SECTION_KINDS,
 		activeGiftsInOwnerOrder,
@@ -105,6 +108,7 @@
 		CreateGiftInput,
 		UpdateGiftInput,
 		GiftViewMode,
+		GiftGroupingOption,
 	} from '$lib/modules/gifts/types.js';
 
 	let { data } = $props();
@@ -143,6 +147,7 @@
 
 	const giftsContext = untrack(() =>
 		setGiftsContext(
+			() => wishlist.id,
 			() => (recipientViewPreview ? projectGiftsForRecipient(gifts) : gifts),
 			() => effectiveGiftPresentationRole(role, recipientViewPreview),
 			() => wishlist?.status === 'archived',
@@ -192,6 +197,14 @@
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
+	let filterStateWishlistId = $state<string | null>(null);
+
+	$effect(() => {
+		if (filterStateWishlistId !== wishlist.id) {
+			filterStateWishlistId = wishlist.id;
+			giftsContext.filters.current = emptyGiftFilters();
+		}
+	});
 
 	$effect(() => {
 		if (recipientPreviewWishlistShortId !== shortId) {
@@ -233,6 +246,8 @@
 	const hideReservationState = $derived(isRecipient || recipientViewPreview);
 	// Full management gate (add/edit gifts, share, archive, settings): recipient OR správce.
 	const canManage = $derived(canManageWishlist(role));
+	const categoriesQuery = $derived(browser && canManage ? getGiftCategories(wishlist.id) : null);
+	const categoryOptions = $derived(categoriesQuery?.current ?? []);
 	const wishlistStatus = $derived(wishlist?.status as 'draft' | 'active' | 'archived');
 	// Non-managers see a friendly „Seznam se připravuje" page on a draft list (never-shared or
 	// reverted, issue #150) instead of the toolbar + gifts; the URL revives on (re-)share.
@@ -359,6 +374,7 @@
 			: [
 					{
 						kind: GIFT_SECTION_KINDS.available,
+						key: 'reorder',
 						label: null,
 						gifts: reorderPresentationGifts,
 					},
@@ -375,7 +391,10 @@
 	$effect(() => {
 		if (
 			reorderMode &&
-			(!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list'))
+			(!canManage ||
+				isArchived ||
+				(viewMode !== 'card' && viewMode !== 'list') ||
+				giftsContext.effectiveGrouping.current !== 'none')
 		) {
 			reorderMode = false;
 			reorderActiveIds = null;
@@ -506,7 +525,12 @@
 
 	function handleReorderModeChange(active: boolean) {
 		if (active) {
-			if (!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list')) {
+			if (
+				!canManage ||
+				isArchived ||
+				(viewMode !== 'card' && viewMode !== 'list') ||
+				giftsContext.effectiveGrouping.current !== 'none'
+			) {
 				return;
 			}
 			reorderActiveIds = activeGiftsInOwnerOrder(gifts).map((giftItem) => giftItem.id);
@@ -531,8 +555,8 @@
 		giftsContext.filters.current = filters;
 	}
 
-	function handlePriorityGroupingChange(grouping: boolean) {
-		giftsContext.priorityGrouping.current = grouping;
+	function handleGroupingChange(grouping: GiftGroupingOption) {
+		giftsContext.grouping.current = grouping;
 	}
 
 	function handleRecipientViewPreviewChange(active: boolean) {
@@ -547,12 +571,7 @@
 	}
 
 	function clearFilters() {
-		giftsContext.filters.current = {
-			availableOnly: false,
-			withLinkOnly: false,
-			likedOnly: false,
-			showReceived: false,
-		};
+		giftsContext.filters.current = emptyGiftFilters();
 	}
 
 	async function openCreateModal() {
@@ -678,6 +697,13 @@
 				links: gift.links ?? [],
 				price: gift.price,
 				currency: gift.currency,
+				categoryLabel:
+					gift.category == null
+						? ''
+						: labelForGiftCategory(
+								gift.category,
+								getLocale().startsWith('en') ? 'en' : 'cs',
+							),
 			})),
 		);
 		downloadGiftCsv(csv, giftCsvFilename(wishlist.title, wishlist.shortId));
@@ -976,8 +1002,10 @@
 			{viewMode}
 			sortOption={giftsContext.sortOption.current}
 			filters={giftsContext.filters.current}
-			priorityGrouping={giftsContext.priorityGrouping.current}
-			showPriorityGrouping={giftsContext.hasAnyPriority.current}
+			grouping={giftsContext.effectiveGrouping.current}
+			groupingAvailability={giftsContext.groupingAvailability.current}
+			categoryFilterOptions={giftsContext.categoryFilterOptions.current}
+			priorityFilterOptions={giftsContext.priorityFilterOptions.current}
 			{reorderMode}
 			{recipientViewPreview}
 			onrecipientviewpreviewchange={handleRecipientViewPreviewChange}
@@ -985,7 +1013,7 @@
 			onviewmodechange={handleViewModeChange}
 			onsortchange={handleSortChange}
 			onfilterchange={handleFilterChange}
-			onprioritygroupingchange={handlePriorityGroupingChange}
+			ongroupingchange={handleGroupingChange}
 			onsettings={handleSettingsOpened}
 			onunfollow={handleUnfollow}
 			onaddgift={openCreateModal}
@@ -1030,6 +1058,7 @@
 	{giftModalMode}
 	selectedGift={selectedPresentationGift}
 	{priorityLevels}
+	{categoryOptions}
 	postShareLocked={postShareLockSelectedGift}
 	{canDeleteSelectedGift}
 	graceExpiresAt={selectedActiveGraceExpiresAt}
@@ -1119,6 +1148,7 @@
 		wishlistShortId={wishlist.shortId}
 		wishlistTitle={wishlist.title}
 		priorityLevelCount={priorityLevels.length}
+		{categoryOptions}
 		existingGifts={importExistingGifts}
 		suppressNavigation
 	/>

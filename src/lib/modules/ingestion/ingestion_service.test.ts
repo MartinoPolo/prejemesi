@@ -255,6 +255,49 @@ describe('processGiftIngestion', () => {
 		).rejects.toThrow(/verification/i);
 		expect(database.appendGifts).not.toHaveBeenCalled();
 	});
+	it('passes a valid enabled category assignment into atomic gift creation', async () => {
+		const database = store({
+			resolveCategoryLabels: vi.fn(async () => new Map([['Hry', 'category-games']])),
+		});
+		await processGiftIngestion(
+			{
+				...manifest,
+				items: manifest.items.map((item) => ({
+					...item,
+					gift: { ...item.gift, category: 'Hry' },
+				})),
+			},
+			{ apply: true, config, store: database },
+		);
+
+		expect(database.appendGifts).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				gifts: [expect.objectContaining({ categoryId: 'category-games' })],
+			}),
+		);
+	});
+
+	it('rejects an unknown category before applying any gift', async () => {
+		const database = store({
+			resolveCategoryLabels: vi.fn(async () => new Map()),
+		});
+		await expect(
+			processGiftIngestion(
+				{
+					...manifest,
+					items: manifest.items.map((item) => ({
+						...item,
+						gift: { ...item.gift, category: 'Outdoor' },
+					})),
+				},
+				{ apply: true, config, store: database },
+			),
+		).rejects.toMatchObject({ code: 'category_unknown' });
+		expect(database.appendGifts).not.toHaveBeenCalled();
+		expect(database.insertRun).not.toHaveBeenCalled();
+	});
+
 	it('keeps dry-run side-effect free and reports the resolved target and proposed items', async () => {
 		const database = store();
 		const result = await processGiftIngestion(manifest, {

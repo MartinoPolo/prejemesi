@@ -1,15 +1,18 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Select from '$lib/components/base/select/index.js';
+	import { OUTLINE_CONTROL_SURFACE_CLASSES } from '$lib/components/base/button/button_variants.js';
 	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
 	import { GIFT_SORT_OPTIONS, type GiftSortOption } from '$lib/modules/gifts/types.js';
+	import { cn } from '$lib/utils.js';
 
 	interface GiftSortSelectProps {
 		value: GiftSortOption;
 		onchange: (sort: GiftSortOption) => void;
+		class?: string;
 	}
 
-	let { value, onchange }: GiftSortSelectProps = $props();
+	let { value, onchange, class: className }: GiftSortSelectProps = $props();
 
 	const SORT_LABELS = {
 		ownerOrder: () => m.gift_sort_owner_order(),
@@ -25,6 +28,8 @@
 	function isGiftSortOption(candidate: string): candidate is GiftSortOption {
 		return candidate in GIFT_SORT_OPTIONS;
 	}
+
+	const combinedLabel = $derived(`${m.gift_sort_by()}: ${SORT_LABELS[value]()}`);
 </script>
 
 <!-- Visible sort select in the wishlist toolbar (issue #101 / #102 REQ-15) -->
@@ -37,8 +42,13 @@
 		}
 	}}
 >
-	<Select.Trigger size="md" class="min-w-0 max-w-full" aria-label={m.gift_sort_by()}>
-		<ArrowUpDownIcon class="size-3.5 shrink-0 text-muted-foreground" />
+	<Select.Trigger
+		size="md"
+		class={cn('min-w-0 max-w-full px-3', OUTLINE_CONTROL_SURFACE_CLASSES, className)}
+		aria-label={combinedLabel}
+		title={combinedLabel}
+	>
+		<ArrowUpDownIcon class="size-4 shrink-0 text-muted-foreground" data-toolbar-icon="sort" />
 		<span class="min-w-0 truncate">{SORT_LABELS[value]()}</span>
 	</Select.Trigger>
 	<Select.Content>

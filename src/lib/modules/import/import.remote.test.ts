@@ -51,7 +51,13 @@ vi.mock('drizzle-orm', () => ({
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	asc: vi.fn((arg: unknown) => arg),
-	sql: vi.fn(() => ({ as: vi.fn(() => ({})) })),
+	inArray: vi.fn((...args: unknown[]) => args),
+	sql: Object.assign(
+		vi.fn(() => ({ as: vi.fn(() => ({})) })),
+		{
+			join: vi.fn(() => ({})),
+		},
+	),
 }));
 
 vi.mock('$lib/server/db/gift.schema.js', () => ({
@@ -62,6 +68,15 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		links: 'gift.links',
 		sortOrder: 'gift.sortOrder',
 		deletedAt: 'gift.deletedAt',
+		categoryId: 'gift.categoryId',
+	},
+	giftCategory: {
+		id: 'giftCategory.id',
+		wishlistId: 'giftCategory.wishlistId',
+		presetKey: 'giftCategory.presetKey',
+		customLabel: 'giftCategory.customLabel',
+		sortOrder: 'giftCategory.sortOrder',
+		deletedAt: 'giftCategory.deletedAt',
 	},
 }));
 
@@ -73,6 +88,7 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 		recipientIsModerator: 'wishlist.recipientIsModerator',
 		status: 'wishlist.status',
 		deletedAt: 'wishlist.deletedAt',
+		sharedAt: 'wishlist.sharedAt',
 	},
 	priorityLevel: {
 		id: 'priorityLevel.id',
@@ -159,7 +175,12 @@ const callFetch = fetchGoogleSheetCsv as unknown as FetchHandler;
 
 type ImportGiftsHandler = (
 	authContext: { user: { id: string } },
-	input: { wishlistId: string; gifts: unknown[]; acknowledgeDuplicates?: boolean },
+	input: {
+		wishlistId: string;
+		gifts: unknown[];
+		categoryResolutions?: unknown[];
+		acknowledgeDuplicates?: boolean;
+	},
 ) => Promise<unknown>;
 const callImportGifts = importGifts as unknown as ImportGiftsHandler;
 
@@ -456,6 +477,58 @@ describe('importGifts', () => {
 			imageMeta: DEFAULT_IMAGE_METADATA,
 			quantity: 4,
 		});
+	});
+
+	it('requires explicit category resolution and rejects before inserting any gift when missing', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
+		mockDbInstance.pushResult(RANKED_LEVELS);
+
+		await expect(
+			callImportGifts(AUTH, {
+				wishlistId: WISHLIST_ID,
+				gifts: [{ ...draftA, importedCategoryLabel: 'Outdoor', categoryId: null }],
+			}),
+		).rejects.toMatchObject({
+			status: 400,
+			message: SERVER_ERROR.GIFT_CATEGORY_IMPORT_UNRESOLVED,
+		});
+		expect(giftInsertRows()).toBeUndefined();
+		expect(transactionOpened()).toBe(true);
+	});
+
+	it('creates explicitly reviewed custom categories in the same append transaction', async () => {
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([]); // advisory wishlist lock
+		mockDbInstance.pushResult(RANKED_LEVELS);
+		mockDbInstance.pushResult([]); // active category conflict check
+		mockDbInstance.pushResult([{ maxSort: 0 }]); // next category sort order
+		mockDbInstance.pushResult([
+			{
+				id: 'category-outdoor',
+				wishlistId: WISHLIST_ID,
+				presetKey: null,
+				customLabel: 'Outdoor',
+				sortOrder: 1,
+				deletedAt: null,
+				createdAt: new Date('2024-01-01T00:00:00Z'),
+				updatedAt: new Date('2024-01-01T00:00:00Z'),
+			},
+		]);
+		mockDbInstance.pushResult([makeWishlistRow()]);
+		mockDbInstance.pushResult([{ maxSort: -1 }]);
+		mockDbInstance.pushResult([{ id: 'category-outdoor' }]);
+		mockDbInstance.pushResult([{ id: 'g1', sortOrder: 0 }]);
+
+		await callImportGifts(AUTH, {
+			wishlistId: WISHLIST_ID,
+			gifts: [{ ...draftA, importedCategoryLabel: 'Outdoor', categoryId: null }],
+			categoryResolutions: [
+				{ action: 'create-custom', sourceLabel: 'Outdoor', label: 'Outdoor' },
+			],
+		});
+
+		expect(giftInsertRows()![0]).toMatchObject({ categoryId: 'category-outdoor' });
 	});
 
 	it('requires an explicit second acknowledgement before inserting canonical-link duplicates', async () => {

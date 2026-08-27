@@ -75,12 +75,18 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+	import {
+		labelForGiftCategory,
+		type ManagedGiftCategory,
+	} from '$lib/modules/gift-categories/types.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
 		gift: GiftByRole | null;
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
+		categoryOptions?: ManagedGiftCategory[];
 		role: WishlistRole;
 		hideReservationState?: boolean;
 		postShareLocked: boolean;
@@ -102,6 +108,7 @@
 		gift,
 		wishlistId,
 		priorityLevels,
+		categoryOptions = [],
 		role,
 		hideReservationState = false,
 		postShareLocked,
@@ -143,6 +150,8 @@
 	let quantity = $state<number>(gift?.quantity ?? 1);
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
+	// svelte-ignore state_referenced_locally
+	let categoryId = $state(gift?.categoryId ?? '');
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
 	// the current image with replace/remove – not its resolved URL in the URL field.
 	// Editing a URL image (imageUrl set, no imageKey) opens on the URL tab. A brand-new
@@ -497,6 +506,7 @@
 				imageMeta,
 				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
+				categoryId: categoryId || null,
 			});
 		} else if (mode === 'edit' && gift !== null) {
 			const descriptionPayload = descriptionFrozen
@@ -515,6 +525,7 @@
 				imageMeta,
 				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
+				categoryId: categoryId || null,
 			});
 		}
 	}
@@ -544,6 +555,10 @@
 		if (gift !== null) {
 			onupdate?.({ id: gift.id, descriptionAppendEdit: { index, text: null } });
 		}
+	}
+
+	function categoryLabel(category: ManagedGiftCategory): string {
+		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
 	}
 
 	function handleDelete() {
@@ -979,11 +994,8 @@
 					</div>
 				</div>
 
-				<!-- Quantity + Priority -->
-				<div
-					class={cn('mt-3', priorityLevels.length > 0 && styles.formRow())}
-					data-testid="gift-quantity-priority-row"
-				>
+				<!-- Quantity + category + priority -->
+				<div class={cn('mt-3', styles.formRow())} data-testid="gift-quantity-priority-row">
 					<div class={styles.formField()}>
 						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
 							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
@@ -1001,6 +1013,47 @@
 							>
 								{m.gift_quantity_frozen_help()}
 							</HelpText>
+						{/if}
+					</div>
+
+					<div class={styles.formField()}>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label>{m.gift_category_label()}</Label>
+						</div>
+						{#if categoryOptions.length > 0}
+							<Select.Root type="single" bind:value={categoryId}>
+								<Select.Trigger size="md" class="w-full">
+									{#if categoryId}
+										{categoryLabel(
+											categoryOptions.find(
+												(category) => category.id === categoryId,
+											) ?? categoryOptions[0]!,
+										)}
+									{:else}
+										{m.gift_category_none()}
+									{/if}
+								</Select.Trigger>
+								<Select.Content>
+									<Select.Group>
+										<Select.Item value="" label={m.gift_category_none()}>
+											{m.gift_category_none()}
+										</Select.Item>
+										{#each categoryOptions as category (category.id)}
+											{@const label = categoryLabel(category)}
+											<Select.Item value={category.id} {label}
+												>{label}</Select.Item
+											>
+										{/each}
+									</Select.Group>
+								</Select.Content>
+							</Select.Root>
+						{:else}
+							<Select.Root type="single" disabled>
+								<Select.Trigger size="md" class="w-full" disabled>
+									{m.gift_category_none_enabled()}
+								</Select.Trigger>
+							</Select.Root>
+							<HelpText>{m.gift_category_none_enabled_help()}</HelpText>
 						{/if}
 					</div>
 

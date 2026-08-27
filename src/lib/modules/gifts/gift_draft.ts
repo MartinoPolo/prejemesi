@@ -1,4 +1,5 @@
 import { canonicalGiftLinkKey, normalizeGiftLinks } from './gift_url.js';
+import { normalizeGiftCategoryLabel } from '$lib/modules/gift-categories/types.js';
 import {
 	DEFAULT_GIFT_CURRENCY,
 	GIFT_CURRENCIES,
@@ -20,6 +21,8 @@ export interface GiftDraft {
 	/** Raw imported/editor value so invalid quantities remain reviewable. */
 	quantity?: number | string;
 	priority: DraftPriority;
+	categoryId?: string | null;
+	importedCategoryLabel?: string | null;
 }
 
 /** Lowercased tokens that map a raw price string to a {@link GiftCurrency}. */
@@ -92,7 +95,7 @@ export type ValidatedGiftDraft = Omit<GiftDraft, 'imageUrl' | 'quantity'> & {
 	quantity: number;
 };
 
-export type GiftDraftIssue = 'name' | 'price' | 'imageUrl' | 'quantity';
+export type GiftDraftIssue = 'name' | 'price' | 'imageUrl' | 'quantity' | 'category';
 
 /** A valid external draft image is an absolute HTTPS URL. */
 export function isValidDraftImageUrl(value: string | null | undefined): boolean {
@@ -115,7 +118,10 @@ export function parseDraftQuantity(value: number | string | undefined): number |
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export function validateDraft(draft: Readonly<GiftDraft>): {
+export function validateDraft(
+	draft: Readonly<GiftDraft>,
+	options: { resolvedImportedCategoryLabels?: ReadonlySet<string> } = {},
+): {
 	valid: boolean;
 	issues: GiftDraftIssue[];
 	normalized: ValidatedGiftDraft;
@@ -139,6 +145,19 @@ export function validateDraft(draft: Readonly<GiftDraft>): {
 	if (quantity === null) {
 		issues.push('quantity');
 	}
+	const importedCategoryLabel = draft.importedCategoryLabel?.trim() ?? '';
+	const importedCategoryResolved =
+		importedCategoryLabel !== '' &&
+		options.resolvedImportedCategoryLabels?.has(
+			normalizeGiftCategoryLabel(importedCategoryLabel),
+		) === true;
+	if (
+		importedCategoryLabel !== '' &&
+		!importedCategoryResolved &&
+		(draft.categoryId == null || draft.categoryId === '')
+	) {
+		issues.push('category');
+	}
 	return {
 		valid: issues.length === 0,
 		issues,
@@ -151,6 +170,8 @@ export function validateDraft(draft: Readonly<GiftDraft>): {
 			imageUrl,
 			quantity: quantity ?? 1,
 			priority: draft.priority,
+			categoryId: draft.categoryId ?? null,
+			importedCategoryLabel: draft.importedCategoryLabel ?? null,
 		},
 	};
 }

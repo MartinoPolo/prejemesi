@@ -12,6 +12,7 @@
 		UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import GiftDetailForm from './GiftDetailForm.svelte';
 	import GiftDetailView from './GiftDetailView.svelte';
@@ -22,6 +23,7 @@
 		gift?: GiftByRole | null;
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
+		categoryOptions?: ManagedGiftCategory[];
 		/** Viewer role drives reservation-safe read-only and editable manager actions. */
 		role?: WishlistRole;
 		/** Visitors/non-managers (issue #125): renders the read-only {@link GiftDetailView} instead of the edit form. */
@@ -53,6 +55,7 @@
 		gift = null,
 		wishlistId,
 		priorityLevels,
+		categoryOptions = [],
 		role = 'visitor',
 		readOnly = false,
 		isArchived = false,
@@ -121,6 +124,7 @@
 					{gift}
 					{wishlistId}
 					{priorityLevels}
+					{categoryOptions}
 					{role}
 					{hideReservationState}
 					{postShareLocked}

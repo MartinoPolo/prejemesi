@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import type { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import type { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { ImageMetadataSchema, type ImageMetadata } from '$lib/modules/images/types.js';
+import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
 
 /** Full gift row from DB */
 export type Gift = typeof gift.$inferSelect;
@@ -83,6 +84,8 @@ export interface GiftBase {
 	priorityLevelId: string | null;
 	priorityLabel: string | null;
 	prioritySortOrder: number | null;
+	categoryId?: string | null;
+	category?: PublicGiftCategory | null;
 }
 
 /** Gift with computed fields for visitor/moderator view */
@@ -130,6 +133,25 @@ export const GIFT_SORT_OPTIONS = {
 
 export type GiftSortOption = (typeof GIFT_SORT_OPTIONS)[keyof typeof GIFT_SORT_OPTIONS];
 
+export const UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE = '__uncategorized__' as const;
+export const NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE = '__no_priority__' as const;
+
+export type GiftCategoryFilterValue = string | typeof UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE;
+export type GiftPriorityFilterValue = string | typeof NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE;
+
+export const GIFT_GROUPING_OPTIONS = {
+	none: 'none',
+	priority: 'priority',
+	category: 'category',
+} as const;
+
+export type GiftGroupingOption = (typeof GIFT_GROUPING_OPTIONS)[keyof typeof GIFT_GROUPING_OPTIONS];
+
+export interface GiftFilterOption<Value extends string = string> {
+	value: Value;
+	label: string;
+}
+
 /** Filter options for gifts */
 export interface GiftFilters {
 	availableOnly: boolean;
@@ -137,6 +159,8 @@ export interface GiftFilters {
 	likedOnly: boolean;
 	/** Received gifts are archived from ordinary browsing unless explicitly requested. */
 	showReceived: boolean;
+	categoryValues: GiftCategoryFilterValue[];
+	priorityValues: GiftPriorityFilterValue[];
 }
 
 /** Supported currencies */
@@ -186,6 +210,7 @@ export interface CreateGiftInput {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
+	categoryId?: string | null;
 }
 
 export const GIFT_CURRENCY_VALUES = Object.values(GIFT_CURRENCIES);
@@ -233,6 +258,7 @@ export const CreateGiftInputSchema = v.pipe(
 		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 		priorityLevelId: v.optional(v.nullable(v.string())),
+		categoryId: v.optional(v.nullable(v.string())),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
@@ -263,6 +289,8 @@ export const GiftDraftInputSchema = v.pipe(
 		),
 		quantity: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 1),
 		priority: v.optional(v.picklist(DRAFT_PRIORITY_VALUES), DEFAULT_DRAFT_PRIORITY),
+		categoryId: v.optional(v.nullable(v.string())),
+		importedCategoryLabel: v.optional(v.nullable(v.string())),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
@@ -296,6 +324,7 @@ export interface UpdateGiftInput {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
+	categoryId?: string | null;
 }
 
 export const UpdateGiftInputSchema = v.pipe(
@@ -318,6 +347,7 @@ export const UpdateGiftInputSchema = v.pipe(
 		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 		priorityLevelId: v.optional(v.nullable(v.string())),
+		categoryId: v.optional(v.nullable(v.string())),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );

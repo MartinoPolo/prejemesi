@@ -96,6 +96,7 @@
 		() => {},
 	);
 	setGiftsContext(
+		() => 'gift-card-story',
 		() => [],
 		() => WISHLIST_ROLES.visitor,
 		() => false,

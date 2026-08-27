@@ -6,6 +6,14 @@ import * as m from '$lib/paraglide/messages.js';
 import { REVERT_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { WISHLIST_ROLES, type Wishlist } from '$lib/modules/wishlists/types.js';
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
+	getGiftCategories: vi.fn(() => ({ current: [] })),
+	createCustomGiftCategoryCommand: vi.fn(),
+	deleteCustomGiftCategoryCommand: vi.fn(),
+	renameCustomGiftCategoryCommand: vi.fn(),
+	reorderGiftCategories: vi.fn(),
+	togglePresetGiftCategory: vi.fn(),
+}));
 
 import WishlistSettingsModal from './WishlistSettingsModal.svelte';
 
