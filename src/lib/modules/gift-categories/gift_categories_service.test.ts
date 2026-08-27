@@ -158,9 +158,14 @@ describe('gift category management service', () => {
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
 		expect(setCalls[0]?.args[0]).toMatchObject({ customLabel: 'Sportovní vybavení' });
-		expect(setCalls[1]?.args[0]).toMatchObject({ preEditShareSnapshot: null });
+		const giftUpdateCall = setCalls[1];
+		expect(giftUpdateCall).toBeDefined();
+		if (giftUpdateCall === undefined) {
+			throw new Error('Expected the assigned gift update call');
+		}
+		expect(giftUpdateCall.args[0]).toMatchObject({ preEditShareSnapshot: null });
 		expect(
-			(setCalls[1]?.args[0] as { editedAfterShareAt?: unknown }).editedAfterShareAt,
+			(giftUpdateCall.args[0] as { editedAfterShareAt?: unknown }).editedAfterShareAt,
 		).toBeInstanceOf(Date);
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
