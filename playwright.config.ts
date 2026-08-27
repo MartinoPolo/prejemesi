@@ -30,8 +30,8 @@ export default defineConfig({
 			AUTH_SECRET:
 				process.env.AUTH_SECRET ??
 				'local-e2e-only-auth-secret-never-use-in-production-2026',
-			// Keep the test server origin pinned to its assigned localhost port.
-			ORIGIN: development.origin,
+			// Keep Better Auth aligned with the localhost URL used by Playwright.
+			ORIGIN: development.appOrigin,
 			// The app administrator is env-based (`isAppAdmin`), so the admin-only specs
 			// (revert-to-draft #150, release reservation #213) need a known operator address.
 			ADMIN_EMAILS: 'tomas@test.cz',
