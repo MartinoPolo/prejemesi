@@ -66,6 +66,36 @@ async function expectAspect(locator: Locator, expected: number, tolerance: numbe
 	).toBeLessThanOrEqual(tolerance);
 }
 
+async function expectUniformPadding(locator: Locator, tolerancePx = 1) {
+	const padding = await locator.evaluate((el) => {
+		const style = getComputedStyle(el);
+		return [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].map(
+			(value) => Number.parseFloat(value),
+		);
+	});
+	const spread = Math.max(...padding) - Math.min(...padding);
+	expect(spread, `frame padding [${padding.join(', ')}] px`).toBeLessThanOrEqual(tolerancePx);
+}
+
+async function expectRenderedTape(locator: Locator) {
+	const tape = await locator.evaluate((el) => {
+		const style = getComputedStyle(el, '::before');
+		return {
+			content: style.content,
+			width: Number.parseFloat(style.width),
+			height: Number.parseFloat(style.height),
+			backgroundColor: style.backgroundColor,
+		};
+	});
+	expect(tape.content, 'tape pseudo-element has content').not.toBe('none');
+	expect(tape.content, 'tape pseudo-element has content').not.toBe('');
+	expect(tape.width, 'tape pseudo-element width').toBeGreaterThan(0);
+	expect(tape.height, 'tape pseudo-element height').toBeGreaterThan(0);
+	expect(tape.backgroundColor, 'tape pseudo-element background').not.toMatch(
+		/^(?:transparent|rgba\(0, 0, 0, 0\))$/,
+	);
+}
+
 /** Wait for the same-origin upload proxy to confirm a stored object (PUT → 201). */
 function waitForUpload(page: Page) {
 	return page.waitForResponse(
@@ -90,6 +120,8 @@ async function createWishlistAndNavigate(page: Page, title: string) {
 		await expect(dialog).toBeVisible({ timeout: 2_000 });
 	}).toPass({ timeout: 15_000 });
 	await dialog.locator('#wishlist-title').fill(title);
+	await dialog.locator('#wishlist-event-date').click();
+	await page.locator('[data-calendar-day][data-today]:visible').click();
 	await dialog.locator('button[type=submit]').click();
 	await expect(page.getByRole('heading', { level: 1 })).toContainText(title, { timeout: 10_000 });
 }
@@ -507,10 +539,25 @@ test.describe('Wishlist per-slot crop (WYSIWYG stage)', () => {
 		// The header polaroid consumes the thumbnail slot at 1:1 (D4/REQ-5).
 		await page.goto(`/w/${shortId}`);
 		await page.waitForSelector('h1');
-		const polaroid = page.locator('.polaroid-img img');
-		await expectAspect(polaroid, WISHLIST_SLOT_SPECS.thumbnail.aspect, FIXED_TOLERANCE);
+		const polaroidFrame = page.locator('.polaroid');
+		const visiblePhoto = page.locator('.polaroid-img');
+		const polaroid = visiblePhoto.locator('img');
+		const polaroidCaption = polaroidFrame.locator('figcaption');
+		await expectAspect(visiblePhoto, WISHLIST_SLOT_SPECS.thumbnail.aspect, FIXED_TOLERANCE);
+		await expectUniformPadding(polaroidFrame);
+		await expect(polaroidCaption).toBeVisible();
+		await expectRenderedTape(polaroidFrame);
 		const polaroidZoom = await polaroid.evaluate((el) => getComputedStyle(el).transform);
 		expect(polaroidZoom, 'saved 120 % zoom reaches the polaroid').not.toBe('none');
+
+		// Issue #257: the real visible photo remains square below the 640px breakpoint;
+		// frame spacing remains uniform while the event-date caption and tape stay rendered.
+		await page.setViewportSize({ width: 390, height: 844 });
+		await expectAspect(visiblePhoto, WISHLIST_SLOT_SPECS.thumbnail.aspect, FIXED_TOLERANCE);
+		await expectUniformPadding(polaroidFrame);
+		await expect(polaroidCaption).toBeVisible();
+		await expectRenderedTape(polaroidFrame);
+		await page.setViewportSize({ width: 1280, height: 900 });
 
 		// The dashboard card banner renders at the registry card aspect. (The banner
 		// subtree is aria-hidden – the card link carries the accessible name – so the

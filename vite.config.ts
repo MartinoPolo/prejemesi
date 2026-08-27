@@ -25,6 +25,23 @@ const gitBranch = (() => {
 const dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 const isVitest = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+
+interface VitestBrowserRunnerFallback {
+	wrapDynamicImport<T>(factory: () => Promise<T>): Promise<T>;
+}
+
+declare global {
+	var __vitest_browser_runner__: VitestBrowserRunnerFallback | undefined;
+}
+
+if (isVitest) {
+	// Vitest stable transforms SSR imports but removes its browser runner during teardown;
+	// `??=` preserves the real runner while supplying the upstream-documented fallback.
+	globalThis.__vitest_browser_runner__ ??= {
+		wrapDynamicImport: <T>(factory: () => Promise<T>) => factory(),
+	};
+}
+
 const sentryUploadEnvironmentVariables = [
 	process.env.SENTRY_AUTH_TOKEN,
 	process.env.SENTRY_ORG,
@@ -172,7 +189,7 @@ export default defineConfig({
 		},
 		projects: [
 			{
-				extends: './vite.config.ts',
+				extends: true,
 				test: {
 					name: 'client',
 					// Sequential project groups avoid races in shared SvelteKit generated state.
@@ -196,7 +213,7 @@ export default defineConfig({
 				},
 			},
 			{
-				extends: './vite.config.ts',
+				extends: true,
 				test: {
 					name: 'server',
 					sequence: { groupOrder: 1 },
