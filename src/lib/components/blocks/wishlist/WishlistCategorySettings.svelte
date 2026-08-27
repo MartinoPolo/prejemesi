@@ -9,7 +9,11 @@
 		getGiftCategories,
 		saveGiftCategorySettingsCommand,
 	} from '$lib/modules/gift-categories/gift_categories.remote.js';
-	import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
+	import {
+		GIFT_CATEGORY_PRESETS,
+		MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH,
+		type GiftCategoryPresetKey,
+	} from '$lib/modules/gift-categories/types.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
@@ -34,7 +38,7 @@
 	const categories = $derived(categoriesQuery.current ?? []);
 	let customLabel = $state('');
 	let customDrafts = $state<CustomDraft[]>([]);
-	let enabledPresets = $state<string[]>([]);
+	let enabledPresets = $state<GiftCategoryPresetKey[]>([]);
 	let baseline = $state('');
 	let seededSignature = $state('');
 	let saving = $state(false);
@@ -83,7 +87,7 @@
 		next.splice(index + direction, 0, item);
 		customDrafts = next;
 	}
-	function togglePreset(key: string, checked: boolean) {
+	function togglePreset(key: GiftCategoryPresetKey, checked: boolean) {
 		enabledPresets = checked
 			? [...enabledPresets, key]
 			: enabledPresets.filter((candidate) => candidate !== key);
@@ -99,7 +103,7 @@
 					id,
 					label: label.trim(),
 				})),
-				presetKeys: enabledPresets as never,
+				presetKeys: enabledPresets,
 			});
 			baseline = snapshot();
 			toastSuccess(m.gift_categories_saved());
@@ -120,7 +124,7 @@
 		<div class="flex flex-wrap gap-2">
 			<Input
 				bind:value={customLabel}
-				maxlength={80}
+				maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
 				placeholder={m.gift_category_custom_placeholder()}
 				class="min-w-56 flex-1"
 				disabled={saving}
@@ -143,7 +147,11 @@
 					class="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
 				>
 					<div class="min-w-0 flex-1">
-						<Input bind:value={category.label} maxlength={80} disabled={saving} />
+						<Input
+							bind:value={category.label}
+							maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
+							disabled={saving}
+						/>
 						{#if category.usedCount > 0}<HelpText
 								>{m.gift_category_used_count({
 									count: category.usedCount,

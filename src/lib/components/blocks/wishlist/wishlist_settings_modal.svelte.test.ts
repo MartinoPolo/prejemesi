@@ -5,15 +5,15 @@ import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { REVERT_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { WISHLIST_ROLES, type Wishlist } from '$lib/modules/wishlists/types.js';
+import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
+
+const remoteMocks = vi.hoisted(() => ({
+	saveGiftCategorySettingsCommand: vi.fn(),
+}));
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 	getGiftCategories: vi.fn(() => ({ current: [] })),
-	createCustomGiftCategoryCommand: vi.fn(),
-	deleteCustomGiftCategoryCommand: vi.fn(),
-	renameCustomGiftCategoryCommand: vi.fn(),
-	reorderGiftCategories: vi.fn(),
-	togglePresetGiftCategory: vi.fn(),
-	saveGiftCategorySettingsCommand: vi.fn(),
+	saveGiftCategorySettingsCommand: remoteMocks.saveGiftCategorySettingsCommand,
 }));
 
 import WishlistSettingsModal from './WishlistSettingsModal.svelte';
@@ -90,6 +90,92 @@ describe('WishlistSettingsModal import and export tab', () => {
 
 		expect(onimport).toHaveBeenCalledOnce();
 		expect(onexport).toHaveBeenCalledOnce();
+	});
+
+	it('guards Import with the category discard confirmation', async () => {
+		const onimport = vi.fn();
+		const confirm = vi
+			.spyOn(window, 'confirm')
+			.mockReturnValueOnce(false)
+			.mockReturnValueOnce(true);
+		const screen = renderSettings({ onimport, activeTab: 'categories' });
+
+		const customInput = screen.getByPlaceholder(m.gift_category_custom_placeholder());
+		await customInput.fill('Nová kategorie');
+		await screen.getByRole('button', { name: m.gift_category_create() }).click();
+		await screen.getByRole('tab', { name: m.wishlist_settings_data_title() }).click();
+
+		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
+		expect(onimport).not.toHaveBeenCalled();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
+
+		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
+		expect(onimport).toHaveBeenCalledOnce();
+		expect(confirm).toHaveBeenCalledTimes(2);
+	});
+
+	it('commits all staged category changes only from the dialog footer Save', async () => {
+		remoteMocks.saveGiftCategorySettingsCommand.mockReset();
+		let resolveSave!: () => void;
+		remoteMocks.saveGiftCategorySettingsCommand.mockImplementationOnce(
+			() => new Promise<void>((resolve) => (resolveSave = resolve)),
+		);
+		const screen = renderSettings({ activeTab: 'categories' });
+
+		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
+		await screen.getByRole('button', { name: m.gift_category_create() }).click();
+		const preset = GIFT_CATEGORY_PRESETS[0]!;
+		const presetLabel = preset.labels.cs;
+		await screen.getByText(presetLabel).click();
+
+		expect(remoteMocks.saveGiftCategorySettingsCommand).not.toHaveBeenCalled();
+		const save = screen.getByRole('button', { name: m.save() });
+		await expect.element(save).toBeEnabled();
+		const saveElement = save.element() as HTMLButtonElement;
+		await save.click();
+
+		expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledOnce();
+		expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledWith({
+			wishlistId: wishlist.id,
+			customCategories: [{ id: null, label: 'Nová kategorie' }],
+			presetKeys: [preset.key],
+		});
+		await vi.waitFor(() => expect(saveElement.disabled).toBe(true));
+		resolveSave();
+		await vi.waitFor(() => {
+			expect(saveElement.textContent).toContain(m.save());
+			expect(saveElement.disabled).toBe(true);
+		});
+	});
+
+	it.each([
+		['categories' as const, 'wishlist-categories-form'],
+		['image' as const, 'wishlist-image-form'],
+	])('keeps the %s Save visible outside the scrolling form', async (activeTab, formId) => {
+		const screen = renderSettings({ activeTab });
+		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
+		const form = document.getElementById(formId)!;
+		const save = dialog.querySelector<HTMLButtonElement>(`button[form="${formId}"]`)!;
+		const footer = save.closest<HTMLElement>('[data-slot="dialog-footer"]')!;
+		const scrollBody = footer.previousElementSibling as HTMLElement;
+
+		expect(dialog.contains(save)).toBe(true);
+		expect(form.contains(save)).toBe(false);
+		expect(scrollBody.contains(save)).toBe(false);
+		dialog.style.cssText +=
+			'; display: flex; flex-direction: column; height: 240px; max-height: 240px';
+		scrollBody.style.cssText += '; min-height: 0; flex: 1; overflow-y: auto';
+		footer.style.cssText += '; flex: none';
+		scrollBody.scrollTop = scrollBody.scrollHeight;
+		await new Promise((resolve) => requestAnimationFrame(resolve));
+		const saveRect = save.getBoundingClientRect();
+		const dialogRect = dialog.getBoundingClientRect();
+		expect(saveRect.top).toBeGreaterThanOrEqual(dialogRect.top);
+		expect(saveRect.bottom).toBeLessThanOrEqual(dialogRect.bottom);
+		expect(saveRect.top).toBeGreaterThanOrEqual(0);
+		expect(saveRect.bottom).toBeLessThanOrEqual(window.innerHeight);
 	});
 
 	it('keeps keyboard-selected tabs visible in the mobile-width overflow', async () => {

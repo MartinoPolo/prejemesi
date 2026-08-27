@@ -1,28 +1,26 @@
-# Confidence-gated batch review (#245 / #246)
+# Confidence-gated batch review (#260–#264)
 
-## Reviewers and findings
+## Actionable checklist
 
-- **Reviewer 1 — import transaction safety:** duplicate-warning detection ran after category resolution, allowing category creation/restoration to commit without gift import.
-- **Reviewer 2 — gifts context reactivity and persistence:** a derived calculation mutated persisted grouping state; browser storage failures could also break rendering and migration.
-- **Reviewer 3 — category transaction/concurrency safety:** category assignment could race soft-delete; preset enable could race the partial unique constraint; application-normalized custom labels could race creation/rename.
-- **Reviewer 4 — import error handling:** the wizard discarded actionable server errors and the confirmation step displayed only a generic message.
+### Important
 
-## Fixes applied
+- [x] `src/lib/modules/gift-categories/gift_categories_service.ts`: make staged custom-label swaps safe under the active unique-label index by applying temporary unique labels before final labels.
+- [x] `src/lib/components/blocks/wishlist/WishlistSettingsModal.svelte`: route Import-triggered parent closure through the same unsaved-category confirmation used by X, backdrop, and Escape.
+- [x] `src/lib/components/blocks/sharing/ShareWizard.svelte`: keep the confirmation action visible on constrained viewports with the established bounded body and fixed-footer layout.
+- [x] `src/lib/components/blocks/import/ImportWizard.svelte`: move the deferred Confirm-step commit/retry control into the fixed footer and associate it with the scroll-body form, while retaining summary, progress, errors, and success navigation in the confirm step.
+- [x] Add behavioral regression coverage for the atomic category snapshot, deferred save/discard confirmation, and category rename transparency semantics. (The service test exercises label swaps through the real DB transaction boundary; it does not claim a synthetic rollback simulation.)
+- [x] Add loaded-image coverage for compact change/remove controls.
+- [ ] Extend sticky-footer coverage beyond the Settings Details form to every changed modal/footer path.
+  - [x] Categories and Image settings footers have constrained-height browser coverage.
+  - [ ] ShareWizard/CreateWishlistModal: visual Playwright already measured these paths; component setup would require invasive context mocks, so no brittle component test was added.
+- [ ] `ModeratorPanel` immediate actions remain non-sticky (non-blocking): the panel has no deferred Save/commit footer. Claim, invite, self-promote, and revoke are independent contextual mutations, so choosing one fixed action would be semantically incorrect and making every action sticky would obscure scrollable content. The #260 sticky-control requirement is limited to deferred primary commit controls; retain the current scroll body.
 
-- Moved duplicate detection ahead of imported category resolution, so warning-only append attempts perform no category structure mutation.
-- Made effective grouping derivation pure and moved browser-only persistence coercion to an effect.
-- Guarded localStorage read/write/repair/migration operations so unavailable storage falls back to in-memory defaults while serde/programming errors remain visible.
-- Kept category assignment validation and gift create/update writes in the same transaction, with the category row locked through the write.
-- Serialized all category structure mutations on the wishlist row. Rename/delete discover the wishlist without a row lock, then lock in the consistent wishlist-row → category-row order before re-reading and mutating. Enable/disable, create, reorder, and import-plan mutations use the same serialization; import/create already enter through the transactional append service.
-- Preserved category in-use guards for preset disable and custom delete.
-- Preserved the thrown import failure, translated it with the existing server-error convention, and rendered the translated message in the confirmation error alert.
-- Updated remote DB mocks to execute transaction callbacks, so update behavior tests exercise the transaction boundary rather than bypassing it.
+## Nice-to-have
 
-## Tests and checks run
+- [x] Remove obsolete per-operation category remote APIs and their stale test mocks after the transactional command replacement.
+- [x] Replace the `enabledPresets as never` escape hatch with the actual preset-key type.
+- [x] Prefer browser-observable select scrolling assertions over exact Tailwind utility assertions while retaining keyboard reachability coverage.
 
-- `pnpm exec vitest run src/lib/modules/gift-categories/gift_categories_service.test.ts src/lib/modules/gifts/gifts.context.test.ts src/lib/modules/import/import.remote.test.ts src/lib/modules/import/duplicate_aware_submission.test.ts src/lib/modules/gifts/gifts.remote.test.ts` — passed: 5 files, 103 tests.
-- `pnpm run check` — passed: 0 errors, 0 warnings.
+## Post-fix review
 
-## Intentionally unresolved
-
-None.
+Four reviewers are clean except for the explicitly documented non-blocking `ModeratorPanel` interpretation. Its actions remain intentionally non-sticky because they are independent immediate contextual mutations rather than one deferred primary commit; fixing one action or all actions in place would either misrepresent priority or obscure scrollable content.

@@ -11,6 +11,8 @@
 		ref = $bindable(null),
 		class: className,
 		sideOffset = 4,
+		sticky = 'always',
+		collisionPadding = 8,
 		portalProps,
 		children,
 		preventScroll = true,
@@ -24,6 +26,8 @@
 	<SelectPrimitive.Content
 		bind:ref
 		{sideOffset}
+		{sticky}
+		{collisionPadding}
 		{preventScroll}
 		data-slot="select-content"
 		class={cn(

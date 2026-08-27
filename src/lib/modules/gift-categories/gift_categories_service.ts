@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql, inArray } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
@@ -10,6 +10,7 @@ import {
 	type GiftCategoryPresetKey,
 } from './presets.js';
 import {
+	MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH,
 	normalizeGiftCategoryLabel,
 	presetLabelsByNormalizedValue,
 	type ManagedGiftCategory,
@@ -293,72 +294,6 @@ export async function resolveImportGiftCategoryAssignments(params: {
 	return assignmentByImportedLabel;
 }
 
-export async function enablePresetGiftCategory(params: {
-	wishlistId: string;
-	presetKey: GiftCategoryPresetKey;
-	enabled: boolean;
-}): Promise<void> {
-	const database = getDb();
-	if (!GIFT_CATEGORY_PRESET_BY_KEY.has(params.presetKey)) {
-		error(400, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
-	}
-	await database.transaction(async (tx) => {
-		await lockWishlistCategoryStructure(tx, params.wishlistId);
-		const [row] = await tx
-			.select()
-			.from(giftCategory)
-			.where(
-				and(
-					eq(giftCategory.wishlistId, params.wishlistId),
-					eq(giftCategory.presetKey, params.presetKey),
-				),
-			)
-			.limit(1)
-			.for('update');
-		const now = new Date();
-		if (params.enabled) {
-			if (row === undefined) {
-				await tx.insert(giftCategory).values({
-					wishlistId: params.wishlistId,
-					presetKey: params.presetKey,
-					sortOrder: await nextSortOrder(tx, params.wishlistId),
-				});
-			} else if (row.deletedAt !== null) {
-				await tx
-					.update(giftCategory)
-					.set({
-						deletedAt: null,
-						sortOrder: await nextSortOrder(tx, params.wishlistId),
-						updatedAt: now,
-					})
-					.where(eq(giftCategory.id, row.id));
-			}
-			return;
-		}
-		if (row === undefined || row.deletedAt !== null) {
-			return;
-		}
-		if ((await activeGiftCount(tx, row.id)) > 0) {
-			error(400, SERVER_ERROR.GIFT_CATEGORY_IN_USE);
-		}
-		await tx
-			.update(giftCategory)
-			.set({ deletedAt: now, updatedAt: now })
-			.where(eq(giftCategory.id, row.id));
-	});
-}
-
-export async function createCustomGiftCategory(params: {
-	wishlistId: string;
-	label: string;
-}): Promise<PublicGiftCategory> {
-	const database = getDb();
-	return database.transaction(async (tx) => {
-		await lockWishlistCategoryStructure(tx, params.wishlistId);
-		return createCustomGiftCategoryWithDatabase(tx, params);
-	});
-}
-
 /**
  * Reconciles the complete settings snapshot under one wishlist lock. Existing rows are updated
  * in place so gift assignments and production IDs survive rename, reorder, and preset toggles.
@@ -411,6 +346,30 @@ export async function saveGiftCategorySettings(
 					.set({ deletedAt: now, updatedAt: now })
 					.where(eq(giftCategory.id, row.id));
 			}
+		}
+
+		// Move every retained custom row out of the final-label namespace first. This permits
+		// atomic swaps (A → B, B → A) without tripping the active normalized-label index.
+		const occupiedTemporaryLabels = new Set(
+			rows
+				.filter((row) => row.deletedAt === null && row.customLabel !== null)
+				.map((row) => normalizeGiftCategoryLabel(row.customLabel!)),
+		);
+		for (const [index, id] of requestedIds.entries()) {
+			let suffix = 0;
+			let temporaryLabel: string;
+			do {
+				temporaryLabel = `__category_reconcile_${index}_${suffix}_${id}`.slice(
+					0,
+					MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH,
+				);
+				suffix += 1;
+			} while (occupiedTemporaryLabels.has(normalizeGiftCategoryLabel(temporaryLabel)));
+			occupiedTemporaryLabels.add(normalizeGiftCategoryLabel(temporaryLabel));
+			await tx
+				.update(giftCategory)
+				.set({ customLabel: temporaryLabel, updatedAt: now })
+				.where(eq(giftCategory.id, id));
 		}
 
 		const orderedIds: string[] = [];
@@ -479,122 +438,6 @@ export async function saveGiftCategorySettings(
 				.set({ sortOrder, updatedAt: now })
 				.where(eq(giftCategory.id, id));
 		}
-	});
-}
-
-export async function renameCustomGiftCategory(params: {
-	categoryId: string;
-	label: string;
-}): Promise<void> {
-	const database = getDb();
-	await database.transaction(async (tx) => {
-		const [categoryIdentity] = await tx
-			.select({ wishlistId: giftCategory.wishlistId })
-			.from(giftCategory)
-			.where(eq(giftCategory.id, params.categoryId))
-			.limit(1);
-		if (categoryIdentity === undefined) {
-			error(404, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
-		}
-		await lockWishlistCategoryStructure(tx, categoryIdentity.wishlistId);
-		const [row] = await tx
-			.select()
-			.from(giftCategory)
-			.where(eq(giftCategory.id, params.categoryId))
-			.limit(1)
-			.for('update');
-		if (row === undefined || row.deletedAt !== null) {
-			error(404, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
-		}
-		if (row.presetKey !== null) {
-			error(400, SERVER_ERROR.GIFT_CATEGORY_PRESET_IMMUTABLE);
-		}
-		const trimmed = params.label.trim();
-		if (trimmed === row.customLabel) {
-			return;
-		}
-		await assertNoLabelConflict({
-			database: tx,
-			wishlistId: row.wishlistId,
-			label: trimmed,
-			excludeCategoryId: row.id,
-		});
-		const now = new Date();
-		await tx
-			.update(giftCategory)
-			.set({ customLabel: trimmed, updatedAt: now })
-			.where(eq(giftCategory.id, row.id));
-	});
-}
-
-export async function deleteCustomGiftCategory(categoryId: string): Promise<void> {
-	const database = getDb();
-	await database.transaction(async (tx) => {
-		const [categoryIdentity] = await tx
-			.select({ wishlistId: giftCategory.wishlistId })
-			.from(giftCategory)
-			.where(eq(giftCategory.id, categoryId))
-			.limit(1);
-		if (categoryIdentity === undefined) {
-			error(404, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
-		}
-		await lockWishlistCategoryStructure(tx, categoryIdentity.wishlistId);
-		const [row] = await tx
-			.select()
-			.from(giftCategory)
-			.where(eq(giftCategory.id, categoryId))
-			.limit(1)
-			.for('update');
-		if (row === undefined || row.deletedAt !== null) {
-			error(404, SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND);
-		}
-		if (row.presetKey !== null) {
-			error(400, SERVER_ERROR.GIFT_CATEGORY_PRESET_IMMUTABLE);
-		}
-		if ((await activeGiftCount(tx, row.id)) > 0) {
-			error(400, SERVER_ERROR.GIFT_CATEGORY_IN_USE);
-		}
-		await tx
-			.update(giftCategory)
-			.set({ deletedAt: new Date(), updatedAt: new Date() })
-			.where(eq(giftCategory.id, row.id));
-	});
-}
-
-export async function reorderActiveGiftCategories(params: {
-	wishlistId: string;
-	categoryIds: readonly string[];
-}): Promise<void> {
-	const database = getDb();
-	await database.transaction(async (tx) => {
-		await lockWishlistCategoryStructure(tx, params.wishlistId);
-		const rows = await tx
-			.select({ id: giftCategory.id })
-			.from(giftCategory)
-			.where(
-				and(eq(giftCategory.wishlistId, params.wishlistId), isNull(giftCategory.deletedAt)),
-			);
-		const activeIds = rows.map((row) => row.id);
-		if (
-			activeIds.length !== params.categoryIds.length ||
-			new Set(params.categoryIds).size !== params.categoryIds.length ||
-			activeIds.some((id) => !params.categoryIds.includes(id))
-		) {
-			error(400, SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH);
-		}
-		if (params.categoryIds.length === 0) {
-			return;
-		}
-		const sortOrderCase = sql.join(
-			params.categoryIds.map(
-				(id, sortOrder) => sql`WHEN ${giftCategory.id} = ${id} THEN ${sortOrder}::integer`,
-			),
-			sql` `,
-		);
-		await tx
-			.update(giftCategory)
-			.set({ sortOrder: sql<number>`CASE ${sortOrderCase} END`, updatedAt: new Date() })
-			.where(inArray(giftCategory.id, [...params.categoryIds]));
 	});
 }
 

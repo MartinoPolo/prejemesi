@@ -173,16 +173,30 @@
 		detailsError = '';
 	}
 
+	function approveCategoryDiscard(): boolean {
+		if (categoriesDirty && !window.confirm(m.gift_categories_unsaved_confirm())) {
+			return false;
+		}
+		categoriesDirty = false;
+		return true;
+	}
+
 	function handleOpenChange(nextOpen: boolean) {
-		if (!nextOpen && categoriesDirty && !window.confirm(m.gift_categories_unsaved_confirm())) {
+		if (!nextOpen && !approveCategoryDiscard()) {
 			open = true;
 			return;
 		}
 		if (!nextOpen) {
 			// Discard unsaved edits on close; the next open re-seeds from the current wishlist.
-			categoriesDirty = false;
 			seedDetailsForm();
 		}
+	}
+
+	function handleImport() {
+		if (!approveCategoryDiscard()) {
+			return;
+		}
+		onimport();
 	}
 
 	async function handleDetailsSave(event: SubmitEvent) {
@@ -551,7 +565,7 @@
 							{m.wishlist_settings_data_hint()}
 						</p>
 						<div class="flex flex-wrap gap-2">
-							<Button type="button" intent="outline" size="sm" onclick={onimport}>
+							<Button type="button" intent="outline" size="sm" onclick={handleImport}>
 								<FileUpIcon data-icon="inline-start" />
 								{m.import_toolbar_label()}
 							</Button>

@@ -104,14 +104,36 @@ describe('GiftDetailForm categories', () => {
 			categoryOptions: manyCategories,
 		});
 
-		await screen.getByRole('button', { name: m.gift_category_none() }).click();
-		const viewport = document.querySelector('[data-select-viewport]');
-		expect(viewport).toHaveClass('max-h-(--bits-select-content-available-height)');
-		expect(viewport).toHaveClass('overflow-y-auto');
+		const overflowStyle = document.createElement('style');
+		overflowStyle.textContent = '[data-select-viewport] { max-height: 120px !important; }';
+		document.head.append(overflowStyle);
+		const trigger = screen.getByRole('button', { name: m.gift_category_none() });
+		trigger.element().scrollIntoView({ block: 'center' });
+		await trigger.click();
+		const viewport = document.querySelector<HTMLElement>('[data-select-viewport]')!;
 		expect(screen.getByRole('option').all()).toHaveLength(31);
+		await vi.waitFor(() => {
+			expect(viewport.clientHeight).toBeGreaterThan(0);
+			expect(Number.isFinite(viewport.clientHeight)).toBe(true);
+			expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
+		});
+		viewport.scrollIntoView({ block: 'center' });
+		const rect = viewport.getBoundingClientRect();
+		expect(rect.top).toBeGreaterThanOrEqual(0);
+		expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
 
-		await userEvent.keyboard('{End}{Enter}');
+		await userEvent.keyboard('{End}');
+		const finalOption = screen.getByRole('option', { name: 'Category 30' }).element();
+		await vi.waitFor(() => {
+			expect(viewport.scrollTop).toBeGreaterThan(0);
+			const viewportRect = viewport.getBoundingClientRect();
+			const optionRect = finalOption.getBoundingClientRect();
+			expect(optionRect.top).toBeGreaterThanOrEqual(viewportRect.top);
+			expect(optionRect.bottom).toBeLessThanOrEqual(viewportRect.bottom + 1);
+		});
+		await userEvent.keyboard('{Enter}');
 		await expect.element(screen.getByRole('button', { name: 'Category 30' })).toBeVisible();
+		overflowStyle.remove();
 	});
 
 	it('preselects an edit gift category and submits null when it is cleared', async () => {

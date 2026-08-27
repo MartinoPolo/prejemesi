@@ -106,7 +106,7 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(() => mockDbInstance.db),
 }));
 
-const { deleteCustomGiftCategory, renameCustomGiftCategory, resolveImportGiftCategoryAssignments } =
+const { resolveImportGiftCategoryAssignments, saveGiftCategorySettings } =
 	await import('./gift_categories_service.js');
 
 const WISHLIST_ID = 'wishlist-1';
@@ -130,12 +130,17 @@ beforeEach(() => {
 
 describe('gift category management service', () => {
 	it('serializes deletion and blocks it while active gifts use the category', async () => {
-		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
-		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
 		mockDbInstance.pushResult([{ count: 2 }]);
 
-		await expect(deleteCustomGiftCategory(CATEGORY_ID)).rejects.toMatchObject({
+		await expect(
+			saveGiftCategorySettings({
+				wishlistId: WISHLIST_ID,
+				customCategories: [],
+				presetKeys: [],
+			}),
+		).rejects.toMatchObject({
 			status: 400,
 			message: SERVER_ERROR.GIFT_CATEGORY_IN_USE,
 		});
@@ -146,17 +151,56 @@ describe('gift category management service', () => {
 	});
 
 	it('serializes rename without marking assigned gifts edited after share', async () => {
-		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
-		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
-		mockDbInstance.pushResult([customCategory]);
-		await renameCustomGiftCategory({ categoryId: CATEGORY_ID, label: 'Sportovní vybavení' });
+		await saveGiftCategorySettings({
+			wishlistId: WISHLIST_ID,
+			customCategories: [{ id: CATEGORY_ID, label: 'Sportovní vybavení' }],
+			presetKeys: [],
+		});
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
-		expect(setCalls).toHaveLength(1);
-		expect(setCalls[0]?.args[0]).toMatchObject({ customLabel: 'Sportovní vybavení' });
-		expect(setCalls[0]?.args[0]).not.toHaveProperty('editedAfterShareAt');
+		expect(setCalls).toHaveLength(3);
+		expect(setCalls[1]?.args[0]).toMatchObject({ customLabel: 'Sportovní vybavení' });
+		for (const call of setCalls) {
+			expect(call.args[0]).not.toHaveProperty('editedAfterShareAt');
+		}
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
+	});
+
+	it('moves retained custom labels aside before applying an atomic label swap', async () => {
+		const firstCategory = { ...customCategory, customLabel: 'Kategorie Alfa' };
+		const secondCategory = {
+			...customCategory,
+			id: 'category-2',
+			customLabel: 'Kategorie Beta',
+			sortOrder: 1,
+		};
+		mockDbInstance.pushResult([]); // wishlist lock
+		mockDbInstance.pushResult([firstCategory, secondCategory]);
+
+		await saveGiftCategorySettings({
+			wishlistId: WISHLIST_ID,
+			customCategories: [
+				{ id: CATEGORY_ID, label: 'Kategorie Beta' },
+				{ id: secondCategory.id, label: 'Kategorie Alfa' },
+			],
+			presetKeys: [],
+		});
+
+		const labels = mockDbInstance.calls
+			.filter((call) => call.method === 'set')
+			.map((call) => (call.args[0] as { customLabel?: string }).customLabel)
+			.filter((label): label is string => label !== undefined);
+		expect(labels).toHaveLength(4);
+		expect(labels.slice(0, 2)).toEqual([
+			expect.stringMatching(/^__category_reconcile_/),
+			expect.stringMatching(/^__category_reconcile_/),
+		]);
+		expect(labels.slice(2)).toEqual(['Kategorie Beta', 'Kategorie Alfa']);
+		expect(mockDbInstance.calls.filter((call) => call.method === 'transaction')).toHaveLength(
+			1,
+		);
 	});
 
 	it('creates explicitly resolved custom import categories inside the caller transaction', async () => {

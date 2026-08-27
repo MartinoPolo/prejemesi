@@ -105,6 +105,68 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await page.context().close();
 	});
 
+	test('custom category labels can be swapped atomically and persist', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-category-label-swap');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+
+		await createWishlistAndNavigate(page, 'Prohození kategorií');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		let settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+
+		const newCategory = settingsDialog.getByPlaceholder('Vlastní kategorie');
+		await newCategory.fill('Kategorie Alfa');
+		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
+		await newCategory.fill('Kategorie Beta');
+		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
+		await settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' })
+			.click();
+		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible({
+			timeout: 10_000,
+		});
+
+		const customSection = settingsDialog
+			.getByRole('heading', { name: 'Vlastní kategorie' })
+			.locator('..');
+		const labels = customSection.getByRole('textbox');
+		await expect(labels).toHaveCount(2);
+		const values = await labels.evaluateAll((inputs) =>
+			inputs.map((input) => (input as HTMLInputElement).value),
+		);
+		const alfaIndex = values.indexOf('Kategorie Alfa');
+		const betaIndex = values.indexOf('Kategorie Beta');
+		expect(alfaIndex).toBeGreaterThanOrEqual(0);
+		expect(betaIndex).toBeGreaterThanOrEqual(0);
+		await labels.nth(alfaIndex).fill('Kategorie Beta');
+		await labels.nth(betaIndex).fill('Kategorie Alfa');
+		await settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' })
+			.click();
+		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible();
+
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+		const persistedLabels = settingsDialog
+			.getByRole('heading', { name: 'Vlastní kategorie' })
+			.locator('..')
+			.getByRole('textbox');
+		await expect(persistedLabels).toHaveCount(2);
+		await expect(persistedLabels.nth(alfaIndex)).toHaveValue('Kategorie Beta');
+		await expect(persistedLabels.nth(betaIndex)).toHaveValue('Kategorie Alfa');
+
+		await page.context().close();
+	});
+
 	test('manager import and export actions live in settings instead of the toolbar', async ({
 		browser,
 		request,
