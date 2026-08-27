@@ -33,7 +33,8 @@ test.describe('Wishlist settings – non-image editing', () => {
 
 		// The legacy settings URL redirects to the wishlist page and opens the settings modal.
 		await page.goto(`/w/${shortId}/settings`);
-		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
+		const settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await expect(settingsDialog).toBeVisible({ timeout: 10_000 });
 
 		// The event date is a DatePicker popover (not a native input). Pick a deterministic
 		// date 3 months out so the calendar – which opens on the current month – needs a fixed
@@ -68,7 +69,16 @@ test.describe('Wishlist settings – non-image editing', () => {
 		// Selecting a day closes the popover; the trigger now shows the localized long date.
 		await expect(eventDateField).toContainText(expectedEventDate);
 
-		await form.getByRole('button', { name: 'Uložit' }).click();
+		// Save lives in the fixed dialog footer, outside the scrolling details form.
+		const saveButton = settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' });
+		await expect(form.getByRole('button', { name: 'Uložit' })).toHaveCount(0);
+		await settingsDialog.locator('.overflow-y-auto').evaluate((content) => {
+			content.scrollTop = content.scrollHeight;
+		});
+		await expect(saveButton).toBeVisible();
+		await saveButton.click();
 
 		await expect(page.getByText('Podrobnosti seznamu byly uloženy')).toBeVisible({
 			timeout: 10_000,
