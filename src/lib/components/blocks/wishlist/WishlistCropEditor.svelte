@@ -227,10 +227,12 @@
 		handleSave();
 	}}
 >
-	<!-- Image assignment -->
+	<!-- Image assignment: the empty state gets the full dropzone; once assigned,
+	     compact actions leave crop editing as the primary content. The compact
+	     change action remains a drop target as well as opening the file picker. -->
 	<div class="flex flex-col gap-2">
-		<Label>{m.wishlist_image_assign_label()}</Label>
 		{#if !hasImage}
+			<Label>{m.wishlist_image_assign_label()}</Label>
 			<ImageUpload
 				target="wishlist-banner"
 				onUpload={handleUpload}
@@ -238,17 +240,21 @@
 			/>
 			<HelpText>{m.wishlist_image_assign_hint()}</HelpText>
 		{:else}
-			<div class="flex flex-wrap gap-2">
-				<ImageUpload
-					target="wishlist-banner"
-					size="small"
-					onUpload={handleUpload}
-					onError={handleUploadError}
-				/>
-				<Button intent="outline" size="sm" onclick={handleRemove}>
-					<TrashIcon data-icon="inline-start" />
-					{m.wishlist_image_remove()}
-				</Button>
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<Label>{m.wishlist_image_assign_label()}</Label>
+				<div class="flex flex-wrap gap-2">
+					<ImageUpload
+						target="wishlist-banner"
+						size="compact"
+						label={m.wishlist_image_change()}
+						onUpload={handleUpload}
+						onError={handleUploadError}
+					/>
+					<Button intent="outline" size="sm" onclick={handleRemove}>
+						<TrashIcon data-icon="inline-start" />
+						{m.wishlist_image_remove()}
+					</Button>
+				</div>
 			</div>
 		{/if}
 	</div>

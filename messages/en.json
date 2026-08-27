@@ -708,6 +708,7 @@
 	"claim_error_generic": "Failed to claim the list",
 	"wishlist_image_assign_label": "Wishlist image",
 	"wishlist_image_assign_hint": "Upload a single image; crop it per slot below.",
+	"wishlist_image_change": "Change image",
 	"wishlist_image_remove": "Remove image",
 	"wishlist_image_slot_card": "Card",
 	"wishlist_image_slot_thumbnail": "Thumbnail",

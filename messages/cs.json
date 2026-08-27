@@ -708,6 +708,7 @@
 	"claim_error_generic": "Nepodařilo se převzít seznam",
 	"wishlist_image_assign_label": "Obrázek seznamu",
 	"wishlist_image_assign_hint": "Nahrajte jeden obrázek; pro každé místo si níže nastavíte vlastní ořez.",
+	"wishlist_image_change": "Změnit obrázek",
 	"wishlist_image_remove": "Odebrat obrázek",
 	"wishlist_image_slot_card": "Karta",
 	"wishlist_image_slot_thumbnail": "Miniatura",
