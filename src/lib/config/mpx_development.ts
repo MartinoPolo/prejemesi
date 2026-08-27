@@ -3,7 +3,7 @@ type Environment = Readonly<Record<string, string | undefined>>;
 function port(environment: Environment, name: string, fallback: number): number {
 	const raw = environment[name];
 	let value = Number(raw);
-	if (raw && !Number.isInteger(value)) {
+	if (raw !== undefined && raw !== '' && !Number.isInteger(value)) {
 		try {
 			value = Number(new URL(raw).port);
 		} catch {
@@ -24,7 +24,7 @@ function servicePort(
 	fallback: number,
 ): number {
 	const assignedUrl = environment[urlName];
-	if (assignedUrl) {
+	if (assignedUrl !== undefined && assignedUrl !== '') {
 		try {
 			const parsed = new URL(assignedUrl);
 			const assignedPort = Number(parsed.port);
