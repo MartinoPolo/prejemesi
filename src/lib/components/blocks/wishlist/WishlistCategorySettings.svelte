@@ -79,10 +79,8 @@
 	}
 	function move(index: number, direction: -1 | 1) {
 		const next = [...customDrafts];
-		const [item] = next.splice(index, 1);
-		if (item) {
-			next.splice(index + direction, 0, item);
-		}
+		const item = next.splice(index, 1)[0]!;
+		next.splice(index + direction, 0, item);
 		customDrafts = next;
 	}
 	function togglePreset(key: string, checked: boolean) {
