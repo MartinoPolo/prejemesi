@@ -72,6 +72,18 @@ function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
 	);
 }
 
+function measureNaturalWidth(element: HTMLElement): number {
+	const clone = element.cloneNode(true) as HTMLElement;
+	clone.style.position = 'fixed';
+	clone.style.width = 'max-content';
+	clone.style.maxWidth = 'none';
+	clone.style.visibility = 'hidden';
+	document.body.appendChild(clone);
+	const width = clone.getBoundingClientRect().width;
+	clone.remove();
+	return width;
+}
+
 describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
 	it('shows the compact pressed preview button to visitors and moderators, but never recipients', async () => {
 		for (const role of [WISHLIST_ROLES.visitor, WISHLIST_ROLES.moderator]) {
@@ -347,17 +359,27 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 			const pillsRect = pills.getBoundingClientRect();
 			const actionsRect = actions.getBoundingClientRect();
 
-			if (width < 640) {
-				expect(getComputedStyle(pills).display).toBe('none');
-				expect(actionsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
-			} else if (width < 1056) {
+			expect(getComputedStyle(pills).display).toBe('flex');
+			const pillRemoveButtons = Array.from(
+				pills.querySelectorAll<HTMLButtonElement>('button[aria-label]'),
+			);
+			expect(pillRemoveButtons).toHaveLength(7);
+			for (const button of pillRemoveButtons) {
+				const rectangle = button.getBoundingClientRect();
+				expect(rectangle.width).toBeGreaterThan(0);
+				expect(rectangle.height).toBeGreaterThan(0);
+				expect(rectangle.left).toBeGreaterThanOrEqual(toolbarRect.left);
+				expect(rectangle.right).toBeLessThanOrEqual(toolbarRect.right);
+				expect(rectangle.top).toBeGreaterThanOrEqual(toolbarRect.top);
+				expect(rectangle.bottom).toBeLessThanOrEqual(toolbarRect.bottom);
+			}
+			if (width < 1056) {
 				expect(pillsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
 				expect(actionsRect.top).toBeGreaterThanOrEqual(pillsRect.bottom);
 			} else {
 				expect(pillsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
 				expect(actionsRect.left).toBeGreaterThanOrEqual(pillsRect.right);
 				expect(Math.abs(actionsRect.bottom - pillsRect.bottom)).toBeLessThan(0.5);
-				expect(pills.querySelectorAll('button[aria-label]')).toHaveLength(7);
 			}
 
 			const visibleControlButtons = Array.from(controls.querySelectorAll('button')).filter(
@@ -389,9 +411,36 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 					).toBe(false);
 				}
 			}
-			if (getComputedStyle(pills).display !== 'none') {
-				expect(rectanglesIntersect(controlsRect, pillsRect)).toBe(false);
-				expect(rectanglesIntersect(actionsRect, pillsRect)).toBe(false);
+			expect(rectanglesIntersect(controlsRect, pillsRect)).toBe(false);
+			expect(rectanglesIntersect(actionsRect, pillsRect)).toBe(false);
+			if (width <= 390) {
+				const sortTrigger = screen
+					.getByRole('button', {
+						name: `${m.gift_sort_by()}: ${m.gift_sort_owner_order()}`,
+					})
+					.element() as HTMLButtonElement;
+				const groupingTrigger = screen
+					.getByRole('button', {
+						name: `${m.gift_grouping_label()}: ${m.gift_grouping_none()}`,
+					})
+					.element() as HTMLButtonElement;
+				const filterTrigger = screen
+					.getByRole('button', { name: new RegExp(`^${m.gift_filter()}:`) })
+					.element();
+				const resetButton = screen
+					.getByRole('button', { name: m.gift_display_reset_aria() })
+					.element();
+				for (const trigger of [sortTrigger, groupingTrigger]) {
+					expect(
+						trigger.getBoundingClientRect().width,
+						`${trigger.getAttribute('aria-label')} must stay content-width at ${width}px`,
+					).toBeLessThanOrEqual(measureNaturalWidth(trigger) + 0.5);
+				}
+				const filterRect = filterTrigger.getBoundingClientRect();
+				const resetRect = resetButton.getBoundingClientRect();
+				expect(Math.abs(filterRect.top - resetRect.top)).toBeLessThan(0.5);
+				expect(resetRect.left - filterRect.right).toBeGreaterThanOrEqual(0);
+				expect(resetRect.left - filterRect.right).toBeLessThanOrEqual(10);
 			}
 			for (const [index, actionButtonRect] of actionButtonRects.slice(0, -1).entries()) {
 				expect(actionButtonRect.right).toBeLessThanOrEqual(
@@ -555,6 +604,49 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 });
 
 describe('WishlistDetailToolbar grouping and reset controls (issue #246)', () => {
+	it('switches directly between sort, grouping, and filter menus with one click', async () => {
+		const screen = await renderToolbar({
+			groupingAvailability: { priority: true, category: true },
+		});
+		const sortTrigger = screen.getByRole('button', {
+			name: `${m.gift_sort_by()}: ${m.gift_sort_owner_order()}`,
+		});
+		const groupingTrigger = screen.getByRole('button', {
+			name: `${m.gift_grouping_label()}: ${m.gift_grouping_none()}`,
+		});
+		const filterTrigger = screen.getByRole('button', { name: m.gift_filter() });
+
+		await sortTrigger.click();
+		await expect
+			.element(screen.getByRole('option', { name: m.gift_sort_priority() }))
+			.toBeVisible();
+
+		await groupingTrigger.click();
+		await expect
+			.element(screen.getByRole('option', { name: m.gift_grouping_priority() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('option', { name: m.gift_sort_priority() }))
+			.not.toBeInTheDocument();
+
+		await filterTrigger.click();
+		await expect
+			.element(screen.getByRole('menuitemcheckbox', { name: m.gift_filter_with_link() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('option', { name: m.gift_grouping_priority() }))
+			.not.toBeInTheDocument();
+
+		await sortTrigger.click();
+		await expect
+			.element(screen.getByRole('option', { name: m.gift_sort_priority() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('menuitemcheckbox', { name: m.gift_filter_with_link() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	}, 30_000);
+
 	it('renders grouping as a separate visible selector with unavailable choices disabled', async () => {
 		const screen = await renderToolbar({
 			groupingAvailability: { priority: true, category: false },

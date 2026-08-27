@@ -22,6 +22,8 @@
 		removeFilterLabel: (label: string) => string;
 		activeCountLabel: (count: number) => string;
 		align?: 'start' | 'center' | 'end';
+		open?: boolean;
+		onopenchange?: (open: boolean) => void;
 		triggerElement?: HTMLButtonElement | null;
 		triggerClass?: string;
 		class?: string;
@@ -40,6 +42,8 @@
 		removeFilterLabel,
 		activeCountLabel,
 		align = 'start',
+		open = false,
+		onopenchange,
 		triggerElement = $bindable(null),
 		triggerClass,
 		class: className,
@@ -57,7 +61,7 @@
 </script>
 
 <div class={cn('flex min-w-0 flex-wrap items-center gap-1.5', className)}>
-	<DropdownMenu.Root>
+	<DropdownMenu.Root {open} onOpenChange={onopenchange}>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
 				<Button
@@ -91,6 +95,7 @@
 
 		<DropdownMenu.Content
 			{align}
+			preventScroll={false}
 			class="max-h-[min(32rem,calc(100dvh-2rem))] w-[min(16rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-y-auto"
 		>
 			<DropdownMenu.Group>
