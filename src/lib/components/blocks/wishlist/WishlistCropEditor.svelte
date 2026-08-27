@@ -49,10 +49,19 @@
 		/** Wishlist title, used for accessible alt text. */
 		title: string;
 		isSaving?: boolean;
+		formId?: string;
 		onsave: (next: { imageKey: string | null; imageSlots: WishlistImageSlots | null }) => void;
 	}
 
-	let { imageKey, imageSlots, themeEmoji, title, isSaving = false, onsave }: Props = $props();
+	let {
+		imageKey,
+		imageSlots,
+		themeEmoji,
+		title,
+		isSaving = false,
+		formId,
+		onsave,
+	}: Props = $props();
 
 	/** Per-slot editing state: the crop rectangle is the source of truth; focal+zoom derive from it. */
 	interface SlotEditState {
@@ -210,7 +219,14 @@
 	});
 </script>
 
-<div class="flex flex-col gap-5">
+<form
+	id={formId}
+	class="flex flex-col gap-5"
+	onsubmit={(event) => {
+		event.preventDefault();
+		handleSave();
+	}}
+>
 	<!-- Image assignment -->
 	<div class="flex flex-col gap-2">
 		<Label>{m.wishlist_image_assign_label()}</Label>
@@ -329,14 +345,16 @@
 		</div>
 	{/if}
 
-	<div class="flex justify-end">
-		<Button data-testid="wishlist-image-save" disabled={isSaving} onclick={handleSave}>
-			{#if isSaving}
-				{m.saving()}
-			{:else}
-				<UploadIcon data-icon="inline-start" />
-				{m.save()}
-			{/if}
-		</Button>
-	</div>
-</div>
+	{#if formId === undefined}
+		<div class="flex justify-end">
+			<Button type="submit" data-testid="wishlist-image-save" disabled={isSaving}>
+				{#if isSaving}
+					{m.saving()}
+				{:else}
+					<UploadIcon data-icon="inline-start" />
+					{m.save()}
+				{/if}
+			</Button>
+		</div>
+	{/if}
+</form>

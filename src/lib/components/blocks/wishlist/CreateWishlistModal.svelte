@@ -158,180 +158,187 @@
 	     downward instead of re-centering it — otherwise every height change shifts the top
 	     edge and the modal "jumps". `max-h`/`overflow` still cap tall content on short/mobile
 	     viewports; horizontal centering (left-1/2, -translate-x-1/2) is inherited unchanged. -->
-	<Dialog.Content class="top-[10vh] max-h-[85vh] translate-y-0 overflow-y-auto">
-		<Dialog.Header>
+	<Dialog.Content
+		class="top-[10vh] flex max-h-[85dvh] translate-y-0 flex-col gap-0 overflow-hidden p-0"
+	>
+		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
 			<Dialog.Title>{m.wishlist_create_title()}</Dialog.Title>
 			<Dialog.Description>{m.wishlist_create_description()}</Dialog.Description>
 		</Dialog.Header>
 
-		<form onsubmit={handleSubmit} novalidate class="flex flex-col gap-4">
-			<ToggleGroup.Root
-				type="single"
-				intent="outline"
-				size="lg"
-				bind:value={selectedRecipientKind}
-				onValueChange={(newValue) => {
-					if (newValue === '') {
-						selectedRecipientKind = recipientKind;
-						return;
-					}
-					recipientKind = newValue;
-					// Treat each switch into the recipient field as a fresh start — no error on appear.
-					recipientTouched = false;
-				}}
-				disabled={isSubmitting}
-				class="w-full gap-2"
-			>
-				<ToggleGroup.Item value={RECIPIENT_KIND.self} class="flex-1">
-					{m.create_for_toggle_self()}
-				</ToggleGroup.Item>
-				<ToggleGroup.Item value={RECIPIENT_KIND.other} class="flex-1">
-					{m.create_for_toggle_other()}
-				</ToggleGroup.Item>
-			</ToggleGroup.Root>
+		<form onsubmit={handleSubmit} novalidate class="flex min-h-0 flex-1 flex-col">
+			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
+				<ToggleGroup.Root
+					type="single"
+					intent="outline"
+					size="lg"
+					bind:value={selectedRecipientKind}
+					onValueChange={(newValue) => {
+						if (newValue === '') {
+							selectedRecipientKind = recipientKind;
+							return;
+						}
+						recipientKind = newValue;
+						// Treat each switch into the recipient field as a fresh start — no error on appear.
+						recipientTouched = false;
+					}}
+					disabled={isSubmitting}
+					class="w-full gap-2"
+				>
+					<ToggleGroup.Item value={RECIPIENT_KIND.self} class="flex-1">
+						{m.create_for_toggle_self()}
+					</ToggleGroup.Item>
+					<ToggleGroup.Item value={RECIPIENT_KIND.other} class="flex-1">
+						{m.create_for_toggle_other()}
+					</ToggleGroup.Item>
+				</ToggleGroup.Root>
 
-			{#if recipientKind === RECIPIENT_KIND.other}
+				{#if recipientKind === RECIPIENT_KIND.other}
+					<Field
+						fieldId="wishlist-recipient-name"
+						label={m.create_recipient_name_label()}
+						errorMessage={recipientError}
+					>
+						{#snippet children({ hasError, errorId }: FieldControlContext)}
+							<Input
+								id="wishlist-recipient-name"
+								size="lg"
+								bind:value={recipientName}
+								placeholder={m.create_recipient_name_placeholder()}
+								maxlength={RECIPIENT_NAME_MAX_LENGTH}
+								required
+								disabled={isSubmitting}
+								state={hasError ? 'error' : 'default'}
+								aria-invalid={hasError ? true : undefined}
+								aria-describedby={errorId}
+								oninput={() => (recipientTouched = true)}
+								{@attach autofocusOnMount}
+							/>
+						{/snippet}
+						{#snippet help()}
+							<HelpText>{m.create_recipient_name_helper()}</HelpText>
+						{/snippet}
+					</Field>
+					<RecipientPreview name={recipientName} />
+				{/if}
+
 				<Field
-					fieldId="wishlist-recipient-name"
-					label={m.create_recipient_name_label()}
-					errorMessage={recipientError}
+					fieldId="wishlist-title"
+					label={m.wishlist_name_label()}
+					errorMessage={titleError}
 				>
 					{#snippet children({ hasError, errorId }: FieldControlContext)}
 						<Input
-							id="wishlist-recipient-name"
+							id="wishlist-title"
 							size="lg"
-							bind:value={recipientName}
-							placeholder={m.create_recipient_name_placeholder()}
-							maxlength={RECIPIENT_NAME_MAX_LENGTH}
+							bind:value={title}
+							placeholder={m.wishlist_name_placeholder()}
 							required
+							maxlength={WISHLIST_TITLE_MAX_LENGTH}
 							disabled={isSubmitting}
 							state={hasError ? 'error' : 'default'}
 							aria-invalid={hasError ? true : undefined}
 							aria-describedby={errorId}
-							oninput={() => (recipientTouched = true)}
-							{@attach autofocusOnMount}
+							oninput={() => (titleTouched = true)}
 						/>
 					{/snippet}
-					{#snippet help()}
-						<HelpText>{m.create_recipient_name_helper()}</HelpText>
-					{/snippet}
 				</Field>
-				<RecipientPreview name={recipientName} />
-			{/if}
 
-			<Field
-				fieldId="wishlist-title"
-				label={m.wishlist_name_label()}
-				errorMessage={titleError}
-			>
-				{#snippet children({ hasError, errorId }: FieldControlContext)}
-					<Input
-						id="wishlist-title"
+				<div class="flex flex-col gap-2">
+					<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label>
+					<DatePicker
+						id="wishlist-event-date"
+						ariaLabelledby="wishlist-event-date-label"
+						ariaDescribedby="wishlist-event-date-helper"
 						size="lg"
-						bind:value={title}
-						placeholder={m.wishlist_name_placeholder()}
-						required
-						maxlength={WISHLIST_TITLE_MAX_LENGTH}
+						bind:value={eventDate}
 						disabled={isSubmitting}
-						state={hasError ? 'error' : 'default'}
-						aria-invalid={hasError ? true : undefined}
-						aria-describedby={errorId}
-						oninput={() => (titleTouched = true)}
 					/>
-				{/snippet}
-			</Field>
+					<HelpText id="wishlist-event-date-helper"
+						>{m.wishlist_event_date_helper()}</HelpText
+					>
+				</div>
 
-			<div class="flex flex-col gap-2">
-				<Label id="wishlist-event-date-label">{m.wishlist_event_date_label()}</Label>
-				<DatePicker
-					id="wishlist-event-date"
-					ariaLabelledby="wishlist-event-date-label"
-					ariaDescribedby="wishlist-event-date-helper"
-					size="lg"
-					bind:value={eventDate}
-					disabled={isSubmitting}
-				/>
-				<HelpText id="wishlist-event-date-helper">{m.wishlist_event_date_helper()}</HelpText
-				>
-			</div>
-
-			<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
+				<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
 			     one field + title; power users can name a description and pick a palette upfront.
 			     The dashed divider above + 8px/-8px spacing make the optional zone read as a
 			     compact cluster (settled spec §4.8), tighter than the form's 16px gap-4; the
 			     solid divider below is the import Separator sibling. -->
-			<Accordion.Root
-				type="single"
-				class="border-t-2 border-dashed border-ink-faint pt-2 -mb-2"
-			>
-				<Accordion.Item value="more-settings" class="border-b-0">
-					<Accordion.Trigger
-						class="py-2 text-muted-foreground hover:text-foreground hover:no-underline"
-					>
-						<span class="flex items-center">
-							<SlidersHorizontalIcon
-								class="mr-2 size-4 shrink-0 text-muted-foreground"
-								aria-hidden="true"
-							/>
-							{m.create_more_settings()}
-						</span>
-					</Accordion.Trigger>
-					<Accordion.Content class="pb-0">
-						<div class="flex flex-col gap-4 pt-1">
-							<div class="flex flex-col gap-2">
-								<Label for="wishlist-create-description"
-									>{m.wishlist_description_label()}</Label
-								>
-								<Textarea
-									id="wishlist-create-description"
-									bind:value={description}
-									placeholder={m.wishlist_description_placeholder()}
-									disabled={isSubmitting}
+				<Accordion.Root
+					type="single"
+					class="border-t-2 border-dashed border-ink-faint pt-2 -mb-2"
+				>
+					<Accordion.Item value="more-settings" class="border-b-0">
+						<Accordion.Trigger
+							class="py-2 text-muted-foreground hover:text-foreground hover:no-underline"
+						>
+							<span class="flex items-center">
+								<SlidersHorizontalIcon
+									class="mr-2 size-4 shrink-0 text-muted-foreground"
+									aria-hidden="true"
 								/>
-							</div>
-							<div class="flex flex-col gap-2">
-								<Label id="wishlist-create-palette-label"
-									>{m.create_palette_label()}</Label
-								>
-								<div role="group" aria-labelledby="wishlist-create-palette-label">
-									<WishlistPalettePicker
-										value={palette}
-										onchange={(nextPalette) => (palette = nextPalette)}
+								{m.create_more_settings()}
+							</span>
+						</Accordion.Trigger>
+						<Accordion.Content class="pb-0">
+							<div class="flex flex-col gap-4 pt-1">
+								<div class="flex flex-col gap-2">
+									<Label for="wishlist-create-description"
+										>{m.wishlist_description_label()}</Label
+									>
+									<Textarea
+										id="wishlist-create-description"
+										bind:value={description}
+										placeholder={m.wishlist_description_placeholder()}
 										disabled={isSubmitting}
 									/>
 								</div>
+								<div class="flex flex-col gap-2">
+									<Label id="wishlist-create-palette-label"
+										>{m.create_palette_label()}</Label
+									>
+									<div
+										role="group"
+										aria-labelledby="wishlist-create-palette-label"
+									>
+										<WishlistPalettePicker
+											value={palette}
+											onchange={(nextPalette) => (palette = nextPalette)}
+											disabled={isSubmitting}
+										/>
+									</div>
+								</div>
 							</div>
-						</div>
-					</Accordion.Content>
-				</Accordion.Item>
-			</Accordion.Root>
+						</Accordion.Content>
+					</Accordion.Item>
+				</Accordion.Root>
 
-			{#if errorMessage !== ''}
-				<p class="text-destructive text-sm">{errorMessage}</p>
-			{/if}
+				{#if errorMessage !== ''}
+					<p class="text-destructive text-sm">{errorMessage}</p>
+				{/if}
 
-			{#if onimport}
-				<Separator class="my-1" />
-				<div class="flex items-center gap-2">
-					<span class="text-muted-foreground text-sm">{m.or()}</span>
-					<Button
-						type="button"
-						intent="ghost"
-						size="sm"
-						disabled={isSubmitting}
-						onclick={() => {
-							open = false;
-							resetForm();
-							onimport();
-						}}
-					>
-						<FileUpIcon data-icon="inline-start" />
-						{m.import_wizard_title()}
-					</Button>
-				</div>
-			{/if}
-
-			<Dialog.Footer>
+				{#if onimport}
+					<Separator class="my-1" />
+					<div class="flex items-center gap-2">
+						<span class="text-muted-foreground text-sm">{m.or()}</span>
+						<Button
+							type="button"
+							intent="ghost"
+							size="sm"
+							disabled={isSubmitting}
+							onclick={() => {
+								open = false;
+								resetForm();
+								onimport();
+							}}
+						>
+							<FileUpIcon data-icon="inline-start" />
+							{m.import_wizard_title()}
+						</Button>
+					</div>
+				{/if}
+			</div>
+			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
 				<Button
 					type="button"
 					intent="outline"
