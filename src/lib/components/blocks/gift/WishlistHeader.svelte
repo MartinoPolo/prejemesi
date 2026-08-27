@@ -438,7 +438,7 @@
 		flex: none;
 		width: 172px;
 		margin: 0;
-		padding: 9px 9px 0;
+		padding: 9px;
 		background: #fffdf6;
 		border: 2px solid #4a443a;
 		border-radius: 3px;
@@ -510,10 +510,6 @@
 		.polaroid {
 			width: 148px;
 			transform: rotate(-2deg);
-		}
-
-		.polaroid-img {
-			height: 116px;
 		}
 	}
 </style>
