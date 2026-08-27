@@ -46,7 +46,6 @@
 	}: ImportConfirmStepProps = $props();
 
 	let resultShortId = $state<string | null>(null);
-	let submitting = $state(false);
 
 	const displayTitle = $derived(mode === WIZARD_MODE.newList ? title : wishlistTitle);
 	const giftCount = $derived(selectedDrafts.length);
@@ -55,14 +54,11 @@
 	const isError = $derived(commitStatus === COMMIT_STATUS.error);
 
 	async function handleCommit() {
-		submitting = true;
 		try {
 			const result = await oncommit();
 			resultShortId = result.shortId;
 		} catch {
 			// Error state handled by parent via commitStatus
-		} finally {
-			submitting = false;
 		}
 	}
 </script>
