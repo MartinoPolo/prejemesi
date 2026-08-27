@@ -361,6 +361,25 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 		expect(flatIds(sections)).toEqual(['h', 'm', 'l', 'n']);
 	});
 
+	it('carries the stable priority key for localization without changing the stored label', () => {
+		const sections = computeGiftSections(
+			[
+				makeGift({
+					id: 'h',
+					priorityLevelId: 'lvl-high',
+					priorityLabel: 'Vysoka',
+					prioritySortOrder: 1,
+				}),
+			],
+			WISHLIST_ROLES.recipient,
+			GIFT_SORT_OPTIONS.priority,
+			GIFT_GROUPING_OPTIONS.priority,
+			LOCALE,
+		);
+
+		expect(sections[0]).toMatchObject({ label: 'Vysoka', priorityKey: 'Vysoka' });
+	});
+
 	it('keeps the own-reservation band above all priority groups (behavior 6)', () => {
 		const mine = makeGift({ id: 'mine', myReservationId: 'res-1', ...high });
 		const gMed = makeGift({ id: 'm', ...medium });

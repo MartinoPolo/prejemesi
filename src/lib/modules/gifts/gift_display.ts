@@ -55,16 +55,15 @@ export const PRIORITY_DISPLAY = {
 
 export type PriorityKey = keyof typeof PRIORITY_DISPLAY;
 
+export function getPriorityKey(label: string | null): PriorityKey | null {
+	return label !== null && label in PRIORITY_DISPLAY ? (label as PriorityKey) : null;
+}
+
 export function getPriorityDisplay(
 	label: string | null,
 ): (typeof PRIORITY_DISPLAY)[PriorityKey] | null {
-	if (label === null) {
-		return null;
-	}
-	if (label in PRIORITY_DISPLAY) {
-		return PRIORITY_DISPLAY[label as PriorityKey];
-	}
-	return null;
+	const key = getPriorityKey(label);
+	return key === null ? null : PRIORITY_DISPLAY[key];
 }
 
 /**
