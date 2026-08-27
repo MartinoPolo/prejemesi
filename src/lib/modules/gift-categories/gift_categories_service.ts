@@ -14,6 +14,7 @@ import {
 	presetLabelsByNormalizedValue,
 	type ManagedGiftCategory,
 	type PublicGiftCategory,
+	type SaveGiftCategorySettingsInput,
 } from './types.js';
 import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import type { GiftDraftInput } from '$lib/modules/gifts/types.js';
@@ -358,6 +359,129 @@ export async function createCustomGiftCategory(params: {
 	});
 }
 
+/**
+ * Reconciles the complete settings snapshot under one wishlist lock. Existing rows are updated
+ * in place so gift assignments and production IDs survive rename, reorder, and preset toggles.
+ */
+export async function saveGiftCategorySettings(
+	params: SaveGiftCategorySettingsInput,
+): Promise<void> {
+	const database = getDb();
+	await database.transaction(async (tx) => {
+		await lockWishlistCategoryStructure(tx, params.wishlistId);
+		const rows = await tx
+			.select()
+			.from(giftCategory)
+			.where(eq(giftCategory.wishlistId, params.wishlistId))
+			.for('update');
+		const byId = new Map(rows.map((row) => [row.id, row]));
+		const requestedIds = params.customCategories.flatMap((item) => item.id ?? []);
+		if (
+			new Set(requestedIds).size !== requestedIds.length ||
+			requestedIds.some((id) => {
+				const row = byId.get(id);
+				return row === undefined || row.presetKey !== null || row.deletedAt !== null;
+			})
+		) {
+			error(400, SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH);
+		}
+		if (new Set(params.presetKeys).size !== params.presetKeys.length) {
+			error(400, SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH);
+		}
+
+		const normalizedLabels = new Set<string>();
+		const presetLabels = presetLabelsByNormalizedValue();
+		for (const item of params.customCategories) {
+			const normalized = normalizeGiftCategoryLabel(item.label);
+			if (presetLabels.has(normalized) || normalizedLabels.has(normalized)) {
+				error(400, SERVER_ERROR.GIFT_CATEGORY_LABEL_CONFLICT);
+			}
+			normalizedLabels.add(normalized);
+		}
+
+		const now = new Date();
+		const keptIds = new Set(requestedIds);
+		for (const row of rows) {
+			if (row.presetKey === null && row.deletedAt === null && !keptIds.has(row.id)) {
+				if ((await activeGiftCount(tx, row.id)) > 0) {
+					error(400, SERVER_ERROR.GIFT_CATEGORY_IN_USE);
+				}
+				await tx
+					.update(giftCategory)
+					.set({ deletedAt: now, updatedAt: now })
+					.where(eq(giftCategory.id, row.id));
+			}
+		}
+
+		const orderedIds: string[] = [];
+		for (const item of params.customCategories) {
+			if (item.id === null) {
+				const [created] = await tx
+					.insert(giftCategory)
+					.values({
+						wishlistId: params.wishlistId,
+						customLabel: item.label,
+						sortOrder: orderedIds.length,
+					})
+					.returning();
+				if (created === undefined) {
+					error(500, SERVER_ERROR.FAILED_TO_CREATE_GIFT);
+				}
+				orderedIds.push(created.id);
+			} else {
+				await tx
+					.update(giftCategory)
+					.set({ customLabel: item.label, updatedAt: now })
+					.where(eq(giftCategory.id, item.id));
+				orderedIds.push(item.id);
+			}
+		}
+
+		for (const preset of GIFT_CATEGORY_PRESETS) {
+			const enabled = params.presetKeys.includes(preset.key);
+			const row = rows.find((candidate) => candidate.presetKey === preset.key);
+			if (!enabled) {
+				if (row?.deletedAt === null) {
+					if ((await activeGiftCount(tx, row.id)) > 0) {
+						error(400, SERVER_ERROR.GIFT_CATEGORY_IN_USE);
+					}
+					await tx
+						.update(giftCategory)
+						.set({ deletedAt: now, updatedAt: now })
+						.where(eq(giftCategory.id, row.id));
+				}
+				continue;
+			}
+			if (row === undefined) {
+				const [created] = await tx
+					.insert(giftCategory)
+					.values({
+						wishlistId: params.wishlistId,
+						presetKey: preset.key,
+						sortOrder: orderedIds.length,
+					})
+					.returning();
+				if (created === undefined) {
+					error(500, SERVER_ERROR.FAILED_TO_CREATE_GIFT);
+				}
+				orderedIds.push(created.id);
+			} else {
+				await tx
+					.update(giftCategory)
+					.set({ deletedAt: null, updatedAt: now })
+					.where(eq(giftCategory.id, row.id));
+				orderedIds.push(row.id);
+			}
+		}
+		for (const [sortOrder, id] of orderedIds.entries()) {
+			await tx
+				.update(giftCategory)
+				.set({ sortOrder, updatedAt: now })
+				.where(eq(giftCategory.id, id));
+		}
+	});
+}
+
 export async function renameCustomGiftCategory(params: {
 	categoryId: string;
 	label: string;
@@ -400,17 +524,6 @@ export async function renameCustomGiftCategory(params: {
 			.update(giftCategory)
 			.set({ customLabel: trimmed, updatedAt: now })
 			.where(eq(giftCategory.id, row.id));
-		const [wishlistRow] = await tx
-			.select({ sharedAt: wishlist.sharedAt })
-			.from(wishlist)
-			.where(eq(wishlist.id, row.wishlistId))
-			.limit(1);
-		if (wishlistRow?.sharedAt !== null && wishlistRow !== undefined) {
-			await tx
-				.update(gift)
-				.set({ editedAfterShareAt: now, preEditShareSnapshot: null, updatedAt: now })
-				.where(and(eq(gift.categoryId, row.id), isNull(gift.deletedAt)));
-		}
 	});
 }
 

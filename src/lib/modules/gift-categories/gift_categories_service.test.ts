@@ -145,28 +145,17 @@ describe('gift category management service', () => {
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
 
-	it('serializes rename and marks assigned gifts edited when shared', async () => {
+	it('serializes rename without marking assigned gifts edited after share', async () => {
 		mockDbInstance.pushResult([{ wishlistId: WISHLIST_ID }]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([customCategory]);
 		mockDbInstance.pushResult([customCategory]);
-		mockDbInstance.pushResult([]);
-		mockDbInstance.pushResult([{ sharedAt: new Date('2024-02-01T00:00:00Z') }]);
-		mockDbInstance.pushResult([]);
-
 		await renameCustomGiftCategory({ categoryId: CATEGORY_ID, label: 'Sportovní vybavení' });
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
+		expect(setCalls).toHaveLength(1);
 		expect(setCalls[0]?.args[0]).toMatchObject({ customLabel: 'Sportovní vybavení' });
-		const giftUpdateCall = setCalls[1];
-		expect(giftUpdateCall).toBeDefined();
-		if (giftUpdateCall === undefined) {
-			throw new Error('Expected the assigned gift update call');
-		}
-		expect(giftUpdateCall.args[0]).toMatchObject({ preEditShareSnapshot: null });
-		expect(
-			(giftUpdateCall.args[0] as { editedAfterShareAt?: unknown }).editedAfterShareAt,
-		).toBeInstanceOf(Date);
+		expect(setCalls[0]?.args[0]).not.toHaveProperty('editedAfterShareAt');
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
 	});
 

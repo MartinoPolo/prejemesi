@@ -161,6 +161,8 @@
 	let detailsError = $state('');
 	let savingDetails = $state(false);
 	let savingImage = $state(false);
+	let categoriesDirty = $state(false);
+	let savingCategories = $state(false);
 
 	/** Re-seed the details form from the canonical server values (server trims/normalizes). */
 	function seedDetailsForm() {
@@ -172,8 +174,13 @@
 	}
 
 	function handleOpenChange(nextOpen: boolean) {
+		if (!nextOpen && categoriesDirty && !window.confirm(m.gift_categories_unsaved_confirm())) {
+			open = true;
+			return;
+		}
 		if (!nextOpen) {
 			// Discard unsaved edits on close; the next open re-seeds from the current wishlist.
+			categoriesDirty = false;
 			seedDetailsForm();
 		}
 	}
@@ -563,7 +570,11 @@
 					aria-labelledby="wishlist-settings-tab-categories"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.categories}
 				>
-					<WishlistCategorySettings wishlistId={wishlist.id} {isShared} />
+					<WishlistCategorySettings
+						wishlistId={wishlist.id}
+						ondirtychange={(dirty) => (categoriesDirty = dirty)}
+						onsavingchange={(saving) => (savingCategories = saving)}
+					/>
 				</div>
 
 				<!-- Vzhled: palette picker, auto-saves on click. -->
@@ -691,6 +702,16 @@
 						<LoaderIcon class="animate-spin" data-icon="inline-start" />
 					{/if}
 					{m.save()}
+				</Button>
+			</Dialog.Footer>
+		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.categories}
+			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+				<Button
+					type="submit"
+					form="wishlist-categories-form"
+					disabled={savingCategories || !categoriesDirty}
+				>
+					{savingCategories ? m.saving() : m.save()}
 				</Button>
 			</Dialog.Footer>
 		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.image}

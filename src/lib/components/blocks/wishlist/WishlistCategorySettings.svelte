@@ -1,23 +1,15 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
-	import * as Alert from '$lib/components/base/alert/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { toastError, toastSuccess } from '$lib/components/base/toast/index.js';
 	import {
-		createCustomGiftCategoryCommand,
-		deleteCustomGiftCategoryCommand,
 		getGiftCategories,
-		renameCustomGiftCategoryCommand,
-		reorderGiftCategories,
-		togglePresetGiftCategory,
+		saveGiftCategorySettingsCommand,
 	} from '$lib/modules/gift-categories/gift_categories.remote.js';
-	import {
-		GIFT_CATEGORY_PRESETS,
-		labelForGiftCategory,
-		type ManagedGiftCategory,
-	} from '$lib/modules/gift-categories/types.js';
+	import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
@@ -26,215 +18,188 @@
 
 	interface Props {
 		wishlistId: string;
-		isShared: boolean;
+		ondirtychange?: (dirty: boolean) => void;
+		onsavingchange?: (saving: boolean) => void;
+		onsaved?: () => void;
+	}
+	interface CustomDraft {
+		key: string;
+		id: string | null;
+		label: string;
+		usedCount: number;
 	}
 
-	let { wishlistId, isShared }: Props = $props();
-
+	let { wishlistId, ondirtychange, onsavingchange, onsaved }: Props = $props();
 	const categoriesQuery = $derived(getGiftCategories(wishlistId));
 	const categories = $derived(categoriesQuery.current ?? []);
-	const activePresetKeys = $derived(
-		new Set(categories.flatMap((category) => category.presetKey ?? [])),
-	);
 	let customLabel = $state('');
-	let renaming = $state<Record<string, string>>({});
-	let pending = $state(false);
+	let customDrafts = $state<CustomDraft[]>([]);
+	let enabledPresets = $state<string[]>([]);
+	let baseline = $state('');
+	let seededSignature = $state('');
+	let saving = $state(false);
 
-	function categoryLabel(category: ManagedGiftCategory): string {
-		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
+	function snapshot(): string {
+		return JSON.stringify({
+			custom: customDrafts.map(({ id, label }) => ({ id, label: label.trim() })),
+			presets: [...enabledPresets].sort(),
+		});
+	}
+	const dirty = $derived(baseline !== '' && snapshot() !== baseline);
+	$effect(() => ondirtychange?.(dirty));
+	$effect(() => onsavingchange?.(saving));
+	$effect(() => {
+		const signature = JSON.stringify(categories);
+		if (signature === seededSignature || dirty) {
+			return;
+		}
+		customDrafts = categories
+			.filter((category) => category.customLabel !== null)
+			.map((category) => ({
+				key: category.id,
+				id: category.id,
+				label: category.customLabel ?? '',
+				usedCount: category.usedCount,
+			}));
+		enabledPresets = categories.flatMap((category) => category.presetKey ?? []);
+		baseline = snapshot();
+		seededSignature = signature;
+	});
+
+	function createCustom() {
+		const label = customLabel.trim();
+		if (!label) {
+			return;
+		}
+		customDrafts = [
+			{ key: crypto.randomUUID(), id: null, label, usedCount: 0 },
+			...customDrafts,
+		];
+		customLabel = '';
+	}
+	function move(index: number, direction: -1 | 1) {
+		const next = [...customDrafts];
+		const [item] = next.splice(index, 1);
+		if (item) {
+			next.splice(index + direction, 0, item);
+		}
+		customDrafts = next;
+	}
+	function togglePreset(key: string, checked: boolean) {
+		enabledPresets = checked
+			? [...enabledPresets, key]
+			: enabledPresets.filter((candidate) => candidate !== key);
 	}
 
-	async function run(work: () => Promise<void>, success: string) {
-		pending = true;
+	async function save(event: SubmitEvent) {
+		event.preventDefault();
+		saving = true;
 		try {
-			await work();
-			toastSuccess(success);
+			await saveGiftCategorySettingsCommand({
+				wishlistId,
+				customCategories: customDrafts.map(({ id, label }) => ({
+					id,
+					label: label.trim(),
+				})),
+				presetKeys: enabledPresets as never,
+			});
+			baseline = snapshot();
+			toastSuccess(m.gift_categories_saved());
+			onsaved?.();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
-			pending = false;
+			saving = false;
 		}
-	}
-
-	function movedCategoryIds(index: number, direction: -1 | 1): string[] {
-		const ids = categories.map((category) => category.id);
-		const target = index + direction;
-		const [id] = ids.splice(index, 1);
-		if (id !== undefined) {
-			ids.splice(target, 0, id);
-		}
-		return ids;
-	}
-
-	function reorder(ids: string[]) {
-		void run(
-			() => reorderGiftCategories({ wishlistId, categoryIds: ids }),
-			m.gift_categories_reordered(),
-		);
 	}
 </script>
 
-<div class="flex flex-col gap-5">
+<form id="wishlist-categories-form" class="flex flex-col gap-5" onsubmit={save}>
 	<p class="text-sm text-muted-foreground">{m.gift_categories_settings_hint()}</p>
 
-	<div class="grid gap-2 sm:grid-cols-2">
-		{#each GIFT_CATEGORY_PRESETS as preset (preset.key)}
-			{@const enabled = activePresetKeys.has(preset.key)}
-			<div
-				class="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2"
+	<div class="flex flex-col gap-2">
+		<h3 class="text-base font-semibold">{m.gift_category_create()}</h3>
+		<div class="flex flex-wrap gap-2">
+			<Input
+				bind:value={customLabel}
+				maxlength={80}
+				placeholder={m.gift_category_custom_placeholder()}
+				class="min-w-56 flex-1"
+				disabled={saving}
+			/>
+			<Button
+				type="button"
+				onclick={createCustom}
+				disabled={saving || customLabel.trim() === ''}>{m.gift_category_create()}</Button
 			>
-				<div>
-					<p class="text-sm font-semibold">
-						{preset.labels[getLocale().startsWith('en') ? 'en' : 'cs']}
-					</p>
-					<p class="text-xs text-muted-foreground">
-						{preset.labels.cs} / {preset.labels.en}
-					</p>
-				</div>
-				<Button
-					size="sm"
-					intent={enabled ? 'outline' : 'primary'}
-					disabled={pending}
-					onclick={() =>
-						void run(
-							() =>
-								togglePresetGiftCategory({
-									wishlistId,
-									presetKey: preset.key,
-									enabled: !enabled,
-								}),
-							enabled ? m.gift_category_disabled() : m.gift_category_enabled(),
-						)}
-				>
-					{enabled ? m.gift_category_disable() : m.gift_category_enable()}
-				</Button>
-			</div>
-		{/each}
+		</div>
 	</div>
 
 	<div class="flex flex-col gap-3">
-		<h3 class="text-base font-semibold">{m.gift_categories_active_title()}</h3>
-		{#if categories.length === 0}
+		<h3 class="text-base font-semibold">{m.gift_categories_custom_title()}</h3>
+		{#if customDrafts.length === 0}
 			<HelpText>{m.gift_categories_empty()}</HelpText>
 		{:else}
-			{#each categories as category, index (category.id)}
-				{@const used = category.usedCount > 0}
+			{#each customDrafts as category, index (category.key)}
 				<div
-					class="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+					class="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
 				>
 					<div class="min-w-0 flex-1">
-						{#if category.customLabel === null}
-							<p class="truncate text-sm font-semibold">{categoryLabel(category)}</p>
-							<p class="text-xs text-muted-foreground">
-								{m.gift_category_preset_locked()}
-							</p>
-						{:else}
-							<Input
-								value={renaming[category.id] ?? category.customLabel}
-								maxlength={80}
-								disabled={pending}
-								oninput={(event) =>
-									(renaming[category.id] = event.currentTarget.value)}
-							/>
-							{#if isShared && used}
-								<HelpText>{m.gift_category_shared_rename_warning()}</HelpText>
-							{/if}
-						{/if}
-						{#if used}
-							<HelpText
+						<Input bind:value={category.label} maxlength={80} disabled={saving} />
+						{#if category.usedCount > 0}<HelpText
 								>{m.gift_category_used_count({
 									count: category.usedCount,
 								})}</HelpText
-							>
-						{/if}
+							>{/if}
 					</div>
 					<Button
+						type="button"
 						size="icon-sm"
 						intent="ghost"
-						disabled={pending || index === 0}
-						onclick={() => reorder(movedCategoryIds(index, -1))}
-						aria-label={m.move_up()}
+						disabled={saving || index === 0}
+						onclick={() => move(index, -1)}
+						aria-label={m.move_up()}><ArrowUpIcon /></Button
 					>
-						<ArrowUpIcon />
-					</Button>
 					<Button
+						type="button"
 						size="icon-sm"
 						intent="ghost"
-						disabled={pending || index === categories.length - 1}
-						onclick={() => reorder(movedCategoryIds(index, 1))}
-						aria-label={m.move_down()}
+						disabled={saving || index === customDrafts.length - 1}
+						onclick={() => move(index, 1)}
+						aria-label={m.move_down()}><ArrowDownIcon /></Button
 					>
-						<ArrowDownIcon />
-					</Button>
-					{#if category.customLabel !== null}
-						<Button
-							size="sm"
-							intent="outline"
-							disabled={pending ||
-								(renaming[category.id] ?? category.customLabel).trim() ===
-									category.customLabel}
-							onclick={() =>
-								void run(
-									() =>
-										renameCustomGiftCategoryCommand({
-											categoryId: category.id,
-											label: (
-												renaming[category.id] ??
-												category.customLabel ??
-												''
-											).trim(),
-										}),
-									m.gift_category_renamed(),
-								)}
-						>
-							{m.save()}
-						</Button>
-						<Button
-							size="icon-sm"
-							intent="ghost"
-							disabled={pending || used}
-							onclick={() =>
-								void run(
-									() =>
-										deleteCustomGiftCategoryCommand({
-											categoryId: category.id,
-										}),
-									m.gift_category_deleted(),
-								)}
-							aria-label={m.delete()}
-						>
-							<TrashIcon />
-						</Button>
-					{/if}
+					<Button
+						type="button"
+						size="icon-sm"
+						intent="ghost"
+						disabled={saving || category.usedCount > 0}
+						onclick={() =>
+							(customDrafts = customDrafts.filter(
+								(item) => item.key !== category.key,
+							))}
+						aria-label={m.delete()}><TrashIcon /></Button
+					>
 				</div>
 			{/each}
 		{/if}
 	</div>
 
-	<form
-		class="flex flex-wrap gap-2"
-		onsubmit={(event) => {
-			event.preventDefault();
-			const label = customLabel.trim();
-			if (label === '') return;
-			void run(async () => {
-				await createCustomGiftCategoryCommand({ wishlistId, label });
-				customLabel = '';
-			}, m.gift_category_created());
-		}}
-	>
-		<Input
-			bind:value={customLabel}
-			maxlength={80}
-			placeholder={m.gift_category_custom_placeholder()}
-			class="min-w-56 flex-1"
-		/>
-		<Button type="submit" disabled={pending || customLabel.trim() === ''}
-			>{m.gift_category_create()}</Button
-		>
-	</form>
-
-	<Alert.Root>
-		<Alert.Description>{m.gift_categories_no_tags()}</Alert.Description>
-	</Alert.Root>
-</div>
+	<div class="flex flex-col gap-3">
+		<h3 class="text-base font-semibold">{m.gift_categories_presets_title()}</h3>
+		<div class="grid gap-2 sm:grid-cols-2">
+			{#each GIFT_CATEGORY_PRESETS as preset (preset.key)}
+				{@const checked = enabledPresets.includes(preset.key)}
+				<label
+					class="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold"
+				>
+					<Checkbox
+						{checked}
+						disabled={saving}
+						onCheckedChange={(value) => togglePreset(preset.key, value === true)}
+					/>
+					{preset.labels[getLocale().startsWith('en') ? 'en' : 'cs']}
+				</label>
+			{/each}
+		</div>
+	</div>
+</form>

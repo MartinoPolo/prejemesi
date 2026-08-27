@@ -15,6 +15,7 @@ import {
 	CreateCustomGiftCategoryInputSchema,
 	RenameCustomGiftCategoryInputSchema,
 	ReorderGiftCategoriesInputSchema,
+	SaveGiftCategorySettingsInputSchema,
 	TogglePresetGiftCategoryInputSchema,
 } from './types.js';
 import {
@@ -24,12 +25,24 @@ import {
 	getManagedGiftCategories,
 	renameCustomGiftCategory,
 	reorderActiveGiftCategories,
+	saveGiftCategorySettings,
 } from './gift_categories_service.js';
 
 export const getGiftCategories = guardedQueryWithArgs(v.string(), async ({ user }, wishlistId) => {
 	await verifyManagerAccess(user.id, wishlistId);
 	return getManagedGiftCategories(wishlistId);
 });
+
+export const saveGiftCategorySettingsCommand = guardedCommand(
+	SaveGiftCategorySettingsInputSchema,
+	async ({ user }, input) => {
+		const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
+		assertWishlistMutable(wishlistRow);
+		await saveGiftCategorySettings(input);
+		singleFlightRefresh(getGiftCategories, input.wishlistId);
+		singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+	},
+);
 
 export const togglePresetGiftCategory = guardedCommand(
 	TogglePresetGiftCategoryInputSchema,

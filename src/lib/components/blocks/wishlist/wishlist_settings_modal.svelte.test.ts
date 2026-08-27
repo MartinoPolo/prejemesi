@@ -13,6 +13,7 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 	renameCustomGiftCategoryCommand: vi.fn(),
 	reorderGiftCategories: vi.fn(),
 	togglePresetGiftCategory: vi.fn(),
+	saveGiftCategorySettingsCommand: vi.fn(),
 }));
 
 import WishlistSettingsModal from './WishlistSettingsModal.svelte';

@@ -69,6 +69,27 @@ export const ReorderGiftCategoriesInputSchema = v.object({
 	categoryIds: v.array(v.string()),
 });
 
+/** Complete category-settings snapshot committed as one transaction. */
+export const SaveGiftCategorySettingsInputSchema = v.object({
+	wishlistId: v.string(),
+	customCategories: v.array(
+		v.object({
+			id: v.nullable(v.string()),
+			label: v.pipe(
+				v.string(),
+				v.trim(),
+				v.minLength(1),
+				v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
+			),
+		}),
+	),
+	presetKeys: v.array(GiftCategoryPresetKeySchema),
+});
+
+export type SaveGiftCategorySettingsInput = v.InferOutput<
+	typeof SaveGiftCategorySettingsInputSchema
+>;
+
 export function normalizeGiftCategoryLabel(value: string): string {
 	return value
 		.normalize('NFD')
