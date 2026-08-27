@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import ListFilterIcon from '@lucide/svelte/icons/list-filter';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ListFilterPlusIcon from '@lucide/svelte/icons/list-filter-plus';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { cn } from '$lib/utils.js';
@@ -22,6 +23,7 @@
 		activeCountLabel: (count: number) => string;
 		align?: 'start' | 'center' | 'end';
 		triggerElement?: HTMLButtonElement | null;
+		triggerClass?: string;
 		class?: string;
 	}
 
@@ -39,6 +41,7 @@
 		activeCountLabel,
 		align = 'start',
 		triggerElement = $bindable(null),
+		triggerClass,
 		class: className,
 	}: FilterMenuProps = $props();
 
@@ -62,13 +65,17 @@
 					bind:ref={triggerElement}
 					size="md"
 					intent="outline"
-					class="min-w-0 max-w-full whitespace-normal [overflow-wrap:anywhere]"
+					class={cn('min-w-0 max-w-full', triggerClass)}
 					aria-label={activeFilters.length > 0
 						? `${triggerLabel}: ${activeCountLabel(activeFilters.length)}`
 						: triggerLabel}
 				>
-					<ListFilterIcon data-icon="inline-start" />
-					<span class="min-w-0">{triggerLabel}</span>
+					<ListFilterPlusIcon
+						class="text-muted-foreground"
+						data-icon="inline-start"
+						data-toolbar-icon="filter"
+					/>
+					<span class="min-w-0 truncate">{triggerLabel}</span>
 					{#if activeFilters.length > 0}
 						<span
 							class="grid min-w-4.25 shrink-0 place-items-center rounded-full bg-primary px-1 text-[10.5px] leading-4 text-primary-foreground"
@@ -77,6 +84,7 @@
 							{activeFilters.length}
 						</span>
 					{/if}
+					<ChevronDownIcon class="size-4 shrink-0 text-muted-foreground" />
 				</Button>
 			{/snippet}
 		</DropdownMenu.Trigger>

@@ -64,6 +64,40 @@ describe('FilterMenu facets', () => {
 		);
 	});
 
+	it('moves focus to the previous pill when removing the final active pill', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(ActiveFilterPillsTestHost, {}, { baseElement: host });
+
+		await screen.getByRole('button', { name: 'Odebrat Druhý' }).click();
+
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat Druhý' }))
+			.not.toBeInTheDocument();
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Odebrat První' }).element(),
+		);
+	});
+
+	it('restores trigger focus when removing the sole active pill', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(
+			ActiveFilterPillsTestHost,
+			{ initialActiveIds: ['first'] },
+			{ baseElement: host },
+		);
+
+		await screen.getByRole('button', { name: 'Odebrat První' }).click();
+
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat První' }))
+			.not.toBeInTheDocument();
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Filtr' }).element(),
+		);
+	});
+
 	it('clears filters reactively, hides all pills, and restores trigger focus', async () => {
 		const host = document.createElement('div');
 		document.body.appendChild(host);

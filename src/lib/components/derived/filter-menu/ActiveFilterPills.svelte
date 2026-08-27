@@ -35,12 +35,15 @@
 	async function removeActiveFilter(item: ActiveFilterItem) {
 		const activeIndex = items.findIndex(({ id }) => id === item.id);
 		const nextActiveFilterId = items.at(activeIndex + 1)?.id;
+		const previousActiveFilterId = activeIndex > 0 ? items.at(activeIndex - 1)?.id : undefined;
 
 		item.onremove();
 		await tick();
 		(nextActiveFilterId !== undefined
 			? pillRemoveButtons[nextActiveFilterId]
-			: triggerElement
+			: previousActiveFilterId !== undefined
+				? pillRemoveButtons[previousActiveFilterId]
+				: triggerElement
 		)?.focus();
 	}
 </script>
@@ -64,10 +67,7 @@
 			</span>
 		</SimpleTooltip>
 	{/each}
-	<Button
-		size="sm"
-		intent="ghost"
-		class="h-auto min-w-0 max-w-full whitespace-normal [overflow-wrap:anywhere]"
-		onclick={clearAllFilters}>{clearAllLabel}</Button
+	<Button size="sm" intent="ghost" class="min-w-0 max-w-full" onclick={clearAllFilters}
+		>{clearAllLabel}</Button
 	>
 </div>

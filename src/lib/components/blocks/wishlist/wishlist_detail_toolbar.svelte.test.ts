@@ -1,3 +1,4 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
@@ -48,6 +49,27 @@ async function renderToolbar(
 	overrides: Partial<ComponentProps<typeof WishlistDetailToolbar>> = {},
 ) {
 	return render(WishlistDetailToolbar, { ...defaultProps, ...overrides });
+}
+
+function expectDocumentOrder(elements: Element[]) {
+	for (const [index, element] of elements.slice(0, -1).entries()) {
+		expect(
+			element.compareDocumentPosition(elements[index + 1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	}
+}
+
+function expectToolbarIcon(element: Element, purpose: string) {
+	expect(element.querySelector(`[data-toolbar-icon="${purpose}"]`)).not.toBeNull();
+}
+
+function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
+	return (
+		first.left < second.right &&
+		first.right > second.left &&
+		first.top < second.bottom &&
+		first.bottom > second.top
+	);
 }
 
 describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
@@ -184,7 +206,106 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 });
 
 describe('WishlistDetailToolbar collision-proof regions', () => {
-	it('keeps regions separated as the toolbar container crosses mobile, tablet, and wide widths', async () => {
+	it('uses 32px component variants with semantic controls in the specified wide order', async () => {
+		const host = document.createElement('div');
+		host.style.width = '70rem';
+		document.body.appendChild(host);
+		const screen = await render(
+			WishlistDetailToolbar,
+			{
+				...defaultProps,
+				canManage: true,
+				role: WISHLIST_ROLES.moderator,
+				sortOption: GIFT_SORT_OPTIONS.name,
+			},
+			{ baseElement: host },
+		);
+		await new Promise(requestAnimationFrame);
+
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+		const controls = screen.getByTestId('wishlist-toolbar-controls').element();
+		const actions = screen.getByTestId('wishlist-toolbar-actions').element();
+		const controlButtons = Array.from(controls.querySelectorAll('button'));
+		const actionButtons = Array.from(actions.querySelectorAll('button'));
+		const sortCombinedLabel = `${m.gift_sort_by()}: ${m.gift_sort_name()}`;
+		const groupingCombinedLabel = `${m.gift_grouping_label()}: ${m.gift_grouping_none()}`;
+		const sortTrigger = screen.getByRole('button', { name: sortCombinedLabel }).element();
+		const groupingTrigger = screen
+			.getByRole('button', { name: groupingCombinedLabel })
+			.element();
+		const filterTrigger = screen.getByRole('button', { name: m.gift_filter() }).element();
+		const resetButton = screen
+			.getByRole('button', { name: m.gift_display_reset_aria() })
+			.element();
+		const reorderButton = screen
+			.getByRole('button', { name: m.gift_reorder_action() })
+			.element();
+		const settingsButton = screen
+			.getByRole('button', { name: m.wishlist_settings_title() })
+			.element();
+		const batchButton = screen
+			.getByRole('button', { name: m.batch_add_toolbar_label() })
+			.element();
+		const addButton = screen
+			.getByRole('button', { name: m.wishlist_detail_add_gift_label() })
+			.element();
+
+		expect(sortTrigger).toHaveAttribute('title', sortCombinedLabel);
+		expect(groupingTrigger).toHaveAttribute('title', groupingCombinedLabel);
+		expectToolbarIcon(sortTrigger, 'sort');
+		expectToolbarIcon(groupingTrigger, 'grouping');
+		expectToolbarIcon(filterTrigger, 'filter');
+		expectToolbarIcon(resetButton, 'reset');
+		expectToolbarIcon(reorderButton, 'reorder');
+		expect(sortTrigger.querySelectorAll('svg')).toHaveLength(2);
+		expect(groupingTrigger.querySelectorAll('svg')).toHaveLength(2);
+		expect(filterTrigger.querySelectorAll('svg')).toHaveLength(2);
+		const displayControlsInOrder = [
+			screen.getByTestId('gift-view-switcher').element(),
+			sortTrigger,
+			groupingTrigger,
+			filterTrigger,
+			resetButton,
+			reorderButton,
+		];
+		expectDocumentOrder(displayControlsInOrder);
+		for (const [index, control] of displayControlsInOrder.slice(0, -1).entries()) {
+			expect(control.getBoundingClientRect().right).toBeLessThanOrEqual(
+				displayControlsInOrder[index + 1]!.getBoundingClientRect().left,
+			);
+		}
+		expectDocumentOrder([settingsButton, batchButton, addButton]);
+
+		expect(controlButtons.length).toBeGreaterThan(0);
+		expect(actionButtons).toEqual([settingsButton, batchButton, addButton]);
+		const allToolbarButtons = [...controlButtons, ...actionButtons];
+		for (const button of allToolbarButtons) {
+			expect(
+				getComputedStyle(button).height,
+				button.getAttribute('aria-label') ?? button.textContent ?? 'toolbar control',
+			).toBe('32px');
+		}
+		expect(
+			Math.max(...allToolbarButtons.map((button) => button.getBoundingClientRect().height)) -
+				Math.min(
+					...allToolbarButtons.map((button) => button.getBoundingClientRect().height),
+				),
+		).toBeLessThan(0.5);
+
+		const controlsRect = controls.getBoundingClientRect();
+		const actionsRect = actions.getBoundingClientRect();
+		expect(Math.abs(controlsRect.top - actionsRect.top)).toBeLessThan(0.5);
+		expect(Math.abs(controlsRect.bottom - actionsRect.bottom)).toBeLessThan(0.5);
+		expect(actionsRect.left).toBeGreaterThanOrEqual(controlsRect.right);
+		expect(
+			new Set(actionButtons.map((button) => button.getBoundingClientRect().top)).size,
+		).toBe(1);
+		expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('keeps seven long active filters and atomic actions in their explicit responsive rows', async () => {
 		const host = document.createElement('div');
 		document.body.appendChild(host);
 		const screen = await render(
@@ -216,29 +337,81 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 		const controls = screen.getByTestId('wishlist-toolbar-controls').element();
 		const pills = screen.getByTestId('wishlist-toolbar-active-filters').element();
 		const actions = screen.getByTestId('wishlist-toolbar-actions').element();
+		const actionButtons = Array.from(actions.querySelectorAll('button'));
 
-		for (const width of ['30rem', '50rem', '70rem']) {
-			host.style.width = width;
+		for (const width of [320, 390, 480, 800, 1120]) {
+			host.style.width = `${width}px`;
 			await new Promise(requestAnimationFrame);
+			const toolbarRect = toolbar.getBoundingClientRect();
 			const controlsRect = controls.getBoundingClientRect();
 			const pillsRect = pills.getBoundingClientRect();
 			const actionsRect = actions.getBoundingClientRect();
 
-			if (width === '30rem') {
+			if (width < 640) {
 				expect(getComputedStyle(pills).display).toBe('none');
 				expect(actionsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
-			} else if (width === '50rem') {
+			} else if (width < 1056) {
 				expect(pillsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
 				expect(actionsRect.top).toBeGreaterThanOrEqual(pillsRect.bottom);
 			} else {
-				expect(actionsRect.left).toBeGreaterThanOrEqual(controlsRect.right);
-				expect(pillsRect.top).toBeGreaterThanOrEqual(
-					Math.max(controlsRect.bottom, actionsRect.bottom),
+				expect(pillsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
+				expect(actionsRect.left).toBeGreaterThanOrEqual(pillsRect.right);
+				expect(Math.abs(actionsRect.bottom - pillsRect.bottom)).toBeLessThan(0.5);
+				expect(pills.querySelectorAll('button[aria-label]')).toHaveLength(7);
+			}
+
+			const visibleControlButtons = Array.from(controls.querySelectorAll('button')).filter(
+				(button) => {
+					const rectangle = button.getBoundingClientRect();
+					return rectangle.width > 0 && rectangle.height > 0;
+				},
+			);
+			const actionButtonRects = actionButtons.map((button) => button.getBoundingClientRect());
+			for (const button of [...visibleControlButtons, ...actionButtons]) {
+				expect(
+					getComputedStyle(button).height,
+					`${button.getAttribute('aria-label') ?? button.textContent} height at ${width}px`,
+				).toBe('32px');
+				const buttonRect = button.getBoundingClientRect();
+				expect(buttonRect.left).toBeGreaterThanOrEqual(toolbarRect.left);
+				expect(buttonRect.right).toBeLessThanOrEqual(toolbarRect.right);
+				expect(buttonRect.top).toBeGreaterThanOrEqual(toolbarRect.top);
+				expect(buttonRect.bottom).toBeLessThanOrEqual(toolbarRect.bottom);
+			}
+			for (const controlButton of visibleControlButtons) {
+				for (const actionButton of actionButtons) {
+					expect(
+						rectanglesIntersect(
+							controlButton.getBoundingClientRect(),
+							actionButton.getBoundingClientRect(),
+						),
+						`${controlButton.getAttribute('aria-label') ?? controlButton.textContent} must not overlap ${actionButton.getAttribute('aria-label') ?? actionButton.textContent} at ${width}px`,
+					).toBe(false);
+				}
+			}
+			if (getComputedStyle(pills).display !== 'none') {
+				expect(rectanglesIntersect(controlsRect, pillsRect)).toBe(false);
+				expect(rectanglesIntersect(actionsRect, pillsRect)).toBe(false);
+			}
+			for (const [index, actionButtonRect] of actionButtonRects.slice(0, -1).entries()) {
+				expect(actionButtonRect.right).toBeLessThanOrEqual(
+					actionButtonRects[index + 1]!.left,
 				);
 			}
+			expect(new Set(actionButtonRects.map(({ top }) => top)).size).toBe(1);
+			expect(
+				Math.abs(actionsRect.left - Math.min(...actionButtonRects.map(({ left }) => left))),
+			).toBeLessThan(0.5);
+			expect(
+				Math.abs(
+					actionsRect.right - Math.max(...actionButtonRects.map(({ right }) => right)),
+				),
+			).toBeLessThan(0.5);
+			expect(toolbarRect.right - actionsRect.right).toBeLessThan(20);
 			expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
 		}
 		await screen.unmount();
+		host.remove();
 	});
 
 	it('omits the persistent active-filter region when there are no active filters', async () => {
@@ -387,10 +560,9 @@ describe('WishlistDetailToolbar grouping and reset controls (issue #246)', () =>
 			groupingAvailability: { priority: true, category: false },
 		});
 
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_grouping_label() }))
-			.toBeVisible();
-		await screen.getByRole('button', { name: m.gift_grouping_label() }).click();
+		const groupingLabel = `${m.gift_grouping_label()}: ${m.gift_grouping_none()}`;
+		await expect.element(screen.getByRole('button', { name: groupingLabel })).toBeVisible();
+		await screen.getByRole('button', { name: groupingLabel }).click();
 		await expect
 			.element(screen.getByRole('option', { name: m.gift_grouping_priority() }))
 			.toBeVisible();
@@ -407,7 +579,11 @@ describe('WishlistDetailToolbar grouping and reset controls (issue #246)', () =>
 			groupingAvailability: { priority: true, category: true },
 			ongroupingchange,
 		});
-		await screen.getByRole('button', { name: m.gift_grouping_label() }).click();
+		await screen
+			.getByRole('button', {
+				name: `${m.gift_grouping_label()}: ${m.gift_grouping_none()}`,
+			})
+			.click();
 		await screen.getByRole('option', { name: m.gift_grouping_priority() }).click();
 		expect(ongroupingchange).toHaveBeenCalledWith(GIFT_GROUPING_OPTIONS.priority);
 		await screen.unmount();

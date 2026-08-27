@@ -1163,6 +1163,13 @@ What: Wishlist gift display has three independent control families. View mode re
 Why: Grouping is a display structure, not a filter; priority and category need equal first-class treatment, while filters should stay quick to clear and should not leak across visits.
 Rejected: Keeping grouping inside the filter dropdown (confuses structure with inclusion); global grouping/sort persistence (viewers switch lists with different meanings); persisting filters (stale hidden gifts on return); treating no-priority/uncategorized as middle-ranked neutral values (explicit no-value groups read clearer at the end).
 
+### Wishlist toolbar: labeled control families and explicit responsive rows
+
+Decided: 2026-08-27 (issue #246 follow-up)
+What: The wishlist toolbar keeps labeled 32 px `md` triggers for sort, grouping, and filtering, visually unifies them with leading semantic icons and trailing chevrons, and orders them as view → sort → grouping → filter → reset → visibly separated reorder; management actions form an atomic, content-width cluster aligned right on the last row. Wide default state is one row; with active filters, chips stay adjacent to the controls and share the final wide row with management actions in separate collision-proof grid columns; medium layouts place filters before a dedicated final action row; mobile hides persistent pills but keeps active state in the filter menu. Sort uses arrows, grouping uses layers, filtering uses list-filter-plus, reorder uses a hand, and reset remains a ghost icon.
+Why: Visible labels expose current sort/grouping state, semantic icons distinguish adjacent controls, and explicit row ownership prevents the accidental height, wrapping, and overlap failures caused by local height overrides and independently wrapping action children.
+Rejected: Icon-only display triggers (hide selected state and collide conceptually with the view switcher); independently wrapping management actions (splits Add gift from its peers); stretching Add gift on desktop; placing active filters after management actions; ad hoc `h-auto` overrides instead of shared component size variants.
+
 ### Reserved overlay parity: list view reuses the card sticker
 
 Decided: 2026-08-07
