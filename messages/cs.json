@@ -994,6 +994,8 @@
 	"delete": "Smazat",
 	"gift_category_label": "Kategorie",
 	"gift_category_none": "Bez kategorie",
+	"gift_category_none_enabled": "Žádné kategorie nejsou zapnuté",
+	"gift_category_none_enabled_help": "Zapněte kategorie v Nastavení seznamu → Kategorie a pak je můžete přiřazovat.",
 	"draft_grid_col_category": "Kategorie",
 	"wishlist_settings_categories_tab": "Kategorie",
 	"gift_categories_settings_hint": "Spravujte volitelné kategorie pro tento seznam. Kategorie slouží jen k přehlednějšímu řazení přání, nejde o štítky.",

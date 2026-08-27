@@ -994,6 +994,8 @@
 	"delete": "Delete",
 	"gift_category_label": "Category",
 	"gift_category_none": "Uncategorized",
+	"gift_category_none_enabled": "No categories enabled",
+	"gift_category_none_enabled_help": "Enable categories under Wishlist settings → Categories to assign them.",
 	"draft_grid_col_category": "Category",
 	"wishlist_settings_categories_tab": "Categories",
 	"gift_categories_settings_hint": "Manage optional categories for this wishlist. Categories only organize gifts; they are not tags.",

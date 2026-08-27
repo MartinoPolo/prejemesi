@@ -183,6 +183,73 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 	});
 });
 
+describe('WishlistDetailToolbar collision-proof regions', () => {
+	it('keeps regions separated as the toolbar container crosses mobile, tablet, and wide widths', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(
+			WishlistDetailToolbar,
+			{
+				...defaultProps,
+				canManage: true,
+				role: WISHLIST_ROLES.moderator,
+				filters: {
+					...defaultProps.filters,
+					withLinkOnly: true,
+					showReceived: true,
+					categoryValues: ['category-one', 'category-two'],
+					priorityValues: ['priority-high', 'priority-medium', 'priority-low'],
+				},
+				categoryFilterOptions: [
+					{ value: 'category-one', label: 'A very long first category name' },
+					{ value: 'category-two', label: 'A very long second category name' },
+				],
+				priorityFilterOptions: [
+					{ value: 'priority-high', label: 'High priority' },
+					{ value: 'priority-medium', label: 'Medium priority' },
+					{ value: 'priority-low', label: 'Low priority' },
+				],
+			},
+			{ baseElement: host },
+		);
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+		const controls = screen.getByTestId('wishlist-toolbar-controls').element();
+		const pills = screen.getByTestId('wishlist-toolbar-active-filters').element();
+		const actions = screen.getByTestId('wishlist-toolbar-actions').element();
+
+		for (const width of ['30rem', '50rem', '70rem']) {
+			host.style.width = width;
+			await new Promise(requestAnimationFrame);
+			const controlsRect = controls.getBoundingClientRect();
+			const pillsRect = pills.getBoundingClientRect();
+			const actionsRect = actions.getBoundingClientRect();
+
+			if (width === '30rem') {
+				expect(getComputedStyle(pills).display).toBe('none');
+				expect(actionsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
+			} else if (width === '50rem') {
+				expect(pillsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
+				expect(actionsRect.top).toBeGreaterThanOrEqual(pillsRect.bottom);
+			} else {
+				expect(actionsRect.left).toBeGreaterThanOrEqual(controlsRect.right);
+				expect(pillsRect.top).toBeGreaterThanOrEqual(
+					Math.max(controlsRect.bottom, actionsRect.bottom),
+				);
+			}
+			expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
+		}
+		await screen.unmount();
+	});
+
+	it('omits the persistent active-filter region when there are no active filters', async () => {
+		const screen = await renderToolbar();
+		await expect
+			.element(screen.getByTestId('wishlist-toolbar-active-filters'))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+});
+
 describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 	it('shows only the recipient filter options', async () => {
 		const screen = await renderToolbar({
@@ -266,7 +333,8 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 			onfilterchange,
 		});
 
-		await screen.getByRole('button', { name: m.wishlist_detail_clear_filters() }).click();
+		await screen.getByRole('button', { name: new RegExp(`^${m.gift_filter()}:`) }).click();
+		await screen.getByRole('menuitem', { name: m.wishlist_detail_clear_filters() }).click();
 
 		expect(onfilterchange).toHaveBeenCalledTimes(1);
 		expect(onfilterchange).toHaveBeenCalledWith({

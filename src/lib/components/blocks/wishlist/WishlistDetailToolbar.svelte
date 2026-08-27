@@ -15,7 +15,9 @@
 	import GiftSortSelect from '$lib/components/blocks/gift/GiftSortSelect.svelte';
 	import GiftViewSwitcher from '$lib/components/blocks/gift/GiftViewSwitcher.svelte';
 	import {
+		ActiveFilterPills,
 		FilterMenu,
+		normalizeActiveFilters,
 		type FilterDefinition,
 		type FilterFacetGroup,
 	} from '$lib/components/derived/filter-menu/index.js';
@@ -193,6 +195,8 @@
 		},
 	]);
 
+	let filterTriggerElement = $state<HTMLButtonElement | null>(null);
+
 	const filterFacets = $derived<FilterFacetGroup[]>([
 		{
 			id: 'category',
@@ -215,158 +219,280 @@
 			})),
 		},
 	]);
+	const activeFilters = $derived(normalizeActiveFilters(filterDefinitions, filterFacets));
 </script>
 
 <div
-	class="flex flex-wrap items-center gap-2.5 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker lg:flex-nowrap"
+	class="wishlist-toolbar min-w-0 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
+	data-testid="wishlist-toolbar"
 >
-	{#if canPreviewRecipientView}
-		<SimpleTooltip
-			text={recipientViewPreview
-				? m.recipient_view_preview_turn_off()
-				: m.recipient_view_preview_turn_on()}
+	<div class="toolbar-layout min-w-0">
+		<div
+			class="toolbar-controls flex min-w-0 flex-wrap items-center gap-2.5"
+			data-testid="wishlist-toolbar-controls"
 		>
-			<Button
-				size="icon"
-				intent="ghost"
-				aria-label={recipientViewPreview
-					? m.recipient_view_preview_turn_off()
-					: m.recipient_view_preview_turn_on()}
-				aria-pressed={recipientViewPreview}
-				aria-describedby="recipient-view-preview-description recipient-view-preview-status"
-				onclick={() => onrecipientviewpreviewchange(!recipientViewPreview)}
-			>
-				{#if recipientViewPreview}
-					<EyeOffIcon />
-				{:else}
-					<EyeIcon />
-				{/if}
-			</Button>
-		</SimpleTooltip>
-		<span id="recipient-view-preview-description" class="sr-only">
-			{m.recipient_view_preview_description()}
-		</span>
-		<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
-			{recipientViewPreview
-				? m.recipient_view_preview_status_on()
-				: m.recipient_view_preview_status_off()}
-		</span>
-	{/if}
-
-	{#if reorderMode && canReorder}
-		<Button size="md" onclick={() => onreordermodechange(false)}>
-			<CheckIcon data-icon="inline-start" />
-			{m.gift_reorder_done()}
-		</Button>
-	{:else}
-		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
-		<GiftSortSelect value={sortOption} onchange={onsortchange} />
-		<Select.Root
-			type="single"
-			value={grouping}
-			onValueChange={(newValue) => {
-				if (Object.values(GIFT_GROUPING_OPTIONS).includes(newValue as GiftGroupingOption)) {
-					ongroupingchange(newValue as GiftGroupingOption);
-				}
-			}}
-		>
-			<Select.Trigger
-				size="md"
-				class="min-w-0 max-w-full"
-				aria-label={m.gift_grouping_label()}
-			>
-				<ListFilterIcon class="size-3.5 shrink-0 text-muted-foreground" />
-				<span class="min-w-0 truncate">{GROUPING_LABELS[grouping]()}</span>
-			</Select.Trigger>
-			<Select.Content>
-				<Select.Group>
-					<Select.GroupHeading>{m.gift_grouping_label()}</Select.GroupHeading>
-					<Select.Item
-						value={GIFT_GROUPING_OPTIONS.none}
-						label={m.gift_grouping_none()}
-					/>
-					<Select.Item
-						value={GIFT_GROUPING_OPTIONS.priority}
-						label={m.gift_grouping_priority()}
-						disabled={!groupingAvailability.priority}
-					/>
-					<Select.Item
-						value={GIFT_GROUPING_OPTIONS.category}
-						label={m.gift_grouping_category()}
-						disabled={!groupingAvailability.category}
-					/>
-				</Select.Group>
-			</Select.Content>
-		</Select.Root>
-		<FilterMenu
-			definitions={filterDefinitions}
-			facets={filterFacets}
-			triggerLabel={m.gift_filter()}
-			menuHeading={m.gift_filter()}
-			clearAllLabel={m.wishlist_detail_clear_filters()}
-			onclearall={clearGiftFilters}
-			removeFilterLabel={(label) => m.filter_remove({ label })}
-			activeCountLabel={(count) => m.filter_active_count({ count })}
-			align="end"
-		/>
-		{#if showReset}
-			<SimpleTooltip text={m.gift_display_reset_tooltip()}>
-				<Button
-					size="icon"
-					intent="ghost"
-					aria-label={m.gift_display_reset_aria()}
-					onclick={resetDisplayControls}
+			{#if canPreviewRecipientView}
+				<SimpleTooltip
+					text={recipientViewPreview
+						? m.recipient_view_preview_turn_off()
+						: m.recipient_view_preview_turn_on()}
 				>
-					<RotateCcwIcon />
-				</Button>
-			</SimpleTooltip>
-		{/if}
-		{#if canReorder}
-			<Button size="md" intent="outline" onclick={() => onreordermodechange(true)}>
-				<ArrowUpDownIcon data-icon="inline-start" />
-				{m.gift_reorder_action()}
-			</Button>
-		{/if}
-
-		<div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 lg:flex-nowrap">
-			{#if (canManage && !isArchived) || adminSettingsAvailable}
-				<SimpleTooltip text={m.wishlist_settings_title()}>
 					<Button
 						size="icon"
-						intent="outline"
-						aria-label={m.wishlist_settings_title()}
-						onclick={onsettings}
+						intent="ghost"
+						aria-label={recipientViewPreview
+							? m.recipient_view_preview_turn_off()
+							: m.recipient_view_preview_turn_on()}
+						aria-pressed={recipientViewPreview}
+						aria-describedby="recipient-view-preview-description recipient-view-preview-status"
+						onclick={() => onrecipientviewpreviewchange(!recipientViewPreview)}
 					>
-						<SettingsIcon />
+						{#if recipientViewPreview}
+							<EyeOffIcon />
+						{:else}
+							<EyeIcon />
+						{/if}
 					</Button>
 				</SimpleTooltip>
+				<span id="recipient-view-preview-description" class="sr-only">
+					{m.recipient_view_preview_description()}
+				</span>
+				<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
+					{recipientViewPreview
+						? m.recipient_view_preview_status_on()
+						: m.recipient_view_preview_status_off()}
+				</span>
 			{/if}
-			{#if !canManage && !isArchived && isAuthenticated}
-				<Button size="sm" intent="ghost" onclick={onunfollow}
-					>{m.wishlist_detail_unfollow()}</Button
-				>
-			{/if}
-			{#if canManage && !isArchived}
-				<SimpleTooltip text={m.batch_add_toolbar_label()}>
-					<Button
-						size="icon"
-						intent="outline"
-						aria-label={m.batch_add_toolbar_label()}
-						onclick={onbatchadd}
-					>
-						<ListPlusIcon />
-					</Button>
-				</SimpleTooltip>
+
+			{#if reorderMode && canReorder}
 				<Button
 					size="md"
-					class="whitespace-nowrap"
-					aria-label={m.wishlist_detail_add_gift_label()}
-					onclick={onaddgift}
+					class="h-auto min-w-0 max-w-full whitespace-normal [overflow-wrap:anywhere]"
+					onclick={() => onreordermodechange(false)}
 				>
-					<PlusIcon data-icon="inline-start" />
-					{m.wishlist_detail_add_wish()}
+					<CheckIcon data-icon="inline-start" />
+					{m.gift_reorder_done()}
 				</Button>
+			{:else}
+				<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
+				<GiftSortSelect
+					class="w-full max-w-48 flex-[1_1_10rem]"
+					value={sortOption}
+					onchange={onsortchange}
+				/>
+				<Select.Root
+					type="single"
+					value={grouping}
+					onValueChange={(newValue) => {
+						if (
+							Object.values(GIFT_GROUPING_OPTIONS).includes(
+								newValue as GiftGroupingOption,
+							)
+						) {
+							ongroupingchange(newValue as GiftGroupingOption);
+						}
+					}}
+				>
+					<Select.Trigger
+						size="md"
+						class="w-full min-w-0 max-w-48 flex-[1_1_10rem]"
+						aria-label={m.gift_grouping_label()}
+					>
+						<ListFilterIcon class="size-3.5 shrink-0 text-muted-foreground" />
+						<span class="min-w-0 truncate">{GROUPING_LABELS[grouping]()}</span>
+					</Select.Trigger>
+					<Select.Content>
+						<Select.Group>
+							<Select.GroupHeading>{m.gift_grouping_label()}</Select.GroupHeading>
+							<Select.Item
+								value={GIFT_GROUPING_OPTIONS.none}
+								label={m.gift_grouping_none()}
+							/>
+							<Select.Item
+								value={GIFT_GROUPING_OPTIONS.priority}
+								label={m.gift_grouping_priority()}
+								disabled={!groupingAvailability.priority}
+							/>
+							<Select.Item
+								value={GIFT_GROUPING_OPTIONS.category}
+								label={m.gift_grouping_category()}
+								disabled={!groupingAvailability.category}
+							/>
+						</Select.Group>
+					</Select.Content>
+				</Select.Root>
+				<FilterMenu
+					bind:triggerElement={filterTriggerElement}
+					definitions={filterDefinitions}
+					facets={filterFacets}
+					{activeFilters}
+					showActivePills={false}
+					alwaysShowClearAllInMenu
+					triggerLabel={m.gift_filter()}
+					menuHeading={m.gift_filter()}
+					clearAllLabel={m.wishlist_detail_clear_filters()}
+					onclearall={clearGiftFilters}
+					removeFilterLabel={(label) => m.filter_remove({ label })}
+					activeCountLabel={(count) => m.filter_active_count({ count })}
+					align="end"
+				/>
+				{#if showReset}
+					<SimpleTooltip text={m.gift_display_reset_tooltip()}>
+						<Button
+							size="icon"
+							intent="ghost"
+							aria-label={m.gift_display_reset_aria()}
+							onclick={resetDisplayControls}
+						>
+							<RotateCcwIcon />
+						</Button>
+					</SimpleTooltip>
+				{/if}
+				{#if canReorder}
+					<Button
+						size="md"
+						intent="outline"
+						class="h-auto max-w-full whitespace-normal [overflow-wrap:anywhere]"
+						onclick={() => onreordermodechange(true)}
+					>
+						<ArrowUpDownIcon data-icon="inline-start" />
+						{m.gift_reorder_action()}
+					</Button>
+				{/if}
 			{/if}
 		</div>
-	{/if}
+
+		{#if !(reorderMode && canReorder)}
+			{#if activeFilters.length > 0}
+				<div
+					class="toolbar-active-filters min-w-0"
+					data-testid="wishlist-toolbar-active-filters"
+				>
+					<ActiveFilterPills
+						class="min-w-0"
+						items={activeFilters}
+						clearAllLabel={m.wishlist_detail_clear_filters()}
+						onclearall={clearGiftFilters}
+						removeFilterLabel={(label) => m.filter_remove({ label })}
+						triggerElement={filterTriggerElement}
+					/>
+				</div>
+			{/if}
+
+			<div
+				class="toolbar-actions flex min-w-0 flex-wrap items-center gap-2"
+				data-testid="wishlist-toolbar-actions"
+			>
+				{#if (canManage && !isArchived) || adminSettingsAvailable}
+					<SimpleTooltip text={m.wishlist_settings_title()}>
+						<Button
+							size="icon"
+							intent="outline"
+							aria-label={m.wishlist_settings_title()}
+							onclick={onsettings}
+						>
+							<SettingsIcon />
+						</Button>
+					</SimpleTooltip>
+				{/if}
+				{#if !canManage && !isArchived && isAuthenticated}
+					<Button
+						size="sm"
+						intent="ghost"
+						class="h-auto min-w-0 max-w-full whitespace-normal [overflow-wrap:anywhere]"
+						onclick={onunfollow}>{m.wishlist_detail_unfollow()}</Button
+					>
+				{/if}
+				{#if canManage && !isArchived}
+					<SimpleTooltip text={m.batch_add_toolbar_label()}>
+						<Button
+							size="icon"
+							intent="outline"
+							aria-label={m.batch_add_toolbar_label()}
+							onclick={onbatchadd}
+						>
+							<ListPlusIcon />
+						</Button>
+					</SimpleTooltip>
+					<Button
+						size="md"
+						class="h-auto min-w-0 max-w-full flex-[1_1_12rem] whitespace-normal [overflow-wrap:anywhere]"
+						aria-label={m.wishlist_detail_add_gift_label()}
+						onclick={onaddgift}
+					>
+						<PlusIcon data-icon="inline-start" />
+						{m.wishlist_detail_add_wish()}
+					</Button>
+				{/if}
+			</div>
+		{/if}
+	</div>
 </div>
+
+<style>
+	.wishlist-toolbar {
+		container-name: wishlist-toolbar;
+		container-type: inline-size;
+		max-width: 100%;
+		overflow: visible;
+	}
+
+	.toolbar-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.625rem;
+	}
+
+	.toolbar-controls,
+	.toolbar-actions,
+	.toolbar-active-filters {
+		min-width: 0;
+	}
+
+	.toolbar-controls {
+		grid-row: 1;
+	}
+
+	.toolbar-actions {
+		grid-row: 2;
+		justify-content: flex-start;
+	}
+
+	.toolbar-active-filters {
+		display: none;
+	}
+
+	@container wishlist-toolbar (min-width: 40rem) {
+		.toolbar-active-filters {
+			display: flex;
+			grid-row: 2;
+		}
+
+		.toolbar-actions {
+			grid-row: 3;
+		}
+	}
+
+	@container wishlist-toolbar (min-width: 64rem) {
+		.toolbar-layout {
+			grid-template-columns: minmax(0, 1fr) auto;
+		}
+
+		.toolbar-controls {
+			grid-column: 1;
+			grid-row: 1;
+		}
+
+		.toolbar-actions {
+			grid-column: 2;
+			grid-row: 1;
+			justify-content: flex-end;
+			max-width: 100%;
+		}
+
+		.toolbar-active-filters {
+			grid-column: 1 / -1;
+			grid-row: 2;
+		}
+	}
+</style>

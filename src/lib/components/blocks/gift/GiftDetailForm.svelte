@@ -995,14 +995,7 @@
 				</div>
 
 				<!-- Quantity + category + priority -->
-				<div
-					class={cn(
-						'mt-3',
-						(priorityLevels.length > 0 || categoryOptions.length > 0) &&
-							styles.formRow(),
-					)}
-					data-testid="gift-quantity-priority-row"
-				>
+				<div class={cn('mt-3', styles.formRow())} data-testid="gift-quantity-priority-row">
 					<div class={styles.formField()}>
 						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
 							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
@@ -1023,11 +1016,11 @@
 						{/if}
 					</div>
 
-					{#if categoryOptions.length > 0}
-						<div class={styles.formField()}>
-							<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
-								<Label>{m.gift_category_label()}</Label>
-							</div>
+					<div class={styles.formField()}>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label>{m.gift_category_label()}</Label>
+						</div>
+						{#if categoryOptions.length > 0}
 							<Select.Root type="single" bind:value={categoryId}>
 								<Select.Trigger size="md" class="w-full">
 									{#if categoryId}
@@ -1054,8 +1047,15 @@
 									</Select.Group>
 								</Select.Content>
 							</Select.Root>
-						</div>
-					{/if}
+						{:else}
+							<Select.Root type="single" disabled>
+								<Select.Trigger size="md" class="w-full" disabled>
+									{m.gift_category_none_enabled()}
+								</Select.Trigger>
+							</Select.Root>
+							<HelpText>{m.gift_category_none_enabled_help()}</HelpText>
+						{/if}
+					</div>
 
 					{#if priorityLevels.length > 0}
 						<div class={styles.formField()}>

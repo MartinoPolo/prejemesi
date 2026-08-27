@@ -2,6 +2,7 @@ import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
+import ActiveFilterPillsTestHost from './ActiveFilterPillsTestHost.svelte';
 import FilterMenu from './FilterMenu.svelte';
 import type { FilterDefinition, FilterFacetGroup } from './filter_menu_types.js';
 
@@ -46,6 +47,39 @@ describe('FilterMenu facets', () => {
 		expect(pills.textContent).toContain('Dostupné');
 		expect(pills.textContent).toContain('Knihy');
 		expect(pills.textContent).not.toContain('Hračky');
+	});
+
+	it('removes a filter reactively, hides its pill, and moves focus to the next pill', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(ActiveFilterPillsTestHost, {}, { baseElement: host });
+
+		await screen.getByRole('button', { name: 'Odebrat První' }).click();
+
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat První' }))
+			.not.toBeInTheDocument();
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Odebrat Druhý' }).element(),
+		);
+	});
+
+	it('clears filters reactively, hides all pills, and restores trigger focus', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(ActiveFilterPillsTestHost, {}, { baseElement: host });
+
+		await screen.getByRole('button', { name: 'Vymazat' }).click();
+
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat První' }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: 'Odebrat Druhý' }))
+			.not.toBeInTheDocument();
+		expect(document.activeElement).toBe(
+			screen.getByRole('button', { name: 'Filtr' }).element(),
+		);
 	});
 
 	it('renders no facet group when the prop is omitted', async () => {
