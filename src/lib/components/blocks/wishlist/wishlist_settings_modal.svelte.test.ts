@@ -6,6 +6,7 @@ import * as m from '$lib/paraglide/messages.js';
 import { REVERT_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
 import { WISHLIST_ROLES, type Wishlist } from '$lib/modules/wishlists/types.js';
 import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
+import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
 
 const remoteMocks = vi.hoisted(() => ({
 	saveGiftCategorySettingsCommand: vi.fn(),
@@ -114,6 +115,38 @@ describe('WishlistSettingsModal import and export tab', () => {
 		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
 		expect(onimport).toHaveBeenCalledOnce();
 		expect(confirm).toHaveBeenCalledTimes(2);
+	});
+
+	it('enables the Details Save only for a meaningful change', async () => {
+		const screen = renderSettings();
+		const save = screen.getByRole('button', { name: m.save() });
+		const title = screen.getByLabelText(m.wishlist_name_label());
+
+		await expect.element(save).toBeDisabled();
+		await title.fill('Updated wishlist');
+		await expect.element(save).toBeEnabled();
+		await title.fill(wishlist.title);
+		await expect.element(save).toBeDisabled();
+	});
+
+	it('enables the Image Save only after the image settings change', async () => {
+		const screen = renderSettings({
+			activeTab: 'image',
+			wishlist: {
+				...wishlist,
+				imageKey: 'demo/backpack.jpg',
+				imageSlots: createDefaultWishlistSlots(),
+			},
+		});
+		const save = screen.getByRole('button', { name: m.save() });
+
+		await expect.element(save).toBeDisabled();
+		await screen.getByRole('radio', { name: m.image_fit_fit() }).click();
+		await expect.element(save).toBeEnabled();
+		await screen.getByRole('radio', { name: m.image_fit_fill() }).click();
+		await expect.element(save).toBeDisabled();
+		await screen.getByRole('button', { name: m.wishlist_image_remove() }).click();
+		await expect.element(save).toBeEnabled();
 	});
 
 	it('commits all staged category changes only from the dialog footer Save', async () => {

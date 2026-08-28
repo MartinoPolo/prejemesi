@@ -14,7 +14,6 @@
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
-	import LoaderIcon from '@lucide/svelte/icons/loader';
 	import FileDownIcon from '@lucide/svelte/icons/file-down';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -24,6 +23,7 @@
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
 	import WishlistPaletteAutoSave from './WishlistPaletteAutoSave.svelte';
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
+	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import RecipientPreview from './RecipientPreview.svelte';
 	import {
 		WISHLIST_SETTINGS_TABS,
@@ -162,9 +162,39 @@
 	let detailsError = $state('');
 	let savingDetails = $state(false);
 	let savingImage = $state(false);
+	let imageDirty = $state(false);
 	let categoriesDirty = $state(false);
 	let savingCategories = $state(false);
 	let tabOrientation = $state<'horizontal' | 'vertical'>('horizontal');
+
+	function dateTimestamp(value: Date | null): number | null {
+		return value?.getTime() ?? null;
+	}
+
+	function normalizeOptionalText(value: string | null | undefined): string | null {
+		const trimmed = value?.trim() ?? '';
+		return trimmed === '' ? null : trimmed;
+	}
+
+	const detailsDirty = $derived.by(() => {
+		const normalizedDescription = normalizeOptionalText(detailsDescription);
+		const recipientChanged =
+			isFreeTextRecipient && recipientNameDraft.trim() !== recipientDisplayName.trim();
+		const eventDateChanged =
+			eventDateEditable &&
+			dateTimestamp(detailsEventDate) !== dateTimestamp(toEventDate(wishlist.eventDate));
+		return (
+			detailsTitle.trim() !== wishlist.title.trim() ||
+			normalizedDescription !== normalizeOptionalText(wishlist.description) ||
+			recipientChanged ||
+			eventDateChanged
+		);
+	});
+	const detailsSubmittable = $derived(
+		detailsDirty &&
+			detailsTitle.trim() !== '' &&
+			(!isFreeTextRecipient || recipientNameDraft.trim() !== ''),
+	);
 
 	onMount(() => {
 		const intermediateViewport = window.matchMedia(
@@ -215,6 +245,9 @@
 
 	async function handleDetailsSave(event: SubmitEvent) {
 		event.preventDefault();
+		if (!detailsSubmittable || savingDetails) {
+			return;
+		}
 
 		const trimmedTitle = detailsTitle.trim();
 		if (trimmedTitle === '') {
@@ -259,7 +292,10 @@
 	async function handleImageSave(next: {
 		imageKey: string | null;
 		imageSlots: WishlistImageSlots | null;
-	}) {
+	}): Promise<boolean> {
+		if (!imageDirty || savingImage) {
+			return false;
+		}
 		savingImage = true;
 		try {
 			await updateWishlist({
@@ -269,9 +305,11 @@
 			});
 			await onsaved();
 			toastSuccess(m.toast_wishlist_image_saved());
+			return true;
 		} catch (thrown) {
 			console.error('Failed to save wishlist image:', thrown);
 			toastError(m.toast_wishlist_image_save_error());
+			return false;
 		} finally {
 			savingImage = false;
 		}
@@ -489,6 +527,7 @@
 										bind:value={recipientNameDraft}
 										placeholder={m.create_recipient_name_placeholder()}
 										maxlength={RECIPIENT_NAME_MAX_LENGTH}
+										required
 										disabled={savingDetails}
 									/>
 									<RecipientPreview name={recipientNameDraft} />
@@ -636,7 +675,7 @@
 					</div>
 				</div>
 
-				<!-- Obrázek a ořezy: the crop editor keeps its own save button -->
+				<!-- Obrázek a ořezy: saved from the shared fixed dialog footer. -->
 				<div
 					role="tabpanel"
 					id="wishlist-settings-panel-image"
@@ -655,6 +694,7 @@
 							{themeEmoji}
 							title={wishlist.title}
 							isSaving={savingImage}
+							ondirtychange={(dirty) => (imageDirty = dirty)}
 							onsave={handleImageSave}
 						/>
 					</div>
@@ -739,33 +779,28 @@
 
 		{#if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.details}
 			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
-				<Button type="submit" form="wishlist-details-form" disabled={savingDetails}>
-					{#if savingDetails}
-						<LoaderIcon class="animate-spin" data-icon="inline-start" />
-					{/if}
-					{m.save()}
-				</Button>
+				<WishlistSettingsSaveButton
+					form="wishlist-details-form"
+					dirty={detailsSubmittable}
+					saving={savingDetails}
+				/>
 			</Dialog.Footer>
 		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.categories}
 			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
-				<Button
-					type="submit"
+				<WishlistSettingsSaveButton
 					form="wishlist-categories-form"
-					disabled={savingCategories || !categoriesDirty}
-				>
-					{savingCategories ? m.saving() : m.save()}
-				</Button>
+					dirty={categoriesDirty}
+					saving={savingCategories}
+				/>
 			</Dialog.Footer>
 		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.image}
 			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
-				<Button
-					type="submit"
+				<WishlistSettingsSaveButton
 					form="wishlist-image-form"
-					data-testid="wishlist-image-save"
-					disabled={savingImage}
-				>
-					{savingImage ? m.saving() : m.save()}
-				</Button>
+					dirty={imageDirty}
+					saving={savingImage}
+					testId="wishlist-image-save"
+				/>
 			</Dialog.Footer>
 		{/if}
 	</Dialog.Content>

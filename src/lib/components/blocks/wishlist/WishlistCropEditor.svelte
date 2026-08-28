@@ -15,8 +15,9 @@
 	import SlotPreviewCard from './SlotPreviewCard.svelte';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
-	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { untrack } from 'svelte';
+	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
@@ -50,7 +51,11 @@
 		title: string;
 		isSaving?: boolean;
 		formId?: string;
-		onsave: (next: { imageKey: string | null; imageSlots: WishlistImageSlots | null }) => void;
+		ondirtychange?: (dirty: boolean) => void;
+		onsave: (next: {
+			imageKey: string | null;
+			imageSlots: WishlistImageSlots | null;
+		}) => boolean | void | Promise<boolean | void>;
 	}
 
 	let {
@@ -60,6 +65,7 @@
 		title,
 		isSaving = false,
 		formId,
+		ondirtychange,
 		onsave,
 	}: Props = $props();
 
@@ -95,6 +101,41 @@
 	// Slots edited in this session; untouched slots keep their persisted metadata
 	// verbatim on save so unrelated saves never silently reframe them (#116 D5).
 	const dirtySlots = new SvelteSet<WishlistEditorSlot>();
+
+	function slotSnapshot(slot: WishlistEditorSlot): string {
+		return JSON.stringify(slotState[slot]);
+	}
+
+	function currentSlotSnapshots(): Record<WishlistEditorSlot, string> {
+		return Object.fromEntries(
+			WISHLIST_EDITOR_SLOTS.map((slot) => [slot, slotSnapshot(slot)]),
+		) as Record<WishlistEditorSlot, string>;
+	}
+
+	let baselineAssignedKey = $state(untrack(() => assignedKey));
+	let baselineSlotSnapshots = $state(untrack(currentSlotSnapshots));
+	const dirty = $derived(assignedKey !== baselineAssignedKey || dirtySlots.size > 0);
+	$effect(() => ondirtychange?.(dirty));
+	$effect(() => {
+		if (assignedKey !== baselineAssignedKey) {
+			return;
+		}
+		const nextBaseline = { ...baselineSlotSnapshots };
+		let baselineChanged = false;
+		for (const slot of WISHLIST_EDITOR_SLOTS) {
+			if (dirtySlots.has(slot)) {
+				continue;
+			}
+			const currentSnapshot = slotSnapshot(slot);
+			if (currentSnapshot !== nextBaseline[slot]) {
+				nextBaseline[slot] = currentSnapshot;
+				baselineChanged = true;
+			}
+		}
+		if (baselineChanged) {
+			baselineSlotSnapshots = nextBaseline;
+		}
+	});
 
 	// Uploads from this editor session that are not saved yet (issue #107, REQ-6).
 	const pendingUploads = createPendingUploads();
@@ -152,7 +193,14 @@
 	}
 
 	function markDirty(slot: WishlistEditorSlot) {
-		dirtySlots.add(slot);
+		if (
+			assignedKey !== baselineAssignedKey ||
+			slotSnapshot(slot) !== baselineSlotSnapshots[slot]
+		) {
+			dirtySlots.add(slot);
+		} else {
+			dirtySlots.delete(slot);
+		}
 	}
 
 	function handleUpload(result: UploadResult) {
@@ -202,14 +250,23 @@
 		promoteActiveSlotToManual();
 	}
 
-	function handleSave() {
-		// Storage cleanup (issue #107, REQ-6): uploads replaced before this save
-		// are deleted; the saved key survives. Unsaved leftovers go on unmount.
-		void pendingUploads.commit(assignedKey);
-		onsave({
+	async function handleSave() {
+		if (!dirty || isSaving) {
+			return;
+		}
+		const saved = await onsave({
 			imageKey: assignedKey,
 			imageSlots: hasImage ? buildSlots() : null,
 		});
+		if (saved === false) {
+			return;
+		}
+		baselineAssignedKey = assignedKey;
+		baselineSlotSnapshots = currentSlotSnapshots();
+		dirtySlots.clear();
+		// Storage cleanup (issue #107, REQ-6): uploads replaced before this save
+		// are deleted; the saved key survives. Unsaved leftovers go on unmount.
+		void pendingUploads.commit(assignedKey);
 	}
 
 	$effect(() => {
@@ -222,9 +279,11 @@
 <form
 	id={formId}
 	class="flex flex-col gap-5"
+	inert={isSaving ? true : undefined}
+	aria-busy={isSaving}
 	onsubmit={(event) => {
 		event.preventDefault();
-		handleSave();
+		void handleSave();
 	}}
 >
 	<!-- Image assignment: the empty state gets the full dropzone; once assigned,
@@ -353,14 +412,12 @@
 
 	{#if formId === undefined}
 		<div class="flex justify-end">
-			<Button type="submit" data-testid="wishlist-image-save" disabled={isSaving}>
-				{#if isSaving}
-					{m.saving()}
-				{:else}
-					<UploadIcon data-icon="inline-start" />
-					{m.save()}
-				{/if}
-			</Button>
+			<WishlistSettingsSaveButton
+				form={formId}
+				{dirty}
+				saving={isSaving}
+				testId="wishlist-image-save"
+			/>
 		</div>
 	{/if}
 </form>
