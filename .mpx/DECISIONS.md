@@ -1035,6 +1035,13 @@ What: Motion tokens — ~200 ms standard, 300 ms transform ease, spring `cubic-b
 Why: The app has almost no motion today; the mockup's character depends on it.
 Rejected: Micro-interactions only (loses the reveal charm); full-on FLIP/page transitions (perf risk on long lists).
 
+### Motion continuity: travel requires a visible same-identity move
+
+Decided: 2026-08-28
+What: Coordinate capture includes only attached, rendered, non-zero elements present before and after. Filter-only insertion/removal appears or disappears at final coordinates with at most opacity. Continuously visible displaced siblings may FLIP. Cross-section flight is reserved for the same gift visibly moving between visible source and destination sections.
+Why: Treating hidden or zero-size coordinates as origins made newly revealed filter results fly from screen edges and falsely implied movement.
+Rejected: FLIP/translation for every keyed result regardless of visibility; off-screen or `0,0` travel for inserts/removals; disabling all sibling layout easing.
+
 ### Wishlist header: notebook page + taped polaroid + sticky countdown
 
 Decided: 2026-07-10
