@@ -72,6 +72,17 @@ function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
 	);
 }
 
+function expectVisuallyAfter(first: DOMRect, latter: DOMRect) {
+	const roundingTolerance = 0.5;
+	const isOnLaterRow = latter.top >= first.bottom - roundingTolerance;
+	const verticalRangesOverlap =
+		latter.top < first.bottom - roundingTolerance &&
+		latter.bottom > first.top + roundingTolerance;
+	const isToTheRight = latter.left >= first.right - roundingTolerance;
+
+	expect(isOnLaterRow || (verticalRangesOverlap && isToTheRight)).toBe(true);
+}
+
 function measureNaturalWidth(element: HTMLElement): number {
 	const clone = element.cloneNode(true) as HTMLElement;
 	clone.style.position = 'fixed';
@@ -130,6 +141,148 @@ describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
 });
 
 describe('WishlistDetailToolbar manager actions (#241)', () => {
+	it('does not render or reserve a row for actionless visitor and archived variants', async () => {
+		for (const overrides of [
+			{},
+			{ role: WISHLIST_ROLES.recipient, canManage: true, isArchived: true },
+			{ role: WISHLIST_ROLES.moderator, canManage: true, isArchived: true },
+		]) {
+			const screen = await renderToolbar(overrides);
+			const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+			const controls = screen.getByTestId('wishlist-toolbar-controls').element();
+
+			await expect
+				.element(screen.getByTestId('wishlist-toolbar-actions'))
+				.not.toBeInTheDocument();
+			expect(
+				toolbar.getBoundingClientRect().height - controls.getBoundingClientRect().height,
+			).toBeLessThanOrEqual(24);
+			await screen.unmount();
+		}
+	});
+
+	it('places the authenticated visitor action by intrinsic fit and wraps it just below', async () => {
+		const host = document.createElement('div');
+		host.style.width = '1200px';
+		document.body.appendChild(host);
+		const screen = await render(
+			WishlistDetailToolbar,
+			{ ...defaultProps, isAuthenticated: true },
+			{ baseElement: host },
+		);
+		await new Promise(requestAnimationFrame);
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+		const controls = screen.getByTestId('wishlist-toolbar-controls').element() as HTMLElement;
+		const actions = screen.getByTestId('wishlist-toolbar-actions').element() as HTMLElement;
+		const layout = controls.parentElement as HTMLElement;
+		const requiredContentWidth =
+			controls.getBoundingClientRect().width +
+			actions.getBoundingClientRect().width +
+			parseFloat(getComputedStyle(layout).columnGap);
+		const chromeWidth =
+			toolbar.getBoundingClientRect().width - layout.getBoundingClientRect().width;
+
+		host.style.width = `${Math.ceil(requiredContentWidth + chromeWidth)}px`;
+		await new Promise(requestAnimationFrame);
+		expect(
+			Math.abs(controls.getBoundingClientRect().top - actions.getBoundingClientRect().top),
+		).toBeLessThan(1);
+
+		host.style.width = `${Math.floor(requiredContentWidth + chromeWidth) - 1}px`;
+		await new Promise(requestAnimationFrame);
+		expect(actions.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+			controls.getBoundingClientRect().bottom,
+		);
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('places the settings-only action by intrinsic fit and wraps it just below', async () => {
+		const host = document.createElement('div');
+		host.style.width = '1200px';
+		document.body.appendChild(host);
+		const screen = await render(
+			WishlistDetailToolbar,
+			{
+				...defaultProps,
+				canManage: false,
+				isAuthenticated: false,
+				adminSettingsAvailable: true,
+			},
+			{ baseElement: host },
+		);
+		await new Promise(requestAnimationFrame);
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+		const controls = screen.getByTestId('wishlist-toolbar-controls').element() as HTMLElement;
+		const actions = screen.getByTestId('wishlist-toolbar-actions').element() as HTMLElement;
+		const settingsButton = screen
+			.getByRole('button', { name: m.wishlist_settings_title() })
+			.element();
+		expect(Array.from(actions.querySelectorAll('button'))).toEqual([settingsButton]);
+		const layout = controls.parentElement as HTMLElement;
+		const requiredContentWidth =
+			controls.getBoundingClientRect().width +
+			actions.getBoundingClientRect().width +
+			parseFloat(getComputedStyle(layout).columnGap);
+		const chromeWidth =
+			toolbar.getBoundingClientRect().width - layout.getBoundingClientRect().width;
+
+		host.style.width = `${Math.ceil(requiredContentWidth + chromeWidth)}px`;
+		await new Promise(requestAnimationFrame);
+		expect(
+			Math.abs(controls.getBoundingClientRect().top - actions.getBoundingClientRect().top),
+		).toBeLessThan(1);
+
+		host.style.width = `${Math.floor(requiredContentWidth + chromeWidth) - 1}px`;
+		await new Promise(requestAnimationFrame);
+		expect(actions.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+			controls.getBoundingClientRect().bottom,
+		);
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('keeps recipient and moderator management actions atomic at their measured fit width', async () => {
+		for (const role of [WISHLIST_ROLES.recipient, WISHLIST_ROLES.moderator]) {
+			const host = document.createElement('div');
+			host.style.width = '1200px';
+			document.body.appendChild(host);
+			const screen = await render(
+				WishlistDetailToolbar,
+				{ ...defaultProps, canManage: true, role },
+				{ baseElement: host },
+			);
+			await new Promise(requestAnimationFrame);
+			const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+			const controls = screen
+				.getByTestId('wishlist-toolbar-controls')
+				.element() as HTMLElement;
+			const actions = screen.getByTestId('wishlist-toolbar-actions').element() as HTMLElement;
+			const layout = controls.parentElement as HTMLElement;
+			const requiredWidth = Math.ceil(
+				controls.getBoundingClientRect().width +
+					actions.getBoundingClientRect().width +
+					parseFloat(getComputedStyle(layout).columnGap) +
+					(toolbar.getBoundingClientRect().width - layout.getBoundingClientRect().width),
+			);
+			host.style.width = `${requiredWidth}px`;
+			await new Promise(requestAnimationFrame);
+
+			expect(
+				Math.abs(
+					controls.getBoundingClientRect().top - actions.getBoundingClientRect().top,
+				),
+			).toBeLessThan(1);
+			const buttons = Array.from(actions.querySelectorAll('button'));
+			expectDocumentOrder(buttons);
+			expect(new Set(buttons.map((button) => button.getBoundingClientRect().top)).size).toBe(
+				1,
+			);
+			await screen.unmount();
+			host.remove();
+		}
+	});
+
 	it('keeps import, export, and palette out of the detail toolbar', async () => {
 		const screen = await renderToolbar({
 			canManage: true,
@@ -373,13 +526,17 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 				expect(rectangle.top).toBeGreaterThanOrEqual(toolbarRect.top);
 				expect(rectangle.bottom).toBeLessThanOrEqual(toolbarRect.bottom);
 			}
-			if (width < 1056) {
-				expect(pillsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
-				expect(actionsRect.top).toBeGreaterThanOrEqual(pillsRect.bottom);
-			} else {
-				expect(pillsRect.top).toBeGreaterThanOrEqual(controlsRect.bottom);
-				expect(actionsRect.left).toBeGreaterThanOrEqual(pillsRect.right);
-				expect(Math.abs(actionsRect.bottom - pillsRect.bottom)).toBeLessThan(0.5);
+			expectDocumentOrder([controls, pills, actions]);
+			expectVisuallyAfter(controlsRect, pillsRect);
+			expectVisuallyAfter(pillsRect, actionsRect);
+			const roundingTolerance = 0.5;
+			const pillsAndActionsVerticalRangesOverlap =
+				actionsRect.top < pillsRect.bottom - roundingTolerance &&
+				actionsRect.bottom > pillsRect.top + roundingTolerance;
+			if (pillsAndActionsVerticalRangesOverlap) {
+				expect(Math.abs(pillsRect.bottom - actionsRect.bottom)).toBeLessThanOrEqual(
+					roundingTolerance,
+				);
 			}
 
 			const visibleControlButtons = Array.from(controls.querySelectorAll('button')).filter(
