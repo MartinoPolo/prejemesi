@@ -220,6 +220,7 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible();
 		await expect(customSection.getByRole('textbox')).toHaveCount(0);
 		await settingsDialog.getByRole('button', { name: 'Zavřít' }).click();
+		await expect(settingsDialog).not.toBeVisible();
 
 		await page.getByText(giftName, { exact: true }).click();
 		giftDialog = page.getByRole('dialog');
