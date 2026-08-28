@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { afterNavigate, replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -29,6 +29,7 @@
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
+	import { createIdentityLayoutMotion } from '$lib/motion/layout_motion.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
@@ -551,8 +552,20 @@
 		giftsContext.sortOption.current = sort;
 	}
 
-	function handleFilterChange(filters: GiftFilters) {
+	let wishlistPageElement = $state<HTMLElement | null>(null);
+	const filterLayoutMotion = createIdentityLayoutMotion();
+
+	async function handleFilterChange(filters: GiftFilters) {
+		const root = wishlistPageElement;
+		if (root === null) {
+			giftsContext.filters.current = filters;
+			return;
+		}
+		const toolbar = root.querySelector<HTMLElement>('[data-testid="wishlist-toolbar"]');
+		const before = filterLayoutMotion.capture(root, toolbar);
 		giftsContext.filters.current = filters;
+		await tick();
+		filterLayoutMotion.play(before, root, toolbar);
 	}
 
 	function handleGroupingChange(grouping: GiftGroupingOption) {
@@ -571,7 +584,7 @@
 	}
 
 	function clearFilters() {
-		giftsContext.filters.current = emptyGiftFilters();
+		void handleFilterChange(emptyGiftFilters());
 	}
 
 	async function openCreateModal() {
@@ -648,10 +661,10 @@
 		try {
 			await markGiftReceived({ giftId, received });
 			if (received && !giftsContext.filters.current.showReceived) {
-				giftsContext.filters.current = {
+				await handleFilterChange({
 					...giftsContext.filters.current,
 					showReceived: true,
-				};
+				});
 			}
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
@@ -896,6 +909,8 @@
 
 	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
+	onDestroy(() => filterLayoutMotion.destroy());
+
 	onMount(() => {
 		// One command per view for ANY authed user (issue #225): it upserts the visit that
 		// powers the „Nedávné" row on /home for owners and moderators too, and folds in the
@@ -967,7 +982,11 @@
 
 <!-- data-palette re-derives every color token for this subtree (see app.css), giving the
      wishlist its own per-list identity independent of the viewer's app palette. -->
-<div data-palette={activePalette} class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
+<div
+	bind:this={wishlistPageElement}
+	data-palette={activePalette}
+	class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6"
+>
 	<WishlistHeader
 		title={wishlist.title}
 		recipientDisplayName={wishlist.recipientDisplayName}

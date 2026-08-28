@@ -81,12 +81,15 @@
 					/>
 					<span class="min-w-0 truncate">{triggerLabel}</span>
 					{#if activeFilters.length > 0}
-						<span
-							class="grid min-w-4.25 shrink-0 place-items-center rounded-full bg-primary px-1 text-[10.5px] leading-4 text-primary-foreground"
-							aria-hidden="true"
-						>
-							{activeFilters.length}
-						</span>
+						{#key activeFilters.length}
+							<span
+								class="filter-count grid min-w-4.25 shrink-0 place-items-center rounded-full bg-primary px-1 text-[10.5px] leading-4 text-primary-foreground"
+								data-filter-count
+								aria-hidden="true"
+							>
+								{activeFilters.length}
+							</span>
+						{/key}
 					{/if}
 					<ChevronDownIcon class="size-4 shrink-0 text-muted-foreground" />
 				</Button>
@@ -157,3 +160,20 @@
 		/>
 	{/if}
 </div>
+
+<style>
+	@keyframes filter-acknowledge {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.filter-count {
+			animation: filter-acknowledge 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+		}
+	}
+</style>

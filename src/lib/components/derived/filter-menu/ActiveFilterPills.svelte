@@ -52,7 +52,8 @@
 	{#each items as item (item.id)}
 		<SimpleTooltip text={item.label}>
 			<span
-				class="inline-flex h-(--size-control-sm) min-w-0 max-w-[min(12.5rem,100%)] items-center gap-1 rounded-full border-2 border-ink bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground"
+				class="active-filter-pill inline-flex h-(--size-control-sm) min-w-0 max-w-[min(12.5rem,100%)] items-center gap-1 rounded-full border-2 border-ink bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground"
+				data-active-filter-pill
 			>
 				<span class="min-w-0 truncate">{item.label}</span>
 				<button
@@ -71,3 +72,20 @@
 		>{clearAllLabel}</Button
 	>
 </div>
+
+<style>
+	@keyframes filter-acknowledge {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.active-filter-pill {
+			animation: filter-acknowledge 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+		}
+	}
+</style>

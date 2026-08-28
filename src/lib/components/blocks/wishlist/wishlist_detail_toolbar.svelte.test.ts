@@ -472,6 +472,24 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 	});
 });
 
+describe('WishlistDetailToolbar filter motion', () => {
+	it('acknowledges the active count and keyed pills in place over 220 ms', async () => {
+		const screen = await renderToolbar({
+			filters: { ...defaultProps.filters, withLinkOnly: true },
+		});
+		const count = document.querySelector<HTMLElement>('[data-filter-count]');
+		const pill = document.querySelector<HTMLElement>('[data-active-filter-pill]');
+
+		expect(count).not.toBeNull();
+		expect(pill).not.toBeNull();
+		expect(getComputedStyle(count!).animationDuration).toBe('0.22s');
+		expect(getComputedStyle(pill!).animationDuration).toBe('0.22s');
+		expect(getComputedStyle(count!).animationName).not.toBe('none');
+		expect(getComputedStyle(pill!).animationName).not.toBe('none');
+		await screen.unmount();
+	});
+});
+
 describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 	it('shows only the recipient filter options', async () => {
 		const screen = await renderToolbar({
