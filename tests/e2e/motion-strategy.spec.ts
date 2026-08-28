@@ -235,17 +235,25 @@ test.describe('issue #269 integrated motion strategy', () => {
 		const destinationRectangle = await moving.boundingBox();
 		expect(destinationRectangle).not.toBeNull();
 
+		const translationDistance = Math.hypot(
+			destinationRectangle!.x - sourceRectangle!.x,
+			destinationRectangle!.y - sourceRectangle!.y,
+		);
+		const expectedFlightDuration = Math.ceil(Math.max(650, (translationDistance / 750) * 1000));
 		await expect
 			.poll(async () =>
 				(await recordedAnimations(page)).find(
 					(animation) =>
-						animation.duration === 650 && animation.targetText.includes(names[0]!),
+						animation.duration === expectedFlightDuration &&
+						animation.targetText.includes(names[0]!),
 				),
 			)
 			.toBeDefined();
 		const receivedAnimations = await recordedAnimations(page);
 		const flight = receivedAnimations.find(
-			(animation) => animation.duration === 650 && animation.targetText.includes(names[0]!),
+			(animation) =>
+				animation.duration === expectedFlightDuration &&
+				animation.targetText.includes(names[0]!),
 		)!;
 		expect(flight.targetText).not.toContain(names[1]);
 		expect(flight.targetText).not.toContain(names[2]);

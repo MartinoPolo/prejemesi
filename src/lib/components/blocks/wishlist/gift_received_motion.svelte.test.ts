@@ -13,6 +13,16 @@ const RECT = {
 	toJSON: () => ({}),
 } satisfies DOMRect;
 
+const FAR_RECT = {
+	...RECT,
+	left: 920,
+	top: 1230,
+	right: 1040,
+	bottom: 1310,
+	x: 920,
+	y: 1230,
+} satisfies DOMRect;
+
 function gift(id: string, rectangle: DOMRect = RECT) {
 	const element = document.createElement('article');
 	element.dataset.giftItem = '';
@@ -44,6 +54,158 @@ afterEach(() => {
 });
 
 describe('received gift motion', () => {
+	it('keeps the 650ms minimum duration for a short flight', async () => {
+		const source = gift('moved');
+		const flight = deferredAnimation();
+		const animate = vi
+			.spyOn(HTMLElement.prototype, 'animate')
+			.mockReturnValue(flight.animation);
+		const motion = createGiftReceivedMotion({
+			reducedMotion: () => false,
+			compactViewport: () => false,
+		});
+		const snapshot = motion.capture('moved', source, document.body);
+		source.remove();
+		gift('moved', { ...RECT, left: 120, top: 130, right: 240, bottom: 210, x: 120, y: 130 });
+
+		const playing = motion.play(snapshot, document.body);
+
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 650 });
+		flight.finish();
+		expect(await playing).toBe(true);
+		motion.destroy();
+	});
+
+	it('extends a far flight in proportion to its Euclidean translation distance', async () => {
+		const source = gift('moved');
+		const flight = deferredAnimation();
+		const animate = vi
+			.spyOn(HTMLElement.prototype, 'animate')
+			.mockReturnValue(flight.animation);
+		const motion = createGiftReceivedMotion({
+			reducedMotion: () => false,
+			compactViewport: () => false,
+		});
+		const snapshot = motion.capture('moved', source, document.body);
+		source.remove();
+		gift('moved', FAR_RECT);
+
+		const playing = motion.play(snapshot, document.body);
+
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 2000 });
+		flight.finish();
+		expect(await playing).toBe(true);
+		motion.destroy();
+	});
+
+	it('does not cap an absolute-bottom flight duration', async () => {
+		const source = gift('moved');
+		const flight = deferredAnimation();
+		const animate = vi
+			.spyOn(HTMLElement.prototype, 'animate')
+			.mockReturnValue(flight.animation);
+		const motion = createGiftReceivedMotion({
+			reducedMotion: () => false,
+			compactViewport: () => false,
+		});
+		const snapshot = motion.capture('moved', source, document.body);
+		source.remove();
+		gift('moved', {
+			...RECT,
+			top: 7530,
+			bottom: 7610,
+			y: 7530,
+		});
+
+		const playing = motion.play(snapshot, document.body);
+
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 10_000 });
+		flight.finish();
+		expect(await playing).toBe(true);
+		motion.destroy();
+	});
+
+	it('uses a valid custom maximum velocity for a far flight', async () => {
+		const source = gift('moved');
+		const flight = deferredAnimation();
+		const animate = vi
+			.spyOn(HTMLElement.prototype, 'animate')
+			.mockReturnValue(flight.animation);
+		const motion = createGiftReceivedMotion({
+			reducedMotion: () => false,
+			compactViewport: () => false,
+			maxAverageFlightVelocityPxPerSecond: 1500,
+		});
+		const snapshot = motion.capture('moved', source, document.body);
+		source.remove();
+		gift('moved', FAR_RECT);
+
+		const playing = motion.play(snapshot, document.body);
+
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 1000 });
+		flight.finish();
+		expect(await playing).toBe(true);
+		motion.destroy();
+	});
+
+	it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.MIN_VALUE])(
+		'falls back to the default velocity for invalid value %s',
+		async (invalidVelocity) => {
+			const source = gift('moved');
+			const flight = deferredAnimation();
+			const animate = vi
+				.spyOn(HTMLElement.prototype, 'animate')
+				.mockReturnValue(flight.animation);
+			const motion = createGiftReceivedMotion({
+				reducedMotion: () => false,
+				compactViewport: () => false,
+				maxAverageFlightVelocityPxPerSecond: invalidVelocity,
+			});
+			const snapshot = motion.capture('moved', source, document.body);
+			source.remove();
+			gift('moved', FAR_RECT);
+
+			const playing = motion.play(snapshot, document.body);
+			const timing = animate.mock.calls[0]?.[1] as KeyframeAnimationOptions;
+
+			expect(timing.duration).toBe(2000);
+			expect(Number.isFinite(timing.duration)).toBe(true);
+			flight.finish();
+			expect(await playing).toBe(true);
+			motion.destroy();
+		},
+	);
+
+	it('accepts a positive-size visible source at the viewport origin', async () => {
+		const source = gift('moved', {
+			...RECT,
+			left: 0,
+			top: 0,
+			right: 120,
+			bottom: 80,
+			x: 0,
+			y: 0,
+		});
+		const flight = deferredAnimation();
+		const animate = vi
+			.spyOn(HTMLElement.prototype, 'animate')
+			.mockReturnValue(flight.animation);
+		const motion = createGiftReceivedMotion({
+			reducedMotion: () => false,
+			compactViewport: () => false,
+		});
+		const snapshot = motion.capture('moved', source, document.body);
+		source.remove();
+		gift('moved', { ...RECT, left: 300, top: 400, right: 420, bottom: 480, x: 300, y: 400 });
+
+		const playing = motion.play(snapshot, document.body);
+
+		expect(animate).toHaveBeenCalledOnce();
+		flight.finish();
+		expect(await playing).toBe(true);
+		motion.destroy();
+	});
+
 	it('flies only the same visible identity and concurrently FLIPs displaced siblings', async () => {
 		const source = gift('moved');
 		const sibling = gift('sibling', { ...RECT, left: 160, right: 280, x: 160 });

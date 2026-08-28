@@ -49,8 +49,9 @@ None.
 - Filter-only insertions and removals enter or exit at their final coordinates, with at most opacity;
   they never receive translate/FLIP movement from a missing or zero-size rectangle.
 - The visible desktop path uses the retained gift element or an inert visual clone above the grid
-  for 650 ms only when the same identity moves between two visible sections. Other continuously
-  visible, genuinely displaced gifts use 520 ms FLIP transforms concurrently.
+  for at least 650 ms only when the same identity moves between two visible sections. Longer routes
+  extend to keep average translation velocity at or below 750 CSS px/s, with no duration cap. Other
+  continuously visible, genuinely displaced gifts use 520 ms FLIP transforms concurrently.
 - The hidden path fades/scales the gift for 340 ms while its grid slot remains reserved, removes it,
   then runs the 520 ms sibling FLIP. Do not insert a banner or status row.
 - Announce completion through the existing polite live region. Keep undo in a stable control area.

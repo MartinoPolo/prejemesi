@@ -8,7 +8,8 @@ import {
 } from '$lib/motion/layout_motion.js';
 
 const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
-const CROSS_SECTION_DURATION = 650;
+const MINIMUM_CROSS_SECTION_DURATION_MS = 650;
+const DEFAULT_MAX_AVERAGE_FLIGHT_VELOCITY_PX_PER_SECOND = 750;
 const COMPACT_VIEWPORT_QUERY = '(width < 768px)';
 
 interface Rectangle {
@@ -29,20 +30,15 @@ export interface GiftReceivedMotionSnapshot {
 	readonly retainedVisual: HTMLElement | null;
 }
 
-interface GiftReceivedMotionOptions {
+export interface GiftReceivedMotionOptions {
 	reducedMotion?: () => boolean;
 	compactViewport?: () => boolean;
+	maxAverageFlightVelocityPxPerSecond?: number;
 }
 
 function visibleRectangle(element: HTMLElement): Rectangle | null {
 	const rectangle = element.getBoundingClientRect();
-	if (
-		!element.isConnected ||
-		element.hidden ||
-		rectangle.width <= 0 ||
-		rectangle.height <= 0 ||
-		(rectangle.left === 0 && rectangle.top === 0)
-	) {
+	if (!element.isConnected || element.hidden || rectangle.width <= 0 || rectangle.height <= 0) {
 		return null;
 	}
 	const style = getComputedStyle(element);
@@ -96,6 +92,13 @@ export function createGiftReceivedMotion(options: GiftReceivedMotionOptions = {}
 	const compactViewport =
 		options.compactViewport ??
 		(() => window.matchMedia?.(COMPACT_VIEWPORT_QUERY).matches ?? false);
+	const suppliedMaxAverageFlightVelocity = options.maxAverageFlightVelocityPxPerSecond;
+	const maxAverageFlightVelocityPxPerSecond =
+		typeof suppliedMaxAverageFlightVelocity === 'number' &&
+		Number.isFinite(suppliedMaxAverageFlightVelocity) &&
+		suppliedMaxAverageFlightVelocity > 0
+			? suppliedMaxAverageFlightVelocity
+			: DEFAULT_MAX_AVERAGE_FLIGHT_VELOCITY_PX_PER_SECOND;
 	const layoutMotion = createIdentityLayoutMotion({ reducedMotion });
 	const hiddenMotion = createHiddenReceivedMotion({ reducedMotion });
 	let run = 0;
@@ -232,6 +235,18 @@ export function createGiftReceivedMotion(options: GiftReceivedMotionOptions = {}
 		const translateY = destinationRectangle.top - sourceRectangle.top;
 		const scaleX = destinationRectangle.width / sourceRectangle.width;
 		const scaleY = destinationRectangle.height / sourceRectangle.height;
+		const translationDistance = Math.hypot(translateX, translateY);
+		const candidateDuration =
+			(translationDistance / maxAverageFlightVelocityPxPerSecond) * 1000;
+		const distanceDuration = Number.isFinite(candidateDuration)
+			? candidateDuration
+			: (translationDistance / DEFAULT_MAX_AVERAGE_FLIGHT_VELOCITY_PX_PER_SECOND) * 1000;
+		const flightDuration = Math.ceil(
+			Math.max(
+				MINIMUM_CROSS_SECTION_DURATION_MS,
+				Number.isFinite(distanceDuration) ? distanceDuration : Number.MAX_VALUE,
+			),
+		);
 		const flight = visual.animate(
 			[
 				{ transform: 'translate(0px, 0px) scale(1, 1)' },
@@ -239,7 +254,7 @@ export function createGiftReceivedMotion(options: GiftReceivedMotionOptions = {}
 					transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
 				},
 			],
-			{ duration: CROSS_SECTION_DURATION, easing: STANDARD_EASING, fill: 'both' },
+			{ duration: flightDuration, easing: STANDARD_EASING, fill: 'both' },
 		);
 		activeFlight = flight;
 		const flightSettlement = flight.finished

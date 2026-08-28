@@ -132,7 +132,7 @@ Constraints:
   - filter-toolbar layout change: 320 ms;
   - hidden gift exit: 340 ms;
   - sibling grid reflow: 520 ms;
-  - cross-section gift flight: 650 ms.
+  - cross-section gift flight: 650 ms minimum, extended by Euclidean travel distance to keep average translation velocity at or below 750 CSS px/s (no maximum-duration cap).
 - These timings intentionally run at about half the original baseline speed. Large transitions use standard easing and may not be shortened to micro-animation timing.
 
 ### 3.8 Secondary motion gallery
@@ -162,7 +162,7 @@ All four share the speed and reduced-motion controls and must not insert layout-
 - Variant A remains the visual and structural base.
 - Use Variant B’s local fade/scale for hiding and its two-stage card/list crossfade.
 - Filter pill/count enter over 220 ms; toolbar and results settle over 320 ms.
-- The received badge changes first, then the real gift card flies above the grid to the visible final `Obdržené` section over 650 ms, but only when that same gift identity moves between two visible sections.
+- The received badge changes first, then the real gift card flies above the grid to the visible final `Obdržené` section over at least 650 ms, extended as needed to keep average translation velocity at or below 750 CSS px/s, but only when that same gift identity moves between two visible sections.
 - Newly revealed or removed filter results enter or exit in place and never inherit a translate from missing or zero-size coordinates.
 - Every previously and subsequently visible affected sibling whose coordinates genuinely change uses an independently measured 520 ms FLIP transform during visible relocation, hidden removal, filter reflow, and undo.
 - Hidden gifts exit locally over 340 ms, followed by the 520 ms sibling reflow. No banner or inserted status row follows.
