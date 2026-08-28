@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 vi.mock('@sveltejs/kit', () => ({
 	error: vi.fn((status: number, message: string) => {
@@ -129,25 +128,55 @@ beforeEach(() => {
 });
 
 describe('gift category management service', () => {
-	it('serializes deletion and blocks it while active gifts use the category', async () => {
+	it('atomically de-assigns active gifts before soft-deleting an omitted custom category', async () => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
-		mockDbInstance.pushResult([{ count: 2 }]);
 
-		await expect(
-			saveGiftCategorySettings({
-				wishlistId: WISHLIST_ID,
-				customCategories: [],
-				presetKeys: [],
-			}),
-		).rejects.toMatchObject({
-			status: 400,
-			message: SERVER_ERROR.GIFT_CATEGORY_IN_USE,
+		await saveGiftCategorySettings({
+			wishlistId: WISHLIST_ID,
+			customCategories: [],
+			presetKeys: [],
 		});
 
-		expect(mockDbInstance.calls.filter((call) => call.method === 'update')).toHaveLength(0);
-		expect(mockDbInstance.calls.some((call) => call.method === 'transaction')).toBe(true);
+		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
+		expect(setCalls).toHaveLength(2);
+		expect(setCalls[0]?.args[0]).toMatchObject({
+			categoryId: null,
+			updatedAt: expect.any(Date),
+		});
+		expect(setCalls[1]?.args[0]).toMatchObject({
+			deletedAt: expect.any(Date),
+			updatedAt: expect.any(Date),
+		});
+		expect(mockDbInstance.calls.filter((call) => call.method === 'transaction')).toHaveLength(
+			1,
+		);
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
+	});
+
+	it('atomically de-assigns active gifts before soft-deleting a disabled preset category', async () => {
+		const presetCategory = {
+			...customCategory,
+			id: 'preset-category',
+			presetKey: 'books',
+			customLabel: null,
+		};
+		mockDbInstance.pushResult([]); // wishlist lock
+		mockDbInstance.pushResult([presetCategory]);
+
+		await saveGiftCategorySettings({
+			wishlistId: WISHLIST_ID,
+			customCategories: [],
+			presetKeys: [],
+		});
+
+		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
+		expect(setCalls).toHaveLength(2);
+		expect(setCalls[0]?.args[0]).toMatchObject({
+			categoryId: null,
+			updatedAt: expect.any(Date),
+		});
+		expect(setCalls[1]?.args[0]).toMatchObject({ deletedAt: expect.any(Date) });
 	});
 
 	it('serializes rename without marking assigned gifts edited after share', async () => {

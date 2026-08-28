@@ -117,14 +117,6 @@ async function nextSortOrder(database: CategoryDatabase, wishlistId: string): Pr
 	return Number(row?.maxSort ?? -1) + 1;
 }
 
-async function activeGiftCount(database: CategoryDatabase, categoryId: string): Promise<number> {
-	const [row] = await database
-		.select({ count: sql<number>`count(*)::int` })
-		.from(gift)
-		.where(and(eq(gift.categoryId, categoryId), isNull(gift.deletedAt)));
-	return Number(row?.count ?? 0);
-}
-
 async function assertNoLabelConflict(params: {
 	database: CategoryDatabase;
 	wishlistId: string;
@@ -335,16 +327,32 @@ export async function saveGiftCategorySettings(
 		}
 
 		const now = new Date();
+		const removeCategory = async (categoryId: string): Promise<void> => {
+			await tx
+				.update(gift)
+				.set({ categoryId: null, updatedAt: now })
+				.where(
+					and(
+						eq(gift.categoryId, categoryId),
+						eq(gift.wishlistId, params.wishlistId),
+						isNull(gift.deletedAt),
+					),
+				);
+			await tx
+				.update(giftCategory)
+				.set({ deletedAt: now, updatedAt: now })
+				.where(
+					and(
+						eq(giftCategory.id, categoryId),
+						eq(giftCategory.wishlistId, params.wishlistId),
+						isNull(giftCategory.deletedAt),
+					),
+				);
+		};
 		const keptIds = new Set(requestedIds);
 		for (const row of rows) {
 			if (row.presetKey === null && row.deletedAt === null && !keptIds.has(row.id)) {
-				if ((await activeGiftCount(tx, row.id)) > 0) {
-					error(400, SERVER_ERROR.GIFT_CATEGORY_IN_USE);
-				}
-				await tx
-					.update(giftCategory)
-					.set({ deletedAt: now, updatedAt: now })
-					.where(eq(giftCategory.id, row.id));
+				await removeCategory(row.id);
 			}
 		}
 
@@ -401,13 +409,7 @@ export async function saveGiftCategorySettings(
 			const row = rows.find((candidate) => candidate.presetKey === preset.key);
 			if (!enabled) {
 				if (row?.deletedAt === null) {
-					if ((await activeGiftCount(tx, row.id)) > 0) {
-						error(400, SERVER_ERROR.GIFT_CATEGORY_IN_USE);
-					}
-					await tx
-						.update(giftCategory)
-						.set({ deletedAt: now, updatedAt: now })
-						.where(eq(giftCategory.id, row.id));
+					await removeCategory(row.id);
 				}
 				continue;
 			}
