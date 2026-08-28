@@ -122,7 +122,7 @@ export default defineConfig({
 		],
 	},
 	server: {
-		host: '127.0.0.1',
+		host: 'localhost',
 		port: development.appPort,
 		strictPort: true,
 		open: true,
