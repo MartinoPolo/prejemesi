@@ -170,7 +170,7 @@
 	}
 	function restoreRemovalTrigger(event: Event) {
 		event.preventDefault();
-		if (removalTrigger?.isConnected) {
+		if (removalTrigger?.isConnected === true) {
 			removalTrigger.focus();
 		}
 		removalTrigger = null;
@@ -308,8 +308,8 @@
 
 <Dialog.Root
 	open={pendingRemoval !== null}
-	onOpenChange={(open) => {
-		if (!open) pendingRemoval = null;
+	onOpenChange={(open: boolean) => {
+		if (open === false) pendingRemoval = null;
 	}}
 >
 	<Dialog.Content size="md" onCloseAutoFocus={restoreRemovalTrigger}>
