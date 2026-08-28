@@ -287,8 +287,8 @@ export async function resolveImportGiftCategoryAssignments(params: {
 }
 
 /**
- * Reconciles the complete settings snapshot under one wishlist lock. Existing rows are updated
- * in place so gift assignments and production IDs survive rename, reorder, and preset toggles.
+ * Reconciles the complete settings snapshot under one wishlist lock. Retained rows are updated
+ * in place; confirmed removals de-assign their gifts and soft-delete the category atomically.
  */
 export async function saveGiftCategorySettings(
 	params: SaveGiftCategorySettingsInput,
@@ -314,6 +314,26 @@ export async function saveGiftCategorySettings(
 		}
 		if (new Set(params.presetKeys).size !== params.presetKeys.length) {
 			error(400, SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH);
+		}
+
+		const requestedIdSet = new Set(requestedIds);
+		const requestedPresetSet = new Set(params.presetKeys);
+		const removalIds = rows
+			.filter(
+				(row) =>
+					row.deletedAt === null &&
+					(row.presetKey === null
+						? !requestedIdSet.has(row.id)
+						: !requestedPresetSet.has(row.presetKey as GiftCategoryPresetKey)),
+			)
+			.map((row) => row.id);
+		const confirmedRemovalIds = new Set(params.confirmedRemovalCategoryIds);
+		if (
+			confirmedRemovalIds.size !== params.confirmedRemovalCategoryIds.length ||
+			confirmedRemovalIds.size !== removalIds.length ||
+			removalIds.some((id) => !confirmedRemovalIds.has(id))
+		) {
+			error(400, SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH);
 		}
 
 		const normalizedLabels = new Set<string>();

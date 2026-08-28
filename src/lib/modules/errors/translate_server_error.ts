@@ -68,6 +68,8 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_gift_category_wishlist_mismatch(),
 	[SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH]: () =>
 		m.server_error_gift_category_reorder_mismatch(),
+	[SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH]: () =>
+		m.server_error_gift_category_removal_confirmation_mismatch(),
 	[SERVER_ERROR.GIFT_CATEGORY_IMPORT_UNRESOLVED]: () =>
 		m.server_error_gift_category_import_unresolved(),
 

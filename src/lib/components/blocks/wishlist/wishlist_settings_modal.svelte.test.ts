@@ -141,6 +141,7 @@ describe('WishlistSettingsModal import and export tab', () => {
 			wishlistId: wishlist.id,
 			customCategories: [{ id: null, label: 'Nová kategorie' }],
 			presetKeys: [preset.key],
+			confirmedRemovalCategoryIds: [],
 		});
 		await vi.waitFor(() => expect(saveElement.disabled).toBe(true));
 		resolveSave();

@@ -20,6 +20,7 @@
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
+	import { tick } from 'svelte';
 
 	interface Props {
 		wishlistId: string;
@@ -36,6 +37,7 @@
 	interface PendingRemoval {
 		type: 'custom' | 'preset';
 		key: string;
+		categoryId: string;
 		label: string;
 		usedCount: number;
 	}
@@ -50,7 +52,8 @@
 	let seededSignature = $state('');
 	let saving = $state(false);
 	let pendingRemoval = $state<PendingRemoval | null>(null);
-	let presetCheckboxVersion = $state(0);
+	let confirmedRemovalCategoryIds = $state<string[]>([]);
+	let removalTrigger = $state<HTMLElement | null>(null);
 
 	function snapshot(): string {
 		return JSON.stringify({
@@ -103,26 +106,45 @@
 		next.splice(index + direction, 0, item);
 		customDrafts = next;
 	}
-	function togglePreset(
+	async function togglePreset(
 		key: GiftCategoryPresetKey,
 		checked: boolean,
 		label: string,
 		usedCount: number,
 	) {
-		if (!checked && usedCount > 0) {
-			pendingRemoval = { type: 'preset', key, label, usedCount };
-			presetCheckboxVersion += 1;
+		const persisted = categories.find((category) => category.presetKey === key);
+		if (!checked && persisted !== undefined) {
+			removalTrigger = document.activeElement as HTMLElement | null;
+			pendingRemoval = { type: 'preset', key, categoryId: persisted.id, label, usedCount };
+			// Bits UI updates its bindable state before reporting the attempted toggle. Drive the
+			// controlled prop through a full state change to restore it without recreating the node.
+			enabledPresets = enabledPresets.filter((candidate) => candidate !== key);
+			await tick();
+			if (pendingRemoval?.categoryId === persisted.id) {
+				enabledPresets = [...enabledPresets, key];
+			}
 			return;
 		}
-		enabledPresets = checked
-			? [...enabledPresets, key]
-			: enabledPresets.filter((candidate) => candidate !== key);
+		if (checked) {
+			enabledPresets = enabledPresets.includes(key)
+				? enabledPresets
+				: [...enabledPresets, key];
+			if (persisted !== undefined) {
+				confirmedRemovalCategoryIds = confirmedRemovalCategoryIds.filter(
+					(id) => id !== persisted.id,
+				);
+			}
+		} else {
+			enabledPresets = enabledPresets.filter((candidate) => candidate !== key);
+		}
 	}
-	function requestCustomRemoval(category: CustomDraft) {
-		if (category.usedCount > 0) {
+	function requestCustomRemoval(category: CustomDraft, trigger: HTMLElement) {
+		if (category.id !== null) {
+			removalTrigger = trigger;
 			pendingRemoval = {
 				type: 'custom',
 				key: category.key,
+				categoryId: category.id,
 				label: category.label.trim(),
 				usedCount: category.usedCount,
 			};
@@ -131,12 +153,27 @@
 		customDrafts = customDrafts.filter((item) => item.key !== category.key);
 	}
 	function confirmRemoval() {
-		if (pendingRemoval?.type === 'custom') {
-			customDrafts = customDrafts.filter((item) => item.key !== pendingRemoval?.key);
-		} else if (pendingRemoval?.type === 'preset') {
-			enabledPresets = enabledPresets.filter((key) => key !== pendingRemoval?.key);
+		const removal = pendingRemoval;
+		if (removal === null) {
+			return;
+		}
+		confirmedRemovalCategoryIds = [
+			...confirmedRemovalCategoryIds.filter((id) => id !== removal.categoryId),
+			removal.categoryId,
+		];
+		if (removal.type === 'custom') {
+			customDrafts = customDrafts.filter((item) => item.key !== removal.key);
+		} else {
+			enabledPresets = enabledPresets.filter((key) => key !== removal.key);
 		}
 		pendingRemoval = null;
+	}
+	function restoreRemovalTrigger(event: Event) {
+		event.preventDefault();
+		if (removalTrigger?.isConnected) {
+			removalTrigger.focus();
+		}
+		removalTrigger = null;
 	}
 
 	async function save(event: SubmitEvent) {
@@ -150,7 +187,9 @@
 					label: label.trim(),
 				})),
 				presetKeys: enabledPresets,
+				confirmedRemovalCategoryIds,
 			});
+			confirmedRemovalCategoryIds = [];
 			baseline = snapshot();
 			toastSuccess(m.gift_categories_saved());
 			onsaved?.();
@@ -227,7 +266,7 @@
 						size="icon-sm"
 						intent="ghost"
 						disabled={saving}
-						onclick={() => requestCustomRemoval(category)}
+						onclick={(event) => requestCustomRemoval(category, event.currentTarget)}
 						aria-label={m.delete()}><TrashIcon /></Button
 					>
 				</div>
@@ -247,14 +286,12 @@
 				<label
 					class="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold"
 				>
-					{#key `${preset.key}:${presetCheckboxVersion}`}
-						<Checkbox
-							{checked}
-							disabled={saving}
-							onCheckedChange={(value) =>
-								togglePreset(preset.key, value === true, label, usedCount)}
-						/>
-					{/key}
+					<Checkbox
+						{checked}
+						disabled={saving}
+						onCheckedChange={(value) =>
+							togglePreset(preset.key, value === true, label, usedCount)}
+					/>
 					<span class="min-w-0 flex-1">{label}</span>
 					{#if checked}
 						<span
@@ -275,7 +312,7 @@
 		if (!open) pendingRemoval = null;
 	}}
 >
-	<Dialog.Content size="md">
+	<Dialog.Content size="md" onCloseAutoFocus={restoreRemovalTrigger}>
 		<Dialog.Header>
 			<Dialog.Title>
 				{m.gift_category_remove_confirm_title({ category: pendingRemoval?.label ?? '' })}

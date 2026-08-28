@@ -136,6 +136,7 @@ describe('gift category management service', () => {
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: [],
+			confirmedRemovalCategoryIds: [CATEGORY_ID],
 		});
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
@@ -168,6 +169,7 @@ describe('gift category management service', () => {
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: [],
+			confirmedRemovalCategoryIds: [presetCategory.id],
 		});
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
@@ -179,6 +181,25 @@ describe('gift category management service', () => {
 		expect(setCalls[1]?.args[0]).toMatchObject({ deletedAt: expect.any(Date) });
 	});
 
+	it.each([
+		['missing', []],
+		['extraneous', [CATEGORY_ID, 'category-other']],
+		['duplicate', [CATEGORY_ID, CATEGORY_ID]],
+	])('rejects %s removal confirmations before changing gifts', async (_case, confirmations) => {
+		mockDbInstance.pushResult([]); // wishlist lock
+		mockDbInstance.pushResult([customCategory]);
+
+		await expect(
+			saveGiftCategorySettings({
+				wishlistId: WISHLIST_ID,
+				customCategories: [],
+				presetKeys: [],
+				confirmedRemovalCategoryIds: confirmations,
+			}),
+		).rejects.toThrow('GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH');
+		expect(mockDbInstance.calls.filter((call) => call.method === 'set')).toHaveLength(0);
+	});
+
 	it('serializes rename without marking assigned gifts edited after share', async () => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
@@ -186,6 +207,7 @@ describe('gift category management service', () => {
 			wishlistId: WISHLIST_ID,
 			customCategories: [{ id: CATEGORY_ID, label: 'Sportovní vybavení' }],
 			presetKeys: [],
+			confirmedRemovalCategoryIds: [],
 		});
 
 		const setCalls = mockDbInstance.calls.filter((call) => call.method === 'set');
@@ -215,6 +237,7 @@ describe('gift category management service', () => {
 				{ id: secondCategory.id, label: 'Kategorie Alfa' },
 			],
 			presetKeys: [],
+			confirmedRemovalCategoryIds: [],
 		});
 
 		const labels = mockDbInstance.calls

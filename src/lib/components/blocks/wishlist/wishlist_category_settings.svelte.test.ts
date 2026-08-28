@@ -64,15 +64,15 @@ describe('WishlistCategorySettings', () => {
 		expect(counts[1]!.parentElement?.textContent).toContain(preset.labels.cs);
 	});
 
-	it('keeps a used custom category staged after cancellation and removes it only after confirmation', async () => {
-		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 2 })];
+	it('requires confirmation for a persisted custom category even when its fetched usage is zero', async () => {
+		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 0 })];
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
 		await screen.getByRole('button', { name: m.delete() }).click();
 		const dialog = page.getByRole('dialog');
 		await expect.element(dialog).toBeVisible();
 		expect(dialog.element().textContent).toContain('Sport');
-		expect(dialog.element().textContent).toContain('2');
+		expect(dialog.element().textContent).toContain('0');
 		await dialog.getByRole('button', { name: m.cancel() }).click();
 		expect(findInput('Sport')).toBeDefined();
 
@@ -82,20 +82,51 @@ describe('WishlistCategorySettings', () => {
 		expect(remoteMocks.save).not.toHaveBeenCalled();
 	});
 
-	it('does not stage disabling a used preset until its confirmation is accepted', async () => {
+	it('keeps the persisted preset checkbox mounted and restores its focus after cancel and accept', async () => {
 		remoteMocks.categories = [
-			category({ presetKey: preset.key, customLabel: null, usedCount: 4 }),
+			category({ presetKey: preset.key, customLabel: null, usedCount: 0 }),
 		];
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 		const checkbox = screen.getByRole('checkbox', { name: preset.labels.cs });
+		const checkboxElement = checkbox.element();
 
 		await checkbox.click();
 		await page.getByRole('dialog').getByRole('button', { name: m.cancel() }).click();
 		await expect.element(checkbox).toBeChecked();
+		await vi.waitFor(() => expect(document.activeElement).toBe(checkboxElement));
+		expect(checkbox.element()).toBe(checkboxElement);
+
 		await checkbox.click();
 		await page.getByTestId('gift-category-remove-confirm').click();
 		await expect.element(checkbox).not.toBeChecked();
+		await vi.waitFor(() => expect(document.activeElement).toBe(checkboxElement));
+		expect(checkbox.element()).toBe(checkboxElement);
 		expect(remoteMocks.save).not.toHaveBeenCalled();
+	});
+
+	it('sends only confirmed persisted removals and clears them after a successful save', async () => {
+		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 0 })];
+		remoteMocks.save.mockResolvedValue(undefined);
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+
+		await screen.getByRole('button', { name: m.delete() }).click();
+		await page.getByTestId('gift-category-remove-confirm').click();
+		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
+
+		await vi.waitFor(() =>
+			expect(remoteMocks.save).toHaveBeenCalledWith({
+				wishlistId: 'wishlist-1',
+				customCategories: [],
+				presetKeys: [],
+				confirmedRemovalCategoryIds: ['category-1'],
+			}),
+		);
+
+		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
+		await vi.waitFor(() => expect(remoteMocks.save).toHaveBeenCalledTimes(2));
+		expect(remoteMocks.save.mock.calls[1]?.[0]).toMatchObject({
+			confirmedRemovalCategoryIds: [],
+		});
 	});
 
 	it('creates from the focused input on Enter without submitting the settings form', async () => {

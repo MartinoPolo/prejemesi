@@ -49,6 +49,7 @@ export const SaveGiftCategorySettingsInputSchema = v.object({
 		}),
 	),
 	presetKeys: v.array(GiftCategoryPresetKeySchema),
+	confirmedRemovalCategoryIds: v.array(v.string()),
 });
 
 export type SaveGiftCategorySettingsInput = v.InferOutput<
