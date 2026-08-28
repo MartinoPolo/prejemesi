@@ -59,7 +59,6 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	// Reuses the form's own range-error copy so toast and inline hint read identically.
 	[SERVER_ERROR.INVALID_PRICE_RANGE]: () => m.gift_price_range_invalid(),
 	[SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND]: () => m.server_error_gift_category_not_found(),
-	[SERVER_ERROR.GIFT_CATEGORY_IN_USE]: () => m.server_error_gift_category_in_use(),
 	[SERVER_ERROR.GIFT_CATEGORY_PRESET_IMMUTABLE]: () =>
 		m.server_error_gift_category_preset_immutable(),
 	[SERVER_ERROR.GIFT_CATEGORY_LABEL_CONFLICT]: () =>
@@ -68,6 +67,8 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 		m.server_error_gift_category_wishlist_mismatch(),
 	[SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH]: () =>
 		m.server_error_gift_category_reorder_mismatch(),
+	[SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH]: () =>
+		m.server_error_gift_category_removal_confirmation_mismatch(),
 	[SERVER_ERROR.GIFT_CATEGORY_IMPORT_UNRESOLVED]: () =>
 		m.server_error_gift_category_import_unresolved(),
 

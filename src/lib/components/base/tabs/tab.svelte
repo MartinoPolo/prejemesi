@@ -28,12 +28,13 @@
 			return;
 		}
 
+		const orientation = tablist?.getAttribute('aria-orientation') ?? 'horizontal';
 		let nextIndex: number;
 		switch (event.key) {
-			case 'ArrowRight':
+			case orientation === 'vertical' ? 'ArrowDown' : 'ArrowRight':
 				nextIndex = (currentIndex + 1) % tabs.length;
 				break;
-			case 'ArrowLeft':
+			case orientation === 'vertical' ? 'ArrowUp' : 'ArrowLeft':
 				nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
 				break;
 			case 'Home':
@@ -54,7 +55,13 @@
 		if (tablist) {
 			const tablistRect = tablist.getBoundingClientRect();
 			const nextTabRect = nextTab.getBoundingClientRect();
-			if (nextTabRect.left < tablistRect.left) {
+			if (orientation === 'vertical') {
+				if (nextTabRect.top < tablistRect.top) {
+					tablist.scrollTop -= tablistRect.top - nextTabRect.top;
+				} else if (nextTabRect.bottom > tablistRect.bottom) {
+					tablist.scrollTop += nextTabRect.bottom - tablistRect.bottom;
+				}
+			} else if (nextTabRect.left < tablistRect.left) {
 				tablist.scrollLeft -= tablistRect.left - nextTabRect.left;
 			} else if (nextTabRect.right > tablistRect.right) {
 				tablist.scrollLeft += nextTabRect.right - tablistRect.right;

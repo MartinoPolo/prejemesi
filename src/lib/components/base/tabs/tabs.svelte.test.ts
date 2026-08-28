@@ -38,6 +38,18 @@ describe('Tabs keyboard navigation', () => {
 		await expect.element(fourth).toHaveAttribute('aria-selected', 'true');
 	});
 
+	it('ArrowDown focuses and activates the next enabled tab in vertical orientation', async () => {
+		const screen = render(TabsTestFixture, { orientation: 'vertical', disabledSecond: true });
+		const first = screen.getByRole('tab', { name: 'First' });
+		const third = screen.getByRole('tab', { name: 'Third' });
+
+		await first.click();
+		await userEvent.keyboard('{ArrowDown}');
+
+		await expect.element(third).toHaveFocus();
+		await expect.element(third).toHaveAttribute('aria-selected', 'true');
+	});
+
 	it('Home and End activate the first and last enabled tabs', async () => {
 		const screen = render(TabsTestFixture, { disabledSecond: true });
 		const first = screen.getByRole('tab', { name: 'First' });

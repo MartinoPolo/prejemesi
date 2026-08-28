@@ -18,9 +18,11 @@ const draft = {
 } as ValidatedGiftDraft;
 
 describe('ImportConfirmStep server duplicate acknowledgement', () => {
-	it('shows the server warning and leaves an explicit commit button available', async () => {
+	it('associates an external commit control with the scroll-body form and commits', async () => {
+		const formId = 'confirm-import-test-form';
 		const oncommit = vi.fn(async () => ({ shortId: '' }));
 		const screen = await render(ImportConfirmStep, {
+			formId,
 			mode: WIZARD_MODE.append,
 			selectedDrafts: [draft],
 			wishlistTitle: 'Rodina',
@@ -33,7 +35,22 @@ describe('ImportConfirmStep server duplicate acknowledgement', () => {
 		await expect
 			.element(screen.getByText(m.import_wizard_server_duplicates({ count: 2 })))
 			.toBeVisible();
-		await screen.getByRole('button', { name: m.import_wizard_commit_append() }).click();
-		expect(oncommit).toHaveBeenCalledOnce();
+		expect(screen.container.querySelector('button')).toBeNull();
+
+		const form = screen.container.querySelector<HTMLFormElement>(`form#${formId}`);
+		expect(form).not.toBeNull();
+		const externalCommit = document.createElement('button');
+		externalCommit.type = 'submit';
+		externalCommit.setAttribute('form', formId);
+		document.body.append(externalCommit);
+
+		try {
+			expect(form?.contains(externalCommit)).toBe(false);
+			expect(externalCommit.form).toBe(form);
+			externalCommit.click();
+			expect(oncommit).toHaveBeenCalledOnce();
+		} finally {
+			externalCommit.remove();
+		}
 	});
 });

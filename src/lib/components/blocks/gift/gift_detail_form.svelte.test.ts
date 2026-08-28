@@ -4,6 +4,7 @@
 // (only `.storybook/preview.ts` imports app.css). Mirror that import here.
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
+import { userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
@@ -86,6 +87,53 @@ describe('GiftDetailForm categories', () => {
 		expect(oncreate).toHaveBeenCalledWith(
 			expect.objectContaining({ categoryId: 'category-books' }),
 		);
+	});
+
+	it('keeps a long category list scrollable and supports keyboard selection', async () => {
+		const manyCategories: ManagedGiftCategory[] = Array.from({ length: 30 }, (_, index) => ({
+			id: `category-${index + 1}`,
+			presetKey: null,
+			customLabel: `Category ${index + 1}`,
+			sortOrder: index,
+			usedCount: 1,
+		}));
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			categoryOptions: manyCategories,
+		});
+
+		const overflowStyle = document.createElement('style');
+		overflowStyle.textContent = '[data-select-viewport] { max-height: 120px !important; }';
+		document.head.append(overflowStyle);
+		const trigger = screen.getByRole('button', { name: m.gift_category_none() });
+		trigger.element().scrollIntoView({ block: 'center' });
+		await trigger.click();
+		const viewport = document.querySelector<HTMLElement>('[data-select-viewport]')!;
+		expect(screen.getByRole('option').all()).toHaveLength(31);
+		await vi.waitFor(() => {
+			expect(viewport.clientHeight).toBeGreaterThan(0);
+			expect(Number.isFinite(viewport.clientHeight)).toBe(true);
+			expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
+		});
+		viewport.scrollIntoView({ block: 'center' });
+		const rect = viewport.getBoundingClientRect();
+		expect(rect.top).toBeGreaterThanOrEqual(0);
+		expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
+
+		await userEvent.keyboard('{End}');
+		const finalOption = screen.getByRole('option', { name: 'Category 30' }).element();
+		await vi.waitFor(() => {
+			expect(viewport.scrollTop).toBeGreaterThan(0);
+			const viewportRect = viewport.getBoundingClientRect();
+			const optionRect = finalOption.getBoundingClientRect();
+			expect(optionRect.top).toBeGreaterThanOrEqual(viewportRect.top);
+			expect(optionRect.bottom).toBeLessThanOrEqual(viewportRect.bottom + 1);
+		});
+		await userEvent.keyboard('{Enter}');
+		await expect.element(screen.getByRole('button', { name: 'Category 30' })).toBeVisible();
+		overflowStyle.remove();
 	});
 
 	it('preselects an edit gift category and submits null when it is cleared', async () => {

@@ -32,42 +32,29 @@ export interface CategoryLabelMatch {
 	categoryId?: string;
 }
 
-export const GiftCategoryIdInputSchema = v.optional(v.nullable(v.string()));
-
 export const GiftCategoryPresetKeySchema = v.picklist(GIFT_CATEGORY_PRESET_KEYS);
 
-export const CreateCustomGiftCategoryInputSchema = v.object({
+/** Complete category-settings snapshot committed as one transaction. */
+export const SaveGiftCategorySettingsInputSchema = v.object({
 	wishlistId: v.string(),
-	label: v.pipe(
-		v.string(),
-		v.trim(),
-		v.minLength(1),
-		v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
+	customCategories: v.array(
+		v.object({
+			id: v.nullable(v.string()),
+			label: v.pipe(
+				v.string(),
+				v.trim(),
+				v.minLength(1),
+				v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
+			),
+		}),
 	),
+	presetKeys: v.array(GiftCategoryPresetKeySchema),
+	confirmedRemovalCategoryIds: v.array(v.string()),
 });
 
-export const RenameCustomGiftCategoryInputSchema = v.object({
-	categoryId: v.string(),
-	label: v.pipe(
-		v.string(),
-		v.trim(),
-		v.minLength(1),
-		v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
-	),
-});
-
-export const CategoryIdInputSchema = v.object({ categoryId: v.string() });
-
-export const TogglePresetGiftCategoryInputSchema = v.object({
-	wishlistId: v.string(),
-	presetKey: GiftCategoryPresetKeySchema,
-	enabled: v.boolean(),
-});
-
-export const ReorderGiftCategoriesInputSchema = v.object({
-	wishlistId: v.string(),
-	categoryIds: v.array(v.string()),
-});
+export type SaveGiftCategorySettingsInput = v.InferOutput<
+	typeof SaveGiftCategorySettingsInputSchema
+>;
 
 export function normalizeGiftCategoryLabel(value: string): string {
 	return value

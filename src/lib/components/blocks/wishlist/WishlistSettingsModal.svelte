@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
@@ -161,6 +162,21 @@
 	let detailsError = $state('');
 	let savingDetails = $state(false);
 	let savingImage = $state(false);
+	let categoriesDirty = $state(false);
+	let savingCategories = $state(false);
+	let tabOrientation = $state<'horizontal' | 'vertical'>('horizontal');
+
+	onMount(() => {
+		const intermediateViewport = window.matchMedia(
+			'(min-width: 640px) and (max-width: 1023px)',
+		);
+		const updateOrientation = () => {
+			tabOrientation = intermediateViewport.matches ? 'vertical' : 'horizontal';
+		};
+		updateOrientation();
+		intermediateViewport.addEventListener('change', updateOrientation);
+		return () => intermediateViewport.removeEventListener('change', updateOrientation);
+	});
 
 	/** Re-seed the details form from the canonical server values (server trims/normalizes). */
 	function seedDetailsForm() {
@@ -171,11 +187,30 @@
 		detailsError = '';
 	}
 
+	function approveCategoryDiscard(): boolean {
+		if (categoriesDirty && !window.confirm(m.gift_categories_unsaved_confirm())) {
+			return false;
+		}
+		categoriesDirty = false;
+		return true;
+	}
+
 	function handleOpenChange(nextOpen: boolean) {
+		if (!nextOpen && !approveCategoryDiscard()) {
+			open = true;
+			return;
+		}
 		if (!nextOpen) {
 			// Discard unsaved edits on close; the next open re-seeds from the current wishlist.
 			seedDetailsForm();
 		}
+	}
+
+	function handleImport() {
+		if (!approveCategoryDiscard()) {
+			return;
+		}
+		onimport();
 	}
 
 	async function handleDetailsSave(event: SubmitEvent) {
@@ -353,333 +388,385 @@
      uploaded-but-unsaved image) survive tab switches; closing the dialog unmounts everything,
      matching the old leave-the-page reset. -->
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content size="2xl" class="max-h-[85vh] overflow-y-auto">
-		<Dialog.Header>
+	<Dialog.Content
+		size="2xl"
+		class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
+	>
+		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
 			<Dialog.Title>{m.wishlist_settings_title()}</Dialog.Title>
 			<Dialog.Description>{wishlist.title}</Dialog.Description>
 		</Dialog.Header>
 
-		{#if canManage && !isArchived}
-			<Tabs.Root
-				aria-label={m.wishlist_settings_title()}
-				class="w-full max-w-full justify-self-stretch overflow-x-auto [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap sm:w-auto sm:justify-self-start"
-			>
-				<Tabs.Tab
-					id="wishlist-settings-tab-details"
-					aria-controls="wishlist-settings-panel-details"
-					active={activeTab === WISHLIST_SETTINGS_TABS.details}
-					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
+		<div
+			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
+				? 'grid w-full min-w-0 gap-4 sm:grid-cols-[12rem_minmax(0,1fr)] lg:grid-cols-1'
+				: ''}"
+		>
+			{#if canManage && !isArchived}
+				<Tabs.Root
+					aria-label={m.wishlist_settings_title()}
+					aria-orientation={tabOrientation}
+					class="w-full max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap sm:flex sm:flex-col sm:items-stretch sm:overflow-visible sm:[&>[role=tab]]:w-full sm:[&>[role=tab]]:justify-start lg:grid lg:w-full lg:grid-cols-6 lg:[&>[role=tab]]:justify-center"
 				>
-					{m.wishlist_settings_details_section()}
-				</Tabs.Tab>
-				<Tabs.Tab
-					id="wishlist-settings-tab-data"
-					aria-controls="wishlist-settings-panel-data"
-					active={activeTab === WISHLIST_SETTINGS_TABS.data}
-					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
-				>
-					{m.wishlist_settings_data_title()}
-				</Tabs.Tab>
-				<Tabs.Tab
-					id="wishlist-settings-tab-categories"
-					aria-controls="wishlist-settings-panel-categories"
-					active={activeTab === WISHLIST_SETTINGS_TABS.categories}
-					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.categories)}
-				>
-					{m.wishlist_settings_categories_tab()}
-				</Tabs.Tab>
-				<Tabs.Tab
-					id="wishlist-settings-tab-appearance"
-					aria-controls="wishlist-settings-panel-appearance"
-					active={activeTab === WISHLIST_SETTINGS_TABS.appearance}
-					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.appearance)}
-				>
-					{m.wishlist_settings_appearance_tab()}
-				</Tabs.Tab>
-				<Tabs.Tab
-					id="wishlist-settings-tab-image"
-					aria-controls="wishlist-settings-panel-image"
-					active={activeTab === WISHLIST_SETTINGS_TABS.image}
-					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.image)}
-				>
-					{m.wishlist_settings_image_section()}
-				</Tabs.Tab>
-				<Tabs.Tab
-					id="wishlist-settings-tab-danger"
-					aria-controls="wishlist-settings-panel-danger"
-					active={activeTab === WISHLIST_SETTINGS_TABS.danger}
-					onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.danger)}
-				>
-					{m.wishlist_settings_danger_tab()}
-				</Tabs.Tab>
-			</Tabs.Root>
+					<Tabs.Tab
+						id="wishlist-settings-tab-details"
+						aria-controls="wishlist-settings-panel-details"
+						active={activeTab === WISHLIST_SETTINGS_TABS.details}
+						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
+					>
+						{m.wishlist_settings_details_section()}
+					</Tabs.Tab>
+					<Tabs.Tab
+						id="wishlist-settings-tab-data"
+						aria-controls="wishlist-settings-panel-data"
+						active={activeTab === WISHLIST_SETTINGS_TABS.data}
+						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
+					>
+						{m.wishlist_settings_data_title()}
+					</Tabs.Tab>
+					<Tabs.Tab
+						id="wishlist-settings-tab-categories"
+						aria-controls="wishlist-settings-panel-categories"
+						active={activeTab === WISHLIST_SETTINGS_TABS.categories}
+						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.categories)}
+					>
+						{m.wishlist_settings_categories_tab()}
+					</Tabs.Tab>
+					<Tabs.Tab
+						id="wishlist-settings-tab-appearance"
+						aria-controls="wishlist-settings-panel-appearance"
+						active={activeTab === WISHLIST_SETTINGS_TABS.appearance}
+						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.appearance)}
+					>
+						{m.wishlist_settings_appearance_tab()}
+					</Tabs.Tab>
+					<Tabs.Tab
+						id="wishlist-settings-tab-image"
+						aria-controls="wishlist-settings-panel-image"
+						active={activeTab === WISHLIST_SETTINGS_TABS.image}
+						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.image)}
+					>
+						{m.wishlist_settings_image_section()}
+					</Tabs.Tab>
+					<Tabs.Tab
+						id="wishlist-settings-tab-danger"
+						aria-controls="wishlist-settings-panel-danger"
+						active={activeTab === WISHLIST_SETTINGS_TABS.danger}
+						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.danger)}
+					>
+						{m.wishlist_settings_danger_tab()}
+					</Tabs.Tab>
+				</Tabs.Root>
 
-			<!-- Podrobnosti: title / description / event date, saved via updateWishlist -->
-			<div
-				role="tabpanel"
-				id="wishlist-settings-panel-details"
-				aria-labelledby="wishlist-settings-tab-details"
-				hidden={activeTab !== WISHLIST_SETTINGS_TABS.details}
-			>
-				<div class="flex flex-col gap-4">
-					<p class="text-sm text-muted-foreground">
-						{m.wishlist_settings_details_hint()}
-					</p>
+				<!-- Podrobnosti: title / description / event date, saved via updateWishlist -->
+				<div
+					role="tabpanel"
+					id="wishlist-settings-panel-details"
+					aria-labelledby="wishlist-settings-tab-details"
+					class="w-full min-w-0"
+					hidden={activeTab !== WISHLIST_SETTINGS_TABS.details}
+				>
+					<div class="flex flex-col gap-4">
+						<p class="text-sm text-muted-foreground">
+							{m.wishlist_settings_details_hint()}
+						</p>
 
-					<form onsubmit={handleDetailsSave} class="flex flex-col gap-4">
-						<!-- Recipient (issue #150): free-text lists get an inline name field saved with
+						<form
+							id="wishlist-details-form"
+							onsubmit={handleDetailsSave}
+							class="flex flex-col gap-4"
+						>
+							<!-- Recipient (issue #150): free-text lists get an inline name field saved with
 						     this form; linked lists show a read-only name, and only the linked recipient
 						     may flip to a free-text recipient (no evicting by správci) via the dialog. -->
-						{#if isFreeTextRecipient}
-							<div class="flex flex-col gap-2">
-								<Label for="wishlist-settings-recipient"
-									>{m.recipient_section_title()}</Label
-								>
-								<Input
-									id="wishlist-settings-recipient"
-									bind:value={recipientNameDraft}
-									placeholder={m.create_recipient_name_placeholder()}
-									maxlength={RECIPIENT_NAME_MAX_LENGTH}
-									disabled={savingDetails}
-								/>
-								<RecipientPreview name={recipientNameDraft} />
-							</div>
-						{:else}
-							<div
-								class="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2"
-							>
-								<div class="min-w-0">
-									<p class="text-sm font-medium">{m.recipient_section_title()}</p>
-									<p class="truncate text-sm text-muted-foreground">
-										{recipientDisplayName}
-									</p>
-								</div>
-								{#if canFlipRecipient}
-									<Button
-										type="button"
-										size="sm"
-										intent="outline"
-										data-testid="settings-edit-recipient"
-										onclick={oneditrecipient}
+							{#if isFreeTextRecipient}
+								<div class="flex flex-col gap-2">
+									<Label for="wishlist-settings-recipient"
+										>{m.recipient_section_title()}</Label
 									>
-										<PencilIcon data-icon="inline-start" />
-										{m.wishlist_edit_recipient_label()}
-									</Button>
+									<Input
+										id="wishlist-settings-recipient"
+										bind:value={recipientNameDraft}
+										placeholder={m.create_recipient_name_placeholder()}
+										maxlength={RECIPIENT_NAME_MAX_LENGTH}
+										disabled={savingDetails}
+									/>
+									<RecipientPreview name={recipientNameDraft} />
+								</div>
+							{:else}
+								<div
+									class="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2"
+								>
+									<div class="min-w-0">
+										<p class="text-sm font-medium">
+											{m.recipient_section_title()}
+										</p>
+										<p class="truncate text-sm text-muted-foreground">
+											{recipientDisplayName}
+										</p>
+									</div>
+									{#if canFlipRecipient}
+										<Button
+											type="button"
+											size="sm"
+											intent="outline"
+											data-testid="settings-edit-recipient"
+											onclick={oneditrecipient}
+										>
+											<PencilIcon data-icon="inline-start" />
+											{m.wishlist_edit_recipient_label()}
+										</Button>
+									{/if}
+								</div>
+							{/if}
+
+							<Field
+								fieldId="wishlist-title"
+								label={m.wishlist_name_label()}
+								errorMessage={detailsError}
+							>
+								{#snippet children({ hasError, errorId }: FieldControlContext)}
+									<Input
+										id="wishlist-title"
+										bind:value={detailsTitle}
+										placeholder={m.wishlist_name_placeholder()}
+										required
+										maxlength={WISHLIST_TITLE_MAX_LENGTH}
+										disabled={savingDetails}
+										state={hasError ? 'error' : 'default'}
+										aria-invalid={hasError ? true : undefined}
+										aria-describedby={errorId}
+									/>
+								{/snippet}
+							</Field>
+
+							<div class="flex flex-col gap-2">
+								<Label for="wishlist-description"
+									>{m.wishlist_description_label()}</Label
+								>
+								<Textarea
+									id="wishlist-description"
+									bind:value={detailsDescription}
+									placeholder={m.wishlist_description_placeholder()}
+									disabled={savingDetails}
+								/>
+							</div>
+
+							<div class="flex flex-col gap-2">
+								<Label id="wishlist-event-date-label"
+									>{m.wishlist_event_date_label()}</Label
+								>
+								<DatePicker
+									id="wishlist-event-date"
+									ariaLabelledby="wishlist-event-date-label"
+									bind:value={detailsEventDate}
+									disabled={savingDetails || !eventDateEditable}
+								/>
+								{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
+									<GraceCountdown
+										expiresAt={eventDateGraceExpiresAt}
+										now={eventDateClockNow}
+										message={m.wishlist_event_date_grace_hint}
+									/>
+								{:else if isShared}
+									<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
 								{/if}
 							</div>
-						{/if}
-
-						<Field
-							fieldId="wishlist-title"
-							label={m.wishlist_name_label()}
-							errorMessage={detailsError}
-						>
-							{#snippet children({ hasError, errorId }: FieldControlContext)}
-								<Input
-									id="wishlist-title"
-									bind:value={detailsTitle}
-									placeholder={m.wishlist_name_placeholder()}
-									required
-									maxlength={WISHLIST_TITLE_MAX_LENGTH}
-									disabled={savingDetails}
-									state={hasError ? 'error' : 'default'}
-									aria-invalid={hasError ? true : undefined}
-									aria-describedby={errorId}
-								/>
-							{/snippet}
-						</Field>
-
-						<div class="flex flex-col gap-2">
-							<Label for="wishlist-description"
-								>{m.wishlist_description_label()}</Label
-							>
-							<Textarea
-								id="wishlist-description"
-								bind:value={detailsDescription}
-								placeholder={m.wishlist_description_placeholder()}
-								disabled={savingDetails}
-							/>
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<Label id="wishlist-event-date-label"
-								>{m.wishlist_event_date_label()}</Label
-							>
-							<DatePicker
-								id="wishlist-event-date"
-								ariaLabelledby="wishlist-event-date-label"
-								bind:value={detailsEventDate}
-								disabled={savingDetails || !eventDateEditable}
-							/>
-							{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
-								<GraceCountdown
-									expiresAt={eventDateGraceExpiresAt}
-									now={eventDateClockNow}
-									message={m.wishlist_event_date_grace_hint}
-								/>
-							{:else if isShared}
-								<HelpText>{m.wishlist_event_date_locked_hint()}</HelpText>
-							{/if}
-						</div>
-
-						<div class="flex justify-end">
-							<Button type="submit" disabled={savingDetails}>
-								{#if savingDetails}
-									<LoaderIcon class="animate-spin" data-icon="inline-start" />
-								{/if}
-								{m.save()}
-							</Button>
-						</div>
-					</form>
-				</div>
-			</div>
-
-			<!-- Import/export: uses the existing actions without duplicate card chrome or heading. -->
-			<div
-				role="tabpanel"
-				id="wishlist-settings-panel-data"
-				aria-labelledby="wishlist-settings-tab-data"
-				hidden={activeTab !== WISHLIST_SETTINGS_TABS.data}
-			>
-				<div class="flex flex-col gap-4">
-					<p class="text-sm text-muted-foreground">
-						{m.wishlist_settings_data_hint()}
-					</p>
-					<div class="flex flex-wrap gap-2">
-						<Button type="button" intent="outline" size="sm" onclick={onimport}>
-							<FileUpIcon data-icon="inline-start" />
-							{m.import_toolbar_label()}
-						</Button>
-						<Button type="button" intent="outline" size="sm" onclick={onexport}>
-							<FileDownIcon data-icon="inline-start" />
-							{m.export_toolbar_label()}
-						</Button>
+						</form>
 					</div>
 				</div>
-			</div>
 
-			<!-- Kategorie: managed wishlist gift categories. -->
-			<div
-				role="tabpanel"
-				id="wishlist-settings-panel-categories"
-				aria-labelledby="wishlist-settings-tab-categories"
-				hidden={activeTab !== WISHLIST_SETTINGS_TABS.categories}
-			>
-				<WishlistCategorySettings wishlistId={wishlist.id} {isShared} />
-			</div>
+				<!-- Import/export: uses the existing actions without duplicate card chrome or heading. -->
+				<div
+					role="tabpanel"
+					id="wishlist-settings-panel-data"
+					aria-labelledby="wishlist-settings-tab-data"
+					class="w-full min-w-0"
+					hidden={activeTab !== WISHLIST_SETTINGS_TABS.data}
+				>
+					<div class="flex flex-col gap-4">
+						<p class="text-sm text-muted-foreground">
+							{m.wishlist_settings_data_hint()}
+						</p>
+						<div class="flex flex-wrap gap-2">
+							<Button type="button" intent="outline" size="sm" onclick={handleImport}>
+								<FileUpIcon data-icon="inline-start" />
+								{m.import_toolbar_label()}
+							</Button>
+							<Button type="button" intent="outline" size="sm" onclick={onexport}>
+								<FileDownIcon data-icon="inline-start" />
+								{m.export_toolbar_label()}
+							</Button>
+						</div>
+					</div>
+				</div>
 
-			<!-- Vzhled: palette picker, auto-saves on click. -->
-			<div
-				role="tabpanel"
-				id="wishlist-settings-panel-appearance"
-				aria-labelledby="wishlist-settings-tab-appearance"
-				hidden={activeTab !== WISHLIST_SETTINGS_TABS.appearance}
-			>
+				<!-- Kategorie: managed wishlist gift categories. -->
+				<div
+					role="tabpanel"
+					id="wishlist-settings-panel-categories"
+					aria-labelledby="wishlist-settings-tab-categories"
+					class="w-full min-w-0"
+					hidden={activeTab !== WISHLIST_SETTINGS_TABS.categories}
+				>
+					<WishlistCategorySettings
+						wishlistId={wishlist.id}
+						ondirtychange={(dirty) => (categoriesDirty = dirty)}
+						onsavingchange={(saving) => (savingCategories = saving)}
+					/>
+				</div>
+
+				<!-- Vzhled: palette picker, auto-saves on click. -->
+				<div
+					role="tabpanel"
+					id="wishlist-settings-panel-appearance"
+					aria-labelledby="wishlist-settings-tab-appearance"
+					class="w-full min-w-0"
+					hidden={activeTab !== WISHLIST_SETTINGS_TABS.appearance}
+				>
+					<div class="flex flex-col gap-4">
+						<p class="text-sm text-muted-foreground">
+							{m.wishlist_palette_dialog_description()}
+						</p>
+						<WishlistPaletteAutoSave
+							wishlistId={wishlist.id}
+							palette={wishlist.palette}
+							onselect={onpaletteselect}
+						/>
+					</div>
+				</div>
+
+				<!-- Obrázek a ořezy: the crop editor keeps its own save button -->
+				<div
+					role="tabpanel"
+					id="wishlist-settings-panel-image"
+					aria-labelledby="wishlist-settings-tab-image"
+					class="w-full min-w-0"
+					hidden={activeTab !== WISHLIST_SETTINGS_TABS.image}
+				>
+					<div class="flex flex-col gap-4">
+						<p class="text-sm text-muted-foreground">
+							{m.wishlist_settings_image_hint()}
+						</p>
+						<WishlistCropEditor
+							formId="wishlist-image-form"
+							imageKey={wishlist.imageKey}
+							imageSlots={wishlist.imageSlots}
+							{themeEmoji}
+							title={wishlist.title}
+							isSaving={savingImage}
+							onsave={handleImageSave}
+						/>
+					</div>
+				</div>
+
+				<!-- Nebezpečná zóna: delete is only offered for an unshared list (issue #120), a
+			     shared list must be archived instead, matching the deleteWishlist server guard. -->
+				<div
+					role="tabpanel"
+					id="wishlist-settings-panel-danger"
+					aria-labelledby="wishlist-settings-tab-danger"
+					class="w-full min-w-0"
+					hidden={activeTab !== WISHLIST_SETTINGS_TABS.danger}
+				>
+					<div class="flex flex-col gap-4">
+						<!-- Revert to draft (issue #150): shown for a shared list per the server-computed
+					     capability; sits above delete. Delete stays draft-only (issue #120). -->
+						{@render revertSection()}
+						{#if isShared}
+							<Alert.Root tone="warning">
+								<Alert.Description
+									>{m.wishlist_settings_danger_shared_notice()}</Alert.Description
+								>
+							</Alert.Root>
+						{:else}
+							<Card.Root class="border-destructive/30">
+								<Card.Header>
+									<div class="flex items-center gap-2">
+										<TriangleAlertIcon class="size-5 text-destructive" />
+										<div>
+											<Card.Title class="text-destructive">
+												{m.wishlist_settings_danger_tab()}
+											</Card.Title>
+											<Card.Description
+												>{m.wishlist_settings_danger_hint()}</Card.Description
+											>
+										</div>
+									</div>
+								</Card.Header>
+								<Card.Content>
+									<div class="flex items-center justify-between gap-4">
+										<div>
+											<p class="text-sm font-medium">
+												{m.wishlist_delete_button()}
+											</p>
+											<p class="text-xs text-muted-foreground">
+												{m.wishlist_delete_confirm_description()}
+											</p>
+										</div>
+										<Button
+											intent="danger"
+											size="sm"
+											onclick={() => (deleteConfirmOpen = true)}
+										>
+											<TrashIcon data-icon="inline-start" />
+											{m.wishlist_delete_button()}
+										</Button>
+									</div>
+								</Card.Content>
+							</Card.Root>
+						{/if}
+					</div>
+				</div>
+			{:else if isAdminRevertOnly}
+				<!-- App admin who does not manage this list: danger/admin actions only (revert). -->
 				<div class="flex flex-col gap-4">
 					<p class="text-sm text-muted-foreground">
-						{m.wishlist_palette_dialog_description()}
+						{m.wishlist_settings_admin_only_hint()}
 					</p>
-					<WishlistPaletteAutoSave
-						wishlistId={wishlist.id}
-						palette={wishlist.palette}
-						onselect={onpaletteselect}
-					/>
-				</div>
-			</div>
-
-			<!-- Obrázek a ořezy: the crop editor keeps its own save button -->
-			<div
-				role="tabpanel"
-				id="wishlist-settings-panel-image"
-				aria-labelledby="wishlist-settings-tab-image"
-				hidden={activeTab !== WISHLIST_SETTINGS_TABS.image}
-			>
-				<div class="flex flex-col gap-4">
-					<p class="text-sm text-muted-foreground">{m.wishlist_settings_image_hint()}</p>
-					<WishlistCropEditor
-						imageKey={wishlist.imageKey}
-						imageSlots={wishlist.imageSlots}
-						{themeEmoji}
-						title={wishlist.title}
-						isSaving={savingImage}
-						onsave={handleImageSave}
-					/>
-				</div>
-			</div>
-
-			<!-- Nebezpečná zóna: delete is only offered for an unshared list (issue #120), a
-			     shared list must be archived instead, matching the deleteWishlist server guard. -->
-			<div
-				role="tabpanel"
-				id="wishlist-settings-panel-danger"
-				aria-labelledby="wishlist-settings-tab-danger"
-				hidden={activeTab !== WISHLIST_SETTINGS_TABS.danger}
-			>
-				<div class="flex flex-col gap-4">
-					<!-- Revert to draft (issue #150): shown for a shared list per the server-computed
-					     capability; sits above delete. Delete stays draft-only (issue #120). -->
 					{@render revertSection()}
-					{#if isShared}
-						<Alert.Root tone="warning">
-							<Alert.Description
-								>{m.wishlist_settings_danger_shared_notice()}</Alert.Description
-							>
-						</Alert.Root>
-					{:else}
-						<Card.Root class="border-destructive/30">
-							<Card.Header>
-								<div class="flex items-center gap-2">
-									<TriangleAlertIcon class="size-5 text-destructive" />
-									<div>
-										<Card.Title class="text-destructive">
-											{m.wishlist_settings_danger_tab()}
-										</Card.Title>
-										<Card.Description
-											>{m.wishlist_settings_danger_hint()}</Card.Description
-										>
-									</div>
-								</div>
-							</Card.Header>
-							<Card.Content>
-								<div class="flex items-center justify-between gap-4">
-									<div>
-										<p class="text-sm font-medium">
-											{m.wishlist_delete_button()}
-										</p>
-										<p class="text-xs text-muted-foreground">
-											{m.wishlist_delete_confirm_description()}
-										</p>
-									</div>
-									<Button
-										intent="danger"
-										size="sm"
-										onclick={() => (deleteConfirmOpen = true)}
-									>
-										<TrashIcon data-icon="inline-start" />
-										{m.wishlist_delete_button()}
-									</Button>
-								</div>
-							</Card.Content>
-						</Card.Root>
-					{/if}
 				</div>
-			</div>
-		{:else if isAdminRevertOnly}
-			<!-- App admin who does not manage this list: danger/admin actions only (revert). -->
-			<div class="flex flex-col gap-4">
-				<p class="text-sm text-muted-foreground">
-					{m.wishlist_settings_admin_only_hint()}
-				</p>
-				{@render revertSection()}
-			</div>
-		{:else if isArchived}
-			<Alert.Root tone="warning">
-				<Alert.Description>{m.wishlist_settings_archived_readonly()}</Alert.Description>
-			</Alert.Root>
-		{:else}
-			<Alert.Root tone="warning">
-				<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
-			</Alert.Root>
+			{:else if isArchived}
+				<Alert.Root tone="warning">
+					<Alert.Description>{m.wishlist_settings_archived_readonly()}</Alert.Description>
+				</Alert.Root>
+			{:else}
+				<Alert.Root tone="warning">
+					<Alert.Description>{m.wishlist_settings_owner_only()}</Alert.Description>
+				</Alert.Root>
+			{/if}
+		</div>
+
+		{#if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.details}
+			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+				<Button type="submit" form="wishlist-details-form" disabled={savingDetails}>
+					{#if savingDetails}
+						<LoaderIcon class="animate-spin" data-icon="inline-start" />
+					{/if}
+					{m.save()}
+				</Button>
+			</Dialog.Footer>
+		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.categories}
+			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+				<Button
+					type="submit"
+					form="wishlist-categories-form"
+					disabled={savingCategories || !categoriesDirty}
+				>
+					{savingCategories ? m.saving() : m.save()}
+				</Button>
+			</Dialog.Footer>
+		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.image}
+			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+				<Button
+					type="submit"
+					form="wishlist-image-form"
+					data-testid="wishlist-image-save"
+					disabled={savingImage}
+				>
+					{savingImage ? m.saving() : m.save()}
+				</Button>
+			</Dialog.Footer>
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>

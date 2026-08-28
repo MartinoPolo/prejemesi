@@ -7,6 +7,7 @@ import {
 	type GiftSortOption,
 } from './types.js';
 import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
+import { getPriorityKey, type PriorityKey } from './gift_display.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 
 export const GIFT_SECTION_KINDS = {
@@ -27,6 +28,7 @@ export interface GiftSection {
 	kind: GiftSectionKind;
 	key: string;
 	label: string | null;
+	priorityKey?: PriorityKey | null;
 	gifts: GiftByRole[];
 }
 
@@ -170,8 +172,9 @@ function section(
 	key: string,
 	gifts: GiftByRole[],
 	label: string | null = null,
+	priorityKey: PriorityKey | null = null,
 ): GiftSection {
-	return { kind, key, label, gifts };
+	return { kind, key, label, priorityKey, gifts };
 }
 
 function sinkReservedWithin(gifts: GiftByRole[]): GiftByRole[] {
@@ -184,6 +187,7 @@ interface GroupAccumulator {
 	rank: number;
 	key: string;
 	label: string | null;
+	priorityKey: PriorityKey | null;
 	kind:
 		| typeof GIFT_SECTION_KINDS.priorityGroup
 		| typeof GIFT_SECTION_KINDS.noPriority
@@ -204,6 +208,7 @@ function buildPriorityGroups(gifts: GiftByRole[], sinkReserved: boolean): GiftSe
 					rank: gift.prioritySortOrder,
 					key: `priority:${gift.priorityLevelId}`,
 					label: gift.priorityLabel,
+					priorityKey: getPriorityKey(gift.priorityLabel),
 					kind: GIFT_SECTION_KINDS.priorityGroup,
 					gifts: [],
 				};
@@ -223,6 +228,7 @@ function buildPriorityGroups(gifts: GiftByRole[], sinkReserved: boolean): GiftSe
 			rank: Number.MAX_SAFE_INTEGER,
 			key: 'priority:none',
 			label: null,
+			priorityKey: null,
 			kind: GIFT_SECTION_KINDS.noPriority,
 			gifts: unprioritized,
 		});
@@ -234,6 +240,7 @@ function buildPriorityGroups(gifts: GiftByRole[], sinkReserved: boolean): GiftSe
 			group.key,
 			sinkReserved ? sinkReservedWithin(group.gifts) : group.gifts,
 			group.label,
+			group.priorityKey,
 		),
 	);
 }
@@ -260,6 +267,7 @@ function buildCategoryGroups(
 					rank: gift.category.sortOrder,
 					key: `category:${gift.categoryId}`,
 					label: labelForGiftCategory(gift.category, language),
+					priorityKey: null,
 					kind: GIFT_SECTION_KINDS.categoryGroup,
 					gifts: [],
 				};
@@ -279,6 +287,7 @@ function buildCategoryGroups(
 			rank: Number.MAX_SAFE_INTEGER,
 			key: 'category:none',
 			label: null,
+			priorityKey: null,
 			kind: GIFT_SECTION_KINDS.uncategorized,
 			gifts: uncategorized,
 		});
