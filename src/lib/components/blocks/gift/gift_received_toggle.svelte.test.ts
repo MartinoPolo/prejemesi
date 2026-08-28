@@ -89,10 +89,7 @@ describe('GiftReceivedToggle', () => {
 			try {
 				await mutation;
 			} catch {
-				// The route-side failure fallback cannot focus this control while it is disabled.
-				document
-					.querySelector<HTMLButtonElement>('[data-gift-received-action="gift-1"]')
-					?.focus();
+				// Simulate route-side recovery without helping the component restore focus.
 			}
 		});
 		await render(GiftReceivedToggle, {

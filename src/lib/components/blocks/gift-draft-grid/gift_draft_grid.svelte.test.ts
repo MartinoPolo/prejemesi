@@ -294,6 +294,48 @@ describe('GiftDraftGrid row motion', () => {
 		animate.mockRestore();
 	});
 
+	it('bounds bulk exits and performs no per-row DOM searches for a large selection', async () => {
+		const onchange = vi.fn();
+		const initialRows = Array.from({ length: 80 }, (_, index) => draft(`Dárek ${index}`));
+		const animate = vi.spyOn(HTMLElement.prototype, 'animate').mockImplementation(
+			() =>
+				({
+					cancel: vi.fn(),
+					finished: Promise.resolve(),
+					addEventListener: vi.fn(),
+				}) as unknown as Animation,
+		);
+		const screen = await render(GiftDraftGrid, { initialRows, onchange });
+		await vi.waitFor(() => expect(onchange).toHaveBeenCalled());
+		const rowsElement =
+			screen.container.querySelector<HTMLElement>('[data-gift-item]')?.parentElement;
+		expect(rowsElement).not.toBeNull();
+		const nativeQuery = rowsElement!.querySelectorAll.bind(rowsElement);
+		let giftQueries = 0;
+		const query = vi
+			.spyOn(rowsElement!, 'querySelectorAll')
+			.mockImplementation((selectors: string) => {
+				if (selectors === '[data-gift-item]') {
+					giftQueries += 1;
+				}
+				return nativeQuery(selectors);
+			});
+
+		await screen.getByRole('button', { name: m.draft_grid_bulk_delete() }).click();
+		await vi.waitFor(() =>
+			expect(screen.container.querySelectorAll('[data-gift-item]')).toHaveLength(0),
+		);
+
+		const exits = animate.mock.calls.filter(
+			([, options]) => (options as KeyframeAnimationOptions).duration === 440,
+		);
+		expect(exits.length).toBeLessThanOrEqual(16);
+		expect(giftQueries).toBeLessThanOrEqual(3);
+		expect(latestChange(onchange).selectedCount).toBe(0);
+		query.mockRestore();
+		animate.mockRestore();
+	});
+
 	it('cancels a stale removal when a rapid add makes the latest rows authoritative', async () => {
 		const onchange = vi.fn();
 		const removal = {

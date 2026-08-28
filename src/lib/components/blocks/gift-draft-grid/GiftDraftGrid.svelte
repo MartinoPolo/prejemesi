@@ -42,6 +42,8 @@
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	const ROW_INSERT_DURATION = 520;
 	const ROW_REMOVE_DURATION = 440;
+	/** Keep bulk removal work local; remaining selected rows leave in the authoritative update. */
+	const BULK_EXIT_ANIMATION_LIMIT = 12;
 
 	interface Props {
 		context?: DraftGridContext;
@@ -219,7 +221,20 @@
 		}
 
 		const snapshot = layoutMotion.capture(rowsElement);
-		exitingRows = rows.flatMap((row, index) => (ids.has(row.id) ? [{ row, index }] : []));
+		const rowElementsById = new Map(
+			[...rowsElement.querySelectorAll<HTMLElement>('[data-gift-item]')].flatMap(
+				(element) => {
+					const id = element.dataset.giftId;
+					return id !== undefined && id !== '' ? [[id, element] as const] : [];
+				},
+			),
+		);
+		const affectedRows = rows.flatMap((row, index) =>
+			ids.has(row.id) ? [{ row, index }] : [],
+		);
+		// The first affected rows are a deterministic visible/near-list fallback. Only
+		// this bounded local subset gets exits; every selected ID is still removed once.
+		exitingRows = affectedRows.slice(0, BULK_EXIT_ANIMATION_LIMIT);
 		exitingIds = new Set(ids);
 		emit();
 		await tick();
@@ -229,10 +244,8 @@
 
 		const settlements: Promise<unknown>[] = [];
 		for (const exiting of exitingRows) {
-			const element = [...rowsElement.querySelectorAll<HTMLElement>('[data-gift-item]')].find(
-				(candidate) => candidate.dataset.giftId === exiting.row.id,
-			);
-			if (element === undefined) {
+			const element = rowElementsById.get(exiting.row.id);
+			if (element === undefined || !element.isConnected) {
 				continue;
 			}
 			const animation = element.animate(

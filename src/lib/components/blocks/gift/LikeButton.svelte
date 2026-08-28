@@ -95,23 +95,25 @@
 		likesContext.optimisticToggle(giftId);
 		displayCount = wasLiked ? previousCount - 1 : previousCount + 1;
 
-		// Start persistence immediately while allowing the optimistic DOM to settle
-		// before binding the acknowledgement to its heart and count elements.
+		// Start persistence immediately. Acknowledgement waits for the authoritative
+		// result so rejected and stale optimistic updates never play success motion.
 		const persistence =
 			likesContext.toggleLike === undefined
 				? toggleLike({ giftId })
 				: likesContext.toggleLike(giftId);
-		if (!wasLiked) {
-			await tick();
-			if (currentRun === run) {
-				animateAcknowledgement();
-			}
-		}
 
 		try {
 			const result = await persistence;
-			if (currentRun === run) {
-				displayCount = result.likeCount;
+			if (currentRun !== run) {
+				return;
+			}
+
+			displayCount = result.likeCount;
+			if (!wasLiked && result.liked) {
+				await tick();
+				if (currentRun === run) {
+					animateAcknowledgement();
+				}
 			}
 		} catch {
 			if (currentRun !== run) {

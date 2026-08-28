@@ -12,10 +12,19 @@ function giftItem(page: Page, name: string) {
 	});
 }
 
+interface RecordedRectangle {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
 interface RecordedAnimation {
 	duration: number;
 	keyframes: string[];
 	targetGiftId: string | null;
+	targetText: string;
+	targetRectangle: RecordedRectangle;
 }
 
 declare global {
@@ -31,11 +40,19 @@ async function installAnimationRecorder(page: Page) {
 		Element.prototype.animate = function (keyframes, options) {
 			const animation = nativeAnimate.call(this, keyframes, options);
 			const effect = animation.effect as KeyframeEffect | null;
+			const rectangle = this.getBoundingClientRect();
 			window.__motionAnimationRecords.push({
 				duration: Number(effect?.getTiming().duration ?? 0),
 				keyframes:
 					effect?.getKeyframes().map((frame) => String(frame.transform ?? '')) ?? [],
 				targetGiftId: this.closest<HTMLElement>('[data-gift-id]')?.dataset.giftId ?? null,
+				targetText: (this.textContent ?? '').replace(/\s+/g, ' ').trim(),
+				targetRectangle: {
+					left: rectangle.left,
+					top: rectangle.top,
+					width: rectangle.width,
+					height: rectangle.height,
+				},
 			});
 			return animation;
 		};
@@ -58,6 +75,19 @@ function translatedAnimations(animations: RecordedAnimation[], giftId: string | 
 			animation.targetGiftId === giftId &&
 			animation.keyframes.some((keyframe) => keyframe.includes('translate')),
 	);
+}
+
+function flightEndpoint(animation: RecordedAnimation) {
+	const endpoint = animation.keyframes
+		.at(-1)
+		?.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+),\s*([-\d.]+)\)/);
+	expect(endpoint, `flight endpoint keyframe: ${animation.keyframes.at(-1)}`).not.toBeNull();
+	return {
+		translateX: Number(endpoint![1]),
+		translateY: Number(endpoint![2]),
+		scaleX: Number(endpoint![3]),
+		scaleY: Number(endpoint![4]),
+	};
 }
 
 async function animationFacts(page: Page) {
@@ -197,20 +227,45 @@ test.describe('issue #269 integrated motion strategy', () => {
 
 		const moving = filteredOut;
 		const movingId = await moving.getAttribute('data-gift-id');
+		const sourceRectangle = await moving.boundingBox();
+		expect(sourceRectangle).not.toBeNull();
+		await clearRecordedAnimations(page);
 		await moving.getByRole('button', { name: 'Označit jako přijatý' }).click();
 		await expect(moving.getByText('Přijato', { exact: true })).toBeVisible({ timeout: 10_000 });
+		const destinationRectangle = await moving.boundingBox();
+		expect(destinationRectangle).not.toBeNull();
 
 		await expect
-			.poll(async () => animationFacts(page))
-			.toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({
-						duration: 650,
-						keyframes: expect.arrayContaining([expect.stringContaining('scale(')]),
-					}),
-				]),
-			);
-		expect((await animationFacts(page)).some((a) => a.duration === 520)).toBe(true);
+			.poll(async () =>
+				(await recordedAnimations(page)).find(
+					(animation) =>
+						animation.duration === 650 && animation.targetText.includes(names[0]!),
+				),
+			)
+			.toBeDefined();
+		const receivedAnimations = await recordedAnimations(page);
+		const flight = receivedAnimations.find(
+			(animation) => animation.duration === 650 && animation.targetText.includes(names[0]!),
+		)!;
+		expect(flight.targetText).not.toContain(names[1]);
+		expect(flight.targetText).not.toContain(names[2]);
+		expect(flight.targetRectangle.left).toBeCloseTo(sourceRectangle!.x, 1);
+		expect(flight.targetRectangle.top).toBeCloseTo(sourceRectangle!.y, 1);
+		expect(flight.targetRectangle.width).toBeCloseTo(sourceRectangle!.width, 1);
+		expect(flight.targetRectangle.height).toBeCloseTo(sourceRectangle!.height, 1);
+		expect(flight.keyframes[0]).toContain('translate(0px, 0px) scale(1, 1)');
+		const endpoint = flightEndpoint(flight);
+		expect(endpoint.translateX).toBeCloseTo(destinationRectangle!.x - sourceRectangle!.x, 1);
+		expect(endpoint.translateY).toBeCloseTo(destinationRectangle!.y - sourceRectangle!.y, 1);
+		expect(endpoint.scaleX).toBeCloseTo(
+			destinationRectangle!.width / sourceRectangle!.width,
+			2,
+		);
+		expect(endpoint.scaleY).toBeCloseTo(
+			destinationRectangle!.height / sourceRectangle!.height,
+			2,
+		);
+		expect(receivedAnimations.some((animation) => animation.duration === 520)).toBe(true);
 		await expectCleanSettlement(page);
 		await expect(
 			giftItems(page).filter({ has: page.getByText('Přijato', { exact: true }) }),
@@ -302,6 +357,7 @@ test.describe('issue #269 integrated motion strategy', () => {
 		const errors = collectBrowserErrors(page);
 		await createWishlistAndNavigate(page, 'Motion strategy view switching');
 		await addGift(page, 'Motion View Gift');
+		await installAnimationRecorder(page);
 		const list = page.getByTestId('gift-view-list');
 		const card = page.getByTestId('gift-view-card');
 		await list.click();
@@ -314,10 +370,11 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expectCleanSettlement(page);
 
 		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await clearRecordedAnimations(page);
 		await card.click();
 		await expect(card).toHaveAttribute('aria-checked', 'true');
-		const transforms = (await animationFacts(page)).filter((a) =>
-			a.keyframes.some((frame) => /translate|scale/.test(frame)),
+		const transforms = (await recordedAnimations(page)).filter((animation) =>
+			animation.keyframes.some((frame) => /translate|scale/.test(frame)),
 		);
 		expect(transforms).toEqual([]);
 		expect(errors).toEqual([]);

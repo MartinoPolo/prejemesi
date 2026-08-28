@@ -88,7 +88,7 @@ afterEach(() => {
 });
 
 describe('LikeButton acknowledgement', () => {
-	it('fills the heart immediately and plays the approved element-bound pop and count crossfade', async () => {
+	it('updates optimistically but waits for successful persistence before acknowledging the like', async () => {
 		likesContext();
 		const remote = deferred<{ liked: boolean; likeCount: number }>();
 		mocks.toggleLike.mockReturnValue(remote.promise);
@@ -105,6 +105,11 @@ describe('LikeButton acknowledgement', () => {
 			.element(button)
 			.toHaveAccessibleName(m.gift_like_remove_aria({ name: 'Stolní lampa' }));
 		await expect.element(button).toHaveTextContent('5');
+		expect(animate).not.toHaveBeenCalled();
+
+		remote.resolve({ liked: true, likeCount: 9 });
+		await expect.element(button).toHaveTextContent('9');
+
 		expect(animate.mock.contexts[0]).toBe(document.querySelector('[data-like-heart]'));
 		expect(animate.mock.calls[0]).toEqual([
 			[{ transform: 'scale(1)' }, { transform: 'scale(1.16)' }, { transform: 'scale(1)' }],
@@ -129,15 +134,13 @@ describe('LikeButton acknowledgement', () => {
 		await screen.unmount();
 	});
 
-	it('cancels stale motion and ignores an older response after a rapid double click', async () => {
+	it('ignores a stale response without acknowledgement after a rapid double click', async () => {
 		likesContext();
 		const first = deferred<{ liked: boolean; likeCount: number }>();
 		const second = deferred<{ liked: boolean; likeCount: number }>();
 		mocks.toggleLike.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-		const pop = animation();
-		const crossfade = animation();
 		await renderLikeButton();
-		mockElementAnimations(pop, crossfade);
+		const animate = mockElementAnimations();
 		const button = page.getByRole('button');
 
 		await button.click();
@@ -150,39 +153,39 @@ describe('LikeButton acknowledgement', () => {
 		await Promise.resolve();
 
 		expect(button.element().textContent).toContain('4');
-		expect(pop.cancel).toHaveBeenCalledOnce();
-		expect(crossfade.cancel).toHaveBeenCalledOnce();
+		expect(animate).not.toHaveBeenCalled();
 	});
 
-	it('cancels acknowledgement motion and rolls back state and count when persistence fails', async () => {
+	it('rolls back state and count without success animation when persistence fails', async () => {
 		const context = likesContext();
 		const remote = deferred<{ liked: boolean; likeCount: number }>();
 		mocks.toggleLike.mockReturnValue(remote.promise);
-		const pop = animation();
-		const crossfade = animation();
 		await renderLikeButton();
-		mockElementAnimations(pop, crossfade);
+		const animate = mockElementAnimations();
 		const button = page.getByRole('button');
 
 		await button.click();
+		expect(animate).not.toHaveBeenCalled();
 		remote.reject(new Error('remote failed'));
 
 		await expect.element(button).toHaveAttribute('aria-pressed', 'false');
 		await expect.element(button).toHaveTextContent('4');
 		expect(context.revertToggle).toHaveBeenCalledWith('gift-1', false);
-		expect(pop.cancel).toHaveBeenCalledOnce();
-		expect(crossfade.cancel).toHaveBeenCalledOnce();
+		expect(animate).not.toHaveBeenCalled();
 	});
 
 	it('cancels element-bound animations when the surface is torn down', async () => {
 		likesContext();
-		mocks.toggleLike.mockReturnValue(deferred<{ liked: boolean; likeCount: number }>().promise);
+		const remote = deferred<{ liked: boolean; likeCount: number }>();
+		mocks.toggleLike.mockReturnValue(remote.promise);
 		const pop = animation();
 		const crossfade = animation();
 		const screen = await renderLikeButton();
 		mockElementAnimations(pop, crossfade);
 
 		await page.getByRole('button').click();
+		remote.resolve({ liked: true, likeCount: 9 });
+		await expect.element(page.getByRole('button')).toHaveTextContent('9');
 		await screen.unmount();
 
 		expect(pop.cancel).toHaveBeenCalledOnce();

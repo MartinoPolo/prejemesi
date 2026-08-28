@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createIdentityLayoutMotion } from './layout_motion.js';
+import { createIdentityLayoutMotion, LAYOUT_GIFT_MOTION_LIMIT } from './layout_motion.js';
 
 function gift(id: string, rect: Partial<DOMRect> = {}) {
 	const element = document.createElement('div');
@@ -26,14 +26,13 @@ function animation() {
 }
 
 describe('identity layout motion', () => {
-	it('does not FLIP invalid, inserted, or removed gift identities', () => {
+	it('does not FLIP zero-size, inserted, or removed gift identities', () => {
 		const animate = vi.fn(() => animation());
 		const motion = createIdentityLayoutMotion({ reducedMotion: () => false });
 		const stable = gift('stable');
 		const removed = gift('removed');
 		const hidden = gift('hidden', { width: 0, height: 0, right: 10, bottom: 10 });
-		const origin = gift('origin', { left: 0, top: 0, x: 0, y: 0 });
-		for (const element of [stable, removed, hidden, origin]) {
+		for (const element of [stable, removed, hidden]) {
 			Object.defineProperty(element, 'animate', { value: animate });
 		}
 		const before = motion.capture(document.body);
@@ -48,20 +47,111 @@ describe('identity layout motion', () => {
 			right: 300,
 			bottom: 300,
 		});
-		vi.mocked(origin.getBoundingClientRect).mockReturnValue({
-			...stable.getBoundingClientRect(),
-			left: 300,
-			top: 300,
-			x: 300,
-			y: 300,
-			right: 400,
-			bottom: 400,
-		});
 		const inserted = gift('inserted', { left: 200, top: 200, x: 200, y: 200 });
 		Object.defineProperty(inserted, 'animate', { value: animate });
 		motion.play(before, document.body);
 
 		expect(animate).not.toHaveBeenCalled();
+		motion.destroy();
+		document.body.replaceChildren();
+	});
+
+	it('FLIPs a positive-size stable identity from real top-left coordinates', () => {
+		const element = gift('origin', { left: 0, top: 0, x: 0, y: 0 });
+		const animate = vi.fn(() => animation());
+		Object.defineProperty(element, 'animate', { value: animate });
+		const motion = createIdentityLayoutMotion({ reducedMotion: () => false });
+		const before = motion.capture(document.body);
+		vi.mocked(element.getBoundingClientRect).mockReturnValue({
+			...element.getBoundingClientRect(),
+			left: 30,
+			top: 40,
+			x: 30,
+			y: 40,
+			right: 130,
+			bottom: 140,
+		});
+
+		motion.play(before, document.body);
+
+		expect(animate).toHaveBeenCalledWith(
+			[{ transform: 'translate(-30px, -40px)' }, { transform: 'translate(0, 0)' }],
+			{ duration: 520, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+		);
+		motion.destroy();
+		document.body.replaceChildren();
+	});
+
+	it('centers the bounded capture window on a gift found by viewport hit-testing', () => {
+		const elements = Array.from({ length: LAYOUT_GIFT_MOTION_LIMIT + 100 }, (_, index) =>
+			gift(`gift-${index}`),
+		);
+		const visibleIndex = 100;
+		const content = document.createElement('span');
+		elements[visibleIndex].append(content);
+		const hitTest = vi.spyOn(document, 'elementsFromPoint').mockReturnValue([content]);
+		const motion = createIdentityLayoutMotion({ reducedMotion: () => false });
+
+		const before = motion.capture(document.body);
+
+		expect(before.gifts.has(`gift-${visibleIndex}`)).toBe(true);
+		expect(elements[0].getBoundingClientRect).not.toHaveBeenCalled();
+		expect(elements.at(-1)?.getBoundingClientRect).not.toHaveBeenCalled();
+		expect(
+			elements.reduce(
+				(total, element) =>
+					total + vi.mocked(element.getBoundingClientRect).mock.calls.length,
+				0,
+			),
+		).toBe(LAYOUT_GIFT_MOTION_LIMIT);
+		hitTest.mockRestore();
+		motion.destroy();
+		document.body.replaceChildren();
+	});
+
+	it('caps long-list rectangle reads and animations while excluding changed identities', () => {
+		const animate = vi.fn(() => animation());
+		const elements = Array.from({ length: LAYOUT_GIFT_MOTION_LIMIT + 100 }, (_, index) => {
+			const element = gift(`gift-${index}`);
+			Object.defineProperty(element, 'animate', { value: animate, configurable: true });
+			return element;
+		});
+		const motion = createIdentityLayoutMotion({ reducedMotion: () => false });
+		const before = motion.capture(document.body);
+		const removed = elements[0];
+		const removedAnimate = vi.fn(() => animation());
+		Object.defineProperty(removed, 'animate', { value: removedAnimate });
+		removed.remove();
+		const inserted = gift('inserted');
+		const insertedAnimate = vi.fn(() => animation());
+		Object.defineProperty(inserted, 'animate', { value: insertedAnimate });
+		for (const element of elements) {
+			vi.mocked(element.getBoundingClientRect).mockClear();
+		}
+		for (const element of elements.slice(1)) {
+			vi.mocked(element.getBoundingClientRect).mockReturnValue({
+				left: 20,
+				top: 10,
+				right: 120,
+				bottom: 110,
+				width: 100,
+				height: 100,
+				x: 20,
+				y: 10,
+				toJSON: () => ({}),
+			});
+		}
+
+		motion.play(before, document.body);
+
+		const rectangleReads = [...elements, inserted].reduce(
+			(total, element) => total + vi.mocked(element.getBoundingClientRect).mock.calls.length,
+			0,
+		);
+		expect(rectangleReads).toBeLessThanOrEqual(LAYOUT_GIFT_MOTION_LIMIT);
+		expect(animate.mock.calls.length).toBeLessThanOrEqual(LAYOUT_GIFT_MOTION_LIMIT);
+		expect(removedAnimate).not.toHaveBeenCalled();
+		expect(insertedAnimate).not.toHaveBeenCalled();
 		motion.destroy();
 		document.body.replaceChildren();
 	});
