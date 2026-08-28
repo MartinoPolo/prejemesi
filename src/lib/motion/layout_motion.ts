@@ -74,7 +74,8 @@ export function createIdentityLayoutMotion(options: IdentityLayoutMotionOptions 
 		return {
 			run,
 			gifts: captureGifts(root),
-			toolbarHeight: toolbar?.isConnected ? toolbar.getBoundingClientRect().height : null,
+			toolbarHeight:
+				toolbar?.isConnected === true ? toolbar.getBoundingClientRect().height : null,
 		};
 	}
 
@@ -100,7 +101,7 @@ export function createIdentityLayoutMotion(options: IdentityLayoutMotionOptions 
 			}
 		};
 
-		if (toolbar?.isConnected && snapshot.toolbarHeight !== null) {
+		if (toolbar?.isConnected === true && snapshot.toolbarHeight !== null) {
 			const nextHeight = toolbar.getBoundingClientRect().height;
 			if (nextHeight > 0 && nextHeight !== snapshot.toolbarHeight) {
 				animate(
@@ -121,7 +122,7 @@ export function createIdentityLayoutMotion(options: IdentityLayoutMotionOptions 
 			const nextPosition = id === undefined ? undefined : nextGifts.get(id);
 			if (
 				id === undefined ||
-				options.excludeGiftIds?.has(id) ||
+				options.excludeGiftIds?.has(id) === true ||
 				previousPosition === undefined ||
 				nextPosition === undefined
 			) {

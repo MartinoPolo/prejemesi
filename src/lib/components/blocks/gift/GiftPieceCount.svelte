@@ -40,7 +40,9 @@
 		}
 		shouldAnimateAcknowledgement =
 			!previousAcknowledgementPresent && currentAcknowledgementPresent;
-		if (shouldAnimateAcknowledgement) animationRun += 1;
+		if (shouldAnimateAcknowledgement) {
+			animationRun += 1;
+		}
 		previousAcknowledgementPresent = currentAcknowledgementPresent;
 	});
 
@@ -50,8 +52,12 @@
 
 		activeAnimation?.cancel();
 		activeAnimation = null;
-		if (run === 0 || !shouldAnimateAcknowledgement || element === null) return;
-		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+		if (run === 0 || !shouldAnimateAcknowledgement || element === null) {
+			return;
+		}
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
 
 		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140 });
 	});

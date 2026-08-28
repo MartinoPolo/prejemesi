@@ -37,7 +37,7 @@ describe('ImportWizard step motion', () => {
 		const animate = vi.spyOn(Element.prototype, 'animate').mockImplementation(function (
 			this: Element,
 		) {
-			return (this as HTMLElement).dataset.importStepPanel
+			return (this as HTMLElement).dataset.importStepPanel !== undefined
 				? panelAnimation
 				: connectorAnimation;
 		});

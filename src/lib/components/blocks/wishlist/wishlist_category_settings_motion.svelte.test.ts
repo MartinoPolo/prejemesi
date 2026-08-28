@@ -73,7 +73,7 @@ describe('wishlist category settings motion', () => {
 	it('FLIPs only continuously present visible database identities after reorder', async () => {
 		const stable = row('category-db-1');
 		const removed = row('category-db-2', { ...RECT, top: 130, bottom: 210, y: 130 });
-		const hidden = row('category-db-hidden', {
+		row('category-db-hidden', {
 			...RECT,
 			top: 230,
 			bottom: 230,

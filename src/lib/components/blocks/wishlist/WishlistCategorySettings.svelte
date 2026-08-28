@@ -1,4 +1,6 @@
 <script module lang="ts">
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	const CATEGORY_REFLOW_DURATION = 520;
 	const CATEGORY_DELETE_DURATION = 440;
@@ -35,11 +37,13 @@
 		return Array.from(root.querySelectorAll<HTMLElement>('[data-category-row]'));
 	}
 
-	function capturePositions(root: ParentNode): Map<string, CategoryPosition> {
-		const positions = new Map<string, CategoryPosition>();
+	function capturePositions(root: ParentNode): SvelteMap<string, CategoryPosition> {
+		const positions = new SvelteMap<string, CategoryPosition>();
 		for (const element of categoryRows(root)) {
 			const id = element.dataset.categoryId;
-			if (id === undefined || id === '') continue;
+			if (id === undefined || id === '') {
+				continue;
+			}
 			const rectangle = element.getBoundingClientRect();
 			if (renderedRectangle(element, rectangle)) {
 				positions.set(id, { left: rectangle.left, top: rectangle.top });
@@ -83,21 +87,27 @@
 			options.reducedMotion ??
 			(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
 		let run = 0;
-		const animations = new Set<Animation>();
-		const retainedVisuals = new Set<HTMLElement>();
+		const animations = new SvelteSet<Animation>();
+		const retainedVisuals = new SvelteSet<HTMLElement>();
 
 		function removeVisual(visual: HTMLElement) {
 			visual.remove();
 			visual.style.cssText = '';
-			if (visual.hasAttribute('style')) visual.attributes.removeNamedItem('style');
+			if (visual.hasAttribute('style')) {
+				visual.attributes.removeNamedItem('style');
+			}
 			retainedVisuals.delete(visual);
 		}
 
 		function cancel() {
 			run += 1;
-			for (const animation of animations) animation.cancel();
+			for (const animation of animations) {
+				animation.cancel();
+			}
 			animations.clear();
-			for (const visual of retainedVisuals) removeVisual(visual);
+			for (const visual of retainedVisuals) {
+				removeVisual(visual);
+			}
 		}
 
 		function capture(root: ParentNode, deletingId?: string): CategoryMotionSnapshot {
@@ -115,7 +125,9 @@
 				!positions.has(deletingId)
 					? null
 					: retainedCategoryVisual(source);
-			if (retainedVisual !== null) retainedVisuals.add(retainedVisual);
+			if (retainedVisual !== null) {
+				retainedVisuals.add(retainedVisual);
+			}
 			return { run, positions, retainedVisual };
 		}
 
@@ -128,7 +140,9 @@
 
 		async function play(snapshot: CategoryMotionSnapshot, root: ParentNode) {
 			if (snapshot.run !== run || reducedMotion()) {
-				if (snapshot.retainedVisual !== null) removeVisual(snapshot.retainedVisual);
+				if (snapshot.retainedVisual !== null) {
+					removeVisual(snapshot.retainedVisual);
+				}
 				return;
 			}
 			const settlements: Promise<unknown>[] = [];
@@ -137,10 +151,14 @@
 				const id = element.dataset.categoryId;
 				const before = id === undefined ? undefined : snapshot.positions.get(id);
 				const after = id === undefined ? undefined : nextPositions.get(id);
-				if (before === undefined || after === undefined) continue;
+				if (before === undefined || after === undefined) {
+					continue;
+				}
 				const x = before.left - after.left;
 				const y = before.top - after.top;
-				if (x === 0 && y === 0) continue;
+				if (x === 0 && y === 0) {
+					continue;
+				}
 				settlements.push(
 					track(
 						element.animate(
@@ -175,7 +193,9 @@
 		}
 
 		function discard(snapshot: CategoryMotionSnapshot) {
-			if (snapshot.retainedVisual !== null) removeVisual(snapshot.retainedVisual);
+			if (snapshot.retainedVisual !== null) {
+				removeVisual(snapshot.retainedVisual);
+			}
 		}
 
 		function destroy() {
@@ -228,7 +248,7 @@
 	let customLabel = $state('');
 	let renaming = $state<Record<string, string>>({});
 	let pending = $state(false);
-	let categoryRowsElement: HTMLElement;
+	let categoryRowsElement = $state<HTMLElement | null>(null);
 	const categoryMotion = createCategorySettingsMotion();
 
 	onDestroy(() => categoryMotion.destroy());
@@ -246,12 +266,15 @@
 		try {
 			await work();
 			await tick();
-			if (motionSnapshot !== undefined && categoryRowsElement?.isConnected) {
-				void categoryMotion.play(motionSnapshot, categoryRowsElement);
+			const rowsElement = categoryRowsElement;
+			if (motionSnapshot !== undefined && rowsElement !== null && rowsElement.isConnected) {
+				void categoryMotion.play(motionSnapshot, rowsElement);
 			}
 			toastSuccess(success);
 		} catch (thrown) {
-			if (motionSnapshot !== undefined) categoryMotion.discard(motionSnapshot);
+			if (motionSnapshot !== undefined) {
+				categoryMotion.discard(motionSnapshot);
+			}
 			toastError(translateServerError(thrown));
 		} finally {
 			pending = false;
@@ -269,7 +292,8 @@
 	}
 
 	function reorder(ids: string[]) {
-		const snapshot = categoryMotion.capture(categoryRowsElement);
+		const rowsElement = categoryRowsElement;
+		const snapshot = rowsElement === null ? undefined : categoryMotion.capture(rowsElement);
 		void run(
 			() => reorderGiftCategories({ wishlistId, categoryIds: ids }),
 			m.gift_categories_reordered(),
@@ -278,7 +302,9 @@
 	}
 
 	function deleteCategory(categoryId: string) {
-		const snapshot = categoryMotion.capture(categoryRowsElement, categoryId);
+		const rowsElement = categoryRowsElement;
+		const snapshot =
+			rowsElement === null ? undefined : categoryMotion.capture(rowsElement, categoryId);
 		void run(
 			() => deleteCustomGiftCategoryCommand({ categoryId }),
 			m.gift_category_deleted(),
@@ -424,7 +450,9 @@
 		onsubmit={(event) => {
 			event.preventDefault();
 			const label = customLabel.trim();
-			if (label === '') return;
+			if (label === '') {
+				return;
+			}
 			void run(async () => {
 				await createCustomGiftCategoryCommand({ wishlistId, label });
 				customLabel = '';

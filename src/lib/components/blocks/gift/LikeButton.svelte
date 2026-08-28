@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
 	import { onDestroy, tick } from 'svelte';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import * as m from '$lib/paraglide/messages.js';
@@ -38,7 +39,7 @@
 	let heartElement = $state<HTMLSpanElement>();
 	let countElement = $state<HTMLSpanElement>();
 	let run = 0;
-	const activeAnimations = new Set<Animation>();
+	const activeAnimations = new SvelteSet<Animation>();
 
 	const styles = $derived(likeButtonVariants({ liked, size, appearance }));
 

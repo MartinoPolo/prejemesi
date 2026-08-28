@@ -141,11 +141,12 @@ export function createGiftReceivedMotion(options: GiftReceivedMotionOptions = {}
 	}
 
 	function restoreFocus(snapshot: GiftReceivedMotionSnapshot) {
-		const target = snapshot.invokingControl?.isConnected
-			? snapshot.invokingControl
-			: snapshot.fallbackControl?.isConnected
-				? snapshot.fallbackControl
-				: null;
+		const target =
+			snapshot.invokingControl?.isConnected === true
+				? snapshot.invokingControl
+				: snapshot.fallbackControl?.isConnected === true
+					? snapshot.fallbackControl
+					: null;
 		target?.focus({ preventScroll: true });
 	}
 

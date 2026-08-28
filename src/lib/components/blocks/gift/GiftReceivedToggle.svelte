@@ -41,7 +41,7 @@
 		} finally {
 			pending = false;
 			await tick();
-			if (action?.isConnected) {
+			if (action !== null && action.isConnected) {
 				action.focus({ preventScroll: true });
 			}
 		}

@@ -222,7 +222,9 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 		expect(screen.getByTestId('wishlist-toolbar-controls').element()).toBe(controls);
 		expect(toolbar.querySelector('.toolbar-layout')).toBe(layout);
 		expectDocumentOrder(regionOrder);
-		for (const region of regionOrder) expect(region.isConnected).toBe(true);
+		for (const region of regionOrder) {
+			expect(region.isConnected).toBe(true);
+		}
 		const doneIcon = doneButton.querySelector('[data-toolbar-icon="reorder-done"]')!;
 		const doneLabel = doneButton.querySelector('[data-reorder-mode-label]')!;
 		expect(doneIcon).not.toBeNull();
@@ -273,7 +275,9 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 		}
 		expect(doneButton.disabled).toBe(false);
 		expect(doneButton.tabIndex).toBe(0);
-		for (const callback of Object.values(callbacks)) expect(callback).not.toHaveBeenCalled();
+		for (const callback of Object.values(callbacks)) {
+			expect(callback).not.toHaveBeenCalled();
+		}
 		expect(ongroupingchange).not.toHaveBeenCalled();
 		await screen.unmount();
 	});

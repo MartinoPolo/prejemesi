@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
@@ -90,7 +91,7 @@
 	const rows = $derived(displayedRows.filter((row) => !exitingIds.has(row.id)));
 	let rowsElement = $state<HTMLElement | null>(null);
 	const layoutMotion = createIdentityLayoutMotion();
-	const rowAnimations = new Set<Animation>();
+	const rowAnimations = new SvelteSet<Animation>();
 	let motionRun = 0;
 	const selectedCount = $derived(rows.filter((row) => row.selected).length);
 	const headerState = $derived(headerSelectionState(rows));
@@ -231,7 +232,9 @@
 			const element = [...rowsElement.querySelectorAll<HTMLElement>('[data-gift-item]')].find(
 				(candidate) => candidate.dataset.giftId === exiting.row.id,
 			);
-			if (element === undefined) continue;
+			if (element === undefined) {
+				continue;
+			}
 			const animation = element.animate(
 				[
 					{

@@ -20,7 +20,9 @@
 	let transitionRun = 0;
 
 	function getContentState(): ContentState {
-		if (ctx.isLoading.current && ctx.notifications.current.length === 0) return 'loading';
+		if (ctx.isLoading.current && ctx.notifications.current.length === 0) {
+			return 'loading';
+		}
 		return ctx.notifications.current.length === 0 ? 'empty' : 'list';
 	}
 
@@ -53,12 +55,16 @@
 		});
 		activeAnimation = exit;
 		await exit.finished.catch(() => undefined);
-		if (run !== transitionRun) return;
+		if (run !== transitionRun) {
+			return;
+		}
 
 		activeAnimation = null;
 		displayedContent = nextContent;
 		await tick();
-		if (run !== transitionRun || contentElement === null) return;
+		if (run !== transitionRun || contentElement === null) {
+			return;
+		}
 
 		exit.cancel();
 		const enter = contentElement.animate(
@@ -87,10 +93,14 @@
 			return;
 		}
 
-		if (nextContent === displayedContent) return;
+		if (nextContent === displayedContent) {
+			return;
+		}
 
 		if (displayedContent === 'loading' && nextContent !== 'loading') {
-			if (pendingContent === nextContent) return;
+			if (pendingContent === nextContent) {
+				return;
+			}
 			void revealLoadedContent(nextContent);
 		} else {
 			cancelActiveTransition();

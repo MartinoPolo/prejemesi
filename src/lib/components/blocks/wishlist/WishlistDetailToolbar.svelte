@@ -206,7 +206,9 @@
 	let openDisplayControl = $state<OpenDisplayControl | null>(null);
 
 	$effect(() => {
-		if (reorderMode) openDisplayControl = null;
+		if (reorderMode) {
+			openDisplayControl = null;
+		}
 	});
 
 	function updateOpenDisplayControl(control: OpenDisplayControl, open: boolean) {

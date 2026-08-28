@@ -125,18 +125,22 @@
 	// Step indices drive directional panel and connector motion.
 	const currentStepIndex = $derived(WIZARD_STEPS.indexOf(currentStep));
 	let previousStepIndex = $state(WIZARD_STEPS.indexOf(WIZARD_STEP.source));
-	let stepPanel: HTMLElement;
-	let stepper: HTMLElement;
+	let stepPanel = $state<HTMLElement | null>(null);
+	let stepper = $state<HTMLElement | null>(null);
 	let activeStepAnimations: Animation[] = [];
 
 	function cancelStepAnimations() {
-		for (const animation of activeStepAnimations) animation.cancel();
+		for (const animation of activeStepAnimations) {
+			animation.cancel();
+		}
 		activeStepAnimations = [];
 	}
 
 	function transitionToStep(nextStep: WizardStep) {
 		const nextStepIndex = WIZARD_STEPS.indexOf(nextStep);
-		if (nextStepIndex === currentStepIndex) return;
+		if (nextStepIndex === currentStepIndex) {
+			return;
+		}
 		previousStepIndex = currentStepIndex;
 		currentStep = nextStep;
 	}
@@ -144,13 +148,22 @@
 	$effect(() => {
 		const from = previousStepIndex;
 		const to = currentStepIndex;
-		if (from === to) return;
+		if (from === to) {
+			return;
+		}
 
 		cancelStepAnimations();
-		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
+		const stepPanelElement = stepPanel;
+		const stepperElement = stepper;
+		if (stepPanelElement === null || stepperElement === null) {
+			return;
+		}
 
 		activeStepAnimations.push(
-			stepPanel.animate(
+			stepPanelElement.animate(
 				[
 					{ opacity: 0, transform: `translateX(${to > from ? 10 : -10}px)` },
 					{ opacity: 1, transform: 'translateX(0)' },
@@ -159,11 +172,15 @@
 			),
 		);
 
-		for (const connector of stepper.querySelectorAll<HTMLElement>('[data-import-connector]')) {
+		for (const connector of stepperElement.querySelectorAll<HTMLElement>(
+			'[data-import-connector]',
+		)) {
 			const connectorIndex = Number(connector.dataset.importConnector);
 			const wasComplete = connectorIndex <= from;
 			const isComplete = connectorIndex <= to;
-			if (wasComplete === isComplete) continue;
+			if (wasComplete === isComplete) {
+				continue;
+			}
 			activeStepAnimations.push(
 				connector.animate(
 					[

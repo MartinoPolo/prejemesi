@@ -57,7 +57,9 @@
 
 		activeAnimation?.cancel();
 		activeAnimation = null;
-		if (run === 0 || !shouldAnimate || element === null) return;
+		if (run === 0 || !shouldAnimate || element === null) {
+			return;
+		}
 		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
 			showReservationAcknowledgement = false;
 			return;
