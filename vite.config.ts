@@ -122,10 +122,9 @@ export default defineConfig({
 		],
 	},
 	server: {
-		host: 'localhost',
-		port: development.appPort,
+		...development.appServer,
 		strictPort: true,
-		open: true,
+		open: development.appOrigin,
 		watch: {
 			ignored: ['**/.mpx/**', './*.html'],
 		},

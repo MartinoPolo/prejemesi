@@ -62,10 +62,23 @@ describe('MPX development environment', () => {
 		});
 	});
 
-	it('uses the assigned app origin for Better Auth base and trusted origins', () => {
-		expect(resolveAuthOrigins({ MPX_APP_PORT: '8410' }, true)).toEqual({
+	it('uses localhost for the assigned development app host and Better Auth origin', () => {
+		const environment = { MPX_APP_PORT: '8410' };
+
+		expect(resolveDevelopmentEnvironment(environment)).toMatchObject({
+			appOrigin: 'http://localhost:8410',
+			appServer: { host: 'localhost', port: 8410 },
+		});
+		expect(resolveAuthOrigins(environment, true)).toEqual({
 			baseURL: 'http://localhost:8410',
 			trustedOrigins: ['http://localhost:8410'],
+		});
+	});
+
+	it('keeps Better Auth aligned with the development server instead of a stale ORIGIN', () => {
+		expect(resolveAuthOrigins({ ORIGIN: 'http://localhost:5173' }, true)).toEqual({
+			baseURL: 'http://localhost:8300',
+			trustedOrigins: ['http://localhost:8300'],
 		});
 	});
 
