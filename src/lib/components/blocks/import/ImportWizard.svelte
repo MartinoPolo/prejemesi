@@ -34,6 +34,7 @@
 	import { findDuplicates } from '$lib/modules/gifts/gift_draft.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import { onDestroy } from 'svelte';
 
 	/**
 	 * Props modeled as a discriminated union so callers cannot pass wishlistId
@@ -121,8 +122,61 @@
 	// even without having typed into the field first.
 	let titleTouched = $state(false);
 
-	// Step index for the stepper
+	// Step indices drive directional panel and connector motion.
 	const currentStepIndex = $derived(WIZARD_STEPS.indexOf(currentStep));
+	let previousStepIndex = $state(WIZARD_STEPS.indexOf(WIZARD_STEP.source));
+	let stepPanel: HTMLElement;
+	let stepper: HTMLElement;
+	let activeStepAnimations: Animation[] = [];
+
+	function cancelStepAnimations() {
+		for (const animation of activeStepAnimations) animation.cancel();
+		activeStepAnimations = [];
+	}
+
+	function transitionToStep(nextStep: WizardStep) {
+		const nextStepIndex = WIZARD_STEPS.indexOf(nextStep);
+		if (nextStepIndex === currentStepIndex) return;
+		previousStepIndex = currentStepIndex;
+		currentStep = nextStep;
+	}
+
+	$effect(() => {
+		const from = previousStepIndex;
+		const to = currentStepIndex;
+		if (from === to) return;
+
+		cancelStepAnimations();
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+
+		activeStepAnimations.push(
+			stepPanel.animate(
+				[
+					{ opacity: 0, transform: `translateX(${to > from ? 10 : -10}px)` },
+					{ opacity: 1, transform: 'translateX(0)' },
+				],
+				{ duration: 180, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			),
+		);
+
+		for (const connector of stepper.querySelectorAll<HTMLElement>('[data-import-connector]')) {
+			const connectorIndex = Number(connector.dataset.importConnector);
+			const wasComplete = connectorIndex <= from;
+			const isComplete = connectorIndex <= to;
+			if (wasComplete === isComplete) continue;
+			activeStepAnimations.push(
+				connector.animate(
+					[
+						{ transform: `scaleX(${wasComplete ? 1 : 0})` },
+						{ transform: `scaleX(${isComplete ? 1 : 0})` },
+					],
+					{ duration: 220, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+				),
+			);
+		}
+	});
+
+	onDestroy(cancelStepAnimations);
 
 	// Dialog width based on step. The review step holds the table-like draft grid;
 	// append mode adds a ~280px existing-items side panel, so it needs extra room.
@@ -188,7 +242,7 @@
 		parsedRows = result.rows;
 		filename = result.filename;
 		// Auto-advance to review
-		currentStep = WIZARD_STEP.review;
+		transitionToStep(WIZARD_STEP.review);
 	}
 
 	function handleReviewReady(data: {
@@ -215,7 +269,7 @@
 		// the empty-title "****" / generic-error-loop bug). If this is ever reached with an
 		// invalid title, send the user back to the field instead of retry-looping on a 400.
 		if (mode === WIZARD_MODE.newList && !titleValid) {
-			currentStep = WIZARD_STEP.review;
+			transitionToStep(WIZARD_STEP.review);
 			titleTouched = true;
 			throw new Error('title is required');
 		}
@@ -285,17 +339,17 @@
 			return;
 		}
 		if (canProceed) {
-			currentStep = WIZARD_STEP.confirm;
+			transitionToStep(WIZARD_STEP.confirm);
 		}
 	}
 
 	function handleBack() {
 		if (currentStep === WIZARD_STEP.confirm) {
-			currentStep = WIZARD_STEP.review;
+			transitionToStep(WIZARD_STEP.review);
 			commitStatus = COMMIT_STATUS.idle;
 			resetServerDuplicateAcknowledgement();
 		} else if (currentStep === WIZARD_STEP.review) {
-			currentStep = WIZARD_STEP.source;
+			transitionToStep(WIZARD_STEP.source);
 			resetServerDuplicateAcknowledgement();
 			parsedRows = [];
 			filename = undefined;
@@ -304,8 +358,10 @@
 	}
 
 	function handleClose() {
+		cancelStepAnimations();
 		open = false;
 		// Reset state on close
+		previousStepIndex = WIZARD_STEPS.indexOf(WIZARD_STEP.source);
 		currentStep = WIZARD_STEP.source;
 		parsedRows = [];
 		filename = undefined;
@@ -358,14 +414,19 @@
 			</div>
 
 			<!-- Stepper: ink-bordered dots + dashed connectors (anime-sky design language) -->
-			<div class="flex items-center gap-2">
+			<div class="flex items-center gap-2" bind:this={stepper}>
 				{#each WIZARD_STEPS as step, index (step)}
 					{#if index > 0}
 						<div
-							class="flex-1 border-t-2 {index <= currentStepIndex
-								? 'border-ink'
-								: 'border-dashed border-ink-faint'}"
-						></div>
+							class="relative flex-1 border-t-2 border-dashed border-ink-faint"
+							aria-hidden="true"
+						>
+							<div
+								data-import-connector={index}
+								class="absolute inset-x-0 top-[-2px] border-t-2 border-ink origin-left"
+								style:transform="scaleX({index <= currentStepIndex ? 1 : 0})"
+							></div>
+						</div>
 					{/if}
 					<div class="flex items-center gap-1.5">
 						<div
@@ -396,7 +457,11 @@
 
 		<!-- Step content. Flex column so the review step's grid can fill the remaining
 		     height and own the only vertical scrollbar; short steps still scroll here. -->
-		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">
+		<div
+			class="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5"
+			bind:this={stepPanel}
+			data-import-step-panel
+		>
 			{#if currentStep === WIZARD_STEP.source}
 				<ImportSourceStep onparsed={handleSourceParsed} />
 			{:else if currentStep === WIZARD_STEP.review}
