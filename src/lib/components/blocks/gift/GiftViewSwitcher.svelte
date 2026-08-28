@@ -8,9 +8,10 @@
 	interface GiftViewSwitcherProps {
 		value: GiftViewMode;
 		onchange: (mode: GiftViewMode) => void;
+		disabled?: boolean;
 	}
 
-	let { value, onchange }: GiftViewSwitcherProps = $props();
+	let { value, onchange, disabled = false }: GiftViewSwitcherProps = $props();
 
 	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
 	// on every click, including a re-click of the already-active item (which it
@@ -59,6 +60,7 @@
 	size="icon"
 	aria-label={m.gift_view_switcher_aria()}
 	data-testid="gift-view-switcher"
+	{disabled}
 >
 	{#each modes as mode (mode.key)}
 		<ToggleGroup.Item

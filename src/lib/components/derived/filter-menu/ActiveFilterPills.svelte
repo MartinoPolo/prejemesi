@@ -12,6 +12,7 @@
 		onclearall: () => void;
 		removeFilterLabel: (label: string) => string;
 		triggerElement?: HTMLButtonElement | null;
+		disabled?: boolean;
 		class?: string;
 	}
 
@@ -21,6 +22,7 @@
 		onclearall,
 		removeFilterLabel,
 		triggerElement = null,
+		disabled = false,
 		class: className,
 	}: ActiveFilterPillsProps = $props();
 
@@ -59,6 +61,7 @@
 				<button
 					bind:this={pillRemoveButtons[item.id]}
 					type="button"
+					{disabled}
 					class="grid size-6 shrink-0 place-items-center rounded-full text-current hover:bg-[color-mix(in_oklab,currentColor_24%,transparent)] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-1 focus-visible:outline-current"
 					aria-label={removeFilterLabel(item.label)}
 					onclick={() => removeActiveFilter(item)}
@@ -68,7 +71,7 @@
 			</span>
 		</SimpleTooltip>
 	{/each}
-	<Button size="sm" intent="ghost" class="min-w-0 max-w-full" onclick={clearAllFilters}
+	<Button size="sm" intent="ghost" class="min-w-0 max-w-full" {disabled} onclick={clearAllFilters}
 		>{clearAllLabel}</Button
 	>
 </div>

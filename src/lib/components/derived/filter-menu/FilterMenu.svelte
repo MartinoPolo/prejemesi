@@ -26,6 +26,7 @@
 		onopenchange?: (open: boolean) => void;
 		triggerElement?: HTMLButtonElement | null;
 		triggerClass?: string;
+		disabled?: boolean;
 		class?: string;
 	}
 
@@ -46,6 +47,7 @@
 		onopenchange,
 		triggerElement = $bindable(null),
 		triggerClass,
+		disabled = false,
 		class: className,
 	}: FilterMenuProps = $props();
 
@@ -67,6 +69,7 @@
 				<Button
 					{...props}
 					bind:ref={triggerElement}
+					{disabled}
 					size="md"
 					intent="outline"
 					class={cn('min-w-0 max-w-full', triggerClass)}
@@ -105,6 +108,7 @@
 				<DropdownMenu.GroupHeading>{menuHeading}</DropdownMenu.GroupHeading>
 				{#each definitions as definition (definition.id)}
 					<DropdownMenu.CheckboxItem
+						{disabled}
 						class="min-w-0 whitespace-normal break-words"
 						bind:checked={
 							() => definition.checked, (checked) => definition.onchange(checked)
@@ -122,6 +126,7 @@
 					<DropdownMenu.GroupHeading>{facet.label}</DropdownMenu.GroupHeading>
 					{#each facet.options as option (option.value)}
 						<DropdownMenu.CheckboxItem
+							{disabled}
 							class="min-w-0 whitespace-normal break-words"
 							bind:checked={
 								() => option.checked, (checked) => option.onchange(checked)
@@ -137,6 +142,7 @@
 			{#if activeFilters.length > 0}
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item
+					{disabled}
 					class={cn(
 						'whitespace-normal break-words',
 						!alwaysShowClearAllInMenu && 'sm:hidden',
@@ -153,6 +159,7 @@
 		<ActiveFilterPills
 			class="hidden sm:flex"
 			items={activeFilters}
+			{disabled}
 			{clearAllLabel}
 			{onclearall}
 			{removeFilterLabel}

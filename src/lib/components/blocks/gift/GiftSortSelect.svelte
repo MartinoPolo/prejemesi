@@ -11,6 +11,7 @@
 		onchange: (sort: GiftSortOption) => void;
 		open?: boolean;
 		onopenchange?: (open: boolean) => void;
+		disabled?: boolean;
 		class?: string;
 	}
 
@@ -19,6 +20,7 @@
 		onchange,
 		open = false,
 		onopenchange,
+		disabled = false,
 		class: className,
 	}: GiftSortSelectProps = $props();
 
@@ -46,6 +48,7 @@
 	{value}
 	{open}
 	onOpenChange={onopenchange}
+	{disabled}
 	onValueChange={(newValue) => {
 		if (isGiftSortOption(newValue)) {
 			onchange(newValue);
