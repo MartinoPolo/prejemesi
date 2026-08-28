@@ -16,8 +16,8 @@ function localizedPathname(pathname: string): string {
 	return withoutLocale === '' ? '/' : withoutLocale;
 }
 
-function isPrivateWishlistChildPath(pathname: string): boolean {
-	return /^\/w\/[^/]+\/.+/.test(pathname);
+function isWishlistPath(pathname: string): boolean {
+	return /^\/w\/[^/]+(?:\/.*)?$/.test(pathname);
 }
 
 export function shouldNoindexPath(pathname: string): boolean {
@@ -29,6 +29,6 @@ export function shouldNoindexPath(pathname: string): boolean {
 		path === '/learn' ||
 		path === '/api/auth' ||
 		path.startsWith('/api/auth/') ||
-		isPrivateWishlistChildPath(path)
+		isWishlistPath(path)
 	);
 }
