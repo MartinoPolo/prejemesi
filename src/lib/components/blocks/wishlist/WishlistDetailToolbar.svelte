@@ -119,6 +119,10 @@
 			sortOption !== GIFT_SORT_OPTIONS.ownerOrder ||
 			grouping !== GIFT_GROUPING_OPTIONS.none,
 	);
+	const showManagementActions = $derived(canManage && !isArchived);
+	const showSettingsAction = $derived(showManagementActions || adminSettingsAvailable);
+	const showUnfollowAction = $derived(!canManage && !isArchived && isAuthenticated);
+	const showActions = $derived(showManagementActions || showSettingsAction || showUnfollowAction);
 
 	const GROUPING_LABELS = {
 		none: () => m.gift_grouping_none(),
@@ -242,7 +246,7 @@
 	class="wishlist-toolbar min-w-0 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
 	data-testid="wishlist-toolbar"
 >
-	<div class="toolbar-layout min-w-0" class:toolbar-layout-has-filters={activeFilters.length > 0}>
+	<div class="toolbar-layout min-w-0">
 		<div class="toolbar-controls min-w-0" data-testid="wishlist-toolbar-controls">
 			{#if reorderMode && canReorder}
 				<div class="toolbar-reorder-state">
@@ -425,53 +429,55 @@
 				</div>
 			{/if}
 
-			<div class="toolbar-actions min-w-0" data-testid="wishlist-toolbar-actions">
-				{#if (canManage && !isArchived) || adminSettingsAvailable}
-					<SimpleTooltip text={m.wishlist_settings_title()}>
+			{#if showActions}
+				<div class="toolbar-actions min-w-0" data-testid="wishlist-toolbar-actions">
+					{#if showSettingsAction}
+						<SimpleTooltip text={m.wishlist_settings_title()}>
+							<Button
+								size="icon"
+								intent="outline"
+								aria-label={m.wishlist_settings_title()}
+								onclick={onsettings}
+							>
+								<SettingsIcon />
+							</Button>
+						</SimpleTooltip>
+					{/if}
+					{#if showUnfollowAction}
 						<Button
-							size="icon"
-							intent="outline"
-							aria-label={m.wishlist_settings_title()}
-							onclick={onsettings}
+							size="md"
+							intent="ghost"
+							class="min-w-0 max-w-48 shrink"
+							title={m.wishlist_detail_unfollow()}
+							onclick={onunfollow}
 						>
-							<SettingsIcon />
+							<span class="min-w-0 truncate">{m.wishlist_detail_unfollow()}</span>
 						</Button>
-					</SimpleTooltip>
-				{/if}
-				{#if !canManage && !isArchived && isAuthenticated}
-					<Button
-						size="md"
-						intent="ghost"
-						class="min-w-0 max-w-48 shrink"
-						title={m.wishlist_detail_unfollow()}
-						onclick={onunfollow}
-					>
-						<span class="min-w-0 truncate">{m.wishlist_detail_unfollow()}</span>
-					</Button>
-				{/if}
-				{#if canManage && !isArchived}
-					<SimpleTooltip text={m.batch_add_toolbar_label()}>
+					{/if}
+					{#if showManagementActions}
+						<SimpleTooltip text={m.batch_add_toolbar_label()}>
+							<Button
+								size="icon"
+								intent="outline"
+								aria-label={m.batch_add_toolbar_label()}
+								onclick={onbatchadd}
+							>
+								<ListPlusIcon />
+							</Button>
+						</SimpleTooltip>
 						<Button
-							size="icon"
-							intent="outline"
-							aria-label={m.batch_add_toolbar_label()}
-							onclick={onbatchadd}
+							size="md"
+							class="min-w-0 max-w-44 shrink"
+							aria-label={m.wishlist_detail_add_gift_label()}
+							title={m.wishlist_detail_add_wish()}
+							onclick={onaddgift}
 						>
-							<ListPlusIcon />
+							<PlusIcon data-icon="inline-start" />
+							<span class="min-w-0 truncate">{m.wishlist_detail_add_wish()}</span>
 						</Button>
-					</SimpleTooltip>
-					<Button
-						size="md"
-						class="min-w-0 max-w-44 shrink"
-						aria-label={m.wishlist_detail_add_gift_label()}
-						title={m.wishlist_detail_add_wish()}
-						onclick={onaddgift}
-					>
-						<PlusIcon data-icon="inline-start" />
-						<span class="min-w-0 truncate">{m.wishlist_detail_add_wish()}</span>
-					</Button>
-				{/if}
-			</div>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -485,8 +491,11 @@
 	}
 
 	.toolbar-layout {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr);
+		display: flex;
+		min-width: 0;
+		max-width: 100%;
+		flex-wrap: wrap;
+		align-items: center;
 		gap: 0.625rem;
 	}
 
@@ -502,6 +511,9 @@
 
 	.toolbar-controls {
 		display: grid;
+		width: max-content;
+		max-width: 100%;
+		flex: 0 0 auto;
 		grid-template-columns: minmax(0, 1fr);
 		align-items: center;
 		gap: 0.625rem;
@@ -518,6 +530,7 @@
 	.toolbar-display-controls {
 		display: flex;
 		min-width: 0;
+		max-width: 100%;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 0.625rem;
@@ -545,14 +558,18 @@
 		display: flex;
 		width: max-content;
 		max-width: 100%;
+		flex: 0 0 auto;
 		flex-wrap: nowrap;
 		align-items: center;
-		justify-self: end;
+		align-self: flex-end;
+		margin-inline-start: auto;
 		gap: 0.5rem;
 	}
 
 	.toolbar-active-filters {
 		display: flex;
+		max-width: 100%;
+		flex: 1 1 12rem;
 	}
 
 	@container wishlist-toolbar (min-width: 40rem) {
@@ -563,8 +580,8 @@
 		}
 
 		.toolbar-display-controls {
-			width: min(100%, max-content);
-			flex: 0 1 auto;
+			width: max-content;
+			flex: 0 0 auto;
 			flex-wrap: nowrap;
 		}
 
@@ -577,47 +594,10 @@
 			width: 9.5rem;
 		}
 
-		.toolbar-active-filters {
-			display: flex;
-		}
-	}
-
-	@container wishlist-toolbar (min-width: 66rem) {
-		.toolbar-layout {
-			grid-template-columns: minmax(0, 1fr) max-content;
-		}
-
-		.toolbar-controls {
-			grid-column: 1;
-			grid-row: 1;
-			flex-wrap: nowrap;
-		}
-
 		.toolbar-edit-controls {
 			margin-inline-start: 0.25rem;
 			border-inline-start: 2px solid color-mix(in oklab, var(--ink) 25%, transparent);
 			padding-inline-start: 0.75rem;
-		}
-
-		.toolbar-actions {
-			grid-column: 2;
-			grid-row: 1;
-			align-self: center;
-		}
-
-		.toolbar-layout-has-filters .toolbar-controls {
-			grid-column: 1 / -1;
-		}
-
-		.toolbar-layout-has-filters .toolbar-active-filters {
-			grid-column: 1;
-			grid-row: 2;
-		}
-
-		.toolbar-layout-has-filters .toolbar-actions {
-			grid-column: 2;
-			grid-row: 2;
-			align-self: end;
 		}
 	}
 </style>
