@@ -20,10 +20,11 @@ describe('WishlistCropEditor loaded image', () => {
 		});
 
 		const change = screen.getByRole('button', { name: m.wishlist_image_change() });
+		const remove = screen.getByRole('button', { name: m.wishlist_image_remove() });
 		await expect.element(change).toBeVisible();
-		await expect
-			.element(screen.getByRole('button', { name: m.wishlist_image_remove() }))
-			.toBeVisible();
+		await expect.element(remove).toBeVisible();
+		expect(change.element()).toHaveClass('h-9');
+		expect(remove.element()).toHaveClass('h-9');
 		await expect.element(screen.getByText(m.image_upload_dropzone())).not.toBeInTheDocument();
 		const dragOver = new DragEvent('dragover', { bubbles: true, cancelable: true });
 		change.element().dispatchEvent(dragOver);
