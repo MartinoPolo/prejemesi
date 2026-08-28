@@ -1025,7 +1025,6 @@
 	"gift_category_custom_placeholder": "Vlastní kategorie",
 	"gift_category_create": "Vytvořit kategorii",
 	"server_error_gift_category_not_found": "Kategorie nebyla nalezena.",
-	"server_error_gift_category_in_use": "Kategorie je použitá u přání, proto ji nelze vypnout ani smazat.",
 	"server_error_gift_category_preset_immutable": "Přednastavenou kategorii nelze přejmenovat ani smazat.",
 	"server_error_gift_category_label_conflict": "Kategorie se stejným významem už existuje.",
 	"server_error_gift_category_wishlist_mismatch": "Vybraná kategorie nepatří k tomuto seznamu nebo není zapnutá.",

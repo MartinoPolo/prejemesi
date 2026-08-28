@@ -1025,7 +1025,6 @@
 	"gift_category_custom_placeholder": "Custom category",
 	"gift_category_create": "Create category",
 	"server_error_gift_category_not_found": "Category was not found.",
-	"server_error_gift_category_in_use": "This category is used by gifts, so it cannot be disabled or deleted.",
 	"server_error_gift_category_preset_immutable": "Preset categories cannot be renamed or deleted.",
 	"server_error_gift_category_label_conflict": "A category with the same meaning already exists.",
 	"server_error_gift_category_wishlist_mismatch": "The selected category does not belong to this wishlist or is not enabled.",

@@ -4,15 +4,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import { GIFT_CATEGORY_PRESETS } from '$lib/modules/gift-categories/types.js';
 import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
+import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
 const remoteMocks = vi.hoisted(() => ({
 	categories: [] as ManagedGiftCategory[],
+	refresh: vi.fn(),
 	save: vi.fn(),
 }));
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
-	getGiftCategories: vi.fn(() => ({ current: remoteMocks.categories })),
+	getGiftCategories: vi.fn(() => ({
+		current: remoteMocks.categories,
+		refresh: remoteMocks.refresh,
+	})),
 	saveGiftCategorySettingsCommand: remoteMocks.save,
 }));
 
@@ -37,6 +42,8 @@ function category(overrides: Partial<ManagedGiftCategory>): ManagedGiftCategory 
 }
 
 beforeEach(() => {
+	remoteMocks.refresh.mockReset();
+	remoteMocks.refresh.mockResolvedValue(undefined);
 	remoteMocks.save.mockReset();
 	remoteMocks.categories = [];
 });
@@ -127,6 +134,24 @@ describe('WishlistCategorySettings', () => {
 		expect(remoteMocks.save.mock.calls[1]?.[0]).toMatchObject({
 			confirmedRemovalCategoryIds: [],
 		});
+	});
+
+	it('refreshes and requires fresh confirmation after a concurrent category conflict', async () => {
+		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 1 })];
+		remoteMocks.save.mockRejectedValue(
+			new Error(SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH),
+		);
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+
+		await screen.getByRole('button', { name: m.delete() }).click();
+		await page.getByTestId('gift-category-remove-confirm').click();
+		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
+
+		await vi.waitFor(() => expect(remoteMocks.refresh).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(findInput('Sport')).toBeDefined());
+		remoteMocks.save.mockResolvedValue(undefined);
+		await screen.getByRole('button', { name: m.delete() }).click();
+		await expect.element(page.getByRole('dialog')).toBeVisible();
 	});
 
 	it('creates from the focused input on Enter without submitting the settings form', async () => {

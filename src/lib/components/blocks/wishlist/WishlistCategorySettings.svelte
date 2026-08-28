@@ -16,7 +16,11 @@
 		type GiftCategoryPresetKey,
 	} from '$lib/modules/gift-categories/types.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
-	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
+	import {
+		getServerErrorCode,
+		translateServerError,
+	} from '$lib/modules/errors/translate_server_error.js';
+	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
@@ -169,8 +173,8 @@
 		pendingRemoval = null;
 	}
 	function restoreRemovalTrigger(event: Event) {
-		event.preventDefault();
 		if (removalTrigger?.isConnected === true) {
+			event.preventDefault();
 			removalTrigger.focus();
 		}
 		removalTrigger = null;
@@ -194,6 +198,22 @@
 			toastSuccess(m.gift_categories_saved());
 			onsaved?.();
 		} catch (thrown) {
+			if (
+				getServerErrorCode(thrown) ===
+				SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH
+			) {
+				confirmedRemovalCategoryIds = [];
+				baseline = '';
+				seededSignature = '';
+				try {
+					await categoriesQuery.refresh();
+				} catch (refreshError) {
+					console.error(
+						'Failed to refresh category settings after conflict:',
+						refreshError,
+					);
+				}
+			}
 			toastError(translateServerError(thrown));
 		} finally {
 			saving = false;
