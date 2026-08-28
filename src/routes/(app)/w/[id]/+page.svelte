@@ -30,6 +30,10 @@
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
 	import { createIdentityLayoutMotion } from '$lib/motion/layout_motion.js';
+	import {
+		createGiftReceivedMotion,
+		type GiftReceivedMotionSnapshot,
+	} from '$lib/components/blocks/wishlist/gift_received_motion.js';
 	import { setLikesContext } from '$lib/modules/likes/likes.context.svelte.js';
 	import { setSharingContext } from '$lib/modules/sharing/sharing.context.svelte.js';
 	import { wishlistSocialDescription } from '$lib/modules/sharing/social_description.js';
@@ -553,9 +557,12 @@
 	}
 
 	let wishlistPageElement = $state<HTMLElement | null>(null);
+	let receivedAnnouncement = $state('');
 	const filterLayoutMotion = createIdentityLayoutMotion();
+	const receivedGiftMotion = createGiftReceivedMotion();
 
 	async function handleFilterChange(filters: GiftFilters) {
+		receivedGiftMotion.cancel();
 		const root = wishlistPageElement;
 		if (root === null) {
 			giftsContext.filters.current = filters;
@@ -657,16 +664,49 @@
 		}
 	}
 
+	function findGiftElement(root: ParentNode, giftId: string): HTMLElement | null {
+		for (const element of root.querySelectorAll<HTMLElement>(
+			'[data-gift-item][data-gift-id]',
+		)) {
+			if (element.dataset.giftId === giftId) {
+				return element;
+			}
+		}
+		return null;
+	}
+
 	async function handleReceived(giftId: string, received: boolean) {
+		const root = wishlistPageElement;
+		const source = root === null ? null : findGiftElement(root, giftId);
+		const snapshot: GiftReceivedMotionSnapshot | null =
+			root === null || source === null
+				? null
+				: receivedGiftMotion.capture(giftId, source, root);
+		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
 		try {
 			await markGiftReceived({ giftId, received });
+			// Receiving has always revealed the received section. Keep that production semantic,
+			// but fold it into this one captured layout run rather than starting filter motion.
 			if (received && !giftsContext.filters.current.showReceived) {
-				await handleFilterChange({
+				giftsContext.filters.current = {
 					...giftsContext.filters.current,
 					showReceived: true,
-				});
+				};
+			}
+			await tick();
+			const settled =
+				snapshot === null || root === null
+					? true
+					: await receivedGiftMotion.play(snapshot, root);
+			if (settled) {
+				receivedAnnouncement = received
+					? m.gift_received_announcement({ name: giftName })
+					: m.gift_unreceived_announcement({ name: giftName });
 			}
 		} catch (thrown) {
+			if (snapshot !== null) {
+				receivedGiftMotion.discard(snapshot);
+			}
 			toastError(translateServerError(thrown));
 		}
 	}
@@ -909,7 +949,10 @@
 
 	// ── Lifecycle: record the visit on mount ──────────────────────────────────
 
-	onDestroy(() => filterLayoutMotion.destroy());
+	onDestroy(() => {
+		filterLayoutMotion.destroy();
+		receivedGiftMotion.destroy();
+	});
 
 	onMount(() => {
 		// One command per view for ANY authed user (issue #225): it upserts the visit that
@@ -927,6 +970,7 @@
 	// The legacy /w/<id>/settings route redirects here with ?settings=<tab>; open the
 	// modal on the requested tab, then strip the marker so reload/share won't reopen it.
 	afterNavigate(() => {
+		receivedGiftMotion.cancel();
 		const requestedTab = page.url.searchParams.get(WISHLIST_SETTINGS_QUERY_PARAM);
 		if (requestedTab === null) {
 			return;
@@ -1060,6 +1104,7 @@
 			onreordercancel={handleReorderCancel}
 		/>
 	{/if}
+	<p class="sr-only" aria-live="polite" aria-atomic="true">{receivedAnnouncement}</p>
 </div>
 
 <WishlistModals

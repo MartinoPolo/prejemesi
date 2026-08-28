@@ -17,6 +17,10 @@ interface IdentityLayoutMotionOptions {
 	reducedMotion?: () => boolean;
 }
 
+interface LayoutMotionPlayOptions {
+	excludeGiftIds?: ReadonlySet<string>;
+}
+
 function isVisibleRectangle(element: HTMLElement, rectangle: DOMRect): boolean {
 	if (!element.isConnected || element.hidden || rectangle.width <= 0 || rectangle.height <= 0) {
 		return false;
@@ -74,22 +78,38 @@ export function createIdentityLayoutMotion(options: IdentityLayoutMotionOptions 
 		};
 	}
 
-	function play(snapshot: LayoutMotionSnapshot, root: ParentNode, toolbar?: HTMLElement | null) {
+	async function play(
+		snapshot: LayoutMotionSnapshot,
+		root: ParentNode,
+		toolbar?: HTMLElement | null,
+		options: LayoutMotionPlayOptions = {},
+	) {
 		if (snapshot.run !== run || reducedMotion()) {
 			return;
 		}
+		const settlements: Promise<unknown>[] = [];
+		const animate = (
+			element: HTMLElement,
+			keyframes: Keyframe[],
+			timing: KeyframeAnimationOptions,
+		) => {
+			const animation = element.animate(keyframes, timing);
+			track(animation);
+			if (animation.finished !== undefined) {
+				settlements.push(animation.finished.catch(() => undefined));
+			}
+		};
 
 		if (toolbar?.isConnected && snapshot.toolbarHeight !== null) {
 			const nextHeight = toolbar.getBoundingClientRect().height;
 			if (nextHeight > 0 && nextHeight !== snapshot.toolbarHeight) {
-				track(
-					toolbar.animate(
-						[
-							{ height: `${snapshot.toolbarHeight}px`, overflow: 'clip' },
-							{ height: `${nextHeight}px`, overflow: 'clip' },
-						],
-						{ duration: TOOLBAR_REFLOW_DURATION, easing: STANDARD_EASING },
-					),
+				animate(
+					toolbar,
+					[
+						{ height: `${snapshot.toolbarHeight}px`, overflow: 'clip' },
+						{ height: `${nextHeight}px`, overflow: 'clip' },
+					],
+					{ duration: TOOLBAR_REFLOW_DURATION, easing: STANDARD_EASING },
 				);
 			}
 		}
@@ -99,7 +119,12 @@ export function createIdentityLayoutMotion(options: IdentityLayoutMotionOptions 
 			const id = element.dataset.giftId;
 			const previousPosition = id === undefined ? undefined : snapshot.gifts.get(id);
 			const nextPosition = id === undefined ? undefined : nextGifts.get(id);
-			if (previousPosition === undefined || nextPosition === undefined) {
+			if (
+				id === undefined ||
+				options.excludeGiftIds?.has(id) ||
+				previousPosition === undefined ||
+				nextPosition === undefined
+			) {
 				continue;
 			}
 			const translateX = previousPosition.left - nextPosition.left;
@@ -107,16 +132,16 @@ export function createIdentityLayoutMotion(options: IdentityLayoutMotionOptions 
 			if (translateX === 0 && translateY === 0) {
 				continue;
 			}
-			track(
-				element.animate(
-					[
-						{ transform: `translate(${translateX}px, ${translateY}px)` },
-						{ transform: 'translate(0, 0)' },
-					],
-					{ duration: GIFT_REFLOW_DURATION, easing: STANDARD_EASING },
-				),
+			animate(
+				element,
+				[
+					{ transform: `translate(${translateX}px, ${translateY}px)` },
+					{ transform: 'translate(0, 0)' },
+				],
+				{ duration: GIFT_REFLOW_DURATION, easing: STANDARD_EASING },
 			);
 		}
+		await Promise.all(settlements);
 	}
 
 	function destroy() {

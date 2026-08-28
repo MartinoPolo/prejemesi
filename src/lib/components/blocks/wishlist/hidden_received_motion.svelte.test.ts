@@ -62,10 +62,15 @@ describe('hidden received motion', () => {
 		const motion = createHiddenReceivedMotion({ reducedMotion: () => false });
 
 		const snapshot = motion.capture(source, document.body);
+		const clone = snapshot.retainedVisual!;
+
+		expect(clone.isConnected).toBe(false);
+		expect(source.isConnected).toBe(true);
+
 		source.remove();
 		const playing = motion.play(snapshot, document.body);
-		const clone = document.body.firstElementChild as HTMLElement;
 
+		expect(clone.isConnected).toBe(true);
 		expect(clone).not.toBe(source);
 		expect(clone.getAttribute('aria-hidden')).toBe('true');
 		expect(clone.inert).toBe(true);
@@ -168,7 +173,7 @@ describe('hidden received motion', () => {
 		expect(pending.animation.cancel).toHaveBeenCalledOnce();
 		expect(firstClone.isConnected).toBe(false);
 		expect(firstClone.getAttribute('style')).toBeNull();
-		expect(secondSnapshot.retainedVisual?.isConnected).toBe(true);
+		expect(secondSnapshot.retainedVisual?.isConnected).toBe(false);
 		motion.destroy();
 	});
 

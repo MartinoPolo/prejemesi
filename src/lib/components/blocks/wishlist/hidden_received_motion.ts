@@ -23,10 +23,12 @@ function stripIds(element: HTMLElement) {
 	}
 }
 
-function retainSourceVisual(source: HTMLElement): HTMLElement {
+function createSourceVisual(source: HTMLElement): HTMLElement {
 	const rectangle = source.getBoundingClientRect();
 	const clone = source.cloneNode(true) as HTMLElement;
 	stripIds(clone);
+	clone.removeAttribute('data-gift-item');
+	clone.removeAttribute('data-gift-id');
 	clone.setAttribute('aria-hidden', 'true');
 	clone.inert = true;
 	Object.assign(clone.style, {
@@ -41,7 +43,6 @@ function retainSourceVisual(source: HTMLElement): HTMLElement {
 		transformOrigin: 'center',
 		zIndex: '100',
 	});
-	source.ownerDocument.body.append(clone);
 	return clone;
 }
 
@@ -80,14 +81,18 @@ export function createHiddenReceivedMotion(options: HiddenReceivedMotionOptions 
 	function capture(source: HTMLElement, root: ParentNode): HiddenReceivedMotionSnapshot {
 		cancel();
 		const layout = layoutMotion.capture(root);
-		const retainedVisual = reducedMotion() ? null : retainSourceVisual(source);
+		const retainedVisual = reducedMotion() ? null : createSourceVisual(source);
 		if (retainedVisual !== null) {
 			retainedVisuals.add(retainedVisual);
 		}
 		return { run, layout, retainedVisual };
 	}
 
-	async function play(snapshot: HiddenReceivedMotionSnapshot, postUpdateRoot: ParentNode) {
+	async function play(
+		snapshot: HiddenReceivedMotionSnapshot,
+		postUpdateRoot: ParentNode,
+		awaitLayout = false,
+	) {
 		if (snapshot.run !== run || reducedMotion()) {
 			if (snapshot.retainedVisual !== null) {
 				removeRetainedVisual(snapshot.retainedVisual);
@@ -95,9 +100,10 @@ export function createHiddenReceivedMotion(options: HiddenReceivedMotionOptions 
 			return;
 		}
 		const visual = snapshot.retainedVisual;
-		if (visual === null || !visual.isConnected) {
+		if (visual === null) {
 			return;
 		}
+		visual.ownerDocument.body.append(visual);
 
 		const animation = visual.animate(
 			[
@@ -117,7 +123,10 @@ export function createHiddenReceivedMotion(options: HiddenReceivedMotionOptions 
 		}
 		removeRetainedVisual(visual);
 		if (snapshot.run === run) {
-			layoutMotion.play(snapshot.layout, postUpdateRoot);
+			const layoutSettlement = layoutMotion.play(snapshot.layout, postUpdateRoot);
+			if (awaitLayout) {
+				await layoutSettlement;
+			}
 		}
 	}
 
