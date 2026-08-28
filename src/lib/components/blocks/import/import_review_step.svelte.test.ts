@@ -44,4 +44,22 @@ describe('ImportReviewStep readiness', () => {
 			.fill('3');
 		await vi.waitFor(() => expect(latestReady(onready).drafts).toHaveLength(2));
 	});
+
+	it('keeps import review deletion controls without exposing batch insertion', async () => {
+		const screen = await render(ImportReviewStep, {
+			parsedRows: [
+				['Name', 'Quantity'],
+				['Kniha', '1'],
+			],
+			mode: WIZARD_MODE.append,
+			onready: vi.fn(),
+		});
+
+		await expect
+			.element(screen.getByRole('button', { name: m.draft_grid_remove_row() }).first())
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('button', { name: m.draft_grid_add_row() }))
+			.not.toBeInTheDocument();
+	});
 });
