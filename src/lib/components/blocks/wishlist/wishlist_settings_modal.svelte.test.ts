@@ -178,6 +178,60 @@ describe('WishlistSettingsModal import and export tab', () => {
 		expect(saveRect.bottom).toBeLessThanOrEqual(window.innerHeight);
 	});
 
+	it('widens this dialog and gives the desktop navigation six equal full-width columns', () => {
+		const screen = renderSettings();
+		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
+		const tablist = screen
+			.getByRole('tablist', { name: m.wishlist_settings_title() })
+			.element();
+
+		expect(dialog.classList).toContain('sm:max-w-[calc(100%-2rem)]');
+		expect(dialog.classList).toContain('xl:max-w-5xl');
+		expect(tablist.classList).toContain('lg:w-full');
+		expect(tablist.classList).toContain('lg:grid-cols-6');
+	});
+
+	it('uses a vertical sidebar at intermediate widths and conceals the mobile native scrollbar', () => {
+		const screen = renderSettings();
+		const tablist = screen
+			.getByRole('tablist', { name: m.wishlist_settings_title() })
+			.element();
+		const layout = tablist.parentElement!;
+
+		expect(layout.classList).toContain('sm:grid-cols-[12rem_minmax(0,1fr)]');
+		expect(layout.classList).toContain('lg:grid-cols-1');
+		expect(tablist.classList).toContain('sm:flex-col');
+		expect(tablist.classList).toContain('[scrollbar-width:none]');
+		expect(tablist.classList).toContain('[&::-webkit-scrollbar]:hidden');
+	});
+
+	it('reports the responsive visual orientation to assistive technology', async () => {
+		const screen = renderSettings();
+		const expectedOrientation = window.matchMedia('(min-width: 640px) and (max-width: 1023px)')
+			.matches
+			? 'vertical'
+			: 'horizontal';
+
+		await expect
+			.element(screen.getByRole('tablist', { name: m.wishlist_settings_title() }))
+			.toHaveAttribute('aria-orientation', expectedOrientation);
+	});
+
+	it('separates the Danger panel from navigation and lets it fill the content column', async () => {
+		const screen = renderSettings();
+		const tablist = screen
+			.getByRole('tablist', { name: m.wishlist_settings_title() })
+			.element();
+		await screen.getByRole('tab', { name: m.wishlist_settings_danger_tab() }).click();
+		const dangerPanel = screen
+			.getByRole('tabpanel', { name: m.wishlist_settings_danger_tab() })
+			.element();
+
+		expect(tablist.parentElement?.classList).toContain('gap-4');
+		expect(dangerPanel.parentElement?.classList).toContain('w-full');
+		expect(dangerPanel.classList).toContain('w-full');
+	});
+
 	it('keeps keyboard-selected tabs visible in the mobile-width overflow', async () => {
 		const screen = renderSettings();
 		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();

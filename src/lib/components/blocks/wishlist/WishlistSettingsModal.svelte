@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
@@ -163,6 +164,19 @@
 	let savingImage = $state(false);
 	let categoriesDirty = $state(false);
 	let savingCategories = $state(false);
+	let tabOrientation = $state<'horizontal' | 'vertical'>('horizontal');
+
+	onMount(() => {
+		const intermediateViewport = window.matchMedia(
+			'(min-width: 640px) and (max-width: 1023px)',
+		);
+		const updateOrientation = () => {
+			tabOrientation = intermediateViewport.matches ? 'vertical' : 'horizontal';
+		};
+		updateOrientation();
+		intermediateViewport.addEventListener('change', updateOrientation);
+		return () => intermediateViewport.removeEventListener('change', updateOrientation);
+	});
 
 	/** Re-seed the details form from the canonical server values (server trims/normalizes). */
 	function seedDetailsForm() {
@@ -374,17 +388,25 @@
      uploaded-but-unsaved image) survive tab switches; closing the dialog unmounts everything,
      matching the old leave-the-page reset. -->
 <Dialog.Root bind:open onOpenChange={handleOpenChange}>
-	<Dialog.Content size="2xl" class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0">
+	<Dialog.Content
+		size="2xl"
+		class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
+	>
 		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
 			<Dialog.Title>{m.wishlist_settings_title()}</Dialog.Title>
 			<Dialog.Description>{wishlist.title}</Dialog.Description>
 		</Dialog.Header>
 
-		<div class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+		<div
+			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
+				? 'grid w-full min-w-0 gap-4 sm:grid-cols-[12rem_minmax(0,1fr)] lg:grid-cols-1'
+				: ''}"
+		>
 			{#if canManage && !isArchived}
 				<Tabs.Root
 					aria-label={m.wishlist_settings_title()}
-					class="w-full max-w-full justify-self-stretch overflow-x-auto [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap sm:w-auto sm:justify-self-start"
+					aria-orientation={tabOrientation}
+					class="w-full max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap sm:flex sm:flex-col sm:items-stretch sm:overflow-visible sm:[&>[role=tab]]:w-full sm:[&>[role=tab]]:justify-start lg:grid lg:w-full lg:grid-cols-6 lg:[&>[role=tab]]:justify-center"
 				>
 					<Tabs.Tab
 						id="wishlist-settings-tab-details"
@@ -441,6 +463,7 @@
 					role="tabpanel"
 					id="wishlist-settings-panel-details"
 					aria-labelledby="wishlist-settings-tab-details"
+					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.details}
 				>
 					<div class="flex flex-col gap-4">
@@ -558,6 +581,7 @@
 					role="tabpanel"
 					id="wishlist-settings-panel-data"
 					aria-labelledby="wishlist-settings-tab-data"
+					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.data}
 				>
 					<div class="flex flex-col gap-4">
@@ -582,6 +606,7 @@
 					role="tabpanel"
 					id="wishlist-settings-panel-categories"
 					aria-labelledby="wishlist-settings-tab-categories"
+					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.categories}
 				>
 					<WishlistCategorySettings
@@ -596,6 +621,7 @@
 					role="tabpanel"
 					id="wishlist-settings-panel-appearance"
 					aria-labelledby="wishlist-settings-tab-appearance"
+					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.appearance}
 				>
 					<div class="flex flex-col gap-4">
@@ -615,6 +641,7 @@
 					role="tabpanel"
 					id="wishlist-settings-panel-image"
 					aria-labelledby="wishlist-settings-tab-image"
+					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.image}
 				>
 					<div class="flex flex-col gap-4">
@@ -639,6 +666,7 @@
 					role="tabpanel"
 					id="wishlist-settings-panel-danger"
 					aria-labelledby="wishlist-settings-tab-danger"
+					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.danger}
 				>
 					<div class="flex flex-col gap-4">
