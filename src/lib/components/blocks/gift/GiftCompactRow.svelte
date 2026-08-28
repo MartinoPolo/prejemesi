@@ -80,6 +80,7 @@
 				quantity={gift.quantity}
 				role={hideReservationState ? 'recipient' : role}
 				{reservedCount}
+				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
 				hideWhenOne
 			/>
 		</span>
