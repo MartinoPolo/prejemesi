@@ -2,7 +2,9 @@
 
 ## Local test environments
 
-`pnpm run test` serializes the client, server, and Storybook Vitest project groups because concurrent projects race on shared SvelteKit generated state. Tests within each project remain parallel.
+`pnpm run test` runs all client, server, and Storybook Vitest project groups serially because concurrent projects race on shared SvelteKit generated state. Tests within each project remain parallel.
+
+To run only the server project, use `pnpm exec vitest run --project server`.
 
 `pnpm run test:e2e` starts its own localhost-only development server with a non-production signing secret. R2 variables are intentionally absent, so uploads use the local in-memory fallback. Free the configured port or select one with `PLAYWRIGHT_DEV_SERVER_PORT` before running it.
 
