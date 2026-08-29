@@ -602,6 +602,7 @@
 		max-width: 100%;
 		flex: 0 0 auto;
 		flex-wrap: nowrap;
+		order: 1;
 		align-items: center;
 		align-self: flex-end;
 		margin-inline-start: auto;
@@ -610,8 +611,10 @@
 
 	.toolbar-active-filters {
 		display: flex;
+		width: 100%;
 		max-width: 100%;
-		flex: 1 1 12rem;
+		flex: 0 0 100%;
+		order: 2;
 	}
 
 	:global(.reorder-mode-action) {
