@@ -9,7 +9,7 @@ interface CategoryPosition {
 	top: number;
 }
 
-export interface CategoryMotionSnapshot {
+interface CategoryMotionSnapshot {
 	readonly run: number;
 	readonly positions: ReadonlyMap<string, CategoryPosition>;
 	readonly retainedVisual: HTMLElement | null;
