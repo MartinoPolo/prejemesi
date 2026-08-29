@@ -183,9 +183,9 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
 		await settingsDialog.getByPlaceholder('Vlastní kategorie').fill(categoryLabel);
 		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
-		// Keep one preset active so the gift editor can visibly render „Bez kategorie"
+		// Keep one default preset active so the gift editor can visibly render „Bez kategorie"
 		// after the custom category is removed.
-		await settingsDialog.getByText('Knihy', { exact: true }).click();
+		await expect(settingsDialog.getByRole('checkbox', { name: 'Knihy' })).toBeChecked();
 		await settingsDialog
 			.locator('[data-slot="dialog-footer"]')
 			.getByRole('button', { name: 'Uložit' })
