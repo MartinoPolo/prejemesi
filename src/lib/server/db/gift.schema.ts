@@ -36,6 +36,7 @@ export const giftCategory = pgTable(
 			.references(() => wishlist.id, { onDelete: 'cascade' }),
 		presetKey: text('preset_key'),
 		customLabel: text('custom_label'),
+		color: text('color').notNull(),
 		sortOrder: integer('sort_order').notNull().default(0),
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -62,6 +63,10 @@ export const giftCategory = pgTable(
 		nonblankCustomCheck: check(
 			'gift_category_custom_label_nonblank_check',
 			sql`${table.customLabel} IS NULL OR btrim(${table.customLabel}) <> ''`,
+		),
+		colorCheck: check(
+			'gift_category_color_hex_check',
+			sql`${table.color} ~ '^#[0-9A-Fa-f]{6}$'`,
 		),
 		validPresetCheck: check(
 			'gift_category_preset_key_check',

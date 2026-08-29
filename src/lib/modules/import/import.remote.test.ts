@@ -75,6 +75,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		wishlistId: 'giftCategory.wishlistId',
 		presetKey: 'giftCategory.presetKey',
 		customLabel: 'giftCategory.customLabel',
+		color: 'giftCategory.color',
 		sortOrder: 'giftCategory.sortOrder',
 		deletedAt: 'giftCategory.deletedAt',
 	},
@@ -502,6 +503,7 @@ describe('importGifts', () => {
 		mockDbInstance.pushResult([]); // advisory wishlist lock
 		mockDbInstance.pushResult(RANKED_LEVELS);
 		mockDbInstance.pushResult([]); // active category conflict check
+		mockDbInstance.pushResult([]); // historical custom-category palette count
 		mockDbInstance.pushResult([{ maxSort: 0 }]); // next category sort order
 		mockDbInstance.pushResult([
 			{
@@ -509,6 +511,7 @@ describe('importGifts', () => {
 				wishlistId: WISHLIST_ID,
 				presetKey: null,
 				customLabel: 'Outdoor',
+				color: '#0369A1',
 				sortOrder: 1,
 				deletedAt: null,
 				createdAt: new Date('2024-01-01T00:00:00Z'),

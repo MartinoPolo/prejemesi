@@ -15,7 +15,7 @@
 	const styles = giftCardVariants();
 </script>
 
-<span class={styles.reservedSticker()}>
+<span class={styles.reservedSticker()} data-testid="gift-reserved-sticker">
 	<span class={styles.reservedStickerLabel()}>
 		<CheckIcon class="size-3.5" />
 		{m.gift_reserved_overlay()}

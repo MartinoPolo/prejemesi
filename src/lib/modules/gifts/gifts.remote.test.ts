@@ -102,6 +102,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		wishlistId: 'giftCategory.wishlistId',
 		presetKey: 'giftCategory.presetKey',
 		customLabel: 'giftCategory.customLabel',
+		color: 'giftCategory.color',
 		sortOrder: 'giftCategory.sortOrder',
 		deletedAt: 'giftCategory.deletedAt',
 	},
@@ -297,6 +298,7 @@ function makeGiftRow(
 		categoryId: null,
 		categoryPresetKey: null,
 		categoryCustomLabel: null,
+		categoryColor: null,
 		categorySortOrder: null,
 		...overrides,
 	};
@@ -381,6 +383,7 @@ describe('getGiftsByWishlistShortId', () => {
 					categoryId: 'category-books',
 					categoryPresetKey: 'books',
 					categoryCustomLabel: null,
+					categoryColor: '#2563EB',
 					categorySortOrder: 2,
 				}),
 			]);
@@ -392,6 +395,7 @@ describe('getGiftsByWishlistShortId', () => {
 				id: 'category-books',
 				presetKey: 'books',
 				customLabel: null,
+				color: '#2563EB',
 				sortOrder: 2,
 			});
 			expect('reservedCount' in gift).toBe(false);

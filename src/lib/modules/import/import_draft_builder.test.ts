@@ -142,7 +142,13 @@ describe('buildDraftRows', () => {
 		];
 
 		const [draft] = buildDraftRows([['Kostky', 'Hračky']], columns, [
-			{ id: 'category-toys', presetKey: 'toys', customLabel: null, sortOrder: 0 },
+			{
+				id: 'category-toys',
+				presetKey: 'toys',
+				customLabel: null,
+				color: '#2563EB',
+				sortOrder: 0,
+			},
 		]);
 
 		expect(draft.categoryId).toBe('category-toys');

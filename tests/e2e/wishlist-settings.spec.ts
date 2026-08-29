@@ -134,7 +134,7 @@ test.describe('Wishlist settings – non-image editing', () => {
 		const customSection = settingsDialog
 			.getByRole('heading', { name: 'Vlastní kategorie' })
 			.locator('..');
-		const labels = customSection.getByRole('textbox');
+		const labels = customSection.locator('input:not([type="color"])');
 		await expect(labels).toHaveCount(2);
 		const values = await labels.evaluateAll((inputs) =>
 			inputs.map((input) => (input as HTMLInputElement).value),
@@ -159,7 +159,7 @@ test.describe('Wishlist settings – non-image editing', () => {
 		const persistedLabels = settingsDialog
 			.getByRole('heading', { name: 'Vlastní kategorie' })
 			.locator('..')
-			.getByRole('textbox');
+			.locator('input:not([type="color"])');
 		await expect(persistedLabels).toHaveCount(2);
 		await expect(persistedLabels.nth(alfaIndex)).toHaveValue('Kategorie Beta');
 		await expect(persistedLabels.nth(betaIndex)).toHaveValue('Kategorie Alfa');
