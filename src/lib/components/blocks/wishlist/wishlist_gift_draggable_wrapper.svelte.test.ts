@@ -122,6 +122,62 @@ describe('gift pointer reorder controller (#239)', () => {
 		items.forEach((item) => item.remove());
 	});
 
+	it('retains inherited wishlist theme properties and card layout in the body overlay', () => {
+		const theme = document.createElement('div');
+		theme.style.setProperty('--wishlist-surface', 'rgb(96, 24, 48)');
+		theme.style.setProperty('--frame-fill', 'rgb(244, 220, 228)');
+		const item = document.createElement('div');
+		item.dataset.giftId = 'themed';
+		item.style.display = 'grid';
+		item.style.gridTemplateRows = '40px 80px';
+		item.innerHTML =
+			'<div data-image style="background: var(--frame-fill)">Image</div><div data-body style="background: var(--wishlist-surface)"><span>Badge</span><button>Action</button></div>';
+		Object.defineProperty(item, 'getBoundingClientRect', {
+			value: () => ({
+				x: 12,
+				y: 20,
+				left: 12,
+				top: 20,
+				right: 212,
+				bottom: 140,
+				width: 200,
+				height: 120,
+				toJSON: () => {},
+			}),
+		});
+		theme.append(item);
+		document.body.append(theme);
+		const controller = createGiftPointerReorderController({
+			getItemElements: () => [item],
+			getItemIds: () => ['themed'],
+			onPreviewOrder: () => {},
+			onCommitOrder: () => {},
+			onCancelOrder: () => {},
+		});
+
+		controller.start(pointer('pointerdown', 13, 30, 40), 0);
+		const overlay = document.querySelector<HTMLElement>('[data-gift-reorder-overlay]')!;
+		const image = overlay.querySelector<HTMLElement>('[data-image]')!;
+		const body = overlay.querySelector<HTMLElement>('[data-body]')!;
+
+		expect(overlay.parentElement).toBe(document.body);
+		expect(overlay.style.width).toBe('200px');
+		expect(overlay.style.height).toBe('120px');
+		expect(overlay.style.getPropertyValue('--wishlist-surface')).toBe('rgb(96, 24, 48)');
+		expect(overlay.style.getPropertyValue('--frame-fill')).toBe('rgb(244, 220, 228)');
+		expect(getComputedStyle(body).backgroundColor).toBe('rgb(96, 24, 48)');
+		expect(getComputedStyle(image).backgroundColor).toBe('rgb(244, 220, 228)');
+		expect(Array.from(overlay.children).map((child) => child.textContent)).toEqual([
+			'Image',
+			'BadgeAction',
+		]);
+		expect(body.querySelector('span')?.textContent).toBe('Badge');
+		expect(body.querySelector('button')?.textContent).toBe('Action');
+
+		controller.destroy();
+		theme.remove();
+	});
+
 	it('keeps stationary boundary hit testing anchored when preview layout shifts under it', () => {
 		let renderedIds = ['a', 'b', 'c'];
 		let shiftedByPreview = false;

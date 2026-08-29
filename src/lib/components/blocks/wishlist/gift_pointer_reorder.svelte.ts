@@ -128,10 +128,20 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 
 	function createOverlay(element: HTMLElement, event: PointerEvent) {
 		const rect = element.getBoundingClientRect();
+		const sourceStyle = getComputedStyle(element);
 		pointerOffsetX = event.clientX - rect.left;
 		pointerOffsetY = event.clientY - rect.top;
 
 		const clone = element.cloneNode(true) as HTMLElement;
+		// The overlay is attached to <body>, outside the wishlist theme scope. Materialize every
+		// custom property visible at drag start so descendants keep the source card's themed
+		// backgrounds, image-frame fill, and other inherited presentation without hardcoding a
+		// palette here.
+		for (const property of sourceStyle) {
+			if (property.startsWith('--')) {
+				clone.style.setProperty(property, sourceStyle.getPropertyValue(property));
+			}
+		}
 		clone.querySelectorAll('[id]').forEach((child) => child.removeAttribute('id'));
 		clone.removeAttribute('id');
 		clone.setAttribute('aria-hidden', 'true');
