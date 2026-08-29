@@ -55,7 +55,7 @@ beforeEach(() => {
 });
 
 describe('gift category remote commands', () => {
-	it('awaits every server-driven refresh after persistence', async () => {
+	it('registers every server-driven refresh without awaiting query completion', async () => {
 		const wishlistRow = { shortId: 'short-1' };
 		const input = {
 			wishlistId: 'wishlist-1',
@@ -66,20 +66,12 @@ describe('gift category remote commands', () => {
 		};
 		verifyManagerAccess.mockResolvedValue({ wishlistRow });
 		saveGiftCategorySettings.mockResolvedValue(undefined);
-		const categoryRefresh = deferred();
-		const settingsRefresh = deferred();
-		const giftsRefresh = deferred();
-		singleFlightRefresh
-			.mockReturnValueOnce(categoryRefresh.promise)
-			.mockReturnValueOnce(settingsRefresh.promise)
-			.mockReturnValueOnce(giftsRefresh.promise);
+		singleFlightRefresh.mockImplementation(() => deferred().promise);
 
-		let settled = false;
-		const command = (saveGiftCategorySettingsCommand as unknown as Function)(
+		await (saveGiftCategorySettingsCommand as unknown as Function)(
 			{ user: { id: 'user-1' } },
 			input,
-		).then(() => (settled = true));
-		await vi.waitFor(() => expect(singleFlightRefresh).toHaveBeenCalledTimes(3));
+		);
 
 		expect(saveGiftCategorySettings).toHaveBeenCalledWith(input);
 		expect(singleFlightRefresh).toHaveBeenNthCalledWith(1, getGiftCategories, 'wishlist-1');
@@ -93,13 +85,5 @@ describe('gift category remote commands', () => {
 			getGiftsByWishlistShortId,
 			'short-1',
 		);
-		expect(settled).toBe(false);
-		categoryRefresh.resolve();
-		settingsRefresh.resolve();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(settled).toBe(false);
-		giftsRefresh.resolve();
-		await command;
-		expect(settled).toBe(true);
 	});
 });

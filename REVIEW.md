@@ -16,4 +16,4 @@
 
 ## Post-Fix Review
 
-Two autofix iterations completed. The second iteration made `singleFlightRefresh` genuinely awaitable and strengthened its scheduling tests. All four partial-review axes are clean.
+Two autofix iterations completed and all four partial-review axes finished clean. Later raw-Playwright verification exposed that the category command must use SvelteKit's documented fire-and-register refresh pattern; cloned framework source confirmed `void query.refresh()` registration is collected into the same command response. The command and its E2E regression now enforce that behavior.
