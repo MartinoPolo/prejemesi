@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { eq, and, or, ne, isNull, sql, count, type SQLWrapper } from 'drizzle-orm';
+import { eq, and, isNull, count, type SQLWrapper } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { isAppAdmin } from '$lib/server/admin.js';
@@ -41,8 +41,13 @@ import {
 	WISHLIST_ROLES,
 	type WishlistRole,
 } from './types.js';
-import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
 import { sortCategoryRow, buildRecentRow } from './home_overview_sort.js';
+import {
+	createOwnRolePrimitives,
+	createModeratedRolePrimitives,
+	createFollowedRolePrimitives,
+	recipientDisplayNameSql,
+} from './wishlist_role_query_primitives.js';
 import {
 	HOME_CATEGORY_CAP,
 	HOME_RECENT_CAP,
@@ -57,43 +62,16 @@ import {
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
-/**
- * SQL for "who the list is for": the linked recipient's account name (left-joined on
- * `recipientUserId`) or the free-text `recipientName`. Requires a leftJoin on `user`.
- */
-function recipientDisplayNameSql() {
-	return sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`;
-}
-
 export const getMyWishlists = guardedQuery(async ({ user }) => {
 	const database = getDb();
-
-	const totalGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('total_gifts'),
-		})
-		.from(gift)
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as('my_total_gifts_sq');
-
+	const ownRole = createOwnRolePrimitives(database, user.id);
 	const rows = await database
-		.select({
-			wishlist: wishlist,
-			totalGifts: sql<number>`coalesce(${totalGiftsSubquery.count}, 0)`,
-		})
+		.select(ownRole.projection)
 		.from(wishlist)
-		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
-		.where(and(eq(wishlist.recipientUserId, user.id), isNull(wishlist.deletedAt)))
+		.leftJoin(ownRole.totalGifts, eq(ownRole.totalGifts.wishlistId, wishlist.id))
+		.where(and(ownRole.predicate, isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
-
-	return rows.map(
-		(row): MyWishlist => ({
-			...row.wishlist,
-			totalGifts: Number(row.totalGifts),
-		}),
-	);
+	return rows.map(ownRole.map);
 });
 
 export const getWishlistByShortId = publicQuery(v.string(), async (authContext, shortId) => {
@@ -190,133 +168,40 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 
 export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) => {
 	const database = getDb();
-
-	const totalGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('total_gifts'),
-		})
-		.from(gift)
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as('total_gifts_sq');
-
-	const reservedGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(distinct ${gift.id})`.as('reserved_gifts'),
-		})
-		.from(gift)
-		.innerJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as('reserved_gifts_sq');
-
+	const role = createModeratedRolePrimitives(database, currentUser.id);
 	const rows = await database
-		.select({
-			wishlist: wishlist,
-			recipientDisplayName: recipientDisplayNameSql(),
-			totalGifts: sql<number>`coalesce(${totalGiftsSubquery.count}, 0)`,
-			reservedGifts: sql<number>`coalesce(${reservedGiftsSubquery.count}, 0)`,
-		})
+		.select(role.projection)
 		.from(moderatorAssignment)
 		.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
-		.leftJoin(reservedGiftsSubquery, eq(reservedGiftsSubquery.wishlistId, wishlist.id))
-		.where(
-			and(
-				eq(moderatorAssignment.userId, currentUser.id),
-				isNull(moderatorAssignment.deletedAt),
-				isNull(wishlist.deletedAt),
-			),
-		)
+		.leftJoin(role.totalGifts, eq(role.totalGifts.wishlistId, wishlist.id))
+		.leftJoin(role.reservedGifts, eq(role.reservedGifts.wishlistId, wishlist.id))
+		.where(and(role.predicate, isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
-
-	return rows.map(
-		(row): ModeratedWishlist => ({
-			...row.wishlist,
-			recipientDisplayName: row.recipientDisplayName,
-			totalGifts: Number(row.totalGifts),
-			reservedGifts: Number(row.reservedGifts),
-		}),
-	);
+	return rows.map(role.map);
 });
 
 export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) => {
 	const database = getDb();
-
-	const availableGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('available_gifts'),
-		})
-		.from(gift)
-		.leftJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
-		.where(and(isNull(gift.deletedAt), isNull(reservation.id)))
-		.groupBy(gift.wishlistId)
-		.as('available_gifts_sq');
-
-	const myReservationsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('my_reservations'),
-			purchasedCount:
-				sql<number>`count(*) filter (where ${reservation.purchasedAt} is not null)`.as(
-					'my_purchased',
-				),
-		})
-		.from(reservation)
-		.innerJoin(gift, eq(reservation.giftId, gift.id))
-		.where(
-			and(
-				eq(reservation.userId, currentUser.id),
-				isNull(reservation.deletedAt),
-				isNull(gift.deletedAt),
-			),
-		)
-		.groupBy(gift.wishlistId)
-		.as('my_reservations_sq');
-
+	const role = createFollowedRolePrimitives(database, currentUser.id);
 	const rows = await database
-		.select({
-			wishlist: wishlist,
-			recipientDisplayName: recipientDisplayNameSql(),
-			availableGifts: sql<number>`coalesce(${availableGiftsSubquery.count}, 0)`,
-			myReservations: sql<number>`coalesce(${myReservationsSubquery.count}, 0)`,
-			myPurchased: sql<number>`coalesce(${myReservationsSubquery.purchasedCount}, 0)`,
-			unfollowedAt: wishlistFollower.unfollowedAt,
-		})
+		.select(role.projection)
 		.from(wishlistFollower)
 		.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(availableGiftsSubquery, eq(availableGiftsSubquery.wishlistId, wishlist.id))
-		.leftJoin(myReservationsSubquery, eq(myReservationsSubquery.wishlistId, wishlist.id))
-		.where(
-			and(
-				eq(wishlistFollower.userId, currentUser.id),
-				or(isNull(wishlist.recipientUserId), ne(wishlist.recipientUserId, currentUser.id)),
-				isNull(wishlist.deletedAt),
-			),
-		)
+		.leftJoin(role.availableGifts, eq(role.availableGifts.wishlistId, wishlist.id))
+		.leftJoin(role.myReservations, eq(role.myReservations.wishlistId, wishlist.id))
+		// Dashboard history deliberately includes unfollowed and archived rows.
+		.where(and(role.predicate, isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
-
-	return rows.map(
-		(row): FollowedWishlist => ({
-			...row.wishlist,
-			recipientDisplayName: row.recipientDisplayName,
-			availableGifts: Number(row.availableGifts),
-			myReservations: Number(row.myReservations),
-			myPurchased: Number(row.myPurchased),
-			unfollowedAt: row.unfollowedAt,
-		}),
-	);
+	return rows.map(role.map);
 });
 
 /**
- * Aggregated data for the Přehled overview at /home (issue #225). Reuses the three role
- * queries' SQL bodies, each left-joined with `wishlist_visit` for the caller's last-visit
- * recency, and returns four rows: the mixed „Nedávné" shortcut (cap 6) plus the three
+ * Aggregated data for the Přehled overview at /home (issue #225). Uses shared role invariants
+ * while keeping home-only joins and filtering explicit. Each role is left-joined with
+ * `wishlist_visit` for the caller's last-visit recency, and returns four rows: the mixed
+ * „Nedávné" shortcut (cap 6) plus the three
  * category rows (cap 10 + true total). Archived lists are excluded everywhere.
  *
  * SSR-awaited by the page (issue #108 pattern): guardedQuery reads locals during SSR.
@@ -331,165 +216,71 @@ export const getHomeOverview = guardedQuery(
 			and(eq(wishlistVisit.wishlistId, wishlistId), eq(wishlistVisit.userId, currentUser.id));
 
 		// ── Own (recipient) lists — gift count only, never reservation data (invariant). ──
-		const ownTotalGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_own_total_gifts'),
-			})
-			.from(gift)
-			.where(isNull(gift.deletedAt))
-			.groupBy(gift.wishlistId)
-			.as('home_own_total_gifts_sq');
-
+		const ownRole = createOwnRolePrimitives(database, currentUser.id);
 		const ownRows = await database
-			.select({
-				wishlist: wishlist,
-				totalGifts: sql<number>`coalesce(${ownTotalGifts.count}, 0)`,
-				lastVisitedAt: wishlistVisit.lastVisitedAt,
-			})
+			.select({ ...ownRole.projection, lastVisitedAt: wishlistVisit.lastVisitedAt })
 			.from(wishlist)
-			.leftJoin(ownTotalGifts, eq(ownTotalGifts.wishlistId, wishlist.id))
+			.leftJoin(ownRole.totalGifts, eq(ownRole.totalGifts.wishlistId, wishlist.id))
 			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
-			.where(and(eq(wishlist.recipientUserId, currentUser.id), isNull(wishlist.deletedAt)));
-
+			.where(and(ownRole.predicate, isNull(wishlist.deletedAt)));
 		const own = ownRows.map(
-			(row): OwnHomeItem => ({
-				...row.wishlist,
-				totalGifts: Number(row.totalGifts),
-				lastVisitedAt: row.lastVisitedAt,
-			}),
+			(row): OwnHomeItem => ({ ...ownRole.map(row), lastVisitedAt: row.lastVisitedAt }),
 		);
 
 		// ── Moderated (správce) lists — reservation progress. ──
-		const modTotalGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_mod_total_gifts'),
-			})
-			.from(gift)
-			.where(isNull(gift.deletedAt))
-			.groupBy(gift.wishlistId)
-			.as('home_mod_total_gifts_sq');
-
-		const modReservedGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(distinct ${gift.id})`.as('home_mod_reserved_gifts'),
-			})
-			.from(gift)
-			.innerJoin(
-				reservation,
-				and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)),
-			)
-			.where(isNull(gift.deletedAt))
-			.groupBy(gift.wishlistId)
-			.as('home_mod_reserved_gifts_sq');
-
+		const moderatedRole = createModeratedRolePrimitives(database, currentUser.id);
 		const moderatedRows = await database
-			.select({
-				wishlist: wishlist,
-				recipientDisplayName: recipientDisplayNameSql(),
-				totalGifts: sql<number>`coalesce(${modTotalGifts.count}, 0)`,
-				reservedGifts: sql<number>`coalesce(${modReservedGifts.count}, 0)`,
-				lastVisitedAt: wishlistVisit.lastVisitedAt,
-			})
+			.select({ ...moderatedRole.projection, lastVisitedAt: wishlistVisit.lastVisitedAt })
 			.from(moderatorAssignment)
 			.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
 			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-			.leftJoin(modTotalGifts, eq(modTotalGifts.wishlistId, wishlist.id))
-			.leftJoin(modReservedGifts, eq(modReservedGifts.wishlistId, wishlist.id))
+			.leftJoin(
+				moderatedRole.totalGifts,
+				eq(moderatedRole.totalGifts.wishlistId, wishlist.id),
+			)
+			.leftJoin(
+				moderatedRole.reservedGifts,
+				eq(moderatedRole.reservedGifts.wishlistId, wishlist.id),
+			)
 			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
-			.where(
-				and(
-					eq(moderatorAssignment.userId, currentUser.id),
-					isNull(moderatorAssignment.deletedAt),
-					isNull(wishlist.deletedAt),
-				),
-			);
-
+			.where(and(moderatedRole.predicate, isNull(wishlist.deletedAt)));
 		const moderated = moderatedRows.map(
 			(row): ModeratedHomeItem => ({
-				...row.wishlist,
-				recipientDisplayName: row.recipientDisplayName,
-				totalGifts: Number(row.totalGifts),
-				reservedGifts: Number(row.reservedGifts),
+				...moderatedRole.map(row),
 				lastVisitedAt: row.lastVisitedAt,
 			}),
 		);
 
-		// ── Followed lists — available gifts + own reservations. Active follows only. ──
-		const followedAvailableGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_followed_available_gifts'),
-			})
-			.from(gift)
-			.leftJoin(
-				reservation,
-				and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)),
-			)
-			.where(and(isNull(gift.deletedAt), isNull(reservation.id)))
-			.groupBy(gift.wishlistId)
-			.as('home_followed_available_gifts_sq');
-
-		const followedMyReservations = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_followed_my_reservations'),
-				purchasedCount:
-					sql<number>`count(*) filter (where ${reservation.purchasedAt} is not null)`.as(
-						'home_followed_my_purchased',
-					),
-			})
-			.from(reservation)
-			.innerJoin(gift, eq(reservation.giftId, gift.id))
-			.where(
-				and(
-					eq(reservation.userId, currentUser.id),
-					isNull(reservation.deletedAt),
-					isNull(gift.deletedAt),
-				),
-			)
-			.groupBy(gift.wishlistId)
-			.as('home_followed_my_reservations_sq');
-
+		// ── Followed lists — active follows only on home. ──
+		const followedRole = createFollowedRolePrimitives(database, currentUser.id);
 		const followedRows = await database
 			.select({
-				wishlist: wishlist,
-				recipientDisplayName: recipientDisplayNameSql(),
-				availableGifts: sql<number>`coalesce(${followedAvailableGifts.count}, 0)`,
-				myReservations: sql<number>`coalesce(${followedMyReservations.count}, 0)`,
-				myPurchased: sql<number>`coalesce(${followedMyReservations.purchasedCount}, 0)`,
-				unfollowedAt: wishlistFollower.unfollowedAt,
+				...followedRole.projection,
 				followDate: wishlistFollower.createdAt,
 				lastVisitedAt: wishlistVisit.lastVisitedAt,
 			})
 			.from(wishlistFollower)
 			.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
 			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-			.leftJoin(followedAvailableGifts, eq(followedAvailableGifts.wishlistId, wishlist.id))
-			.leftJoin(followedMyReservations, eq(followedMyReservations.wishlistId, wishlist.id))
+			.leftJoin(
+				followedRole.availableGifts,
+				eq(followedRole.availableGifts.wishlistId, wishlist.id),
+			)
+			.leftJoin(
+				followedRole.myReservations,
+				eq(followedRole.myReservations.wishlistId, wishlist.id),
+			)
 			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
 			.where(
 				and(
-					eq(wishlistFollower.userId, currentUser.id),
-					or(
-						isNull(wishlist.recipientUserId),
-						ne(wishlist.recipientUserId, currentUser.id),
-					),
+					followedRole.predicate,
 					isNull(wishlistFollower.unfollowedAt),
 					isNull(wishlist.deletedAt),
 				),
 			);
-
 		const followed = followedRows.map(
 			(row): FollowedHomeItem => ({
-				...row.wishlist,
-				recipientDisplayName: row.recipientDisplayName,
-				availableGifts: Number(row.availableGifts),
-				myReservations: Number(row.myReservations),
-				myPurchased: Number(row.myPurchased),
-				unfollowedAt: row.unfollowedAt,
+				...followedRole.map(row),
 				followDate: row.followDate,
 				lastVisitedAt: row.lastVisitedAt,
 			}),
