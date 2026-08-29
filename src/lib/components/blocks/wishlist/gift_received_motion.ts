@@ -31,7 +31,6 @@ export interface GiftReceivedMotionSnapshot {
 
 export interface GiftReceivedMotionOptions {
 	reducedMotion?: () => boolean;
-	compactViewport?: () => boolean;
 	maxAverageFlightVelocityPxPerSecond?: number;
 }
 

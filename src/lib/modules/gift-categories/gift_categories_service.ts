@@ -88,58 +88,52 @@ async function ensureDefaultGiftCategories(wishlistId: string): Promise<void> {
 	});
 }
 
-export async function getManagedGiftCategories(wishlistId: string): Promise<ManagedGiftCategory[]> {
-	await ensureDefaultGiftCategories(wishlistId);
-	const database = getDb();
-	const rows = await database
+function loadManagedGiftCategoryRows(database: CategoryDatabase, wishlistId: string) {
+	return database
 		.select({
 			id: giftCategory.id,
 			presetKey: giftCategory.presetKey,
 			customLabel: giftCategory.customLabel,
 			color: giftCategory.color,
 			sortOrder: giftCategory.sortOrder,
+			deletedAt: giftCategory.deletedAt,
 			usedCount: sql<number>`count(${gift.id})::int`,
 		})
 		.from(giftCategory)
 		.leftJoin(gift, and(eq(gift.categoryId, giftCategory.id), isNull(gift.deletedAt)))
-		.where(and(eq(giftCategory.wishlistId, wishlistId), isNull(giftCategory.deletedAt)))
+		.where(eq(giftCategory.wishlistId, wishlistId))
 		.groupBy(giftCategory.id)
 		.orderBy(giftCategory.sortOrder);
-	return rows.map((row) => ({
-		id: row.id,
-		presetKey: row.presetKey as GiftCategoryPresetKey | null,
-		customLabel: row.customLabel,
-		color: row.color,
-		sortOrder: row.sortOrder,
-		usedCount: Number(row.usedCount),
-	}));
+}
+
+async function loadOrInitializeManagedGiftCategoryRows(wishlistId: string) {
+	const database = getDb();
+	let rows = await loadManagedGiftCategoryRows(database, wishlistId);
+	if (rows.length === 0) {
+		await ensureDefaultGiftCategories(wishlistId);
+		rows = await loadManagedGiftCategoryRows(database, wishlistId);
+	}
+	return rows;
+}
+
+export async function getManagedGiftCategories(wishlistId: string): Promise<ManagedGiftCategory[]> {
+	const rows = await loadOrInitializeManagedGiftCategoryRows(wishlistId);
+	return rows
+		.filter((row) => row.deletedAt === null)
+		.map((row) => ({
+			id: row.id,
+			presetKey: row.presetKey as GiftCategoryPresetKey | null,
+			customLabel: row.customLabel,
+			color: row.color,
+			sortOrder: row.sortOrder,
+			usedCount: Number(row.usedCount),
+		}));
 }
 
 export async function getManagedGiftCategorySettingsRows(
 	wishlistId: string,
 ): Promise<ManagedGiftCategorySettingsRow[]> {
-	const database = getDb();
-	const loadRows = () =>
-		database
-			.select({
-				id: giftCategory.id,
-				presetKey: giftCategory.presetKey,
-				customLabel: giftCategory.customLabel,
-				color: giftCategory.color,
-				sortOrder: giftCategory.sortOrder,
-				deletedAt: giftCategory.deletedAt,
-				usedCount: sql<number>`count(${gift.id})::int`,
-			})
-			.from(giftCategory)
-			.leftJoin(gift, and(eq(gift.categoryId, giftCategory.id), isNull(gift.deletedAt)))
-			.where(eq(giftCategory.wishlistId, wishlistId))
-			.groupBy(giftCategory.id)
-			.orderBy(giftCategory.sortOrder);
-	let rows = await loadRows();
-	if (rows.length === 0) {
-		await ensureDefaultGiftCategories(wishlistId);
-		rows = await loadRows();
-	}
+	const rows = await loadOrInitializeManagedGiftCategoryRows(wishlistId);
 	return rows.map((row) => ({
 		id: row.id,
 		presetKey: row.presetKey as GiftCategoryPresetKey | null,

@@ -62,7 +62,6 @@ describe('received gift motion', () => {
 			.mockReturnValue(flight.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 		source.remove();
@@ -84,7 +83,6 @@ describe('received gift motion', () => {
 			.mockReturnValue(flight.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 		source.remove();
@@ -106,7 +104,6 @@ describe('received gift motion', () => {
 			.mockReturnValue(flight.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 		source.remove();
@@ -133,7 +130,6 @@ describe('received gift motion', () => {
 			.mockReturnValue(flight.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 			maxAverageFlightVelocityPxPerSecond: 3000,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
@@ -158,7 +154,6 @@ describe('received gift motion', () => {
 				.mockReturnValue(flight.animation);
 			const motion = createGiftReceivedMotion({
 				reducedMotion: () => false,
-				compactViewport: () => false,
 				maxAverageFlightVelocityPxPerSecond: invalidVelocity,
 			});
 			const snapshot = motion.capture('moved', source, document.body);
@@ -192,7 +187,6 @@ describe('received gift motion', () => {
 			.mockReturnValue(flight.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 		source.remove();
@@ -218,7 +212,6 @@ describe('received gift motion', () => {
 			.mockReturnValueOnce(siblingFlip.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 
@@ -270,9 +263,7 @@ describe('received gift motion', () => {
 		]);
 
 		flight.finish();
-		await Promise.resolve();
-		await Promise.resolve();
-		expect(clone.isConnected).toBe(false);
+		await vi.waitFor(() => expect(clone.isConnected).toBe(false));
 		expect(destination.style.opacity).toBe('');
 		expect(siblingFlip.animation.cancel).not.toHaveBeenCalled();
 
@@ -288,7 +279,6 @@ describe('received gift motion', () => {
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(exit.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => true,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 		source.remove();
@@ -316,7 +306,6 @@ describe('received gift motion', () => {
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const snapshot = motion.capture('inserted', differentSource, document.body);
 		gift('inserted', { ...RECT, left: 300, right: 420, x: 300 });
@@ -331,7 +320,6 @@ describe('received gift motion', () => {
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => true,
-			compactViewport: () => false,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 		source.remove();
@@ -356,7 +344,6 @@ describe('received gift motion', () => {
 		vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(pending.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const failed = motion.capture('moved', source, document.body);
 		const clone = failed.retainedVisual!;
@@ -405,7 +392,6 @@ describe('received gift motion', () => {
 		vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(pending.animation);
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
-			compactViewport: () => false,
 		});
 		const first = motion.capture('moved', source, document.body);
 		source.remove();

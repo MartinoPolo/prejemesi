@@ -142,16 +142,20 @@ describe('gift category management service', () => {
 				customLabel: null,
 				color: '#7C3AED',
 				sortOrder: 0,
+				deletedAt: null,
 				usedCount: 0,
 			},
 		];
-		// Wishlist lock, configuration probe, preset insert, then the managed-category query.
+		// Load first, then wishlist lock, configuration probe, preset insert, and reload.
+		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult(presets);
 
-		await expect(getManagedGiftCategories(WISHLIST_ID)).resolves.toEqual(presets);
+		await expect(getManagedGiftCategories(WISHLIST_ID)).resolves.toEqual(
+			presets.map(({ deletedAt: _, ...preset }) => preset),
+		);
 		const insertCall = mockDbInstance.calls.find((call) => call.method === 'values');
 		expect(insertCall?.args[0]).toHaveLength(9);
 		expect(insertCall?.args[0]).toEqual(
@@ -160,6 +164,24 @@ describe('gift category management service', () => {
 				expect.objectContaining({ wishlistId: WISHLIST_ID, presetKey: 'personal-care' }),
 			]),
 		);
+	});
+
+	it('preserves an explicit all-disabled configuration without inserting defaults', async () => {
+		mockDbInstance.pushResult([
+			{
+				id: 'deleted-preset',
+				presetKey: 'games',
+				customLabel: null,
+				color: '#B91C1C',
+				sortOrder: 3,
+				deletedAt: new Date('2024-02-01T00:00:00Z'),
+				usedCount: 0,
+			},
+		]);
+
+		await expect(getManagedGiftCategories(WISHLIST_ID)).resolves.toEqual([]);
+		expect(mockDbInstance.calls.filter((call) => call.method === 'insert')).toHaveLength(0);
+		expect(mockDbInstance.calls.filter((call) => call.method === 'values')).toHaveLength(0);
 	});
 
 	it('returns active and soft-deleted presets with their persisted colors', async () => {

@@ -30,6 +30,7 @@ import {
 	guardedCommand,
 	guardedCommandNoArgs,
 	publicCommand,
+	singleFlightRefresh,
 } from './remote.js';
 
 const mockGetRequestEvent = vi.mocked(getRequestEvent);
@@ -176,6 +177,43 @@ describe('guardedCommandNoArgs', () => {
 
 		expect(() => wrappedCommand()).toThrowError(expect.objectContaining({ status: 401 }));
 		expect(handler).not.toHaveBeenCalled();
+	});
+});
+
+describe('singleFlightRefresh', () => {
+	it('awaits a remote query refresh and passes its argument', async () => {
+		mockGetRequestEvent.mockReturnValue({
+			isRemoteRequest: true,
+		} as ReturnType<typeof getRequestEvent>);
+		let resolveRefresh!: () => void;
+		const refreshPromise = new Promise<void>((resolve) => (resolveRefresh = resolve));
+		const refresh = vi.fn(() => refreshPromise);
+		const queryFunction = vi.fn(() => ({ refresh }));
+		let settled = false;
+
+		const result = singleFlightRefresh(queryFunction, 'wishlist-1').then(
+			() => (settled = true),
+		);
+		await Promise.resolve();
+
+		expect(queryFunction).toHaveBeenCalledWith('wishlist-1');
+		expect(refresh).toHaveBeenCalledOnce();
+		expect(settled).toBe(false);
+
+		resolveRefresh();
+		await result;
+		expect(settled).toBe(true);
+	});
+
+	it('does not refresh outside a remote request', async () => {
+		mockGetRequestEvent.mockReturnValue({
+			isRemoteRequest: false,
+		} as ReturnType<typeof getRequestEvent>);
+		const queryFunction = vi.fn(() => ({ refresh: vi.fn() }));
+
+		await expect(singleFlightRefresh(queryFunction, 'wishlist-1')).resolves.toBeUndefined();
+
+		expect(queryFunction).not.toHaveBeenCalled();
 	});
 });
 

@@ -2,6 +2,7 @@ import {
 	createIdentityLayoutMotion,
 	type LayoutMotionSnapshot,
 } from '$lib/motion/layout_motion.js';
+import { copyComputedCustomProperties } from './copy_computed_custom_properties.js';
 
 const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 const LOCAL_EXIT_DURATION = 340;
@@ -25,15 +26,8 @@ function stripIds(element: HTMLElement) {
 
 function createSourceVisual(source: HTMLElement): HTMLElement {
 	const rectangle = source.getBoundingClientRect();
-	const sourceStyle = getComputedStyle(source);
 	const clone = source.cloneNode(true) as HTMLElement;
-	// The retained card moves under <body>, outside the wishlist theme scope. Materialize all
-	// inherited custom properties so the moving card keeps the exact source palette and styling.
-	for (const property of sourceStyle) {
-		if (property.startsWith('--')) {
-			clone.style.setProperty(property, sourceStyle.getPropertyValue(property));
-		}
-	}
+	copyComputedCustomProperties(source, clone);
 	stripIds(clone);
 	clone.removeAttribute('data-gift-item');
 	clone.removeAttribute('data-gift-id');
