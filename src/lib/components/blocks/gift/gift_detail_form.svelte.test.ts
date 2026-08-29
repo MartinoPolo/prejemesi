@@ -63,6 +63,7 @@ const categoryOptions: ManagedGiftCategory[] = [
 		id: 'category-books',
 		presetKey: null,
 		customLabel: 'Books',
+		color: '#2563EB',
 		sortOrder: 0,
 		usedCount: 1,
 	},
@@ -94,6 +95,7 @@ describe('GiftDetailForm categories', () => {
 			id: `category-${index + 1}`,
 			presetKey: null,
 			customLabel: `Category ${index + 1}`,
+			color: '#2563EB',
 			sortOrder: index,
 			usedCount: 1,
 		}));

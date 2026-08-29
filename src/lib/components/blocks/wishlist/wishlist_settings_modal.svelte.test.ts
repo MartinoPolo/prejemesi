@@ -14,6 +14,7 @@ const remoteMocks = vi.hoisted(() => ({
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 	getGiftCategories: vi.fn(() => ({ current: [] })),
+	getGiftCategorySettingsRows: vi.fn(() => ({ current: [] })),
 	saveGiftCategorySettingsCommand: remoteMocks.saveGiftCategorySettingsCommand,
 }));
 
@@ -172,8 +173,9 @@ describe('WishlistSettingsModal import and export tab', () => {
 		expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledOnce();
 		expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledWith({
 			wishlistId: wishlist.id,
-			customCategories: [{ id: null, label: 'Nová kategorie' }],
+			customCategories: [{ id: null, label: 'Nová kategorie', color: '#0369A1' }],
 			presetKeys: [preset.key],
+			presetColors: [{ key: preset.key, color: preset.color }],
 			confirmedRemovalCategoryIds: [],
 		});
 		await vi.waitFor(() => expect(saveElement.disabled).toBe(true));

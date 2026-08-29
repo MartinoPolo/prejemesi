@@ -7,7 +7,7 @@
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { toastError, toastSuccess } from '$lib/components/base/toast/index.js';
 	import {
-		getGiftCategories,
+		getGiftCategorySettingsRows,
 		saveGiftCategorySettingsCommand,
 	} from '$lib/modules/gift-categories/gift_categories.remote.js';
 	import {
@@ -25,6 +25,7 @@
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import { tick } from 'svelte';
+	import { giftCategoryColorForIndex } from '$lib/modules/gift-categories/gift_category_colors.js';
 
 	interface Props {
 		wishlistId: string;
@@ -36,6 +37,7 @@
 		key: string;
 		id: string | null;
 		label: string;
+		color: string;
 		usedCount: number;
 	}
 	interface PendingRemoval {
@@ -47,13 +49,16 @@
 	}
 
 	let { wishlistId, ondirtychange, onsavingchange, onsaved }: Props = $props();
-	const categoriesQuery = $derived(getGiftCategories(wishlistId));
-	const categories = $derived(categoriesQuery.current ?? []);
+	const categoriesQuery = $derived(getGiftCategorySettingsRows(wishlistId));
+	const settingsRows = $derived(categoriesQuery.current ?? []);
+	const categories = $derived(settingsRows.filter((category) => category.enabled));
 	let customLabel = $state('');
 	let customDrafts = $state<CustomDraft[]>([]);
 	let enabledPresets = $state<GiftCategoryPresetKey[]>([]);
+	let presetColors = $state<Partial<Record<GiftCategoryPresetKey, string>>>({});
 	let baseline = $state('');
 	let seededSignature = $state('');
+	let nextCustomColorIndex = $state(0);
 	let saving = $state(false);
 	let pendingRemoval = $state<PendingRemoval | null>(null);
 	let confirmedRemovalCategoryIds = $state<string[]>([]);
@@ -61,15 +66,19 @@
 
 	function snapshot(): string {
 		return JSON.stringify({
-			custom: customDrafts.map(({ id, label }) => ({ id, label: label.trim() })),
-			presets: [...enabledPresets].sort(),
+			custom: customDrafts.map(({ id, label, color }) => ({
+				id,
+				label: label.trim(),
+				color,
+			})),
+			presets: [...enabledPresets].sort().map((key) => ({ key, color: presetColors[key] })),
 		});
 	}
 	const dirty = $derived(baseline !== '' && snapshot() !== baseline);
 	$effect(() => ondirtychange?.(dirty));
 	$effect(() => onsavingchange?.(saving));
 	$effect(() => {
-		const signature = JSON.stringify(categories);
+		const signature = JSON.stringify(settingsRows);
 		if (signature === seededSignature || dirty) {
 			return;
 		}
@@ -79,9 +88,18 @@
 				key: category.id,
 				id: category.id,
 				label: category.customLabel ?? '',
+				color: category.color,
 				usedCount: category.usedCount,
 			}));
 		enabledPresets = categories.flatMap((category) => category.presetKey ?? []);
+		presetColors = Object.fromEntries(
+			settingsRows.flatMap((category) =>
+				category.presetKey === null ? [] : [[category.presetKey, category.color]],
+			),
+		);
+		nextCustomColorIndex = settingsRows.filter(
+			(category) => category.presetKey === null,
+		).length;
 		baseline = snapshot();
 		seededSignature = signature;
 	});
@@ -92,9 +110,16 @@
 			return;
 		}
 		customDrafts = [
-			{ key: crypto.randomUUID(), id: null, label, usedCount: 0 },
+			{
+				key: crypto.randomUUID(),
+				id: null,
+				label,
+				color: giftCategoryColorForIndex(nextCustomColorIndex),
+				usedCount: 0,
+			},
 			...customDrafts,
 		];
+		nextCustomColorIndex += 1;
 		customLabel = '';
 	}
 	function handleCreateKeydown(event: KeyboardEvent) {
@@ -133,6 +158,7 @@
 			enabledPresets = enabledPresets.includes(key)
 				? enabledPresets
 				: [...enabledPresets, key];
+			presetColors[key] ??= GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color;
 			if (persisted !== undefined) {
 				confirmedRemovalCategoryIds = confirmedRemovalCategoryIds.filter(
 					(id) => id !== persisted.id,
@@ -186,11 +212,18 @@
 		try {
 			await saveGiftCategorySettingsCommand({
 				wishlistId,
-				customCategories: customDrafts.map(({ id, label }) => ({
+				customCategories: customDrafts.map(({ id, label, color }) => ({
 					id,
 					label: label.trim(),
+					color,
 				})),
 				presetKeys: enabledPresets,
+				presetColors: enabledPresets.map((key) => ({
+					key,
+					color:
+						presetColors[key] ??
+						GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color,
+				})),
 				confirmedRemovalCategoryIds,
 			});
 			confirmedRemovalCategoryIds = [];
@@ -250,9 +283,19 @@
 		{:else}
 			{#each customDrafts as category, index (category.key)}
 				<div
-					class="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+					class="flex items-center gap-2 rounded-lg border border-border border-l-4 bg-surface px-3 py-2"
+					style:border-left-color={category.color}
+					data-testid="gift-category-settings-card"
+					data-category-label={category.label}
 				>
 					<div class="flex min-w-0 flex-1 items-center gap-2">
+						<input
+							type="color"
+							bind:value={category.color}
+							class="size-9 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+							disabled={saving}
+							aria-label={category.label}
+						/>
 						<Input
 							bind:value={category.label}
 							maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
@@ -303,8 +346,14 @@
 				{@const usedCount =
 					categories.find((category) => category.presetKey === preset.key)?.usedCount ??
 					0}
+				{@const accentColor = checked
+					? (presetColors[preset.key] ?? preset.color)
+					: preset.color}
 				<label
-					class="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold"
+					class="flex items-center gap-3 rounded-lg border border-border border-l-4 bg-surface px-3 py-2 text-sm font-semibold"
+					style:border-left-color={accentColor}
+					data-testid="gift-category-settings-card"
+					data-category-label={label}
 				>
 					<Checkbox
 						{checked}
@@ -314,6 +363,16 @@
 					/>
 					<span class="min-w-0 flex-1">{label}</span>
 					{#if checked}
+						<input
+							type="color"
+							value={presetColors[preset.key] ?? preset.color}
+							oninput={(event) =>
+								(presetColors[preset.key] = event.currentTarget.value)}
+							onclick={(event) => event.stopPropagation()}
+							class="size-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+							disabled={saving}
+							aria-label={label}
+						/>
 						<span
 							data-testid="gift-category-used-count"
 							class="w-20 shrink-0 text-right text-xs font-normal text-muted-foreground"

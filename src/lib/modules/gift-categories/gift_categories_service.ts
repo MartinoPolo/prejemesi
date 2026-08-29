@@ -14,11 +14,13 @@ import {
 	normalizeGiftCategoryLabel,
 	presetLabelsByNormalizedValue,
 	type ManagedGiftCategory,
+	type ManagedGiftCategorySettingsRow,
 	type PublicGiftCategory,
 	type SaveGiftCategorySettingsInput,
 } from './types.js';
 import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import type { GiftDraftInput } from '$lib/modules/gifts/types.js';
+import { giftCategoryColorForIndex } from './gift_category_colors.js';
 
 type CategoryDatabase = ReturnType<typeof getDb> | GiftCreationTransaction;
 
@@ -43,6 +45,7 @@ export function publicGiftCategory(row: typeof giftCategory.$inferSelect): Publi
 		id: row.id,
 		presetKey: row.presetKey as GiftCategoryPresetKey | null,
 		customLabel: row.customLabel,
+		color: row.color,
 		sortOrder: row.sortOrder,
 	};
 }
@@ -66,6 +69,7 @@ export async function getManagedGiftCategories(wishlistId: string): Promise<Mana
 			id: giftCategory.id,
 			presetKey: giftCategory.presetKey,
 			customLabel: giftCategory.customLabel,
+			color: giftCategory.color,
 			sortOrder: giftCategory.sortOrder,
 			usedCount: sql<number>`count(${gift.id})::int`,
 		})
@@ -78,8 +82,39 @@ export async function getManagedGiftCategories(wishlistId: string): Promise<Mana
 		id: row.id,
 		presetKey: row.presetKey as GiftCategoryPresetKey | null,
 		customLabel: row.customLabel,
+		color: row.color,
 		sortOrder: row.sortOrder,
 		usedCount: Number(row.usedCount),
+	}));
+}
+
+export async function getManagedGiftCategorySettingsRows(
+	wishlistId: string,
+): Promise<ManagedGiftCategorySettingsRow[]> {
+	const database = getDb();
+	const rows = await database
+		.select({
+			id: giftCategory.id,
+			presetKey: giftCategory.presetKey,
+			customLabel: giftCategory.customLabel,
+			color: giftCategory.color,
+			sortOrder: giftCategory.sortOrder,
+			deletedAt: giftCategory.deletedAt,
+			usedCount: sql<number>`count(${gift.id})::int`,
+		})
+		.from(giftCategory)
+		.leftJoin(gift, and(eq(gift.categoryId, giftCategory.id), isNull(gift.deletedAt)))
+		.where(eq(giftCategory.wishlistId, wishlistId))
+		.groupBy(giftCategory.id)
+		.orderBy(giftCategory.sortOrder);
+	return rows.map((row) => ({
+		id: row.id,
+		presetKey: row.presetKey as GiftCategoryPresetKey | null,
+		customLabel: row.customLabel,
+		color: row.color,
+		sortOrder: row.sortOrder,
+		usedCount: Number(row.usedCount),
+		enabled: row.deletedAt === null,
 	}));
 }
 
@@ -169,6 +204,7 @@ async function enablePresetGiftCategoryWithDatabase(
 			.values({
 				wishlistId: params.wishlistId,
 				presetKey: params.presetKey,
+				color: GIFT_CATEGORY_PRESET_BY_KEY.get(params.presetKey)!.color,
 				sortOrder: await nextSortOrder(database, params.wishlistId),
 			})
 			.returning();
@@ -192,6 +228,17 @@ async function enablePresetGiftCategoryWithDatabase(
 	return publicGiftCategory(restored ?? { ...row, deletedAt: null, updatedAt: now });
 }
 
+async function nextCustomCategoryColor(
+	database: CategoryDatabase,
+	wishlistId: string,
+): Promise<string> {
+	const rows = await database
+		.select({ id: giftCategory.id })
+		.from(giftCategory)
+		.where(and(eq(giftCategory.wishlistId, wishlistId), isNull(giftCategory.presetKey)));
+	return giftCategoryColorForIndex(rows.length);
+}
+
 async function createCustomGiftCategoryWithDatabase(
 	database: CategoryDatabase,
 	params: { wishlistId: string; label: string },
@@ -206,6 +253,7 @@ async function createCustomGiftCategoryWithDatabase(
 		.values({
 			wishlistId: params.wishlistId,
 			customLabel: params.label.trim(),
+			color: await nextCustomCategoryColor(database, params.wishlistId),
 			sortOrder: await nextSortOrder(database, params.wishlistId),
 		})
 		.returning();
@@ -315,6 +363,14 @@ export async function saveGiftCategorySettings(
 		if (new Set(params.presetKeys).size !== params.presetKeys.length) {
 			error(400, SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH);
 		}
+		const presetColors = new Map(params.presetColors.map((item) => [item.key, item.color]));
+		if (
+			presetColors.size !== params.presetColors.length ||
+			presetColors.size !== params.presetKeys.length ||
+			params.presetKeys.some((key) => !presetColors.has(key))
+		) {
+			error(400, SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH);
+		}
 
 		const requestedIdSet = new Set(requestedIds);
 		const requestedPresetSet = new Set(params.presetKeys);
@@ -408,6 +464,7 @@ export async function saveGiftCategorySettings(
 					.values({
 						wishlistId: params.wishlistId,
 						customLabel: item.label,
+						color: item.color,
 						sortOrder: orderedIds.length,
 					})
 					.returning();
@@ -418,7 +475,7 @@ export async function saveGiftCategorySettings(
 			} else {
 				await tx
 					.update(giftCategory)
-					.set({ customLabel: item.label, updatedAt: now })
+					.set({ customLabel: item.label, color: item.color, updatedAt: now })
 					.where(eq(giftCategory.id, item.id));
 				orderedIds.push(item.id);
 			}
@@ -439,6 +496,7 @@ export async function saveGiftCategorySettings(
 					.values({
 						wishlistId: params.wishlistId,
 						presetKey: preset.key,
+						color: presetColors.get(preset.key) ?? preset.color,
 						sortOrder: orderedIds.length,
 					})
 					.returning();
@@ -449,7 +507,13 @@ export async function saveGiftCategorySettings(
 			} else {
 				await tx
 					.update(giftCategory)
-					.set({ deletedAt: null, updatedAt: now })
+					.set({
+						deletedAt: null,
+						// Re-enabling a soft-deleted preset preserves its last customization. A newly
+						// enabled preset has no row and starts from the curated definition above.
+						color: presetColors.get(preset.key) ?? row.color,
+						updatedAt: now,
+					})
 					.where(eq(giftCategory.id, row.id));
 				orderedIds.push(row.id);
 			}

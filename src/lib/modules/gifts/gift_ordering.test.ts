@@ -433,11 +433,23 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 describe('computeGiftSections — category grouping (issue #246)', () => {
 	const books = {
 		categoryId: 'category-books',
-		category: { id: 'category-books', presetKey: null, customLabel: 'Knihy', sortOrder: 2 },
+		category: {
+			id: 'category-books',
+			presetKey: null,
+			customLabel: 'Knihy',
+			color: '#2563EB',
+			sortOrder: 2,
+		},
 	};
 	const toys = {
 		categoryId: 'category-toys',
-		category: { id: 'category-toys', presetKey: null, customLabel: 'Hračky', sortOrder: 1 },
+		category: {
+			id: 'category-toys',
+			presetKey: null,
+			customLabel: 'Hračky',
+			color: '#D97706',
+			sortOrder: 1,
+		},
 	};
 
 	it('orders category groups by manager sort order and uncategorized last', () => {

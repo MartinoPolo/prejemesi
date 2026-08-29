@@ -46,11 +46,18 @@ describe('buildGiftCsv', () => {
 		const detection = detectColumns(parsed.rows);
 		const dataRows = parsed.rows.slice(detection.dataStartIndex, detection.dataEndIndex);
 		const drafts = buildDraftRows(dataRows, detection.columns, [
-			{ id: 'category-books', presetKey: 'books', customLabel: null, sortOrder: 0 },
+			{
+				id: 'category-books',
+				presetKey: 'books',
+				customLabel: null,
+				color: '#2563EB',
+				sortOrder: 0,
+			},
 			{
 				id: 'category-electronics',
 				presetKey: 'electronics',
 				customLabel: null,
+				color: '#2563EB',
 				sortOrder: 1,
 			},
 		]);

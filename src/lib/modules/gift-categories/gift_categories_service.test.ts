@@ -36,6 +36,7 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		wishlistId: 'giftCategory.wishlistId',
 		presetKey: 'giftCategory.presetKey',
 		customLabel: 'giftCategory.customLabel',
+		color: 'giftCategory.color',
 		sortOrder: 'giftCategory.sortOrder',
 		deletedAt: 'giftCategory.deletedAt',
 		createdAt: 'giftCategory.createdAt',
@@ -105,8 +106,11 @@ vi.mock('$lib/server/db/index.js', () => ({
 	getDb: vi.fn(() => mockDbInstance.db),
 }));
 
-const { resolveImportGiftCategoryAssignments, saveGiftCategorySettings } =
-	await import('./gift_categories_service.js');
+const {
+	getManagedGiftCategorySettingsRows,
+	resolveImportGiftCategoryAssignments,
+	saveGiftCategorySettings,
+} = await import('./gift_categories_service.js');
 
 const WISHLIST_ID = 'wishlist-1';
 const CATEGORY_ID = 'category-1';
@@ -116,6 +120,7 @@ const customCategory = {
 	wishlistId: WISHLIST_ID,
 	presetKey: null,
 	customLabel: 'Sport',
+	color: '#0369A1',
 	sortOrder: 0,
 	deletedAt: null,
 	createdAt: new Date('2024-01-01T00:00:00Z'),
@@ -128,6 +133,50 @@ beforeEach(() => {
 });
 
 describe('gift category management service', () => {
+	it('returns active and soft-deleted presets with their persisted colors', async () => {
+		mockDbInstance.pushResult([
+			{
+				id: 'active-category',
+				presetKey: 'books',
+				customLabel: null,
+				color: '#2563EB',
+				sortOrder: 0,
+				deletedAt: null,
+				usedCount: 2,
+			},
+			{
+				id: 'deleted-preset',
+				presetKey: 'games',
+				customLabel: null,
+				color: '#B91C1C',
+				sortOrder: 1,
+				deletedAt: new Date('2024-02-01T00:00:00Z'),
+				usedCount: 0,
+			},
+		]);
+
+		await expect(getManagedGiftCategorySettingsRows(WISHLIST_ID)).resolves.toEqual([
+			{
+				id: 'active-category',
+				presetKey: 'books',
+				customLabel: null,
+				color: '#2563EB',
+				sortOrder: 0,
+				usedCount: 2,
+				enabled: true,
+			},
+			{
+				id: 'deleted-preset',
+				presetKey: 'games',
+				customLabel: null,
+				color: '#B91C1C',
+				sortOrder: 1,
+				usedCount: 0,
+				enabled: false,
+			},
+		]);
+	});
+
 	it('atomically de-assigns active gifts before soft-deleting an omitted custom category', async () => {
 		mockDbInstance.pushResult([]); // wishlist lock
 		mockDbInstance.pushResult([customCategory]);
@@ -136,6 +185,7 @@ describe('gift category management service', () => {
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: [],
+			presetColors: [],
 			confirmedRemovalCategoryIds: [CATEGORY_ID],
 		});
 
@@ -169,6 +219,7 @@ describe('gift category management service', () => {
 			wishlistId: WISHLIST_ID,
 			customCategories: [],
 			presetKeys: [],
+			presetColors: [],
 			confirmedRemovalCategoryIds: [presetCategory.id],
 		});
 
@@ -194,6 +245,7 @@ describe('gift category management service', () => {
 				wishlistId: WISHLIST_ID,
 				customCategories: [],
 				presetKeys: [],
+				presetColors: [],
 				confirmedRemovalCategoryIds: confirmations,
 			}),
 		).rejects.toThrow('GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH');
@@ -205,8 +257,9 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult([customCategory]);
 		await saveGiftCategorySettings({
 			wishlistId: WISHLIST_ID,
-			customCategories: [{ id: CATEGORY_ID, label: 'Sportovní vybavení' }],
+			customCategories: [{ id: CATEGORY_ID, label: 'Sportovní vybavení', color: '#0369A1' }],
 			presetKeys: [],
+			presetColors: [],
 			confirmedRemovalCategoryIds: [],
 		});
 
@@ -217,6 +270,38 @@ describe('gift category management service', () => {
 			expect(call.args[0]).not.toHaveProperty('editedAfterShareAt');
 		}
 		expect(mockDbInstance.calls.filter((call) => call.method === 'for')).toHaveLength(2);
+	});
+
+	it('restores a soft-deleted preset with the same-save color override', async () => {
+		const presetCategory = {
+			...customCategory,
+			id: 'preset-category',
+			presetKey: 'books',
+			customLabel: null,
+			color: '#b91c1c',
+			deletedAt: new Date('2024-02-01T00:00:00Z'),
+		};
+		mockDbInstance.pushResult([]); // wishlist lock
+		mockDbInstance.pushResult([presetCategory]);
+
+		await saveGiftCategorySettings({
+			wishlistId: WISHLIST_ID,
+			customCategories: [],
+			presetKeys: ['books'],
+			presetColors: [{ key: 'books', color: '#2563EB' }],
+			confirmedRemovalCategoryIds: [],
+		});
+
+		const setValues = mockDbInstance.calls
+			.filter((call) => call.method === 'set')
+			.map((call) => call.args[0] as Record<string, unknown>);
+		expect(setValues).toContainEqual(
+			expect.objectContaining({
+				deletedAt: null,
+				color: '#2563EB',
+				updatedAt: expect.any(Date),
+			}),
+		);
 	});
 
 	it('moves retained custom labels aside before applying an atomic label swap', async () => {
@@ -233,10 +318,11 @@ describe('gift category management service', () => {
 		await saveGiftCategorySettings({
 			wishlistId: WISHLIST_ID,
 			customCategories: [
-				{ id: CATEGORY_ID, label: 'Kategorie Beta' },
-				{ id: secondCategory.id, label: 'Kategorie Alfa' },
+				{ id: CATEGORY_ID, label: 'Kategorie Beta', color: '#0369A1' },
+				{ id: secondCategory.id, label: 'Kategorie Alfa', color: '#047857' },
 			],
 			presetKeys: [],
+			presetColors: [],
 			confirmedRemovalCategoryIds: [],
 		});
 
@@ -256,7 +342,10 @@ describe('gift category management service', () => {
 	});
 
 	it('creates explicitly resolved custom import categories inside the caller transaction', async () => {
-		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]); // active label conflict lookup
+		mockDbInstance.pushResult(
+			Array.from({ length: 8 }, (_, index) => ({ id: `existing-${index}` })),
+		); // palette wraps after eight persisted custom categories
 		mockDbInstance.pushResult([{ maxSort: 3 }]);
 		mockDbInstance.pushResult([
 			{
@@ -292,6 +381,7 @@ describe('gift category management service', () => {
 		expect(valuesCall?.args[0]).toMatchObject({
 			wishlistId: WISHLIST_ID,
 			customLabel: 'Outdoor',
+			color: '#0369A1',
 		});
 	});
 });
