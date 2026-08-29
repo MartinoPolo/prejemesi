@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { SvelteSet } from 'svelte/reactivity';
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useLikes } from '$lib/modules/likes/likes.context.svelte.js';
@@ -35,13 +35,22 @@
 	const likesContext = useLikes();
 
 	const liked = $derived(likesContext.isLiked(giftId));
-	let displayCount = $derived(likeCount);
+	let displayCount = $state(untrack(() => likeCount));
+	let requestPending = $state(false);
 	let heartElement = $state<HTMLSpanElement>();
-	let countElement = $state<HTMLSpanElement>();
 	let run = 0;
 	const activeAnimations = new SvelteSet<Animation>();
 
 	const styles = $derived(likeButtonVariants({ liked, size, appearance }));
+
+	// Prop refreshes normally remain authoritative. While a toggle is in flight,
+	// keep the optimistic count stable and reconcile it from that request's result.
+	$effect(() => {
+		const incomingCount = likeCount;
+		if (!untrack(() => requestPending)) {
+			displayCount = incomingCount;
+		}
+	});
 
 	function cancelAcknowledgement() {
 		for (const animation of activeAnimations) {
@@ -68,11 +77,6 @@
 				{ duration: 160 },
 			),
 		);
-		if (countElement) {
-			activeAnimations.add(
-				countElement.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140 }),
-			);
-		}
 	}
 
 	async function handleClick(event: MouseEvent) {
@@ -87,6 +91,7 @@
 		}
 
 		const currentRun = ++run;
+		requestPending = true;
 		cancelAcknowledgement();
 
 		// Optimistic update
@@ -109,6 +114,7 @@
 			}
 
 			displayCount = result.likeCount;
+			requestPending = false;
 			if (!wasLiked && result.liked) {
 				await tick();
 				if (currentRun === run) {
@@ -122,6 +128,7 @@
 			cancelAcknowledgement();
 			likesContext.revertToggle(giftId, wasLiked);
 			displayCount = previousCount;
+			requestPending = false;
 		}
 	}
 
@@ -144,6 +151,6 @@
 		<HeartIcon class={styles.icon()} />
 	</span>
 	{#if showCount && displayCount > 0}
-		<span bind:this={countElement} class={styles.count()}>{displayCount}</span>
+		<span data-like-count class={styles.count()}>{displayCount}</span>
 	{/if}
 </button>
