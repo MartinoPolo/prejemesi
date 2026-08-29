@@ -31,8 +31,10 @@ export const saveGiftCategorySettingsCommand = guardedCommand(
 		const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
 		assertWishlistMutable(wishlistRow);
 		await saveGiftCategorySettings(input);
-		singleFlightRefresh(getGiftCategories, input.wishlistId);
-		singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
-		singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+		await Promise.all([
+			singleFlightRefresh(getGiftCategories, input.wishlistId),
+			singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId),
+			singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId),
+		]);
 	},
 );

@@ -5,6 +5,7 @@ import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import {
+	DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS,
 	GIFT_CATEGORY_PRESETS,
 	GIFT_CATEGORY_PRESET_BY_KEY,
 	type GiftCategoryPresetKey,
@@ -62,7 +63,33 @@ export async function getActiveGiftCategories(
 	return rows.map(publicGiftCategory);
 }
 
+async function ensureDefaultGiftCategories(wishlistId: string): Promise<void> {
+	const database = getDb();
+	await database.transaction(async (tx) => {
+		await lockWishlistCategoryStructure(tx, wishlistId);
+		const existing = await tx
+			.select({ id: giftCategory.id })
+			.from(giftCategory)
+			.where(eq(giftCategory.wishlistId, wishlistId))
+			.limit(1);
+		// Any row, including a soft-deleted one, proves that settings were explicitly saved.
+		// This preserves an intentional all-disabled configuration.
+		if (existing.length > 0) {
+			return;
+		}
+		await tx.insert(giftCategory).values(
+			DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS.map((key, sortOrder) => ({
+				wishlistId,
+				presetKey: key,
+				color: GIFT_CATEGORY_PRESET_BY_KEY.get(key)!.color,
+				sortOrder,
+			})),
+		);
+	});
+}
+
 export async function getManagedGiftCategories(wishlistId: string): Promise<ManagedGiftCategory[]> {
+	await ensureDefaultGiftCategories(wishlistId);
 	const database = getDb();
 	const rows = await database
 		.select({
@@ -92,21 +119,27 @@ export async function getManagedGiftCategorySettingsRows(
 	wishlistId: string,
 ): Promise<ManagedGiftCategorySettingsRow[]> {
 	const database = getDb();
-	const rows = await database
-		.select({
-			id: giftCategory.id,
-			presetKey: giftCategory.presetKey,
-			customLabel: giftCategory.customLabel,
-			color: giftCategory.color,
-			sortOrder: giftCategory.sortOrder,
-			deletedAt: giftCategory.deletedAt,
-			usedCount: sql<number>`count(${gift.id})::int`,
-		})
-		.from(giftCategory)
-		.leftJoin(gift, and(eq(gift.categoryId, giftCategory.id), isNull(gift.deletedAt)))
-		.where(eq(giftCategory.wishlistId, wishlistId))
-		.groupBy(giftCategory.id)
-		.orderBy(giftCategory.sortOrder);
+	const loadRows = () =>
+		database
+			.select({
+				id: giftCategory.id,
+				presetKey: giftCategory.presetKey,
+				customLabel: giftCategory.customLabel,
+				color: giftCategory.color,
+				sortOrder: giftCategory.sortOrder,
+				deletedAt: giftCategory.deletedAt,
+				usedCount: sql<number>`count(${gift.id})::int`,
+			})
+			.from(giftCategory)
+			.leftJoin(gift, and(eq(gift.categoryId, giftCategory.id), isNull(gift.deletedAt)))
+			.where(eq(giftCategory.wishlistId, wishlistId))
+			.groupBy(giftCategory.id)
+			.orderBy(giftCategory.sortOrder);
+	let rows = await loadRows();
+	if (rows.length === 0) {
+		await ensureDefaultGiftCategories(wishlistId);
+		rows = await loadRows();
+	}
 	return rows.map((row) => ({
 		id: row.id,
 		presetKey: row.presetKey as GiftCategoryPresetKey | null,

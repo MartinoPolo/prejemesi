@@ -107,6 +107,7 @@ vi.mock('$lib/server/db/index.js', () => ({
 }));
 
 const {
+	getManagedGiftCategories,
 	getManagedGiftCategorySettingsRows,
 	resolveImportGiftCategoryAssignments,
 	saveGiftCategorySettings,
@@ -133,6 +134,34 @@ beforeEach(() => {
 });
 
 describe('gift category management service', () => {
+	it('creates every catalog preset for a wishlist with no explicit category configuration', async () => {
+		const presets = [
+			{
+				id: 'games-category',
+				presetKey: 'games',
+				customLabel: null,
+				color: '#7C3AED',
+				sortOrder: 0,
+				usedCount: 0,
+			},
+		];
+		// Wishlist lock, configuration probe, preset insert, then the managed-category query.
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult(presets);
+
+		await expect(getManagedGiftCategories(WISHLIST_ID)).resolves.toEqual(presets);
+		const insertCall = mockDbInstance.calls.find((call) => call.method === 'values');
+		expect(insertCall?.args[0]).toHaveLength(9);
+		expect(insertCall?.args[0]).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ wishlistId: WISHLIST_ID, presetKey: 'games' }),
+				expect.objectContaining({ wishlistId: WISHLIST_ID, presetKey: 'personal-care' }),
+			]),
+		);
+	});
+
 	it('returns active and soft-deleted presets with their persisted colors', async () => {
 		mockDbInstance.pushResult([
 			{

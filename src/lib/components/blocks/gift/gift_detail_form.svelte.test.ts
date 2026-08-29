@@ -90,6 +90,31 @@ describe('GiftDetailForm categories', () => {
 		);
 	});
 
+	it('updates category choices while the editor remains mounted', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			categoryOptions,
+		});
+
+		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await expect.element(screen.getByRole('option', { name: 'Books' })).toBeVisible();
+		await userEvent.keyboard('{Escape}');
+
+		await screen.rerender({
+			categoryOptions: [
+				{
+					...categoryOptions[0]!,
+					customLabel: 'Renamed books',
+				},
+			],
+		});
+		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await expect.element(screen.getByRole('option', { name: 'Renamed books' })).toBeVisible();
+		expect(document.body.textContent).not.toContain('Books');
+	});
+
 	it('keeps a long category list scrollable and supports keyboard selection', async () => {
 		const manyCategories: ManagedGiftCategory[] = Array.from({ length: 30 }, (_, index) => ({
 			id: `category-${index + 1}`,
