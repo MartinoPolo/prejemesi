@@ -33,7 +33,8 @@ test.describe('Wishlist settings – non-image editing', () => {
 
 		// The legacy settings URL redirects to the wishlist page and opens the settings modal.
 		await page.goto(`/w/${shortId}/settings`);
-		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
+		const settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await expect(settingsDialog).toBeVisible({ timeout: 10_000 });
 
 		// The event date is a DatePicker popover (not a native input). Pick a deterministic
 		// date 3 months out so the calendar – which opens on the current month – needs a fixed
@@ -68,7 +69,16 @@ test.describe('Wishlist settings – non-image editing', () => {
 		// Selecting a day closes the popover; the trigger now shows the localized long date.
 		await expect(eventDateField).toContainText(expectedEventDate);
 
-		await form.getByRole('button', { name: 'Uložit' }).click();
+		// Save lives in the fixed dialog footer, outside the scrolling details form.
+		const saveButton = settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' });
+		await expect(form.getByRole('button', { name: 'Uložit' })).toHaveCount(0);
+		await settingsDialog.locator('.overflow-y-auto').evaluate((content) => {
+			content.scrollTop = content.scrollHeight;
+		});
+		await expect(saveButton).toBeVisible();
+		await saveButton.click();
 
 		await expect(page.getByText('Podrobnosti seznamu byly uloženy')).toBeVisible({
 			timeout: 10_000,
@@ -91,6 +101,130 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await expect(reloaded.getByLabel('Datum události (volitelné)')).toContainText(
 			expectedEventDate,
 		);
+
+		await page.context().close();
+	});
+
+	test('custom category labels can be swapped atomically and persist', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-category-label-swap');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+
+		await createWishlistAndNavigate(page, 'Prohození kategorií');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		let settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+
+		const newCategory = settingsDialog.getByPlaceholder('Vlastní kategorie');
+		await newCategory.fill('Kategorie Alfa');
+		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
+		await newCategory.fill('Kategorie Beta');
+		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
+		await settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' })
+			.click();
+		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible({
+			timeout: 10_000,
+		});
+
+		const customSection = settingsDialog
+			.getByRole('heading', { name: 'Vlastní kategorie' })
+			.locator('..');
+		const labels = customSection.locator('input:not([type="color"])');
+		await expect(labels).toHaveCount(2);
+		const values = await labels.evaluateAll((inputs) =>
+			inputs.map((input) => (input as HTMLInputElement).value),
+		);
+		const alfaIndex = values.indexOf('Kategorie Alfa');
+		const betaIndex = values.indexOf('Kategorie Beta');
+		expect(alfaIndex).toBeGreaterThanOrEqual(0);
+		expect(betaIndex).toBeGreaterThanOrEqual(0);
+		await labels.nth(alfaIndex).fill('Kategorie Beta');
+		await labels.nth(betaIndex).fill('Kategorie Alfa');
+		await settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' })
+			.click();
+		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible();
+
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+		const persistedLabels = settingsDialog
+			.getByRole('heading', { name: 'Vlastní kategorie' })
+			.locator('..')
+			.locator('input:not([type="color"])');
+		await expect(persistedLabels).toHaveCount(2);
+		await expect(persistedLabels.nth(alfaIndex)).toHaveValue('Kategorie Beta');
+		await expect(persistedLabels.nth(betaIndex)).toHaveValue('Kategorie Alfa');
+
+		await page.context().close();
+	});
+
+	test('confirmed category removal leaves its assigned gift uncategorized', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-category-removal');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		const giftName = 'Dárek v odebírané kategorii';
+		const categoryLabel = 'Dočasná kategorie';
+
+		await createWishlistAndNavigate(page, 'Odebrání přiřazené kategorie');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		let settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+		await settingsDialog.getByPlaceholder('Vlastní kategorie').fill(categoryLabel);
+		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
+		// Keep one preset active so the gift editor can visibly render „Bez kategorie"
+		// after the custom category is removed.
+		await settingsDialog.getByText('Knihy', { exact: true }).click();
+		await settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' })
+			.click();
+		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible();
+		await settingsDialog.getByRole('button', { name: 'Zavřít' }).click();
+
+		await page
+			.getByRole('button', { name: /Přidat/ })
+			.first()
+			.click();
+		let giftDialog = page.getByRole('dialog');
+		await giftDialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
+		await giftDialog.getByRole('button', { name: 'Bez kategorie' }).click();
+		await page.getByRole('option', { name: categoryLabel }).click();
+		await giftDialog.getByRole('button', { name: 'Přidat dárek' }).click();
+		await expect(giftDialog).not.toBeVisible({ timeout: 10_000 });
+		await expect(page.getByRole('heading', { name: giftName, level: 3 })).toBeVisible();
+
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+		const customSection = settingsDialog
+			.getByRole('heading', { name: 'Vlastní kategorie' })
+			.locator('..');
+		await customSection.getByRole('button', { name: 'Smazat' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Potvrdit odebrání' }).click();
+		await settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' })
+			.click();
+		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible();
+		await expect(customSection.getByRole('textbox')).toHaveCount(0);
+		await settingsDialog.getByRole('button', { name: 'Zavřít' }).click();
+		await expect(settingsDialog).not.toBeVisible();
+
+		await page.getByText(giftName, { exact: true }).click();
+		giftDialog = page.getByRole('dialog');
+		await expect(giftDialog.getByRole('button', { name: 'Bez kategorie' })).toBeVisible();
 
 		await page.context().close();
 	});

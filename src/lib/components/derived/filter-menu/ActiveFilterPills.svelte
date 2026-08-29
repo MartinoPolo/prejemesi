@@ -53,22 +53,25 @@
 <div class={cn('flex min-w-0 flex-wrap items-center gap-1.5', className)} data-filter-pills>
 	{#each items as item (item.id)}
 		<SimpleTooltip text={item.label}>
-			<span
-				class="active-filter-pill inline-flex h-(--size-control-sm) min-w-0 max-w-[min(12.5rem,100%)] items-center gap-1 rounded-full border-2 border-ink bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground"
-				data-active-filter-pill
-			>
-				<span class="min-w-0 truncate">{item.label}</span>
-				<button
-					bind:this={pillRemoveButtons[item.id]}
-					type="button"
-					{disabled}
-					class="grid size-6 shrink-0 place-items-center rounded-full text-current hover:bg-[color-mix(in_oklab,currentColor_24%,transparent)] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-1 focus-visible:outline-current"
-					aria-label={removeFilterLabel(item.label)}
-					onclick={() => removeActiveFilter(item)}
+			{#snippet asChild(triggerProps)}
+				<span
+					{...triggerProps}
+					class="active-filter-pill inline-flex h-(--size-control-sm) min-w-0 max-w-[min(12.5rem,100%)] items-center gap-1 rounded-full border-2 border-ink bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground"
+					data-active-filter-pill
 				>
-					<XIcon class="size-3.5" />
-				</button>
-			</span>
+					<span class="min-w-0 truncate">{item.label}</span>
+					<button
+						bind:this={pillRemoveButtons[item.id]}
+						type="button"
+						{disabled}
+						class="grid size-6 shrink-0 place-items-center rounded-full text-current hover:bg-[color-mix(in_oklab,currentColor_24%,transparent)] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-1 focus-visible:outline-current"
+						aria-label={removeFilterLabel(item.label)}
+						onclick={() => removeActiveFilter(item)}
+					>
+						<XIcon class="size-3.5" />
+					</button>
+				</span>
+			{/snippet}
 		</SimpleTooltip>
 	{/each}
 	<Button size="sm" intent="ghost" class="min-w-0 max-w-full" {disabled} onclick={clearAllFilters}

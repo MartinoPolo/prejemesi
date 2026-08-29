@@ -404,6 +404,8 @@
 		}
 	}
 
+	const confirmFormId = 'import-wizard-confirm-form';
+
 	const STEP_LABELS: readonly (() => string)[] = [
 		() => m.import_wizard_step_source(),
 		() => m.import_wizard_step_review(),
@@ -543,6 +545,7 @@
 				/>
 			{:else if currentStep === WIZARD_STEP.confirm}
 				<ImportConfirmStep
+					formId={confirmFormId}
 					{mode}
 					{selectedDrafts}
 					title={reviewTitle}
@@ -560,7 +563,7 @@
 		<!-- Footer -->
 		{#if commitStatus !== COMMIT_STATUS.success}
 			<Separator />
-			<div class="flex items-center justify-between px-6 py-4">
+			<div class="flex shrink-0 items-center justify-between px-6 py-4">
 				<div>
 					{#if currentStepIndex > 0 && commitStatus !== COMMIT_STATUS.committing}
 						<Button intent="ghost" onclick={handleBack}>
@@ -578,6 +581,16 @@
 					{#if currentStep === WIZARD_STEP.review}
 						<Button onclick={handleNext} disabled={!canProceed}>
 							{m.import_wizard_next()}
+						</Button>
+					{:else if currentStep === WIZARD_STEP.confirm && commitStatus !== COMMIT_STATUS.committing}
+						<Button type="submit" form={confirmFormId}>
+							{#if commitStatus === COMMIT_STATUS.error}
+								{m.import_wizard_retry()}
+							{:else if mode === WIZARD_MODE.newList}
+								{m.import_wizard_commit_new()}
+							{:else}
+								{m.import_wizard_commit_append()}
+							{/if}
 						</Button>
 					{/if}
 				</div>

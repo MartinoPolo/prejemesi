@@ -268,42 +268,158 @@
 </script>
 
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
-	<Dialog.Content size="2xl" class="max-h-[85vh] overflow-y-auto">
-		<Dialog.Header>
+	<Dialog.Content size="2xl" class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0">
+		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
 			<Dialog.Title>{m.moderator_title()}</Dialog.Title>
 			<Dialog.Description>{m.moderator_description()}</Dialog.Description>
 		</Dialog.Header>
 
-		<div class="flex flex-col gap-6">
-			{#if isForSomeoneElse}
-				<!-- Claim link (issue #150): nudge to link the free-text recipient's real account.
+		<div class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+			<div class="flex flex-col gap-6">
+				{#if isForSomeoneElse}
+					<!-- Claim link (issue #150): nudge to link the free-text recipient's real account.
 				     Mirrors the správce-invite generate/email/copy/revoke flow. -->
-				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>{m.claim_section_title()}</div>
-					<div class={styles.disclosureBanner()}>
-						<LinkIcon class="size-4 flex-shrink-0" />
-						<div class="flex flex-col gap-0.5">
-							<span class="font-medium">{m.claim_nudge_title()}</span>
-							<span class="text-xs">{m.claim_nudge_description()}</span>
+					<div class={styles.section()}>
+						<div class={styles.sectionTitle()}>{m.claim_section_title()}</div>
+						<div class={styles.disclosureBanner()}>
+							<LinkIcon class="size-4 flex-shrink-0" />
+							<div class="flex flex-col gap-0.5">
+								<span class="font-medium">{m.claim_nudge_title()}</span>
+								<span class="text-xs">{m.claim_nudge_description()}</span>
+							</div>
 						</div>
+
+						{#if generatedClaimPath !== null}
+							<div class="flex items-center gap-2">
+								<div
+									class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
+									data-testid="claim-link"
+								>
+									{getApplicationUrl(generatedClaimPath, window.location.origin)}
+								</div>
+								<Button
+									size="sm"
+									intent={claimLinkCopied ? 'primary' : 'outline'}
+									aria-label={m.claim_copy_link()}
+									data-testid="copy-claim-link"
+									onclick={handleCopyClaimLink}
+								>
+									{#if claimLinkCopied}
+										<CheckIcon data-icon="solo" />
+									{:else}
+										<CopyIcon data-icon="solo" />
+									{/if}
+								</Button>
+							</div>
+						{/if}
+
+						<div class="flex flex-col gap-1.5">
+							<Label for="claim-email">
+								{m.claim_email_label()}
+							</Label>
+							<Input
+								id="claim-email"
+								size="lg"
+								type="email"
+								placeholder={m.claim_email_placeholder()}
+								bind:value={claimEmail}
+								disabled={isGeneratingClaim}
+							/>
+						</div>
+
+						<Button
+							size="lg"
+							intent="primary"
+							class="w-full"
+							disabled={isGeneratingClaim}
+							onclick={handleGenerateClaim}
+						>
+							<LinkIcon data-icon="inline-start" />
+							{isGeneratingClaim ? m.claim_generating() : m.claim_generate_button()}
+						</Button>
+
+						{#if claimInvites.length > 0}
+							<div class={styles.sectionTitle()}>
+								{m.claim_pending_title({ count: claimInvites.length })}
+							</div>
+							{#each claimInvites as invite (invite.id)}
+								<div class={styles.inviteRow()}>
+									<div class="min-w-0 flex-1">
+										<div class={styles.inviteToken()}>
+											...{invite.token.slice(-8)}
+										</div>
+										<div class={styles.inviteDate()}>
+											{new Intl.DateTimeFormat(getLocale(), {
+												day: 'numeric',
+												month: 'short',
+												hour: '2-digit',
+												minute: '2-digit',
+											}).format(new Date(invite.createdAt))}
+										</div>
+									</div>
+									<Button
+										size="sm"
+										intent="ghost"
+										class="text-destructive hover:text-destructive"
+										disabled={isRevokingClaimId === invite.id}
+										aria-label={m.claim_revoke_invite()}
+										onclick={() => handleRevokeClaim(invite.id)}
+									>
+										<XIcon data-icon="solo" />
+									</Button>
+								</div>
+							{/each}
+						{/if}
 					</div>
 
-					{#if generatedClaimPath !== null}
+					<Separator />
+				{/if}
+
+				<!-- Active moderators -->
+				<div class={styles.section()}>
+					<div class={styles.sectionTitle()}>{m.moderator_active_title()}</div>
+
+					{#if isLoading}
+						<div class={styles.emptyText()}>{m.moderator_loading()}</div>
+					{:else if moderators.length === 0}
+						<div class={styles.emptyText()}>{m.moderator_empty()}</div>
+					{:else}
+						{#each moderators as moderator (moderator.id)}
+							<ModeratorListItem
+								{moderator}
+								canRemove={true}
+								{isRemoving}
+								onremove={handleRemoveModerator}
+							/>
+						{/each}
+					{/if}
+				</div>
+
+				<Separator />
+
+				<!-- Generate invite -->
+				<div class={styles.section()}>
+					<div class={styles.sectionTitle()}>{m.moderator_invite_title()}</div>
+					<div class={styles.sectionDescription()}>
+						{m.moderator_invite_description()}
+					</div>
+
+					{#if generatedInvitePath !== null}
 						<div class="flex items-center gap-2">
 							<div
 								class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
-								data-testid="claim-link"
+								data-testid="invite-link"
 							>
-								{getApplicationUrl(generatedClaimPath, window.location.origin)}
+								{getApplicationUrl(generatedInvitePath, window.location.origin)}
 							</div>
 							<Button
 								size="sm"
-								intent={claimLinkCopied ? 'primary' : 'outline'}
-								aria-label={m.claim_copy_link()}
-								data-testid="copy-claim-link"
-								onclick={handleCopyClaimLink}
+								intent={linkCopied ? 'primary' : 'outline'}
+								aria-label={m.moderator_copy_link()}
+								data-testid="copy-invite-link"
+								onclick={handleCopyLink}
 							>
-								{#if claimLinkCopied}
+								{#if linkCopied}
 									<CheckIcon data-icon="solo" />
 								{:else}
 									<CopyIcon data-icon="solo" />
@@ -313,16 +429,16 @@
 					{/if}
 
 					<div class="flex flex-col gap-1.5">
-						<Label for="claim-email">
-							{m.claim_email_label()}
+						<Label for="invite-email">
+							{m.moderator_invite_email_label()}
 						</Label>
 						<Input
-							id="claim-email"
+							id="invite-email"
 							size="lg"
 							type="email"
-							placeholder={m.claim_email_placeholder()}
-							bind:value={claimEmail}
-							disabled={isGeneratingClaim}
+							placeholder={m.moderator_invite_email_placeholder()}
+							bind:value={inviteEmail}
+							disabled={isGenerating}
 						/>
 					</div>
 
@@ -330,18 +446,24 @@
 						size="lg"
 						intent="primary"
 						class="w-full"
-						disabled={isGeneratingClaim}
-						onclick={handleGenerateClaim}
+						disabled={isGenerating}
+						onclick={handleGenerateInvite}
 					>
 						<LinkIcon data-icon="inline-start" />
-						{isGeneratingClaim ? m.claim_generating() : m.claim_generate_button()}
+						{isGenerating ? m.moderator_generating() : m.moderator_generate_invite()}
 					</Button>
+				</div>
 
-					{#if claimInvites.length > 0}
+				<!-- Pending invites -->
+				{#if pendingInvites.length > 0}
+					<Separator />
+
+					<div class={styles.section()}>
 						<div class={styles.sectionTitle()}>
-							{m.claim_pending_title({ count: claimInvites.length })}
+							{m.moderator_pending_title({ count: pendingInvites.length })}
 						</div>
-						{#each claimInvites as invite (invite.id)}
+
+						{#each pendingInvites as invite (invite.id)}
 							<div class={styles.inviteRow()}>
 								<div class="min-w-0 flex-1">
 									<div class={styles.inviteToken()}>
@@ -360,181 +482,65 @@
 									size="sm"
 									intent="ghost"
 									class="text-destructive hover:text-destructive"
-									disabled={isRevokingClaimId === invite.id}
-									aria-label={m.claim_revoke_invite()}
-									onclick={() => handleRevokeClaim(invite.id)}
+									disabled={isRevokingId === invite.id}
+									aria-label={m.moderator_revoke_invite()}
+									onclick={() => handleRevokeInvite(invite.id)}
 								>
 									<XIcon data-icon="solo" />
 								</Button>
 							</div>
 						{/each}
+					</div>
+				{/if}
+
+				<!-- Reservation visibility (self lists only): recipient self-promotion + disclosure -->
+				{#if !isForSomeoneElse}
+					<Separator />
+
+					<!-- Self-promote section -->
+					{#if !recipientIsModerator}
+						<div class={styles.section()}>
+							<div class={styles.sectionTitle()}>
+								{m.moderator_reservations_title()}
+							</div>
+
+							<div class={styles.selfPromoteWarning()}>
+								<div class="flex items-center gap-2">
+									<AlertTriangleIcon class="size-4 flex-shrink-0" />
+									<div class={styles.selfPromoteTitle()}>
+										{m.moderator_see_reservations_title()}
+									</div>
+								</div>
+								<div class={styles.selfPromoteDescription()}>
+									{m.moderator_see_reservations_description()}
+								</div>
+								<Button
+									size="sm"
+									intent="outline"
+									class="mt-1 self-start"
+									disabled={isSelfPromoting}
+									onclick={handleSelfPromote}
+								>
+									<EyeIcon data-icon="inline-start" />
+									{isSelfPromoting
+										? m.moderator_activating()
+										: m.moderator_activate_button()}
+								</Button>
+							</div>
+						</div>
+					{:else}
+						<div class={styles.section()}>
+							<div class={styles.sectionTitle()}>
+								{m.moderator_reservations_title()}
+							</div>
+							<div class={styles.disclosureBanner()}>
+								<EyeIcon class="size-4 flex-shrink-0" />
+								<span>{m.moderator_active_disclosure()}</span>
+							</div>
+						</div>
 					{/if}
-				</div>
-
-				<Separator />
-			{/if}
-
-			<!-- Active moderators -->
-			<div class={styles.section()}>
-				<div class={styles.sectionTitle()}>{m.moderator_active_title()}</div>
-
-				{#if isLoading}
-					<div class={styles.emptyText()}>{m.moderator_loading()}</div>
-				{:else if moderators.length === 0}
-					<div class={styles.emptyText()}>{m.moderator_empty()}</div>
-				{:else}
-					{#each moderators as moderator (moderator.id)}
-						<ModeratorListItem
-							{moderator}
-							canRemove={true}
-							{isRemoving}
-							onremove={handleRemoveModerator}
-						/>
-					{/each}
 				{/if}
 			</div>
-
-			<Separator />
-
-			<!-- Generate invite -->
-			<div class={styles.section()}>
-				<div class={styles.sectionTitle()}>{m.moderator_invite_title()}</div>
-				<div class={styles.sectionDescription()}>
-					{m.moderator_invite_description()}
-				</div>
-
-				{#if generatedInvitePath !== null}
-					<div class="flex items-center gap-2">
-						<div
-							class="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
-							data-testid="invite-link"
-						>
-							{getApplicationUrl(generatedInvitePath, window.location.origin)}
-						</div>
-						<Button
-							size="sm"
-							intent={linkCopied ? 'primary' : 'outline'}
-							aria-label={m.moderator_copy_link()}
-							data-testid="copy-invite-link"
-							onclick={handleCopyLink}
-						>
-							{#if linkCopied}
-								<CheckIcon data-icon="solo" />
-							{:else}
-								<CopyIcon data-icon="solo" />
-							{/if}
-						</Button>
-					</div>
-				{/if}
-
-				<div class="flex flex-col gap-1.5">
-					<Label for="invite-email">
-						{m.moderator_invite_email_label()}
-					</Label>
-					<Input
-						id="invite-email"
-						size="lg"
-						type="email"
-						placeholder={m.moderator_invite_email_placeholder()}
-						bind:value={inviteEmail}
-						disabled={isGenerating}
-					/>
-				</div>
-
-				<Button
-					size="lg"
-					intent="primary"
-					class="w-full"
-					disabled={isGenerating}
-					onclick={handleGenerateInvite}
-				>
-					<LinkIcon data-icon="inline-start" />
-					{isGenerating ? m.moderator_generating() : m.moderator_generate_invite()}
-				</Button>
-			</div>
-
-			<!-- Pending invites -->
-			{#if pendingInvites.length > 0}
-				<Separator />
-
-				<div class={styles.section()}>
-					<div class={styles.sectionTitle()}>
-						{m.moderator_pending_title({ count: pendingInvites.length })}
-					</div>
-
-					{#each pendingInvites as invite (invite.id)}
-						<div class={styles.inviteRow()}>
-							<div class="min-w-0 flex-1">
-								<div class={styles.inviteToken()}>
-									...{invite.token.slice(-8)}
-								</div>
-								<div class={styles.inviteDate()}>
-									{new Intl.DateTimeFormat(getLocale(), {
-										day: 'numeric',
-										month: 'short',
-										hour: '2-digit',
-										minute: '2-digit',
-									}).format(new Date(invite.createdAt))}
-								</div>
-							</div>
-							<Button
-								size="sm"
-								intent="ghost"
-								class="text-destructive hover:text-destructive"
-								disabled={isRevokingId === invite.id}
-								aria-label={m.moderator_revoke_invite()}
-								onclick={() => handleRevokeInvite(invite.id)}
-							>
-								<XIcon data-icon="solo" />
-							</Button>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
-			<!-- Reservation visibility (self lists only): recipient self-promotion + disclosure -->
-			{#if !isForSomeoneElse}
-				<Separator />
-
-				<!-- Self-promote section -->
-				{#if !recipientIsModerator}
-					<div class={styles.section()}>
-						<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
-
-						<div class={styles.selfPromoteWarning()}>
-							<div class="flex items-center gap-2">
-								<AlertTriangleIcon class="size-4 flex-shrink-0" />
-								<div class={styles.selfPromoteTitle()}>
-									{m.moderator_see_reservations_title()}
-								</div>
-							</div>
-							<div class={styles.selfPromoteDescription()}>
-								{m.moderator_see_reservations_description()}
-							</div>
-							<Button
-								size="sm"
-								intent="outline"
-								class="mt-1 self-start"
-								disabled={isSelfPromoting}
-								onclick={handleSelfPromote}
-							>
-								<EyeIcon data-icon="inline-start" />
-								{isSelfPromoting
-									? m.moderator_activating()
-									: m.moderator_activate_button()}
-							</Button>
-						</div>
-					</div>
-				{:else}
-					<div class={styles.section()}>
-						<div class={styles.sectionTitle()}>{m.moderator_reservations_title()}</div>
-						<div class={styles.disclosureBanner()}>
-							<EyeIcon class="size-4 flex-shrink-0" />
-							<span>{m.moderator_active_disclosure()}</span>
-						</div>
-					</div>
-				{/if}
-			{/if}
 		</div>
 	</Dialog.Content>
 </Dialog.Root>

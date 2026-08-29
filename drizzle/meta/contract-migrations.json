@@ -1,4 +1,5 @@
 {
   "0004_recipient_role_model_contract": "The preceding expand migration backfilled recipient assignments, and the deployed application stopped using the removed owner columns before this contract ran.",
-  "0017_dear_northstar": "Widening gift price columns from integer to numeric preserves every existing value and remains compatible with integer writes from the previously deployed application."
+  "0017_dear_northstar": "Widening gift price columns from integer to numeric preserves every existing value and remains compatible with integer writes from the previously deployed application.",
+  "0019_add_gift_category_colors": "The same additive migration keeps the new color column nullable at first, installs a legacy-only BEFORE INSERT trigger so the previously deployed app can keep omitting color during migrate-to-deploy while rows still get their semantic preset or rotated custom color, then backfills every active and soft-deleted category plus a final fallback before enforcing NOT NULL; it does not rebuild rows or touch gift assignments."
 }

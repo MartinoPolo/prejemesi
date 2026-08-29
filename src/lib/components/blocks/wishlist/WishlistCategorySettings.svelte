@@ -1,476 +1,447 @@
-<script module lang="ts">
-	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-
-	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
-	const CATEGORY_REFLOW_DURATION = 520;
-	const CATEGORY_DELETE_DURATION = 440;
-
-	interface CategoryPosition {
-		left: number;
-		top: number;
-	}
-
-	export interface CategoryMotionSnapshot {
-		readonly run: number;
-		readonly positions: ReadonlyMap<string, CategoryPosition>;
-		readonly retainedVisual: HTMLElement | null;
-	}
-
-	interface CategorySettingsMotionOptions {
-		reducedMotion?: () => boolean;
-	}
-
-	function renderedRectangle(element: HTMLElement, rectangle: DOMRect): boolean {
-		if (
-			!element.isConnected ||
-			element.hidden ||
-			rectangle.width <= 0 ||
-			rectangle.height <= 0
-		) {
-			return false;
-		}
-		const style = getComputedStyle(element);
-		return style.display !== 'none' && style.visibility !== 'hidden';
-	}
-
-	function categoryRows(root: ParentNode): HTMLElement[] {
-		return Array.from(root.querySelectorAll<HTMLElement>('[data-category-row]'));
-	}
-
-	function capturePositions(root: ParentNode): SvelteMap<string, CategoryPosition> {
-		const positions = new SvelteMap<string, CategoryPosition>();
-		for (const element of categoryRows(root)) {
-			const id = element.dataset.categoryId;
-			if (id === undefined || id === '') {
-				continue;
-			}
-			const rectangle = element.getBoundingClientRect();
-			if (renderedRectangle(element, rectangle)) {
-				positions.set(id, { left: rectangle.left, top: rectangle.top });
-			}
-		}
-		return positions;
-	}
-
-	function stripIds(element: HTMLElement) {
-		element.removeAttribute('id');
-		for (const descendant of element.querySelectorAll('[id]')) {
-			descendant.removeAttribute('id');
-		}
-	}
-
-	function retainedCategoryVisual(source: HTMLElement): HTMLElement {
-		const rectangle = source.getBoundingClientRect();
-		const clone = source.cloneNode(true) as HTMLElement;
-		stripIds(clone);
-		clone.removeAttribute('data-category-row');
-		clone.removeAttribute('data-category-id');
-		clone.setAttribute('aria-hidden', 'true');
-		clone.inert = true;
-		Object.assign(clone.style, {
-			position: 'fixed',
-			left: `${rectangle.left}px`,
-			top: `${rectangle.top}px`,
-			width: `${rectangle.width}px`,
-			height: `${rectangle.height}px`,
-			margin: '0px',
-			boxSizing: 'border-box',
-			pointerEvents: 'none',
-			transformOrigin: 'top center',
-			zIndex: '100',
-		});
-		return clone;
-	}
-
-	export function createCategorySettingsMotion(options: CategorySettingsMotionOptions = {}) {
-		const reducedMotion =
-			options.reducedMotion ??
-			(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
-		let run = 0;
-		const animations = new SvelteSet<Animation>();
-		const retainedVisuals = new SvelteSet<HTMLElement>();
-
-		function removeVisual(visual: HTMLElement) {
-			visual.remove();
-			visual.style.cssText = '';
-			if (visual.hasAttribute('style')) {
-				visual.attributes.removeNamedItem('style');
-			}
-			retainedVisuals.delete(visual);
-		}
-
-		function cancel() {
-			run += 1;
-			for (const animation of animations) {
-				animation.cancel();
-			}
-			animations.clear();
-			for (const visual of retainedVisuals) {
-				removeVisual(visual);
-			}
-		}
-
-		function capture(root: ParentNode, deletingId?: string): CategoryMotionSnapshot {
-			cancel();
-			const positions = capturePositions(root);
-			const source =
-				deletingId === undefined
-					? null
-					: (categoryRows(root).find((row) => row.dataset.categoryId === deletingId) ??
-						null);
-			const retainedVisual =
-				reducedMotion() ||
-				deletingId === undefined ||
-				source === null ||
-				!positions.has(deletingId)
-					? null
-					: retainedCategoryVisual(source);
-			if (retainedVisual !== null) {
-				retainedVisuals.add(retainedVisual);
-			}
-			return { run, positions, retainedVisual };
-		}
-
-		function track(animation: Animation): Promise<unknown> {
-			animations.add(animation);
-			return (animation.finished ?? Promise.resolve())
-				.catch(() => undefined)
-				.finally(() => animations.delete(animation));
-		}
-
-		async function play(snapshot: CategoryMotionSnapshot, root: ParentNode) {
-			if (snapshot.run !== run || reducedMotion()) {
-				if (snapshot.retainedVisual !== null) {
-					removeVisual(snapshot.retainedVisual);
-				}
-				return;
-			}
-			const settlements: Promise<unknown>[] = [];
-			const nextPositions = capturePositions(root);
-			for (const element of categoryRows(root)) {
-				const id = element.dataset.categoryId;
-				const before = id === undefined ? undefined : snapshot.positions.get(id);
-				const after = id === undefined ? undefined : nextPositions.get(id);
-				if (before === undefined || after === undefined) {
-					continue;
-				}
-				const x = before.left - after.left;
-				const y = before.top - after.top;
-				if (x === 0 && y === 0) {
-					continue;
-				}
-				settlements.push(
-					track(
-						element.animate(
-							[
-								{ transform: `translate(${x}px, ${y}px)` },
-								{ transform: 'translate(0, 0)' },
-							],
-							{ duration: CATEGORY_REFLOW_DURATION, easing: STANDARD_EASING },
-						),
-					),
-				);
-			}
-			const visual = snapshot.retainedVisual;
-			if (visual !== null) {
-				visual.ownerDocument.body.append(visual);
-				const exit = track(
-					visual.animate(
-						[
-							{ opacity: 1, transform: 'scaleY(1)' },
-							{ opacity: 0, transform: 'scaleY(0)' },
-						],
-						{
-							duration: CATEGORY_DELETE_DURATION,
-							easing: STANDARD_EASING,
-							fill: 'both',
-						},
-					),
-				).finally(() => removeVisual(visual));
-				settlements.push(exit);
-			}
-			await Promise.all(settlements);
-		}
-
-		function discard(snapshot: CategoryMotionSnapshot) {
-			if (snapshot.retainedVisual !== null) {
-				removeVisual(snapshot.retainedVisual);
-			}
-		}
-
-		function destroy() {
-			cancel();
-		}
-
-		return { capture, play, discard, cancel, destroy };
-	}
-</script>
-
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
-	import * as Alert from '$lib/components/base/alert/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { toastError, toastSuccess } from '$lib/components/base/toast/index.js';
 	import {
-		createCustomGiftCategoryCommand,
-		deleteCustomGiftCategoryCommand,
-		getGiftCategories,
-		renameCustomGiftCategoryCommand,
-		reorderGiftCategories,
-		togglePresetGiftCategory,
+		getGiftCategorySettingsRows,
+		saveGiftCategorySettingsCommand,
 	} from '$lib/modules/gift-categories/gift_categories.remote.js';
 	import {
 		GIFT_CATEGORY_PRESETS,
-		labelForGiftCategory,
-		type ManagedGiftCategory,
+		MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH,
+		type GiftCategoryPresetKey,
 	} from '$lib/modules/gift-categories/types.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
-	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
+	import {
+		getServerErrorCode,
+		translateServerError,
+	} from '$lib/modules/errors/translate_server_error.js';
+	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
+	import { onDestroy, tick } from 'svelte';
+	import { giftCategoryColorForIndex } from '$lib/modules/gift-categories/gift_category_colors.js';
+	import { createCategorySettingsMotion } from './wishlist_category_settings_motion.svelte.js';
 
 	interface Props {
 		wishlistId: string;
-		isShared: boolean;
+		ondirtychange?: (dirty: boolean) => void;
+		onsavingchange?: (saving: boolean) => void;
+		onsaved?: () => void;
+	}
+	interface CustomDraft {
+		key: string;
+		id: string | null;
+		label: string;
+		color: string;
+		usedCount: number;
+	}
+	interface PendingRemoval {
+		type: 'custom' | 'preset';
+		key: string;
+		categoryId: string;
+		label: string;
+		usedCount: number;
 	}
 
-	let { wishlistId, isShared }: Props = $props();
-
-	const categoriesQuery = $derived(getGiftCategories(wishlistId));
-	const categories = $derived(categoriesQuery.current ?? []);
-	const activePresetKeys = $derived(
-		new Set(categories.flatMap((category) => category.presetKey ?? [])),
-	);
+	let { wishlistId, ondirtychange, onsavingchange, onsaved }: Props = $props();
+	const categoriesQuery = $derived(getGiftCategorySettingsRows(wishlistId));
+	const settingsRows = $derived(categoriesQuery.current ?? []);
+	const categories = $derived(settingsRows.filter((category) => category.enabled));
 	let customLabel = $state('');
-	let renaming = $state<Record<string, string>>({});
-	let pending = $state(false);
+	let customDrafts = $state<CustomDraft[]>([]);
+	let enabledPresets = $state<GiftCategoryPresetKey[]>([]);
+	let presetColors = $state<Partial<Record<GiftCategoryPresetKey, string>>>({});
+	let baseline = $state('');
+	let seededSignature = $state('');
+	let nextCustomColorIndex = $state(0);
+	let saving = $state(false);
+	let pendingRemoval = $state<PendingRemoval | null>(null);
+	let confirmedRemovalCategoryIds = $state<string[]>([]);
+	let removalTrigger = $state<HTMLElement | null>(null);
 	let categoryRowsElement = $state<HTMLElement | null>(null);
 	const categoryMotion = createCategorySettingsMotion();
-
 	onDestroy(() => categoryMotion.destroy());
 
-	function categoryLabel(category: ManagedGiftCategory): string {
-		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
+	function snapshot(): string {
+		return JSON.stringify({
+			custom: customDrafts.map(({ id, label, color }) => ({
+				id,
+				label: label.trim(),
+				color,
+			})),
+			presets: [...enabledPresets].sort().map((key) => ({ key, color: presetColors[key] })),
+		});
+	}
+	const dirty = $derived(baseline !== '' && snapshot() !== baseline);
+	$effect(() => ondirtychange?.(dirty));
+	$effect(() => onsavingchange?.(saving));
+	$effect(() => {
+		const signature = JSON.stringify(settingsRows);
+		if (signature === seededSignature || dirty) {
+			return;
+		}
+		customDrafts = categories
+			.filter((category) => category.customLabel !== null)
+			.map((category) => ({
+				key: category.id,
+				id: category.id,
+				label: category.customLabel ?? '',
+				color: category.color,
+				usedCount: category.usedCount,
+			}));
+		enabledPresets = categories.flatMap((category) => category.presetKey ?? []);
+		presetColors = Object.fromEntries(
+			settingsRows.flatMap((category) =>
+				category.presetKey === null ? [] : [[category.presetKey, category.color]],
+			),
+		);
+		nextCustomColorIndex = settingsRows.filter(
+			(category) => category.presetKey === null,
+		).length;
+		baseline = snapshot();
+		seededSignature = signature;
+	});
+
+	function createCustom() {
+		const label = customLabel.trim();
+		if (!label || saving) {
+			return;
+		}
+		customDrafts = [
+			{
+				key: crypto.randomUUID(),
+				id: null,
+				label,
+				color: giftCategoryColorForIndex(nextCustomColorIndex),
+				usedCount: 0,
+			},
+			...customDrafts,
+		];
+		nextCustomColorIndex += 1;
+		customLabel = '';
+	}
+	function handleCreateKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Enter' || event.isComposing) {
+			return;
+		}
+		event.preventDefault();
+		createCustom();
+	}
+	async function move(index: number, direction: -1 | 1) {
+		const snapshot =
+			categoryRowsElement === null ? null : categoryMotion.capture(categoryRowsElement);
+		const next = [...customDrafts];
+		const item = next.splice(index, 1)[0]!;
+		next.splice(index + direction, 0, item);
+		customDrafts = next;
+		await tick();
+		if (snapshot !== null && categoryRowsElement !== null) {
+			void categoryMotion.play(snapshot, categoryRowsElement);
+		}
+	}
+	async function togglePreset(
+		key: GiftCategoryPresetKey,
+		checked: boolean,
+		label: string,
+		usedCount: number,
+	) {
+		const persisted = categories.find((category) => category.presetKey === key);
+		if (!checked && persisted !== undefined) {
+			removalTrigger = document.activeElement as HTMLElement | null;
+			pendingRemoval = { type: 'preset', key, categoryId: persisted.id, label, usedCount };
+			// Bits UI updates its bindable state before reporting the attempted toggle. Drive the
+			// controlled prop through a full state change to restore it without recreating the node.
+			enabledPresets = enabledPresets.filter((candidate) => candidate !== key);
+			await tick();
+			if (pendingRemoval?.categoryId === persisted.id) {
+				enabledPresets = [...enabledPresets, key];
+			}
+			return;
+		}
+		if (checked) {
+			enabledPresets = enabledPresets.includes(key)
+				? enabledPresets
+				: [...enabledPresets, key];
+			presetColors[key] ??= GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color;
+			if (persisted !== undefined) {
+				confirmedRemovalCategoryIds = confirmedRemovalCategoryIds.filter(
+					(id) => id !== persisted.id,
+				);
+			}
+		} else {
+			enabledPresets = enabledPresets.filter((candidate) => candidate !== key);
+		}
+	}
+	async function requestCustomRemoval(category: CustomDraft, trigger: HTMLElement) {
+		if (category.id !== null) {
+			removalTrigger = trigger;
+			pendingRemoval = {
+				type: 'custom',
+				key: category.key,
+				categoryId: category.id,
+				label: category.label.trim(),
+				usedCount: category.usedCount,
+			};
+			return;
+		}
+		const snapshot =
+			categoryRowsElement === null
+				? null
+				: categoryMotion.capture(categoryRowsElement, category.key);
+		customDrafts = customDrafts.filter((item) => item.key !== category.key);
+		await tick();
+		if (snapshot !== null && categoryRowsElement !== null) {
+			void categoryMotion.play(snapshot, categoryRowsElement);
+		}
+	}
+	async function confirmRemoval() {
+		const removal = pendingRemoval;
+		if (removal === null) {
+			return;
+		}
+		const snapshot =
+			removal.type === 'custom' && categoryRowsElement !== null
+				? categoryMotion.capture(categoryRowsElement, removal.key)
+				: null;
+		confirmedRemovalCategoryIds = [
+			...confirmedRemovalCategoryIds.filter((id) => id !== removal.categoryId),
+			removal.categoryId,
+		];
+		if (removal.type === 'custom') {
+			customDrafts = customDrafts.filter((item) => item.key !== removal.key);
+		} else {
+			enabledPresets = enabledPresets.filter((key) => key !== removal.key);
+		}
+		pendingRemoval = null;
+		await tick();
+		if (snapshot !== null && categoryRowsElement !== null) {
+			void categoryMotion.play(snapshot, categoryRowsElement);
+		}
+	}
+	function restoreRemovalTrigger(event: Event) {
+		if (removalTrigger?.isConnected === true) {
+			event.preventDefault();
+			removalTrigger.focus();
+		}
+		removalTrigger = null;
 	}
 
-	async function run(
-		work: () => Promise<void>,
-		success: string,
-		motionSnapshot?: CategoryMotionSnapshot,
-	) {
-		pending = true;
+	async function save(event: SubmitEvent) {
+		event.preventDefault();
+		saving = true;
 		try {
-			await work();
-			await tick();
-			const rowsElement = categoryRowsElement;
-			if (motionSnapshot !== undefined && rowsElement !== null && rowsElement.isConnected) {
-				void categoryMotion.play(motionSnapshot, rowsElement);
-			}
-			toastSuccess(success);
+			await saveGiftCategorySettingsCommand({
+				wishlistId,
+				customCategories: customDrafts.map(({ id, label, color }) => ({
+					id,
+					label: label.trim(),
+					color,
+				})),
+				presetKeys: enabledPresets,
+				presetColors: enabledPresets.map((key) => ({
+					key,
+					color:
+						presetColors[key] ??
+						GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color,
+				})),
+				confirmedRemovalCategoryIds,
+			});
+			confirmedRemovalCategoryIds = [];
+			baseline = snapshot();
+			toastSuccess(m.gift_categories_saved());
+			onsaved?.();
 		} catch (thrown) {
-			if (motionSnapshot !== undefined) {
-				categoryMotion.discard(motionSnapshot);
+			if (
+				getServerErrorCode(thrown) ===
+				SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH
+			) {
+				confirmedRemovalCategoryIds = [];
+				baseline = '';
+				seededSignature = '';
+				try {
+					await categoriesQuery.refresh();
+				} catch (refreshError) {
+					console.error(
+						'Failed to refresh category settings after conflict:',
+						refreshError,
+					);
+				}
 			}
 			toastError(translateServerError(thrown));
 		} finally {
-			pending = false;
+			saving = false;
 		}
-	}
-
-	function movedCategoryIds(index: number, direction: -1 | 1): string[] {
-		const ids = categories.map((category) => category.id);
-		const target = index + direction;
-		const [id] = ids.splice(index, 1);
-		if (id !== undefined) {
-			ids.splice(target, 0, id);
-		}
-		return ids;
-	}
-
-	function reorder(ids: string[]) {
-		const rowsElement = categoryRowsElement;
-		const snapshot = rowsElement === null ? undefined : categoryMotion.capture(rowsElement);
-		void run(
-			() => reorderGiftCategories({ wishlistId, categoryIds: ids }),
-			m.gift_categories_reordered(),
-			snapshot,
-		);
-	}
-
-	function deleteCategory(categoryId: string) {
-		const rowsElement = categoryRowsElement;
-		const snapshot =
-			rowsElement === null ? undefined : categoryMotion.capture(rowsElement, categoryId);
-		void run(
-			() => deleteCustomGiftCategoryCommand({ categoryId }),
-			m.gift_category_deleted(),
-			snapshot,
-		);
 	}
 </script>
 
-<div class="flex flex-col gap-5">
+<form id="wishlist-categories-form" class="flex flex-col gap-5" onsubmit={save}>
 	<p class="text-sm text-muted-foreground">{m.gift_categories_settings_hint()}</p>
 
-	<div class="grid gap-2 sm:grid-cols-2">
-		{#each GIFT_CATEGORY_PRESETS as preset (preset.key)}
-			{@const enabled = activePresetKeys.has(preset.key)}
-			<div
-				class="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2"
+	<div class="flex flex-col gap-2">
+		<h3 class="text-base font-semibold">{m.gift_category_create()}</h3>
+		<div class="flex flex-wrap gap-2">
+			<Input
+				bind:value={customLabel}
+				maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
+				placeholder={m.gift_category_custom_placeholder()}
+				class="min-w-56 flex-1"
+				disabled={saving}
+				onkeydown={handleCreateKeydown}
+			/>
+			<Button
+				type="button"
+				onclick={createCustom}
+				disabled={saving || customLabel.trim() === ''}>{m.gift_category_create()}</Button
 			>
-				<div>
-					<p class="text-sm font-semibold">
-						{preset.labels[getLocale().startsWith('en') ? 'en' : 'cs']}
-					</p>
-					<p class="text-xs text-muted-foreground">
-						{preset.labels.cs} / {preset.labels.en}
-					</p>
-				</div>
-				<Button
-					size="sm"
-					intent={enabled ? 'outline' : 'primary'}
-					disabled={pending}
-					onclick={() =>
-						void run(
-							() =>
-								togglePresetGiftCategory({
-									wishlistId,
-									presetKey: preset.key,
-									enabled: !enabled,
-								}),
-							enabled ? m.gift_category_disabled() : m.gift_category_enabled(),
-						)}
-				>
-					{enabled ? m.gift_category_disable() : m.gift_category_enable()}
-				</Button>
-			</div>
-		{/each}
+		</div>
 	</div>
 
 	<div class="flex flex-col gap-3" bind:this={categoryRowsElement}>
-		<h3 class="text-base font-semibold">{m.gift_categories_active_title()}</h3>
-		{#if categories.length === 0}
+		<h3 class="text-base font-semibold">{m.gift_categories_custom_title()}</h3>
+		{#if customDrafts.length === 0}
 			<HelpText>{m.gift_categories_empty()}</HelpText>
 		{:else}
-			{#each categories as category, index (category.id)}
-				{@const used = category.usedCount > 0}
+			{#each customDrafts as category, index (category.key)}
 				<div
-					class="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+					class="flex items-center gap-2 rounded-lg border border-border border-l-4 bg-surface px-3 py-2"
+					style:border-left-color={category.color}
+					data-testid="gift-category-settings-card"
 					data-category-row
-					data-category-id={category.id}
+					data-category-id={category.key}
+					data-category-label={category.label}
 				>
-					<div class="min-w-0 flex-1">
-						{#if category.customLabel === null}
-							<p class="truncate text-sm font-semibold">{categoryLabel(category)}</p>
-							<p class="text-xs text-muted-foreground">
-								{m.gift_category_preset_locked()}
-							</p>
-						{:else}
-							<Input
-								value={renaming[category.id] ?? category.customLabel}
-								maxlength={80}
-								disabled={pending}
-								oninput={(event) =>
-									(renaming[category.id] = event.currentTarget.value)}
-							/>
-							{#if isShared && used}
-								<HelpText>{m.gift_category_shared_rename_warning()}</HelpText>
-							{/if}
-						{/if}
-						{#if used}
-							<HelpText
-								>{m.gift_category_used_count({
-									count: category.usedCount,
-								})}</HelpText
-							>
-						{/if}
+					<div class="flex min-w-0 flex-1 items-center gap-2">
+						<input
+							type="color"
+							bind:value={category.color}
+							class="size-9 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+							disabled={saving}
+							aria-label={category.label}
+						/>
+						<Input
+							bind:value={category.label}
+							maxlength={MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH}
+							class="min-w-0 flex-1"
+							disabled={saving}
+						/>
+						<span
+							data-testid="gift-category-used-count"
+							class="w-20 shrink-0 text-right text-xs text-muted-foreground"
+							>{m.gift_category_usage_compact({ count: category.usedCount })}</span
+						>
 					</div>
 					<Button
+						type="button"
 						size="icon-sm"
 						intent="ghost"
-						disabled={pending || index === 0}
-						onclick={() => reorder(movedCategoryIds(index, -1))}
-						aria-label={m.move_up()}
+						disabled={saving || index === 0}
+						onclick={() => move(index, -1)}
+						aria-label={m.move_up()}><ArrowUpIcon /></Button
 					>
-						<ArrowUpIcon />
-					</Button>
 					<Button
+						type="button"
 						size="icon-sm"
 						intent="ghost"
-						disabled={pending || index === categories.length - 1}
-						onclick={() => reorder(movedCategoryIds(index, 1))}
-						aria-label={m.move_down()}
+						disabled={saving || index === customDrafts.length - 1}
+						onclick={() => move(index, 1)}
+						aria-label={m.move_down()}><ArrowDownIcon /></Button
 					>
-						<ArrowDownIcon />
-					</Button>
-					{#if category.customLabel !== null}
-						<Button
-							size="sm"
-							intent="outline"
-							disabled={pending ||
-								(renaming[category.id] ?? category.customLabel).trim() ===
-									category.customLabel}
-							onclick={() =>
-								void run(
-									() =>
-										renameCustomGiftCategoryCommand({
-											categoryId: category.id,
-											label: (
-												renaming[category.id] ??
-												category.customLabel ??
-												''
-											).trim(),
-										}),
-									m.gift_category_renamed(),
-								)}
-						>
-							{m.save()}
-						</Button>
-						<Button
-							size="icon-sm"
-							intent="ghost"
-							disabled={pending || used}
-							onclick={() => deleteCategory(category.id)}
-							aria-label={m.delete()}
-						>
-							<TrashIcon />
-						</Button>
-					{/if}
+					<Button
+						type="button"
+						size="icon-sm"
+						intent="ghost"
+						disabled={saving}
+						onclick={(event) => requestCustomRemoval(category, event.currentTarget)}
+						aria-label={m.delete()}><TrashIcon /></Button
+					>
 				</div>
 			{/each}
 		{/if}
 	</div>
 
-	<form
-		class="flex flex-wrap gap-2"
-		onsubmit={(event) => {
-			event.preventDefault();
-			const label = customLabel.trim();
-			if (label === '') {
-				return;
-			}
-			void run(async () => {
-				await createCustomGiftCategoryCommand({ wishlistId, label });
-				customLabel = '';
-			}, m.gift_category_created());
-		}}
-	>
-		<Input
-			bind:value={customLabel}
-			maxlength={80}
-			placeholder={m.gift_category_custom_placeholder()}
-			class="min-w-56 flex-1"
-		/>
-		<Button type="submit" disabled={pending || customLabel.trim() === ''}
-			>{m.gift_category_create()}</Button
-		>
-	</form>
+	<div class="flex flex-col gap-3">
+		<h3 class="text-base font-semibold">{m.gift_categories_presets_title()}</h3>
+		<div class="grid gap-2 sm:grid-cols-2">
+			{#each GIFT_CATEGORY_PRESETS as preset (preset.key)}
+				{@const checked = enabledPresets.includes(preset.key)}
+				{@const label = preset.labels[getLocale().startsWith('en') ? 'en' : 'cs']}
+				{@const usedCount =
+					categories.find((category) => category.presetKey === preset.key)?.usedCount ??
+					0}
+				{@const accentColor = checked
+					? (presetColors[preset.key] ?? preset.color)
+					: preset.color}
+				<label
+					class="flex items-center gap-3 rounded-lg border border-border border-l-4 bg-surface px-3 py-2 text-sm font-semibold"
+					style:border-left-color={accentColor}
+					data-testid="gift-category-settings-card"
+					data-category-label={label}
+				>
+					<Checkbox
+						{checked}
+						disabled={saving}
+						onCheckedChange={(value) =>
+							togglePreset(preset.key, value === true, label, usedCount)}
+					/>
+					<span class="min-w-0 flex-1">{label}</span>
+					{#if checked}
+						<input
+							type="color"
+							value={presetColors[preset.key] ?? preset.color}
+							oninput={(event) =>
+								(presetColors[preset.key] = event.currentTarget.value)}
+							onclick={(event) => event.stopPropagation()}
+							class="size-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+							disabled={saving}
+							aria-label={label}
+						/>
+						<span
+							data-testid="gift-category-used-count"
+							class="w-20 shrink-0 text-right text-xs font-normal text-muted-foreground"
+							>{m.gift_category_usage_compact({ count: usedCount })}</span
+						>
+					{/if}
+				</label>
+			{/each}
+		</div>
+	</div>
+</form>
 
-	<Alert.Root>
-		<Alert.Description>{m.gift_categories_no_tags()}</Alert.Description>
-	</Alert.Root>
-</div>
+<Dialog.Root
+	open={pendingRemoval !== null}
+	onOpenChange={(open: boolean) => {
+		if (open === false) pendingRemoval = null;
+	}}
+>
+	<Dialog.Content size="md" onCloseAutoFocus={restoreRemovalTrigger}>
+		<Dialog.Header>
+			<Dialog.Title>
+				{m.gift_category_remove_confirm_title({ category: pendingRemoval?.label ?? '' })}
+			</Dialog.Title>
+			<Dialog.Description>
+				{m.gift_category_remove_confirm_description({
+					count: pendingRemoval?.usedCount ?? 0,
+				})}
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer>
+			<Button type="button" intent="outline" onclick={() => (pendingRemoval = null)}>
+				{m.cancel()}
+			</Button>
+			<Button
+				type="button"
+				intent="danger"
+				data-testid="gift-category-remove-confirm"
+				onclick={confirmRemoval}
+			>
+				{m.gift_category_remove_confirm_action()}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

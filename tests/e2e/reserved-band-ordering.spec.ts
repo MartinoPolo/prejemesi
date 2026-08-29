@@ -21,7 +21,12 @@ const OWN_BAND_HEADER = /Vaše rezervace|Your reservations/;
 const OTHER_BAND_HEADER = /Ostatní dárky|Other gifts/;
 
 async function switchToListView(page: Page): Promise<void> {
-	await page.getByRole('radio', { name: /Seznam|List/ }).click();
+	const listViewRadio = page.getByRole('radio', { name: /Seznam|List/ });
+	await listViewRadio.click();
+	await expect(listViewRadio).toBeChecked();
+	await expect(
+		page.locator('[data-wishlist-gift-collection][data-view-mode=list]'),
+	).toBeVisible();
 }
 
 /**

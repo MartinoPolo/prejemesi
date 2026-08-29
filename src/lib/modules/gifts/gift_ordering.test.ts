@@ -361,6 +361,25 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 		expect(flatIds(sections)).toEqual(['h', 'm', 'l', 'n']);
 	});
 
+	it('carries the stable priority key for localization without changing the stored label', () => {
+		const sections = computeGiftSections(
+			[
+				makeGift({
+					id: 'h',
+					priorityLevelId: 'lvl-high',
+					priorityLabel: 'Vysoka',
+					prioritySortOrder: 1,
+				}),
+			],
+			WISHLIST_ROLES.recipient,
+			GIFT_SORT_OPTIONS.priority,
+			GIFT_GROUPING_OPTIONS.priority,
+			LOCALE,
+		);
+
+		expect(sections[0]).toMatchObject({ label: 'Vysoka', priorityKey: 'Vysoka' });
+	});
+
 	it('keeps the own-reservation band above all priority groups (behavior 6)', () => {
 		const mine = makeGift({ id: 'mine', myReservationId: 'res-1', ...high });
 		const gMed = makeGift({ id: 'm', ...medium });
@@ -414,11 +433,23 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 describe('computeGiftSections — category grouping (issue #246)', () => {
 	const books = {
 		categoryId: 'category-books',
-		category: { id: 'category-books', presetKey: null, customLabel: 'Knihy', sortOrder: 2 },
+		category: {
+			id: 'category-books',
+			presetKey: null,
+			customLabel: 'Knihy',
+			color: '#2563EB',
+			sortOrder: 2,
+		},
 	};
 	const toys = {
 		categoryId: 'category-toys',
-		category: { id: 'category-toys', presetKey: null, customLabel: 'Hračky', sortOrder: 1 },
+		category: {
+			id: 'category-toys',
+			presetKey: null,
+			customLabel: 'Hračky',
+			color: '#D97706',
+			sortOrder: 1,
+		},
 	};
 
 	it('orders category groups by manager sort order and uncategorized last', () => {

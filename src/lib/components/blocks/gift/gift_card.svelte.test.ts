@@ -2,9 +2,9 @@
 // Tailwind utilities must be present (mirrors gift_detail_form.svelte.test.ts).
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
-import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 
 // GiftImage transitively imports the images module barrel, which reads `$env/dynamic/public`.
@@ -33,6 +33,42 @@ function imageMeta(bgColor: string | null): ImageMetadata {
 		zoom: 1,
 		bgColor,
 	};
+}
+
+type CssRgb = readonly [red: number, green: number, blue: number];
+
+function parseCssRgb(value: string): CssRgb {
+	const match = value.match(
+		/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*[\d.]+)?\s*\)$/,
+	);
+	if (!match) {
+		throw new Error(`Expected a computed CSS rgb color, received: ${value}`);
+	}
+	return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function linearizeSrgbChannel(channel: number): number {
+	const normalizedChannel = channel / 255;
+	return normalizedChannel <= 0.04045
+		? normalizedChannel / 12.92
+		: ((normalizedChannel + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance([red, green, blue]: CssRgb): number {
+	return (
+		0.2126 * linearizeSrgbChannel(red) +
+		0.7152 * linearizeSrgbChannel(green) +
+		0.0722 * linearizeSrgbChannel(blue)
+	);
+}
+
+function contrastRatio(firstColor: CssRgb, secondColor: CssRgb): number {
+	const lighterLuminance = Math.max(
+		relativeLuminance(firstColor),
+		relativeLuminance(secondColor),
+	);
+	const darkerLuminance = Math.min(relativeLuminance(firstColor), relativeLuminance(secondColor));
+	return (lighterLuminance + 0.05) / (darkerLuminance + 0.05);
 }
 
 function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
@@ -73,21 +109,136 @@ function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisito
 /** Renders `GiftCardTestHost` inside a fixed-width host that mirrors the real
  *  `WishlistGiftCardGrid` column (`minmax(280px, 1fr)`), so the card sits in a
  *  constrained track the same way it does on the wishlist page. */
-async function renderCardInGridColumn(gift: GiftForVisitor) {
+const fixedHosts = new Set<HTMLElement>();
+
+async function renderCardInGridColumn(
+	gift: GiftForVisitor,
+	role: WishlistRole = WISHLIST_ROLES.visitor,
+	theme: { palette: string; dark: boolean } = { palette: 'sky', dark: false },
+) {
 	const host = document.createElement('div');
 	host.style.display = 'grid';
 	host.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
-	host.style.width = '300px';
+	host.style.width = '280px';
+	host.dataset.palette = theme.palette;
+	host.classList.toggle('dark', theme.dark);
 	document.body.appendChild(host);
+	fixedHosts.add(host);
 
-	await render(
-		GiftCardTestHost,
-		{ gift, role: WISHLIST_ROLES.visitor, isArchived: false },
-		{ baseElement: host },
-	);
+	await render(GiftCardTestHost, { gift, role, isArchived: false }, { baseElement: host });
 
 	return host;
 }
+
+afterEach(() => {
+	for (const host of fixedHosts) {
+		host.remove();
+	}
+	fixedHosts.clear();
+});
+
+describe('GiftCard category badge (issue #265)', () => {
+	it.each([
+		{
+			color: '#000000',
+			expectedBackground: 'rgb(0, 0, 0)',
+			expectedForeground: 'rgb(255, 255, 255)',
+			palette: 'sky',
+			dark: false,
+		},
+		{
+			color: '#FFFFFF',
+			expectedBackground: 'rgb(255, 255, 255)',
+			expectedForeground: 'rgb(0, 0, 0)',
+			palette: 'grape',
+			dark: true,
+		},
+		{
+			color: '#777777',
+			expectedBackground: 'rgb(119, 119, 119)',
+			expectedForeground: 'rgb(0, 0, 0)',
+			palette: 'honey',
+			dark: false,
+		},
+	])(
+		'keeps $color readable in the $palette palette (dark: $dark)',
+		async ({ color, expectedBackground, expectedForeground, palette, dark }) => {
+			const label = 'Velmi dlouhá kategorie sportovního vybavení pro celou rodinu';
+			const host = await renderCardInGridColumn(
+				makeVisitorGift({
+					categoryId: 'category-sport',
+					category: {
+						id: 'category-sport',
+						presetKey: null,
+						customLabel: label,
+						color,
+						sortOrder: 0,
+					},
+					isFullyReserved: true,
+					received: true,
+				}),
+				WISHLIST_ROLES.moderator,
+				{ palette, dark },
+			);
+
+			const badge = host.querySelector('[data-testid="gift-category-badge"]') as HTMLElement;
+			const imageFrame = host.querySelector(
+				'[data-testid="gift-card-image-frame"]',
+			) as HTMLElement;
+			expect(badge).toBeTruthy();
+			expect(imageFrame).toBeTruthy();
+			expect(host.getBoundingClientRect().width).toBeCloseTo(280, 1);
+			expect(badge.title).toBe(label);
+			expect(badge.className).toContain('truncate');
+			const style = getComputedStyle(badge);
+			expect(style.backgroundColor).toBe(expectedBackground);
+			expect(style.color).toBe(expectedForeground);
+			expect(
+				contrastRatio(parseCssRgb(style.backgroundColor), parseCssRgb(style.color)),
+			).toBeGreaterThanOrEqual(4.5);
+			expect(style.rotate).not.toBe('none');
+			expect(Number.parseFloat(style.rotate)).toBeLessThan(0);
+
+			const badgeRect = badge.getBoundingClientRect();
+			const imageFrameRect = imageFrame.getBoundingClientRect();
+			expect(imageFrameRect.width / imageFrameRect.height).toBeCloseTo(4 / 3, 2);
+			const editRect = (
+				host.querySelector('[data-testid="gift-card-edit-icon"]') as HTMLElement
+			).getBoundingClientRect();
+			const reservedRect = (
+				host.querySelector('[data-testid="gift-reserved-sticker"]') as HTMLElement
+			).getBoundingClientRect();
+			const receivedRect = (
+				host.querySelector('[data-testid="gift-received-sticker"]') as HTMLElement
+			).getBoundingClientRect();
+			const overlaps = (a: DOMRect, b: DOMRect) =>
+				a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+			expect(badgeRect.left).toBeGreaterThanOrEqual(imageFrameRect.left);
+			expect(badgeRect.top).toBeGreaterThanOrEqual(imageFrameRect.top);
+			expect(badgeRect.right).toBeLessThanOrEqual(imageFrameRect.right);
+			expect(badgeRect.bottom).toBeLessThanOrEqual(imageFrameRect.bottom);
+			expect(badgeRect.left + badgeRect.width / 2).toBeLessThan(
+				imageFrameRect.left + imageFrameRect.width / 2,
+			);
+			expect(badgeRect.top + badgeRect.height / 2).toBeLessThan(
+				imageFrameRect.top + imageFrameRect.height / 2,
+			);
+			expect(overlaps(badgeRect, editRect)).toBe(false);
+			expect(overlaps(badgeRect, reservedRect)).toBe(false);
+			expect(overlaps(badgeRect, receivedRect)).toBe(false);
+		},
+	);
+
+	it('renders no category badge while keeping the unchanged image frame for an uncategorized gift', async () => {
+		const host = await renderCardInGridColumn(makeVisitorGift());
+		expect(host.querySelector('[data-testid="gift-category-badge"]')).toBeNull();
+		expect(
+			host.querySelector(
+				'[data-testid="gift-card-image-frame"] > [data-testid="image-frame"]',
+			),
+		).toBeTruthy();
+	});
+});
 
 describe('GiftCard image background fill (issue #252)', () => {
 	it('paints the visible outer card frame with explicit black and removes the pattern', async () => {

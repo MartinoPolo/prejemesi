@@ -25,6 +25,7 @@
 	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftDescription from './GiftDescription.svelte';
+	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 
 	interface GiftCardProps {
 		gift: GiftByRole;
@@ -97,11 +98,15 @@
 			<div class={styles.imageVeil()} aria-hidden="true"></div>
 		{/if}
 
+		{#if gift.category != null}
+			<GiftCategoryBadge category={gift.category} />
+		{/if}
+
 		{#if canManage}
 			<!-- Edit affordance (issue #125 REQ-3): hidden until the card is hovered/focused;
 			     purely decorative, the whole card is already the click target via
 			     WishlistGiftDraggableWrapper. -->
-			<span class={styles.editIcon()} aria-hidden="true">
+			<span class={styles.editIcon()} data-testid="gift-card-edit-icon" aria-hidden="true">
 				<PencilIcon class="size-3.5" />
 			</span>
 		{/if}
@@ -111,7 +116,7 @@
 		{/if}
 
 		{#if gift.received}
-			<span class={styles.receivedSticker()}>
+			<span class={styles.receivedSticker()} data-testid="gift-received-sticker">
 				<CheckIcon class="size-3" />
 				{m.gift_received_badge()}
 			</span>

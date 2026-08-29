@@ -316,6 +316,13 @@ What: Czech is the primary language; English is the only other supported languag
 Why: Czech creator, Czech target audience, Czech app name. English for international friends/family.
 Rejected: English-first (doesn't match audience), more languages (unnecessary scope for a family app).
 
+### SEO exposure: localized landing pages, private bearer-link wishlists
+
+Decided: 2026-08-28 (issue #103)
+What: Each landing locale has its own canonical URL plus `cs`, `en`, and `x-default` alternates. Bearer-link wishlists emit `X-Robots-Tag: noindex, nofollow, noarchive` while retaining Open Graph and Twitter metadata for link unfurls. No wishlist sitemap is published until wishlists gain an explicit, revocable publication mode.
+Why: Landing pages should be discoverable in the correct locale, while possession of a wishlist link is not consent to search indexing. Social sharing remains a core workflow and does not require indexing.
+Rejected: Indexing permanent bearer-link wishlists by default; removing social metadata to enforce privacy; publishing a wishlist sitemap before owners can explicitly publish and later revoke publication.
+
 ### No GDPR/cookie banners
 
 Decided: 2026-05-29

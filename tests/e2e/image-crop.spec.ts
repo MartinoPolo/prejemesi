@@ -302,7 +302,12 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		// dirtied `square`, so `thumb` (never touched) was pinned at save to its own
 		// untouched centered framing instead of inheriting the square crop – it
 		// still renders at the true 1:1 aspect either way.
-		await page.locator('[aria-label="Seznam"]').click();
+		const listViewControl = page.locator('[aria-label="Seznam"]');
+		await listViewControl.click();
+		await expect(listViewControl).toHaveAttribute('aria-checked', 'true');
+		await expect(
+			page.locator('[data-wishlist-gift-collection][data-view-mode=list]'),
+		).toBeVisible();
 		await expectAspect(
 			page.getByRole('img', { name: giftName }).first(),
 			GIFT_CROP_TARGET_SPECS.thumb.aspect,

@@ -323,6 +323,9 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await action.click();
 		const done = page.getByRole('button', { name: 'Hotovo', exact: true });
 		await expect(done).toBeFocused();
+		await expect(
+			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí zapnut.' }),
+		).toHaveCount(1);
 		const after = await Promise.all(regions.map((id) => page.getByTestId(id).boundingBox()));
 		expect(after).toEqual(before);
 		for (const control of [
@@ -340,6 +343,10 @@ test.describe('issue #269 integrated motion strategy', () => {
 			await expect(control).toBeDisabled();
 		}
 		await page.setViewportSize({ width: 390, height: 844 });
+		await done.scrollIntoViewIfNeeded();
+		const mobileAfterEntry = await Promise.all(
+			regions.map((id) => page.getByTestId(id).boundingBox()),
+		);
 		expect(
 			await page.evaluate(
 				() => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
@@ -347,6 +354,22 @@ test.describe('issue #269 integrated motion strategy', () => {
 		).toBe(true);
 		await expect(done).toBeFocused();
 		await done.click();
+		await expect(action).toBeFocused();
+		await expect(
+			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí ukončen.' }),
+		).toHaveCount(1);
+		const mobileAfterExit = await Promise.all(
+			regions.map((id) => page.getByTestId(id).boundingBox()),
+		);
+		expect(mobileAfterExit).toEqual(mobileAfterEntry);
+		await action.click();
+		await expect(done).toBeFocused();
+		const mobileAfterReentry = await Promise.all(
+			regions.map((id) => page.getByTestId(id).boundingBox()),
+		);
+		expect(mobileAfterReentry).toEqual(mobileAfterExit);
+		await done.click();
+		await expect(action).toBeFocused();
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});

@@ -6,6 +6,7 @@
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import {
 		toIndexedSections,
 		countGiftsInSections,
@@ -43,6 +44,7 @@
 	}: WishlistGiftListViewProps = $props();
 
 	let listEl = $state<HTMLElement | null>(null);
+	let reorderAnnouncement = $state('');
 
 	const indexedSections = $derived(toIndexedSections(sections));
 	const totalGiftCount = $derived(countGiftsInSections(sections));
@@ -62,8 +64,21 @@
 	});
 
 	function handleReorderMove(index: number, direction: -1 | 1) {
-		if (index + direction >= 0 && index + direction < totalGiftCount) {
-			reorder.move(index, direction);
+		const destination = index + direction;
+		if (destination >= 0 && destination < totalGiftCount) {
+			if (!reorder.move(index, direction)) {
+				return;
+			}
+			const movedGift = indexedSections
+				.flatMap(({ items }) => items)
+				.find((item) => item.index === index)?.gift;
+			if (movedGift !== undefined) {
+				reorderAnnouncement = m.gift_reorder_move_success({
+					name: movedGift.name,
+					position: destination + 1,
+					total: totalGiftCount,
+				});
+			}
 		}
 	}
 
@@ -74,6 +89,10 @@
 	});
 	$effect(() => () => reorder.destroy());
 </script>
+
+<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+	{reorderAnnouncement}
+</div>
 
 <div bind:this={listEl} class="flex flex-col">
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}

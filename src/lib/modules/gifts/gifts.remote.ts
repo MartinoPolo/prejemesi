@@ -97,6 +97,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 			categoryId: gift.categoryId,
 			categoryPresetKey: giftCategory.presetKey,
 			categoryCustomLabel: giftCategory.customLabel,
+			categoryColor: giftCategory.color,
 			categorySortOrder: giftCategory.sortOrder,
 		})
 		.from(gift)
@@ -121,6 +122,7 @@ export const getGiftsByWishlistShortId = publicQuery(v.string(), async (authCont
 					wishlistId: wishlistRow.id,
 					presetKey: row.categoryPresetKey,
 					customLabel: row.categoryCustomLabel,
+					color: row.categoryColor!,
 					sortOrder: row.categorySortOrder ?? 0,
 					deletedAt: null,
 					createdAt: new Date(0),

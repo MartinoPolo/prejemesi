@@ -13,8 +13,8 @@ function port(environment: Environment, name: string, fallback: number): number 
 	return Number.isInteger(value) && value > 0 && value <= 65_535 ? value : fallback;
 }
 
-function localhost(portNumber: number): string {
-	return `http://localhost:${portNumber}`;
+function loopbackOrigin(host: string, portNumber: number): string {
+	return `http://${host}:${portNumber}`;
 }
 
 function servicePort(
@@ -43,13 +43,16 @@ function configured(value: string | undefined): value is string {
 }
 
 export function resolveDevelopmentEnvironment(environment: Environment = process.env) {
+	const appHost = 'localhost';
 	const appPort = servicePort(environment, 'MPX_APP_URL', 'MPX_APP_PORT', 8300);
 	const previewPort = servicePort(environment, 'MPX_PREVIEW_URL', 'MPX_PREVIEW_PORT', 8301);
-	const appOrigin = localhost(appPort);
-	const previewOrigin = localhost(previewPort);
+	const appOrigin = loopbackOrigin(appHost, appPort);
+	const previewOrigin = loopbackOrigin(appHost, previewPort);
+	const appServer = { host: appHost, port: appPort };
 
 	return {
 		appPort,
+		appServer,
 		previewPort,
 		storybookPort: servicePort(environment, 'MPX_STORYBOOK_URL', 'MPX_STORYBOOK_PORT', 8302),
 		vitestClientPort: servicePort(
@@ -95,7 +98,8 @@ export function resolveDatabaseUrl(environment: Environment): string | undefined
 }
 
 export function resolveAuthOrigins(environment: Environment, development: boolean) {
-	const baseURL = resolveDevelopmentEnvironment(environment).origin;
+	const resolved = resolveDevelopmentEnvironment(environment);
+	const baseURL = development ? resolved.appOrigin : resolved.origin;
 	const configured = (environment.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
 		.split(',')
 		.map((origin) => origin.trim())

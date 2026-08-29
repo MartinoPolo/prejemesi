@@ -77,6 +77,24 @@ describe('GiftListItem reserved-sticker parity (issue #224 REQ-7)', () => {
 		return host;
 	}
 
+	it('does not render the grid-only category badge for a categorized gift (issue #265)', async () => {
+		const host = await renderItem(
+			makeVisitorGift({
+				categoryId: 'category-sport',
+				category: {
+					id: 'category-sport',
+					presetKey: null,
+					customLabel: 'Sport',
+					color: '#0369A1',
+					sortOrder: 0,
+				},
+			}),
+			WISHLIST_ROLES.visitor,
+		);
+
+		expect(host.querySelector('[data-testid="gift-category-badge"]')).toBeNull();
+	});
+
 	it('paints the visible list thumbnail frame with explicit black', async () => {
 		const host = await renderItem(
 			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#000000') }),

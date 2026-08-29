@@ -276,24 +276,25 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		window.addEventListener('keydown', handleKeydown);
 	}
 
-	function move(index: number, direction: -1 | 1) {
+	function move(index: number, direction: -1 | 1): boolean {
 		if (activePointerId !== null) {
-			return;
+			return false;
 		}
 		const itemIds = options.getItemIds();
 		const targetIndex = index + direction;
 		if (targetIndex < 0 || targetIndex >= itemIds.length) {
-			return;
+			return false;
 		}
 		const previousPositions = capturePositions();
 		const [movedId] = itemIds.splice(index, 1);
 		if (movedId === undefined) {
-			return;
+			return false;
 		}
 		itemIds.splice(targetIndex, 0, movedId);
 		options.onPreviewOrder([...itemIds]);
 		animateFrom(previousPositions);
 		options.onCommitOrder([...itemIds]);
+		return true;
 	}
 
 	function cancel() {

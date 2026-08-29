@@ -4,6 +4,7 @@ import {
 	GIFT_CATEGORY_PRESET_KEYS,
 	type GiftCategoryPresetKey,
 } from './presets.js';
+import { GIFT_CATEGORY_COLOR_PATTERN } from './gift_category_colors.js';
 
 export type { GiftCategoryPresetKey } from './presets.js';
 export { GIFT_CATEGORY_PRESETS, GIFT_CATEGORY_PRESET_KEYS } from './presets.js';
@@ -14,11 +15,16 @@ export interface PublicGiftCategory {
 	id: string;
 	presetKey: GiftCategoryPresetKey | null;
 	customLabel: string | null;
+	color: string;
 	sortOrder: number;
 }
 
 export interface ManagedGiftCategory extends PublicGiftCategory {
 	usedCount: number;
+}
+
+export interface ManagedGiftCategorySettingsRow extends ManagedGiftCategory {
+	enabled: boolean;
 }
 
 export interface GiftCategoryOption extends PublicGiftCategory {
@@ -32,42 +38,37 @@ export interface CategoryLabelMatch {
 	categoryId?: string;
 }
 
-export const GiftCategoryIdInputSchema = v.optional(v.nullable(v.string()));
-
 export const GiftCategoryPresetKeySchema = v.picklist(GIFT_CATEGORY_PRESET_KEYS);
+export const GiftCategoryColorSchema = v.pipe(
+	v.string(),
+	v.regex(GIFT_CATEGORY_COLOR_PATTERN, 'Category color must be a six-digit hex value'),
+);
 
-export const CreateCustomGiftCategoryInputSchema = v.object({
+/** Complete category-settings snapshot committed as one transaction. */
+export const SaveGiftCategorySettingsInputSchema = v.object({
 	wishlistId: v.string(),
-	label: v.pipe(
-		v.string(),
-		v.trim(),
-		v.minLength(1),
-		v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
+	customCategories: v.array(
+		v.object({
+			id: v.nullable(v.string()),
+			label: v.pipe(
+				v.string(),
+				v.trim(),
+				v.minLength(1),
+				v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
+			),
+			color: GiftCategoryColorSchema,
+		}),
 	),
-});
-
-export const RenameCustomGiftCategoryInputSchema = v.object({
-	categoryId: v.string(),
-	label: v.pipe(
-		v.string(),
-		v.trim(),
-		v.minLength(1),
-		v.maxLength(MAX_CUSTOM_GIFT_CATEGORY_LABEL_LENGTH),
+	presetKeys: v.array(GiftCategoryPresetKeySchema),
+	presetColors: v.array(
+		v.object({ key: GiftCategoryPresetKeySchema, color: GiftCategoryColorSchema }),
 	),
+	confirmedRemovalCategoryIds: v.array(v.string()),
 });
 
-export const CategoryIdInputSchema = v.object({ categoryId: v.string() });
-
-export const TogglePresetGiftCategoryInputSchema = v.object({
-	wishlistId: v.string(),
-	presetKey: GiftCategoryPresetKeySchema,
-	enabled: v.boolean(),
-});
-
-export const ReorderGiftCategoriesInputSchema = v.object({
-	wishlistId: v.string(),
-	categoryIds: v.array(v.string()),
-});
+export type SaveGiftCategorySettingsInput = v.InferOutput<
+	typeof SaveGiftCategorySettingsInputSchema
+>;
 
 export function normalizeGiftCategoryLabel(value: string): string {
 	return value

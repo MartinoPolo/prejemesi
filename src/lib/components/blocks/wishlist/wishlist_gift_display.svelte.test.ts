@@ -1,9 +1,11 @@
 import { render } from 'vitest-browser-svelte';
+import { userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'svelte';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
@@ -88,6 +90,79 @@ function deferredAnimation() {
 		finish,
 	};
 }
+
+describe('WishlistGiftDisplay keyboard reorder announcements', () => {
+	it.each(['card', 'list'] as const)(
+		'announces successful moves but not boundary no-ops in %s view',
+		async (viewMode) => {
+			const first = visitorGift();
+			const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar', sortOrder: 1 };
+			const reorderSections: GiftSection[] = [{ ...sections[0]!, gifts: [first, second] }];
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: reorderSections,
+				viewMode,
+				reorderMode: true,
+			});
+			const grips = screen.getByRole('button', { name: m.gift_reorder_grip_label() }).all();
+
+			grips[0]!.element().focus();
+			await userEvent.keyboard('{ArrowDown}');
+			await expect
+				.element(screen.getByRole('status'))
+				.toHaveTextContent(
+					m.gift_reorder_move_success({ name: first.name, position: 2, total: 2 }),
+				);
+			await screen.unmount();
+
+			const boundaryScreen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: reorderSections,
+				viewMode,
+				reorderMode: true,
+			});
+			const boundaryGrips = boundaryScreen
+				.getByRole('button', { name: m.gift_reorder_grip_label() })
+				.all();
+			boundaryGrips[1]!.element().focus();
+			await userEvent.keyboard('{ArrowDown}');
+			await expect.element(boundaryScreen.getByRole('status')).toHaveTextContent('');
+			await boundaryScreen.unmount();
+		},
+	);
+
+	it.each(['card', 'list'] as const)(
+		'does not announce a keyboard move rejected during a pointer reorder in %s view',
+		async (viewMode) => {
+			const first = visitorGift();
+			const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar', sortOrder: 1 };
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts: [first, second] }],
+				viewMode,
+				reorderMode: true,
+			});
+			const grip = screen
+				.getByRole('button', { name: m.gift_reorder_grip_label() })
+				.all()[0]!
+				.element();
+
+			grip.dispatchEvent(
+				new PointerEvent('pointerdown', {
+					bubbles: true,
+					button: 0,
+					pointerId: 1,
+					pointerType: 'mouse',
+				}),
+			);
+			grip.focus();
+			await userEvent.keyboard('{ArrowDown}');
+
+			await expect.element(screen.getByRole('status')).toHaveTextContent('');
+			await screen.unmount();
+		},
+	);
+});
 
 describe('WishlistGiftDisplay collection transition', () => {
 	it('fades the retained collection out before replacing geometry, then settles the whole collection in', async () => {

@@ -49,12 +49,11 @@ user rows.
 
 ## Running locally
 
-```powershell
+```bash
 pnpm db:start            # local Postgres (compose enables pg_stat_statements)
 pnpm db:migrate          # schema (or db:push for a dev-iterated DB)
 pnpm loadtest:setup      # idempotent fixtures (100 VU accounts + arena)
-pnpm run dev             # in a second terminal; port must be 5173–5183
-                         # (better-auth dev trustedOrigins), e.g. --port 5183
+pnpm run dev             # in a second terminal; open the MPX-assigned localhost app URL
 
 pnpm loadtest --profile smoke
 pnpm loadtest --profile sustained-10 --duration 120
@@ -64,11 +63,17 @@ pnpm loadtest --profile contention
 pnpm loadtest:cleanup    # remove all loadtest rows
 ```
 
-If the dev server runs on a non-default port, pass
-`--url http://localhost:5183`. On an existing container created before the
-compose change, enable statement counts once with:
+Use the MPX-assigned app URL on `localhost`. For a non-default checkout or worktree,
+pass that exact URL to the load test, for example:
 
-```powershell
+```bash
+pnpm loadtest --url http://localhost:8405 --profile smoke
+```
+
+On an existing container created before the compose change, enable statement counts
+once with:
+
+```bash
 docker exec <db-container> psql -U root -d local -c "ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';"
 docker restart <db-container>
 ```
