@@ -343,13 +343,26 @@ test.describe('issue #269 integrated motion strategy', () => {
 			await expect(control).toBeDisabled();
 		}
 		await page.setViewportSize({ width: 390, height: 844 });
-		// Center the action before measuring. Playwright may otherwise center it as
-		// part of click actionability on fractional Linux layouts, which changes
-		// viewport-relative boxes independently of the reorder-mode transition.
+		const mobileToolbarGeometry = () =>
+			page.evaluate((regionIds) => {
+				return regionIds.map((id) => {
+					const element = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
+					if (!element) {
+						throw new Error(`Missing toolbar region: ${id}`);
+					}
+					const rect = element.getBoundingClientRect();
+					return {
+						x: rect.x + scrollX,
+						y: rect.y + scrollY,
+						width: rect.width,
+						height: rect.height,
+					};
+				});
+			}, regions);
+		// Compare document geometry: Playwright's click actionability may adjust
+		// the viewport scroll by a few pixels on fractional Linux layouts.
 		await done.evaluate((element) => element.scrollIntoView({ block: 'center' }));
-		const mobileAfterEntry = await Promise.all(
-			regions.map((id) => page.getByTestId(id).boundingBox()),
-		);
+		const mobileAfterEntry = await mobileToolbarGeometry();
 		expect(
 			await page.evaluate(
 				() => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
@@ -361,15 +374,11 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí ukončen.' }),
 		).toHaveCount(1);
-		const mobileAfterExit = await Promise.all(
-			regions.map((id) => page.getByTestId(id).boundingBox()),
-		);
+		const mobileAfterExit = await mobileToolbarGeometry();
 		expect(mobileAfterExit).toEqual(mobileAfterEntry);
 		await action.click();
 		await expect(done).toBeFocused();
-		const mobileAfterReentry = await Promise.all(
-			regions.map((id) => page.getByTestId(id).boundingBox()),
-		);
+		const mobileAfterReentry = await mobileToolbarGeometry();
 		expect(mobileAfterReentry).toEqual(mobileAfterExit);
 		await done.click();
 		await expect(action).toBeFocused();

@@ -219,6 +219,13 @@ test.describe('Wishlist settings – non-image editing', () => {
 			.click();
 		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible();
 		await expect(customSection.getByRole('textbox')).toHaveCount(0);
+		// Wait for the saved child state to clear the parent's dirty guard before
+		// closing; otherwise a slow CI render can still raise the discard prompt.
+		await expect(
+			settingsDialog
+				.locator('[data-slot="dialog-footer"]')
+				.getByRole('button', { name: 'Uložit' }),
+		).toBeDisabled();
 		await settingsDialog.getByRole('button', { name: 'Zavřít' }).click();
 		await expect(settingsDialog).not.toBeVisible();
 
