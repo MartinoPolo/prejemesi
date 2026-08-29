@@ -239,7 +239,9 @@ test.describe('issue #269 integrated motion strategy', () => {
 			destinationRectangle!.x - sourceRectangle!.x,
 			destinationRectangle!.y - sourceRectangle!.y,
 		);
-		const expectedFlightDuration = Math.ceil(Math.max(650, (translationDistance / 750) * 1000));
+		const expectedFlightDuration = Math.ceil(
+			Math.max(325, (translationDistance / 1500) * 1000),
+		);
 		await expect
 			.poll(async () =>
 				(await recordedAnimations(page)).find(

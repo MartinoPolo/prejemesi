@@ -54,7 +54,7 @@ afterEach(() => {
 });
 
 describe('received gift motion', () => {
-	it('keeps the 650ms minimum duration for a short flight', async () => {
+	it('uses exactly half the previous 650ms minimum duration for a short flight', async () => {
 		const source = gift('moved');
 		const flight = deferredAnimation();
 		const animate = vi
@@ -70,7 +70,7 @@ describe('received gift motion', () => {
 
 		const playing = motion.play(snapshot, document.body);
 
-		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 650 });
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 325 });
 		flight.finish();
 		expect(await playing).toBe(true);
 		motion.destroy();
@@ -92,7 +92,7 @@ describe('received gift motion', () => {
 
 		const playing = motion.play(snapshot, document.body);
 
-		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 2000 });
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 1000 });
 		flight.finish();
 		expect(await playing).toBe(true);
 		motion.destroy();
@@ -119,7 +119,7 @@ describe('received gift motion', () => {
 
 		const playing = motion.play(snapshot, document.body);
 
-		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 10_000 });
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 5000 });
 		flight.finish();
 		expect(await playing).toBe(true);
 		motion.destroy();
@@ -134,7 +134,7 @@ describe('received gift motion', () => {
 		const motion = createGiftReceivedMotion({
 			reducedMotion: () => false,
 			compactViewport: () => false,
-			maxAverageFlightVelocityPxPerSecond: 1500,
+			maxAverageFlightVelocityPxPerSecond: 3000,
 		});
 		const snapshot = motion.capture('moved', source, document.body);
 		source.remove();
@@ -142,7 +142,7 @@ describe('received gift motion', () => {
 
 		const playing = motion.play(snapshot, document.body);
 
-		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 1000 });
+		expect(animate.mock.calls[0]?.[1]).toMatchObject({ duration: 500 });
 		flight.finish();
 		expect(await playing).toBe(true);
 		motion.destroy();
@@ -168,7 +168,7 @@ describe('received gift motion', () => {
 			const playing = motion.play(snapshot, document.body);
 			const timing = animate.mock.calls[0]?.[1] as KeyframeAnimationOptions;
 
-			expect(timing.duration).toBe(2000);
+			expect(timing.duration).toBe(1000);
 			expect(Number.isFinite(timing.duration)).toBe(true);
 			flight.finish();
 			expect(await playing).toBe(true);
@@ -208,6 +208,7 @@ describe('received gift motion', () => {
 
 	it('flies only the same visible identity and concurrently FLIPs displaced siblings', async () => {
 		const source = gift('moved');
+		source.style.setProperty('--wishlist-card-surface', 'oklch(42% 0.2 18)');
 		const sibling = gift('sibling', { ...RECT, left: 160, right: 280, x: 160 });
 		const flight = deferredAnimation();
 		const siblingFlip = deferredAnimation();
@@ -254,12 +255,13 @@ describe('received gift motion', () => {
 		expect(clone.inert).toBe(true);
 		expect(clone.getAttribute('aria-hidden')).toBe('true');
 		expect(clone.querySelectorAll('[id]').length).toBe(0);
+		expect(clone.style.getPropertyValue('--wishlist-card-surface')).toBe('oklch(42% 0.2 18)');
 		expect(animate.mock.calls[0]).toEqual([
 			[
 				{ transform: 'translate(0px, 0px) scale(1, 1)' },
 				{ transform: 'translate(280px, 370px) scale(1.5, 1.25)' },
 			],
-			{ duration: 650, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
+			{ duration: 325, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
 		]);
 		expect(animate.mock.contexts[1]).toBe(sibling);
 		expect(animate.mock.calls[1]).toEqual([
@@ -268,15 +270,19 @@ describe('received gift motion', () => {
 		]);
 
 		flight.finish();
-		siblingFlip.finish();
-		expect(await playing).toBe(true);
+		await Promise.resolve();
+		await Promise.resolve();
 		expect(clone.isConnected).toBe(false);
 		expect(destination.style.opacity).toBe('');
+		expect(siblingFlip.animation.cancel).not.toHaveBeenCalled();
+
+		siblingFlip.finish();
+		expect(await playing).toBe(true);
 		expect(document.activeElement).toBe(destination.querySelector('button'));
 		motion.destroy();
 	});
 
-	it('uses the approved local exit instead of off-screen flight on compact viewports', async () => {
+	it('keeps the moving gift visible with a continuous flight on compact viewports', async () => {
 		const source = gift('moved');
 		const exit = deferredAnimation();
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(exit.animation);
@@ -294,10 +300,10 @@ describe('received gift motion', () => {
 
 		expect(animate).toHaveBeenCalledWith(
 			[
-				{ opacity: 1, transform: 'scale(1)' },
-				{ opacity: 0, transform: 'scale(0.97)' },
+				{ transform: 'translate(0px, 0px) scale(1, 1)' },
+				{ transform: 'translate(880px, 0px) scale(1, 1)' },
 			],
-			{ duration: 340, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
+			{ duration: 587, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'both' },
 		);
 		exit.finish();
 		expect(await playing).toBe(true);
