@@ -68,10 +68,11 @@ describe('gift category remote commands', () => {
 		saveGiftCategorySettings.mockResolvedValue(undefined);
 		singleFlightRefresh.mockImplementation(() => deferred().promise);
 
-		await (saveGiftCategorySettingsCommand as unknown as Function)(
-			{ user: { id: 'user-1' } },
-			input,
-		);
+		const callSave = saveGiftCategorySettingsCommand as unknown as (
+			context: { user: { id: string } },
+			commandInput: typeof input,
+		) => Promise<void>;
+		await callSave({ user: { id: 'user-1' } }, input);
 
 		expect(saveGiftCategorySettings).toHaveBeenCalledWith(input);
 		expect(singleFlightRefresh).toHaveBeenNthCalledWith(1, getGiftCategories, 'wishlist-1');

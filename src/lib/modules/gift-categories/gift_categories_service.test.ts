@@ -154,7 +154,14 @@ describe('gift category management service', () => {
 		mockDbInstance.pushResult(presets);
 
 		await expect(getManagedGiftCategories(WISHLIST_ID)).resolves.toEqual(
-			presets.map(({ deletedAt: _, ...preset }) => preset),
+			presets.map((preset) => ({
+				id: preset.id,
+				presetKey: preset.presetKey,
+				customLabel: preset.customLabel,
+				color: preset.color,
+				sortOrder: preset.sortOrder,
+				usedCount: preset.usedCount,
+			})),
 		);
 		const insertCall = mockDbInstance.calls.find((call) => call.method === 'values');
 		expect(insertCall?.args[0]).toHaveLength(9);
