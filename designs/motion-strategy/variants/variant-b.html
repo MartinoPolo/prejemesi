@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Varianta B: Sticker Confirmation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&family=Geist:wght@400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../tokens.css">
+  <style>
+    :root {
+      --p-brand:#1e9be9; --p-deep:#1265a8; --p-ink:#16385c; --p-bright:#55b9f3;
+      --p-accent:#ffc93c; --background:#e6f5fd; --card:#fff; --foreground:#16385c;
+      --muted-foreground:#60768c; --primary:#1e9be9; --primary-foreground:#fff;
+      --status-success:#14875f; --border:#c9d9e5; --ink:#16385c; --destructive:#d94841;
+      --accent:#dff2fd; --note:#fff1c1; --heart:#d94e61; --surface:#f7fcff;
+      --hard-shadow:rgb(22 56 92 / 16%); --hard-shadow-strong:rgb(22 56 92 / 22%);
+      --ease-standard:cubic-bezier(.2,.7,.3,1); --ease-spring:cubic-bezier(.34,1.56,.64,1);
+      --font-head:'DynaPuff','DynaPuff Variable',sans-serif;
+      --font-body:'Geist','Geist Variable',sans-serif;
+    }
+    * { box-sizing:border-box; }
+    html { background:#e8edf2; color:var(--foreground); font-family:var(--font-body); }
+    body { margin:0; min-width:320px; }
+    button { font:inherit; color:inherit; }
+    button:focus-visible { outline:3px solid var(--primary); outline-offset:2px; }
+    button:disabled { cursor:not-allowed; opacity:.46; filter:saturate(.45); }
+    .study { min-height:100vh; }
+    .utility { background:#f8fafc; border-bottom:1px solid #cbd5e1; padding:12px 20px; position:relative; z-index:5; }
+    .utility-inner { max-width:1380px; margin:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+    .utility-title { min-width:260px; margin-right:auto; }
+    .utility-kicker { color:#516071; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .utility h1 { margin:2px 0 0; font-family:var(--font-head); font-size:19px; line-height:1.15; letter-spacing:-.02em; }
+    .principle { font-size:12px; color:#526173; }
+    .control-group { display:flex; gap:4px; padding:3px; background:#e8edf2; border-radius:9px; }
+    .util-btn { min-height:34px; padding:0 10px; border:1px solid transparent; background:transparent; border-radius:7px; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap; }
+    .util-btn:hover:not(:disabled) { background:#fff; border-color:#cbd5e1; }
+    .util-btn:active:not(:disabled) { transform:translateY(1px); }
+    .util-btn.active { background:#fff; border-color:#94a3b8; box-shadow:0 1px 2px rgb(15 23 42 / 8%); }
+    .util-btn.warn.active { background:#fff6dc; border-color:#d99d18; }
+    .scenario-bar { max-width:1380px; margin:10px auto 0; display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
+    .scenario-label { font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; margin-right:2px; }
+    .scenario { min-height:34px; border:1.5px solid #94a3b8; background:#fff; border-radius:8px; padding:0 11px; font-size:12px; font-weight:750; cursor:pointer; }
+    .scenario:hover:not(:disabled) { border-color:#1e6ea6; background:#edf8ff; }
+    .scenario:active:not(:disabled) { transform:translateY(1px); background:#dff2fd; }
+    .scenario.primary { background:#176fa9; color:#fff; border-color:#176fa9; }
+    .scenario.primary:hover:not(:disabled) { background:#125f92; }
+    .stage-shell { padding:18px 20px 8px; overflow-x:auto; }
+    .viewport { width:min(1200px,100%); margin:auto; background:var(--background); border:2px solid var(--ink); border-radius:18px; box-shadow:7px 7px 0 rgb(22 56 92 / 15%); overflow:hidden; transition:width 180ms var(--ease-standard); }
+    .viewport.mobile { width:390px; max-width:100%; }
+    .app-header { height:56px; display:flex; align-items:center; padding:0 18px; gap:24px; background:var(--card); border-bottom:2.5px solid var(--ink); }
+    .logo { display:flex; align-items:center; gap:8px; font-family:var(--font-head); font-size:17px; font-weight:700; }
+    .logo-mark { width:32px; height:32px; display:grid; place-items:center; border:2.5px solid var(--ink); border-radius:9px; background:var(--primary); color:#fff; box-shadow:2px 2px 0 var(--hard-shadow); }
+    .app-nav { display:flex; gap:20px; font-size:12px; font-weight:700; color:var(--muted-foreground); }
+    .app-header-actions { margin-left:auto; display:flex; gap:7px; align-items:center; }
+    .header-action { height:32px; border:2px solid var(--ink); border-radius:8px; background:#fff; font-weight:750; padding:0 10px; box-shadow:2px 2px 0 var(--hard-shadow); cursor:pointer; }
+    .header-action:hover { background:var(--accent); transform:translateY(-1px); }
+    .header-action:active { transform:translateY(1px); box-shadow:none; }
+    .header-action.avatar { width:32px; padding:0; border-radius:50%; background:var(--note); }
+    .page { padding:18px 20px 24px; }
+    .notebook { position:relative; min-height:116px; background:var(--card); border:2.5px solid var(--ink); border-radius:16px; box-shadow:4px 4px 0 var(--hard-shadow); padding:18px 24px 16px 82px; overflow:hidden; }
+    .notebook:before { content:""; position:absolute; inset:0 auto 0 55px; border-left:2px solid #e4574c; }
+    .holes { position:absolute; left:20px; top:17px; display:grid; gap:14px; }
+    .holes i { width:13px; height:13px; border:2px solid var(--ink); border-radius:50%; background:var(--background); }
+    .for { margin:0; font-size:12px; color:var(--muted-foreground); font-weight:650; }
+    .for b { color:#e4574c; font-family:var(--font-head); font-size:14px; }
+    .notebook h2 { margin:1px 0 5px; font:600 26px/1.12 var(--font-head); letter-spacing:-.025em; }
+    .meta { display:flex; gap:7px; flex-wrap:wrap; color:var(--muted-foreground); font-size:11px; }
+    .meta span { padding:3px 8px; border:1px solid var(--border); border-radius:999px; }
+    .note { position:absolute; right:24px; top:20px; padding:8px 12px; transform:rotate(2deg); background:var(--p-accent); border:2px solid var(--ink); border-radius:7px; box-shadow:3px 3px 0 var(--hard-shadow); font:600 12px var(--font-head); }
+    .toolbar-wrap { margin-top:14px; }
+    .toolbar { background:var(--card); border:2.5px solid var(--ink); border-radius:16px; box-shadow:4px 4px 0 var(--hard-shadow); padding:10px 12px; overflow:visible; }
+    .toolbar-main { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+    .family { display:flex; align-items:center; gap:5px; }
+    .family + .family { padding-left:10px; border-left:1px solid var(--border); }
+    .tool { height:32px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:2px solid transparent; border-radius:7px; background:transparent; padding:0 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .tool:hover:not(:disabled) { background:var(--accent); }
+    .tool:active:not(:disabled), .tool.active { transform:translateY(1px); }
+    .tool.outline,.tool.active { border-color:var(--ink); background:#fff; box-shadow:2px 2px 0 var(--hard-shadow); }
+    .tool.outline:hover { background:var(--accent); transform:translateY(-1px); }
+    .tool.icon { width:32px; padding:0; }
+    .count { min-width:17px; height:17px; padding:0 4px; display:grid; place-items:center; border-radius:999px; color:#fff; background:var(--primary); font-size:10px; }
+    .manage { margin-left:auto; display:flex; gap:7px; flex-wrap:nowrap; }
+    .manage .tool:last-child { background:var(--primary); color:#fff; border-color:var(--ink); box-shadow:2px 2px 0 var(--hard-shadow); }
+    .reorder { border-left:2px solid var(--border); padding-left:10px; }
+    .active-row { display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); align-items:center; gap:7px; min-height:37px; }
+    .active-row.visible { display:flex; }
+    .pill { height:27px; display:inline-flex; align-items:center; gap:5px; padding:0 5px 0 10px; border:2px solid var(--ink); border-radius:999px; background:var(--primary); color:#fff; font-size:11px; font-weight:750; box-shadow:2px 2px 0 var(--hard-shadow); }
+    .pill button { width:19px; height:19px; border:0; border-radius:50%; color:inherit; background:transparent; cursor:pointer; }
+    .pill button:hover { background:rgb(255 255 255 / 28%); }
+    .pill button:active { transform:scale(.9); }
+    .clear { border:0; background:transparent; font-size:11px; font-weight:700; color:var(--muted-foreground); cursor:pointer; }
+    .clear:hover { color:var(--foreground); text-decoration:underline; }
+    .gifts-area { margin-top:16px; }
+    .section-head { display:flex; align-items:center; gap:10px; margin:16px 0 9px; }
+    .section-head h3 { margin:0; font:700 12px var(--font-head); letter-spacing:.04em; text-transform:uppercase; }
+    .section-head span { height:1px; flex:1; background:var(--border); }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:stretch; }
+    .gift { min-width:0; background:var(--card); border:2.5px solid var(--ink); border-radius:14px; box-shadow:4px 4px 0 var(--hard-shadow); overflow:hidden; position:relative; }
+    .gift-image { height:84px; display:grid; place-items:center; background-image:radial-gradient(rgb(22 56 92 / 15%) 1.25px,transparent 1.4px); background-size:17px 17px; border-bottom:2.5px solid var(--ink); font-size:37px; position:relative; }
+    .gift.received { opacity:.78; }
+    .gift.received .gift-image:after { content:""; position:absolute; inset:0; background:rgb(230 245 253 / 45%); }
+    .received-sticker { position:absolute; z-index:2; top:8px; right:8px; transform:rotate(2deg); display:inline-flex; align-items:center; gap:4px; padding:4px 7px; border:2px solid var(--ink); border-radius:6px; background:#dcfce9; color:#0b704c; box-shadow:2px 2px 0 var(--hard-shadow); font:700 10px var(--font-head); }
+    .gift-body { padding:9px 11px 10px; }
+    .gift-title { margin:0; font:600 14px/1.2 var(--font-head); letter-spacing:-.015em; }
+    .price { margin:3px 0 8px; color:var(--muted-foreground); font-size:11px; font-weight:700; }
+    .gift-action { width:100%; min-height:30px; border:2px solid var(--ink); border-radius:7px; background:#fff; font-size:11px; font-weight:750; box-shadow:2px 2px 0 var(--hard-shadow); cursor:pointer; }
+    .gift-action:hover:not(:disabled) { background:var(--accent); transform:translateY(-1px); }
+    .gift-action:active:not(:disabled) { transform:translateY(1px); box-shadow:none; }
+    .gift-action.pending { background:var(--note); }
+    .spinner { width:12px; height:12px; display:inline-block; vertical-align:-2px; margin-right:5px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .hidden-cue { margin:10px 0 0; min-height:42px; display:flex; align-items:center; gap:10px; padding:8px 10px; border:2px dashed var(--primary); border-radius:10px; background:#f6fcff; font-size:12px; }
+    .hidden-cue strong { color:var(--status-success); }
+    .hidden-cue button { margin-left:auto; border:0; background:transparent; color:#075f9a; font-weight:800; text-decoration:underline; cursor:pointer; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .spec { max-width:1200px; margin:10px auto 0; background:#172f49; color:#eef9ff; border-radius:12px; padding:10px 14px; display:grid; grid-template-columns:150px 130px 240px 1fr; gap:12px; align-items:center; font-size:11px; }
+    .spec b { display:block; color:#79ccfa; font-size:9px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:2px; }
+    .phase-value { font-weight:800; }
+    .gallery-wrap { max-width:1200px; margin:28px auto 48px; padding:0 20px; }
+    .gallery-head { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:12px; }
+    .gallery-head h2 { margin:0; font:600 21px/1.15 var(--font-head); letter-spacing:-.02em; }
+    .gallery-head p { margin:3px 0 0; color:#536477; font-size:12px; }
+    .gallery { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .example { min-height:142px; background:#fff; border:2.5px solid var(--ink); border-radius:14px; box-shadow:4px 4px 0 var(--hard-shadow); padding:12px; overflow:hidden; }
+    .example-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:13px; }
+    .example h3 { margin:0; font:600 12px var(--font-head); }
+    .replay-mini { border:1.5px solid var(--ink); background:#fff; border-radius:6px; height:27px; padding:0 7px; font-size:10px; font-weight:750; cursor:pointer; }
+    .replay-mini:hover { background:var(--accent); }
+    .replay-mini:active { transform:translateY(1px); }
+    .reserve-demo { display:flex; align-items:center; gap:10px; }
+    .reserve-button { min-width:116px; height:35px; border:2px solid var(--ink); border-radius:8px; background:var(--primary); color:#fff; font-weight:800; }
+    .reserve-button.done { background:var(--status-success); }
+    .demo-count { font-size:11px; color:var(--muted-foreground); }
+    .view-stage { height:65px; position:relative; }
+    .mini-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+    .mini-card { height:54px; border:1.5px solid var(--ink); border-radius:6px; background:var(--accent); display:grid; place-items:center; }
+    .mini-cards.list { grid-template-columns:1fr; }
+    .mini-cards.list .mini-card { height:16px; justify-content:start; padding-left:8px; font-size:9px; }
+    .wizard-line { height:4px; margin:23px 12px 10px; background:#dbe6ee; border-radius:4px; position:relative; }
+    .wizard-line:after { content:""; position:absolute; inset:0 50% 0 0; background:var(--primary); border-radius:4px; transform-origin:left; }
+    .wizard-steps { display:flex; justify-content:space-between; font-size:11px; font-weight:750; }
+    .wizard-panel { margin-top:9px; padding:6px 8px; border-radius:6px; background:var(--accent); font-size:10px; }
+    .like-demo { display:flex; justify-content:center; align-items:center; gap:9px; height:69px; }
+    .heart-btn { border:0; background:transparent; color:#8190a0; font-size:30px; line-height:1; cursor:pointer; }
+    .heart-btn.liked { color:var(--heart); }
+    .like-count { min-width:18px; font-weight:800; }
+    .candidates { margin:15px 0 0; color:#536477; font-size:11px; line-height:1.6; }
+    .reduced * { scroll-behavior:auto!important; }
+    .reduced .spinner { animation:none; border-right-color:currentColor; }
+    .mobile .app-nav,.mobile .header-action:not(.avatar),.mobile .note { display:none; }
+    .mobile .app-header { padding:0 12px; }
+    .mobile .page { padding:12px; }
+    .mobile .notebook { min-height:108px; padding:15px 14px 14px 65px; }
+    .mobile .notebook h2 { font-size:22px; }
+    .mobile .toolbar-main { align-items:stretch; }
+    .mobile .family { flex-wrap:wrap; }
+    .mobile .family + .family { padding-left:0; border-left:0; }
+    .mobile .family.display { width:100%; }
+    .mobile .family.display .tool { flex:1; min-width:105px; }
+    .mobile .family.filter-family { width:100%; }
+    .mobile .family.filter-family .tool:first-child { flex:1; }
+    .mobile .reorder { margin-left:auto; }
+    .mobile .manage { width:100%; margin-left:0; padding-top:8px; border-top:1px solid var(--border); justify-content:flex-end; }
+    .mobile .active-row { flex-wrap:wrap; }
+    .mobile .grid { grid-template-columns:1fr; gap:12px; }
+    .mobile .gift-image { height:92px; }
+    .mobile .section-head { margin-top:14px; }
+    @media (max-width:800px) {
+      .utility-inner { align-items:flex-start; }
+      .utility-title { width:100%; }
+      .stage-shell { padding-inline:8px; }
+      .spec { margin-inline:8px; grid-template-columns:1fr 1fr; }
+      .gallery { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:480px) {
+      .utility { padding-inline:10px; }
+      .scenario-bar { align-items:stretch; }
+      .scenario { flex:1 1 42%; }
+      .spec { grid-template-columns:1fr; }
+      .gallery { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+<main class="study" id="study">
+  <header class="utility" aria-label="Ovládání pohybové studie">
+    <div class="utility-inner">
+      <div class="utility-title">
+        <div class="utility-kicker">Pohybová studie, varianta B</div>
+        <h1>Sticker Confirmation</h1>
+        <div class="principle">Malá samolepka potvrdí změnu dříve, než se rozvržení přesune.</div>
+      </div>
+      <div class="control-group" aria-label="Rychlost přehrávání">
+        <button class="util-btn speed active" data-speed="1">1×</button>
+        <button class="util-btn speed" data-speed="4">0.25×</button>
+      </div>
+      <div class="control-group" aria-label="Šířka náhledu">
+        <button class="util-btn viewport-btn active" data-view="desktop">Desktop</button>
+        <button class="util-btn viewport-btn" data-view="mobile">Mobil 390</button>
+      </div>
+      <button class="util-btn warn" id="reduce" aria-pressed="false">Omezit pohyb</button>
+    </div>
+    <div class="scenario-bar">
+      <span class="scenario-label">Scénáře</span>
+      <button class="scenario primary" data-scenario="filter">Přehrát filtr</button>
+      <button class="scenario" data-scenario="visible">Přijatý → dolů</button>
+      <button class="scenario" data-scenario="hidden">Přijatý → skrýt</button>
+      <button class="scenario" id="undo" disabled>Vrátit zpět</button>
+      <button class="scenario" id="reset">Reset</button>
+    </div>
+  </header>
+
+  <section class="stage-shell" aria-label="Interaktivní náhled seznamu přání">
+    <div class="viewport" id="viewport">
+      <header class="app-header">
+        <div class="logo"><span class="logo-mark" aria-hidden="true">🎁</span><span>prejemesi.cz</span></div>
+        <nav class="app-nav" aria-label="Hlavní navigace"><span>Moje seznamy</span><span>Spravované</span><span>Sledované</span></nav>
+        <div class="app-header-actions"><button class="header-action">Importovat</button><button class="header-action">+ Vytvořit</button><button class="header-action avatar" aria-label="Profil Petry Svobodové">PS</button></div>
+      </header>
+      <div class="page">
+        <section class="notebook" aria-labelledby="wishlist-title">
+          <span class="holes" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <p class="for">Pro: <b>Martin Novák</b></p>
+          <h2 id="wishlist-title">Vánoce 2026</h2>
+          <div class="meta"><span>Sdíleno</span><span>24. prosince 2026</span><span>6 aktivních přání</span></div>
+          <div class="note">už za 160 dní!</div>
+        </section>
+
+        <div class="toolbar-wrap" id="toolbar-wrap">
+          <section class="toolbar" id="toolbar" aria-label="Nástroje zobrazení dárků">
+            <div class="toolbar-main">
+              <div class="family" aria-label="Zobrazení"><button class="tool icon active" aria-pressed="true" title="Karty">▦</button><button class="tool icon" aria-pressed="false" title="Seznam">☷</button></div>
+              <div class="family display"><button class="tool outline">Řazení: vlastní ▾</button><button class="tool outline">Seskupit: bez skupin ▾</button></div>
+              <div class="family filter-family"><button class="tool outline" id="filter-trigger" aria-pressed="false">⌁ Filtrovat <span id="filter-count"></span></button><button class="tool icon" id="reset-display" title="Obnovit zobrazení" disabled>↶</button></div>
+              <div class="family reorder"><button class="tool outline">☝ Seřadit</button></div>
+              <div class="manage"><button class="tool icon outline" title="Nastavení">⚙</button><button class="tool icon outline" title="Přidat více dárků">☷+</button><button class="tool outline">＋ Přidat dárek</button></div>
+            </div>
+            <div class="active-row" id="active-row"></div>
+          </section>
+        </div>
+
+        <section class="gifts-area" id="gifts-area" aria-label="Dárky"></section>
+        <div id="live" class="sr-only" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="spec" aria-live="polite" aria-label="Specifikace právě přehrávaného pohybu">
+    <div><b>Fáze</b><span class="phase-value" id="phase">Připraveno</span></div>
+    <div><b>Produkční délka</b><span id="duration">0 ms</span></div>
+    <div><b>Křivka</b><span id="easing">bez pohybu</span></div>
+    <div><b>Co pohyb sděluje</b><span id="meaning">Výchozí stav. Obdržené dárky jsou skryté.</span></div>
+  </aside>
+
+  <section class="gallery-wrap" aria-labelledby="gallery-title">
+    <div class="gallery-head"><div><h2 id="gallery-title">Další užitečné okamžiky</h2><p>Čtyři kompaktní příklady se přehrávají samostatně.</p></div></div>
+    <div class="gallery">
+      <article class="example" data-example="reserve"><div class="example-top"><h3>Potvrzení rezervace</h3><button class="replay-mini">Přehrát</button></div><div class="reserve-demo"><button class="reserve-button">Rezervovat</button><span class="demo-count">0 z 1 rezervováno</span></div></article>
+      <article class="example" data-example="view"><div class="example-top"><h3>Karty ↔ seznam</h3><button class="replay-mini">Přepnout</button></div><div class="view-stage"><div class="mini-cards"><span class="mini-card">🎲</span><span class="mini-card">💡</span><span class="mini-card">📚</span></div></div></article>
+      <article class="example" data-example="wizard"><div class="example-top"><h3>Krok průvodce</h3><button class="replay-mini">Další krok</button></div><div class="wizard-line"></div><div class="wizard-steps"><span>Zdroj</span><span>Kontrola</span></div><div class="wizard-panel">Vyberte zdroj importu</div></article>
+      <article class="example" data-example="like"><div class="example-top"><h3>Ocenění přání</h3><button class="replay-mini">Přehrát</button></div><div class="like-demo"><button class="heart-btn" aria-label="To se mi líbí">♥</button><span class="like-count">4</span></div></article>
+    </div>
+    <p class="candidates"><strong>Další kandidáti:</strong> prolínání skeletonu a oznámení, vložení či odebrání řádku importu, přesun a smazání kategorie, změny rámečku v editoru obrázku a přechod lišty do režimu řazení.</p>
+  </section>
+</main>
+<script>
+(() => {
+  const gifts = [
+    {id:'lamp',name:'Stolní lampa HAY Matin',price:'4 190 Kč',icon:'💡'},
+    {id:'azul',name:'Desková hra Azul',price:'899 Kč',icon:'🎲'},
+    {id:'book',name:'Atlas české architektury',price:'1 290 Kč',icon:'📚'},
+    {id:'headphones',name:'Sluchátka Sony WH-CH720N',price:'2 490 Kč',icon:'🎧'},
+    {id:'socks',name:'Vlněné ponožky Kama',price:'429 Kč',icon:'🧦'},
+    {id:'coffee',name:'Výběrová káva Etiopie',price:'389 Kč',icon:'☕'}
+  ];
+  const existingReceived = {id:'grinder',name:'Ruční mlýnek Comandante',price:'6 290 Kč',icon:'⚙️',received:true};
+  const $ = (s,root=document) => root.querySelector(s);
+  const $$ = (s,root=document) => [...root.querySelectorAll(s)];
+  const area=$('#gifts-area'), toolbar=$('#toolbar'), viewport=$('#viewport'), live=$('#live');
+  let state={showReceived:false,lampReceived:false,hiddenCue:false,pending:false,acknowledging:false};
+  let speed=1, reduced=false, mobile=false, runId=0, running=[], busy=false, lastAction=null;
+
+  function card(g) {
+    const received = g.received || (g.id==='lamp' && state.lampReceived);
+    const pending = g.id==='lamp' && state.pending;
+    return `<article class="gift${received?' received':''}" data-gift-id="${g.id}">
+      <div class="gift-image"><span aria-hidden="true">${g.icon}</span>${received?'<span class="received-sticker">✓ Přijato</span>':''}</div>
+      <div class="gift-body"><h4 class="gift-title">${g.name}</h4><p class="price">${g.price}</p>
+      ${g.id==='lamp'?`<button class="gift-action${pending?' pending':''}" data-lamp-action ${pending?'disabled':''}>${pending?'<span class="spinner"></span>Ukládám změnu':received?'Označit jako nepřijatý':'Označit jako přijatý'}</button>`:''}
+      ${g.id==='grinder'?'<button class="gift-action">Označit jako nepřijatý</button>':''}</div></article>`;
+  }
+  function render() {
+    const active=gifts.filter(g=>!(g.id==='lamp'&&state.lampReceived&&!state.acknowledging));
+    const received=[existingReceived,...(state.lampReceived&&!state.acknowledging?[{...gifts[0],received:true}]:[])];
+    area.innerHTML=`<div class="grid active-grid">${active.map(card).join('')}</div>
+      ${state.hiddenCue?'<div class="hidden-cue" role="status"><span>✓</span><span><strong>Přesunuto mezi obdržené.</strong> Dárek je mimo aktivní přání.</span><button data-cue-undo>Vrátit zpět</button></div>':''}
+      ${state.showReceived?`<div class="section-head"><h3>Obdržené</h3><span></span></div><div class="grid received-grid">${received.map(card).join('')}</div>`:''}`;
+    const row=$('#active-row');
+    row.className='active-row'+(state.showReceived?' visible':'');
+    row.innerHTML=state.showReceived?'<span class="pill" id="received-pill">Zobrazit obdržené <button aria-label="Odebrat filtr Zobrazit obdržené">×</button></span><button class="clear">Zrušit filtry</button>':'';
+    $('#filter-count').innerHTML=state.showReceived?'<span class="count">1</span>':'';
+    $('#filter-trigger').setAttribute('aria-pressed',String(state.showReceived));
+    $('#reset-display').disabled=!state.showReceived;
+    $('#undo').disabled=!lastAction || busy;
+    $('[data-lamp-action]')?.addEventListener('click',()=> state.lampReceived ? undo() : playReceived(state.showReceived));
+    $('[data-cue-undo]')?.addEventListener('click',undo);
+    $('.pill button')?.addEventListener('click',()=>setFilter(false));
+    $('.clear')?.addEventListener('click',()=>setFilter(false));
+  }
+  function boxes() { const m=new Map(); $$('[data-gift-id]').forEach(el=>m.set(el.dataset.giftId,el.getBoundingClientRect())); return m; }
+  function cancelAnimations() { running.forEach(a=>{try{a.cancel()}catch{}}); running=[]; $$('[data-gift-id],#toolbar,.pill,.received-sticker').forEach(el=>{el.getAnimations().forEach(a=>a.cancel());el.style.removeProperty('height');el.style.removeProperty('overflow');}); }
+  function begin() { runId++; cancelAnimations(); busy=true; $$('.scenario[data-scenario]').forEach(b=>b.disabled=true); $('#undo').disabled=true; return runId; }
+  function end(id) { if(id!==runId)return; busy=false; $$('.scenario[data-scenario]').forEach(b=>b.disabled=false); $('#undo').disabled=!lastAction; }
+  function wait(ms,id) { return new Promise(resolve=>setTimeout(()=>resolve(id===runId),reduced?0:ms*speed)); }
+  function animate(el,frames,opts) { if(!el||reduced)return Promise.resolve(); const a=el.animate(frames,{...opts,duration:opts.duration*speed,fill:'both'}); running.push(a); return a.finished.catch(()=>{}).finally(()=>{running=running.filter(x=>x!==a);}); }
+  function spec(phase,duration,easing,meaning) { $('#phase').textContent=phase; $('#duration').textContent=duration; $('#easing').textContent=easing; $('#meaning').textContent=meaning; }
+  function flip(old,duration=230) {
+    if(reduced)return Promise.resolve(); const tasks=[];
+    $$('[data-gift-id]').forEach(el=>{ const before=old.get(el.dataset.giftId); if(!before)return; const after=el.getBoundingClientRect(); const dx=before.left-after.left,dy=before.top-after.top; if(Math.abs(dx)+Math.abs(dy)<1)return; tasks.push(animate(el,[{transform:`translate(${dx}px,${dy}px)`},{transform:'translate(0,0)'}],{duration,easing:'cubic-bezier(.2,.7,.3,1)'})); });
+    return Promise.all(tasks);
+  }
+  async function pop(el) { if(reduced||!el)return; await animate(el,[{opacity:0,transform:'rotate(2deg) scale(.72)'},{opacity:1,transform:'rotate(2deg) scale(1.08)',offset:.72},{opacity:1,transform:'rotate(2deg) scale(1)'}],{duration:170,easing:'cubic-bezier(.34,1.56,.64,1)'}); }
+  async function setFilter(on) {
+    const id=begin(); if(state.showReceived===on){end(id);return;}
+    const oldBoxes=boxes(), oldH=toolbar.getBoundingClientRect().height;
+    spec('Odezva filtru','120 ms','--ease-standard','Stisknutý trigger okamžitě potvrzuje aktivaci.');
+    await animate($('#filter-trigger'),[{background:'#dff2fd'},{background:'#fff'}],{duration:120,easing:'cubic-bezier(.2,.7,.3,1)'});
+    if(id!==runId)return;
+    state.showReceived=on; state.hiddenCue=false; render();
+    const newH=toolbar.getBoundingClientRect().height;
+    spec(on?'Pilulka a rozvržení':'Odebrání filtru','230 ms','--ease-standard, pilulka --ease-spring','Pilulka vysvětluje změnu výšky lišty. Obsah se usadí jako jeden celek.');
+    const layout=flip(oldBoxes,230);
+    const height=animate(toolbar,[{height:`${oldH}px`,overflow:'hidden'},{height:`${newH}px`,overflow:'hidden'}],{duration:230,easing:'cubic-bezier(.2,.7,.3,1)'});
+    if(on) pop($('#received-pill'));
+    await Promise.all([layout,height]);
+    if(id!==runId)return;
+    toolbar.style.removeProperty('height'); toolbar.style.removeProperty('overflow');
+    lastAction=on?'filter':null; live.textContent=on?'Filtr Zobrazit obdržené je aktivní.':'Filtr byl zrušen.';
+    spec('Hotovo','230 ms','--ease-standard','Filtr, lišta i výsledek nyní sdílejí jeden čitelný stav.'); end(id);
+  }
+  async function playReceived(visible) {
+    resetState(false); state.showReceived=visible; render();
+    const id=begin(); state.pending=true; render();
+    spec('Čekání na úspěch','120 ms','--ease-standard','Místní stav Ukládám změnu drží rozvržení na místě.');
+    if(!await wait(120,id))return;
+    state.pending=false; state.lampReceived=true; state.acknowledging=true; render();
+    spec('Potvrzení samolepkou','170 ms','--ease-spring','Samolepka Přijato jednoznačně potvrzuje úspěšnou změnu. Rozvržení zatím zůstává na místě.');
+    await pop($('[data-gift-id="lamp"] .received-sticker')); if(id!==runId)return;
+    state.acknowledging=false;
+    if(visible && !mobile) {
+      const old=boxes();
+      spec('Přesun do Obdržené','240 ms','--ease-standard','Rozpoznatelná karta a její sourozenci drží prostorovou návaznost.');
+      render(); await flip(old,240);
+    } else if(visible && mobile) {
+      const oldLamp=$('[data-gift-id="lamp"]');
+      spec('Místní výměna na mobilu','160 ms','--ease-standard','Na mobilu karta necestuje do vzdálené části. Stav se potvrdí místně.');
+      await animate(oldLamp,[{opacity:1},{opacity:0}],{duration:160,easing:'cubic-bezier(.2,.7,.3,1)'}); render();
+    } else {
+      const lamp=$('[data-gift-id="lamp"]'), old=boxes();
+      spec('Místní odchod','160 ms','--ease-standard','Karta mizí na svém místě, neletí k neviditelnému cíli.');
+      await animate(lamp,[{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.97)'}],{duration:160,easing:'cubic-bezier(.2,.7,.3,1)'});
+      if(id!==runId)return; state.hiddenCue=true; render();
+      spec('Uzavření mezery','230 ms','--ease-standard','Sourozenci uzavřou mezeru a místní zpráva vysvětlí skrytý cíl.'); await flip(old,230);
+    }
+    if(id!==runId)return;
+    lastAction=visible?'received-visible':'received-hidden'; live.textContent=visible?'Stolní lampa byla přijata a přesunuta do sekce Obdržené.':'Stolní lampa byla přijata a přesunuta mezi skryté obdržené dárky.';
+    const reverse=$('[data-gift-id="lamp"] [data-lamp-action]'); if(reverse){reverse.focus({preventScroll:true});}
+    spec('Hotovo',visible&&!mobile?'240 ms':'230 ms','--ease-standard','Stav Přijato, cíl a možnost vrácení jsou zřejmé.'); end(id);
+  }
+  async function undo() {
+    if(!state.lampReceived && !state.showReceived)return;
+    const id=begin(), old=boxes();
+    spec('Vrácení dárku','230 ms','--ease-standard','Stejná prostorová logika vrací dárek do aktivního obsahu.');
+    if(state.lampReceived){ state.lampReceived=false; state.hiddenCue=false; render(); await flip(old,230); live.textContent='Stolní lampa je znovu mezi aktivními přáními.'; }
+    else { state.showReceived=false; render(); await flip(old,230); }
+    lastAction=null; $('[data-gift-id="lamp"] [data-lamp-action]')?.focus({preventScroll:true});
+    spec('Vráceno','230 ms','--ease-standard','Dárek je opět aktivní a fokus zůstává u stejné akce.'); end(id);
+  }
+  function resetState(update=true) { runId++; cancelAnimations(); state={showReceived:false,lampReceived:false,hiddenCue:false,pending:false,acknowledging:false}; lastAction=null; busy=false; if(update)render(); $$('.scenario[data-scenario]').forEach(b=>b.disabled=false); if(update){window.scrollTo({top:0,behavior:'auto'});spec('Připraveno','0 ms','bez pohybu','Výchozí stav. Obdržené dárky jsou skryté.');live.textContent='Studie byla obnovena.';} }
+
+  $$('[data-scenario]').forEach(b=>b.addEventListener('click',()=>{ const s=b.dataset.scenario; if(s==='filter'){resetState(false);render();setFilter(true);} if(s==='visible')playReceived(true); if(s==='hidden')playReceived(false); }));
+  $('#undo').addEventListener('click',undo); $('#reset').addEventListener('click',()=>resetState(true)); $('#reset-display').addEventListener('click',()=>setFilter(false)); $('#filter-trigger').addEventListener('click',()=>setFilter(!state.showReceived));
+  $$('.speed').forEach(b=>b.addEventListener('click',()=>{speed=Number(b.dataset.speed);$$('.speed').forEach(x=>x.classList.toggle('active',x===b));}));
+  $$('.viewport-btn').forEach(b=>b.addEventListener('click',()=>{mobile=b.dataset.view==='mobile';viewport.classList.toggle('mobile',mobile);$$('.viewport-btn').forEach(x=>x.classList.toggle('active',x===b));cancelAnimations();}));
+  $('#reduce').addEventListener('click',e=>{reduced=!reduced;const b=e.currentTarget;b.classList.toggle('active',reduced);b.setAttribute('aria-pressed',String(reduced));$('#study').classList.toggle('reduced',reduced);cancelAnimations();spec('Režim omezeného pohybu','0 ms','bez transformací','Stav, text, fokus a oznámení zůstávají okamžitě dostupné.');});
+
+  $$('.example').forEach(ex=>$('.replay-mini',ex).addEventListener('click',async()=>{
+    const kind=ex.dataset.example;
+    ex.getAnimations().forEach(a=>a.cancel());
+    if(kind==='reserve') { const b=$('.reserve-button',ex),c=$('.demo-count',ex); b.classList.remove('done');b.textContent='Rezervovat';c.textContent='0 z 1 rezervováno';await wait(50,runId);b.classList.add('done');b.textContent='✓ Rezervováno';c.textContent='1 z 1 rezervováno';animate(b,[{transform:'scale(.96)'},{transform:'scale(1)'}],{duration:140,easing:'cubic-bezier(.2,.7,.3,1)'}); }
+    if(kind==='view') { const list=$('.mini-cards',ex); await animate(list,[{opacity:1},{opacity:0}],{duration:100,easing:'cubic-bezier(.2,.7,.3,1)'});list.classList.toggle('list');await animate(list,[{opacity:0,transform:'translateY(3px)'},{opacity:1,transform:'translateY(0)'}],{duration:180,easing:'cubic-bezier(.2,.7,.3,1)'}); }
+    if(kind==='wizard') { const panel=$('.wizard-panel',ex),line=$('.wizard-line',ex);const next=panel.textContent.includes('zdroj');await animate(panel,[{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${next?-10:10}px)`}],{duration:120,easing:'cubic-bezier(.2,.7,.3,1)'});panel.textContent=next?'Zkontrolujte 6 nalezených dárků':'Vyberte zdroj importu';await animate(panel,[{opacity:0,transform:`translateX(${next?10:-10}px)`},{opacity:1,transform:'translateX(0)'}],{duration:180,easing:'cubic-bezier(.2,.7,.3,1)'});animate(line,[{filter:'brightness(1)'},{filter:'brightness(1.12)'}],{duration:200,easing:'cubic-bezier(.2,.7,.3,1)'}); }
+    if(kind==='like') { const h=$('.heart-btn',ex),c=$('.like-count',ex);h.classList.remove('liked');c.textContent='4';await wait(40,runId);h.classList.add('liked');c.textContent='5';await animate(h,[{transform:'scale(.82)'},{transform:'scale(1.18)',offset:.65},{transform:'scale(1)'}],{duration:160,easing:'cubic-bezier(.34,1.56,.64,1)'}); }
+  }));
+  render();
+})();
+</script>
+</body>
+</html>

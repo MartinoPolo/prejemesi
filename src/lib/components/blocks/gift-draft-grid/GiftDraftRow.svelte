@@ -37,6 +37,8 @@
 
 	interface Props {
 		row: DraftGridRow;
+		/** Retain the layout slot while making an exiting row non-interactive. */
+		exiting?: boolean;
 		/** Whole-card status derived by the grid (error > duplicate > ready). */
 		status: RowStatus;
 		/** Show the priority (heart) cell. Hidden when the target lacks ≥2 levels. */
@@ -53,6 +55,7 @@
 
 	let {
 		row = $bindable(),
+		exiting = false,
 		status,
 		showPriority,
 		categoryOptions,
@@ -102,6 +105,10 @@
 </script>
 
 <div
+	data-gift-item
+	data-gift-id={row.id}
+	inert={exiting}
+	aria-hidden={exiting}
 	class={cn(
 		'relative flex flex-col gap-3 rounded-lg border border-border bg-surface px-5 py-4 transition-[background,border-color,box-shadow] duration-(--duration-normal) hover:shadow-sm',
 		gridColumns,

@@ -56,6 +56,93 @@ describe('GiftReceivedToggle', () => {
 		expect(document.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
 	});
 
+	it('keeps a local disabled acknowledgement while the received mutation is pending', async () => {
+		let settle!: () => void;
+		const onreceived = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					settle = resolve;
+				}),
+		);
+		await render(GiftReceivedToggle, {
+			giftId: 'gift-1',
+			received: false,
+			role: WISHLIST_ROLES.recipient,
+			onreceived,
+		});
+		const action = page.getByRole('button', { name: m.gift_mark_received() });
+
+		await action.click();
+
+		await expect.element(action).toBeDisabled();
+		expect(onreceived).toHaveBeenCalledOnce();
+		settle();
+		await expect.element(action).toBeEnabled();
+	});
+
+	it('restores focus after a failed update reenables its still-connected action', async () => {
+		let rejectMutation!: (reason: Error) => void;
+		const mutation = new Promise<void>((_resolve, reject) => {
+			rejectMutation = reject;
+		});
+		const onreceived = vi.fn(async () => {
+			try {
+				await mutation;
+			} catch {
+				// Simulate route-side recovery without helping the component restore focus.
+			}
+		});
+		await render(GiftReceivedToggle, {
+			giftId: 'gift-1',
+			received: false,
+			role: WISHLIST_ROLES.recipient,
+			onreceived,
+		});
+		const action = page.getByRole('button', { name: m.gift_mark_received() });
+		const unrelated = document.createElement('button');
+		document.body.append(unrelated);
+
+		await action.click();
+		await expect.element(action).toBeDisabled();
+		unrelated.focus();
+		rejectMutation(new Error('mutation failed'));
+
+		await expect.element(action).toBeEnabled();
+		await expect.element(action).toHaveFocus();
+	});
+
+	it('does not reclaim focus when relocation disconnected its source action', async () => {
+		let settle!: () => void;
+		const onreceived = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					settle = resolve;
+				}),
+		);
+		await render(GiftReceivedToggle, {
+			giftId: 'gift-1',
+			received: false,
+			role: WISHLIST_ROLES.recipient,
+			onreceived,
+		});
+		const source = document.querySelector<HTMLButtonElement>(
+			'[data-gift-received-action="gift-1"]',
+		)!;
+
+		await page.getByRole('button', { name: m.gift_mark_received() }).click();
+		await vi.waitFor(() => expect(source.disabled).toBe(true));
+		const sourceFocus = vi.spyOn(source, 'focus');
+		source.remove();
+		const destination = document.createElement('button');
+		document.body.append(destination);
+		destination.focus();
+		settle();
+
+		await vi.waitFor(() => expect(source.disabled).toBe(false));
+		expect(sourceFocus).not.toHaveBeenCalled();
+		expect(document.activeElement).toBe(destination);
+	});
+
 	it('stops the surface click and sends the inverse received state', async () => {
 		const onreceived = vi.fn();
 		const surfaceClick = vi.fn();

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick, untrack } from 'svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import WishlistEmptyState from './WishlistEmptyState.svelte';
 	import GiftCardSkeleton from '$lib/components/blocks/gift/GiftCardSkeleton.svelte';
@@ -60,6 +61,80 @@
 	const reservationStateHidden = $derived(
 		hideReservationState || role === WISHLIST_ROLES.recipient,
 	);
+
+	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
+	let displayedViewMode = $state(untrack(() => viewMode));
+	let collectionElement = $state<HTMLElement | null>(null);
+	let activeAnimation: Animation | null = null;
+	let transitionRun = 0;
+
+	function cancelActiveTransition() {
+		transitionRun += 1;
+		activeAnimation?.cancel();
+		activeAnimation = null;
+	}
+
+	function reducedMotionRequested() {
+		return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	}
+
+	async function transitionTo(nextViewMode: GiftViewMode) {
+		cancelActiveTransition();
+		const run = transitionRun;
+
+		if (
+			collectionElement === null ||
+			reducedMotionRequested() ||
+			displayedViewMode === 'compact' ||
+			nextViewMode === 'compact'
+		) {
+			displayedViewMode = nextViewMode;
+			return;
+		}
+
+		const exit = collectionElement.animate([{ opacity: 1 }, { opacity: 0 }], {
+			duration: 160,
+			easing: STANDARD_EASING,
+			fill: 'both',
+		});
+		activeAnimation = exit;
+		await exit.finished.catch(() => undefined);
+		if (run !== transitionRun) {
+			return;
+		}
+
+		activeAnimation = null;
+		displayedViewMode = nextViewMode;
+		await tick();
+		if (run !== transitionRun || collectionElement === null) {
+			return;
+		}
+
+		exit.cancel();
+		const enter = collectionElement.animate(
+			[
+				{ opacity: 0, transform: 'translateY(3px)' },
+				{ opacity: 1, transform: 'none' },
+			],
+			{ duration: 280, easing: STANDARD_EASING, fill: 'both' },
+		);
+		activeAnimation = enter;
+		await enter.finished.catch(() => undefined);
+		if (run === transitionRun) {
+			enter.cancel();
+			activeAnimation = null;
+		}
+	}
+
+	$effect(() => {
+		if (viewMode !== displayedViewMode) {
+			void transitionTo(viewMode);
+		} else if (activeAnimation !== null) {
+			cancelActiveTransition();
+		}
+	});
+
+	$effect(() => () => cancelActiveTransition());
 </script>
 
 {#if isLoading}
@@ -74,46 +149,54 @@
 	</div>
 {:else if isEmpty || isFilteredEmpty}
 	<WishlistEmptyState {isArchived} {canManage} {isFilteredEmpty} {onaddgift} {onclearfilters} />
-{:else if viewMode === 'card'}
-	<WishlistGiftCardGrid
-		{sections}
-		{role}
-		{isArchived}
-		hideReservationState={reservationStateHidden}
-		reorderEnabled={reorderMode && canManage && !isArchived}
-		{onedit}
-		{onreserve}
-		{onunreserve}
-		{onreceived}
-		{onreorderpreview}
-		{onreordercommit}
-		{onreordercancel}
-	/>
-{:else if viewMode === 'list'}
-	<WishlistGiftListView
-		{sections}
-		{role}
-		{isArchived}
-		hideReservationState={reservationStateHidden}
-		reorderEnabled={reorderMode && canManage && !isArchived}
-		{onedit}
-		{onreserve}
-		{onunreserve}
-		{onreceived}
-		{onreorderpreview}
-		{onreordercommit}
-		{onreordercancel}
-	/>
 {:else}
-	<WishlistGiftCompactTable
-		{sections}
-		{role}
-		{isArchived}
-		hideReservationState={reservationStateHidden}
-		{canManage}
-		{onedit}
-		{onreserve}
-		{onunreserve}
-		{onreceived}
-	/>
+	<div
+		bind:this={collectionElement}
+		data-wishlist-gift-collection
+		data-view-mode={displayedViewMode}
+	>
+		{#if displayedViewMode === 'card'}
+			<WishlistGiftCardGrid
+				{sections}
+				{role}
+				{isArchived}
+				hideReservationState={reservationStateHidden}
+				reorderEnabled={reorderMode && canManage && !isArchived}
+				{onedit}
+				{onreserve}
+				{onunreserve}
+				{onreceived}
+				{onreorderpreview}
+				{onreordercommit}
+				{onreordercancel}
+			/>
+		{:else if displayedViewMode === 'list'}
+			<WishlistGiftListView
+				{sections}
+				{role}
+				{isArchived}
+				hideReservationState={reservationStateHidden}
+				reorderEnabled={reorderMode && canManage && !isArchived}
+				{onedit}
+				{onreserve}
+				{onunreserve}
+				{onreceived}
+				{onreorderpreview}
+				{onreordercommit}
+				{onreordercancel}
+			/>
+		{:else}
+			<WishlistGiftCompactTable
+				{sections}
+				{role}
+				{isArchived}
+				hideReservationState={reservationStateHidden}
+				{canManage}
+				{onedit}
+				{onreserve}
+				{onunreserve}
+				{onreceived}
+			/>
+		{/if}
+	</div>
 {/if}

@@ -209,6 +209,12 @@
 	let filterTriggerElement = $state<HTMLButtonElement | null>(null);
 	let openDisplayControl = $state<OpenDisplayControl | null>(null);
 
+	$effect(() => {
+		if (reorderMode) {
+			openDisplayControl = null;
+		}
+	});
+
 	function updateOpenDisplayControl(control: OpenDisplayControl, open: boolean) {
 		if (open) {
 			openDisplayControl = control;
@@ -240,7 +246,24 @@
 		},
 	]);
 	const activeFilters = $derived(normalizeActiveFilters(filterDefinitions, filterFacets));
+
+	let previousReorderMode = $state<boolean | null>(null);
+	let reorderAnnouncement = $state('');
+	$effect(() => {
+		if (previousReorderMode === null) {
+			previousReorderMode = reorderMode;
+		} else if (reorderMode !== previousReorderMode) {
+			reorderAnnouncement = reorderMode
+				? m.gift_reorder_mode_entered()
+				: m.gift_reorder_mode_exited();
+			previousReorderMode = reorderMode;
+		}
+	});
 </script>
+
+<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+	{reorderAnnouncement}
+</div>
 
 <div
 	class="wishlist-toolbar min-w-0 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
@@ -248,236 +271,257 @@
 >
 	<div class="toolbar-layout min-w-0">
 		<div class="toolbar-controls min-w-0" data-testid="wishlist-toolbar-controls">
-			{#if reorderMode && canReorder}
-				<div class="toolbar-reorder-state">
-					<Button
-						size="md"
-						class="min-w-0 max-w-full"
-						title={m.gift_reorder_done()}
-						onclick={() => onreordermodechange(false)}
+			<div class="toolbar-view-controls" data-testid="wishlist-toolbar-view-controls">
+				<GiftViewSwitcher
+					value={viewMode}
+					onchange={onviewmodechange}
+					disabled={reorderMode}
+				/>
+				{#if canPreviewRecipientView}
+					<SimpleTooltip
+						text={recipientViewPreview
+							? m.recipient_view_preview_turn_off()
+							: m.recipient_view_preview_turn_on()}
 					>
-						<CheckIcon data-icon="inline-start" />
-						<span class="min-w-0 truncate">{m.gift_reorder_done()}</span>
-					</Button>
-				</div>
-			{:else}
-				<div class="toolbar-view-controls" data-testid="wishlist-toolbar-view-controls">
-					<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} />
-					{#if canPreviewRecipientView}
-						<SimpleTooltip
-							text={recipientViewPreview
+						<Button
+							size="icon"
+							intent="ghost"
+							aria-label={recipientViewPreview
 								? m.recipient_view_preview_turn_off()
 								: m.recipient_view_preview_turn_on()}
+							aria-pressed={recipientViewPreview}
+							disabled={reorderMode}
+							aria-describedby="recipient-view-preview-description recipient-view-preview-status"
+							onclick={() => onrecipientviewpreviewchange(!recipientViewPreview)}
 						>
-							<Button
-								size="icon"
-								intent="ghost"
-								aria-label={recipientViewPreview
-									? m.recipient_view_preview_turn_off()
-									: m.recipient_view_preview_turn_on()}
-								aria-pressed={recipientViewPreview}
-								aria-describedby="recipient-view-preview-description recipient-view-preview-status"
-								onclick={() => onrecipientviewpreviewchange(!recipientViewPreview)}
-							>
-								{#if recipientViewPreview}
-									<EyeOffIcon />
-								{:else}
-									<EyeIcon />
-								{/if}
-							</Button>
-						</SimpleTooltip>
-						<span id="recipient-view-preview-description" class="sr-only">
-							{m.recipient_view_preview_description()}
-						</span>
-						<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
-							{recipientViewPreview
-								? m.recipient_view_preview_status_on()
-								: m.recipient_view_preview_status_off()}
-						</span>
-					{/if}
-				</div>
-
-				<div
-					class="toolbar-display-controls"
-					data-testid="wishlist-toolbar-display-controls"
-				>
-					<GiftSortSelect
-						class="toolbar-sort-control"
-						value={sortOption}
-						onchange={onsortchange}
-						open={openDisplayControl === 'sort'}
-						onopenchange={(open) => updateOpenDisplayControl('sort', open)}
-					/>
-					<Select.Root
-						type="single"
-						value={grouping}
-						open={openDisplayControl === 'grouping'}
-						onOpenChange={(open) => updateOpenDisplayControl('grouping', open)}
-						onValueChange={(newValue) => {
-							if (
-								Object.values(GIFT_GROUPING_OPTIONS).includes(
-									newValue as GiftGroupingOption,
-								)
-							) {
-								ongroupingchange(newValue as GiftGroupingOption);
-							}
-						}}
-					>
-						<Select.Trigger
-							size="md"
-							class={cn(
-								'toolbar-grouping-control min-w-0 px-3',
-								OUTLINE_CONTROL_SURFACE_CLASSES,
-							)}
-							aria-label={groupingCombinedLabel}
-							title={groupingCombinedLabel}
-						>
-							<LayersIcon
-								class="size-4 shrink-0 text-muted-foreground"
-								data-toolbar-icon="grouping"
-							/>
-							<span class="min-w-0 truncate">{GROUPING_LABELS[grouping]()}</span>
-						</Select.Trigger>
-						<Select.Content preventScroll={false}>
-							<Select.Group>
-								<Select.GroupHeading>{m.gift_grouping_label()}</Select.GroupHeading>
-								<Select.Item
-									value={GIFT_GROUPING_OPTIONS.none}
-									label={m.gift_grouping_none()}
-								/>
-								<Select.Item
-									value={GIFT_GROUPING_OPTIONS.priority}
-									label={m.gift_grouping_priority()}
-									disabled={!groupingAvailability.priority}
-								/>
-								<Select.Item
-									value={GIFT_GROUPING_OPTIONS.category}
-									label={m.gift_grouping_category()}
-									disabled={!groupingAvailability.category}
-								/>
-							</Select.Group>
-						</Select.Content>
-					</Select.Root>
-					<div class="toolbar-filter-controls">
-						<FilterMenu
-							class="toolbar-filter-control"
-							triggerClass="w-full justify-between"
-							bind:triggerElement={filterTriggerElement}
-							definitions={filterDefinitions}
-							facets={filterFacets}
-							{activeFilters}
-							showActivePills={false}
-							alwaysShowClearAllInMenu
-							triggerLabel={m.gift_filter()}
-							menuHeading={m.gift_filter()}
-							clearAllLabel={m.wishlist_detail_clear_filters()}
-							onclearall={clearGiftFilters}
-							removeFilterLabel={(label) => m.filter_remove({ label })}
-							activeCountLabel={(count) => m.filter_active_count({ count })}
-							align="end"
-							open={openDisplayControl === 'filter'}
-							onopenchange={(open) => updateOpenDisplayControl('filter', open)}
-						/>
-						{#if showReset}
-							<div class="toolbar-reset-control">
-								<SimpleTooltip text={m.gift_display_reset_tooltip()}>
-									<Button
-										size="icon"
-										intent="ghost"
-										aria-label={m.gift_display_reset_aria()}
-										onclick={resetDisplayControls}
-									>
-										<RotateCcwIcon data-toolbar-icon="reset" />
-									</Button>
-								</SimpleTooltip>
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				{#if canReorder}
-					<div class="toolbar-edit-controls" data-testid="wishlist-toolbar-edit-controls">
-						<Button
-							size="md"
-							intent="outline"
-							class="min-w-0 max-w-full"
-							title={m.gift_reorder_action()}
-							onclick={() => onreordermodechange(true)}
-						>
-							<HandIcon data-icon="inline-start" data-toolbar-icon="reorder" />
-							<span class="min-w-0 truncate">{m.gift_reorder_action()}</span>
+							{#if recipientViewPreview}
+								<EyeOffIcon />
+							{:else}
+								<EyeIcon />
+							{/if}
 						</Button>
-					</div>
+					</SimpleTooltip>
+					<span id="recipient-view-preview-description" class="sr-only">
+						{m.recipient_view_preview_description()}
+					</span>
+					<span id="recipient-view-preview-status" class="sr-only" aria-live="polite">
+						{recipientViewPreview
+							? m.recipient_view_preview_status_on()
+							: m.recipient_view_preview_status_off()}
+					</span>
 				{/if}
-			{/if}
-		</div>
+			</div>
 
-		{#if !(reorderMode && canReorder)}
-			{#if activeFilters.length > 0}
-				<div
-					class="toolbar-active-filters min-w-0"
-					data-testid="wishlist-toolbar-active-filters"
+			<div class="toolbar-display-controls" data-testid="wishlist-toolbar-display-controls">
+				<GiftSortSelect
+					class="toolbar-sort-control"
+					value={sortOption}
+					disabled={reorderMode}
+					onchange={onsortchange}
+					open={openDisplayControl === 'sort'}
+					onopenchange={(open) => updateOpenDisplayControl('sort', open)}
+				/>
+				<Select.Root
+					type="single"
+					value={grouping}
+					disabled={reorderMode}
+					open={openDisplayControl === 'grouping'}
+					onOpenChange={(open) => updateOpenDisplayControl('grouping', open)}
+					onValueChange={(newValue) => {
+						if (
+							Object.values(GIFT_GROUPING_OPTIONS).includes(
+								newValue as GiftGroupingOption,
+							)
+						) {
+							ongroupingchange(newValue as GiftGroupingOption);
+						}
+					}}
 				>
-					<ActiveFilterPills
-						class="min-w-0"
-						items={activeFilters}
+					<Select.Trigger
+						size="md"
+						class={cn(
+							'toolbar-grouping-control min-w-0 px-3',
+							OUTLINE_CONTROL_SURFACE_CLASSES,
+						)}
+						aria-label={groupingCombinedLabel}
+						title={groupingCombinedLabel}
+					>
+						<LayersIcon
+							class="size-4 shrink-0 text-muted-foreground"
+							data-toolbar-icon="grouping"
+						/>
+						<span class="min-w-0 truncate">{GROUPING_LABELS[grouping]()}</span>
+					</Select.Trigger>
+					<Select.Content preventScroll={false}>
+						<Select.Group>
+							<Select.GroupHeading>{m.gift_grouping_label()}</Select.GroupHeading>
+							<Select.Item
+								value={GIFT_GROUPING_OPTIONS.none}
+								label={m.gift_grouping_none()}
+							/>
+							<Select.Item
+								value={GIFT_GROUPING_OPTIONS.priority}
+								label={m.gift_grouping_priority()}
+								disabled={!groupingAvailability.priority}
+							/>
+							<Select.Item
+								value={GIFT_GROUPING_OPTIONS.category}
+								label={m.gift_grouping_category()}
+								disabled={!groupingAvailability.category}
+							/>
+						</Select.Group>
+					</Select.Content>
+				</Select.Root>
+				<div class="toolbar-filter-controls">
+					<FilterMenu
+						class="toolbar-filter-control"
+						triggerClass="w-full justify-between"
+						bind:triggerElement={filterTriggerElement}
+						definitions={filterDefinitions}
+						disabled={reorderMode}
+						facets={filterFacets}
+						{activeFilters}
+						showActivePills={false}
+						alwaysShowClearAllInMenu
+						triggerLabel={m.gift_filter()}
+						menuHeading={m.gift_filter()}
 						clearAllLabel={m.wishlist_detail_clear_filters()}
 						onclearall={clearGiftFilters}
 						removeFilterLabel={(label) => m.filter_remove({ label })}
-						triggerElement={filterTriggerElement}
+						activeCountLabel={(count) => m.filter_active_count({ count })}
+						align="end"
+						open={openDisplayControl === 'filter'}
+						onopenchange={(open) => updateOpenDisplayControl('filter', open)}
 					/>
+					{#if showReset}
+						<div class="toolbar-reset-control">
+							<SimpleTooltip text={m.gift_display_reset_tooltip()}>
+								<Button
+									size="icon"
+									intent="ghost"
+									aria-label={m.gift_display_reset_aria()}
+									disabled={reorderMode}
+									onclick={resetDisplayControls}
+								>
+									<RotateCcwIcon data-toolbar-icon="reset" />
+								</Button>
+							</SimpleTooltip>
+						</div>
+					{/if}
 				</div>
-			{/if}
+			</div>
 
-			{#if showActions}
-				<div class="toolbar-actions min-w-0" data-testid="wishlist-toolbar-actions">
-					{#if showSettingsAction}
-						<SimpleTooltip text={m.wishlist_settings_title()}>
-							<Button
-								size="icon"
-								intent="outline"
-								aria-label={m.wishlist_settings_title()}
-								onclick={onsettings}
+			{#if canReorder}
+				<div class="toolbar-edit-controls" data-testid="wishlist-toolbar-edit-controls">
+					<Button
+						size="md"
+						intent={reorderMode ? 'primary' : 'outline'}
+						class="reorder-mode-action min-w-0 max-w-full"
+						title={reorderMode ? m.gift_reorder_done() : m.gift_reorder_action()}
+						aria-label={reorderMode ? m.gift_reorder_done() : m.gift_reorder_action()}
+						onclick={() => onreordermodechange(!reorderMode)}
+					>
+						<span class="reorder-mode-icon-stack" aria-hidden="true">
+							<HandIcon
+								class={`reorder-mode-content${!reorderMode ? ' reorder-mode-content-active' : ''}`}
+								data-icon="inline-start"
+								data-toolbar-icon="reorder"
+							/>
+							<CheckIcon
+								class={`reorder-mode-content${reorderMode ? ' reorder-mode-content-active' : ''}`}
+								data-icon="inline-start"
+								data-toolbar-icon="reorder-done"
+							/>
+						</span>
+						<span class="reorder-mode-label-stack min-w-0" aria-hidden="true">
+							<span
+								class="reorder-mode-content min-w-0 truncate"
+								class:reorder-mode-content-active={!reorderMode}
 							>
-								<SettingsIcon />
-							</Button>
-						</SimpleTooltip>
-					{/if}
-					{#if showUnfollowAction}
-						<Button
-							size="md"
-							intent="ghost"
-							class="min-w-0 max-w-48 shrink"
-							title={m.wishlist_detail_unfollow()}
-							onclick={onunfollow}
-						>
-							<span class="min-w-0 truncate">{m.wishlist_detail_unfollow()}</span>
-						</Button>
-					{/if}
-					{#if showManagementActions}
-						<SimpleTooltip text={m.batch_add_toolbar_label()}>
-							<Button
-								size="icon"
-								intent="outline"
-								aria-label={m.batch_add_toolbar_label()}
-								onclick={onbatchadd}
+								{m.gift_reorder_action()}
+							</span>
+							<span
+								class="reorder-mode-content min-w-0 truncate"
+								class:reorder-mode-content-active={reorderMode}
+								data-reorder-mode-label
 							>
-								<ListPlusIcon />
-							</Button>
-						</SimpleTooltip>
-						<Button
-							size="md"
-							class="min-w-0 max-w-44 shrink"
-							aria-label={m.wishlist_detail_add_gift_label()}
-							title={m.wishlist_detail_add_wish()}
-							onclick={onaddgift}
-						>
-							<PlusIcon data-icon="inline-start" />
-							<span class="min-w-0 truncate">{m.wishlist_detail_add_wish()}</span>
-						</Button>
-					{/if}
+								{m.gift_reorder_done()}
+							</span>
+						</span>
+					</Button>
 				</div>
 			{/if}
+		</div>
+
+		{#if activeFilters.length > 0}
+			<div
+				class="toolbar-active-filters min-w-0"
+				data-testid="wishlist-toolbar-active-filters"
+			>
+				<ActiveFilterPills
+					class="min-w-0"
+					items={activeFilters}
+					disabled={reorderMode}
+					clearAllLabel={m.wishlist_detail_clear_filters()}
+					onclearall={clearGiftFilters}
+					removeFilterLabel={(label) => m.filter_remove({ label })}
+					triggerElement={filterTriggerElement}
+				/>
+			</div>
+		{/if}
+
+		{#if showActions}
+			<div class="toolbar-actions min-w-0" data-testid="wishlist-toolbar-actions">
+				{#if showSettingsAction}
+					<SimpleTooltip text={m.wishlist_settings_title()}>
+						<Button
+							size="icon"
+							intent="outline"
+							aria-label={m.wishlist_settings_title()}
+							disabled={reorderMode}
+							onclick={onsettings}
+						>
+							<SettingsIcon />
+						</Button>
+					</SimpleTooltip>
+				{/if}
+				{#if showUnfollowAction}
+					<Button
+						size="md"
+						intent="ghost"
+						class="min-w-0 max-w-48 shrink"
+						title={m.wishlist_detail_unfollow()}
+						disabled={reorderMode}
+						onclick={onunfollow}
+					>
+						<span class="min-w-0 truncate">{m.wishlist_detail_unfollow()}</span>
+					</Button>
+				{/if}
+				{#if showManagementActions}
+					<SimpleTooltip text={m.batch_add_toolbar_label()}>
+						<Button
+							size="icon"
+							intent="outline"
+							aria-label={m.batch_add_toolbar_label()}
+							disabled={reorderMode}
+							onclick={onbatchadd}
+						>
+							<ListPlusIcon />
+						</Button>
+					</SimpleTooltip>
+					<Button
+						size="md"
+						class="min-w-0 max-w-44 shrink"
+						aria-label={m.wishlist_detail_add_gift_label()}
+						disabled={reorderMode}
+						title={m.wishlist_detail_add_wish()}
+						onclick={onaddgift}
+					>
+						<PlusIcon data-icon="inline-start" />
+						<span class="min-w-0 truncate">{m.wishlist_detail_add_wish()}</span>
+					</Button>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </div>
@@ -504,8 +548,7 @@
 	.toolbar-active-filters,
 	.toolbar-view-controls,
 	.toolbar-display-controls,
-	.toolbar-edit-controls,
-	.toolbar-reorder-state {
+	.toolbar-edit-controls {
 		min-width: 0;
 	}
 
@@ -520,8 +563,7 @@
 	}
 
 	.toolbar-view-controls,
-	.toolbar-edit-controls,
-	.toolbar-reorder-state {
+	.toolbar-edit-controls {
 		display: flex;
 		align-items: center;
 		gap: 0.375rem;
@@ -570,6 +612,39 @@
 		display: flex;
 		max-width: 100%;
 		flex: 1 1 12rem;
+	}
+
+	:global(.reorder-mode-action) {
+		width: 8.5rem;
+		transition-duration: 200ms;
+	}
+
+	.reorder-mode-icon-stack,
+	.reorder-mode-label-stack {
+		display: inline-grid;
+		min-width: 0;
+	}
+
+	.reorder-mode-icon-stack {
+		width: 1rem;
+		flex: 0 0 1rem;
+	}
+
+	:global(.reorder-mode-content) {
+		grid-area: 1 / 1;
+		opacity: 0;
+		transition: opacity 200ms ease;
+	}
+
+	:global(.reorder-mode-content-active) {
+		opacity: 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(.reorder-mode-action),
+		:global(.reorder-mode-content) {
+			transition-duration: 0ms;
+		}
 	}
 
 	@container wishlist-toolbar (min-width: 40rem) {

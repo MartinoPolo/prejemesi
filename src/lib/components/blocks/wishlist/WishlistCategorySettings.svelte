@@ -24,8 +24,9 @@
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { giftCategoryColorForIndex } from '$lib/modules/gift-categories/gift_category_colors.js';
+	import { createCategorySettingsMotion } from './wishlist_category_settings_motion.svelte.js';
 
 	interface Props {
 		wishlistId: string;
@@ -63,6 +64,9 @@
 	let pendingRemoval = $state<PendingRemoval | null>(null);
 	let confirmedRemovalCategoryIds = $state<string[]>([]);
 	let removalTrigger = $state<HTMLElement | null>(null);
+	let categoryRowsElement = $state<HTMLElement | null>(null);
+	const categoryMotion = createCategorySettingsMotion();
+	onDestroy(() => categoryMotion.destroy());
 
 	function snapshot(): string {
 		return JSON.stringify({
@@ -129,11 +133,17 @@
 		event.preventDefault();
 		createCustom();
 	}
-	function move(index: number, direction: -1 | 1) {
+	async function move(index: number, direction: -1 | 1) {
+		const snapshot =
+			categoryRowsElement === null ? null : categoryMotion.capture(categoryRowsElement);
 		const next = [...customDrafts];
 		const item = next.splice(index, 1)[0]!;
 		next.splice(index + direction, 0, item);
 		customDrafts = next;
+		await tick();
+		if (snapshot !== null && categoryRowsElement !== null) {
+			void categoryMotion.play(snapshot, categoryRowsElement);
+		}
 	}
 	async function togglePreset(
 		key: GiftCategoryPresetKey,
@@ -168,7 +178,7 @@
 			enabledPresets = enabledPresets.filter((candidate) => candidate !== key);
 		}
 	}
-	function requestCustomRemoval(category: CustomDraft, trigger: HTMLElement) {
+	async function requestCustomRemoval(category: CustomDraft, trigger: HTMLElement) {
 		if (category.id !== null) {
 			removalTrigger = trigger;
 			pendingRemoval = {
@@ -180,13 +190,25 @@
 			};
 			return;
 		}
+		const snapshot =
+			categoryRowsElement === null
+				? null
+				: categoryMotion.capture(categoryRowsElement, category.key);
 		customDrafts = customDrafts.filter((item) => item.key !== category.key);
+		await tick();
+		if (snapshot !== null && categoryRowsElement !== null) {
+			void categoryMotion.play(snapshot, categoryRowsElement);
+		}
 	}
-	function confirmRemoval() {
+	async function confirmRemoval() {
 		const removal = pendingRemoval;
 		if (removal === null) {
 			return;
 		}
+		const snapshot =
+			removal.type === 'custom' && categoryRowsElement !== null
+				? categoryMotion.capture(categoryRowsElement, removal.key)
+				: null;
 		confirmedRemovalCategoryIds = [
 			...confirmedRemovalCategoryIds.filter((id) => id !== removal.categoryId),
 			removal.categoryId,
@@ -197,6 +219,10 @@
 			enabledPresets = enabledPresets.filter((key) => key !== removal.key);
 		}
 		pendingRemoval = null;
+		await tick();
+		if (snapshot !== null && categoryRowsElement !== null) {
+			void categoryMotion.play(snapshot, categoryRowsElement);
+		}
 	}
 	function restoreRemovalTrigger(event: Event) {
 		if (removalTrigger?.isConnected === true) {
@@ -276,7 +302,7 @@
 		</div>
 	</div>
 
-	<div class="flex flex-col gap-3">
+	<div class="flex flex-col gap-3" bind:this={categoryRowsElement}>
 		<h3 class="text-base font-semibold">{m.gift_categories_custom_title()}</h3>
 		{#if customDrafts.length === 0}
 			<HelpText>{m.gift_categories_empty()}</HelpText>
@@ -286,6 +312,8 @@
 					class="flex items-center gap-2 rounded-lg border border-border border-l-4 bg-surface px-3 py-2"
 					style:border-left-color={category.color}
 					data-testid="gift-category-settings-card"
+					data-category-row
+					data-category-id={category.key}
 					data-category-label={category.label}
 				>
 					<div class="flex min-w-0 flex-1 items-center gap-2">

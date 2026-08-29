@@ -340,33 +340,150 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 		}
 	});
 
-	it('shows Done and bypasses display modifiers without changing them', async () => {
+	it('morphs the reorder action in place without replacing or collapsing toolbar regions', async () => {
 		const onreordermodechange = vi.fn();
-		const onsortchange = vi.fn();
-		const onfilterchange = vi.fn();
-		const screen = await renderToolbar({
+		const props = {
+			...defaultProps,
 			canManage: true,
 			role: WISHLIST_ROLES.recipient,
-			reorderMode: true,
 			onreordermodechange,
-			onsortchange,
-			onfilterchange,
-		});
+		};
+		const screen = await renderToolbar(props);
+		const toolbar = screen.getByTestId('wishlist-toolbar').element();
+		const layout = toolbar.querySelector('.toolbar-layout');
+		const controls = screen.getByTestId('wishlist-toolbar-controls').element();
+		const viewControls = screen.getByTestId('wishlist-toolbar-view-controls').element();
+		const displayControls = screen.getByTestId('wishlist-toolbar-display-controls').element();
+		const editControls = screen.getByTestId('wishlist-toolbar-edit-controls').element();
+		const actions = screen.getByTestId('wishlist-toolbar-actions').element();
+		const reorderButton = screen
+			.getByRole('button', { name: m.gift_reorder_action() })
+			.element() as HTMLButtonElement;
+		const regionOrder = [viewControls, displayControls, editControls, actions];
+		const reorderWidth = reorderButton.getBoundingClientRect().width;
 
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_reorder_done() }))
-			.toBeVisible();
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_filter() }))
-			.not.toBeInTheDocument();
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_reorder_action() }))
-			.not.toBeInTheDocument();
-		await screen.getByRole('button', { name: m.gift_reorder_done() }).click();
-		expect(onreordermodechange).toHaveBeenCalledWith(false);
-		expect(onsortchange).not.toHaveBeenCalled();
+		reorderButton.focus();
+		await reorderButton.click();
+		expect(onreordermodechange).toHaveBeenCalledWith(true);
+		await screen.rerender({ ...props, reorderMode: true });
+
+		const doneButton = screen
+			.getByRole('button', { name: m.gift_reorder_done() })
+			.element() as HTMLButtonElement;
+		expect(doneButton).toBe(reorderButton);
+		expect(document.activeElement).toBe(doneButton);
+		expect(screen.getByTestId('wishlist-toolbar-controls').element()).toBe(controls);
+		expect(toolbar.querySelector('.toolbar-layout')).toBe(layout);
+		expectDocumentOrder(regionOrder);
+		for (const region of regionOrder) {
+			expect(region.isConnected).toBe(true);
+		}
+		const doneIcon = doneButton.querySelector('[data-toolbar-icon="reorder-done"]')!;
+		const doneLabel = doneButton.querySelector('[data-reorder-mode-label]')!;
+		expect(doneIcon).not.toBeNull();
+		expect(doneButton.getBoundingClientRect().width).toBeCloseTo(reorderWidth, 1);
+		expect(getComputedStyle(doneButton).transitionDuration).toContain('0.2s');
+		expect(getComputedStyle(doneIcon).transitionDuration).toContain('0.2s');
+		expect(getComputedStyle(doneLabel).transitionDuration).toContain('0.2s');
+		await screen.unmount();
+	});
+
+	it('announces reorder mode entry and exit through one polite live region', async () => {
+		const props = {
+			...defaultProps,
+			canManage: true,
+			role: WISHLIST_ROLES.recipient,
+		};
+		const screen = await renderToolbar(props);
+		const liveRegion = screen.getByRole('status').element();
+		expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+		expect(liveRegion).toHaveTextContent('');
+
+		await screen.rerender({ ...props, reorderMode: true });
+		expect(liveRegion).toHaveTextContent(m.gift_reorder_mode_entered());
+		await screen.rerender({ ...props, reorderMode: false });
+		expect(liveRegion).toHaveTextContent(m.gift_reorder_mode_exited());
+		await screen.unmount();
+	});
+
+	it('disables every incompatible toolbar callback and removes its control from tab order', async () => {
+		const callbacks = {
+			onrecipientviewpreviewchange: vi.fn(),
+			onviewmodechange: vi.fn(),
+			onsortchange: vi.fn(),
+			onfilterchange: vi.fn(),
+			onsettings: vi.fn(),
+			onaddgift: vi.fn(),
+			onbatchadd: vi.fn(),
+			onunfollow: vi.fn(),
+			onreordermodechange: vi.fn(),
+		};
+		const ongroupingchange = vi.fn();
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+			reorderMode: true,
+			sortOption: GIFT_SORT_OPTIONS.name,
+			groupingAvailability: { priority: true, category: true },
+			...callbacks,
+			ongroupingchange,
+		});
+		const doneButton = screen
+			.getByRole('button', { name: m.gift_reorder_done() })
+			.element() as HTMLButtonElement;
+		const incompatibleButtons = Array.from(
+			screen.getByTestId('wishlist-toolbar').element().querySelectorAll('button'),
+		).filter((button) => button !== doneButton) as HTMLButtonElement[];
+
+		expect(incompatibleButtons.length).toBeGreaterThan(8);
+		for (const button of incompatibleButtons) {
+			expect(
+				button.disabled,
+				button.getAttribute('aria-label') ?? button.textContent ?? '',
+			).toBe(true);
+			expect(button.matches(':disabled')).toBe(true);
+			button.click();
+		}
+		expect(doneButton.disabled).toBe(false);
+		expect(doneButton.tabIndex).toBe(0);
+		for (const callback of Object.values(callbacks)) {
+			expect(callback).not.toHaveBeenCalled();
+		}
+		expect(ongroupingchange).not.toHaveBeenCalled();
+		await screen.unmount();
+	});
+
+	it('keeps mobile active-filter pills visible while disabling remove and clear', async () => {
+		const host = document.createElement('div');
+		host.style.width = '320px';
+		document.body.appendChild(host);
+		const onfilterchange = vi.fn();
+		const screen = await render(
+			WishlistDetailToolbar,
+			{
+				...defaultProps,
+				canManage: true,
+				role: WISHLIST_ROLES.recipient,
+				reorderMode: true,
+				filters: { ...defaultProps.filters, withLinkOnly: true },
+				onfilterchange,
+			},
+			{ baseElement: host },
+		);
+		const pillsRegion = screen.getByTestId('wishlist-toolbar-active-filters').element();
+		const pillButtons = Array.from(
+			pillsRegion.querySelectorAll('button'),
+		) as HTMLButtonElement[];
+
+		expect(getComputedStyle(pillsRegion).display).toBe('flex');
+		expect(pillButtons).toHaveLength(2);
+		for (const button of pillButtons) {
+			expect(button.disabled).toBe(true);
+			button.click();
+		}
 		expect(onfilterchange).not.toHaveBeenCalled();
 		await screen.unmount();
+		host.remove();
 	});
 });
 
@@ -625,6 +742,24 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 		await expect
 			.element(screen.getByTestId('wishlist-toolbar-active-filters'))
 			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+});
+
+describe('WishlistDetailToolbar filter motion', () => {
+	it('acknowledges the active count and keyed pills in place over 220 ms', async () => {
+		const screen = await renderToolbar({
+			filters: { ...defaultProps.filters, withLinkOnly: true },
+		});
+		const count = document.querySelector<HTMLElement>('[data-filter-count]');
+		const pill = document.querySelector<HTMLElement>('[data-active-filter-pill]');
+
+		expect(count).not.toBeNull();
+		expect(pill).not.toBeNull();
+		expect(getComputedStyle(count!).animationDuration).toBe('0.22s');
+		expect(getComputedStyle(pill!).animationDuration).toBe('0.22s');
+		expect(getComputedStyle(count!).animationName).not.toBe('none');
+		expect(getComputedStyle(pill!).animationName).not.toBe('none');
 		await screen.unmount();
 	});
 });
