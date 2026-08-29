@@ -343,7 +343,10 @@ test.describe('issue #269 integrated motion strategy', () => {
 			await expect(control).toBeDisabled();
 		}
 		await page.setViewportSize({ width: 390, height: 844 });
-		await done.scrollIntoViewIfNeeded();
+		// Center the action before measuring. Playwright may otherwise center it as
+		// part of click actionability on fractional Linux layouts, which changes
+		// viewport-relative boxes independently of the reorder-mode transition.
+		await done.evaluate((element) => element.scrollIntoView({ block: 'center' }));
 		const mobileAfterEntry = await Promise.all(
 			regions.map((id) => page.getByTestId(id).boundingBox()),
 		);
