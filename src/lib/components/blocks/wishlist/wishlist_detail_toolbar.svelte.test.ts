@@ -72,17 +72,6 @@ function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
 	);
 }
 
-function expectVisuallyAfter(first: DOMRect, latter: DOMRect) {
-	const roundingTolerance = 0.5;
-	const isOnLaterRow = latter.top >= first.bottom - roundingTolerance;
-	const verticalRangesOverlap =
-		latter.top < first.bottom - roundingTolerance &&
-		latter.bottom > first.top + roundingTolerance;
-	const isToTheRight = latter.left >= first.right - roundingTolerance;
-
-	expect(isOnLaterRow || (verticalRangesOverlap && isToTheRight)).toBe(true);
-}
-
 function measureNaturalWidth(element: HTMLElement): number {
 	const clone = element.cloneNode(true) as HTMLElement;
 	clone.style.position = 'fixed';
@@ -587,7 +576,7 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 		host.remove();
 	});
 
-	it('keeps seven long active filters and atomic actions in their explicit responsive rows', async () => {
+	it('starts long active filters on a dedicated full row after controls and atomic actions', async () => {
 		const host = document.createElement('div');
 		document.body.appendChild(host);
 		const screen = await render(
@@ -628,6 +617,7 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 			const controlsRect = controls.getBoundingClientRect();
 			const pillsRect = pills.getBoundingClientRect();
 			const actionsRect = actions.getBoundingClientRect();
+			const layoutRect = pills.parentElement!.getBoundingClientRect();
 
 			expect(getComputedStyle(pills).display).toBe('flex');
 			const pillRemoveButtons = Array.from(
@@ -644,17 +634,16 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 				expect(rectangle.bottom).toBeLessThanOrEqual(toolbarRect.bottom);
 			}
 			expectDocumentOrder([controls, pills, actions]);
-			expectVisuallyAfter(controlsRect, pillsRect);
-			expectVisuallyAfter(pillsRect, actionsRect);
 			const roundingTolerance = 0.5;
-			const pillsAndActionsVerticalRangesOverlap =
-				actionsRect.top < pillsRect.bottom - roundingTolerance &&
-				actionsRect.bottom > pillsRect.top + roundingTolerance;
-			if (pillsAndActionsVerticalRangesOverlap) {
-				expect(Math.abs(pillsRect.bottom - actionsRect.bottom)).toBeLessThanOrEqual(
-					roundingTolerance,
-				);
-			}
+			expect(pillsRect.top).toBeGreaterThanOrEqual(
+				Math.max(controlsRect.bottom, actionsRect.bottom) - roundingTolerance,
+			);
+			expect(Math.abs(pillsRect.left - layoutRect.left)).toBeLessThanOrEqual(
+				roundingTolerance,
+			);
+			expect(Math.abs(pillsRect.right - layoutRect.right)).toBeLessThanOrEqual(
+				roundingTolerance,
+			);
 
 			const visibleControlButtons = Array.from(controls.querySelectorAll('button')).filter(
 				(button) => {

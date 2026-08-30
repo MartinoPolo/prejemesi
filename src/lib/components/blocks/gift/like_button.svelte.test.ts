@@ -61,12 +61,8 @@ function mockReducedMotion(matches: boolean) {
 	vi.spyOn(window, 'matchMedia').mockReturnValue({ matches } as MediaQueryList);
 }
 
-function mockElementAnimations(heartAnimation = animation(), countAnimation = animation()) {
-	return vi.spyOn(HTMLElement.prototype, 'animate').mockImplementation(function (
-		this: HTMLElement,
-	) {
-		return this.dataset.likeHeart === undefined ? countAnimation : heartAnimation;
-	});
+function mockElementAnimations(heartAnimation = animation()) {
+	return vi.spyOn(HTMLElement.prototype, 'animate').mockReturnValue(heartAnimation);
 }
 
 async function renderLikeButton(likeCount = 4) {
@@ -93,9 +89,8 @@ describe('LikeButton acknowledgement', () => {
 		const remote = deferred<{ liked: boolean; likeCount: number }>();
 		mocks.toggleLike.mockReturnValue(remote.promise);
 		const heartAnimation = animation();
-		const countAnimation = animation();
 		await renderLikeButton();
-		const animate = mockElementAnimations(heartAnimation, countAnimation);
+		const animate = mockElementAnimations(heartAnimation);
 		const button = page.getByRole('button');
 
 		await button.click();
@@ -115,11 +110,49 @@ describe('LikeButton acknowledgement', () => {
 			[{ transform: 'scale(1)' }, { transform: 'scale(1.16)' }, { transform: 'scale(1)' }],
 			{ duration: 160 },
 		]);
-		expect(animate.mock.contexts[1]).toBe(document.querySelector('button > span:last-child'));
-		expect(animate.mock.calls[1]).toEqual([
-			[{ opacity: 0 }, { opacity: 1 }],
-			{ duration: 140 },
-		]);
+		expect(animate).toHaveBeenCalledOnce();
+	});
+
+	it('keeps one count node stable through prop acknowledgement and repeated like changes', async () => {
+		likesContext();
+		const like = deferred<{ liked: boolean; likeCount: number }>();
+		const unlike = deferred<{ liked: boolean; likeCount: number }>();
+		mocks.toggleLike.mockReturnValueOnce(like.promise).mockReturnValueOnce(unlike.promise);
+		const screen = await renderLikeButton();
+		const animate = mockElementAnimations();
+		const button = page.getByRole('button');
+
+		await button.click();
+		await expect.element(button).toHaveTextContent('5');
+		const countNode = document.querySelector('[data-like-count]');
+		expect(countNode).not.toBeNull();
+
+		await screen.rerender({
+			giftId: 'gift-1',
+			giftName: 'Stolní lampa',
+			likeCount: 5,
+		});
+		expect(document.querySelector('[data-like-count]')).toBe(countNode);
+		expect(countNode?.textContent).toBe('5');
+
+		like.resolve({ liked: true, likeCount: 5 });
+		await expect.element(button).toHaveTextContent('5');
+		expect(document.querySelector('[data-like-count]')).toBe(countNode);
+		await vi.waitFor(() => expect(animate).toHaveBeenCalledOnce());
+		expect(animate.mock.contexts[0]).toBe(document.querySelector('[data-like-heart]'));
+
+		await button.click();
+		await expect.element(button).toHaveTextContent('4');
+		await screen.rerender({
+			giftId: 'gift-1',
+			giftName: 'Stolní lampa',
+			likeCount: 4,
+		});
+		expect(document.querySelector('[data-like-count]')).toBe(countNode);
+		unlike.resolve({ liked: false, likeCount: 4 });
+		await expect.element(button).toHaveTextContent('4');
+		expect(document.querySelector('[data-like-count]')).toBe(countNode);
+		expect(animate).toHaveBeenCalledOnce();
 	});
 
 	it('replaces the optimistic count with the authoritative remote count', async () => {
@@ -179,9 +212,8 @@ describe('LikeButton acknowledgement', () => {
 		const remote = deferred<{ liked: boolean; likeCount: number }>();
 		mocks.toggleLike.mockReturnValue(remote.promise);
 		const pop = animation();
-		const crossfade = animation();
 		const screen = await renderLikeButton();
-		mockElementAnimations(pop, crossfade);
+		mockElementAnimations(pop);
 
 		await page.getByRole('button').click();
 		remote.resolve({ liked: true, likeCount: 9 });
@@ -189,7 +221,6 @@ describe('LikeButton acknowledgement', () => {
 		await screen.unmount();
 
 		expect(pop.cancel).toHaveBeenCalledOnce();
-		expect(crossfade.cancel).toHaveBeenCalledOnce();
 	});
 
 	it('updates immediately without transform animation when reduced motion is preferred', async () => {
