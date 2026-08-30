@@ -4,6 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
+		"predev": "pnpm run db:start",
 		"dev": "vite dev",
 		"build": "vite build",
 		"deploy": "vite build && wrangler deploy",
@@ -30,7 +31,7 @@
 		"loadtest:setup": "tsx tests/load/setup.ts",
 		"loadtest:cleanup": "tsx tests/load/cleanup.ts",
 		"prepare": "husky",
-		"db:start": "docker compose up -d",
+		"db:start": "docker compose --project-name prejemesi up -d --wait db",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
