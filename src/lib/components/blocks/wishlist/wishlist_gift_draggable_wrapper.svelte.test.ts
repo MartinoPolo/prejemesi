@@ -1,5 +1,5 @@
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import WishlistGiftDraggableWrapperTestHost from './WishlistGiftDraggableWrapperTestHost.svelte';
 import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
@@ -11,10 +11,80 @@ const baseProps = {
 	dragOverGiftId: null,
 	dragOverStyle: 'ring' as const,
 	giftName: 'Alpha Gift',
+	primaryLink: null,
 	onopendetail: () => {},
 	onreorderpointerdown: () => {},
 	onreordermove: () => {},
 };
+
+describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
+	it('opens the primary link in a new tab on middle-click', async () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			primaryLink: 'https://example.com/gift',
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+
+		expect(open).toHaveBeenCalledWith(
+			'https://example.com/gift',
+			'_blank',
+			'noopener,noreferrer',
+		);
+		open.mockRestore();
+		await unmount();
+	});
+
+	it('does nothing on middle-click when the gift has no link', async () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+
+		expect(open).not.toHaveBeenCalled();
+		open.mockRestore();
+		await unmount();
+	});
+
+	it('does not use the card primary link when middle-click starts on an inner control', async () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			primaryLink: 'https://example.com/gift',
+		});
+		const innerButton = container.querySelector('button') as HTMLButtonElement;
+
+		innerButton.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+
+		expect(open).not.toHaveBeenCalled();
+		open.mockRestore();
+		await unmount();
+	});
+
+	it('preserves left-click detail opening', async () => {
+		const openDetail = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			primaryLink: 'https://example.com/gift',
+			onopendetail: openDetail,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.click();
+
+		expect(openDetail).toHaveBeenCalledOnce();
+		await unmount();
+	});
+});
 
 describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => {
 	it('renders the reorder grip while reorder mode is enabled', async () => {

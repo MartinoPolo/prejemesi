@@ -4,6 +4,7 @@
 	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
+	import { getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -108,6 +109,7 @@
 				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="bg"
 				giftName={giftItem.name}
+				primaryLink={getPrimaryGiftLink(giftItem.links)?.url ?? null}
 				onopendetail={() => onedit(giftItem)}
 				onreorderpointerdown={reorder.start}
 				onreordermove={handleReorderMove}

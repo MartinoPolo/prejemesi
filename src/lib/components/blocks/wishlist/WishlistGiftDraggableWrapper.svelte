@@ -13,6 +13,8 @@
 		dragOverStyle: 'ring' | 'bg';
 		/** Accessible name for the card's button role (issue #125 REQ-4). */
 		giftName: string;
+		/** The gift's canonical primary link, opened by a middle-click on the card. */
+		primaryLink: string | null;
 		/** Extra layout classes from the host view (the card grid passes its subgrid span). */
 		class?: string;
 		children: Snippet;
@@ -36,6 +38,7 @@
 		dragOverGiftId,
 		dragOverStyle,
 		giftName,
+		primaryLink,
 		class: className = undefined,
 		children,
 		onopendetail,
@@ -67,6 +70,19 @@
 		}
 
 		onopendetail();
+	}
+
+	function handleAuxclick(event: MouseEvent) {
+		if (
+			event.button !== 1 ||
+			primaryLink === null ||
+			eventStartedInsideInteractiveElement(event)
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		window.open(primaryLink, '_blank', 'noopener,noreferrer');
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -112,6 +128,7 @@
 	tabindex={0}
 	aria-label={m.gift_open_detail_aria({ name: giftName })}
 	onclick={handleClick}
+	onauxclick={handleAuxclick}
 	onkeydown={handleKeydown}
 >
 	{#if reorderEnabled}
