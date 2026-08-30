@@ -1,4 +1,11 @@
-import { test, expect, type Browser, type Page, type APIRequestContext } from '@playwright/test';
+import {
+	test,
+	expect,
+	type APIRequestContext,
+	type Browser,
+	type Locator,
+	type Page,
+} from '@playwright/test';
 import {
 	loginViaApi,
 	createAuthenticatedContext,
@@ -33,6 +40,13 @@ function shelf(page: Page, title: string) {
 	return page
 		.getByTestId('home-shelf')
 		.filter({ has: page.getByRole('heading', { name: title, level: 2 }) });
+}
+
+function horizontalTrackPosition(track: Locator): Promise<number> {
+	return track.evaluate((node) => {
+		const transform = getComputedStyle(node).transform;
+		return transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m41;
+	});
 }
 
 test.describe('Home overview (issue #225)', () => {
@@ -182,7 +196,6 @@ test.describe('Home overview (issue #225)', () => {
 
 		const track = overflowingRow.locator('[data-embla-container]');
 		const viewport = overflowingRow.locator("[data-slot='carousel-content']");
-		const transformOf = () => track.evaluate((node) => getComputedStyle(node).transform);
 
 		// Reproduce the exact wheel event Chromium delivers for a gesture (see
 		// ShiftWheelHorizontalScroll): the axis is NOT pre-swapped, so a Shift+wheel arrives as
@@ -202,16 +215,66 @@ test.describe('Home overview (issue #225)', () => {
 				);
 			}, shiftKey);
 
-		const before = await transformOf();
+		const before = await horizontalTrackPosition(track);
 
 		// Plain vertical wheel must NOT move the carousel (the page scroll container handles it).
 		await dispatchVerticalWheel(false);
 		await page.waitForTimeout(400);
-		expect(await transformOf()).toBe(before);
+		expect(await horizontalTrackPosition(track)).toBeCloseTo(before, 0);
 
-		// Shift+wheel must move it horizontally.
+		// Wait beyond WheelGesturesPlugin's synthetic pointer-up and Embla's release movement.
+		// The assertion must cover the settled position, not a transient transform that snaps back.
 		await dispatchVerticalWheel(true);
-		await expect.poll(async () => transformOf(), { timeout: 5_000 }).not.toBe(before);
+		await page.waitForTimeout(1_400);
+		expect(Math.abs((await horizontalTrackPosition(track)) - before)).toBeGreaterThan(10);
+
+		await page.context().close();
+	});
+
+	test('a short slow drag stays where it was released and chevrons remain snap-based', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await signInAs(browser, request, baseURL!, MARTIN);
+		await page.setViewportSize({ width: 390, height: 844 });
+
+		await page.goto('/home');
+		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		const overflowingRow = page
+			.getByTestId('home-shelf')
+			.filter({ has: page.getByRole('button', { name: 'Další' }) })
+			.first();
+		const viewport = overflowingRow.locator("[data-slot='carousel-content']");
+		const track = overflowingRow.locator('[data-embla-container]');
+		const viewportBox = await viewport.boundingBox();
+		expect(viewportBox).not.toBeNull();
+
+		const startX = viewportBox!.x + viewportBox!.width / 2;
+		const startY = viewportBox!.y + viewportBox!.height / 2;
+		const before = await horizontalTrackPosition(track);
+
+		await page.mouse.move(startX, startY);
+		await page.mouse.down();
+		for (let step = 1; step <= 7; step++) {
+			await page.mouse.move(startX - step * 5, startY);
+			await page.waitForTimeout(60);
+		}
+		await page.waitForTimeout(200);
+		await page.mouse.up();
+
+		await page.waitForTimeout(1_400);
+		const afterDrag = await horizontalTrackPosition(track);
+		expect(afterDrag).toBeLessThan(before - 15);
+		await expect(overflowingRow.getByRole('button', { name: 'Předchozí' })).toBeEnabled();
+
+		await overflowingRow.getByRole('button', { name: 'Další' }).click();
+		await expect
+			.poll(() => horizontalTrackPosition(track), { timeout: 6_000 })
+			.toBeLessThan(afterDrag - 20);
 
 		await page.context().close();
 	});
@@ -246,11 +309,20 @@ test.describe('Home overview (issue #225)', () => {
 			if (await next.isDisabled()) {
 				break;
 			}
-			await next.click();
+			// The free-scroll boundary can disable Next between the guard and Playwright's
+			// actionability check. A native click is a no-op if that boundary was reached.
+			await next.evaluate((button) => {
+				if (button instanceof HTMLButtonElement) {
+					button.click();
+				}
+			});
 			await page.waitForTimeout(150);
 		}
 
-		await expect(overflowingRow).toHaveAttribute('data-can-scroll-next', 'false');
+		await expect(overflowingRow).toHaveAttribute('data-can-scroll-next', 'false', {
+			timeout: 8_000,
+		});
+		await expect(next).toBeDisabled();
 
 		await page.context().close();
 	});

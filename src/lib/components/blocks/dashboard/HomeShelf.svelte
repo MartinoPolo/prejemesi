@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import * as Carousel from '$lib/components/base/carousel/index.js';
-	import type { CarouselAPI } from '$lib/components/base/carousel/context.js';
+	import type { CarouselAPI, CarouselOptions } from '$lib/components/base/carousel/context.js';
+	import { resolveCarouselScrollability } from '$lib/components/base/carousel/carousel_scrollability.js';
+	import { SoftenedDragMomentum } from '$lib/components/base/carousel/softened_drag_momentum.js';
 	import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
 	import { ShiftWheelHorizontalScroll } from '$lib/components/base/carousel/shift_wheel_horizontal_scroll.js';
 	import ViewAllCard from './ViewAllCard.svelte';
@@ -23,10 +25,20 @@
 
 	let { title, icon, viewAllHref, total = 0, visibleCount, children }: HomeShelfProps = $props();
 
+	const carouselOptions = {
+		align: 'start',
+		dragFree: true,
+		duration: 50,
+	} satisfies CarouselOptions;
+
 	// Plain vertical wheel keeps scrolling the page — only horizontal deltas move the shelf.
 	// ShiftWheelHorizontalScroll bridges Chromium's Shift+wheel (which arrives as vertical
 	// deltaY) into the horizontal deltaX the WheelGesturesPlugin understands.
-	const plugins = [WheelGesturesPlugin({ forceWheelAxis: 'x' }), ShiftWheelHorizontalScroll()];
+	const plugins = [
+		WheelGesturesPlugin({ forceWheelAxis: 'x' }),
+		ShiftWheelHorizontalScroll(),
+		SoftenedDragMomentum({ remainingMomentum: 0.5 }),
+	];
 
 	// The trailing „Zobrazit vše" card appears only when the row was capped (more lists exist).
 	const remaining = $derived(Math.max(0, total - visibleCount));
@@ -43,17 +55,20 @@
 			return;
 		}
 		const update = () => {
-			canScrollNext = api.canScrollNext();
-			canScroll = api.canScrollPrev() || canScrollNext;
+			const scrollability = resolveCarouselScrollability(api, carouselOptions);
+			canScrollNext = scrollability.canScrollNext;
+			canScroll = scrollability.canScrollPrev || canScrollNext;
 		};
 		update();
 		api.on('select', update);
+		api.on('scroll', update);
+		api.on('settle', update);
 		api.on('reInit', update);
 	}
 </script>
 
 <section class="shelf" data-testid="home-shelf" data-can-scroll-next={canScrollNext}>
-	<Carousel.Root opts={{ align: 'start' }} {plugins} setApi={trackApi}>
+	<Carousel.Root opts={carouselOptions} {plugins} setApi={trackApi}>
 		<div class="shelf-head">
 			<h2 class="shelf-title">
 				{#if icon}
