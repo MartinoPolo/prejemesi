@@ -20,10 +20,33 @@ const baseProps = {
 describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 	it('opens the primary link in a new tab on middle-click', async () => {
 		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const openDetail = vi.fn();
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
 			reorderEnabled: false,
 			primaryLink: 'https://example.com/gift',
+			onopendetail: openDetail,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+
+		expect(openDetail).not.toHaveBeenCalled();
+		expect(open).toHaveBeenCalledWith(
+			'https://example.com/gift',
+			'_blank',
+			'noopener,noreferrer',
+		);
+		open.mockRestore();
+		await unmount();
+	});
+
+	it('normalizes a scheme-less primary link before opening it on middle-click', async () => {
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			primaryLink: 'example.com/gift',
 		});
 		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
 

@@ -1,19 +1,37 @@
-# Batch Review
+# Batch Review — `dev...HEAD` (#287, #285, #284)
 
-## Actionable Checklist
+## Reviewed scope
 
-### Important
+Reviewed the `dev...HEAD` batch for issues `#287`, `#285`, and `#284` across four axes:
 
-- [x] `src/lib/modules/gift-categories/gift_categories_service.ts:91` — `getManagedGiftCategories` unconditionally calls `ensureDefaultGiftCategories`, opening a transaction and locking the wishlist on every manager page load. Load persisted rows first; initialize defaults only when no active or soft-deleted row exists, then reload.
-- [x] `src/lib/modules/gift-categories/gift_categories_service.test.ts:137` — default-category coverage does not prove that an explicit all-disabled/soft-deleted configuration prevents default re-insertion. Add a regression test that returns a soft-deleted row and asserts no insert occurs.
-- [x] `src/lib/components/blocks/gift/gift_detail_form.svelte.test.ts:93` — rerendering props proves component reactivity but not that `saveGiftCategorySettingsCommand` waits for server-driven refreshes. Add a remote-command test with delayed refresh promises and assert save completion waits for all category/gift revalidation.
+- **Spec**
+- **Code quality / best practices**
+- **Test quality**
+- **Security**
 
-## Nice-to-Have
+## Fixes applied
 
-- [x] `src/lib/components/blocks/wishlist/gift_received_motion.ts:34` — remove the now-unused `compactViewport` option and corresponding misleading test arguments.
-- [x] `src/lib/components/blocks/wishlist/gift_pointer_reorder.svelte.ts:131` and `src/lib/components/blocks/wishlist/hidden_received_motion.ts:28` — extract the duplicated custom-property materialization loop into a shared DOM helper.
-- [x] `src/lib/components/blocks/wishlist/gift_received_motion.svelte.test.ts:272` — replace the fixed two-microtask wait with polling for the observable clone-removal condition while sibling reflow remains unresolved.
+- Added the generated-directory ESLint ignore for `src/paraglide` while preserving the existing stale `src/lib/paraglide` ignore.
+- Centralized primary-link URL normalization through `normalizeGiftUrl` before middle-click navigation.
+- Corrected wrapper comments to reflect both detail opening and non-interactive-surface middle-click navigation.
+- Strengthened unit and integration coverage for middle-click primary-link behavior, including scheme-less URL normalization.
 
-## Post-Fix Review
+## Dismissed / out of scope
 
-Two autofix iterations completed and all four partial-review axes finished clean. Later raw-Playwright verification exposed that the category command must use SvelteKit's documented fire-and-register refresh pattern; cloned framework source confirmed `void query.refresh()` registration is collected into the same command response. The command and its E2E regression now enforce that behavior.
+- Card and list presentations intentionally share the same gift-item interaction wrapper so behavior stays consistent across those gift-card surfaces.
+- Compact table rows do not use that wrapper and were excluded because issue `#284` explicitly scopes gift cards.
+- No compact-view behavior was added.
+
+## Unresolved non-blocking
+
+- No durable automated visual regression was added for `#285` / `#287`.
+- Visual browser confirmation remains advisable.
+
+## Verification
+
+- `pnpm run check:all` passed.
+- `pnpm run test` passed.
+- `pnpm run test:e2e` passed with 133 tests passing and one first-attempt dialog-close timing flake passing on Playwright retry.
+- Post-fix code-quality and test-quality re-reviews were clean.
+- Security review found no confirmed vulnerability.
+- No blocking spec issue remains.
