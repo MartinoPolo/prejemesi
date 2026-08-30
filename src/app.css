@@ -286,9 +286,16 @@
 	--footer-text: var(--tint);
 	--footer-hover: color-mix(in oklab, var(--footer-text) 15%, transparent);
 
-	/* Hard sticker shadows */
-	--hard-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
-	--hard-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+	/* Semantic sticker-depth recipes. Selection is mapped below for both the
+	   root palette and nested wishlist palette scopes. */
+	--soft-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
+	--soft-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+	--ink-shadow: color-mix(in oklab, var(--p-ink) 58%, transparent);
+	--ink-shadow-strong: color-mix(in oklab, var(--p-ink) 68%, transparent);
+	--black-shadow: #000;
+	--black-shadow-strong: #000;
+	--hard-shadow: var(--soft-shadow);
+	--hard-shadow-strong: var(--soft-shadow-strong);
 	--glow-soft: color-mix(in oklab, var(--p-brand) 50%, transparent);
 
 	/* ── shadcn semantic tokens (names kept, values re-derived) ── */
@@ -408,9 +415,15 @@
 	--footer-text: color-mix(in oklab, var(--p-bright) 40%, #e6eff8);
 	--footer-hover: color-mix(in oklab, var(--footer-text) 15%, transparent);
 
-	/* Hard sticker shadows (dark) */
-	--hard-shadow: rgb(2 6 12 / 42%);
-	--hard-shadow-strong: rgb(2 6 12 / 55%);
+	/* Semantic sticker-depth recipes (dark shadows intentionally stay dark). */
+	--soft-shadow: rgb(2 6 12 / 42%);
+	--soft-shadow-strong: rgb(2 6 12 / 55%);
+	--ink-shadow: rgb(2 6 12 / 48%);
+	--ink-shadow-strong: rgb(2 6 12 / 62%);
+	--black-shadow: #000;
+	--black-shadow-strong: #000;
+	--hard-shadow: var(--soft-shadow);
+	--hard-shadow-strong: var(--soft-shadow-strong);
 	--glow-soft: color-mix(in oklab, var(--p-bright) 45%, transparent);
 
 	/* ── shadcn semantic tokens (dark) ── */
@@ -484,6 +497,26 @@
 	--switch-track: color-mix(in oklab, var(--ink) 25%, transparent);
 	--switch-thumb: var(--ink);
 	--switch-thumb-active: #fff;
+}
+
+/* The viewer depth lives on <html>. Repeat the mapping for nested wishlist
+   palettes because their local recipe colors must win without changing geometry. */
+[data-depth='soft'],
+[data-depth='soft'] [data-palette] {
+	--hard-shadow: var(--soft-shadow);
+	--hard-shadow-strong: var(--soft-shadow-strong);
+}
+
+[data-depth='ink'],
+[data-depth='ink'] [data-palette] {
+	--hard-shadow: var(--ink-shadow);
+	--hard-shadow-strong: var(--ink-shadow-strong);
+}
+
+[data-depth='black'],
+[data-depth='black'] [data-palette] {
+	--hard-shadow: var(--black-shadow);
+	--hard-shadow-strong: var(--black-shadow-strong);
 }
 
 @theme inline {

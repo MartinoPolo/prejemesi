@@ -6,6 +6,7 @@
 	import { Separator } from '$lib/components/base/separator/index.js';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
+	import DepthStyleSwitcher from '$lib/components/derived/depth-style-switcher/DepthStyleSwitcher.svelte';
 	import { userPrefersMode, setMode } from 'mode-watcher';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import SunIcon from '@lucide/svelte/icons/sun';
@@ -78,6 +79,10 @@
 
 			<!-- App palette (issue #102 REQ-3): persists via setUserPalette + cookie mirror -->
 			<PaletteSwitcher variant="inline" />
+
+			<Separator />
+
+			<DepthStyleSwitcher />
 
 			<Separator />
 

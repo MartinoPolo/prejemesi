@@ -4,6 +4,8 @@
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
+	import DepthStyleSwitcher from '$lib/components/derived/depth-style-switcher/DepthStyleSwitcher.svelte';
+	import { Separator } from '$lib/components/base/separator/index.js';
 	import MenuIcon from '@lucide/svelte/icons/menu';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import LogoMark from './LogoMark.svelte';
@@ -80,6 +82,9 @@
 				{m.settings_appearance_title()}
 			</span>
 			<PaletteSwitcher variant="inline" />
+			<Separator />
+			<DepthStyleSwitcher />
+			<Separator />
 			<LanguageToggle variant="inline" />
 			<DarkModeToggle variant="inline" />
 		</div>
