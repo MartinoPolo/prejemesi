@@ -76,6 +76,7 @@
 	<div class={variants.banner()} aria-hidden="true">
 		<div class="absolute inset-0">
 			<WishlistSlotImage
+				class="size-full rounded-none"
 				src={cardSrc}
 				frame={cardFrame}
 				{themeEmoji}

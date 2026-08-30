@@ -1,6 +1,7 @@
 <script lang="ts">
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
 	import * as m from '$lib/paraglide/messages.js';
+	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
 
@@ -13,13 +14,15 @@
 		dragOverStyle: 'ring' | 'bg';
 		/** Accessible name for the card's button role (issue #125 REQ-4). */
 		giftName: string;
+		/** The gift's primary link, opened by a middle-click on non-interactive card/row surfaces. */
+		primaryLink: string | null;
 		/** Extra layout classes from the host view (the card grid passes its subgrid span). */
 		class?: string;
 		children: Snippet;
 		/**
 		 * Opens the gift detail modal (issue #125): edit mode for managers, read-only for
-		 * everyone else. The visible link chip is a separate click target (stops propagation)
-		 * and always navigates externally instead.
+		 * everyone else. Ordinary click/tap opens detail; middle-click on non-interactive
+		 * card/row surfaces opens the primary link in a new tab.
 		 */
 		onopendetail: () => void;
 		/** Grip pointerdown — starts a pointer-driven reorder drag (mouse + touch + pen). */
@@ -36,6 +39,7 @@
 		dragOverGiftId,
 		dragOverStyle,
 		giftName,
+		primaryLink,
 		class: className = undefined,
 		children,
 		onopendetail,
@@ -45,6 +49,7 @@
 
 	const isDragged = $derived(draggedGiftId === giftId);
 	const isDragOver = $derived(dragOverGiftId === giftId);
+	const safePrimaryLink = $derived(normalizeGiftUrl(primaryLink));
 
 	function eventStartedInsideInteractiveElement(event: Event): boolean {
 		const target = event.target;
@@ -67,6 +72,19 @@
 		}
 
 		onopendetail();
+	}
+
+	function handleAuxclick(event: MouseEvent) {
+		if (
+			event.button !== 1 ||
+			safePrimaryLink === null ||
+			eventStartedInsideInteractiveElement(event)
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		window.open(safePrimaryLink, '_blank', 'noopener,noreferrer');
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -92,9 +110,9 @@
 	}
 </script>
 
-<!-- Card click/tap opens the gift detail modal for every role (issue #125): edit mode for
-     managers, read-only for visitors. The link chip inside `children` stops propagation and
-     stays the only external-navigation target. -->
+<!-- Ordinary click/tap opens the gift detail modal for every role (issue #125): edit mode for
+     managers, read-only for visitors. Middle-click on non-interactive card/row surfaces opens
+     the primary link, while inner controls like the visible link chip keep their own behavior. -->
 <div
 	data-gift-item
 	data-gift-id={giftId}
@@ -112,6 +130,7 @@
 	tabindex={0}
 	aria-label={m.gift_open_detail_aria({ name: giftName })}
 	onclick={handleClick}
+	onauxclick={handleAuxclick}
 	onkeydown={handleKeydown}
 >
 	{#if reorderEnabled}

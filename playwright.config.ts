@@ -3,6 +3,7 @@ import { resolveDevelopmentEnvironment } from './src/lib/config/mpx_development.
 
 const development = resolveDevelopmentEnvironment(process.env);
 const devServerPort = development.appPort;
+const devServerCommand = process.env.CI ? 'pnpm exec vite dev' : 'pnpm run dev';
 
 export default defineConfig({
 	testDir: 'tests/e2e',
@@ -19,7 +20,9 @@ export default defineConfig({
 	},
 	webServer: {
 		// No `--` separator: pnpm forwards it verbatim and vite would treat the flags as positionals.
-		command: `pnpm run dev --port ${devServerPort} --strictPort`,
+		// CI already provisions PostgreSQL as a service; bypass `predev` there to avoid
+		// starting a second Docker database on the occupied service port.
+		command: `${devServerCommand} --port ${devServerPort} --strictPort`,
 		port: devServerPort,
 		// Cold Vite/Paraglide startup can exceed Playwright's 60-second default on Windows.
 		timeout: 120_000,

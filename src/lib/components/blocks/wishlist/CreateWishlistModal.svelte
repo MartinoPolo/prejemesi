@@ -167,7 +167,7 @@
 		</Dialog.Header>
 
 		<form onsubmit={handleSubmit} novalidate class="flex min-h-0 flex-1 flex-col">
-			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pb-6">
+			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 pt-1 pb-6">
 				<ToggleGroup.Root
 					type="single"
 					intent="outline"
@@ -261,12 +261,11 @@
 
 				<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
 			     one field + title; power users can name a description and pick a palette upfront.
-			     The dashed divider above + 8px/-8px spacing make the optional zone read as a
-			     compact cluster (settled spec §4.8), tighter than the form's 16px gap-4; the
-			     solid divider below is the import Separator sibling. -->
+			     Symmetric vertical padding spaces the trigger below its dashed upper border;
+			     a slight negative margin keeps the lower spacing visually balanced. -->
 				<Accordion.Root
 					type="single"
-					class="border-t-2 border-dashed border-ink-faint pt-2 -mb-2"
+					class="border-t-2 border-dashed border-ink-faint py-2 -mb-1"
 				>
 					<Accordion.Item value="more-settings" class="border-b-0">
 						<Accordion.Trigger

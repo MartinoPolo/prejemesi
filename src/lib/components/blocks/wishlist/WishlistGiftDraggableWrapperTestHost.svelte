@@ -11,5 +11,8 @@
 </script>
 
 <WishlistGiftDraggableWrapper {...props}>
-	<div data-testid="card-placeholder">Card</div>
+	<div data-testid="card-placeholder">
+		Card
+		<button type="button">Inner action</button>
+	</div>
 </WishlistGiftDraggableWrapper>

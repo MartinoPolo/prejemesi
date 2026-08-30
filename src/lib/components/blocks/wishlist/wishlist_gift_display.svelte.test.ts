@@ -91,6 +91,40 @@ function deferredAnimation() {
 	};
 }
 
+describe('WishlistGiftDisplay primary-link middle click wiring', () => {
+	it.each(['card', 'list'] as const)(
+		'opens the real primary link from the %s view on middle-click',
+		async (viewMode) => {
+			const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+			const giftWithPrimaryLink: GiftForVisitor = {
+				...visitorGift(),
+				links: [{ url: 'https://example.com/gift' }],
+			};
+			const linkedSections: GiftSection[] = [
+				{
+					...sections[0]!,
+					gifts: [giftWithPrimaryLink],
+				},
+			];
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: linkedSections,
+				viewMode,
+			});
+			const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
+
+			wrapper.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+
+			expect(open).toHaveBeenCalledWith(
+				'https://example.com/gift',
+				'_blank',
+				'noopener,noreferrer',
+			);
+			await screen.unmount();
+		},
+	);
+});
+
 describe('WishlistGiftDisplay keyboard reorder announcements', () => {
 	it.each(['card', 'list'] as const)(
 		'announces successful moves but not boundary no-ops in %s view',
