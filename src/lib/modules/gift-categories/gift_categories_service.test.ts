@@ -107,6 +107,7 @@ vi.mock('$lib/server/db/index.js', () => ({
 }));
 
 const {
+	getManagedGiftCategories,
 	getManagedGiftCategorySettingsRows,
 	resolveImportGiftCategoryAssignments,
 	saveGiftCategorySettings,
@@ -133,6 +134,63 @@ beforeEach(() => {
 });
 
 describe('gift category management service', () => {
+	it('creates every catalog preset for a wishlist with no explicit category configuration', async () => {
+		const presets = [
+			{
+				id: 'games-category',
+				presetKey: 'games',
+				customLabel: null,
+				color: '#7C3AED',
+				sortOrder: 0,
+				deletedAt: null,
+				usedCount: 0,
+			},
+		];
+		// Load first, then wishlist lock, configuration probe, preset insert, and reload.
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult(presets);
+
+		await expect(getManagedGiftCategories(WISHLIST_ID)).resolves.toEqual(
+			presets.map((preset) => ({
+				id: preset.id,
+				presetKey: preset.presetKey,
+				customLabel: preset.customLabel,
+				color: preset.color,
+				sortOrder: preset.sortOrder,
+				usedCount: preset.usedCount,
+			})),
+		);
+		const insertCall = mockDbInstance.calls.find((call) => call.method === 'values');
+		expect(insertCall?.args[0]).toHaveLength(9);
+		expect(insertCall?.args[0]).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ wishlistId: WISHLIST_ID, presetKey: 'games' }),
+				expect.objectContaining({ wishlistId: WISHLIST_ID, presetKey: 'personal-care' }),
+			]),
+		);
+	});
+
+	it('preserves an explicit all-disabled configuration without inserting defaults', async () => {
+		mockDbInstance.pushResult([
+			{
+				id: 'deleted-preset',
+				presetKey: 'games',
+				customLabel: null,
+				color: '#B91C1C',
+				sortOrder: 3,
+				deletedAt: new Date('2024-02-01T00:00:00Z'),
+				usedCount: 0,
+			},
+		]);
+
+		await expect(getManagedGiftCategories(WISHLIST_ID)).resolves.toEqual([]);
+		expect(mockDbInstance.calls.filter((call) => call.method === 'insert')).toHaveLength(0);
+		expect(mockDbInstance.calls.filter((call) => call.method === 'values')).toHaveLength(0);
+	});
+
 	it('returns active and soft-deleted presets with their persisted colors', async () => {
 		mockDbInstance.pushResult([
 			{

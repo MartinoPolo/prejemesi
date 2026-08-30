@@ -2,6 +2,7 @@ import {
 	createIdentityLayoutMotion,
 	type LayoutMotionSnapshot,
 } from '$lib/motion/layout_motion.js';
+import { copyComputedCustomProperties } from './copy_computed_custom_properties.js';
 
 const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 const LOCAL_EXIT_DURATION = 340;
@@ -26,6 +27,7 @@ function stripIds(element: HTMLElement) {
 function createSourceVisual(source: HTMLElement): HTMLElement {
 	const rectangle = source.getBoundingClientRect();
 	const clone = source.cloneNode(true) as HTMLElement;
+	copyComputedCustomProperties(source, clone);
 	stripIds(clone);
 	clone.removeAttribute('data-gift-item');
 	clone.removeAttribute('data-gift-id');

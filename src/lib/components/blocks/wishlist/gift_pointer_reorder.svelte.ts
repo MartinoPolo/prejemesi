@@ -1,4 +1,5 @@
 import { StateRaw } from '$lib/reactivity/state.svelte.js';
+import { copyComputedCustomProperties } from './copy_computed_custom_properties.js';
 
 export interface GiftPointerReorderOptions {
 	getItemElements: () => HTMLElement[];
@@ -18,6 +19,76 @@ interface ItemPosition {
 interface Point {
 	x: number;
 	y: number;
+}
+
+function pixelValue(value: string): number {
+	const parsed = Number.parseFloat(value);
+	return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function detachedSubgridRows(element: HTMLElement): string | null {
+	const elementStyle = getComputedStyle(element);
+	if (!elementStyle.gridTemplateRows.includes('subgrid')) {
+		return null;
+	}
+
+	const parent = element.parentElement;
+	if (parent === null) {
+		return null;
+	}
+	const spanMatch = `${elementStyle.gridRowStart} ${elementStyle.gridRowEnd}`.match(
+		/span\s+(\d+)/,
+	);
+	const rowSpan = spanMatch === null ? 0 : Number.parseInt(spanMatch[1]!, 10);
+	const parentStyle = getComputedStyle(parent);
+	const parentRows = Array.from(
+		parentStyle.gridTemplateRows.matchAll(/(-?\d*\.?\d+)px/g),
+		(match) => Number.parseFloat(match[1]!),
+	);
+	if (rowSpan < 1 || parentRows.length < rowSpan) {
+		return null;
+	}
+
+	const parentGap = pixelValue(parentStyle.rowGap);
+	const elementGap = pixelValue(elementStyle.rowGap);
+	const parentRect = parent.getBoundingClientRect();
+	const elementRect = element.getBoundingClientRect();
+	const contentTop =
+		parentRect.top +
+		pixelValue(parentStyle.borderTopWidth) +
+		pixelValue(parentStyle.paddingTop);
+	let precedingTrackSize = 0;
+	let closestStart = -1;
+	let closestDifference = Number.POSITIVE_INFINITY;
+
+	for (let start = 0; start <= parentRows.length - rowSpan; start += 1) {
+		const rows = parentRows.slice(start, start + rowSpan);
+		const candidateTop = contentTop + precedingTrackSize + start * parentGap;
+		const candidateHeight =
+			rows.reduce((total, row) => total + row, 0) + (rowSpan - 1) * parentGap;
+		const difference =
+			Math.abs(candidateTop - elementRect.top) +
+			Math.abs(candidateHeight - elementRect.height);
+		if (difference < closestDifference) {
+			closestStart = start;
+			closestDifference = difference;
+		}
+		precedingTrackSize += parentRows[start]!;
+	}
+
+	if (closestStart < 0 || closestDifference > 2) {
+		return null;
+	}
+
+	const gapDifference = parentGap - elementGap;
+	return parentRows
+		.slice(closestStart, closestStart + rowSpan)
+		.map((row, index) => {
+			const adjacentGapShare =
+				index === 0 || index === rowSpan - 1 ? gapDifference / 2 : gapDifference;
+			return `${Math.max(0, row + adjacentGapShare)}px`;
+		})
+		.join(' ');
 }
 
 export function createGiftPointerReorderController(options: GiftPointerReorderOptions) {
@@ -132,6 +203,12 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 		pointerOffsetY = event.clientY - rect.top;
 
 		const clone = element.cloneNode(true) as HTMLElement;
+		copyComputedCustomProperties(element, clone);
+		const materializedRows = detachedSubgridRows(element);
+		if (materializedRows !== null) {
+			// A detached subgrid loses the shared card tracks, so preserve their resolved geometry.
+			clone.style.gridTemplateRows = materializedRows;
+		}
 		clone.querySelectorAll('[id]').forEach((child) => child.removeAttribute('id'));
 		clone.removeAttribute('id');
 		clone.setAttribute('aria-hidden', 'true');

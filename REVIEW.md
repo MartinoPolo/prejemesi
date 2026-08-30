@@ -1,26 +1,19 @@
-# Confidence-gated batch review (#260–#264)
+# Batch Review
 
-## Actionable checklist
+## Actionable Checklist
 
 ### Important
 
-- [x] `src/lib/modules/gift-categories/gift_categories_service.ts`: make staged custom-label swaps safe under the active unique-label index by applying temporary unique labels before final labels.
-- [x] `src/lib/components/blocks/wishlist/WishlistSettingsModal.svelte`: route Import-triggered parent closure through the same unsaved-category confirmation used by X, backdrop, and Escape.
-- [x] `src/lib/components/blocks/sharing/ShareWizard.svelte`: keep the confirmation action visible on constrained viewports with the established bounded body and fixed-footer layout.
-- [x] `src/lib/components/blocks/import/ImportWizard.svelte`: move the deferred Confirm-step commit/retry control into the fixed footer and associate it with the scroll-body form, while retaining summary, progress, errors, and success navigation in the confirm step.
-- [x] Add behavioral regression coverage for the atomic category snapshot, deferred save/discard confirmation, and category rename transparency semantics. (The service test exercises label swaps through the real DB transaction boundary; it does not claim a synthetic rollback simulation.)
-- [x] Add loaded-image coverage for compact change/remove controls.
-- [ ] Extend sticky-footer coverage beyond the Settings Details form to every changed modal/footer path.
-  - [x] Categories and Image settings footers have constrained-height browser coverage.
-  - [ ] ShareWizard/CreateWishlistModal: visual Playwright already measured these paths; component setup would require invasive context mocks, so no brittle component test was added.
-- [ ] `ModeratorPanel` immediate actions remain non-sticky (non-blocking): the panel has no deferred Save/commit footer. Claim, invite, self-promote, and revoke are independent contextual mutations, so choosing one fixed action would be semantically incorrect and making every action sticky would obscure scrollable content. The #260 sticky-control requirement is limited to deferred primary commit controls; retain the current scroll body.
+- [x] `src/lib/modules/gift-categories/gift_categories_service.ts:91` — `getManagedGiftCategories` unconditionally calls `ensureDefaultGiftCategories`, opening a transaction and locking the wishlist on every manager page load. Load persisted rows first; initialize defaults only when no active or soft-deleted row exists, then reload.
+- [x] `src/lib/modules/gift-categories/gift_categories_service.test.ts:137` — default-category coverage does not prove that an explicit all-disabled/soft-deleted configuration prevents default re-insertion. Add a regression test that returns a soft-deleted row and asserts no insert occurs.
+- [x] `src/lib/components/blocks/gift/gift_detail_form.svelte.test.ts:93` — rerendering props proves component reactivity but not that `saveGiftCategorySettingsCommand` waits for server-driven refreshes. Add a remote-command test with delayed refresh promises and assert save completion waits for all category/gift revalidation.
 
-## Nice-to-have
+## Nice-to-Have
 
-- [x] Remove obsolete per-operation category remote APIs and their stale test mocks after the transactional command replacement.
-- [x] Replace the `enabledPresets as never` escape hatch with the actual preset-key type.
-- [x] Prefer browser-observable select scrolling assertions over exact Tailwind utility assertions while retaining keyboard reachability coverage.
+- [x] `src/lib/components/blocks/wishlist/gift_received_motion.ts:34` — remove the now-unused `compactViewport` option and corresponding misleading test arguments.
+- [x] `src/lib/components/blocks/wishlist/gift_pointer_reorder.svelte.ts:131` and `src/lib/components/blocks/wishlist/hidden_received_motion.ts:28` — extract the duplicated custom-property materialization loop into a shared DOM helper.
+- [x] `src/lib/components/blocks/wishlist/gift_received_motion.svelte.test.ts:272` — replace the fixed two-microtask wait with polling for the observable clone-removal condition while sibling reflow remains unresolved.
 
-## Post-fix review
+## Post-Fix Review
 
-Four reviewers are clean except for the explicitly documented non-blocking `ModeratorPanel` interpretation. Its actions remain intentionally non-sticky because they are independent immediate contextual mutations rather than one deferred primary commit; fixing one action or all actions in place would either misrepresent priority or obscure scrollable content.
+Two autofix iterations completed and all four partial-review axes finished clean. Later raw-Playwright verification exposed that the category command must use SvelteKit's documented fire-and-register refresh pattern; cloned framework source confirmed `void query.refresh()` registration is collected into the same command response. The command and its E2E regression now enforce that behavior.

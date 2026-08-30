@@ -105,6 +105,47 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await page.context().close();
 	});
 
+	test('new custom category is available in Add gift without reloading', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-category-live-refresh');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		const categoryLabel = 'Vizuální kategorie';
+
+		await createWishlistAndNavigate(page, 'Kategorie bez obnovení');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		const settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+
+		const presetCheckboxes = settingsDialog.getByRole('checkbox');
+		await expect(presetCheckboxes).toHaveCount(9);
+		for (const checkbox of await presetCheckboxes.all()) {
+			await expect(checkbox).toBeChecked();
+		}
+
+		await settingsDialog.getByPlaceholder('Vlastní kategorie').fill(categoryLabel);
+		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
+		await settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' })
+			.click();
+		await expect(page.getByText('Nastavení kategorií bylo uloženo.')).toBeVisible();
+		await settingsDialog.getByRole('button', { name: 'Zavřít' }).click();
+		await expect(settingsDialog).not.toBeVisible();
+
+		await page
+			.getByRole('button', { name: /Přidat/ })
+			.first()
+			.click();
+		const giftDialog = page.getByRole('dialog');
+		await giftDialog.getByRole('button', { name: 'Bez kategorie' }).click();
+		await expect(page.getByRole('option', { name: categoryLabel, exact: true })).toBeVisible();
+
+		await page.context().close();
+	});
+
 	test('custom category labels can be swapped atomically and persist', async ({
 		browser,
 		request,
@@ -183,9 +224,9 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
 		await settingsDialog.getByPlaceholder('Vlastní kategorie').fill(categoryLabel);
 		await settingsDialog.getByRole('button', { name: 'Vytvořit kategorii' }).click();
-		// Keep one preset active so the gift editor can visibly render „Bez kategorie"
+		// Keep one default preset active so the gift editor can visibly render „Bez kategorie"
 		// after the custom category is removed.
-		await settingsDialog.getByText('Knihy', { exact: true }).click();
+		await expect(settingsDialog.getByRole('checkbox', { name: 'Knihy' })).toBeChecked();
 		await settingsDialog
 			.locator('[data-slot="dialog-footer"]')
 			.getByRole('button', { name: 'Uložit' })

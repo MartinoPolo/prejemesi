@@ -34,6 +34,10 @@ export const GIFT_CATEGORY_PRESETS: readonly GiftCategoryPresetDefinition[] = [
 	{ key: 'personal-care', color: '#BE185D', labels: { cs: 'Drogerie', en: 'Personal care' } },
 ] as const;
 
+/** Presets enabled for a wishlist until it saves an explicit category configuration. */
+export const DEFAULT_ENABLED_GIFT_CATEGORY_PRESET_KEYS: readonly GiftCategoryPresetKey[] =
+	GIFT_CATEGORY_PRESETS.map((preset) => preset.key);
+
 export const GIFT_CATEGORY_PRESET_BY_KEY = new Map(
 	GIFT_CATEGORY_PRESETS.map((preset) => [preset.key, preset]),
 );

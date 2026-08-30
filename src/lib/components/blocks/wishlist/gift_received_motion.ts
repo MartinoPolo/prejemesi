@@ -8,9 +8,8 @@ import {
 } from '$lib/motion/layout_motion.js';
 
 const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
-const MINIMUM_CROSS_SECTION_DURATION_MS = 650;
-const DEFAULT_MAX_AVERAGE_FLIGHT_VELOCITY_PX_PER_SECOND = 750;
-const COMPACT_VIEWPORT_QUERY = '(width < 768px)';
+const MINIMUM_CROSS_SECTION_DURATION_MS = 325;
+const DEFAULT_MAX_AVERAGE_FLIGHT_VELOCITY_PX_PER_SECOND = 1500;
 
 interface Rectangle {
 	left: number;
@@ -32,7 +31,6 @@ export interface GiftReceivedMotionSnapshot {
 
 export interface GiftReceivedMotionOptions {
 	reducedMotion?: () => boolean;
-	compactViewport?: () => boolean;
 	maxAverageFlightVelocityPxPerSecond?: number;
 }
 
@@ -89,9 +87,6 @@ export function createGiftReceivedMotion(options: GiftReceivedMotionOptions = {}
 	const reducedMotion =
 		options.reducedMotion ??
 		(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
-	const compactViewport =
-		options.compactViewport ??
-		(() => window.matchMedia?.(COMPACT_VIEWPORT_QUERY).matches ?? false);
 	const suppliedMaxAverageFlightVelocity = options.maxAverageFlightVelocityPxPerSecond;
 	const maxAverageFlightVelocityPxPerSecond =
 		typeof suppliedMaxAverageFlightVelocity === 'number' &&
@@ -203,7 +198,6 @@ export function createGiftReceivedMotion(options: GiftReceivedMotionOptions = {}
 		}
 
 		const canFly =
-			!compactViewport() &&
 			snapshot.sourceRectangle !== null &&
 			destinationRectangle !== null &&
 			snapshot.retainedVisual !== null;
@@ -259,7 +253,12 @@ export function createGiftReceivedMotion(options: GiftReceivedMotionOptions = {}
 		activeFlight = flight;
 		const flightSettlement = flight.finished
 			.catch(() => undefined)
-			.then(() => clearVisual(visual));
+			.then(() => {
+				// Hand visibility directly to the rendered destination at the flight endpoint. Sibling
+				// reflow may still be settling, but must never create a blank pause for the moved gift.
+				clearVisual(visual);
+				restoreDestinations();
+			});
 		await Promise.all([
 			flightSettlement,
 			layoutMotion.play(snapshot.layout, root, null, {

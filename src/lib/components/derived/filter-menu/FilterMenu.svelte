@@ -54,6 +54,10 @@
 	const activeFilters = $derived(
 		suppliedActiveFilters ?? normalizeActiveFilters(definitions, facets),
 	);
+	const groupHeadingClass =
+		'pointer-events-none px-2 pb-1 pt-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-muted-foreground';
+	const filterOptionClass =
+		'min-w-0 cursor-pointer whitespace-normal break-words transition-colors hover:bg-accent hover:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:size-4 [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:rounded-[0.2rem] [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:border-2 [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:border-current';
 
 	async function clearAllFilters() {
 		onclearall();
@@ -105,11 +109,14 @@
 			class="max-h-[min(32rem,calc(100dvh-2rem))] w-[min(16rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-y-auto"
 		>
 			<DropdownMenu.Group>
-				<DropdownMenu.GroupHeading>{menuHeading}</DropdownMenu.GroupHeading>
+				<DropdownMenu.GroupHeading class={groupHeadingClass} data-filter-group-heading>
+					{menuHeading}
+				</DropdownMenu.GroupHeading>
 				{#each definitions as definition (definition.id)}
 					<DropdownMenu.CheckboxItem
 						{disabled}
-						class="min-w-0 whitespace-normal break-words"
+						class={filterOptionClass}
+						data-filter-option
 						bind:checked={
 							() => definition.checked, (checked) => definition.onchange(checked)
 						}
@@ -123,11 +130,14 @@
 			{#each facets.filter((facet) => facet.options.length > 0) as facet (facet.id)}
 				<DropdownMenu.Separator />
 				<DropdownMenu.Group>
-					<DropdownMenu.GroupHeading>{facet.label}</DropdownMenu.GroupHeading>
+					<DropdownMenu.GroupHeading class={groupHeadingClass} data-filter-group-heading>
+						{facet.label}
+					</DropdownMenu.GroupHeading>
 					{#each facet.options as option (option.value)}
 						<DropdownMenu.CheckboxItem
 							{disabled}
-							class="min-w-0 whitespace-normal break-words"
+							class={filterOptionClass}
+							data-filter-option
 							bind:checked={
 								() => option.checked, (checked) => option.onchange(checked)
 							}

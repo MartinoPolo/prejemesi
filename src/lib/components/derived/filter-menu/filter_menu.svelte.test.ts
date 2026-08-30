@@ -20,6 +20,45 @@ function baseProps() {
 }
 
 describe('FilterMenu facets', () => {
+	it('visually distinguishes non-clickable headings from clickable filter options', async () => {
+		const definitions: FilterDefinition[] = [
+			{ id: 'available', menuLabel: 'Dostupné', checked: false, onchange: () => {} },
+		];
+		const facets: FilterFacetGroup[] = [
+			{
+				id: 'category',
+				label: 'Kategorie',
+				options: [
+					{ value: 'books', label: 'Knihy', checked: false, onchange: () => {} },
+					{ value: 'toys', label: 'Hračky', checked: true, onchange: () => {} },
+				],
+			},
+		];
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		const screen = await render(
+			FilterMenu,
+			{ ...baseProps(), definitions, facets },
+			{ baseElement: host },
+		);
+
+		await screen.getByRole('button', { name: 'Filtr' }).click();
+
+		const headings = document.querySelectorAll<HTMLElement>('[data-filter-group-heading]');
+		expect(headings).toHaveLength(2);
+		expect(getComputedStyle(headings[0]).textTransform).toBe('uppercase');
+		expect(getComputedStyle(headings[0]).pointerEvents).toBe('none');
+		const options = document.querySelectorAll<HTMLElement>('[data-filter-option]');
+		expect(options).toHaveLength(3);
+		expect(options[0].getAttribute('role')).toBe('menuitemcheckbox');
+		expect(getComputedStyle(options[0]).cursor).toBe('pointer');
+		const uncheckedIndicator = options[0].querySelector<HTMLElement>(
+			'[data-slot="dropdown-menu-checkbox-item-indicator"]',
+		);
+		expect(uncheckedIndicator).not.toBeNull();
+		expect(getComputedStyle(uncheckedIndicator!).borderStyle).toBe('solid');
+	});
+
 	it('counts each selected facet value as one active filter and renders a pill', async () => {
 		const definitions: FilterDefinition[] = [
 			{ id: 'available', menuLabel: 'Dostupné', checked: true, onchange: () => {} },
