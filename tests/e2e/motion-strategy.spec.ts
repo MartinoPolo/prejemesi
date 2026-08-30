@@ -362,7 +362,11 @@ test.describe('issue #269 integrated motion strategy', () => {
 				});
 			}, regions);
 		// Compare document geometry: Playwright's click actionability may adjust
-		// the viewport scroll by a few pixels on fractional Linux layouts.
+		// the viewport scroll by a few pixels on fractional Linux layouts. Disable
+		// smooth scrolling so geometry is not sampled while that adjustment is in flight.
+		await page.evaluate(() => {
+			document.documentElement.style.scrollBehavior = 'auto';
+		});
 		await done.evaluate((element) => element.scrollIntoView({ block: 'center' }));
 		const mobileAfterEntry = await mobileToolbarGeometry();
 		expect(
