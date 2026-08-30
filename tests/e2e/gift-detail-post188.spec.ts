@@ -90,23 +90,30 @@ test.describe('Gift detail post-#188 coverage', () => {
 		});
 
 		const expectBefore = async (first: Locator, second: Locator) => {
-			const secondElement = await second.elementHandle();
-			expect(
-				secondElement,
-				'second element is attached for DOM-order comparison',
-			).not.toBeNull();
-			const secondFollowsFirst = await first.evaluate(
-				(firstElement, secondNode) =>
-					Boolean(
-						firstElement.compareDocumentPosition(secondNode) &
-						Node.DOCUMENT_POSITION_FOLLOWING,
-					),
-				secondElement!,
-			);
-			expect(
-				secondFollowsFirst,
-				'first element occurs before second element in the DOM',
-			).toBe(true);
+			// Switching card/list view replaces the gift-list subtree. Retry the
+			// comparison so handles captured on opposite sides of that render are not
+			// mistaken for an ordering regression; a settled wrong order still fails.
+			await expect
+				.poll(
+					async () => {
+						const secondElement = await second.elementHandle();
+						if (!secondElement) {
+							return false;
+						}
+						return first.evaluate(
+							(firstElement, secondNode) =>
+								firstElement.isConnected &&
+								secondNode.isConnected &&
+								Boolean(
+									firstElement.compareDocumentPosition(secondNode) &
+									Node.DOCUMENT_POSITION_FOLLOWING,
+								),
+							secondElement,
+						);
+					},
+					{ message: 'first element occurs before second element in the DOM' },
+				)
+				.toBe(true);
 		};
 
 		await expectBefore(activeGiftItemOne, receivedHeading);
