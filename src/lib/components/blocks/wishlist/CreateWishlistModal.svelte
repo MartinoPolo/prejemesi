@@ -261,12 +261,11 @@
 
 				<!-- Optional metadata (issue #112): collapsed by default so the create flow stays
 			     one field + title; power users can name a description and pick a palette upfront.
-			     Symmetric vertical padding and cancellation of the following gap center the
-			     collapsed trigger between its dashed separators while keeping the optional zone
-			     tighter than the form's 16px gap-4. -->
+			     Symmetric vertical padding spaces the trigger below its dashed upper border;
+			     a slight negative margin keeps the lower spacing visually balanced. -->
 				<Accordion.Root
 					type="single"
-					class="border-t-2 border-dashed border-ink-faint py-2 -mb-4"
+					class="border-t-2 border-dashed border-ink-faint py-2 -mb-1"
 				>
 					<Accordion.Item value="more-settings" class="border-b-0">
 						<Accordion.Trigger
