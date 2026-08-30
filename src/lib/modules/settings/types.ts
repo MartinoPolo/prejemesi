@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import { SUPPORTED_LOCALES, type SupportedLocale } from '$lib/i18n/locale.js';
 import { isPalette, type Palette } from '$lib/theme/palettes.js';
+import { isDepthStyle, type DepthStyle } from '$lib/theme/depth_styles.js';
 
 /** User profile returned to the settings UI. */
 export interface UserProfile {
@@ -28,3 +29,6 @@ export const UpdatePreferredLocaleInputSchema = v.object({
 
 /** App-level palette preference input (Redesign 2026, issue #102). Validated via isPalette(). */
 export const SetUserPaletteInputSchema = v.custom<Palette>(isPalette);
+
+/** App-level semantic sticker depth preference. */
+export const SetUserDepthStyleInputSchema = v.custom<DepthStyle>(isDepthStyle);

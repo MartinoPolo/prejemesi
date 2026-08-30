@@ -141,6 +141,13 @@
       "when": 1787862900102,
       "tag": "0019_add_gift_category_colors",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788121233383,
+      "tag": "0020_add_user_depth_style",
+      "breakpoints": true
     }
   ]
 }

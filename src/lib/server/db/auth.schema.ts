@@ -1,5 +1,10 @@
 import { boolean, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
-import { appBackgroundThemeEnum, paletteEnum, preferredLocaleEnum } from './enums.js';
+import {
+	appBackgroundThemeEnum,
+	depthStyleEnum,
+	paletteEnum,
+	preferredLocaleEnum,
+} from './enums.js';
 import type { NotificationPreferences } from '../../modules/notifications/types.js';
 
 export const user = pgTable('user', {
@@ -13,6 +18,8 @@ export const user = pgTable('user', {
 	preferredLocale: preferredLocaleEnum('preferred_locale'),
 	// Redesign 2026 viewer palette (mirrored in the `app-palette` cookie for SSR).
 	palette: paletteEnum('palette').notNull().default('sky'),
+	// Viewer sticker depth (mirrored in the `app-depth` cookie for SSR).
+	depthStyle: depthStyleEnum('depth_style').notNull().default('soft'),
 	// Per-user in-app/email notification toggles. Nullable: NULL = "never customized",
 	// interpreted as DEFAULT_NOTIFICATION_PREFERENCES by readers (dispatcher + settings).
 	notificationPreferences: jsonb('notification_preferences').$type<NotificationPreferences>(),

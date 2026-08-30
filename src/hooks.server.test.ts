@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+
+const appTemplate = readFileSync(new URL('./app.html', import.meta.url), 'utf8');
 
 /**
  * Preference-read budget for the server hooks (issue #108, REQ-1/REQ-2).
@@ -98,7 +101,12 @@ vi.mock('$lib/server/db/index.js', () => ({
 }));
 
 vi.mock('$lib/server/db/auth.schema.js', () => ({
-	user: { id: 'user.id', preferredLocale: 'user.preferredLocale', palette: 'user.palette' },
+	user: {
+		id: 'user.id',
+		preferredLocale: 'user.preferredLocale',
+		palette: 'user.palette',
+		depthStyle: 'user.depthStyle',
+	},
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -126,7 +134,11 @@ import { handle } from './hooks.server.js';
 
 const SESSION_USER = { id: 'user-1', email: 'user@example.com' };
 
-function setPreferenceRow(row: { preferredLocale: string | null; palette: string | null }) {
+function setPreferenceRow(row: {
+	preferredLocale: string | null;
+	palette: string | null;
+	depthStyle: string | null;
+}) {
 	mockSelect.mockReturnValue({
 		from: vi.fn(() => ({
 			where: vi.fn(() => ({
@@ -158,7 +170,7 @@ function createEvent({
 		url,
 		request: new Request(url, { method, headers: { accept } }),
 		route: { id: path },
-		cookies: { get: (name: string) => cookies[name] },
+		cookies: { get: (name: string) => cookies[name], set: vi.fn() },
 		locals: {} as Record<string, unknown>,
 		platform: undefined,
 		isDataRequest,
@@ -168,7 +180,7 @@ function createEvent({
 	};
 }
 
-/** Runs the full hook chain; the terminal resolve applies transformPageChunk to a probe page. */
+/** Runs the full hook chain; the terminal resolve applies transforms to the real app template. */
 async function runHandle(event: ReturnType<typeof createEvent>): Promise<{
 	response: Response;
 	html: string;
@@ -181,7 +193,7 @@ async function runHandle(event: ReturnType<typeof createEvent>): Promise<{
 			opts?: { transformPageChunk?: (input: { html: string; done: boolean }) => string },
 		) => {
 			resolvedRequest = resolvedEvent.request;
-			let html = '<html data-palette-probe="%app.palette%"></html>';
+			let html = appTemplate;
 			if (opts?.transformPageChunk) {
 				html = opts.transformPageChunk({ html, done: true }) ?? html;
 			}
@@ -200,7 +212,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockIsDatabaseConfigured.mockReturnValue(true);
 	mockGetSession.mockResolvedValue({ session: { id: 'session-1' }, user: SESSION_USER });
-	setPreferenceRow({ preferredLocale: 'en', palette: 'grape' });
+	setPreferenceRow({ preferredLocale: 'en', palette: 'grape', depthStyle: 'ink' });
 });
 
 describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
@@ -239,18 +251,46 @@ describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
 		expect(mockGetDb).toHaveBeenCalledTimes(1);
 		expect(mockSelect).toHaveBeenCalledTimes(1);
 		// The single row serves both concerns: palette lands in the shell...
-		expect(html).toContain('data-palette-probe="grape"');
+		expect(html).toContain('data-palette="grape"');
 		// ...and the account locale overrides the request cookie for paraglide.
 		expect(resolvedRequest.headers.get('cookie')).toContain('PARAGLIDE_LOCALE=en');
 	});
 
-	it('skips the read entirely when the palette cookie exists and the URL carries an explicit locale', async () => {
+	it('resolves a valid depth cookie before the DB value without adding a preference query', async () => {
+		const { html } = await runHandle(createEvent({ cookies: { 'app-depth': 'black' } }));
+
+		expect(html).toContain('data-depth="black"');
+		expect(mockSelect).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([
+		['invalid', { 'app-depth': 'neon' }],
+		['missing', {}],
+	])('%s depth cookie is restored from the authenticated DB fallback', async (_case, cookies) => {
+		const event = createEvent({ cookies });
+		const { html } = await runHandle(event);
+
+		expect(html).toContain('data-depth="ink"');
+		expect(mockSelect).toHaveBeenCalledTimes(1);
+		expect(event.cookies.set).toHaveBeenCalledWith('app-depth', 'ink', {
+			path: '/',
+			maxAge: 31_536_000,
+			httpOnly: false,
+			sameSite: 'lax',
+		});
+	});
+
+	it('skips the read entirely when all preference cookies exist and the URL carries an explicit locale', async () => {
 		const { html } = await runHandle(
-			createEvent({ path: '/en/my-lists', cookies: { 'app-palette': 'mint' } }),
+			createEvent({
+				path: '/en/my-lists',
+				cookies: { 'app-palette': 'mint', 'app-depth': 'black' },
+			}),
 		);
 
 		expect(mockGetDb).not.toHaveBeenCalled();
-		expect(html).toContain('data-palette-probe="mint"');
+		expect(html).toContain('data-palette="mint"');
+		expect(html).toContain('data-depth="black"');
 	});
 
 	it('anonymous HTML requests never read preferences and fall back to the default palette', async () => {
@@ -259,6 +299,7 @@ describe('user preference reads (issue #108, REQ-1/REQ-2)', () => {
 		const { html } = await runHandle(createEvent());
 
 		expect(mockGetDb).not.toHaveBeenCalled();
-		expect(html).toContain('data-palette-probe="sky"');
+		expect(html).toContain('data-palette="sky"');
+		expect(html).toContain('data-depth="soft"');
 	});
 });

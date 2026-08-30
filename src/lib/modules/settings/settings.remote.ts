@@ -15,11 +15,21 @@ import {
 } from '$lib/server/remote.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { isStoredObjectKey, resolveUserImageUrl } from '$lib/modules/images/public_url.js';
-import { PALETTE_COOKIE_MAX_AGE_SECONDS, PALETTE_COOKIE_NAME } from '$lib/theme/palettes.js';
+import {
+	PALETTE_COOKIE_MAX_AGE_SECONDS,
+	PALETTE_COOKIE_NAME,
+	type Palette,
+} from '$lib/theme/palettes.js';
+import {
+	DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+	DEPTH_STYLE_COOKIE_NAME,
+	type DepthStyle,
+} from '$lib/theme/depth_styles.js';
 import {
 	UpdateProfileInputSchema,
 	UpdatePreferredLocaleInputSchema,
 	SetUserPaletteInputSchema,
+	SetUserDepthStyleInputSchema,
 	type UserProfile,
 } from './types.js';
 
@@ -225,6 +235,48 @@ export const updatePreferredLocale = guardedCommand(
 	},
 );
 
+type AppearanceAuthContext = { user: { id: string } } | null;
+type AppearancePreference =
+	| {
+			kind: 'palette';
+			cookie: {
+				name: typeof PALETTE_COOKIE_NAME;
+				value: Palette;
+				maxAge: typeof PALETTE_COOKIE_MAX_AGE_SECONDS;
+			};
+			fields: { palette: Palette };
+	  }
+	| {
+			kind: 'depthStyle';
+			cookie: {
+				name: typeof DEPTH_STYLE_COOKIE_NAME;
+				value: DepthStyle;
+				maxAge: typeof DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS;
+			};
+			fields: { depthStyle: DepthStyle };
+	  };
+
+async function persistAppearancePreference(
+	authContext: AppearanceAuthContext,
+	preference: AppearancePreference,
+) {
+	getRequestEvent().cookies.set(preference.cookie.name, preference.cookie.value, {
+		path: '/',
+		maxAge: preference.cookie.maxAge,
+		httpOnly: false,
+		sameSite: 'lax',
+	});
+
+	if (authContext === null) {
+		return;
+	}
+
+	await getDb()
+		.update(user)
+		.set({ ...preference.fields, updatedAt: new Date() })
+		.where(eq(user.id, authContext.user.id));
+}
+
 /**
  * Persist the viewer's app-level palette (Redesign 2026, issue #102).
  *
@@ -234,26 +286,30 @@ export const updatePreferredLocale = guardedCommand(
  * their user row, which serves as the fresh-device fallback when the cookie is
  * absent. Not httpOnly: the client may read it for instant theming.
  */
-export const setUserPalette = publicCommand(
-	SetUserPaletteInputSchema,
-	async (authContext, palette) => {
-		const event = getRequestEvent();
-		event.cookies.set(PALETTE_COOKIE_NAME, palette, {
-			path: '/',
+export const setUserPalette = publicCommand(SetUserPaletteInputSchema, (authContext, palette) =>
+	persistAppearancePreference(authContext, {
+		kind: 'palette',
+		cookie: {
+			name: PALETTE_COOKIE_NAME,
+			value: palette,
 			maxAge: PALETTE_COOKIE_MAX_AGE_SECONDS,
-			httpOnly: false,
-			sameSite: 'lax',
-		});
+		},
+		fields: { palette },
+	}),
+);
 
-		if (authContext === null) {
-			return;
-		}
-
-		await getDb()
-			.update(user)
-			.set({ palette, updatedAt: new Date() })
-			.where(eq(user.id, authContext.user.id));
-	},
+export const setUserDepthStyle = publicCommand(
+	SetUserDepthStyleInputSchema,
+	(authContext, depthStyle) =>
+		persistAppearancePreference(authContext, {
+			kind: 'depthStyle',
+			cookie: {
+				name: DEPTH_STYLE_COOKIE_NAME,
+				value: depthStyle,
+				maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+			},
+			fields: { depthStyle },
+		}),
 );
 
 export const deleteAccount = guardedCommandNoArgs(async ({ user: authUser }) => {
