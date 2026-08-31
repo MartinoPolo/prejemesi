@@ -24,6 +24,19 @@ function latestChange(onchange: ReturnType<typeof vi.fn>): DraftGridChange {
 	return onchange.mock.calls.at(-1)?.[0] as DraftGridChange;
 }
 
+describe('GiftDraftGrid numeric inputs', () => {
+	it('uses the shared spinner-suppression treatment for batch quantities', async () => {
+		const screen = await render(GiftDraftGrid, {
+			initialRows: [draft('Kniha')],
+		});
+
+		const quantity = screen.getByRole('spinbutton', { name: m.draft_grid_col_quantity() });
+		await expect.element(quantity).toHaveAttribute('min', '1');
+		await expect.element(quantity).toHaveAttribute('step', '1');
+		expect(quantity.element()).toHaveClass('numeric-input');
+	});
+});
+
 describe('GiftDraftGrid row motion', () => {
 	it('adds a stable-identity row at its final position and expands it in place over 520 ms', async () => {
 		const onchange = vi.fn();

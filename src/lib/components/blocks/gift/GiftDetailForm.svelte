@@ -458,6 +458,14 @@
 		promoteToManual();
 	}
 
+	function adjustGiftPrice(
+		currentPrice: number | null,
+		direction: 1 | -1,
+		setPrice: (value: number) => void,
+	): void {
+		setPrice(adjustGiftPriceByMagnitude(currentPrice, direction));
+	}
+
 	function handleGiftPriceKeydown(
 		event: KeyboardEvent,
 		currentPrice: number | null,
@@ -467,7 +475,19 @@
 			return;
 		}
 		event.preventDefault();
-		setPrice(adjustGiftPriceByMagnitude(currentPrice, event.key === 'ArrowUp' ? 1 : -1));
+		adjustGiftPrice(currentPrice, event.key === 'ArrowUp' ? 1 : -1, setPrice);
+	}
+
+	function handleGiftPriceWheel(
+		event: WheelEvent,
+		currentPrice: number | null,
+		setPrice: (value: number) => void,
+	): void {
+		if (event.currentTarget !== document.activeElement || event.deltaY === 0) {
+			return;
+		}
+		event.preventDefault();
+		adjustGiftPrice(currentPrice, event.deltaY < 0 ? 1 : -1, setPrice);
 	}
 
 	function validateForm(): boolean {
@@ -938,7 +958,7 @@
 							<div class="flex items-center gap-2">
 								<Input
 									id="gift-price"
-									class="gift-price-input min-w-0"
+									class="numeric-input min-w-0"
 									bind:value={price}
 									placeholder="0"
 									type="number"
@@ -946,6 +966,12 @@
 									step="0.01"
 									onkeydown={(event) =>
 										handleGiftPriceKeydown(
+											event,
+											price,
+											(value) => (price = value),
+										)}
+									onwheel={(event) =>
+										handleGiftPriceWheel(
 											event,
 											price,
 											(value) => (price = value),
@@ -962,7 +988,7 @@
 								>
 								<Input
 									id="gift-price-max"
-									class="gift-price-input min-w-0"
+									class="numeric-input min-w-0"
 									bind:value={priceMax}
 									placeholder="0"
 									type="number"
@@ -970,6 +996,12 @@
 									step="0.01"
 									onkeydown={(event) =>
 										handleGiftPriceKeydown(
+											event,
+											priceMax,
+											(value) => (priceMax = value),
+										)}
+									onwheel={(event) =>
+										handleGiftPriceWheel(
 											event,
 											priceMax,
 											(value) => (priceMax = value),
@@ -985,7 +1017,7 @@
 						{:else}
 							<Input
 								id="gift-price"
-								class="gift-price-input"
+								class="numeric-input"
 								bind:value={price}
 								placeholder="0"
 								type="number"
@@ -997,6 +1029,8 @@
 										price,
 										(value) => (price = value),
 									)}
+								onwheel={(event) =>
+									handleGiftPriceWheel(event, price, (value) => (price = value))}
 							/>
 						{/if}
 						{#if priceRangeError !== ''}
@@ -1034,6 +1068,7 @@
 						</div>
 						<Input
 							id="gift-quantity"
+							class="numeric-input"
 							bind:value={quantity}
 							type="number"
 							min={locked ? String(currentQuantity) : '1'}

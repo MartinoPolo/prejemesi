@@ -337,6 +337,7 @@
 		</span>
 		<Input
 			type="number"
+			class="numeric-input"
 			min="1"
 			step="1"
 			value={row.quantity}

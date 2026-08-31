@@ -370,7 +370,7 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 });
 
 describe('GiftDetailForm price-range UI (issue #171)', () => {
-	it('scopes spinner suppression to native gift price number inputs', async () => {
+	it('suppresses native spinners consistently on price and quantity inputs', async () => {
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift({ price: 10, priceMax: 20 }),
@@ -381,9 +381,9 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 
 		await expect.element(minInput).toHaveAttribute('type', 'number');
 		await expect.element(maxInput).toHaveAttribute('type', 'number');
-		expect(minInput.element()).toHaveClass('gift-price-input');
-		expect(maxInput.element()).toHaveClass('gift-price-input');
-		expect(quantityInput).not.toHaveClass('gift-price-input');
+		expect(minInput.element()).toHaveClass('numeric-input');
+		expect(maxInput.element()).toHaveClass('numeric-input');
+		expect(quantityInput).toHaveClass('numeric-input');
 	});
 
 	it('applies the pre-key price magnitude to ArrowUp and ArrowDown without grid snapping', async () => {
@@ -417,6 +417,48 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 
 		await maxInput.click();
 		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(0.08);
+	});
+
+	it('uses magnitude stepping for focused single-price wheel and cancels page scrolling', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 99.99 }),
+		});
+		const priceInput = screen.getByRole('spinbutton', { name: m.gift_price_label() });
+		const unfocusedWheel = new WheelEvent('wheel', { deltaY: -1, cancelable: true });
+
+		priceInput.element().dispatchEvent(unfocusedWheel);
+		expect(unfocusedWheel.defaultPrevented).toBe(false);
+		await expect.element(priceInput).toHaveValue(99.99);
+
+		priceInput.element().focus();
+		const focusedWheel = new WheelEvent('wheel', { deltaY: -1, cancelable: true });
+		priceInput.element().dispatchEvent(focusedWheel);
+		expect(focusedWheel.defaultPrevented).toBe(true);
+		await expect.element(priceInput).toHaveValue(109.99);
+	});
+
+	it('uses the same focused wheel handling independently for both range bounds', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 9.99, priceMax: 100.08 }),
+		});
+		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
+		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
+
+		minInput.element().focus();
+		const minWheel = new WheelEvent('wheel', { deltaY: -1, cancelable: true });
+		minInput.element().dispatchEvent(minWheel);
+		expect(minWheel.defaultPrevented).toBe(true);
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(100.08);
+
+		maxInput.element().focus();
+		const maxWheel = new WheelEvent('wheel', { deltaY: 1, cancelable: true });
+		maxInput.element().dispatchEvent(maxWheel);
+		expect(maxWheel.defaultPrevented).toBe(true);
 		await expect.element(minInput).toHaveValue(10.99);
 		await expect.element(maxInput).toHaveValue(0.08);
 	});
