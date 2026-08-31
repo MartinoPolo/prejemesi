@@ -23,6 +23,12 @@ const LIFT_HIT_AREA_CLASSES =
  */
 const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker ${LIFT_HIT_AREA_CLASSES}`;
 
+/**
+ * Shared elevation language for compact circular sticker controls. Open overlay triggers keep
+ * their surface stationary so anchored content does not move, while retaining hover shadow depth.
+ */
+export const CIRCULAR_STICKER_BUTTON_CLASSES = `shadow-sticker-sm ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker-lift motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${LIFT_HIT_AREA_CLASSES}`;
+
 export const OUTLINE_CONTROL_SURFACE_CLASSES = `bg-card text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:border-ink focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring transition-[background-color,border-color,color,transform,box-shadow] ${STICKER_BUTTON_CLASSES}`;
 
 export const buttonVariants = tv({
