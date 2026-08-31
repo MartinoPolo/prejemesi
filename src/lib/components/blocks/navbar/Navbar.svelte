@@ -475,7 +475,7 @@
 	.nav-right {
 		display: flex;
 		align-items: center;
-		gap: var(--space-1);
+		gap: var(--space-2);
 		flex-shrink: 0;
 		margin-left: auto;
 	}

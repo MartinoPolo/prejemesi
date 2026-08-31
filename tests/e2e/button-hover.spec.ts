@@ -12,6 +12,35 @@ async function translateY(button: Locator) {
 test.use({ viewport: { width: 1280, height: 900 } });
 
 test.describe('Sticker button hover geometry', () => {
+	test('navbar shadowed controls use toolbar spacing without overflowing', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('header-control-spacing');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+
+		await page.goto('/my-lists');
+		await page.waitForSelector('h1');
+
+		const controls = page.locator('.nav-right');
+		await expect(controls).toBeVisible();
+		await expect
+			.poll(() => controls.evaluate((element) => getComputedStyle(element).gap))
+			.toBe('8px');
+
+		for (const width of [768, 1024, 1280]) {
+			await page.setViewportSize({ width, height: 900 });
+			const box = await controls.boundingBox();
+			expect(box, `header controls have a bounding box at ${width}px`).not.toBeNull();
+			expect(box!.x + box!.width, `header controls fit at ${width}px`).toBeLessThanOrEqual(
+				width,
+			);
+		}
+
+		await page.context().close();
+	});
+
 	test('navbar create button stays lifted while the pointer crosses its bottom edge', async ({
 		browser,
 		request,
