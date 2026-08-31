@@ -370,6 +370,57 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 });
 
 describe('GiftDetailForm price-range UI (issue #171)', () => {
+	it('scopes spinner suppression to native gift price number inputs', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 10, priceMax: 20 }),
+		});
+		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
+		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
+		const quantityInput = document.querySelector('#gift-quantity');
+
+		await expect.element(minInput).toHaveAttribute('type', 'number');
+		await expect.element(maxInput).toHaveAttribute('type', 'number');
+		expect(minInput.element()).toHaveClass('gift-price-input');
+		expect(maxInput.element()).toHaveClass('gift-price-input');
+		expect(quantityInput).not.toHaveClass('gift-price-input');
+	});
+
+	it('applies the pre-key price magnitude to ArrowUp and ArrowDown without grid snapping', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 99.99 }),
+		});
+		const priceInput = screen.getByRole('spinbutton', { name: m.gift_price_label() });
+
+		await priceInput.click();
+		await userEvent.keyboard('{ArrowUp}');
+		await expect.element(priceInput).toHaveValue(109.99);
+
+		await priceInput.fill('100.08');
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(priceInput).toHaveValue(0.08);
+	});
+
+	it('adjusts both range bounds independently from each bound pre-key value', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 9.99, priceMax: 100.08 }),
+		});
+		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
+		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
+
+		await minInput.click();
+		await userEvent.keyboard('{ArrowUp}');
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(100.08);
+
+		await maxInput.click();
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(0.08);
+	});
+
 	it('reopens and submits a decimal single price (issue #250 REQ-1, REQ-4)', async () => {
 		const onupdate = vi.fn();
 		const screen = await render(GiftDetailForm, {
@@ -386,6 +437,20 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		expect(onupdate).toHaveBeenCalledWith(
 			expect.objectContaining({ price: 19.5, priceMax: null, currency: 'EUR' }),
 		);
+	});
+
+	it('saves a manually entered off-grid decimal price unchanged', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: null }),
+			onupdate,
+		});
+
+		await screen.getByRole('spinbutton', { name: m.gift_price_label() }).fill('100.08');
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledWith(expect.objectContaining({ price: 100.08 }));
 	});
 
 	it('reopens and submits decimal range bounds (issue #250 REQ-1, REQ-4)', async () => {

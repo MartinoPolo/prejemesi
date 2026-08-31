@@ -692,6 +692,18 @@
 		caret-color: var(--foreground);
 	}
 
+	/* Gift prices keep native number semantics and keyboard handling, but use the
+	   form's custom magnitude stepping instead of browser spinner buttons. */
+	input.gift-price-input[type='number'] {
+		appearance: textfield;
+	}
+
+	input.gift-price-input[type='number']::-webkit-inner-spin-button,
+	input.gift-price-input[type='number']::-webkit-outer-spin-button {
+		margin: 0;
+		appearance: none;
+	}
+
 	h1,
 	h2,
 	h3 {

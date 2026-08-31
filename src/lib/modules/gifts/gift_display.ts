@@ -101,6 +101,24 @@ export function formatAppendDate(iso: string): string {
 	}).format(new Date(iso));
 }
 
+/** Derive the increment for a gift price from its current order of magnitude. */
+export function getGiftPriceMagnitude(price: number | null): number {
+	if (price === null || !Number.isFinite(price) || price < 10) {
+		return 1;
+	}
+	return 10 ** Math.floor(Math.log10(price));
+}
+
+/** Apply one keyboard increment without snapping an off-grid decimal to the native step grid. */
+export function adjustGiftPriceByMagnitude(price: number | null, direction: 1 | -1): number {
+	const current = price !== null && Number.isFinite(price) ? price : 0;
+	const magnitude = getGiftPriceMagnitude(current);
+	const fractionalDigits = current.toString().split('.')[1]?.length ?? 0;
+	const scale = 10 ** fractionalDigits;
+	const adjusted = (Math.round(current * scale) + direction * magnitude * scale) / scale;
+	return Math.max(0, adjusted);
+}
+
 /**
  * Finalize a gift form's price `$state` for submission. Number-typed price
  * state goes `NaN`/`null` when the user clears a bound `<input type="number">`

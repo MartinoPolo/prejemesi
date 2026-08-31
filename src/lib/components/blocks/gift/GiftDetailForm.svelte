@@ -24,6 +24,7 @@
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import {
 		getPriorityDisplay,
+		adjustGiftPriceByMagnitude,
 		finalizeGiftPrice,
 		finalizeGiftQuantity,
 		formatAppendDate,
@@ -455,6 +456,18 @@
 	function handleTileSelect(target: GiftEditorCropTarget) {
 		activeTarget = target;
 		promoteToManual();
+	}
+
+	function handleGiftPriceKeydown(
+		event: KeyboardEvent,
+		currentPrice: number | null,
+		setPrice: (value: number) => void,
+	): void {
+		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+			return;
+		}
+		event.preventDefault();
+		setPrice(adjustGiftPriceByMagnitude(currentPrice, event.key === 'ArrowUp' ? 1 : -1));
 	}
 
 	function validateForm(): boolean {
@@ -925,12 +938,18 @@
 							<div class="flex items-center gap-2">
 								<Input
 									id="gift-price"
-									class="min-w-0"
+									class="gift-price-input min-w-0"
 									bind:value={price}
 									placeholder="0"
 									type="number"
 									min="0"
 									step="0.01"
+									onkeydown={(event) =>
+										handleGiftPriceKeydown(
+											event,
+											price,
+											(value) => (price = value),
+										)}
 									aria-label={m.gift_price_range_min_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -943,12 +962,18 @@
 								>
 								<Input
 									id="gift-price-max"
-									class="min-w-0"
+									class="gift-price-input min-w-0"
 									bind:value={priceMax}
 									placeholder="0"
 									type="number"
 									min="0"
 									step="0.01"
+									onkeydown={(event) =>
+										handleGiftPriceKeydown(
+											event,
+											priceMax,
+											(value) => (priceMax = value),
+										)}
 									aria-label={m.gift_price_range_max_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -960,11 +985,18 @@
 						{:else}
 							<Input
 								id="gift-price"
+								class="gift-price-input"
 								bind:value={price}
 								placeholder="0"
 								type="number"
 								min="0"
 								step="0.01"
+								onkeydown={(event) =>
+									handleGiftPriceKeydown(
+										event,
+										price,
+										(value) => (price = value),
+									)}
 							/>
 						{/if}
 						{#if priceRangeError !== ''}
