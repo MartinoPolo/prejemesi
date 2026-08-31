@@ -24,9 +24,12 @@ export const CUSTOM_GIFT_CATEGORY_COLORS = [
 	'#FFFFFF',
 ] as const;
 
+// Keep automatic assignment stable for wishlists created before the picker palette expanded.
+const DEFAULT_GIFT_CATEGORY_COLORS = CUSTOM_GIFT_CATEGORY_COLORS.slice(0, 8);
+
 export function giftCategoryColorForIndex(index: number): string {
 	const normalized = Math.max(0, Math.trunc(index));
-	return CUSTOM_GIFT_CATEGORY_COLORS[normalized % CUSTOM_GIFT_CATEGORY_COLORS.length]!;
+	return DEFAULT_GIFT_CATEGORY_COLORS[normalized % DEFAULT_GIFT_CATEGORY_COLORS.length]!;
 }
 
 function rgbChannelToLinear(channel: number): number {
