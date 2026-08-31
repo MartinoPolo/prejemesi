@@ -1,3 +1,8 @@
+<script module lang="ts">
+	// Persistence order must span every mounted appearance surface, not just one component instance.
+	let persistenceQueue: Promise<void> = Promise.resolve();
+</script>
+
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
@@ -12,7 +17,6 @@
 	import { depthStyleSwitcherVariants } from './depth_style_switcher_variants.js';
 
 	const DEPTH_CHANGE_EVENT = 'app-depth-change';
-	let persistenceQueue: Promise<void> = Promise.resolve();
 	let selected = $state<DepthStyle>(DEFAULT_DEPTH_STYLE);
 	let synchronized = $state(false);
 
@@ -73,7 +77,7 @@
 	<ToggleGroup.Root
 		type="single"
 		aria-label={m.depth_style_label()}
-		intent="outline"
+		intent="default"
 		bind:value={selected}
 		onValueChange={selectDepth}
 		class={styles.choices({ synchronized })}

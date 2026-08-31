@@ -52,12 +52,16 @@ describe('canonical semantic depth tokens', () => {
 		['ink', '--ink-shadow', '--ink-shadow-strong'],
 		['black', '--black-shadow', '--black-shadow-strong'],
 	])(
-		'maps the complete root and nested %s selector pair to its recipes',
+		'maps %s to shadow tokens without changing any boundary or geometry token',
 		(depth, shadow, strong) => {
 			const mappingRule = ruleBody(
 				`[data-depth='${depth}'],\n[data-depth='${depth}'] [data-palette]`,
 			);
-			expectDeclarations(mappingRule, [
+			const declarations = mappingRule
+				.split(';')
+				.map((declaration) => declaration.trim())
+				.filter(Boolean);
+			expect(declarations).toEqual([
 				`--hard-shadow: var(${shadow})`,
 				`--hard-shadow-strong: var(${strong})`,
 			]);

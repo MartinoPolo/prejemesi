@@ -2,7 +2,9 @@
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
+	import { Separator } from '$lib/components/base/separator/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
+	import DepthStyleSwitcher from '$lib/components/derived/depth-style-switcher/DepthStyleSwitcher.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { setUserPalette } from '$lib/modules/settings/settings.remote.js';
 	import {
@@ -105,12 +107,15 @@
 			</Popover.Trigger>
 		</SimpleTooltip>
 		<Popover.Content
+			role="dialog"
 			align="end"
 			class="w-66 min-w-0 p-2.5"
 			aria-label={m.palette_switcher_label()}
 		>
 			<Popover.Label>{m.palette_switcher_label()}</Popover.Label>
 			{@render paletteGrid()}
+			<Separator class="my-2" />
+			<DepthStyleSwitcher />
 		</Popover.Content>
 	</Popover.Root>
 {/if}
