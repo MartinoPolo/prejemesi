@@ -226,14 +226,22 @@
 	}
 
 	function handleOpenChange(nextOpen: boolean) {
+		if (!nextOpen && savingCategories) {
+			open = true;
+			return;
+		}
 		if (!nextOpen && !approveCategoryDiscard()) {
 			open = true;
 			return;
 		}
 		if (!nextOpen) {
-			// Discard unsaved edits on close; the next open re-seeds from the current wishlist.
 			seedDetailsForm();
 		}
+		open = nextOpen;
+	}
+
+	function handleCategoriesSaved() {
+		categoriesDirty = false;
 	}
 
 	function handleImport() {
@@ -425,7 +433,7 @@
      the `hidden` attribute instead of unmounting so unsaved edits (typed details,
      uploaded-but-unsaved image) survive tab switches; closing the dialog unmounts everything,
      matching the old leave-the-page reset. -->
-<Dialog.Root bind:open onOpenChange={handleOpenChange}>
+<Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content
 		size="2xl"
 		class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
@@ -652,6 +660,7 @@
 						wishlistId={wishlist.id}
 						ondirtychange={(dirty) => (categoriesDirty = dirty)}
 						onsavingchange={(saving) => (savingCategories = saving)}
+						onsaved={handleCategoriesSaved}
 					/>
 				</div>
 

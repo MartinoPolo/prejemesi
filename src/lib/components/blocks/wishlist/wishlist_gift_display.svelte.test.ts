@@ -91,6 +91,25 @@ function deferredAnimation() {
 	};
 }
 
+describe('WishlistGiftDisplay selection accessibility', () => {
+	it('uses group and independently tabbable checkbox semantics', async () => {
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			selectionMode: true,
+			selectedIds: ['gift-1'],
+		});
+		const collection = document.querySelector('[data-wishlist-gift-collection]')!;
+		const gift = document.querySelector('[data-gift-item]')!;
+
+		expect(collection.getAttribute('role')).toBe('group');
+		expect(collection.hasAttribute('aria-multiselectable')).toBe(false);
+		expect(gift.getAttribute('role')).toBe('checkbox');
+		expect(gift.getAttribute('aria-checked')).toBe('true');
+		expect(gift.getAttribute('tabindex')).toBe('0');
+		await screen.unmount();
+	});
+});
+
 describe('WishlistGiftDisplay primary-link middle click wiring', () => {
 	it.each(['card', 'list'] as const)(
 		'opens the real primary link from the %s view on middle-click',

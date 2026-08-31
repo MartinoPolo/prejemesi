@@ -1,10 +1,9 @@
 <script lang="ts">
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
 	import GiftSectionHeader from './GiftSectionHeader.svelte';
-	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
+	import WishlistGiftItem from './WishlistGiftItem.svelte';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
-	import { getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -27,6 +26,9 @@
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
 		onreordercancel: (orderedIds: string[]) => void;
+		selectionMode?: boolean;
+		onselectiontoggle?: (giftId: string) => void;
+		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
 	}
 
 	let {
@@ -42,6 +44,9 @@
 		onreorderpreview,
 		onreordercommit,
 		onreordercancel,
+		selectionMode = false,
+		onselectiontoggle,
+		oncontextactions,
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
@@ -108,34 +113,37 @@
 		{#if giftSectionHasHeader(section)}
 			<!-- Full-width band/group header breaks the auto-fill row so cards flow beneath it. -->
 			<div class="col-span-full">
-				<GiftSectionHeader {section} />
+				<GiftSectionHeader {section} {selectionMode} {onselectiontoggle} />
 			</div>
 		{/if}
 		{#each items as { gift: giftItem, index } (giftItem.id)}
-			<WishlistGiftDraggableWrapper
+			<WishlistGiftItem
+				gift={giftItem}
 				{index}
-				giftId={giftItem.id}
 				{reorderEnabled}
 				class="row-span-7 grid grid-rows-subgrid gap-y-0"
 				draggedGiftId={reorder.draggedGiftId.current}
 				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="ring"
-				giftName={giftItem.name}
-				primaryLink={getPrimaryGiftLink(giftItem.links)?.url ?? null}
-				onopendetail={() => onedit(giftItem)}
+				{selectionMode}
+				{onselectiontoggle}
+				{oncontextactions}
+				{onedit}
 				onreorderpointerdown={reorder.start}
 				onreordermove={handleReorderMove}
 			>
-				<GiftCard
-					gift={giftItem}
-					{role}
-					{isArchived}
-					{hideReservationState}
-					{onreserve}
-					{onunreserve}
-					{onreceived}
-				/>
-			</WishlistGiftDraggableWrapper>
+				{#snippet children(giftItem)}
+					<GiftCard
+						gift={giftItem}
+						{role}
+						{isArchived}
+						{hideReservationState}
+						{onreserve}
+						{onunreserve}
+						{onreceived}
+					/>
+				{/snippet}
+			</WishlistGiftItem>
 		{/each}
 	{/each}
 </div>

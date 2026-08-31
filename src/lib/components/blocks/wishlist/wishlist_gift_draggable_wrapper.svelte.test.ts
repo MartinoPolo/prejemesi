@@ -1,5 +1,6 @@
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
 import WishlistGiftDraggableWrapperTestHost from './WishlistGiftDraggableWrapperTestHost.svelte';
 import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
@@ -148,6 +149,199 @@ describe('WishlistGiftDraggableWrapper — grip follows the card hover lift', ()
 		expect(grip.className).toContain('group-hover/gift-card:-translate-y-1');
 		expect(grip.className).toContain('group-focus-within/gift-card:-translate-y-1');
 		await unmount();
+	});
+});
+
+describe('WishlistGiftDraggableWrapper — context actions and selection', () => {
+	it('dispatches keyboard context invocation outside selection mode', async () => {
+		const openContext = vi.fn(() => true);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			oncontextmenu: openContext,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: 'F10',
+				shiftKey: true,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+
+		expect(openContext).toHaveBeenCalledOnce();
+		await unmount();
+	});
+
+	it('suppresses context actions and makes descendants inert in selection mode', async () => {
+		const openContext = vi.fn(() => true);
+		const toggle = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			selectionMode: true,
+			selected: true,
+			oncontextmenu: openContext,
+			onselectiontoggle: toggle,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+
+		expect(openContext).not.toHaveBeenCalled();
+		expect(wrapper.getAttribute('role')).toBe('checkbox');
+		expect(wrapper.getAttribute('aria-checked')).toBe('true');
+		expect(wrapper.getAttribute('aria-selected')).toBe('true');
+		expect(wrapper.getAttribute('aria-label')).toBe(
+			m.gift_selection_item_aria({ name: 'Alpha Gift' }),
+		);
+		expect(container.querySelector('[data-selection-inert]')).toHaveAttribute('inert');
+		await userEvent.click(wrapper);
+		expect(toggle).toHaveBeenCalledWith('gift-alpha');
+		await unmount();
+	});
+
+	it('leaves native interactive descendant context menus untouched outside selection mode', async () => {
+		const openContext = vi.fn(() => false);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			oncontextmenu: openContext,
+		});
+		const innerButton = container.querySelector(
+			'[data-testid="inner-button"]',
+		) as HTMLButtonElement;
+		const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+
+		innerButton.dispatchEvent(event);
+
+		expect(openContext).not.toHaveBeenCalled();
+		expect(event.defaultPrevented).toBe(false);
+		await unmount();
+	});
+
+	it('suppresses the native menu on the noninteractive gift surface when the app declines', async () => {
+		const openContext = vi.fn(() => false);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			oncontextmenu: openContext,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+
+		wrapper.dispatchEvent(event);
+
+		expect(openContext).toHaveBeenCalledOnce();
+		expect(event.defaultPrevented).toBe(true);
+		await unmount();
+	});
+});
+
+afterEach(() => {
+	vi.useRealTimers();
+});
+
+describe('WishlistGiftDraggableWrapper — touch gestures', () => {
+	it('opens detail after a short touch tap without preventing the synthesized click', async () => {
+		const openDetail = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			onopendetail: openDetail,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const down = new PointerEvent('pointerdown', {
+			bubbles: true,
+			cancelable: true,
+			pointerId: 1,
+			pointerType: 'touch',
+			clientX: 12,
+			clientY: 18,
+		});
+
+		wrapper.dispatchEvent(down);
+		wrapper.dispatchEvent(
+			new PointerEvent('pointerup', {
+				bubbles: true,
+				cancelable: true,
+				pointerId: 1,
+				pointerType: 'touch',
+			}),
+		);
+		wrapper.click();
+
+		expect(down.defaultPrevented).toBe(false);
+		expect(openDetail).toHaveBeenCalledOnce();
+		await unmount();
+	});
+
+	it('opens context on a completed long press without opening detail behind it', async () => {
+		vi.useFakeTimers();
+		const openDetail = vi.fn();
+		const openContext = vi.fn(() => true);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			onopendetail: openDetail,
+			onlongpress: openContext,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(
+			new PointerEvent('pointerdown', {
+				bubbles: true,
+				cancelable: true,
+				pointerId: 1,
+				pointerType: 'touch',
+				clientX: 12,
+				clientY: 18,
+			}),
+		);
+		vi.advanceTimersByTime(600);
+		wrapper.dispatchEvent(
+			new PointerEvent('pointerup', {
+				bubbles: true,
+				cancelable: true,
+				pointerId: 1,
+				pointerType: 'touch',
+			}),
+		);
+		wrapper.click();
+		wrapper.click();
+
+		expect(openContext).toHaveBeenCalledOnce();
+		expect(openDetail).toHaveBeenCalledTimes(1);
+		await unmount();
+	});
+
+	it('cancels only the pending long press when touch scrolling starts', async () => {
+		vi.useFakeTimers();
+		const openContext = vi.fn(() => true);
+		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			onlongpress: openContext,
+		});
+		const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
+
+		wrapper.dispatchEvent(
+			new PointerEvent('pointerdown', {
+				bubbles: true,
+				cancelable: true,
+				pointerId: 1,
+				pointerType: 'touch',
+				clientX: 12,
+				clientY: 18,
+			}),
+		);
+		document.dispatchEvent(new Event('scroll'));
+		vi.advanceTimersByTime(600);
+
+		expect(openContext).not.toHaveBeenCalled();
+		await screen.unmount();
 	});
 });
 
