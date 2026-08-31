@@ -4,6 +4,7 @@
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Input } from '$lib/components/base/input/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
+	import { ColorPicker } from '$lib/components/derived/color-picker/index.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import { toastError, toastSuccess } from '$lib/components/base/toast/index.js';
 	import {
@@ -317,12 +318,10 @@
 					data-category-label={category.label}
 				>
 					<div class="flex min-w-0 flex-1 items-center gap-2">
-						<input
-							type="color"
+						<ColorPicker
 							bind:value={category.color}
-							class="size-9 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+							label={category.label}
 							disabled={saving}
-							aria-label={category.label}
 						/>
 						<Input
 							bind:value={category.label}
@@ -377,29 +376,28 @@
 				{@const accentColor = checked
 					? (presetColors[preset.key] ?? preset.color)
 					: preset.color}
-				<label
+				<div
 					class="flex items-center gap-3 rounded-lg border border-border border-l-4 bg-surface px-3 py-2 text-sm font-semibold"
 					style:border-left-color={accentColor}
 					data-testid="gift-category-settings-card"
 					data-category-label={label}
 				>
 					<Checkbox
+						id={`gift-category-preset-${preset.key}`}
 						{checked}
 						disabled={saving}
 						onCheckedChange={(value) =>
 							togglePreset(preset.key, value === true, label, usedCount)}
 					/>
-					<span class="min-w-0 flex-1">{label}</span>
+					<label class="min-w-0 flex-1" for={`gift-category-preset-${preset.key}`}
+						>{label}</label
+					>
 					{#if checked}
-						<input
-							type="color"
+						<ColorPicker
 							value={presetColors[preset.key] ?? preset.color}
-							oninput={(event) =>
-								(presetColors[preset.key] = event.currentTarget.value)}
-							onclick={(event) => event.stopPropagation()}
-							class="size-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0.5"
+							onValueChange={(value) => (presetColors[preset.key] = value)}
+							{label}
 							disabled={saving}
-							aria-label={label}
 						/>
 						<span
 							data-testid="gift-category-used-count"
@@ -407,7 +405,7 @@
 							>{m.gift_category_usage_compact({ count: usedCount })}</span
 						>
 					{/if}
-				</label>
+				</div>
 			{/each}
 		</div>
 	</div>
