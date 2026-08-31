@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import {
+	adjustGiftPriceByMagnitude,
 	czechPluralCategory,
 	formatPieceCount,
 	formatPrice,
 	finalizeGiftPrice,
 	finalizeGiftQuantity,
+	getGiftPriceMagnitude,
 } from './gift_display.js';
 
 beforeAll(() => {
@@ -65,6 +67,43 @@ describe('formatPrice', () => {
 
 	it('defaults to CZK when currency is null', () => {
 		expect(formatPrice(1000, null, 1500)).toContain('Kč');
+	});
+});
+
+describe('getGiftPriceMagnitude', () => {
+	it.each([
+		[null, 1],
+		[0, 1],
+		[0.01, 1],
+		[9.99, 1],
+		[10, 10],
+		[99.99, 10],
+		[100, 100],
+		[999.99, 100],
+		[1000, 1000],
+	])('derives the power-of-ten increment for %s independently', (value, expected) => {
+		expect(getGiftPriceMagnitude(value)).toBe(expected);
+	});
+});
+
+describe('adjustGiftPriceByMagnitude', () => {
+	it.each([
+		[99.99, 1, 109.99],
+		[100.08, -1, 0.08],
+		[10.25, -1, 0.25],
+		[9.99, 1, 10.99],
+		[0.08, -1, 0],
+	])('changes %s in direction %s by its pre-key magnitude', (value, direction, expected) => {
+		expect(adjustGiftPriceByMagnitude(value, direction as 1 | -1)).toBe(expected);
+	});
+
+	it.each([
+		[null, 1, 1],
+		[null, -1, 0],
+		[0, 1, 1],
+		[0, -1, 0],
+	])('handles empty and zero price %s in direction %s', (value, direction, expected) => {
+		expect(adjustGiftPriceByMagnitude(value, direction as 1 | -1)).toBe(expected);
 	});
 });
 
