@@ -10,6 +10,18 @@ export const CUSTOM_GIFT_CATEGORY_COLORS = [
 	'#B91C1C',
 	'#0F766E',
 	'#7E22CE',
+	'#DB2777',
+	'#EA580C',
+	'#FACC15',
+	'#65A30D',
+	'#06B6D4',
+	'#2563EB',
+	'#9333EA',
+	'#E11D48',
+	'#92400E',
+	'#6B7280',
+	'#000000',
+	'#FFFFFF',
 ] as const;
 
 export function giftCategoryColorForIndex(index: number): string {

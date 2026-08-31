@@ -53,6 +53,25 @@ describe('ColorPicker', () => {
 		await expect.element(page.getByRole('dialog', { name: label })).not.toBeInTheDocument();
 	});
 
+	it('renders 20 presets in a five-column grid with visible interaction states', async () => {
+		const screen = render(ColorPicker, { value: '#000000', label });
+		await screen.getByRole('button', { name: label }).click();
+		const group = page.getByRole('group', { name: m.color_picker_presets() });
+		const swatches = group.element().querySelectorAll('button');
+
+		expect(group.element().className).toContain('grid-cols-5');
+		expect(swatches).toHaveLength(20);
+		for (const color of ['#000000', '#FFFFFF']) {
+			const swatch = group.getByRole('button', { name: color });
+			expect(swatch.element().className).toContain('hover:scale-105');
+			expect(swatch.element().className).toContain('focus-visible:outline-2');
+			expect(swatch.element().className).toContain('aria-pressed:ring-2');
+		}
+		await expect
+			.element(group.getByRole('button', { name: '#000000' }))
+			.toHaveAttribute('aria-pressed', 'true');
+	});
+
 	it('commits a preset six-digit color and updates the trigger', async () => {
 		const onValueChange = vi.fn();
 		const screen = render(ColorPicker, { value: '#0369A1', label, onValueChange });

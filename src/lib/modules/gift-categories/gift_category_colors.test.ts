@@ -27,8 +27,16 @@ describe('gift category colors', () => {
 		expect(new Set(colors).size).toBe(colors.length);
 	});
 
+	it('provides exactly 20 distinct valid custom color presets including key neutrals', () => {
+		expect(CUSTOM_GIFT_CATEGORY_COLORS).toHaveLength(20);
+		expect(CUSTOM_GIFT_CATEGORY_COLORS.every((color) => HEX_COLOR.test(color))).toBe(true);
+		expect(new Set(CUSTOM_GIFT_CATEGORY_COLORS).size).toBe(20);
+		expect(CUSTOM_GIFT_CATEGORY_COLORS).toEqual(
+			expect.arrayContaining(['#92400E', '#FACC15', '#000000', '#FFFFFF']),
+		);
+	});
+
 	it('rotates deterministic custom defaults and wraps after the accessible palette', () => {
-		expect(CUSTOM_GIFT_CATEGORY_COLORS.length).toBeGreaterThan(2);
 		expect(CUSTOM_GIFT_CATEGORY_COLORS.every((color) => HEX_COLOR.test(color))).toBe(true);
 		expect(
 			CUSTOM_GIFT_CATEGORY_COLORS.map((_, index) => giftCategoryColorForIndex(index)),
