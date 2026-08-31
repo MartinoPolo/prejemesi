@@ -60,10 +60,6 @@ function settingsCard(label: string): HTMLElement | null {
 	);
 }
 
-function colorInput(label: string): HTMLInputElement | null {
-	return document.querySelector<HTMLInputElement>(`input[type="color"][aria-label="${label}"]`);
-}
-
 beforeEach(() => {
 	remoteMocks.refresh.mockReset();
 	remoteMocks.refresh.mockResolvedValue(undefined);
@@ -211,15 +207,79 @@ describe('WishlistCategorySettings', () => {
 		).toBe(normalizeColor(GIFT_CATEGORY_PRESETS[1]!.color));
 	});
 
-	it('updates the custom card accent when the native color input changes', async () => {
+	it('uses the same color-picker trigger for custom and enabled preset rows only', async () => {
+		remoteMocks.categories = [
+			category({ id: 'custom', customLabel: 'Sport', color: '#0369A1' }),
+			category({
+				id: 'preset-enabled',
+				presetKey: preset.key,
+				customLabel: null,
+				color: preset.color,
+				sortOrder: 1,
+			}),
+			category({
+				id: 'preset-disabled',
+				presetKey: GIFT_CATEGORY_PRESETS[1]!.key,
+				customLabel: null,
+				enabled: false,
+				sortOrder: 2,
+			}),
+		];
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+
+		await expect.element(screen.getByRole('button', { name: 'Sport' })).toBeVisible();
+		await expect.element(screen.getByRole('button', { name: preset.labels.cs })).toBeVisible();
+		expect(
+			screen.getByRole('button', { name: GIFT_CATEGORY_PRESETS[1]!.labels.cs }).elements(),
+		).toHaveLength(0);
+	});
+
+	it('updates a custom picker accessible name as its category label is edited', async () => {
+		remoteMocks.categories = [category({ customLabel: 'Sport' })];
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+
+		await userEvent.fill(findInput('Sport')!, 'Pohyb');
+		await expect.element(screen.getByRole('button', { name: 'Pohyb' })).toBeVisible();
+	});
+
+	it('disables every category color trigger while a save is pending', async () => {
+		remoteMocks.categories = [
+			category({ id: 'custom', customLabel: 'Sport' }),
+			category({ id: 'preset', presetKey: preset.key, customLabel: null, sortOrder: 1 }),
+		];
+		let finishSave!: () => void;
+		remoteMocks.save.mockReturnValue(new Promise<void>((resolve) => (finishSave = resolve)));
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+
+		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
+		await expect.element(screen.getByRole('button', { name: 'Sport' })).toBeDisabled();
+		await expect.element(screen.getByRole('button', { name: preset.labels.cs })).toBeDisabled();
+		finishSave();
+	});
+
+	it('opening a preset picker does not toggle its checkbox', async () => {
+		remoteMocks.categories = [
+			category({ presetKey: preset.key, customLabel: null, color: preset.color }),
+		];
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+		const checkbox = screen.getByRole('checkbox', { name: preset.labels.cs });
+
+		await screen.getByRole('button', { name: preset.labels.cs }).click();
+		await expect.element(page.getByRole('dialog', { name: preset.labels.cs })).toBeVisible();
+		await expect.element(checkbox).toBeChecked();
+	});
+
+	it('updates the custom card accent when the visible color picker changes', async () => {
 		remoteMocks.categories = [
 			category({ id: 'custom', customLabel: 'Sport', color: '#0369A1' }),
 		];
-		render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
-		await vi.waitFor(() => expect(colorInput('Sport')).toBeTruthy());
-		colorInput('Sport')!.value = '#b91c1c';
-		colorInput('Sport')!.dispatchEvent(new Event('input', { bubbles: true }));
+		await screen.getByRole('button', { name: 'Sport' }).click();
+		await page
+			.getByRole('dialog', { name: 'Sport' })
+			.getByRole('textbox', { name: m.color_picker_hex_label() })
+			.fill('#b91c1c');
 
 		await vi.waitFor(() =>
 			expect(getComputedStyle(settingsCard('Sport')!).borderLeftColor).toBe(
@@ -228,7 +288,7 @@ describe('WishlistCategorySettings', () => {
 		);
 	});
 
-	it('updates the preset card accent when the native color input changes', async () => {
+	it('updates and persists the preset card accent through the visible color picker', async () => {
 		remoteMocks.categories = [
 			category({
 				id: 'preset-enabled',
@@ -237,11 +297,13 @@ describe('WishlistCategorySettings', () => {
 				color: preset.color,
 			}),
 		];
-		render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
-		await vi.waitFor(() => expect(colorInput(preset.labels.cs)).toBeTruthy());
-		colorInput(preset.labels.cs)!.value = '#7c3aed';
-		colorInput(preset.labels.cs)!.dispatchEvent(new Event('input', { bubbles: true }));
+		await screen.getByRole('button', { name: preset.labels.cs }).click();
+		await page
+			.getByRole('dialog', { name: preset.labels.cs })
+			.getByRole('textbox', { name: m.color_picker_hex_label() })
+			.fill('#7c3aed');
 
 		await vi.waitFor(() =>
 			expect(getComputedStyle(settingsCard(preset.labels.cs)!).borderLeftColor).toBe(
@@ -275,11 +337,13 @@ describe('WishlistCategorySettings', () => {
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
 		const checkbox = screen.getByRole('checkbox', { name: preset.labels.cs });
+		const trigger = screen.getByRole('button', { name: preset.labels.cs });
 		await expect.element(checkbox).not.toBeChecked();
-		expect(findInput('#b91c1c')).toBeUndefined();
+		expect(trigger.elements()).toHaveLength(0);
 
 		await checkbox.click();
-		await vi.waitFor(() => expect(findInput('#b91c1c')).toBeDefined());
+		await expect.element(trigger).toBeVisible();
+		expect(getComputedStyle(trigger.element()).backgroundColor).toBe(normalizeColor('#b91c1c'));
 		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
 
 		await vi.waitFor(() =>
@@ -307,10 +371,11 @@ describe('WishlistCategorySettings', () => {
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
 		await screen.getByRole('checkbox', { name: preset.labels.cs }).click();
-		const colorInput = findInput('#b91c1c');
-		expect(colorInput).toBeDefined();
-		colorInput!.value = '#2563eb';
-		colorInput!.dispatchEvent(new Event('input', { bubbles: true }));
+		await screen.getByRole('button', { name: preset.labels.cs }).click();
+		await page
+			.getByRole('dialog', { name: preset.labels.cs })
+			.getByRole('textbox', { name: m.color_picker_hex_label() })
+			.fill('#2563eb');
 		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
 
 		await vi.waitFor(() =>
@@ -340,8 +405,9 @@ describe('WishlistCategorySettings', () => {
 		await input.fill('Knihy');
 		await screen.getByRole('button', { name: m.gift_category_create() }).click();
 
-		await vi.waitFor(() => expect(findInput('Knihy')).toBeDefined());
-		expect(findInput('#a21caf')).toBeDefined();
+		const trigger = screen.getByRole('button', { name: 'Knihy' });
+		await expect.element(trigger).toBeVisible();
+		expect(getComputedStyle(trigger.element()).backgroundColor).toBe(normalizeColor('#a21caf'));
 	});
 
 	it('does not reuse a custom draft color after deleting an earlier unsaved draft', async () => {
@@ -363,10 +429,17 @@ describe('WishlistCategorySettings', () => {
 
 		await input.fill('Třetí');
 		await createButton.click();
-		await vi.waitFor(() => expect(colorInput('Třetí')).toBeTruthy());
+		const secondTrigger = screen.getByRole('button', { name: 'Druhá' });
+		const thirdTrigger = screen.getByRole('button', { name: 'Třetí' });
+		await expect.element(thirdTrigger).toBeVisible();
 
-		expect(colorInput('Druhá')?.value).toBe('#047857');
-		expect(colorInput('Třetí')?.value).toBe('#a21caf');
+		await expect.element(secondTrigger).toBeVisible();
+		expect(getComputedStyle(secondTrigger.element()).backgroundColor).toBe(
+			normalizeColor('#047857'),
+		);
+		expect(getComputedStyle(thirdTrigger.element()).backgroundColor).toBe(
+			normalizeColor('#a21caf'),
+		);
 	});
 
 	it('lets managers change draft color and sends every active category color', async () => {
@@ -381,12 +454,13 @@ describe('WishlistCategorySettings', () => {
 			}),
 		];
 		remoteMocks.save.mockResolvedValue(undefined);
-		render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
-		const colorInputs = [...document.querySelectorAll<HTMLInputElement>('input[type="color"]')];
-		expect(colorInputs).toHaveLength(2);
-		colorInputs[0]!.value = '#b91c1c';
-		colorInputs[0]!.dispatchEvent(new Event('input', { bubbles: true }));
+		await screen.getByRole('button', { name: 'Sport' }).click();
+		await page
+			.getByRole('dialog', { name: 'Sport' })
+			.getByRole('textbox', { name: m.color_picker_hex_label() })
+			.fill('#b91c1c');
 		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
 
 		await vi.waitFor(() =>
