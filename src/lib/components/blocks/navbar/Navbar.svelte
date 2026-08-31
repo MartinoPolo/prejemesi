@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import AppearanceMenu from '$lib/components/derived/appearance-menu/AppearanceMenu.svelte';
@@ -25,6 +26,7 @@
 		getFollowedWishlists,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
+	import { HOME_OVERVIEW_DEPENDENCY } from '$lib/modules/wishlists/home_overview_types.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
@@ -432,7 +434,11 @@
 		bind:open={isCreateModalOpen}
 		onimport={() => (isImportWizardOpen = true)}
 	/>
-	<ImportWizard bind:open={isImportWizardOpen} mode={WIZARD_MODE.newList} />
+	<ImportWizard
+		bind:open={isImportWizardOpen}
+		mode={WIZARD_MODE.newList}
+		onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}
+	/>
 {/if}
 
 <style>

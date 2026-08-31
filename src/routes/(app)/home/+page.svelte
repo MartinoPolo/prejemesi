@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -9,22 +10,19 @@
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
 	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
-	import { getHomeOverview } from '$lib/modules/wishlists/wishlists.remote.js';
-	import type {
-		RecentHomeItem,
-		OwnHomeItem,
-		ModeratedHomeItem,
-		FollowedHomeItem,
+	import {
+		HOME_OVERVIEW_DEPENDENCY,
+		type RecentHomeItem,
+		type OwnHomeItem,
+		type ModeratedHomeItem,
+		type FollowedHomeItem,
 	} from '$lib/modules/wishlists/home_overview_types.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import FileUpIcon from '@lucide/svelte/icons/file-up';
+	import type { PageProps } from './$types';
 
-	// SSR-awaited for first paint; the reactive query shares the same cache entry, so hydration
-	// costs no second fetch and server-side single-flight refreshes ride back in (issue #108).
-	// svelte-ignore state_referenced_locally
-	const initialOverview = await getHomeOverview();
-	const overviewQuery = $derived(getHomeOverview());
-	const overview = $derived(overviewQuery.current ?? initialOverview);
+	let { data }: PageProps = $props();
+	const overview = $derived(data.overview);
 
 	// Every slide keeps the same width so the peek geometry stays consistent across rows.
 	const SLIDE_CLASS = 'basis-[80vw] sm:basis-[320px]';
@@ -146,7 +144,11 @@
 {/if}
 
 <CreateWishlistModal bind:open={isCreateModalOpen} />
-<ImportWizard bind:open={isImportWizardOpen} mode={WIZARD_MODE.newList} />
+<ImportWizard
+	bind:open={isImportWizardOpen}
+	mode={WIZARD_MODE.newList}
+	onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}
+/>
 
 <style>
 	.page-title {

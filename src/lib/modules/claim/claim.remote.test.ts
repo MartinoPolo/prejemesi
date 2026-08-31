@@ -41,7 +41,6 @@ vi.mock('$lib/modules/wishlists/wishlists.remote.js', () => ({
 	getMyWishlists: vi.fn(),
 	getModeratedWishlists: vi.fn(),
 	getFollowedWishlists: vi.fn(),
-	getHomeOverview: vi.fn(),
 	getWishlistByShortId: vi.fn(),
 }));
 

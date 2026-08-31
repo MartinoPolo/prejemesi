@@ -221,11 +221,13 @@ tests/e2e/                   # Playwright E2E tests
 ```
 
 Each domain module exposes a small public API via `index.ts`. Client–server communication uses
-SvelteKit **remote functions** (`*.remote.ts`) – `query` for reads, `form` for progressive-enhancement
-mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. Traditional
-`+page.server.ts` load functions and general REST-style `+server.ts` routes are not used. The only
-purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, and the fixed-target
-internal gift-ingestion endpoint for authenticated machine ingestion.
+SvelteKit **remote functions** (`*.remote.ts`) by default – `query` for reads, `form` for
+progressive-enhancement mutations, `command` for JS-only actions – wrapped in guarded helpers that
+enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for its latency-sensitive
+authenticated overview: it awaits parent layout authentication and invokes a server-only database
+service directly, avoiding an intra-server remote request. General REST-style `+server.ts` routes are
+not used; the purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, and
+the fixed-target internal gift-ingestion endpoint for authenticated machine ingestion.
 
 ## Code Conventions
 

@@ -22,7 +22,6 @@ import {
 	getMyWishlists,
 	getModeratedWishlists,
 	getFollowedWishlists,
-	getHomeOverview,
 	getWishlistByShortId,
 } from '$lib/modules/wishlists/wishlists.remote.js';
 import {
@@ -318,7 +317,6 @@ export const acceptClaimInvite = guardedCommand(
 		singleFlightRefresh(getMyWishlists);
 		singleFlightRefresh(getModeratedWishlists);
 		singleFlightRefresh(getFollowedWishlists);
-		singleFlightRefresh(getHomeOverview);
 
 		return result;
 	},

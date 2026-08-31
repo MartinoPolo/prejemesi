@@ -163,6 +163,9 @@ interface MockDb {
 	valuesPayloadAt: (index: number) => Record<string, unknown> | undefined;
 	/** Number of awaited query chains so far — i.e. statements sent to the database. */
 	statementCount: () => number;
+	/** Hold query results so tests can observe how many statements start before any settles. */
+	deferStatements: () => void;
+	releaseStatements: () => void;
 	wherePayloads: () => readonly unknown[];
 	reset: () => void;
 }
@@ -173,6 +176,8 @@ function createMockDb(): MockDb {
 	const setPayloads: Record<string, unknown>[] = [];
 	const valuesPayloads: Record<string, unknown>[] = [];
 	const wherePayloads: unknown[] = [];
+	let statementsDeferred = false;
+	const pendingStatementResolvers: Array<() => void> = [];
 
 	const chain: Record<string | symbol, unknown> = new Proxy(
 		{},
@@ -181,7 +186,14 @@ function createMockDb(): MockDb {
 				if (prop === 'then') {
 					const result = results[indexRef.value] ?? [];
 					indexRef.value++;
-					return (resolve: (value: unknown) => void) => resolve(result);
+					return (resolve: (value: unknown) => void) => {
+						const settle = () => resolve(result);
+						if (statementsDeferred) {
+							pendingStatementResolvers.push(settle);
+						} else {
+							settle();
+						}
+					};
 				}
 				if (prop === 'transaction') {
 					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
@@ -218,6 +230,13 @@ function createMockDb(): MockDb {
 		lastValuesPayload: () => valuesPayloads[valuesPayloads.length - 1],
 		valuesPayloadAt: (index) => valuesPayloads[index],
 		statementCount: () => indexRef.value,
+		deferStatements: () => {
+			statementsDeferred = true;
+		},
+		releaseStatements: () => {
+			statementsDeferred = false;
+			pendingStatementResolvers.splice(0).forEach((settle) => settle());
+		},
 		wherePayloads: () => [...wherePayloads],
 		reset: () => {
 			results.length = 0;
@@ -225,6 +244,8 @@ function createMockDb(): MockDb {
 			setPayloads.length = 0;
 			valuesPayloads.length = 0;
 			wherePayloads.length = 0;
+			statementsDeferred = false;
+			pendingStatementResolvers.length = 0;
 		},
 	};
 }
@@ -262,8 +283,8 @@ import {
 	getMyWishlists,
 	getModeratedWishlists,
 	getFollowedWishlists,
-	getHomeOverview,
 } from './wishlists.remote.js';
+import { getHomeOverview } from './home_overview_service.js';
 import { CreateWishlistInputSchema, FlipRecipientToFreeTextInputSchema } from './types.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
@@ -1790,7 +1811,7 @@ describe('dashboard role predicates', () => {
 
 // ── getHomeOverview (issue #225) ─────────────────────────────────────────────
 
-type GetHomeOverviewHandler = (auth: AuthContext) => Promise<{
+type GetHomeOverviewHandler = (userId: string) => Promise<{
 	recent: unknown[];
 	own: { items: Record<string, unknown>[]; total: number };
 	moderated: { items: unknown[]; total: number };
@@ -1799,6 +1820,22 @@ type GetHomeOverviewHandler = (auth: AuthContext) => Promise<{
 const callGetHomeOverview = getHomeOverview as unknown as GetHomeOverviewHandler;
 
 describe('getHomeOverview', () => {
+	it('starts all three independent role queries before any query settles', async () => {
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.deferStatements();
+
+		const overviewPromise = callGetHomeOverview(RECIPIENT_ID);
+		await vi.waitFor(() => expect(mockDbInstance.statementCount()).toBe(3));
+		mockDbInstance.releaseStatements();
+
+		await expect(overviewPromise).resolves.toMatchObject({
+			own: { total: 0 },
+			moderated: { total: 0 },
+			followed: { total: 0 },
+		});
+	});
 	it('omits every reservation field from own dashboard and home results', async () => {
 		const unsafeWishlist = makeWishlistRow({
 			reservedGifts: 9,
@@ -1814,7 +1851,7 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult([]); // home followed
 
 		const dashboard = await callGetMyWishlists(makeRecipientAuthContext());
-		const home = await callGetHomeOverview(makeRecipientAuthContext());
+		const home = await callGetHomeOverview(RECIPIENT_ID);
 
 		for (const item of [dashboard[0]!, home.own.items[0]!]) {
 			expect(item).not.toHaveProperty('reservedGifts');
@@ -1850,7 +1887,7 @@ describe('getHomeOverview', () => {
 		const dashboardOwn = await callGetMyWishlists(makeRecipientAuthContext());
 		const dashboardModerated = await callGetModeratedWishlists(makeModeratorAuthContext());
 		const dashboardFollowed = await callGetFollowedWishlists(makeOtherAuthContext());
-		const home = await callGetHomeOverview(makeRecipientAuthContext());
+		const home = await callGetHomeOverview(RECIPIENT_ID);
 
 		expect(dashboardOwn[0]).toMatchObject({ totalGifts: 3 });
 		expect(dashboardModerated[0]).toMatchObject({ totalGifts: 5, reservedGifts: 2 });
@@ -1873,7 +1910,7 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult([]); // moderated
 		mockDbInstance.pushResult([]); // followed
 
-		await callGetHomeOverview(makeRecipientAuthContext());
+		await callGetHomeOverview(RECIPIENT_ID);
 
 		const wherePayloads = mockDbInstance.wherePayloads();
 		const ownWhere = findWhereContaining(
@@ -1944,7 +1981,7 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult([{ ...archivedOwn, lastVisitedAt: null }]);
 		mockDbInstance.pushResult([]);
 		mockDbInstance.pushResult([]);
-		const home = await callGetHomeOverview(makeRecipientAuthContext());
+		const home = await callGetHomeOverview(RECIPIENT_ID);
 		const homeWherePayloads = mockDbInstance.wherePayloads().slice(homeWhereStart);
 		const followedHomeWhere = findWhereContaining(
 			homeWherePayloads,
@@ -1969,7 +2006,7 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult([]); // moderated select
 		mockDbInstance.pushResult([]); // followed select
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
 		expect(result.own.total).toBe(11);
 		expect(result.own.items).toHaveLength(10);
@@ -1980,7 +2017,7 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult([]); // moderated
 		mockDbInstance.pushResult([]); // followed
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
 		expect(result.own.items[0]).toHaveProperty('totalGifts');
 	});
@@ -2004,7 +2041,7 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult(moderatedRows); // moderated
 		mockDbInstance.pushResult([]); // followed
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
 		// 8 candidates across two roles, Nedávné caps at 6.
 		// Moderated rows (Feb) are strictly more recent than own rows (Jan), so all four
@@ -2046,7 +2083,7 @@ describe('getHomeOverview', () => {
 			},
 		]); // followed
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
 		// Nedávné is a per-list recency shortcut: one card per wishlist, even when the
 		// caller both moderates and follows it. Moderator outranks follower.

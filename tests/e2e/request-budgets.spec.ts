@@ -87,7 +87,7 @@ test.describe('Request budgets (issue #108)', () => {
 		await page.context().close();
 	});
 
-	test('home overview: single aggregated query, no per-category dashboard fetches', async ({
+	test('home overview: no hydration overview request or category fallback', async ({
 		browser,
 		request,
 		baseURL,
@@ -104,14 +104,9 @@ test.describe('Request budgets (issue #108)', () => {
 		tracker.stop();
 
 		const names = tracker.names();
-		// The overview is SSR-awaited and shares its cache on hydration, so a plain view
-		// costs at most one aggregated query — and never the three per-category dashboard
-		// queries it replaces (issue #225).
-		expect(
-			countByFunction(names, 'getHomeOverview'),
-			`remote requests: ${names.join(', ')}`,
-		).toBeLessThanOrEqual(1);
-		expectNoDashboardQueries(names);
+		// The overview is supplied by the server load, so hydration makes no remote query,
+		// including the three per-category dashboard fallbacks (issue #225).
+		expect(names, `remote requests: ${names.join(', ')}`).toHaveLength(0);
 
 		await page.context().close();
 	});

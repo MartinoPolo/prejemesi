@@ -337,12 +337,12 @@ What: Deploy on Cloudflare Workers (free) with Neon Postgres via Hyperdrive, R2 
 Why: $0/month is a hard requirement for a family app. Current template already uses adapter-cloudflare. `postgres` v3.4.8 supports Workers TCP via Hyperdrive. `better-auth/minimal` is edge-compatible. Neon has no pause/deletion risk (just 300-800ms cold starts after 5min idle).
 Rejected: Railway ($5-7/mo), Fly.io (no free tier since 2024), Render (free Postgres expires in 30 days), Vercel (would require driver changes), adapter-node (all Node hosting costs money).
 
-### SvelteKit remote functions for all client-server communication
+### SvelteKit remote functions as the default client-server boundary
 
 Decided: 2026-05-30
-What: Use `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions. No traditional `+page.server.ts` load functions or `+server.ts` API routes (except BetterAuth catch-all and the purpose-specific machine API exception below).
-Why: Remote functions provide type-safe, colocated, deduplicated client-server communication. Single-flight mutations reduce round-trips. Progressive enhancement via `form` is important for a family app used on diverse devices.
-Rejected: Traditional load + form actions (worse DX, no colocation, no dedup), tRPC (extra dependency, remote functions are built-in).
+What: Use `query` for reads, `form` for progressive-enhancement mutations, and `command` for JS-only actions. Do not use traditional load functions or `+server.ts` API routes as the general convention. Exceptions are the BetterAuth catch-all, the purpose-specific machine API below, and `/home`: its deliberate `+page.server.ts` load awaits authenticated parent layout data and directly calls a server-only overview database service.
+Why: Remote functions provide type-safe, colocated, deduplicated client-server communication. Single-flight mutations reduce round-trips, and progressive enhancement via `form` supports diverse devices. `/home` needs a typed SSR first paint without eager SSR or global fetch, while its direct service call avoids a costly intra-server remote invocation.
+Rejected: Traditional load functions and form actions as the general convention (worse DX, no colocation, no dedup); tRPC (extra dependency when remote functions are built in); a `/home` server-to-server remote call (unnecessary invocation overhead).
 
 ### Purpose-specific machine API exception
 
