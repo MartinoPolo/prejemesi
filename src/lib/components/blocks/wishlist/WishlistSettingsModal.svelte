@@ -436,7 +436,8 @@
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content
 		size="2xl"
-		class="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
+		class="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
+		style="height: min(52rem, 85dvh); max-height: calc(100dvh - 2rem);"
 	>
 		<Dialog.Header class="shrink-0 px-6 pt-6 pb-4">
 			<Dialog.Title>{m.wishlist_settings_title()}</Dialog.Title>
@@ -444,6 +445,7 @@
 		</Dialog.Header>
 
 		<div
+			data-testid="wishlist-settings-scroll-region"
 			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
 				? 'grid w-full min-w-0 gap-4 sm:grid-cols-[12rem_minmax(0,1fr)] lg:grid-cols-1'
 				: ''}"
@@ -786,32 +788,32 @@
 			{/if}
 		</div>
 
-		{#if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.details}
-			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+		<Dialog.Footer
+			data-testid="wishlist-settings-footer"
+			class="shrink-0 border-t border-border bg-background px-6 py-4"
+			style="min-height: 4.25rem;"
+		>
+			{#if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.details}
 				<WishlistSettingsSaveButton
 					form="wishlist-details-form"
 					dirty={detailsSubmittable}
 					saving={savingDetails}
 				/>
-			</Dialog.Footer>
-		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.categories}
-			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+			{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.categories}
 				<WishlistSettingsSaveButton
 					form="wishlist-categories-form"
 					dirty={categoriesDirty}
 					saving={savingCategories}
 				/>
-			</Dialog.Footer>
-		{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.image}
-			<Dialog.Footer class="shrink-0 border-t border-border bg-background px-6 py-4">
+			{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.image}
 				<WishlistSettingsSaveButton
 					form="wishlist-image-form"
 					dirty={imageDirty}
 					saving={savingImage}
 					testId="wishlist-image-save"
 				/>
-			</Dialog.Footer>
-		{/if}
+			{/if}
+		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
 

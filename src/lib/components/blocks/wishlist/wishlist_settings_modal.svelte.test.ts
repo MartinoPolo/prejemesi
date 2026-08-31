@@ -247,6 +247,31 @@ describe('WishlistSettingsModal import and export tab', () => {
 		expect(saveRect.bottom).toBeLessThanOrEqual(window.innerHeight);
 	});
 
+	it('keeps a viewport-bounded shell and footer height stable across tabs without actions', async () => {
+		const screen = renderSettings();
+		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
+		const footer = screen.getByTestId('wishlist-settings-footer').element();
+		const initialDialogHeight = dialog.getBoundingClientRect().height;
+		const initialFooterHeight = footer.getBoundingClientRect().height;
+
+		expect(dialog.style.height).toBe('min(52rem, 85dvh)');
+		expect(dialog.style.maxHeight).toContain('100dvh');
+		expect(dialog.style.maxHeight).toContain('2rem');
+		expect(screen.getByTestId('wishlist-settings-scroll-region').element().classList).toContain(
+			'overflow-y-auto',
+		);
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeVisible();
+
+		await screen.getByRole('tab', { name: m.wishlist_settings_data_title() }).click();
+
+		expect(screen.getByTestId('wishlist-settings-footer').element()).toBe(footer);
+		expect(dialog.getBoundingClientRect().height).toBe(initialDialogHeight);
+		expect(footer.getBoundingClientRect().height).toBe(initialFooterHeight);
+		await expect
+			.element(screen.getByRole('button', { name: m.save() }))
+			.not.toBeInTheDocument();
+	});
+
 	it('widens this dialog and gives the desktop navigation six equal full-width columns', () => {
 		const screen = renderSettings();
 		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
