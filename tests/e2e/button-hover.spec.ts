@@ -88,7 +88,7 @@ test.describe('Sticker button hover geometry', () => {
 		const openBox = await account.boundingBox();
 		expect(openBox).not.toBeNull();
 		const openShadow = await shadow(account);
-		await account.hover();
+		await account.hover({ force: true });
 		await expect.poll(() => account.boundingBox().then((box) => box!.y)).toBe(openBox!.y);
 		await expect.poll(() => shadow(account)).not.toBe(openShadow);
 
