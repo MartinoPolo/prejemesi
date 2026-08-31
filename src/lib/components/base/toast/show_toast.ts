@@ -8,10 +8,20 @@ export interface ShowToastOptions {
 	body?: string;
 	duration?: number;
 	dismissible?: boolean;
+	actionLabel?: string;
+	onAction?: () => void;
 }
 
 export function showToast(options: ShowToastOptions): string | number {
-	const { tone = 'info', title, body, duration, dismissible = true } = options;
+	const {
+		tone = 'info',
+		title,
+		body,
+		duration,
+		dismissible = true,
+		actionLabel,
+		onAction,
+	} = options;
 
 	return toast.custom(SonnerToastWrapper, {
 		duration,
@@ -20,6 +30,8 @@ export function showToast(options: ShowToastOptions): string | number {
 			title,
 			body,
 			dismissible,
+			actionLabel,
+			onAction,
 		},
 	});
 }

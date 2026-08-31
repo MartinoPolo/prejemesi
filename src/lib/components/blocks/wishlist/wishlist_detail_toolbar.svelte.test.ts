@@ -884,6 +884,50 @@ describe('WishlistDetailToolbar unified filters (issue #161)', () => {
 	});
 });
 
+describe('WishlistDetailToolbar selection layout', () => {
+	it('replaces normal display controls and active filter pills with selection content', async () => {
+		const selectionContent = vi.fn((() => '') as never);
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+			priorityFilterOptions: [{ value: 'none', label: m.gift_priority_none() }],
+			filters: {
+				availableOnly: false,
+				withLinkOnly: false,
+				likedOnly: false,
+				showReceived: false,
+				categoryValues: [],
+				priorityValues: ['none'],
+			},
+			selectionContent,
+		});
+
+		expect(selectionContent).toHaveBeenCalled();
+		await expect
+			.element(screen.getByTestId('wishlist-toolbar-view-controls'))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByTestId('wishlist-toolbar-display-controls'))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByTestId('wishlist-toolbar-active-filters'))
+			.not.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.wishlist_detail_add_gift_label() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('sticks below the navbar at the sticky token layer', async () => {
+		const screen = await renderToolbar();
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+
+		expect(getComputedStyle(toolbar).top).toBe('12px');
+		expect(getComputedStyle(toolbar).zIndex).toBe('30');
+		await screen.unmount();
+	});
+});
+
 describe('WishlistDetailToolbar grouping and reset controls (issue #246)', () => {
 	it('switches directly between sort, grouping, and filter menus with one click', async () => {
 		const screen = await renderToolbar({

@@ -1,6 +1,6 @@
-import { render } from 'vitest-browser-svelte';
+import { cleanup, render } from 'vitest-browser-svelte';
 import { userEvent } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import { REVERT_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -19,6 +19,11 @@ vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 }));
 
 import WishlistSettingsModal from './WishlistSettingsModal.svelte';
+
+afterEach(() => {
+	cleanup();
+	vi.restoreAllMocks();
+});
 
 const wishlist: Wishlist = {
 	id: 'wishlist-settings-test',
@@ -184,6 +189,34 @@ describe('WishlistSettingsModal import and export tab', () => {
 			expect(saveElement.textContent).toContain(m.save());
 			expect(saveElement.disabled).toBe(true);
 		});
+	});
+
+	it('closes without a discard prompt after a category save completes', async () => {
+		remoteMocks.saveGiftCategorySettingsCommand.mockReset();
+		let resolveSave!: () => void;
+		remoteMocks.saveGiftCategorySettingsCommand.mockImplementationOnce(
+			() => new Promise<void>((resolve) => (resolveSave = resolve)),
+		);
+		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		const screen = renderSettings({ activeTab: 'categories' });
+
+		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
+		await screen.getByRole('button', { name: m.gift_category_create() }).click();
+		const save = screen.getByRole('button', { name: m.save() });
+		await save.click();
+		await vi.waitFor(() =>
+			expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledOnce(),
+		);
+		resolveSave();
+		await expect.element(save).toBeDisabled();
+		await expect.element(save).toHaveAttribute('aria-busy', 'false');
+		expect(confirm).not.toHaveBeenCalled();
+		await screen.getByRole('button', { name: m.close() }).click();
+
+		expect(confirm).not.toHaveBeenCalled();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
+			.not.toBeInTheDocument();
 	});
 
 	it.each([

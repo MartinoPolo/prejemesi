@@ -257,6 +257,10 @@
 	--panel-hover: color-mix(in oklab, var(--p-brand) 6%, white);
 	--accent-loud: var(--p-accent);
 	--accent-loud-foreground: var(--p-on-accent);
+	--selection-tint: color-mix(in oklab, var(--primary) 14%, var(--card));
+	--selection-image-tint: color-mix(in oklab, var(--primary) 24%, transparent);
+	--selection-ring: var(--primary);
+	--selection-on-ring: var(--primary-foreground);
 	--note-tint: #fff1c1;
 	--note-ink: var(--p-ink);
 	--link: #7048e8;
@@ -386,6 +390,10 @@
 	--panel-hover: color-mix(in oklab, var(--p-deep) 58%, #081018);
 	--accent-loud: var(--p-accent);
 	--accent-loud-foreground: var(--p-on-accent);
+	--selection-tint: color-mix(in oklab, var(--primary) 22%, var(--card));
+	--selection-image-tint: color-mix(in oklab, var(--primary) 28%, transparent);
+	--selection-ring: color-mix(in oklab, var(--primary) 75%, white);
+	--selection-on-ring: var(--primary-foreground);
 	--note-tint: #ffdd75;
 	--note-ink: #43350a;
 	--link: #b39dfc;
@@ -642,6 +650,19 @@
 	--animate-bob: bob 3.6s ease-in-out infinite alternate;
 	--animate-emoji-wiggle: emoji-wiggle 0.45s ease both;
 	--animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+/* A nested sky palette represents a blue wishlist surface. Use its complementary
+   accent for selected gifts while root/neutral surfaces retain primary treatment. */
+[data-palette='sky']:not(:root) {
+	--selection-tint: color-mix(in oklab, var(--accent-loud) 24%, var(--card));
+	--selection-image-tint: color-mix(in oklab, var(--accent-loud) 34%, transparent);
+	--selection-ring: var(--accent-loud);
+	--selection-on-ring: var(--accent-loud-foreground);
+}
+
+[data-gift-item][aria-selected='true'] {
+	outline-style: solid;
 }
 
 @layer base {

@@ -30,6 +30,7 @@ import {
 	UpdateGiftInputSchema,
 	ReorderGiftItemSchema,
 	MarkGiftReceivedInputSchema,
+	BulkUpdateGiftsInputSchema,
 	isPriceRangeValid,
 	type GiftForRecipient,
 	type GiftForVisitor,
@@ -48,6 +49,8 @@ import {
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { appendGifts } from './gift_creation_service.js';
 import { mapGiftCreationError } from './gift_creation_transport.js';
+import { bulkGiftUpdateData, isBulkPresentationAction } from './gift_bulk_update.js';
+import { runBulkUpdateAfterRowsLockedHookForTest } from './gifts.remote.test-hook.js';
 import {
 	assertActiveGiftCategoryAssignment,
 	publicGiftCategory,
@@ -361,6 +364,104 @@ function applyPostShareEditTransparency(params: {
 	updateData.preEditShareSnapshot = outcome.preEditShareSnapshot;
 }
 
+const NOTIFICATION_DISPATCH_CONCURRENCY = 4;
+
+async function notifyReserversOfEditedGifts(params: {
+	database: ReturnType<typeof getDb>;
+	changedGifts: Array<{ id: string; wishlistId: string; name: string }>;
+	actorId: string;
+	actorName: string;
+	wishlist: { title: string; shortId: string };
+}): Promise<void> {
+	const { database, changedGifts, actorId, actorName, wishlist } = params;
+	if (changedGifts.length === 0) {
+		return;
+	}
+
+	const reservationRows = await database
+		.select({
+			giftId: reservation.giftId,
+			userId: reservation.userId,
+			anonymousEmail: reservation.anonymousEmail,
+		})
+		.from(reservation)
+		.where(
+			and(
+				inArray(
+					reservation.giftId,
+					changedGifts.map((giftItem) => giftItem.id),
+				),
+				isNull(reservation.deletedAt),
+			),
+		);
+
+	const reservationsByGiftId = new Map<
+		string,
+		Array<{ userId: string | null; anonymousEmail: string | null }>
+	>();
+	for (const row of reservationRows) {
+		const rows = reservationsByGiftId.get(row.giftId);
+		if (rows === undefined) {
+			reservationsByGiftId.set(row.giftId, [row]);
+		} else {
+			rows.push(row);
+		}
+	}
+
+	let nextGiftIndex = 0;
+	let firstFailure: unknown;
+	const dispatchNext = async (): Promise<void> => {
+		while (nextGiftIndex < changedGifts.length) {
+			const changedGift = changedGifts[nextGiftIndex++];
+			if (changedGift === undefined) {
+				return;
+			}
+			const targets = reservationsByGiftId.get(changedGift.id) ?? [];
+			try {
+				await dispatchNotification({
+					type: NOTIFICATION_TYPE.RESERVED_GIFT_EDITED,
+					targetUserIds: targets
+						.map((row) => row.userId)
+						.filter(
+							(userId): userId is string => userId !== null && userId !== actorId,
+						),
+					targetEmails: targets
+						.map((row) => row.anonymousEmail)
+						.filter((email): email is string => email !== null && email !== ''),
+					wishlistId: changedGift.wishlistId,
+					giftId: changedGift.id,
+					giftName: changedGift.name,
+					actorId,
+					actorName,
+					wishlist,
+				});
+			} catch (thrown) {
+				firstFailure ??= thrown;
+			}
+		}
+	};
+
+	await Promise.all(
+		Array.from(
+			{ length: Math.min(NOTIFICATION_DISPATCH_CONCURRENCY, changedGifts.length) },
+			dispatchNext,
+		),
+	);
+	if (firstFailure !== undefined) {
+		throw firstFailure;
+	}
+}
+
+async function notifyReserversOfEditedGiftsBestEffort(
+	params: Parameters<typeof notifyReserversOfEditedGifts>[0],
+): Promise<void> {
+	try {
+		await notifyReserversOfEditedGifts(params);
+	} catch (thrown) {
+		console.error('[Notification] reserver edit notification failed', thrown);
+	}
+}
+
 export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user }, input) => {
 	const database = getDb();
 
@@ -536,25 +637,15 @@ export const updateGift = guardedCommand(UpdateGiftInputSchema, async ({ user },
 	}
 
 	if (updated !== undefined && role === WISHLIST_ROLES.moderator && didChange) {
-		const reservationRows = await database
-			.select({
-				userId: reservation.userId,
-				anonymousEmail: reservation.anonymousEmail,
-			})
-			.from(reservation)
-			.where(and(eq(reservation.giftId, input.id), isNull(reservation.deletedAt)));
-
-		await dispatchNotification({
-			type: NOTIFICATION_TYPE.RESERVED_GIFT_EDITED,
-			targetUserIds: reservationRows
-				.map((row) => row.userId)
-				.filter((userId): userId is string => userId !== null && userId !== user.id),
-			targetEmails: reservationRows
-				.map((row) => row.anonymousEmail)
-				.filter((email): email is string => email !== null && email !== ''),
-			wishlistId: giftRow.wishlistId,
-			giftId: input.id,
-			giftName: updated?.name ?? giftRow.name,
+		await notifyReserversOfEditedGiftsBestEffort({
+			database,
+			changedGifts: [
+				{
+					id: input.id,
+					wishlistId: giftRow.wishlistId,
+					name: updated?.name ?? giftRow.name,
+				},
+			],
 			actorId: user.id,
 			actorName: user.name,
 			wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
@@ -684,6 +775,200 @@ export const reorderGifts = guardedCommand(
 					isNull(gift.deletedAt),
 				),
 			);
+	},
+);
+
+function bulkJsonbValue(value: unknown) {
+	return value === null ? sql`NULL::jsonb` : sql`${JSON.stringify(value)}::jsonb`;
+}
+
+function bulkTimestampValue(value: Date | null) {
+	return value === null ? sql`NULL::timestamptz` : sql`${value}::timestamptz`;
+}
+
+export const bulkUpdateGifts = guardedCommand(
+	BulkUpdateGiftsInputSchema,
+	async ({ user }, input) => {
+		const database = getDb();
+		const uniqueGiftIds = [...new Set(input.giftIds)];
+		const { role, wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
+		assertWishlistMutable(wishlistRow);
+
+		const result = await database.transaction(async (tx) => {
+			if (input.action === 'priority' && input.priorityLevelId !== null) {
+				const levels = await tx
+					.select({ id: priorityLevel.id })
+					.from(priorityLevel)
+					.where(
+						and(
+							eq(priorityLevel.id, input.priorityLevelId),
+							eq(priorityLevel.wishlistId, input.wishlistId),
+						),
+					)
+					.limit(1);
+				if (levels[0] === undefined) {
+					error(400, SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH);
+				}
+			}
+			if (input.action === 'category') {
+				await assertActiveGiftCategoryAssignment(tx, input.wishlistId, input.categoryId);
+			}
+
+			const rows = await tx
+				.select()
+				.from(gift)
+				.where(
+					and(
+						inArray(gift.id, uniqueGiftIds),
+						eq(gift.wishlistId, input.wishlistId),
+						isNull(gift.deletedAt),
+					),
+				)
+				.for('update');
+			if (rows.length !== uniqueGiftIds.length) {
+				error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
+			}
+			if (
+				input.action === 'restoreReceived' &&
+				uniqueGiftIds.some((id) => input.states[id] === undefined)
+			) {
+				error(400, SERVER_ERROR.BULK_GIFT_STATE_MISMATCH);
+			}
+
+			const updatedAt = new Date();
+			const updatePlans = rows.map((row) => {
+				const updateData: Partial<typeof gift.$inferInsert> = bulkGiftUpdateData(
+					input,
+					row,
+				);
+				const didChange = Object.entries(updateData).some(([key, value]) =>
+					jsonChanged(value, row[key as keyof typeof row]),
+				);
+				if (didChange && isBulkPresentationAction(input) && wishlistRow.sharedAt !== null) {
+					applyPostShareEditTransparency({
+						giftRow: row,
+						updateData,
+						now: updatedAt,
+						wishlistRow,
+					});
+				}
+				return { row, updateData, didChange };
+			});
+			const changedPresentationRows = updatePlans
+				.filter((plan) => plan.didChange && isBulkPresentationAction(input))
+				.map((plan) => plan.row);
+
+			const updateSet: Record<string, unknown> = { updatedAt };
+			switch (input.action) {
+				case 'priority':
+					updateSet.priorityLevelId = input.priorityLevelId;
+					break;
+				case 'category':
+					updateSet.categoryId = input.categoryId;
+					break;
+				case 'received':
+					updateSet.received = input.received;
+					break;
+				case 'restoreReceived': {
+					const receivedCase = sql.join(
+						updatePlans.map(
+							(plan) =>
+								sql`WHEN ${gift.id} = ${plan.row.id} THEN ${plan.updateData.received ?? false}::boolean`,
+						),
+						sql` `,
+					);
+					updateSet.received = sql<boolean>`CASE ${receivedCase} ELSE ${gift.received} END`;
+					break;
+				}
+				case 'imageFit':
+				case 'imageBackground': {
+					const imageMetaCase = sql.join(
+						updatePlans.map(
+							(plan) =>
+								sql`WHEN ${gift.id} = ${plan.row.id} THEN ${bulkJsonbValue(plan.updateData.imageMeta ?? null)}`,
+						),
+						sql` `,
+					);
+					updateSet.imageMeta = sql`CASE ${imageMetaCase} ELSE ${gift.imageMeta} END`;
+					break;
+				}
+			}
+
+			if (changedPresentationRows.length > 0 && wishlistRow.sharedAt !== null) {
+				const changedPlans = updatePlans.filter(
+					(plan) => plan.didChange && isBulkPresentationAction(input),
+				);
+				const editedAfterShareCase = sql.join(
+					changedPlans.map(
+						(plan) =>
+							sql`WHEN ${gift.id} = ${plan.row.id} THEN ${bulkTimestampValue(
+								('editedAfterShareAt' in plan.updateData
+									? (plan.updateData.editedAfterShareAt as Date | null)
+									: plan.row.editedAfterShareAt) ?? null,
+							)}`,
+					),
+					sql` `,
+				);
+				const preEditShareSnapshotCase = sql.join(
+					changedPlans.map(
+						(plan) =>
+							sql`WHEN ${gift.id} = ${plan.row.id} THEN ${bulkJsonbValue(
+								'preEditShareSnapshot' in plan.updateData
+									? plan.updateData.preEditShareSnapshot
+									: plan.row.preEditShareSnapshot,
+							)}`,
+					),
+					sql` `,
+				);
+				updateSet.editedAfterShareAt = sql<Date | null>`CASE ${editedAfterShareCase} ELSE ${gift.editedAfterShareAt} END`;
+				updateSet.preEditShareSnapshot = sql`CASE ${preEditShareSnapshotCase} ELSE ${gift.preEditShareSnapshot} END`;
+			}
+
+			await runBulkUpdateAfterRowsLockedHookForTest(tx);
+
+			const updatedRows = await tx
+				.update(gift)
+				.set(updateSet)
+				.where(
+					and(
+						inArray(gift.id, uniqueGiftIds),
+						eq(gift.wishlistId, input.wishlistId),
+						isNull(gift.deletedAt),
+					),
+				)
+				.returning({ id: gift.id });
+			const updatedIdSet = new Set(updatedRows.map((row) => row.id));
+			if (
+				updatedRows.length !== uniqueGiftIds.length ||
+				updatedIdSet.size !== uniqueGiftIds.length ||
+				uniqueGiftIds.some((id) => !updatedIdSet.has(id))
+			) {
+				error(400, SERVER_ERROR.GIFT_WISHLIST_MISMATCH);
+			}
+
+			return {
+				updatedIds: updatedRows.map((row) => row.id),
+				priorReceived: Object.fromEntries(rows.map((row) => [row.id, row.received])),
+				changedPresentationRows,
+			};
+		});
+
+		if (role === WISHLIST_ROLES.moderator) {
+			await notifyReserversOfEditedGiftsBestEffort({
+				database,
+				changedGifts: result.changedPresentationRows.map((changedGift) => ({
+					id: changedGift.id,
+					wishlistId: changedGift.wishlistId,
+					name: changedGift.name,
+				})),
+				actorId: user.id,
+				actorName: user.name,
+				wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
+			});
+		}
+
+		await singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+		return { updatedIds: result.updatedIds, priorReceived: result.priorReceived };
 	},
 );
 

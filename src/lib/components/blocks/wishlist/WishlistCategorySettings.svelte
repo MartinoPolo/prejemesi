@@ -255,6 +255,10 @@
 			});
 			confirmedRemovalCategoryIds = [];
 			baseline = snapshot();
+			// Flush the derived dirty=false notification before reporting completion to the outer
+			// settings dialog. Otherwise a queued stale dirty=true callback can re-arm its discard
+			// guard after a successful save and reject the next Close action.
+			await tick();
 			toastSuccess(m.gift_categories_saved());
 			onsaved?.();
 		} catch (thrown) {

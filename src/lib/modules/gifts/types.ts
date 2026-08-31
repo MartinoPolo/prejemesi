@@ -367,3 +367,50 @@ export const MarkGiftReceivedInputSchema = v.object({
 	giftId: v.string(),
 	received: v.boolean(),
 });
+
+export const BULK_IMAGE_BACKGROUNDS = [null, '#ffffff', '#000000'] as const;
+
+const BulkGiftBaseSchema = {
+	wishlistId: v.string(),
+	giftIds: v.pipe(v.array(v.string()), v.minLength(1)),
+};
+
+/** One deliberately narrow field change applied atomically to selected gifts. */
+export const BulkUpdateGiftsInputSchema = v.variant('action', [
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('priority'),
+		priorityLevelId: v.nullable(v.string()),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('category'),
+		categoryId: v.nullable(v.string()),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('imageFit'),
+		fit: v.picklist(['fill', 'fit']),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('imageBackground'),
+		background: v.union([
+			v.null(),
+			v.literal(BULK_IMAGE_BACKGROUNDS[1]),
+			v.literal(BULK_IMAGE_BACKGROUNDS[2]),
+		]),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('received'),
+		received: v.boolean(),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('restoreReceived'),
+		states: v.record(v.string(), v.boolean()),
+	}),
+]);
+
+export type BulkUpdateGiftsInput = v.InferOutput<typeof BulkUpdateGiftsInputSchema>;

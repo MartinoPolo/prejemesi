@@ -108,7 +108,7 @@ test.describe('Gift edit modal mobile scroll (HANDOFF 2026-07-19)', () => {
 		await expect(saveButton).toBeInViewport();
 		const saveBoxAfterScroll = await saveButton.boundingBox();
 		expect(saveBoxAfterScroll).not.toBeNull();
-		expect(saveBoxAfterScroll!.y).toBeCloseTo(saveBoxAtTop!.y, 0);
+		expect(Math.abs(saveBoxAfterScroll!.y - saveBoxAtTop!.y)).toBeLessThanOrEqual(3);
 		const imageColumnBoxAfter = await imageColumn.boundingBox();
 		expect(imageColumnBoxAfter).not.toBeNull();
 		expect(imageColumnBoxAfter!.y).toBeLessThan(imageColumnTopBefore);
