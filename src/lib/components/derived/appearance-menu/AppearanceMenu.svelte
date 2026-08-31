@@ -32,6 +32,7 @@
 		</Popover.Trigger>
 	</SimpleTooltip>
 	<Popover.Content
+		role="dialog"
 		align="end"
 		class="flex w-72 min-w-0 flex-col gap-3 p-3"
 		aria-label={m.settings_appearance_title()}
