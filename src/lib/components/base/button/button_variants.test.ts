@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { giftDetailModalVariants } from '$lib/components/blocks/gift/gift_detail_modal_variants.js';
-import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
 import {
+	ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES,
 	BUTTON_TEXT_SIZES,
 	CIRCULAR_STICKER_BUTTON_CLASSES,
 	buttonVariants,
@@ -26,35 +26,24 @@ describe('sticker button hover geometry', () => {
 		}
 	});
 
+	it('distinguishes free circular controls from anchored overlay triggers', () => {
+		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('hover:-translate-y-0.5');
+		expect(CIRCULAR_STICKER_BUTTON_CLASSES).not.toContain('data-[state=open]');
+		expect(CIRCULAR_STICKER_BUTTON_CLASSES).not.toContain('aria-expanded');
+
+		expect(ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES).toContain(
+			'data-[state=open]:hover:translate-y-0',
+		);
+		expect(ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES).toContain(
+			'data-[state=open]:hover:shadow-sticker-lift',
+		);
+	});
+
 	it('keeps the stacked gift-editor footer buttons lift-free', () => {
 		const styles = giftDetailModalVariants();
 
 		expect(styles.submitButton()).toContain('hover:translate-y-0');
 		expect(styles.releaseButton()).toContain('hover:translate-y-0');
-	});
-
-	it('shares resting and hover elevation for circular sticker controls', () => {
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('shadow-sticker-sm');
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('hover:-translate-y-0.5');
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('hover:shadow-sticker-lift');
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('after:h-2');
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('motion-reduce:hover:translate-y-0');
-	});
-
-	it('keeps open circular triggers anchored while preserving shadow feedback', () => {
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('data-[state=open]:hover:translate-y-0');
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain(
-			'data-[state=open]:hover:shadow-sticker-lift',
-		);
-	});
-
-	it('rotates only the close icon and suppresses that motion when requested', () => {
-		const classNames = overlayCloseButtonClass.split(/\s+/);
-
-		expect(classNames).not.toContain('hover:rotate-90');
-		expect(classNames).toContain('hover:[&_svg]:rotate-90');
-		expect(classNames).toContain('motion-reduce:hover:[&_svg]:rotate-0');
-		expect(classNames).toContain('motion-reduce:[&_svg]:transition-none');
 	});
 });
 

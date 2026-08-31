@@ -20,6 +20,148 @@ function shortIdFromPath(path: string): string {
 }
 
 test.describe('Wishlist settings – non-image editing', () => {
+	test('Knihy picker renders five columns and visible keyboard focus on extreme swatches', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-color-picker');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		await createWishlistAndNavigate(page, 'Barevná mřížka');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		const settings = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settings.getByRole('tab', { name: 'Kategorie' }).click();
+		await settings.getByRole('button', { name: 'Knihy' }).click();
+
+		const picker = page.getByRole('dialog', { name: 'Knihy' });
+		const group = picker.getByRole('group');
+		const columns = await group.evaluate((element) =>
+			getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean),
+		);
+		expect(columns).toHaveLength(5);
+		const gray = picker.getByRole('button', { name: '#6B7280' });
+		await gray.focus();
+		await expect(gray).toBeFocused();
+		for (const color of ['#000000', '#FFFFFF']) {
+			await page.keyboard.press('Tab');
+			const swatch = picker.getByRole('button', { name: color });
+			await expect(swatch).toBeFocused();
+			const outline = await swatch.evaluate((element) => {
+				const style = getComputedStyle(element);
+				return { style: style.outlineStyle, width: Number.parseFloat(style.outlineWidth) };
+			});
+			expect(outline.style).not.toBe('none');
+			expect(outline.width).toBeGreaterThan(0);
+		}
+		await page.context().close();
+	});
+
+	test('real gift numeric fields suppress spinners and wheel only while focused', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('gift-number-inputs');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		await page.setViewportSize({ width: 500, height: 360 });
+		await createWishlistAndNavigate(page, 'Číselná pole');
+		await page
+			.getByRole('button', { name: /Přidat/ })
+			.first()
+			.click();
+		const dialog = page.getByRole('dialog');
+		const price = dialog.getByRole('spinbutton', { name: 'Cena' });
+		const quantity = dialog.getByRole('spinbutton', { name: 'Počet (skryto při 1)' });
+		for (const input of [price, quantity]) {
+			expect(await input.evaluate((element) => getComputedStyle(element).appearance)).toBe(
+				'textfield',
+			);
+		}
+
+		await price.fill('99.99');
+		const unfocused = await price.evaluate((element) => {
+			(element as HTMLInputElement).blur();
+			const event = new WheelEvent('wheel', { deltaY: -1, cancelable: true, bubbles: true });
+			const dispatched = element.dispatchEvent(event);
+			return {
+				dispatched,
+				prevented: event.defaultPrevented,
+				value: (element as HTMLInputElement).value,
+			};
+		});
+		expect(unfocused).toEqual({ dispatched: true, prevented: false, value: '99.99' });
+
+		const focused = await price.evaluate((element) => {
+			(element as HTMLInputElement).focus();
+			const event = new WheelEvent('wheel', { deltaY: -1, cancelable: true, bubbles: true });
+			const dispatched = element.dispatchEvent(event);
+			return { dispatched, prevented: event.defaultPrevented };
+		});
+		expect(focused).toEqual({ dispatched: false, prevented: true });
+		await expect(price).toHaveValue('109.99');
+
+		// A synthetic dispatch verifies direct cancellation semantics, but does not expose
+		// browsers ignoring preventDefault in passive listeners. Exercise a real gesture in
+		// the short dialog's actual scroll region to guard against that regression.
+		await price.fill('99.99');
+		const scrollRegion = dialog.getByTestId('gift-detail-body');
+		await price.scrollIntoViewIfNeeded();
+		await price.focus();
+		const scrollTopBefore = await scrollRegion.evaluate((element) => element.scrollTop);
+		expect(scrollTopBefore).toBeGreaterThan(0);
+		const priceBox = await price.boundingBox();
+		expect(priceBox, 'price input has mouse-wheel geometry').not.toBeNull();
+		await page.mouse.move(
+			priceBox!.x + priceBox!.width / 2,
+			priceBox!.y + priceBox!.height / 2,
+		);
+		await page.mouse.wheel(0, -100);
+		await expect(price).toHaveValue('109.99');
+		expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBe(scrollTopBefore);
+		await page.context().close();
+	});
+	test('short viewport keeps settings content scrollable and its stable footer visible', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-short-viewport');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+
+		await createWishlistAndNavigate(page, 'Nastavení v nízkém okně');
+		await page.setViewportSize({ width: 900, height: 360 });
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+
+		const dialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		const scrollRegion = dialog.getByTestId('wishlist-settings-scroll-region');
+		const footer = dialog.getByTestId('wishlist-settings-footer');
+		await expect(dialog).toBeVisible({ timeout: 10_000 });
+		await expect(footer.getByRole('button', { name: 'Uložit' })).toBeVisible();
+
+		const dialogBox = await dialog.boundingBox();
+		expect(dialogBox, 'settings dialog has viewport geometry').not.toBeNull();
+		expect(dialogBox!.y).toBeGreaterThanOrEqual(0);
+		expect(dialogBox!.y + dialogBox!.height).toBeLessThanOrEqual(360);
+
+		const overflow = await scrollRegion.evaluate((element) => ({
+			clientHeight: element.clientHeight,
+			scrollHeight: element.scrollHeight,
+			overflowY: getComputedStyle(element).overflowY,
+		}));
+		expect(overflow.overflowY).toBe('auto');
+		expect(overflow.scrollHeight).toBeGreaterThan(overflow.clientHeight);
+		await scrollRegion.evaluate((element) => (element.scrollTop = element.scrollHeight));
+		expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+
+		const actionFooterY = (await footer.boundingBox())!.y;
+		await dialog.getByRole('tab', { name: 'Import a export' }).click();
+		await expect(footer).toBeVisible();
+		expect((await footer.boundingBox())!.y).toBeCloseTo(actionFooterY, 0);
+		await expect(footer.getByRole('button')).toHaveCount(0);
+
+		await page.context().close();
+	});
+
 	test('owner can edit title, description, and event date, and changes persist', async ({
 		browser,
 		request,

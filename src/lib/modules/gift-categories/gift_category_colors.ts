@@ -25,7 +25,16 @@ export const CUSTOM_GIFT_CATEGORY_COLORS = [
 ] as const;
 
 // Keep automatic assignment stable for wishlists created before the picker palette expanded.
-const DEFAULT_GIFT_CATEGORY_COLORS = CUSTOM_GIFT_CATEGORY_COLORS.slice(0, 8);
+const DEFAULT_GIFT_CATEGORY_COLORS = [
+	'#0369A1',
+	'#047857',
+	'#A21CAF',
+	'#C2410C',
+	'#4F46E5',
+	'#B91C1C',
+	'#0F766E',
+	'#7E22CE',
+] as const;
 
 export function giftCategoryColorForIndex(index: number): string {
 	const normalized = Math.max(0, Math.trunc(index));

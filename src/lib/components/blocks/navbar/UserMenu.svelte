@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
-	import { CIRCULAR_STICKER_BUTTON_CLASSES } from '$lib/components/base/button/button_variants.js';
+	import { ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES } from '$lib/components/base/button/button_variants.js';
 	import { Avatar } from '$lib/components/derived/avatar/index.js';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogOutIcon from '@lucide/svelte/icons/log-out';
@@ -39,7 +39,7 @@
 				{...props}
 				intent="ghost"
 				size="icon"
-				class={`rounded-full border-0 hover:bg-transparent ${CIRCULAR_STICKER_BUTTON_CLASSES}`}
+				class={`rounded-full border-0 hover:bg-transparent ${ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES}`}
 				aria-label={m.nav_user_menu({ name: userName })}
 			>
 				<Avatar src={userImage} alt="" initials={userInitials} size="sm" bordered />

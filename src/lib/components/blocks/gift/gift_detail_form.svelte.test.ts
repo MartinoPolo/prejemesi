@@ -370,22 +370,6 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 });
 
 describe('GiftDetailForm price-range UI (issue #171)', () => {
-	it('suppresses native spinners consistently on price and quantity inputs', async () => {
-		const screen = await render(GiftDetailForm, {
-			...baseProps,
-			gift: makeGift({ price: 10, priceMax: 20 }),
-		});
-		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
-		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
-		const quantityInput = document.querySelector('#gift-quantity');
-
-		await expect.element(minInput).toHaveAttribute('type', 'number');
-		await expect.element(maxInput).toHaveAttribute('type', 'number');
-		expect(minInput.element()).toHaveClass('numeric-input');
-		expect(maxInput.element()).toHaveClass('numeric-input');
-		expect(quantityInput).toHaveClass('numeric-input');
-	});
-
 	it('applies the pre-key price magnitude to ArrowUp and ArrowDown without grid snapping', async () => {
 		const screen = await render(GiftDetailForm, {
 			...baseProps,

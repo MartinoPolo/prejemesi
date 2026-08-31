@@ -25,7 +25,7 @@ function latestChange(onchange: ReturnType<typeof vi.fn>): DraftGridChange {
 }
 
 describe('GiftDraftGrid numeric inputs', () => {
-	it('uses the shared spinner-suppression treatment for batch quantities', async () => {
+	it('wires batch quantities as constrained integer inputs', async () => {
 		const screen = await render(GiftDraftGrid, {
 			initialRows: [draft('Kniha')],
 		});
@@ -33,7 +33,7 @@ describe('GiftDraftGrid numeric inputs', () => {
 		const quantity = screen.getByRole('spinbutton', { name: m.draft_grid_col_quantity() });
 		await expect.element(quantity).toHaveAttribute('min', '1');
 		await expect.element(quantity).toHaveAttribute('step', '1');
-		expect(quantity.element()).toHaveClass('numeric-input');
+		await expect.element(quantity).toHaveAttribute('type', 'number');
 	});
 });
 

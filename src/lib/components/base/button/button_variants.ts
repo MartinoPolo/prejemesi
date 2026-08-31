@@ -23,11 +23,14 @@ const LIFT_HIT_AREA_CLASSES =
  */
 const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker ${LIFT_HIT_AREA_CLASSES}`;
 
+/** Shared elevation language for compact circular sticker controls. */
+export const CIRCULAR_STICKER_BUTTON_CLASSES = `shadow-sticker-sm ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${LIFT_HIT_AREA_CLASSES}`;
+
 /**
- * Shared elevation language for compact circular sticker controls. Open overlay triggers keep
- * their surface stationary so anchored content does not move, while retaining hover shadow depth.
+ * Circular elevation for anchored overlay triggers. Their surface remains stationary while open
+ * so anchored content does not move, while hover still provides lifted shadow feedback.
  */
-export const CIRCULAR_STICKER_BUTTON_CLASSES = `shadow-sticker-sm ease-spring hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker-lift motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${LIFT_HIT_AREA_CLASSES}`;
+export const ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES = `${CIRCULAR_STICKER_BUTTON_CLASSES} data-[state=open]:hover:translate-y-0 aria-[expanded=true]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker-lift aria-[expanded=true]:hover:shadow-sticker-lift`;
 
 export const OUTLINE_CONTROL_SURFACE_CLASSES = `bg-card text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:border-ink focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring transition-[background-color,border-color,color,transform,box-shadow] ${STICKER_BUTTON_CLASSES}`;
 

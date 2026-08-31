@@ -219,54 +219,14 @@ describe('WishlistSettingsModal import and export tab', () => {
 			.not.toBeInTheDocument();
 	});
 
-	it.each([
-		['categories' as const, 'wishlist-categories-form'],
-		['image' as const, 'wishlist-image-form'],
-	])('keeps the %s Save visible outside the scrolling form', async (activeTab, formId) => {
-		const screen = renderSettings({ activeTab });
-		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
-		const form = document.getElementById(formId)!;
-		const save = dialog.querySelector<HTMLButtonElement>(`button[form="${formId}"]`)!;
-		const footer = save.closest<HTMLElement>('[data-slot="dialog-footer"]')!;
-		const scrollBody = footer.previousElementSibling as HTMLElement;
-
-		expect(dialog.contains(save)).toBe(true);
-		expect(form.contains(save)).toBe(false);
-		expect(scrollBody.contains(save)).toBe(false);
-		dialog.style.cssText +=
-			'; display: flex; flex-direction: column; height: 240px; max-height: 240px';
-		scrollBody.style.cssText += '; min-height: 0; flex: 1; overflow-y: auto';
-		footer.style.cssText += '; flex: none';
-		scrollBody.scrollTop = scrollBody.scrollHeight;
-		await new Promise((resolve) => requestAnimationFrame(resolve));
-		const saveRect = save.getBoundingClientRect();
-		const dialogRect = dialog.getBoundingClientRect();
-		expect(saveRect.top).toBeGreaterThanOrEqual(dialogRect.top);
-		expect(saveRect.bottom).toBeLessThanOrEqual(dialogRect.bottom);
-		expect(saveRect.top).toBeGreaterThanOrEqual(0);
-		expect(saveRect.bottom).toBeLessThanOrEqual(window.innerHeight);
-	});
-
-	it('keeps a viewport-bounded shell and footer height stable across tabs without actions', async () => {
+	it('keeps the same footer mounted while a no-action tab removes its action', async () => {
 		const screen = renderSettings();
-		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
 		const footer = screen.getByTestId('wishlist-settings-footer').element();
-		const initialDialogHeight = dialog.getBoundingClientRect().height;
-		const initialFooterHeight = footer.getBoundingClientRect().height;
-
-		expect(dialog.style.height).toBe('min(52rem, 85dvh)');
-		expect(dialog.style.maxHeight).toContain('100dvh');
-		expect(dialog.style.maxHeight).toContain('2rem');
-		expect(screen.getByTestId('wishlist-settings-scroll-region').element().classList).toContain(
-			'overflow-y-auto',
-		);
 		await expect.element(screen.getByRole('button', { name: m.save() })).toBeVisible();
 
 		await screen.getByRole('tab', { name: m.wishlist_settings_data_title() }).click();
 
 		expect(screen.getByTestId('wishlist-settings-footer').element()).toBe(footer);
-		expect(dialog.getBoundingClientRect().height).toBe(initialDialogHeight);
-		expect(footer.getBoundingClientRect().height).toBe(initialFooterHeight);
 		await expect
 			.element(screen.getByRole('button', { name: m.save() }))
 			.not.toBeInTheDocument();

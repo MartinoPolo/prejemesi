@@ -53,20 +53,22 @@ describe('ColorPicker', () => {
 		await expect.element(page.getByRole('dialog', { name: label })).not.toBeInTheDocument();
 	});
 
-	it('renders 20 presets in a five-column grid with visible interaction states', async () => {
+	it('renders 20 keyboard-operable presets and exposes selection', async () => {
 		const screen = render(ColorPicker, { value: '#000000', label });
 		await screen.getByRole('button', { name: label }).click();
 		const group = page.getByRole('group', { name: m.color_picker_presets() });
 		const swatches = group.element().querySelectorAll('button');
 
-		expect(group.element().className).toContain('grid-cols-5');
 		expect(swatches).toHaveLength(20);
-		for (const color of ['#000000', '#FFFFFF']) {
-			const swatch = group.getByRole('button', { name: color });
-			expect(swatch.element().className).toContain('hover:scale-105');
-			expect(swatch.element().className).toContain('focus-visible:outline-2');
-			expect(swatch.element().className).toContain('aria-pressed:ring-2');
-		}
+		(swatches.item(17) as HTMLButtonElement).focus();
+		await userEvent.tab();
+		expect(document.activeElement).toBe(
+			group.getByRole('button', { name: '#000000' }).element(),
+		);
+		await userEvent.tab();
+		expect(document.activeElement).toBe(
+			group.getByRole('button', { name: '#FFFFFF' }).element(),
+		);
 		await expect
 			.element(group.getByRole('button', { name: '#000000' }))
 			.toHaveAttribute('aria-pressed', 'true');

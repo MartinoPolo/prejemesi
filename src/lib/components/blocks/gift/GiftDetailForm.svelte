@@ -141,6 +141,8 @@
 	// svelte-ignore state_referenced_locally
 	let isPriceRange = $state((gift?.priceMax ?? null) !== null);
 	let priceRangeError = $state('');
+	let priceInput = $state<HTMLInputElement | null>(null);
+	let priceMaxInput = $state<HTMLInputElement | null>(null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
@@ -478,17 +480,42 @@
 		adjustGiftPrice(currentPrice, event.key === 'ArrowUp' ? 1 : -1, setPrice);
 	}
 
-	function handleGiftPriceWheel(
-		event: WheelEvent,
-		currentPrice: number | null,
-		setPrice: (value: number) => void,
-	): void {
-		if (event.currentTarget !== document.activeElement || event.deltaY === 0) {
-			return;
-		}
-		event.preventDefault();
-		adjustGiftPrice(currentPrice, event.deltaY < 0 ? 1 : -1, setPrice);
+	interface GiftPriceWheelOptions {
+		getPrice: () => number | null;
+		setPrice: (value: number) => void;
 	}
+
+	// Svelte attaches inline `onwheel` as a passive listener, so `preventDefault()`
+	// would be ignored and the dialog would scroll while changing price. Register non-passive.
+	function giftPriceWheel(node: HTMLInputElement, options: GiftPriceWheelOptions) {
+		const listener = (event: WheelEvent) => {
+			if (node !== document.activeElement || event.deltaY === 0) {
+				return;
+			}
+			event.preventDefault();
+			adjustGiftPrice(options.getPrice(), event.deltaY < 0 ? 1 : -1, options.setPrice);
+		};
+		node.addEventListener('wheel', listener, { passive: false });
+		return () => node.removeEventListener('wheel', listener);
+	}
+
+	$effect(() => {
+		if (priceInput !== null) {
+			return giftPriceWheel(priceInput, {
+				getPrice: () => price,
+				setPrice: (value) => (price = value),
+			});
+		}
+	});
+
+	$effect(() => {
+		if (priceMaxInput !== null) {
+			return giftPriceWheel(priceMaxInput, {
+				getPrice: () => priceMax,
+				setPrice: (value) => (priceMax = value),
+			});
+		}
+	});
 
 	function validateForm(): boolean {
 		nameError = '';
@@ -970,12 +997,7 @@
 											price,
 											(value) => (price = value),
 										)}
-									onwheel={(event) =>
-										handleGiftPriceWheel(
-											event,
-											price,
-											(value) => (price = value),
-										)}
+									bind:ref={priceInput}
 									aria-label={m.gift_price_range_min_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -1000,12 +1022,7 @@
 											priceMax,
 											(value) => (priceMax = value),
 										)}
-									onwheel={(event) =>
-										handleGiftPriceWheel(
-											event,
-											priceMax,
-											(value) => (priceMax = value),
-										)}
+									bind:ref={priceMaxInput}
 									aria-label={m.gift_price_range_max_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -1029,8 +1046,7 @@
 										price,
 										(value) => (price = value),
 									)}
-								onwheel={(event) =>
-									handleGiftPriceWheel(event, price, (value) => (price = value))}
+								bind:ref={priceInput}
 							/>
 						{/if}
 						{#if priceRangeError !== ''}

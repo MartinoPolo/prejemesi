@@ -37,7 +37,16 @@ describe('gift category colors', () => {
 	});
 
 	it('preserves the original deterministic custom defaults after the picker expands', () => {
-		const originalDefaults = CUSTOM_GIFT_CATEGORY_COLORS.slice(0, 8);
+		const originalDefaults = [
+			'#0369A1',
+			'#047857',
+			'#A21CAF',
+			'#C2410C',
+			'#4F46E5',
+			'#B91C1C',
+			'#0F766E',
+			'#7E22CE',
+		];
 		expect(originalDefaults.map((_, index) => giftCategoryColorForIndex(index))).toEqual(
 			originalDefaults,
 		);
