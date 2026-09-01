@@ -209,6 +209,11 @@ describe('DepthStyleSwitcher', () => {
 		for (const choice of choices) {
 			await expect.element(choice).toHaveClass(/data-\[state=on\]:border-border-strong/);
 			await expect.element(choice).not.toHaveClass(/data-\[state=on\]:border-ink/);
+			await expect
+				.element(choice)
+				.toHaveClass(/data-\[state=on\]:bg-\[var\(--selection-tint\)\]/);
+			await expect.element(choice).toHaveClass(/shadow-sticker/);
+			await expect.element(choice).not.toHaveClass(/data-\[state=on\]:shadow/);
 			await expect.element(choice).toHaveClass(/rounded-btn/);
 		}
 
