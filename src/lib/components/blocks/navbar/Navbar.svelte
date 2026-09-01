@@ -366,7 +366,7 @@
 	{/if}
 
 	<!-- Right controls -->
-	<div class="nav-right">
+	<div data-testid="navbar-actions" class="nav-right">
 		{#if user}
 			<!-- Create CTA -->
 			<Button
@@ -393,7 +393,10 @@
 		     768–1039px: consolidated into one AppearanceMenu button so the header does not
 		     overflow. Logged-in users below 768px get these inside the MobileNav drawer;
 		     anonymous users have no drawer, so they keep the consolidated menu below 1040px. -->
-		<div class="header-appearance-controls hidden items-center gap-3 min-[1040px]:flex">
+		<div
+			data-testid="navbar-appearance-controls"
+			class="header-appearance-controls hidden items-center gap-2 min-[1040px]:flex"
+		>
 			<PaletteSwitcher />
 			<LanguageToggle variant="icon" />
 			<DarkModeToggle />
@@ -475,7 +478,7 @@
 	.nav-right {
 		display: flex;
 		align-items: center;
-		gap: var(--space-3);
+		gap: var(--space-2);
 		flex-shrink: 0;
 		margin-left: auto;
 	}

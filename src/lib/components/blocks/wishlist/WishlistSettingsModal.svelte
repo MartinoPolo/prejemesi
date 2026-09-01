@@ -21,6 +21,7 @@
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
+	import XIcon from '@lucide/svelte/icons/x';
 	import WishlistCropEditor from './WishlistCropEditor.svelte';
 	import WishlistPaletteAutoSave from './WishlistPaletteAutoSave.svelte';
 	import WishlistCategorySettings from './WishlistCategorySettings.svelte';
@@ -53,6 +54,7 @@
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
+	import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
 
 	interface WishlistSettingsModalProps {
 		open: boolean;
@@ -257,6 +259,21 @@
 			requestGuarded(() => (open = false));
 			return;
 		}
+		open = true;
+	}
+
+	/** Keep Bits UI from hiding its internal dialog state before the dirty guard resolves. */
+	function handleDismiss(event: Event) {
+		if (!saving && !anyDirty) {
+			return;
+		}
+		event.preventDefault();
+		handleOpenChange(false);
+	}
+
+	function continueEditing() {
+		guardOpen = false;
+		pendingAction = null;
 		open = true;
 	}
 
@@ -499,6 +516,9 @@
 <Dialog.Root {open} onOpenChange={handleOpenChange}>
 	<Dialog.Content
 		size="2xl"
+		showCloseButton={false}
+		onEscapeKeydown={handleDismiss}
+		onInteractOutside={handleDismiss}
 		class="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100%-2rem)] xl:max-w-5xl"
 		style="height: min(52rem, 85dvh); max-height: calc(100dvh - 2rem);"
 	>
@@ -507,18 +527,12 @@
 			<Dialog.Description>{wishlist.title}</Dialog.Description>
 		</Dialog.Header>
 
-		<div
-			data-testid="wishlist-settings-scroll-region"
-			inert={saving ? true : undefined}
-			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
-				? 'flex w-full min-w-0 flex-col gap-4'
-				: ''}"
-		>
-			{#if canManage && !isArchived}
+		{#if canManage && !isArchived}
+			<div inert={saving ? true : undefined} class="h-14 shrink-0 px-6 pb-4">
 				<Tabs.Root
 					aria-label={m.wishlist_settings_title()}
 					aria-orientation="horizontal"
-					class="flex min-h-10 w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1"
+					class="flex h-10 min-h-10 w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1 lg:[&>[role=tab]]:justify-center"
 				>
 					<Tabs.Tab
 						id="wishlist-settings-tab-details"
@@ -569,7 +583,17 @@
 						{m.wishlist_settings_danger_tab()}
 					</Tabs.Tab>
 				</Tabs.Root>
+			</div>
+		{/if}
 
+		<div
+			data-testid="wishlist-settings-scroll-region"
+			inert={saving ? true : undefined}
+			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
+				? 'flex w-full min-w-0 flex-col gap-4'
+				: ''}"
+		>
+			{#if canManage && !isArchived}
 				<!-- Podrobnosti: title / description / event date, saved by the global composite save. -->
 				<div
 					role="tabpanel"
@@ -894,6 +918,16 @@
 				/>
 			{/if}
 		</Dialog.Footer>
+
+		<Button
+			intent="ghost"
+			size="icon-sm"
+			class={overlayCloseButtonClass}
+			onclick={() => handleOpenChange(false)}
+		>
+			<XIcon data-icon="inline-start" />
+			<span class="sr-only">{m.close()}</span>
+		</Button>
 	</Dialog.Content>
 </Dialog.Root>
 
@@ -904,13 +938,7 @@
 			<Dialog.Description>{m.wishlist_settings_unsaved_description()}</Dialog.Description>
 		</Dialog.Header>
 		<Dialog.Footer class="flex flex-wrap gap-2">
-			<Button
-				intent="outline"
-				onclick={() => {
-					guardOpen = false;
-					pendingAction = null;
-				}}
-			>
+			<Button intent="outline" onclick={continueEditing}>
 				{m.wishlist_settings_continue_editing()}
 			</Button>
 			<Button intent="outline" onclick={discardAndContinue} disabled={saving}>

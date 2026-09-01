@@ -3,16 +3,15 @@ import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 
 const VIEWPORT_WIDTHS = [320, 767, 768, 1039, 1040, 1280] as const;
-const MIN_PAINTED_SEPARATION = 4;
+const TOOLBAR_CONTROL_GAP = 8;
 
 interface PaintedControl {
 	paintedLeft: number;
 	paintedRight: number;
-	top: number;
 }
 
-async function paintedControls(navRight: Locator): Promise<PaintedControl[]> {
-	return navRight.locator('button:visible, a:visible').evaluateAll((elements) => {
+async function paintedControls(wrapper: Locator): Promise<PaintedControl[]> {
+	return wrapper.locator('button:visible, a:visible').evaluateAll((elements) => {
 		const shadowExtents = (boxShadow: string) => {
 			if (boxShadow === 'none') {
 				return { left: 0, right: 0 };
@@ -44,18 +43,17 @@ async function paintedControls(navRight: Locator): Promise<PaintedControl[]> {
 				return {
 					paintedLeft: rect.left - extents.left,
 					paintedRight: rect.right + extents.right,
-					top: rect.top,
 				};
 			})
-			.sort((a, b) => a.paintedLeft - b.paintedLeft);
+			.sort((left, right) => left.paintedLeft - right.paintedLeft);
 	});
 }
 
-async function expectPaintedSeparation(navRight: Locator, width: number, state: string) {
+async function expectPaintedControlsNotToOverlap(wrapper: Locator, description: string) {
 	await expect
 		.poll(
 			async () => {
-				const controls = await paintedControls(navRight);
+				const controls = await paintedControls(wrapper);
 				return Math.min(
 					...controls
 						.slice(0, -1)
@@ -65,9 +63,27 @@ async function expectPaintedSeparation(navRight: Locator, width: number, state: 
 						),
 				);
 			},
-			{ message: `painted header controls stay separated at ${width}px (${state})` },
+			{ message: `${description} keeps hard shadows from overlapping` },
 		)
-		.toBeGreaterThanOrEqual(MIN_PAINTED_SEPARATION);
+		.toBeGreaterThanOrEqual(0);
+}
+
+async function expectExactGap(wrapper: Locator, description: string) {
+	await expect
+		.poll(
+			async () =>
+				wrapper.evaluate((element) =>
+					Number.parseFloat(getComputedStyle(element).columnGap),
+				),
+			{ message: `${description} uses the wishlist toolbar's 8px control gap` },
+		)
+		.toBe(TOOLBAR_CONTROL_GAP);
+}
+
+async function visibleControlTops(navRight: Locator): Promise<number[]> {
+	return navRight
+		.locator('button:visible, a:visible')
+		.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().top));
 }
 
 async function expectNoOverflowOrWrapping(page: Page, navRight: Locator, width: number) {
@@ -80,15 +96,15 @@ async function expectNoOverflowOrWrapping(page: Page, navRight: Locator, width: 
 		`document has no horizontal overflow at ${width}px`,
 	).toBeLessThanOrEqual(layout.clientWidth);
 
-	const controls = await paintedControls(navRight);
-	expect(controls.length, `header exposes controls at ${width}px`).toBeGreaterThan(1);
+	const controlTops = await visibleControlTops(navRight);
+	expect(controlTops.length, `header exposes controls at ${width}px`).toBeGreaterThan(1);
 	expect(
-		new Set(controls.map((control) => Math.round(control.top))).size,
+		new Set(controlTops.map((top) => Math.round(top))).size,
 		`header controls remain on one row at ${width}px`,
 	).toBe(1);
 }
 
-test('header controls preserve hard-shadow clearance across responsive compositions', async ({
+test('authenticated header control wrappers match the wishlist toolbar gap', async ({
 	browser,
 	request,
 	baseURL,
@@ -99,29 +115,59 @@ test('header controls preserve hard-shadow clearance across responsive compositi
 	await page.goto('/my-lists');
 	await page.waitForSelector('h1');
 
-	const navRight = page.locator('.nav-right');
+	const navRight = page.getByTestId('navbar-actions');
 	for (const width of VIEWPORT_WIDTHS) {
 		await page.setViewportSize({ width, height: 900 });
 		await expect(navRight).toBeVisible();
 		await page.mouse.move(0, 500);
 
 		await expectNoOverflowOrWrapping(page, navRight, width);
-		await expectPaintedSeparation(navRight, width, 'rest');
+		await expectExactGap(navRight, `authenticated header at ${width}px`);
+		await expectPaintedControlsNotToOverlap(navRight, `authenticated header at ${width}px`);
 
-		const appearanceControls = navRight.locator('.header-appearance-controls');
+		const appearanceControls = navRight.getByTestId('navbar-appearance-controls');
 		if (width >= 1040) {
 			await expect(appearanceControls).toBeVisible();
 			await expect(appearanceControls.locator('button:visible')).toHaveCount(3);
+			await expectExactGap(appearanceControls, `desktop appearance controls at ${width}px`);
 		} else {
 			await expect(appearanceControls).toBeHidden();
 		}
 
 		const controls = navRight.locator('button:visible, a:visible');
 		for (let index = 0; index < (await controls.count()); index += 1) {
-			const control = controls.nth(index);
-			await control.hover({ force: true });
-			await expectPaintedSeparation(navRight, width, `control ${index + 1} hovered`);
+			await controls.nth(index).hover({ force: true });
+			await expectPaintedControlsNotToOverlap(
+				navRight,
+				`authenticated header at ${width}px with control ${index + 1} hovered`,
+			);
 		}
+	}
+
+	await page.context().close();
+});
+
+test('logged-out landing desktop control wrappers match the wishlist toolbar gap', async ({
+	browser,
+}) => {
+	const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+	await page.goto('/');
+
+	const outerCluster = page.getByTestId('landing-nav-actions');
+	const appearanceControls = outerCluster.getByTestId('landing-appearance-controls');
+	await expect(outerCluster).toBeVisible();
+	await expect(appearanceControls).toBeVisible();
+	await expect(appearanceControls.locator('button:visible')).toHaveCount(3);
+	await expectExactGap(outerCluster, 'landing outer control cluster');
+	await expectExactGap(appearanceControls, 'landing appearance controls');
+	await expectPaintedControlsNotToOverlap(outerCluster, 'landing header');
+	const controls = outerCluster.locator('button:visible, a:visible');
+	for (let index = 0; index < (await controls.count()); index += 1) {
+		await controls.nth(index).hover({ force: true });
+		await expectPaintedControlsNotToOverlap(
+			outerCluster,
+			`landing header with control ${index + 1} hovered`,
+		);
 	}
 
 	await page.context().close();

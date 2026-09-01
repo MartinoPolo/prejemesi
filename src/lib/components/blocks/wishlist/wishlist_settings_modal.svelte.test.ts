@@ -247,21 +247,28 @@ describe('WishlistSettingsModal import and export tab', () => {
 		]);
 	});
 
-	it('does not turn the tablist into a stretched grid item at tablet widths', () => {
-		const screen = renderSettings();
-		const tablist = screen
-			.getByRole('tablist', { name: m.wishlist_settings_title() })
-			.element();
-		expect(tablist.parentElement!.classList).toContain('flex-col');
-		expect(tablist.classList).toContain('min-h-10');
-		expect(tablist.classList).not.toContain('sm:flex-col');
-	});
-
 	it('always reports horizontal orientation to assistive technology', async () => {
 		const screen = renderSettings();
 		await expect
 			.element(screen.getByRole('tablist', { name: m.wishlist_settings_title() }))
 			.toHaveAttribute('aria-orientation', 'horizontal');
+	});
+
+	it('keeps a dirty draft visible after Escape and Continue editing', async () => {
+		const screen = renderSettings();
+		const title = screen.getByLabelText(m.wishlist_name_label());
+		await title.fill('Rozepsané změny');
+
+		await userEvent.keyboard('{Escape}');
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.toBeVisible();
+		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
+		await expect.element(title).toHaveValue('Rozepsané změny');
 	});
 
 	it('keeps keyboard-selected tabs visible in the mobile-width overflow', async () => {

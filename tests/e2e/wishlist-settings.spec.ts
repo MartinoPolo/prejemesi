@@ -164,6 +164,113 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await page.context().close();
 	});
 
+	test('Image/Crops overflow and body scrolling leave pinned tab geometry unchanged', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-pinned-tabs');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		await createWishlistAndNavigate(page, 'Připnuté záložky');
+		await page.setViewportSize({ width: 1280, height: 600 });
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+
+		const dialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		const tablist = dialog.getByRole('tablist', { name: 'Nastavení seznamu' });
+		const scrollRegion = dialog.getByTestId('wishlist-settings-scroll-region');
+		await expect
+			.poll(() =>
+				tablist
+					.getByRole('tab')
+					.evaluateAll(
+						(tabs) =>
+							tabs.length > 0 &&
+							tabs.every((tab) => getComputedStyle(tab).justifyContent === 'center'),
+					),
+			)
+			.toBe(true);
+		const tabWidths = await tablist
+			.getByRole('tab')
+			.evaluateAll((tabs) => tabs.map((tab) => tab.getBoundingClientRect().width));
+		expect(Math.max(...tabWidths) - Math.min(...tabWidths)).toBeLessThanOrEqual(1);
+
+		await page.setViewportSize({ width: 900, height: 360 });
+		await dialog.evaluate(async (element) => {
+			await Promise.all(
+				element.getAnimations({ subtree: true }).map((animation) => animation.finished),
+			);
+		});
+		const initialBox = await tablist.boundingBox();
+		expect(initialBox, 'tablist has stable geometry').not.toBeNull();
+
+		await dialog.getByRole('tab', { name: 'Obrázek a ořezy' }).click();
+		await expect
+			.poll(async () => {
+				const box = await tablist.boundingBox();
+				return { y: Math.round(box!.y), height: Math.round(box!.height) };
+			})
+			.toEqual({ y: Math.round(initialBox!.y), height: Math.round(initialBox!.height) });
+
+		await scrollRegion.evaluate((element) => (element.scrollTop = element.scrollHeight));
+		expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+		const scrolledBox = await tablist.boundingBox();
+		expect(Math.abs(scrolledBox!.y - initialBox!.y)).toBeLessThanOrEqual(1);
+		expect(Math.abs(scrolledBox!.height - initialBox!.height)).toBeLessThanOrEqual(1);
+
+		await page.context().close();
+	});
+
+	test('dirty Escape then Continue editing preserves the visible draft and later reopen', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-dirty-escape');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+		await createWishlistAndNavigate(page, 'Zavření rozepsaných změn');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+
+		const settings = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		const title = settings.getByRole('textbox', { name: 'Název' });
+		const unsavedGuard = page.getByRole('dialog', { name: 'Máte neuložené změny' });
+		await title.fill('Rozepsaný název');
+
+		await page
+			.locator('[data-slot="dialog-overlay"]:visible')
+			.click({ position: { x: 8, y: 8 } });
+		await expect(unsavedGuard).toBeVisible();
+		await unsavedGuard.getByRole('button', { name: 'Pokračovat v úpravách' }).click();
+		await expect(unsavedGuard).not.toBeVisible();
+		await expect(settings).toBeVisible();
+		await expect(title).toHaveValue('Rozepsaný název');
+
+		await page.keyboard.press('Escape');
+		await expect(unsavedGuard).toBeVisible();
+		await unsavedGuard.getByRole('button', { name: 'Pokračovat v úpravách' }).click();
+
+		await expect(unsavedGuard).not.toBeVisible();
+		await expect(settings).toBeVisible();
+		await expect(title).toHaveValue('Rozepsaný název');
+
+		await settings.getByRole('button', { name: 'Zavřít' }).click();
+		await expect(unsavedGuard).toBeVisible();
+		await unsavedGuard.getByRole('button', { name: 'Pokračovat v úpravách' }).click();
+		await expect(unsavedGuard).not.toBeVisible();
+		await expect(settings).toBeVisible();
+		await expect(title).toHaveValue('Rozepsaný název');
+
+		await title.fill('Zavření rozepsaných změn');
+		await settings.getByRole('button', { name: 'Zavřít' }).click();
+		await expect(settings).not.toBeVisible();
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		await expect(settings).toBeVisible();
+		await expect(settings.getByRole('textbox', { name: 'Název' })).toHaveValue(
+			'Zavření rozepsaných změn',
+		);
+
+		await page.context().close();
+	});
+
 	test('owner can edit title, description, and event date, and changes persist', async ({
 		browser,
 		request,
