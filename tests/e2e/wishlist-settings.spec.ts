@@ -457,6 +457,40 @@ test.describe('Wishlist settings – non-image editing', () => {
 		await page.context().close();
 	});
 
+	test('zero-use category removal skips confirmation and persists', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = createTestUser('settings-zero-use-category-removal');
+		const page = await registerAndGetPage(browser, request, baseURL!, owner);
+
+		await createWishlistAndNavigate(page, 'Odebrání nepoužité kategorie');
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		let settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+		const books = settingsDialog.getByRole('checkbox', { name: 'Knihy' });
+		await expect(books).toBeChecked();
+
+		await books.click();
+
+		await expect(books).not.toBeChecked();
+		await expect(page.getByRole('dialog', { name: /Odebrat kategorii/ })).toHaveCount(0);
+		const save = settingsDialog
+			.locator('[data-slot="dialog-footer"]')
+			.getByRole('button', { name: 'Uložit' });
+		await expect(save).toBeEnabled();
+		await save.click();
+		await expect(settingsDialog).not.toBeVisible({ timeout: 10_000 });
+
+		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
+		settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
+		await expect(settingsDialog.getByRole('checkbox', { name: 'Knihy' })).not.toBeChecked();
+
+		await page.context().close();
+	});
+
 	test('confirmed category removal leaves its assigned gift uncategorized', async ({
 		browser,
 		request,

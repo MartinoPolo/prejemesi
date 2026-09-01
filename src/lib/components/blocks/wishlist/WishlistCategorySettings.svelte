@@ -193,7 +193,7 @@
 		usedCount: number,
 	) {
 		const persisted = categories.find((category) => category.presetKey === key);
-		if (!checked && persisted !== undefined) {
+		if (!checked && persisted !== undefined && usedCount > 0) {
 			removalTrigger = document.activeElement as HTMLElement | null;
 			pendingRemoval = { type: 'preset', key, categoryId: persisted.id, label, usedCount };
 			// Bits UI updates its bindable state before reporting the attempted toggle. Drive the
@@ -220,7 +220,7 @@
 		}
 	}
 	async function requestCustomRemoval(category: CustomDraft, trigger: HTMLElement) {
-		if (category.id !== null) {
+		if (category.id !== null && category.usedCount > 0) {
 			removalTrigger = trigger;
 			pendingRemoval = {
 				type: 'custom',

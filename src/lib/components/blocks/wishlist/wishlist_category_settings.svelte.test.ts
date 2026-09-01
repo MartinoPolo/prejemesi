@@ -90,27 +90,43 @@ describe('WishlistCategorySettings', () => {
 		expect(counts[1]!.parentElement?.textContent).toContain(preset.labels.cs);
 	});
 
-	it('requires confirmation for a persisted custom category even when its fetched usage is zero', async () => {
+	it('removes a persisted zero-use custom category without confirmation', async () => {
 		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 0 })];
+		remoteMocks.save.mockResolvedValue(undefined);
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 
 		await screen.getByRole('button', { name: m.delete() }).click();
-		const dialog = page.getByRole('dialog');
-		await expect.element(dialog).toBeVisible();
-		expect(dialog.element().textContent).toContain('Sport');
-		expect(dialog.element().textContent).toContain('0');
-		await dialog.getByRole('button', { name: m.cancel() }).click();
-		expect(findInput('Sport')).toBeDefined();
 
-		await screen.getByRole('button', { name: m.delete() }).click();
-		await dialog.getByTestId('gift-category-remove-confirm').click();
 		await vi.waitFor(() => expect(findInput('Sport')).toBeUndefined());
-		expect(remoteMocks.save).not.toHaveBeenCalled();
+		expect(document.querySelector('[role="dialog"]')).toBeNull();
+		document.querySelector<HTMLFormElement>('#wishlist-categories-form')!.requestSubmit();
+		await vi.waitFor(() =>
+			expect(remoteMocks.save).toHaveBeenCalledWith({
+				wishlistId: 'wishlist-1',
+				customCategories: [],
+				presetKeys: [],
+				presetColors: [],
+				confirmedRemovalCategoryIds: [],
+			}),
+		);
 	});
 
-	it('keeps the persisted preset checkbox mounted and restores its focus after cancel and accept', async () => {
+	it('disables a persisted zero-use preset without confirmation', async () => {
 		remoteMocks.categories = [
 			category({ presetKey: preset.key, customLabel: null, usedCount: 0 }),
+		];
+		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+		const checkbox = screen.getByRole('checkbox', { name: preset.labels.cs });
+
+		await checkbox.click();
+
+		await expect.element(checkbox).not.toBeChecked();
+		expect(document.querySelector('[role="dialog"]')).toBeNull();
+	});
+
+	it('keeps the used persisted preset checkbox mounted and restores its focus after cancel and accept', async () => {
+		remoteMocks.categories = [
+			category({ presetKey: preset.key, customLabel: null, usedCount: 2 }),
 		];
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 		const checkbox = screen.getByRole('checkbox', { name: preset.labels.cs });
@@ -131,7 +147,7 @@ describe('WishlistCategorySettings', () => {
 	});
 
 	it('sends only confirmed persisted removals and clears them after a successful save', async () => {
-		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 0 })];
+		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 2 })];
 		remoteMocks.save.mockResolvedValue(undefined);
 		const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
 

@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
@@ -363,7 +363,8 @@ export async function resolveImportGiftCategoryAssignments(params: {
 
 /**
  * Reconciles the complete settings snapshot under one wishlist lock. Retained rows are updated
- * in place; confirmed removals de-assign their gifts and soft-delete the category atomically.
+ * in place; used removals require confirmation before their gifts are de-assigned and the category
+ * is soft-deleted atomically.
  */
 export async function saveGiftCategorySettings(
 	params: SaveGiftCategorySettingsInput,
@@ -410,11 +411,27 @@ export async function saveGiftCategorySettings(
 						: !requestedPresetSet.has(row.presetKey as GiftCategoryPresetKey)),
 			)
 			.map((row) => row.id);
+		const usedRemovalRows =
+			removalIds.length === 0
+				? []
+				: await tx
+						.select({ categoryId: gift.categoryId })
+						.from(gift)
+						.where(
+							and(
+								eq(gift.wishlistId, params.wishlistId),
+								inArray(gift.categoryId, removalIds),
+								isNull(gift.deletedAt),
+							),
+						)
+						.groupBy(gift.categoryId);
+		const usedRemovalIds = new Set(usedRemovalRows.flatMap((row) => row.categoryId ?? []));
+		const removalIdSet = new Set(removalIds);
 		const confirmedRemovalIds = new Set(params.confirmedRemovalCategoryIds);
 		if (
 			confirmedRemovalIds.size !== params.confirmedRemovalCategoryIds.length ||
-			confirmedRemovalIds.size !== removalIds.length ||
-			removalIds.some((id) => !confirmedRemovalIds.has(id))
+			params.confirmedRemovalCategoryIds.some((id) => !removalIdSet.has(id)) ||
+			[...usedRemovalIds].some((id) => !confirmedRemovalIds.has(id))
 		) {
 			error(400, SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH);
 		}
