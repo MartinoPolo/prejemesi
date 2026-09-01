@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { giftDetailModalVariants } from '$lib/components/blocks/gift/gift_detail_modal_variants.js';
+import { overlayCloseButtonClass } from '$lib/components/base/dialog/dialog_close_button.js';
+import { cn } from '$lib/utils.js';
 import {
 	ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES,
 	BUTTON_TEXT_SIZES,
@@ -44,6 +46,18 @@ describe('sticker button hover geometry', () => {
 
 		expect(styles.submitButton()).toContain('hover:translate-y-0');
 		expect(styles.releaseButton()).toContain('hover:translate-y-0');
+	});
+
+	it('keeps overlay close surfaces anchored at the logical top-right', () => {
+		const composedClasses = cn(
+			buttonVariants({ intent: 'ghost', size: 'icon-sm' }),
+			overlayCloseButtonClass,
+		);
+		const positioningClasses = composedClasses
+			.split(/\s+/)
+			.filter((className) => ['relative', 'absolute', 'fixed', 'sticky'].includes(className));
+
+		expect(positioningClasses).toEqual(['absolute']);
 	});
 });
 

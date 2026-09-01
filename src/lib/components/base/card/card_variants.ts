@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
 
 export const cardVariants = tv({
-	base: 'relative flex flex-col gap-6 bg-card text-card-foreground border-[2.5px] border-ink rounded-panel py-6 shadow-sticker transition-[transform,box-shadow] ease-spring',
+	base: 'relative flex flex-col gap-6 bg-card text-card-foreground border-[2.5px] border-ink rounded-panel py-6 shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:rotate-0',
 	variants: {
 		padding: {
 			none: '',
