@@ -71,7 +71,7 @@ export async function saveLockedWishlistSettings(
 }
 
 /** Persists a validated settings draft using the caller's transaction. */
-export async function persistWishlistSettings(
+async function persistWishlistSettings(
 	tx: GiftCreationTransaction,
 	row: Wishlist,
 	input: SaveWishlistSettingsInput,

@@ -538,8 +538,8 @@ test.describe('Wishlist per-slot crop (WYSIWYG stage)', () => {
 			await zoomSlider.press('ArrowRight');
 		}
 		await expect(page.getByText('120 %')).toBeVisible();
-		await page.getByTestId('wishlist-image-save').click();
-		await expect(page.getByText(/Obrázek seznamu byl uložen/)).toBeVisible({ timeout: 10_000 });
+		await page.getByTestId('wishlist-settings-save').click();
+		await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 });
 
 		// The header polaroid consumes the thumbnail slot at 1:1 (D4/REQ-5).
 		await page.goto(`/w/${shortId}`);
