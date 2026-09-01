@@ -8,6 +8,7 @@
 		ondirtychange?: (dirty: boolean, palette: Palette) => void;
 		discardVersion?: number;
 		commitVersion?: number;
+		disabled?: boolean;
 	}
 
 	let {
@@ -16,6 +17,7 @@
 		ondirtychange,
 		discardVersion = 0,
 		commitVersion = 0,
+		disabled = false,
 	}: Props = $props();
 	// svelte-ignore state_referenced_locally (the draft seeds once when the modal mounts)
 	let selected = $state(palette);
@@ -50,4 +52,4 @@
 	}
 </script>
 
-<WishlistPalettePicker value={selected} onchange={selectPalette} />
+<WishlistPalettePicker value={selected} onchange={selectPalette} {disabled} />

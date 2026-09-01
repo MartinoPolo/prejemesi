@@ -22,6 +22,7 @@ import {
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { seedNewWishlist } from './wishlist_create.js';
+import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import {
 	resolveWishlistRole,
 	verifyManagerAccess,
@@ -192,22 +193,44 @@ export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({
 	return database.transaction((tx) => seedNewWishlist(tx, user.id, input));
 });
 
-export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
-	const database = getDb();
-
-	// Any manager (recipient or správce) may edit list metadata/theme/image (issue #99).
-	const { wishlistRow: row } = await verifyManagerAccess(user.id, input.id);
+async function updateLockedWishlist(
+	tx: GiftCreationTransaction,
+	userId: string,
+	input: v.InferOutput<typeof UpdateWishlistInputSchema>,
+) {
+	const rows = await tx
+		.select()
+		.from(wishlist)
+		.where(and(eq(wishlist.id, input.id), isNull(wishlist.deletedAt)))
+		.limit(1)
+		.for('update');
+	const row = rows[0];
+	if (row === undefined) {
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+	if (row.recipientUserId !== userId) {
+		const managers = await tx
+			.select({ id: moderatorAssignment.id })
+			.from(moderatorAssignment)
+			.where(
+				and(
+					eq(moderatorAssignment.wishlistId, row.id),
+					eq(moderatorAssignment.userId, userId),
+					isNull(moderatorAssignment.deletedAt),
+				),
+			)
+			.limit(1);
+		if (managers[0] === undefined) {
+			error(403, SERVER_ERROR.ACCESS_DENIED);
+		}
+	}
 	if (row.status === 'archived') {
 		error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
 	}
 
-	// Edit lock: if shared, only allow limited field updates
 	const now = new Date();
 	const isShared = row.sharedAt !== null;
-
 	const updateData: Record<string, unknown> = { updatedAt: now };
-
-	// Title and description can always be updated
 	if (input.title !== undefined) {
 		updateData['title'] = input.title;
 	}
@@ -215,10 +238,6 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		updateData['description'] = input.description;
 	}
 
-	// Event date locks at share time, but stays editable within the debounced 2-min grace window
-	// (REQ-4). The window resets on each in-window edit, so it is keyed off `eventDateEditedAt`
-	// (the last edit) and falls back to `sharedAt` until then. Stale clients past the window are
-	// rejected here – the server is the authority (REQ-6).
 	const eventDateGraceOpen =
 		isShared && isWithinGraceWindow(row.eventDateEditedAt ?? row.sharedAt, now);
 	if (input.eventDate !== undefined && (!isShared || eventDateGraceOpen)) {
@@ -228,7 +247,14 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		}
 	}
 
-	// Image assignment + per-slot crop metadata can always be updated
+	if (
+		input.imageKey !== undefined &&
+		input.imageKey !== null &&
+		input.imageKey !== row.imageKey
+	) {
+		const { assertWishlistBannerAssignment } = await import('./wishlist_image_assignment.js');
+		await assertWishlistBannerAssignment(userId, input.imageKey, input.imageAssignmentToken);
+	}
 	if (input.imageKey !== undefined) {
 		updateData['imageKey'] = input.imageKey;
 	}
@@ -236,23 +262,29 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		updateData['imageSlots'] = input.imageSlots;
 	}
 
-	const [updated] = await database
+	const [updated] = await tx
 		.update(wishlist)
 		.set(updateData)
 		.where(eq(wishlist.id, input.id))
 		.returning();
+	return {
+		updated,
+		shortId: row.shortId,
+		replacedImageKey:
+			input.imageKey !== undefined && row.imageKey !== input.imageKey ? row.imageKey : null,
+	};
+}
 
-	// Storage cleanup (issue #107, REQ-6): a replaced or removed wishlist image
-	// leaves no unreferenced R2 object behind.
-	if (input.imageKey !== undefined && row.imageKey !== null && row.imageKey !== input.imageKey) {
-		await deleteObjectsBestEffort([row.imageKey]);
+export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
+	const database = getDb();
+	// Lock/read/update form one serialization point. Cleanup uses the key this transaction
+	// actually replaced, never a stale pre-transaction read from a competing image save.
+	const result = await database.transaction((tx) => updateLockedWishlist(tx, user.id, input));
+	if (result.replacedImageKey !== null) {
+		await deleteObjectsBestEffort([result.replacedImageKey]);
 	}
-
-	// Single-flight refresh (issue #108, REQ-3/4): the settings/wishlist pages track
-	// this query, so the saved metadata rides back on the command response.
-	singleFlightRefresh(getWishlistByShortId, row.shortId);
-
-	return updated;
+	singleFlightRefresh(getWishlistByShortId, result.shortId);
+	return result.updated;
 });
 
 /**

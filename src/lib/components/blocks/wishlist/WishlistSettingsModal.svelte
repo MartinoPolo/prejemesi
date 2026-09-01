@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { beforeNavigate, goto } from '$app/navigation';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
@@ -35,7 +35,12 @@
 	import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
 	import { revertWishlistToDraft } from '$lib/modules/sharing/sharing.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
-	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
+	import {
+		getServerErrorCode,
+		translateServerError,
+	} from '$lib/modules/errors/translate_server_error.js';
+	import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
+	import { getGiftCategorySettingsRows } from '$lib/modules/gift-categories/gift_categories.remote.js';
 	import {
 		REVERT_CAPABILITY,
 		type RevertCapability,
@@ -158,6 +163,7 @@
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let recipientNameDraft = $state(recipientDisplayName);
 	let detailsError = $state('');
+	let recipientError = $state('');
 	let saving = $state(false);
 	let imageDirty = $state(false);
 	let categoriesDirty = $state(false);
@@ -171,6 +177,20 @@
 	let guardOpen = $state(false);
 	let pendingAction = $state<null | (() => void)>(null);
 	let allowNavigation = false;
+	let categoryResetVersion = $state(0);
+
+	// Browsers prohibit custom dialogs during unload; beforeunload is the only standards-compliant guard.
+	onMount(() => {
+		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+			if (!open || !anyDirty) {
+				return;
+			}
+			event.preventDefault();
+			event.returnValue = true;
+		};
+		window.addEventListener('beforeunload', handleBeforeUnload);
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+	});
 
 	function dateTimestamp(value: Date | null): number | null {
 		return value?.getTime() ?? null;
@@ -203,6 +223,7 @@
 		detailsEventDate = toEventDate(wishlist.eventDate);
 		recipientNameDraft = recipientDisplayName;
 		detailsError = '';
+		recipientError = '';
 	}
 
 	const anyDirty = $derived(detailsDirty || categoriesDirty || paletteDirty || imageDirty);
@@ -254,7 +275,12 @@
 		const destination = `${navigation.to.url.pathname}${navigation.to.url.search}${navigation.to.url.hash}`;
 		requestGuarded(() => {
 			allowNavigation = true;
-			void goto(destination).finally(() => (allowNavigation = false));
+			void goto(destination)
+				.catch((thrown) => {
+					console.error('Failed to navigate from wishlist settings:', thrown);
+					toastError(m.toast_wishlist_details_save_error());
+				})
+				.finally(() => (allowNavigation = false));
 		});
 	});
 
@@ -266,9 +292,19 @@
 		if (detailsDirty && trimmedTitle === '') {
 			detailsError = m.wishlist_name_required();
 			activeTab = WISHLIST_SETTINGS_TABS.details;
+			await tick();
+			document.getElementById('wishlist-title')?.focus();
+			return false;
+		}
+		if (detailsDirty && isFreeTextRecipient && recipientNameDraft.trim() === '') {
+			recipientError = m.create_recipient_name_required();
+			activeTab = WISHLIST_SETTINGS_TABS.details;
+			await tick();
+			document.getElementById('wishlist-settings-recipient')?.focus();
 			return false;
 		}
 		detailsError = '';
+		recipientError = '';
 		saving = true;
 		try {
 			const input: SaveWishlistSettingsInput = { wishlistId: wishlist.id };
@@ -301,6 +337,23 @@
 			return true;
 		} catch (thrown) {
 			console.error('Failed to save wishlist settings:', thrown);
+			if (
+				getServerErrorCode(thrown) ===
+				SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH
+			) {
+				try {
+					await getGiftCategorySettingsRows(wishlist.id).refresh();
+				} catch (refreshError) {
+					console.error(
+						'Failed to refresh category settings after conflict:',
+						refreshError,
+					);
+				}
+				categoryDraft = undefined;
+				categoriesDirty = false;
+				categoryResetVersion += 1;
+				activeTab = WISHLIST_SETTINGS_TABS.categories;
+			}
 			toastError(translateServerError(thrown, m.toast_wishlist_details_save_error()));
 			return false;
 		} finally {
@@ -456,6 +509,7 @@
 
 		<div
 			data-testid="wishlist-settings-scroll-region"
+			inert={saving ? true : undefined}
 			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
 				? 'flex w-full min-w-0 flex-col gap-4'
 				: ''}"
@@ -516,7 +570,7 @@
 					</Tabs.Tab>
 				</Tabs.Root>
 
-				<!-- Podrobnosti: title / description / event date, saved via updateWishlist -->
+				<!-- Podrobnosti: title / description / event date, saved by the global composite save. -->
 				<div
 					role="tabpanel"
 					id="wishlist-settings-panel-details"
@@ -552,7 +606,19 @@
 										maxlength={RECIPIENT_NAME_MAX_LENGTH}
 										required
 										disabled={saving}
+										aria-invalid={recipientError !== '' ? true : undefined}
+										aria-describedby={recipientError !== ''
+											? 'wishlist-recipient-error'
+											: undefined}
 									/>
+									{#if recipientError !== ''}
+										<p
+											id="wishlist-recipient-error"
+											class="text-sm text-destructive"
+										>
+											{recipientError}
+										</p>
+									{/if}
 									<RecipientPreview name={recipientNameDraft} />
 								</div>
 							{:else}
@@ -671,7 +737,7 @@
 					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.categories}
 				>
-					{#key discardVersion}
+					{#key `${discardVersion}:${categoryResetVersion}`}
 						<WishlistCategorySettings
 							wishlistId={wishlist.id}
 							{saving}
@@ -682,7 +748,7 @@
 					{/key}
 				</div>
 
-				<!-- Vzhled: palette picker, auto-saves on click. -->
+				<!-- Vzhled: palette picker contributes a draft to the global composite save. -->
 				<div
 					role="tabpanel"
 					id="wishlist-settings-panel-appearance"
@@ -699,6 +765,7 @@
 							onselect={onpaletteselect}
 							{commitVersion}
 							{discardVersion}
+							disabled={saving}
 							ondirtychange={(dirty, palette) => {
 								paletteDirty = dirty;
 								paletteDraft = palette;

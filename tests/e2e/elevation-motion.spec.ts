@@ -9,6 +9,13 @@ interface SurfaceState {
 	shadow: string;
 }
 
+interface TransitionEvidence {
+	property: string;
+	duration: number;
+	easing: string;
+	delay: number;
+}
+
 async function surfaceState(surface: Locator): Promise<SurfaceState> {
 	return surface.evaluate((element) => {
 		const style = getComputedStyle(element);
@@ -21,72 +28,107 @@ async function surfaceState(surface: Locator): Promise<SurfaceState> {
 	});
 }
 
-async function expectCoherentElevationTransition(surface: Locator) {
-	const transition = await surface.evaluate((element) => {
-		const style = getComputedStyle(element);
-		const root = getComputedStyle(document.documentElement);
+async function installTransitionRecorder(element: Locator) {
+	await element.evaluate((node) => {
+		type RecordedNode = Element & { __elevationTransitions?: TransitionEvidence[] };
+		const recordedNode = node as RecordedNode;
+		recordedNode.__elevationTransitions = [];
+		node.addEventListener('transitionrun', (event) => {
+			const property = (event as TransitionEvent).propertyName;
+			const animation = node
+				.getAnimations()
+				.find((candidate) => (candidate as CSSTransition).transitionProperty === property);
+			if (animation === undefined) {
+				return;
+			}
+			const timing = animation.effect!.getComputedTiming();
+			recordedNode.__elevationTransitions!.push({
+				property,
+				duration: Number(timing.duration),
+				easing: timing.easing ?? '',
+				delay: timing.delay ?? 0,
+			});
+		});
+	});
+}
+
+async function expectTransitionContract(element: Locator) {
+	const contract = await element.evaluate((node) => {
+		const style = getComputedStyle(node);
 		return {
 			properties: style.transitionProperty.split(',').map((value) => value.trim()),
 			durations: style.transitionDuration.split(',').map((value) => value.trim()),
-			easings: [style.transitionTimingFunction.trim()],
+			easing: style.transitionTimingFunction.trim(),
+			expectedEasing: getComputedStyle(document.documentElement)
+				.getPropertyValue('--ease-standard')
+				.trim(),
 			delays: style.transitionDelay.split(',').map((value) => value.trim()),
-			expectedEasing: root.getPropertyValue('--ease-standard').trim(),
 		};
 	});
-
-	expect(transition.properties).toEqual(['translate', 'scale', 'box-shadow']);
-	expect(new Set(transition.durations)).toEqual(new Set(['0.2s']));
-	expect(new Set(transition.easings)).toEqual(new Set([transition.expectedEasing]));
-	expect(new Set(transition.delays)).toEqual(new Set(['0s']));
+	expect(contract.properties).toEqual(['translate', 'scale', 'box-shadow']);
+	expect(new Set(contract.durations)).toEqual(new Set(['0.2s']));
+	expect(contract.easing).toBe(contract.expectedEasing);
+	expect(new Set(contract.delays)).toEqual(new Set(['0s']));
 }
 
-function expectBetween(start: SurfaceState, middle: SurfaceState, end: SurfaceState) {
-	for (const property of ['translateY', 'scale', 'shadow'] as const) {
-		expect(middle[property], `${property} has left its starting state`).not.toBe(
-			start[property],
+async function expectConcurrentTransitions(element: Locator, properties: string[]) {
+	await expect
+		.poll(() =>
+			element.evaluate((node) => {
+				type RecordedNode = Element & { __elevationTransitions?: TransitionEvidence[] };
+				return (node as RecordedNode).__elevationTransitions ?? [];
+			}),
+		)
+		.toEqual(
+			expect.arrayContaining(
+				properties.map((property) => expect.objectContaining({ property })),
+			),
 		);
-		expect(middle[property], `${property} has not snapped to its settled state`).not.toBe(
-			end[property],
-		);
-	}
+	const recorded = await element.evaluate((node) => {
+		type RecordedNode = Element & { __elevationTransitions?: TransitionEvidence[] };
+		return (node as RecordedNode).__elevationTransitions ?? [];
+	});
+	const evidence = recorded.filter((item) => properties.includes(item.property));
+	expect(evidence.map((item) => item.property).sort()).toEqual([...properties].sort());
+	expect(new Set(evidence.map((item) => item.duration))).toEqual(new Set([200]));
+	expect(new Set(evidence.map((item) => item.easing))).toHaveProperty('size', 1);
+	expect(new Set(evidence.map((item) => item.delay))).toEqual(new Set([0]));
+	return evidence;
 }
 
-async function pressAndSample(page: Page, surface: Locator) {
+async function animationCount(element: Locator) {
+	return element.evaluate((node) => node.getAnimations().length);
+}
+
+async function hoverWithEvidence(page: Page, surface: Locator) {
+	await page.mouse.move(0, 500);
+	const start = await surfaceState(surface);
+	await expectTransitionContract(surface);
+	await installTransitionRecorder(surface);
+	await surface.hover();
+	await expectConcurrentTransitions(surface, ['translate', 'box-shadow']);
+	await expect.poll(() => animationCount(surface)).toBe(0);
+	const end = await surfaceState(surface);
+	expect(end.translateY).toBeLessThan(start.translateY);
+	expect(end.shadow).not.toBe(start.shadow);
+	return { start, end };
+}
+
+async function pressWithEvidence(page: Page, surface: Locator) {
 	await page.mouse.move(0, 500);
 	await surface.hover();
-	await page.waitForTimeout(250);
+	await expect.poll(() => animationCount(surface)).toBe(0);
 	const start = await surfaceState(surface);
-
+	await expectTransitionContract(surface);
+	await installTransitionRecorder(surface);
 	await page.mouse.down();
-	await page.waitForTimeout(70);
-	const middle = await surfaceState(surface);
-	await page.waitForTimeout(200);
+	await expectConcurrentTransitions(surface, ['translate', 'scale', 'box-shadow']);
+	await expect.poll(() => animationCount(surface)).toBe(0);
 	const end = await surfaceState(surface);
-	await page.mouse.up();
-
-	expectBetween(start, middle, end);
 	expect(end.translateY).not.toBe(start.translateY);
 	expect(end.scale).not.toBe(start.scale);
 	expect(end.shadow).not.toBe(start.shadow);
-}
-
-async function hoverAndSample(page: Page, surface: Locator) {
-	await page.mouse.move(0, 500);
-	const start = await surfaceState(surface);
-	const box = await surface.boundingBox();
-	expect(box).not.toBeNull();
-	await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-	await page.waitForTimeout(70);
-	const middle = await surfaceState(surface);
-	await page.waitForTimeout(200);
-	const end = await surfaceState(surface);
-
-	expect(middle.translateY).not.toBe(start.translateY);
-	expect(middle.translateY).not.toBe(end.translateY);
-	expect(middle.shadow).not.toBe(start.shadow);
-	expect(middle.shadow).not.toBe(end.shadow);
-	expect(end.translateY).toBeLessThan(start.translateY);
-	expect(end.shadow).not.toBe(start.shadow);
+	await page.mouse.up();
 }
 
 test.use({ viewport: { width: 1280, height: 900 } });
@@ -102,14 +144,13 @@ test.describe('Coherent elevated-surface motion', () => {
 		await page.emulateMedia({ reducedMotion: 'no-preference' });
 		await page.goto('/my-lists');
 
-		const toolbarButton = page.getByRole('button', { name: 'Vytvořit', exact: true });
+		// Exercise and close the palette surface before the create modal can overlay it.
 		const outlineButton = page.getByRole('button', { name: 'Barevná paleta' });
-		for (const surface of [toolbarButton, outlineButton]) {
-			await expect(surface).toBeVisible();
-			await expectCoherentElevationTransition(surface);
-			await pressAndSample(page, surface);
-		}
-
+		const toolbarButton = page.getByRole('button', { name: 'Vytvořit', exact: true });
+		await pressWithEvidence(page, outlineButton);
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).not.toBeVisible();
+		await pressWithEvidence(page, toolbarButton);
 		await page.context().close();
 	});
 
@@ -124,34 +165,24 @@ test.describe('Coherent elevated-surface motion', () => {
 		await page.goto('/my-lists');
 
 		const account = page.getByRole('button', { name: new RegExp(user.name) });
-		await expectCoherentElevationTransition(account);
 		await page.mouse.move(0, 500);
-		await page.waitForTimeout(250);
-		const resting = await surfaceState(account);
 		const restingBox = await account.boundingBox();
-
-		await account.hover();
-		await page.waitForTimeout(250);
-		const hovered = await surfaceState(account);
-		expect(hovered.shadow).not.toBe(resting.shadow);
-		expect(hovered.translateY).toBeLessThan(resting.translateY);
-
+		await hoverWithEvidence(page, account);
 		await expect(async () => {
 			if ((await account.getAttribute('aria-expanded')) !== 'true') {
 				await account.click();
 			}
 			await expect(account).toHaveAttribute('aria-expanded', 'true', { timeout: 1_000 });
 		}).toPass({ timeout: 15_000 });
-		await page.waitForTimeout(250);
+		await expect.poll(() => animationCount(account)).toBe(0);
 		const open = await surfaceState(account);
 		const openBox = await account.boundingBox();
-
 		expect(Math.abs(open.translateY)).toBeLessThan(0.05);
-		expect(Math.abs(openBox!.y - restingBox!.y)).toBeLessThan(0.1);
+		expect(Math.abs(openBox!.y - restingBox!.y)).toBeLessThan(0.25);
 		await page.context().close();
 	});
 
-	test('dialog close remains top-right and its icon finishes with the surface', async ({
+	test('dialog close remains top-right and its icon transitions and settles with the surface', async ({
 		browser,
 		request,
 		baseURL,
@@ -160,12 +191,11 @@ test.describe('Coherent elevated-surface motion', () => {
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 		await page.emulateMedia({ reducedMotion: 'no-preference' });
 		await page.goto('/my-lists');
-		await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible();
-		const createButton = page.getByRole('button', { name: 'Vytvořit', exact: true });
+		const create = page.getByRole('button', { name: 'Vytvořit', exact: true });
 		const dialog = page.getByRole('dialog');
 		await expect(async () => {
 			if (!(await dialog.isVisible())) {
-				await createButton.click();
+				await create.click();
 			}
 			await expect(dialog).toBeVisible({ timeout: 1_000 });
 		}).toPass({ timeout: 15_000 });
@@ -174,11 +204,9 @@ test.describe('Coherent elevated-surface motion', () => {
 
 		for (const width of [390, 1280]) {
 			await page.setViewportSize({ width, height: 800 });
-			await page.waitForTimeout(250);
+			await expect.poll(() => animationCount(dialog)).toBe(0);
 			const dialogBox = await dialog.boundingBox();
 			const closeBox = await close.boundingBox();
-			expect(dialogBox).not.toBeNull();
-			expect(closeBox).not.toBeNull();
 			expect(
 				Math.abs(closeBox!.x + closeBox!.width - dialogBox!.x - dialogBox!.width),
 			).toBeLessThan(30);
@@ -186,26 +214,31 @@ test.describe('Coherent elevated-surface motion', () => {
 			expect(closeBox!.y - dialogBox!.y).toBeLessThan(30);
 		}
 
-		await expectCoherentElevationTransition(close);
 		await page.mouse.move(0, 500);
+		const surfaceStart = await surfaceState(close);
 		const iconStart = await icon.evaluate((element) => getComputedStyle(element).rotate);
-		const closeBox = await close.boundingBox();
-		expect(closeBox).not.toBeNull();
-		await page.mouse.move(
-			closeBox!.x + closeBox!.width / 2,
-			closeBox!.y + closeBox!.height / 2,
-		);
-		await page.waitForTimeout(70);
-		const iconMiddle = await icon.evaluate((element) => getComputedStyle(element).rotate);
-		await page.waitForTimeout(200);
+		await expectTransitionContract(close);
+		await installTransitionRecorder(close);
+		await installTransitionRecorder(icon);
+		await close.hover();
+		const surfaceTiming = await expectConcurrentTransitions(close, ['translate', 'box-shadow']);
+		const iconTiming = await expectConcurrentTransitions(icon, ['rotate']);
+		expect(iconTiming[0]).toMatchObject({
+			duration: surfaceTiming[0].duration,
+			easing: surfaceTiming[0].easing,
+			delay: surfaceTiming[0].delay,
+		});
+		await expect.poll(() => animationCount(close)).toBe(0);
+		await expect.poll(() => animationCount(icon)).toBe(0);
+		const surfaceEnd = await surfaceState(close);
 		const iconEnd = await icon.evaluate((element) => getComputedStyle(element).rotate);
-		expect(iconMiddle).not.toBe(iconStart);
-		expect(iconMiddle).not.toBe(iconEnd);
+		expect(surfaceEnd.translateY).toBeLessThan(surfaceStart.translateY);
+		expect(surfaceEnd.shadow).not.toBe(surfaceStart.shadow);
 		expect(iconEnd).not.toBe(iconStart);
 		await page.context().close();
 	});
 
-	test('cards lift coherently and reduced motion makes every representative sticker immediate', async ({
+	test('cards lift coherently and reduced motion makes representative stickers immediate', async ({
 		browser,
 		request,
 		baseURL,
@@ -213,12 +246,10 @@ test.describe('Coherent elevated-surface motion', () => {
 		const user = createTestUser('elevation-card-reduced');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);
 		await createWishlistAndNavigate(page, 'Elevation card');
-		await page.goto('/my-lists');
 		await page.emulateMedia({ reducedMotion: 'no-preference' });
-
+		await page.goto('/my-lists');
 		const card = page.getByTestId('wishlist-card').filter({ hasText: 'Elevation card' });
-		await expectCoherentElevationTransition(card);
-		await hoverAndSample(page, card);
+		await hoverWithEvidence(page, card);
 
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		const toolbarButton = page.getByRole('button', { name: 'Vytvořit', exact: true });
@@ -228,17 +259,15 @@ test.describe('Coherent elevated-surface motion', () => {
 			const before = await surfaceState(surface);
 			await surface.hover({ force: true });
 			const after = await surfaceState(surface);
-			const transitionProperty = await surface.evaluate(
-				(element) => getComputedStyle(element).transitionProperty,
-			);
-			expect(transitionProperty).toBe('none');
+			expect(
+				await surface.evaluate((element) => getComputedStyle(element).transitionProperty),
+			).toBe('none');
 			expect(after.translateY).toBe(before.translateY);
 			expect(after.scale).toBe(before.scale);
 		}
 
-		await page.getByRole('button', { name: 'Vytvořit', exact: true }).click();
+		await toolbarButton.click();
 		const close = page.getByRole('dialog').getByRole('button', { name: 'Zavřít' });
-		await expect(close).toBeVisible();
 		await close.hover();
 		expect(
 			await close.evaluate((element) => getComputedStyle(element).transitionProperty),

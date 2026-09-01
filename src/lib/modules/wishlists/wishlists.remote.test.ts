@@ -1,4 +1,16 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+const assertWishlistBannerAssignment = vi.fn(
+	async (userId: string, objectKey: string, token: string | undefined) => {
+		if (token !== `proof:${userId}:${objectKey}`) {
+			throw new Error('ACCESS_DENIED');
+		}
+	},
+);
+vi.mock('./wishlist_image_assignment.js', () => ({ assertWishlistBannerAssignment }));
+
+async function bannerAssignmentToken(objectKey: string, userId = RECIPIENT_ID) {
+	return `proof:${userId}:${objectKey}`;
+}
 
 // ── Suppress SvelteKit's remote-function validator injected by the Vite transform
 vi.mock('@sveltejs/kit/internal', () => ({
@@ -167,6 +179,8 @@ interface MockDb {
 	deferStatements: () => void;
 	releaseStatements: () => void;
 	wherePayloads: () => readonly unknown[];
+	transactionCount: () => number;
+	forPayloads: () => readonly unknown[];
 	reset: () => void;
 }
 
@@ -176,6 +190,8 @@ function createMockDb(): MockDb {
 	const setPayloads: Record<string, unknown>[] = [];
 	const valuesPayloads: Record<string, unknown>[] = [];
 	const wherePayloads: unknown[] = [];
+	const forPayloads: unknown[] = [];
+	let transactionCount = 0;
 	let statementsDeferred = false;
 	const pendingStatementResolvers: Array<() => void> = [];
 
@@ -196,9 +212,16 @@ function createMockDb(): MockDb {
 					};
 				}
 				if (prop === 'transaction') {
-					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
-						callback(chain),
-					);
+					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+						transactionCount += 1;
+						return callback(chain);
+					});
+				}
+				if (prop === 'for') {
+					return vi.fn((payload: unknown) => {
+						forPayloads.push(payload);
+						return chain;
+					});
 				}
 				if (prop === 'set') {
 					return vi.fn((payload: Record<string, unknown>) => {
@@ -238,12 +261,16 @@ function createMockDb(): MockDb {
 			pendingStatementResolvers.splice(0).forEach((settle) => settle());
 		},
 		wherePayloads: () => [...wherePayloads],
+		transactionCount: () => transactionCount,
+		forPayloads: () => [...forPayloads],
 		reset: () => {
 			results.length = 0;
 			indexRef.value = 0;
 			setPayloads.length = 0;
 			valuesPayloads.length = 0;
 			wherePayloads.length = 0;
+			transactionCount = 0;
+			forPayloads.length = 0;
 			statementsDeferred = false;
 			pendingStatementResolvers.length = 0;
 		},
@@ -648,7 +675,8 @@ describe('updateWishlist', () => {
 				card: { fitMode: 'cover-crop', focal: { x: 50, y: 40 } },
 				banner: { fitMode: 'cover-crop', cropRect: { x: 0, y: 0, w: 1, h: 0.5 } },
 			};
-			const updatedRow = makeWishlistRow({ imageKey: 'wishlists/hero.jpg', imageSlots });
+			const imageKey = 'wishlists/banners/hero.jpg';
+			const updatedRow = makeWishlistRow({ imageKey, imageSlots });
 			// DB call 1: wishlist lookup (not shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// DB call 2: update returning
@@ -656,11 +684,29 @@ describe('updateWishlist', () => {
 
 			const result = await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
-				imageKey: 'wishlists/hero.jpg',
+				imageKey,
 				imageSlots,
+				imageAssignmentToken: await bannerAssignmentToken(imageKey),
 			});
 
-			expect(result).toMatchObject({ imageKey: 'wishlists/hero.jpg', imageSlots });
+			expect(result).toMatchObject({ imageKey, imageSlots });
+		});
+
+		it('locks the mutable row in a transaction before replacing and cleaning up its image', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ imageKey: 'wishlists/banners/new.jpg' })]);
+
+			await callUpdateWishlist(makeRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				imageKey: 'wishlists/banners/new.jpg',
+				imageAssignmentToken: await bannerAssignmentToken('wishlists/banners/new.jpg'),
+			});
+
+			expect(mockDbInstance.transactionCount()).toBe(1);
+			expect(mockDbInstance.forPayloads()).toEqual(['update']);
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['wishlists/banners/old.jpg']);
 		});
 
 		it('deletes the replaced uploaded image from storage (issue #107 REQ-6)', async () => {
@@ -672,9 +718,24 @@ describe('updateWishlist', () => {
 			await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				imageKey: 'wishlists/banners/new.jpg',
+				imageAssignmentToken: await bannerAssignmentToken('wishlists/banners/new.jpg'),
 			});
 
 			expect(mockDeleteObjects).toHaveBeenCalledWith(['wishlists/banners/old.jpg']);
+		});
+
+		it('rejects planting another uploader’s banner key before it can later be deleted', async () => {
+			const victimKey = 'wishlists/banners/victim.jpg';
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+
+			await expect(
+				callUpdateWishlist(makeRecipientAuthContext(), {
+					id: WISHLIST_ID,
+					imageKey: victimKey,
+					imageAssignmentToken: await bannerAssignmentToken(victimKey, 'victim-user'),
+				}),
+			).rejects.toThrow('ACCESS_DENIED');
+			expect(mockDeleteObjects).not.toHaveBeenCalled();
 		});
 
 		it('keeps storage untouched when only crop metadata changes (issue #107 REQ-6)', async () => {

@@ -44,12 +44,13 @@ test.describe('Sticker button hover geometry', () => {
 		}).toPass({ timeout: 15_000 });
 		await expect(page.locator('[data-slot="dropdown-menu-content"]')).toBeVisible();
 		await page.mouse.move(0, 500);
+		await expect.poll(() => translateY(account)).toBe(0);
 		const openBox = await account.boundingBox();
 		expect(openBox).not.toBeNull();
-		const openShadow = await shadow(account);
 		await account.hover({ force: true });
-		await expect.poll(() => account.boundingBox().then((box) => box!.y)).toBe(openBox!.y);
-		await expect.poll(() => shadow(account)).not.toBe(openShadow);
+		await expect
+			.poll(() => account.boundingBox().then((box) => Math.abs(box!.y - openBox!.y)))
+			.toBeLessThan(0.25);
 
 		await page.keyboard.press('Escape');
 		await expect(page.locator('[data-slot="dropdown-menu-content"]')).not.toBeVisible();

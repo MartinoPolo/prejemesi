@@ -57,11 +57,13 @@
 			draft: {
 				imageKey: string | null;
 				imageSlots: WishlistImageSlots | null;
+				assignmentToken?: string;
 			} | null,
 		) => void;
 		onsave?: (next: {
 			imageKey: string | null;
 			imageSlots: WishlistImageSlots | null;
+			imageAssignmentToken?: string;
 		}) => boolean | void | Promise<boolean | void>;
 	}
 
@@ -104,6 +106,7 @@
 	// One-time seed from props: the editor edits a local copy and re-seeds on remount.
 	// svelte-ignore state_referenced_locally
 	let assignedKey = $state<string | null>(imageKey);
+	let assignmentToken = $state<string | undefined>();
 	// svelte-ignore state_referenced_locally
 	let slotState = $state<Record<WishlistEditorSlot, SlotEditState>>(initSlots(imageSlots));
 	let activeSlot = $state<WishlistEditorSlot>('card');
@@ -130,7 +133,15 @@
 		ondirtychange?.(dirty);
 		ondraftchange?.(
 			dirty
-				? { imageKey: assignedKey, imageSlots: assignedKey === null ? null : buildSlots() }
+				? {
+						imageKey: assignedKey,
+						imageSlots: assignedKey === null ? null : buildSlots(),
+						...(assignedKey !== null &&
+						assignedKey !== imageKey &&
+						assignmentToken !== undefined
+							? { assignmentToken }
+							: {}),
+					}
 				: null,
 		);
 	});
@@ -232,6 +243,7 @@
 
 	function handleUpload(result: UploadResult) {
 		assignedKey = result.objectKey;
+		assignmentToken = result.deleteToken;
 		pendingUploads.track(result);
 		// A replaced image starts from fresh centered crops; every editor slot is
 		// rebuilt on save (the retained banner JSON stays untouched).
@@ -248,6 +260,7 @@
 
 	function handleRemove() {
 		assignedKey = null;
+		assignmentToken = undefined;
 		slotState = initSlots(null);
 		dirtySlots.clear();
 	}
@@ -287,6 +300,9 @@
 		const saved = await onsave({
 			imageKey: assignedKey,
 			imageSlots: hasImage ? buildSlots() : null,
+			...(assignedKey !== null && assignedKey !== imageKey && assignmentToken !== undefined
+				? { imageAssignmentToken: assignmentToken }
+				: {}),
 		});
 		if (saved === false) {
 			return;

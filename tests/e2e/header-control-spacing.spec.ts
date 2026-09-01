@@ -6,38 +6,48 @@ const VIEWPORT_WIDTHS = [320, 767, 768, 1039, 1040, 1280] as const;
 const MIN_PAINTED_SEPARATION = 4;
 
 interface PaintedControl {
-	left: number;
+	paintedLeft: number;
 	paintedRight: number;
 	top: number;
 }
 
 async function paintedControls(navRight: Locator): Promise<PaintedControl[]> {
 	return navRight.locator('button:visible, a:visible').evaluateAll((elements) => {
-		const positiveShadowOffset = (boxShadow: string) => {
+		const shadowExtents = (boxShadow: string) => {
 			if (boxShadow === 'none') {
-				return 0;
+				return { left: 0, right: 0 };
 			}
 			const layers = boxShadow.match(/(?:[^,(]|\([^)]*\))+/g) ?? [];
-			return Math.max(
-				0,
-				...layers.map((layer) => {
+			return layers.reduce(
+				(extents, layer) => {
+					if (/\binset\b/.test(layer)) {
+						return extents;
+					}
 					const lengths = layer.match(/-?\d+(?:\.\d+)?px/g) ?? [];
-					return Math.max(0, Number.parseFloat(lengths[0] ?? '0'));
-				}),
+					const horizontal = Number.parseFloat(lengths[0] ?? '0');
+					const blur = Math.max(0, Number.parseFloat(lengths[2] ?? '0'));
+					const spread = Number.parseFloat(lengths[3] ?? '0');
+					const radius = Math.max(0, blur + spread);
+					return {
+						left: Math.max(extents.left, radius - horizontal),
+						right: Math.max(extents.right, radius + horizontal),
+					};
+				},
+				{ left: 0, right: 0 },
 			);
 		};
 
 		return elements
 			.map((element) => {
 				const rect = element.getBoundingClientRect();
-				const style = getComputedStyle(element);
+				const extents = shadowExtents(getComputedStyle(element).boxShadow);
 				return {
-					left: rect.left,
-					paintedRight: rect.right + positiveShadowOffset(style.boxShadow),
+					paintedLeft: rect.left - extents.left,
+					paintedRight: rect.right + extents.right,
 					top: rect.top,
 				};
 			})
-			.sort((a, b) => a.left - b.left);
+			.sort((a, b) => a.paintedLeft - b.paintedLeft);
 	});
 }
 
@@ -49,7 +59,10 @@ async function expectPaintedSeparation(navRight: Locator, width: number, state: 
 				return Math.min(
 					...controls
 						.slice(0, -1)
-						.map((control, index) => controls[index + 1].left - control.paintedRight),
+						.map(
+							(control, index) =>
+								controls[index + 1].paintedLeft - control.paintedRight,
+						),
 				);
 			},
 			{ message: `painted header controls stay separated at ${width}px (${state})` },

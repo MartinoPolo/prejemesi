@@ -15,12 +15,8 @@ const transaction = vi.fn(async (callback: (database: typeof tx) => Promise<unkn
 );
 vi.mock('$lib/server/db/index.js', () => ({ getDb: () => ({ transaction }) }));
 
-const verifyManagerAccess = vi.fn();
-const assertWishlistMutable = vi.fn();
-vi.mock('./wishlist_access.js', () => ({ verifyManagerAccess, assertWishlistMutable }));
-
-const persistWishlistSettings = vi.fn();
-vi.mock('./wishlist_settings_service.js', () => ({ persistWishlistSettings }));
+const saveLockedWishlistSettings = vi.fn();
+vi.mock('./wishlist_settings_service.js', () => ({ saveLockedWishlistSettings }));
 
 const deleteObjectsBestEffort = vi.fn();
 vi.mock('$lib/server/storage/r2.js', () => ({ deleteObjectsBestEffort }));
@@ -50,8 +46,10 @@ describe('saveWishlistSettings', () => {
 			imageKey: 'wishlists/old.webp',
 			status: 'active',
 		};
-		verifyManagerAccess.mockResolvedValue({ wishlistRow });
-		persistWishlistSettings.mockResolvedValue(undefined);
+		saveLockedWishlistSettings.mockResolvedValue({
+			replacedImageKey: wishlistRow.imageKey,
+			shortId: wishlistRow.shortId,
+		});
 		const input = {
 			wishlistId: 'wishlist-1',
 			details: { title: 'Nový název', description: null },
@@ -73,9 +71,9 @@ describe('saveWishlistSettings', () => {
 		await call({ user: { id: 'user-1' } }, input);
 
 		expect(transaction).toHaveBeenCalledOnce();
-		expect(persistWishlistSettings).toHaveBeenCalledWith(tx, wishlistRow, input);
+		expect(saveLockedWishlistSettings).toHaveBeenCalledWith(tx, 'user-1', input);
 		expect(deleteObjectsBestEffort).toHaveBeenCalledWith(['wishlists/old.webp']);
-		expect(persistWishlistSettings.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(saveLockedWishlistSettings.mock.invocationCallOrder[0]).toBeLessThan(
 			deleteObjectsBestEffort.mock.invocationCallOrder[0],
 		);
 		expect(singleFlightRefresh).toHaveBeenCalledWith(getWishlistByShortId, 'short-1');

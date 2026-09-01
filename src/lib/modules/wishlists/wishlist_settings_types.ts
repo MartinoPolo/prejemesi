@@ -22,6 +22,7 @@ export const SaveWishlistSettingsInputSchema = v.object({
 		v.object({
 			imageKey: v.nullable(v.string()),
 			imageSlots: v.nullable(WishlistImageSlotsSchema),
+			assignmentToken: v.optional(v.string()),
 		}),
 	),
 });
@@ -36,5 +37,9 @@ export interface SaveWishlistSettingsInput {
 	};
 	categories?: Omit<v.InferOutput<typeof SaveGiftCategorySettingsInputSchema>, 'wishlistId'>;
 	palette?: Palette;
-	image?: { imageKey: string | null; imageSlots: WishlistImageSlots | null };
+	image?: {
+		imageKey: string | null;
+		imageSlots: WishlistImageSlots | null;
+		assignmentToken?: string;
+	};
 }

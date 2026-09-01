@@ -108,6 +108,8 @@ export interface UpdateWishlistInput {
 	eventDate?: Date | null;
 	imageKey?: string | null;
 	imageSlots?: WishlistImageSlots | null;
+	/** Upload proof, required only when assigning a newly uploaded non-null banner key. */
+	imageAssignmentToken?: string;
 }
 
 export const UpdateWishlistInputSchema = v.object({
@@ -117,6 +119,7 @@ export const UpdateWishlistInputSchema = v.object({
 	eventDate: v.optional(v.nullable(v.date())),
 	imageKey: v.optional(v.nullable(v.string())),
 	imageSlots: v.optional(v.nullable(WishlistImageSlotsSchema)),
+	imageAssignmentToken: v.optional(v.string()),
 });
 
 /**

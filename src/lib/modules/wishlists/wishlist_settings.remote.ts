@@ -6,35 +6,29 @@ import {
 	getGiftCategorySettingsRows,
 } from '$lib/modules/gift-categories/gift_categories.remote.js';
 import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
-import { verifyManagerAccess, assertWishlistMutable } from './wishlist_access.js';
 import { getWishlistByShortId } from './wishlists.remote.js';
-import { persistWishlistSettings } from './wishlist_settings_service.js';
+import { saveLockedWishlistSettings } from './wishlist_settings_service.js';
 import { SaveWishlistSettingsInputSchema } from './wishlist_settings_types.js';
 
 export const saveWishlistSettings = guardedCommand(
 	SaveWishlistSettingsInputSchema,
 	async ({ user }, input) => {
 		const database = getDb();
-		const { wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
-		assertWishlistMutable(wishlistRow);
+		const { replacedImageKey, shortId } = await database.transaction((tx) =>
+			saveLockedWishlistSettings(tx, user.id, input),
+		);
 
-		await database.transaction((tx) => persistWishlistSettings(tx, wishlistRow, input));
-
-		// R2 cannot participate in the database transaction. Delete the previously persisted
-		// object only after commit; the editor owns cleanup of staged, uncommitted uploads.
-		if (
-			input.image !== undefined &&
-			wishlistRow.imageKey !== null &&
-			wishlistRow.imageKey !== input.image.imageKey
-		) {
-			await deleteObjectsBestEffort([wishlistRow.imageKey]);
+		// R2 cannot participate in the database transaction. The locked transaction returns
+		// the key it actually replaced, so concurrent A→B→C saves clean both A and B.
+		if (replacedImageKey !== null) {
+			await deleteObjectsBestEffort([replacedImageKey]);
 		}
 
-		void singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
+		void singleFlightRefresh(getWishlistByShortId, shortId);
 		if (input.categories !== undefined) {
-			void singleFlightRefresh(getGiftCategories, wishlistRow.id);
-			void singleFlightRefresh(getGiftCategorySettingsRows, wishlistRow.id);
-			void singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+			void singleFlightRefresh(getGiftCategories, input.wishlistId);
+			void singleFlightRefresh(getGiftCategorySettingsRows, input.wishlistId);
+			void singleFlightRefresh(getGiftsByWishlistShortId, shortId);
 		}
 	},
 );
