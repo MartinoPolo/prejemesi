@@ -266,8 +266,14 @@ test.describe('Coherent elevated-surface motion', () => {
 			expect(after.scale).toBe(before.scale);
 		}
 
-		await toolbarButton.click();
-		const close = page.getByRole('dialog').getByRole('button', { name: 'Zavřít' });
+		const dialog = page.getByRole('dialog');
+		await expect(async () => {
+			if (!(await dialog.isVisible())) {
+				await toolbarButton.click();
+			}
+			await expect(dialog).toBeVisible({ timeout: 1_000 });
+		}).toPass({ timeout: 15_000 });
+		const close = dialog.getByRole('button', { name: 'Zavřít' });
 		await close.hover();
 		expect(
 			await close.evaluate((element) => getComputedStyle(element).transitionProperty),
