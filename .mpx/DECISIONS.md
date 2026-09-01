@@ -211,6 +211,13 @@ What: Users toggle between dark, light, and system mode. This is independent of 
 Why: Standard accessibility expectation. Per-user because it's a display preference, not content.
 Rejected: Per-wishlist mode (visitors should control their own viewing comfort).
 
+### Wishlist settings use one staged draft and global save
+
+Decided: 2026-09-01
+What: The Details, Categories, Appearance, and Image/Crops tabs share one staged settings draft. A global Save button is visible from every tab, persists all dirty settings together, and closes only after complete success. Palette changes preview locally but persist only on Save. Tab switches preserve drafts; closing, leaving, launching Import, or starting a Danger action with unsaved changes offers Save and continue, Discard, or Continue editing. Import/Export and Danger remain immediate workflows rather than staged settings. Tabs stay in one horizontally scrollable row and are ordered Details → Categories → Appearance → Image/Crops → Import/Export → Danger Zone.
+Why: Per-tab persistence mixed immediate and staged behavior, making it unclear what was saved and allowing changes to be lost. One draft and one exit guard give every editable setting the same predictable lifecycle without incorrectly treating imports or destructive actions as form fields.
+Rejected: Per-tab save buttons; immediate palette persistence; prompts while switching tabs; staging import and destructive actions; a stretched vertical tablet tablist.
+
 ### Three nav pages, no Dashboard
 
 Decided: 2026-05-30 (revised from 2026-05-29) — **Revised 2026-08-07** by "Logged-in home: Přehled overview at /home" below (Moje seznamy is no longer the default/home page; the three nav pages themselves remain).
