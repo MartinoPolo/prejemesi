@@ -370,7 +370,7 @@ describe('GiftDetailForm image backgrounds (issue #252)', () => {
 });
 
 describe('GiftDetailForm price-range UI (issue #171)', () => {
-	it('applies the pre-key price magnitude to ArrowUp and ArrowDown without grid snapping', async () => {
+	it('applies reversible second-highest-order stepping to ArrowUp and ArrowDown', async () => {
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift({ price: 99.99 }),
@@ -379,11 +379,11 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 
 		await priceInput.click();
 		await userEvent.keyboard('{ArrowUp}');
-		await expect.element(priceInput).toHaveValue(109.99);
+		await expect.element(priceInput).toHaveValue(100.99);
 
 		await priceInput.fill('100.08');
 		await userEvent.keyboard('{ArrowDown}');
-		await expect.element(priceInput).toHaveValue(0.08);
+		await expect.element(priceInput).toHaveValue(99.08);
 	});
 
 	it('adjusts both range bounds independently from each bound pre-key value', async () => {
@@ -402,7 +402,7 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		await maxInput.click();
 		await userEvent.keyboard('{ArrowDown}');
 		await expect.element(minInput).toHaveValue(10.99);
-		await expect.element(maxInput).toHaveValue(0.08);
+		await expect.element(maxInput).toHaveValue(99.08);
 	});
 
 	it('uses magnitude stepping for focused single-price wheel and cancels page scrolling', async () => {
@@ -421,7 +421,7 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		const focusedWheel = new WheelEvent('wheel', { deltaY: -1, cancelable: true });
 		priceInput.element().dispatchEvent(focusedWheel);
 		expect(focusedWheel.defaultPrevented).toBe(true);
-		await expect.element(priceInput).toHaveValue(109.99);
+		await expect.element(priceInput).toHaveValue(100.99);
 	});
 
 	it('uses the same focused wheel handling independently for both range bounds', async () => {
@@ -444,7 +444,7 @@ describe('GiftDetailForm price-range UI (issue #171)', () => {
 		maxInput.element().dispatchEvent(maxWheel);
 		expect(maxWheel.defaultPrevented).toBe(true);
 		await expect.element(minInput).toHaveValue(10.99);
-		await expect.element(maxInput).toHaveValue(0.08);
+		await expect.element(maxInput).toHaveValue(99.08);
 	});
 
 	it('reopens and submits a decimal single price (issue #250 REQ-1, REQ-4)', async () => {
