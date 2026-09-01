@@ -6,6 +6,7 @@ import { normalizeGiftLinks } from './gift_url.js';
 import { DEFAULT_GIFT_CURRENCY, type GiftLink } from './types.js';
 import { DEFAULT_IMAGE_METADATA, type ImageMetadata } from '$lib/modules/images/types.js';
 import { coalesceNewGiftDigests } from '$lib/modules/notifications/new_gift_digest.js';
+import { assertActiveGiftCategoryAssignment } from '$lib/modules/gift-categories/gift_categories_service.js';
 
 export type GiftCreationErrorCode =
 	| 'wishlist-not-found'
@@ -34,6 +35,7 @@ export interface NormalizedGiftCreationInput {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
+	categoryId?: string | null;
 }
 
 export type GiftCreationDatabase = Pick<ReturnType<typeof getDb>, 'transaction'>;
@@ -91,7 +93,12 @@ export async function appendGiftsUsingTransaction(
 		.from(gift)
 		.where(and(eq(gift.wishlistId, input.wishlistId), isNull(gift.deletedAt)));
 	let nextSortOrder = Number(maxSort?.maxSort ?? -1) + 1;
-	const rows = input.gifts.map((item) => {
+	const categoryIds = await Promise.all(
+		input.gifts.map((item) =>
+			assertActiveGiftCategoryAssignment(tx, input.wishlistId, item.categoryId),
+		),
+	);
+	const rows = input.gifts.map((item, index) => {
 		const allocatedSortOrder = nextSortOrder++;
 		const imageUrl = item.imageUrl ?? null;
 		const imageKey = item.imageKey ?? null;
@@ -111,6 +118,7 @@ export async function appendGiftsUsingTransaction(
 					: null,
 			quantity: item.quantity ?? 1,
 			priorityLevelId: item.priorityLevelId ?? null,
+			categoryId: categoryIds[index] ?? null,
 			sortOrder: allocatedSortOrder,
 		};
 	});

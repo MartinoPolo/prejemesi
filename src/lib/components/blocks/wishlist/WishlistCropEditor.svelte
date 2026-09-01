@@ -15,8 +15,9 @@
 	import SlotPreviewCard from './SlotPreviewCard.svelte';
 	import { toastError } from '$lib/components/base/toast/index.js';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
-	import UploadIcon from '@lucide/svelte/icons/upload';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { untrack } from 'svelte';
+	import WishlistSettingsSaveButton from './WishlistSettingsSaveButton.svelte';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
@@ -49,10 +50,35 @@
 		/** Wishlist title, used for accessible alt text. */
 		title: string;
 		isSaving?: boolean;
-		onsave: (next: { imageKey: string | null; imageSlots: WishlistImageSlots | null }) => void;
+		formId?: string;
+		commitVersion?: number;
+		ondirtychange?: (dirty: boolean) => void;
+		ondraftchange?: (
+			draft: {
+				imageKey: string | null;
+				imageSlots: WishlistImageSlots | null;
+				assignmentToken?: string;
+			} | null,
+		) => void;
+		onsave?: (next: {
+			imageKey: string | null;
+			imageSlots: WishlistImageSlots | null;
+			imageAssignmentToken?: string;
+		}) => boolean | void | Promise<boolean | void>;
 	}
 
-	let { imageKey, imageSlots, themeEmoji, title, isSaving = false, onsave }: Props = $props();
+	let {
+		imageKey,
+		imageSlots,
+		themeEmoji,
+		title,
+		isSaving = false,
+		formId,
+		commitVersion = 0,
+		ondirtychange,
+		ondraftchange,
+		onsave,
+	}: Props = $props();
 
 	/** Per-slot editing state: the crop rectangle is the source of truth; focal+zoom derive from it. */
 	interface SlotEditState {
@@ -80,12 +106,74 @@
 	// One-time seed from props: the editor edits a local copy and re-seeds on remount.
 	// svelte-ignore state_referenced_locally
 	let assignedKey = $state<string | null>(imageKey);
+	let assignmentToken = $state<string | undefined>();
 	// svelte-ignore state_referenced_locally
 	let slotState = $state<Record<WishlistEditorSlot, SlotEditState>>(initSlots(imageSlots));
 	let activeSlot = $state<WishlistEditorSlot>('card');
 	// Slots edited in this session; untouched slots keep their persisted metadata
 	// verbatim on save so unrelated saves never silently reframe them (#116 D5).
 	const dirtySlots = new SvelteSet<WishlistEditorSlot>();
+
+	function slotSnapshot(slot: WishlistEditorSlot): string {
+		return JSON.stringify(slotState[slot]);
+	}
+
+	function currentSlotSnapshots(): Record<WishlistEditorSlot, string> {
+		return Object.fromEntries(
+			WISHLIST_EDITOR_SLOTS.map((slot) => [slot, slotSnapshot(slot)]),
+		) as Record<WishlistEditorSlot, string>;
+	}
+
+	let baselineAssignedKey = $state(untrack(() => assignedKey));
+	let baselineSlotSnapshots = $state(untrack(currentSlotSnapshots));
+	// svelte-ignore state_referenced_locally (one-time version seed)
+	let seenCommitVersion = $state(commitVersion);
+	const dirty = $derived(assignedKey !== baselineAssignedKey || dirtySlots.size > 0);
+	$effect(() => {
+		ondirtychange?.(dirty);
+		ondraftchange?.(
+			dirty
+				? {
+						imageKey: assignedKey,
+						imageSlots: assignedKey === null ? null : buildSlots(),
+						...(assignedKey !== null &&
+						assignedKey !== imageKey &&
+						assignmentToken !== undefined
+							? { assignmentToken }
+							: {}),
+					}
+				: null,
+		);
+	});
+	$effect(() => {
+		if (commitVersion !== seenCommitVersion) {
+			seenCommitVersion = commitVersion;
+			baselineAssignedKey = assignedKey;
+			baselineSlotSnapshots = currentSlotSnapshots();
+			dirtySlots.clear();
+			void pendingUploads.commit(assignedKey);
+		}
+	});
+	$effect(() => {
+		if (assignedKey !== baselineAssignedKey) {
+			return;
+		}
+		const nextBaseline = { ...baselineSlotSnapshots };
+		let baselineChanged = false;
+		for (const slot of WISHLIST_EDITOR_SLOTS) {
+			if (dirtySlots.has(slot)) {
+				continue;
+			}
+			const currentSnapshot = slotSnapshot(slot);
+			if (currentSnapshot !== nextBaseline[slot]) {
+				nextBaseline[slot] = currentSnapshot;
+				baselineChanged = true;
+			}
+		}
+		if (baselineChanged) {
+			baselineSlotSnapshots = nextBaseline;
+		}
+	});
 
 	// Uploads from this editor session that are not saved yet (issue #107, REQ-6).
 	const pendingUploads = createPendingUploads();
@@ -143,11 +231,19 @@
 	}
 
 	function markDirty(slot: WishlistEditorSlot) {
-		dirtySlots.add(slot);
+		if (
+			assignedKey !== baselineAssignedKey ||
+			slotSnapshot(slot) !== baselineSlotSnapshots[slot]
+		) {
+			dirtySlots.add(slot);
+		} else {
+			dirtySlots.delete(slot);
+		}
 	}
 
 	function handleUpload(result: UploadResult) {
 		assignedKey = result.objectKey;
+		assignmentToken = result.deleteToken;
 		pendingUploads.track(result);
 		// A replaced image starts from fresh centered crops; every editor slot is
 		// rebuilt on save (the retained banner JSON stays untouched).
@@ -164,6 +260,7 @@
 
 	function handleRemove() {
 		assignedKey = null;
+		assignmentToken = undefined;
 		slotState = initSlots(null);
 		dirtySlots.clear();
 	}
@@ -193,14 +290,29 @@
 		promoteActiveSlotToManual();
 	}
 
-	function handleSave() {
+	async function handleSave() {
+		if (!dirty || isSaving) {
+			return;
+		}
+		if (onsave === undefined) {
+			return;
+		}
+		const saved = await onsave({
+			imageKey: assignedKey,
+			imageSlots: hasImage ? buildSlots() : null,
+			...(assignedKey !== null && assignedKey !== imageKey && assignmentToken !== undefined
+				? { imageAssignmentToken: assignmentToken }
+				: {}),
+		});
+		if (saved === false) {
+			return;
+		}
+		baselineAssignedKey = assignedKey;
+		baselineSlotSnapshots = currentSlotSnapshots();
+		dirtySlots.clear();
 		// Storage cleanup (issue #107, REQ-6): uploads replaced before this save
 		// are deleted; the saved key survives. Unsaved leftovers go on unmount.
 		void pendingUploads.commit(assignedKey);
-		onsave({
-			imageKey: assignedKey,
-			imageSlots: hasImage ? buildSlots() : null,
-		});
 	}
 
 	$effect(() => {
@@ -210,11 +322,22 @@
 	});
 </script>
 
-<div class="flex flex-col gap-5">
-	<!-- Image assignment -->
+<form
+	id={formId}
+	class="flex flex-col gap-5"
+	inert={isSaving ? true : undefined}
+	aria-busy={isSaving}
+	onsubmit={(event) => {
+		event.preventDefault();
+		void handleSave();
+	}}
+>
+	<!-- Image assignment: the empty state gets the full dropzone; once assigned,
+	     compact actions leave crop editing as the primary content. The compact
+	     change action remains a drop target as well as opening the file picker. -->
 	<div class="flex flex-col gap-2">
-		<Label>{m.wishlist_image_assign_label()}</Label>
 		{#if !hasImage}
+			<Label>{m.wishlist_image_assign_label()}</Label>
 			<ImageUpload
 				target="wishlist-banner"
 				onUpload={handleUpload}
@@ -222,17 +345,21 @@
 			/>
 			<HelpText>{m.wishlist_image_assign_hint()}</HelpText>
 		{:else}
-			<div class="flex flex-wrap gap-2">
-				<ImageUpload
-					target="wishlist-banner"
-					size="small"
-					onUpload={handleUpload}
-					onError={handleUploadError}
-				/>
-				<Button intent="outline" size="sm" onclick={handleRemove}>
-					<TrashIcon data-icon="inline-start" />
-					{m.wishlist_image_remove()}
-				</Button>
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<Label>{m.wishlist_image_assign_label()}</Label>
+				<div class="flex flex-wrap gap-2">
+					<ImageUpload
+						target="wishlist-banner"
+						size="compact"
+						label={m.wishlist_image_change()}
+						onUpload={handleUpload}
+						onError={handleUploadError}
+					/>
+					<Button intent="outline" size="sm" class="h-9" onclick={handleRemove}>
+						<TrashIcon data-icon="inline-start" />
+						{m.wishlist_image_remove()}
+					</Button>
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -329,14 +456,14 @@
 		</div>
 	{/if}
 
-	<div class="flex justify-end">
-		<Button data-testid="wishlist-image-save" disabled={isSaving} onclick={handleSave}>
-			{#if isSaving}
-				{m.saving()}
-			{:else}
-				<UploadIcon data-icon="inline-start" />
-				{m.save()}
-			{/if}
-		</Button>
-	</div>
-</div>
+	{#if formId === undefined}
+		<div class="flex justify-end">
+			<WishlistSettingsSaveButton
+				form={formId}
+				{dirty}
+				saving={isSaving}
+				testId="wishlist-image-save"
+			/>
+		</div>
+	{/if}
+</form>

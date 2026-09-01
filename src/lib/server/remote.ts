@@ -100,10 +100,10 @@ interface RefreshableQueryResult {
  * No-ops outside a remote request (SSR, unit tests), mirroring SvelteKit's own
  * rule that refreshed data can only ride back on a command/form response.
  */
-export function singleFlightRefresh<TArg>(
+export async function singleFlightRefresh<TArg>(
 	queryFunction: (arg: TArg) => RefreshableQueryResult,
 	...arg: TArg extends void ? [] : [TArg]
-): void {
+): Promise<void> {
 	try {
 		if (!getRequestEvent().isRemoteRequest) {
 			return;
@@ -112,5 +112,5 @@ export function singleFlightRefresh<TArg>(
 		return;
 	}
 
-	void (queryFunction as (arg?: TArg) => RefreshableQueryResult)(arg[0]).refresh();
+	return (queryFunction as (arg?: TArg) => RefreshableQueryResult)(arg[0]).refresh();
 }

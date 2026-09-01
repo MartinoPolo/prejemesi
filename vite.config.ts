@@ -11,6 +11,7 @@ import { playwright } from '@vitest/browser-playwright';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+import { resolveDevelopmentEnvironment } from './src/lib/config/mpx_development.js';
 
 // Read current git branch at dev-server start so each worktree gets its own
 // branch name baked in – consumed by +layout.svelte to prefix browser tab titles.
@@ -25,6 +26,24 @@ const gitBranch = (() => {
 const dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 const isVitest = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
+const development = resolveDevelopmentEnvironment(process.env);
+
+interface VitestBrowserRunnerFallback {
+	wrapDynamicImport<T>(factory: () => Promise<T>): Promise<T>;
+}
+
+declare global {
+	var __vitest_browser_runner__: VitestBrowserRunnerFallback | undefined;
+}
+
+if (isVitest) {
+	// Vitest stable transforms SSR imports but removes its browser runner during teardown;
+	// `??=` preserves the real runner while supplying the upstream-documented fallback.
+	globalThis.__vitest_browser_runner__ ??= {
+		wrapDynamicImport: <T>(factory: () => Promise<T>) => factory(),
+	};
+}
+
 const sentryUploadEnvironmentVariables = [
 	process.env.SENTRY_AUTH_TOKEN,
 	process.env.SENTRY_ORG,
@@ -90,6 +109,9 @@ export default defineConfig({
 			'@lucide/svelte/icons/circle-alert',
 			'@lucide/svelte/icons/copy',
 			'@lucide/svelte/icons/gift',
+			'@lucide/svelte/icons/hand',
+			'@lucide/svelte/icons/layers',
+			'@lucide/svelte/icons/list-filter-plus',
 			'@lucide/svelte/icons/shield',
 			'@lucide/svelte/icons/sparkles',
 			'@lucide/svelte/icons/user-check',
@@ -100,7 +122,9 @@ export default defineConfig({
 		],
 	},
 	server: {
-		open: true,
+		...development.appServer,
+		strictPort: true,
+		open: development.appOrigin,
 		watch: {
 			ignored: ['**/.mpx/**', './*.html'],
 		},
@@ -172,7 +196,7 @@ export default defineConfig({
 		},
 		projects: [
 			{
-				extends: './vite.config.ts',
+				extends: true,
 				test: {
 					name: 'client',
 					// Sequential project groups avoid races in shared SvelteKit generated state.
@@ -189,14 +213,18 @@ export default defineConfig({
 						// Fixed API port so the two browser projects (client + storybook) bind
 						// distinct Vitest servers instead of racing for a default port when both
 						// run under `test --coverage`.
-						api: { host: '127.0.0.1', port: 5174, strictPort: false },
+						api: {
+							host: '127.0.0.1',
+							port: development.vitestClientPort,
+							strictPort: true,
+						},
 					},
 					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
 					exclude: ['src/lib/server/**'],
 				},
 			},
 			{
-				extends: './vite.config.ts',
+				extends: true,
 				test: {
 					name: 'server',
 					sequence: { groupOrder: 1 },
@@ -223,7 +251,11 @@ export default defineConfig({
 						headless: true,
 						provider: playwright(),
 						instances: [{ browser: 'chromium' }],
-						api: { host: '127.0.0.1', port: 5175, strictPort: false },
+						api: {
+							host: '127.0.0.1',
+							port: development.vitestStorybookPort,
+							strictPort: true,
+						},
 					},
 				},
 			},

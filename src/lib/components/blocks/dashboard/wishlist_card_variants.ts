@@ -2,13 +2,13 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Anime-sky sticker wishlist card (issue #102 REQ-16, `anime-dashboard.html`):
- * ink border, hard offset shadow, spring lift, banner with the title on a small
+ * ink border, hard offset shadow, coherent lift, banner with the title on a small
  * rotated label sticker and the status chip pinned top-right. Archived cards dim,
  * desaturate, and stop lifting.
  */
 export const wishlistCardVariants = tv({
 	slots: {
-		root: 'group/card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring',
+		root: 'group/card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none',
 		banner: 'relative flex h-32 shrink-0 flex-col items-start justify-end overflow-hidden border-b-[2.5px] border-ink p-3.5',
 		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
 		bannerPattern:

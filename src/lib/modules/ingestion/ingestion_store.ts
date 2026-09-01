@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { user } from '$lib/server/db/auth.schema.js';
-import { gift } from '$lib/server/db/gift.schema.js';
+import { gift, giftCategory } from '$lib/server/db/gift.schema.js';
 import { giftIngestionItem, giftIngestionRun } from '$lib/server/db/ingestion.schema.js';
 import { getDb } from '$lib/server/db/index.js';
 import { priorityLevel, wishlist } from '$lib/server/db/wishlist.schema.js';
@@ -12,6 +12,8 @@ import {
 import { canonicalIngestionSourceKey } from '$lib/modules/gifts/gift_url.js';
 import type { GiftLink } from '$lib/modules/gifts/types.js';
 import type { GiftIngestionStore } from './ingestion_service.js';
+import { resolveCategoryLabel } from '$lib/modules/gift-categories/types.js';
+import { publicGiftCategory } from '$lib/modules/gift-categories/gift_categories_service.js';
 import { IngestionError } from './ingestion_error.js';
 
 type IngestionDatabase = GiftCreationTransaction | ReturnType<typeof getDb>;
@@ -107,6 +109,24 @@ export const drizzleGiftIngestionStore: GiftIngestionStore = {
 			.orderBy(asc(priorityLevel.sortOrder))
 			.limit(2);
 		return { high: rows[0]?.id ?? null, medium: rows[1]?.id ?? rows[0]?.id ?? null };
+	},
+	async resolveCategoryLabels(tx, wishlistId, labels) {
+		if (labels.length === 0) {
+			return new Map();
+		}
+		const rows = await database(tx)
+			.select()
+			.from(giftCategory)
+			.where(and(eq(giftCategory.wishlistId, wishlistId), isNull(giftCategory.deletedAt)));
+		const active = rows.map(publicGiftCategory);
+		const resolved = new Map<string, string>();
+		for (const label of labels) {
+			const match = resolveCategoryLabel(label, active);
+			if (match?.categoryId !== undefined) {
+				resolved.set(label, match.categoryId);
+			}
+		}
+		return resolved;
 	},
 	async appendGifts(tx, input) {
 		try {

@@ -1,7 +1,9 @@
 import { canonicalGiftLinkKey, normalizeGiftLinks } from './gift_url.js';
+import { normalizeGiftCategoryLabel } from '$lib/modules/gift-categories/types.js';
 import {
 	DEFAULT_GIFT_CURRENCY,
 	GIFT_CURRENCIES,
+	isValidGiftPrice,
 	type DraftPriority,
 	type GiftCurrency,
 	type GiftLink,
@@ -19,6 +21,8 @@ export interface GiftDraft {
 	/** Raw imported/editor value so invalid quantities remain reviewable. */
 	quantity?: number | string;
 	priority: DraftPriority;
+	categoryId?: string | null;
+	importedCategoryLabel?: string | null;
 }
 
 /** Lowercased tokens that map a raw price string to a {@link GiftCurrency}. */
@@ -42,9 +46,9 @@ function detectCurrency(lowered: string): GiftCurrency {
 }
 
 /**
- * Parse a free-form price string into an integer amount and currency. Strips
+ * Parse a free-form price string into a monetary amount and currency. Strips
  * currency symbols/words and thousands separators; a trailing `.`/`,` followed
- * by 1–2 digits is treated as a decimal portion and rounded. Returns
+ * by 1–2 digits is preserved as a decimal portion. Returns
  * `{ price: null }` when no digits are present.
  */
 export function parsePrice(raw: string | null | undefined): {
@@ -79,7 +83,7 @@ export function parsePrice(raw: string | null | undefined): {
 		return { price: null, currency };
 	}
 
-	return { price: Math.round(Number(integerPart) + fraction), currency };
+	return { price: Number(integerPart) + fraction, currency };
 }
 
 /**
@@ -91,7 +95,7 @@ export type ValidatedGiftDraft = Omit<GiftDraft, 'imageUrl' | 'quantity'> & {
 	quantity: number;
 };
 
-export type GiftDraftIssue = 'name' | 'imageUrl' | 'quantity';
+export type GiftDraftIssue = 'name' | 'price' | 'imageUrl' | 'quantity' | 'category';
 
 /** A valid external draft image is an absolute HTTPS URL. */
 export function isValidDraftImageUrl(value: string | null | undefined): boolean {
@@ -114,7 +118,10 @@ export function parseDraftQuantity(value: number | string | undefined): number |
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-export function validateDraft(draft: Readonly<GiftDraft>): {
+export function validateDraft(
+	draft: Readonly<GiftDraft>,
+	options: { resolvedImportedCategoryLabels?: ReadonlySet<string> } = {},
+): {
 	valid: boolean;
 	issues: GiftDraftIssue[];
 	normalized: ValidatedGiftDraft;
@@ -129,11 +136,27 @@ export function validateDraft(draft: Readonly<GiftDraft>): {
 	if (name === '') {
 		issues.push('name');
 	}
+	if (draft.price !== null && !isValidGiftPrice(draft.price)) {
+		issues.push('price');
+	}
 	if (!isValidDraftImageUrl(imageUrl)) {
 		issues.push('imageUrl');
 	}
 	if (quantity === null) {
 		issues.push('quantity');
+	}
+	const importedCategoryLabel = draft.importedCategoryLabel?.trim() ?? '';
+	const importedCategoryResolved =
+		importedCategoryLabel !== '' &&
+		options.resolvedImportedCategoryLabels?.has(
+			normalizeGiftCategoryLabel(importedCategoryLabel),
+		) === true;
+	if (
+		importedCategoryLabel !== '' &&
+		!importedCategoryResolved &&
+		(draft.categoryId == null || draft.categoryId === '')
+	) {
+		issues.push('category');
 	}
 	return {
 		valid: issues.length === 0,
@@ -147,6 +170,8 @@ export function validateDraft(draft: Readonly<GiftDraft>): {
 			imageUrl,
 			quantity: quantity ?? 1,
 			priority: draft.priority,
+			categoryId: draft.categoryId ?? null,
+			importedCategoryLabel: draft.importedCategoryLabel ?? null,
 		},
 	};
 }

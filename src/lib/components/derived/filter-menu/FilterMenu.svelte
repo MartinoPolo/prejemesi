@@ -1,17 +1,20 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import ListFilterIcon from '@lucide/svelte/icons/list-filter';
-	import XIcon from '@lucide/svelte/icons/x';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ListFilterPlusIcon from '@lucide/svelte/icons/list-filter-plus';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
-	import SimpleTooltip from '$lib/components/base/tooltip/SimpleTooltip.svelte';
 	import { cn } from '$lib/utils.js';
-	import type { FilterDefinition, FilterToggle } from './filter_menu_types.js';
+	import ActiveFilterPills from './ActiveFilterPills.svelte';
+	import { normalizeActiveFilters, type ActiveFilterItem } from './active_filters.js';
+	import type { FilterDefinition, FilterFacetGroup } from './filter_menu_types.js';
 
 	interface FilterMenuProps {
 		definitions: readonly FilterDefinition[];
-		/** Display-preference switches in a separate dropdown group; excluded from count/pills/clear. */
-		toggles?: readonly FilterToggle[];
+		facets?: readonly FilterFacetGroup[];
+		activeFilters?: readonly ActiveFilterItem[];
+		showActivePills?: boolean;
+		alwaysShowClearAllInMenu?: boolean;
 		triggerLabel: string;
 		menuHeading: string;
 		clearAllLabel: string;
@@ -19,12 +22,20 @@
 		removeFilterLabel: (label: string) => string;
 		activeCountLabel: (count: number) => string;
 		align?: 'start' | 'center' | 'end';
+		open?: boolean;
+		onopenchange?: (open: boolean) => void;
+		triggerElement?: HTMLButtonElement | null;
+		triggerClass?: string;
+		disabled?: boolean;
 		class?: string;
 	}
 
 	let {
 		definitions,
-		toggles = [],
+		facets = [],
+		activeFilters: suppliedActiveFilters,
+		showActivePills = true,
+		alwaysShowClearAllInMenu = false,
 		triggerLabel,
 		menuHeading,
 		clearAllLabel,
@@ -32,68 +43,80 @@
 		removeFilterLabel,
 		activeCountLabel,
 		align = 'start',
+		open = false,
+		onopenchange,
+		triggerElement = $bindable(null),
+		triggerClass,
+		disabled = false,
 		class: className,
 	}: FilterMenuProps = $props();
 
-	let filterTriggerElement = $state<HTMLButtonElement | null>(null);
-	let pillRemoveButtons = $state<Record<string, HTMLButtonElement | undefined>>({});
-	const activeDefinitions = $derived(definitions.filter((definition) => definition.checked));
+	const activeFilters = $derived(
+		suppliedActiveFilters ?? normalizeActiveFilters(definitions, facets),
+	);
+	const groupHeadingClass =
+		'pointer-events-none px-2 pb-1 pt-2 text-[0.6875rem] font-extrabold uppercase tracking-[0.08em] text-muted-foreground';
+	const filterOptionClass =
+		'min-w-0 cursor-pointer whitespace-normal break-words transition-colors hover:bg-accent hover:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:size-4 [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:rounded-[0.2rem] [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:border-2 [&_[data-slot=dropdown-menu-checkbox-item-indicator]]:border-current';
 
 	async function clearAllFilters() {
 		onclearall();
 		await tick();
-		filterTriggerElement?.focus();
-	}
-
-	async function removeActiveFilter(definition: FilterDefinition) {
-		const activeDefinitionIndex = activeDefinitions.findIndex(({ id }) => id === definition.id);
-		const nextActiveDefinition = activeDefinitions.at(activeDefinitionIndex + 1);
-
-		definition.onchange(false);
-		await tick();
-		(nextActiveDefinition
-			? pillRemoveButtons[nextActiveDefinition.id]
-			: filterTriggerElement
-		)?.focus();
-	}
-
-	function activeLabel(definition: FilterDefinition) {
-		return definition.activeLabel ?? definition.menuLabel;
+		triggerElement?.focus();
 	}
 </script>
 
 <div class={cn('flex min-w-0 flex-wrap items-center gap-1.5', className)}>
-	<DropdownMenu.Root>
+	<DropdownMenu.Root {open} onOpenChange={onopenchange}>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
 				<Button
 					{...props}
-					bind:ref={filterTriggerElement}
+					bind:ref={triggerElement}
+					{disabled}
 					size="md"
 					intent="outline"
-					aria-label={activeDefinitions.length > 0
-						? `${triggerLabel}: ${activeCountLabel(activeDefinitions.length)}`
+					class={cn('min-w-0 max-w-full', triggerClass)}
+					aria-label={activeFilters.length > 0
+						? `${triggerLabel}: ${activeCountLabel(activeFilters.length)}`
 						: triggerLabel}
 				>
-					<ListFilterIcon data-icon="inline-start" />
-					<span>{triggerLabel}</span>
-					{#if activeDefinitions.length > 0}
-						<span
-							class="grid min-w-4.25 place-items-center rounded-full bg-primary px-1 text-[10.5px] leading-4 text-primary-foreground"
-							aria-hidden="true"
-						>
-							{activeDefinitions.length}
-						</span>
+					<ListFilterPlusIcon
+						class="text-muted-foreground"
+						data-icon="inline-start"
+						data-toolbar-icon="filter"
+					/>
+					<span class="min-w-0 truncate">{triggerLabel}</span>
+					{#if activeFilters.length > 0}
+						{#key activeFilters.length}
+							<span
+								class="filter-count grid min-w-4.25 shrink-0 place-items-center rounded-full bg-primary px-1 text-[10.5px] leading-4 text-primary-foreground"
+								data-filter-count
+								aria-hidden="true"
+							>
+								{activeFilters.length}
+							</span>
+						{/key}
 					{/if}
+					<ChevronDownIcon class="size-4 shrink-0 text-muted-foreground" />
 				</Button>
 			{/snippet}
 		</DropdownMenu.Trigger>
 
-		<DropdownMenu.Content {align} class="w-56">
+		<DropdownMenu.Content
+			{align}
+			preventScroll={false}
+			class="max-h-[min(32rem,calc(100dvh-2rem))] w-[min(16rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] overflow-y-auto"
+		>
 			<DropdownMenu.Group>
-				<DropdownMenu.GroupHeading>{menuHeading}</DropdownMenu.GroupHeading>
+				<DropdownMenu.GroupHeading class={groupHeadingClass} data-filter-group-heading>
+					{menuHeading}
+				</DropdownMenu.GroupHeading>
 				{#each definitions as definition (definition.id)}
 					<DropdownMenu.CheckboxItem
+						{disabled}
+						class={filterOptionClass}
+						data-filter-option
 						bind:checked={
 							() => definition.checked, (checked) => definition.onchange(checked)
 						}
@@ -104,52 +127,71 @@
 				{/each}
 			</DropdownMenu.Group>
 
-			{#if toggles.length > 0}
+			{#each facets.filter((facet) => facet.options.length > 0) as facet (facet.id)}
 				<DropdownMenu.Separator />
 				<DropdownMenu.Group>
-					{#each toggles as toggle (toggle.id)}
+					<DropdownMenu.GroupHeading class={groupHeadingClass} data-filter-group-heading>
+						{facet.label}
+					</DropdownMenu.GroupHeading>
+					{#each facet.options as option (option.value)}
 						<DropdownMenu.CheckboxItem
+							{disabled}
+							class={filterOptionClass}
+							data-filter-option
 							bind:checked={
-								() => toggle.checked, (checked) => toggle.onchange(checked)
+								() => option.checked, (checked) => option.onchange(checked)
 							}
 							closeOnSelect={false}
 						>
-							{toggle.label}
+							{option.label}
 						</DropdownMenu.CheckboxItem>
 					{/each}
 				</DropdownMenu.Group>
-			{/if}
+			{/each}
 
-			{#if activeDefinitions.length > 0}
+			{#if activeFilters.length > 0}
 				<DropdownMenu.Separator />
-				<DropdownMenu.Item class="sm:hidden" onclick={clearAllFilters}>
+				<DropdownMenu.Item
+					{disabled}
+					class={cn(
+						'whitespace-normal break-words',
+						!alwaysShowClearAllInMenu && 'sm:hidden',
+					)}
+					onclick={clearAllFilters}
+				>
 					{clearAllLabel}
 				</DropdownMenu.Item>
 			{/if}
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>
 
-	{#if activeDefinitions.length > 0}
-		<div class="hidden min-w-0 flex-wrap items-center gap-1.5 sm:flex" data-filter-pills>
-			{#each activeDefinitions as definition (definition.id)}
-				<SimpleTooltip text={activeLabel(definition)}>
-					<span
-						class="inline-flex h-(--size-control-sm) max-w-50 items-center gap-1 rounded-full border-2 border-ink bg-primary py-0 pr-0.5 pl-2.5 text-(length:--text-sm) font-semibold text-primary-foreground"
-					>
-						<span class="truncate">{activeLabel(definition)}</span>
-						<button
-							bind:this={pillRemoveButtons[definition.id]}
-							type="button"
-							class="grid size-6 shrink-0 place-items-center rounded-full text-current hover:bg-[color-mix(in_oklab,currentColor_24%,transparent)] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-1 focus-visible:outline-current"
-							aria-label={removeFilterLabel(activeLabel(definition))}
-							onclick={() => removeActiveFilter(definition)}
-						>
-							<XIcon class="size-3.5" />
-						</button>
-					</span>
-				</SimpleTooltip>
-			{/each}
-			<Button size="sm" intent="ghost" onclick={clearAllFilters}>{clearAllLabel}</Button>
-		</div>
+	{#if showActivePills && activeFilters.length > 0}
+		<ActiveFilterPills
+			class="hidden sm:flex"
+			items={activeFilters}
+			{disabled}
+			{clearAllLabel}
+			{onclearall}
+			{removeFilterLabel}
+			{triggerElement}
+		/>
 	{/if}
 </div>
+
+<style>
+	@keyframes filter-acknowledge {
+		from {
+			opacity: 0;
+		}
+
+		to {
+			opacity: 1;
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.filter-count {
+			animation: filter-acknowledge 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+		}
+	}
+</style>

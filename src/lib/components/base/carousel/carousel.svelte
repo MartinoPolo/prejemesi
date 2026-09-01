@@ -5,6 +5,7 @@
 		type EmblaContext,
 		setEmblaContext,
 	} from './context.js';
+	import { resolveCarouselScrollability } from './carousel_scrollability.js';
 	import { cn, type WithElementRef } from '$lib/utils.js';
 
 	let {
@@ -49,13 +50,32 @@
 		carouselState.api?.scrollTo(index, jump);
 	}
 
+	function updateScrollability() {
+		if (!carouselState.api) {
+			return;
+		}
+		const { canScrollPrev, canScrollNext } = resolveCarouselScrollability(
+			carouselState.api,
+			opts,
+		);
+		carouselState.canScrollPrev = canScrollPrev;
+		carouselState.canScrollNext = canScrollNext;
+	}
+
 	function onSelect() {
 		if (!carouselState.api) {
 			return;
 		}
 		carouselState.selectedIndex = carouselState.api.selectedScrollSnap();
-		carouselState.canScrollNext = carouselState.api.canScrollNext();
-		carouselState.canScrollPrev = carouselState.api.canScrollPrev();
+		updateScrollability();
+	}
+
+	function onReInit() {
+		if (!carouselState.api) {
+			return;
+		}
+		carouselState.scrollSnaps = carouselState.api.scrollSnapList();
+		onSelect();
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -74,12 +94,18 @@
 
 		carouselState.scrollSnaps = carouselState.api.scrollSnapList();
 		carouselState.api.on('select', onSelect);
+		carouselState.api.on('scroll', updateScrollability);
+		carouselState.api.on('settle', updateScrollability);
+		carouselState.api.on('reInit', onReInit);
 		onSelect();
 	}
 
 	$effect(() => {
 		return () => {
 			carouselState.api?.off('select', onSelect);
+			carouselState.api?.off('scroll', updateScrollability);
+			carouselState.api?.off('settle', updateScrollability);
+			carouselState.api?.off('reInit', onReInit);
 		};
 	});
 </script>

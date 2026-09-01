@@ -1,48 +1,71 @@
 <script lang="ts">
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
 	import * as m from '$lib/paraglide/messages.js';
+	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
+	import { createGiftLongPressRecognizer } from '$lib/modules/gifts/gift_long_press.js';
+	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 
 	interface WishlistGiftDraggableWrapperProps {
 		index: number;
-		canManage: boolean;
-		draggedIndex: number | null;
-		dragOverIndex: number | null;
+		giftId: string;
+		reorderEnabled: boolean;
+		draggedGiftId: string | null;
+		dragOverGiftId: string | null;
 		dragOverStyle: 'ring' | 'bg';
-		/** Accessible name for the card's button role (issue #125 REQ-4). */
 		giftName: string;
-		/** Extra layout classes from the host view (the card grid passes its subgrid span). */
+		primaryLink: string | null;
 		class?: string;
 		children: Snippet;
-		/**
-		 * Opens the gift detail modal (issue #125): edit mode for managers, read-only for
-		 * everyone else. The visible link chip is a separate click target (stops propagation)
-		 * and always navigates externally instead.
-		 */
 		onopendetail: () => void;
-		/** Grip pointerdown — starts a pointer-driven reorder drag (mouse + touch + pen). */
 		onreorderpointerdown: (event: PointerEvent, index: number) => void;
-		/** Keyboard reorder from the grip: move this gift one slot toward the list start/end. */
 		onreordermove: (index: number, direction: -1 | 1) => void;
+		selectionMode?: boolean;
+		selectionLayout?: 'overlay' | 'list';
+		selected?: boolean;
+		onselectiontoggle?: (giftId: string) => void;
+		oncontextmenu?: (event: MouseEvent) => boolean;
+		onlongpress?: () => boolean | void;
 	}
 
 	let {
 		index,
-		canManage,
-		draggedIndex,
-		dragOverIndex,
+		giftId,
+		reorderEnabled,
+		draggedGiftId,
+		dragOverGiftId,
 		dragOverStyle,
 		giftName,
+		primaryLink,
 		class: className = undefined,
 		children,
 		onopendetail,
 		onreorderpointerdown,
 		onreordermove,
+		selectionMode = false,
+		selectionLayout = 'overlay',
+		selected = false,
+		onselectiontoggle,
+		oncontextmenu,
+		onlongpress,
 	}: WishlistGiftDraggableWrapperProps = $props();
 
-	const isDragged = $derived(draggedIndex === index);
-	const isDragOver = $derived(dragOverIndex === index);
+	let longPressPending = $state(false);
+	let suppressNextClickAfterLongPress = $state(false);
+	const longPress = createGiftLongPressRecognizer(
+		() => {
+			suppressNextClickAfterLongPress = onlongpress?.() === true;
+		},
+		(pending) => {
+			longPressPending = pending;
+		},
+	);
+	const isDragged = $derived(draggedGiftId === giftId);
+	const isDragOver = $derived(dragOverGiftId === giftId);
+	const safePrimaryLink = $derived(normalizeGiftUrl(primaryLink));
+
+	$effect(() => () => longPress.cancel());
 
 	function eventStartedInsideInteractiveElement(event: Event): boolean {
 		const target = event.target;
@@ -59,27 +82,115 @@
 		return interactiveElement !== null && interactiveElement !== currentTarget;
 	}
 
+	function suppressSelectionContext(event: Event) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
+
 	function handleClick(event: MouseEvent) {
+		if (suppressNextClickAfterLongPress) {
+			suppressNextClickAfterLongPress = false;
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+		if (selectionMode) {
+			suppressSelectionContext(event);
+			onselectiontoggle?.(giftId);
+			return;
+		}
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
 		}
-
 		onopendetail();
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
+	function handleContextMenu(event: MouseEvent) {
+		if (selectionMode) {
+			suppressSelectionContext(event);
+			return;
+		}
+		if (eventStartedInsideInteractiveElement(event)) {
+			event.stopPropagation();
+			return;
+		}
+		if (!(oncontextmenu?.(event) ?? false)) {
+			event.preventDefault();
+		}
+	}
+
+	function handlePointerDown(event: PointerEvent) {
+		suppressNextClickAfterLongPress = false;
+		if (selectionMode) {
+			suppressSelectionContext(event);
+			return;
+		}
+		if (event.pointerType === 'mouse') {
+			return;
+		}
+		event.stopPropagation();
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
 		}
+		longPress.start(event.clientX, event.clientY);
+	}
 
+	function handlePointerMove(event: PointerEvent) {
+		if (event.pointerType !== 'mouse') {
+			longPress.move(event.clientX, event.clientY);
+		}
+	}
+
+	function handleAuxclick(event: MouseEvent) {
+		if (
+			event.button !== 1 ||
+			safePrimaryLink === null ||
+			selectionMode ||
+			eventStartedInsideInteractiveElement(event)
+		) {
+			return;
+		}
+
+		event.preventDefault();
+		window.open(safePrimaryLink, '_blank', 'noopener,noreferrer');
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (
+			selectionMode &&
+			(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))
+		) {
+			suppressSelectionContext(event);
+			return;
+		}
+		if (eventStartedInsideInteractiveElement(event)) {
+			return;
+		}
+		if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+			event.preventDefault();
+			const element = event.currentTarget as HTMLElement;
+			const rect = element.getBoundingClientRect();
+			element.dispatchEvent(
+				new MouseEvent('contextmenu', {
+					bubbles: true,
+					cancelable: true,
+					clientX: rect.left + rect.width / 2,
+					clientY: rect.top + rect.height / 2,
+				}),
+			);
+			return;
+		}
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
-			onopendetail();
+			if (selectionMode) {
+				onselectiontoggle?.(giftId);
+			} else {
+				onopendetail();
+			}
 		}
 	}
 
 	function handleGripKeydown(event: KeyboardEvent) {
-		// Keyboard reorder affordance: Arrow Up/Left moves the gift earlier, Down/Right later.
 		if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
 			event.preventDefault();
 			onreordermove(index, -1);
@@ -90,30 +201,59 @@
 	}
 </script>
 
-<!-- Card click/tap opens the gift detail modal for every role (issue #125): edit mode for
-     managers, read-only for visitors. The link chip inside `children` stops propagation and
-     stays the only external-navigation target. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
 	data-gift-item
+	data-gift-id={giftId}
+	data-long-press-pending={longPressPending || undefined}
 	class={cn(
-		// Named hover group so the grip (an absolutely-positioned sibling of the card) and the card
-		// lift as one unit: the card's own lift also keys off this group (see gift_card_variants),
-		// so hovering/focusing the grip lifts the card too — not just the card body (issue #224 f/up).
-		'group/gift-card relative h-full cursor-pointer transition-opacity',
+		selectionMode
+			? 'relative h-full cursor-default transition-[opacity,box-shadow]'
+			: 'group/gift-card relative h-full cursor-pointer transition-opacity',
 		className,
-		isDragged && 'opacity-40',
+		isDragged && 'invisible',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
+		selectionMode &&
+			selectionLayout === 'list' &&
+			'sm:grid sm:grid-cols-[1.75rem_minmax(0,1fr)] sm:gap-2',
+		selected &&
+			'rounded-xl bg-[var(--selection-tint)] outline-[3px] outline-[var(--selection-ring)] [&>div]:bg-transparent',
+		longPressPending && 'ring-2 ring-primary/35 ring-offset-2',
 	)}
-	role="button"
+	role={selectionMode ? 'checkbox' : 'button'}
 	tabindex={0}
-	aria-label={m.gift_open_detail_aria({ name: giftName })}
+	aria-label={selectionMode
+		? m.gift_selection_item_aria({ name: giftName })
+		: m.gift_open_detail_aria({ name: giftName })}
+	aria-checked={selectionMode ? selected : undefined}
+	aria-selected={selectionMode ? selected : undefined}
 	onclick={handleClick}
+	onauxclick={handleAuxclick}
+	oncontextmenu={handleContextMenu}
+	onpointerdown={handlePointerDown}
+	onpointermove={handlePointerMove}
+	onpointerup={() => longPress.end()}
+	onpointercancel={() => longPress.cancel()}
 	onkeydown={handleKeydown}
 >
-	{#if canManage}
-		<!-- Grip is the drag handle. `touch-action: none` stops the browser hijacking the touch
-		     gesture for scrolling so pointer reordering works on phones/tablets. -->
+	{#if selectionMode}
+		<span
+			class={cn(
+				'pointer-events-none absolute left-2.5 top-2.5 z-50 grid size-7 place-items-center rounded-md bg-card shadow-sm',
+				selectionLayout === 'list' &&
+					'sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2',
+			)}
+			aria-hidden="true"
+		>
+			<Checkbox checked={selected} tabindex={-1} />
+		</span>
+		{#if selected}<span
+				class="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] bg-[var(--selection-image-tint)]"
+				aria-hidden="true"
+			></span>{/if}
+	{/if}
+	{#if reorderEnabled && !selectionMode}
 		<button
 			type="button"
 			aria-label={m.gift_reorder_grip_label()}
@@ -126,5 +266,11 @@
 			<GripVerticalIcon class="size-4 text-muted-foreground" />
 		</button>
 	{/if}
-	{@render children()}
+	<div
+		class="contents"
+		inert={selectionMode || undefined}
+		data-selection-inert={selectionMode || undefined}
+	>
+		{@render children()}
+	</div>
 </div>

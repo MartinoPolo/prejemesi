@@ -5,7 +5,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
-		/** Raw price text (whole units only; parsed to an integer by the host). */
+		/** Raw price text (up to two decimal places; parsed by the host). */
 		price: string;
 		/** Currency code – defaults to CZK upstream. */
 		currency: GiftCurrency;
@@ -25,7 +25,7 @@
 <InputGroup.Root class="h-(--size-control-md) overflow-clip bg-surface">
 	<InputGroup.Input
 		type="text"
-		inputmode="numeric"
+		inputmode="decimal"
 		value={price}
 		oninput={(event) => onPriceInput(event.currentTarget.value)}
 		placeholder={m.draft_grid_price_placeholder()}

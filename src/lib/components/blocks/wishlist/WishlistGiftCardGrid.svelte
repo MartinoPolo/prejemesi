@@ -1,11 +1,12 @@
 <script lang="ts">
 	import GiftCard from '$lib/components/blocks/gift/GiftCard.svelte';
 	import GiftSectionHeader from './GiftSectionHeader.svelte';
-	import WishlistGiftDraggableWrapper from './WishlistGiftDraggableWrapper.svelte';
+	import WishlistGiftItem from './WishlistGiftItem.svelte';
 	import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
 	import { giftSectionHasHeader, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftByRole, GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import * as m from '$lib/paraglide/messages.js';
 	import {
 		toIndexedSections,
 		countGiftsInSections,
@@ -16,46 +17,82 @@
 		sections: GiftSection[];
 		role: WishlistRole;
 		isArchived: boolean;
-		canManage: boolean;
+		hideReservationState: boolean;
+		reorderEnabled: boolean;
 		onedit: (gift: GiftByRole) => void;
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
-		onreorder: (fromIndex: number, toIndex: number) => void;
+		onreceived: (giftId: string, received: boolean) => void;
+		onreorderpreview: (orderedIds: string[]) => void;
+		onreordercommit: (orderedIds: string[]) => void;
+		onreordercancel: (orderedIds: string[]) => void;
+		selectionMode?: boolean;
+		onselectiontoggle?: (giftId: string) => void;
+		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
 	}
 
 	let {
 		sections,
 		role,
 		isArchived,
-		canManage,
+		hideReservationState,
+		reorderEnabled,
 		onedit,
 		onreserve,
 		onunreserve,
-		onreorder,
+		onreceived,
+		onreorderpreview,
+		onreordercommit,
+		onreordercancel,
+		selectionMode = false,
+		onselectiontoggle,
+		oncontextactions,
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
+	let reorderAnnouncement = $state('');
 
-	// Sections carry the running global gift index, so pointer/keyboard reorder keeps mapping to
-	// the flat displayedGifts order even with pinned/grouped sections (issue #224).
 	const indexedSections = $derived(toIndexedSections(sections));
 	const totalGiftCount = $derived(countGiftsInSections(sections));
 
+	function getItemElements() {
+		return gridEl === null
+			? []
+			: Array.from(gridEl.querySelectorAll<HTMLElement>('[data-gift-item]'));
+	}
+
 	const reorder = createGiftPointerReorderController({
-		getItemElements: () =>
-			gridEl === null
-				? []
-				: Array.from(gridEl.querySelectorAll<HTMLElement>('[data-gift-item]')),
-		onReorder: (fromIndex, toIndex) => onreorder(fromIndex, toIndex),
+		getItemElements,
+		getItemIds: () => getItemElements().map((element) => element.dataset.giftId!),
+		onPreviewOrder: (orderedIds) => onreorderpreview(orderedIds),
+		onCommitOrder: (orderedIds) => onreordercommit(orderedIds),
+		onCancelOrder: (orderedIds) => onreordercancel(orderedIds),
 	});
 
 	function handleReorderMove(index: number, direction: -1 | 1) {
-		const target = index + direction;
-		if (target >= 0 && target < totalGiftCount) {
-			onreorder(index, target);
+		const destination = index + direction;
+		if (destination >= 0 && destination < totalGiftCount) {
+			if (!reorder.move(index, direction)) {
+				return;
+			}
+			const movedGift = indexedSections
+				.flatMap(({ items }) => items)
+				.find((item) => item.index === index)?.gift;
+			if (movedGift !== undefined) {
+				reorderAnnouncement = m.gift_reorder_move_success({
+					name: movedGift.name,
+					position: destination + 1,
+					total: totalGiftCount,
+				});
+			}
 		}
 	}
 
+	$effect(() => {
+		if (!reorderEnabled) {
+			reorder.cancel();
+		}
+	});
 	$effect(() => () => reorder.destroy());
 </script>
 
@@ -63,6 +100,10 @@
      card are row subgrids, so price/priority/links/footer align across cards in a row.
      gap-5 stays between bands; inside a band the wrapper zeroes the row gap and the card
      sections space themselves with margins. -->
+<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+	{reorderAnnouncement}
+</div>
+
 <div
 	bind:this={gridEl}
 	class="grid gap-5"
@@ -72,24 +113,37 @@
 		{#if giftSectionHasHeader(section)}
 			<!-- Full-width band/group header breaks the auto-fill row so cards flow beneath it. -->
 			<div class="col-span-full">
-				<GiftSectionHeader {section} />
+				<GiftSectionHeader {section} {selectionMode} {onselectiontoggle} />
 			</div>
 		{/if}
 		{#each items as { gift: giftItem, index } (giftItem.id)}
-			<WishlistGiftDraggableWrapper
+			<WishlistGiftItem
+				gift={giftItem}
 				{index}
-				{canManage}
+				{reorderEnabled}
 				class="row-span-7 grid grid-rows-subgrid gap-y-0"
-				draggedIndex={reorder.draggedIndex.current}
-				dragOverIndex={reorder.dragOverIndex.current}
+				draggedGiftId={reorder.draggedGiftId.current}
+				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="ring"
-				giftName={giftItem.name}
-				onopendetail={() => onedit(giftItem)}
+				{selectionMode}
+				{onselectiontoggle}
+				{oncontextactions}
+				{onedit}
 				onreorderpointerdown={reorder.start}
 				onreordermove={handleReorderMove}
 			>
-				<GiftCard gift={giftItem} {role} {isArchived} {onreserve} {onunreserve} />
-			</WishlistGiftDraggableWrapper>
+				{#snippet children(giftItem)}
+					<GiftCard
+						gift={giftItem}
+						{role}
+						{isArchived}
+						{hideReservationState}
+						{onreserve}
+						{onunreserve}
+						{onreceived}
+					/>
+				{/snippet}
+			</WishlistGiftItem>
 		{/each}
 	{/each}
 </div>

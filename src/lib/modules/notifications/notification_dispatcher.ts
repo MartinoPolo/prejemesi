@@ -10,6 +10,7 @@ import { runAfterResponse } from '$lib/server/background.js';
 import { getAuthSigningKey } from '$lib/server/crypto/auth_signing_key.js';
 import { createNotificationPreferencesToken } from '$lib/server/crypto/notification_preferences_token.js';
 import { localizeInternalHref, type SupportedLocale } from '$lib/i18n/locale.js';
+import { resolveDevelopmentEnvironment } from '$lib/config/mpx_development.js';
 import {
 	EMAIL_NOTIFICATION_TYPES,
 	getNotificationEmailBody,
@@ -36,7 +37,7 @@ function emailTypeSupported(type: NotificationType): boolean {
 }
 
 function getOrigin(): string {
-	return (env.ORIGIN ?? 'http://localhost:5173').replace(/\/$/, '');
+	return resolveDevelopmentEnvironment(env).origin.replace(/\/$/, '');
 }
 
 interface UnsubscribeFooter {

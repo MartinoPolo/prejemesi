@@ -102,6 +102,12 @@ export const MAPPING_FIELDS: readonly MappingFieldDef[] = [
 		multi: false,
 		required: false,
 	},
+	{
+		role: COLUMN_ROLE.category,
+		label: () => m.draft_grid_col_category(),
+		multi: false,
+		required: false,
+	},
 ];
 
 /**
@@ -114,6 +120,7 @@ const SINGLE_USE_COLUMN_ROLES: ReadonlySet<ColumnRole> = new Set([
 	COLUMN_ROLE.price,
 	COLUMN_ROLE.imageUrl,
 	COLUMN_ROLE.quantity,
+	COLUMN_ROLE.category,
 ]);
 
 /**

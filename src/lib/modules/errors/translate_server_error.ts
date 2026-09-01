@@ -56,8 +56,25 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.QUANTITY_CANNOT_BE_LOWERED]: () => m.server_error_quantity_cannot_be_lowered(),
 	[SERVER_ERROR.CANNOT_DELETE_AFTER_SHARING]: () => m.server_error_cannot_delete_after_sharing(),
 	[SERVER_ERROR.CANNOT_DELETE_RESERVED_GIFT]: () => m.server_error_cannot_delete_reserved_gift(),
+	[SERVER_ERROR.GIFT_WISHLIST_MISMATCH]: () => m.server_error_gift_wishlist_mismatch(),
+	[SERVER_ERROR.BULK_GIFT_STATE_MISMATCH]: () => m.server_error_bulk_gift_state_mismatch(),
+	[SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH]: () =>
+		m.server_error_gift_priority_wishlist_mismatch(),
 	// Reuses the form's own range-error copy so toast and inline hint read identically.
 	[SERVER_ERROR.INVALID_PRICE_RANGE]: () => m.gift_price_range_invalid(),
+	[SERVER_ERROR.GIFT_CATEGORY_NOT_FOUND]: () => m.server_error_gift_category_not_found(),
+	[SERVER_ERROR.GIFT_CATEGORY_PRESET_IMMUTABLE]: () =>
+		m.server_error_gift_category_preset_immutable(),
+	[SERVER_ERROR.GIFT_CATEGORY_LABEL_CONFLICT]: () =>
+		m.server_error_gift_category_label_conflict(),
+	[SERVER_ERROR.GIFT_CATEGORY_WISHLIST_MISMATCH]: () =>
+		m.server_error_gift_category_wishlist_mismatch(),
+	[SERVER_ERROR.GIFT_CATEGORY_REORDER_MISMATCH]: () =>
+		m.server_error_gift_category_reorder_mismatch(),
+	[SERVER_ERROR.GIFT_CATEGORY_REMOVAL_CONFIRMATION_MISMATCH]: () =>
+		m.server_error_gift_category_removal_confirmation_mismatch(),
+	[SERVER_ERROR.GIFT_CATEGORY_IMPORT_UNRESOLVED]: () =>
+		m.server_error_gift_category_import_unresolved(),
 
 	[SERVER_ERROR.RECIPIENT_RENAME_NOT_ALLOWED]: () =>
 		m.server_error_recipient_rename_not_allowed(),

@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { MAX_GIFT_LINKS, GIFT_CURRENCY_VALUES } from '$lib/modules/gifts/types.js';
+import { MAX_GIFT_LINKS, GIFT_CURRENCY_VALUES, GiftPriceSchema } from '$lib/modules/gifts/types.js';
 import { MAX_IMPORT_BYTES, MAX_IMPORT_ROWS } from '$lib/modules/import/import_limits.js';
 
 const GIFT_INGESTION_SCHEMA_VERSION = 1 as const;
@@ -38,12 +38,15 @@ const GiftIngestionItemSchema = v.pipe(
 				name: NonBlankTextSchema,
 				description: v.optional(v.nullable(v.pipe(v.string(), v.maxLength(10_000)))),
 				links: v.pipe(v.array(GiftLinkSchema), v.minLength(1), v.maxLength(MAX_GIFT_LINKS)),
-				price: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
-				priceMax: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
+				price: v.optional(v.nullable(GiftPriceSchema)),
+				priceMax: v.optional(v.nullable(GiftPriceSchema)),
 				currency: v.picklist(GIFT_CURRENCY_VALUES),
 				imageUrl: v.optional(v.nullable(HttpsUrlSchema)),
 				quantity: v.pipe(v.number(), v.integer(), v.minValue(1)),
 				priority: v.picklist(['high', 'medium']),
+				category: v.optional(
+					v.nullable(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(80))),
+				),
 			}),
 			v.check(
 				(gift) =>

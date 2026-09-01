@@ -10,7 +10,7 @@
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
+	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -21,21 +21,34 @@
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
+	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftDescription from './GiftDescription.svelte';
+	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
 
 	interface GiftCardProps {
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
+		onreceived?: (giftId: string, received: boolean) => void;
 	}
 
-	let { gift, role, isArchived = false, onreserve, onunreserve }: GiftCardProps = $props();
+	let {
+		gift,
+		role,
+		isArchived = false,
+		hideReservationState = false,
+		onreserve,
+		onunreserve,
+		onreceived,
+	}: GiftCardProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role),
+		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 	// Edit-icon hover affordance (issue #125 REQ-3): editing roles see a pencil icon appear
 	// on card hover/focus; visitors rely on the shared cursor-pointer + hover lift only.
@@ -48,6 +61,10 @@
 	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
 
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
+	const explicitImageFrameFill = $derived.by(() => {
+		const fillColor = gift.imageMeta?.bgColor;
+		return hasExplicitFrameFill(fillColor) ? fillColor : null;
+	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
@@ -55,8 +72,18 @@
 
 <div class={styles.card()}>
 	<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
-	<div class={styles.imageArea()}>
-		<div class={styles.imagePattern()} aria-hidden="true"></div>
+	<div
+		class={cn(styles.imageArea(), explicitImageFrameFill !== null && 'bg-[var(--frame-fill)]')}
+		data-testid="gift-card-image-frame"
+		style:--frame-fill={explicitImageFrameFill ?? undefined}
+	>
+		{#if explicitImageFrameFill === null}
+			<div
+				class={styles.imagePattern()}
+				data-testid="gift-card-image-pattern"
+				aria-hidden="true"
+			></div>
+		{/if}
 
 		<GiftImage
 			class="size-full rounded-none bg-transparent"
@@ -71,11 +98,15 @@
 			<div class={styles.imageVeil()} aria-hidden="true"></div>
 		{/if}
 
+		{#if gift.category != null}
+			<GiftCategoryBadge category={gift.category} />
+		{/if}
+
 		{#if canManage}
 			<!-- Edit affordance (issue #125 REQ-3): hidden until the card is hovered/focused;
 			     purely decorative, the whole card is already the click target via
 			     WishlistGiftDraggableWrapper. -->
-			<span class={styles.editIcon()} aria-hidden="true">
+			<span class={styles.editIcon()} data-testid="gift-card-edit-icon" aria-hidden="true">
 				<PencilIcon class="size-3.5" />
 			</span>
 		{/if}
@@ -85,7 +116,7 @@
 		{/if}
 
 		{#if gift.received}
-			<span class={styles.receivedSticker()}>
+			<span class={styles.receivedSticker()} data-testid="gift-received-sticker">
 				<CheckIcon class="size-3" />
 				{m.gift_received_badge()}
 			</span>
@@ -98,7 +129,13 @@
 		     in the gift detail modal (issue #185), not on the card. -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+			<GiftPieceCount
+				quantity={gift.quantity}
+				role={hideReservationState ? 'recipient' : role}
+				{reservedCount}
+				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
+				hideWhenOne
+			/>
 		</div>
 
 		{#if gift.price !== null}
@@ -135,21 +172,37 @@
 		/>
 	</div>
 
-	<!-- Footer: like + reserve (visitor/moderator only) -->
-	{#if isVisitorOrModerator && visitorGift}
+	{#if (canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift)}
 		<div class={styles.footer()}>
-			<LikeButton giftId={gift.id} giftName={gift.name} likeCount={visitorGift.likeCount} />
-			<div class={styles.reservationActions()}>
-				<PurchasedToggle gift={visitorGift} class="w-full" />
-				<ReserveButton
-					gift={visitorGift}
-					{isArchived}
-					size="md"
-					{onreserve}
-					{onunreserve}
-					class="w-full"
+			{#if isVisitorOrModerator && visitorGift}
+				<LikeButton
+					giftId={gift.id}
+					giftName={gift.name}
+					likeCount={visitorGift.likeCount}
 				/>
-				<ReleaseReservationButton gift={visitorGift} size="md" class="w-full" />
+			{/if}
+			<div class={styles.reservationActions()}>
+				{#if canManage && onreceived !== undefined}
+					<GiftReceivedToggle
+						giftId={gift.id}
+						received={gift.received}
+						{role}
+						{isArchived}
+						{onreceived}
+						class="w-full"
+					/>
+				{/if}
+				{#if isVisitorOrModerator && visitorGift}
+					<PurchasedToggle gift={visitorGift} class="w-full" />
+					<ReserveButton
+						gift={visitorGift}
+						{isArchived}
+						size="md"
+						{onreserve}
+						{onunreserve}
+						class="w-full"
+					/>
+				{/if}
 			</div>
 		</div>
 	{/if}

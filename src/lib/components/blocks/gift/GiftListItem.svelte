@@ -10,7 +10,7 @@
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
-	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
+	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
@@ -30,22 +30,26 @@
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
+		hideReservationState?: boolean;
 		showLikeCount?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
+		onreceived?: (giftId: string, received: boolean) => void;
 	}
 
 	let {
 		gift,
 		role,
 		isArchived = false,
+		hideReservationState = false,
 		showLikeCount = false,
 		onreserve,
 		onunreserve,
+		onreceived,
 	}: GiftListItemProps = $props();
 
 	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role),
+		deriveGiftDisplayState(gift, role, hideReservationState),
 	);
 	// Edit-icon hover affordance (issue #125 REQ-3): mirrors GiftCard's manager-only pencil icon.
 	const canManage = $derived(canManageWishlist(role));
@@ -134,7 +138,13 @@
 			>
 				{gift.name}
 			</h3>
-			<GiftPieceCount quantity={gift.quantity} {role} {reservedCount} hideWhenOne />
+			<GiftPieceCount
+				quantity={gift.quantity}
+				role={hideReservationState ? 'recipient' : role}
+				{reservedCount}
+				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
+				hideWhenOne
+			/>
 			{#if gift.received}
 				<Badge tone="neutral" class="gap-1 text-[11px]">
 					<CheckIcon class="size-2.5" />
@@ -188,19 +198,29 @@
 			descriptionClass="line-clamp-1"
 		/>
 
-		{#if isVisitorOrModerator && visitorGift}
-			<!-- self-end: opts out of the parent flex-col's stretch so this shrink-wraps to its widest child, right-aligned (#211). -->
+		{#if (canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift)}
 			<div class="mt-auto flex flex-col gap-1.5 self-end pt-2">
-				<PurchasedToggle gift={visitorGift} class="w-full" />
-				<ReserveButton
-					gift={visitorGift}
-					{isArchived}
-					size="md"
-					{onreserve}
-					{onunreserve}
-					class="w-full"
-				/>
-				<ReleaseReservationButton gift={visitorGift} size="md" class="w-full" />
+				{#if canManage && onreceived !== undefined}
+					<GiftReceivedToggle
+						giftId={gift.id}
+						received={gift.received}
+						{role}
+						{isArchived}
+						{onreceived}
+						class="w-full"
+					/>
+				{/if}
+				{#if isVisitorOrModerator && visitorGift}
+					<PurchasedToggle gift={visitorGift} class="w-full" />
+					<ReserveButton
+						gift={visitorGift}
+						{isArchived}
+						size="md"
+						{onreserve}
+						{onunreserve}
+						class="w-full"
+					/>
+				{/if}
 			</div>
 		{/if}
 	</div>

@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -48,26 +48,82 @@ test.describe('Gift detail post-#188 coverage', () => {
 
 		await createWishlistAndNavigate(page, 'Received Sticker Coverage');
 		const giftName = 'Testovaci darek prijaty';
+		const activeGiftNameOne = 'Testovaci aktivni darek prvni';
+		const activeGiftNameTwo = 'Testovaci aktivni darek druhy';
 		await addGift(page, giftName);
+		await addGift(page, activeGiftNameOne);
+		await addGift(page, activeGiftNameTwo);
 
 		const giftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
-		await giftItem.click();
-		const dialog = page.getByRole('dialog');
-		await expect(dialog).toBeVisible({ timeout: 5_000 });
+		const receivedHeading = page.getByRole('heading', { name: 'Obdržené', exact: true });
+		await giftItem.getByRole('button', { name: 'Označit jako přijatý' }).click();
 
-		await dialog.getByRole('button', { name: 'Označit jako přijatý' }).click();
-		// The modal's own `gift` prop is a one-time snapshot on open (`selectedGift`
-		// is not resynced after the mutation's refetch), so the button label does
-		// not flip within this same session — but the underlying gift card DOES
-		// re-render live from the refreshed gifts list, so wait on the card's
-		// sticker text rather than the (stale) button label.
-		await expect(page.getByText('Přijato', { exact: true })).toBeVisible({ timeout: 10_000 });
+		// Issue #255 keeps the completed gift visible by enabling the received filter,
+		// then updates both the direct action and the existing sticker from refreshed data.
+		await expect(giftItem.getByText('Přijato', { exact: true })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await expect(
+			giftItem.getByRole('button', { name: 'Označit jako nepřijatý' }),
+		).toBeVisible();
+		await expect(giftItem.getByTestId('release-reservation-button')).toHaveCount(0);
 
-		await page.keyboard.press('Escape');
-		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
+		await giftItem.getByRole('button', { name: 'Označit jako nepřijatý' }).click();
+		await expect(giftItem.getByRole('button', { name: 'Označit jako přijatý' })).toBeVisible({
+			timeout: 10_000,
+		});
+		await expect(giftItem.getByText('Přijato', { exact: true })).toHaveCount(0);
+		await expect(receivedHeading).toHaveCount(0);
+		await giftItem.getByRole('button', { name: 'Označit jako přijatý' }).click();
 
-		const cardBox = await giftItem.boundingBox();
-		const stickerBox = await giftItem.getByText('Přijato', { exact: true }).boundingBox();
+		const revealedGiftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
+		const activeGiftItemOne = page
+			.locator('[data-gift-item]')
+			.filter({ hasText: activeGiftNameOne });
+		const activeGiftItemTwo = page
+			.locator('[data-gift-item]')
+			.filter({ hasText: activeGiftNameTwo });
+		await expect(receivedHeading).toHaveCount(1);
+		await expect(revealedGiftItem.getByText('Přijato', { exact: true })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		const expectBefore = async (first: Locator, second: Locator) => {
+			// Switching card/list view replaces the gift-list subtree. Retry the
+			// comparison so handles captured on opposite sides of that render are not
+			// mistaken for an ordering regression; a settled wrong order still fails.
+			await expect
+				.poll(
+					async () => {
+						const secondElement = await second.elementHandle();
+						if (!secondElement) {
+							return false;
+						}
+						return first.evaluate(
+							(firstElement, secondNode) =>
+								firstElement.isConnected &&
+								secondNode.isConnected &&
+								Boolean(
+									firstElement.compareDocumentPosition(secondNode) &
+									Node.DOCUMENT_POSITION_FOLLOWING,
+								),
+							secondElement,
+						);
+					},
+					{ message: 'first element occurs before second element in the DOM' },
+				)
+				.toBe(true);
+		};
+
+		await expectBefore(activeGiftItemOne, receivedHeading);
+		await expectBefore(activeGiftItemTwo, receivedHeading);
+		await expectBefore(receivedHeading, revealedGiftItem);
+
+		const cardBox = await revealedGiftItem.boundingBox();
+		const stickerBox = await revealedGiftItem
+			.getByText('Přijato', { exact: true })
+			.boundingBox();
 		expect(cardBox, 'gift card has a bounding box').not.toBeNull();
 		expect(stickerBox, 'received sticker has a bounding box').not.toBeNull();
 
@@ -93,6 +149,16 @@ test.describe('Gift detail post-#188 coverage', () => {
 		expect(stickerBox!.y + stickerBox!.height).toBeLessThanOrEqual(
 			cardBox!.y + cardBox!.height + 1,
 		);
+
+		await page.getByRole('radio', { name: 'Seznam', exact: true }).click();
+		await expect(page.getByRole('radio', { name: 'Seznam', exact: true })).toBeChecked();
+		await expectBefore(activeGiftItemOne, receivedHeading);
+		await expectBefore(activeGiftItemTwo, receivedHeading);
+		await expectBefore(receivedHeading, revealedGiftItem);
+		await expect(
+			revealedGiftItem.getByRole('button', { name: 'Označit jako nepřijatý' }),
+		).toBeVisible();
+		await expect(revealedGiftItem.getByTestId('release-reservation-button')).toHaveCount(0);
 	});
 
 	test('edited-after-share line appears on both the editor and the visitor detail view', async ({

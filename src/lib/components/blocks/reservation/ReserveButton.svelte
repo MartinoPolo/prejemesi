@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
+	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
+	import { cn } from '$lib/utils.js';
 
 	interface ReserveButtonProps {
 		gift: GiftForVisitor;
@@ -25,6 +28,54 @@
 
 	const hasMyReservation = $derived(gift.myReservationId !== null);
 	const isFullyReserved = $derived(gift.isFullyReserved);
+	let previousHasMyReservation: boolean | undefined;
+	let showReservationAcknowledgement = $state(false);
+	let acknowledgementRun = $state(0);
+	let buttonElement = $state<HTMLButtonElement | null>(null);
+	let contentElement = $state<HTMLSpanElement | null>(null);
+	let activeAnimation: Animation | null = null;
+
+	$effect.pre(() => {
+		const currentHasMyReservation = gift.myReservationId !== null;
+		if (previousHasMyReservation === undefined) {
+			previousHasMyReservation = currentHasMyReservation;
+			return;
+		}
+		if (!previousHasMyReservation && currentHasMyReservation) {
+			showReservationAcknowledgement = true;
+			acknowledgementRun += 1;
+		} else if (!currentHasMyReservation) {
+			showReservationAcknowledgement = false;
+		}
+		previousHasMyReservation = currentHasMyReservation;
+	});
+
+	$effect(() => {
+		const run = acknowledgementRun;
+		const shouldAnimate = showReservationAcknowledgement;
+		const element = contentElement;
+
+		activeAnimation?.cancel();
+		activeAnimation = null;
+		if (run === 0 || !shouldAnimate || element === null) {
+			return;
+		}
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+			showReservationAcknowledgement = false;
+			return;
+		}
+
+		activeAnimation = element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+		void activeAnimation.finished
+			?.then(() => {
+				if (acknowledgementRun === run && gift.myReservationId !== null) {
+					showReservationAcknowledgement = false;
+				}
+			})
+			.catch(() => undefined);
+	});
+
+	onDestroy(() => activeAnimation?.cancel());
 
 	function handleReserveClick(event: MouseEvent) {
 		event.stopPropagation();
@@ -39,32 +90,38 @@
 	}
 </script>
 
-{#if hasMyReservation}
-	<!-- Current user holds a reservation – allow cancelling (even on archived lists) -->
+{#if hasMyReservation || (!isArchived && !isFullyReserved)}
+	<!-- Own reservations remain cancellable on archived lists. Keeping one Button instance lets
+	     the successful authoritative prop transition morph in place without layout travel. -->
 	<Button
+		bind:ref={buttonElement}
 		{size}
-		intent="danger"
-		aria-label={m.reserve_button_cancel_aria({ name: gift.name })}
-		onclick={handleUnreserveClick}
+		intent={hasMyReservation ? 'danger' : 'primary'}
+		aria-label={hasMyReservation
+			? m.reserve_button_cancel_aria({ name: gift.name })
+			: m.reserve_button_reserve_aria({ name: gift.name })}
+		onclick={hasMyReservation ? handleUnreserveClick : handleReserveClick}
 		data-testid="reserve-button"
-		class={className}
+		class={cn(
+			className,
+			'duration-[160ms]',
+			showReservationAcknowledgement &&
+				'border-ink bg-status-success text-white hover:bg-[color-mix(in_oklab,var(--status-success)_86%,white)]',
+		)}
 	>
-		{m.reserve_button_cancel()}
-	</Button>
-{:else if !isArchived}
-	<Button
-		{size}
-		intent={isFullyReserved ? 'outline' : 'primary'}
-		disabled={isFullyReserved}
-		aria-label={m.reserve_button_reserve_aria({ name: gift.name })}
-		onclick={handleReserveClick}
-		data-testid="reserve-button"
-		class={className}
-	>
-		{#if isFullyReserved}
-			{m.reserve_button_reserved()}
-		{:else}
-			{m.reserve_button_reserve()}
-		{/if}
+		<span
+			bind:this={contentElement}
+			data-testid="reservation-button-content"
+			class="inline-flex items-center justify-center gap-1.5"
+		>
+			{#if showReservationAcknowledgement}
+				<CheckIcon data-icon aria-hidden="true" />
+				{m.reserve_button_reserved()}
+			{:else if hasMyReservation}
+				{m.reserve_button_cancel()}
+			{:else}
+				{m.reserve_button_reserve()}
+			{/if}
+		</span>
 	</Button>
 {/if}

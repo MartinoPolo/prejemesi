@@ -9,13 +9,8 @@ import { getDb } from './db/index.js';
 import { sendEmail, renderActionEmailParts } from './email.js';
 import { getTurnstileSecretKey } from './turnstile.js';
 import type { RequestEvent } from '@sveltejs/kit';
-
-// Dev: Vite picks the next free port (5174, 5175, ...) when 5173 is taken.
-// better-auth rejects sign-in when the request Origin doesn't match baseURL,
-// so trust the default port plus the next 10 fallbacks during development.
-const devTrustedOrigins = import.meta.env.DEV
-	? Array.from({ length: 11 }, (_, i) => `http://localhost:${5173 + i}`)
-	: [];
+import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
+import { resolveAuthOrigins } from '$lib/config/mpx_development.js';
 
 // Local dev has no deliverable inbox (the Resend sandbox sender only emails the
 // account owner), so verification links never arrive. Skip the verification gate
@@ -23,11 +18,18 @@ const devTrustedOrigins = import.meta.env.DEV
 const requireEmailVerification = !import.meta.env.DEV;
 
 export function createAuth(event?: RequestEvent) {
+	const authOrigins = resolveAuthOrigins(env, import.meta.env.DEV);
 	return betterAuth({
-		baseURL: env.ORIGIN ?? 'http://localhost:5173',
+		baseURL: authOrigins.baseURL,
 		secret: env.AUTH_SECRET,
-		trustedOrigins: devTrustedOrigins,
+		trustedOrigins: authOrigins.trustedOrigins,
 		logger: { disabled: !import.meta.env.DEV },
+		rateLimit: authRateLimit(import.meta.env.PROD),
+		advanced: {
+			ipAddress: {
+				ipAddressHeaders: [...AUTH_IP_ADDRESS_HEADERS],
+			},
+		},
 
 		database: drizzleAdapter(getDb(event), { provider: 'pg' }),
 
@@ -96,7 +98,7 @@ export function createAuth(event?: RequestEvent) {
 			captcha({
 				provider: 'cloudflare-turnstile',
 				secretKey: getTurnstileSecretKey(),
-				endpoints: ['/sign-up/email', '/sign-in/magic-link', '/request-password-reset'],
+				endpoints: [...AUTH_CAPTCHA_ENDPOINTS],
 			}),
 			sveltekitCookies(getRequestEvent),
 			magicLink({

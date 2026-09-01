@@ -1,5 +1,5 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql, count, type SQLWrapper } from 'drizzle-orm';
+import { eq, and, isNull, count } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { isAppAdmin } from '$lib/server/admin.js';
@@ -22,6 +22,7 @@ import {
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
 import { isWithinGraceWindow } from '$lib/modules/sharing/grace_window.js';
 import { seedNewWishlist } from './wishlist_create.js';
+import type { GiftCreationTransaction } from '$lib/modules/gifts/gift_creation_service.js';
 import {
 	resolveWishlistRole,
 	verifyManagerAccess,
@@ -41,59 +42,25 @@ import {
 	WISHLIST_ROLES,
 	type WishlistRole,
 } from './types.js';
-import type { ModeratedWishlist, FollowedWishlist, MyWishlist } from './dashboard_types.js';
-import { sortCategoryRow, buildRecentRow } from './home_overview_sort.js';
 import {
-	HOME_CATEGORY_CAP,
-	HOME_RECENT_CAP,
-	HOME_ROLE,
-	type HomeOverview,
-	type OwnHomeItem,
-	type ModeratedHomeItem,
-	type FollowedHomeItem,
-	type HomeCategoryRow,
-	type RecentHomeItem,
-} from './home_overview_types.js';
+	createOwnRolePrimitives,
+	createModeratedRolePrimitives,
+	createFollowedRolePrimitives,
+	recipientDisplayNameSql,
+} from './wishlist_role_query_primitives.js';
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
-/**
- * SQL for "who the list is for": the linked recipient's account name (left-joined on
- * `recipientUserId`) or the free-text `recipientName`. Requires a leftJoin on `user`.
- */
-function recipientDisplayNameSql() {
-	return sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`;
-}
-
 export const getMyWishlists = guardedQuery(async ({ user }) => {
 	const database = getDb();
-
-	const totalGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('total_gifts'),
-		})
-		.from(gift)
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as('my_total_gifts_sq');
-
+	const ownRole = createOwnRolePrimitives(database, user.id);
 	const rows = await database
-		.select({
-			wishlist: wishlist,
-			totalGifts: sql<number>`coalesce(${totalGiftsSubquery.count}, 0)`,
-		})
+		.select(ownRole.projection)
 		.from(wishlist)
-		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
-		.where(and(eq(wishlist.recipientUserId, user.id), isNull(wishlist.deletedAt)))
+		.leftJoin(ownRole.totalGifts, eq(ownRole.totalGifts.wishlistId, wishlist.id))
+		.where(and(ownRole.predicate, isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
-
-	return rows.map(
-		(row): MyWishlist => ({
-			...row.wishlist,
-			totalGifts: Number(row.totalGifts),
-		}),
-	);
+	return rows.map(ownRole.map);
 });
 
 export const getWishlistByShortId = publicQuery(v.string(), async (authContext, shortId) => {
@@ -190,339 +157,34 @@ export const getWishlistByShortId = publicQuery(v.string(), async (authContext, 
 
 export const getModeratedWishlists = guardedQuery(async ({ user: currentUser }) => {
 	const database = getDb();
-
-	const totalGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('total_gifts'),
-		})
-		.from(gift)
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as('total_gifts_sq');
-
-	const reservedGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(distinct ${gift.id})`.as('reserved_gifts'),
-		})
-		.from(gift)
-		.innerJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
-		.where(isNull(gift.deletedAt))
-		.groupBy(gift.wishlistId)
-		.as('reserved_gifts_sq');
-
+	const role = createModeratedRolePrimitives(database, currentUser.id);
 	const rows = await database
-		.select({
-			wishlist: wishlist,
-			recipientDisplayName: recipientDisplayNameSql(),
-			totalGifts: sql<number>`coalesce(${totalGiftsSubquery.count}, 0)`,
-			reservedGifts: sql<number>`coalesce(${reservedGiftsSubquery.count}, 0)`,
-		})
+		.select(role.projection)
 		.from(moderatorAssignment)
 		.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(totalGiftsSubquery, eq(totalGiftsSubquery.wishlistId, wishlist.id))
-		.leftJoin(reservedGiftsSubquery, eq(reservedGiftsSubquery.wishlistId, wishlist.id))
-		.where(
-			and(
-				eq(moderatorAssignment.userId, currentUser.id),
-				isNull(moderatorAssignment.deletedAt),
-				isNull(wishlist.deletedAt),
-			),
-		)
+		.leftJoin(role.totalGifts, eq(role.totalGifts.wishlistId, wishlist.id))
+		.leftJoin(role.reservedGifts, eq(role.reservedGifts.wishlistId, wishlist.id))
+		.where(and(role.predicate, isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
-
-	return rows.map(
-		(row): ModeratedWishlist => ({
-			...row.wishlist,
-			recipientDisplayName: row.recipientDisplayName,
-			totalGifts: Number(row.totalGifts),
-			reservedGifts: Number(row.reservedGifts),
-		}),
-	);
+	return rows.map(role.map);
 });
 
 export const getFollowedWishlists = guardedQuery(async ({ user: currentUser }) => {
 	const database = getDb();
-
-	const availableGiftsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('available_gifts'),
-		})
-		.from(gift)
-		.leftJoin(reservation, and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)))
-		.where(and(isNull(gift.deletedAt), isNull(reservation.id)))
-		.groupBy(gift.wishlistId)
-		.as('available_gifts_sq');
-
-	const myReservationsSubquery = database
-		.select({
-			wishlistId: gift.wishlistId,
-			count: sql<number>`count(*)`.as('my_reservations'),
-			purchasedCount:
-				sql<number>`count(*) filter (where ${reservation.purchasedAt} is not null)`.as(
-					'my_purchased',
-				),
-		})
-		.from(reservation)
-		.innerJoin(gift, eq(reservation.giftId, gift.id))
-		.where(
-			and(
-				eq(reservation.userId, currentUser.id),
-				isNull(reservation.deletedAt),
-				isNull(gift.deletedAt),
-			),
-		)
-		.groupBy(gift.wishlistId)
-		.as('my_reservations_sq');
-
+	const role = createFollowedRolePrimitives(database, currentUser.id);
 	const rows = await database
-		.select({
-			wishlist: wishlist,
-			recipientDisplayName: recipientDisplayNameSql(),
-			availableGifts: sql<number>`coalesce(${availableGiftsSubquery.count}, 0)`,
-			myReservations: sql<number>`coalesce(${myReservationsSubquery.count}, 0)`,
-			myPurchased: sql<number>`coalesce(${myReservationsSubquery.purchasedCount}, 0)`,
-			unfollowedAt: wishlistFollower.unfollowedAt,
-		})
+		.select(role.projection)
 		.from(wishlistFollower)
 		.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
 		.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-		.leftJoin(availableGiftsSubquery, eq(availableGiftsSubquery.wishlistId, wishlist.id))
-		.leftJoin(myReservationsSubquery, eq(myReservationsSubquery.wishlistId, wishlist.id))
-		.where(and(eq(wishlistFollower.userId, currentUser.id), isNull(wishlist.deletedAt)))
+		.leftJoin(role.availableGifts, eq(role.availableGifts.wishlistId, wishlist.id))
+		.leftJoin(role.myReservations, eq(role.myReservations.wishlistId, wishlist.id))
+		// Dashboard history deliberately includes unfollowed and archived rows.
+		.where(and(role.predicate, isNull(wishlist.deletedAt)))
 		.orderBy(wishlist.updatedAt);
-
-	return rows.map(
-		(row): FollowedWishlist => ({
-			...row.wishlist,
-			recipientDisplayName: row.recipientDisplayName,
-			availableGifts: Number(row.availableGifts),
-			myReservations: Number(row.myReservations),
-			myPurchased: Number(row.myPurchased),
-			unfollowedAt: row.unfollowedAt,
-		}),
-	);
+	return rows.map(role.map);
 });
-
-/**
- * Aggregated data for the Přehled overview at /home (issue #225). Reuses the three role
- * queries' SQL bodies, each left-joined with `wishlist_visit` for the caller's last-visit
- * recency, and returns four rows: the mixed „Nedávné" shortcut (cap 6) plus the three
- * category rows (cap 10 + true total). Archived lists are excluded everywhere.
- *
- * SSR-awaited by the page (issue #108 pattern): guardedQuery reads locals during SSR.
- */
-export const getHomeOverview = guardedQuery(
-	async ({ user: currentUser }): Promise<HomeOverview> => {
-		const database = getDb();
-
-		// The caller's last-visit timestamp per wishlist (issue #225). Left-joined into every role
-		// query so undated/Nedávné ordering has a recency signal without a follower row.
-		const visitJoin = (wishlistId: SQLWrapper) =>
-			and(eq(wishlistVisit.wishlistId, wishlistId), eq(wishlistVisit.userId, currentUser.id));
-
-		// ── Own (recipient) lists — gift count only, never reservation data (invariant). ──
-		const ownTotalGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_own_total_gifts'),
-			})
-			.from(gift)
-			.where(isNull(gift.deletedAt))
-			.groupBy(gift.wishlistId)
-			.as('home_own_total_gifts_sq');
-
-		const ownRows = await database
-			.select({
-				wishlist: wishlist,
-				totalGifts: sql<number>`coalesce(${ownTotalGifts.count}, 0)`,
-				lastVisitedAt: wishlistVisit.lastVisitedAt,
-			})
-			.from(wishlist)
-			.leftJoin(ownTotalGifts, eq(ownTotalGifts.wishlistId, wishlist.id))
-			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
-			.where(and(eq(wishlist.recipientUserId, currentUser.id), isNull(wishlist.deletedAt)));
-
-		const own = ownRows.map(
-			(row): OwnHomeItem => ({
-				...row.wishlist,
-				totalGifts: Number(row.totalGifts),
-				lastVisitedAt: row.lastVisitedAt,
-			}),
-		);
-
-		// ── Moderated (správce) lists — reservation progress. ──
-		const modTotalGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_mod_total_gifts'),
-			})
-			.from(gift)
-			.where(isNull(gift.deletedAt))
-			.groupBy(gift.wishlistId)
-			.as('home_mod_total_gifts_sq');
-
-		const modReservedGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(distinct ${gift.id})`.as('home_mod_reserved_gifts'),
-			})
-			.from(gift)
-			.innerJoin(
-				reservation,
-				and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)),
-			)
-			.where(isNull(gift.deletedAt))
-			.groupBy(gift.wishlistId)
-			.as('home_mod_reserved_gifts_sq');
-
-		const moderatedRows = await database
-			.select({
-				wishlist: wishlist,
-				recipientDisplayName: recipientDisplayNameSql(),
-				totalGifts: sql<number>`coalesce(${modTotalGifts.count}, 0)`,
-				reservedGifts: sql<number>`coalesce(${modReservedGifts.count}, 0)`,
-				lastVisitedAt: wishlistVisit.lastVisitedAt,
-			})
-			.from(moderatorAssignment)
-			.innerJoin(wishlist, eq(moderatorAssignment.wishlistId, wishlist.id))
-			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-			.leftJoin(modTotalGifts, eq(modTotalGifts.wishlistId, wishlist.id))
-			.leftJoin(modReservedGifts, eq(modReservedGifts.wishlistId, wishlist.id))
-			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
-			.where(
-				and(
-					eq(moderatorAssignment.userId, currentUser.id),
-					isNull(moderatorAssignment.deletedAt),
-					isNull(wishlist.deletedAt),
-				),
-			);
-
-		const moderated = moderatedRows.map(
-			(row): ModeratedHomeItem => ({
-				...row.wishlist,
-				recipientDisplayName: row.recipientDisplayName,
-				totalGifts: Number(row.totalGifts),
-				reservedGifts: Number(row.reservedGifts),
-				lastVisitedAt: row.lastVisitedAt,
-			}),
-		);
-
-		// ── Followed lists — available gifts + own reservations. Active follows only. ──
-		const followedAvailableGifts = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_followed_available_gifts'),
-			})
-			.from(gift)
-			.leftJoin(
-				reservation,
-				and(eq(reservation.giftId, gift.id), isNull(reservation.deletedAt)),
-			)
-			.where(and(isNull(gift.deletedAt), isNull(reservation.id)))
-			.groupBy(gift.wishlistId)
-			.as('home_followed_available_gifts_sq');
-
-		const followedMyReservations = database
-			.select({
-				wishlistId: gift.wishlistId,
-				count: sql<number>`count(*)`.as('home_followed_my_reservations'),
-				purchasedCount:
-					sql<number>`count(*) filter (where ${reservation.purchasedAt} is not null)`.as(
-						'home_followed_my_purchased',
-					),
-			})
-			.from(reservation)
-			.innerJoin(gift, eq(reservation.giftId, gift.id))
-			.where(
-				and(
-					eq(reservation.userId, currentUser.id),
-					isNull(reservation.deletedAt),
-					isNull(gift.deletedAt),
-				),
-			)
-			.groupBy(gift.wishlistId)
-			.as('home_followed_my_reservations_sq');
-
-		const followedRows = await database
-			.select({
-				wishlist: wishlist,
-				recipientDisplayName: recipientDisplayNameSql(),
-				availableGifts: sql<number>`coalesce(${followedAvailableGifts.count}, 0)`,
-				myReservations: sql<number>`coalesce(${followedMyReservations.count}, 0)`,
-				myPurchased: sql<number>`coalesce(${followedMyReservations.purchasedCount}, 0)`,
-				unfollowedAt: wishlistFollower.unfollowedAt,
-				followDate: wishlistFollower.createdAt,
-				lastVisitedAt: wishlistVisit.lastVisitedAt,
-			})
-			.from(wishlistFollower)
-			.innerJoin(wishlist, eq(wishlistFollower.wishlistId, wishlist.id))
-			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
-			.leftJoin(followedAvailableGifts, eq(followedAvailableGifts.wishlistId, wishlist.id))
-			.leftJoin(followedMyReservations, eq(followedMyReservations.wishlistId, wishlist.id))
-			.leftJoin(wishlistVisit, visitJoin(wishlist.id))
-			.where(
-				and(
-					eq(wishlistFollower.userId, currentUser.id),
-					isNull(wishlistFollower.unfollowedAt),
-					isNull(wishlist.deletedAt),
-				),
-			);
-
-		const followed = followedRows.map(
-			(row): FollowedHomeItem => ({
-				...row.wishlist,
-				recipientDisplayName: row.recipientDisplayName,
-				availableGifts: Number(row.availableGifts),
-				myReservations: Number(row.myReservations),
-				myPurchased: Number(row.myPurchased),
-				unfollowedAt: row.unfollowedAt,
-				followDate: row.followDate,
-				lastVisitedAt: row.lastVisitedAt,
-			}),
-		);
-
-		// Archived lists never appear on /home (they live behind the full pages' toggle). Applied
-		// in JS as the single authoritative gate so caps and totals both count only live lists.
-		const isLive = <T extends { status: string }>(item: T) => item.status !== 'archived';
-		const ownLive = own.filter(isLive);
-		const moderatedLive = moderated.filter(isLive);
-		const followedLive = followed.filter(isLive);
-
-		const toRow = <T extends OwnHomeItem | ModeratedHomeItem | FollowedHomeItem>(
-			items: T[],
-		): HomeCategoryRow<T> => ({
-			items: sortCategoryRow(items).slice(0, HOME_CATEGORY_CAP),
-			total: items.length,
-		});
-
-		// „Nedávné" mixes all three roles by recency, but shows each wishlist once even when the
-		// caller holds several roles on it. Assembled own → moderated → followed and de-duplicated
-		// by keeping the first (highest-priority) role: recipient > správce > follower.
-		const seenWishlistIds = new Set<string>();
-		const recentCandidates: RecentHomeItem[] = [
-			...ownLive.map((item) => ({ ...item, role: HOME_ROLE.own }) as const),
-			...moderatedLive.map((item) => ({ ...item, role: HOME_ROLE.moderated }) as const),
-			...followedLive.map((item) => ({ ...item, role: HOME_ROLE.followed }) as const),
-		].filter((candidate) => {
-			if (seenWishlistIds.has(candidate.id)) {
-				return false;
-			}
-			seenWishlistIds.add(candidate.id);
-			return true;
-		});
-
-		return {
-			recent: buildRecentRow(recentCandidates, HOME_RECENT_CAP),
-			followed: toRow(followedLive),
-			moderated: toRow(moderatedLive),
-			own: toRow(ownLive),
-		};
-	},
-);
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 
@@ -531,22 +193,44 @@ export const createWishlist = guardedCommand(CreateWishlistInputSchema, async ({
 	return database.transaction((tx) => seedNewWishlist(tx, user.id, input));
 });
 
-export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
-	const database = getDb();
-
-	// Any manager (recipient or správce) may edit list metadata/theme/image (issue #99).
-	const { wishlistRow: row } = await verifyManagerAccess(user.id, input.id);
+async function updateLockedWishlist(
+	tx: GiftCreationTransaction,
+	userId: string,
+	input: v.InferOutput<typeof UpdateWishlistInputSchema>,
+) {
+	const rows = await tx
+		.select()
+		.from(wishlist)
+		.where(and(eq(wishlist.id, input.id), isNull(wishlist.deletedAt)))
+		.limit(1)
+		.for('update');
+	const row = rows[0];
+	if (row === undefined) {
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+	if (row.recipientUserId !== userId) {
+		const managers = await tx
+			.select({ id: moderatorAssignment.id })
+			.from(moderatorAssignment)
+			.where(
+				and(
+					eq(moderatorAssignment.wishlistId, row.id),
+					eq(moderatorAssignment.userId, userId),
+					isNull(moderatorAssignment.deletedAt),
+				),
+			)
+			.limit(1);
+		if (managers[0] === undefined) {
+			error(403, SERVER_ERROR.ACCESS_DENIED);
+		}
+	}
 	if (row.status === 'archived') {
 		error(400, SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST);
 	}
 
-	// Edit lock: if shared, only allow limited field updates
 	const now = new Date();
 	const isShared = row.sharedAt !== null;
-
 	const updateData: Record<string, unknown> = { updatedAt: now };
-
-	// Title and description can always be updated
 	if (input.title !== undefined) {
 		updateData['title'] = input.title;
 	}
@@ -554,10 +238,6 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		updateData['description'] = input.description;
 	}
 
-	// Event date locks at share time, but stays editable within the debounced 2-min grace window
-	// (REQ-4). The window resets on each in-window edit, so it is keyed off `eventDateEditedAt`
-	// (the last edit) and falls back to `sharedAt` until then. Stale clients past the window are
-	// rejected here – the server is the authority (REQ-6).
 	const eventDateGraceOpen =
 		isShared && isWithinGraceWindow(row.eventDateEditedAt ?? row.sharedAt, now);
 	if (input.eventDate !== undefined && (!isShared || eventDateGraceOpen)) {
@@ -567,7 +247,14 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		}
 	}
 
-	// Image assignment + per-slot crop metadata can always be updated
+	if (
+		input.imageKey !== undefined &&
+		input.imageKey !== null &&
+		input.imageKey !== row.imageKey
+	) {
+		const { assertWishlistBannerAssignment } = await import('./wishlist_image_assignment.js');
+		await assertWishlistBannerAssignment(userId, input.imageKey, input.imageAssignmentToken);
+	}
 	if (input.imageKey !== undefined) {
 		updateData['imageKey'] = input.imageKey;
 	}
@@ -575,23 +262,29 @@ export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({
 		updateData['imageSlots'] = input.imageSlots;
 	}
 
-	const [updated] = await database
+	const [updated] = await tx
 		.update(wishlist)
 		.set(updateData)
 		.where(eq(wishlist.id, input.id))
 		.returning();
+	return {
+		updated,
+		shortId: row.shortId,
+		replacedImageKey:
+			input.imageKey !== undefined && row.imageKey !== input.imageKey ? row.imageKey : null,
+	};
+}
 
-	// Storage cleanup (issue #107, REQ-6): a replaced or removed wishlist image
-	// leaves no unreferenced R2 object behind.
-	if (input.imageKey !== undefined && row.imageKey !== null && row.imageKey !== input.imageKey) {
-		await deleteObjectsBestEffort([row.imageKey]);
+export const updateWishlist = guardedCommand(UpdateWishlistInputSchema, async ({ user }, input) => {
+	const database = getDb();
+	// Lock/read/update form one serialization point. Cleanup uses the key this transaction
+	// actually replaced, never a stale pre-transaction read from a competing image save.
+	const result = await database.transaction((tx) => updateLockedWishlist(tx, user.id, input));
+	if (result.replacedImageKey !== null) {
+		await deleteObjectsBestEffort([result.replacedImageKey]);
 	}
-
-	// Single-flight refresh (issue #108, REQ-3/4): the settings/wishlist pages track
-	// this query, so the saved metadata rides back on the command response.
-	singleFlightRefresh(getWishlistByShortId, row.shortId);
-
-	return updated;
+	singleFlightRefresh(getWishlistByShortId, result.shortId);
+	return result.updated;
 });
 
 /**
@@ -698,8 +391,6 @@ export const flipRecipientToFreeText = guardedCommand(
 		singleFlightRefresh(getWishlistByShortId, wishlistRow.shortId);
 		singleFlightRefresh(getMyWishlists);
 		singleFlightRefresh(getModeratedWishlists);
-		// The Přehled overview mixes both roles — keep it in sync on the same round trip.
-		singleFlightRefresh(getHomeOverview);
 
 		return updated;
 	},
@@ -815,8 +506,6 @@ export const deleteWishlist = guardedCommand(v.string(), async ({ user }, wishli
 	// "Spravované") without a reload. Untracked queries are a no-op.
 	singleFlightRefresh(getMyWishlists);
 	singleFlightRefresh(getModeratedWishlists);
-	// The deleted list also drops off the Přehled overview without a reload.
-	singleFlightRefresh(getHomeOverview);
 });
 
 // ── Follower Commands ──────────────────────────────────────────────────────
@@ -889,8 +578,6 @@ export const unfollowWishlist = guardedCommand(v.string(), async ({ user }, wish
 	// Single-flight refresh (issue #108, REQ-3/4): the Sledované page tracks this
 	// query, so the updated follow state rides back on the command response.
 	singleFlightRefresh(getFollowedWishlists);
-	// Přehled's Sledované row + Nedávné shortcut track the same follow state.
-	singleFlightRefresh(getHomeOverview);
 });
 
 export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wishlistId) => {
@@ -905,7 +592,6 @@ export const refollowWishlist = guardedCommand(v.string(), async ({ user }, wish
 
 	// Single-flight refresh (issue #108, REQ-3/4): see unfollowWishlist.
 	singleFlightRefresh(getFollowedWishlists);
-	singleFlightRefresh(getHomeOverview);
 });
 
 /**

@@ -1,6 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerViaApi, registerAndGetPage } from './fixtures/auth-helpers.js';
+
+async function installTurnstileMock(page: Page): Promise<void> {
+	await page.addInitScript(() => {
+		(window as unknown as { turnstile: unknown }).turnstile = {
+			render: (_container: HTMLElement, options: { callback: (token: string) => void }) => {
+				queueMicrotask(() => options.callback('XXXX.DUMMY.TOKEN.XXXX'));
+				return 'playwright-turnstile';
+			},
+			reset: () => undefined,
+			remove: () => undefined,
+		};
+	});
+}
 
 test.describe('Authentication', () => {
 	test('register with valid credentials redirects to my-lists', async ({
@@ -20,11 +33,13 @@ test.describe('Authentication', () => {
 		const user = createTestUser('login');
 		await registerViaApi(request, baseURL!, user);
 
+		await installTurnstileMock(page);
 		await page.goto('/login');
-		await page.waitForLoadState('networkidle');
+		const loginButton = page.getByRole('button', { name: 'Přihlásit se', exact: true });
+		await expect(loginButton).toBeEnabled();
 		await page.getByRole('textbox', { name: 'E-mail' }).fill(user.email);
 		await page.getByRole('textbox', { name: 'Heslo' }).fill(user.password);
-		await page.getByRole('button', { name: 'Přihlásit se', exact: true }).click();
+		await loginButton.click();
 
 		// Post-login default redirect now lands on the „Přehled" overview at /home (issue #225),
 		// no longer /my-lists.
@@ -35,11 +50,13 @@ test.describe('Authentication', () => {
 	});
 
 	test('login with invalid credentials shows error', async ({ page }) => {
+		await installTurnstileMock(page);
 		await page.goto('/login');
-		await page.waitForLoadState('networkidle');
+		const loginButton = page.getByRole('button', { name: 'Přihlásit se', exact: true });
+		await expect(loginButton).toBeEnabled();
 		await page.getByRole('textbox', { name: 'E-mail' }).fill('nonexistent@test.cz');
 		await page.getByRole('textbox', { name: 'Heslo' }).fill('wrongpassword123');
-		await page.getByRole('button', { name: 'Přihlásit se', exact: true }).click();
+		await loginButton.click();
 
 		await expect(page.getByRole('alert')).toBeVisible({ timeout: 15_000 });
 	});
@@ -67,6 +84,11 @@ test.describe('Authentication', () => {
 	});
 
 	for (const protectedRequest of [
+		{
+			name: 'password sign-in',
+			path: '/api/auth/sign-in/email',
+			data: { email: 'turnstile-login@test.cz', password: 'password123' },
+		},
 		{
 			name: 'registration',
 			path: '/api/auth/sign-up/email',

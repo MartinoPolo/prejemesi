@@ -6,6 +6,7 @@
 	import DarkModeToggle from '$lib/components/derived/dark-mode-toggle/DarkModeToggle.svelte';
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
+	import DepthStyleSwitcher from '$lib/components/derived/depth-style-switcher/DepthStyleSwitcher.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import Settings2Icon from '@lucide/svelte/icons/settings-2';
 
@@ -31,11 +32,14 @@
 		</Popover.Trigger>
 	</SimpleTooltip>
 	<Popover.Content
+		role="dialog"
 		align="end"
 		class="flex w-72 min-w-0 flex-col gap-3 p-3"
 		aria-label={m.settings_appearance_title()}
 	>
 		<PaletteSwitcher variant="inline" />
+		<Separator />
+		<DepthStyleSwitcher />
 		<Separator />
 		<LanguageToggle variant="inline" />
 		<Separator />

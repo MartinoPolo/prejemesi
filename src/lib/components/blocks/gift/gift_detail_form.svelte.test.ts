@@ -4,10 +4,13 @@
 // (only `.storybook/preview.ts` imports app.css). Mirror that import here.
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
+import { userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
-import { IMAGE_FIT_MODES } from '$lib/modules/images/index.js';
+import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
+import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 
 // `GiftDetailForm` transitively imports `public_url.ts`, whose public env is normally
 // seeded by SvelteKit's browser bootstrap. Vitest mounts into a bare document, so use
@@ -48,12 +51,154 @@ const baseProps = {
 	mode: 'edit' as const,
 	wishlistId: 'wishlist-1',
 	priorityLevels: [],
-	isOwner: true,
+	role: 'recipient' as const,
 	postShareLocked: false,
 	canDelete: false,
 	isSubmitting: false,
 	isDeleting: false,
 };
+
+const categoryOptions: ManagedGiftCategory[] = [
+	{
+		id: 'category-books',
+		presetKey: null,
+		customLabel: 'Books',
+		color: '#2563EB',
+		sortOrder: 0,
+		usedCount: 1,
+	},
+];
+
+describe('GiftDetailForm categories', () => {
+	it('renders category selection in create mode and submits the chosen category', async () => {
+		const oncreate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			categoryOptions,
+			oncreate,
+		});
+
+		await screen.getByRole('textbox', { name: m.gift_name_label() }).fill('New book');
+		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await screen.getByRole('option', { name: 'Books' }).click();
+		await screen.getByRole('button', { name: m.gift_add_title() }).first().click();
+
+		expect(oncreate).toHaveBeenCalledWith(
+			expect.objectContaining({ categoryId: 'category-books' }),
+		);
+	});
+
+	it('updates category choices while the editor remains mounted', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			categoryOptions,
+		});
+
+		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await expect.element(screen.getByRole('option', { name: 'Books' })).toBeVisible();
+		await userEvent.keyboard('{Escape}');
+
+		await screen.rerender({
+			categoryOptions: [
+				{
+					...categoryOptions[0]!,
+					customLabel: 'Renamed books',
+				},
+			],
+		});
+		await screen.getByRole('button', { name: m.gift_category_none() }).click();
+		await expect.element(screen.getByRole('option', { name: 'Renamed books' })).toBeVisible();
+		expect(document.body.textContent).not.toContain('Books');
+	});
+
+	it('keeps a long category list scrollable and supports keyboard selection', async () => {
+		const manyCategories: ManagedGiftCategory[] = Array.from({ length: 30 }, (_, index) => ({
+			id: `category-${index + 1}`,
+			presetKey: null,
+			customLabel: `Category ${index + 1}`,
+			color: '#2563EB',
+			sortOrder: index,
+			usedCount: 1,
+		}));
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+			categoryOptions: manyCategories,
+		});
+
+		const overflowStyle = document.createElement('style');
+		overflowStyle.textContent = '[data-select-viewport] { max-height: 120px !important; }';
+		document.head.append(overflowStyle);
+		const trigger = screen.getByRole('button', { name: m.gift_category_none() });
+		trigger.element().scrollIntoView({ block: 'center' });
+		await trigger.click();
+		const viewport = document.querySelector<HTMLElement>('[data-select-viewport]')!;
+		expect(screen.getByRole('option').all()).toHaveLength(31);
+		await vi.waitFor(() => {
+			expect(viewport.clientHeight).toBeGreaterThan(0);
+			expect(Number.isFinite(viewport.clientHeight)).toBe(true);
+			expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
+		});
+		viewport.scrollIntoView({ block: 'center' });
+		const rect = viewport.getBoundingClientRect();
+		expect(rect.top).toBeGreaterThanOrEqual(0);
+		expect(rect.bottom).toBeLessThanOrEqual(window.innerHeight);
+
+		await userEvent.keyboard('{End}');
+		const finalOption = screen.getByRole('option', { name: 'Category 30' }).element();
+		await vi.waitFor(() => {
+			expect(viewport.scrollTop).toBeGreaterThan(0);
+			const viewportRect = viewport.getBoundingClientRect();
+			const optionRect = finalOption.getBoundingClientRect();
+			expect(optionRect.top).toBeGreaterThanOrEqual(viewportRect.top);
+			expect(optionRect.bottom).toBeLessThanOrEqual(viewportRect.bottom + 1);
+		});
+		await userEvent.keyboard('{Enter}');
+		await expect.element(screen.getByRole('button', { name: 'Category 30' })).toBeVisible();
+		overflowStyle.remove();
+	});
+
+	it('preselects an edit gift category and submits null when it is cleared', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ categoryId: 'category-books' }),
+			categoryOptions,
+			onupdate,
+		});
+
+		await screen.getByRole('button', { name: 'Books' }).click();
+		await screen.getByRole('option', { name: m.gift_category_none() }).click();
+		await screen.getByRole('button', { name: m.save() }).first().click();
+
+		expect(onupdate).toHaveBeenCalledWith(expect.objectContaining({ categoryId: null }));
+	});
+
+	it('renders a disabled empty state with settings guidance', async () => {
+		const screen = await render(GiftDetailForm, { ...baseProps, gift: makeGift() });
+
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_category_none_enabled() }))
+			.toBeDisabled();
+		await expect.element(screen.getByText(m.gift_category_none_enabled_help())).toBeVisible();
+	});
+});
+
+describe('GiftDetailForm actions (issue #255)', () => {
+	it.each([WISHLIST_ROLES.recipient, WISHLIST_ROLES.moderator])(
+		'does not render the received toggle in the editor for %s',
+		async (role) => {
+			await render(GiftDetailForm, { ...baseProps, role, gift: makeGift() });
+
+			expect(document.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
+		},
+	);
+});
 
 describe('GiftDetailForm stored images', () => {
 	it('previews the stored key while preserving the raw retailer URL on submit', async () => {
@@ -83,7 +228,278 @@ describe('GiftDetailForm stored images', () => {
 	});
 });
 
+describe('GiftDetailForm image backgrounds (issue #252)', () => {
+	const imageUrl =
+		'data:image/svg+xml,' +
+		encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"/>');
+
+	function imageMeta(bgColor: string | null): ImageMetadata {
+		return {
+			fitMode: IMAGE_FIT_MODES.containPadded,
+			cropRect: null,
+			focal: { x: 50, y: 50 },
+			zoom: 1,
+			bgColor,
+		};
+	}
+
+	it('selects Transparent for null, previews the default pattern, and submits null untouched', async () => {
+		const onupdate = vi.fn();
+		const root = document.documentElement;
+		const previousValue = root.style.getPropertyValue('--secondary');
+		const previousPriority = root.style.getPropertyPriority('--secondary');
+		root.style.setProperty('--secondary', 'rgb(12, 34, 56)');
+
+		try {
+			const screen = await render(GiftDetailForm, {
+				...baseProps,
+				gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
+				onupdate,
+			});
+
+			await expect
+				.element(screen.getByRole('group', { name: m.image_background_label() }))
+				.toBeVisible();
+			await expect
+				.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
+				.toHaveAttribute('aria-checked', 'true');
+			expect(
+				screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+			).toBeTruthy();
+			await vi.waitFor(() => {
+				const fill = screen.container.querySelector<HTMLElement>(
+					'[data-testid="crop-stage"] > [style*="background:"]',
+				);
+				expect(fill).not.toBeNull();
+				expect(getComputedStyle(fill!).backgroundColor).toBe('rgb(12, 34, 56)');
+			});
+
+			await screen.getByRole('button', { name: m.save() }).click();
+			expect(onupdate).toHaveBeenCalledWith(
+				expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+			);
+		} finally {
+			if (previousValue) {
+				root.style.setProperty('--secondary', previousValue, previousPriority);
+			} else {
+				root.style.removeProperty('--secondary');
+			}
+		}
+	});
+
+	it('normalizes legacy transparent metadata to the selected default and null on save', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta('transparent') }),
+			onupdate,
+		});
+
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
+			.toHaveAttribute('aria-checked', 'true');
+		expect(
+			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+		).toBeTruthy();
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+		);
+	});
+
+	it('clicking Transparent replaces an explicit fill with canonical null', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta('#000000') }),
+			onupdate,
+		});
+
+		await screen.getByRole('radio', { name: m.image_background_transparent() }).click();
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_transparent() }))
+			.toHaveAttribute('aria-checked', 'true');
+		expect(
+			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+		).toBeTruthy();
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: null }) }),
+		);
+	});
+
+	it.each([
+		[m.image_background_white(), '#ffffff', 'rgb(255, 255, 255)'],
+		[m.image_background_black(), '#000000', 'rgb(0, 0, 0)'],
+	])('submits %s as the exact persisted value', async (label, value, expectedBackground) => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta(null) }),
+			onupdate,
+		});
+
+		await screen.getByRole('radio', { name: label }).click();
+		await vi.waitFor(() => {
+			const fill = screen.container.querySelector<HTMLElement>(
+				'[data-testid="crop-stage"] > [style*="background:"]',
+			);
+			expect(fill).not.toBeNull();
+			expect(getComputedStyle(fill!).backgroundColor).toBe(expectedBackground);
+		});
+		expect(
+			screen.container.querySelector('[data-testid="gift-preview-card-pattern"]'),
+		).toBeNull();
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ imageMeta: expect.objectContaining({ bgColor: value }) }),
+		);
+	});
+
+	it('highlights the persisted explicit choice when editing a gift', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ imageUrl, imageMeta: imageMeta('#000000') }),
+		});
+
+		await expect
+			.element(screen.getByRole('radio', { name: m.image_background_black() }))
+			.toHaveAttribute('aria-checked', 'true');
+	});
+});
+
 describe('GiftDetailForm price-range UI (issue #171)', () => {
+	it('applies reversible second-highest-order stepping to ArrowUp and ArrowDown', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 99.99 }),
+		});
+		const priceInput = screen.getByRole('spinbutton', { name: m.gift_price_label() });
+
+		await priceInput.click();
+		await userEvent.keyboard('{ArrowUp}');
+		await expect.element(priceInput).toHaveValue(100.99);
+
+		await priceInput.fill('100.08');
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(priceInput).toHaveValue(99.08);
+	});
+
+	it('adjusts both range bounds independently from each bound pre-key value', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 9.99, priceMax: 100.08 }),
+		});
+		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
+		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
+
+		await minInput.click();
+		await userEvent.keyboard('{ArrowUp}');
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(100.08);
+
+		await maxInput.click();
+		await userEvent.keyboard('{ArrowDown}');
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(99.08);
+	});
+
+	it('uses magnitude stepping for focused single-price wheel and cancels page scrolling', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 99.99 }),
+		});
+		const priceInput = screen.getByRole('spinbutton', { name: m.gift_price_label() });
+		const unfocusedWheel = new WheelEvent('wheel', { deltaY: -1, cancelable: true });
+
+		priceInput.element().dispatchEvent(unfocusedWheel);
+		expect(unfocusedWheel.defaultPrevented).toBe(false);
+		await expect.element(priceInput).toHaveValue(99.99);
+
+		priceInput.element().focus();
+		const focusedWheel = new WheelEvent('wheel', { deltaY: -1, cancelable: true });
+		priceInput.element().dispatchEvent(focusedWheel);
+		expect(focusedWheel.defaultPrevented).toBe(true);
+		await expect.element(priceInput).toHaveValue(100.99);
+	});
+
+	it('uses the same focused wheel handling independently for both range bounds', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 9.99, priceMax: 100.08 }),
+		});
+		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
+		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
+
+		minInput.element().focus();
+		const minWheel = new WheelEvent('wheel', { deltaY: -1, cancelable: true });
+		minInput.element().dispatchEvent(minWheel);
+		expect(minWheel.defaultPrevented).toBe(true);
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(100.08);
+
+		maxInput.element().focus();
+		const maxWheel = new WheelEvent('wheel', { deltaY: 1, cancelable: true });
+		maxInput.element().dispatchEvent(maxWheel);
+		expect(maxWheel.defaultPrevented).toBe(true);
+		await expect.element(minInput).toHaveValue(10.99);
+		await expect.element(maxInput).toHaveValue(99.08);
+	});
+
+	it('reopens and submits a decimal single price (issue #250 REQ-1, REQ-4)', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 19.5, priceMax: null, currency: 'EUR' }),
+			onupdate,
+		});
+
+		const priceInput = document.querySelector('#gift-price');
+		expect(priceInput).toHaveAttribute('step', '0.01');
+		expect(priceInput).toHaveValue(19.5);
+
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ price: 19.5, priceMax: null, currency: 'EUR' }),
+		);
+	});
+
+	it('saves a manually entered off-grid decimal price unchanged', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: null }),
+			onupdate,
+		});
+
+		await screen.getByRole('spinbutton', { name: m.gift_price_label() }).fill('100.08');
+		await screen.getByRole('button', { name: m.save() }).click();
+
+		expect(onupdate).toHaveBeenCalledWith(expect.objectContaining({ price: 100.08 }));
+	});
+
+	it('reopens and submits decimal range bounds (issue #250 REQ-1, REQ-4)', async () => {
+		const onupdate = vi.fn();
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			gift: makeGift({ price: 19.5, priceMax: 29.95, currency: 'EUR' }),
+			onupdate,
+		});
+
+		const minInput = screen.getByRole('spinbutton', { name: m.gift_price_range_min_aria() });
+		const maxInput = screen.getByRole('spinbutton', { name: m.gift_price_range_max_aria() });
+		await expect.element(minInput).toHaveAttribute('step', '0.01');
+		await expect.element(maxInput).toHaveAttribute('step', '0.01');
+		await expect.element(minInput).toHaveValue(19.5);
+		await expect.element(maxInput).toHaveValue(29.95);
+
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(onupdate).toHaveBeenCalledWith(
+			expect.objectContaining({ price: 19.5, priceMax: 29.95, currency: 'EUR' }),
+		);
+	});
+
 	it('defaults to single-price mode when the gift has no priceMax (REQ-1)', async () => {
 		const screen = await render(GiftDetailForm, {
 			...baseProps,
@@ -261,10 +677,10 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(row).not.toBeNull();
 
 		const fields = [...row!.children] as HTMLElement[];
-		expect(fields).toHaveLength(2);
-		const [firstFieldRect, secondFieldRect] = fields.map((field) =>
-			field.getBoundingClientRect(),
-		);
+		expect(fields.length).toBeGreaterThanOrEqual(2);
+		const [firstFieldRect, secondFieldRect] = fields
+			.slice(0, 2)
+			.map((field) => field.getBoundingClientRect());
 		expect(firstFieldRect.top).toBe(secondFieldRect.top);
 		expect(firstFieldRect.left).not.toBe(secondFieldRect.left);
 		expect(firstFieldRect.width).toBe(secondFieldRect.width);
@@ -298,7 +714,7 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(firstLabelRect.bottom).toBe(secondLabelRect.bottom);
 	}
 
-	it('aligns paired label rows and 32px controls for price, currency, quantity, and priority', async () => {
+	it('aligns paired label rows and 32px controls for price, currency, quantity, and category', async () => {
 		await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift(),
@@ -325,22 +741,16 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		);
 	});
 
-	it('keeps quantity full width when the wishlist has no priority controls', async () => {
+	it('keeps quantity and the empty category control aligned when no priorities exist', async () => {
 		await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift(),
 		});
 
-		const row = document.querySelector<HTMLElement>(
-			'[data-testid="gift-quantity-priority-row"]',
+		expectAlignedControlPair(
+			'gift-quantity-priority-row',
+			'#gift-quantity',
+			'[data-slot="select-trigger"]',
 		);
-		const quantity = row?.querySelector<HTMLElement>('#gift-quantity');
-		expect(row).not.toBeNull();
-		expect(row!.children).toHaveLength(1);
-		expect(quantity).not.toBeNull();
-		const rowRect = row!.getBoundingClientRect();
-		const quantityRect = quantity!.getBoundingClientRect();
-		expect(quantityRect.left).toBe(rowRect.left);
-		expect(quantityRect.right).toBe(rowRect.right);
 	});
 });

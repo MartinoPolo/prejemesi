@@ -19,12 +19,12 @@
 	import GiftDescription from './GiftDescription.svelte';
 	import GraceCountdown from '$lib/components/derived/grace-countdown/GraceCountdown.svelte';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import {
 		getPriorityDisplay,
+		adjustGiftPriceByMagnitude,
 		finalizeGiftPrice,
 		finalizeGiftQuantity,
 		formatAppendDate,
@@ -39,16 +39,22 @@
 		GIFT_CURRENCY_LABELS,
 		type GiftCurrency,
 		type GiftByRole,
+		type GiftForVisitor,
 		type GiftLink,
 		type CreateGiftInput,
 		type UpdateGiftInput,
 	} from '$lib/modules/gifts/types.js';
 	import type { GiftPriorityLevel } from '$lib/modules/gifts/types.js';
+	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+	import { isGiftForVisitor } from '$lib/modules/gifts/gift_display_state.js';
+	import ReleaseReservationButton from '$lib/components/blocks/reservation/ReleaseReservationButton.svelte';
 	import { createPendingUploads } from '$lib/modules/uploads/upload.js';
 	import type { UploadResult } from '$lib/modules/uploads/types.js';
 	import {
 		IMAGE_FIT_MODES,
 		IMAGE_TOKEN_SCOPES,
+		normalizeFrameFill,
 		resolveAutoFit,
 	} from '$lib/components/derived/image-frame/index.js';
 	import {
@@ -70,13 +76,20 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { ensureGiftLinkIds, normalizeGiftLinks } from '$lib/modules/gifts/gift_url.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
+	import {
+		labelForGiftCategory,
+		type ManagedGiftCategory,
+	} from '$lib/modules/gift-categories/types.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	interface Props {
 		mode: GiftDetailModalMode;
 		gift: GiftByRole | null;
 		wishlistId: string;
 		priorityLevels: GiftPriorityLevel[];
-		isOwner: boolean;
+		categoryOptions?: ManagedGiftCategory[];
+		role: WishlistRole;
+		hideReservationState?: boolean;
 		postShareLocked: boolean;
 		canDelete: boolean;
 		/** When the active gift grace window closes (issue #83), or null when none is active. */
@@ -89,7 +102,6 @@
 		oncreate?: (input: CreateGiftInput) => void;
 		onupdate?: (input: UpdateGiftInput) => void;
 		ondelete?: (giftId: string) => void;
-		onreceived?: (giftId: string, received: boolean) => void;
 	}
 
 	let {
@@ -97,7 +109,9 @@
 		gift,
 		wishlistId,
 		priorityLevels,
-		isOwner,
+		categoryOptions = [],
+		role,
+		hideReservationState = false,
 		postShareLocked,
 		canDelete,
 		graceExpiresAt = null,
@@ -108,7 +122,6 @@
 		oncreate,
 		onupdate,
 		ondelete,
-		onreceived,
 	}: Props = $props();
 
 	// Intentional one-time seed from the `gift` prop: this form edits a local copy and Dialog.Content
@@ -128,6 +141,8 @@
 	// svelte-ignore state_referenced_locally
 	let isPriceRange = $state((gift?.priceMax ?? null) !== null);
 	let priceRangeError = $state('');
+	let priceInput = $state<HTMLInputElement | null>(null);
+	let priceMaxInput = $state<HTMLInputElement | null>(null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
@@ -138,6 +153,8 @@
 	let quantity = $state<number>(gift?.quantity ?? 1);
 	// svelte-ignore state_referenced_locally
 	let priorityLevelId = $state(gift?.priorityLevelId ?? '');
+	// svelte-ignore state_referenced_locally
+	let categoryId = $state(gift?.categoryId ?? '');
 	// Editing an uploaded image (imageKey set) opens on the Upload tab so the user sees
 	// the current image with replace/remove – not its resolved URL in the URL field.
 	// Editing a URL image (imageUrl set, no imageKey) opens on the URL tab. A brand-new
@@ -170,8 +187,12 @@
 	// Whether the user touched the display mode this session; an untouched form keeps
 	// the persisted (possibly legacy `auto`) fitMode verbatim on save (REQ-8).
 	let modeDirty = $state(false);
+	type ExplicitImageBackground = '#ffffff' | '#000000';
+	const IMAGE_BACKGROUND_VALUES = ['#ffffff', '#000000', 'transparent'] as const;
+	// `null` is the canonical dotted/theme-derived default. Legacy metadata containing
+	// the CSS keyword `transparent` is normalized here and becomes null on the next save.
 	// svelte-ignore state_referenced_locally
-	const bgColor = gift?.imageMeta?.bgColor ?? null;
+	let bgColor = $state(normalizeFrameFill(gift?.imageMeta?.bgColor));
 	// svelte-ignore state_referenced_locally
 	const initialImageUrl = gift?.imageUrl ?? '';
 	// svelte-ignore state_referenced_locally
@@ -216,6 +237,17 @@
 	let editingAppendText = $state('');
 
 	const isEdit = $derived(mode === 'edit');
+	const releaseGift = $derived.by((): GiftForVisitor | null => {
+		if (
+			!isEdit ||
+			gift === null ||
+			role !== WISHLIST_ROLES.moderator ||
+			!isGiftForVisitor(gift, role, hideReservationState)
+		) {
+			return null;
+		}
+		return gift;
+	});
 	const locked = $derived(isEdit && postShareLocked);
 	// Active gift grace window: full edit after sharing, or delete-only for a new post-share gift.
 	const graceActive = $derived(
@@ -359,6 +391,15 @@
 	// to "" (Bits UI writes through the bound value before calling onValueChange),
 	// so it's a genuine change and always re-renders.
 	let selectedEditorMode = $derived(presentedEditorMode);
+	// The visible Transparent option represents the canonical null fallback. Preserve an
+	// unsupported historical literal untouched rather than falsely selecting a known fill.
+	let selectedBgColor = $derived(
+		bgColor === null
+			? 'transparent'
+			: (IMAGE_BACKGROUND_VALUES as readonly string[]).includes(bgColor)
+				? bgColor
+				: '',
+	);
 
 	// Adaptive stage sizing (#189 REQ-4/5): the stage tracks the photo's natural
 	// aspect (portrait renders tall, landscape wide) within the min/max caps applied
@@ -391,6 +432,20 @@
 		}
 	}
 
+	function setBgColor(value: string) {
+		if (value === '') {
+			selectedBgColor = bgColor ?? 'transparent';
+			return;
+		}
+		if (value === 'transparent') {
+			bgColor = null;
+			return;
+		}
+		if (value === '#ffffff' || value === '#000000') {
+			bgColor = value as ExplicitImageBackground;
+		}
+	}
+
 	/** A zoom attempt on the plain preview is a manual-crop intent (#116 follow-up). */
 	function promoteToManual() {
 		if (editorMode !== IMAGE_EDITOR_MODES.manual) {
@@ -404,6 +459,63 @@
 		activeTarget = target;
 		promoteToManual();
 	}
+
+	function adjustGiftPrice(
+		currentPrice: number | null,
+		direction: 1 | -1,
+		setPrice: (value: number) => void,
+	): void {
+		setPrice(adjustGiftPriceByMagnitude(currentPrice, direction));
+	}
+
+	function handleGiftPriceKeydown(
+		event: KeyboardEvent,
+		currentPrice: number | null,
+		setPrice: (value: number) => void,
+	): void {
+		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+			return;
+		}
+		event.preventDefault();
+		adjustGiftPrice(currentPrice, event.key === 'ArrowUp' ? 1 : -1, setPrice);
+	}
+
+	interface GiftPriceWheelOptions {
+		getPrice: () => number | null;
+		setPrice: (value: number) => void;
+	}
+
+	// Svelte attaches inline `onwheel` as a passive listener, so `preventDefault()`
+	// would be ignored and the dialog would scroll while changing price. Register non-passive.
+	function giftPriceWheel(node: HTMLInputElement, options: GiftPriceWheelOptions) {
+		const listener = (event: WheelEvent) => {
+			if (node !== document.activeElement || event.deltaY === 0) {
+				return;
+			}
+			event.preventDefault();
+			adjustGiftPrice(options.getPrice(), event.deltaY < 0 ? 1 : -1, options.setPrice);
+		};
+		node.addEventListener('wheel', listener, { passive: false });
+		return () => node.removeEventListener('wheel', listener);
+	}
+
+	$effect(() => {
+		if (priceInput !== null) {
+			return giftPriceWheel(priceInput, {
+				getPrice: () => price,
+				setPrice: (value) => (price = value),
+			});
+		}
+	});
+
+	$effect(() => {
+		if (priceMaxInput !== null) {
+			return giftPriceWheel(priceMaxInput, {
+				getPrice: () => priceMax,
+				setPrice: (value) => (priceMax = value),
+			});
+		}
+	});
 
 	function validateForm(): boolean {
 		nameError = '';
@@ -454,6 +566,7 @@
 				imageMeta,
 				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
+				categoryId: categoryId || null,
 			});
 		} else if (mode === 'edit' && gift !== null) {
 			const descriptionPayload = descriptionFrozen
@@ -472,6 +585,7 @@
 				imageMeta,
 				quantity: finalQuantity,
 				priorityLevelId: priorityLevelId || null,
+				categoryId: categoryId || null,
 			});
 		}
 	}
@@ -503,6 +617,10 @@
 		}
 	}
 
+	function categoryLabel(category: ManagedGiftCategory): string {
+		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
+	}
+
 	function handleDelete() {
 		if (!showDeleteConfirm) {
 			showDeleteConfirm = true;
@@ -510,12 +628,6 @@
 		}
 		if (gift !== null) {
 			ondelete?.(gift.id);
-		}
-	}
-
-	function handleReceived() {
-		if (gift !== null) {
-			onreceived?.(gift.id, !gift.received);
 		}
 	}
 
@@ -610,6 +722,25 @@
 						</ToggleGroup.Item>
 						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.manual} class="rounded-full">
 							{m.image_fit_manual()}
+						</ToggleGroup.Item>
+					</ToggleGroup.Root>
+				</div>
+				<div class="flex flex-none justify-center pb-2.5">
+					<ToggleGroup.Root
+						type="single"
+						bind:value={selectedBgColor}
+						onValueChange={setBgColor}
+						aria-label={m.image_background_label()}
+						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
+					>
+						<ToggleGroup.Item value="#ffffff" class="rounded-full">
+							{m.image_background_white()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value="#000000" class="rounded-full">
+							{m.image_background_black()}
+						</ToggleGroup.Item>
+						<ToggleGroup.Item value="transparent" class="rounded-full">
+							{m.image_background_transparent()}
 						</ToggleGroup.Item>
 					</ToggleGroup.Root>
 				</div>
@@ -854,11 +985,19 @@
 							<div class="flex items-center gap-2">
 								<Input
 									id="gift-price"
-									class="min-w-0"
+									class="numeric-input min-w-0"
 									bind:value={price}
 									placeholder="0"
 									type="number"
 									min="0"
+									step="0.01"
+									onkeydown={(event) =>
+										handleGiftPriceKeydown(
+											event,
+											price,
+											(value) => (price = value),
+										)}
+									bind:ref={priceInput}
 									aria-label={m.gift_price_range_min_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -871,11 +1010,19 @@
 								>
 								<Input
 									id="gift-price-max"
-									class="min-w-0"
+									class="numeric-input min-w-0"
 									bind:value={priceMax}
 									placeholder="0"
 									type="number"
 									min="0"
+									step="0.01"
+									onkeydown={(event) =>
+										handleGiftPriceKeydown(
+											event,
+											priceMax,
+											(value) => (priceMax = value),
+										)}
+									bind:ref={priceMaxInput}
 									aria-label={m.gift_price_range_max_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -887,10 +1034,19 @@
 						{:else}
 							<Input
 								id="gift-price"
+								class="numeric-input"
 								bind:value={price}
 								placeholder="0"
 								type="number"
 								min="0"
+								step="0.01"
+								onkeydown={(event) =>
+									handleGiftPriceKeydown(
+										event,
+										price,
+										(value) => (price = value),
+									)}
+								bind:ref={priceInput}
 							/>
 						{/if}
 						{#if priceRangeError !== ''}
@@ -920,17 +1076,15 @@
 					</div>
 				</div>
 
-				<!-- Quantity + Priority -->
-				<div
-					class={cn('mt-3', priorityLevels.length > 0 && styles.formRow())}
-					data-testid="gift-quantity-priority-row"
-				>
+				<!-- Quantity + category + priority -->
+				<div class={cn('mt-3', styles.formRow())} data-testid="gift-quantity-priority-row">
 					<div class={styles.formField()}>
 						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
 							<Label for="gift-quantity">{m.gift_quantity_label()}</Label>
 						</div>
 						<Input
 							id="gift-quantity"
+							class="numeric-input"
 							bind:value={quantity}
 							type="number"
 							min={locked ? String(currentQuantity) : '1'}
@@ -942,6 +1096,47 @@
 							>
 								{m.gift_quantity_frozen_help()}
 							</HelpText>
+						{/if}
+					</div>
+
+					<div class={styles.formField()}>
+						<div data-slot="gift-form-label-row" class={styles.formLabelRow()}>
+							<Label>{m.gift_category_label()}</Label>
+						</div>
+						{#if categoryOptions.length > 0}
+							<Select.Root type="single" bind:value={categoryId}>
+								<Select.Trigger size="md" class="w-full">
+									{#if categoryId}
+										{categoryLabel(
+											categoryOptions.find(
+												(category) => category.id === categoryId,
+											) ?? categoryOptions[0]!,
+										)}
+									{:else}
+										{m.gift_category_none()}
+									{/if}
+								</Select.Trigger>
+								<Select.Content>
+									<Select.Group>
+										<Select.Item value="" label={m.gift_category_none()}>
+											{m.gift_category_none()}
+										</Select.Item>
+										{#each categoryOptions as category (category.id)}
+											{@const label = categoryLabel(category)}
+											<Select.Item value={category.id} {label}
+												>{label}</Select.Item
+											>
+										{/each}
+									</Select.Group>
+								</Select.Content>
+							</Select.Root>
+						{:else}
+							<Select.Root type="single" disabled>
+								<Select.Trigger size="md" class="w-full" disabled>
+									{m.gift_category_none_enabled()}
+								</Select.Trigger>
+							</Select.Root>
+							<HelpText>{m.gift_category_none_enabled_help()}</HelpText>
 						{/if}
 					</div>
 
@@ -1032,23 +1227,16 @@
 			</fieldset>
 		</div>
 
-		<!-- Actions: Received/Delete render first in DOM so they scroll away with
-		     the form on mobile instead of permanently pinning all three (mobile
-		     edit modal scroll fix). Save itself is hidden here on mobile – see
-		     `mobileSubmitFooter` below for why – and only shown via `submitWrapper`
-		     on desktop, where `sm:order-*` restores the original look: all three
-		     grouped in one pinned block with Save on top, unchanged. -->
+		<!-- Manager actions scroll with the form on mobile. Save is hidden here on mobile
+		     and rendered by `mobileSubmitFooter` below; desktop keeps it in this block. -->
 		<div class={styles.formActions()}>
 			{#if isEdit && gift !== null}
-				{#if isOwner}
-					<Button
-						intent="outline"
-						class={styles.receivedButton()}
-						onclick={handleReceived}
-					>
-						<CheckIcon data-icon="inline-start" />
-						{gift.received ? m.gift_mark_unreceived() : m.gift_mark_received()}
-					</Button>
+				{#if releaseGift !== null}
+					<ReleaseReservationButton
+						gift={releaseGift}
+						size="md"
+						class={styles.releaseButton()}
+					/>
 				{/if}
 
 				{#if canDelete}
@@ -1093,8 +1281,8 @@
      stays visible regardless of scroll position – unlike a `position: sticky`
      copy nested inside the scroll, which only re-enters view once scrolled
      down to it (mobile edit modal scroll fix, follow-up). Hidden on desktop,
-     where `submitWrapper` above already renders Save inline with
-     Received/Delete. -->
+     where `submitWrapper` above already renders Save inline with the manager
+     actions. -->
 <div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
 	<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
 		{#if isSubmitting}

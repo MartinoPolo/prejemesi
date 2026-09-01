@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { Button } from '$lib/components/base/button/index.js';
 	import AppearanceMenu from '$lib/components/derived/appearance-menu/AppearanceMenu.svelte';
@@ -25,6 +26,7 @@
 		getFollowedWishlists,
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getWishlistEmoji } from '$lib/modules/wishlists/wishlist_theme.js';
+	import { HOME_OVERVIEW_DEPENDENCY } from '$lib/modules/wishlists/home_overview_types.js';
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import { eventCountdown } from '$lib/modules/wishlists/event_countdown.js';
 	import type { Wishlist } from '$lib/modules/wishlists/types.js';
@@ -364,7 +366,7 @@
 	{/if}
 
 	<!-- Right controls -->
-	<div class="nav-right">
+	<div data-testid="navbar-actions" class="nav-right">
 		{#if user}
 			<!-- Create CTA -->
 			<Button
@@ -391,7 +393,10 @@
 		     768–1039px: consolidated into one AppearanceMenu button so the header does not
 		     overflow. Logged-in users below 768px get these inside the MobileNav drawer;
 		     anonymous users have no drawer, so they keep the consolidated menu below 1040px. -->
-		<div class="hidden items-center gap-1 min-[1040px]:flex">
+		<div
+			data-testid="navbar-appearance-controls"
+			class="header-appearance-controls hidden items-center gap-2 min-[1040px]:flex"
+		>
 			<PaletteSwitcher />
 			<LanguageToggle variant="icon" />
 			<DarkModeToggle />
@@ -432,7 +437,11 @@
 		bind:open={isCreateModalOpen}
 		onimport={() => (isImportWizardOpen = true)}
 	/>
-	<ImportWizard bind:open={isImportWizardOpen} mode={WIZARD_MODE.newList} />
+	<ImportWizard
+		bind:open={isImportWizardOpen}
+		mode={WIZARD_MODE.newList}
+		onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}
+	/>
 {/if}
 
 <style>
@@ -469,7 +478,7 @@
 	.nav-right {
 		display: flex;
 		align-items: center;
-		gap: var(--space-1);
+		gap: var(--space-2);
 		flex-shrink: 0;
 		margin-left: auto;
 	}

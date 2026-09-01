@@ -1,9 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import type { GiftForVisitor, GiftByRole } from './types.js';
-import { GIFT_SORT_OPTIONS } from './types.js';
+import { GIFT_GROUPING_OPTIONS, GIFT_SORT_OPTIONS } from './types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import {
 	GIFT_SECTION_KINDS,
+	activeGiftsInOwnerOrder,
+	effectiveGiftPresentationRole,
+	projectGiftForRecipient,
+	projectGiftsForRecipient,
+	resolveActiveGiftOrder,
 	computeGiftSections,
 	computeUnprioritizedRank,
 	giftSectionHasHeader,
@@ -53,6 +58,95 @@ function flatIds(sections: GiftSection[]): string[] {
 
 const LOCALE = 'cs';
 
+describe('recipient-view projection and ordering (#241)', () => {
+	it('strips every reservation-only field without mutating the source gift', () => {
+		const visitorGift = makeGift({
+			reservedCount: 2,
+			isFullyReserved: true,
+			reserverNames: ['Babička'],
+			myReservationId: 'reservation-1',
+			myReservationPurchasedAt: new Date('2026-01-02T00:00:00Z'),
+		});
+
+		const projected = projectGiftForRecipient(visitorGift);
+		expect(projected).not.toHaveProperty('likeCount');
+		expect(projected).not.toHaveProperty('reservedCount');
+		expect(projected).not.toHaveProperty('isFullyReserved');
+		expect(projected).not.toHaveProperty('reserverNames');
+		expect(projected).not.toHaveProperty('myReservationId');
+		expect(projected).not.toHaveProperty('myReservationPurchasedAt');
+		expect(visitorGift.reserverNames).toEqual(['Babička']);
+	});
+
+	it('uses recipient rules in preview: no own band or reserved sink, received remains final', () => {
+		const own = makeGift({
+			id: 'mine',
+			sortOrder: 3,
+			myReservationId: 'reservation-1',
+			isFullyReserved: true,
+		});
+		const foreignReserved = makeGift({ id: 'foreign', sortOrder: 1, isFullyReserved: true });
+		const available = makeGift({ id: 'available', sortOrder: 2 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+		const presentationRole = effectiveGiftPresentationRole(WISHLIST_ROLES.visitor, true);
+		const sections = computeGiftSections(
+			projectGiftsForRecipient([own, available, received, foreignReserved]),
+			presentationRole,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			GIFT_GROUPING_OPTIONS.none,
+			LOCALE,
+		);
+
+		expect(sections.map((section) => section.kind)).toEqual([
+			GIFT_SECTION_KINDS.available,
+			GIFT_SECTION_KINDS.received,
+		]);
+		expect(flatIds(sections)).toEqual(['foreign', 'available', 'mine', 'received']);
+	});
+
+	it('restores the actual reservation-aware role when preview is disabled', () => {
+		expect(effectiveGiftPresentationRole(WISHLIST_ROLES.visitor, false)).toBe(
+			WISHLIST_ROLES.visitor,
+		);
+		expect(effectiveGiftPresentationRole(WISHLIST_ROLES.moderator, false)).toBe(
+			WISHLIST_ROLES.moderator,
+		);
+	});
+});
+
+describe('reorder mode sequence (#239)', () => {
+	it('returns one active owner-order sequence independent of reservation state', () => {
+		const ownReserved = makeGift({
+			id: 'mine',
+			sortOrder: 3,
+			myReservationId: 'reservation-1',
+			isFullyReserved: true,
+		});
+		const first = makeGift({ id: 'first', sortOrder: 1 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+		const foreignReserved = makeGift({ id: 'foreign', sortOrder: 2, isFullyReserved: true });
+
+		expect(
+			activeGiftsInOwnerOrder([ownReserved, received, foreignReserved, first]).map(
+				(gift) => gift.id,
+			),
+		).toEqual(['first', 'foreign', 'mine']);
+	});
+
+	it('resolves a live id order without admitting received, duplicate, or unknown ids', () => {
+		const first = makeGift({ id: 'first', sortOrder: 1 });
+		const second = makeGift({ id: 'second', sortOrder: 2 });
+		const received = makeGift({ id: 'received', sortOrder: 0, received: true });
+
+		expect(
+			resolveActiveGiftOrder(
+				[first, second, received],
+				['second', 'received', 'unknown', 'second', 'first'],
+			).map((gift) => gift.id),
+		).toEqual(['second', 'first']);
+	});
+});
+
 describe('computeGiftSections — bands (grouping off)', () => {
 	it('pins the visitor own reservation to the first section, appearing exactly once (behavior 1)', () => {
 		const mine = makeGift({ id: 'mine', myReservationId: 'res-1', isFullyReserved: true });
@@ -61,7 +155,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 			[other, mine],
 			WISHLIST_ROLES.visitor,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			false,
+			GIFT_GROUPING_OPTIONS.none,
 			LOCALE,
 		);
 
@@ -94,7 +188,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 				gifts,
 				WISHLIST_ROLES.visitor,
 				sortOption,
-				false,
+				GIFT_GROUPING_OPTIONS.none,
 				LOCALE,
 			);
 			const order = flatIds(sections);
@@ -120,7 +214,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 			[reservedOther, available, mine],
 			WISHLIST_ROLES.moderator,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			false,
+			GIFT_GROUPING_OPTIONS.none,
 			LOCALE,
 		);
 
@@ -139,7 +233,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 			[avail, mine, foreignReserved],
 			WISHLIST_ROLES.visitor,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			false,
+			GIFT_GROUPING_OPTIONS.none,
 			LOCALE,
 		);
 
@@ -160,7 +254,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 			[mine, other],
 			WISHLIST_ROLES.moderator,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			false,
+			GIFT_GROUPING_OPTIONS.none,
 			LOCALE,
 		);
 
@@ -177,7 +271,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 			[avail, foreignReserved],
 			WISHLIST_ROLES.visitor,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			false,
+			GIFT_GROUPING_OPTIONS.none,
 			LOCALE,
 		);
 
@@ -205,7 +299,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 			[med, mine],
 			WISHLIST_ROLES.visitor,
 			GIFT_SORT_OPTIONS.priority,
-			true,
+			GIFT_GROUPING_OPTIONS.priority,
 			LOCALE,
 		);
 
@@ -222,7 +316,7 @@ describe('computeGiftSections — bands (grouping off)', () => {
 			input,
 			WISHLIST_ROLES.recipient,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			false,
+			GIFT_GROUPING_OPTIONS.none,
 			LOCALE,
 		);
 
@@ -239,7 +333,7 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 	const medium = { priorityLevelId: 'lvl-med', priorityLabel: 'Střední', prioritySortOrder: 2 };
 	const low = { priorityLevelId: 'lvl-low', priorityLabel: 'Nízká', prioritySortOrder: 3 };
 
-	it('orders groups by level order with Bez priority directly above the lowest level (behavior 5)', () => {
+	it('orders groups by level order with Bez priority last (issue #246)', () => {
 		const gHigh = makeGift({ id: 'h', ...high });
 		const gMed = makeGift({ id: 'm', ...medium });
 		const gLow = makeGift({ id: 'l', ...low });
@@ -248,7 +342,7 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 			[gLow, gNone, gHigh, gMed],
 			WISHLIST_ROLES.visitor,
 			GIFT_SORT_OPTIONS.priority,
-			true,
+			GIFT_GROUPING_OPTIONS.priority,
 			LOCALE,
 		);
 
@@ -257,14 +351,33 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 		expect(kinds).toEqual([
 			GIFT_SECTION_KINDS.priorityGroup,
 			GIFT_SECTION_KINDS.priorityGroup,
-			GIFT_SECTION_KINDS.noPriority,
 			GIFT_SECTION_KINDS.priorityGroup,
+			GIFT_SECTION_KINDS.noPriority,
 		]);
-		// High, Medium, then Bez priority, then the lowest level (Nízká) last.
+		// High, Medium, Low, then Bez priority last.
 		expect(labels[0]).toBe('Vysoká');
 		expect(labels[1]).toBe('Střední');
-		expect(labels[3]).toBe('Nízká');
-		expect(flatIds(sections)).toEqual(['h', 'm', 'n', 'l']);
+		expect(labels[2]).toBe('Nízká');
+		expect(flatIds(sections)).toEqual(['h', 'm', 'l', 'n']);
+	});
+
+	it('carries the stable priority key for localization without changing the stored label', () => {
+		const sections = computeGiftSections(
+			[
+				makeGift({
+					id: 'h',
+					priorityLevelId: 'lvl-high',
+					priorityLabel: 'Vysoka',
+					prioritySortOrder: 1,
+				}),
+			],
+			WISHLIST_ROLES.recipient,
+			GIFT_SORT_OPTIONS.priority,
+			GIFT_GROUPING_OPTIONS.priority,
+			LOCALE,
+		);
+
+		expect(sections[0]).toMatchObject({ label: 'Vysoka', priorityKey: 'Vysoka' });
 	});
 
 	it('keeps the own-reservation band above all priority groups (behavior 6)', () => {
@@ -274,7 +387,7 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 			[gMed, mine],
 			WISHLIST_ROLES.visitor,
 			GIFT_SORT_OPTIONS.priority,
-			true,
+			GIFT_GROUPING_OPTIONS.priority,
 			LOCALE,
 		);
 
@@ -292,7 +405,7 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 			[resHigh, availHigh],
 			WISHLIST_ROLES.visitor,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			true,
+			GIFT_GROUPING_OPTIONS.priority,
 			LOCALE,
 		);
 
@@ -307,7 +420,7 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 			[resHigh, availHigh],
 			WISHLIST_ROLES.moderator,
 			GIFT_SORT_OPTIONS.ownerOrder,
-			true,
+			GIFT_GROUPING_OPTIONS.priority,
 			LOCALE,
 		);
 
@@ -317,12 +430,119 @@ describe('computeGiftSections — priority grouping (grouping on)', () => {
 	});
 });
 
+describe('computeGiftSections — category grouping (issue #246)', () => {
+	const books = {
+		categoryId: 'category-books',
+		category: {
+			id: 'category-books',
+			presetKey: null,
+			customLabel: 'Knihy',
+			color: '#2563EB',
+			sortOrder: 2,
+		},
+	};
+	const toys = {
+		categoryId: 'category-toys',
+		category: {
+			id: 'category-toys',
+			presetKey: null,
+			customLabel: 'Hračky',
+			color: '#D97706',
+			sortOrder: 1,
+		},
+	};
+
+	it('orders category groups by manager sort order and uncategorized last', () => {
+		const book = makeGift({ id: 'book', ...books });
+		const toy = makeGift({ id: 'toy', ...toys });
+		const none = makeGift({ id: 'none' });
+		const sections = computeGiftSections(
+			[book, none, toy],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.ownerOrder,
+			GIFT_GROUPING_OPTIONS.category,
+			LOCALE,
+		);
+
+		expect(sections.map((section) => section.kind)).toEqual([
+			GIFT_SECTION_KINDS.categoryGroup,
+			GIFT_SECTION_KINDS.categoryGroup,
+			GIFT_SECTION_KINDS.uncategorized,
+		]);
+		expect(sections.map((section) => section.label)).toEqual(['Hračky', 'Knihy', null]);
+		expect(flatIds(sections)).toEqual(['toy', 'book', 'none']);
+	});
+
+	it('applies the selected sort inside every category group', () => {
+		const expensive = makeGift({ id: 'expensive', ...books, price: 300, sortOrder: 1 });
+		const cheap = makeGift({ id: 'cheap', ...books, price: 100, sortOrder: 2 });
+		const sections = computeGiftSections(
+			[expensive, cheap],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.priceAsc,
+			GIFT_GROUPING_OPTIONS.category,
+			LOCALE,
+		);
+
+		expect(sections[0].gifts.map((gift) => gift.id)).toEqual(['cheap', 'expensive']);
+	});
+});
+
+describe('computeGiftSections — received partition (#240)', () => {
+	it('always emits one final received section under every sort, role, and grouping mode', () => {
+		const active = makeGift({ id: 'active', sortOrder: 3, isFullyReserved: true });
+		const receivedA = makeGift({ id: 'received-a', received: true, sortOrder: 2, price: 200 });
+		const receivedB = makeGift({ id: 'received-b', received: true, sortOrder: 1, price: 100 });
+
+		for (const role of Object.values(WISHLIST_ROLES)) {
+			for (const sortOption of Object.values(GIFT_SORT_OPTIONS)) {
+				for (const grouping of [
+					GIFT_GROUPING_OPTIONS.none,
+					GIFT_GROUPING_OPTIONS.priority,
+					GIFT_GROUPING_OPTIONS.category,
+				]) {
+					const sections = computeGiftSections(
+						[receivedA, active, receivedB],
+						role,
+						sortOption,
+						grouping,
+						LOCALE,
+					);
+					const received = sections.at(-1);
+					expect(received?.kind).toBe(GIFT_SECTION_KINDS.received);
+					expect(received?.gifts.map((gift) => gift.id).sort()).toEqual([
+						'received-a',
+						'received-b',
+					]);
+					expect(sections.slice(0, -1).flatMap((section) => section.gifts)).toEqual([
+						active,
+					]);
+					expect(giftSectionHasHeader(received!)).toBe(true);
+				}
+			}
+		}
+	});
+
+	it('sorts received gifts within their final section with owner order as the stable tie-breaker', () => {
+		const later = makeGift({ id: 'later', received: true, name: 'Same', sortOrder: 2 });
+		const earlier = makeGift({ id: 'earlier', received: true, name: 'Same', sortOrder: 1 });
+		const sections = computeGiftSections(
+			[later, earlier],
+			WISHLIST_ROLES.visitor,
+			GIFT_SORT_OPTIONS.name,
+			GIFT_GROUPING_OPTIONS.none,
+			LOCALE,
+		);
+		expect(flatIds(sections)).toEqual(['earlier', 'later']);
+	});
+});
+
 describe('priority rank for unprioritized gifts', () => {
 	const high = { priorityLevelId: 'lvl-high', priorityLabel: 'Vysoká', prioritySortOrder: 1 };
 	const medium = { priorityLevelId: 'lvl-med', priorityLabel: 'Střední', prioritySortOrder: 2 };
 	const low = { priorityLevelId: 'lvl-low', priorityLabel: 'Nízká', prioritySortOrder: 3 };
 
-	it('ranks unprioritized just above the lowest present level, not last (behavior 8)', () => {
+	it('ranks unprioritized last (issue #246)', () => {
 		const gifts = [
 			makeGift({ id: 'h', ...high }),
 			makeGift({ id: 'm', ...medium }),
@@ -330,13 +550,12 @@ describe('priority rank for unprioritized gifts', () => {
 			makeGift({ id: 'n' }),
 		];
 		const sorted = sortGifts(gifts, GIFT_SORT_OPTIONS.priority, LOCALE);
-		// Unprioritized 'n' sits above the lowest level 'l', below 'm'.
-		expect(sorted.map((g) => g.id)).toEqual(['h', 'm', 'n', 'l']);
+		expect(sorted.map((g) => g.id)).toEqual(['h', 'm', 'l', 'n']);
 	});
 
-	it('computeUnprioritizedRank returns just below the max present sort order', () => {
+	it('computeUnprioritizedRank returns after the max present sort order', () => {
 		const gifts = [makeGift({ ...high }), makeGift({ ...medium }), makeGift({ ...low })];
-		expect(computeUnprioritizedRank(gifts)).toBe(2.5);
+		expect(computeUnprioritizedRank(gifts)).toBe(4);
 	});
 
 	it('returns 0 when no gift carries a priority', () => {

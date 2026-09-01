@@ -31,6 +31,7 @@ export interface ExistingGiftRef {
 /** Payload emitted on every change, including selected rows that block submission. */
 export interface DraftGridChange {
 	drafts: ValidatedGiftDraft[];
+	selectedDrafts: GiftDraft[];
 	validCount: number;
 	selectedCount: number;
 	blockingCount: number;
@@ -44,7 +45,7 @@ export interface DraftGridRow {
 	/** Raw textarea value; normalized to `null` when blank on emit. */
 	description: string;
 	links: GiftLink[];
-	/** Raw price text (whole units); parsed to an integer on emit. */
+	/** Raw price text; parsed to a finite number on emit. */
 	price: string;
 	currency: GiftCurrency;
 	/** Raw URL remains editable; validation permits HTTPS only. */
@@ -53,6 +54,8 @@ export interface DraftGridRow {
 	quantity: string;
 	/** Binary priority toggled via the heart control; medium until set high. */
 	priority: DraftPriority;
+	categoryId: string;
+	importedCategoryLabel: string;
 	selected: boolean;
 	/** Untouched batch starter – suppresses the premature error tint while blank. */
 	pristine: boolean;
@@ -75,6 +78,8 @@ export function createDraftGridRow(
 		imageUrl: init?.imageUrl ?? '',
 		quantity: init?.quantity === undefined ? '1' : String(init.quantity),
 		priority: init?.priority ?? DEFAULT_DRAFT_PRIORITY,
+		categoryId: init?.categoryId ?? '',
+		importedCategoryLabel: init?.importedCategoryLabel ?? '',
 		selected: opts?.selected ?? true,
 		pristine: opts?.pristine ?? false,
 		dismissedDuplicate: false,
@@ -84,14 +89,14 @@ export function createDraftGridRow(
 /** Convert an editor row back into a wire {@link GiftDraft} (blank fields → null/empty). */
 export function rowToDraft(row: DraftGridRow): GiftDraft {
 	const trimmedPrice = row.price.trim();
-	const parsed = trimmedPrice === '' ? null : Math.round(Number(trimmedPrice));
+	const parsed = trimmedPrice === '' ? null : Number(trimmedPrice);
 	const trimmedQuantity = row.quantity.trim();
 	const parsedQuantity = Number(trimmedQuantity);
 	return {
 		name: row.name,
 		description: row.description.trim() === '' ? null : row.description,
 		links: row.links.filter((link) => link.url.trim() !== ''),
-		price: parsed !== null && Number.isFinite(parsed) ? parsed : null,
+		price: parsed,
 		currency: row.currency,
 		imageUrl: row.imageUrl.trim() || null,
 		quantity:
@@ -99,6 +104,8 @@ export function rowToDraft(row: DraftGridRow): GiftDraft {
 				? parsedQuantity
 				: row.quantity,
 		priority: row.priority,
+		categoryId: row.categoryId || null,
+		importedCategoryLabel: row.importedCategoryLabel.trim() || null,
 	};
 }
 
@@ -106,8 +113,10 @@ export function rowToDraft(row: DraftGridRow): GiftDraft {
 export function collectDraftGridChange(
 	rows: readonly DraftGridRow[],
 	hasDuplicateWarning: (row: DraftGridRow) => boolean,
+	resolvedImportedCategoryLabels: ReadonlySet<string> = new Set(),
 ): DraftGridChange {
 	const drafts: ValidatedGiftDraft[] = [];
+	const selectedDrafts: GiftDraft[] = [];
 	let selectedCount = 0;
 	let blockingCount = 0;
 
@@ -116,7 +125,9 @@ export function collectDraftGridChange(
 			continue;
 		}
 		selectedCount++;
-		const validation = validateDraft(rowToDraft(row));
+		const draft = rowToDraft(row);
+		selectedDrafts.push(draft);
+		const validation = validateDraft(draft, { resolvedImportedCategoryLabels });
 		const unresolvedDuplicate = !row.dismissedDuplicate && hasDuplicateWarning(row);
 		if (!validation.valid || unresolvedDuplicate) {
 			blockingCount++;
@@ -125,5 +136,5 @@ export function collectDraftGridChange(
 		drafts.push(validation.normalized);
 	}
 
-	return { drafts, validCount: drafts.length, selectedCount, blockingCount };
+	return { drafts, selectedDrafts, validCount: drafts.length, selectedCount, blockingCount };
 }

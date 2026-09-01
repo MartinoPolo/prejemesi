@@ -1,8 +1,11 @@
 import {
 	boolean,
+	check,
+	foreignKey,
 	index,
 	integer,
 	jsonb,
+	numeric,
 	pgTable,
 	text,
 	timestamp,
@@ -15,6 +18,62 @@ import { generateId } from './id.js';
 import type { ImageMetadata } from '$lib/modules/images/types.js';
 import type { GiftLink, DescriptionAppend } from '$lib/modules/gifts/types.js';
 import type { PreShareGiftSnapshot } from '$lib/modules/gifts/gift_post_share.js';
+import { GIFT_CATEGORY_PRESET_KEYS } from '$lib/modules/gift-categories/presets.js';
+
+const presetKeySqlList = sql.join(
+	GIFT_CATEGORY_PRESET_KEYS.map((key) => sql`${key}`),
+	sql`, `,
+);
+
+export const giftCategory = pgTable(
+	'gift_category',
+	{
+		id: text('id')
+			.primaryKey()
+			.$defaultFn(() => generateId()),
+		wishlistId: text('wishlist_id')
+			.notNull()
+			.references(() => wishlist.id, { onDelete: 'cascade' }),
+		presetKey: text('preset_key'),
+		customLabel: text('custom_label'),
+		color: text('color').notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+	},
+	(table) => ({
+		wishlistIdIdUnique: uniqueIndex('gift_category_wishlist_id_id_unique').on(
+			table.wishlistId,
+			table.id,
+		),
+		activePresetUnique: uniqueIndex('gift_category_active_preset_unique')
+			.on(table.wishlistId, table.presetKey)
+			.where(sql`${table.deletedAt} IS NULL AND ${table.presetKey} IS NOT NULL`),
+		activeCustomLabelUnique: uniqueIndex('gift_category_active_custom_label_unique')
+			.on(table.wishlistId, sql`lower(btrim(${table.customLabel}))`)
+			.where(sql`${table.deletedAt} IS NULL AND ${table.customLabel} IS NOT NULL`),
+		activeOrderIdx: index('gift_category_active_order_idx')
+			.on(table.wishlistId, table.sortOrder)
+			.where(sql`${table.deletedAt} IS NULL`),
+		kindCheck: check(
+			'gift_category_kind_check',
+			sql`num_nonnulls(${table.presetKey}, ${table.customLabel}) = 1`,
+		),
+		nonblankCustomCheck: check(
+			'gift_category_custom_label_nonblank_check',
+			sql`${table.customLabel} IS NULL OR btrim(${table.customLabel}) <> ''`,
+		),
+		colorCheck: check(
+			'gift_category_color_hex_check',
+			sql`${table.color} ~ '^#[0-9A-Fa-f]{6}$'`,
+		),
+		validPresetCheck: check(
+			'gift_category_preset_key_check',
+			sql`${table.presetKey} IS NULL OR ${table.presetKey} IN (${presetKeySqlList})`,
+		),
+	}),
+);
 
 export const gift = pgTable(
 	'gift',
@@ -28,6 +87,7 @@ export const gift = pgTable(
 		priorityLevelId: text('priority_level_id').references(() => priorityLevel.id, {
 			onDelete: 'set null',
 		}),
+		categoryId: text('category_id'),
 		name: text('name').notNull(),
 		description: text('description'),
 		// Post-share description edits accrue here as immutable, timestamped segments rendered as
@@ -49,11 +109,11 @@ export const gift = pgTable(
 			.$type<GiftLink[]>()
 			.notNull()
 			.default(sql`'[]'::jsonb`),
-		price: integer('price'),
+		price: numeric('price', { precision: 12, scale: 2, mode: 'number' }),
 		// Non-binding upper bound of a price range (issue #155): non-null makes `price` the lower
 		// bound and displays as "min–max <currency>" (a hint, never scraped/binding). Null = single
 		// price, matching every pre-#155 row without a migration.
-		priceMax: integer('price_max'),
+		priceMax: numeric('price_max', { precision: 12, scale: 2, mode: 'number' }),
 		currency: text('currency').default('CZK'),
 		imageUrl: text('image_url'),
 		imageKey: text('image_key'),
@@ -70,6 +130,11 @@ export const gift = pgTable(
 		wishlistSortIdx: index('gift_wishlist_sort_idx')
 			.on(table.wishlistId, table.sortOrder)
 			.where(sql`${table.deletedAt} IS NULL`),
+		wishlistCategoryFk: foreignKey({
+			columns: [table.wishlistId, table.categoryId],
+			foreignColumns: [giftCategory.wishlistId, giftCategory.id],
+			name: 'gift_wishlist_category_fk',
+		}),
 	}),
 );
 

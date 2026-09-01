@@ -18,6 +18,7 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 
 	interface ImportConfirmStepProps {
+		formId: string;
 		mode: WizardMode;
 		selectedDrafts: ValidatedGiftDraft[];
 		title?: string;
@@ -26,10 +27,12 @@
 		serverDuplicateCount: number;
 		oncommit: () => Promise<{ shortId: string }>;
 		commitStatus: CommitStatus;
+		commitError?: string | null;
 		suppressNavigation?: boolean;
 	}
 
 	let {
+		formId,
 		mode,
 		selectedDrafts,
 		title,
@@ -38,11 +41,11 @@
 		serverDuplicateCount,
 		oncommit,
 		commitStatus,
+		commitError = null,
 		suppressNavigation = false,
 	}: ImportConfirmStepProps = $props();
 
 	let resultShortId = $state<string | null>(null);
-	let submitting = $state(false);
 
 	const displayTitle = $derived(mode === WIZARD_MODE.newList ? title : wishlistTitle);
 	const giftCount = $derived(selectedDrafts.length);
@@ -51,14 +54,11 @@
 	const isError = $derived(commitStatus === COMMIT_STATUS.error);
 
 	async function handleCommit() {
-		submitting = true;
 		try {
 			const result = await oncommit();
 			resultShortId = result.shortId;
 		} catch {
 			// Error state handled by parent via commitStatus
-		} finally {
-			submitting = false;
 		}
 	}
 </script>
@@ -84,71 +84,65 @@
 			{/if}
 		</div>
 	{:else}
-		<!-- Summary line -->
-		<div class="text-foreground text-sm">
-			{#if mode === WIZARD_MODE.newList}
-				{m.import_wizard_confirm_new_list({ title: displayTitle ?? '', count: giftCount })}
-			{:else}
-				{m.import_wizard_confirm_append({ title: displayTitle ?? '', count: giftCount })}
-			{/if}
-		</div>
-
-		<!-- Duplicate caveat (append mode) -->
-		{#if mode === WIZARD_MODE.append && duplicateCount > 0}
-			<Alert.Root tone="warning">
-				<AlertTriangleIcon class="size-4" />
-				<Alert.Description>
-					{m.import_wizard_confirm_duplicates({ count: duplicateCount })}
-				</Alert.Description>
-			</Alert.Root>
-		{/if}
-
-		{#if serverDuplicateCount > 0}
-			<Alert.Root tone="warning">
-				<AlertTriangleIcon class="size-4" />
-				<Alert.Description>
-					{m.import_wizard_server_duplicates({ count: serverDuplicateCount })}
-				</Alert.Description>
-			</Alert.Root>
-		{/if}
-
-		<!-- Progress bar during commit -->
-		{#if isCommitting}
-			<div class="flex flex-col items-center gap-3 py-4">
-				<Progress value={undefined} class="w-full" />
-				<p class="text-muted-foreground text-sm">{m.import_wizard_committing()}</p>
-			</div>
-		{/if}
-
-		<!-- Error state -->
-		{#if isError}
-			<Alert.Root tone="destructive">
-				<AlertCircleIcon class="size-4" />
-				<Alert.Description>{m.import_wizard_error_commit()}</Alert.Description>
-			</Alert.Root>
-		{/if}
-
-		<!-- Commit button -->
-		{#if !isCommitting}
-			<Button onclick={handleCommit} disabled={submitting || isCommitting} class="w-full">
+		<form
+			id={formId}
+			class="flex flex-col gap-5"
+			onsubmit={(event) => {
+				event.preventDefault();
+				void handleCommit();
+			}}
+		>
+			<!-- Summary line -->
+			<div class="text-foreground text-sm">
 				{#if mode === WIZARD_MODE.newList}
-					{m.import_wizard_commit_new()}
+					{m.import_wizard_confirm_new_list({
+						title: displayTitle ?? '',
+						count: giftCount,
+					})}
 				{:else}
-					{m.import_wizard_commit_append()}
+					{m.import_wizard_confirm_append({
+						title: displayTitle ?? '',
+						count: giftCount,
+					})}
 				{/if}
-			</Button>
-		{/if}
+			</div>
 
-		<!-- Retry button on error -->
-		{#if isError}
-			<Button
-				intent="outline"
-				onclick={handleCommit}
-				disabled={submitting || isCommitting}
-				class="w-full"
-			>
-				{m.import_wizard_retry()}
-			</Button>
-		{/if}
+			<!-- Duplicate caveat (append mode) -->
+			{#if mode === WIZARD_MODE.append && duplicateCount > 0}
+				<Alert.Root tone="warning">
+					<AlertTriangleIcon class="size-4" />
+					<Alert.Description>
+						{m.import_wizard_confirm_duplicates({ count: duplicateCount })}
+					</Alert.Description>
+				</Alert.Root>
+			{/if}
+
+			{#if serverDuplicateCount > 0}
+				<Alert.Root tone="warning">
+					<AlertTriangleIcon class="size-4" />
+					<Alert.Description>
+						{m.import_wizard_server_duplicates({ count: serverDuplicateCount })}
+					</Alert.Description>
+				</Alert.Root>
+			{/if}
+
+			<!-- Progress bar during commit -->
+			{#if isCommitting}
+				<div class="flex flex-col items-center gap-3 py-4">
+					<Progress value={undefined} class="w-full" />
+					<p class="text-muted-foreground text-sm">{m.import_wizard_committing()}</p>
+				</div>
+			{/if}
+
+			<!-- Error state -->
+			{#if isError}
+				<Alert.Root tone="destructive">
+					<AlertCircleIcon class="size-4" />
+					<Alert.Description
+						>{commitError ?? m.import_wizard_error_commit()}</Alert.Description
+					>
+				</Alert.Root>
+			{/if}
+		</form>
 	{/if}
 </div>

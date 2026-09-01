@@ -44,6 +44,7 @@ export function setLandingDemoGiftContexts(
 		likeControls.toggleLike,
 	);
 	setGiftsContext(
+		() => 'landing-demo',
 		getGifts,
 		getRole,
 		() => false,

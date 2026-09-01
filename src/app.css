@@ -257,6 +257,10 @@
 	--panel-hover: color-mix(in oklab, var(--p-brand) 6%, white);
 	--accent-loud: var(--p-accent);
 	--accent-loud-foreground: var(--p-on-accent);
+	--selection-tint: color-mix(in oklab, var(--primary) 14%, var(--card));
+	--selection-image-tint: color-mix(in oklab, var(--primary) 24%, transparent);
+	--selection-ring: var(--primary);
+	--selection-on-ring: var(--primary-foreground);
 	--note-tint: #fff1c1;
 	--note-ink: var(--p-ink);
 	--link: #7048e8;
@@ -286,9 +290,16 @@
 	--footer-text: var(--tint);
 	--footer-hover: color-mix(in oklab, var(--footer-text) 15%, transparent);
 
-	/* Hard sticker shadows */
-	--hard-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
-	--hard-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+	/* Semantic sticker-depth recipes. Selection is mapped below for both the
+	   root palette and nested wishlist palette scopes. */
+	--soft-shadow: color-mix(in oklab, var(--p-ink) 16%, transparent);
+	--soft-shadow-strong: color-mix(in oklab, var(--p-ink) 20%, transparent);
+	--ink-shadow: color-mix(in oklab, var(--p-ink) 58%, transparent);
+	--ink-shadow-strong: color-mix(in oklab, var(--p-ink) 68%, transparent);
+	--black-shadow: #000;
+	--black-shadow-strong: #000;
+	--hard-shadow: var(--soft-shadow);
+	--hard-shadow-strong: var(--soft-shadow-strong);
 	--glow-soft: color-mix(in oklab, var(--p-brand) 50%, transparent);
 
 	/* ── shadcn semantic tokens (names kept, values re-derived) ── */
@@ -379,6 +390,10 @@
 	--panel-hover: color-mix(in oklab, var(--p-deep) 58%, #081018);
 	--accent-loud: var(--p-accent);
 	--accent-loud-foreground: var(--p-on-accent);
+	--selection-tint: color-mix(in oklab, var(--primary) 22%, var(--card));
+	--selection-image-tint: color-mix(in oklab, var(--primary) 28%, transparent);
+	--selection-ring: color-mix(in oklab, var(--primary) 75%, white);
+	--selection-on-ring: var(--primary-foreground);
 	--note-tint: #ffdd75;
 	--note-ink: #43350a;
 	--link: #b39dfc;
@@ -408,9 +423,15 @@
 	--footer-text: color-mix(in oklab, var(--p-bright) 40%, #e6eff8);
 	--footer-hover: color-mix(in oklab, var(--footer-text) 15%, transparent);
 
-	/* Hard sticker shadows (dark) */
-	--hard-shadow: rgb(2 6 12 / 42%);
-	--hard-shadow-strong: rgb(2 6 12 / 55%);
+	/* Semantic sticker-depth recipes (dark shadows intentionally stay dark). */
+	--soft-shadow: rgb(2 6 12 / 42%);
+	--soft-shadow-strong: rgb(2 6 12 / 55%);
+	--ink-shadow: rgb(2 6 12 / 48%);
+	--ink-shadow-strong: rgb(2 6 12 / 62%);
+	--black-shadow: #000;
+	--black-shadow-strong: #000;
+	--hard-shadow: var(--soft-shadow);
+	--hard-shadow-strong: var(--soft-shadow-strong);
 	--glow-soft: color-mix(in oklab, var(--p-bright) 45%, transparent);
 
 	/* ── shadcn semantic tokens (dark) ── */
@@ -484,6 +505,26 @@
 	--switch-track: color-mix(in oklab, var(--ink) 25%, transparent);
 	--switch-thumb: var(--ink);
 	--switch-thumb-active: #fff;
+}
+
+/* The viewer depth lives on <html>. Repeat the mapping for nested wishlist
+   palettes because their local recipe colors must win without changing geometry. */
+[data-depth='soft'],
+[data-depth='soft'] [data-palette] {
+	--hard-shadow: var(--soft-shadow);
+	--hard-shadow-strong: var(--soft-shadow-strong);
+}
+
+[data-depth='ink'],
+[data-depth='ink'] [data-palette] {
+	--hard-shadow: var(--ink-shadow);
+	--hard-shadow-strong: var(--ink-shadow-strong);
+}
+
+[data-depth='black'],
+[data-depth='black'] [data-palette] {
+	--hard-shadow: var(--black-shadow);
+	--hard-shadow-strong: var(--black-shadow-strong);
 }
 
 @theme inline {
@@ -611,6 +652,19 @@
 	--animate-shimmer: shimmer 1.6s linear infinite;
 }
 
+/* A nested sky palette represents a blue wishlist surface. Use its complementary
+   accent for selected gifts while root/neutral surfaces retain primary treatment. */
+[data-palette='sky']:not(:root) {
+	--selection-tint: color-mix(in oklab, var(--accent-loud) 24%, var(--card));
+	--selection-image-tint: color-mix(in oklab, var(--accent-loud) 34%, transparent);
+	--selection-ring: var(--accent-loud);
+	--selection-on-ring: var(--accent-loud-foreground);
+}
+
+[data-gift-item][aria-selected='true'] {
+	outline-style: solid;
+}
+
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
@@ -657,6 +711,18 @@
 
 	input[type='search'] {
 		caret-color: var(--foreground);
+	}
+
+	/* Numeric gift fields retain native keyboard semantics while spinner buttons
+	   are suppressed consistently across detail and batch-entry surfaces. */
+	input.numeric-input[type='number'] {
+		appearance: textfield;
+	}
+
+	input.numeric-input[type='number']::-webkit-inner-spin-button,
+	input.numeric-input[type='number']::-webkit-outer-spin-button {
+		margin: 0;
+		appearance: none;
 	}
 
 	h1,

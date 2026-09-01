@@ -1,4 +1,5 @@
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
@@ -10,17 +11,42 @@ import { ROBOTS_NOINDEX_CONTENT, shouldNoindexPath } from '$lib/seo/robots.js';
 import { requestTelemetryHandle } from '$lib/server/request_telemetry.js';
 import { createSentryServerOptions } from '$lib/observability/sentry_server.js';
 import {
+	reportOperationalFailure,
+	setOperationalDeployment,
+} from '$lib/observability/operational_failures.js';
+import {
 	DEFAULT_PALETTE,
 	PALETTE_COOKIE_NAME,
 	isPalette,
 	type Palette,
 } from '$lib/theme/palettes.js';
+import {
+	DEFAULT_DEPTH_STYLE,
+	DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+	DEPTH_STYLE_COOKIE_NAME,
+	isDepthStyle,
+	type DepthStyle,
+} from '$lib/theme/depth_styles.js';
 
 let initializedSentryHandle: Handle | undefined;
 
+function reportCriticalConfigurationFailures(event: Parameters<Handle>[0]['event']) {
+	if (!isDatabaseConfigured(event)) {
+		reportOperationalFailure('database', 'missing_connection');
+	}
+	if (env.AUTH_SECRET === undefined || env.AUTH_SECRET.trim() === '') {
+		reportOperationalFailure('auth', 'missing_secret');
+	}
+}
+
 const sentryInitializationHandle: Handle = ({ event, resolve }) => {
+	setOperationalDeployment(event.platform?.env.CF_VERSION_METADATA?.id);
 	const dsn = event.platform?.env.PUBLIC_SENTRY_DSN?.trim();
 	if (dsn === undefined || dsn === '') {
+		if (!dev) {
+			reportOperationalFailure('sentry', 'missing_public_dsn');
+		}
+		reportCriticalConfigurationFailures(event);
 		return resolve(event);
 	}
 
@@ -31,7 +57,13 @@ const sentryInitializationHandle: Handle = ({ event, resolve }) => {
 			release: event.platform?.env.GIT_COMMIT_SHA,
 		}),
 	);
-	return initializedSentryHandle({ event, resolve });
+	return initializedSentryHandle({
+		event,
+		resolve: (resolvedEvent, options) => {
+			reportCriticalConfigurationFailures(resolvedEvent);
+			return resolve(resolvedEvent, options);
+		},
+	});
 };
 
 function setSecurityHeaders(headers: Headers, url: URL) {
@@ -189,42 +221,48 @@ function isHtmlDocumentRequest(event: Parameters<Handle>[0]['event']): boolean {
 }
 
 /**
- * Resolves the viewer's stable presentation preferences — preferred locale and
- * app palette — with at most ONE database statement per HTML document request
- * and none for any other request kind (issue #108, REQ-1/REQ-2).
+ * Resolves the viewer's locale, app palette, and depth style for HTML document
+ * loads only. Locale starts from the request cookie and an authenticated account
+ * preference can override it; palette and depth use their cookie mirrors as fast
+ * paths, with missing authenticated values falling back to the user row. All
+ * required authenticated fallbacks are fetched in the same combined database
+ * statement (at most one per document request; issue #108, REQ-1/REQ-2).
  *
- * Locale: the account preference overrides the request's locale cookie so SSR
- * renders the persisted language (explicit switches keep the cookie in sync,
- * so this only matters on fresh devices / after cross-device changes).
- *
- * Palette: applied to the root <html> element server-side so the chosen palette
- * is present on first paint with no flash. The cookie mirror is the fast path
- * (works for anonymous users too); logged-in users without the cookie (fresh
- * device) fall back to the palette persisted on their user row.
- *
- * Sequenced after authHandle so `locals.user` is populated when the DB is
- * configured, and before paraglideHandle so the locale override is seen.
+ * Palette and depth are written to the root <html> data attributes server-side,
+ * so both styles are correct before paint. Sequencing after authHandle provides
+ * `locals.user`, while sequencing before paraglideHandle exposes the resolved
+ * locale to SSR.
  */
 const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	let palette: Palette = DEFAULT_PALETTE;
+	let depthStyle: DepthStyle = DEFAULT_DEPTH_STYLE;
 
 	const cookiePalette = event.cookies.get(PALETTE_COOKIE_NAME);
 	if (isPalette(cookiePalette)) {
 		palette = cookiePalette;
 	}
+	const cookieDepthStyle = event.cookies.get(DEPTH_STYLE_COOKIE_NAME);
+	if (isDepthStyle(cookieDepthStyle)) {
+		depthStyle = cookieDepthStyle;
+	}
 
 	if (event.locals.user != null && isDatabaseConfigured(event) && isHtmlDocumentRequest(event)) {
 		const wantsLocale = !hasExplicitUrlLocale(event.url) && event.url.pathname !== '/';
 		const wantsPalette = !isPalette(cookiePalette);
+		const wantsDepthStyle = !isDepthStyle(cookieDepthStyle);
 
-		if (wantsLocale || wantsPalette) {
+		if (wantsLocale || wantsPalette || wantsDepthStyle) {
 			try {
 				const { getDb } = await import('$lib/server/db/index.js');
 				const { user } = await import('$lib/server/db/auth.schema.js');
 				const { eq } = await import('drizzle-orm');
 
 				const rows = await getDb(event)
-					.select({ preferredLocale: user.preferredLocale, palette: user.palette })
+					.select({
+						preferredLocale: user.preferredLocale,
+						palette: user.palette,
+						depthStyle: user.depthStyle,
+					})
 					.from(user)
 					.where(eq(user.id, event.locals.user.id))
 					.limit(1);
@@ -239,6 +277,15 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 				if (wantsPalette && isPalette(preferences?.palette)) {
 					palette = preferences.palette;
 				}
+				if (wantsDepthStyle && isDepthStyle(preferences?.depthStyle)) {
+					depthStyle = preferences.depthStyle;
+					event.cookies.set(DEPTH_STYLE_COOKIE_NAME, depthStyle, {
+						path: '/',
+						maxAge: DEPTH_STYLE_COOKIE_MAX_AGE_SECONDS,
+						httpOnly: false,
+						sameSite: 'lax',
+					});
+				}
 			} catch (err) {
 				console.error('[userPreferencesHandle] failed to read user preferences', err);
 			}
@@ -246,7 +293,8 @@ const userPreferencesHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	return resolve(event, {
-		transformPageChunk: ({ html }) => html.replaceAll('%app.palette%', palette),
+		transformPageChunk: ({ html }) =>
+			html.replaceAll('%app.palette%', palette).replaceAll('%app.depth%', depthStyle),
 	});
 };
 

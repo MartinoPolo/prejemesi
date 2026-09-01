@@ -3,6 +3,10 @@ import { COLUMN_ROLE } from '$lib/modules/import/detect_columns.js';
 import type { GiftDraft } from '$lib/modules/gifts/gift_draft.js';
 import { parsePrice } from '$lib/modules/gifts/gift_draft.js';
 import { DEFAULT_DRAFT_PRIORITY, DEFAULT_GIFT_CURRENCY } from '$lib/modules/gifts/types.js';
+import {
+	resolveCategoryLabel,
+	type PublicGiftCategory,
+} from '$lib/modules/gift-categories/types.js';
 
 /**
  * Build {@link GiftDraft} rows from parsed data rows + detected column mapping.
@@ -14,6 +18,7 @@ import { DEFAULT_DRAFT_PRIORITY, DEFAULT_GIFT_CURRENCY } from '$lib/modules/gift
 export function buildDraftRows(
 	dataRows: readonly string[][],
 	columns: readonly DetectedColumn[],
+	activeCategories: readonly PublicGiftCategory[] = [],
 ): GiftDraft[] {
 	return dataRows.map((row) => {
 		let name = '';
@@ -22,6 +27,8 @@ export function buildDraftRows(
 		let currency = DEFAULT_GIFT_CURRENCY;
 		let imageUrl: string | undefined;
 		let quantity: string | undefined;
+		let categoryId: string | null = null;
+		let importedCategoryLabel: string | null = null;
 		const links: { url: string }[] = [];
 
 		for (const column of columns) {
@@ -52,6 +59,12 @@ export function buildDraftRows(
 				case COLUMN_ROLE.quantity:
 					quantity = cellValue;
 					break;
+				case COLUMN_ROLE.category: {
+					importedCategoryLabel = cellValue;
+					const resolved = resolveCategoryLabel(cellValue, activeCategories);
+					categoryId = resolved?.categoryId ?? null;
+					break;
+				}
 				case COLUMN_ROLE.bool:
 				case COLUMN_ROLE.ignore:
 					// Intentionally skipped
@@ -68,6 +81,7 @@ export function buildDraftRows(
 			...(imageUrl === undefined ? {} : { imageUrl }),
 			...(quantity === undefined ? {} : { quantity }),
 			priority: DEFAULT_DRAFT_PRIORITY,
+			...(importedCategoryLabel === null ? {} : { categoryId, importedCategoryLabel }),
 		};
 	});
 }

@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import { cn } from '$lib/utils.js';
@@ -18,8 +19,10 @@
 	} from '$lib/modules/gifts/draft_grid.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import GiftDraftRow from './GiftDraftRow.svelte';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import GiftDraftBulkBar from './GiftDraftBulkBar.svelte';
 	import GiftDraftStatusLegend from './GiftDraftStatusLegend.svelte';
+	import { createIdentityLayoutMotion } from '$lib/motion/layout_motion.js';
 	import {
 		DRAFT_GRID_COLUMNS,
 		DRAFT_GRID_COLUMNS_NO_PRIORITY,
@@ -36,6 +39,12 @@
 		type ExistingGiftRef,
 	} from './gift_draft_grid_model.js';
 
+	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
+	const ROW_INSERT_DURATION = 520;
+	const ROW_REMOVE_DURATION = 440;
+	/** Keep bulk removal work local; remaining selected rows leave in the authoritative update. */
+	const BULK_EXIT_ANIMATION_LIMIT = 12;
+
 	interface Props {
 		context?: DraftGridContext;
 		/** Seed rows (import host pre-fills from a parse). */
@@ -51,6 +60,8 @@
 		 * two ranks the toggle maps to. Defaults to true (every wishlist has them).
 		 */
 		priorityAvailable?: boolean;
+		categoryOptions?: ManagedGiftCategory[];
+		resolvedImportedCategoryLabels?: ReadonlySet<string>;
 		/** Emitted on every edit/selection change with the committable draft set. */
 		onchange?: (change: DraftGridChange) => void;
 		class?: string;
@@ -63,6 +74,8 @@
 		allowAddRow,
 		showLegend,
 		priorityAvailable = true,
+		categoryOptions = [],
+		resolvedImportedCategoryLabels = new Set(),
 		onchange,
 		class: className,
 	}: Props = $props();
@@ -74,8 +87,14 @@
 		priorityAvailable ? DRAFT_GRID_COLUMNS : DRAFT_GRID_COLUMNS_NO_PRIORITY,
 	);
 
-	let rows = $state<DraftGridRow[]>(seedRows());
-
+	let displayedRows = $state<DraftGridRow[]>(seedRows());
+	let exitingRows = $state<Array<{ row: DraftGridRow; index: number }>>([]);
+	let exitingIds = $state<ReadonlySet<string>>(new Set());
+	const rows = $derived(displayedRows.filter((row) => !exitingIds.has(row.id)));
+	let rowsElement = $state<HTMLElement | null>(null);
+	const layoutMotion = createIdentityLayoutMotion();
+	const rowAnimations = new SvelteSet<Animation>();
+	let motionRun = 0;
 	const selectedCount = $derived(rows.filter((row) => row.selected).length);
 	const headerState = $derived(headerSelectionState(rows));
 
@@ -99,7 +118,7 @@
 	}
 
 	function rowStatus(row: DraftGridRow): RowStatus {
-		const validation = validateDraft(rowToDraft(row));
+		const validation = validateDraft(rowToDraft(row), { resolvedImportedCategoryLabels });
 		return deriveRowStatus({
 			name: row.name,
 			isDuplicate: !row.dismissedDuplicate && rowHasDuplicateWarning(row),
@@ -108,8 +127,14 @@
 		});
 	}
 
+	const resolvedImportedCategorySignature = $derived(
+		[...resolvedImportedCategoryLabels].sort().join('|'),
+	);
+
 	function emit() {
-		onchange?.(collectDraftGridChange(rows, rowHasDuplicateWarning));
+		onchange?.(
+			collectDraftGridChange(rows, rowHasDuplicateWarning, resolvedImportedCategoryLabels),
+		);
 	}
 
 	function selectAll(checked: boolean) {
@@ -119,19 +144,155 @@
 		emit();
 	}
 
-	function addRow() {
-		rows.push(createDraftGridRow(undefined, { pristine: true }));
+	function prefersReducedMotion(): boolean {
+		return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+	}
+
+	function trackRowAnimation(animation: Animation) {
+		rowAnimations.add(animation);
+		animation.addEventListener?.('finish', () => rowAnimations.delete(animation), {
+			once: true,
+		});
+		animation.addEventListener?.('cancel', () => rowAnimations.delete(animation), {
+			once: true,
+		});
+	}
+
+	function beginMotion(): { run: number; removedStaleVisuals: boolean } {
+		const removedStaleVisuals = exitingRows.length > 0;
+		motionRun += 1;
+		for (const animation of rowAnimations) {
+			animation.cancel();
+		}
+		rowAnimations.clear();
+		if (removedStaleVisuals) {
+			displayedRows = displayedRows.filter((row) => !exitingIds.has(row.id));
+		}
+		exitingRows = [];
+		exitingIds = new Set();
+		layoutMotion.cancel();
+		return { run: motionRun, removedStaleVisuals };
+	}
+
+	async function addRow() {
+		const { run, removedStaleVisuals } = beginMotion();
+		if (removedStaleVisuals) {
+			await tick();
+		}
+		const row = createDraftGridRow(undefined, { pristine: true });
+		const snapshot =
+			!prefersReducedMotion() && rowsElement ? layoutMotion.capture(rowsElement) : null;
+		displayedRows.push(row);
 		emit();
+		if (snapshot === null || rowsElement === null) {
+			return;
+		}
+
+		await tick();
+		if (run !== motionRun) {
+			return;
+		}
+		const element = [...rowsElement.querySelectorAll<HTMLElement>('[data-gift-item]')].find(
+			(candidate) => candidate.dataset.giftId === row.id,
+		);
+		if (element === undefined) {
+			return;
+		}
+		const animation = element.animate(
+			[
+				{ height: '0px', opacity: 0, overflow: 'clip' },
+				{ height: `${element.scrollHeight}px`, opacity: 1, overflow: 'clip' },
+			],
+			{ duration: ROW_INSERT_DURATION, easing: STANDARD_EASING },
+		);
+		trackRowAnimation(animation);
+		void layoutMotion.play(snapshot, rowsElement);
+	}
+
+	async function removeRows(ids: ReadonlySet<string>) {
+		const { run, removedStaleVisuals } = beginMotion();
+		if (removedStaleVisuals) {
+			await tick();
+		}
+		if (prefersReducedMotion() || rowsElement === null) {
+			displayedRows = displayedRows.filter((row) => !ids.has(row.id));
+			emit();
+			return;
+		}
+
+		const snapshot = layoutMotion.capture(rowsElement);
+		const rowElementsById = new Map(
+			[...rowsElement.querySelectorAll<HTMLElement>('[data-gift-item]')].flatMap(
+				(element) => {
+					const id = element.dataset.giftId;
+					return id !== undefined && id !== '' ? [[id, element] as const] : [];
+				},
+			),
+		);
+		const affectedRows = rows.flatMap((row, index) =>
+			ids.has(row.id) ? [{ row, index }] : [],
+		);
+		// The first affected rows are a deterministic visible/near-list fallback. Only
+		// this bounded local subset gets exits; every selected ID is still removed once.
+		exitingRows = affectedRows.slice(0, BULK_EXIT_ANIMATION_LIMIT);
+		exitingIds = new Set(ids);
+		emit();
+		await tick();
+		if (run !== motionRun || rowsElement === null) {
+			return;
+		}
+
+		const settlements: Promise<unknown>[] = [];
+		for (const exiting of exitingRows) {
+			const element = rowElementsById.get(exiting.row.id);
+			if (element === undefined || !element.isConnected) {
+				continue;
+			}
+			const animation = element.animate(
+				[
+					{
+						clipPath: 'inset(0 0 0 0)',
+						opacity: 1,
+						transform: 'scaleY(1)',
+						transformOrigin: 'top',
+					},
+					{
+						clipPath: 'inset(50% 0 50% 0)',
+						opacity: 0,
+						transform: 'scaleY(0)',
+						transformOrigin: 'top',
+					},
+				],
+				{
+					duration: ROW_REMOVE_DURATION,
+					easing: STANDARD_EASING,
+					fill: 'both',
+				},
+			);
+			trackRowAnimation(animation);
+			if (animation.finished !== undefined) {
+				settlements.push(animation.finished.catch(() => undefined));
+			}
+		}
+		await Promise.all(settlements);
+		if (run !== motionRun) {
+			return;
+		}
+		displayedRows = displayedRows.filter((row) => !ids.has(row.id));
+		exitingRows = [];
+		exitingIds = new Set();
+		await tick();
+		if (run === motionRun && rowsElement !== null) {
+			void layoutMotion.play(snapshot, rowsElement);
+		}
 	}
 
 	function removeRow(id: string) {
-		rows = rows.filter((row) => row.id !== id);
-		emit();
+		void removeRows(new Set([id]));
 	}
 
 	function bulkDelete() {
-		rows = rows.filter((row) => !row.selected);
-		emit();
+		void removeRows(new Set(rows.filter((row) => row.selected).map((row) => row.id)));
 	}
 
 	function dismissDuplicate(row: DraftGridRow) {
@@ -139,9 +300,19 @@
 		emit();
 	}
 
+	onDestroy(() => {
+		beginMotion();
+		layoutMotion.destroy();
+	});
+
 	// Emit once after mount so hosts (e.g. the batch dialog footer) get the initial
 	// draft set + validity without waiting for the first user interaction.
 	onMount(emit);
+
+	$effect(() => {
+		void resolvedImportedCategorySignature;
+		untrack(emit);
+	});
 </script>
 
 <div class={cn('flex min-h-0 flex-col', className)}>
@@ -188,6 +359,7 @@
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_links()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_price()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_image()}</span>
+			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_category()}</span>
 			<span class={DRAFT_COL_LABEL_CLASS}>{m.draft_grid_col_quantity()}</span>
 			{#if priorityAvailable}
 				<SimpleTooltip text={m.draft_grid_col_priority()} side="top">
@@ -212,12 +384,15 @@
 			</SimpleTooltip>
 		</div>
 
-		<div class="flex flex-col gap-2 p-2">
-			{#each rows as row, index (row.id)}
+		<div bind:this={rowsElement} class="flex flex-col gap-2 p-2">
+			{#each displayedRows as row, index (row.id)}
 				<GiftDraftRow
-					bind:row={rows[index]}
+					bind:row={displayedRows[index]}
+					exiting={exitingIds.has(row.id)}
 					status={rowStatus(row)}
 					showPriority={priorityAvailable}
+					{categoryOptions}
+					{resolvedImportedCategoryLabels}
 					onchange={emit}
 					ondelete={() => removeRow(row.id)}
 					ondismissduplicate={() => dismissDuplicate(row)}

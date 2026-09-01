@@ -2,7 +2,7 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Anime-sky like control (issue #102 REQ-14 + round-2 delta): ghost ink chip
- * with the colored heart; hover tints it with the like blush and springs it up.
+ * with the colored heart; hover tints it with the like blush and lifts it as one surface.
  * `md` matches the mockup card footer and the gift detail modal's action bar
  * (matches `ReserveButton`'s `md` there so the two stay height-aligned), `sm`
  * the compact rows. `ghost` is the borderless card/list chip; `sticker` is the
@@ -43,7 +43,7 @@ export const likeButtonVariants = tv({
 		appearance: {
 			ghost: {},
 			sticker: {
-				root: 'rounded-[7px] border-ink bg-card shadow-sticker hover:bg-like-tint motion-safe:hover:-translate-y-0.5 motion-safe:hover:scale-100',
+				root: 'rounded-[7px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:bg-like-tint hover:shadow-sticker-lift motion-safe:hover:-translate-y-0.5 motion-safe:hover:scale-100 motion-reduce:transition-none',
 			},
 		},
 	},

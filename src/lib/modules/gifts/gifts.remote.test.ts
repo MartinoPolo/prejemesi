@@ -58,17 +58,28 @@ vi.mock('@sveltejs/kit', () => ({
 	}),
 }));
 
-// ── Mock drizzle-orm – used only as where-clause builders; no-ops are fine ──
-// `sql` is a tagged template literal whose return value needs `.as()`.
+// ── Mock drizzle-orm – used only as where-clause builders; capture tagged SQL so CASE updates can be asserted. ──
+function mockSql(strings: TemplateStringsArray, ...values: unknown[]) {
+	return {
+		kind: 'sql',
+		strings: Array.from(strings),
+		values,
+		as: vi.fn(() => ({})),
+	};
+}
+
 vi.mock('drizzle-orm', () => ({
 	eq: vi.fn((...args: unknown[]) => args),
 	and: vi.fn((...args: unknown[]) => args),
 	isNull: vi.fn((arg: unknown) => arg),
 	inArray: vi.fn((...args: unknown[]) => args),
-	sql: Object.assign(
-		vi.fn(() => ({ as: vi.fn(() => ({})) })),
-		{ join: vi.fn(() => ({})) },
-	),
+	sql: Object.assign(vi.fn(mockSql), {
+		join: vi.fn((parts: unknown[], separator: unknown) => ({
+			kind: 'sql.join',
+			parts,
+			separator,
+		})),
+	}),
 	count: vi.fn(),
 }));
 
@@ -95,12 +106,23 @@ vi.mock('$lib/server/db/gift.schema.js', () => ({
 		createdAt: 'gift.createdAt',
 		deletedAt: 'gift.deletedAt',
 		priorityLevelId: 'gift.priorityLevelId',
+		categoryId: 'gift.categoryId',
+	},
+	giftCategory: {
+		id: 'giftCategory.id',
+		wishlistId: 'giftCategory.wishlistId',
+		presetKey: 'giftCategory.presetKey',
+		customLabel: 'giftCategory.customLabel',
+		color: 'giftCategory.color',
+		sortOrder: 'giftCategory.sortOrder',
+		deletedAt: 'giftCategory.deletedAt',
 	},
 	reservation: {
 		id: 'reservation.id',
 		giftId: 'reservation.giftId',
 		userId: 'reservation.userId',
 		anonymousName: 'reservation.anonymousName',
+		anonymousEmail: 'reservation.anonymousEmail',
 		quantity: 'reservation.quantity',
 		deletedAt: 'reservation.deletedAt',
 		createdAt: 'reservation.createdAt',
@@ -170,6 +192,12 @@ function createMockDb(): MockDb {
 					indexRef.value++;
 					return (resolve: (value: unknown[]) => unknown) => resolve(result);
 				}
+				if (prop === 'transaction') {
+					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+						calls.push({ method: 'transaction', args: [] });
+						return callback(chain);
+					});
+				}
 				return vi.fn((...args: unknown[]) => {
 					if (typeof prop === 'string') {
 						calls.push({ method: prop, args });
@@ -205,6 +233,9 @@ vi.mock('$lib/server/db/index.js', () => ({
 vi.mock('$lib/server/storage/r2.js', () => ({
 	deleteObjectsBestEffort: vi.fn(() => Promise.resolve()),
 }));
+vi.mock('$lib/modules/notifications/notification_dispatcher.js', () => ({
+	dispatchNotification: vi.fn(() => Promise.resolve()),
+}));
 
 // ── Import the module under test (after all mocks are set up) ────────────────
 
@@ -214,9 +245,12 @@ import {
 	deleteGift,
 	reorderGifts,
 	markGiftReceived,
+	bulkUpdateGifts,
 } from './gifts.remote.js';
 import type { GiftForRecipient, GiftForVisitor } from './types.js';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
+import { singleFlightRefresh } from '$lib/server/remote.js';
 import { toPreShareGiftSnapshot, type PreShareGiftSnapshot } from './gift_post_share.js';
 
 const mockDeleteObjects = vi.mocked(deleteObjectsBestEffort);
@@ -279,6 +313,11 @@ function makeGiftRow(
 		priorityLevelId: null,
 		priorityLabel: null,
 		prioritySortOrder: null,
+		categoryId: null,
+		categoryPresetKey: null,
+		categoryCustomLabel: null,
+		categoryColor: null,
+		categorySortOrder: null,
 		...overrides,
 	};
 }
@@ -317,18 +356,232 @@ type MarkReceivedHandler = (
 	authContext: { user: { id: string } },
 	input: { giftId: string; received: boolean },
 ) => Promise<unknown>;
+type BulkUpdateHandler = (
+	authContext: { user: { id: string } },
+	input: Record<string, unknown>,
+) => Promise<unknown>;
 
 const callGetGifts = getGiftsByWishlistShortId as unknown as GetGiftsHandler;
 const callUpdateGift = updateGift as unknown as UpdateGiftHandler;
 const callDeleteGift = deleteGift as unknown as DeleteGiftHandler;
 const callReorderGifts = reorderGifts as unknown as ReorderGiftsHandler;
 const callMarkReceived = markGiftReceived as unknown as MarkReceivedHandler;
+const callBulkUpdate = bulkUpdateGifts as unknown as BulkUpdateHandler;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
 	mockDbInstance.reset();
 	vi.clearAllMocks();
+	vi.mocked(dispatchNotification).mockImplementation(() => Promise.resolve());
+});
+
+describe('bulkUpdateGifts presentation parity', () => {
+	it('applies post-share edit transparency to every changed presentation gift in one update statement', async () => {
+		const secondGiftId = 'gift-2';
+		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT, status: 'active' })]);
+		mockDbInstance.pushResult([
+			makeGiftRow({ id: GIFT_ID, priorityLevelId: 'old-priority' }),
+			makeGiftRow({ id: secondGiftId, name: 'Second Gift', priorityLevelId: 'old-priority' }),
+		]);
+		mockDbInstance.pushResult([{ id: GIFT_ID }, { id: secondGiftId }]); // one atomic update
+
+		await callBulkUpdate(makeRecipientAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			giftIds: [GIFT_ID, secondGiftId],
+			action: 'priority',
+			priorityLevelId: null,
+		});
+
+		const updates = mockDbInstance.calls.filter((call) => call.method === 'update');
+		const sets = mockDbInstance.calls.filter((call) => call.method === 'set');
+		const setValues = sets.at(0)?.args[0] as Record<string, unknown>;
+		const transparencyCase = setValues.editedAfterShareAt as {
+			kind: string;
+			values: Array<{ parts?: Array<{ values: unknown[] }> }>;
+		};
+		const snapshotCase = setValues.preEditShareSnapshot as {
+			kind: string;
+			values: Array<{ parts?: Array<{ values: unknown[] }> }>;
+		};
+		const touchedIds = (transparencyCase.values[0]?.parts ?? []).map((part) => part.values[1]);
+		const snapshotTouchedIds = (snapshotCase.values[0]?.parts ?? []).map(
+			(part) => part.values[1],
+		);
+
+		expect(updates).toHaveLength(1);
+		expect(sets).toHaveLength(1);
+		expect(setValues.priorityLevelId).toBeNull();
+		expect(transparencyCase.kind).toBe('sql');
+		expect(touchedIds).toEqual([GIFT_ID, secondGiftId]);
+		expect(snapshotTouchedIds).toEqual([GIFT_ID, secondGiftId]);
+	});
+
+	it('notifies reservers for multiple changed gifts from one reservation select in bulk', async () => {
+		const secondGiftId = 'gift-2';
+		mockDbInstance.pushResult([
+			makeWishlistRow({ recipientUserId: null, sharedAt: SHARED_AT, status: 'active' }),
+		]);
+		mockDbInstance.pushResult([{ id: 'moderator-assignment' }]);
+		mockDbInstance.pushResult([
+			makeGiftRow({ id: GIFT_ID, priorityLevelId: 'old-priority' }),
+			makeGiftRow({ id: secondGiftId, name: 'Second Gift', priorityLevelId: 'old-priority' }),
+		]);
+		mockDbInstance.pushResult([{ id: GIFT_ID }, { id: secondGiftId }]); // one atomic update
+		mockDbInstance.pushResult([
+			{ giftId: GIFT_ID, userId: 'reserver-1', anonymousEmail: null },
+			{ giftId: secondGiftId, userId: null, anonymousEmail: 'guest@example.com' },
+		]);
+
+		await callBulkUpdate(makeModeratorAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			giftIds: [GIFT_ID, secondGiftId],
+			action: 'priority',
+			priorityLevelId: null,
+		});
+
+		const reservationQueries = mockDbInstance.calls.filter(
+			(call) =>
+				call.method === 'from' &&
+				typeof call.args[0] === 'object' &&
+				call.args[0] !== null &&
+				(call.args[0] as Record<string, unknown>).anonymousEmail ===
+					'reservation.anonymousEmail',
+		);
+		const updates = mockDbInstance.calls.filter((call) => call.method === 'update');
+		expect(updates).toHaveLength(1);
+		expect(reservationQueries).toHaveLength(1);
+		expect(dispatchNotification).toHaveBeenCalledTimes(2);
+		const payloads = vi.mocked(dispatchNotification).mock.calls.map(([payload]) => payload);
+		for (const expected of [
+			expect.objectContaining({
+				type: 'reserved_gift_edited',
+				giftId: GIFT_ID,
+				targetUserIds: ['reserver-1'],
+				targetEmails: [],
+			}),
+			expect.objectContaining({
+				type: 'reserved_gift_edited',
+				giftId: secondGiftId,
+				targetUserIds: [],
+				targetEmails: ['guest@example.com'],
+			}),
+		]) {
+			expect(payloads).toContainEqual(expected);
+		}
+	});
+
+	it('rejects the transaction when the update does not affect the exact locked gift set', async () => {
+		const secondGiftId = 'gift-2';
+		mockDbInstance.pushResult([makeWishlistRow({ status: 'active' })]);
+		mockDbInstance.pushResult([
+			makeGiftRow({ id: GIFT_ID }),
+			makeGiftRow({ id: secondGiftId, name: 'Second Gift' }),
+		]);
+		mockDbInstance.pushResult([{ id: GIFT_ID }, { id: 'gift-from-another-set' }]);
+
+		await expect(
+			callBulkUpdate(makeRecipientAuthContext(), {
+				wishlistId: WISHLIST_ID,
+				giftIds: [GIFT_ID, secondGiftId],
+				action: 'received',
+				received: true,
+			}),
+		).rejects.toMatchObject({
+			status: 400,
+			message: SERVER_ERROR.GIFT_WISHLIST_MISMATCH,
+		});
+
+		expect(mockDbInstance.calls).toContainEqual({ method: 'for', args: ['update'] });
+		expect(singleFlightRefresh).not.toHaveBeenCalled();
+	});
+
+	it('returns the committed result and refreshes when notification delivery fails', async () => {
+		const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		mockDbInstance.pushResult([
+			makeWishlistRow({ recipientUserId: null, sharedAt: SHARED_AT, status: 'active' }),
+		]);
+		mockDbInstance.pushResult([{ id: 'moderator-assignment' }]);
+		mockDbInstance.pushResult([makeGiftRow({ priorityLevelId: 'old-priority' })]);
+		mockDbInstance.pushResult([{ id: GIFT_ID }]);
+		mockDbInstance.pushResult([
+			{ giftId: GIFT_ID, userId: 'reserver-1', anonymousEmail: null },
+		]);
+		vi.mocked(dispatchNotification).mockRejectedValueOnce(new Error('provider unavailable'));
+
+		const result = await callBulkUpdate(makeModeratorAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			giftIds: [GIFT_ID],
+			action: 'priority',
+			priorityLevelId: null,
+		});
+
+		expect(result).toEqual({
+			updatedIds: [GIFT_ID],
+			priorReceived: { [GIFT_ID]: false },
+		});
+		expect(log).toHaveBeenCalledWith(
+			'[Notification] reserver edit notification failed',
+			expect.any(Error),
+		);
+		expect(singleFlightRefresh).toHaveBeenCalled();
+		log.mockRestore();
+	});
+
+	it('dispatches a large notification fan-out concurrently with a bounded worker count', async () => {
+		const giftIds = Array.from({ length: 8 }, (_, index) => `gift-${index + 1}`);
+		mockDbInstance.pushResult([
+			makeWishlistRow({ recipientUserId: null, sharedAt: SHARED_AT, status: 'active' }),
+		]);
+		mockDbInstance.pushResult([{ id: 'moderator-assignment' }]);
+		mockDbInstance.pushResult(
+			giftIds.map((id, index) =>
+				makeGiftRow({ id, name: `Gift ${index + 1}`, priorityLevelId: 'old-priority' }),
+			),
+		);
+		mockDbInstance.pushResult(giftIds.map((id) => ({ id })));
+		mockDbInstance.pushResult(
+			giftIds.map((giftId) => ({
+				giftId,
+				userId: `reserver-${giftId}`,
+				anonymousEmail: null,
+			})),
+		);
+
+		let active = 0;
+		let maximumActive = 0;
+		const releases: Array<() => void> = [];
+		vi.mocked(dispatchNotification).mockImplementation(
+			() =>
+				new Promise<void>((resolve) => {
+					active += 1;
+					maximumActive = Math.max(maximumActive, active);
+					releases.push(() => {
+						active -= 1;
+						resolve();
+					});
+				}),
+		);
+
+		const command = callBulkUpdate(makeModeratorAuthContext(), {
+			wishlistId: WISHLIST_ID,
+			giftIds,
+			action: 'priority',
+			priorityLevelId: null,
+		});
+		await vi.waitFor(() => expect(releases.length).toBeGreaterThan(1));
+
+		while (vi.mocked(dispatchNotification).mock.calls.length < giftIds.length) {
+			const pending = releases.splice(0);
+			pending.forEach((release) => release());
+			await vi.waitFor(() => expect(releases.length).toBeGreaterThan(0));
+		}
+		releases.splice(0).forEach((release) => release());
+		await command;
+
+		expect(maximumActive).toBeGreaterThan(1);
+		expect(maximumActive).toBeLessThan(giftIds.length);
+	});
 });
 
 describe('getGiftsByWishlistShortId', () => {
@@ -352,6 +605,32 @@ describe('getGiftsByWishlistShortId', () => {
 			expect('reservedCount' in gift).toBe(false);
 			expect('likeCount' in gift).toBe(false);
 			expect('isFullyReserved' in gift).toBe(false);
+			expect('reserverNames' in gift).toBe(false);
+		});
+
+		it('returns category metadata without adding reservation-derived fields', async () => {
+			mockDbInstance.pushResult([makeWishlistRow({ recipientIsModerator: false })]);
+			mockDbInstance.pushResult([
+				makeGiftRow({
+					categoryId: 'category-books',
+					categoryPresetKey: 'books',
+					categoryCustomLabel: null,
+					categoryColor: '#2563EB',
+					categorySortOrder: 2,
+				}),
+			]);
+
+			const result = await callGetGifts(makeRecipientAuthContext(), WISHLIST_SHORT_ID);
+			const gift = result.gifts[0] as Record<string, unknown>;
+
+			expect(gift.category).toEqual({
+				id: 'category-books',
+				presetKey: 'books',
+				customLabel: null,
+				color: '#2563EB',
+				sortOrder: 2,
+			});
+			expect('reservedCount' in gift).toBe(false);
 			expect('reserverNames' in gift).toBe(false);
 		});
 	});
@@ -739,6 +1018,23 @@ describe('updateGift', () => {
 			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
 				?.args[0] as Record<string, unknown>;
 			expect(setValues).toMatchObject({ price: 1200, priceMax: 1500 });
+		});
+
+		it('persists decimal price range bounds (issue #250 REQ-2, REQ-4)', async () => {
+			mockDbInstance.pushResult([makeGiftRow({ createdAt: AFTER_SHARING })]);
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+			mockDbInstance.pushResult([{ id: GIFT_ID, price: 19.5, priceMax: 29.95 }]);
+
+			const result = await callUpdateGift(makeRecipientAuthContext(), {
+				id: GIFT_ID,
+				price: 19.5,
+				priceMax: 29.95,
+			});
+
+			expect(result).toMatchObject({ id: GIFT_ID, price: 19.5, priceMax: 29.95 });
+			const setValues = mockDbInstance.calls.filter((call) => call.method === 'set').at(0)
+				?.args[0] as Record<string, unknown>;
+			expect(setValues).toMatchObject({ price: 19.5, priceMax: 29.95 });
 		});
 
 		it('rejects a priceMax-only update that would invert the persisted range', async () => {

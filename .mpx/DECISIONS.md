@@ -211,6 +211,13 @@ What: Users toggle between dark, light, and system mode. This is independent of 
 Why: Standard accessibility expectation. Per-user because it's a display preference, not content.
 Rejected: Per-wishlist mode (visitors should control their own viewing comfort).
 
+### Wishlist settings use one staged draft and global save
+
+Decided: 2026-09-01
+What: The Details, Categories, Appearance, and Image/Crops tabs share one staged settings draft. A global Save button is visible from every tab, persists all dirty settings together, and closes only after complete success. Palette changes preview locally but persist only on Save. Tab switches preserve drafts; closing, leaving, launching Import, or starting a Danger action with unsaved changes offers Save and continue, Discard, or Continue editing. Import/Export and Danger remain immediate workflows rather than staged settings. Tab navigation is pinned in a shrink-proof, constant-height area above body-only scrolling; its labels are centered at equal-width desktop sizes, while narrower viewports keep one horizontally scrollable row. Tabs are ordered Details → Categories → Appearance → Image/Crops → Import/Export → Danger Zone.
+Why: Per-tab persistence mixed immediate and staged behavior, making it unclear what was saved and allowing changes to be lost. One draft and one exit guard give every editable setting the same predictable lifecycle without incorrectly treating imports or destructive actions as form fields.
+Rejected: Per-tab save buttons; immediate palette persistence; prompts while switching tabs; staging import and destructive actions; a stretched vertical tablet tablist.
+
 ### Three nav pages, no Dashboard
 
 Decided: 2026-05-30 (revised from 2026-05-29) — **Revised 2026-08-07** by "Logged-in home: Přehled overview at /home" below (Moje seznamy is no longer the default/home page; the three nav pages themselves remain).
@@ -316,6 +323,13 @@ What: Czech is the primary language; English is the only other supported languag
 Why: Czech creator, Czech target audience, Czech app name. English for international friends/family.
 Rejected: English-first (doesn't match audience), more languages (unnecessary scope for a family app).
 
+### SEO exposure: localized landing pages, private bearer-link wishlists
+
+Decided: 2026-08-28 (issue #103)
+What: Each landing locale has its own canonical URL plus `cs`, `en`, and `x-default` alternates. Bearer-link wishlists emit `X-Robots-Tag: noindex, nofollow, noarchive` while retaining Open Graph and Twitter metadata for link unfurls. No wishlist sitemap is published until wishlists gain an explicit, revocable publication mode.
+Why: Landing pages should be discoverable in the correct locale, while possession of a wishlist link is not consent to search indexing. Social sharing remains a core workflow and does not require indexing.
+Rejected: Indexing permanent bearer-link wishlists by default; removing social metadata to enforce privacy; publishing a wishlist sitemap before owners can explicitly publish and later revoke publication.
+
 ### No GDPR/cookie banners
 
 Decided: 2026-05-29
@@ -330,12 +344,12 @@ What: Deploy on Cloudflare Workers (free) with Neon Postgres via Hyperdrive, R2 
 Why: $0/month is a hard requirement for a family app. Current template already uses adapter-cloudflare. `postgres` v3.4.8 supports Workers TCP via Hyperdrive. `better-auth/minimal` is edge-compatible. Neon has no pause/deletion risk (just 300-800ms cold starts after 5min idle).
 Rejected: Railway ($5-7/mo), Fly.io (no free tier since 2024), Render (free Postgres expires in 30 days), Vercel (would require driver changes), adapter-node (all Node hosting costs money).
 
-### SvelteKit remote functions for all client-server communication
+### SvelteKit remote functions as the default client-server boundary
 
 Decided: 2026-05-30
-What: Use `query` for reads, `form` for progressive-enhancement mutations, `command` for JS-only actions. No traditional `+page.server.ts` load functions or `+server.ts` API routes (except BetterAuth catch-all and the purpose-specific machine API exception below).
-Why: Remote functions provide type-safe, colocated, deduplicated client-server communication. Single-flight mutations reduce round-trips. Progressive enhancement via `form` is important for a family app used on diverse devices.
-Rejected: Traditional load + form actions (worse DX, no colocation, no dedup), tRPC (extra dependency, remote functions are built-in).
+What: Use `query` for reads, `form` for progressive-enhancement mutations, and `command` for JS-only actions. Do not use traditional load functions or `+server.ts` API routes as the general convention. Exceptions are the BetterAuth catch-all, the purpose-specific machine API below, and `/home`: its deliberate `+page.server.ts` load awaits authenticated parent layout data and directly calls a server-only overview database service.
+Why: Remote functions provide type-safe, colocated, deduplicated client-server communication. Single-flight mutations reduce round-trips, and progressive enhancement via `form` supports diverse devices. `/home` needs a typed SSR first paint without eager SSR or global fetch, while its direct service call avoids a costly intra-server remote invocation.
+Rejected: Traditional load functions and form actions as the general convention (worse DX, no colocation, no dedup); tRPC (extra dependency when remote functions are built in); a `/home` server-to-server remote call (unnecessary invocation overhead).
 
 ### Purpose-specific machine API exception
 
@@ -410,6 +424,12 @@ Decided: 2026-05-30
 What: Visitors can switch between Card (image grid), List (thumbnail + horizontal rows), and Compact (dense table — no images). View switcher is a 3-icon toggle group in the toolbar. All views show the same data; layout density changes.
 Why: Different use cases — Card for browsing/visual appeal, List for scanning with context, Compact for quick overview of many items. Matches common e-commerce patterns.
 Rejected: Single fixed layout (too rigid for diverse wishlists), two views only (compact table adds real value for long lists).
+
+### Gift browse actions: received on surfaces, release in editor
+
+Decided: 2026-08-12 (issue #255; supersedes issue #213's all-surface release UI placement only, not its authorization)
+What: Mark received/unreceived is the primary manager action in card, list, and compact browse views. Marking a gift received enables the received filter so its updated action and badge remain visible. Privileged reservation release lives in the gift detail/editor dialog: správci use the edit form, while the app-admin override remains reachable from the read-only detail. Fully reserved gifts omit redundant disabled reservation actions.
+Why: Completion must react visibly from refreshed browse state, while reservation status already communicates that a gift is unavailable and privileged release belongs in deliberate gift-detail management rather than routine browsing.
 
 ### Gift link always visible
 
@@ -1029,6 +1049,13 @@ What: Motion tokens — ~200 ms standard, 300 ms transform ease, spring `cubic-b
 Why: The app has almost no motion today; the mockup's character depends on it.
 Rejected: Micro-interactions only (loses the reveal charm); full-on FLIP/page transitions (perf risk on long lists).
 
+### Motion continuity: travel requires a visible same-identity move
+
+Decided: 2026-08-28
+What: Coordinate capture includes only attached, rendered, non-zero elements present before and after. Filter-only insertion/removal appears or disappears at final coordinates with at most opacity. Continuously visible displaced siblings may FLIP. Cross-section flight is reserved for the same gift visibly moving between visible source and destination sections.
+Why: Treating hidden or zero-size coordinates as origins made newly revealed filter results fly from screen edges and falsely implied movement.
+Rejected: FLIP/translation for every keyed result regardless of visibility; off-screen or `0,0` travel for inserts/removals; disabling all sibling layout easing.
+
 ### Wishlist header: notebook page + taped polaroid + sticky countdown
 
 Decided: 2026-07-10
@@ -1144,12 +1171,25 @@ What: Non-recipient gift order is computed in three bands: (1) the viewer's own 
 Why: A shared list a week in otherwise greets every new visitor with a wall of reserved top gifts; the gifter's own reservation is the row they return for, so it anchors the top for every reserving role including správci.
 Rejected: Reserved-at-top for správci (fights the curated owner order); a labeled bottom „Rezervované" section (duplicates the overlay's message); duplicating pinned gifts in both their band and their sorted position; making sinking a filter (hiding ≠ deprioritizing).
 
-### Priority grouping: optional flat sections, unprioritized ranks above the lowest level
+### ~~Priority grouping: optional flat sections, unprioritized ranks above the lowest level~~ (superseded)
 
-Decided: 2026-08-07
-What: A „Seskupit podle priority" toggle renders flat section headers per priority level in the wishlist's level order, with the active sort applied within each group — no accordions/collapse. The toggle lives with the other display controls in the #161 filter dropdown, is persisted per device like `viewMode` (unlike sort/filters, which stay per-visit), defaults to off, and is hidden entirely when no gift on the list has a priority. Gifts without a priority form a „Bez priority" group placed above the lowest level (unprioritized means neutral, not last); the `priority` sort option adopts the same rank (replacing the sort-to-999 behavior). The own-reservation band stays above all priority groups.
-Why: Priorities are the recipient's strongest signal to gifters and deserve visual structure, but only when actually used; punishing unprioritized gifts to the bottom would misread "no priority set" as "least wanted".
-Rejected: Accordion groups (hide gifts, add taps on mobile); merging unprioritized into the middle level (hides that they carry no priority); always-on grouping (noise for unprioritized lists); per-wishlist DB persistence of the toggle (it is a viewer presentation preference).
+Decided: 2026-08-07 — **Superseded 2026-08-13 by "Wishlist display controls" below.**
+~~What: A „Seskupit podle priority" toggle renders flat section headers per priority level in the wishlist's level order, with the active sort applied within each group — no accordions/collapse. The toggle lives with the other display controls in the #161 filter dropdown, is persisted per device like `viewMode` (unlike sort/filters, which stay per-visit), defaults to off, and is hidden entirely when no gift on the list has a priority. Gifts without a priority form a „Bez priority" group placed above the lowest level (unprioritized means neutral, not last); the `priority` sort option adopts the same rank (replacing the sort-to-999 behavior). The own-reservation band stays above all priority groups.~~
+Replaced because: grouping is now a separate visible selector that supports both priority and category, and no-priority/uncategorized groups are explicit no-value groups placed last.
+
+### Wishlist display controls: separate grouping, facets, and per-list persistence
+
+Decided: 2026-08-13 (issue #246)
+What: Wishlist gift display has three independent control families. View mode remains the existing global per-device preference. Sort persists per wishlist on the current device. Grouping is a separate visible mutually exclusive selector (`none` / `priority` / `category`), also persisted per wishlist on the current device; unavailable grouping choices are disabled and an unavailable persisted grouping is coerced back to none. Filters live only for the current page visit. Category and priority filters are checkbox facets: multiple values within one facet are ORed, category/priority/existing facets are ANDed together, and explicit „Bez kategorie" / „Bez priority" options appear only when those gifts exist. Priority groups follow priority sort order with „Bez priority" last; category groups follow manager category sort order with „Bez kategorie" last. The chosen sort applies inside every structural section while preserving own-reservation, available/reserved, and received-final role behavior.
+Why: Grouping is a display structure, not a filter; priority and category need equal first-class treatment, while filters should stay quick to clear and should not leak across visits.
+Rejected: Keeping grouping inside the filter dropdown (confuses structure with inclusion); global grouping/sort persistence (viewers switch lists with different meanings); persisting filters (stale hidden gifts on return); treating no-priority/uncategorized as middle-ranked neutral values (explicit no-value groups read clearer at the end).
+
+### Wishlist toolbar: labeled control families and explicit responsive rows
+
+Decided: 2026-08-27 (issue #246 follow-up)
+What: The wishlist toolbar keeps labeled 32 px `md` triggers for sort, grouping, and filtering, visually unifies them with leading semantic icons and trailing chevrons, and orders them as view → sort → grouping → filter → reset → visibly separated reorder; management actions form an atomic, content-width cluster aligned right on the last row. Wide default state is one row; with active filters, chips stay adjacent to the controls and share the final wide row with management actions in separate collision-proof grid columns; medium layouts place filters before a dedicated final action row. Mobile triggers stay content-width and wrap naturally, active-filter chips remain visible, and reset stays in an atomic pair immediately after Filter. Opening any sort, grouping, or filter menu closes an open sibling and opens the requested control with the same pointer interaction. Sort uses arrows, grouping uses layers, filtering uses list-filter-plus, reorder uses a hand, and reset remains a ghost icon.
+Why: Visible labels expose current sort/grouping state, semantic icons distinguish adjacent controls, and explicit row ownership prevents the accidental height, wrapping, and overlap failures caused by local height overrides and independently wrapping action children. Visible mobile chips make active criteria removable without reopening the menu, content-width controls avoid false hierarchy, and coordinated non-scroll-locking menus support direct switching between sibling controls.
+Rejected: Icon-only display triggers (hide selected state and collide conceptually with the view switcher); independently wrapping management actions (splits Add gift from its peers); stretching Add gift on desktop; placing active filters after management actions; hiding active-filter chips on mobile; full-width mobile sort/grouping triggers; separating Reset from Filter; requiring an outside dismissal click before opening a sibling control; ad hoc `h-auto` overrides instead of shared component size variants.
 
 ### Reserved overlay parity: list view reuses the card sticker
 

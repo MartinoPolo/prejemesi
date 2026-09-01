@@ -20,8 +20,8 @@
 </script>
 
 <!-- Pure controlled wishlist palette picker (issue #102 REQ-5): the 10 curated
-     palettes as a 2-column swatch grid. Selection + persistence live entirely with
-     the caller — the auto-save-on-click flow lives in WishlistPaletteAutoSave. -->
+     palettes as a 2-column swatch grid. Selection is a local settings draft; the
+     parent composite save owns persistence. -->
 <div class="grid grid-cols-2 gap-1">
 	{#each PALETTES as paletteOption (paletteOption)}
 		<button

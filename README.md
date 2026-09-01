@@ -106,14 +106,12 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Development
 
-| Script                | Description                                  |
-| --------------------- | -------------------------------------------- |
-| `pnpm run dev`        | Start dev server                             |
-| `pnpm run build`      | Production build                             |
-| `pnpm run preview`    | Preview the built Cloudflare Worker locally  |
-| `pnpm run storybook`  | Start Storybook on port 6006                 |
-| `pnpm run ports`      | List processes on dev ports (5173/4173/6006) |
-| `pnpm run ports:kill` | Kill processes on dev ports                  |
+| Script               | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `pnpm run dev`       | Ensure db is ready, then start dev server   |
+| `pnpm run build`     | Production build                            |
+| `pnpm run preview`   | Preview the built Cloudflare Worker locally |
+| `pnpm run storybook` | Start Storybook on its assigned port        |
 
 ### Code Quality
 
@@ -130,21 +128,22 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Testing
 
-| Script              | Description                          |
-| ------------------- | ------------------------------------ |
-| `pnpm run test`     | Unit tests with Vitest               |
-| `pnpm run test:e2e` | E2E tests with Playwright (Chromium) |
+| Script                      | Description                                                    |
+| --------------------------- | -------------------------------------------------------------- |
+| `pnpm run test`             | Unit tests with Vitest                                         |
+| `pnpm run test:e2e`         | Full E2E suite with Playwright (Chromium)                      |
+| `pnpm run test:e2e:changed` | E2E tests changed since or statically affected relative to dev |
 
 ### Database
 
-| Script                 | Description                          |
-| ---------------------- | ------------------------------------ |
-| `pnpm run db:start`    | Start PostgreSQL via Docker Compose  |
-| `pnpm run db:push`     | Push schema changes to database      |
-| `pnpm run db:generate` | Generate migration files             |
-| `pnpm run db:migrate`  | Run migrations                       |
-| `pnpm run db:seed`     | Populate the database with test data |
-| `pnpm run db:studio`   | Open Drizzle Studio (DB GUI)         |
+| Script                 | Description                            |
+| ---------------------- | -------------------------------------- |
+| `pnpm run db:start`    | Ensure PostgreSQL is running and ready |
+| `pnpm run db:push`     | Push schema changes to database        |
+| `pnpm run db:generate` | Generate migration files               |
+| `pnpm run db:migrate`  | Run migrations                         |
+| `pnpm run db:seed`     | Populate the database with test data   |
+| `pnpm run db:studio`   | Open Drizzle Studio (DB GUI)           |
 
 ### Deployment & Codegen
 
@@ -174,8 +173,8 @@ Copy `.env.example` to `.env` and configure:
 | `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                      |
 
 Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
-Registration, magic-link, password-reset, and anonymous reservation requests are protected by
-Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the two Turnstile
+Registration, password sign-in, magic-link, password-reset, and anonymous reservation requests are
+protected by Cloudflare Turnstile. Local development uses Cloudflare's published test keys when the two Turnstile
 variables are blank; production fails closed when the secret is missing.
 
 Production errors are reported to Sentry without user identity, cookies, headers, query strings,
@@ -221,11 +220,13 @@ tests/e2e/                   # Playwright E2E tests
 ```
 
 Each domain module exposes a small public API via `index.ts`. Client–server communication uses
-SvelteKit **remote functions** (`*.remote.ts`) – `query` for reads, `form` for progressive-enhancement
-mutations, `command` for JS-only actions – wrapped in guarded helpers that enforce auth. Traditional
-`+page.server.ts` load functions and general REST-style `+server.ts` routes are not used. The only
-purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, and the fixed-target
-internal gift-ingestion endpoint for authenticated machine ingestion.
+SvelteKit **remote functions** (`*.remote.ts`) by default – `query` for reads, `form` for
+progressive-enhancement mutations, `command` for JS-only actions – wrapped in guarded helpers that
+enforce auth. The deliberate `/home` exception uses a `+page.server.ts` load for its latency-sensitive
+authenticated overview: it awaits parent layout authentication and invokes a server-only database
+service directly, avoiding an intra-server remote request. General REST-style `+server.ts` routes are
+not used; the purpose-specific route exceptions are the BetterAuth catch-all, the upload proxy, and
+the fixed-target internal gift-ingestion endpoint for authenticated machine ingestion.
 
 ## Code Conventions
 

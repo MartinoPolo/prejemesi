@@ -5,11 +5,16 @@ services:
         # (tests/load). Harmless otherwise.
         command: ['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']
         ports:
-            - '5432:5432'
+            - '${MPX_DATABASE_PORT:-5432}:5432'
         environment:
             POSTGRES_USER: root
             POSTGRES_PASSWORD: mysecretpassword
             POSTGRES_DB: local
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+            interval: 1s
+            timeout: 5s
+            retries: 20
         volumes:
             - pgdata:/var/lib/postgresql/data
 

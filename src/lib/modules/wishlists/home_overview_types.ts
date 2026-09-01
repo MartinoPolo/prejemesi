@@ -3,6 +3,7 @@ import type { MyWishlist, ModeratedWishlist, FollowedWishlist } from './dashboar
 /** Category-row caps for the Přehled overview (issue #225, DECISIONS 2026-08-07). */
 export const HOME_CATEGORY_CAP = 10;
 export const HOME_RECENT_CAP = 6;
+export const HOME_OVERVIEW_DEPENDENCY = 'app:home-overview';
 
 /** Roles a Nedávné card can carry — drives which WishlistCard props render. */
 export const HOME_ROLE = {

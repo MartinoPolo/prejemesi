@@ -1,11 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import {
+	adjustGiftPriceByMagnitude,
 	czechPluralCategory,
 	formatPieceCount,
 	formatPrice,
 	finalizeGiftPrice,
 	finalizeGiftQuantity,
+	getGiftPriceMagnitude,
 } from './gift_display.js';
 
 beforeAll(() => {
@@ -30,6 +32,10 @@ describe('formatPrice', () => {
 		expect(normalizeSpaces(formatPrice(1000, 'CZK', null))).toBe('1 000 Kč');
 	});
 
+	it('displays a decimal single price without rounding (issue #250 REQ-4)', () => {
+		expect(normalizeSpaces(formatPrice(19.5, 'EUR'))).toBe('19,5 €');
+	});
+
 	// REQ-3: a set range renders as "min–max <currency>" via Intl.NumberFormat.formatRange -
 	// currency shown once, locale-correct separator, no "cca"/"~" approximation marker.
 	it('formats a price range via Intl.NumberFormat.formatRange (REQ-3)', () => {
@@ -41,6 +47,12 @@ describe('formatPrice', () => {
 		expect(result.match(/Kč/g)).toHaveLength(1);
 		expect(result).not.toContain('cca');
 		expect(result).not.toContain('~');
+	});
+
+	it('displays decimal range bounds without rounding (issue #250 REQ-4)', () => {
+		const result = normalizeSpaces(formatPrice(19.5, 'EUR', 29.95));
+		expect(result).toContain('19,5');
+		expect(result).toContain('29,95');
 	});
 
 	it('falls back to a single formatted price when priceMax equals price', () => {
@@ -55,6 +67,81 @@ describe('formatPrice', () => {
 
 	it('defaults to CZK when currency is null', () => {
 		expect(formatPrice(1000, null, 1500)).toContain('Kč');
+	});
+});
+
+describe('getGiftPriceMagnitude', () => {
+	it.each([
+		[null, 1],
+		[0, 1],
+		[0.01, 1],
+		[9.99, 1],
+		[10, 1],
+		[99.99, 1],
+		[100, 10],
+		[999.99, 10],
+		[1000, 100],
+	])('derives the second-highest integer decimal order for %s', (value, expected) => {
+		expect(getGiftPriceMagnitude(value)).toBe(expected);
+	});
+});
+
+describe('adjustGiftPriceByMagnitude', () => {
+	it.each([
+		[0, 1, 1],
+		[0, -1, 0],
+		[0.5, 1, 1.5],
+		[0.5, -1, 0],
+		[9, 1, 10],
+		[9, -1, 8],
+		[9.99, 1, 10.99],
+		[9.99, -1, 8.99],
+		[10, 1, 11],
+		[10, -1, 9],
+		[99, 1, 100],
+		[99, -1, 98],
+		[99.99, 1, 100.99],
+		[99.99, -1, 98.99],
+		[100, 1, 110],
+		[100, -1, 99],
+		[100.99, 1, 110.99],
+		[100.99, -1, 99.99],
+		[109, 1, 119],
+		[109, -1, 99],
+		[110, 1, 120],
+		[110, -1, 100],
+		[999, 1, 1009],
+		[999, -1, 989],
+		[1000, 1, 1100],
+		[1000, -1, 990],
+		[1009, 1, 1109],
+		[1009, -1, 999],
+	])('adjusts %s in direction %s to %s', (value, direction, expected) => {
+		expect(adjustGiftPriceByMagnitude(value, direction as 1 | -1)).toBe(expected);
+	});
+
+	it.each([99, 100, 999, 99.99, 100.99])(
+		'reverses an increment from %s across magnitude boundaries',
+		(value) => {
+			const incremented = adjustGiftPriceByMagnitude(value, 1);
+			expect(adjustGiftPriceByMagnitude(incremented, -1)).toBe(value);
+		},
+	);
+
+	it('preserves two-decimal precision without floating-point drift', () => {
+		expect(adjustGiftPriceByMagnitude(100.08, -1)).toBe(99.08);
+		expect(adjustGiftPriceByMagnitude(999.99, 1)).toBe(1009.99);
+	});
+
+	it('clamps adjustments to the persistence-safe upper price limit', () => {
+		expect(adjustGiftPriceByMagnitude(9_999_999_999.99, 1)).toBe(9_999_999_999.99);
+	});
+
+	it.each([
+		[null, 1, 1],
+		[null, -1, 0],
+	])('handles empty price %s in direction %s', (value, direction, expected) => {
+		expect(adjustGiftPriceByMagnitude(value, direction as 1 | -1)).toBe(expected);
 	});
 });
 

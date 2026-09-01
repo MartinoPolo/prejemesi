@@ -41,7 +41,8 @@ When debugging or analyzing issues related to third-party libraries, delegate ex
 - `pnpm run check` -- typecheck
 - `pnpm run check:all` -- full check suite (format + lint + typecheck + stylelint + fallow + migration safety + vykání)
 - `pnpm run check:vykani` -- fails if Czech copy slips into tykání (informal address); see `scripts/check_vykani.mjs`
-- `pnpm run test` -- unit tests
+- `pnpm run test` -- all client, server, and Storybook unit tests
+- `pnpm exec vitest run --project server` -- server unit tests only
 - `pnpm run test:e2e` -- E2E tests
 - `pnpm run db:seed` -- populate DB with test data (idempotent, safe to re-run)
 - `pnpm loadtest --profile smoke|sustained-10|burst-100|contention` -- load tests (fixtures:

@@ -118,18 +118,8 @@ test.describe('Wishlist appearance reactivity (no-reload)', () => {
 		const uploaded = waitForUpload(page);
 		await fileInput.setInputFiles(SAMPLE_IMAGE_PATH);
 		await uploaded;
-		// Image card save (page also has a details "Uložit" button before it, so target by test id).
-		await page.getByTestId('wishlist-image-save').click();
-		await expect(page.getByText(/Obrázek seznamu byl uložen|Wishlist image saved/)).toBeVisible(
-			{
-				timeout: 10_000,
-			},
-		);
-
-		// Close the settings modal so the top-nav link is clickable (the dialog overlay
-		// would otherwise intercept the click). Escape is locale-agnostic.
-		await page.keyboard.press('Escape');
-		await expect(page.getByRole('dialog')).not.toBeVisible();
+		await page.getByTestId('wishlist-settings-save').click();
+		await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 });
 
 		// Client-side navigate back – the card MUST now render the image, not the fallback.
 		await spaNavigateToMyLists(page);

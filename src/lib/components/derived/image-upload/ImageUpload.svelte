@@ -19,6 +19,8 @@
 		maxSize?: number;
 		/** Component size variant. */
 		size?: ImageUploadSize;
+		/** Optional visible and accessible label for compact upload actions. */
+		label?: string;
 		/** Existing image shown as the initial preview (edit mode); replaced on upload. */
 		initialPreviewUrl?: string;
 		/** Called when upload completes successfully. */
@@ -36,6 +38,7 @@
 		accept = ALLOWED_CONTENT_TYPES.join(','),
 		maxSize,
 		size = 'medium',
+		label,
 		initialPreviewUrl,
 		onUpload,
 		onError,
@@ -181,7 +184,7 @@
 <div
 	class={cn(styles.root(), className)}
 	role="button"
-	aria-label={m.image_upload_aria()}
+	aria-label={label ?? m.image_upload_aria()}
 	tabindex={progress.status === 'uploading' ? -1 : 0}
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}
@@ -218,8 +221,8 @@
 			</Button>
 		{/if}
 	{:else}
-		<UploadIcon class="size-8 text-muted-foreground" />
-		<p class={styles.label()}>{m.image_upload_dropzone()}</p>
+		<UploadIcon class={size === 'compact' ? 'size-4' : 'size-8 text-muted-foreground'} />
+		<p class={styles.label()}>{label ?? m.image_upload_dropzone()}</p>
 	{/if}
 
 	{#if progress.status === 'uploading'}

@@ -66,6 +66,8 @@ vi.mock('$lib/server/db/auth.schema.js', () => ({
 		image: 'u.image',
 		appBackgroundTheme: 'u.appBackgroundTheme',
 		preferredLocale: 'u.preferredLocale',
+		palette: 'u.palette',
+		depthStyle: 'u.depthStyle',
 		updatedAt: 'u.updatedAt',
 	},
 	account: {
@@ -105,13 +107,15 @@ import {
 	updateProfile,
 	updatePreferredLocale,
 	setUserPalette,
+	setUserDepthStyle,
 	deleteAccount,
 	refreshGoogleAvatar,
 } from './settings.remote.js';
-import { SetUserPaletteInputSchema } from './types.js';
+import { SetUserDepthStyleInputSchema, SetUserPaletteInputSchema } from './types.js';
 import { getDb } from '$lib/server/db/index.js';
 import { getRequestEvent } from '$app/server';
 import { deleteObjectsBestEffort } from '$lib/server/storage/r2.js';
+import { user as mockedUserTable } from '$lib/server/db/auth.schema.js';
 
 const mockGetDb = vi.mocked(getDb);
 const mockGetRequestEvent = vi.mocked(getRequestEvent);
@@ -418,6 +422,62 @@ describe('setUserPalette', () => {
 
 		expect(cookieSet).toHaveBeenCalledWith('app-palette', 'ocean', expect.any(Object));
 		expect(mockDb.update).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('setUserDepthStyle', () => {
+	function mockCookies() {
+		const cookieSet = vi.fn();
+		mockGetRequestEvent.mockReturnValue({
+			cookies: { set: cookieSet },
+		} as unknown as ReturnType<typeof getRequestEvent>);
+		return cookieSet;
+	}
+
+	it('validates exactly the three approved styles', () => {
+		expect(
+			['soft', 'ink', 'black'].every((value) => v.is(SetUserDepthStyleInputSchema, value)),
+		).toBe(true);
+		expect(
+			['hard', '', 'Soft', null].some((value) => v.is(SetUserDepthStyleInputSchema, value)),
+		).toBe(false);
+	});
+
+	it('anonymous viewers get only a one-year non-httpOnly cookie', async () => {
+		const cookieSet = mockCookies();
+		const mockDb = createMockDb([[]]);
+		mockGetDb.mockReturnValue(mockDb);
+
+		await (setUserDepthStyle as unknown as (...args: unknown[]) => Promise<void>)(null, 'ink');
+
+		expect(cookieSet).toHaveBeenCalledWith('app-depth', 'ink', {
+			path: '/',
+			maxAge: 31_536_000,
+			httpOnly: false,
+			sameSite: 'lax',
+		});
+		expect(mockDb.update).not.toHaveBeenCalled();
+	});
+
+	it('authenticated viewers get the cookie and persist depth on the current user row', async () => {
+		const cookieSet = mockCookies();
+		const whereMock = vi.fn(() => Promise.resolve());
+		const setMock = vi.fn(() => ({ where: whereMock }));
+		const updateMock = vi.fn(() => ({ set: setMock }));
+		mockGetDb.mockReturnValue({ update: updateMock } as unknown as ReturnType<typeof getDb>);
+
+		await (setUserDepthStyle as unknown as (...args: unknown[]) => Promise<void>)(
+			testAuthContext,
+			'black',
+		);
+
+		expect(cookieSet).toHaveBeenCalledWith('app-depth', 'black', expect.any(Object));
+		expect(updateMock).toHaveBeenCalledWith(mockedUserTable);
+		expect(setMock).toHaveBeenCalledWith({
+			depthStyle: 'black',
+			updatedAt: expect.any(Date),
+		});
+		expect(whereMock).toHaveBeenCalledWith(['u.id', 'user-1']);
 	});
 });
 

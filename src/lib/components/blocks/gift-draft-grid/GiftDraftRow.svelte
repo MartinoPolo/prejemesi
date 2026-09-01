@@ -8,6 +8,7 @@
 	import { Input } from '$lib/components/base/input/index.js';
 	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import * as Select from '$lib/components/base/select/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import ImageFrame from '$lib/components/derived/image-frame/ImageFrame.svelte';
@@ -27,13 +28,23 @@
 	} from './gift_draft_grid_variants.js';
 	import type { DraftGridRow } from './gift_draft_grid_model.js';
 	import type { DraftPriority } from '$lib/modules/gifts/types.js';
+	import {
+		labelForGiftCategory,
+		normalizeGiftCategoryLabel,
+		type ManagedGiftCategory,
+	} from '$lib/modules/gift-categories/types.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	interface Props {
 		row: DraftGridRow;
+		/** Retain the layout slot while making an exiting row non-interactive. */
+		exiting?: boolean;
 		/** Whole-card status derived by the grid (error > duplicate > ready). */
 		status: RowStatus;
 		/** Show the priority (heart) cell. Hidden when the target lacks ≥2 levels. */
 		showPriority: boolean;
+		categoryOptions: ManagedGiftCategory[];
+		resolvedImportedCategoryLabels?: ReadonlySet<string>;
 		/** Re-emit drafts after any edit/selection change. */
 		onchange?: () => void;
 		/** Remove this row entirely. */
@@ -44,8 +55,11 @@
 
 	let {
 		row = $bindable(),
+		exiting = false,
 		status,
 		showPriority,
+		categoryOptions,
+		resolvedImportedCategoryLabels = new Set(),
 		onchange,
 		ondelete,
 		ondismissduplicate,
@@ -61,6 +75,13 @@
 	const isDuplicate = $derived(status === ROW_STATUS.duplicate);
 	const imageUrlValid = $derived(isValidDraftImageUrl(row.imageUrl));
 	const quantityValid = $derived(parseDraftQuantity(row.quantity) !== null);
+	const categoryValid = $derived(
+		row.importedCategoryLabel.trim() === '' ||
+			row.categoryId.trim() !== '' ||
+			resolvedImportedCategoryLabels.has(
+				normalizeGiftCategoryLabel(row.importedCategoryLabel),
+			),
+	);
 
 	/** Any field edit marks the row touched (so a blank batch starter can turn red). */
 	function markTouched() {
@@ -77,9 +98,17 @@
 		row.priority = next;
 		onchange?.();
 	}
+
+	function categoryLabel(category: ManagedGiftCategory): string {
+		return labelForGiftCategory(category, getLocale().startsWith('en') ? 'en' : 'cs');
+	}
 </script>
 
 <div
+	data-gift-item
+	data-gift-id={row.id}
+	inert={exiting}
+	aria-hidden={exiting}
 	class={cn(
 		'relative flex flex-col gap-3 rounded-lg border border-border bg-surface px-5 py-4 transition-[background,border-color,box-shadow] duration-(--duration-normal) hover:shadow-sm',
 		gridColumns,
@@ -252,6 +281,55 @@
 		{/if}
 	</div>
 
+	<!-- Category -->
+	<div class="flex min-w-0 flex-col gap-1.5">
+		<span class={cn(DRAFT_COL_LABEL_CLASS, 'md:hidden')}>
+			{m.draft_grid_col_category()}
+		</span>
+		{#if categoryOptions.length > 0}
+			<Select.Root
+				type="single"
+				value={row.categoryId}
+				onValueChange={(value) => {
+					row.categoryId = value;
+					row.importedCategoryLabel = '';
+					markTouched();
+				}}
+			>
+				<Select.Trigger size="md" class="w-full">
+					{#if row.categoryId}
+						{@const selectedCategory = categoryOptions.find(
+							(category) => category.id === row.categoryId,
+						)}
+						{selectedCategory === undefined
+							? m.gift_category_none()
+							: categoryLabel(selectedCategory)}
+					{:else}
+						{m.gift_category_none()}
+					{/if}
+				</Select.Trigger>
+				<Select.Content>
+					<Select.Group>
+						<Select.Item value="" label={m.gift_category_none()}>
+							{m.gift_category_none()}
+						</Select.Item>
+						{#each categoryOptions as category (category.id)}
+							{@const label = categoryLabel(category)}
+							<Select.Item value={category.id} {label}>{label}</Select.Item>
+						{/each}
+					</Select.Group>
+				</Select.Content>
+			</Select.Root>
+		{:else}
+			<span class="text-xs text-muted-foreground">{m.gift_category_none()}</span>
+		{/if}
+		{#if !categoryValid}
+			<HelpText state="error">
+				{m.import_category_unresolved({ label: row.importedCategoryLabel })}
+			</HelpText>
+		{/if}
+	</div>
+
 	<!-- Quantity -->
 	<div class="flex min-w-0 flex-col gap-1.5">
 		<span class={cn(DRAFT_COL_LABEL_CLASS, 'md:hidden')}>
@@ -259,6 +337,7 @@
 		</span>
 		<Input
 			type="number"
+			class="numeric-input"
 			min="1"
 			step="1"
 			value={row.quantity}

@@ -26,7 +26,7 @@ Preserve the user-supplied source URL as the primary link even when a canonical 
 
 For each field, record the extraction method in `provenance.fields`. Record selected image provenance in `provenance.imageSource` with its HTTPS URL and method (`json-ld`, `opengraph`, `page-metadata`, or `exact-search`). If several images or products plausibly match, do not choose one silently. Write every unresolved decision explicitly into the manifest's top-level `ambiguities` array with the affected item (when known), field, and evidence-backed reason.
 
-Write a schema-version-1 JSON manifest with a stable manifest ID, unique stable item IDs, exact expected wishlist short ID/title/recipient, explicit quantity and priority, original source URL, gathered timestamp, gift fields, and provenance. Every gift must have at least one link, and `gift.links[0].url` must exactly equal `sourceUrl`. Do not add update or delete instructions.
+Write a schema-version-1 JSON manifest with a stable manifest ID, unique stable item IDs, exact expected wishlist short ID/title/recipient, explicit quantity and priority, original source URL, gathered timestamp, gift fields, and provenance. `gift.category` is optional and must be evidence-backed or explicitly provided by the user; it must already be enabled on the fixed wishlist and match an enabled custom label or either Czech/English label of an enabled preset. Unknown or disabled category values are HITL, never guessed, and never silently create custom categories. Every gift must have at least one link, and `gift.links[0].url` must exactly equal `sourceUrl`. Do not add update or delete instructions.
 
 ## Safety gate
 

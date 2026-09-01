@@ -255,7 +255,7 @@ describe('dispatchNotification – urlPathOverride', () => {
 		expect(mockSendEmail).toHaveBeenCalledOnce();
 		// The url passed to renderActionEmailParts must be origin + overridePath
 		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
-			expect.objectContaining({ url: `http://localhost:5173${overridePath}` }),
+			expect.objectContaining({ url: `http://localhost:8300${overridePath}` }),
 		);
 	});
 });
@@ -297,7 +297,7 @@ describe('dispatchNotification email locale', () => {
 				body: expect.stringContaining("Wishlist: Rosie's birthday"),
 				buttonLabel: 'Open wishlist',
 				copyLinkText: 'Or copy this link into your browser:',
-				url: 'http://localhost:5173/en/w/rosie-birthday',
+				url: 'http://localhost:8300/en/w/rosie-birthday',
 			}),
 		);
 	});
@@ -335,14 +335,14 @@ describe('dispatchNotification email locale', () => {
 				body: expect.stringContaining("Seznam přání: Rosie's birthday"),
 				buttonLabel: 'Otevřít seznam',
 				copyLinkText: 'Nebo zkopírujte tento odkaz do prohlížeče:',
-				url: 'http://localhost:5173/w/rosie-birthday',
+				url: 'http://localhost:8300/w/rosie-birthday',
 			}),
 		);
 		expect(mockRenderActionEmailParts).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
 				heading: 'Archivace seznamu',
-				url: 'http://localhost:5173/w/rosie-birthday',
+				url: 'http://localhost:8300/w/rosie-birthday',
 			}),
 		);
 	});
@@ -372,7 +372,7 @@ describe('dispatchNotification email locale', () => {
 		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
 			expect.objectContaining({
 				buttonLabel: 'Open wishlist',
-				url: 'http://localhost:5173/en/w/rosie-birthday/invite/token',
+				url: 'http://localhost:8300/en/w/rosie-birthday/invite/token',
 			}),
 		);
 	});

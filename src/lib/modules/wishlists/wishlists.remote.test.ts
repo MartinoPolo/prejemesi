@@ -1,4 +1,16 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+const assertWishlistBannerAssignment = vi.fn(
+	async (userId: string, objectKey: string, token: string | undefined) => {
+		if (token !== `proof:${userId}:${objectKey}`) {
+			throw new Error('ACCESS_DENIED');
+		}
+	},
+);
+vi.mock('./wishlist_image_assignment.js', () => ({ assertWishlistBannerAssignment }));
+
+async function bannerAssignmentToken(objectKey: string, userId = RECIPIENT_ID) {
+	return `proof:${userId}:${objectKey}`;
+}
 
 // ── Suppress SvelteKit's remote-function validator injected by the Vite transform
 vi.mock('@sveltejs/kit/internal', () => ({
@@ -52,11 +64,13 @@ vi.mock('@sveltejs/kit', () => ({
 	}),
 }));
 
-// ── Mock drizzle-orm – used only as where-clause builders; no-ops are fine ───
+// ── Mock drizzle-orm – inspectable where-clause builders ────────────────────
 vi.mock('drizzle-orm', () => ({
-	eq: vi.fn((...args: unknown[]) => args),
-	and: vi.fn((...args: unknown[]) => args),
-	isNull: vi.fn((arg: unknown) => arg),
+	eq: vi.fn((...args: unknown[]) => ({ op: 'eq', args })),
+	and: vi.fn((...args: unknown[]) => ({ op: 'and', args })),
+	or: vi.fn((...args: unknown[]) => ({ op: 'or', args })),
+	ne: vi.fn((...args: unknown[]) => ({ op: 'ne', args })),
+	isNull: vi.fn((arg: unknown) => ({ op: 'isNull', args: [arg] })),
 	// Tagged template used as `sql<T>` in subquery projections; the result is aliased via
 	// `.as(...)`, so return a chainable stub instead of a bare undefined.
 	sql: vi.fn(() => ({ as: vi.fn(() => 'sql_alias') })),
@@ -161,6 +175,12 @@ interface MockDb {
 	valuesPayloadAt: (index: number) => Record<string, unknown> | undefined;
 	/** Number of awaited query chains so far — i.e. statements sent to the database. */
 	statementCount: () => number;
+	/** Hold query results so tests can observe how many statements start before any settles. */
+	deferStatements: () => void;
+	releaseStatements: () => void;
+	wherePayloads: () => readonly unknown[];
+	transactionCount: () => number;
+	forPayloads: () => readonly unknown[];
 	reset: () => void;
 }
 
@@ -169,6 +189,11 @@ function createMockDb(): MockDb {
 	const indexRef = { value: 0 };
 	const setPayloads: Record<string, unknown>[] = [];
 	const valuesPayloads: Record<string, unknown>[] = [];
+	const wherePayloads: unknown[] = [];
+	const forPayloads: unknown[] = [];
+	let transactionCount = 0;
+	let statementsDeferred = false;
+	const pendingStatementResolvers: Array<() => void> = [];
 
 	const chain: Record<string | symbol, unknown> = new Proxy(
 		{},
@@ -177,12 +202,26 @@ function createMockDb(): MockDb {
 				if (prop === 'then') {
 					const result = results[indexRef.value] ?? [];
 					indexRef.value++;
-					return (resolve: (value: unknown) => void) => resolve(result);
+					return (resolve: (value: unknown) => void) => {
+						const settle = () => resolve(result);
+						if (statementsDeferred) {
+							pendingStatementResolvers.push(settle);
+						} else {
+							settle();
+						}
+					};
 				}
 				if (prop === 'transaction') {
-					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
-						callback(chain),
-					);
+					return vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+						transactionCount += 1;
+						return callback(chain);
+					});
+				}
+				if (prop === 'for') {
+					return vi.fn((payload: unknown) => {
+						forPayloads.push(payload);
+						return chain;
+					});
 				}
 				if (prop === 'set') {
 					return vi.fn((payload: Record<string, unknown>) => {
@@ -193,6 +232,12 @@ function createMockDb(): MockDb {
 				if (prop === 'values') {
 					return vi.fn((payload: Record<string, unknown>) => {
 						valuesPayloads.push(payload);
+						return chain;
+					});
+				}
+				if (prop === 'where') {
+					return vi.fn((payload: unknown) => {
+						wherePayloads.push(payload);
 						return chain;
 					});
 				}
@@ -208,11 +253,26 @@ function createMockDb(): MockDb {
 		lastValuesPayload: () => valuesPayloads[valuesPayloads.length - 1],
 		valuesPayloadAt: (index) => valuesPayloads[index],
 		statementCount: () => indexRef.value,
+		deferStatements: () => {
+			statementsDeferred = true;
+		},
+		releaseStatements: () => {
+			statementsDeferred = false;
+			pendingStatementResolvers.splice(0).forEach((settle) => settle());
+		},
+		wherePayloads: () => [...wherePayloads],
+		transactionCount: () => transactionCount,
+		forPayloads: () => [...forPayloads],
 		reset: () => {
 			results.length = 0;
 			indexRef.value = 0;
 			setPayloads.length = 0;
 			valuesPayloads.length = 0;
+			wherePayloads.length = 0;
+			transactionCount = 0;
+			forPayloads.length = 0;
+			statementsDeferred = false;
+			pendingStatementResolvers.length = 0;
 		},
 	};
 }
@@ -247,8 +307,11 @@ import {
 	getWishlistByShortId,
 	setWishlistPalette,
 	recordWishlistVisit,
-	getHomeOverview,
+	getMyWishlists,
+	getModeratedWishlists,
+	getFollowedWishlists,
 } from './wishlists.remote.js';
+import { getHomeOverview } from './home_overview_service.js';
 import { CreateWishlistInputSchema, FlipRecipientToFreeTextInputSchema } from './types.js';
 import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import { dispatchNotification } from '$lib/modules/notifications/notification_dispatcher.js';
@@ -265,6 +328,71 @@ const OTHER_USER_ID = 'user-other';
 const MODERATOR_ID = 'user-moderator';
 const WISHLIST_ID = 'wishlist-1';
 const WISHLIST_SHORT_ID = 'abc12345';
+
+interface DrizzleExpression {
+	op: string;
+	args: unknown[];
+}
+
+function expression(op: string, ...args: unknown[]): DrizzleExpression {
+	return { op, args };
+}
+
+function expressionTreeContains(value: unknown, expected: DrizzleExpression): boolean {
+	if (JSON.stringify(value) === JSON.stringify(expected)) {
+		return true;
+	}
+	if (Array.isArray(value)) {
+		return value.some((child) => expressionTreeContains(child, expected));
+	}
+	if (value !== null && typeof value === 'object') {
+		return Object.values(value).some((child) => expressionTreeContains(child, expected));
+	}
+	return false;
+}
+
+function expressionTreeReferences(
+	value: unknown,
+	expected: string | number | boolean | null,
+): boolean {
+	if (value === expected) {
+		return true;
+	}
+	if (Array.isArray(value)) {
+		return value.some((child) => expressionTreeReferences(child, expected));
+	}
+	if (value !== null && typeof value === 'object') {
+		return Object.values(value).some((child) => expressionTreeReferences(child, expected));
+	}
+	return false;
+}
+
+function expectWhereToContain(wherePayload: unknown, op: string, ...args: unknown[]): void {
+	expect(expressionTreeContains(wherePayload, expression(op, ...args))).toBe(true);
+}
+
+function expectWhereNotToContain(wherePayload: unknown, op: string, ...args: unknown[]): void {
+	expect(expressionTreeContains(wherePayload, expression(op, ...args))).toBe(false);
+}
+
+function findWhereContaining(
+	wherePayloads: readonly unknown[],
+	op: string,
+	...args: unknown[]
+): unknown {
+	const payload = wherePayloads.find((candidate) =>
+		expressionTreeContains(candidate, expression(op, ...args)),
+	);
+	expect(payload).toBeDefined();
+	return payload;
+}
+
+function latestWherePayload(): unknown {
+	const payloads = mockDbInstance.wherePayloads();
+	const payload = payloads[payloads.length - 1];
+	expect(payload).toBeDefined();
+	return payload;
+}
 
 /**
  * A "self" wishlist row: the linked recipient (`recipientUserId`) is the manager, there is no
@@ -367,6 +495,15 @@ const callFlipRecipientToFreeText =
 const callFollowWishlist = followWishlist as unknown as FollowWishlistHandler;
 const callGetWishlistByShortId = getWishlistByShortId as unknown as GetWishlistByShortIdHandler;
 const callSetWishlistPalette = setWishlistPalette as unknown as SetWishlistPaletteHandler;
+const callGetMyWishlists = getMyWishlists as unknown as (
+	auth: AuthContext,
+) => Promise<Record<string, unknown>[]>;
+const callGetModeratedWishlists = getModeratedWishlists as unknown as (
+	auth: AuthContext,
+) => Promise<Record<string, unknown>[]>;
+const callGetFollowedWishlists = getFollowedWishlists as unknown as (
+	auth: AuthContext,
+) => Promise<Record<string, unknown>[]>;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -538,7 +675,8 @@ describe('updateWishlist', () => {
 				card: { fitMode: 'cover-crop', focal: { x: 50, y: 40 } },
 				banner: { fitMode: 'cover-crop', cropRect: { x: 0, y: 0, w: 1, h: 0.5 } },
 			};
-			const updatedRow = makeWishlistRow({ imageKey: 'wishlists/hero.jpg', imageSlots });
+			const imageKey = 'wishlists/banners/hero.jpg';
+			const updatedRow = makeWishlistRow({ imageKey, imageSlots });
 			// DB call 1: wishlist lookup (not shared)
 			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
 			// DB call 2: update returning
@@ -546,11 +684,29 @@ describe('updateWishlist', () => {
 
 			const result = await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
-				imageKey: 'wishlists/hero.jpg',
+				imageKey,
 				imageSlots,
+				imageAssignmentToken: await bannerAssignmentToken(imageKey),
 			});
 
-			expect(result).toMatchObject({ imageKey: 'wishlists/hero.jpg', imageSlots });
+			expect(result).toMatchObject({ imageKey, imageSlots });
+		});
+
+		it('locks the mutable row in a transaction before replacing and cleaning up its image', async () => {
+			mockDbInstance.pushResult([
+				makeWishlistRow({ sharedAt: null, imageKey: 'wishlists/banners/old.jpg' }),
+			]);
+			mockDbInstance.pushResult([makeWishlistRow({ imageKey: 'wishlists/banners/new.jpg' })]);
+
+			await callUpdateWishlist(makeRecipientAuthContext(), {
+				id: WISHLIST_ID,
+				imageKey: 'wishlists/banners/new.jpg',
+				imageAssignmentToken: await bannerAssignmentToken('wishlists/banners/new.jpg'),
+			});
+
+			expect(mockDbInstance.transactionCount()).toBe(1);
+			expect(mockDbInstance.forPayloads()).toEqual(['update']);
+			expect(mockDeleteObjects).toHaveBeenCalledWith(['wishlists/banners/old.jpg']);
 		});
 
 		it('deletes the replaced uploaded image from storage (issue #107 REQ-6)', async () => {
@@ -562,9 +718,24 @@ describe('updateWishlist', () => {
 			await callUpdateWishlist(makeRecipientAuthContext(), {
 				id: WISHLIST_ID,
 				imageKey: 'wishlists/banners/new.jpg',
+				imageAssignmentToken: await bannerAssignmentToken('wishlists/banners/new.jpg'),
 			});
 
 			expect(mockDeleteObjects).toHaveBeenCalledWith(['wishlists/banners/old.jpg']);
+		});
+
+		it('rejects planting another uploader’s banner key before it can later be deleted', async () => {
+			const victimKey = 'wishlists/banners/victim.jpg';
+			mockDbInstance.pushResult([makeWishlistRow({ sharedAt: null })]);
+
+			await expect(
+				callUpdateWishlist(makeRecipientAuthContext(), {
+					id: WISHLIST_ID,
+					imageKey: victimKey,
+					imageAssignmentToken: await bannerAssignmentToken(victimKey, 'victim-user'),
+				}),
+			).rejects.toThrow('ACCESS_DENIED');
+			expect(mockDeleteObjects).not.toHaveBeenCalled();
 		});
 
 		it('keeps storage untouched when only crop metadata changes (issue #107 REQ-6)', async () => {
@@ -1664,9 +1835,44 @@ describe('recordWishlistVisit', () => {
 	});
 });
 
+// ── Dashboard role predicates ────────────────────────────────────────────────
+
+describe('dashboard role predicates', () => {
+	it('attaches each role predicate while preserving archived dashboard history', async () => {
+		mockDbInstance.pushResult([]);
+		await callGetMyWishlists(makeRecipientAuthContext());
+		const ownWhere = latestWherePayload();
+		expectWhereToContain(ownWhere, 'eq', 'wishlist.recipientUserId', RECIPIENT_ID);
+		expectWhereToContain(ownWhere, 'isNull', 'wishlist.deletedAt');
+		expect(expressionTreeReferences(ownWhere, 'wishlist.status')).toBe(false);
+
+		mockDbInstance.pushResult([]);
+		await callGetModeratedWishlists(makeRecipientAuthContext());
+		const moderatedWhere = latestWherePayload();
+		expectWhereToContain(moderatedWhere, 'eq', 'moderatorAssignment.userId', RECIPIENT_ID);
+		expectWhereToContain(moderatedWhere, 'isNull', 'moderatorAssignment.deletedAt');
+		expectWhereToContain(moderatedWhere, 'isNull', 'wishlist.deletedAt');
+		expect(expressionTreeReferences(moderatedWhere, 'wishlist.status')).toBe(false);
+
+		mockDbInstance.pushResult([]);
+		await callGetFollowedWishlists(makeRecipientAuthContext());
+		const followedWhere = latestWherePayload();
+		expectWhereToContain(followedWhere, 'eq', 'wishlistFollower.userId', RECIPIENT_ID);
+		expectWhereToContain(
+			followedWhere,
+			'or',
+			expression('isNull', 'wishlist.recipientUserId'),
+			expression('ne', 'wishlist.recipientUserId', RECIPIENT_ID),
+		);
+		expectWhereToContain(followedWhere, 'isNull', 'wishlist.deletedAt');
+		expectWhereNotToContain(followedWhere, 'isNull', 'wishlistFollower.unfollowedAt');
+		expect(expressionTreeReferences(followedWhere, 'wishlist.status')).toBe(false);
+	});
+});
+
 // ── getHomeOverview (issue #225) ─────────────────────────────────────────────
 
-type GetHomeOverviewHandler = (auth: AuthContext) => Promise<{
+type GetHomeOverviewHandler = (userId: string) => Promise<{
 	recent: unknown[];
 	own: { items: Record<string, unknown>[]; total: number };
 	moderated: { items: unknown[]; total: number };
@@ -1675,6 +1881,131 @@ type GetHomeOverviewHandler = (auth: AuthContext) => Promise<{
 const callGetHomeOverview = getHomeOverview as unknown as GetHomeOverviewHandler;
 
 describe('getHomeOverview', () => {
+	it('starts all three independent role queries before any query settles', async () => {
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.deferStatements();
+
+		const overviewPromise = callGetHomeOverview(RECIPIENT_ID);
+		await vi.waitFor(() => expect(mockDbInstance.statementCount()).toBe(3));
+		mockDbInstance.releaseStatements();
+
+		await expect(overviewPromise).resolves.toMatchObject({
+			own: { total: 0 },
+			moderated: { total: 0 },
+			followed: { total: 0 },
+		});
+	});
+	it('omits every reservation field from own dashboard and home results', async () => {
+		const unsafeWishlist = makeWishlistRow({
+			reservedGifts: 9,
+			availableGifts: 8,
+			myReservations: 7,
+			myPurchased: 6,
+		});
+		mockDbInstance.pushResult([{ wishlist: unsafeWishlist, totalGifts: '3' }]); // dashboard own
+		mockDbInstance.pushResult([
+			{ wishlist: unsafeWishlist, totalGifts: '3', lastVisitedAt: null },
+		]); // home own
+		mockDbInstance.pushResult([]); // home moderated
+		mockDbInstance.pushResult([]); // home followed
+
+		const dashboard = await callGetMyWishlists(makeRecipientAuthContext());
+		const home = await callGetHomeOverview(RECIPIENT_ID);
+
+		for (const item of [dashboard[0]!, home.own.items[0]!]) {
+			expect(item).not.toHaveProperty('reservedGifts');
+			expect(item).not.toHaveProperty('availableGifts');
+			expect(item).not.toHaveProperty('myReservations');
+			expect(item).not.toHaveProperty('myPurchased');
+		}
+	});
+
+	it('normalizes every role count to numbers in dashboard and home paths', async () => {
+		const ownDbRow = { wishlist: makeWishlistRow(), totalGifts: '3' };
+		const moderatedDbRow = {
+			wishlist: makeForSomeoneWishlistRow(),
+			recipientDisplayName: 'Grandma',
+			totalGifts: '5',
+			reservedGifts: '2',
+		};
+		const followedDbRow = {
+			wishlist: makeForSomeoneWishlistRow(),
+			recipientDisplayName: 'Grandma',
+			availableGifts: '4',
+			myReservations: '2',
+			myPurchased: '1',
+			unfollowedAt: null,
+		};
+		mockDbInstance.pushResult([ownDbRow]);
+		mockDbInstance.pushResult([moderatedDbRow]);
+		mockDbInstance.pushResult([followedDbRow]);
+		mockDbInstance.pushResult([{ ...ownDbRow, lastVisitedAt: null }]);
+		mockDbInstance.pushResult([{ ...moderatedDbRow, lastVisitedAt: null }]);
+		mockDbInstance.pushResult([{ ...followedDbRow, followDate: null, lastVisitedAt: null }]);
+
+		const dashboardOwn = await callGetMyWishlists(makeRecipientAuthContext());
+		const dashboardModerated = await callGetModeratedWishlists(makeModeratorAuthContext());
+		const dashboardFollowed = await callGetFollowedWishlists(makeOtherAuthContext());
+		const home = await callGetHomeOverview(RECIPIENT_ID);
+
+		expect(dashboardOwn[0]).toMatchObject({ totalGifts: 3 });
+		expect(dashboardModerated[0]).toMatchObject({ totalGifts: 5, reservedGifts: 2 });
+		expect(dashboardFollowed[0]).toMatchObject({
+			availableGifts: 4,
+			myReservations: 2,
+			myPurchased: 1,
+		});
+		expect(home.own.items[0]).toMatchObject({ totalGifts: 3 });
+		expect(home.moderated.items[0]).toMatchObject({ totalGifts: 5, reservedGifts: 2 });
+		expect(home.followed.items[0]).toMatchObject({
+			availableGifts: 4,
+			myReservations: 2,
+			myPurchased: 1,
+		});
+	});
+
+	it('attaches each shared role predicate and home-only filter to its outer query', async () => {
+		mockDbInstance.pushResult([]); // own
+		mockDbInstance.pushResult([]); // moderated
+		mockDbInstance.pushResult([]); // followed
+
+		await callGetHomeOverview(RECIPIENT_ID);
+
+		const wherePayloads = mockDbInstance.wherePayloads();
+		const ownWhere = findWhereContaining(
+			wherePayloads,
+			'eq',
+			'wishlist.recipientUserId',
+			RECIPIENT_ID,
+		);
+		const moderatedWhere = findWhereContaining(
+			wherePayloads,
+			'eq',
+			'moderatorAssignment.userId',
+			RECIPIENT_ID,
+		);
+		const followedWhere = findWhereContaining(
+			wherePayloads,
+			'eq',
+			'wishlistFollower.userId',
+			RECIPIENT_ID,
+		);
+
+		expectWhereToContain(ownWhere, 'isNull', 'wishlist.deletedAt');
+		expectWhereToContain(moderatedWhere, 'isNull', 'moderatorAssignment.deletedAt');
+		expectWhereToContain(moderatedWhere, 'isNull', 'wishlist.deletedAt');
+		expectWhereToContain(
+			followedWhere,
+			'or',
+			expression('isNull', 'wishlist.recipientUserId'),
+			expression('ne', 'wishlist.recipientUserId', RECIPIENT_ID),
+		);
+		expectWhereToContain(followedWhere, 'isNull', 'wishlistFollower.unfollowedAt');
+		expectWhereToContain(followedWhere, 'isNull', 'wishlist.deletedAt');
+	});
+
 	function ownRow(overrides: Record<string, unknown> = {}) {
 		return {
 			wishlist: makeWishlistRow(overrides),
@@ -1683,6 +2014,46 @@ describe('getHomeOverview', () => {
 			...overrides,
 		};
 	}
+
+	it('keeps dashboard history while home applies active-follow and non-archived filters', async () => {
+		const archivedOwn = { wishlist: makeWishlistRow({ status: 'archived' }), totalGifts: '3' };
+		const historicalFollow = {
+			wishlist: makeForSomeoneWishlistRow({ status: 'archived' }),
+			recipientDisplayName: 'Grandma',
+			availableGifts: '1',
+			myReservations: '0',
+			myPurchased: '0',
+			unfollowedAt: new Date('2026-01-01'),
+		};
+		mockDbInstance.pushResult([archivedOwn]);
+		mockDbInstance.pushResult([historicalFollow]);
+
+		const ownDashboard = await callGetMyWishlists(makeRecipientAuthContext());
+		const ownDashboardWhere = latestWherePayload();
+		expect(expressionTreeReferences(ownDashboardWhere, 'wishlist.status')).toBe(false);
+		const followedDashboard = await callGetFollowedWishlists(makeRecipientAuthContext());
+		const followedDashboardWhere = latestWherePayload();
+		expect(ownDashboard).toHaveLength(1);
+		expect(followedDashboard).toHaveLength(1);
+		expectWhereNotToContain(followedDashboardWhere, 'isNull', 'wishlistFollower.unfollowedAt');
+		expect(expressionTreeReferences(followedDashboardWhere, 'wishlist.status')).toBe(false);
+
+		const homeWhereStart = mockDbInstance.wherePayloads().length;
+		mockDbInstance.pushResult([{ ...archivedOwn, lastVisitedAt: null }]);
+		mockDbInstance.pushResult([]);
+		mockDbInstance.pushResult([]);
+		const home = await callGetHomeOverview(RECIPIENT_ID);
+		const homeWherePayloads = mockDbInstance.wherePayloads().slice(homeWhereStart);
+		const followedHomeWhere = findWhereContaining(
+			homeWherePayloads,
+			'eq',
+			'wishlistFollower.userId',
+			RECIPIENT_ID,
+		);
+
+		expect(home.own.total).toBe(0);
+		expectWhereToContain(followedHomeWhere, 'isNull', 'wishlistFollower.unfollowedAt');
+	});
 
 	it('caps each category at 10 items while reporting the true total, excluding archived', async () => {
 		// Own: 11 active + 1 archived → total 11, items capped at 10.
@@ -1696,24 +2067,20 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult([]); // moderated select
 		mockDbInstance.pushResult([]); // followed select
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
 		expect(result.own.total).toBe(11);
 		expect(result.own.items).toHaveLength(10);
 	});
 
-	it('own rows expose a gift count and NO reservation fields (recipient invariant)', async () => {
+	it('own rows expose a gift count', async () => {
 		mockDbInstance.pushResult([ownRow({ id: 'own-1', status: 'active' })]); // own
 		mockDbInstance.pushResult([]); // moderated
 		mockDbInstance.pushResult([]); // followed
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
-		const item = result.own.items[0]!;
-		expect(item).toHaveProperty('totalGifts');
-		expect('reservedGifts' in item).toBe(false);
-		expect('availableGifts' in item).toBe(false);
-		expect('myReservations' in item).toBe(false);
+		expect(result.own.items[0]).toHaveProperty('totalGifts');
 	});
 
 	it('builds the Nedávné row across all roles, capped at 6', async () => {
@@ -1735,7 +2102,7 @@ describe('getHomeOverview', () => {
 		mockDbInstance.pushResult(moderatedRows); // moderated
 		mockDbInstance.pushResult([]); // followed
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
 		// 8 candidates across two roles, Nedávné caps at 6.
 		// Moderated rows (Feb) are strictly more recent than own rows (Jan), so all four
@@ -1777,7 +2144,7 @@ describe('getHomeOverview', () => {
 			},
 		]); // followed
 
-		const result = await callGetHomeOverview(makeRecipientAuthContext());
+		const result = await callGetHomeOverview(RECIPIENT_ID);
 
 		// Nedávné is a per-list recency shortcut: one card per wishlist, even when the
 		// caller both moderates and follows it. Moderator outranks follower.

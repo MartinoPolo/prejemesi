@@ -82,8 +82,8 @@
 				<ReserveButton {gift} {isArchived} size="md" {onreserve} {onunreserve} />
 			</div>
 		{/if}
-		<!-- Outside the branch above: the bar drops the reserve control once someone else holds
-		     the gift, which is exactly when a release is wanted (issue #213 REQ-3). -->
+		<!-- Managers use the edit form; this keeps the app-admin override reachable from
+		     the read-only gift detail without restoring release controls to browse surfaces. -->
 		<ReleaseReservationButton {gift} size="md" />
 	</div>
 {/if}

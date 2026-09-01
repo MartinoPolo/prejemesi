@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import HeartIcon from '@lucide/svelte/icons/heart';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useLikes } from '$lib/modules/likes/likes.context.svelte.js';
@@ -33,10 +35,49 @@
 	const likesContext = useLikes();
 
 	const liked = $derived(likesContext.isLiked(giftId));
-	let animating = $state(false);
-	let displayCount = $derived(likeCount);
+	let displayCount = $state(untrack(() => likeCount));
+	let requestPending = $state(false);
+	let heartElement = $state<HTMLSpanElement>();
+	let run = 0;
+	const activeAnimations = new SvelteSet<Animation>();
 
 	const styles = $derived(likeButtonVariants({ liked, size, appearance }));
+
+	// Prop refreshes normally remain authoritative. While a toggle is in flight,
+	// keep the optimistic count stable and reconcile it from that request's result.
+	$effect(() => {
+		const incomingCount = likeCount;
+		if (!untrack(() => requestPending)) {
+			displayCount = incomingCount;
+		}
+	});
+
+	function cancelAcknowledgement() {
+		for (const animation of activeAnimations) {
+			animation.cancel();
+		}
+		activeAnimations.clear();
+	}
+
+	function animateAcknowledgement() {
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
+
+		if (!heartElement) {
+			return;
+		}
+		activeAnimations.add(
+			heartElement.animate(
+				[
+					{ transform: 'scale(1)' },
+					{ transform: 'scale(1.16)' },
+					{ transform: 'scale(1)' },
+				],
+				{ duration: 160 },
+			),
+		);
+	}
 
 	async function handleClick(event: MouseEvent) {
 		event.stopPropagation();
@@ -49,34 +90,52 @@
 			return;
 		}
 
+		const currentRun = ++run;
+		requestPending = true;
+		cancelAcknowledgement();
+
 		// Optimistic update
 		const wasLiked = liked;
 		const previousCount = displayCount;
 		likesContext.optimisticToggle(giftId);
 		displayCount = wasLiked ? previousCount - 1 : previousCount + 1;
 
-		// Animate on like
-		if (!wasLiked) {
-			animating = true;
-			setTimeout(() => {
-				animating = false;
-			}, 300);
-		}
+		// Start persistence immediately. Acknowledgement waits for the authoritative
+		// result so rejected and stale optimistic updates never play success motion.
+		const persistence =
+			likesContext.toggleLike === undefined
+				? toggleLike({ giftId })
+				: likesContext.toggleLike(giftId);
 
 		try {
-			// The landing demo supplies its own persistence for fixture gifts; every other
-			// surface has none and goes straight to the real remote function.
-			const result =
-				likesContext.toggleLike === undefined
-					? await toggleLike({ giftId })
-					: await likesContext.toggleLike(giftId);
+			const result = await persistence;
+			if (currentRun !== run) {
+				return;
+			}
+
 			displayCount = result.likeCount;
+			requestPending = false;
+			if (!wasLiked && result.liked) {
+				await tick();
+				if (currentRun === run) {
+					animateAcknowledgement();
+				}
+			}
 		} catch {
-			// Revert on error
+			if (currentRun !== run) {
+				return;
+			}
+			cancelAcknowledgement();
 			likesContext.revertToggle(giftId, wasLiked);
 			displayCount = previousCount;
+			requestPending = false;
 		}
 	}
+
+	onDestroy(() => {
+		run += 1;
+		cancelAcknowledgement();
+	});
 </script>
 
 <button
@@ -88,8 +147,10 @@
 	aria-pressed={liked}
 	onclick={handleClick}
 >
-	<HeartIcon class={cn(styles.icon(), animating && 'scale-125')} />
+	<span bind:this={heartElement} data-like-heart class="inline-flex">
+		<HeartIcon class={styles.icon()} />
+	</span>
 	{#if showCount && displayCount > 0}
-		<span class={styles.count()}>{displayCount}</span>
+		<span data-like-count class={styles.count()}>{displayCount}</span>
 	{/if}
 </button>

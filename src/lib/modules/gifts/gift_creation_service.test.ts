@@ -89,6 +89,26 @@ describe('appendGifts', () => {
 		expect(result).toEqual(created);
 	});
 
+	it('persists decimal single and range prices without rounding (issue #250 REQ-2, REQ-4)', async () => {
+		const created = [{ id: 'g-decimal' }];
+		const { database, calls } = fakeDatabase([[wishlist], [{ maxSort: -1 }], created]);
+
+		await appendGifts(
+			{
+				wishlistId: wishlist.id,
+				actorId: 'actor',
+				notifyFollowers: false,
+				gifts: [{ name: 'Decimal price', price: 19.5, priceMax: 29.95, currency: 'EUR' }],
+			},
+			{ database },
+		);
+
+		const insertedRows = calls.find(
+			(call) => call.method === 'values' && Array.isArray(call.args[0]),
+		)?.args[0] as Record<string, unknown>[];
+		expect(insertedRows[0]).toMatchObject({ price: 19.5, priceMax: 29.95 });
+	});
+
 	it('normalizes links and persists creation defaults in the real service boundary', async () => {
 		const created = [{ id: 'g-defaults' }];
 		const { database, calls } = fakeDatabase([[wishlist], [{ maxSort: -1 }], created]);

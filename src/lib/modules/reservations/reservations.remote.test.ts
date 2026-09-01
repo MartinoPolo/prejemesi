@@ -84,7 +84,7 @@ vi.mock('drizzle-orm', () => ({
 	eq: vi.fn(),
 	and: vi.fn(),
 	isNull: vi.fn(),
-	sql: vi.fn(),
+	sql: Object.assign(vi.fn(), { join: vi.fn() }),
 }));
 
 // ── Imports (after mocks) ────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ import { NOTIFICATION_TYPE } from '$lib/modules/notifications/types.js';
 import {
 	reserveGift,
 	unreserveGift,
-	getReservationsForGift,
+	getReservationLedgerForWishlist,
 	getMyReservationsForGift,
 } from './reservations.remote.js';
 import type { ReserveGiftInput, UnreserveInput } from './types.js';
@@ -920,126 +920,10 @@ describe('unreserveGift — administrator release (issue #213)', () => {
 	});
 });
 
-// ── getReservationsForGift ────────────────────────────────────────────────────
+// ── getReservationLedgerForWishlist ──────────────────────────────────────────
 
-describe('getReservationsForGift', () => {
-	beforeEach(() => {
-		vi.resetAllMocks();
-	});
-
-	it('linked recipient gets empty reservations array – core privacy invariant', async () => {
-		// getGiftWithWishlist
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		// resolveWishlistRole: userId === recipientUserId → short-circuits, no mod DB call needed
-		mockGetDb.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>);
-
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
-			makeAuthContext(fakeOwnerUser),
-			GIFT_ID,
-		)) as { reservations: unknown[]; role: string };
-
-		expect(result.reservations).toEqual([]);
-		expect(result.role).toBe('recipient');
-	});
-
-	it('anonymous visitor gets empty reservations array', async () => {
-		// getGiftWithWishlist
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		// determineRole: userId is null → returns 'visitor' without DB call
-		mockGetDb.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>);
-
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
-			null,
-			GIFT_ID,
-		)) as { reservations: unknown[]; role: string };
-
-		expect(result.reservations).toEqual([]);
-		expect(result.role).toBe('visitor');
-	});
-
-	it('authenticated non-moderator visitor gets empty reservations array', async () => {
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		// Moderator lookup returns no rows → visitor
-		const modChain = createChain([]);
-		mockGetDb
-			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>);
-
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
-			makeAuthContext(fakeVisitorUser),
-			GIFT_ID,
-		)) as { reservations: unknown[]; role: string };
-
-		expect(result.reservations).toEqual([]);
-		expect(result.role).toBe('visitor');
-	});
-
-	// REQ-4: the ledger must name the gifter. A signed-in gifter's row carries their account
-	// name (joined from `user`), NOT the „Authenticated user" placeholder the pre-#213
-	// implementation emitted — the picker cannot identify a row without a real name.
-	it('moderator gets full reservation details, with the real name of a signed-in gifter', async () => {
-		const reservationRows = [
-			{
-				id: RESERVATION_ID,
-				giftId: GIFT_ID,
-				quantity: 2,
-				userId: VISITOR_ID,
-				anonymousName: null,
-				gifterName: 'Petr Svoboda',
-				createdAt: new Date('2024-01-01'),
-			},
-			{
-				id: 'reservation-2',
-				giftId: GIFT_ID,
-				quantity: 1,
-				userId: null,
-				anonymousName: 'Jan Novak',
-				gifterName: null,
-				createdAt: new Date('2024-01-02'),
-			},
-		];
-
-		// getGiftWithWishlist
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		// determineRole – moderator assignment found
-		const modChain = createChain([{ id: 'mod-assignment-1' }]);
-		// Fetch reservations list
-		const reservationsChain = createChain(reservationRows);
-
-		mockGetDb
-			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
-
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
-			makeAuthContext(fakeModeratorUser),
-			GIFT_ID,
-		)) as { reservations: Record<string, unknown>[]; role: string };
-
-		expect(result.role).toBe('moderator');
-		expect(result.reservations).toHaveLength(2);
-		expect(result.reservations[0]).toMatchObject({
-			id: RESERVATION_ID,
-			giftId: GIFT_ID,
-			quantity: 2,
-			displayName: 'Petr Svoboda',
-		});
-		expect(result.reservations[1]).toMatchObject({
-			id: 'reservation-2',
-			displayName: 'Jan Novak',
-		});
-	});
-});
-
-// ── getReservationsForGift: release ledger (issue #213) ───────────────────────
-
-/**
- * REQ-4/REQ-5/REQ-6: the ledger is the picker's data source, so it must reach the app
- * administrator on any wishlist, mark per-row releasability (a správce may act on guest rows
- * only), stay empty for the obdarovaný, and leave the viewer's OWN reservation out — that one
- * is cancelled through the existing single-click path, not the release path.
- */
-describe('getReservationsForGift — release ledger (issue #213)', () => {
+describe('getReservationLedgerForWishlist (issue #214)', () => {
+	const wishlistRow = makeActiveWishlistRow().wishlist;
 	const signedInRow = {
 		id: RESERVATION_ID,
 		giftId: GIFT_ID,
@@ -1051,7 +935,7 @@ describe('getReservationsForGift — release ledger (issue #213)', () => {
 	};
 	const guestRow = {
 		id: 'reservation-2',
-		giftId: GIFT_ID,
+		giftId: 'gift-2',
 		quantity: 1,
 		userId: null,
 		anonymousName: 'Babička',
@@ -1059,90 +943,76 @@ describe('getReservationsForGift — release ledger (issue #213)', () => {
 		createdAt: new Date('2024-01-02'),
 	};
 
-	beforeEach(() => {
-		vi.resetAllMocks();
+	beforeEach(() => vi.resetAllMocks());
+
+	it('returns no reservation data to recipients without querying the ledger', async () => {
+		const database = createMultiQueryChain([wishlistRow]);
+		mockGetDb.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>);
+		const result = (await (getReservationLedgerForWishlist as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeOwnerUser),
+			WISHLIST_SHORT_ID,
+		)) as { reservationsByGiftId: Record<string, unknown[]>; role: string };
+		expect(result).toEqual({ reservationsByGiftId: {}, role: 'recipient' });
+		expect(database['innerJoin']).not.toHaveBeenCalled();
 	});
 
-	it('an app administrator reads the ledger on a list they neither own nor moderate (REQ-5)', async () => {
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		const modChain = createChain([]); // no moderator assignment → plain visitor role
-		const reservationsChain = createChain([signedInRow, guestRow]);
-
+	it('returns no reservation data to unauthorized visitors', async () => {
+		const database = createMultiQueryChain([wishlistRow]);
+		const roleDb = createChain([]);
 		mockGetDb
-			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(roleDb as unknown as ReturnType<typeof getDb>);
+		const result = (await (getReservationLedgerForWishlist as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeVisitorUser),
+			WISHLIST_SHORT_ID,
+		)) as { reservationsByGiftId: Record<string, unknown[]> };
+		expect(result.reservationsByGiftId).toEqual({});
+		expect(database['innerJoin']).not.toHaveBeenCalled();
+	});
 
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
+	it('loads one joined ledger and groups rows by gift for a správce', async () => {
+		const database = createMultiQueryChain([wishlistRow], [signedInRow, guestRow]);
+		const roleDb = createChain([{ id: 'mod-assignment-1' }]);
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(roleDb as unknown as ReturnType<typeof getDb>);
+		const result = (await (getReservationLedgerForWishlist as (...args: unknown[]) => unknown)(
+			makeAuthContext(fakeModeratorUser),
+			WISHLIST_SHORT_ID,
+		)) as { reservationsByGiftId: Record<string, Record<string, unknown>[]> };
+		expect(result.reservationsByGiftId[GIFT_ID]).toEqual([
+			expect.objectContaining({
+				id: RESERVATION_ID,
+				displayName: 'Petr Svoboda',
+				releasable: false,
+			}),
+		]);
+		expect(result.reservationsByGiftId['gift-2']).toEqual([
+			expect.objectContaining({
+				id: 'reservation-2',
+				displayName: 'Babička',
+				releasable: true,
+			}),
+		]);
+		expect(database['innerJoin']).toHaveBeenCalledTimes(1);
+		expect(database['leftJoin']).toHaveBeenCalledTimes(1);
+	});
+
+	it('lets an administrator release every row but omits their own reservation', async () => {
+		const ownRow = { ...signedInRow, id: 'own', userId: ADMIN_ID };
+		const database = createMultiQueryChain([wishlistRow], [signedInRow, guestRow, ownRow]);
+		const roleDb = createChain([]);
+		mockGetDb
+			.mockReturnValueOnce(database as unknown as ReturnType<typeof getDb>)
+			.mockReturnValueOnce(roleDb as unknown as ReturnType<typeof getDb>);
+		const result = (await (getReservationLedgerForWishlist as (...args: unknown[]) => unknown)(
 			makeAuthContext(fakeAdminUser),
-			GIFT_ID,
-		)) as { reservations: Record<string, unknown>[]; role: string };
-
-		expect(result.role).toBe('visitor');
-		expect(result.reservations).toEqual([
+			WISHLIST_SHORT_ID,
+		)) as { reservationsByGiftId: Record<string, Record<string, unknown>[]> };
+		expect(Object.values(result.reservationsByGiftId).flat()).toEqual([
 			expect.objectContaining({ id: RESERVATION_ID, releasable: true }),
 			expect.objectContaining({ id: 'reservation-2', releasable: true }),
 		]);
-	});
-
-	it("a správce sees a signed-in gifter's row but cannot release it (REQ-2)", async () => {
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		const modChain = createChain([{ id: 'mod-assignment-1' }]);
-		const reservationsChain = createChain([signedInRow, guestRow]);
-
-		mockGetDb
-			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
-
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
-			makeAuthContext(fakeModeratorUser),
-			GIFT_ID,
-		)) as { reservations: Record<string, unknown>[]; role: string };
-
-		expect(result.reservations).toEqual([
-			expect.objectContaining({ id: RESERVATION_ID, releasable: false }),
-			expect.objectContaining({ id: 'reservation-2', releasable: true }),
-		]);
-	});
-
-	it('the obdarovaný gets an empty ledger even when they are the app administrator (REQ-6)', async () => {
-		// resolveWishlistRole short-circuits on the linked recipient – no further queries.
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		mockGetDb.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>);
-
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
-			makeAuthContext(fakeAdminRecipientUser),
-			GIFT_ID,
-		)) as { reservations: unknown[]; role: string };
-
-		expect(result.reservations).toEqual([]);
-		expect(result.role).toBe('recipient');
-	});
-
-	it("omits the viewer's own reservation from the ledger", async () => {
-		const wishlistChain = createChain([makeActiveWishlistRow()]);
-		const modChain = createChain([{ id: 'mod-assignment-1' }]);
-		// The správce is themselves a gifter on this gift.
-		const ownRow = {
-			...guestRow,
-			id: 'reservation-3',
-			userId: MODERATOR_ID,
-			gifterName: 'Mod',
-		};
-		const reservationsChain = createChain([signedInRow, ownRow]);
-
-		mockGetDb
-			.mockReturnValueOnce(wishlistChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(modChain as unknown as ReturnType<typeof getDb>)
-			.mockReturnValueOnce(reservationsChain as unknown as ReturnType<typeof getDb>);
-
-		const result = (await (getReservationsForGift as (...args: unknown[]) => unknown)(
-			makeAuthContext(fakeModeratorUser),
-			GIFT_ID,
-		)) as { reservations: Record<string, unknown>[]; role: string };
-
-		expect(result.reservations.map((row) => row.id)).toEqual([RESERVATION_ID]);
 	});
 });
 

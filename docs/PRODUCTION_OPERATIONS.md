@@ -174,8 +174,8 @@ Verification:
 
 ## Turnstile
 
-Protect registration, magic-link request, password-reset request, and anonymous
-reservation. The widget is only the client signal; every protected server
+Protect registration, password sign-in, magic-link request, password-reset request, and
+anonymous reservation. The widget is only the client signal; every protected server
 operation must enforce Siteverify before email, database, or reservation work.
 
 1. In **Turnstile > Add widget**, create a Managed widget for `prejemesi.cz`
@@ -191,7 +191,7 @@ operation must enforce Siteverify before email, database, or reservation work.
     `wrangler.jsonc` sets `keep_vars: true`, so deployments preserve the
     dashboard-managed site key and secrets.
 
-3. Render the widget on all four protected surfaces and submit its token with
+3. Render the widget on all five protected surfaces and submit its token with
    the form/remote-function payload.
 4. On the server, call
    `POST https://challenges.cloudflare.com/turnstile/v0/siteverify` with the

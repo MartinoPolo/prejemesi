@@ -99,13 +99,16 @@ the Worker.
 #### R2 CORS (presigned direct uploads – issue #107)
 
 Browsers upload straight to R2 via presigned PUT URLs, which requires CORS on
-the bucket. The rules live in `scripts/r2-cors.json`; apply them with:
+the bucket. Generate `scripts/r2-cors.json` from the MPX-assigned app and preview
+ports, then apply it:
 
 ```powershell
+pnpm r2:cors:generate
 wrangler r2 bucket cors set prejemesi-images --file scripts/r2-cors.json
 ```
 
-Re-run after editing the file (e.g. adding a new origin).
+Direct commands safely fall back to ports 8300/8301. Re-run generation before
+applying when a checkout's assignments change.
 
 #### R2 API token (presigned direct uploads – issue #107)
 
@@ -251,8 +254,11 @@ In Google Cloud console add the authorized redirect URI:
 `src/hooks.server.ts` handles global production hygiene:
 
 - `www.prejemesi.cz` redirects to canonical `https://prejemesi.cz` with HTTP 308.
-- Auth, BetterAuth API, app-private routes, `/learn`, and private wishlist subroutes
-  emit `noindex, nofollow, noarchive`; exact public `/w/:id` wishlist pages remain indexable.
+- Auth, BetterAuth API, app-private routes, `/learn`, and every bearer-link wishlist URL
+  (exact `/w/:id`, localized variants, and child routes) emit the response header
+  `X-Robots-Tag: noindex, nofollow, noarchive`.
+- Wishlist pages retain their Open Graph and Twitter metadata so shared links still unfurl.
+  They are omitted from sitemaps until an explicit, revocable publication mode exists.
 - Security headers are applied to all routes, including `/api/auth/*`.
 - `/learn` is development-only and returns 404 in production.
 

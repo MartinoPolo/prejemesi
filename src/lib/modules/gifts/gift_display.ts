@@ -1,7 +1,7 @@
 import * as m from '$lib/paraglide/messages.js';
 import { getLocale } from '$lib/paraglide/runtime.js';
 import { extractGiftUrlDomain, getPrimaryGiftLink } from './gift_url.js';
-import type { GiftLink } from './types.js';
+import { MAX_GIFT_PRICE, type GiftLink } from './types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 
 /**
@@ -25,7 +25,7 @@ export function formatPrice(
 			style: 'currency',
 			currency: currencyCode,
 			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
+			maximumFractionDigits: 2,
 		});
 		return isRange ? formatter.formatRange(price, priceMax) : formatter.format(price);
 	} catch {
@@ -55,16 +55,15 @@ export const PRIORITY_DISPLAY = {
 
 export type PriorityKey = keyof typeof PRIORITY_DISPLAY;
 
+export function getPriorityKey(label: string | null): PriorityKey | null {
+	return label !== null && label in PRIORITY_DISPLAY ? (label as PriorityKey) : null;
+}
+
 export function getPriorityDisplay(
 	label: string | null,
 ): (typeof PRIORITY_DISPLAY)[PriorityKey] | null {
-	if (label === null) {
-		return null;
-	}
-	if (label in PRIORITY_DISPLAY) {
-		return PRIORITY_DISPLAY[label as PriorityKey];
-	}
-	return null;
+	const key = getPriorityKey(label);
+	return key === null ? null : PRIORITY_DISPLAY[key];
 }
 
 /**
@@ -100,6 +99,47 @@ export function formatAppendDate(iso: string): string {
 		month: 'numeric',
 		year: 'numeric',
 	}).format(new Date(iso));
+}
+
+const GIFT_PRICE_SCALE = 100;
+const MAX_GIFT_PRICE_MINOR = Math.round(MAX_GIFT_PRICE * GIFT_PRICE_SCALE);
+
+/** Derive the second-highest integer decimal order, with a minimum step of one. */
+export function getGiftPriceMagnitude(price: number | null): number {
+	if (price === null || !Number.isFinite(price) || price < 100) {
+		return 1;
+	}
+	return 10 ** Math.max(0, Math.floor(Math.log10(price)) - 1);
+}
+
+function incrementGiftPriceMinor(currentMinor: number): number {
+	const stepMinor = getGiftPriceMagnitude(currentMinor / GIFT_PRICE_SCALE) * GIFT_PRICE_SCALE;
+	return Math.min(MAX_GIFT_PRICE_MINOR, currentMinor + stepMinor);
+}
+
+/** Apply one reversible magnitude adjustment without introducing floating-point drift. */
+export function adjustGiftPriceByMagnitude(price: number | null, direction: 1 | -1): number {
+	const finitePrice = price !== null && Number.isFinite(price) ? price : 0;
+	const currentMinor = Math.min(
+		MAX_GIFT_PRICE_MINOR,
+		Math.max(0, Math.round(finitePrice * GIFT_PRICE_SCALE)),
+	);
+
+	if (direction === 1) {
+		return incrementGiftPriceMinor(currentMinor) / GIFT_PRICE_SCALE;
+	}
+
+	const currentStepMinor =
+		getGiftPriceMagnitude(currentMinor / GIFT_PRICE_SCALE) * GIFT_PRICE_SCALE;
+	for (let candidateStepMinor = currentStepMinor; candidateStepMinor >= GIFT_PRICE_SCALE; ) {
+		const candidateMinor = currentMinor - candidateStepMinor;
+		if (candidateMinor >= 0 && incrementGiftPriceMinor(candidateMinor) === currentMinor) {
+			return candidateMinor / GIFT_PRICE_SCALE;
+		}
+		candidateStepMinor /= 10;
+	}
+
+	return Math.max(0, currentMinor - currentStepMinor) / GIFT_PRICE_SCALE;
 }
 
 /**

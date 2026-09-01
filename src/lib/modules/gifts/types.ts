@@ -2,6 +2,7 @@ import * as v from 'valibot';
 import type { gift, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import type { priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { ImageMetadataSchema, type ImageMetadata } from '$lib/modules/images/types.js';
+import type { PublicGiftCategory } from '$lib/modules/gift-categories/types.js';
 
 /** Full gift row from DB */
 export type Gift = typeof gift.$inferSelect;
@@ -83,6 +84,8 @@ export interface GiftBase {
 	priorityLevelId: string | null;
 	priorityLabel: string | null;
 	prioritySortOrder: number | null;
+	categoryId?: string | null;
+	category?: PublicGiftCategory | null;
 }
 
 /** Gift with computed fields for visitor/moderator view */
@@ -130,11 +133,34 @@ export const GIFT_SORT_OPTIONS = {
 
 export type GiftSortOption = (typeof GIFT_SORT_OPTIONS)[keyof typeof GIFT_SORT_OPTIONS];
 
+export const UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE = '__uncategorized__' as const;
+export const NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE = '__no_priority__' as const;
+
+export type GiftCategoryFilterValue = string | typeof UNCATEGORIZED_GIFT_CATEGORY_FILTER_VALUE;
+export type GiftPriorityFilterValue = string | typeof NO_PRIORITY_GIFT_PRIORITY_FILTER_VALUE;
+
+export const GIFT_GROUPING_OPTIONS = {
+	none: 'none',
+	priority: 'priority',
+	category: 'category',
+} as const;
+
+export type GiftGroupingOption = (typeof GIFT_GROUPING_OPTIONS)[keyof typeof GIFT_GROUPING_OPTIONS];
+
+export interface GiftFilterOption<Value extends string = string> {
+	value: Value;
+	label: string;
+}
+
 /** Filter options for gifts */
 export interface GiftFilters {
 	availableOnly: boolean;
 	withLinkOnly: boolean;
 	likedOnly: boolean;
+	/** Received gifts are archived from ordinary browsing unless explicitly requested. */
+	showReceived: boolean;
+	categoryValues: GiftCategoryFilterValue[];
+	priorityValues: GiftPriorityFilterValue[];
 }
 
 /** Supported currencies */
@@ -184,9 +210,39 @@ export interface CreateGiftInput {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
+	categoryId?: string | null;
 }
 
 export const GIFT_CURRENCY_VALUES = Object.values(GIFT_CURRENCIES);
+
+/** Largest exact monetary value supported by the numeric(12,2) persistence columns. */
+export const MAX_GIFT_PRICE = 9_999_999_999.99;
+
+function hasAtMostTwoDecimalPlaces(value: number): boolean {
+	const [coefficient, exponentText] = value.toString().toLowerCase().split('e');
+	const fractionLength = coefficient.split('.')[1]?.length ?? 0;
+	const exponent = exponentText === undefined ? 0 : Number(exponentText);
+	return Math.max(0, fractionLength - exponent) <= 2;
+}
+
+/** Whether a price fits the finite, non-negative numeric(12,2) persistence contract. */
+export function isValidGiftPrice(value: number): boolean {
+	return (
+		Number.isFinite(value) &&
+		value >= 0 &&
+		value <= MAX_GIFT_PRICE &&
+		hasAtMostTwoDecimalPlaces(value)
+	);
+}
+
+/** Shared persistence-safe monetary validation (finite, non-negative, and at most 2 decimals). */
+export const GiftPriceSchema = v.pipe(
+	v.number(),
+	v.finite(),
+	v.minValue(0),
+	v.maxValue(MAX_GIFT_PRICE),
+	v.check(isValidGiftPrice, 'price must have at most two decimal places'),
+);
 
 export const CreateGiftInputSchema = v.pipe(
 	v.strictObject({
@@ -194,14 +250,15 @@ export const CreateGiftInputSchema = v.pipe(
 		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 		description: v.optional(v.nullable(v.string())),
 		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		price: v.optional(v.nullable(GiftPriceSchema)),
+		priceMax: v.optional(v.nullable(GiftPriceSchema)),
 		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 		imageUrl: v.optional(v.nullable(v.string())),
 		imageKey: v.optional(v.nullable(v.string())),
 		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 		priorityLevelId: v.optional(v.nullable(v.string())),
+		categoryId: v.optional(v.nullable(v.string())),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
@@ -217,8 +274,8 @@ export const GiftDraftInputSchema = v.pipe(
 		name: v.pipe(v.string(), v.trim(), v.minLength(1)),
 		description: v.optional(v.nullable(v.string())),
 		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		price: v.optional(v.nullable(GiftPriceSchema)),
+		priceMax: v.optional(v.nullable(GiftPriceSchema)),
 		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 		imageUrl: v.optional(
 			v.nullable(
@@ -232,6 +289,8 @@ export const GiftDraftInputSchema = v.pipe(
 		),
 		quantity: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1)), 1),
 		priority: v.optional(v.picklist(DRAFT_PRIORITY_VALUES), DEFAULT_DRAFT_PRIORITY),
+		categoryId: v.optional(v.nullable(v.string())),
+		importedCategoryLabel: v.optional(v.nullable(v.string())),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
@@ -265,6 +324,7 @@ export interface UpdateGiftInput {
 	imageMeta?: ImageMetadata | null;
 	quantity?: number | null;
 	priorityLevelId?: string | null;
+	categoryId?: string | null;
 }
 
 export const UpdateGiftInputSchema = v.pipe(
@@ -279,14 +339,15 @@ export const UpdateGiftInputSchema = v.pipe(
 			}),
 		),
 		links: v.optional(v.nullable(GiftLinksSchema)),
-		price: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
-		priceMax: v.optional(v.nullable(v.pipe(v.number(), v.minValue(0)))),
+		price: v.optional(v.nullable(GiftPriceSchema)),
+		priceMax: v.optional(v.nullable(GiftPriceSchema)),
 		currency: v.optional(v.nullable(v.picklist(GIFT_CURRENCY_VALUES))),
 		imageUrl: v.optional(v.nullable(v.string())),
 		imageKey: v.optional(v.nullable(v.string())),
 		imageMeta: v.optional(v.nullable(ImageMetadataSchema)),
 		quantity: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
 		priorityLevelId: v.optional(v.nullable(v.string())),
+		categoryId: v.optional(v.nullable(v.string())),
 	}),
 	v.check(isPriceRangeValid, 'priceMax must be greater than or equal to price'),
 );
@@ -306,3 +367,50 @@ export const MarkGiftReceivedInputSchema = v.object({
 	giftId: v.string(),
 	received: v.boolean(),
 });
+
+export const BULK_IMAGE_BACKGROUNDS = [null, '#ffffff', '#000000'] as const;
+
+const BulkGiftBaseSchema = {
+	wishlistId: v.string(),
+	giftIds: v.pipe(v.array(v.string()), v.minLength(1)),
+};
+
+/** One deliberately narrow field change applied atomically to selected gifts. */
+export const BulkUpdateGiftsInputSchema = v.variant('action', [
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('priority'),
+		priorityLevelId: v.nullable(v.string()),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('category'),
+		categoryId: v.nullable(v.string()),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('imageFit'),
+		fit: v.picklist(['fill', 'fit']),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('imageBackground'),
+		background: v.union([
+			v.null(),
+			v.literal(BULK_IMAGE_BACKGROUNDS[1]),
+			v.literal(BULK_IMAGE_BACKGROUNDS[2]),
+		]),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('received'),
+		received: v.boolean(),
+	}),
+	v.strictObject({
+		...BulkGiftBaseSchema,
+		action: v.literal('restoreReceived'),
+		states: v.record(v.string(), v.boolean()),
+	}),
+]);
+
+export type BulkUpdateGiftsInput = v.InferOutput<typeof BulkUpdateGiftsInputSchema>;

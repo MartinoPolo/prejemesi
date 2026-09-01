@@ -72,12 +72,18 @@ async function renderRelease(options: {
 	reservations: ReservationForModerator[];
 	gift?: GiftForVisitor;
 	release?: (giftId: string, reservationId: string) => Promise<boolean>;
+	placement?: 'direct' | 'form' | 'detail';
+	role?: 'recipient' | 'moderator' | 'visitor';
+	hideReservationState?: boolean;
 }) {
 	return render(ReleaseReservationTestHost, {
 		gift: options.gift ?? makeGift(),
 		capability: options.capability,
 		reservations: options.reservations,
 		release: options.release ?? (async () => true),
+		placement: options.placement,
+		role: options.role,
+		hideReservationState: options.hideReservationState,
 	});
 }
 
@@ -114,6 +120,51 @@ describe('release control visibility (issue #213 REQ-3/REQ-7)', () => {
 		});
 
 		expect(document.querySelector('[data-testid="release-reservation-button"]')).toBeNull();
+	});
+});
+
+describe('release control placement (issue #255)', () => {
+	it('renders in the editable moderator form when capability and ledger permit', async () => {
+		const screen = await renderRelease({
+			capability: RESERVATION_RELEASE_CAPABILITY.any,
+			reservations: [makeReservation()],
+			placement: 'form',
+		});
+
+		await expect.element(screen.getByTestId('release-reservation-button')).toBeVisible();
+	});
+
+	it('does not render in the editable recipient form', async () => {
+		await renderRelease({
+			capability: RESERVATION_RELEASE_CAPABILITY.any,
+			reservations: [makeReservation()],
+			placement: 'form',
+			role: 'recipient',
+		});
+
+		expect(document.querySelector('[data-testid="release-reservation-button"]')).toBeNull();
+	});
+
+	it('does not render in recipient-preview mode', async () => {
+		await renderRelease({
+			capability: RESERVATION_RELEASE_CAPABILITY.any,
+			reservations: [makeReservation()],
+			placement: 'form',
+			hideReservationState: true,
+		});
+
+		expect(document.querySelector('[data-testid="release-reservation-button"]')).toBeNull();
+	});
+
+	it('keeps the app-admin override reachable in the read-only detail modal', async () => {
+		const screen = await renderRelease({
+			capability: RESERVATION_RELEASE_CAPABILITY.any,
+			reservations: [makeReservation()],
+			placement: 'detail',
+			role: 'visitor',
+		});
+
+		await expect.element(screen.getByTestId('release-reservation-button')).toBeVisible();
 	});
 });
 

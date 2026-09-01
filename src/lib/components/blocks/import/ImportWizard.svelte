@@ -21,8 +21,11 @@
 		type CommitStatus,
 	} from './import_wizard_types.js';
 	import type { ValidatedGiftDraft } from '$lib/modules/gifts/gift_draft.js';
+	import type { ImportCategoryResolution } from '$lib/modules/import/import_types.js';
 	import type { GiftLink } from '$lib/modules/gifts/types.js';
+	import type { ManagedGiftCategory } from '$lib/modules/gift-categories/types.js';
 	import { importGifts, createWishlistFromImport } from '$lib/modules/import/import.remote.js';
+	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
 	import {
 		createDuplicateAwareImportState,
 		resetDuplicateAwareImportState,
@@ -31,6 +34,7 @@
 	import { findDuplicates } from '$lib/modules/gifts/gift_draft.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import { onDestroy } from 'svelte';
 
 	/**
 	 * Props modeled as a discriminated union so callers cannot pass wishlistId
@@ -42,6 +46,7 @@
 				open: boolean;
 				mode: typeof WIZARD_MODE.newList;
 				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+				categoryOptions?: ManagedGiftCategory[];
 				suppressNavigation?: boolean;
 				onsuccess?: () => void;
 		  }
@@ -54,6 +59,7 @@
 				/** Target wishlist's priority-level count; the heart column needs ≥2. */
 				priorityLevelCount?: number;
 				existingGifts?: Array<{ name: string; links: GiftLink[] }>;
+				categoryOptions?: ManagedGiftCategory[];
 				suppressNavigation?: boolean;
 				onsuccess?: () => void;
 		  };
@@ -62,6 +68,7 @@
 		open = $bindable(false),
 		mode,
 		existingGifts = [],
+		categoryOptions = [],
 		suppressNavigation = false,
 		onsuccess,
 		wishlistId,
@@ -73,6 +80,7 @@
 		wishlistShortId?: string;
 		wishlistTitle?: string;
 		priorityLevelCount?: number;
+		categoryOptions?: ManagedGiftCategory[];
 	} = $props();
 
 	// New-list mode always seeds the 3 default levels at commit, so priority is
@@ -85,8 +93,10 @@
 	let parsedRows = $state<string[][]>([]);
 	let filename = $state<string | undefined>(undefined);
 	let selectedDrafts = $state<ValidatedGiftDraft[]>([]);
+	let selectedCategoryResolutions = $state<ImportCategoryResolution[]>([]);
 	let reviewTitle = $state<string | undefined>(undefined);
 	let commitStatus = $state<CommitStatus>(COMMIT_STATUS.idle);
+	let commitError = $state<string | null>(null);
 	let duplicateSubmissionState = $state(createDuplicateAwareImportState<ValidatedGiftDraft>());
 	let selectedDraftSignature = $state('');
 
@@ -112,8 +122,78 @@
 	// even without having typed into the field first.
 	let titleTouched = $state(false);
 
-	// Step index for the stepper
+	// Step indices drive directional panel and connector motion.
 	const currentStepIndex = $derived(WIZARD_STEPS.indexOf(currentStep));
+	let previousStepIndex = $state(WIZARD_STEPS.indexOf(WIZARD_STEP.source));
+	let stepPanel = $state<HTMLElement | null>(null);
+	let stepper = $state<HTMLElement | null>(null);
+	let activeStepAnimations: Animation[] = [];
+
+	function cancelStepAnimations() {
+		for (const animation of activeStepAnimations) {
+			animation.cancel();
+		}
+		activeStepAnimations = [];
+	}
+
+	function transitionToStep(nextStep: WizardStep) {
+		const nextStepIndex = WIZARD_STEPS.indexOf(nextStep);
+		if (nextStepIndex === currentStepIndex) {
+			return;
+		}
+		previousStepIndex = currentStepIndex;
+		currentStep = nextStep;
+	}
+
+	$effect(() => {
+		const from = previousStepIndex;
+		const to = currentStepIndex;
+		if (from === to) {
+			return;
+		}
+
+		cancelStepAnimations();
+		if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+			return;
+		}
+		const stepPanelElement = stepPanel;
+		const stepperElement = stepper;
+		if (stepPanelElement === null || stepperElement === null) {
+			return;
+		}
+
+		activeStepAnimations.push(
+			stepPanelElement.animate(
+				[
+					{ opacity: 0, transform: `translateX(${to > from ? 10 : -10}px)` },
+					{ opacity: 1, transform: 'translateX(0)' },
+				],
+				{ duration: 180, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+			),
+		);
+
+		for (const connector of stepperElement.querySelectorAll<HTMLElement>(
+			'[data-import-connector]',
+		)) {
+			const connectorIndex = Number(connector.dataset.importConnector);
+			const wasComplete = connectorIndex <= from;
+			const isComplete = connectorIndex <= to;
+			if (wasComplete === isComplete) {
+				continue;
+			}
+			activeStepAnimations.push(
+				connector.animate(
+					[
+						{ transform: `scaleX(${wasComplete ? 1 : 0})` },
+						{ transform: `scaleX(${isComplete ? 1 : 0})` },
+					],
+					{ duration: 220, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+				),
+			);
+		}
+	});
+
+	onDestroy(cancelStepAnimations);
 
 	// Dialog width based on step. The review step holds the table-like draft grid;
 	// append mode adds a ~280px existing-items side panel, so it needs extra room.
@@ -179,16 +259,24 @@
 		parsedRows = result.rows;
 		filename = result.filename;
 		// Auto-advance to review
-		currentStep = WIZARD_STEP.review;
+		transitionToStep(WIZARD_STEP.review);
 	}
 
-	function handleReviewReady(data: { drafts: ValidatedGiftDraft[]; title?: string }) {
-		const nextSignature = JSON.stringify(data.drafts);
+	function handleReviewReady(data: {
+		drafts: ValidatedGiftDraft[];
+		title?: string;
+		categoryResolutions: ImportCategoryResolution[];
+	}) {
+		const nextSignature = JSON.stringify({
+			drafts: data.drafts,
+			categoryResolutions: data.categoryResolutions,
+		});
 		if (nextSignature !== selectedDraftSignature) {
 			resetServerDuplicateAcknowledgement();
 			selectedDraftSignature = nextSignature;
 		}
 		selectedDrafts = data.drafts;
+		selectedCategoryResolutions = data.categoryResolutions;
 		reviewTitle = data.title;
 	}
 
@@ -198,12 +286,13 @@
 		// the empty-title "****" / generic-error-loop bug). If this is ever reached with an
 		// invalid title, send the user back to the field instead of retry-looping on a 400.
 		if (mode === WIZARD_MODE.newList && !titleValid) {
-			currentStep = WIZARD_STEP.review;
+			transitionToStep(WIZARD_STEP.review);
 			titleTouched = true;
 			throw new Error('title is required');
 		}
 
 		commitStatus = COMMIT_STATUS.committing;
+		commitError = null;
 		try {
 			if (mode === WIZARD_MODE.newList) {
 				const commitTitle = (reviewTitle ?? '').trim();
@@ -215,11 +304,13 @@
 								recipientName: trimmedRecipientName,
 								title: commitTitle,
 								gifts: selectedDrafts,
+								categoryResolutions: selectedCategoryResolutions,
 							}
 						: {
 								recipientKind: RECIPIENT_KIND.self,
 								title: commitTitle,
 								gifts: selectedDrafts,
+								categoryResolutions: selectedCategoryResolutions,
 							},
 				);
 				commitStatus = COMMIT_STATUS.success;
@@ -230,7 +321,11 @@
 					throw new Error('wishlistId is required in append mode');
 				}
 				const submission = await submitDuplicateAwareImport({
-					command: (request) => importGifts(request),
+					command: (request) =>
+						importGifts({
+							...request,
+							categoryResolutions: selectedCategoryResolutions,
+						}),
 					wishlistId,
 					drafts: selectedDrafts,
 					state: duplicateSubmissionState,
@@ -244,9 +339,10 @@
 				onsuccess?.();
 				return { shortId: wishlistShortId ?? wishlistId };
 			}
-		} catch {
+		} catch (thrown) {
 			commitStatus = COMMIT_STATUS.error;
-			throw new Error('commit failed');
+			commitError = translateServerError(thrown, m.import_wizard_error_commit());
+			throw thrown;
 		}
 	}
 
@@ -260,17 +356,17 @@
 			return;
 		}
 		if (canProceed) {
-			currentStep = WIZARD_STEP.confirm;
+			transitionToStep(WIZARD_STEP.confirm);
 		}
 	}
 
 	function handleBack() {
 		if (currentStep === WIZARD_STEP.confirm) {
-			currentStep = WIZARD_STEP.review;
+			transitionToStep(WIZARD_STEP.review);
 			commitStatus = COMMIT_STATUS.idle;
 			resetServerDuplicateAcknowledgement();
 		} else if (currentStep === WIZARD_STEP.review) {
-			currentStep = WIZARD_STEP.source;
+			transitionToStep(WIZARD_STEP.source);
 			resetServerDuplicateAcknowledgement();
 			parsedRows = [];
 			filename = undefined;
@@ -279,12 +375,15 @@
 	}
 
 	function handleClose() {
+		cancelStepAnimations();
 		open = false;
 		// Reset state on close
+		previousStepIndex = WIZARD_STEPS.indexOf(WIZARD_STEP.source);
 		currentStep = WIZARD_STEP.source;
 		parsedRows = [];
 		filename = undefined;
 		selectedDrafts = [];
+		selectedCategoryResolutions = [];
 		reviewTitle = undefined;
 		commitStatus = COMMIT_STATUS.idle;
 		resetServerDuplicateAcknowledgement();
@@ -304,6 +403,8 @@
 			handleClose();
 		}
 	}
+
+	const confirmFormId = 'import-wizard-confirm-form';
 
 	const STEP_LABELS: readonly (() => string)[] = [
 		() => m.import_wizard_step_source(),
@@ -332,14 +433,19 @@
 			</div>
 
 			<!-- Stepper: ink-bordered dots + dashed connectors (anime-sky design language) -->
-			<div class="flex items-center gap-2">
+			<div class="flex items-center gap-2" bind:this={stepper}>
 				{#each WIZARD_STEPS as step, index (step)}
 					{#if index > 0}
 						<div
-							class="flex-1 border-t-2 {index <= currentStepIndex
-								? 'border-ink'
-								: 'border-dashed border-ink-faint'}"
-						></div>
+							class="relative flex-1 border-t-2 border-dashed border-ink-faint"
+							aria-hidden="true"
+						>
+							<div
+								data-import-connector={index}
+								class="absolute inset-x-0 top-[-2px] border-t-2 border-ink origin-left"
+								style:transform="scaleX({index <= currentStepIndex ? 1 : 0})"
+							></div>
+						</div>
 					{/if}
 					<div class="flex items-center gap-1.5">
 						<div
@@ -370,7 +476,11 @@
 
 		<!-- Step content. Flex column so the review step's grid can fill the remaining
 		     height and own the only vertical scrollbar; short steps still scroll here. -->
-		<div class="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">
+		<div
+			class="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5"
+			bind:this={stepPanel}
+			data-import-step-panel
+		>
 			{#if currentStep === WIZARD_STEP.source}
 				<ImportSourceStep onparsed={handleSourceParsed} />
 			{:else if currentStep === WIZARD_STEP.review}
@@ -429,11 +539,13 @@
 					{mode}
 					{existingGifts}
 					{priorityAvailable}
+					{categoryOptions}
 					bind:titleTouched
 					onready={handleReviewReady}
 				/>
 			{:else if currentStep === WIZARD_STEP.confirm}
 				<ImportConfirmStep
+					formId={confirmFormId}
 					{mode}
 					{selectedDrafts}
 					title={reviewTitle}
@@ -442,6 +554,7 @@
 					serverDuplicateCount={duplicateSubmissionState.duplicateCount}
 					oncommit={handleCommit}
 					{commitStatus}
+					{commitError}
 					{suppressNavigation}
 				/>
 			{/if}
@@ -450,7 +563,7 @@
 		<!-- Footer -->
 		{#if commitStatus !== COMMIT_STATUS.success}
 			<Separator />
-			<div class="flex items-center justify-between px-6 py-4">
+			<div class="flex shrink-0 items-center justify-between px-6 py-4">
 				<div>
 					{#if currentStepIndex > 0 && commitStatus !== COMMIT_STATUS.committing}
 						<Button intent="ghost" onclick={handleBack}>
@@ -468,6 +581,16 @@
 					{#if currentStep === WIZARD_STEP.review}
 						<Button onclick={handleNext} disabled={!canProceed}>
 							{m.import_wizard_next()}
+						</Button>
+					{:else if currentStep === WIZARD_STEP.confirm && commitStatus !== COMMIT_STATUS.committing}
+						<Button type="submit" form={confirmFormId}>
+							{#if commitStatus === COMMIT_STATUS.error}
+								{m.import_wizard_retry()}
+							{:else if mode === WIZARD_MODE.newList}
+								{m.import_wizard_commit_new()}
+							{:else}
+								{m.import_wizard_commit_append()}
+							{/if}
 						</Button>
 					{/if}
 				</div>
