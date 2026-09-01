@@ -106,14 +106,12 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Development
 
-| Script                | Description                                  |
-| --------------------- | -------------------------------------------- |
-| `pnpm run dev`        | Ensure db is ready, then start dev server    |
-| `pnpm run build`      | Production build                             |
-| `pnpm run preview`    | Preview the built Cloudflare Worker locally  |
-| `pnpm run storybook`  | Start Storybook on port 6006                 |
-| `pnpm run ports`      | List processes on dev ports (5173/4173/6006) |
-| `pnpm run ports:kill` | Kill processes on dev ports                  |
+| Script               | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `pnpm run dev`       | Ensure db is ready, then start dev server   |
+| `pnpm run build`     | Production build                            |
+| `pnpm run preview`   | Preview the built Cloudflare Worker locally |
+| `pnpm run storybook` | Start Storybook on its assigned port        |
 
 ### Code Quality
 
@@ -130,10 +128,11 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Testing
 
-| Script              | Description                          |
-| ------------------- | ------------------------------------ |
-| `pnpm run test`     | Unit tests with Vitest               |
-| `pnpm run test:e2e` | E2E tests with Playwright (Chromium) |
+| Script                      | Description                                                    |
+| --------------------------- | -------------------------------------------------------------- |
+| `pnpm run test`             | Unit tests with Vitest                                         |
+| `pnpm run test:e2e`         | Full E2E suite with Playwright (Chromium)                      |
+| `pnpm run test:e2e:changed` | E2E tests changed since or statically affected relative to dev |
 
 ### Database
 
