@@ -29,11 +29,18 @@
 	import { giftCategoryColorForIndex } from '$lib/modules/gift-categories/gift_category_colors.js';
 	import { createCategorySettingsMotion } from './wishlist_category_settings_motion.svelte.js';
 
+	interface CategoryDraft {
+		customCategories: Array<{ id: string | null; label: string; color: string }>;
+		presetKeys: GiftCategoryPresetKey[];
+		presetColors: Array<{ key: GiftCategoryPresetKey; color: string }>;
+		confirmedRemovalCategoryIds: string[];
+	}
 	interface Props {
 		wishlistId: string;
+		saving?: boolean;
+		commitVersion?: number;
 		ondirtychange?: (dirty: boolean) => void;
-		onsavingchange?: (saving: boolean) => void;
-		onsaved?: () => void;
+		ondraftchange?: (draft: CategoryDraft | null) => void;
 	}
 	interface CustomDraft {
 		key: string;
@@ -50,7 +57,13 @@
 		usedCount: number;
 	}
 
-	let { wishlistId, ondirtychange, onsavingchange, onsaved }: Props = $props();
+	let {
+		wishlistId,
+		saving = false,
+		commitVersion = 0,
+		ondirtychange,
+		ondraftchange,
+	}: Props = $props();
 	const categoriesQuery = $derived(getGiftCategorySettingsRows(wishlistId));
 	const settingsRows = $derived(categoriesQuery.current ?? []);
 	const categories = $derived(settingsRows.filter((category) => category.enabled));
@@ -61,7 +74,8 @@
 	let baseline = $state('');
 	let seededSignature = $state('');
 	let nextCustomColorIndex = $state(0);
-	let saving = $state(false);
+	// svelte-ignore state_referenced_locally (one-time version seed)
+	let seenCommitVersion = $state(commitVersion);
 	let pendingRemoval = $state<PendingRemoval | null>(null);
 	let confirmedRemovalCategoryIds = $state<string[]>([]);
 	let removalTrigger = $state<HTMLElement | null>(null);
@@ -80,8 +94,34 @@
 		});
 	}
 	const dirty = $derived(baseline !== '' && snapshot() !== baseline);
-	$effect(() => ondirtychange?.(dirty));
-	$effect(() => onsavingchange?.(saving));
+	function buildDraft(): CategoryDraft {
+		return {
+			customCategories: customDrafts.map(({ id, label, color }) => ({
+				id,
+				label: label.trim(),
+				color,
+			})),
+			presetKeys: enabledPresets,
+			presetColors: enabledPresets.map((key) => ({
+				key,
+				color:
+					presetColors[key] ??
+					GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color,
+			})),
+			confirmedRemovalCategoryIds,
+		};
+	}
+	$effect(() => {
+		ondirtychange?.(dirty);
+		ondraftchange?.(dirty ? buildDraft() : null);
+	});
+	$effect(() => {
+		if (commitVersion !== seenCommitVersion) {
+			seenCommitVersion = commitVersion;
+			confirmedRemovalCategoryIds = [];
+			baseline = snapshot();
+		}
+	});
 	$effect(() => {
 		const signature = JSON.stringify(settingsRows);
 		if (signature === seededSignature || dirty) {
@@ -235,32 +275,16 @@
 
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
+		if (ondraftchange !== undefined) {
+			return;
+		}
 		saving = true;
 		try {
-			await saveGiftCategorySettingsCommand({
-				wishlistId,
-				customCategories: customDrafts.map(({ id, label, color }) => ({
-					id,
-					label: label.trim(),
-					color,
-				})),
-				presetKeys: enabledPresets,
-				presetColors: enabledPresets.map((key) => ({
-					key,
-					color:
-						presetColors[key] ??
-						GIFT_CATEGORY_PRESETS.find((preset) => preset.key === key)!.color,
-				})),
-				confirmedRemovalCategoryIds,
-			});
+			await saveGiftCategorySettingsCommand({ wishlistId, ...buildDraft() });
 			confirmedRemovalCategoryIds = [];
 			baseline = snapshot();
-			// Flush the derived dirty=false notification before reporting completion to the outer
-			// settings dialog. Otherwise a queued stale dirty=true callback can re-arm its discard
-			// guard after a successful save and reject the next Close action.
 			await tick();
 			toastSuccess(m.gift_categories_saved());
-			onsaved?.();
 		} catch (thrown) {
 			if (
 				getServerErrorCode(thrown) ===

@@ -51,8 +51,15 @@
 		title: string;
 		isSaving?: boolean;
 		formId?: string;
+		commitVersion?: number;
 		ondirtychange?: (dirty: boolean) => void;
-		onsave: (next: {
+		ondraftchange?: (
+			draft: {
+				imageKey: string | null;
+				imageSlots: WishlistImageSlots | null;
+			} | null,
+		) => void;
+		onsave?: (next: {
 			imageKey: string | null;
 			imageSlots: WishlistImageSlots | null;
 		}) => boolean | void | Promise<boolean | void>;
@@ -65,7 +72,9 @@
 		title,
 		isSaving = false,
 		formId,
+		commitVersion = 0,
 		ondirtychange,
+		ondraftchange,
 		onsave,
 	}: Props = $props();
 
@@ -114,8 +123,26 @@
 
 	let baselineAssignedKey = $state(untrack(() => assignedKey));
 	let baselineSlotSnapshots = $state(untrack(currentSlotSnapshots));
+	// svelte-ignore state_referenced_locally (one-time version seed)
+	let seenCommitVersion = $state(commitVersion);
 	const dirty = $derived(assignedKey !== baselineAssignedKey || dirtySlots.size > 0);
-	$effect(() => ondirtychange?.(dirty));
+	$effect(() => {
+		ondirtychange?.(dirty);
+		ondraftchange?.(
+			dirty
+				? { imageKey: assignedKey, imageSlots: assignedKey === null ? null : buildSlots() }
+				: null,
+		);
+	});
+	$effect(() => {
+		if (commitVersion !== seenCommitVersion) {
+			seenCommitVersion = commitVersion;
+			baselineAssignedKey = assignedKey;
+			baselineSlotSnapshots = currentSlotSnapshots();
+			dirtySlots.clear();
+			void pendingUploads.commit(assignedKey);
+		}
+	});
 	$effect(() => {
 		if (assignedKey !== baselineAssignedKey) {
 			return;
@@ -252,6 +279,9 @@
 
 	async function handleSave() {
 		if (!dirty || isSaving) {
+			return;
+		}
+		if (onsave === undefined) {
 			return;
 		}
 		const saved = await onsave({

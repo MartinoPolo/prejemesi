@@ -1091,5 +1091,10 @@
 	"gift_hidden_selection_description": "Akce ovlivní také {count} skryté dárky.",
 	"gift_hidden_selection_continue": "Pokračovat",
 	"gift_bulk_undo": "Vrátit zpět",
-	"gift_bulk_undo_success": "Původní stav dárků byl obnoven."
+	"gift_bulk_undo_success": "Původní stav dárků byl obnoven.",
+	"wishlist_settings_unsaved_title": "Máte neuložené změny",
+	"wishlist_settings_unsaved_description": "Před pokračováním změny uložte, zahoďte, nebo pokračujte v úpravách.",
+	"wishlist_settings_save_continue": "Uložit a pokračovat",
+	"wishlist_settings_discard": "Zahodit změny",
+	"wishlist_settings_continue_editing": "Pokračovat v úpravách"
 }

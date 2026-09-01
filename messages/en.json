@@ -1091,5 +1091,10 @@
 	"gift_hidden_selection_description": "The action will also affect {count} hidden gifts.",
 	"gift_hidden_selection_continue": "Continue",
 	"gift_bulk_undo": "Undo",
-	"gift_bulk_undo_success": "The previous gift state was restored."
+	"gift_bulk_undo_success": "The previous gift state was restored.",
+	"wishlist_settings_unsaved_title": "You have unsaved changes",
+	"wishlist_settings_unsaved_description": "Save or discard the changes before continuing, or continue editing.",
+	"wishlist_settings_save_continue": "Save and continue",
+	"wishlist_settings_discard": "Discard changes",
+	"wishlist_settings_continue_editing": "Continue editing"
 }

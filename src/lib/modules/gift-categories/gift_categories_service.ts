@@ -367,9 +367,9 @@ export async function resolveImportGiftCategoryAssignments(params: {
  */
 export async function saveGiftCategorySettings(
 	params: SaveGiftCategorySettingsInput,
+	database?: CategoryDatabase,
 ): Promise<void> {
-	const database = getDb();
-	await database.transaction(async (tx) => {
+	const reconcile = async (tx: CategoryDatabase) => {
 		await lockWishlistCategoryStructure(tx, params.wishlistId);
 		const rows = await tx
 			.select()
@@ -551,7 +551,12 @@ export async function saveGiftCategorySettings(
 				.set({ sortOrder, updatedAt: now })
 				.where(eq(giftCategory.id, id));
 		}
-	});
+	};
+	if (database !== undefined) {
+		await reconcile(database);
+	} else {
+		await getDb().transaction(reconcile);
+	}
 }
 
 export function presetSortOrder(presetKey: GiftCategoryPresetKey): number {

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { tick } from 'svelte';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Dialog from '$lib/components/base/dialog/index.js';
 	import * as Alert from '$lib/components/base/alert/index.js';
@@ -29,11 +30,9 @@
 		WISHLIST_SETTINGS_TABS,
 		type WishlistSettingsTab,
 	} from './wishlist_settings_modal_types.js';
-	import {
-		updateWishlist,
-		deleteWishlist,
-		renameRecipient,
-	} from '$lib/modules/wishlists/wishlists.remote.js';
+	import { deleteWishlist } from '$lib/modules/wishlists/wishlists.remote.js';
+	import { saveWishlistSettings } from '$lib/modules/wishlists/wishlist_settings.remote.js';
+	import type { SaveWishlistSettingsInput } from '$lib/modules/wishlists/wishlist_settings_types.js';
 	import { revertWishlistToDraft } from '$lib/modules/sharing/sharing.remote.js';
 	import { graceWindowExpiresAt } from '$lib/modules/sharing/grace_window.js';
 	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
@@ -49,7 +48,6 @@
 		type WishlistRole,
 	} from '$lib/modules/wishlists/types.js';
 	import type { Palette } from '$lib/theme/palettes.js';
-	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 
 	interface WishlistSettingsModalProps {
 		open: boolean;
@@ -160,12 +158,19 @@
 	// svelte-ignore state_referenced_locally (intentional one-time seed; the form owns its edit state)
 	let recipientNameDraft = $state(recipientDisplayName);
 	let detailsError = $state('');
-	let savingDetails = $state(false);
-	let savingImage = $state(false);
+	let saving = $state(false);
 	let imageDirty = $state(false);
 	let categoriesDirty = $state(false);
-	let savingCategories = $state(false);
-	let tabOrientation = $state<'horizontal' | 'vertical'>('horizontal');
+	let paletteDirty = $state(false);
+	// svelte-ignore state_referenced_locally (one-time modal draft seed)
+	let paletteDraft = $state<Palette>(wishlist.palette);
+	let categoryDraft = $state<SaveWishlistSettingsInput['categories']>();
+	let imageDraft = $state<SaveWishlistSettingsInput['image']>();
+	let commitVersion = $state(0);
+	let discardVersion = $state(0);
+	let guardOpen = $state(false);
+	let pendingAction = $state<null | (() => void)>(null);
+	let allowNavigation = false;
 
 	function dateTimestamp(value: Date | null): number | null {
 		return value?.getTime() ?? null;
@@ -190,23 +195,6 @@
 			eventDateChanged
 		);
 	});
-	const detailsSubmittable = $derived(
-		detailsDirty &&
-			detailsTitle.trim() !== '' &&
-			(!isFreeTextRecipient || recipientNameDraft.trim() !== ''),
-	);
-
-	onMount(() => {
-		const intermediateViewport = window.matchMedia(
-			'(min-width: 640px) and (max-width: 1023px)',
-		);
-		const updateOrientation = () => {
-			tabOrientation = intermediateViewport.matches ? 'vertical' : 'horizontal';
-		};
-		updateOrientation();
-		intermediateViewport.addEventListener('change', updateOrientation);
-		return () => intermediateViewport.removeEventListener('change', updateOrientation);
-	});
 
 	/** Re-seed the details form from the canonical server values (server trims/normalizes). */
 	function seedDetailsForm() {
@@ -217,109 +205,131 @@
 		detailsError = '';
 	}
 
-	function approveCategoryDiscard(): boolean {
-		if (categoriesDirty && !window.confirm(m.gift_categories_unsaved_confirm())) {
-			return false;
-		}
+	const anyDirty = $derived(detailsDirty || categoriesDirty || paletteDirty || imageDirty);
+
+	function discardDrafts() {
+		onpaletteselect?.(wishlist.palette);
+		discardVersion += 1;
+		seedDetailsForm();
+		categoryDraft = undefined;
+		imageDraft = undefined;
 		categoriesDirty = false;
-		return true;
+		imageDirty = false;
+		paletteDirty = false;
+	}
+
+	function requestGuarded(action: () => void) {
+		if (!anyDirty) {
+			action();
+			return;
+		}
+		pendingAction = action;
+		guardOpen = true;
 	}
 
 	function handleOpenChange(nextOpen: boolean) {
-		if (!nextOpen && savingCategories) {
-			open = true;
-			return;
-		}
-		if (!nextOpen && !approveCategoryDiscard()) {
-			open = true;
-			return;
-		}
 		if (!nextOpen) {
-			seedDetailsForm();
+			if (saving) {
+				open = true;
+				return;
+			}
+			requestGuarded(() => (open = false));
+			return;
 		}
-		open = nextOpen;
-	}
-
-	function handleCategoriesSaved() {
-		categoriesDirty = false;
+		open = true;
 	}
 
 	function handleImport() {
-		if (!approveCategoryDiscard()) {
-			return;
-		}
-		onimport();
+		requestGuarded(onimport);
 	}
 
-	async function handleDetailsSave(event: SubmitEvent) {
-		event.preventDefault();
-		if (!detailsSubmittable || savingDetails) {
+	beforeNavigate((navigation) => {
+		if (!open || !anyDirty || allowNavigation) {
 			return;
 		}
-
-		const trimmedTitle = detailsTitle.trim();
-		if (trimmedTitle === '') {
-			detailsError = m.wishlist_name_required();
+		navigation.cancel();
+		if (navigation.to?.url === undefined) {
 			return;
 		}
+		const destination = `${navigation.to.url.pathname}${navigation.to.url.search}${navigation.to.url.hash}`;
+		requestGuarded(() => {
+			allowNavigation = true;
+			void goto(destination).finally(() => (allowNavigation = false));
+		});
+	});
 
-		detailsError = '';
-		savingDetails = true;
-		try {
-			const trimmedDescription = detailsDescription.trim();
-			await updateWishlist({
-				id: wishlist.id,
-				title: trimmedTitle,
-				description: trimmedDescription === '' ? null : trimmedDescription,
-				// Event date stays editable within the post-share grace window; the server is the
-				// authority and drops it once the window has closed (issue #83).
-				...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
-			});
-			// Free-text recipient rename rides the same Save (issue #150): reuses the renameRecipient
-			// command (rejects linked lists server-side). Only persist an actual change to skip a
-			// redundant call; a failure surfaces via the shared catch/toast below.
-			const trimmedRecipientName = recipientNameDraft.trim();
-			if (
-				isFreeTextRecipient &&
-				trimmedRecipientName !== '' &&
-				trimmedRecipientName !== recipientDisplayName
-			) {
-				await renameRecipient({ id: wishlist.id, recipientName: trimmedRecipientName });
-			}
-			await onsaved();
-			seedDetailsForm();
-			toastSuccess(m.toast_wishlist_details_saved());
-		} catch (thrown) {
-			console.error('Failed to save wishlist details:', thrown);
-			toastError(m.toast_wishlist_details_save_error());
-		} finally {
-			savingDetails = false;
-		}
-	}
-
-	async function handleImageSave(next: {
-		imageKey: string | null;
-		imageSlots: WishlistImageSlots | null;
-	}): Promise<boolean> {
-		if (!imageDirty || savingImage) {
+	async function saveAll(afterSave?: () => void): Promise<boolean> {
+		if (!anyDirty || saving) {
 			return false;
 		}
-		savingImage = true;
+		const trimmedTitle = detailsTitle.trim();
+		if (detailsDirty && trimmedTitle === '') {
+			detailsError = m.wishlist_name_required();
+			activeTab = WISHLIST_SETTINGS_TABS.details;
+			return false;
+		}
+		detailsError = '';
+		saving = true;
 		try {
-			await updateWishlist({
-				id: wishlist.id,
-				imageKey: next.imageKey,
-				imageSlots: next.imageSlots,
-			});
+			const input: SaveWishlistSettingsInput = { wishlistId: wishlist.id };
+			if (detailsDirty) {
+				const description = detailsDescription.trim();
+				input.details = {
+					title: trimmedTitle,
+					description: description === '' ? null : description,
+					...(eventDateEditable ? { eventDate: detailsEventDate } : {}),
+					...(isFreeTextRecipient && recipientNameDraft.trim() !== recipientDisplayName
+						? { recipientName: recipientNameDraft.trim() }
+						: {}),
+				};
+			}
+			if (categoriesDirty && categoryDraft !== undefined) {
+				input.categories = categoryDraft;
+			}
+			if (paletteDirty) {
+				input.palette = paletteDraft;
+			}
+			if (imageDirty && imageDraft !== undefined) {
+				input.image = imageDraft;
+			}
+			await saveWishlistSettings(input);
+			commitVersion += 1;
+			await tick();
 			await onsaved();
-			toastSuccess(m.toast_wishlist_image_saved());
+			toastSuccess(m.toast_wishlist_details_saved());
+			afterSave?.();
 			return true;
 		} catch (thrown) {
-			console.error('Failed to save wishlist image:', thrown);
-			toastError(m.toast_wishlist_image_save_error());
+			console.error('Failed to save wishlist settings:', thrown);
+			toastError(translateServerError(thrown, m.toast_wishlist_details_save_error()));
 			return false;
 		} finally {
-			savingImage = false;
+			saving = false;
+		}
+	}
+
+	async function handleGlobalSave() {
+		await saveAll(() => (open = false));
+	}
+
+	function discardAndContinue() {
+		const action = pendingAction;
+		guardOpen = false;
+		pendingAction = null;
+		discardDrafts();
+		action?.();
+	}
+
+	async function saveAndContinue() {
+		const action = pendingAction;
+		if (
+			await saveAll(() => {
+				guardOpen = false;
+				pendingAction = null;
+				action?.();
+			})
+		) {
+			return;
 		}
 	}
 
@@ -416,7 +426,7 @@
 								intent="danger"
 								size="sm"
 								data-testid="settings-revert-to-draft"
-								onclick={() => (revertConfirmOpen = true)}
+								onclick={() => requestGuarded(() => (revertConfirmOpen = true))}
 							>
 								<RotateCcwIcon data-icon="inline-start" />
 								{m.wishlist_revert_button()}
@@ -447,14 +457,14 @@
 		<div
 			data-testid="wishlist-settings-scroll-region"
 			class="min-h-0 flex-1 overflow-y-auto px-6 pb-6 {canManage && !isArchived
-				? 'grid w-full min-w-0 gap-4 sm:grid-cols-[12rem_minmax(0,1fr)] lg:grid-cols-1'
+				? 'flex w-full min-w-0 flex-col gap-4'
 				: ''}"
 		>
 			{#if canManage && !isArchived}
 				<Tabs.Root
 					aria-label={m.wishlist_settings_title()}
-					aria-orientation={tabOrientation}
-					class="w-full max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap sm:flex sm:flex-col sm:items-stretch sm:overflow-visible sm:[&>[role=tab]]:w-full sm:[&>[role=tab]]:justify-start lg:grid lg:w-full lg:grid-cols-6 lg:[&>[role=tab]]:justify-center"
+					aria-orientation="horizontal"
+					class="flex min-h-10 w-full max-w-full flex-nowrap overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>[role=tab]]:shrink-0 [&>[role=tab]]:whitespace-nowrap lg:[&>[role=tab]]:flex-1"
 				>
 					<Tabs.Tab
 						id="wishlist-settings-tab-details"
@@ -463,14 +473,6 @@
 						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.details)}
 					>
 						{m.wishlist_settings_details_section()}
-					</Tabs.Tab>
-					<Tabs.Tab
-						id="wishlist-settings-tab-data"
-						aria-controls="wishlist-settings-panel-data"
-						active={activeTab === WISHLIST_SETTINGS_TABS.data}
-						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
-					>
-						{m.wishlist_settings_data_title()}
 					</Tabs.Tab>
 					<Tabs.Tab
 						id="wishlist-settings-tab-categories"
@@ -497,6 +499,14 @@
 						{m.wishlist_settings_image_section()}
 					</Tabs.Tab>
 					<Tabs.Tab
+						id="wishlist-settings-tab-data"
+						aria-controls="wishlist-settings-panel-data"
+						active={activeTab === WISHLIST_SETTINGS_TABS.data}
+						onclick={() => (activeTab = WISHLIST_SETTINGS_TABS.data)}
+					>
+						{m.wishlist_settings_data_title()}
+					</Tabs.Tab>
+					<Tabs.Tab
 						id="wishlist-settings-tab-danger"
 						aria-controls="wishlist-settings-panel-danger"
 						active={activeTab === WISHLIST_SETTINGS_TABS.danger}
@@ -521,7 +531,10 @@
 
 						<form
 							id="wishlist-details-form"
-							onsubmit={handleDetailsSave}
+							onsubmit={(event) => {
+								event.preventDefault();
+								void handleGlobalSave();
+							}}
 							class="flex flex-col gap-4"
 						>
 							<!-- Recipient (issue #150): free-text lists get an inline name field saved with
@@ -538,7 +551,7 @@
 										placeholder={m.create_recipient_name_placeholder()}
 										maxlength={RECIPIENT_NAME_MAX_LENGTH}
 										required
-										disabled={savingDetails}
+										disabled={saving}
 									/>
 									<RecipientPreview name={recipientNameDraft} />
 								</div>
@@ -581,7 +594,7 @@
 										placeholder={m.wishlist_name_placeholder()}
 										required
 										maxlength={WISHLIST_TITLE_MAX_LENGTH}
-										disabled={savingDetails}
+										disabled={saving}
 										state={hasError ? 'error' : 'default'}
 										aria-invalid={hasError ? true : undefined}
 										aria-describedby={errorId}
@@ -597,7 +610,7 @@
 									id="wishlist-description"
 									bind:value={detailsDescription}
 									placeholder={m.wishlist_description_placeholder()}
-									disabled={savingDetails}
+									disabled={saving}
 								/>
 							</div>
 
@@ -609,7 +622,7 @@
 									id="wishlist-event-date"
 									ariaLabelledby="wishlist-event-date-label"
 									bind:value={detailsEventDate}
-									disabled={savingDetails || !eventDateEditable}
+									disabled={saving || !eventDateEditable}
 								/>
 								{#if isShared && eventDateEditable && eventDateGraceExpiresAt !== null}
 									<GraceCountdown
@@ -658,12 +671,15 @@
 					class="w-full min-w-0"
 					hidden={activeTab !== WISHLIST_SETTINGS_TABS.categories}
 				>
-					<WishlistCategorySettings
-						wishlistId={wishlist.id}
-						ondirtychange={(dirty) => (categoriesDirty = dirty)}
-						onsavingchange={(saving) => (savingCategories = saving)}
-						onsaved={handleCategoriesSaved}
-					/>
+					{#key discardVersion}
+						<WishlistCategorySettings
+							wishlistId={wishlist.id}
+							{saving}
+							{commitVersion}
+							ondirtychange={(dirty) => (categoriesDirty = dirty)}
+							ondraftchange={(draft) => (categoryDraft = draft ?? undefined)}
+						/>
+					{/key}
 				</div>
 
 				<!-- Vzhled: palette picker, auto-saves on click. -->
@@ -679,9 +695,14 @@
 							{m.wishlist_palette_dialog_description()}
 						</p>
 						<WishlistPaletteAutoSave
-							wishlistId={wishlist.id}
 							palette={wishlist.palette}
 							onselect={onpaletteselect}
+							{commitVersion}
+							{discardVersion}
+							ondirtychange={(dirty, palette) => {
+								paletteDirty = dirty;
+								paletteDraft = palette;
+							}}
 						/>
 					</div>
 				</div>
@@ -698,16 +719,19 @@
 						<p class="text-sm text-muted-foreground">
 							{m.wishlist_settings_image_hint()}
 						</p>
-						<WishlistCropEditor
-							formId="wishlist-image-form"
-							imageKey={wishlist.imageKey}
-							imageSlots={wishlist.imageSlots}
-							{themeEmoji}
-							title={wishlist.title}
-							isSaving={savingImage}
-							ondirtychange={(dirty) => (imageDirty = dirty)}
-							onsave={handleImageSave}
-						/>
+						{#key discardVersion}
+							<WishlistCropEditor
+								formId="wishlist-image-form"
+								imageKey={wishlist.imageKey}
+								imageSlots={wishlist.imageSlots}
+								{themeEmoji}
+								title={wishlist.title}
+								isSaving={saving}
+								{commitVersion}
+								ondirtychange={(dirty) => (imageDirty = dirty)}
+								ondraftchange={(draft) => (imageDraft = draft ?? undefined)}
+							/>
+						{/key}
 					</div>
 				</div>
 
@@ -758,7 +782,8 @@
 										<Button
 											intent="danger"
 											size="sm"
-											onclick={() => (deleteConfirmOpen = true)}
+											onclick={() =>
+												requestGuarded(() => (deleteConfirmOpen = true))}
 										>
 											<TrashIcon data-icon="inline-start" />
 											{m.wishlist_delete_button()}
@@ -793,26 +818,40 @@
 			class="shrink-0 border-t border-border bg-background px-6 py-4"
 			style="min-height: 4.25rem;"
 		>
-			{#if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.details}
+			{#if canManage && !isArchived}
 				<WishlistSettingsSaveButton
-					form="wishlist-details-form"
-					dirty={detailsSubmittable}
-					saving={savingDetails}
-				/>
-			{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.categories}
-				<WishlistSettingsSaveButton
-					form="wishlist-categories-form"
-					dirty={categoriesDirty}
-					saving={savingCategories}
-				/>
-			{:else if canManage && !isArchived && activeTab === WISHLIST_SETTINGS_TABS.image}
-				<WishlistSettingsSaveButton
-					form="wishlist-image-form"
-					dirty={imageDirty}
-					saving={savingImage}
-					testId="wishlist-image-save"
+					dirty={anyDirty}
+					{saving}
+					onclick={() => void handleGlobalSave()}
+					testId="wishlist-settings-save"
 				/>
 			{/if}
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
+
+<Dialog.Root bind:open={guardOpen}>
+	<Dialog.Content size="md">
+		<Dialog.Header>
+			<Dialog.Title>{m.wishlist_settings_unsaved_title()}</Dialog.Title>
+			<Dialog.Description>{m.wishlist_settings_unsaved_description()}</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer class="flex flex-wrap gap-2">
+			<Button
+				intent="outline"
+				onclick={() => {
+					guardOpen = false;
+					pendingAction = null;
+				}}
+			>
+				{m.wishlist_settings_continue_editing()}
+			</Button>
+			<Button intent="outline" onclick={discardAndContinue} disabled={saving}>
+				{m.wishlist_settings_discard()}
+			</Button>
+			<Button onclick={() => void saveAndContinue()} disabled={saving}>
+				{m.wishlist_settings_save_continue()}
+			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

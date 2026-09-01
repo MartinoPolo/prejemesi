@@ -1,42 +1,53 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages.js';
-	import { toastError, toastSuccess } from '$lib/components/base/toast/index.js';
-	import { translateServerError } from '$lib/modules/errors/translate_server_error.js';
-	import { setWishlistPalette } from '$lib/modules/wishlists/wishlists.remote.js';
 	import type { Palette } from '$lib/theme/palettes.js';
 	import WishlistPalettePicker from './WishlistPalettePicker.svelte';
 
-	interface WishlistPaletteAutoSaveProps {
-		wishlistId: string;
-		/** Current wishlist palette (drives selection). */
+	interface Props {
 		palette: Palette;
-		/** Optimistic callback so the page retitles its `data-palette` subtree instantly. */
 		onselect?: (palette: Palette) => void;
+		ondirtychange?: (dirty: boolean, palette: Palette) => void;
+		discardVersion?: number;
+		commitVersion?: number;
 	}
 
-	let { wishlistId, palette, onselect }: WishlistPaletteAutoSaveProps = $props();
+	let {
+		palette,
+		onselect,
+		ondirtychange,
+		discardVersion = 0,
+		commitVersion = 0,
+	}: Props = $props();
+	// svelte-ignore state_referenced_locally (the draft seeds once when the modal mounts)
+	let selected = $state(palette);
+	// svelte-ignore state_referenced_locally (one-time persisted baseline)
+	let baseline = $state(palette);
+	// svelte-ignore state_referenced_locally (one-time version seeds)
+	let seenDiscardVersion = $state(discardVersion);
+	// svelte-ignore state_referenced_locally (one-time version seeds)
+	let seenCommitVersion = $state(commitVersion);
 
-	let isSaving = $state(false);
+	$effect(() => ondirtychange?.(selected !== baseline, selected));
+	$effect(() => {
+		if (discardVersion !== seenDiscardVersion) {
+			seenDiscardVersion = discardVersion;
+			selected = baseline;
+			onselect?.(baseline);
+		}
+	});
+	$effect(() => {
+		if (commitVersion !== seenCommitVersion) {
+			seenCommitVersion = commitVersion;
+			baseline = selected;
+		}
+	});
 
-	async function selectPalette(nextPalette: Palette) {
-		if (nextPalette === palette || isSaving) {
+	function selectPalette(next: Palette) {
+		if (next === selected) {
 			return;
 		}
-		const previousPalette = palette;
-		// Instant feedback: the wishlist page wrapper re-derives its tokens right away.
-		onselect?.(nextPalette);
-		isSaving = true;
-		try {
-			// Server refreshes the wishlist + dashboard queries in the same round trip.
-			await setWishlistPalette({ wishlistId, palette: nextPalette });
-			toastSuccess(m.toast_palette_saved());
-		} catch (thrown) {
-			onselect?.(previousPalette);
-			toastError(translateServerError(thrown, m.toast_palette_save_error()));
-		} finally {
-			isSaving = false;
-		}
+		selected = next;
+		onselect?.(next);
 	}
 </script>
 
-<WishlistPalettePicker value={palette} onchange={selectPalette} />
+<WishlistPalettePicker value={selected} onchange={selectPalette} />
