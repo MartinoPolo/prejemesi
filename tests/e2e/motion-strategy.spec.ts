@@ -347,23 +347,24 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		const mobileToolbarGeometry = () =>
 			page.evaluate((regionIds) => {
-				return regionIds.map((id) => {
+				const rectangles = regionIds.map((id) => {
 					const element = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 					if (!element) {
 						throw new Error(`Missing toolbar region: ${id}`);
 					}
-					const rect = element.getBoundingClientRect();
-					return {
-						x: rect.x + scrollX,
-						y: rect.y + scrollY,
-						width: rect.width,
-						height: rect.height,
-					};
+					return element.getBoundingClientRect();
 				});
+				const toolbar = rectangles[0]!;
+				return rectangles.map((rect) => ({
+					x: rect.x - toolbar.x,
+					y: rect.y - toolbar.y,
+					width: rect.width,
+					height: rect.height,
+				}));
 			}, regions);
-		// Compare document geometry: Playwright's click actionability may adjust
-		// the viewport scroll by a few pixels on fractional Linux layouts. Disable
-		// smooth scrolling so geometry is not sampled while that adjustment is in flight.
+		// Compare each region relative to the toolbar. Focusing the entry/exit
+		// control may scroll the viewport, but must not move or resize the controls
+		// within the toolbar. Disable smooth scrolling so samples are settled.
 		await page.evaluate(() => {
 			document.documentElement.style.scrollBehavior = 'auto';
 		});
