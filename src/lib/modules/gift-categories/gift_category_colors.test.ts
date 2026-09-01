@@ -27,15 +27,30 @@ describe('gift category colors', () => {
 		expect(new Set(colors).size).toBe(colors.length);
 	});
 
-	it('rotates deterministic custom defaults and wraps after the accessible palette', () => {
-		expect(CUSTOM_GIFT_CATEGORY_COLORS.length).toBeGreaterThan(2);
+	it('provides exactly 20 distinct valid custom color presets including key neutrals', () => {
+		expect(CUSTOM_GIFT_CATEGORY_COLORS).toHaveLength(20);
 		expect(CUSTOM_GIFT_CATEGORY_COLORS.every((color) => HEX_COLOR.test(color))).toBe(true);
-		expect(
-			CUSTOM_GIFT_CATEGORY_COLORS.map((_, index) => giftCategoryColorForIndex(index)),
-		).toEqual(CUSTOM_GIFT_CATEGORY_COLORS);
-		expect(giftCategoryColorForIndex(CUSTOM_GIFT_CATEGORY_COLORS.length)).toBe(
-			CUSTOM_GIFT_CATEGORY_COLORS[0],
+		expect(new Set(CUSTOM_GIFT_CATEGORY_COLORS).size).toBe(20);
+		expect(CUSTOM_GIFT_CATEGORY_COLORS).toEqual(
+			expect.arrayContaining(['#92400E', '#FACC15', '#000000', '#FFFFFF']),
 		);
+	});
+
+	it('preserves the original deterministic custom defaults after the picker expands', () => {
+		const originalDefaults = [
+			'#0369A1',
+			'#047857',
+			'#A21CAF',
+			'#C2410C',
+			'#4F46E5',
+			'#B91C1C',
+			'#0F766E',
+			'#7E22CE',
+		];
+		expect(originalDefaults.map((_, index) => giftCategoryColorForIndex(index))).toEqual(
+			originalDefaults,
+		);
+		expect(giftCategoryColorForIndex(originalDefaults.length)).toBe(originalDefaults[0]);
 	});
 
 	it.each(['#000000', '#FFFFFF', '#777777'])('%s gets black or white text at 4.5:1', (color) => {

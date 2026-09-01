@@ -10,8 +10,12 @@ import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
 
 const remoteMocks = vi.hoisted(() => ({
 	saveGiftCategorySettingsCommand: vi.fn(),
+	saveWishlistSettings: vi.fn(),
 }));
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
+vi.mock('$lib/modules/wishlists/wishlist_settings.remote.js', () => ({
+	saveWishlistSettings: remoteMocks.saveWishlistSettings,
+}));
 vi.mock('$lib/modules/gift-categories/gift_categories.remote.js', () => ({
 	getGiftCategories: vi.fn(() => ({ current: [] })),
 	getGiftCategorySettingsRows: vi.fn(() => ({ current: [] })),
@@ -99,28 +103,19 @@ describe('WishlistSettingsModal import and export tab', () => {
 		expect(onexport).toHaveBeenCalledOnce();
 	});
 
-	it('guards Import with the category discard confirmation', async () => {
+	it('guards Import with Save, Discard, and Continue editing choices', async () => {
 		const onimport = vi.fn();
-		const confirm = vi
-			.spyOn(window, 'confirm')
-			.mockReturnValueOnce(false)
-			.mockReturnValueOnce(true);
 		const screen = renderSettings({ onimport, activeTab: 'categories' });
-
-		const customInput = screen.getByPlaceholder(m.gift_category_custom_placeholder());
-		await customInput.fill('Nová kategorie');
+		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
 		await screen.getByRole('button', { name: m.gift_category_create() }).click();
 		await screen.getByRole('tab', { name: m.wishlist_settings_data_title() }).click();
-
 		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
 		expect(onimport).not.toHaveBeenCalled();
-		await expect
-			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
-			.toBeVisible();
-
+		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+		expect(onimport).not.toHaveBeenCalled();
 		await screen.getByRole('button', { name: m.import_toolbar_label() }).click();
+		await screen.getByRole('button', { name: m.wishlist_settings_discard() }).click();
 		expect(onimport).toHaveBeenCalledOnce();
-		expect(confirm).toHaveBeenCalledTimes(2);
 	});
 
 	it('enables the Details Save only for a meaningful change', async () => {
@@ -155,150 +150,125 @@ describe('WishlistSettingsModal import and export tab', () => {
 		await expect.element(save).toBeEnabled();
 	});
 
-	it('commits all staged category changes only from the dialog footer Save', async () => {
-		remoteMocks.saveGiftCategorySettingsCommand.mockReset();
-		let resolveSave!: () => void;
-		remoteMocks.saveGiftCategorySettingsCommand.mockImplementationOnce(
-			() => new Promise<void>((resolve) => (resolveSave = resolve)),
-		);
+	it('commits staged category changes through the composite global Save', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValue(undefined);
 		const screen = renderSettings({ activeTab: 'categories' });
-
 		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
 		await screen.getByRole('button', { name: m.gift_category_create() }).click();
 		const preset = GIFT_CATEGORY_PRESETS[0]!;
-		const presetLabel = preset.labels.cs;
-		await screen.getByText(presetLabel).click();
-
-		expect(remoteMocks.saveGiftCategorySettingsCommand).not.toHaveBeenCalled();
-		const save = screen.getByRole('button', { name: m.save() });
-		await expect.element(save).toBeEnabled();
-		const saveElement = save.element() as HTMLButtonElement;
-		await save.click();
-
-		expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledOnce();
-		expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledWith({
+		await screen.getByText(preset.labels.cs).click();
+		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledWith({
 			wishlistId: wishlist.id,
-			customCategories: [{ id: null, label: 'Nová kategorie', color: '#0369A1' }],
-			presetKeys: [preset.key],
-			presetColors: [{ key: preset.key, color: preset.color }],
-			confirmedRemovalCategoryIds: [],
-		});
-		await vi.waitFor(() => expect(saveElement.disabled).toBe(true));
-		resolveSave();
-		await vi.waitFor(() => {
-			expect(saveElement.textContent).toContain(m.save());
-			expect(saveElement.disabled).toBe(true);
+			categories: {
+				customCategories: [{ id: null, label: 'Nová kategorie', color: '#0369A1' }],
+				presetKeys: [preset.key],
+				presetColors: [{ key: preset.key, color: preset.color }],
+				confirmedRemovalCategoryIds: [],
+			},
 		});
 	});
 
-	it('closes without a discard prompt after a category save completes', async () => {
-		remoteMocks.saveGiftCategorySettingsCommand.mockReset();
+	it('closes only after the composite save succeeds', async () => {
 		let resolveSave!: () => void;
-		remoteMocks.saveGiftCategorySettingsCommand.mockImplementationOnce(
-			() => new Promise<void>((resolve) => (resolveSave = resolve)),
-		);
-		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		remoteMocks.saveWishlistSettings
+			.mockReset()
+			.mockImplementationOnce(() => new Promise<void>((resolve) => (resolveSave = resolve)));
 		const screen = renderSettings({ activeTab: 'categories' });
-
 		await screen.getByPlaceholder(m.gift_category_custom_placeholder()).fill('Nová kategorie');
 		await screen.getByRole('button', { name: m.gift_category_create() }).click();
-		const save = screen.getByRole('button', { name: m.save() });
-		await save.click();
-		await vi.waitFor(() =>
-			expect(remoteMocks.saveGiftCategorySettingsCommand).toHaveBeenCalledOnce(),
-		);
+		await screen.getByRole('button', { name: m.save() }).click();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
 		resolveSave();
-		await expect.element(save).toBeDisabled();
-		await expect.element(save).toHaveAttribute('aria-busy', 'false');
-		expect(confirm).not.toHaveBeenCalled();
-		await screen.getByRole('button', { name: m.close() }).click();
-
-		expect(confirm).not.toHaveBeenCalled();
 		await expect
 			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
 			.not.toBeInTheDocument();
 	});
 
-	it.each([
-		['categories' as const, 'wishlist-categories-form'],
-		['image' as const, 'wishlist-image-form'],
-	])('keeps the %s Save visible outside the scrolling form', async (activeTab, formId) => {
-		const screen = renderSettings({ activeTab });
-		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
-		const form = document.getElementById(formId)!;
-		const save = dialog.querySelector<HTMLButtonElement>(`button[form="${formId}"]`)!;
-		const footer = save.closest<HTMLElement>('[data-slot="dialog-footer"]')!;
-		const scrollBody = footer.previousElementSibling as HTMLElement;
-
-		expect(dialog.contains(save)).toBe(true);
-		expect(form.contains(save)).toBe(false);
-		expect(scrollBody.contains(save)).toBe(false);
-		dialog.style.cssText +=
-			'; display: flex; flex-direction: column; height: 240px; max-height: 240px';
-		scrollBody.style.cssText += '; min-height: 0; flex: 1; overflow-y: auto';
-		footer.style.cssText += '; flex: none';
-		scrollBody.scrollTop = scrollBody.scrollHeight;
-		await new Promise((resolve) => requestAnimationFrame(resolve));
-		const saveRect = save.getBoundingClientRect();
-		const dialogRect = dialog.getBoundingClientRect();
-		expect(saveRect.top).toBeGreaterThanOrEqual(dialogRect.top);
-		expect(saveRect.bottom).toBeLessThanOrEqual(dialogRect.bottom);
-		expect(saveRect.top).toBeGreaterThanOrEqual(0);
-		expect(saveRect.bottom).toBeLessThanOrEqual(window.innerHeight);
-	});
-
-	it('widens this dialog and gives the desktop navigation six equal full-width columns', () => {
+	it('keeps the modal and shared drafts intact when composite save fails', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockRejectedValueOnce(new Error('network'));
 		const screen = renderSettings();
-		const dialog = screen.getByRole('dialog', { name: m.wishlist_settings_title() }).element();
-		const tablist = screen
-			.getByRole('tablist', { name: m.wishlist_settings_title() })
-			.element();
-
-		expect(dialog.classList).toContain('sm:max-w-[calc(100%-2rem)]');
-		expect(dialog.classList).toContain('xl:max-w-5xl');
-		expect(tablist.classList).toContain('lg:w-full');
-		expect(tablist.classList).toContain('lg:grid-cols-6');
+		const title = screen.getByLabelText(m.wishlist_name_label());
+		await title.fill('Rozepsané změny');
+		await screen.getByRole('button', { name: m.save() }).click();
+		await vi.waitFor(() => expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledOnce());
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
+		await expect.element(title).toHaveValue('Rozepsané změny');
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeEnabled();
 	});
 
-	it('uses a vertical sidebar at intermediate widths and conceals the mobile native scrollbar', () => {
+	it('stages palette preview until global Save', async () => {
+		remoteMocks.saveWishlistSettings.mockReset().mockResolvedValueOnce(undefined);
+		const onpaletteselect = vi.fn();
+		const screen = renderSettings({ activeTab: 'appearance', onpaletteselect });
+		await screen.getByRole('button', { name: 'Oceán' }).click();
+		expect(onpaletteselect).toHaveBeenCalledWith('ocean');
+		expect(remoteMocks.saveWishlistSettings).not.toHaveBeenCalled();
+		await screen.getByRole('button', { name: m.save() }).click();
+		expect(remoteMocks.saveWishlistSettings).toHaveBeenCalledWith({
+			wishlistId: wishlist.id,
+			palette: 'ocean',
+		});
+	});
+
+	it('keeps one global Save visible on Import and Danger tabs', async () => {
+		const screen = renderSettings();
+		const footer = screen.getByTestId('wishlist-settings-footer').element();
+		await screen.getByRole('tab', { name: m.wishlist_settings_data_title() }).click();
+		expect(screen.getByTestId('wishlist-settings-footer').element()).toBe(footer);
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeVisible();
+		await screen.getByRole('tab', { name: m.wishlist_settings_danger_tab() }).click();
+		await expect.element(screen.getByRole('button', { name: m.save() })).toBeVisible();
+	});
+
+	it('keeps the six tabs in one horizontally scrollable row', () => {
 		const screen = renderSettings();
 		const tablist = screen
 			.getByRole('tablist', { name: m.wishlist_settings_title() })
 			.element();
-		const layout = tablist.parentElement!;
-
-		expect(layout.classList).toContain('sm:grid-cols-[12rem_minmax(0,1fr)]');
-		expect(layout.classList).toContain('lg:grid-cols-1');
-		expect(tablist.classList).toContain('sm:flex-col');
-		expect(tablist.classList).toContain('[scrollbar-width:none]');
-		expect(tablist.classList).toContain('[&::-webkit-scrollbar]:hidden');
+		expect(tablist.classList).toContain('flex-nowrap');
+		expect(tablist.classList).toContain('overflow-x-auto');
+		expect(tablist.classList).not.toContain('sm:flex-col');
+		expect(
+			[...tablist.querySelectorAll('[role=tab]')].map((tab) => tab.textContent?.trim()),
+		).toEqual([
+			m.wishlist_settings_details_section(),
+			m.wishlist_settings_categories_tab(),
+			m.wishlist_settings_appearance_tab(),
+			m.wishlist_settings_image_section(),
+			m.wishlist_settings_data_title(),
+			m.wishlist_settings_danger_tab(),
+		]);
 	});
 
-	it('reports the responsive visual orientation to assistive technology', async () => {
+	it('always reports horizontal orientation to assistive technology', async () => {
 		const screen = renderSettings();
-		const expectedOrientation = window.matchMedia('(min-width: 640px) and (max-width: 1023px)')
-			.matches
-			? 'vertical'
-			: 'horizontal';
-
 		await expect
 			.element(screen.getByRole('tablist', { name: m.wishlist_settings_title() }))
-			.toHaveAttribute('aria-orientation', expectedOrientation);
+			.toHaveAttribute('aria-orientation', 'horizontal');
 	});
 
-	it('separates the Danger panel from navigation and lets it fill the content column', async () => {
+	it('keeps a dirty draft visible after Escape and Continue editing', async () => {
 		const screen = renderSettings();
-		const tablist = screen
-			.getByRole('tablist', { name: m.wishlist_settings_title() })
-			.element();
-		await screen.getByRole('tab', { name: m.wishlist_settings_danger_tab() }).click();
-		const dangerPanel = screen
-			.getByRole('tabpanel', { name: m.wishlist_settings_danger_tab() })
-			.element();
+		const title = screen.getByLabelText(m.wishlist_name_label());
+		await title.fill('Rozepsané změny');
 
-		expect(tablist.parentElement?.classList).toContain('gap-4');
-		expect(dangerPanel.parentElement?.classList).toContain('w-full');
-		expect(dangerPanel.classList).toContain('w-full');
+		await userEvent.keyboard('{Escape}');
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_unsaved_title() }))
+			.toBeVisible();
+		await screen.getByRole('button', { name: m.wishlist_settings_continue_editing() }).click();
+
+		await expect
+			.element(screen.getByRole('dialog', { name: m.wishlist_settings_title() }))
+			.toBeVisible();
+		await expect.element(title).toHaveValue('Rozepsané změny');
 	});
 
 	it('keeps keyboard-selected tabs visible in the mobile-width overflow', async () => {

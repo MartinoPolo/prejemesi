@@ -53,6 +53,65 @@ test.describe('Wishlist page', () => {
 		await page.context().close();
 	});
 
+	test('stationary pointer below settings does not hover or move toolbar selects', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('wl-toolbar-hover-boundary');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await createWishlistAndNavigate(page, 'Toolbar hover boundary');
+
+		const toolbar = page.getByTestId('wishlist-toolbar');
+		const settings = page.getByRole('button', { name: 'Nastavení seznamu' });
+		const sort = toolbar.getByRole('button', { name: /Řadit podle/ });
+		const grouping = toolbar.getByRole('button', { name: /Seskupení/ });
+		await expect(settings).toBeVisible();
+		await expect(sort).toBeVisible();
+		await expect(grouping).toBeVisible();
+
+		const settingsBox = await settings.boundingBox();
+		expect(settingsBox).not.toBeNull();
+		await page.mouse.move(
+			settingsBox!.x + settingsBox!.width / 2,
+			settingsBox!.y + settingsBox!.height + 10,
+		);
+
+		const groupingElement = await grouping.elementHandle();
+		expect(groupingElement).not.toBeNull();
+		const samples = await sort.evaluate(async (sortElement, groupingHandle) => {
+			const groupingElement = groupingHandle as HTMLElement;
+			const frames: Array<{
+				sortY: number;
+				groupingY: number;
+				sortHovered: boolean;
+				groupingHovered: boolean;
+			}> = [];
+			const startedAt = performance.now();
+
+			do {
+				await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+				frames.push({
+					sortY: sortElement.getBoundingClientRect().y,
+					groupingY: groupingElement.getBoundingClientRect().y,
+					sortHovered: sortElement.matches(':hover'),
+					groupingHovered: groupingElement.matches(':hover'),
+				});
+			} while (performance.now() - startedAt < 350);
+
+			return frames;
+		}, groupingElement!);
+
+		const travel = (positions: number[]) => Math.max(...positions) - Math.min(...positions);
+		expect(samples.every((sample) => !sample.sortHovered)).toBe(true);
+		expect(samples.every((sample) => !sample.groupingHovered)).toBe(true);
+		expect(travel(samples.map((sample) => sample.sortY))).toBeLessThanOrEqual(0.1);
+		expect(travel(samples.map((sample) => sample.groupingY))).toBeLessThanOrEqual(0.1);
+
+		await page.context().close();
+	});
+
 	test('first share visits methods before success and reopen starts at methods', async ({
 		browser,
 		request,

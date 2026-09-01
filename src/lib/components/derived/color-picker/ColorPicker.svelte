@@ -58,7 +58,7 @@
 		{/snippet}
 	</Popover.Trigger>
 	<Popover.Content class="w-64 space-y-3 p-3" aria-label={label} role="dialog">
-		<div class="grid grid-cols-4 gap-2" role="group" aria-label={m.color_picker_presets()}>
+		<div class="grid grid-cols-5 gap-2" role="group" aria-label={m.color_picker_presets()}>
 			{#each CUSTOM_GIFT_CATEGORY_COLORS as preset (preset)}
 				<button
 					type="button"

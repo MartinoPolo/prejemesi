@@ -21,7 +21,7 @@ export const giftLinkListVariants = tv({
 			chip: {},
 			row: {
 				root: 'flex flex-col gap-2',
-				link: 'min-h-(--size-control-lg) w-full items-center gap-2.5 rounded-[10px] border-2 border-ink bg-card px-3 py-2 text-sm font-normal text-foreground transition motion-safe:hover:-translate-y-0.5 hover:bg-link-tint hover:shadow-sticker-sm',
+				link: 'min-h-(--size-control-lg) w-full items-center gap-2.5 rounded-[10px] border-2 border-ink bg-card px-3 py-2 text-sm font-normal text-foreground transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-safe:hover:-translate-y-0.5 hover:bg-link-tint hover:shadow-sticker-sm motion-reduce:transition-none',
 				icon: 'size-3.5 flex-shrink-0',
 				chipLabel: 'hidden',
 				domain: 'inline-flex flex-none items-center gap-1 rounded-full border-2 border-ink bg-link-tint px-2.5 py-0.5 text-[12.5px] font-extrabold text-[color:var(--link)]',

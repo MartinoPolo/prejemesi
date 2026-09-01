@@ -141,6 +141,8 @@
 	// svelte-ignore state_referenced_locally
 	let isPriceRange = $state((gift?.priceMax ?? null) !== null);
 	let priceRangeError = $state('');
+	let priceInput = $state<HTMLInputElement | null>(null);
+	let priceMaxInput = $state<HTMLInputElement | null>(null);
 	// svelte-ignore state_referenced_locally
 	let currency = $state<GiftCurrency>((gift?.currency as GiftCurrency) ?? 'CZK');
 	// svelte-ignore state_referenced_locally
@@ -458,6 +460,14 @@
 		promoteToManual();
 	}
 
+	function adjustGiftPrice(
+		currentPrice: number | null,
+		direction: 1 | -1,
+		setPrice: (value: number) => void,
+	): void {
+		setPrice(adjustGiftPriceByMagnitude(currentPrice, direction));
+	}
+
 	function handleGiftPriceKeydown(
 		event: KeyboardEvent,
 		currentPrice: number | null,
@@ -467,8 +477,45 @@
 			return;
 		}
 		event.preventDefault();
-		setPrice(adjustGiftPriceByMagnitude(currentPrice, event.key === 'ArrowUp' ? 1 : -1));
+		adjustGiftPrice(currentPrice, event.key === 'ArrowUp' ? 1 : -1, setPrice);
 	}
+
+	interface GiftPriceWheelOptions {
+		getPrice: () => number | null;
+		setPrice: (value: number) => void;
+	}
+
+	// Svelte attaches inline `onwheel` as a passive listener, so `preventDefault()`
+	// would be ignored and the dialog would scroll while changing price. Register non-passive.
+	function giftPriceWheel(node: HTMLInputElement, options: GiftPriceWheelOptions) {
+		const listener = (event: WheelEvent) => {
+			if (node !== document.activeElement || event.deltaY === 0) {
+				return;
+			}
+			event.preventDefault();
+			adjustGiftPrice(options.getPrice(), event.deltaY < 0 ? 1 : -1, options.setPrice);
+		};
+		node.addEventListener('wheel', listener, { passive: false });
+		return () => node.removeEventListener('wheel', listener);
+	}
+
+	$effect(() => {
+		if (priceInput !== null) {
+			return giftPriceWheel(priceInput, {
+				getPrice: () => price,
+				setPrice: (value) => (price = value),
+			});
+		}
+	});
+
+	$effect(() => {
+		if (priceMaxInput !== null) {
+			return giftPriceWheel(priceMaxInput, {
+				getPrice: () => priceMax,
+				setPrice: (value) => (priceMax = value),
+			});
+		}
+	});
 
 	function validateForm(): boolean {
 		nameError = '';
@@ -938,7 +985,7 @@
 							<div class="flex items-center gap-2">
 								<Input
 									id="gift-price"
-									class="gift-price-input min-w-0"
+									class="numeric-input min-w-0"
 									bind:value={price}
 									placeholder="0"
 									type="number"
@@ -950,6 +997,7 @@
 											price,
 											(value) => (price = value),
 										)}
+									bind:ref={priceInput}
 									aria-label={m.gift_price_range_min_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -962,7 +1010,7 @@
 								>
 								<Input
 									id="gift-price-max"
-									class="gift-price-input min-w-0"
+									class="numeric-input min-w-0"
 									bind:value={priceMax}
 									placeholder="0"
 									type="number"
@@ -974,6 +1022,7 @@
 											priceMax,
 											(value) => (priceMax = value),
 										)}
+									bind:ref={priceMaxInput}
 									aria-label={m.gift_price_range_max_aria()}
 									state={priceRangeError !== '' ? 'error' : 'default'}
 									aria-invalid={priceRangeError !== '' ? true : undefined}
@@ -985,7 +1034,7 @@
 						{:else}
 							<Input
 								id="gift-price"
-								class="gift-price-input"
+								class="numeric-input"
 								bind:value={price}
 								placeholder="0"
 								type="number"
@@ -997,6 +1046,7 @@
 										price,
 										(value) => (price = value),
 									)}
+								bind:ref={priceInput}
 							/>
 						{/if}
 						{#if priceRangeError !== ''}
@@ -1034,6 +1084,7 @@
 						</div>
 						<Input
 							id="gift-quantity"
+							class="numeric-input"
 							bind:value={quantity}
 							type="number"
 							min={locked ? String(currentQuantity) : '1'}

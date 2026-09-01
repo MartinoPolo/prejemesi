@@ -2,13 +2,13 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Anime-sky sticker rows (issue #102 REQ-16, `anime-dashboard.html` list view):
- * each row is its own sticker with a tilted emoji tile; archived rows dim and
+ * each row is its own coherently lifting sticker with a tilted emoji tile; archived rows dim and
  * stop lifting.
  */
 export const wishlistListViewVariants = tv({
 	slots: {
 		root: 'stagger-pop flex flex-col gap-3.5',
-		row: 'group/row flex items-center gap-3.5 rounded-panel border-[2.5px] border-ink bg-card px-4 py-3 shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring',
+		row: 'group/row flex items-center gap-3.5 rounded-panel border-[2.5px] border-ink bg-card px-4 py-3 shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none',
 		bannerMini:
 			'relative flex size-11 shrink-0 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-2 border-ink',
 		info: 'flex min-w-0 flex-1 flex-col gap-0.5',

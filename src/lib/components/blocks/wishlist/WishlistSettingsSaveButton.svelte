@@ -12,9 +12,10 @@
 		dirty: boolean;
 		saving: boolean;
 		testId?: string;
+		onclick?: () => void;
 	}
 
-	let { form, dirty, saving, testId }: Props = $props();
+	let { form, dirty, saving, testId, onclick }: Props = $props();
 	let showPendingIndicator = $state(false);
 
 	$effect(() => {
@@ -29,7 +30,14 @@
 	});
 </script>
 
-<Button type="submit" {form} data-testid={testId} disabled={saving || !dirty} aria-busy={saving}>
+<Button
+	type={form === undefined ? 'button' : 'submit'}
+	{form}
+	{onclick}
+	data-testid={testId}
+	disabled={saving || !dirty}
+	aria-busy={saving}
+>
 	{#if showPendingIndicator}
 		<LoaderIcon
 			class="animate-spin"

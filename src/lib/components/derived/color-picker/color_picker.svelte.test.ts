@@ -53,6 +53,26 @@ describe('ColorPicker', () => {
 		await expect.element(page.getByRole('dialog', { name: label })).not.toBeInTheDocument();
 	});
 
+	it('renders 20 keyboard-operable presets and exposes selection', async () => {
+		const screen = render(ColorPicker, { value: '#000000', label });
+		await screen.getByRole('button', { name: label }).click();
+		const group = page.getByRole('group', { name: m.color_picker_presets() });
+		const swatches = Array.from(group.element().querySelectorAll('button'));
+		const black = group.getByRole('button', { name: '#000000' });
+		const white = group.getByRole('button', { name: '#FFFFFF' });
+
+		expect(swatches).toHaveLength(20);
+		expect(swatches.every((swatch) => swatch.tabIndex === 0 && !swatch.disabled)).toBe(true);
+		await expect.element(black).toHaveAttribute('aria-pressed', 'true');
+		expect(black.element().nextElementSibling).toBe(white.element());
+
+		white.element().focus();
+		expect(document.activeElement).toBe(white.element());
+		await userEvent.keyboard('{Enter}');
+		await expect.element(white).toHaveAttribute('aria-pressed', 'true');
+		await expect.element(black).toHaveAttribute('aria-pressed', 'false');
+	});
+
 	it('commits a preset six-digit color and updates the trigger', async () => {
 		const onValueChange = vi.fn();
 		const screen = render(ColorPicker, { value: '#0369A1', label, onValueChange });

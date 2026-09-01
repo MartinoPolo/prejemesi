@@ -51,10 +51,19 @@
 		title: string;
 		isSaving?: boolean;
 		formId?: string;
+		commitVersion?: number;
 		ondirtychange?: (dirty: boolean) => void;
-		onsave: (next: {
+		ondraftchange?: (
+			draft: {
+				imageKey: string | null;
+				imageSlots: WishlistImageSlots | null;
+				assignmentToken?: string;
+			} | null,
+		) => void;
+		onsave?: (next: {
 			imageKey: string | null;
 			imageSlots: WishlistImageSlots | null;
+			imageAssignmentToken?: string;
 		}) => boolean | void | Promise<boolean | void>;
 	}
 
@@ -65,7 +74,9 @@
 		title,
 		isSaving = false,
 		formId,
+		commitVersion = 0,
 		ondirtychange,
+		ondraftchange,
 		onsave,
 	}: Props = $props();
 
@@ -95,6 +106,7 @@
 	// One-time seed from props: the editor edits a local copy and re-seeds on remount.
 	// svelte-ignore state_referenced_locally
 	let assignedKey = $state<string | null>(imageKey);
+	let assignmentToken = $state<string | undefined>();
 	// svelte-ignore state_referenced_locally
 	let slotState = $state<Record<WishlistEditorSlot, SlotEditState>>(initSlots(imageSlots));
 	let activeSlot = $state<WishlistEditorSlot>('card');
@@ -114,8 +126,34 @@
 
 	let baselineAssignedKey = $state(untrack(() => assignedKey));
 	let baselineSlotSnapshots = $state(untrack(currentSlotSnapshots));
+	// svelte-ignore state_referenced_locally (one-time version seed)
+	let seenCommitVersion = $state(commitVersion);
 	const dirty = $derived(assignedKey !== baselineAssignedKey || dirtySlots.size > 0);
-	$effect(() => ondirtychange?.(dirty));
+	$effect(() => {
+		ondirtychange?.(dirty);
+		ondraftchange?.(
+			dirty
+				? {
+						imageKey: assignedKey,
+						imageSlots: assignedKey === null ? null : buildSlots(),
+						...(assignedKey !== null &&
+						assignedKey !== imageKey &&
+						assignmentToken !== undefined
+							? { assignmentToken }
+							: {}),
+					}
+				: null,
+		);
+	});
+	$effect(() => {
+		if (commitVersion !== seenCommitVersion) {
+			seenCommitVersion = commitVersion;
+			baselineAssignedKey = assignedKey;
+			baselineSlotSnapshots = currentSlotSnapshots();
+			dirtySlots.clear();
+			void pendingUploads.commit(assignedKey);
+		}
+	});
 	$effect(() => {
 		if (assignedKey !== baselineAssignedKey) {
 			return;
@@ -205,6 +243,7 @@
 
 	function handleUpload(result: UploadResult) {
 		assignedKey = result.objectKey;
+		assignmentToken = result.deleteToken;
 		pendingUploads.track(result);
 		// A replaced image starts from fresh centered crops; every editor slot is
 		// rebuilt on save (the retained banner JSON stays untouched).
@@ -221,6 +260,7 @@
 
 	function handleRemove() {
 		assignedKey = null;
+		assignmentToken = undefined;
 		slotState = initSlots(null);
 		dirtySlots.clear();
 	}
@@ -254,9 +294,15 @@
 		if (!dirty || isSaving) {
 			return;
 		}
+		if (onsave === undefined) {
+			return;
+		}
 		const saved = await onsave({
 			imageKey: assignedKey,
 			imageSlots: hasImage ? buildSlots() : null,
+			...(assignedKey !== null && assignedKey !== imageKey && assignmentToken !== undefined
+				? { imageAssignmentToken: assignmentToken }
+				: {}),
 		});
 		if (saved === false) {
 			return;

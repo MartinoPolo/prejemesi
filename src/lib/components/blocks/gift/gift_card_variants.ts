@@ -2,7 +2,7 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Anime-sky sticker gift card (issue #102 REQ-14): ink border, hard offset
- * shadow, spring lift on hover, dotted-mat image background that brightens on
+ * shadow, coherent lift on hover, dotted-mat image background that brightens on
  * hover. `dimmed` covers fully reserved (visitor/moderator view) and received
  * gifts — the card greys out, stops lifting, and the mat stops brightening; the
  * reservation sticker stays crisp on top.
@@ -21,7 +21,7 @@ export const giftCardVariants = tv({
 		// owns that named group): they let a hover/focus on the drag grip lift the card in lock-step
 		// with the grip. Standalone (dashboard/storybook) there is no such ancestor, so only the self
 		// `hover:`/`focus-within:` triggers fire — identical to before (issue #224 follow-up).
-		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[transform,box-shadow] duration-200 ease-spring hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1',
+		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 motion-reduce:transition-none',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
