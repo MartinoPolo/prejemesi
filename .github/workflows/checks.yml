@@ -28,18 +28,41 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
+            - uses: actions/cache@v4
+              with:
+                  path: .eslintcache
+                  key: eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-${{ github.sha }}
+                  restore-keys: |
+                      eslint-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs') }}-
             - run: pnpm run cf:types
-            # Formatting, linting, stylelint, fallow, typecheck, eslint,
-            # migration safety (expand/contract guard).
+            # Formatting runs after generated files are prepared; independent static checks
+            # then execute concurrently, with ESLint reusing its content-based cache.
             - run: pnpm run check:all
+
+    unit_tests:
+        name: unit-tests
+        runs-on: ubuntu-latest
+        timeout-minutes: 25
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
             - run: pnpm exec playwright install --with-deps chromium
-            # Unit tests + vitest browser-mode component tests.
+            # Unit tests + Vitest browser-mode component tests.
             - run: pnpm exec vitest run --coverage
 
     e2e:
         if: ${{ inputs.run_e2e }}
         runs-on: ubuntu-latest
         timeout-minutes: 35
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1, 2, 3, 4]
         services:
             postgres:
                 image: postgres:17
@@ -82,12 +105,15 @@ jobs:
             - run: pnpm run paraglide:compile
             - run: pnpm exec svelte-kit sync
             - run: pnpm run db:seed
-            - run: pnpm exec vitest run --project server
-            - run: pnpm run test:e2e
+            # The database-backed server suite only needs one matrix runner; the Playwright
+            # suite itself is split evenly across all four isolated PostgreSQL services.
+            - if: ${{ matrix.shard == 1 }}
+              run: pnpm exec vitest run --project server
+            - run: pnpm run test:e2e -- --shard=${{ matrix.shard }}/4
             - uses: actions/upload-artifact@v4
               if: failure()
               with:
-                  name: playwright-report
+                  name: playwright-report-shard-${{ matrix.shard }}
                   path: test-results/
                   retention-days: 7
 
@@ -96,17 +122,22 @@ jobs:
     required:
         name: required
         if: ${{ always() }}
-        needs: [checks, e2e]
+        needs: [checks, unit_tests, e2e]
         runs-on: ubuntu-latest
         steps:
             - name: Verify required checks
               env:
                   CHECKS_RESULT: ${{ needs.checks.result }}
+                  UNIT_TESTS_RESULT: ${{ needs.unit_tests.result }}
                   E2E_RESULT: ${{ needs.e2e.result }}
                   RUN_E2E: ${{ inputs.run_e2e }}
               run: |
                   if [ "$CHECKS_RESULT" != "success" ]; then
-                    echo "Static and unit checks ended with: $CHECKS_RESULT"
+                    echo "Static checks ended with: $CHECKS_RESULT"
+                    exit 1
+                  fi
+                  if [ "$UNIT_TESTS_RESULT" != "success" ]; then
+                    echo "Unit and browser tests ended with: $UNIT_TESTS_RESULT"
                     exit 1
                   fi
                   if [ "$RUN_E2E" = "true" ] && [ "$E2E_RESULT" != "success" ]; then

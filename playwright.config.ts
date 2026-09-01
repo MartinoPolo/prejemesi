@@ -11,7 +11,7 @@ export default defineConfig({
 	retries: 1,
 	timeout: 60_000,
 	expect: { timeout: 10_000 },
-	workers: 4,
+	workers: process.env.CI ? 4 : undefined,
 	use: {
 		baseURL: development.playwrightBaseUrl,
 		trace: 'on-first-retry',
