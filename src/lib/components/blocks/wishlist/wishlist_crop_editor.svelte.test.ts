@@ -12,7 +12,7 @@ describe('WishlistCropEditor loaded image', () => {
 		const onsave = vi.fn();
 		const ondirtychange = vi.fn();
 		const screen = render(WishlistCropEditor, {
-			imageKey: 'demo/backpack.jpg',
+			imageKey: 'demo/v1/backpack.jpg',
 			imageSlots: createDefaultWishlistSlots(),
 			themeEmoji: '🎁',
 			title: 'Test wishlist',
@@ -52,7 +52,7 @@ describe('WishlistCropEditor loaded image', () => {
 	it('returns to clean when an image setting is restored to its baseline', async () => {
 		const ondirtychange = vi.fn();
 		const screen = render(WishlistCropEditor, {
-			imageKey: 'demo/backpack.jpg',
+			imageKey: 'demo/v1/backpack.jpg',
 			imageSlots: createDefaultWishlistSlots(),
 			themeEmoji: '🎁',
 			title: 'Test wishlist',
