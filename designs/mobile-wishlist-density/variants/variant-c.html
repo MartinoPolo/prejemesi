@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Varianta C · Samostatné karty v seznamu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Noto+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../tokens.css">
+  <style>
+    :root {
+      --sky: #35a8ee;
+      --sky-deep: #1477bc;
+      --sky-pale: #e9f7ff;
+      --ink: #173d63;
+      --ink-soft: #57738d;
+      --paper: #fffaf2;
+      --paper-warm: #fff6e8;
+      --page: #fff0ed;
+      --coral: #f56649;
+      --coral-dark: #d94c32;
+      --liked: #d94f61;
+      --reserved: #267f60;
+      --reserved-pale: #e5f3ea;
+      --yellow: #ffd65b;
+      --line: #173d63;
+      --focus: #087dd1;
+      --shadow-ink: rgb(23 61 99 / 22%);
+      --phone-width: 390px;
+      --page-gutter: 12px;
+      --card-radius: var(--radius-lg, 12px);
+      --hard-shadow: 3px 3px 0 var(--shadow-ink);
+      --hard-shadow-small: 2px 2px 0 var(--shadow-ink);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: minmax(240px, 320px) var(--phone-width);
+      justify-content: center;
+      align-items: start;
+      gap: 32px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle, rgb(23 61 99 / 7%) 1px, transparent 1.5px) 0 0 / 24px 24px,
+        #edf6f7;
+      font-family: var(--font-sans);
+      font-size: var(--text-base);
+    }
+    button { font: inherit; color: inherit; }
+    button:not(:disabled) { cursor: pointer; }
+    svg { display: block; }
+
+    .prototype-panel {
+      position: sticky;
+      top: 24px;
+      padding: 20px;
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-radius: 16px;
+      box-shadow: 5px 5px 0 var(--shadow-ink);
+    }
+    .eyebrow {
+      margin: 0 0 16px;
+      color: var(--sky-deep);
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 800;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    .prototype-panel h1 {
+      margin: 0;
+      font-family: var(--font-heading);
+      font-size: 20px;
+      line-height: 1.15;
+      letter-spacing: -.02em;
+    }
+    .prototype-copy { margin: 8px 0 20px; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+    .control-set { margin: 0; padding: 0; border: 0; }
+    .control-set + .control-set { margin-top: 16px; }
+    .control-set legend { margin-bottom: 8px; font-size: 12px; font-weight: 800; }
+    .prototype-options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .prototype-option {
+      min-width: 48px;
+      height: 40px;
+      padding: 0 12px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: transparent;
+      box-shadow: var(--hard-shadow-small);
+      font-size: 13px;
+      font-weight: 700;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+    .prototype-option:hover { background: var(--sky-pale); transform: translateY(-1px); }
+    .prototype-option:active { transform: translate(2px, 2px); box-shadow: none; }
+    .prototype-option[aria-pressed="true"] { color: white; background: var(--sky-deep); }
+    .prototype-option:disabled { opacity: .4; box-shadow: none; cursor: not-allowed; }
+
+    .phone-stage { width: var(--phone-width); min-width: 0; contain: inline-size; }
+    .phone-stage > .eyebrow { margin: 0 0 8px 4px; }
+    .phone {
+      width: var(--phone-width);
+      min-width: 0;
+      max-width: 100%;
+      height: 844px;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      background: var(--page);
+      border: 2px solid var(--ink);
+      border-radius: 25px;
+      box-shadow: 0 24px 64px rgb(23 61 99 / 19%), 7px 7px 0 rgb(23 61 99 / 13%);
+      transition: width 180ms ease;
+    }
+
+    .app-nav {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      background: var(--paper);
+      border-bottom: 2px solid var(--ink);
+    }
+    .nav-btn, .avatar {
+      width: 40px;
+      height: 40px;
+      flex: 0 0 40px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: var(--paper);
+      box-shadow: var(--hard-shadow-small);
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+    .nav-btn:hover, .avatar:hover { background: var(--sky-pale); transform: translateY(-1px); }
+    .nav-btn:active, .avatar:active { transform: translate(2px, 2px); box-shadow: none; }
+    .nav-btn:disabled, .avatar:disabled { opacity: .4; box-shadow: none; transform: none; cursor: not-allowed; }
+    .gift-shortcut { color: white; background: var(--coral); transform: rotate(-3deg); }
+    .create-btn { color: white; background: var(--coral); }
+    .brand {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -.03em;
+      white-space: nowrap;
+    }
+    .brand small { color: var(--ink-soft); font-family: var(--font-sans); font-size: 10px; }
+    .notice { position: relative; border: 0; box-shadow: none; background: transparent; }
+    .notice-count {
+      position: absolute; top: -2px; right: -3px; min-width: 18px; height: 18px; padding: 0 3px;
+      display: grid; place-items: center; color: white; background: var(--coral-dark);
+      border: 2px solid var(--paper); border-radius: 999px; font-size: 9px; font-weight: 800;
+    }
+    .avatar { flex-basis: 34px; width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(145deg,#ffd9b8 0 49%,#6d493b 50% 63%,#4d92b5 64%); box-shadow: none; }
+
+    .viewport {
+      height: calc(100% - 56px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgb(23 61 99 / 32%) transparent;
+      background:
+        radial-gradient(circle at 2px 2px, rgb(23 61 99 / 7%) 1.2px, transparent 1.4px) 0 0 / 22px 22px,
+        var(--page);
+    }
+    .wishlist-heading { padding: 14px var(--page-gutter) 12px; }
+    .wishlist-heading h2 {
+      margin: 0;
+      font-family: var(--font-heading);
+      font-size: 23px;
+      line-height: 1.15;
+      letter-spacing: -.025em;
+    }
+    .wishlist-heading p { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+
+    .toolbar-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 0 var(--page-gutter) 10px;
+      background: linear-gradient(var(--page) 0 86%, transparent);
+    }
+    .toolbar {
+      height: 104px;
+      padding: 8px;
+      display: grid;
+      grid-template-rows: 40px 40px;
+      gap: 8px;
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-radius: 14px;
+      box-shadow: var(--hard-shadow);
+    }
+    .toolbar-row { min-width: 0; display: flex; align-items: center; gap: 6px; }
+    .toolbar-row + .toolbar-row { padding-top: 4px; margin-top: -4px; border-top: 1px dashed rgb(23 61 99 / 22%); }
+    .spacer { flex: 1; }
+    .view-toggle { height: 40px; display: flex; gap: 1px; padding: 2px; border-radius: 10px; background: var(--sky-pale); border: 1px solid rgb(23 61 99 / 20%); }
+    .tool-btn {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 40px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 2px solid var(--ink);
+      border-radius: 7px;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: var(--hard-shadow-small);
+      transition: transform 120ms ease, box-shadow 120ms ease, color 120ms ease, background 120ms ease;
+    }
+    .view-toggle .tool-btn { width: 35px; height: 34px; flex-basis: 35px; border-color: transparent; box-shadow: none; background: transparent; }
+    .tool-btn:hover { background: var(--sky-pale); transform: translateY(-1px); }
+    .tool-btn:active, .tool-btn[aria-pressed="true"]:active { transform: translate(2px, 2px); box-shadow: none; }
+    .view-toggle .tool-btn[aria-pressed="true"] { color: var(--focus); background: var(--paper); border-color: var(--ink); box-shadow: 2px 2px 0 rgb(23 61 99 / 16%); transform: rotate(-2deg); }
+    .tool-btn.primary { color: white; background: var(--coral); }
+    .tool-btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; transform: none; }
+    .filter-dot { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; display: grid; place-items: center; color: var(--ink); background: var(--yellow); border: 2px solid var(--ink); border-radius: 99px; font-size: 9px; font-weight: 800; }
+
+    .gift-list {
+      list-style: none;
+      display: grid;
+      gap: 11px;
+      margin: 0;
+      padding: 0 var(--page-gutter) 48px;
+    }
+    .gift-card {
+      --rotation: -.35deg;
+      position: relative;
+      min-height: 116px;
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px;
+      overflow: visible;
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-radius: var(--card-radius);
+      box-shadow: var(--hard-shadow);
+      transform: rotate(var(--rotation));
+      transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    }
+    .gift-list li:nth-child(2n) .gift-card { --rotation: .3deg; }
+    .gift-list li:nth-child(3n) .gift-card { --rotation: -.15deg; }
+    @media (hover:hover) {
+      .gift-card:hover { transform: rotate(0) translateY(-2px); box-shadow: 5px 5px 0 var(--shadow-ink); }
+    }
+    .gift-card:active { transform: translate(2px, 2px) rotate(0); box-shadow: 1px 1px 0 var(--shadow-ink); }
+    .gift-card.is-open { animation: card-pop 320ms ease; border-color: var(--focus); }
+    .gift-card.is-reserved { background: #f8f4ec; }
+    .gift-card.is-reserved .product-art { filter: saturate(.45) contrast(.9); opacity: .72; }
+    .card-hit { position: absolute; inset: 0; z-index: 1; border: 0; border-radius: inherit; background: transparent; color: transparent; }
+    .card-hit:focus-visible { outline: 3px solid var(--focus); outline-offset: -5px; }
+
+    .image-wrap { position: relative; width: 92px; height: 92px; pointer-events: none; }
+    .product-art {
+      width: 92px;
+      height: 92px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: #e5f4f7;
+    }
+    .product-art svg { width: 100%; height: 100%; }
+    .like-btn {
+      position: absolute;
+      z-index: 3;
+      right: -5px;
+      bottom: -5px;
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--paper);
+      box-shadow: var(--hard-shadow-small);
+      pointer-events: auto;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease;
+    }
+    .like-btn:hover { background: #ffe9e7; transform: scale(1.06) rotate(4deg); }
+    .like-btn:active { transform: translate(2px, 2px) scale(.95); box-shadow: none; }
+    .like-btn[aria-pressed="true"] { color: var(--liked); background: #fff0f0; }
+    .like-btn[aria-pressed="true"] svg { fill: currentColor; }
+    .like-btn:disabled { opacity: .4; box-shadow: none; cursor: not-allowed; }
+
+    .gift-info { min-width: 0; min-height: 92px; display: flex; flex-direction: column; pointer-events: none; }
+    .gift-title {
+      margin: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      font-family: var(--font-heading);
+      font-size: 14px;
+      line-height: 1.3;
+      letter-spacing: -.02em;
+      font-weight: 700;
+    }
+    .meta { min-height: 18px; margin: 3px 0 0; display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: 12px; line-height: 16px; font-weight: 600; }
+    .price { color: var(--sky-deep); font-size: 14px; font-weight: 800; }
+    .state-label { display: inline-flex; align-items: center; gap: 4px; color: var(--reserved); font-weight: 800; }
+    .state-label::before { content: '✓'; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--reserved); font-size: 10px; }
+    .action-row { min-width: 0; margin-top: auto; padding-top: 4px; display: flex; align-items: end; justify-content: flex-end; gap: 8px; pointer-events: auto; position: relative; z-index: 3; }
+    .stock-note { min-width: 0; flex: 1; color: var(--ink-soft); font-size: 11px; line-height: 14px; }
+    .reserve-btn {
+      min-width: 96px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 12px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      color: white;
+      background: var(--coral);
+      box-shadow: var(--hard-shadow-small);
+      font-size: 13px;
+      font-weight: 800;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+    .reserve-btn:hover { background: var(--coral-dark); transform: translateY(-1px); box-shadow: var(--hard-shadow); }
+    .reserve-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+    .reserve-btn.is-confirmed { color: var(--reserved); background: var(--reserved-pale); }
+    .reserve-btn:disabled { color: var(--ink-soft); background: #e9e6df; opacity: .7; cursor: not-allowed; box-shadow: none; transform: none; }
+
+    button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .toolbar button:focus-visible, .app-nav button:focus-visible { outline-offset: -1px; }
+    .toast {
+      position: absolute;
+      z-index: 40;
+      left: 50%;
+      bottom: 16px;
+      width: max-content;
+      max-width: calc(100% - 24px);
+      padding: 10px 14px;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      color: var(--ink);
+      background: var(--yellow);
+      box-shadow: var(--hard-shadow);
+      font-size: 12px;
+      font-weight: 800;
+      transform: translate(-50%, 20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @keyframes card-pop { 50% { transform: translateY(-3px) rotate(0) scale(1.01); } }
+    @media (max-width: 760px) {
+      body { grid-template-columns: 1fr; justify-items: center; }
+      .prototype-panel { position: static; width: min(100%, 390px); }
+    }
+    @media (max-width: 420px) {
+      body { padding: 12px 4px 24px; gap: 20px; }
+    }
+    .phone[data-width="320"] .gift-card { grid-template-columns: 84px minmax(0, 1fr); gap: 8px; padding: 8px; }
+    .phone[data-width="320"] .image-wrap,
+    .phone[data-width="320"] .product-art { width: 84px; height: 84px; }
+    .phone[data-width="320"] .reserve-btn { min-width: 88px; padding-inline: 9px; }
+    .phone[data-width="320"] .brand { font-size: 14px; }
+    .phone[data-width="320"] .app-nav { gap: 4px; padding-inline: 6px; }
+    .phone[data-width="320"] .nav-btn { flex-basis: 38px; width: 38px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="prototype-panel" aria-label="Ovládání prototypu">
+    <p class="eyebrow">Varianta C · samostatné karty v seznamu</p>
+    <h1>Mobilní hustota</h1>
+    <p class="prototype-copy">Změňte šířku telefonu a jediný vnější okraj stránky. Seznam nepřidává další odsazení.</p>
+    <fieldset class="control-set">
+      <legend>Šířka telefonu</legend>
+      <div class="prototype-options" data-control="width">
+        <button class="prototype-option" type="button" data-value="320" aria-pressed="false">320</button>
+        <button class="prototype-option" type="button" data-value="360" aria-pressed="false">360</button>
+        <button class="prototype-option" type="button" data-value="390" aria-pressed="true">390</button>
+      </div>
+    </fieldset>
+    <fieldset class="control-set">
+      <legend>Okraj stránky</legend>
+      <div class="prototype-options" data-control="gutter">
+        <button class="prototype-option" type="button" data-value="0" aria-pressed="false">0</button>
+        <button class="prototype-option" type="button" data-value="8" aria-pressed="false">8</button>
+        <button class="prototype-option" type="button" data-value="12" aria-pressed="true">12</button>
+        <button class="prototype-option" type="button" data-value="16" aria-pressed="false">16</button>
+      </div>
+    </fieldset>
+  </aside>
+
+  <main class="phone-stage">
+    <p class="eyebrow">Varianta C · samostatné karty v seznamu</p>
+    <section class="phone" data-width="390" aria-label="Mobilní náhled Martinova seznamu přání, 390 krát 844 pixelů">
+      <header class="app-nav" aria-label="Hlavní navigace">
+        <button class="nav-btn" type="button" aria-label="Otevřít hlavní nabídku" title="Nabídka">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button class="nav-btn gift-shortcut" type="button" aria-label="Přejít na moje seznamy" title="Moje seznamy">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9M7.5 8C5.8 8 5 7 5 5.6S6 3 7.5 3C10 3 12 8 12 8s2-5 4.5-5C18 3 19 4.2 19 5.6S18.2 8 16.5 8"/></svg>
+        </button>
+        <div class="brand" aria-label="Přejeme si.cz">přejeme si<small>.cz</small></div>
+        <button class="nav-btn create-btn" type="button" aria-label="Přidat přání" title="Přidat přání"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="nav-btn notice" type="button" aria-label="Oznámení, 3 nová" title="Oznámení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21h4"/></svg><span class="notice-count" aria-hidden="true">3</span></button>
+        <button class="avatar" type="button" aria-label="Účet Martina Poláka" title="Účet"></button>
+      </header>
+
+      <div class="viewport">
+        <header class="wishlist-heading">
+          <h2>Martinova přání</h2>
+          <p>Narozeniny · 8 přání · 18. října</p>
+        </header>
+
+        <div class="toolbar-wrap">
+          <nav class="toolbar" aria-label="Nástroje seznamu přání">
+            <div class="toolbar-row">
+              <div class="view-toggle" role="group" aria-label="Zobrazení přání">
+                <button class="tool-btn view-btn" type="button" data-view="cards" aria-label="Zobrazit jako karty" aria-pressed="false" title="Karty"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+                <button class="tool-btn view-btn" type="button" data-view="list" aria-label="Zobrazit jako seznam" aria-pressed="true" title="Seznam"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button>
+              </div>
+              <span class="spacer"></span>
+              <button class="tool-btn" type="button" aria-label="Řazení: výchozí pořadí" title="Řazení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg></button>
+              <button class="tool-btn" type="button" aria-label="Seskupení: bez seskupení" title="Seskupení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 9 4.5-9 4.5-9-4.5L12 3Z"/><path d="m3 12 9 4.5 9-4.5M3 16.5l9 4.5 9-4.5"/></svg></button>
+              <button class="tool-btn" type="button" aria-label="Filtrovat, 2 aktivní filtry" title="Filtrovat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h13M3 12h9M3 18h6M19 13v6M16 16h6"/></svg><span class="filter-dot" aria-hidden="true">2</span></button>
+            </div>
+            <div class="toolbar-row">
+              <button class="tool-btn" type="button" aria-label="Změnit pořadí přání" title="Změnit pořadí"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+              <span class="spacer"></span>
+              <button class="tool-btn" type="button" aria-label="Nastavení seznamu" title="Nastavení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l-2.8 2.8a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6h-4a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-2.8-2.8A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3 14v-4a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L7.1 4.3a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3h4a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l2.8 2.8a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1v4a1.7 1.7 0 0 0-1.6 1Z"/></svg></button>
+              <button class="tool-btn" type="button" aria-label="Přidat více přání" title="Přidat více"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6h10M5 12h7M5 18h5M19 15v6M16 18h6"/></svg></button>
+              <button class="tool-btn primary" type="button" aria-label="Přidat přání" title="Přidat přání"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+            </div>
+          </nav>
+        </div>
+
+        <ul class="gift-list" aria-label="Přání v Martinově seznamu">
+          <li>
+            <article class="gift-card">
+              <button class="card-hit" type="button" aria-label="Otevřít detail: Keramický dripper Hario V60, modrý"></button>
+              <div class="image-wrap">
+                <div class="product-art" role="img" aria-label="Modrý keramický dripper Hario V60">
+                  <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#dff3ff"/><circle cx="78" cy="18" r="15" fill="#ffd65b"/><path d="M23 31h54L67 70H33L23 31Z" fill="#35a8ee" stroke="#173d63" stroke-width="3"/><path d="M31 39h38M35 49h30M39 59h22" stroke="#fff" stroke-width="3"/><path d="M39 70h22l7 10H32l7-10Z" fill="#fffaf2" stroke="#173d63" stroke-width="3"/></svg>
+                </div>
+                <button class="like-btn" type="button" aria-label="Přidat Keramický dripper Hario V60 mezi oblíbené" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg></button>
+              </div>
+              <div class="gift-info"><h3 class="gift-title">Keramický dripper Hario V60, modrý</h3><p class="meta"><span class="price">649 Kč</span></p><div class="action-row"><span class="stock-note">Skladem</span><button class="reserve-btn" type="button">Rezervovat</button></div></div>
+            </article>
+          </li>
+          <li>
+            <article class="gift-card">
+              <button class="card-hit" type="button" aria-label="Otevřít detail: Velký atlas hub s ilustracemi českých druhů"></button>
+              <div class="image-wrap">
+                <div class="product-art" role="img" aria-label="Kniha Velký atlas hub">
+                  <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#f3e5c4"/><path d="M21 15h58v72H21z" fill="#41745b" stroke="#173d63" stroke-width="3"/><path d="M27 21h46v60H27z" fill="#e9dba7"/><path d="M35 53c0-10 7-17 15-17s15 7 15 17H35Z" fill="#e66a4c" stroke="#173d63" stroke-width="2"/><path d="M46 53h8v17h-8z" fill="#fffaf2" stroke="#173d63" stroke-width="2"/><text x="50" y="29" text-anchor="middle" font-size="8" font-family="sans-serif" font-weight="700" fill="#173d63">ATLAS HUB</text></svg>
+                </div>
+                <button class="like-btn" type="button" aria-label="Odebrat Velký atlas hub z oblíbených" aria-pressed="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg></button>
+              </div>
+              <div class="gift-info"><h3 class="gift-title">Velký atlas hub s ilustracemi českých druhů</h3><p class="meta"><span class="price">899 Kč</span></p><div class="action-row"><span class="stock-note">Oblíbené</span><button class="reserve-btn" type="button">Rezervovat</button></div></div>
+            </article>
+          </li>
+          <li>
+            <article class="gift-card is-reserved">
+              <button class="card-hit" type="button" aria-label="Otevřít detail: Bezdrátová sluchátka Sony WH-CH720N"></button>
+              <div class="image-wrap">
+                <div class="product-art" role="img" aria-label="Černá bezdrátová sluchátka Sony">
+                  <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#d8e1e7"/><path d="M25 55V42a25 25 0 0 1 50 0v13" fill="none" stroke="#173d63" stroke-width="8"/><rect x="17" y="48" width="22" height="35" rx="8" fill="#30485d" stroke="#173d63" stroke-width="3"/><rect x="61" y="48" width="22" height="35" rx="8" fill="#30485d" stroke="#173d63" stroke-width="3"/><path d="M37 82c8 5 18 5 26 0" fill="none" stroke="#173d63" stroke-width="3"/></svg>
+                </div>
+                <button class="like-btn" type="button" aria-label="Přidat sluchátka Sony mezi oblíbené" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></button>
+              </div>
+              <div class="gift-info"><h3 class="gift-title">Bezdrátová sluchátka Sony WH-CH720N s potlačením hluku</h3><p class="meta"><span class="state-label">Rezervováno</span></p><div class="action-row"><span class="stock-note">Má dárce</span><button class="reserve-btn" type="button" disabled>Obsazeno</button></div></div>
+            </article>
+          </li>
+          <li>
+            <article class="gift-card">
+              <button class="card-hit" type="button" aria-label="Otevřít detail: Víkendový kurz pečení kváskového chleba"></button>
+              <div class="image-wrap">
+                <div class="product-art" role="img" aria-label="Bochník kváskového chleba">
+                  <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#f7ddaa"/><path d="M13 61c0-25 17-39 37-39s37 14 37 39c0 15-74 15-74 0Z" fill="#c9803e" stroke="#173d63" stroke-width="3"/><path d="M34 30l7 12M50 25v15M66 30l-7 12" stroke="#fff3d1" stroke-width="4" stroke-linecap="round"/><path d="M11 72h78" stroke="#173d63" stroke-width="4" stroke-linecap="round"/></svg>
+                </div>
+                <button class="like-btn" type="button" aria-label="Přidat kurz pečení mezi oblíbené" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></button>
+              </div>
+              <div class="gift-info"><h3 class="gift-title">Víkendový kurz pečení kváskového chleba</h3><p class="meta">Cena neuvedena</p><div class="action-row"><span class="stock-note">Termín domluvou</span><button class="reserve-btn" type="button">Rezervovat</button></div></div>
+            </article>
+          </li>
+          <li>
+            <article class="gift-card">
+              <button class="card-hit" type="button" aria-label="Otevřít detail: Sada akvarelových barev White Nights"></button>
+              <div class="image-wrap">
+                <div class="product-art" role="img" aria-label="Sada akvarelových barev">
+                  <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" fill="#dff5ed"/><rect x="14" y="24" width="72" height="53" rx="7" fill="#fffaf2" stroke="#173d63" stroke-width="3"/><g stroke="#173d63" stroke-width="2"><circle cx="29" cy="40" r="8" fill="#f56649"/><circle cx="50" cy="40" r="8" fill="#ffd65b"/><circle cx="71" cy="40" r="8" fill="#35a8ee"/><circle cx="29" cy="61" r="8" fill="#57a574"/><circle cx="50" cy="61" r="8" fill="#a66ac2"/><circle cx="71" cy="61" r="8" fill="#eb8ab1"/></g></svg>
+                </div>
+                <button class="like-btn" type="button" aria-label="Přidat akvarelové barvy mezi oblíbené" aria-pressed="false"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></button>
+              </div>
+              <div class="gift-info"><h3 class="gift-title">Sada akvarelových barev White Nights, 24 odstínů</h3><p class="meta"><span class="price">1 290 Kč</span></p><div class="action-row"><span class="stock-note">2 obchody</span><button class="reserve-btn" type="button">Rezervovat</button></div></div>
+            </article>
+          </li>
+        </ul>
+      </div>
+      <div class="toast" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const phone = document.querySelector('.phone');
+    const toast = document.querySelector('.toast');
+    let toastTimer;
+
+    function announce(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1700);
+    }
+
+    document.querySelectorAll('[data-control]').forEach(group => {
+      group.addEventListener('click', event => {
+        const button = event.target.closest('.prototype-option');
+        if (!button) return;
+        group.querySelectorAll('.prototype-option').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+        const value = button.dataset.value;
+        if (group.dataset.control === 'width') {
+          root.style.setProperty('--phone-width', `${value}px`);
+          phone.dataset.width = value;
+          phone.setAttribute('aria-label', `Mobilní náhled Martinova seznamu přání, ${value} krát 844 pixelů`);
+        } else {
+          root.style.setProperty('--page-gutter', `${value}px`);
+        }
+      });
+    });
+
+    document.querySelectorAll('.view-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.view-btn').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+        announce(button.dataset.view === 'list' ? 'Vybráno zobrazení seznamu' : 'Vybráno zobrazení karet');
+      });
+    });
+
+    document.querySelectorAll('.like-btn').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        const liked = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(liked));
+        const oldLabel = button.getAttribute('aria-label');
+        button.setAttribute('aria-label', liked ? oldLabel.replace('Přidat', 'Odebrat').replace('mezi oblíbené', 'z oblíbených') : oldLabel.replace('Odebrat', 'Přidat').replace('z oblíbených', 'mezi oblíbené'));
+        announce(liked ? 'Přidáno do oblíbených' : 'Odebráno z oblíbených');
+      });
+    });
+
+    document.querySelectorAll('.reserve-btn:not(:disabled)').forEach(button => {
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        const reserved = button.classList.toggle('is-confirmed');
+        button.textContent = reserved ? 'Rezervováno ✓' : 'Rezervovat';
+        button.setAttribute('aria-pressed', String(reserved));
+        announce(reserved ? 'Přání je pro vás rezervované' : 'Rezervace byla zrušena');
+      });
+    });
+
+    document.querySelectorAll('.card-hit').forEach(button => {
+      button.addEventListener('click', () => {
+        const card = button.closest('.gift-card');
+        card.classList.remove('is-open');
+        void card.offsetWidth;
+        card.classList.add('is-open');
+        announce(button.getAttribute('aria-label').replace('Otevřít detail: ', 'Otevírám: '));
+      });
+    });
+  </script>
+</body>
+</html>
