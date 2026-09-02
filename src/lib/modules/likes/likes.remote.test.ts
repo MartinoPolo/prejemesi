@@ -31,6 +31,11 @@ vi.mock('$lib/server/remote.js', () => ({
 		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
 		return wrapped;
 	}),
+	guardedQueryWithArgs: vi.fn((_schema: unknown, handler: (...args: unknown[]) => unknown) => {
+		const wrapped = (...args: unknown[]) => handler(...args);
+		(wrapped as unknown as Record<string, unknown>).__ = { type: 'query' };
+		return wrapped;
+	}),
 }));
 
 vi.mock('$lib/server/db/index.js', () => ({
@@ -69,7 +74,11 @@ vi.mock('$lib/server/db/wishlist.schema.js', () => ({
 
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 
-import { toggleLike, getUserLikesForWishlist } from './likes.remote.js';
+import {
+	toggleLike,
+	getUserLikesForWishlist,
+	getUserLikesForWishlistScoped,
+} from './likes.remote.js';
 import { getDb } from '$lib/server/db/index.js';
 
 const mockGetDb = vi.mocked(getDb);
@@ -78,7 +87,10 @@ const mockGetDb = vi.mocked(getDb);
  * Creates a mock database whose methods return queryResults in order.
  * Each element in queryResults is the resolved value for one awaited query chain.
  */
-function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
+function createMockDb(
+	queryResults: unknown[][],
+	calls: Array<{ method: string; args: unknown[] }> = [],
+): ReturnType<typeof getDb> {
 	let queryIndex = 0;
 
 	const createChain = (): unknown =>
@@ -91,13 +103,19 @@ function createMockDb(queryResults: unknown[][]): ReturnType<typeof getDb> {
 						queryIndex++;
 						return (resolve: (value: unknown) => void) => resolve(result);
 					}
-					return vi.fn(() => createChain());
+					return vi.fn((...args: unknown[]) => {
+						calls.push({ method: String(prop), args });
+						return createChain();
+					});
 				},
 			},
 		);
 
 	return {
-		select: vi.fn(() => createChain()),
+		select: vi.fn((...args: unknown[]) => {
+			calls.push({ method: 'select', args });
+			return createChain();
+		}),
 		insert: vi.fn(() => createChain()),
 		update: vi.fn(() => createChain()),
 		delete: vi.fn(() => createChain()),
@@ -113,6 +131,14 @@ const callToggleLike = (authContext: typeof testAuthContext, input: typeof testI
 
 const callGetUserLikesForWishlist = (authContext: typeof testAuthContext) =>
 	(getUserLikesForWishlist as unknown as (...args: unknown[]) => unknown)(authContext);
+const callGetUserLikesForWishlistScoped = (
+	authContext: typeof testAuthContext,
+	input: { wishlistId: string },
+) =>
+	(getUserLikesForWishlistScoped as unknown as (...args: unknown[]) => unknown)(
+		authContext,
+		input,
+	);
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -232,20 +258,48 @@ describe('toggleLike', () => {
 });
 
 describe('getUserLikesForWishlist', () => {
-	it('returns an array of liked giftIds for the current user', async () => {
-		mockGetDb.mockReturnValue(
-			createMockDb([[{ giftId: 'gift-1' }, { giftId: 'gift-2' }, { giftId: 'gift-3' }]]),
-		);
+	it('retains the legacy no-argument behavior for open browser clients', async () => {
+		mockGetDb.mockReturnValue(createMockDb([[{ giftId: 'gift-1' }, { giftId: 'gift-2' }]]));
+		await expect(callGetUserLikesForWishlist(testAuthContext)).resolves.toEqual([
+			'gift-1',
+			'gift-2',
+		]);
+	});
+});
 
-		const result = await callGetUserLikesForWishlist(testAuthContext);
+describe('getUserLikesForWishlistScoped', () => {
+	it('returns only active current-user likes joined to active gifts in the requested wishlist', async () => {
+		const calls: Array<{ method: string; args: unknown[] }> = [];
+		mockGetDb.mockReturnValue(createMockDb([[{ giftId: 'gift-1' }]], calls));
 
-		expect(result).toEqual(['gift-1', 'gift-2', 'gift-3']);
+		const result = await callGetUserLikesForWishlistScoped(testAuthContext, {
+			wishlistId: 'wishlist-1',
+		});
+
+		expect(result).toEqual(['gift-1']);
+		expect(calls).toContainEqual({
+			method: 'innerJoin',
+			args: [expect.objectContaining({ id: 'gift.id' }), ['giftLike.giftId', 'gift.id']],
+		});
+		expect(calls).toContainEqual({
+			method: 'where',
+			args: [
+				[
+					['giftLike.userId', testUser.id],
+					'giftLike.deletedAt',
+					['gift.wishlistId', 'wishlist-1'],
+					'gift.deletedAt',
+				],
+			],
+		});
 	});
 
-	it('returns an empty array when the user has no active likes', async () => {
+	it('returns an empty array when the user has no active likes in the wishlist', async () => {
 		mockGetDb.mockReturnValue(createMockDb([[]]));
 
-		const result = await callGetUserLikesForWishlist(testAuthContext);
+		const result = await callGetUserLikesForWishlistScoped(testAuthContext, {
+			wishlistId: 'wishlist-1',
+		});
 
 		expect(result).toEqual([]);
 	});

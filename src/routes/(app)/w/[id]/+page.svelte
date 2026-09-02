@@ -47,7 +47,7 @@
 	} from '$lib/modules/wishlists/wishlists.remote.js';
 	import { getGiftsByWishlistShortId } from '$lib/modules/gifts/gifts.remote.js';
 	import { getGiftCategories } from '$lib/modules/gift-categories/gift_categories.remote.js';
-	import { getUserLikesForWishlist } from '$lib/modules/likes/likes.remote.js';
+	import { getUserLikesForWishlistScoped } from '$lib/modules/likes/likes.remote.js';
 	import {
 		reserveGift,
 		unreserveGift,
@@ -154,9 +154,6 @@
 	const gifts = $derived<GiftByRole[]>(giftsResult?.gifts ?? []);
 	const isGiftDataLoading = $derived(giftsResult === undefined);
 
-	const likesQuery = $derived(browser && isAuthenticated ? getUserLikesForWishlist() : null);
-	const likedGiftIds = $derived(likesQuery?.current ?? []);
-
 	// Optimistic palette: the override paints instantly on selection; the persisted
 	// value rides back via setWishlistPalette's single-flight refresh.
 	let paletteOverride = $state<Palette | null>(null);
@@ -221,6 +218,12 @@
 	const initialWishlist = await getWishlistByShortId(shortId);
 	const wishlistQuery = $derived(getWishlistByShortId(shortId));
 	const wishlist = $derived(wishlistQuery.current ?? initialWishlist);
+	const likesQuery = $derived(
+		browser && isAuthenticated
+			? getUserLikesForWishlistScoped({ wishlistId: wishlist.id })
+			: null,
+	);
+	const likedGiftIds = $derived(likesQuery?.current ?? []);
 	const role = $derived<WishlistRole>(giftsResult?.role ?? wishlist.role);
 	let filterStateWishlistId = $state<string | null>(null);
 
