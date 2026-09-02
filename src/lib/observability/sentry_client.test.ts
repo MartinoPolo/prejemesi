@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSentryClientOptions } from './sentry_client.js';
+import { createSentryClientOptions, filterAndSanitizeSentryClientEvent } from './sentry_client.js';
 import { SENTRY_DATA_COLLECTION } from './sentry_privacy.js';
 
 describe('createSentryClientOptions', () => {
@@ -22,7 +22,78 @@ describe('createSentryClientOptions', () => {
 			replaysOnErrorSampleRate: 1,
 			integrations: [replayIntegration],
 		});
-		expect(options.beforeSend).toBeTypeOf('function');
+		expect(options.beforeSend).toBe(filterAndSanitizeSentryClientEvent);
 		expect(options.beforeBreadcrumb).toBeTypeOf('function');
+	});
+
+	it('drops the Cloudflare Web Analytics compatibility error', () => {
+		const event = {
+			exception: {
+				values: [
+					{
+						type: 'TypeError',
+						value: 't.entries.at is not a function',
+						stacktrace: {
+							frames: [
+								{
+									abs_path:
+										'https://static.cloudflareinsights.com/beacon.min.js/version',
+								},
+							],
+						},
+					},
+				],
+			},
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toBeNull();
+	});
+
+	it('keeps matching messages when an application frame is present', () => {
+		const event = {
+			exception: {
+				values: [
+					{
+						type: 'TypeError',
+						value: 't.entries.at is not a function',
+						stacktrace: {
+							frames: [{ abs_path: 'https://prejemesi.cz/app.js' }],
+						},
+					},
+				],
+			},
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toEqual(event);
+	});
+
+	it('keeps chained events containing an application exception', () => {
+		const event = {
+			exception: {
+				values: [
+					{
+						type: 'TypeError',
+						value: 't.entries.at is not a function',
+						stacktrace: {
+							frames: [
+								{
+									abs_path:
+										'https://static.cloudflareinsights.com/beacon.min.js/version',
+								},
+							],
+						},
+					},
+					{
+						type: 'Error',
+						value: 'Application failure',
+						stacktrace: {
+							frames: [{ abs_path: 'https://prejemesi.cz/app.js' }],
+						},
+					},
+				],
+			},
+		};
+
+		expect(filterAndSanitizeSentryClientEvent(event)).toEqual(event);
 	});
 });

@@ -4,6 +4,35 @@ import {
 	sanitizeSentryEvent,
 } from './sentry_privacy.js';
 
+interface ClientSentryEvent {
+	exception?: {
+		values?: Array<{
+			type?: string;
+			value?: string;
+			stacktrace?: { frames?: Array<{ abs_path?: string }> };
+		}>;
+	};
+}
+
+const CLOUDFLARE_BEACON_URL = 'https://static.cloudflareinsights.com/beacon.min.js/';
+
+export function filterAndSanitizeSentryClientEvent<T>(event: T): T | null {
+	const exceptions = (event as ClientSentryEvent).exception?.values ?? [];
+	const isCloudflareBeaconCompatibilityError =
+		exceptions.length > 0 &&
+		exceptions.every((exception) => {
+			const frames = exception.stacktrace?.frames ?? [];
+			return (
+				exception.type === 'TypeError' &&
+				exception.value === 't.entries.at is not a function' &&
+				frames.length > 0 &&
+				frames.every((frame) => frame.abs_path?.startsWith(CLOUDFLARE_BEACON_URL) === true)
+			);
+		});
+
+	return isCloudflareBeaconCompatibilityError ? null : sanitizeSentryEvent(event);
+}
+
 export function createSentryClientOptions<T extends { name: string }>({
 	dsn,
 	environment,
@@ -24,7 +53,7 @@ export function createSentryClientOptions<T extends { name: string }>({
 		replaysSessionSampleRate: 0.1,
 		replaysOnErrorSampleRate: 1,
 		integrations: replayIntegration === undefined ? [] : [replayIntegration],
-		beforeSend: sanitizeSentryEvent,
+		beforeSend: filterAndSanitizeSentryClientEvent,
 		beforeBreadcrumb: sanitizeSentryBreadcrumb,
 	};
 }
