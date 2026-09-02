@@ -346,29 +346,40 @@ test.describe('issue #269 integrated motion strategy', () => {
 		}
 		await page.setViewportSize({ width: 390, height: 844 });
 		const mobileToolbarGeometry = () =>
-			page.evaluate((regionIds) => {
-				const rectangles = regionIds.map((id) => {
-					const element = document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
-					if (!element) {
-						throw new Error(`Missing toolbar region: ${id}`);
-					}
-					return element.getBoundingClientRect();
+			page.evaluate(() => {
+				const toolbar = document.querySelector<HTMLElement>(
+					'[data-testid="wishlist-toolbar"]',
+				);
+				const mobileContainer = document.querySelector<HTMLElement>(
+					'[data-testid="wishlist-toolbar-mobile"]',
+				);
+				if (!toolbar || !mobileContainer) {
+					throw new Error('Missing mobile toolbar region');
+				}
+				const visibleRows = Array.from(
+					document.querySelectorAll<HTMLElement>('[data-mobile-toolbar-row]'),
+				).filter((row) => row.getClientRects().length > 0);
+				const elements = [toolbar, mobileContainer, ...visibleRows];
+				const toolbarRectangle = toolbar.getBoundingClientRect();
+				return elements.map((element) => {
+					const rectangle = element.getBoundingClientRect();
+					return {
+						x: rectangle.x - toolbarRectangle.x,
+						y: rectangle.y - toolbarRectangle.y,
+						width: rectangle.width,
+						height: rectangle.height,
+					};
 				});
-				const toolbar = rectangles[0]!;
-				return rectangles.map((rect) => ({
-					x: rect.x - toolbar.x,
-					y: rect.y - toolbar.y,
-					width: rect.width,
-					height: rect.height,
-				}));
-			}, regions);
-		// Compare each region relative to the toolbar. Focusing the entry/exit
-		// control may scroll the viewport, but must not move or resize the controls
-		// within the toolbar. Disable smooth scrolling so samples are settled.
+			});
+		// Compare each region relative to the toolbar within the same mode. Focusing
+		// the entry/exit control may scroll the viewport, but must not move or resize
+		// the controls within the toolbar. Disable smooth scrolling so samples settle.
 		await page.evaluate(() => {
 			document.documentElement.style.scrollBehavior = 'auto';
 		});
 		await done.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+		await done.focus();
+		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(1);
 		const mobileAfterEntry = await mobileToolbarGeometry();
 		expect(
 			await page.evaluate(
@@ -381,14 +392,18 @@ test.describe('issue #269 integrated motion strategy', () => {
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí ukončen.' }),
 		).toHaveCount(1);
+		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(2);
 		const mobileAfterExit = await mobileToolbarGeometry();
-		expect(mobileAfterExit).toEqual(mobileAfterEntry);
 		await action.click();
 		await expect(done).toBeFocused();
+		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(1);
 		const mobileAfterReentry = await mobileToolbarGeometry();
-		expect(mobileAfterReentry).toEqual(mobileAfterExit);
+		expect(mobileAfterReentry).toEqual(mobileAfterEntry);
 		await done.click();
 		await expect(action).toBeFocused();
+		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(2);
+		const mobileAfterSecondExit = await mobileToolbarGeometry();
+		expect(mobileAfterSecondExit).toEqual(mobileAfterExit);
 		expect(errors).toEqual([]);
 		await page.context().close();
 	});

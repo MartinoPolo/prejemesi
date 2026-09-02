@@ -596,7 +596,7 @@
 		return requestPromise;
 	}
 
-	function enterSelection(giftId: string) {
+	function enterSelection(giftId?: string) {
 		reorderMode = false;
 		reorderActiveIds = null;
 		giftSelection.enter(giftId);
@@ -1383,6 +1383,7 @@
 			onunfollow={handleUnfollow}
 			onaddgift={openCreateModal}
 			onbatchadd={openBatchAddDialog}
+			onselectionstart={() => enterSelection()}
 			selectionContent={giftSelection.active ? selectionToolbar : undefined}
 		/>
 

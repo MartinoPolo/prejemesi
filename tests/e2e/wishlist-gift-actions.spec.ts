@@ -165,6 +165,41 @@ test('selection survives responsive reflow while normal controls remain replaced
 	await page.context().close();
 });
 
+test('mobile toolbar starts an empty selection from deterministic SSR markup', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const page = await registerAndGetPage(
+		browser,
+		request,
+		baseURL!,
+		createTestUser('gift-actions-mobile-toolbar-selection'),
+	);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await createActionFixture(page);
+
+	const serverResponse = await page.context().request.get(page.url());
+	expect(serverResponse.ok()).toBe(true);
+	const serverRenderedHtml = await serverResponse.text();
+	expect(
+		serverRenderedHtml.match(/data-testid=(?:"gift-view-switcher"|'gift-view-switcher')/g) ??
+			[],
+	).toHaveLength(1);
+
+	await page.getByRole('button', { name: m.gift_selection_toolbar(), exact: true }).click();
+	const toolbar = page.getByRole('region', {
+		name: m.gift_selection_toolbar(),
+		exact: true,
+	});
+	await expect(toolbar).toBeVisible();
+	await selectionCount(toolbar, 0);
+	await expect(gift(page, 'Kolo pro výlety')).toHaveAttribute('aria-selected', 'false');
+	await expect(gift(page, 'Stan pro dva')).toHaveAttribute('aria-selected', 'false');
+	await expect(page.getByTestId('gift-view-switcher')).toHaveCount(0);
+	await page.context().close();
+});
+
 test('mobile long press opens Sheet drill-in and selection toolbar Actions row', async ({
 	browser,
 	request,

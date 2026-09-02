@@ -1,7 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'svelte';
 import * as m from '$lib/paraglide/messages.js';
 import {
@@ -43,12 +43,27 @@ const defaultProps: ComponentProps<typeof WishlistDetailToolbar> = {
 	onunfollow: () => {},
 	onaddgift: () => {},
 	onbatchadd: () => {},
+	onselectionstart: () => {},
 };
 
 async function renderToolbar(
 	overrides: Partial<ComponentProps<typeof WishlistDetailToolbar>> = {},
 ) {
-	return render(WishlistDetailToolbar, { ...defaultProps, ...overrides });
+	const previousWidth = document.body.style.width;
+	document.body.style.width = '1200px';
+	const screen = await render(WishlistDetailToolbar, { ...defaultProps, ...overrides });
+	const unmount = screen.unmount.bind(screen);
+	screen.unmount = async () => {
+		await unmount();
+		document.body.style.width = previousWidth;
+	};
+	return screen;
+}
+
+async function awaitAnimationFrames(count = 2) {
+	for (let frame = 0; frame < count; frame += 1) {
+		await new Promise(requestAnimationFrame);
+	}
 }
 
 function expectDocumentOrder(elements: Element[]) {
@@ -83,6 +98,499 @@ function measureNaturalWidth(element: HTMLElement): number {
 	clone.remove();
 	return width;
 }
+
+const trackedToolbarHosts = new Set<HTMLDivElement>();
+
+function createTrackedToolbarHost(width: string): HTMLDivElement {
+	const host = document.createElement('div');
+	host.style.width = width;
+	document.body.appendChild(host);
+	trackedToolbarHosts.add(host);
+	return host;
+}
+
+describe('WishlistDetailToolbar mobile command bar (#320)', () => {
+	beforeEach(async () => page.viewport(390, 720));
+	afterEach(async () => {
+		for (const host of trackedToolbarHosts) {
+			host.remove();
+		}
+		trackedToolbarHosts.clear();
+		document.body.style.width = '';
+		document.body.style.minHeight = '';
+		window.scrollTo(0, 0);
+		await page.viewport(1280, 720);
+	});
+
+	it('stays within one visitor row or two unsplit manager rows without horizontal overflow', async () => {
+		for (const width of [320, 360, 390, 639]) {
+			await page.viewport(width, 720);
+			for (const manager of [false, true]) {
+				const host = createTrackedToolbarHost(`${width - 32}px`);
+				const screen = await render(
+					WishlistDetailToolbar,
+					{
+						...defaultProps,
+						canManage: manager,
+						role: manager ? WISHLIST_ROLES.moderator : WISHLIST_ROLES.visitor,
+					},
+					{ baseElement: host },
+				);
+				await new Promise(requestAnimationFrame);
+				const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+				const rows = Array.from(
+					toolbar.querySelectorAll<HTMLElement>('[data-mobile-toolbar-row]'),
+				).filter((row) => row.getClientRects().length > 0);
+				expect(rows).toHaveLength(manager ? 2 : 1);
+				expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
+				expect(toolbar.getBoundingClientRect().height).toBeLessThanOrEqual(
+					manager ? 104 : 60,
+				);
+				for (const row of rows) {
+					expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+				}
+				await screen.unmount();
+				host.remove();
+			}
+		}
+	});
+
+	it('uses 40px targets and ListChecks, Hand, Check mobile mode actions', async () => {
+		const onselectionstart = vi.fn();
+		const onreordermodechange = vi.fn();
+		const host = createTrackedToolbarHost('390px');
+		const props = {
+			...defaultProps,
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+			onselectionstart,
+			onreordermodechange,
+		};
+		const screen = await render(WishlistDetailToolbar, props, { baseElement: host });
+		const toolbar = screen.getByTestId('wishlist-toolbar').element();
+		const mobile = screen.getByTestId('wishlist-toolbar-mobile').element();
+		const visibleToolbarButtons = Array.from(toolbar.querySelectorAll('button')).filter(
+			(button) => button.getClientRects().length > 0,
+		);
+		for (const button of visibleToolbarButtons) {
+			const rect = button.getBoundingClientRect();
+			expect(rect.width).toBeGreaterThanOrEqual(40);
+			expect(rect.height).toBeGreaterThanOrEqual(40);
+		}
+		const selectionButton = mobile
+			.querySelector('[data-toolbar-icon="selection"]')!
+			.closest('button')!;
+		expect(selectionButton.querySelector('[data-lucide="list-checks"]')).not.toBeNull();
+		await selectionButton.click();
+		expect(onselectionstart).toHaveBeenCalledOnce();
+		const reorder = mobile.querySelector('[data-toolbar-icon="reorder"]')!.closest('button')!;
+		expect(reorder.querySelector('[data-lucide="hand"]')).not.toBeNull();
+		await reorder.click();
+		expect(onreordermodechange).toHaveBeenCalledWith(true);
+		await screen.rerender({ ...props, reorderMode: true });
+		const visibleRows = Array.from(
+			mobile.querySelectorAll<HTMLElement>('[data-mobile-toolbar-row]'),
+		).filter((row) => row.getClientRects().length > 0);
+		expect(visibleRows).toHaveLength(1);
+		const visibleButtons = Array.from(
+			toolbar.querySelectorAll<HTMLButtonElement>('button'),
+		).filter((button) => button.getClientRects().length > 0);
+		expect(visibleButtons).toHaveLength(1);
+		const doneButton = visibleButtons[0]!;
+		expect(doneButton).toHaveAccessibleName(m.gift_reorder_done());
+		expect(doneButton).toHaveTextContent(m.gift_reorder_done());
+		expect(
+			doneButton.querySelector('[data-toolbar-icon="reorder-done"][data-lucide="check"]'),
+		).not.toBeNull();
+		await expect.element(screen.getByTestId('mobile-sort-trigger')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('mobile-grouping-trigger')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('mobile-filter-trigger')).not.toBeInTheDocument();
+		await expect.element(screen.getByTestId('gift-view-switcher')).not.toBeVisible();
+		await doneButton.click();
+		expect(onreordermodechange).toHaveBeenLastCalledWith(false);
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('opens dedicated bottom dialog sheets with selected semantics and exclusive state', async () => {
+		const onsortchange = vi.fn();
+		const ongroupingchange = vi.fn();
+		const host = createTrackedToolbarHost('390px');
+		const props = {
+			...defaultProps,
+			groupingAvailability: { priority: true, category: false },
+			categoryFilterOptions: [{ value: 'c', label: 'Knihy' }],
+			onsortchange,
+			ongroupingchange,
+		};
+		const screen = await render(WishlistDetailToolbar, props, { baseElement: host });
+		const expectBottomSheet = (dialog: Element) => {
+			expect(dialog).toHaveAttribute('data-side', 'bottom');
+			expect(getComputedStyle(dialog).bottom).toBe('0px');
+		};
+
+		await screen.getByTestId('mobile-sort-trigger').click();
+		let sortDialog = screen.getByRole('dialog', { name: m.gift_sort_by() });
+		await expect.element(sortDialog).toBeVisible();
+		expectBottomSheet(sortDialog.element());
+		await expect
+			.element(screen.getByRole('radio', { name: m.gift_sort_owner_order() }))
+			.toBeChecked();
+		await screen.getByRole('radio', { name: m.gift_sort_priority() }).click();
+		expect(onsortchange).toHaveBeenCalledExactlyOnceWith(GIFT_SORT_OPTIONS.priority);
+		await expect.element(sortDialog).not.toBeInTheDocument();
+		await awaitAnimationFrames();
+		await screen.rerender({ ...props, sortOption: GIFT_SORT_OPTIONS.priority });
+		await screen.getByTestId('mobile-sort-trigger').click();
+		sortDialog = screen.getByRole('dialog', { name: m.gift_sort_by() });
+		await expect.element(sortDialog).toBeVisible();
+		expectBottomSheet(sortDialog.element());
+		await expect
+			.element(screen.getByRole('radio', { name: m.gift_sort_priority() }))
+			.toBeChecked();
+		await userEvent.keyboard('{Escape}');
+		await awaitAnimationFrames();
+
+		await screen.getByTestId('mobile-grouping-trigger').click();
+		let groupingDialog = screen.getByRole('dialog', { name: m.gift_grouping_label() });
+		await expect.element(groupingDialog).toBeVisible();
+		expectBottomSheet(groupingDialog.element());
+		await expect
+			.element(screen.getByRole('radio', { name: m.gift_grouping_category() }))
+			.toBeDisabled();
+		await screen.getByRole('radio', { name: m.gift_grouping_priority() }).click();
+		expect(ongroupingchange).toHaveBeenCalledExactlyOnceWith(GIFT_GROUPING_OPTIONS.priority);
+		await expect.element(groupingDialog).not.toBeInTheDocument();
+		await awaitAnimationFrames();
+		await screen.rerender({
+			...props,
+			sortOption: GIFT_SORT_OPTIONS.priority,
+			grouping: GIFT_GROUPING_OPTIONS.priority,
+		});
+		await screen.getByTestId('mobile-grouping-trigger').click();
+		groupingDialog = screen.getByRole('dialog', { name: m.gift_grouping_label() });
+		await expect.element(groupingDialog).toBeVisible();
+		expectBottomSheet(groupingDialog.element());
+		await expect
+			.element(screen.getByRole('radio', { name: m.gift_grouping_priority() }))
+			.toBeChecked();
+		await userEvent.keyboard('{Escape}');
+		await awaitAnimationFrames();
+
+		await screen.getByTestId('mobile-filter-trigger').click();
+		const filterDialog = screen.getByRole('dialog', { name: m.gift_filter() });
+		await expect.element(filterDialog).toBeVisible();
+		expectBottomSheet(filterDialog.element());
+		await expect
+			.element(screen.getByRole('checkbox', { name: m.gift_filter_with_link() }))
+			.toBeVisible();
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('switches sibling sheets in place and restores the original toolbar trigger', async () => {
+		await page.viewport(320, 720);
+		const host = createTrackedToolbarHost('320px');
+		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
+		const sortTrigger = screen
+			.getByTestId('mobile-sort-trigger')
+			.element() as HTMLButtonElement;
+
+		await sortTrigger.click();
+		await expect.element(screen.getByRole('dialog', { name: m.gift_sort_by() })).toBeVisible();
+		const switchButtons = [
+			screen.getByTestId('mobile-sheet-sort-switch'),
+			screen.getByTestId('mobile-sheet-grouping-switch'),
+			screen.getByTestId('mobile-sheet-filter-switch'),
+		];
+		const closeButton = screen.getByRole('button', { name: m.close() });
+		for (const button of [...switchButtons, closeButton]) {
+			const rectangle = button.element().getBoundingClientRect();
+			expect(rectangle.width).toBeGreaterThanOrEqual(40);
+			expect(rectangle.height).toBeGreaterThanOrEqual(40);
+		}
+
+		await switchButtons[1].click();
+		expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+		await expect
+			.element(screen.getByRole('dialog', { name: m.gift_grouping_label() }))
+			.toBeVisible();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.gift_sort_by() }))
+			.not.toBeInTheDocument();
+		await userEvent.keyboard('{Escape}');
+		await awaitAnimationFrames();
+		expect(document.activeElement).toBe(sortTrigger);
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('restores exact trigger focus without moving page or toolbar when a sheet closes', async () => {
+		const host = createTrackedToolbarHost('390px');
+		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
+		const trigger = screen.getByTestId('mobile-sort-trigger').element() as HTMLButtonElement;
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+		const before = toolbar.getBoundingClientRect();
+		const previousMinHeight = document.body.style.minHeight;
+		document.body.style.minHeight = '200vh';
+		await new Promise(requestAnimationFrame);
+		window.scrollTo(0, 17);
+		await new Promise(requestAnimationFrame);
+		const scrollBeforeOpen = window.scrollY;
+		await trigger.click();
+		await userEvent.keyboard('{Escape}');
+		await awaitAnimationFrames();
+		expect(document.activeElement).toBe(trigger);
+		expect(window.scrollY).toBe(scrollBeforeOpen);
+		const after = toolbar.getBoundingClientRect();
+		expect(after.width).toBe(before.width);
+		expect(after.height).toBe(before.height);
+		await screen.unmount();
+		host.remove();
+		document.body.style.minHeight = previousMinHeight;
+		window.scrollTo(0, 0);
+	});
+
+	it('clears all active filters from the mobile filter sheet in one callback', async () => {
+		const onfilterchange = vi.fn();
+		const screen = await renderToolbar({
+			onfilterchange,
+			filters: {
+				...defaultProps.filters,
+				withLinkOnly: true,
+				categoryValues: ['category-1'],
+			},
+			categoryFilterOptions: [{ value: 'category-1', label: 'Kategorie' }],
+		});
+
+		await screen.getByTestId('mobile-filter-trigger').click();
+		await screen.getByRole('button', { name: m.wishlist_detail_clear_filters() }).click();
+
+		expect(onfilterchange).toHaveBeenCalledExactlyOnceWith(defaultProps.filters);
+		await screen.unmount();
+	});
+
+	it('clears an open mobile sheet across the sm breakpoint', async () => {
+		const host = createTrackedToolbarHost('390px');
+		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
+
+		await screen.getByTestId('mobile-sort-trigger').click();
+		await expect.element(screen.getByRole('dialog', { name: m.gift_sort_by() })).toBeVisible();
+		await page.viewport(640, 720);
+		await awaitAnimationFrames();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.gift_sort_by() }))
+			.not.toBeInTheDocument();
+		await page.viewport(390, 720);
+		await awaitAnimationFrames();
+		await expect
+			.element(screen.getByRole('dialog', { name: m.gift_sort_by() }))
+			.not.toBeInTheDocument();
+
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('discards pointer-cancel scroll capture before keyboard sheet opening', async () => {
+		const host = createTrackedToolbarHost('390px');
+		const previousMinHeight = document.body.style.minHeight;
+		let screen: Awaited<ReturnType<typeof render>> | null = null;
+		try {
+			document.body.style.minHeight = '300vh';
+			screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
+			const trigger = screen
+				.getByTestId('mobile-sort-trigger')
+				.element() as HTMLButtonElement;
+			window.scrollTo(0, 17);
+			await new Promise(requestAnimationFrame);
+			trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+			trigger.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true }));
+			window.scrollTo(0, 83);
+			await new Promise(requestAnimationFrame);
+			const laterScrollPosition = window.scrollY;
+			trigger.focus();
+			await userEvent.keyboard('{Enter}');
+			await expect
+				.element(screen.getByRole('dialog', { name: m.gift_sort_by() }))
+				.toBeVisible();
+			await userEvent.keyboard('{Escape}');
+			await awaitAnimationFrames();
+			expect(window.scrollY).toBe(laterScrollPosition);
+		} finally {
+			await screen?.unmount();
+			host.remove();
+			document.body.style.minHeight = previousMinHeight;
+			window.scrollTo(0, 0);
+		}
+	});
+
+	it('shows an active-count badge, hides mobile pills, and reset preserves view mode', async () => {
+		const callbacks = {
+			onfilterchange: vi.fn(),
+			onsortchange: vi.fn(),
+			ongroupingchange: vi.fn(),
+			onviewmodechange: vi.fn(),
+		};
+		const host = createTrackedToolbarHost('390px');
+		const screen = await render(
+			WishlistDetailToolbar,
+			{
+				...defaultProps,
+				...callbacks,
+				viewMode: GIFT_VIEW_MODES.list,
+				sortOption: GIFT_SORT_OPTIONS.name,
+				grouping: GIFT_GROUPING_OPTIONS.priority,
+				filters: { ...defaultProps.filters, withLinkOnly: true },
+			},
+			{ baseElement: host },
+		);
+		const mobile = screen.getByTestId('wishlist-toolbar-mobile').element();
+		expect(mobile.querySelector('[data-filter-count]')).toHaveTextContent('1');
+		expect(mobile.querySelector('[data-active-filter-pill]')).toBeNull();
+		await screen.getByTestId('mobile-reset-trigger').click();
+		expect(callbacks.onfilterchange).toHaveBeenCalledWith(defaultProps.filters);
+		expect(callbacks.onsortchange).toHaveBeenCalledWith(GIFT_SORT_OPTIONS.ownerOrder);
+		expect(callbacks.ongroupingchange).toHaveBeenCalledWith(GIFT_GROUPING_OPTIONS.none);
+		expect(callbacks.onviewmodechange).not.toHaveBeenCalled();
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('keeps authenticated visitor preview and unfollow controls in one visible placement', async () => {
+		for (const [width, expectedRows] of [
+			[390, 2],
+			[400, 1],
+		] as const) {
+			await page.viewport(width, 720);
+			const host = createTrackedToolbarHost(`${width - 32}px`);
+			const screen = await render(
+				WishlistDetailToolbar,
+				{
+					...defaultProps,
+					isAuthenticated: true,
+					sortOption: GIFT_SORT_OPTIONS.name,
+				},
+				{ baseElement: host },
+			);
+			const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+			const visibleRows = Array.from(
+				toolbar.querySelectorAll<HTMLElement>('[data-mobile-toolbar-row]'),
+			).filter((row) => row.getClientRects().length > 0);
+			expect(visibleRows).toHaveLength(expectedRows);
+			for (const row of visibleRows) {
+				expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+			}
+			if (width === 400) {
+				expect(toolbar.getBoundingClientRect().height).toBeLessThanOrEqual(60);
+			}
+			const visibleButtons = Array.from(
+				toolbar.querySelectorAll<HTMLButtonElement>('button'),
+			).filter((button) => button.getClientRects().length > 0);
+			expect(
+				visibleButtons.filter(
+					(button) => button.getAttribute('aria-label') === m.wishlist_detail_unfollow(),
+				),
+			).toHaveLength(1);
+			expect(
+				visibleButtons.filter(
+					(button) =>
+						button.getAttribute('aria-label') === m.recipient_view_preview_turn_on(),
+				),
+			).toHaveLength(1);
+			await screen.unmount();
+			host.remove();
+		}
+	});
+
+	it('invokes management callbacks only when the recipient role exposes their actions', async () => {
+		const callbacks = {
+			onsettings: vi.fn(),
+			onbatchadd: vi.fn(),
+			onaddgift: vi.fn(),
+		};
+		const recipient = await renderToolbar({
+			...callbacks,
+			canManage: true,
+			role: WISHLIST_ROLES.recipient,
+		});
+
+		await recipient.getByRole('button', { name: m.wishlist_settings_title() }).click();
+		await recipient.getByRole('button', { name: m.batch_add_toolbar_label() }).click();
+		await recipient.getByRole('button', { name: m.wishlist_detail_add_gift_label() }).click();
+		expect(callbacks.onsettings).toHaveBeenCalledOnce();
+		expect(callbacks.onbatchadd).toHaveBeenCalledOnce();
+		expect(callbacks.onaddgift).toHaveBeenCalledOnce();
+		await recipient.unmount();
+
+		const visitor = await renderToolbar({ ...callbacks, canManage: false });
+		await expect
+			.element(visitor.getByRole('button', { name: m.wishlist_settings_title() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(visitor.getByRole('button', { name: m.batch_add_toolbar_label() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(visitor.getByRole('button', { name: m.wishlist_detail_add_gift_label() }))
+			.not.toBeInTheDocument();
+		await visitor.unmount();
+	});
+
+	it('activates filter row text once and internally scrolls long filter content', async () => {
+		const onfilterchange = vi.fn();
+		const categoryFilterOptions = Array.from({ length: 30 }, (_, index) => ({
+			value: `category-${index}`,
+			label: `Kategorie ${index}`,
+		}));
+		const screen = await renderToolbar({ onfilterchange, categoryFilterOptions });
+		await screen.getByTestId('mobile-filter-trigger').click();
+		const checkbox = screen
+			.getByRole('checkbox', { name: m.gift_filter_with_link() })
+			.element();
+		await (checkbox.parentElement!.querySelector('span') as HTMLElement).click();
+		expect(onfilterchange).toHaveBeenCalledTimes(1);
+		expect(onfilterchange).toHaveBeenCalledWith({
+			...defaultProps.filters,
+			withLinkOnly: true,
+		});
+		const scrollRegion = screen.getByTestId('mobile-sheet-scroll').element() as HTMLElement;
+		expect(getComputedStyle(scrollRegion).overflowY).toBe('auto');
+		expect(scrollRegion.scrollHeight).toBeGreaterThan(scrollRegion.clientHeight);
+		await screen.unmount();
+	});
+
+	it('renders exactly one viewport-specific view control immediately', async () => {
+		for (const width of [390, 1280]) {
+			await page.viewport(width, 720);
+			const screen = await render(WishlistDetailToolbar, defaultProps);
+
+			expect(document.querySelectorAll('[aria-label="Karta"]')).toHaveLength(1);
+			expect(
+				document.querySelectorAll('[data-testid="wishlist-toolbar-mobile"]'),
+			).toHaveLength(width < 640 ? 1 : 0);
+			expect(document.querySelectorAll('.toolbar-desktop')).toHaveLength(width < 640 ? 0 : 1);
+
+			await screen.unmount();
+		}
+	});
+
+	it('uses the viewport sm breakpoint even when the content column is narrower', async () => {
+		await page.viewport(640, 720);
+		const host = createTrackedToolbarHost('608px');
+		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
+		expect(host.querySelector('[data-testid="wishlist-toolbar-mobile"]')).toBeNull();
+		const desktop = host.querySelector('.toolbar-desktop') as HTMLElement;
+		expect(getComputedStyle(desktop).display).toBe('block');
+		await expect
+			.element(
+				screen.getByRole('button', {
+					name: `${m.gift_sort_by()}: ${m.gift_sort_owner_order()}`,
+				}),
+			)
+			.toBeVisible();
+		await screen.unmount();
+		host.remove();
+	});
+});
 
 describe('WishlistDetailToolbar recipient-view preview (#241)', () => {
 	it('shows the compact pressed preview button to visitors and moderators, but never recipients', async () => {
@@ -422,7 +930,9 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 			.element() as HTMLButtonElement;
 		const incompatibleButtons = Array.from(
 			screen.getByTestId('wishlist-toolbar').element().querySelectorAll('button'),
-		).filter((button) => button !== doneButton) as HTMLButtonElement[];
+		).filter(
+			(button) => button !== doneButton && button.getClientRects().length > 0,
+		) as HTMLButtonElement[];
 
 		expect(incompatibleButtons.length).toBeGreaterThan(8);
 		for (const button of incompatibleButtons) {
@@ -442,7 +952,8 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 		await screen.unmount();
 	});
 
-	it('keeps mobile active-filter pills visible while disabling remove and clear', async () => {
+	it('omits active-filter pills from mobile reorder chrome', async () => {
+		await page.viewport(320, 720);
 		const host = document.createElement('div');
 		host.style.width = '320px';
 		document.body.appendChild(host);
@@ -459,20 +970,13 @@ describe('WishlistDetailToolbar reorder mode (#239)', () => {
 			},
 			{ baseElement: host },
 		);
-		const pillsRegion = screen.getByTestId('wishlist-toolbar-active-filters').element();
-		const pillButtons = Array.from(
-			pillsRegion.querySelectorAll('button'),
-		) as HTMLButtonElement[];
-
-		expect(getComputedStyle(pillsRegion).display).toBe('flex');
-		expect(pillButtons).toHaveLength(2);
-		for (const button of pillButtons) {
-			expect(button.disabled).toBe(true);
-			button.click();
-		}
+		const mobile = screen.getByTestId('wishlist-toolbar-mobile').element();
+		expect(mobile.querySelector('[data-active-filter-pill]')).toBeNull();
+		expect(mobile.querySelector('[data-filter-count]')).toBeNull();
 		expect(onfilterchange).not.toHaveBeenCalled();
 		await screen.unmount();
 		host.remove();
+		await page.viewport(1280, 720);
 	});
 });
 
@@ -578,6 +1082,7 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 
 	it('starts long active filters on a dedicated full row after controls and atomic actions', async () => {
 		const host = document.createElement('div');
+		host.style.width = '1120px';
 		document.body.appendChild(host);
 		const screen = await render(
 			WishlistDetailToolbar,
@@ -604,13 +1109,14 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 			},
 			{ baseElement: host },
 		);
+		await new Promise(requestAnimationFrame);
 		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
 		const controls = screen.getByTestId('wishlist-toolbar-controls').element();
 		const pills = screen.getByTestId('wishlist-toolbar-active-filters').element();
 		const actions = screen.getByTestId('wishlist-toolbar-actions').element();
 		const actionButtons = Array.from(actions.querySelectorAll('button'));
 
-		for (const width of [320, 390, 480, 800, 1120]) {
+		for (const width of [680, 800, 1120]) {
 			host.style.width = `${width}px`;
 			await new Promise(requestAnimationFrame);
 			const toolbarRect = toolbar.getBoundingClientRect();
@@ -740,8 +1246,9 @@ describe('WishlistDetailToolbar filter motion', () => {
 		const screen = await renderToolbar({
 			filters: { ...defaultProps.filters, withLinkOnly: true },
 		});
-		const count = document.querySelector<HTMLElement>('[data-filter-count]');
-		const pill = document.querySelector<HTMLElement>('[data-active-filter-pill]');
+		const desktop = document.querySelector<HTMLElement>('.toolbar-desktop')!;
+		const count = desktop.querySelector<HTMLElement>('[data-filter-count]');
+		const pill = desktop.querySelector<HTMLElement>('[data-active-filter-pill]');
 
 		expect(count).not.toBeNull();
 		expect(pill).not.toBeNull();

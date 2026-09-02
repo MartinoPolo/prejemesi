@@ -11,7 +11,10 @@ export default defineConfig({
 	retries: 1,
 	timeout: 60_000,
 	expect: { timeout: 10_000 },
-	workers: process.env.CI ? 4 : undefined,
+	// Keep the shared Vite dev server and PostgreSQL fixture below saturation. On high-core
+	// developer machines Playwright's default worker count overloads first-hit SSR/remote
+	// requests, producing migrating timeouts that pass immediately on retry.
+	workers: 2,
 	use: {
 		baseURL: development.playwrightBaseUrl,
 		trace: 'on-first-retry',
