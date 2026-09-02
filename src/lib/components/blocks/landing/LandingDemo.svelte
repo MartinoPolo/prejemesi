@@ -279,7 +279,7 @@
 					>
 						<div class="demo-polaroid-img">
 							<img
-								src={asset('/demo/pane-gifter.jpg')}
+								src={asset('/demo/v1/pane-gifter.webp')}
 								alt={m.landing_demo_gifter_photo_alt()}
 								loading="lazy"
 							/>
@@ -312,7 +312,7 @@
 					>
 						<div class="demo-polaroid-img">
 							<img
-								src={asset('/demo/pane-recipient.jpg')}
+								src={asset('/demo/v1/pane-recipient.webp')}
 								alt={m.landing_demo_recipient_photo_alt()}
 								loading="lazy"
 							/>

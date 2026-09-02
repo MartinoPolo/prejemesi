@@ -135,7 +135,7 @@ describe('WishlistSettingsModal import and export tab', () => {
 			activeTab: 'image',
 			wishlist: {
 				...wishlist,
-				imageKey: 'demo/backpack.jpg',
+				imageKey: 'demo/v1/backpack.jpg',
 				imageSlots: createDefaultWishlistSlots(),
 			},
 		});

@@ -207,22 +207,22 @@ describe('GiftDetailForm stored images', () => {
 			...baseProps,
 			gift: makeGift({
 				imageUrl: 'https://shop.example/original.jpg',
-				imageKey: 'demo/backpack.jpg',
+				imageKey: 'demo/v1/backpack.jpg',
 			}),
 			onupdate,
 		});
 
 		const mainPreview = document.querySelector('[data-testid="crop-stage"] img');
 		const uploadPreview = document.querySelector('img[data-testid="image-upload-preview"]');
-		expect(mainPreview?.getAttribute('src')).toBe('/demo/backpack.jpg');
-		expect(uploadPreview?.getAttribute('src')).toBe('/demo/backpack.jpg');
+		expect(mainPreview?.getAttribute('src')).toBe('/demo/v1/backpack.jpg');
+		expect(uploadPreview?.getAttribute('src')).toBe('/demo/v1/backpack.jpg');
 
 		await screen.getByRole('button', { name: m.save() }).click();
 
 		expect(onupdate).toHaveBeenCalledWith(
 			expect.objectContaining({
 				imageUrl: 'https://shop.example/original.jpg',
-				imageKey: 'demo/backpack.jpg',
+				imageKey: 'demo/v1/backpack.jpg',
 			}),
 		);
 	});
