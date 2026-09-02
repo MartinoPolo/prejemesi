@@ -17,18 +17,70 @@ export function shouldDisableSentryReplay(url: URL): boolean {
 	);
 }
 
-export function createSentryReplaySynchronizer(replay: SentryReplayControl) {
+export function createLazySentryReplaySynchronizer<T>({
+	client,
+	loadIntegration,
+	getReplay,
+	onFailure = () => {},
+}: {
+	client: { addIntegration(integration: T): void };
+	loadIntegration: () => Promise<T>;
+	getReplay: () => SentryReplayControl | undefined;
+	onFailure?: (error: unknown) => void;
+}) {
+	let integrationPromise: Promise<T> | undefined;
+	let integrationAdded = false;
+	let replayDisabled = false;
+	let replay: SentryReplayControl | undefined;
+	let latestUrl: URL;
 	let stoppedForSensitiveRoute = false;
 
-	return (url: URL): void => {
+	return async (url: URL): Promise<void> => {
+		latestUrl = url;
 		if (shouldDisableSentryReplay(url)) {
 			stoppedForSensitiveRoute = true;
-			void replay.stop({ flush: false });
+			if (replay !== undefined) {
+				try {
+					await replay.stop({ flush: false });
+				} catch (error) {
+					replayDisabled = true;
+					onFailure(error);
+				}
+			}
 			return;
 		}
-		if (stoppedForSensitiveRoute) {
-			replay.startBuffering();
-			stoppedForSensitiveRoute = false;
+		if (replayDisabled) {
+			return;
 		}
+
+		const replayWasAlreadyIntegrated = integrationAdded;
+		if (!integrationAdded) {
+			try {
+				integrationPromise ??= loadIntegration();
+				const integration = await integrationPromise;
+				if (shouldDisableSentryReplay(latestUrl) || replayDisabled) {
+					return;
+				}
+				if (!integrationAdded) {
+					integrationAdded = true;
+					client.addIntegration(integration);
+				}
+			} catch (error) {
+				replayDisabled = true;
+				onFailure(error);
+				return;
+			}
+		}
+		replay ??= getReplay();
+		if (replay !== undefined && stoppedForSensitiveRoute && replayWasAlreadyIntegrated) {
+			try {
+				replay.startBuffering();
+			} catch (error) {
+				replayDisabled = true;
+				onFailure(error);
+				return;
+			}
+		}
+		stoppedForSensitiveRoute = false;
 	};
 }
