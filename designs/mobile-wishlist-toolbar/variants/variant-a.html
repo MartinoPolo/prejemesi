@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobilní lišta seznamu přání · Varianta A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&family=Geist:wght@400..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../tokens.css">
+<style>
+  /* Palette primitives and semantic derivation mirror the current app theme. */
+  .app {
+    --p-brand:#1e9be9; --p-deep:#1265a8; --p-ink:#16385c; --p-bright:#55b9f3;
+    --p-coral:#ff7257; --p-accent:#ffc93c; --p-blush:#fff0ed;
+    --font-head:'DynaPuff', ui-rounded, cursive; --font-body:'Geist', sans-serif;
+    --ink:var(--p-ink); --foreground:var(--ink);
+    --muted-foreground:color-mix(in oklab,var(--ink) 62%,transparent);
+    --background:color-mix(in oklab,var(--p-coral) 10%,#fffaf3);
+    --card:#fff; --popover:#fff; --primary:var(--p-coral); --primary-foreground:#fff;
+    --accent:color-mix(in oklab,var(--p-brand) 12%,white); --accent-loud:var(--p-accent);
+    --border:color-mix(in oklab,var(--ink) 16%,transparent); --ring:var(--p-brand);
+    --hard-shadow:color-mix(in oklab,var(--ink) 24%,transparent);
+    --shadow-sticker-sm:2px 2px 0 var(--hard-shadow);
+    --shadow-sticker:4px 4px 0 var(--hard-shadow);
+    --radius-panel:16px; --radius-btn:9px; --border-w:2.5px;
+    color:var(--foreground); font-family:var(--font-body);
+  }
+  *{box-sizing:border-box;margin:0;padding:0} body{min-height:100vh;background:#e8eef1;color:#25354a;font-family:'Geist',sans-serif}
+  button{border:0;font:inherit;color:inherit;cursor:pointer} svg{display:block;pointer-events:none}
+  .canvas{min-height:100vh;display:grid;place-content:center;padding:24px}
+  .stage{width:390px;max-width:100%}.eyebrow{margin:0 0 8px 3px;color:#526275;font-size:11px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+  .phone{position:relative;width:390px;max-width:100%;height:844px;overflow:hidden;border:1px solid #b9c4ca;border-radius:20px;background:var(--background);box-shadow:0 24px 64px rgb(22 56 92 / 18%)}
+  .app-header{position:relative;z-index:40;height:56px;display:flex;align-items:center;gap:7px;padding:0 10px;background:var(--card);border-bottom:2px solid var(--ink)}
+  .sticker,.header-create{height:40px;min-width:40px;display:grid;place-items:center;background:var(--card);border:var(--border-w) solid var(--ink);border-radius:10px;box-shadow:var(--shadow-sticker-sm);transition:transform .14s ease,box-shadow .14s ease,background .14s ease}
+  .sticker:hover,.header-create:hover{transform:translateY(-1px);box-shadow:3px 3px 0 var(--hard-shadow)}
+  .sticker:active,.header-create:active{transform:translate(2px,2px);box-shadow:none}.sticker:disabled,.header-create:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+  button:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+  .brand{min-width:0;display:flex;align-items:center;gap:6px;margin-right:auto}.brand-mark{width:39px;height:39px;display:grid;place-items:center;color:#fff;background:var(--primary);border:var(--border-w) solid var(--ink);border-radius:11px;box-shadow:var(--shadow-sticker-sm);transform:rotate(-4deg)}
+  .brand-name{font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}.brand-name i{font:700 11px var(--font-body);color:var(--muted-foreground)}
+  .header-create{background:var(--primary);color:#fff}.bell{position:relative;width:40px;height:40px;display:grid;place-items:center;background:transparent;border-radius:9px}.notice{position:absolute;top:1px;right:0;min-width:18px;height:18px;padding:0 4px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:20px;background:var(--primary);color:#fff;font-size:9px;font-weight:800}
+  .avatar{width:36px;height:36px;border:var(--border-w) solid var(--ink);border-radius:50%;background:linear-gradient(145deg,#ffd08a 0 36%,#69bde9 36%);display:grid;place-items:center;font-size:10px;font-weight:800;box-shadow:var(--shadow-sticker-sm)}
+
+  .page{height:calc(100% - 56px);overflow:hidden;background:linear-gradient(180deg,var(--background),#fff8ef)}
+  .sticky-zone{position:relative;z-index:30;padding:14px 16px 0}.toolbar{position:relative;height:106px;padding:8px;background:var(--card);border:var(--border-w) solid var(--ink);border-radius:var(--radius-panel);box-shadow:var(--shadow-sticker)}
+  .toolbar-row{height:40px;display:flex;align-items:center;gap:7px}.toolbar-row+.toolbar-row{margin-top:7px;padding-top:7px;border-top:1.5px dashed var(--border)}
+  .view-switch{height:40px;display:flex;align-items:center;padding:2px;gap:1px;border:2px solid var(--ink);border-radius:11px;background:var(--accent)}
+  .control{position:relative;flex:0 0 40px;width:40px;height:40px;display:grid;place-items:center;border:var(--border-w) solid var(--ink);border-radius:var(--radius-btn);background:var(--card);box-shadow:var(--shadow-sticker-sm);transition:transform .13s ease,box-shadow .13s ease,background .13s ease}
+  .view-switch .control{width:34px;height:32px;min-height:32px;flex-basis:34px;border-color:transparent;box-shadow:none;background:transparent}
+  .view-switch .control[aria-pressed="true"]{border-color:var(--ink);background:#fff;box-shadow:1px 1px 0 var(--hard-shadow)}
+  .control:hover:not(:disabled){background:var(--accent);transform:translateY(-1px)}.control:active:not(:disabled),.control[aria-expanded="true"]{background:var(--accent);transform:translate(2px,2px);box-shadow:none}.control:disabled{opacity:.42;cursor:not-allowed;transform:none;box-shadow:none}
+  .control.primary{background:var(--primary);color:#fff}.control.primary:hover{background:color-mix(in oklab,var(--primary) 86%,#b73d2d)}
+  .control.ghost{border-color:transparent;box-shadow:none;color:var(--muted-foreground)}.control.ghost:hover{border-color:var(--border);box-shadow:none}.spacer{flex:1}
+  .filter-count{position:absolute;top:-6px;right:-5px;min-width:19px;height:19px;padding:0 4px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:99px;background:var(--accent-loud);color:var(--ink);font-size:10px;font-weight:800}
+  .anchor{position:relative}.menu{position:absolute;z-index:50;top:98px;width:304px;max-height:544px;overflow:auto;padding:7px;background:var(--popover);border:var(--border-w) solid var(--ink);border-radius:14px;box-shadow:6px 7px 0 var(--hard-shadow);animation:pop .14s ease-out}.anchor-sort .menu{left:-83px}.anchor-group .menu{left:-130px}.anchor-filter .menu{left:-176px}
+  .menu[hidden]{display:none}.menu::before{content:"";position:absolute;top:-8px;width:13px;height:13px;background:var(--popover);border-left:var(--border-w) solid var(--ink);border-top:var(--border-w) solid var(--ink);transform:rotate(45deg)}.anchor-sort .menu::before{left:98px}.anchor-group .menu::before{left:145px}.anchor-filter .menu::before{left:187px}
+  .menu-title{padding:8px 9px 6px;font-family:var(--font-head);font-size:16px;font-weight:650;line-height:1.15;letter-spacing:-.02em}.menu-current{padding:0 9px 8px;color:var(--muted-foreground);font-size:12px}.menu-heading{padding:10px 9px 4px;color:var(--muted-foreground);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.menu-rule{height:1.5px;margin:6px;background:var(--border)}
+  .menu-item{position:relative;width:100%;min-height:40px;padding:9px 38px 9px 10px;display:flex;align-items:center;gap:10px;border-radius:8px;background:transparent;text-align:left;font-size:13px;font-weight:600;line-height:1.25}.menu-item:hover,.menu-item:focus-visible{background:var(--accent)}.menu-item:active{background:color-mix(in oklab,var(--p-brand) 20%,white)}.menu-item:disabled{opacity:.42;cursor:not-allowed}.check{position:absolute;right:10px;display:grid;place-items:center;width:18px;height:18px}.box{width:18px;height:18px;display:grid;place-items:center;border:2px solid var(--ink);border-radius:5px;background:#fff}.menu-item[aria-checked="true"] .box{background:var(--p-brand);color:#fff}.clear{color:#b43d32}
+
+  .gift-stream{position:relative;z-index:1;padding:14px 16px 70px}.gift-card{overflow:hidden;margin-bottom:22px;background:var(--card);border:var(--border-w) solid var(--ink);border-radius:18px;box-shadow:var(--shadow-sticker)}.gift-image{position:relative;height:285px;display:grid;place-items:center;border-bottom:var(--border-w) solid var(--ink);background:linear-gradient(150deg,#edf7e8,#c4dda8)}
+  .gift-image.second{height:250px;background:linear-gradient(155deg,#162e4a,#265d78 58%,#f6a04d)}.bottle{position:relative;width:108px;height:210px;border:2px solid #375633;border-radius:8px 8px 18px 18px;background:linear-gradient(90deg,#567e40,#a7c878 48%,#4d7239);box-shadow:12px 14px 22px rgb(35 74 40 / 22%)}.bottle::before{content:"";position:absolute;left:26px;top:-43px;width:55px;height:45px;border:2px solid #375633;border-radius:7px 7px 2px 2px;background:#273c2a}.bottle-label{position:absolute;left:7px;right:7px;top:82px;padding:12px 5px;background:#eef1cf;border:1px solid #526a3a;text-align:center;color:#365032;font-family:Georgia,serif;font-size:10px}.leaf{position:absolute;width:125px;height:26px;border-radius:100% 0 100% 0;background:#315e35;transform-origin:right center}.leaf.a{left:8px;bottom:48px;transform:rotate(-19deg)}.leaf.b{right:5px;bottom:35px;transform:rotate(18deg) scaleX(-1)}
+  .gift-body{padding:18px 22px 22px}.gift-title{font-family:var(--font-head);font-size:20px;line-height:1.18;letter-spacing:-.025em}.price{margin-top:10px;font-size:20px;font-weight:800}.priority{display:inline-flex;margin-top:12px;padding:5px 10px;border-radius:99px;background:var(--accent);color:var(--muted-foreground);font-size:11px;font-weight:800;text-transform:uppercase}.links{display:flex;gap:8px;margin-top:14px}.link-pill{height:36px;padding:0 12px;border:2px solid var(--ink);border-radius:99px;background:#fff;color:#6744ec;font-weight:750}.gift-note{margin-top:16px;color:var(--muted-foreground);font-size:14px;line-height:1.5}.city{position:absolute;inset:auto 0 0;height:105px;background:linear-gradient(90deg,#0c2035 0 8%,transparent 8% 14%,#142c40 14% 23%,transparent 23% 28%,#173548 28% 45%,transparent 45% 52%,#112a3f 52% 67%,transparent 67% 73%,#19384a 73%)}
+  .toast{position:absolute;z-index:70;left:50%;bottom:18px;transform:translate(-50%,20px);padding:10px 14px;border:2px solid var(--ink);border-radius:10px;background:var(--ink);color:#fff;box-shadow:var(--shadow-sticker);font-size:12px;font-weight:700;opacity:0;pointer-events:none;transition:.18s ease}.toast.show{opacity:1;transform:translate(-50%,0)}
+  @keyframes pop{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:none}}
+  @media (max-width:450px){.canvas{padding:0;display:block}.stage{width:100%}.eyebrow{height:28px;margin:0;padding:7px 12px;background:#e8eef1}.phone{width:390px;max-width:100%;height:calc(100vh - 28px);min-height:700px;border:0;border-radius:0;box-shadow:none}}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<main class="canvas">
+  <div class="stage">
+    <p class="eyebrow">Varianta A · ukotvené nabídky</p>
+    <section class="phone app" aria-label="Mobilní náhled seznamu přání">
+      <header class="app-header">
+        <button class="sticker" aria-label="Otevřít hlavní nabídku" title="Hlavní nabídka"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <div class="brand" aria-label="Přejeme si"><span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="8" width="18" height="4"/><path d="M12 8v13M5 12v9h14v-9M7.5 8C5.8 8 5 7 5 5.5S6 3 7.5 3C10 3 12 8 12 8s2-5 4.5-5C18 3 19 4.5 19 5.5S18 8 16.5 8"/></svg></span><span class="brand-name">přejemesi<i>.cz</i></span></div>
+        <button class="header-create" aria-label="Vytvořit nový seznam" title="Vytvořit"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="bell" aria-label="Oznámení, 12 nepřečtených"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M10 21h4"/></svg><span class="notice">12</span></button>
+        <button class="avatar" aria-label="Profil Petra Svobody">PS</button>
+      </header>
+
+      <div class="page">
+        <div class="sticky-zone">
+          <nav class="toolbar" aria-label="Nástroje seznamu přání">
+            <div class="toolbar-row" aria-label="Zobrazení a filtry">
+              <div class="view-switch" role="group" aria-label="Způsob zobrazení">
+                <button class="control" data-view="card" aria-label="Karty" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+                <button class="control" data-view="list" aria-label="Seznam" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+              </div>
+              <div class="anchor anchor-sort"><button class="control trigger" data-menu="sort" aria-label="Řazení: Výchozí pořadí" title="Řazení: Výchozí pořadí" aria-haspopup="menu" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="m21 16-4 4-4-4M17 20V4M3 8l4-4 4 4M7 4v16"/></svg></button><div class="menu" data-panel="sort" role="menu" aria-label="Řazení" hidden><h2 class="menu-title">Řazení dárků</h2><p class="menu-current">Aktuálně: <span>Výchozí pořadí</span></p><div class="menu-rule"></div><button class="menu-item choice" data-value="Výchozí pořadí" role="menuitemradio" aria-checked="true">Výchozí pořadí<span class="check">✓</span></button><button class="menu-item choice" data-value="Nejnovější" role="menuitemradio" aria-checked="false">Nejnovější<span class="check"></span></button><button class="menu-item choice" data-value="Cena od nejnižší" role="menuitemradio" aria-checked="false">Cena od nejnižší<span class="check"></span></button><button class="menu-item choice" data-value="Cena od nejvyšší" role="menuitemradio" aria-checked="false">Cena od nejvyšší<span class="check"></span></button></div></div>
+              <div class="anchor anchor-group"><button class="control trigger" data-menu="group" aria-label="Seskupení: Bez seskupení" title="Seskupení: Bez seskupení" aria-haspopup="menu" aria-expanded="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg></button><div class="menu" data-panel="group" role="menu" aria-label="Seskupení" hidden><h2 class="menu-title">Seskupení dárků</h2><p class="menu-current">Aktuálně: <span>Bez seskupení</span></p><div class="menu-rule"></div><button class="menu-item choice" data-value="Bez seskupení" role="menuitemradio" aria-checked="true">Bez seskupení<span class="check">✓</span></button><button class="menu-item choice" data-value="Podle kategorie" role="menuitemradio" aria-checked="false">Podle kategorie<span class="check"></span></button><button class="menu-item choice" data-value="Podle priority" role="menuitemradio" aria-checked="false">Podle priority<span class="check"></span></button></div></div>
+              <div class="anchor anchor-filter"><button class="control trigger" data-menu="filter" aria-label="Filtrovat, 2 aktivní filtry" title="Filtrovat, 2 aktivní filtry" aria-haspopup="menu" aria-expanded="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M3 6h13M3 12h9M3 18h6M19 13v6M16 16h6"/></svg><span class="filter-count" aria-hidden="true">2</span></button><div class="menu" data-panel="filter" role="menu" aria-label="Filtrovat dárky"><h2 class="menu-title">Filtrovat dárky</h2><p class="menu-current"><span class="active-summary">2 aktivní filtry</span></p><div class="menu-rule"></div><p class="menu-heading">Dostupnost</p><button class="menu-item filter-item" role="menuitemcheckbox" aria-checked="true">Pouze dostupné<span class="check box">✓</span></button><button class="menu-item filter-item" role="menuitemcheckbox" aria-checked="false">S odkazem<span class="check box"></span></button><p class="menu-heading">Kategorie</p><button class="menu-item filter-item" role="menuitemcheckbox" aria-checked="true">Kosmetika a péče<span class="check box">✓</span></button><button class="menu-item filter-item" role="menuitemcheckbox" aria-checked="false">Knihy a časopisy<span class="check box"></span></button><button class="menu-item filter-item" role="menuitemcheckbox" aria-checked="false">Domov a zahrada<span class="check box"></span></button><p class="menu-heading">Priorita</p><button class="menu-item filter-item" role="menuitemcheckbox" aria-checked="false">Vysoká priorita<span class="check box"></span></button><button class="menu-item filter-item" role="menuitemcheckbox" aria-checked="false">Nízká priorita<span class="check box"></span></button><div class="menu-rule"></div><button class="menu-item clear" data-clear>Zrušit filtry<svg class="check" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button></div></div>
+              <button class="control ghost" data-reset aria-label="Obnovit výchozí nastavení zobrazení" title="Obnovit výchozí nastavení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+            </div>
+            <div class="toolbar-row" aria-label="Správa seznamu">
+              <button class="control" data-reorder aria-label="Změnit pořadí dárků" title="Změnit pořadí"><span class="hand-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v4M14 10V4a2 2 0 0 0-4 0v6M10 10V6a2 2 0 0 0-4 0v8l-1.2-1.2a2 2 0 0 0-2.8 2.8l5.6 5.6c.5.5 1.2.8 2 .8H16a5 5 0 0 0 5-5v-6a2 2 0 0 0-4 0"/></svg></span></button>
+              <span class="spacer"></span>
+              <button class="control manage" aria-label="Nastavení seznamu" title="Nastavení"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></button>
+              <button class="control manage" aria-label="Přidat více dárků" title="Přidat více dárků"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M3 6h9M3 12h9M3 18h9M19 8v8M15 12h8"/></svg></button>
+              <button class="control primary manage" aria-label="Přidat dárek" title="Přidat dárek"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 5v14M5 12h14"/></svg></button>
+            </div>
+          </nav>
+        </div>
+
+        <section class="gift-stream" aria-label="Dárky">
+          <article class="gift-card"><div class="gift-image" role="img" aria-label="Láhev šamponu Aloe Vera"><span class="leaf a"></span><span class="leaf b"></span><div class="bottle"><span class="bottle-label">ALOE VERA<br><b>NORMAL HAIR</b><br>organic shampoo</span></div></div><div class="gift-body"><h2 class="gift-title">URTEKRAM Šampon Aloe Vera pro normální vlasy BIO</h2><p class="price">199 Kč</p><span class="priority">Priorita · Nízká</span><div class="links"><button class="link-pill">Bioneeds</button><button class="link-pill">Alza</button><button class="link-pill">Heureka</button></div><p class="gift-note">Přírodní BIO šampon s aloe vera a glycerinem pro hydrataci normálních vlasů.</p></div></article>
+          <article class="gift-card"><div class="gift-image second" role="img" aria-label="Ilustrovaná kniha o nočním městě"><span class="city"></span></div><div class="gift-body"><h2 class="gift-title">Atlas architektury nočních měst</h2><p class="price">649 Kč</p></div></article>
+        </section>
+      </div>
+      <div class="toast" role="status" aria-live="polite"></div>
+    </section>
+  </div>
+</main>
+<script>
+(() => {
+  const phone=document.querySelector('.phone'), triggers=[...document.querySelectorAll('.trigger')], panels=[...document.querySelectorAll('[data-panel]')];
+  const filterTrigger=document.querySelector('[data-menu="filter"]'), badge=filterTrigger.querySelector('.filter-count'), reset=document.querySelector('[data-reset]'), toast=document.querySelector('.toast');
+  let noticeTimer;
+  function say(text){toast.textContent=text;toast.classList.add('show');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>toast.classList.remove('show'),1500)}
+  function closeAll(){triggers.forEach(t=>t.setAttribute('aria-expanded','false'));panels.forEach(p=>p.hidden=true)}
+  function open(name){const trigger=document.querySelector(`[data-menu="${name}"]`), panel=document.querySelector(`[data-panel="${name}"]`), wasOpen=trigger.getAttribute('aria-expanded')==='true';closeAll();if(!wasOpen){trigger.setAttribute('aria-expanded','true');panel.hidden=false;panel.querySelector('button')?.focus()}}
+  triggers.forEach(t=>t.addEventListener('click',e=>{e.stopPropagation();open(t.dataset.menu)}));
+  panels.forEach(p=>p.addEventListener('click',e=>e.stopPropagation())); document.addEventListener('click',closeAll);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAll();document.querySelector(`[data-menu="${document.activeElement.closest('[data-panel]')?.dataset.panel||'filter'}"]`)?.focus()}});
+  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===btn)));say(btn.dataset.view==='card'?'Zobrazení: karty':'Zobrazení: seznam')}));
+  document.querySelectorAll('[data-panel="sort"] .choice,[data-panel="group"] .choice').forEach(item=>item.addEventListener('click',()=>{const panel=item.closest('[data-panel]'), value=item.dataset.value;panel.querySelectorAll('.choice').forEach(i=>{const selected=i===item;i.setAttribute('aria-checked',String(selected));i.querySelector('.check').textContent=selected?'✓':''});panel.querySelector('.menu-current span').textContent=value;const trigger=document.querySelector(`[data-menu="${panel.dataset.panel}"]`);trigger.setAttribute('aria-label',(panel.dataset.panel==='sort'?'Řazení: ':'Seskupení: ')+value);trigger.title=trigger.getAttribute('aria-label');reset.hidden=false;say('Nastavení změněno');closeAll();trigger.focus()}));
+  function updateFilters(){const count=document.querySelectorAll('.filter-item[aria-checked="true"]').length;badge.textContent=count;badge.hidden=count===0;filterTrigger.setAttribute('aria-label',count?`Filtrovat, ${count} aktivní filtry`:'Filtrovat, žádné aktivní filtry');filterTrigger.title=filterTrigger.getAttribute('aria-label');document.querySelector('.active-summary').textContent=count?`${count} aktivní filtry`:'Žádné aktivní filtry';reset.hidden=count===0}
+  document.querySelectorAll('.filter-item').forEach(item=>item.addEventListener('click',()=>{const checked=item.getAttribute('aria-checked')!=='true';item.setAttribute('aria-checked',String(checked));item.querySelector('.box').textContent=checked?'✓':'';updateFilters();say(checked?'Filtr zapnut':'Filtr vypnut')}));
+  function clearFilters(){document.querySelectorAll('.filter-item').forEach(i=>{i.setAttribute('aria-checked','false');i.querySelector('.box').textContent=''});updateFilters();say('Filtry zrušeny')}
+  document.querySelector('[data-clear]').addEventListener('click',clearFilters); reset.addEventListener('click',()=>{clearFilters();document.querySelectorAll('.choice').forEach(i=>{const def=i.dataset.value==='Výchozí pořadí'||i.dataset.value==='Bez seskupení';i.setAttribute('aria-checked',String(def));i.querySelector('.check').textContent=def?'✓':''});say('Výchozí nastavení obnoveno')});
+  const reorder=document.querySelector('[data-reorder]'); reorder.addEventListener('click',()=>{const active=reorder.classList.toggle('primary');reorder.setAttribute('aria-label',active?'Dokončit změnu pořadí':'Změnit pořadí dárků');reorder.innerHTML=active?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>':'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-4 0v4M14 10V4a2 2 0 0 0-4 0v6M10 10V6a2 2 0 0 0-4 0v8l-1.2-1.2a2 2 0 0 0-2.8 2.8l5.6 5.6c.5.5 1.2.8 2 .8H16a5 5 0 0 0 5-5v-6a2 2 0 0 0-4 0"/></svg>';triggers.forEach(t=>t.disabled=active);closeAll();say(active?'Režim řazení zapnut':'Pořadí uloženo')});
+  document.querySelectorAll('.manage,.app-header button').forEach(b=>{if(!b.hasAttribute('data-reorder'))b.addEventListener('click',()=>say(b.getAttribute('aria-label')))});
+})();
+</script>
+</body>
+</html>
