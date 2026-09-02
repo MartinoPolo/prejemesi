@@ -4,6 +4,7 @@
 	import { OUTLINE_CONTROL_SURFACE_CLASSES } from '$lib/components/base/button/button_variants.js';
 	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
 	import { GIFT_SORT_OPTIONS, type GiftSortOption } from '$lib/modules/gifts/types.js';
+	import { GIFT_SORT_KEYS, GIFT_SORT_LABELS } from './gift_sort_options.js';
 	import { cn } from '$lib/utils.js';
 
 	interface GiftSortSelectProps {
@@ -24,22 +25,11 @@
 		class: className,
 	}: GiftSortSelectProps = $props();
 
-	const SORT_LABELS = {
-		ownerOrder: () => m.gift_sort_owner_order(),
-		priority: () => m.gift_sort_priority(),
-		priceAsc: () => m.gift_sort_price_asc(),
-		priceDesc: () => m.gift_sort_price_desc(),
-		name: () => m.gift_sort_name(),
-		dateAdded: () => m.gift_sort_date_added(),
-	} satisfies Record<GiftSortOption, () => string>;
-
-	const SORT_KEYS = Object.keys(GIFT_SORT_OPTIONS) as GiftSortOption[];
-
 	function isGiftSortOption(candidate: string): candidate is GiftSortOption {
 		return candidate in GIFT_SORT_OPTIONS;
 	}
 
-	const combinedLabel = $derived(`${m.gift_sort_by()}: ${SORT_LABELS[value]()}`);
+	const combinedLabel = $derived(`${m.gift_sort_by()}: ${GIFT_SORT_LABELS[value]()}`);
 </script>
 
 <!-- Visible sort select in the wishlist toolbar (issue #101 / #102 REQ-15) -->
@@ -62,12 +52,12 @@
 		title={combinedLabel}
 	>
 		<ArrowUpDownIcon class="size-4 shrink-0 text-muted-foreground" data-toolbar-icon="sort" />
-		<span class="min-w-0 truncate">{SORT_LABELS[value]()}</span>
+		<span class="min-w-0 truncate">{GIFT_SORT_LABELS[value]()}</span>
 	</Select.Trigger>
 	<Select.Content preventScroll={false}>
 		<Select.Group>
-			{#each SORT_KEYS as option (option)}
-				<Select.Item value={option} label={SORT_LABELS[option]()} />
+			{#each GIFT_SORT_KEYS as option (option)}
+				<Select.Item value={option} label={GIFT_SORT_LABELS[option]()} />
 			{/each}
 		</Select.Group>
 	</Select.Content>
