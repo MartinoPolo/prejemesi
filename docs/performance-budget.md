@@ -136,11 +136,12 @@ pages lean while still making the first in-app navigation fast:
 - **Intent-based preloading (everyone).** `<body data-sveltekit-preload-data="hover">`
   (in `src/app.html`) lets SvelteKit preload a route's code + data on hover / tap
   intent. Anonymous visitors on public wishlist pages rely on this alone.
-- **Bounded idle-time preloading (authenticated only).** `(app)/+layout.svelte`
-  warms the primary nav routes (`/my-lists`, `/moderated`, `/followed`,
-  `/settings`) during idle time via `requestIdleCallback` (3s timeout, with a
-  `setTimeout` fallback for Safari). It is gated to run **only when a user is
-  logged in**, so it never affects the public-page budget.
+- **Selective idle-time preloading (authenticated only).** `(app)/+layout.svelte`
+  warms only `/followed` from the overview (the observed dominant destination),
+  or `/home` from another authenticated route. It uses `requestIdleCallback`
+  with a bounded Safari timer fallback and skips idle preloading when the
+  optional Network Information API reports data-saving mode, `slow-2g`, or
+  `2g`. Hover/tap intent remains the fallback everywhere.
 
 > **Not the same as vite dev-warmup.** `server.warmup.clientFiles` in
 > `vite.config.ts` also lists these primary routes, but that is a **dev-server

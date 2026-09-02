@@ -7,7 +7,7 @@
 	import LanguageToggle from '$lib/components/derived/language-toggle/LanguageToggle.svelte';
 	import PaletteSwitcher from '$lib/components/derived/palette-switcher/PaletteSwitcher.svelte';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
-	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
+	import { LazyImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import { NotificationBell } from '$lib/components/blocks/notification/index.js';
 	import LogoMark from './LogoMark.svelte';
 	import NavDropdown from './NavDropdown.svelte';
@@ -437,7 +437,7 @@
 		bind:open={isCreateModalOpen}
 		onimport={() => (isImportWizardOpen = true)}
 	/>
-	<ImportWizard
+	<LazyImportWizard
 		bind:open={isImportWizardOpen}
 		mode={WIZARD_MODE.newList}
 		onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}

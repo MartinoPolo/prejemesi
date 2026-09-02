@@ -9,7 +9,7 @@
 	import EmptyState from '$lib/components/blocks/dashboard/EmptyState.svelte';
 	import { Button } from '$lib/components/base/button/index.js';
 	import { CreateWishlistModal } from '$lib/components/blocks/wishlist/index.js';
-	import { ImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
+	import { LazyImportWizard, WIZARD_MODE } from '$lib/components/blocks/import/index.js';
 	import {
 		HOME_OVERVIEW_DEPENDENCY,
 		type RecentHomeItem,
@@ -144,7 +144,7 @@
 {/if}
 
 <CreateWishlistModal bind:open={isCreateModalOpen} />
-<ImportWizard
+<LazyImportWizard
 	bind:open={isImportWizardOpen}
 	mode={WIZARD_MODE.newList}
 	onsuccess={() => void invalidate(HOME_OVERVIEW_DEPENDENCY)}
