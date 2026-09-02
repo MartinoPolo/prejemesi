@@ -1,10 +1,11 @@
+import * as v from 'valibot';
 import { eq, and, isNull, count as drizzleCount } from 'drizzle-orm';
 import { error } from '@sveltejs/kit';
 import { SERVER_ERROR } from '$lib/modules/errors/server_error_codes.js';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist } from '$lib/server/db/wishlist.schema.js';
-import { guardedCommand, guardedQuery } from '$lib/server/remote.js';
+import { guardedCommand, guardedQuery, guardedQueryWithArgs } from '$lib/server/remote.js';
 import { ToggleLikeInputSchema, type ToggleLikeResult } from './types.js';
 
 export const toggleLike = guardedCommand(
@@ -84,15 +85,37 @@ export const toggleLike = guardedCommand(
 	},
 );
 
+// Expand/contract compatibility: keep this no-argument remote export until old browser
+// clients using its deployed remote ID have aged out.
 export const getUserLikesForWishlist = guardedQuery(async ({ user }) => {
 	const database = getDb();
-
 	const likes = await database
-		.select({
-			giftId: giftLike.giftId,
-		})
+		.select({ giftId: giftLike.giftId })
 		.from(giftLike)
 		.where(and(eq(giftLike.userId, user.id), isNull(giftLike.deletedAt)));
-
 	return likes.map((row) => row.giftId);
 });
+
+export const getUserLikesForWishlistScoped = guardedQueryWithArgs(
+	v.object({ wishlistId: v.string() }),
+	async ({ user }, { wishlistId }) => {
+		const database = getDb();
+
+		const likes = await database
+			.select({
+				giftId: giftLike.giftId,
+			})
+			.from(giftLike)
+			.innerJoin(gift, eq(giftLike.giftId, gift.id))
+			.where(
+				and(
+					eq(giftLike.userId, user.id),
+					isNull(giftLike.deletedAt),
+					eq(gift.wishlistId, wishlistId),
+					isNull(gift.deletedAt),
+				),
+			);
+
+		return likes.map((row) => row.giftId);
+	},
+);
