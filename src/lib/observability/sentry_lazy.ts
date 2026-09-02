@@ -1,4 +1,4 @@
-export const SENTRY_IDLE_TIMEOUT_MILLISECONDS = 2_000;
+const SENTRY_IDLE_TIMEOUT_MILLISECONDS = 2_000;
 
 interface IdleWindow {
 	document: { readyState: string };
