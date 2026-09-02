@@ -196,3 +196,46 @@ dependency, etc.) and the budget assertion — not the fan-out assertion — fai
 4. Update the **budget** and **measured baseline** tables in this doc (and the
    measurement date), so the numbers and their rationale stay in sync with the
    spec.
+
+---
+
+## Production delta report
+
+The CI performance-report job runs only for PRs whose head branch starts with `perf/` or
+that carry the `performance-report` label.
+
+The pull-request production report complements, rather than replaces, the Vite dev-mode
+fan-out gate above. It builds the base and head commits and compares the actual startup-window
+production JS/CSS assets for `/` and `/login`, avoiding the unbundled module fan-out that
+makes the existing dev budgets intentionally unsuitable as production bundle figures.
+The existing dev budgets remain unchanged and blocking.
+
+Run a checkout locally with a dedicated port and commit label. On Windows Git Bash use:
+
+```bash
+pnpm.exe perf:collect -- --project . --output performance-reports/head.json --port 8402 --commit HEAD --runs 5
+pnpm.exe perf:compare -- --base performance-reports/base.json --head performance-reports/head.json --output performance-reports/summary.md
+```
+
+On macOS or Linux use:
+
+```sh
+pnpm perf:collect -- --project . --output performance-reports/head.json --port 8402 --commit HEAD --runs 5
+pnpm perf:compare -- --base performance-reports/base.json --head performance-reports/head.json --output performance-reports/summary.md
+```
+
+Collection uses five fresh, no-cache Chromium contexts per route and reports medians with
+a fixed 390×844 viewport, 4× CPU throttling, 150 ms latency, and 1.6 Mbps download. Asset
+totals include responses through a fixed 2.5-second post-load startup window, so they may
+include dynamically loaded work in that bounded window. The workflow uploads the base JSON, head JSON, and Markdown summary for 14 days, appends the
+summary to the job page, and updates one marker-based PR comment.
+
+Warnings highlight relative increases of **10% or more in startup-window JS/CSS Brotli bytes**
+and **15% or more in runtime metrics**. They are informational and nonblocking: build,
+browser, collection, missing-input, comparison, artifact, or comment failures must not
+gate a pull request, and failed reports remain visibly represented in the Markdown.
+
+These figures are raw Chromium diagnostics. They are **not Lighthouse scores** and do not
+model deployed-edge behavior, production network routing, caches, or geographic latency.
+Autonomous agents must disclose significant regressions called out by this report in their
+completion summary, even though the report does not block merging.
