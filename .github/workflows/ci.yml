@@ -32,6 +32,25 @@ jobs:
         continue-on-error: true
         runs-on: ubuntu-latest
         timeout-minutes: 30
+        services:
+            postgres:
+                image: postgres:17
+                env:
+                    POSTGRES_USER: root
+                    POSTGRES_PASSWORD: mysecretpassword
+                    POSTGRES_DB: local
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U root -d local"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 20
+        env:
+            DATABASE_URL: postgres://root:mysecretpassword@localhost:5432/local
+            # CI-only secret; production uses the Cloudflare-stored secret.
+            AUTH_SECRET: ci-only-performance-secret-0000000000000000
+            ORIGIN: http://localhost:8402
         permissions:
             contents: read
             pull-requests: write
@@ -72,9 +91,20 @@ jobs:
               continue-on-error: true
               working-directory: performance-head
               run: pnpm run test:performance-report
+            # Each revision is measured against the schema created by its own committed
+            # migrations. Running base first lets head apply only forward migrations;
+            # do not reset, push, or seed this database.
+            - name: Apply base database migrations
+              continue-on-error: true
+              working-directory: performance-base
+              run: pnpm run db:migrate
             - name: Collect base production diagnostics
               continue-on-error: true
               run: node performance-head/scripts/production-performance.mjs collect --project performance-base --output performance-reports/base.json --port 8401 --commit ${{ github.event.pull_request.base.sha }} --runs 5
+            - name: Apply head database migrations
+              continue-on-error: true
+              working-directory: performance-head
+              run: pnpm run db:migrate
             - name: Collect head production diagnostics
               continue-on-error: true
               run: node performance-head/scripts/production-performance.mjs collect --project performance-head --output performance-reports/head.json --port 8402 --commit ${{ github.event.pull_request.head.sha }} --runs 5

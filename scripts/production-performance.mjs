@@ -258,19 +258,23 @@ async function collect(options) {
 		await run(process.platform === 'win32' ? 'pnpm.exe' : 'pnpm', ['run', 'build'], {
 			cwd: project,
 		});
-		wrangler = spawn(
-			process.execPath,
-			[
-				'node_modules/wrangler/bin/wrangler.js',
-				'dev',
-				'.svelte-kit/cloudflare/_worker.js',
-				'--port',
-				String(port),
-				'--var',
-				`ORIGIN:http://127.0.0.1:${port}`,
-			],
-			{ cwd: project, stdio: 'inherit', detached: process.platform !== 'win32' },
-		);
+		const wranglerArgs = [
+			'node_modules/wrangler/bin/wrangler.js',
+			'dev',
+			'.svelte-kit/cloudflare/_worker.js',
+			'--port',
+			String(port),
+			'--var',
+			`ORIGIN:http://127.0.0.1:${port}`,
+		];
+		if (process.env.AUTH_SECRET) {
+			wranglerArgs.push('--var', `AUTH_SECRET:${process.env.AUTH_SECRET}`);
+		}
+		wrangler = spawn(process.execPath, wranglerArgs, {
+			cwd: project,
+			stdio: 'inherit',
+			detached: process.platform !== 'win32',
+		});
 		const wranglerSpawnFailure = new Promise((_, reject) => {
 			wrangler.once('error', (error) => {
 				readiness.abort(error);
