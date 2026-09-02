@@ -27,7 +27,7 @@
 		WISHLIST_SETTINGS_QUERY_PARAM,
 	} from '$lib/modules/wishlists/wishlist_query_params.js';
 	import { consumeGiftDeepLink } from '$lib/modules/wishlists/gift_deep_link.js';
-	import ImportWizard from '$lib/components/blocks/import/ImportWizard.svelte';
+	import { LazyImportWizard } from '$lib/components/blocks/import/index.js';
 	import { WIZARD_MODE } from '$lib/components/blocks/import/import_wizard_types.js';
 	import { emptyGiftFilters, setGiftsContext } from '$lib/modules/gifts/gifts.context.svelte.js';
 	import { createLatestAsyncQueue } from '$lib/modules/gifts/latest_async_queue.js';
@@ -1578,7 +1578,7 @@
 </Dialog.Root>
 
 {#if canManage}
-	<ImportWizard
+	<LazyImportWizard
 		bind:open={importWizardOpen}
 		mode={WIZARD_MODE.append}
 		wishlistId={wishlist.id}
