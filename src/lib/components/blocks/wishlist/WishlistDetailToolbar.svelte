@@ -584,12 +584,7 @@
 
 {#snippet mobileDisplayControls()}
 	<div class="mobile-browse-row" data-mobile-toolbar-row>
-		<GiftViewSwitcher
-			value={viewMode}
-			onchange={onviewmodechange}
-			disabled={reorderMode}
-			contained
-		/>
+		<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} disabled={reorderMode} />
 		<div class="mobile-browse-spacer"></div>
 		<SimpleTooltip text={sortCombinedLabel}>
 			<Button
@@ -1481,17 +1476,6 @@
 
 		.toolbar-desktop {
 			display: block;
-		}
-
-		.toolbar-desktop-view-switcher :global([data-slot='toggle-group']) {
-			height: 32px;
-		}
-
-		.toolbar-desktop-view-switcher :global([data-slot='toggle-group-item']) {
-			width: 32px;
-			min-width: 32px;
-			height: 32px;
-			min-height: 32px;
 		}
 
 		.toolbar-layout-selection {

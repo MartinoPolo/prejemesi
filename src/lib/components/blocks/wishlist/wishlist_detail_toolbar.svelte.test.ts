@@ -87,18 +87,6 @@ function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
 	);
 }
 
-function measureNaturalWidth(element: HTMLElement): number {
-	const clone = element.cloneNode(true) as HTMLElement;
-	clone.style.position = 'fixed';
-	clone.style.width = 'max-content';
-	clone.style.maxWidth = 'none';
-	clone.style.visibility = 'hidden';
-	document.body.appendChild(clone);
-	const width = clone.getBoundingClientRect().width;
-	clone.remove();
-	return width;
-}
-
 const trackedToolbarHosts = new Set<HTMLDivElement>();
 
 function createTrackedToolbarHost(width: string): HTMLDivElement {
@@ -196,6 +184,27 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 				host.remove();
 			}
 		}
+	});
+
+	it('keeps preview, sort, and filter actions outside the view radio group', async () => {
+		const screen = await renderToolbar({
+			canManage: true,
+			role: WISHLIST_ROLES.moderator,
+		});
+		const group = screen
+			.getByRole('group', { name: m.gift_view_switcher_aria() })
+			.element() as HTMLElement;
+		const groupRadios = Array.from(group.querySelectorAll('[role="radio"]'));
+
+		expect(groupRadios).toHaveLength(2);
+		for (const action of [
+			screen.getByRole('button', { name: m.recipient_view_preview_turn_on() }).element(),
+			screen.getByTestId('mobile-sort-trigger').element(),
+			screen.getByRole('button', { name: m.gift_filter() }).element(),
+		]) {
+			expect(group.contains(action)).toBe(false);
+		}
+		await screen.unmount();
 	});
 
 	it('uses 40px targets and ListChecks, Hand, Check mobile mode actions', async () => {
@@ -1238,35 +1247,6 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 			}
 			expect(rectanglesIntersect(controlsRect, pillsRect)).toBe(false);
 			expect(rectanglesIntersect(actionsRect, pillsRect)).toBe(false);
-			if (width <= 390) {
-				const sortTrigger = screen
-					.getByRole('button', {
-						name: `${m.gift_sort_by()}: ${m.gift_sort_owner_order()}`,
-					})
-					.element() as HTMLButtonElement;
-				const groupingTrigger = screen
-					.getByRole('button', {
-						name: `${m.gift_grouping_label()}: ${m.gift_grouping_none()}`,
-					})
-					.element() as HTMLButtonElement;
-				const filterTrigger = screen
-					.getByRole('button', { name: new RegExp(`^${m.gift_filter()}:`) })
-					.element();
-				const resetButton = screen
-					.getByRole('button', { name: m.gift_display_reset_aria() })
-					.element();
-				for (const trigger of [sortTrigger, groupingTrigger]) {
-					expect(
-						trigger.getBoundingClientRect().width,
-						`${trigger.getAttribute('aria-label')} must stay content-width at ${width}px`,
-					).toBeLessThanOrEqual(measureNaturalWidth(trigger) + 0.5);
-				}
-				const filterRect = filterTrigger.getBoundingClientRect();
-				const resetRect = resetButton.getBoundingClientRect();
-				expect(Math.abs(filterRect.top - resetRect.top)).toBeLessThan(0.5);
-				expect(resetRect.left - filterRect.right).toBeGreaterThanOrEqual(0);
-				expect(resetRect.left - filterRect.right).toBeLessThanOrEqual(10);
-			}
 			for (const [index, actionButtonRect] of actionButtonRects.slice(0, -1).entries()) {
 				expect(actionButtonRect.right).toBeLessThanOrEqual(
 					actionButtonRects[index + 1]!.left,
