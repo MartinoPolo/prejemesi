@@ -421,6 +421,30 @@ test('bulk hidden-selection confirmation preserves exact received state on undo'
 	await page.context().close();
 });
 
+test('list view persists on the local device after reload', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const page = await registerAndGetPage(
+		browser,
+		request,
+		baseURL!,
+		createTestUser('gift-actions-view-mode-persistence'),
+	);
+	await createActionFixture(page);
+
+	const listRadio = page.getByRole('radio', { name: m.gift_view_list(), exact: true });
+	await listRadio.click();
+	await expect(page.locator('[data-view-mode="list"]')).toBeVisible();
+	await expect(listRadio).toBeChecked();
+
+	await page.reload();
+	await expect(page.locator('[data-view-mode="list"]')).toBeVisible();
+	await expect(page.getByRole('radio', { name: m.gift_view_list(), exact: true })).toBeChecked();
+	await page.context().close();
+});
+
 test('compact view remains excluded from gift actions', async ({ browser, request, baseURL }) => {
 	const page = await registerAndGetPage(
 		browser,

@@ -953,7 +953,6 @@
 					value={viewMode}
 					onchange={onviewmodechange}
 					disabled={reorderMode}
-					contained
 				/>
 			</div>
 		{/if}

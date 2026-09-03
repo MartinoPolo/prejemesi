@@ -1,6 +1,6 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import { GIFT_VIEW_MODES } from '$lib/modules/gifts/types.js';
 import GiftViewSwitcher from './GiftViewSwitcher.svelte';
@@ -43,53 +43,171 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		await screen.unmount();
 	});
 
-	it('renders one inset warm boundary without a selected shadow covering its sibling', async () => {
+	it('projects legacy compact mode to exactly one checked card radio', async () => {
+		const screen = await render(GiftViewSwitcher, {
+			value: GIFT_VIEW_MODES.compact,
+			onchange: vi.fn(),
+		});
+		const group = screen.getByTestId('gift-view-switcher').element();
+
+		expect(group.querySelectorAll('[role="radio"][aria-checked="true"]')).toHaveLength(1);
+		await expect
+			.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`))
+			.toHaveAttribute('aria-checked', 'true');
+		await screen.unmount();
+	});
+
+	it('leaves legacy compact mode when the projected card radio is clicked', async () => {
+		const onchange = vi.fn();
+		const screen = await render(GiftViewSwitcher, {
+			value: GIFT_VIEW_MODES.compact,
+			onchange,
+		});
+
+		await screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`).click();
+
+		expect(onchange).toHaveBeenCalledExactlyOnceWith(GIFT_VIEW_MODES.card);
+		await screen.unmount();
+	});
+
+	it('moves focus and requests the next selection with arrow navigation', async () => {
 		const onchange = vi.fn();
 		const screen = await render(GiftViewSwitcher, {
 			value: GIFT_VIEW_MODES.card,
 			onchange,
-			contained: true,
 		});
-		const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
 		const card = screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`);
 		const list = screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`);
-		const groupStyle = getComputedStyle(group);
-		const cardElement = card.element() as HTMLElement;
-		const listElement = list.element() as HTMLElement;
 
-		expect(groupStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-		expect(parseFloat(groupStyle.borderWidth)).toBeGreaterThanOrEqual(2);
-		expect(parseFloat(groupStyle.borderRadius)).toBeLessThanOrEqual(8);
-		expect(groupStyle.boxShadow).not.toBe('none');
-		expect(parseFloat(groupStyle.paddingLeft)).toBeGreaterThan(0);
-		expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
-		expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
-		expect(getComputedStyle(cardElement).boxShadow).toBe(
-			getComputedStyle(listElement).boxShadow,
-		);
-		expect(cardElement.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
-		expect(cardElement.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
-		expect(listElement.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
-		expect(listElement.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
-		expect(cardElement.querySelector('svg')!.getBoundingClientRect().y).toBeCloseTo(
-			listElement.querySelector('svg')!.getBoundingClientRect().y,
-			1,
-		);
-		await expect.element(card).toHaveAttribute('aria-checked', 'true');
-		await expect.element(list).toHaveAttribute('aria-checked', 'false');
-		await expect.element(card).toHaveAccessibleName('Karta');
-		await expect.element(list).toHaveAccessibleName('Seznam');
-		cardElement.focus();
+		(card.element() as HTMLElement).focus();
 		await userEvent.keyboard('{ArrowRight}');
+
+		await expect.element(list).toHaveFocus();
+		expect(onchange).toHaveBeenCalledOnce();
 		expect(onchange).toHaveBeenCalledWith(GIFT_VIEW_MODES.list);
-		await screen.rerender({
+		await screen.unmount();
+	});
+
+	it('does not mutate disabled controls and retains their labels and state', async () => {
+		const onchange = vi.fn();
+		const screen = await render(GiftViewSwitcher, {
 			value: GIFT_VIEW_MODES.card,
 			onchange,
 			disabled: true,
-			contained: true,
 		});
+		const card = screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`);
+		const list = screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`);
+
+		await expect.element(card).toHaveAccessibleName('Karta');
+		await expect.element(list).toHaveAccessibleName('Seznam');
 		await expect.element(card).toBeDisabled();
 		await expect.element(list).toBeDisabled();
+		await list.click({ force: true });
+		expect(onchange).not.toHaveBeenCalled();
+		await expect.element(card).toHaveAttribute('aria-checked', 'true');
+		await expect.element(list).toHaveAttribute('aria-checked', 'false');
+		await screen.unmount();
+	});
+
+	it('uses 40px mobile targets and compact 32px desktop targets inside the shared boundary', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(GiftViewSwitcher, {
+			value: GIFT_VIEW_MODES.card,
+			onchange: vi.fn(),
+		});
+		const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
+		const card = screen
+			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
+			.element() as HTMLElement;
+
+		expect(group.getBoundingClientRect().height).toBe(46);
+		expect(card.getBoundingClientRect().width).toBe(40);
+		expect(card.getBoundingClientRect().height).toBe(40);
+
+		await page.viewport(800, 720);
+		expect(group.getBoundingClientRect().height).toBe(38);
+		expect(card.getBoundingClientRect().width).toBe(32);
+		expect(card.getBoundingClientRect().height).toBe(32);
+		await screen.unmount();
+	});
+
+	it('uses one inset ink boundary and no selected shadow over its sibling', async () => {
+		const rootStyle = document.documentElement.style;
+		const properties = ['--secondary', '--card', '--ink'] as const;
+		const previousProperties = properties.map((property) => ({
+			property,
+			value: rootStyle.getPropertyValue(property),
+			priority: rootStyle.getPropertyPriority(property),
+		}));
+		rootStyle.setProperty('--secondary', 'rgb(11, 22, 33)');
+		rootStyle.setProperty('--card', 'rgb(44, 55, 66)');
+		rootStyle.setProperty('--ink', 'rgb(77, 88, 99)');
+
+		const screen = await render(GiftViewSwitcher, {
+			value: GIFT_VIEW_MODES.card,
+			onchange: vi.fn(),
+		});
+
+		try {
+			const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
+			const card = screen
+				.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
+				.element() as HTMLElement;
+			const list = screen
+				.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`)
+				.element() as HTMLElement;
+			const groupStyle = getComputedStyle(group);
+			const cardStyle = getComputedStyle(card);
+			const listStyle = getComputedStyle(list);
+
+			expect(groupStyle.backgroundColor).toBe('rgb(11, 22, 33)');
+			expect(groupStyle.borderColor).toBe('rgb(77, 88, 99)');
+			expect(parseFloat(groupStyle.borderWidth)).toBeGreaterThanOrEqual(2);
+			expect(parseFloat(groupStyle.borderRadius)).toBeLessThanOrEqual(8);
+			expect(groupStyle.boxShadow).not.toBe('none');
+			expect(parseFloat(groupStyle.paddingLeft)).toBeGreaterThan(0);
+			expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
+			expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
+			expect(cardStyle.backgroundColor).toBe('rgb(44, 55, 66)');
+			expect(listStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
+			expect(cardStyle.boxShadow).toBe(listStyle.boxShadow);
+			expect(parseFloat(cardStyle.borderWidth)).toBe(0);
+			expect(parseFloat(listStyle.borderWidth)).toBe(0);
+			expect(card.querySelector('svg')!.getBoundingClientRect().y).toBeCloseTo(
+				list.querySelector('svg')!.getBoundingClientRect().y,
+				1,
+			);
+
+			await screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`).click();
+
+			expect(getComputedStyle(card).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+			expect(getComputedStyle(list).backgroundColor).toBe('rgb(44, 55, 66)');
+			expect(getComputedStyle(card).boxShadow).toBe(getComputedStyle(list).boxShadow);
+		} finally {
+			await screen.unmount();
+			for (const { property, value, priority } of previousProperties) {
+				rootStyle.setProperty(property, value, priority);
+			}
+		}
+	});
+
+	it('keeps the visible focus outline outside the shared tray boundary', async () => {
+		const screen = await render(GiftViewSwitcher, {
+			value: GIFT_VIEW_MODES.card,
+			onchange: vi.fn(),
+		});
+		const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
+		const card = screen
+			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
+			.element() as HTMLElement;
+
+		await userEvent.tab();
+		await expect.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)).toHaveFocus();
+		expect(card.matches(':focus-visible')).toBe(true);
+		expect(getComputedStyle(group).overflow).toBe('visible');
+		expect(getComputedStyle(card).outlineStyle).toBe('solid');
+		expect(parseFloat(getComputedStyle(card).outlineWidth)).toBeGreaterThan(0);
+		expect(parseFloat(getComputedStyle(card).outlineOffset)).toBeGreaterThan(0);
 		await screen.unmount();
 	});
 });
