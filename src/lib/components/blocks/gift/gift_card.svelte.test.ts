@@ -3,9 +3,11 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
+import * as m from '$lib/paraglide/messages.js';
 
 // GiftImage transitively imports the images module barrel, which reads `$env/dynamic/public`.
 // vitest-browser-svelte mounts without SvelteKit's page bootstrap, so the virtual module
@@ -163,6 +165,7 @@ describe('GiftCard category badge (issue #265)', () => {
 	])(
 		'keeps $color readable in the $palette palette (dark: $dark)',
 		async ({ color, expectedBackground, expectedForeground, palette, dark }) => {
+			await page.viewport(800, 720);
 			const label = 'Velmi dlouhá kategorie sportovního vybavení pro celou rodinu';
 			const host = await renderCardInGridColumn(
 				makeVisitorGift({
@@ -271,7 +274,42 @@ describe('GiftCard image background fill (issue #252)', () => {
 	});
 });
 
+describe('GiftCard unified state presentation (issue #330)', () => {
+	it('renders one received-first overlay with reservation support', async () => {
+		await page.viewport(390, 720);
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({ received: true, isFullyReserved: true, myReservationId: 'mine' }),
+		);
+
+		const overlays = host.querySelectorAll('[data-testid="gift-state-overlay"]');
+		expect(overlays).toHaveLength(1);
+		expect(overlays[0]?.textContent).toContain(m.gift_received_badge());
+		expect(overlays[0]?.textContent).toContain(m.gift_reserved_by_me_overlay());
+		expect(host.querySelector('[data-testid="gift-reserved-sticker"]')).toBeNull();
+		expect(host.querySelector('[data-testid="gift-received-sticker"]')).toBeNull();
+	});
+});
+
 describe('GiftCard actions (issue #255)', () => {
+	it('does not render Like for an archived visitor gift while preserving own cancellation', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift({ myReservationId: 'reservation-1' }),
+				role: WISHLIST_ROLES.visitor,
+				isArchived: true,
+				onunreserve: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		expect(host.querySelector('[data-like-heart]')).toBeNull();
+		expect(host.querySelector('[data-testid="reserve-button"]')).toBeTruthy();
+	});
+
 	it('does not host reservation release even when the context permits it', async () => {
 		await render(GiftCardTestHost, {
 			gift: makeVisitorGift({ myReservationId: null, isFullyReserved: true }),
@@ -295,6 +333,57 @@ describe('GiftCard actions (issue #255)', () => {
 });
 
 describe('GiftCard reservation-action layout (issue #211)', () => {
+	it('lets a direct mobile Reserve action fill the full actions width when More is absent', async () => {
+		await page.viewport(390, 720);
+		const host = document.createElement('div');
+		host.style.width = '179px';
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift({ reservedCount: 0, myReservationId: null }),
+				role: WISHLIST_ROLES.visitor,
+				onreserve: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const actions = host.querySelector(
+			'[data-testid="gift-card-reservation-actions"]',
+		) as HTMLElement;
+		const reserve = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
+		expect(reserve.getBoundingClientRect().width).toBeCloseTo(
+			actions.getBoundingClientRect().width,
+			1,
+		);
+	});
+
+	it('hides an onmore-only archived recipient footer on desktop but keeps More on mobile', async () => {
+		await page.viewport(800, 720);
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift(),
+				role: WISHLIST_ROLES.recipient,
+				isArchived: true,
+				onmore: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const footer = host.querySelector('[data-testid="gift-card-footer"]') as HTMLElement;
+		const more = host.querySelector(
+			`[aria-label="${m.gift_more_actions()}"]`,
+		) as HTMLButtonElement;
+		expect(getComputedStyle(footer).display).toBe('none');
+		await page.viewport(390, 720);
+		expect(getComputedStyle(more).display).not.toBe('none');
+	});
+
 	it('renders a stored gift image key without replacing the persisted source URL', async () => {
 		await renderCardInGridColumn(
 			makeVisitorGift({
@@ -308,7 +397,8 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		);
 	});
 
-	it('stacks the mark-as-bought and cancel-reservation actions vertically at equal width', async () => {
+	it('stacks the mark-as-bought and cancel-reservation actions vertically at equal width on desktop', async () => {
+		await page.viewport(800, 720);
 		await renderCardInGridColumn(makeVisitorGift());
 
 		const reserveButtonEl = document.querySelector(
@@ -332,13 +422,202 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		expect(reserveRect.width).toBeCloseTo(purchasedRect.width, 1);
 	});
 
+	it('keeps Purchased off the direct mobile face and exposes its context through More', async () => {
+		await page.viewport(390, 720);
+		const onmore = vi.fn();
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{ gift: makeVisitorGift(), role: WISHLIST_ROLES.visitor, onmore },
+			{ baseElement: host },
+		);
+
+		const purchased = host.querySelector(
+			`[aria-label="${m.gift_mark_bought()}"]`,
+		) as HTMLButtonElement;
+		expect(getComputedStyle(purchased).display).toBe('none');
+		const more = host.querySelector(
+			`[aria-label="${m.gift_more_actions()}"]`,
+		) as HTMLButtonElement;
+		expect(more).toBeTruthy();
+		more.click();
+		expect(onmore).toHaveBeenCalledOnce();
+	});
+
+	it('fits the direct manager action and optional More in a compact mobile card', async () => {
+		await page.viewport(390, 720);
+		const host = document.createElement('div');
+		host.style.width = '165px';
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift(),
+				role: WISHLIST_ROLES.recipient,
+				onreceived: () => {},
+				onmore: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const directAction = host.querySelector(
+			'[data-testid="gift-received-toggle"]',
+		) as HTMLButtonElement;
+		const more = host.querySelector(
+			`[aria-label="${m.gift_more_actions()}"]`,
+		) as HTMLButtonElement;
+		expect(directAction).toBeTruthy();
+		expect(more).toBeTruthy();
+		expect(directAction.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+		expect(more.getBoundingClientRect().width).toBeCloseTo(40, 0);
+		expect(more.getBoundingClientRect().height).toBeCloseTo(
+			directAction.getBoundingClientRect().height,
+			0,
+		);
+		const labelNode = Array.from(directAction.childNodes).find(
+			(node) =>
+				node.nodeType === Node.TEXT_NODE && (node.textContent?.trim().length ?? 0) > 0,
+		)!;
+		const labelRange = document.createRange();
+		labelRange.selectNodeContents(labelNode);
+		const labelRect = labelRange.getBoundingClientRect();
+		const cardRect = (
+			directAction.closest('[class*="rounded-panel"]') as HTMLElement
+		).getBoundingClientRect();
+		expect(labelRect.left).toBeGreaterThanOrEqual(cardRect.left);
+		expect(labelRect.right).toBeLessThanOrEqual(cardRect.right);
+	});
+
+	it('contains the rendered manager action label inside its button at the real 390px grid width', async () => {
+		await page.viewport(390, 720);
+		const grid = document.createElement('div');
+		grid.style.display = 'grid';
+		grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+		grid.style.columnGap = '8px';
+		grid.style.width = '366px';
+		document.body.appendChild(grid);
+		fixedHosts.add(grid);
+
+		for (const id of ['first', 'second']) {
+			const column = document.createElement('div');
+			grid.appendChild(column);
+			await render(
+				GiftCardTestHost,
+				{
+					gift: makeVisitorGift({ id: `gift-${id}` }),
+					role: WISHLIST_ROLES.moderator,
+					onreceived: () => {},
+					onmore: () => {},
+				},
+				{ baseElement: column },
+			);
+		}
+
+		await document.fonts.ready;
+		const cards = Array.from(
+			grid.children,
+			(column) => column.firstElementChild as HTMLElement,
+		);
+		expect(cards).toHaveLength(2);
+		const firstAction = cards[0]!.querySelector(
+			'[data-testid="gift-received-toggle"]',
+		) as HTMLButtonElement;
+		const firstMore = cards[0]!.querySelector(
+			`[aria-label="${m.gift_more_actions()}"]`,
+		) as HTMLButtonElement;
+		const secondCardRect = cards[1]!.getBoundingClientRect();
+		const actionRect = firstAction.getBoundingClientRect();
+		const moreRect = firstMore.getBoundingClientRect();
+		const visibleButtons = Array.from(
+			firstAction.parentElement!.querySelectorAll<HTMLButtonElement>('button'),
+		).filter((button) => getComputedStyle(button).display !== 'none');
+		const paintedLabels = visibleButtons.flatMap((button) =>
+			Array.from(button.childNodes)
+				.filter(
+					(node) =>
+						node.nodeType === Node.TEXT_NODE &&
+						(node.textContent?.trim().length ?? 0) > 0,
+				)
+				.map((node) => {
+					const range = document.createRange();
+					range.selectNodeContents(node);
+					return {
+						button: button.getBoundingClientRect(),
+						label: range.getBoundingClientRect(),
+					};
+				}),
+		);
+
+		expect(visibleButtons).toHaveLength(2);
+		for (const { button, label } of paintedLabels) {
+			expect(label.left).toBeGreaterThanOrEqual(button.left);
+			expect(label.right).toBeLessThanOrEqual(button.right);
+		}
+		expect(firstAction.scrollWidth).toBeLessThanOrEqual(firstAction.clientWidth);
+		expect(actionRect.right).toBeLessThanOrEqual(moreRect.left);
+		expect(moreRect.right).toBeLessThanOrEqual(secondCardRect.left - 8);
+	});
+
+	it('keeps the manager action label visible and clear of More in a realistic two-column card', async () => {
+		await page.viewport(390, 720);
+		const host = document.createElement('div');
+		host.style.width = '179px';
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift(),
+				role: WISHLIST_ROLES.recipient,
+				onreceived: () => {},
+				onmore: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const directAction = host.querySelector(
+			'[data-testid="gift-received-toggle"]',
+		) as HTMLButtonElement;
+		const more = host.querySelector(
+			`[aria-label="${m.gift_more_actions()}"]`,
+		) as HTMLButtonElement;
+		const labelNode = Array.from(directAction.childNodes).find(
+			(node) =>
+				node.nodeType === Node.TEXT_NODE && (node.textContent?.trim().length ?? 0) > 0,
+		)!;
+		const labelRange = document.createRange();
+		labelRange.selectNodeContents(labelNode);
+		const labelRect = labelRange.getBoundingClientRect();
+		const actionRect = directAction.getBoundingClientRect();
+		const moreRect = more.getBoundingClientRect();
+		const cardRect = (
+			directAction.closest('[class*="rounded-panel"]') as HTMLElement
+		).getBoundingClientRect();
+
+		expect(actionRect.height).toBeGreaterThanOrEqual(40);
+		expect(moreRect.width).toBeGreaterThanOrEqual(40);
+		expect(moreRect.height).toBeGreaterThanOrEqual(40);
+		expect(labelRect.left).toBeGreaterThanOrEqual(actionRect.left);
+		expect(labelRect.right).toBeLessThanOrEqual(actionRect.right);
+		expect(labelRect.top).toBeGreaterThanOrEqual(actionRect.top);
+		expect(labelRect.bottom).toBeLessThanOrEqual(actionRect.bottom);
+		expect(labelRect.right).toBeLessThanOrEqual(moreRect.left);
+		expect(actionRect.bottom).toBeLessThanOrEqual(cardRect.bottom);
+		expect(moreRect.bottom).toBeLessThanOrEqual(cardRect.bottom);
+	});
+
 	it('keeps the footer within the rendered card width, even with a long name', async () => {
+		await page.viewport(800, 720);
 		await renderCardInGridColumn(makeVisitorGift());
 
 		const cardEl = document
 			.querySelector('[data-testid="reserve-button"]')
 			?.closest('[class*="rounded-panel"]') as HTMLElement;
-		const footerEl = cardEl.querySelector('.row-start-7') as HTMLElement;
+		const footerEl = document.querySelector('[data-testid="reserve-button"]')!.parentElement!
+			.parentElement as HTMLElement;
 
 		// The card's own box never exceeds its grid track (it already carries
 		// `overflow-hidden` for the rounded corners/sticker, unrelated to this fix), so

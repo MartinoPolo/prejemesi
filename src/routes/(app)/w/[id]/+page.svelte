@@ -51,6 +51,7 @@
 	import {
 		reserveGift,
 		unreserveGift,
+		setReservationPurchased,
 		getReservationLedgerForWishlist,
 	} from '$lib/modules/reservations/reservations.remote.js';
 	import { setReservationsContext } from '$lib/modules/reservations/reservations.context.svelte.js';
@@ -114,7 +115,10 @@
 		createGiftSelection,
 		shouldExitGiftSelectionOnEscape,
 	} from '$lib/modules/gifts/gift_selection.svelte.js';
-	import { giftContextActions } from '$lib/modules/gifts/gift_context_actions.js';
+	import {
+		giftContextActions,
+		hasAdditionalGiftContextActions,
+	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import type {
 		GiftBulkAction,
@@ -500,17 +504,47 @@
 
 	$effect(() => giftSelection.reconcileExisting(gifts.map((giftItem) => giftItem.id)));
 
-	function openContextActions(giftItem: GiftByRole, event: MouseEvent | null): boolean {
-		if (giftSelection.active) {
-			return false;
+	function reservationContextFor(giftItem: GiftByRole) {
+		if (hideReservationState || !('myReservationId' in giftItem)) {
+			return {
+				canReserve: false,
+				ownsReservation: false,
+				canTrackPurchased: false,
+				purchased: false,
+			};
 		}
+		const ownsReservation = giftItem.myReservationId !== null;
+		return {
+			// This is presentation of existing domain state, not a responsive permission guess:
+			// visitors and správci receive reservation fields; recipients and preview projections do not.
+			canReserve: ownsReservation || !giftItem.isFullyReserved,
+			ownsReservation,
+			canTrackPurchased: isAuthenticated && ownsReservation,
+			purchased: giftItem.myReservationPurchasedAt !== null,
+		};
+	}
+
+	function contextActionsFor(giftItem: GiftByRole) {
 		const primaryUrl = giftItem.links?.[0]?.url ?? null;
-		const actions = giftContextActions({
+		const reservationContext = reservationContextFor(giftItem);
+		return giftContextActions({
 			role,
 			primaryUrl: normalizeGiftUrl(primaryUrl),
 			readOnly: isArchived,
 			canEdit: true,
+			...reservationContext,
 		});
+	}
+
+	function hasAdditionalContextActions(giftItem: GiftByRole) {
+		return hasAdditionalGiftContextActions(contextActionsFor(giftItem), role);
+	}
+
+	function openContextActions(giftItem: GiftByRole, event: MouseEvent | null): boolean {
+		if (giftSelection.active) {
+			return false;
+		}
+		const actions = contextActionsFor(giftItem);
 		if (actions.length === 0) {
 			contextGift = null;
 			contextOpen = false;
@@ -1207,6 +1241,27 @@
 		}
 	}
 
+	async function handleContextPurchased(giftItem: GiftByRole) {
+		if (
+			hideReservationState ||
+			!isAuthenticated ||
+			!('myReservationId' in giftItem) ||
+			giftItem.myReservationId === null
+		) {
+			return;
+		}
+		const purchased = giftItem.myReservationPurchasedAt === null;
+		try {
+			await setReservationPurchased({
+				reservationId: giftItem.myReservationId,
+				purchased,
+			});
+			toastSuccess(purchased ? m.toast_marked_bought() : m.toast_unmarked_bought());
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		}
+	}
+
 	/**
 	 * Releasing SOMEONE ELSE's reservation (issue #213). The server re-checks the capability, so
 	 * this path carries no authorization of its own. Returns whether the release went through, so
@@ -1305,9 +1360,10 @@
      wishlist its own per-list identity independent of the viewer's app palette. -->
 <div
 	bind:this={wishlistPageElement}
+	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
 	style="overflow-anchor: none"
-	class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6"
+	class="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 max-sm:-mx-6 max-sm:w-[calc(100%+3rem)] sm:gap-6 sm:px-4 sm:py-6"
 >
 	<WishlistHeader
 		title={wishlist.title}
@@ -1329,6 +1385,7 @@
 		onarchive={handleArchive}
 		oneditimage={handleEditImage}
 		oneditrecipient={handleEditRecipientOpened}
+		onsettings={handleSettingsOpened}
 	/>
 
 	{#if isPreparing}
@@ -1404,6 +1461,7 @@
 					categories={categoryActionOptions}
 					priorityLevelId={contextActionGift.priorityLevelId}
 					categoryId={contextActionGift.categoryId ?? null}
+					{...reservationContextFor(contextActionGift)}
 					onclose={() => (contextOpen = false)}
 					onedit={() => void openEditModal(contextActionGift)}
 					onpriority={(priorityLevelId) => void updateContextGift({ priorityLevelId })}
@@ -1411,6 +1469,17 @@
 					onreceived={() =>
 						void handleReceived(contextActionGift.id, !contextActionGift.received)}
 					onselect={() => enterSelection(contextActionGift.id)}
+					onreserve={() => {
+						if ('myReservationId' in contextActionGift) {
+							handleOpenReserveModal(contextActionGift);
+						}
+					}}
+					oncancelreservation={() => {
+						if ('myReservationId' in contextActionGift) {
+							void handleUnreserve(contextActionGift);
+						}
+					}}
+					onpurchased={() => void handleContextPurchased(contextActionGift)}
 					oncopysuccess={() => toastSuccess(m.gift_context_copy_success())}
 					oncopyerror={() => toastError(m.gift_context_copy_error())}
 				/>
@@ -1430,6 +1499,7 @@
 			selectedIds={selectionSnapshot.selectedIds}
 			onselectiontoggle={(giftId) => giftSelection.toggle(giftId)}
 			oncontextactions={openContextActions}
+			hascontextactions={hasAdditionalContextActions}
 			onedit={openEditModal}
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}

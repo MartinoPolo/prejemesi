@@ -1,0 +1,618 @@
+import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import * as m from '../../src/lib/paraglide/messages.js';
+import { createTestUser } from './fixtures/test-data.js';
+import { registerAndGetPage } from './fixtures/auth-helpers.js';
+import {
+	addGift,
+	archiveWishlist,
+	createWishlistAndNavigate,
+	createWishlistForSomeoneAndNavigate,
+	shareWishlist,
+} from './fixtures/wishlist-helpers.js';
+
+const MOBILE_HEIGHT = 844;
+const WIDTHS = [320, 360, 390] as const;
+
+async function createManagerWishlist(
+	page: Page,
+	title = 'Mobilní seznam pro Aničku',
+): Promise<string> {
+	await createWishlistForSomeoneAndNavigate(page, { title, recipientName: 'Anička' });
+	await addGift(page, 'Dlouhý název dárku který se musí bezpečně vejít na přesně dva řádky', {
+		price: '1299',
+	});
+	await addGift(page, 'Dárek bez ceny');
+	await addGift(page, 'Třetí dárek', { price: '499' });
+	// The reusable share helper targets the labeled desktop action; narrow production uses
+	// the approved hero overflow sheet, so temporarily expose that same action without
+	// duplicating the share-wizard implementation in this spec.
+	await page.setViewportSize({ width: 800, height: MOBILE_HEIGHT });
+	await shareWishlist(page);
+	await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+	await dismissToasts(page);
+	return new URL(page.url()).pathname;
+}
+
+async function addQuantityGift(page: Page, name: string, quantity: number) {
+	await page
+		.getByRole('button', { name: /Přidat/ })
+		.first()
+		.click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByRole('textbox', { name: 'Název' }).fill(name);
+	await dialog.locator('#gift-quantity').fill(String(quantity));
+	await dialog.getByRole('button', { name: 'Přidat dárek' }).click();
+	await expect(dialog).toBeHidden();
+	await expect(page.getByRole('heading', { name, level: 3 })).toBeVisible();
+}
+
+function gift(page: Page, name: string) {
+	return page.locator('[data-gift-item]').filter({
+		has: page.getByRole('heading', { name, exact: true }),
+	});
+}
+
+async function dismissToasts(page: Page) {
+	for (const close of await page.locator('[data-sonner-toast] button').all()) {
+		if (await close.isVisible()) {
+			await close.click();
+		}
+	}
+	await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+}
+
+async function resetAllScroll(page: Page) {
+	await page.evaluate(() => {
+		document.querySelectorAll<HTMLElement>('*').forEach((element) => {
+			element.scrollTop = 0;
+		});
+		window.scrollTo(0, 0);
+	});
+}
+
+async function waitForGiftAnimationsToSettle(page: Page) {
+	await page.locator('[data-gift-item]:visible').evaluateAll(async (elements) => {
+		const animations = elements.flatMap((element) => element.getAnimations({ subtree: true }));
+		await Promise.all(animations.map((animation) => animation.finished.catch(() => undefined)));
+		await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+	});
+}
+
+async function box(locator: Locator) {
+	const value = await locator.boundingBox();
+	expect(value, `Expected ${locator} to have a bounding box`).not.toBeNull();
+	return value!;
+}
+
+async function expectInsideViewport(locator: Locator, width: number) {
+	const bounds = await box(locator);
+	expect(bounds.x).toBeGreaterThanOrEqual(12);
+	expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 12 + 0.5);
+}
+
+async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
+	const directory = 'test-results/mobile-wishlist-screenshots';
+	const path = `${directory}/${name}.png`;
+	await mkdir(directory, { recursive: true });
+	await page.screenshot({ path, fullPage: true });
+	await testInfo.attach(name, { path, contentType: 'image/png' });
+}
+
+test.describe('issue #330 mobile wishlist acceptance', () => {
+	test('320/360/390 card geometry keeps the approved gutter, hero, grid and bounds', async ({
+		browser,
+		request,
+		baseURL,
+	}, testInfo) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-geometry'),
+		);
+		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await createManagerWishlist(page);
+
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+			await expect(page.getByTestId('wishlist-mobile-hero')).toBeVisible();
+			await expect(page.getByTestId('wishlist-gift-card-grid')).toBeVisible();
+
+			const hero = await box(page.getByTestId('wishlist-mobile-hero'));
+			const photo = await box(page.getByTestId('wishlist-mobile-photo'));
+			expect(hero.height).toBeGreaterThanOrEqual(104);
+			expect(hero.height).toBeLessThanOrEqual(120);
+			expect(photo.width).toBeGreaterThanOrEqual(84);
+			expect(photo.width).toBeLessThanOrEqual(96);
+			expect(photo.height).toBeGreaterThanOrEqual(84);
+			expect(photo.height).toBeLessThanOrEqual(96);
+
+			await expectInsideViewport(page.getByTestId('wishlist-mobile-hero'), width);
+			await expectInsideViewport(page.getByTestId('wishlist-toolbar'), width);
+			await expectInsideViewport(page.getByTestId('wishlist-gift-card-grid'), width);
+			for (const item of await page.locator('[data-gift-item]').all()) {
+				await expectInsideViewport(item, width);
+			}
+
+			const cards = await page.locator('[data-gift-item]').evaluateAll((elements) =>
+				elements.map((element) => {
+					const rect = element.getBoundingClientRect();
+					return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+				}),
+			);
+			const expectedColumns = width === 320 ? 1 : 2;
+			expect(new Set(cards.map((card) => Math.round(card.x))).size).toBe(expectedColumns);
+			if (expectedColumns === 2) {
+				const firstRow = cards.filter((card) => Math.abs(card.y - cards[0]!.y) < 1);
+				expect(firstRow).toHaveLength(2);
+				expect(firstRow[1]!.x - (firstRow[0]!.x + firstRow[0]!.width)).toBeCloseTo(8, 0);
+				expect(firstRow[0]!.height).toBeCloseTo(firstRow[1]!.height, 0);
+			}
+			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+			await resetAllScroll(page);
+			await attachScreenshot(page, testInfo, `manager-card-${width}`);
+		}
+
+		await page.context().close();
+	});
+
+	test('list presentation is distinct, equal-height, persistent and uses 128px edge imagery', async ({
+		browser,
+		request,
+		baseURL,
+	}, testInfo) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-list'),
+		);
+		await createManagerWishlist(page, 'Mobilní seznamové zobrazení');
+		const listChoice = page
+			.getByTestId('wishlist-toolbar-mobile')
+			.getByTestId('gift-view-list');
+		await listChoice.click();
+		await expect(listChoice).toHaveAttribute('aria-checked', 'true');
+		await page.reload({ waitUntil: 'load' });
+		await expect(
+			page.getByTestId('wishlist-toolbar-mobile').getByTestId('gift-view-list'),
+		).toHaveAttribute('aria-checked', 'true');
+
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+			const list = page.getByTestId('wishlist-gift-list');
+			await expect(list).toBeVisible();
+			await expectInsideViewport(list, width);
+			const items = await page.getByTestId('gift-list-item').all();
+			expect(items).toHaveLength(3);
+			const itemBoxes = await Promise.all(items.map(box));
+			expect(new Set(itemBoxes.map((item) => Math.round(item.height))).size).toBe(1);
+			for (let index = 1; index < itemBoxes.length; index += 1) {
+				expect(
+					itemBoxes[index]!.y - (itemBoxes[index - 1]!.y + itemBoxes[index - 1]!.height),
+				).toBeCloseTo(10, 0);
+			}
+			for (const image of await page.getByTestId('gift-list-image').all()) {
+				const imageBox = await box(image);
+				expect(imageBox.width).toBeGreaterThanOrEqual(112);
+				expect(imageBox.width).toBeLessThanOrEqual(128);
+				expect(imageBox.width).toBeCloseTo(imageBox.height, 0);
+			}
+			const surface = await items[0]!.evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					background: style.backgroundColor,
+					border: style.borderStyle,
+					shadow: style.boxShadow,
+				};
+			});
+			expect(surface.background).not.toBe('rgba(0, 0, 0, 0)');
+			expect(surface.border).not.toBe('none');
+			expect(surface.shadow).not.toBe('none');
+			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+			await resetAllScroll(page);
+			await attachScreenshot(page, testInfo, `manager-list-${width}`);
+		}
+		await page.context().close();
+	});
+
+	test('manager toolbar and dedicated sheets preserve geometry, scroll and focus', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-sheets'),
+		);
+		await createManagerWishlist(page, 'Mobilní panely nástrojů');
+		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		const toolbar = page.getByTestId('wishlist-toolbar');
+		const rows = toolbar.locator('[data-mobile-toolbar-row]');
+		await expect(rows).toHaveCount(2);
+		const rowBoxes = await Promise.all((await rows.all()).map(box));
+		expect(rowBoxes[0]!.y + rowBoxes[0]!.height).toBeLessThan(rowBoxes[1]!.y);
+		for (const control of await toolbar
+			.locator('button:visible, [role="radio"]:visible')
+			.all()) {
+			const controlBox = await box(control);
+			expect(controlBox.width).toBeGreaterThanOrEqual(40);
+			expect(controlBox.height).toBeGreaterThanOrEqual(40);
+		}
+
+		await page.evaluate(() => window.scrollTo(0, 180));
+		for (const label of await rows.nth(1).locator('button').all()) {
+			const metrics = await label.evaluate((element) => ({
+				clientWidth: element.clientWidth,
+				scrollWidth: element.scrollWidth,
+			}));
+			expect(
+				metrics.scrollWidth,
+				(await label.getAttribute('aria-label')) ?? undefined,
+			).toBeLessThanOrEqual(metrics.clientWidth);
+		}
+
+		for (const [index, triggerId] of [
+			'mobile-sort-trigger',
+			'mobile-grouping-trigger',
+			'mobile-filter-trigger',
+		].entries()) {
+			const trigger = page.getByTestId(triggerId);
+			const before = {
+				toolbar: await box(toolbar),
+				scrollY: await page.evaluate(() => scrollY),
+			};
+			await trigger.click();
+			const dialog = page.getByRole('dialog');
+			await expect(dialog).toBeVisible();
+			await expect(dialog.getByTestId('mobile-sheet-scroll')).toBeVisible();
+			await expect(dialog.locator('label, [role="checkbox"]')).not.toHaveCount(0);
+			const dialogBox = await box(dialog);
+			expect(dialogBox.height).toBeLessThanOrEqual(MOBILE_HEIGHT * 0.8 + 1);
+			await page.keyboard.press('Tab');
+			expect(
+				await dialog.evaluate((element) => element.contains(document.activeElement)),
+			).toBe(true);
+			if (index === 0) {
+				await page
+					.locator('[data-slot="sheet-overlay"]')
+					.click({ position: { x: 8, y: 8 } });
+			} else {
+				await page.keyboard.press('Escape');
+			}
+			await expect(dialog).toBeHidden();
+			if (index !== 0) {
+				await expect(trigger).toBeFocused();
+			}
+			expect(await page.evaluate(() => scrollY)).toBe(before.scrollY);
+			const afterToolbar = await box(toolbar);
+			expect(afterToolbar.x).toBeCloseTo(before.toolbar.x, 0);
+			expect(afterToolbar.width).toBeCloseTo(before.toolbar.width, 0);
+		}
+		await page.context().close();
+	});
+
+	test('visitor normal state is one-row, bounded and non-action card space opens detail', async ({
+		browser,
+		request,
+		baseURL,
+	}, testInfo) => {
+		const manager = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-visitor-source'),
+		);
+		const path = await createManagerWishlist(manager, 'Veřejný mobilní seznam');
+		const visitorContext = await browser.newContext();
+		const page = await visitorContext.newPage();
+		await page.goto(path, { waitUntil: 'load' });
+		await expect(page.locator('[data-gift-item]')).toHaveCount(3);
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+			const toolbar = page.getByTestId('wishlist-toolbar');
+			await expect(toolbar.locator('[data-mobile-toolbar-row]')).toHaveCount(1);
+			await expectInsideViewport(toolbar, width);
+			await attachScreenshot(page, testInfo, `visitor-normal-${width}`);
+		}
+		const firstGift = page.locator('[data-gift-item]').first();
+		await firstGift.getByRole('heading', { level: 3 }).click();
+		await expect(page.getByRole('dialog')).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).toBeHidden();
+		await visitorContext.close();
+		await manager.context().close();
+	});
+
+	test('visitor can cancel their own reservation after the owner archives the wishlist', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const owner = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-archived-own-reservation-owner'),
+		);
+		await createWishlistForSomeoneAndNavigate(owner, {
+			title: 'Archivovaná rezervace návštěvníka',
+			recipientName: 'Anička',
+		});
+		await addGift(owner, 'Dárek rezervovaný před archivací');
+		await shareWishlist(owner);
+		const wishlistPath = new URL(owner.url()).pathname;
+
+		const visitor = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-archived-own-reservation-visitor'),
+		);
+		await visitor.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await visitor.goto(wishlistPath, { waitUntil: 'networkidle' });
+		const reservedGift = gift(visitor, 'Dárek rezervovaný před archivací');
+		await reservedGift.getByTestId('reserve-button').click();
+		const reservationDialog = visitor.getByRole('dialog');
+		await reservationDialog.getByRole('button', { name: /Rezervovat/, exact: true }).click();
+		await expect(reservationDialog).toBeHidden();
+		await expect(reservedGift.getByText('Rezervováno vámi', { exact: true })).toBeVisible();
+
+		// Archival is performed by the actual owner while the distinct visitor keeps their
+		// authenticated context. This avoids accidentally asserting against the manager face.
+		await owner.setViewportSize({ width: 800, height: MOBILE_HEIGHT });
+		await archiveWishlist(owner);
+		await expect(owner.getByText(/Archivováno: seznam je uzavřen/i)).toBeVisible();
+
+		await visitor.reload({ waitUntil: 'networkidle' });
+		await expect(visitor.getByText(/Archivováno: seznam je uzavřen/i)).toBeVisible();
+		const archivedGift = gift(visitor, 'Dárek rezervovaný před archivací');
+		const cancel = archivedGift.getByTestId('reserve-button');
+		await expect(cancel).toHaveAccessibleName(/Zrušit rezervaci/i);
+
+		// Cancellation remains the only archived reservation/list mutation: purchased,
+		// received, creation, selection, and reorder affordances stay unavailable.
+		await expect(archivedGift.getByTestId('gift-received-toggle')).toHaveCount(0);
+		await expect(
+			archivedGift.getByRole('button', {
+				name: /Označit jako koupené|Zakoupeno|Mark as bought|Purchased/i,
+			}),
+		).not.toBeVisible();
+		await expect(
+			visitor.getByRole('button', { name: /Přidat dárek|Změnit pořadí/i }),
+		).toHaveCount(0);
+		await expect(visitor.getByRole('button', { name: m.gift_selection_toolbar() })).toHaveCount(
+			0,
+		);
+
+		await cancel.click();
+		await expect(cancel).toHaveCount(0);
+		await expect(archivedGift.getByText('Rezervováno vámi', { exact: true })).toHaveCount(0);
+
+		await owner.context().close();
+		await visitor.context().close();
+	});
+
+	test('visitor card space cannot activate Like; only the Like button changes state', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const manager = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-like-source'),
+		);
+		const path = await createManagerWishlist(manager, 'Přímá aktivace oblíbení');
+		const visitor = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-like-visitor'),
+		);
+		await visitor.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await visitor.goto(path, { waitUntil: 'networkidle' });
+		const card = visitor.locator('[data-gift-item]').first();
+		const like = card.locator('button:has([data-like-heart])');
+		await expect(like).toHaveAccessibleName(/Přidat.*oblíbených/i);
+		await expect(like).toHaveAttribute('aria-pressed', 'false');
+		await card.getByRole('heading', { level: 3 }).click();
+		await expect(visitor.getByRole('dialog')).toBeVisible();
+		await expect(like).toHaveAttribute('aria-pressed', 'false');
+		await visitor.keyboard.press('Escape');
+		await like.click();
+		await expect(like).toHaveAttribute('aria-pressed', 'true');
+		await manager.context().close();
+		await visitor.context().close();
+	});
+
+	test('partial own reservation and received cards keep exact compact state anatomy', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const manager = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-state-source'),
+		);
+		await createManagerWishlist(manager, 'Mobilní stavové příklady');
+		await addQuantityGift(manager, 'Tři kusy bez ceny a obrázku', 3);
+		const received = gift(manager, 'Třetí dárek');
+		await received.getByTestId('gift-received-toggle').click();
+		await expect(received.getByText('Přijato', { exact: true })).toBeVisible();
+		const path = new URL(manager.url()).pathname;
+
+		const visitor = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-state-visitor'),
+		);
+		await visitor.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await visitor.goto(path, { waitUntil: 'networkidle' });
+		await visitor.getByTestId('mobile-filter-trigger').click();
+		const filterDialog = visitor.getByRole('dialog');
+		await expect(filterDialog).toBeVisible();
+		await filterDialog.getByRole('checkbox', { name: m.gift_filter_show_received() }).click();
+		await visitor.keyboard.press('Escape');
+		await expect(filterDialog).toBeHidden();
+
+		const visitorReceived = gift(visitor, 'Třetí dárek');
+		await expect(visitorReceived).toBeVisible();
+		const receivedOverlay = visitorReceived.getByTestId('gift-state-overlay');
+		await expect(receivedOverlay).toBeVisible();
+		await expect(receivedOverlay).toHaveText(m.gift_received_badge(), { useInnerText: true });
+		await expect(receivedOverlay).not.toHaveAttribute('role', 'status');
+		await expect(receivedOverlay.locator('[data-reservation-support]')).toHaveCount(0);
+
+		const partial = gift(visitor, 'Tři kusy bez ceny a obrázku');
+		await partial.getByTestId('reserve-button').click();
+		const reserveDialog = visitor.getByRole('dialog');
+		await reserveDialog.getByRole('button', { name: /Rezervovat/, exact: true }).click();
+		await expect(reserveDialog).toBeHidden();
+		await expect(partial.getByText('Rezervováno vámi', { exact: true })).toBeVisible();
+		await expect(partial.getByText('Volné 2/3', { exact: true })).toBeVisible();
+		await expect(partial.getByTestId('reserve-button')).toHaveText('Zrušit rezervaci');
+
+		const cards = await visitor.locator('[data-gift-item]').all();
+		for (const card of cards) {
+			await expectInsideViewport(card, 390);
+		}
+		const firstRow = await visitor
+			.locator('[data-gift-item]')
+			.evaluateAll((elements) =>
+				elements.slice(0, 2).map((element) => element.getBoundingClientRect().height),
+			);
+		expect(firstRow[0]).toBeCloseTo(firstRow[1]!, 0);
+		expect(await visitor.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+		await manager.context().close();
+		await visitor.context().close();
+	});
+
+	test('recipient face has no reservation, Like, Purchased or structural action trace', async ({
+		browser,
+		request,
+		baseURL,
+	}, testInfo) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-recipient'),
+		);
+		await createWishlistAndNavigate(page, 'Soukromí obdarovaného');
+		await addGift(page, 'Dárek s utajenou rezervací', { price: '850' });
+		await addGift(page, 'Druhý stejně vysoký dárek');
+		await page.setViewportSize({ width: 800, height: MOBILE_HEIGHT });
+		await shareWishlist(page);
+		await dismissToasts(page);
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+			const items = page.locator('[data-gift-item]');
+			await expect(items).toHaveCount(2);
+			await expect(page.getByText(/Rezervov|Volné \d+\//i)).toHaveCount(0);
+			await expect(page.getByTestId('reserve-button')).toHaveCount(0);
+			await expect(page.getByText(/Koupen|Zakoupen|Purchased/i)).toHaveCount(0);
+			await expect(page.getByRole('button', { name: /líbí|like/i })).toHaveCount(0);
+			const heights = await items.evaluateAll((elements) =>
+				elements.map((element) => Math.round(element.getBoundingClientRect().height)),
+			);
+			expect(new Set(heights).size).toBe(1);
+			await attachScreenshot(page, testInfo, `recipient-normal-${width}`);
+		}
+		await page.context().close();
+	});
+
+	test('selection replacement and reorder expose one checkbox, 40px grip and keyboard move', async ({
+		browser,
+		request,
+		baseURL,
+	}, testInfo) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-modes'),
+		);
+		await createManagerWishlist(page, 'Mobilní režimy');
+		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await page.getByRole('button', { name: m.gift_selection_toolbar(), exact: true }).click();
+		const selection = page.getByRole('region', {
+			name: m.gift_selection_toolbar(),
+			exact: true,
+		});
+		await expect(selection).toBeVisible();
+		await expect(page.getByTestId('gift-view-switcher')).toHaveCount(0);
+		const selectableItems = page.locator('[data-gift-item]');
+		for (const item of await selectableItems.all()) {
+			// The gift wrapper itself is the single semantic checkbox; the image-corner
+			// checkmark is deliberately aria-hidden visual feedback, not a duplicate control.
+			await expect(item).toHaveAttribute('role', 'checkbox');
+			await expect(item.locator('[aria-hidden="true"] [data-slot="checkbox"]')).toHaveCount(
+				1,
+			);
+		}
+		await expect(page.getByRole('checkbox', { name: /Vybrat dárek/ })).toHaveCount(
+			await selectableItems.count(),
+		);
+		await page.locator('[data-gift-item]').first().press('Space');
+		await expect(page.locator('[data-gift-item]').first()).toHaveAttribute(
+			'aria-checked',
+			'true',
+		);
+		await dismissToasts(page);
+		await resetAllScroll(page);
+		await attachScreenshot(page, testInfo, 'manager-selection-390');
+		// Refined prototype: selection cards show only the image checkbox; direct card
+		// actions must not remain as visible duplicate affordances.
+		expect.soft(await page.getByTestId('reserve-button').count()).toBe(0);
+		expect.soft(await page.getByTestId('gift-received-toggle').count()).toBe(0);
+		expect.soft(await page.getByRole('button', { name: /oblíbených/ }).count()).toBe(0);
+		await selection.getByRole('button', { name: 'Zrušit', exact: true }).click();
+
+		await page.getByRole('button', { name: 'Změnit pořadí', exact: true }).click();
+		await expect(page.getByRole('button', { name: 'Hotovo', exact: true })).toBeVisible();
+		const namesBefore = await page.locator('[data-gift-item] h3').allTextContents();
+		const firstMoveUp = page.getByRole('button', {
+			name: m.gift_reorder_move_up({ name: namesBefore[0] }),
+			exact: true,
+		});
+		const firstMoveDown = page.getByRole('button', {
+			name: m.gift_reorder_move_down({ name: namesBefore[0] }),
+			exact: true,
+		});
+		await expect(firstMoveUp).toBeVisible();
+		await expect(firstMoveUp).toBeDisabled();
+		await expect(firstMoveDown).toBeVisible();
+		const downBox = await box(firstMoveDown);
+		expect(downBox.width).toBeGreaterThanOrEqual(40);
+		expect(downBox.height).toBeGreaterThanOrEqual(40);
+		await firstMoveDown.click();
+		await expect
+			.poll(() => page.locator('[data-gift-item] h3').allTextContents())
+			.not.toEqual(namesBefore);
+
+		const namesAfterButtonMove = await page.locator('[data-gift-item] h3').allTextContents();
+		const movableGrip = page
+			.locator('[data-gift-item]')
+			.first()
+			.getByRole('button', { name: m.gift_reorder_grip_label(), exact: true });
+		await movableGrip.focus();
+		await movableGrip.press('ArrowDown');
+		await expect
+			.poll(() => page.locator('[data-gift-item] h3').allTextContents())
+			.not.toEqual(namesAfterButtonMove);
+		await waitForGiftAnimationsToSettle(page);
+		await resetAllScroll(page);
+		await attachScreenshot(page, testInfo, 'manager-reorder-390');
+		expect.soft(await page.getByTestId('reserve-button').count()).toBe(0);
+		expect.soft(await page.getByTestId('gift-received-toggle').count()).toBe(0);
+		await page.context().close();
+	});
+});

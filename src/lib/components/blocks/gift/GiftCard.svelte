@@ -3,9 +3,12 @@
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
+	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
+	import { Button } from '$lib/components/base/button/index.js';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
+	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import GiftReservedSticker from '$lib/components/blocks/gift/GiftReservedSticker.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
@@ -19,22 +22,29 @@
 		getPriorityDisplay,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
-	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import {
+		canLikeGift,
+		canManageWishlist,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
 	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 
 	interface GiftCardProps {
 		gift: GiftByRole;
 		role: WishlistRole;
 		isArchived?: boolean;
 		hideReservationState?: boolean;
+		contextualMode?: boolean;
+		allowArchivedLike?: boolean;
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		onmore?: () => void;
 	}
 
 	let {
@@ -42,21 +52,46 @@
 		role,
 		isArchived = false,
 		hideReservationState = false,
+		contextualMode = false,
+		allowArchivedLike = false,
 		onreserve,
 		onunreserve,
 		onreceived,
+		onmore,
 	}: GiftCardProps = $props();
 
-	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role, hideReservationState),
+	const narrowViewportState = useNarrowViewportState();
+	const displayState = $derived(
+		deriveGiftDisplayState(
+			gift,
+			role,
+			hideReservationState || contextualMode,
+			{
+				canLike:
+					canLikeGift(role) &&
+					!hideReservationState &&
+					!contextualMode &&
+					(!isArchived || allowArchivedLike),
+				isArchived: isArchived && !allowArchivedLike,
+			},
+			contextualMode,
+		),
 	);
+	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } =
+		$derived(displayState);
+	const presentation = $derived(displayState.presentation);
 	// Edit-icon hover affordance (issue #125 REQ-3): editing roles see a pencil icon appear
 	// on card hover/focus; visitors rely on the shared cursor-pointer + hover lift only.
-	const canManage = $derived(canManageWishlist(role));
+	const canManage = $derived(canManageWishlist(role) && !contextualMode);
 
-	// Dimmed = "don't buy this": fully reserved (visitor/moderator only — the
-	// recipient never sees reservation state) or already received.
-	const isDimmed = $derived((isVisitorOrModerator && isFullyReserved) || gift.received);
+	const isDimmed = $derived(presentation.isDimmed);
+	const hasDesktopAction = $derived(
+		presentation.showLike ||
+			(canManage && !isArchived && onreceived !== undefined) ||
+			(isVisitorOrModerator &&
+				visitorGift != null &&
+				(visitorGift.myReservationId != null || (!isArchived && !isFullyReserved))),
+	);
 
 	const styles = $derived(giftCardVariants({ dimmed: isDimmed }));
 
@@ -99,27 +134,36 @@
 		{/if}
 
 		{#if gift.category != null}
-			<GiftCategoryBadge category={gift.category} />
+			<div class="max-sm:hidden"><GiftCategoryBadge category={gift.category} /></div>
 		{/if}
 
 		{#if canManage}
 			<!-- Edit affordance (issue #125 REQ-3): hidden until the card is hovered/focused;
 			     purely decorative, the whole card is already the click target via
 			     WishlistGiftDraggableWrapper. -->
-			<span class={styles.editIcon()} data-testid="gift-card-edit-icon" aria-hidden="true">
+			<span
+				class={cn(styles.editIcon(), 'max-sm:hidden')}
+				data-testid="gift-card-edit-icon"
+				aria-hidden="true"
+			>
 				<PencilIcon class="size-3.5" />
 			</span>
 		{/if}
 
-		{#if isVisitorOrModerator && isFullyReserved}
-			<GiftReservedSticker {reserverLine} />
-		{/if}
-
-		{#if gift.received}
-			<span class={styles.receivedSticker()} data-testid="gift-received-sticker">
-				<CheckIcon class="size-3" />
-				{m.gift_received_badge()}
-			</span>
+		{#if !contextualMode}
+			{#if narrowViewportState.current}
+				<GiftStateOverlay model={presentation.overlay} />
+			{:else}
+				{#if isVisitorOrModerator && isFullyReserved}
+					<GiftReservedSticker {reserverLine} />
+				{/if}
+				{#if gift.received}
+					<span class={styles.receivedSticker()} data-testid="gift-received-sticker">
+						<CheckIcon class="size-3" />
+						{m.gift_received_badge()}
+					</span>
+				{/if}
+			{/if}
 		{/if}
 	</div>
 
@@ -129,13 +173,15 @@
 		     in the gift detail modal (issue #185), not on the card. -->
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
-			<GiftPieceCount
-				quantity={gift.quantity}
-				role={hideReservationState ? 'recipient' : role}
-				{reservedCount}
-				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
-				hideWhenOne
-			/>
+			<span class="max-sm:hidden">
+				<GiftPieceCount
+					quantity={gift.quantity}
+					role={hideReservationState || contextualMode ? 'recipient' : role}
+					{reservedCount}
+					reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
+					hideWhenOne
+				/>
+			</span>
 		</div>
 
 		{#if gift.price !== null}
@@ -164,24 +210,40 @@
 			<GiftLinkList links={gift.links} maxVisible={3} />
 		</div>
 
+		{#if !contextualMode && narrowViewportState.current && role === 'moderator' && reserverLine !== null && reserverLine !== ''}
+			<p class="truncate text-xs font-semibold text-muted-foreground max-sm:mt-0.5">
+				{reserverLine}
+			</p>
+		{/if}
 		<GiftDescription
 			description={gift.description}
 			descriptionAppends={gift.descriptionAppends}
 			maxVisibleAppends={1}
-			class="row-start-5 mt-3"
+			class="row-start-5 mt-3 max-sm:hidden"
 		/>
 	</div>
 
-	{#if (canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift)}
-		<div class={styles.footer()}>
-			{#if isVisitorOrModerator && visitorGift}
+	{#if !contextualMode && ((canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift) || onmore)}
+		<div
+			class={cn(styles.footer(), !hasDesktopAction && 'sm:hidden')}
+			data-testid="gift-card-footer"
+		>
+			{#if presentation.showLike && visitorGift}
 				<LikeButton
 					giftId={gift.id}
 					giftName={gift.name}
 					likeCount={visitorGift.likeCount}
+					size="md"
+					class="max-sm:absolute max-sm:right-1 max-sm:top-1 max-sm:z-20 max-sm:size-10 max-sm:rounded-full max-sm:border-2 max-sm:border-ink max-sm:bg-card max-sm:p-0 max-sm:shadow-sticker"
 				/>
 			{/if}
-			<div class={styles.reservationActions()}>
+			<div
+				data-testid="gift-card-reservation-actions"
+				class={cn(
+					styles.reservationActions(),
+					onmore && 'max-sm:grid-cols-[minmax(0,1fr)_40px]',
+				)}
+			>
 				{#if canManage && onreceived !== undefined}
 					<GiftReceivedToggle
 						giftId={gift.id}
@@ -189,19 +251,30 @@
 						{role}
 						{isArchived}
 						{onreceived}
-						class="w-full"
+						class="min-h-10 min-w-0 w-full shrink gap-0 whitespace-normal px-1 text-xs leading-tight [&_svg]:hidden sm:gap-1.5 sm:px-3 sm:text-(length:--text-md) sm:leading-none sm:[&_svg]:block"
 					/>
 				{/if}
 				{#if isVisitorOrModerator && visitorGift}
-					<PurchasedToggle gift={visitorGift} class="w-full" />
+					<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
 					<ReserveButton
 						gift={visitorGift}
 						{isArchived}
 						size="md"
 						{onreserve}
 						{onunreserve}
-						class="w-full"
+						class={cn('min-h-10 w-full', canManage && 'max-sm:hidden')}
 					/>
+				{/if}
+				{#if onmore}
+					<Button
+						intent="outline"
+						class="h-auto min-h-10 w-10 shrink-0 self-stretch p-0 sm:hidden"
+						aria-label={m.gift_more_actions()}
+						onclick={(event) => {
+							event.stopPropagation();
+							onmore();
+						}}><EllipsisIcon /></Button
+					>
 				{/if}
 			</div>
 		</div>

@@ -21,7 +21,14 @@ test.describe('Wishlist page', () => {
 
 		// Anime-sky redesign (#102, REQ-12): the full-width draft lifecycle strip is removed.
 		// The unshared state is surfaced by the compact "Koncept" status chip in the header.
-		await expect(page.getByRole('main').getByText('Koncept')).toBeVisible();
+		await expect(
+			page
+				.getByRole('main')
+				.locator(
+					'[data-testid="wishlist-mobile-hero"]:visible, [data-testid="wishlist-banner"]:visible',
+				)
+				.getByText('Koncept'),
+		).toBeVisible();
 		await expect(page.getByText(/Tento seznam (je.t.|jeste) nebyl sd.len/i)).toHaveCount(0);
 
 		// A single „Sdílet" action opens the share wizard (replacing the removed strips).
@@ -143,9 +150,14 @@ test.describe('Wishlist page', () => {
 		await expect(dialog).not.toBeVisible({ timeout: 5_000 });
 		await waitForDialogOverlayRemoval(page);
 
-		await expect(page.getByRole('main').getByText(/Sd.leno|Sdileno/)).toBeVisible({
-			timeout: 5_000,
-		});
+		await expect(
+			page
+				.getByRole('main')
+				.locator(
+					'[data-testid="wishlist-mobile-hero"]:visible, [data-testid="wishlist-banner"]:visible',
+				)
+				.getByText(/Sd.leno|Sdileno/),
+		).toBeVisible({ timeout: 5_000 });
 
 		await page
 			.getByRole('button', { name: /Sd.let seznam|Sdilet seznam/ })

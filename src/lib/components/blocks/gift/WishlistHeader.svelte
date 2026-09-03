@@ -24,6 +24,7 @@
 	import { wishlistImageUrl, wishlistSlotToFrameProps } from '$lib/modules/images/index.js';
 	import type { WishlistImageSlots } from '$lib/modules/images/index.js';
 	import WishlistSlotImage from '$lib/components/blocks/wishlist/WishlistSlotImage.svelte';
+	import WishlistHeaderActions from './WishlistHeaderActions.svelte';
 	import { wishlistHeaderVariants } from './wishlist_header_variants.js';
 
 	interface WishlistHeaderProps {
@@ -69,6 +70,7 @@
 		onarchive?: () => void;
 		oneditimage?: () => void;
 		oneditrecipient?: () => void;
+		onsettings?: () => void;
 	}
 
 	let {
@@ -93,6 +95,7 @@
 		onarchive,
 		oneditimage,
 		oneditrecipient,
+		onsettings,
 	}: WishlistHeaderProps = $props();
 
 	const styles = wishlistHeaderVariants();
@@ -188,6 +191,48 @@
 </script>
 
 <header class={styles.root()}>
+	<!-- Narrow screens use a standalone compact hero. The notices below intentionally remain
+	     siblings so lifecycle and reservation privacy messaging never gets clipped by it. -->
+	<div class="mobile-hero" data-testid="wishlist-mobile-hero">
+		<figure class="mobile-photo" data-testid="wishlist-mobile-photo">
+			<WishlistSlotImage
+				class="size-full rounded-none"
+				src={polaroidSrc}
+				frame={polaroidFrame}
+				{themeEmoji}
+				alt={title}
+				variant="thumbnail"
+				eagerLoading
+			/>
+		</figure>
+		<div class="mobile-copy">
+			<p class="mobile-recipient">
+				{m.wishlist_header_for_prefix()}<strong>{recipientDisplayName}</strong>
+			</p>
+			<svelte:element this={headingLevel === 1 ? 'h1' : 'h2'} class="mobile-title">
+				{title}
+			</svelte:element>
+			<p class="mobile-meta">
+				{statusLabel}{#if giftCountLabel !== null}<span aria-hidden="true">
+						·
+					</span>{giftCountLabel}{/if}
+			</p>
+		</div>
+		<WishlistHeaderActions
+			{canManage}
+			canShare={!isArchived}
+			canEditImage={!isArchived}
+			{canEditRecipient}
+			canArchive={!isArchived}
+			{onshare}
+			{onmoderators}
+			{onsettings}
+			{oneditimage}
+			{oneditrecipient}
+			{onarchive}
+		/>
+	</div>
+
 	<!-- Spiral-notebook panel: punch holes, red margin line, ruled lines -->
 	<div class="notebook" data-testid="wishlist-banner">
 		<div class="notebook-face">
@@ -361,6 +406,10 @@
 </header>
 
 <style>
+	.mobile-hero {
+		display: none;
+	}
+
 	/* Static „spiral notebook page": ruled lines, red margin, punch holes down the
 	   left edge. Layered backgrounds don't translate to utility classes, so the
 	   notebook motifs live here; colors come from the palette tokens in app.css. */
@@ -502,35 +551,67 @@
 		}
 	}
 
-	@media (width <= 640px) {
+	@media (width < 640px) {
 		.notebook {
-			background-image:
-				radial-gradient(
-					circle at 20px 26px,
-					var(--hole-inner) 0 4.5px,
-					var(--hole-ring) 4.5px 6.5px,
-					transparent 7px
-				),
-				linear-gradient(
-					to right,
-					transparent 0 48px,
-					var(--margin-red) 48px 50px,
-					transparent 50px
-				),
-				repeating-linear-gradient(transparent 0 33px, var(--rule-line) 33px 35px);
+			display: none;
 		}
 
-		.notebook-face {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: var(--space-4);
-			padding: var(--space-4) var(--space-4) var(--space-4) 66px;
+		.mobile-hero {
+			display: grid;
+			box-sizing: border-box;
+			height: 112px;
+			grid-template-columns: 92px minmax(0, 1fr) auto;
+			align-items: center;
+			gap: var(--space-2);
+			padding: var(--space-2);
+			overflow: hidden;
+			background: var(--card);
+			border: 2px solid var(--ink);
+			border-radius: var(--radius-xl);
+			box-shadow: 3px 3px 0 var(--hard-shadow);
 		}
 
-		.polaroid {
-			--polaroid-rotation: -2deg;
+		.mobile-photo {
+			width: 92px;
+			height: 92px;
+			margin: 0;
+			overflow: hidden;
+			border: 2px solid var(--ink);
+			border-radius: var(--radius-lg);
+		}
 
-			width: 148px;
+		.mobile-copy {
+			min-width: 0;
+		}
+
+		.mobile-recipient,
+		.mobile-meta {
+			margin: 0;
+			color: var(--muted-foreground);
+			font-size: 11px;
+			line-height: 15px;
+			font-weight: 600;
+		}
+
+		.mobile-recipient strong {
+			color: var(--ink);
+		}
+
+		.mobile-title {
+			display: -webkit-box;
+			margin: 1px 0 0;
+			overflow: hidden;
+			font-family: var(--font-heading);
+			font-size: 16px;
+			font-weight: 700;
+			line-height: 1.15;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 2;
+			line-clamp: 2;
+		}
+
+		.mobile-meta {
+			margin-top: var(--space-1);
 		}
 	}
 </style>

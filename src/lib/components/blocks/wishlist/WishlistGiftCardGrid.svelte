@@ -29,6 +29,7 @@
 		selectionMode?: boolean;
 		onselectiontoggle?: (giftId: string) => void;
 		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
+		hascontextactions?: (gift: GiftByRole) => boolean;
 	}
 
 	let {
@@ -47,6 +48,7 @@
 		selectionMode = false,
 		onselectiontoggle,
 		oncontextactions,
+		hascontextactions,
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
@@ -106,8 +108,8 @@
 
 <div
 	bind:this={gridEl}
-	class="grid gap-5"
-	style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))"
+	data-testid="wishlist-gift-card-grid"
+	class="gift-card-grid grid grid-cols-2 gap-2 overflow-x-clip sm:gap-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
 >
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
 		{#if giftSectionHasHeader(section)}
@@ -120,8 +122,9 @@
 			<WishlistGiftItem
 				gift={giftItem}
 				{index}
+				totalCount={totalGiftCount}
 				{reorderEnabled}
-				class="row-span-7 grid grid-rows-subgrid gap-y-0"
+				class="h-full min-w-0 sm:row-span-7 sm:grid sm:grid-rows-subgrid sm:gap-y-0"
 				draggedGiftId={reorder.draggedGiftId.current}
 				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="ring"
@@ -138,12 +141,27 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
+						contextualMode={selectionMode || reorderEnabled}
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						onmore={oncontextactions !== undefined &&
+						hascontextactions !== undefined &&
+						hascontextactions(giftItem)
+							? () => oncontextactions(giftItem, null)
+							: undefined}
 					/>
 				{/snippet}
 			</WishlistGiftItem>
 		{/each}
 	{/each}
 </div>
+
+<style>
+	@media (width <= 320px) {
+		.gift-card-grid {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 10px;
+		}
+	}
+</style>

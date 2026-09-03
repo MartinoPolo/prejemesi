@@ -100,14 +100,16 @@ test.describe('Anonymous visitor reservation', () => {
 		const likeBounds = await mobileListItem
 			.getByRole('button', { name: `Přidat do oblíbených: ${TEST_GIFT.name}` })
 			.boundingBox();
-		const primaryLinkBounds = await mobileListItem
-			.getByRole('link', { name: /example\.com/ })
-			.boundingBox();
+		const moreActions = mobileListItem.getByRole('button', {
+			name: /Další akce|More actions/i,
+		});
+		const moreActionsBounds = await moreActions.boundingBox();
 
 		expect(imageBounds).not.toBeNull();
 		expect(reserveBounds).not.toBeNull();
 		expect(likeBounds).not.toBeNull();
-		expect(primaryLinkBounds).not.toBeNull();
+		expect(moreActionsBounds).not.toBeNull();
+		await expect(mobileListItem.getByRole('link', { name: /example\.com/ })).toHaveCount(0);
 		expect(imageBounds!.width).toBeGreaterThanOrEqual(128);
 		expect(imageBounds!.width).toBeLessThanOrEqual(152);
 		// 1:1 list/reservation crop (issue #189, reverting the interim 4:3 list thumb
@@ -118,7 +120,7 @@ test.describe('Anonymous visitor reservation', () => {
 			0,
 		);
 		expect(reserveBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
-		expect(primaryLinkBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
+		expect(moreActionsBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
 		expect(likeBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x);
 		expect(likeBounds!.y).toBeGreaterThanOrEqual(imageBounds!.y);
 		expect(likeBounds!.x + likeBounds!.width).toBeLessThanOrEqual(
@@ -127,6 +129,17 @@ test.describe('Anonymous visitor reservation', () => {
 		expect(likeBounds!.y + likeBounds!.height).toBeLessThanOrEqual(
 			imageBounds!.y + imageBounds!.height,
 		);
+
+		await moreActions.click();
+		const moreActionsDialog = visitorPage.getByRole('dialog');
+		await expect(moreActionsDialog).toBeVisible();
+		await expect(
+			moreActionsDialog.getByRole('link', {
+				name: /Otevřít hlavní odkaz|Open primary link/i,
+			}),
+		).toBeVisible();
+		await visitorPage.keyboard.press('Escape');
+		await expect(moreActionsDialog).toBeHidden();
 
 		// Anonymous like prompt keeps the wishlist context on both auth links.
 		await visitorPage

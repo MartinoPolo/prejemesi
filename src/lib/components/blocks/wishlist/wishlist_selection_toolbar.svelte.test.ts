@@ -28,6 +28,39 @@ function createProps() {
 }
 
 describe('WishlistSelectionToolbar', () => {
+	it('uses one aligned mobile row with count, Select all, labeled Actions, Cancel, and 40px targets', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		const region = screen.getByRole('region', { name: m.gift_selection_toolbar() });
+		const element = region.element() as HTMLElement;
+
+		expect(element).toHaveTextContent(m.gift_selection_count({ count: 2 }));
+		expect(element).toHaveTextContent(m.draft_grid_select_all());
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_selection_actions() }))
+			.toBeVisible();
+		await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeVisible();
+		const children = Array.from(element.children).filter(
+			(child) => getComputedStyle(child).display !== 'none',
+		);
+		expect(
+			new Set(
+				children.map((child) => {
+					const rect = child.getBoundingClientRect();
+					return rect.top + rect.height / 2;
+				}),
+			).size,
+		).toBe(1);
+		for (const target of element.querySelectorAll<HTMLElement>(
+			'button, [data-slot="checkbox"]',
+		)) {
+			if (target.getClientRects().length === 0) {
+				continue;
+			}
+			expect(target.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+		}
+		await screen.unmount();
+	});
+
 	it('reports mixed summaries, hidden selection, and dispatches visible-select plus done callbacks', async () => {
 		const props = createProps();
 		const screen = await render(WishlistSelectionToolbar, props);
@@ -39,7 +72,7 @@ describe('WishlistSelectionToolbar', () => {
 		await expect.element(region).toHaveTextContent(m.gift_selection_mixed());
 		await screen.getByRole('checkbox', { name: m.gift_selection_visible_all() }).click();
 		expect(props.onselectvisible).toHaveBeenCalled();
-		await screen.getByRole('button', { name: m.done() }).click();
+		await screen.getByRole('button', { name: m.cancel() }).click();
 		expect(props.ondone).toHaveBeenCalledOnce();
 		await screen.unmount();
 	});
@@ -142,7 +175,7 @@ describe('WishlistSelectionToolbar', () => {
 		await expect
 			.element(screen.getByRole('button', { name: m.gift_selection_actions() }))
 			.toBeDisabled();
-		await expect.element(screen.getByRole('button', { name: m.done() })).toBeEnabled();
+		await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeEnabled();
 		await screen.unmount();
 	});
 
@@ -154,7 +187,7 @@ describe('WishlistSelectionToolbar', () => {
 		await expect
 			.element(screen.getByRole('button', { name: m.gift_bulk_pending({ count: 2 }) }))
 			.toBeDisabled();
-		await expect.element(screen.getByRole('button', { name: m.done() })).toBeEnabled();
+		await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeEnabled();
 		await screen.unmount();
 	});
 

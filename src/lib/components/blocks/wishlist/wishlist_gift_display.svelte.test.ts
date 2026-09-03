@@ -1,5 +1,6 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'svelte';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
@@ -91,6 +92,50 @@ function deferredAnimation() {
 	};
 }
 
+describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
+	it('switches from one card column at 320px to two equal columns at 321px', async () => {
+		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };
+		const responsiveSections = [{ ...sections[0]!, gifts: [visitorGift(), second] }];
+		await page.viewport(320, 720);
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: responsiveSections,
+			viewMode: 'card',
+		});
+		let cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+		expect(cards[1]!.getBoundingClientRect().top).toBeGreaterThan(
+			cards[0]!.getBoundingClientRect().top,
+		);
+
+		await page.viewport(321, 720);
+		cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+		const firstRect = cards[0]!.getBoundingClientRect();
+		const secondRect = cards[1]!.getBoundingClientRect();
+		expect(secondRect.top).toBeCloseTo(firstRect.top, 0);
+		expect(secondRect.width).toBeCloseTo(firstRect.width, 0);
+		expect(secondRect.left - firstRect.right).toBeCloseTo(8, 0);
+		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(321);
+		await screen.unmount();
+	});
+
+	it('uses standalone equal-height list cards with a 10px vertical gap', async () => {
+		await page.viewport(390, 720);
+		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts: [visitorGift(), second] }],
+			viewMode: 'list',
+		});
+		const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+		const first = cards[0]!.getBoundingClientRect();
+		const secondRect = cards[1]!.getBoundingClientRect();
+		expect(first.height).toBeCloseTo(128, 0);
+		expect(secondRect.height).toBeCloseTo(first.height, 0);
+		expect(secondRect.top - first.bottom).toBeCloseTo(10, 0);
+		await screen.unmount();
+	});
+});
+
 describe('WishlistGiftDisplay selection accessibility', () => {
 	it('uses group and independently tabbable checkbox semantics', async () => {
 		const screen = await render(WishlistGiftDisplay, {
@@ -108,6 +153,84 @@ describe('WishlistGiftDisplay selection accessibility', () => {
 		expect(gift.getAttribute('tabindex')).toBe('0');
 		await screen.unmount();
 	});
+});
+
+function expectNoContextualCardActions(gift: Element) {
+	expect(gift.querySelector('[data-like-heart]')).toBeNull();
+	expect(gift.querySelector('[data-testid="reserve-button"]')).toBeNull();
+	expect(gift.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
+	expect(gift.querySelector(`[aria-label="${m.gift_more_actions()}"]`)).toBeNull();
+	expect(gift.querySelector(`[aria-label="${m.gift_mark_bought()}"]`)).toBeNull();
+	expect(gift.querySelector('[data-testid="gift-state-overlay"]')).toBeNull();
+}
+
+describe('WishlistGiftDisplay contextual gift presentation', () => {
+	it.each(['card', 'list'] as const)(
+		'renders only the image checkbox control in selection mode for the %s path',
+		async (viewMode) => {
+			const privateGift = {
+				...visitorGift(),
+				isFullyReserved: true,
+				reserverNames: ['Soukromá osoba'],
+			};
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts: [privateGift] }],
+				role: WISHLIST_ROLES.moderator,
+				viewMode,
+				selectionMode: true,
+				oncontextactions: () => true,
+			});
+			const gift = document.querySelector('[data-gift-item]')!;
+
+			expect(
+				gift.querySelectorAll('[aria-hidden="true"] [data-slot="checkbox"]'),
+			).toHaveLength(1);
+			expectNoContextualCardActions(gift);
+			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(1);
+			await screen.unmount();
+		},
+	);
+
+	it.each(['card', 'list'] as const)(
+		'renders the grip and visible move controls in reorder mode for the %s path',
+		async (viewMode) => {
+			const privateGift = {
+				...visitorGift(),
+				isFullyReserved: true,
+				reserverNames: ['Soukromá osoba'],
+			};
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts: [privateGift] }],
+				role: WISHLIST_ROLES.moderator,
+				viewMode,
+				reorderMode: true,
+				oncontextactions: () => true,
+			});
+			const gift = document.querySelector('[data-gift-item]')!;
+			const grip = gift.querySelector(
+				`button[aria-label="${m.gift_reorder_grip_label()}"]`,
+			) as HTMLButtonElement;
+			const moveUp = gift.querySelector(
+				`button[aria-label="${m.gift_reorder_move_up({ name: privateGift.name })}"]`,
+			) as HTMLButtonElement;
+			const moveDown = gift.querySelector(
+				`button[aria-label="${m.gift_reorder_move_down({ name: privateGift.name })}"]`,
+			) as HTMLButtonElement;
+
+			expect(grip).toBeTruthy();
+			expect(grip.getBoundingClientRect().width).toBeCloseTo(40, 0);
+			expect(grip.getBoundingClientRect().height).toBeCloseTo(40, 0);
+			expect(moveUp).toBeTruthy();
+			expect(moveUp.disabled).toBe(true);
+			expect(moveDown).toBeTruthy();
+			expect(moveDown.disabled).toBe(true);
+			expectNoContextualCardActions(gift);
+			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(3);
+			await screen.unmount();
+		},
+	);
 });
 
 describe('WishlistGiftDisplay primary-link middle click wiring', () => {

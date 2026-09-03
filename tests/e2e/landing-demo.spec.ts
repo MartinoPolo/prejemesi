@@ -20,7 +20,7 @@ const CS = {
 	headline: 'Rezervaci uvidí kamarádi. Petra ne.',
 	roleGifter: 'Kamarád',
 	roleRecipient: 'Petra',
-	reservedSticker: 'Rezervováno',
+	reservedSticker: 'Rezervováno někým jiným',
 	reserve: 'Rezervovat',
 	cancelReservation: 'Zrušit rezervaci',
 	invariantCaption: 'Petra nevidí, že je rezervováno — překvapení platí.',
@@ -192,8 +192,10 @@ test.describe('Landing demo section', () => {
 		await expect(pairGifter.getByRole('heading', { name: CS.teapotName })).toBeVisible();
 		await expect(pairRecipient.getByRole('heading', { name: CS.teapotName })).toBeVisible();
 
-		// Only the gifter cell carries the reservation sticker.
-		await expect(pairGifter.getByText(CS.reservedSticker)).toBeVisible();
+		// Only the visible gifter overlay carries the reservation sticker.
+		await expect(pairGifter.locator('[data-testid="gift-state-overlay"]:visible')).toHaveText(
+			CS.reservedSticker,
+		);
 		await expect(pairRecipient.getByText(RESERVATION_TRACE)).toHaveCount(0);
 		// A frozen illustration: neither cell offers a control.
 		await expect(pair.getByTestId('reserve-button')).toHaveCount(0);

@@ -29,6 +29,7 @@
 		selectionMode?: boolean;
 		onselectiontoggle?: (giftId: string) => void;
 		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
+		hascontextactions?: (gift: GiftByRole) => boolean;
 	}
 
 	let {
@@ -47,6 +48,7 @@
 		selectionMode = false,
 		onselectiontoggle,
 		oncontextactions,
+		hascontextactions,
 	}: WishlistGiftListViewProps = $props();
 
 	let listEl = $state<HTMLElement | null>(null);
@@ -100,7 +102,7 @@
 	{reorderAnnouncement}
 </div>
 
-<div bind:this={listEl} class="flex flex-col">
+<div bind:this={listEl} data-testid="wishlist-gift-list" class="flex flex-col gap-2.5 sm:gap-0">
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
 		{#if giftSectionHasHeader(section)}
 			<GiftSectionHeader {section} {selectionMode} {onselectiontoggle} />
@@ -110,6 +112,7 @@
 				selectionLayout="list"
 				gift={giftItem}
 				{index}
+				totalCount={totalGiftCount}
 				{reorderEnabled}
 				draggedGiftId={reorder.draggedGiftId.current}
 				dragOverGiftId={reorder.dragOverGiftId.current}
@@ -127,9 +130,15 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
+						contextualMode={selectionMode || reorderEnabled}
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						onmore={oncontextactions !== undefined &&
+						hascontextactions !== undefined &&
+						hascontextactions(giftItem)
+							? () => oncontextactions(giftItem, null)
+							: undefined}
 					/>
 				{/snippet}
 			</WishlistGiftItem>

@@ -249,7 +249,9 @@ test.describe('Post-share editing rules', () => {
 
 		// Anime-sky redesign (#102, REQ-12): the full-width shared lifecycle strip is gone.
 		// The shared state is now surfaced by the compact status chip in the header meta row.
-		await expect(page.getByRole('main').getByText('Sdíleno')).toBeVisible({ timeout: 5_000 });
+		await expect(
+			page.getByTestId('wishlist-banner').getByText('Sdíleno', { exact: true }),
+		).toBeVisible({ timeout: 5_000 });
 
 		// Open the pre-share gift. Sharing opens a 2-minute grace window (#83) during
 		// which the owner regains full edit, surfaced as a live countdown.

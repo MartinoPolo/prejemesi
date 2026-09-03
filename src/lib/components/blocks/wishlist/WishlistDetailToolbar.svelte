@@ -584,6 +584,12 @@
 
 {#snippet mobileDisplayControls()}
 	<div class="mobile-browse-row" data-mobile-toolbar-row>
+		<GiftViewSwitcher
+			value={viewMode}
+			onchange={onviewmodechange}
+			disabled={reorderMode}
+			contained
+		/>
 		<div class="mobile-browse-spacer"></div>
 		<SimpleTooltip text={sortCombinedLabel}>
 			<Button
@@ -947,12 +953,6 @@
 			<div class="toolbar-selection-content min-w-0">{@render selectionContent()}</div>
 		</div>
 	{:else}
-		<div
-			class="toolbar-shared-view-switcher"
-			class:toolbar-shared-view-switcher-mobile-hidden={reorderMode}
-		>
-			<GiftViewSwitcher value={viewMode} onchange={onviewmodechange} disabled={reorderMode} />
-		</div>
 		{#if mobileViewportMode === null || mobileViewportMode}
 			<div class="toolbar-mobile" data-testid="wishlist-toolbar-mobile">
 				{#if reorderMode}
@@ -965,6 +965,13 @@
 			{@render mobileDisplaySheet()}
 		{/if}
 		{#if mobileViewportMode === null || !mobileViewportMode}
+			<div class="toolbar-desktop-view-switcher">
+				<GiftViewSwitcher
+					value={viewMode}
+					onchange={onviewmodechange}
+					disabled={reorderMode}
+				/>
+			</div>
 			<div class="toolbar-desktop">
 				<div class="toolbar-layout min-w-0">
 					<div class="toolbar-controls min-w-0" data-testid="wishlist-toolbar-controls">
@@ -1095,40 +1102,22 @@
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
-		padding: 2px;
+		padding: 8px;
 	}
 
-	.toolbar-shared-view-switcher {
-		position: absolute;
-		z-index: 1;
-		inset-block-start: 10px;
-		inset-inline-start: 14px;
+	.toolbar-desktop-view-switcher {
+		display: none;
 	}
 
 	.toolbar-mobile {
 		display: grid;
 		min-width: 0;
 		grid-auto-rows: 40px;
-		gap: 4px;
-	}
-
-	.toolbar-shared-view-switcher-mobile-hidden {
-		display: none;
+		gap: 8px;
 	}
 
 	.toolbar-desktop {
 		display: none;
-	}
-
-	.mobile-browse-row {
-		padding-inline-start: 84px;
-	}
-
-	.toolbar-shared-view-switcher :global([data-slot='toggle-group-item']) {
-		width: 40px;
-		min-width: 40px;
-		height: 40px;
-		min-height: 40px;
 	}
 
 	.mobile-browse-row,
@@ -1137,7 +1126,7 @@
 		display: flex;
 		min-width: 0;
 		align-items: center;
-		gap: 0;
+		gap: 6px;
 		white-space: nowrap;
 	}
 
@@ -1157,6 +1146,14 @@
 	.mobile-management-spacer {
 		min-width: 0;
 		flex: 1 1 auto;
+	}
+
+	.mobile-browse-spacer {
+		margin-inline-end: -6px;
+	}
+
+	.mobile-management-spacer {
+		margin-inline-start: -6px;
 	}
 
 	.mobile-visitor-inline,
@@ -1179,15 +1176,6 @@
 	}
 
 	@media (width >= 360px) and (width <= 639px) {
-		.wishlist-toolbar {
-			padding: 6px;
-		}
-
-		.mobile-browse-row,
-		.mobile-management-row {
-			gap: 4px;
-		}
-
 		.mobile-visitor-inline:not(
 			.mobile-visitor-inline-with-reset,
 			.mobile-visitor-inline-persistent
@@ -1226,7 +1214,12 @@
 	.mobile-management-cluster {
 		display: flex;
 		flex: 0 0 auto;
-		gap: 4px;
+		gap: 6px;
+	}
+
+	.toolbar-mobile :global([data-slot='toggle-group']) {
+		width: 80px;
+		flex: 0 0 80px;
 	}
 
 	.toolbar-mobile :global(button),
@@ -1474,8 +1467,12 @@
 			padding: 0.625rem 0.875rem;
 		}
 
-		.toolbar-shared-view-switcher-mobile-hidden {
+		.toolbar-desktop-view-switcher {
 			display: block;
+			position: absolute;
+			z-index: 1;
+			inset-block-start: 10px;
+			inset-inline-start: 14px;
 		}
 
 		.toolbar-mobile {
@@ -1486,7 +1483,11 @@
 			display: block;
 		}
 
-		.toolbar-shared-view-switcher :global([data-slot='toggle-group-item']) {
+		.toolbar-desktop-view-switcher :global([data-slot='toggle-group']) {
+			height: 32px;
+		}
+
+		.toolbar-desktop-view-switcher :global([data-slot='toggle-group-item']) {
 			width: 32px;
 			min-width: 32px;
 			height: 32px;

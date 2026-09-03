@@ -5,6 +5,9 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 	import ListChecksIcon from '@lucide/svelte/icons/list-checks';
+	import BookmarkIcon from '@lucide/svelte/icons/bookmark';
+	import BookmarkXIcon from '@lucide/svelte/icons/bookmark-x';
+	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
 	import * as ContextMenu from '$lib/components/base/context-menu/index.js';
 	import * as Sheet from '$lib/components/base/sheet/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -26,6 +29,10 @@
 		primaryUrl: string | null;
 		readOnly: boolean;
 		received: boolean;
+		canReserve?: boolean;
+		ownsReservation?: boolean;
+		canTrackPurchased?: boolean;
+		purchased?: boolean;
 		priorityReady?: boolean;
 		categoryReady?: boolean;
 		priorityLevels: Choice[];
@@ -38,6 +45,9 @@
 		oncategory: (id: string | null) => void;
 		onreceived: () => void;
 		onselect: () => void;
+		onreserve?: () => void;
+		oncancelreservation?: () => void;
+		onpurchased?: () => void;
 		oncopysuccess?: () => void;
 		oncopyerror?: () => void;
 	}
@@ -50,6 +60,10 @@
 		primaryUrl,
 		readOnly,
 		received,
+		canReserve = false,
+		ownsReservation = false,
+		canTrackPurchased = false,
+		purchased = false,
 		priorityReady = false,
 		categoryReady = false,
 		priorityLevels,
@@ -62,6 +76,9 @@
 		oncategory,
 		onreceived,
 		onselect,
+		onreserve,
+		oncancelreservation,
+		onpurchased,
 		oncopysuccess,
 		oncopyerror,
 	}: Props = $props();
@@ -71,7 +88,15 @@
 			DOMRect.fromRect({ x: anchorPoint.x, y: anchorPoint.y, width: 0, height: 0 }),
 	});
 	const actions = $derived(
-		giftContextActions({ role, primaryUrl: safePrimaryUrl, readOnly, canEdit: true }),
+		giftContextActions({
+			role,
+			primaryUrl: safePrimaryUrl,
+			readOnly,
+			canEdit: true,
+			canReserve,
+			ownsReservation,
+			canTrackPurchased,
+		}),
 	);
 	let mobileScreen = $state<'main' | 'priority' | 'category'>('main');
 
@@ -102,10 +127,22 @@
 	}
 </script>
 
-{#snippet icon(action: 'open' | 'copy' | 'edit' | 'received' | 'multiselect')}
+{#snippet icon(
+	action:
+		| 'open'
+		| 'copy'
+		| 'edit'
+		| 'received'
+		| 'multiselect'
+		| 'reserve'
+		| 'cancel-reservation'
+		| 'purchased',
+)}
 	{#if action === 'open'}<ExternalLinkIcon />{:else if action === 'copy'}<CopyIcon
 		/>{:else if action === 'edit'}<PencilIcon />{:else if action === 'received'}<CheckIcon
-		/>{:else}<ListChecksIcon />{/if}
+		/>{:else if action === 'reserve'}<BookmarkIcon
+		/>{:else if action === 'cancel-reservation'}<BookmarkXIcon
+		/>{:else if action === 'purchased'}<ShoppingBagIcon />{:else}<ListChecksIcon />{/if}
 {/snippet}
 
 {#if mobile}
@@ -154,10 +191,11 @@
 					{#if has('open')}<Button
 							intent="ghost"
 							class="min-h-11 w-full justify-start"
-							onclick={() =>
-								finish(() =>
-									window.open(safePrimaryUrl!, '_blank', 'noopener,noreferrer'),
-								)}>{@render icon('open')}{m.gift_context_open_link()}</Button
+							href={safePrimaryUrl!}
+							target="_blank"
+							rel="external noopener noreferrer"
+							onclick={onclose}
+							>{@render icon('open')}{m.gift_context_open_link()}</Button
 						>{/if}
 					{#if has('copy')}<Button
 							intent="ghost"
@@ -202,6 +240,27 @@
 							class="min-h-11 w-full justify-start"
 							onclick={() => finish(onselect)}
 							>{@render icon('multiselect')}{m.gift_context_select_multiple()}</Button
+						>{/if}
+					{#if has('reserve') && onreserve}<Button
+							intent="ghost"
+							class="min-h-11 w-full justify-start"
+							onclick={() => finish(onreserve)}
+							>{@render icon('reserve')}{m.reserve_button_reserve()}</Button
+						>{/if}
+					{#if has('cancel-reservation') && oncancelreservation}<Button
+							intent="ghost"
+							class="min-h-11 w-full justify-start"
+							onclick={() => finish(oncancelreservation)}
+							>{@render icon('cancel-reservation')}{m.reserve_button_cancel()}</Button
+						>{/if}
+					{#if has('purchased') && onpurchased}<Button
+							intent="ghost"
+							class="min-h-11 w-full justify-start"
+							aria-pressed={purchased}
+							onclick={() => finish(onpurchased)}
+							>{@render icon('purchased')}{purchased
+								? m.gift_bought()
+								: m.gift_mark_bought()}</Button
 						>{/if}
 				{/if}
 			</div>
@@ -273,6 +332,18 @@
 		{#if has('multiselect')}<ContextMenu.Separator /><ContextMenu.Item
 				onSelect={() => finish(onselect)}
 				><ListChecksIcon />{m.gift_context_select_multiple()}</ContextMenu.Item
+			>{/if}
+		{#if has('reserve') && onreserve}<ContextMenu.Item onSelect={() => finish(onreserve)}
+				><BookmarkIcon />{m.reserve_button_reserve()}</ContextMenu.Item
+			>{/if}
+		{#if has('cancel-reservation') && oncancelreservation}<ContextMenu.Item
+				onSelect={() => finish(oncancelreservation)}
+				><BookmarkXIcon />{m.reserve_button_cancel()}</ContextMenu.Item
+			>{/if}
+		{#if has('purchased') && onpurchased}<ContextMenu.Item onSelect={() => finish(onpurchased)}
+				><ShoppingBagIcon />{purchased
+					? m.gift_bought()
+					: m.gift_mark_bought()}</ContextMenu.Item
 			>{/if}
 	</ContextMenu.Content>
 {/if}

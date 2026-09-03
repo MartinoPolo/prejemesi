@@ -190,15 +190,19 @@
 
 <div class="selection-toolbar" role="region" aria-label={m.gift_selection_toolbar()}>
 	<div class="selection-summary">
-		<Checkbox
-			checked={visibleState === 'all'}
-			indeterminate={visibleState === 'some'}
-			onCheckedChange={onselectvisible}
-			aria-label={m.gift_selection_visible_all()}
-		/><strong class="whitespace-nowrap text-sm"
+		<label class="select-all">
+			<Checkbox
+				checked={visibleState === 'all'}
+				indeterminate={visibleState === 'some'}
+				onCheckedChange={onselectvisible}
+				aria-label={m.gift_selection_visible_all()}
+			/>
+			<span class="select-all-label">{m.draft_grid_select_all()}</span>
+		</label>
+		<strong class="selection-count whitespace-nowrap text-sm"
 			>{m.gift_selection_count({ count: selectedCount })}</strong
 		>{#if hiddenCount > 0}<span
-				class="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-1 text-xs font-bold text-warning-foreground"
+				class="hidden-selection-count inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-1 text-xs font-bold text-warning-foreground"
 				><EyeOffIcon class="size-3.5" />{m.gift_selection_hidden_count({
 					count: hiddenCount,
 				})}</span
@@ -334,7 +338,10 @@
 			></DropdownMenu.Root
 		>
 	</div>
-	<Button class="done" intent="primary" size="md" onclick={ondone}>{m.done()}</Button>
+	<Button class="done" intent="primary" size="md" onclick={ondone}>
+		<span class="mobile-cancel">{m.cancel()}</span>
+		<span class="desktop-done">{m.done()}</span>
+	</Button>
 </div>
 
 <style>
@@ -346,11 +353,24 @@
 		width: 100%;
 	}
 
-	.selection-summary {
+	.selection-summary,
+	.select-all {
 		display: flex;
 		min-width: 0;
 		align-items: center;
+	}
+
+	.selection-summary {
 		gap: 0.75rem;
+	}
+
+	.select-all {
+		gap: 0.375rem;
+		white-space: nowrap;
+	}
+
+	.mobile-cancel {
+		display: none;
 	}
 
 	.wide-controls {
@@ -370,6 +390,51 @@
 	:global(.done) {
 		grid-column: 2;
 		grid-row: 1;
+	}
+
+	@media (width <= 639px) {
+		.selection-toolbar {
+			display: flex;
+			flex-wrap: nowrap;
+			gap: 4px;
+		}
+
+		.selection-summary {
+			gap: 4px;
+		}
+
+		.hidden-selection-count,
+		.desktop-done,
+		.narrow-actions :global(svg) {
+			display: none;
+		}
+
+		.mobile-cancel {
+			display: inline;
+		}
+
+		.selection-count,
+		.select-all-label {
+			font-size: 0.75rem;
+		}
+
+		.narrow-actions {
+			grid-column: auto;
+			min-width: 0;
+		}
+
+		.selection-toolbar :global(button),
+		.selection-toolbar :global([data-slot='checkbox']) {
+			min-width: 40px;
+			min-height: 40px;
+		}
+
+		.narrow-actions :global(button),
+		:global(.done) {
+			width: auto;
+			min-width: 40px;
+			padding-inline: 0.5rem;
+		}
 	}
 
 	@container wishlist-toolbar (min-width: 56rem) {
