@@ -199,6 +199,8 @@ test('authenticated 320px navbar keeps every action visible with touch-sized tar
 		).toBeGreaterThanOrEqual(40);
 	}
 
+	await expectPaintedControlsNotToOverlap(header, 'authenticated 320px header');
+
 	await page.context().close();
 });
 

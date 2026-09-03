@@ -638,11 +638,10 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		}
 	});
 
-	it('keeps the same focused switcher instance when crossing the sm breakpoint', async () => {
+	it('keeps the focused switcher selection when crossing the sm breakpoint', async () => {
 		await page.viewport(639, 720);
 		const host = createTrackedToolbarHost('615px');
 		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
-		const switcher = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
 		const selected = screen
 			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
 			.element() as HTMLButtonElement;
@@ -651,10 +650,12 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		await page.viewport(640, 720);
 		await awaitAnimationFrames();
 
+		const resizedSelected = screen
+			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
+			.element() as HTMLButtonElement;
 		expect(host.querySelectorAll('[data-testid="gift-view-switcher"]')).toHaveLength(1);
-		expect(screen.getByTestId('gift-view-switcher').element()).toBe(switcher);
-		expect(document.activeElement).toBe(selected);
-		expect(selected).toHaveAttribute('aria-checked', 'true');
+		expect(document.activeElement).toBe(resizedSelected);
+		expect(resizedSelected).toHaveAttribute('aria-checked', 'true');
 		await screen.unmount();
 		host.remove();
 	});

@@ -343,6 +343,7 @@ describe('GiftListItem Like geometry (issue #330 follow-up)', () => {
 		expect(labelRect.top).toBeGreaterThanOrEqual(stickerRect.top);
 		expect(labelRect.bottom).toBeLessThanOrEqual(stickerRect.bottom);
 		expect(sticker.scrollWidth).toBeLessThanOrEqual(sticker.clientWidth);
+		host.remove();
 	});
 
 	it('keeps the counted variant 40px square on mobile and allows growth only on desktop', async () => {
@@ -387,6 +388,8 @@ describe('GiftListItem Like geometry (issue #330 follow-up)', () => {
 		expect(desktopLike.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
 		expect(desktopLike.getBoundingClientRect().height).toBeCloseTo(40, 0);
 		expect(desktopHost.querySelector('[data-like-count]')).not.toBeNull();
+		mobileHost.remove();
+		desktopHost.remove();
 	});
 
 	it('keeps the centered state label clear of the top-right Like on the 128px image', async () => {
@@ -412,6 +415,7 @@ describe('GiftListItem Like geometry (issue #330 follow-up)', () => {
 			likeRect.top < labelRect.bottom &&
 			likeRect.bottom > labelRect.top;
 		expect(overlaps).toBe(false);
+		host.remove();
 	});
 });
 
@@ -428,9 +432,7 @@ describe('GiftListItem reservation-action layout (issue #211)', () => {
 			{ baseElement: host },
 		);
 
-		const reserveButtonEl = document.querySelector(
-			'[data-testid="reserve-button"]',
-		) as HTMLElement;
+		const reserveButtonEl = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
 		const purchasedButtonEl = reserveButtonEl.parentElement!.querySelector(
 			'button:not([data-testid])',
 		) as HTMLElement;
