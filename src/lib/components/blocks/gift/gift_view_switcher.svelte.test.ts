@@ -43,7 +43,7 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		await screen.unmount();
 	});
 
-	it('is one warm contained keyboard-operable switcher with named disabled targets', async () => {
+	it('renders one inset warm boundary without a selected shadow covering its sibling', async () => {
 		const onchange = vi.fn();
 		const screen = await render(GiftViewSwitcher, {
 			value: GIFT_VIEW_MODES.card,
@@ -53,13 +53,33 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		const group = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
 		const card = screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`);
 		const list = screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`);
+		const groupStyle = getComputedStyle(group);
+		const cardElement = card.element() as HTMLElement;
+		const listElement = list.element() as HTMLElement;
 
-		expect(getComputedStyle(group).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-		expect(parseFloat(getComputedStyle(group).outlineWidth)).toBeGreaterThan(0);
-		expect(getComputedStyle(group).boxShadow).not.toBe('none');
+		expect(groupStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+		expect(parseFloat(groupStyle.borderWidth)).toBeGreaterThanOrEqual(2);
+		expect(parseFloat(groupStyle.borderRadius)).toBeLessThanOrEqual(8);
+		expect(groupStyle.boxShadow).not.toBe('none');
+		expect(parseFloat(groupStyle.paddingLeft)).toBeGreaterThan(0);
+		expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
+		expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
+		expect(getComputedStyle(cardElement).boxShadow).toBe(
+			getComputedStyle(listElement).boxShadow,
+		);
+		expect(cardElement.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
+		expect(cardElement.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+		expect(listElement.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
+		expect(listElement.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+		expect(cardElement.querySelector('svg')!.getBoundingClientRect().y).toBeCloseTo(
+			listElement.querySelector('svg')!.getBoundingClientRect().y,
+			1,
+		);
+		await expect.element(card).toHaveAttribute('aria-checked', 'true');
+		await expect.element(list).toHaveAttribute('aria-checked', 'false');
 		await expect.element(card).toHaveAccessibleName('Karta');
 		await expect.element(list).toHaveAccessibleName('Seznam');
-		(card.element() as HTMLElement).focus();
+		cardElement.focus();
 		await userEvent.keyboard('{ArrowRight}');
 		expect(onchange).toHaveBeenCalledWith(GIFT_VIEW_MODES.list);
 		await screen.rerender({

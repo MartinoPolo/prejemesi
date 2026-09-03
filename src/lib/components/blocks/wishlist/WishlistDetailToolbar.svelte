@@ -584,12 +584,6 @@
 
 {#snippet mobileDisplayControls()}
 	<div class="mobile-browse-row" data-mobile-toolbar-row>
-		<GiftViewSwitcher
-			value={viewMode}
-			onchange={onviewmodechange}
-			disabled={reorderMode}
-			contained
-		/>
 		<div class="mobile-browse-spacer"></div>
 		<SimpleTooltip text={sortCombinedLabel}>
 			<Button
@@ -945,7 +939,7 @@
 </div>
 
 <div
-	class="wishlist-toolbar sticky top-3 z-(--z-sticky) min-w-0 rounded-panel border-[2.5px] border-ink bg-card px-3.5 py-2.5 shadow-sticker"
+	class="wishlist-toolbar sticky top-3 z-(--z-sticky) min-w-0 rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
 	data-testid="wishlist-toolbar"
 >
 	{#if selectionContent}
@@ -953,6 +947,16 @@
 			<div class="toolbar-selection-content min-w-0">{@render selectionContent()}</div>
 		</div>
 	{:else}
+		{#if !reorderMode || mobileViewportMode === false}
+			<div class="toolbar-responsive-view-switcher">
+				<GiftViewSwitcher
+					value={viewMode}
+					onchange={onviewmodechange}
+					disabled={reorderMode}
+					contained
+				/>
+			</div>
+		{/if}
 		{#if mobileViewportMode === null || mobileViewportMode}
 			<div class="toolbar-mobile" data-testid="wishlist-toolbar-mobile">
 				{#if reorderMode}
@@ -965,13 +969,6 @@
 			{@render mobileDisplaySheet()}
 		{/if}
 		{#if mobileViewportMode === null || !mobileViewportMode}
-			<div class="toolbar-desktop-view-switcher">
-				<GiftViewSwitcher
-					value={viewMode}
-					onchange={onviewmodechange}
-					disabled={reorderMode}
-				/>
-			</div>
 			<div class="toolbar-desktop">
 				<div class="toolbar-layout min-w-0">
 					<div class="toolbar-controls min-w-0" data-testid="wishlist-toolbar-controls">
@@ -1102,17 +1099,20 @@
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
-		padding: 8px;
+		padding: 4px 8px;
 	}
 
-	.toolbar-desktop-view-switcher {
-		display: none;
+	.toolbar-responsive-view-switcher {
+		position: absolute;
+		z-index: 1;
+		inset-block-start: 4px;
+		inset-inline-start: 8px;
 	}
 
 	.toolbar-mobile {
 		display: grid;
 		min-width: 0;
-		grid-auto-rows: 40px;
+		grid-auto-rows: 46px;
 		gap: 8px;
 	}
 
@@ -1128,6 +1128,10 @@
 		align-items: center;
 		gap: 6px;
 		white-space: nowrap;
+	}
+
+	.mobile-browse-row {
+		padding-inline-start: 88px;
 	}
 
 	.mobile-reorder-row {
@@ -1217,13 +1221,8 @@
 		gap: 6px;
 	}
 
-	.toolbar-mobile :global([data-slot='toggle-group']) {
-		width: 80px;
-		flex: 0 0 80px;
-	}
-
 	.toolbar-mobile :global(button),
-	.toolbar-mobile :global([data-slot='toggle-group-item']) {
+	.toolbar-responsive-view-switcher :global([data-slot='toggle-group-item']) {
 		width: 40px;
 		min-width: 40px;
 		height: 40px;
@@ -1464,15 +1463,15 @@
 
 	@media (width >= 640px) {
 		.wishlist-toolbar {
-			padding: 0.625rem 0.875rem;
+			display: flex;
+			align-items: flex-start;
+			gap: 0.625rem;
+			padding: 0.375rem 0.875rem;
 		}
 
-		.toolbar-desktop-view-switcher {
-			display: block;
-			position: absolute;
-			z-index: 1;
-			inset-block-start: 10px;
-			inset-inline-start: 14px;
+		.toolbar-responsive-view-switcher {
+			position: static;
+			flex: 0 0 auto;
 		}
 
 		.toolbar-mobile {
@@ -1481,17 +1480,16 @@
 
 		.toolbar-desktop {
 			display: block;
+			min-width: 0;
+			flex: 1 1 auto;
 		}
 
-		.toolbar-desktop-view-switcher :global([data-slot='toggle-group']) {
-			height: 32px;
-		}
-
-		.toolbar-desktop-view-switcher :global([data-slot='toggle-group-item']) {
-			width: 32px;
+		.toolbar-responsive-view-switcher :global([data-slot='toggle-group-item']) {
+			width: auto;
 			min-width: 32px;
 			height: 32px;
 			min-height: 32px;
+			padding-inline: 0.5rem;
 		}
 
 		.toolbar-layout-selection {
@@ -1500,7 +1498,6 @@
 
 		.toolbar-controls {
 			display: flex;
-			padding-inline-start: 74px;
 			flex-wrap: wrap;
 			gap: 0.625rem 0.875rem;
 		}

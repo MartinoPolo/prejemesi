@@ -152,7 +152,24 @@
 
 		{#if !contextualMode}
 			{#if narrowViewportState.current}
-				<GiftStateOverlay model={presentation.overlay} />
+				<div
+					class="pointer-events-none absolute inset-0 z-20"
+					data-testid="gift-card-image-overlays"
+				>
+					<GiftStateOverlay
+						model={presentation.overlay}
+						topRightAction={presentation.showLike && visitorGift != null}
+					/>
+					{#if presentation.showLike && visitorGift}
+						<LikeButton
+							giftId={gift.id}
+							giftName={gift.name}
+							likeCount={visitorGift.likeCount}
+							size="md"
+							class="pointer-events-auto absolute right-1 top-1 z-20 size-10 rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
+						/>
+					{/if}
+				</div>
 			{:else}
 				{#if isVisitorOrModerator && isFullyReserved}
 					<GiftReservedSticker {reserverLine} />
@@ -228,13 +245,13 @@
 			class={cn(styles.footer(), !hasDesktopAction && 'sm:hidden')}
 			data-testid="gift-card-footer"
 		>
-			{#if presentation.showLike && visitorGift}
+			{#if !narrowViewportState.current && presentation.showLike && visitorGift}
 				<LikeButton
 					giftId={gift.id}
 					giftName={gift.name}
 					likeCount={visitorGift.likeCount}
 					size="md"
-					class="max-sm:absolute max-sm:right-1 max-sm:top-1 max-sm:z-20 max-sm:size-10 max-sm:rounded-full max-sm:border-2 max-sm:border-ink max-sm:bg-card max-sm:p-0 max-sm:shadow-sticker"
+					class="h-10 shrink-0 self-start"
 				/>
 			{/if}
 			<div

@@ -275,6 +275,101 @@ describe('GiftCard image background fill (issue #252)', () => {
 });
 
 describe('GiftCard unified state presentation (issue #330)', () => {
+	it.each([
+		['available', { reservedCount: 0, isFullyReserved: false, myReservationId: null }],
+		[
+			'partial',
+			{ quantity: 3, reservedCount: 1, isFullyReserved: false, myReservationId: null },
+		],
+		['fully reserved', { reservedCount: 1, isFullyReserved: true, myReservationId: null }],
+		['own reserved', { reservedCount: 1, isFullyReserved: true, myReservationId: 'mine' }],
+		['received', { received: true, reservedCount: 1, isFullyReserved: true }],
+	])(
+		'anchors the normal Like to the image clear of footer actions when %s',
+		async (_state, overrides) => {
+			await page.viewport(390, 720);
+			const host = document.createElement('div');
+			host.style.width = '179px';
+			document.body.appendChild(host);
+			fixedHosts.add(host);
+			await render(
+				GiftCardTestHost,
+				{
+					gift: makeVisitorGift({ likeCount: 12, ...overrides }),
+					role: WISHLIST_ROLES.moderator,
+					onreceived: () => {},
+					onmore: () => {},
+				},
+				{ baseElement: host },
+			);
+
+			const image = host.querySelector(
+				'[data-testid="gift-card-image-frame"]',
+			) as HTMLElement;
+			const footer = host.querySelector('[data-testid="gift-card-footer"]') as HTMLElement;
+			const like = host
+				.querySelector('[data-like-heart]')
+				?.closest('button') as HTMLButtonElement;
+			const likeRect = like.getBoundingClientRect();
+			const imageRect = image.getBoundingClientRect();
+			const footerRect = footer.getBoundingClientRect();
+			const intersectionArea = (a: DOMRect, b: DOMRect) =>
+				Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) *
+				Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+
+			expect(image.contains(like)).toBe(true);
+			expect(likeRect.left).toBeGreaterThanOrEqual(imageRect.left);
+			expect(likeRect.right).toBeLessThanOrEqual(imageRect.right);
+			expect(intersectionArea(likeRect, footerRect)).toBe(0);
+			for (const action of footer.querySelectorAll<HTMLButtonElement>('button')) {
+				expect(intersectionArea(likeRect, action.getBoundingClientRect())).toBe(0);
+			}
+		},
+	);
+
+	it('reserves a collision-free image region between the top-right Like and every centered state label', async () => {
+		await page.viewport(321, 720);
+		const states: Partial<GiftForVisitor>[] = [
+			{ quantity: 3, reservedCount: 1, isFullyReserved: false, myReservationId: null },
+			{ reservedCount: 1, isFullyReserved: true, myReservationId: null },
+			{ reservedCount: 1, isFullyReserved: true, myReservationId: 'mine' },
+			{ received: true, reservedCount: 1, isFullyReserved: true, myReservationId: 'mine' },
+		];
+
+		for (const [index, overrides] of states.entries()) {
+			const host = document.createElement('div');
+			host.style.width = '144.5px';
+			document.body.appendChild(host);
+			fixedHosts.add(host);
+			await render(
+				GiftCardTestHost,
+				{
+					gift: makeVisitorGift({
+						id: `gift-state-${index}`,
+						likeCount: 12,
+						...overrides,
+					}),
+					role: WISHLIST_ROLES.visitor,
+					onmore: () => {},
+				},
+				{ baseElement: host },
+			);
+
+			const like = host.querySelector('[data-like-heart]')?.closest('button') as HTMLElement;
+			const label = host.querySelector(
+				'[data-testid="gift-state-overlay"] > span',
+			) as HTMLElement;
+			const likeRect = like.getBoundingClientRect();
+			const labelRect = label.getBoundingClientRect();
+			const overlaps =
+				likeRect.left < labelRect.right &&
+				likeRect.right > labelRect.left &&
+				likeRect.top < labelRect.bottom &&
+				likeRect.bottom > labelRect.top;
+			expect(overlaps).toBe(false);
+		}
+	});
+
 	it('renders one received-first overlay with reservation support', async () => {
 		await page.viewport(390, 720);
 		const host = await renderCardInGridColumn(
@@ -287,6 +382,69 @@ describe('GiftCard unified state presentation (issue #330)', () => {
 		expect(overlays[0]?.textContent).toContain(m.gift_reserved_by_me_overlay());
 		expect(host.querySelector('[data-testid="gift-reserved-sticker"]')).toBeNull();
 		expect(host.querySelector('[data-testid="gift-received-sticker"]')).toBeNull();
+	});
+});
+
+describe('GiftCard Like geometry (issue #330 follow-up)', () => {
+	it('keeps the desktop footer Like at least 40px wide without constraining count growth', async () => {
+		await page.viewport(800, 720);
+		const withoutCountHost = await renderCardInGridColumn(makeVisitorGift({ likeCount: 0 }));
+		const withoutCount = withoutCountHost
+			.querySelector('[data-like-heart]')
+			?.closest('button') as HTMLElement;
+		const withoutCountFooter = withoutCountHost.querySelector(
+			'[data-testid="gift-card-footer"]',
+		) as HTMLElement;
+
+		expect(withoutCountFooter.contains(withoutCount)).toBe(true);
+		expect(withoutCount.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
+		expect(withoutCount.getBoundingClientRect().height).toBeCloseTo(40, 0);
+
+		const withCountHost = await renderCardInGridColumn(
+			makeVisitorGift({ id: 'gift-with-count', likeCount: 123 }),
+		);
+		const withCount = withCountHost
+			.querySelector('[data-like-heart]')
+			?.closest('button') as HTMLElement;
+		const withCountFooter = withCountHost.querySelector(
+			'[data-testid="gift-card-footer"]',
+		) as HTMLElement;
+
+		expect(withCountFooter.contains(withCount)).toBe(true);
+		expect(withCount.getBoundingClientRect().width).toBeGreaterThan(40);
+		expect(withCount.getBoundingClientRect().height).toBeCloseTo(40, 0);
+	});
+
+	it('keeps the Like target 40px square on mobile and 40px high beside a tall desktop footer', async () => {
+		await page.viewport(390, 720);
+		const mobileHost = document.createElement('div');
+		mobileHost.style.width = '179px';
+		document.body.appendChild(mobileHost);
+		fixedHosts.add(mobileHost);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift({ likeCount: 12 }),
+				role: WISHLIST_ROLES.visitor,
+				onmore: () => {},
+			},
+			{ baseElement: mobileHost },
+		);
+		const mobileLike = mobileHost
+			.querySelector('[data-like-heart]')
+			?.closest('button') as HTMLElement;
+		expect(mobileLike.getBoundingClientRect().width).toBeCloseTo(40, 0);
+		expect(mobileLike.getBoundingClientRect().height).toBeCloseTo(40, 0);
+
+		await page.viewport(800, 720);
+		const desktopHost = await renderCardInGridColumn(makeVisitorGift({ likeCount: 12 }));
+		const desktopLike = desktopHost
+			.querySelector('[data-like-heart]')
+			?.closest('button') as HTMLElement;
+		const footer = desktopHost.querySelector('[data-testid="gift-card-footer"]') as HTMLElement;
+		footer.style.height = '86px';
+		expect(footer.getBoundingClientRect().height).toBeCloseTo(86, 0);
+		expect(desktopLike.getBoundingClientRect().height).toBeCloseTo(40, 0);
 	});
 });
 

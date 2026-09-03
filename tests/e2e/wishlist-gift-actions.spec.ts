@@ -185,7 +185,7 @@ test('mobile toolbar starts an empty selection from deterministic SSR markup', a
 	expect(
 		serverRenderedHtml.match(/data-testid=(?:"gift-view-switcher"|'gift-view-switcher')/g) ??
 			[],
-	).toHaveLength(2);
+	).toHaveLength(1);
 
 	await page.getByRole('button', { name: m.gift_selection_toolbar(), exact: true }).click();
 	const toolbar = page.getByRole('region', {

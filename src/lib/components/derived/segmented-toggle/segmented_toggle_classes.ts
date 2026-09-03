@@ -1,5 +1,5 @@
 export const SEGMENTED_TOGGLE_ROOT_CLASSES =
-	'h-10 gap-0 rounded-lg bg-secondary outline-2 outline-ink shadow-sticker-sm';
+	'gap-px rounded-btn border-2 border-ink bg-secondary p-px shadow-sticker-sm';
 
 export const SEGMENTED_TOGGLE_ITEM_CLASSES =
-	'rounded-md border-0 shadow-none data-[state=on]:bg-card data-[state=on]:shadow-sticker-sm';
+	'min-h-10 min-w-10 rounded-[calc(var(--radius-btn)-2px)] border-0 shadow-none data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:outline-2 data-[state=on]:outline-offset-[-2px] data-[state=on]:outline-ink';

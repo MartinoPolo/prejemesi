@@ -93,7 +93,7 @@ function deferredAnimation() {
 }
 
 describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
-	it('switches from one card column at 320px to two equal columns at 321px', async () => {
+	it('uses one card column at 320px and exactly two equal columns from 321px through 639px', async () => {
 		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };
 		const responsiveSections = [{ ...sections[0]!, gifts: [visitorGift(), second] }];
 		await page.viewport(320, 720);
@@ -115,7 +115,106 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 		expect(secondRect.width).toBeCloseTo(firstRect.width, 0);
 		expect(secondRect.left - firstRect.right).toBeCloseTo(8, 0);
 		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(321);
+
+		await page.viewport(639, 720);
+		cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+		const firstAt639 = cards[0]!.getBoundingClientRect();
+		const secondAt639 = cards[1]!.getBoundingClientRect();
+		expect(secondAt639.top).toBeCloseTo(firstAt639.top, 0);
+		expect(secondAt639.width).toBeCloseTo(firstAt639.width, 0);
+		expect(secondAt639.left - firstAt639.right).toBeCloseTo(8, 0);
+		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(639);
 		await screen.unmount();
+	});
+
+	it('keeps two equal columns in constrained intermediate desktop content, then resumes auto-fill density', async () => {
+		const gifts = Array.from({ length: 4 }, (_, index) => ({
+			...visitorGift(),
+			id: `gift-${index + 1}`,
+			name: `Dárek ${index + 1}`,
+		}));
+
+		for (const { viewportWidth, collectionWidth } of [
+			{ viewportWidth: 640, collectionWidth: 560 },
+			{ viewportWidth: 768, collectionWidth: 688 },
+		]) {
+			await page.viewport(viewportWidth, 900);
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts }],
+				viewMode: 'card',
+			});
+			const collection = document.querySelector<HTMLElement>(
+				'[data-wishlist-gift-collection]',
+			)!;
+			collection.style.width = `${collectionWidth}px`;
+			const cards = Array.from(collection.querySelectorAll<HTMLElement>('[data-gift-item]'));
+			const first = cards[0]!.getBoundingClientRect();
+			const second = cards[1]!.getBoundingClientRect();
+			const third = cards[2]!.getBoundingClientRect();
+
+			expect(second.top).toBeCloseTo(first.top, 0);
+			expect(second.width).toBeCloseTo(first.width, 0);
+			expect(second.left - first.right).toBeCloseTo(20, 0);
+			expect(third.top).toBeGreaterThan(first.top);
+			await screen.unmount();
+		}
+
+		await page.viewport(1024, 900);
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts }],
+			viewMode: 'card',
+		});
+		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
+		collection.style.width = '944px';
+		const cards = Array.from(collection.querySelectorAll<HTMLElement>('[data-gift-item]'));
+		const first = cards[0]!.getBoundingClientRect();
+		const third = cards[2]!.getBoundingClientRect();
+
+		expect(third.top).toBeCloseTo(first.top, 0);
+		expect(first.width).toBeGreaterThanOrEqual(280);
+		await screen.unmount();
+	});
+
+	it('reserves four pixels inside the grid for right and bottom hard-shadow paint', async () => {
+		const gifts = Array.from({ length: 4 }, (_, index) => ({
+			...visitorGift(),
+			id: `gift-${index + 1}`,
+			name: `Dárek ${index + 1}`,
+		}));
+
+		for (const { viewportWidth, collectionWidth } of [
+			{ viewportWidth: 390, collectionWidth: 390 },
+			{ viewportWidth: 639, collectionWidth: 639 },
+			{ viewportWidth: 640, collectionWidth: 560 },
+			{ viewportWidth: 768, collectionWidth: 688 },
+			{ viewportWidth: 1280, collectionWidth: 1152 },
+		]) {
+			await page.viewport(viewportWidth, 900);
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts }],
+				viewMode: 'card',
+			});
+			const collection = document.querySelector<HTMLElement>(
+				'[data-wishlist-gift-collection]',
+			)!;
+			collection.style.width = `${collectionWidth}px`;
+			const grid = collection.querySelector<HTMLElement>(
+				'[data-testid="wishlist-gift-card-grid"]',
+			)!;
+			const cards = Array.from(grid.querySelectorAll<HTMLElement>('[data-gift-item]'));
+			const gridRect = grid.getBoundingClientRect();
+			const cardRects = cards.map((card) => card.getBoundingClientRect());
+			const rightmostEdge = Math.max(...cardRects.map((rect) => rect.right));
+			const bottomEdge = Math.max(...cardRects.map((rect) => rect.bottom));
+
+			expect(gridRect.right - rightmostEdge).toBeCloseTo(4, 0);
+			expect(gridRect.bottom - bottomEdge).toBeCloseTo(4, 0);
+			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(viewportWidth);
+			await screen.unmount();
+		}
 	});
 
 	it('uses standalone equal-height list cards with a 10px vertical gap', async () => {

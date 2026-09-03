@@ -140,7 +140,7 @@
 
 <button
 	type="button"
-	class={cn(styles.root(), className)}
+	class={cn(styles.root(), size === 'md' && 'min-w-10', className)}
 	aria-label={liked
 		? m.gift_like_remove_aria({ name: giftName })
 		: m.gift_like_add_aria({ name: giftName })}
