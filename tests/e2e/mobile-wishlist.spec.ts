@@ -54,12 +54,16 @@ function gift(page: Page, name: string) {
 }
 
 async function dismissToasts(page: Page) {
-	for (const close of await page.locator('[data-sonner-toast] button').all()) {
-		if (await close.isVisible()) {
-			await close.click();
+	const toasts = page.locator('[data-sonner-toast]');
+	// Sonner reorders its live stack as each toast exits, so cached nth() locators can start
+	// targeting an already-moving toast underneath the next one. Dismiss the current buttons in
+	// one DOM turn and then wait for every exit animation to remove its toast.
+	await toasts.locator('button[aria-label="Dismiss"]').evaluateAll((buttons) => {
+		for (const button of buttons) {
+			(button as HTMLButtonElement).click();
 		}
-	}
-	await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+	});
+	await expect(toasts).toHaveCount(0);
 }
 
 async function resetAllScroll(page: Page) {
