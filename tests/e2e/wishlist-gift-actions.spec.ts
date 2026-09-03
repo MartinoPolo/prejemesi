@@ -185,7 +185,7 @@ test('mobile toolbar starts an empty selection from deterministic SSR markup', a
 	expect(
 		serverRenderedHtml.match(/data-testid=(?:"gift-view-switcher"|'gift-view-switcher')/g) ??
 			[],
-	).toHaveLength(1);
+	).toHaveLength(2);
 
 	await page.getByRole('button', { name: m.gift_selection_toolbar(), exact: true }).click();
 	const toolbar = page.getByRole('region', {
@@ -219,7 +219,7 @@ test('mobile long press opens Sheet drill-in and selection toolbar Actions row',
 	const toolbar = authenticated.getByRole('region', { name: 'Nástroje výběru' });
 	const actions = toolbar.getByRole('button', { name: /Akce/ });
 	await expect(actions).toBeVisible();
-	await expect(authenticated.getByRole('button', { name: 'Hotovo' })).toBeVisible();
+	await expect(toolbar.getByRole('button', { name: m.cancel() })).toBeVisible();
 
 	await actions.click();
 	await expect(authenticated.getByRole('menu')).toBeVisible();
@@ -352,7 +352,7 @@ test('mobile bulk actions expose mixed received state and apply a common value',
 	).toBeVisible();
 	await page.keyboard.press('Escape');
 
-	await toolbar.getByRole('button', { name: m.done() }).click();
+	await toolbar.getByRole('button', { name: m.cancel() }).click();
 	await waitForReceivedState(firstGift, true);
 	await waitForReceivedState(secondGift, true);
 	await page.context().close();

@@ -7,6 +7,7 @@
 	interface Props {
 		gift: GiftByRole;
 		index: number;
+		totalCount: number;
 		reorderEnabled: boolean;
 		draggedGiftId: string | null;
 		dragOverGiftId: string | null;
@@ -25,6 +26,7 @@
 	let {
 		gift,
 		index,
+		totalCount,
 		reorderEnabled,
 		draggedGiftId,
 		dragOverGiftId,
@@ -49,6 +51,7 @@
 
 <WishlistGiftDraggableWrapper
 	{index}
+	{totalCount}
 	giftId={gift.id}
 	{reorderEnabled}
 	{draggedGiftId}

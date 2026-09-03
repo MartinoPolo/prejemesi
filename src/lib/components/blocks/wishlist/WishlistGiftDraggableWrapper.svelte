@@ -1,14 +1,18 @@
 <script lang="ts">
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
+	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
+	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import * as m from '$lib/paraglide/messages.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
 	import { createGiftLongPressRecognizer } from '$lib/modules/gifts/gift_long_press.js';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
+	import { Button } from '$lib/components/base/button/index.js';
 
 	interface WishlistGiftDraggableWrapperProps {
 		index: number;
+		totalCount: number;
 		giftId: string;
 		reorderEnabled: boolean;
 		draggedGiftId: string | null;
@@ -31,6 +35,7 @@
 
 	let {
 		index,
+		totalCount,
 		giftId,
 		reorderEnabled,
 		draggedGiftId,
@@ -99,6 +104,10 @@
 			onselectiontoggle?.(giftId);
 			return;
 		}
+		if (reorderEnabled) {
+			suppressSelectionContext(event);
+			return;
+		}
 		if (eventStartedInsideInteractiveElement(event)) {
 			return;
 		}
@@ -106,7 +115,7 @@
 	}
 
 	function handleContextMenu(event: MouseEvent) {
-		if (selectionMode) {
+		if (selectionMode || reorderEnabled) {
 			suppressSelectionContext(event);
 			return;
 		}
@@ -146,6 +155,7 @@
 			event.button !== 1 ||
 			safePrimaryLink === null ||
 			selectionMode ||
+			reorderEnabled ||
 			eventStartedInsideInteractiveElement(event)
 		) {
 			return;
@@ -157,13 +167,16 @@
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (
-			selectionMode &&
+			(selectionMode || reorderEnabled) &&
 			(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))
 		) {
 			suppressSelectionContext(event);
 			return;
 		}
 		if (eventStartedInsideInteractiveElement(event)) {
+			return;
+		}
+		if (reorderEnabled) {
 			return;
 		}
 		if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
@@ -221,11 +234,13 @@
 			'rounded-xl bg-[var(--selection-tint)] outline-[3px] outline-[var(--selection-ring)] [&>div]:bg-transparent',
 		longPressPending && 'ring-2 ring-primary/35 ring-offset-2',
 	)}
-	role={selectionMode ? 'checkbox' : 'button'}
-	tabindex={0}
+	role={selectionMode ? 'checkbox' : reorderEnabled ? undefined : 'button'}
+	tabindex={reorderEnabled ? undefined : 0}
 	aria-label={selectionMode
 		? m.gift_selection_item_aria({ name: giftName })
-		: m.gift_open_detail_aria({ name: giftName })}
+		: reorderEnabled
+			? undefined
+			: m.gift_open_detail_aria({ name: giftName })}
 	aria-checked={selectionMode ? selected : undefined}
 	aria-selected={selectionMode ? selected : undefined}
 	onclick={handleClick}
@@ -240,7 +255,7 @@
 	{#if selectionMode}
 		<span
 			class={cn(
-				'pointer-events-none absolute left-2.5 top-2.5 z-50 grid size-7 place-items-center rounded-md bg-card shadow-sm',
+				'pointer-events-none absolute left-1 top-1 z-50 grid size-10 place-items-center rounded-md border-2 border-ink bg-card shadow-sticker sm:left-2.5 sm:top-2.5 sm:size-7 sm:border-0 sm:shadow-sm',
 				selectionLayout === 'list' &&
 					'sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2',
 			)}
@@ -258,7 +273,7 @@
 			type="button"
 			aria-label={m.gift_reorder_grip_label()}
 			title={m.gift_reorder_keyboard_hint()}
-			class="absolute left-2 top-2 z-10 cursor-grab touch-none rounded bg-background/80 p-0.5 opacity-60 transition-[opacity,transform] duration-200 ease-spring hover:opacity-100 focus-visible:opacity-100 active:cursor-grabbing motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1"
+			class="absolute left-1 top-1 z-50 grid size-10 cursor-grab touch-none place-items-center rounded-md border-2 border-ink bg-card p-0 shadow-sticker transition-[opacity,transform] duration-200 ease-spring hover:bg-accent focus-visible:opacity-100 active:cursor-grabbing motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 sm:left-2 sm:top-2 sm:z-10 sm:size-auto sm:rounded sm:border-0 sm:bg-card/80 sm:p-0.5 sm:opacity-60 sm:shadow-none"
 			data-prevent-gift-card-open
 			onpointerdown={(event) => onreorderpointerdown(event, index)}
 			onkeydown={handleGripKeydown}
@@ -268,9 +283,46 @@
 	{/if}
 	<div
 		class="contents"
-		inert={selectionMode || undefined}
-		data-selection-inert={selectionMode || undefined}
+		inert={selectionMode || reorderEnabled || undefined}
+		data-selection-inert={selectionMode || reorderEnabled || undefined}
 	>
 		{@render children()}
 	</div>
+	{#if reorderEnabled && !selectionMode}
+		<div class="absolute bottom-1 right-1 z-50 flex items-center gap-1 sm:hidden">
+			<span class="pointer-events-none px-1 text-sm font-medium" aria-hidden="true">
+				{index + 1}/{totalCount}
+			</span>
+			<Button
+				type="button"
+				intent="secondary"
+				size="icon"
+				class="size-10"
+				aria-label={m.gift_reorder_move_up({ name: giftName })}
+				disabled={index === 0}
+				data-prevent-gift-card-open
+				onclick={(event) => {
+					event.stopPropagation();
+					onreordermove(index, -1);
+				}}
+			>
+				<ArrowUpIcon />
+			</Button>
+			<Button
+				type="button"
+				intent="secondary"
+				size="icon"
+				class="size-10"
+				aria-label={m.gift_reorder_move_down({ name: giftName })}
+				disabled={index === totalCount - 1}
+				data-prevent-gift-card-open
+				onclick={(event) => {
+					event.stopPropagation();
+					onreordermove(index, 1);
+				}}
+			>
+				<ArrowDownIcon />
+			</Button>
+		</div>
+	{/if}
 </div>

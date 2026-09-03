@@ -3,9 +3,11 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
+import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
@@ -61,22 +63,18 @@ function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisito
 	};
 }
 
-describe('GiftListItem reserved-sticker parity (issue #224 REQ-7)', () => {
-	async function renderItem(
-		gift: GiftForVisitor,
-		role: (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES],
-	) {
-		const host = document.createElement('div');
-		host.style.width = '640px';
-		document.body.appendChild(host);
-		await render(
-			GiftListItemTestHost,
-			{ gift, role, isArchived: false },
-			{ baseElement: host },
-		);
-		return host;
-	}
+async function renderItem(
+	gift: GiftForVisitor,
+	role: (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES],
+) {
+	const host = document.createElement('div');
+	host.style.width = '640px';
+	document.body.appendChild(host);
+	await render(GiftListItemTestHost, { gift, role, isArchived: false }, { baseElement: host });
+	return host;
+}
 
+describe('GiftListItem reserved-sticker parity (issue #224 REQ-7)', () => {
 	it('does not render the grid-only category badge for a categorized gift (issue #265)', async () => {
 		const host = await renderItem(
 			makeVisitorGift({
@@ -205,8 +203,101 @@ describe('GiftListItem reserved-sticker parity (issue #224 REQ-7)', () => {
 	});
 });
 
+describe('GiftListItem responsive image dimensions (issue #330)', () => {
+	it('keeps the desktop image square when the responsive size grows', async () => {
+		await page.viewport(800, 720);
+		const host = await renderItem(makeVisitorGift(), WISHLIST_ROLES.visitor);
+		const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
+		const imageRect = image.getBoundingClientRect();
+
+		expect(imageRect.width).toBeGreaterThanOrEqual(128);
+		expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
+	});
+
+	it('renders one opaque 128px standalone card with a consolidated state overlay', async () => {
+		await page.viewport(390, 720);
+		const host = await renderItem(
+			makeVisitorGift({ isFullyReserved: true, myReservationId: null }),
+			WISHLIST_ROLES.visitor,
+		);
+		const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
+		const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
+
+		expect(item.getBoundingClientRect().height).toBeCloseTo(128, 0);
+		expect(image.getBoundingClientRect().width).toBeCloseTo(128, 0);
+		expect(host.querySelectorAll('[data-testid="gift-state-overlay"]')).toHaveLength(1);
+		expect(host.querySelector('[data-testid="gift-reserved-sticker"]')).toBeNull();
+	});
+
+	it('shows only Received directly for a mobile moderator while preserving Reserve on desktop', async () => {
+		await page.viewport(390, 720);
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({ myReservationId: null }),
+				role: WISHLIST_ROLES.moderator,
+				isArchived: false,
+				onreceived: () => {},
+				onmore: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const received = host.querySelector('[data-testid="gift-received-toggle"]') as HTMLElement;
+		const more = host.querySelector(`[aria-label="${m.gift_more_actions()}"]`) as HTMLElement;
+		const reserve = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
+		expect(received).toBeTruthy();
+		expect(more).toBeTruthy();
+		expect(getComputedStyle(received).display).not.toBe('none');
+		expect(getComputedStyle(more).display).not.toBe('none');
+		expect(getComputedStyle(reserve).display).toBe('none');
+
+		await page.viewport(800, 720);
+		expect(getComputedStyle(reserve).display).not.toBe('none');
+	});
+
+	it('does not render Like for an archived visitor gift while preserving own cancellation', async () => {
+		await page.viewport(390, 720);
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({ myReservationId: 'reservation-1' }),
+				role: WISHLIST_ROLES.visitor,
+				isArchived: true,
+				onunreserve: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		expect(host.querySelector('[data-like-heart]')).toBeNull();
+		expect(host.querySelector('[data-testid="reserve-button"]')).toBeTruthy();
+	});
+
+	it('leaves no reservation, Like, or Purchased trace for recipients', async () => {
+		await page.viewport(390, 720);
+		const host = await renderItem(
+			makeVisitorGift({
+				isFullyReserved: true,
+				myReservationId: 'private-reservation',
+				myReservationPurchasedAt: new Date('2026-01-03'),
+				reserverNames: ['Soukromá osoba'],
+			}),
+			WISHLIST_ROLES.recipient,
+		);
+
+		expect(host.querySelector('[data-testid="gift-state-overlay"]')).toBeNull();
+		expect(host.querySelector('[aria-pressed]')).toBeNull();
+		expect(host.textContent).not.toMatch(/rezerv|koupen|Soukromá osoba/i);
+	});
+});
+
 describe('GiftListItem reservation-action layout (issue #211)', () => {
 	it('stacks the mark-as-bought and cancel-reservation actions vertically at equal width', async () => {
+		await page.viewport(800, 720);
 		const host = document.createElement('div');
 		host.style.width = '400px';
 		document.body.appendChild(host);

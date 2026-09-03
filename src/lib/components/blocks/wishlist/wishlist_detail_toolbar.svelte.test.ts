@@ -122,11 +122,54 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		await page.viewport(1280, 720);
 	});
 
+	it('uses explicit balanced rows with visible command gaps at 320, 360, and 390px', async () => {
+		for (const width of [320, 360, 390]) {
+			await page.viewport(width, 720);
+			const host = createTrackedToolbarHost(`${width - 24}px`);
+			const screen = await render(
+				WishlistDetailToolbar,
+				{
+					...defaultProps,
+					canManage: true,
+					role: WISHLIST_ROLES.moderator,
+				},
+				{ baseElement: host },
+			);
+			await new Promise(requestAnimationFrame);
+			const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+			const rows = Array.from(
+				toolbar.querySelectorAll<HTMLElement>('[data-mobile-toolbar-row]'),
+			);
+			expect(rows).toHaveLength(2);
+			const style = getComputedStyle(toolbar);
+			expect(
+				Math.abs(parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)),
+			).toBeLessThan(0.5);
+			for (const row of rows) {
+				const controls = Array.from(
+					row.querySelectorAll<HTMLElement>(
+						'[data-slot="toggle-group"], button:not([data-slot="toggle-group-item"])',
+					),
+				).filter((control) => control.getClientRects().length > 0);
+				for (const [index, control] of controls.slice(0, -1).entries()) {
+					expect(
+						controls[index + 1]!.getBoundingClientRect().left -
+							control.getBoundingClientRect().right,
+					).toBeGreaterThanOrEqual(6);
+				}
+				expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+			}
+			expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
+			await screen.unmount();
+			host.remove();
+		}
+	});
+
 	it('stays within one visitor row or two unsplit manager rows without horizontal overflow', async () => {
 		for (const width of [320, 360, 390, 639]) {
 			await page.viewport(width, 720);
 			for (const manager of [false, true]) {
-				const host = createTrackedToolbarHost(`${width - 32}px`);
+				const host = createTrackedToolbarHost(`${width - 24}px`);
 				const screen = await render(
 					WishlistDetailToolbar,
 					{
@@ -144,7 +187,7 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 				expect(rows).toHaveLength(manager ? 2 : 1);
 				expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
 				expect(toolbar.getBoundingClientRect().height).toBeLessThanOrEqual(
-					manager ? 104 : 60,
+					manager ? 116 : 64,
 				);
 				for (const row of rows) {
 					expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
@@ -205,7 +248,7 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		await expect.element(screen.getByTestId('mobile-sort-trigger')).not.toBeInTheDocument();
 		await expect.element(screen.getByTestId('mobile-grouping-trigger')).not.toBeInTheDocument();
 		await expect.element(screen.getByTestId('mobile-filter-trigger')).not.toBeInTheDocument();
-		await expect.element(screen.getByTestId('gift-view-switcher')).not.toBeVisible();
+		expect(toolbar.querySelector('[data-testid="gift-view-switcher"]')).toBeNull();
 		await doneButton.click();
 		expect(onreordermodechange).toHaveBeenLastCalledWith(false);
 		await screen.unmount();
@@ -326,6 +369,15 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 	});
 
 	it('restores exact trigger focus without moving page or toolbar when a sheet closes', async () => {
+		// A preceding Bits UI sheet can still be finishing its asynchronous body scroll-lock cleanup.
+		// Wait for that shared overlay state instead of letting it erase this test's scroll fixture.
+		await vi.waitFor(
+			() => {
+				expect(getComputedStyle(document.body).overflow).not.toBe('hidden');
+				expect(getComputedStyle(document.body).pointerEvents).not.toBe('none');
+			},
+			{ timeout: 1_000 },
+		);
 		const host = createTrackedToolbarHost('390px');
 		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
 		const trigger = screen.getByTestId('mobile-sort-trigger').element() as HTMLButtonElement;
@@ -339,9 +391,13 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		const scrollBeforeOpen = window.scrollY;
 		await trigger.click();
 		await userEvent.keyboard('{Escape}');
-		await awaitAnimationFrames();
-		expect(document.activeElement).toBe(trigger);
-		expect(window.scrollY).toBe(scrollBeforeOpen);
+		await vi.waitFor(
+			() => {
+				expect(document.activeElement).toBe(trigger);
+				expect(window.scrollY).toBe(scrollBeforeOpen);
+			},
+			{ timeout: 1_000 },
+		);
 		const after = toolbar.getBoundingClientRect();
 		expect(after.width).toBe(before.width);
 		expect(after.height).toBe(before.height);
@@ -462,7 +518,7 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 			[400, 1],
 		] as const) {
 			await page.viewport(width, 720);
-			const host = createTrackedToolbarHost(`${width - 32}px`);
+			const host = createTrackedToolbarHost(`${width - 24}px`);
 			const screen = await render(
 				WishlistDetailToolbar,
 				{
@@ -563,7 +619,7 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 			await page.viewport(width, 720);
 			const screen = await render(WishlistDetailToolbar, defaultProps);
 
-			expect(document.querySelectorAll('[aria-label="Karta"]')).toHaveLength(1);
+			expect(document.querySelectorAll<HTMLElement>('[aria-label="Karta"]')).toHaveLength(1);
 			expect(
 				document.querySelectorAll('[data-testid="wishlist-toolbar-mobile"]'),
 			).toHaveLength(width < 640 ? 1 : 0);

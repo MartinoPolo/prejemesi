@@ -21,11 +21,11 @@ export const giftCardVariants = tv({
 		// owns that named group): they let a hover/focus on the drag grip lift the card in lock-step
 		// with the grip. Standalone (dashboard/storybook) there is no such ancestor, so only the self
 		// `hover:`/`focus-within:` triggers fire — identical to before (issue #224 follow-up).
-		card: 'group relative row-span-7 grid grid-rows-subgrid overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 motion-reduce:transition-none',
+		card: 'group relative grid h-[260px] grid-rows-[120px_minmax(0,1fr)_auto] overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 motion-reduce:transition-none max-[320px]:h-[280px] max-[320px]:grid-rows-[136px_minmax(0,1fr)_auto] sm:row-span-7 sm:h-auto sm:grid-rows-subgrid',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
-			'relative isolate row-start-1 aspect-[4/3] w-full overflow-hidden border-b-[2.5px] border-ink bg-surface',
+			'relative isolate row-start-1 h-[120px] w-full overflow-hidden border-b-[2.5px] border-ink bg-surface max-[320px]:h-[136px] sm:h-auto sm:aspect-[4/3]',
 		/**
 		 * Dotted mat behind the photo (shows through letterboxed photos). Sits on
 		 * its own layer below the image so its opacity can fade up on hover —
@@ -36,17 +36,18 @@ export const giftCardVariants = tv({
 			'pointer-events-none absolute inset-0 -z-[1] bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100',
 		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
 		imageVeil: 'absolute inset-0 bg-reserved-veil',
-		body: 'row-span-5 row-start-2 grid grid-rows-subgrid p-4',
+		body: 'row-start-2 flex min-h-0 flex-col px-2 py-1.5 sm:row-span-5 sm:grid sm:grid-rows-subgrid sm:p-4',
 		nameRow: 'row-start-1 flex flex-wrap items-baseline gap-1.5',
 		name: 'line-clamp-2 font-heading text-[17px] font-semibold leading-snug text-foreground',
 		price: 'row-start-2 mt-2 text-[15px] font-bold text-foreground',
 		priceEmpty: 'row-start-2 mt-2 text-sm text-muted-foreground italic',
-		priorityEyebrow: 'row-start-3 mt-2 flex items-center gap-1',
-		linkList: 'row-start-4 mt-2 flex flex-col',
+		priorityEyebrow: 'row-start-3 mt-2 hidden items-center gap-1 sm:flex',
+		linkList: 'row-start-4 mt-2 hidden flex-col sm:flex',
 		// min-w-0: grid items (unlike flex) get an automatic min-content floor that can force the row wider (#211).
-		footer: 'row-start-7 flex min-w-0 items-center justify-between gap-2 px-4 pt-1 pb-3.5',
+		footer: 'row-start-3 flex min-h-12 min-w-0 items-stretch justify-between gap-1 border-t border-dashed border-border px-1.5 py-1 sm:row-start-7 sm:min-h-0 sm:gap-2 sm:border-0 sm:px-4 sm:pt-1 sm:pb-3.5',
 		// Stacks mark-as-bought + cancel vertically; shrink-to-fit column, buttons get `w-full` from the caller (#211).
-		reservationActions: 'flex flex-col gap-1.5',
+		reservationActions:
+			'grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-1.5 sm:flex sm:flex-initial sm:flex-col',
 		reservedSticker:
 			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
 		reservedStickerLabel: 'flex items-center gap-1',

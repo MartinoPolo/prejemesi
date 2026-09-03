@@ -36,6 +36,7 @@
 		selectedIds?: readonly string[];
 		onselectiontoggle?: (giftId: string) => void;
 		oncontextactions?: (gift: GiftByRole, event: MouseEvent | null) => boolean;
+		hascontextactions?: (gift: GiftByRole) => boolean;
 		contextContent?: Snippet;
 		contextMenuOpen?: boolean;
 	}
@@ -63,6 +64,7 @@
 		selectedIds = [],
 		onselectiontoggle,
 		oncontextactions,
+		hascontextactions,
 		contextContent,
 		contextMenuOpen = $bindable(false),
 	}: WishlistGiftDisplayProps = $props();
@@ -193,6 +195,7 @@
 				>
 					{#if displayedViewMode === 'card'}
 						<WishlistGiftCardGrid
+							{hascontextactions}
 							{sections}
 							{role}
 							{isArchived}
@@ -214,6 +217,7 @@
 						/>
 					{:else if displayedViewMode === 'list'}
 						<WishlistGiftListView
+							{hascontextactions}
 							{sections}
 							{role}
 							{isArchived}

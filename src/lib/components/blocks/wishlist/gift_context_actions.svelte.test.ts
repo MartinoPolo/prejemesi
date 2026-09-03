@@ -93,7 +93,7 @@ describe('GiftContextActions mobile Sheet', () => {
 			role: 'visitor' as const,
 		});
 		await expect
-			.element(screen.getByRole('button', { name: m.gift_context_open_link() }))
+			.element(screen.getByRole('link', { name: m.gift_context_open_link() }))
 			.toBeInTheDocument();
 		await expect
 			.element(screen.getByRole('button', { name: m.gift_context_copy_link() }))
@@ -104,19 +104,68 @@ describe('GiftContextActions mobile Sheet', () => {
 		await screen.unmount();
 	});
 
-	it('normalizes a scheme-less primary URL before opening it on mobile', async () => {
-		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+	it('renders derived reservation and Purchased actions and dispatches their callbacks', async () => {
+		const oncancelreservation = vi.fn();
+		const onpurchased = vi.fn();
+		const screen = await render(GiftContextActions, {
+			...managerProps,
+			role: 'visitor' as const,
+			canReserve: true,
+			ownsReservation: true,
+			canTrackPurchased: true,
+			oncancelreservation,
+			onpurchased,
+		});
+
+		await screen.getByRole('button', { name: m.reserve_button_cancel() }).click();
+		expect(oncancelreservation).toHaveBeenCalledOnce();
+		await screen.unmount();
+
+		const purchasedScreen = await render(GiftContextActions, {
+			...managerProps,
+			role: 'visitor' as const,
+			canReserve: true,
+			ownsReservation: true,
+			canTrackPurchased: true,
+			oncancelreservation,
+			onpurchased,
+		});
+		await purchasedScreen.getByRole('button', { name: m.gift_mark_bought() }).click();
+		expect(onpurchased).toHaveBeenCalledOnce();
+		await purchasedScreen.unmount();
+	});
+
+	it('keeps archived reservation context to own cancellation only', async () => {
+		const screen = await render(GiftContextActions, {
+			...managerProps,
+			role: 'visitor' as const,
+			readOnly: true,
+			canReserve: true,
+			ownsReservation: true,
+			canTrackPurchased: true,
+			oncancelreservation: vi.fn(),
+			onpurchased: vi.fn(),
+		});
+		await expect
+			.element(screen.getByRole('button', { name: m.reserve_button_cancel() }))
+			.toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_mark_bought() }))
+			.not.toBeInTheDocument();
+		await screen.unmount();
+	});
+
+	it('normalizes a scheme-less primary URL in the mobile external link', async () => {
 		const screen = await render(GiftContextActions, {
 			...managerProps,
 			primaryUrl: 'alza.cz/product',
 		});
-		await screen.getByRole('button', { name: m.gift_context_open_link() }).click();
-		expect(open).toHaveBeenCalledWith(
-			'https://alza.cz/product',
-			'_blank',
-			'noopener,noreferrer',
-		);
-		open.mockRestore();
+		const link = screen.getByRole('link', { name: m.gift_context_open_link() });
+		await expect.element(link).toHaveAttribute('href', 'https://alza.cz/product');
+		await expect.element(link).toHaveAttribute('target', '_blank');
+		await expect.element(link).toHaveAttribute('rel', expect.stringContaining('external'));
+		await expect.element(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+		await expect.element(link).toHaveAttribute('rel', expect.stringContaining('noreferrer'));
 		await screen.unmount();
 	});
 });

@@ -209,10 +209,12 @@
 						class="row-span-7 grid grid-rows-subgrid gap-y-0"
 						data-testid="landing-demo-pair-gifter"
 					>
+						<!-- Archived suppresses demo reservation controls while its Like remains interactive. -->
 						<GiftCard
 							gift={pairGifterGift}
 							role={WISHLIST_ROLES.visitor}
 							isArchived={true}
+							allowArchivedLike={true}
 						/>
 					</div>
 					<div

@@ -3,15 +3,20 @@
 	import ListIcon from '@lucide/svelte/icons/list';
 	import { GIFT_VIEW_MODES, type GiftViewMode } from '$lib/modules/gifts/types.js';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
+	import {
+		SEGMENTED_TOGGLE_ITEM_CLASSES,
+		SEGMENTED_TOGGLE_ROOT_CLASSES,
+	} from '$lib/components/derived/segmented-toggle/segmented_toggle_classes.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface GiftViewSwitcherProps {
 		value: GiftViewMode;
 		onchange: (mode: GiftViewMode) => void;
 		disabled?: boolean;
+		contained?: boolean;
 	}
 
-	let { value, onchange, disabled = false }: GiftViewSwitcherProps = $props();
+	let { value, onchange, disabled = false, contained = false }: GiftViewSwitcherProps = $props();
 
 	// Bits UI's ToggleGroup.Root (type="single") mutates its own bindable `value`
 	// on every click, including a re-click of the already-active item (which it
@@ -33,6 +38,19 @@
 		{ key: GIFT_VIEW_MODES.card, icon: LayoutGridIcon },
 		{ key: GIFT_VIEW_MODES.list, icon: ListIcon },
 	] as const;
+
+	function handleArrowKey(event: KeyboardEvent) {
+		if (disabled || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+			return;
+		}
+		const direction = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+		const currentIndex = modes.findIndex((mode) => mode.key === value);
+		const next = modes[(currentIndex + direction + modes.length) % modes.length];
+		if (next.key !== value) {
+			event.preventDefault();
+			onchange(next.key);
+		}
+	}
 
 	function modeLabel(key: GiftViewMode): string {
 		switch (key) {
@@ -59,12 +77,15 @@
 	intent="default"
 	size="icon"
 	aria-label={m.gift_view_switcher_aria()}
+	onkeydown={handleArrowKey}
+	class={contained ? SEGMENTED_TOGGLE_ROOT_CLASSES : undefined}
 	data-testid="gift-view-switcher"
 	{disabled}
 >
 	{#each modes as mode (mode.key)}
 		<ToggleGroup.Item
 			value={mode.key}
+			class={contained ? SEGMENTED_TOGGLE_ITEM_CLASSES : undefined}
 			aria-label={modeLabel(mode.key)}
 			data-testid="gift-view-{mode.key}"
 		>

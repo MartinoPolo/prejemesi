@@ -315,21 +315,17 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 		);
 
 		// #163 mobile list: the recipient gets a 128-152px-wide 1:1 image on the
-		// left (issue #189, reverting the interim 4:3 shape from #183), with all
-		// content beside it and no reservation control exposed.
+		// left (issue #189, reverting the interim 4:3 shape from #183), with the
+		// compact title beside it and no description or reservation control exposed
+		// on the card face (issue #330 REQ-9).
 		await page.setViewportSize({ width: 390, height: 844 });
-		const mobileListImage = page.getByRole('img', { name: giftName }).first();
 		// A manual crop may zoom the <img> beyond its clipped frame. Measure the
-		// visible ImageFrame, which is the actual list-thumbnail geometry.
-		const mobileImageFrame = mobileListImage.locator('..');
+		// explicit full-bleed list image region rather than an implementation wrapper.
+		const mobileImageFrame = page.getByTestId('gift-list-image').first();
 		const mobileImageBox = await mobileImageFrame.boundingBox();
 		const mobileTitleBox = await page.getByText(giftName, { exact: true }).boundingBox();
-		const mobileDescriptionBox = await page
-			.getByText(giftDescription, { exact: true })
-			.boundingBox();
 		expect(mobileImageBox).not.toBeNull();
 		expect(mobileTitleBox).not.toBeNull();
-		expect(mobileDescriptionBox).not.toBeNull();
 		expect(mobileImageBox!.width).toBeGreaterThanOrEqual(128);
 		expect(mobileImageBox!.width).toBeLessThanOrEqual(152);
 		expect(mobileImageBox!.width / mobileImageBox!.height).toBeCloseTo(
@@ -337,9 +333,7 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			1,
 		);
 		expect(mobileTitleBox!.x).toBeGreaterThan(mobileImageBox!.x + mobileImageBox!.width);
-		expect(mobileDescriptionBox!.x).toBeGreaterThanOrEqual(
-			mobileImageBox!.x + mobileImageBox!.width,
-		);
+		await expect(page.getByText(giftDescription, { exact: true })).toBeHidden();
 		await expect(page.getByRole('button', { name: /^Rezervovat/ })).toHaveCount(0);
 		await page.setViewportSize({ width: 1280, height: 900 });
 
@@ -466,6 +460,29 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 });
 
 test.describe('Wishlist per-slot crop (WYSIWYG stage)', () => {
+	test('mobile wishlist page applies one 12px page gutter', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('img-wl-mobile-gutter');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+		await createWishlistAndNavigate(page, 'Mobile Gutter Coverage');
+		await page.setViewportSize({ width: 390, height: 844 });
+
+		const pageShell = page.getByTestId('wishlist-page-shell');
+		const hero = page.getByTestId('wishlist-mobile-hero');
+		const shellBox = await pageShell.boundingBox();
+		const heroBox = await hero.boundingBox();
+		expect(shellBox).not.toBeNull();
+		expect(heroBox).not.toBeNull();
+		expect(heroBox!.x).toBeCloseTo(12, 0);
+		expect(390 - (heroBox!.x + heroBox!.width)).toBeCloseTo(12, 0);
+		expect(shellBox!.width).toBe(390);
+
+		await page.context().close();
+	});
+
 	test('three slots (no banner), stage tracks slot aspect, crop persists and reaches real surfaces', async ({
 		browser,
 		request,
@@ -543,7 +560,7 @@ test.describe('Wishlist per-slot crop (WYSIWYG stage)', () => {
 
 		// The header polaroid consumes the thumbnail slot at 1:1 (D4/REQ-5).
 		await page.goto(`/w/${shortId}`);
-		await page.waitForSelector('h1');
+		await page.waitForSelector('h1:visible');
 		const polaroidFrame = page.locator('.polaroid');
 		const visiblePhoto = page.locator('.polaroid-img');
 		const polaroid = visiblePhoto.locator('img');
@@ -555,13 +572,22 @@ test.describe('Wishlist per-slot crop (WYSIWYG stage)', () => {
 		const polaroidZoom = await polaroid.evaluate((el) => getComputedStyle(el).transform);
 		expect(polaroidZoom, 'saved 120 % zoom reaches the polaroid').not.toBe('none');
 
-		// Issue #257: the real visible photo remains square below the 640px breakpoint;
-		// frame spacing remains uniform while the event-date caption and tape stay rendered.
+		// Issue #330 supersedes the mobile polaroid only: the thumbnail crop now reaches the
+		// compact hero's equally inset 84–96px image, while desktop keeps the original frame.
 		await page.setViewportSize({ width: 390, height: 844 });
-		await expectAspect(visiblePhoto, WISHLIST_SLOT_SPECS.thumbnail.aspect, FIXED_TOLERANCE);
-		await expectUniformPadding(polaroidFrame);
-		await expect(polaroidCaption).toBeVisible();
-		await expectRenderedTape(polaroidFrame);
+		const mobileHero = page.getByTestId('wishlist-mobile-hero');
+		const mobilePhoto = page.getByTestId('wishlist-mobile-photo');
+		await expectAspect(mobilePhoto, WISHLIST_SLOT_SPECS.thumbnail.aspect, FIXED_TOLERANCE);
+		const mobileHeroBox = await mobileHero.boundingBox();
+		const mobilePhotoBox = await mobilePhoto.boundingBox();
+		expect(mobileHeroBox).not.toBeNull();
+		expect(mobilePhotoBox).not.toBeNull();
+		expect(mobilePhotoBox!.width).toBeGreaterThanOrEqual(84);
+		expect(mobilePhotoBox!.width).toBeLessThanOrEqual(96);
+		expect(
+			Math.abs(mobilePhotoBox!.x - mobileHeroBox!.x - (mobilePhotoBox!.y - mobileHeroBox!.y)),
+		).toBeLessThanOrEqual(1);
+		await expect(polaroidFrame).not.toBeVisible();
 		await page.setViewportSize({ width: 1280, height: 900 });
 
 		// The dashboard card banner renders at the registry card aspect. (The banner

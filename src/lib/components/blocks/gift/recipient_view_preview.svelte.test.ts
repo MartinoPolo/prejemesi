@@ -1,6 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
@@ -57,6 +58,10 @@ function makeReservedGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisit
 }
 
 describe('recipient-view preview reservation privacy (#241)', () => {
+	beforeEach(async () => {
+		await page.viewport(800, 720);
+	});
+
 	it.each(['card', 'list', 'compact', 'detail'] as const)(
 		'hides reservation presentation and controls on the %s surface',
 		async (surface) => {

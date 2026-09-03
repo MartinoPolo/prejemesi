@@ -1,3 +1,4 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
@@ -7,6 +8,7 @@ import { createGiftPointerReorderController } from './gift_pointer_reorder.svelt
 
 const baseProps = {
 	index: 0,
+	totalCount: 2,
 	giftId: 'gift-alpha',
 	draggedGiftId: null,
 	dragOverGiftId: null,
@@ -111,15 +113,35 @@ describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 });
 
 describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => {
-	it('renders the reorder grip while reorder mode is enabled', async () => {
+	it('renders 40px reorder controls and makes card actions inert while reorder is enabled', async () => {
+		const onreordermove = vi.fn();
 		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
 			reorderEnabled: true,
+			onreordermove,
 		});
 
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_reorder_grip_label() }))
-			.toBeInTheDocument();
+		const grip = screen.getByRole('button', { name: m.gift_reorder_grip_label() });
+		const moveUp = screen.getByRole('button', {
+			name: m.gift_reorder_move_up({ name: baseProps.giftName }),
+		});
+		const moveDown = screen.getByRole('button', {
+			name: m.gift_reorder_move_down({ name: baseProps.giftName }),
+		});
+		for (const control of [grip, moveUp, moveDown]) {
+			await expect.element(control).toBeInTheDocument();
+			const rect = control.element().getBoundingClientRect();
+			expect(rect.width).toBeGreaterThanOrEqual(40);
+			expect(rect.height).toBeGreaterThanOrEqual(40);
+		}
+		await expect.element(moveUp).toBeDisabled();
+		const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
+		expect(wrapper).not.toHaveAttribute('role');
+		expect(wrapper).not.toHaveAttribute('tabindex');
+		expect(wrapper).not.toHaveAttribute('aria-label');
+		await userEvent.click(moveDown);
+		expect(onreordermove).toHaveBeenCalledWith(0, 1);
+		expect(document.querySelector('[data-selection-inert]')).toHaveAttribute('inert');
 		await screen.unmount();
 	});
 

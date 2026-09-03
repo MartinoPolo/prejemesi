@@ -78,7 +78,7 @@ test.describe('Gift image background fill (issue #252)', () => {
 		await waitForDialogOverlayRemoval(page);
 
 		await page.reload({ waitUntil: 'domcontentloaded' });
-		await page.locator('[aria-label="Karta"]').click();
+		await page.locator('[aria-label="Karta"]:visible').click();
 		const defaultCardFrame = page
 			.locator('[data-gift-item]')
 			.filter({ hasText: defaultGiftName })
