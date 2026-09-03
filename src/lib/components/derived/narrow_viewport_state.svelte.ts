@@ -1,4 +1,4 @@
-import { flushSync, onMount } from 'svelte';
+import { onMount } from 'svelte';
 
 const QUERY = '(max-width: 639px)';
 
@@ -7,9 +7,11 @@ let mediaQuery: MediaQueryList | null = null;
 let mountedConsumerCount = 0;
 
 function updateCurrent(matches: boolean) {
-	flushSync(() => {
-		current = matches;
-	});
+	// This can run while Svelte is mounting or destroying an entire card/list view. A nested
+	// flushSync during that lifecycle flush corrupts Svelte's active effect batch when the view is
+	// switched with reduced motion. Assigning the rune normally keeps the shared media state
+	// reactive without re-entering the scheduler.
+	current = matches;
 }
 
 function handleChange(event: MediaQueryListEvent) {

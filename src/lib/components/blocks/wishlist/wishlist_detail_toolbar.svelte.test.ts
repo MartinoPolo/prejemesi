@@ -369,6 +369,15 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 	});
 
 	it('restores exact trigger focus without moving page or toolbar when a sheet closes', async () => {
+		// A preceding Bits UI sheet can still be finishing its asynchronous body scroll-lock cleanup.
+		// Wait for that shared overlay state instead of letting it erase this test's scroll fixture.
+		await vi.waitFor(
+			() => {
+				expect(getComputedStyle(document.body).overflow).not.toBe('hidden');
+				expect(getComputedStyle(document.body).pointerEvents).not.toBe('none');
+			},
+			{ timeout: 1_000 },
+		);
 		const host = createTrackedToolbarHost('390px');
 		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
 		const trigger = screen.getByTestId('mobile-sort-trigger').element() as HTMLButtonElement;
@@ -382,9 +391,13 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		const scrollBeforeOpen = window.scrollY;
 		await trigger.click();
 		await userEvent.keyboard('{Escape}');
-		await awaitAnimationFrames();
-		expect(document.activeElement).toBe(trigger);
-		expect(window.scrollY).toBe(scrollBeforeOpen);
+		await vi.waitFor(
+			() => {
+				expect(document.activeElement).toBe(trigger);
+				expect(window.scrollY).toBe(scrollBeforeOpen);
+			},
+			{ timeout: 1_000 },
+		);
 		const after = toolbar.getBoundingClientRect();
 		expect(after.width).toBe(before.width);
 		expect(after.height).toBe(before.height);
