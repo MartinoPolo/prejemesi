@@ -127,8 +127,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 		await screen.unmount();
 	});
 
-	it('keeps two equal columns in constrained intermediate desktop content, then resumes auto-fill density', async () => {
-		const gifts = Array.from({ length: 4 }, (_, index) => ({
+	it('uses adaptive minmax columns at every desktop and tablet acceptance width', async () => {
+		const gifts = Array.from({ length: 6 }, (_, index) => ({
 			...visitorGift(),
 			id: `gift-${index + 1}`,
 			name: `Dárek ${index + 1}`,
@@ -137,6 +137,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 		for (const { viewportWidth, collectionWidth } of [
 			{ viewportWidth: 640, collectionWidth: 560 },
 			{ viewportWidth: 768, collectionWidth: 688 },
+			{ viewportWidth: 1024, collectionWidth: 944 },
+			{ viewportWidth: 1280, collectionWidth: 1152 },
 		]) {
 			await page.viewport(viewportWidth, 900);
 			const screen = await render(WishlistGiftDisplay, {
@@ -148,36 +150,21 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 				'[data-wishlist-gift-collection]',
 			)!;
 			collection.style.width = `${collectionWidth}px`;
-			const cards = Array.from(collection.querySelectorAll<HTMLElement>('[data-gift-item]'));
-			const first = cards[0]!.getBoundingClientRect();
-			const second = cards[1]!.getBoundingClientRect();
-			const third = cards[2]!.getBoundingClientRect();
+			const grid = collection.querySelector<HTMLElement>(
+				'[data-testid="wishlist-gift-card-grid"]',
+			)!;
+			const columns = getComputedStyle(grid).gridTemplateColumns.split(' ');
+			const expectedColumnCount = Math.floor((collectionWidth + 20) / 300);
 
-			expect(second.top).toBeCloseTo(first.top, 0);
-			expect(second.width).toBeCloseTo(first.width, 0);
-			expect(second.left - first.right).toBeCloseTo(20, 0);
-			expect(third.top).toBeGreaterThan(first.top);
+			expect(columns).toHaveLength(expectedColumnCount);
+			for (const column of columns) {
+				expect(parseFloat(column)).toBeGreaterThanOrEqual(280);
+			}
 			await screen.unmount();
 		}
-
-		await page.viewport(1024, 900);
-		const screen = await render(WishlistGiftDisplay, {
-			...defaultProps,
-			sections: [{ ...sections[0]!, gifts }],
-			viewMode: 'card',
-		});
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-		collection.style.width = '944px';
-		const cards = Array.from(collection.querySelectorAll<HTMLElement>('[data-gift-item]'));
-		const first = cards[0]!.getBoundingClientRect();
-		const third = cards[2]!.getBoundingClientRect();
-
-		expect(third.top).toBeCloseTo(first.top, 0);
-		expect(first.width).toBeGreaterThanOrEqual(280);
-		await screen.unmount();
 	});
 
-	it('reserves four pixels inside the grid for right and bottom hard-shadow paint', async () => {
+	it('keeps the collection edges exact and leaves card paint unclipped', async () => {
 		const gifts = Array.from({ length: 4 }, (_, index) => ({
 			...visitorGift(),
 			id: `gift-${index + 1}`,
@@ -196,6 +183,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
+				selectionMode: true,
+				selectedIds: ['gift-4'],
 			});
 			const collection = document.querySelector<HTMLElement>(
 				'[data-wishlist-gift-collection]',
@@ -210,8 +199,11 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 			const rightmostEdge = Math.max(...cardRects.map((rect) => rect.right));
 			const bottomEdge = Math.max(...cardRects.map((rect) => rect.bottom));
 
-			expect(gridRect.right - rightmostEdge).toBeCloseTo(4, 0);
-			expect(gridRect.bottom - bottomEdge).toBeCloseTo(4, 0);
+			expect(gridRect.right - rightmostEdge).toBeCloseTo(0, 0);
+			expect(gridRect.bottom - bottomEdge).toBeCloseTo(0, 0);
+			expect(getComputedStyle(grid).overflowX).toBe('visible');
+			expect(getComputedStyle(grid).overflowY).toBe('visible');
+			expect(getComputedStyle(collection).zIndex).toBe('0');
 			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(viewportWidth);
 			await screen.unmount();
 		}

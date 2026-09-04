@@ -190,6 +190,7 @@
 					bind:this={collectionElement}
 					data-wishlist-gift-collection
 					data-view-mode={displayedViewMode}
+					class="relative z-(--z-base)"
 					role={selectionMode ? 'group' : undefined}
 					aria-label={selectionMode ? m.gift_selection_listbox_label() : undefined}
 				>

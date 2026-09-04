@@ -34,9 +34,8 @@ describe('ViewToggle toggle selection (fixes: re-click deselects both items)', (
 			expect(getComputedStyle(group).backgroundColor).toBe('rgb(12, 23, 34)');
 			expect(getComputedStyle(grid).backgroundColor).toBe('rgb(45, 56, 67)');
 			expect(getComputedStyle(list).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-			expect(getComputedStyle(group).borderColor).toBe('rgb(78, 89, 100)');
-			expect(parseFloat(getComputedStyle(group).borderWidth)).toBeGreaterThan(0);
-			expect(getComputedStyle(group).boxShadow).not.toBe('none');
+			expect(parseFloat(getComputedStyle(group).borderWidth)).toBe(0);
+			expect(getComputedStyle(group).boxShadow).toContain('inset');
 			expect(getComputedStyle(grid).boxShadow).toBe(getComputedStyle(list).boxShadow);
 		} finally {
 			await screen.unmount();

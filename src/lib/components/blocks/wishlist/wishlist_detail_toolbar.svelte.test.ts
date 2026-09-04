@@ -673,16 +673,15 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		const switcher = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
 		const controls = screen.getByTestId('wishlist-toolbar-controls').element();
 
-		expect(parseFloat(getComputedStyle(switcher).borderWidth)).toBeGreaterThanOrEqual(2);
+		expect(getComputedStyle(switcher).boxShadow).not.toBe('none');
 		await expect
 			.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`))
 			.toHaveAccessibleName('Karta');
 		await expect
 			.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`))
 			.toHaveAccessibleName('Seznam');
-		expect(switcher.getBoundingClientRect().right).toBeLessThanOrEqual(
-			controls.firstElementChild!.getBoundingClientRect().left,
-		);
+		expect(switcher.parentElement).toBe(controls.firstElementChild);
+		expect(controls.firstElementChild).toHaveClass('toolbar-responsive-view-switcher');
 		expect(
 			new Set(Array.from(controls.children).map((child) => child.getBoundingClientRect().top))
 				.size,
@@ -1154,8 +1153,9 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 		expect(sortTrigger.querySelectorAll('svg')).toHaveLength(2);
 		expect(groupingTrigger.querySelectorAll('svg')).toHaveLength(2);
 		expect(filterTrigger.querySelectorAll('svg')).toHaveLength(2);
+		const switcher = screen.getByTestId('gift-view-switcher').element();
 		const displayControlsInOrder = [
-			screen.getByTestId('gift-view-switcher').element(),
+			switcher,
 			sortTrigger,
 			groupingTrigger,
 			filterTrigger,
@@ -1172,6 +1172,8 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 
 		expect(controlButtons.length).toBeGreaterThan(0);
 		expect(actionButtons).toEqual([settingsButton, batchButton, addButton]);
+		expect(switcher.getBoundingClientRect().height).toBeCloseTo(32, 0);
+		expect(switcher.parentElement?.parentElement).toBe(controls);
 		const allToolbarButtons = [...controlButtons, ...actionButtons];
 		for (const button of allToolbarButtons) {
 			expect(
@@ -1197,6 +1199,22 @@ describe('WishlistDetailToolbar collision-proof regions', () => {
 		expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
 		await screen.unmount();
 		host.remove();
+	});
+
+	it('masks the sticky offset without intercepting input and stays in the sticky layer', async () => {
+		await page.viewport(1280, 720);
+		const screen = await render(WishlistDetailToolbar, defaultProps);
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+		const toolbarStyle = getComputedStyle(toolbar);
+		const maskStyle = getComputedStyle(toolbar, '::before');
+
+		expect(toolbarStyle.position).toBe('sticky');
+		expect(toolbarStyle.zIndex).toBe('30');
+		expect(maskStyle.pointerEvents).toBe('none');
+		expect(maskStyle.top).toBe('-12px');
+		expect(maskStyle.bottom).toBe('-8px');
+		expect(maskStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+		await screen.unmount();
 	});
 
 	it('starts long active filters on a dedicated full row after controls and atomic actions', async () => {

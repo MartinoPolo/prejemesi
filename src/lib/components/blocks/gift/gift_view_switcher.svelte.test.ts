@@ -120,12 +120,12 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
 			.element() as HTMLElement;
 
-		expect(group.getBoundingClientRect().height).toBe(46);
+		expect(group.getBoundingClientRect().height).toBe(40);
 		expect(card.getBoundingClientRect().width).toBe(40);
 		expect(card.getBoundingClientRect().height).toBe(40);
 
 		await page.viewport(800, 720);
-		expect(group.getBoundingClientRect().height).toBe(38);
+		expect(group.getBoundingClientRect().height).toBe(32);
 		expect(card.getBoundingClientRect().width).toBe(32);
 		expect(card.getBoundingClientRect().height).toBe(32);
 		await screen.unmount();
@@ -161,11 +161,10 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			const listStyle = getComputedStyle(list);
 
 			expect(groupStyle.backgroundColor).toBe('rgb(11, 22, 33)');
-			expect(groupStyle.borderColor).toBe('rgb(77, 88, 99)');
-			expect(parseFloat(groupStyle.borderWidth)).toBeGreaterThanOrEqual(2);
+			expect(parseFloat(groupStyle.borderWidth)).toBe(0);
 			expect(parseFloat(groupStyle.borderRadius)).toBeLessThanOrEqual(8);
-			expect(groupStyle.boxShadow).not.toBe('none');
-			expect(parseFloat(groupStyle.paddingLeft)).toBeGreaterThan(0);
+			expect(groupStyle.boxShadow).toContain('inset');
+			expect(parseFloat(groupStyle.paddingLeft)).toBe(0);
 			expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
 			expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
 			expect(cardStyle.backgroundColor).toBe('rgb(44, 55, 66)');

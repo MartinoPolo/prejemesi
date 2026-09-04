@@ -947,32 +947,33 @@
 			<div class="toolbar-selection-content min-w-0">{@render selectionContent()}</div>
 		</div>
 	{:else}
-		{#if !reorderMode || mobileViewportMode === false}
-			<div class="toolbar-responsive-view-switcher">
-				<GiftViewSwitcher
-					value={viewMode}
-					onchange={onviewmodechange}
-					disabled={reorderMode}
-				/>
-			</div>
-		{/if}
-		{#if mobileViewportMode === null || mobileViewportMode}
-			<div class="toolbar-mobile" data-testid="wishlist-toolbar-mobile">
-				{#if reorderMode}
-					{@render mobileReorderControls()}
-				{:else}
-					{@render mobileDisplayControls()}
-					{@render mobileManagementControls()}
-				{/if}
-			</div>
-			{@render mobileDisplaySheet()}
-		{/if}
-		{#if mobileViewportMode === null || !mobileViewportMode}
-			<div class="toolbar-desktop">
-				<div class="toolbar-layout min-w-0">
-					<div class="toolbar-controls min-w-0" data-testid="wishlist-toolbar-controls">
-						{@render viewControls()}
+		<div
+			class="toolbar-responsive-carrier"
+			class:toolbar-desktop={mobileViewportMode === false}
+		>
+			<div
+				class="toolbar-layout min-w-0"
+				class:toolbar-responsive-layout={mobileViewportMode !== false}
+			>
+				<div
+					class="toolbar-controls min-w-0"
+					class:toolbar-responsive-controls={mobileViewportMode !== false}
+					data-testid={mobileViewportMode === false
+						? 'wishlist-toolbar-controls'
+						: undefined}
+				>
+					{#if !reorderMode || mobileViewportMode === false}
+						<div class="toolbar-responsive-view-switcher">
+							<GiftViewSwitcher
+								value={viewMode}
+								onchange={onviewmodechange}
+								disabled={reorderMode}
+							/>
+						</div>
+					{/if}
 
+					{#if mobileViewportMode === false}
+						{@render viewControls()}
 						{@render displayControls()}
 
 						{#if canReorder}
@@ -1025,8 +1026,10 @@
 								</Button>
 							</div>
 						{/if}
-					</div>
+					{/if}
+				</div>
 
+				{#if mobileViewportMode === false}
 					{@render activeFilterRegion()}
 
 					{#if showActions}
@@ -1086,19 +1089,47 @@
 							{/if}
 						</div>
 					{/if}
-				</div>
+				{/if}
 			</div>
+		</div>
+
+		{#if mobileViewportMode === null || mobileViewportMode}
+			<div class="toolbar-mobile" data-testid="wishlist-toolbar-mobile">
+				{#if reorderMode}
+					{@render mobileReorderControls()}
+				{:else}
+					{@render mobileDisplayControls()}
+					{@render mobileManagementControls()}
+				{/if}
+			</div>
+			{@render mobileDisplaySheet()}
 		{/if}
 	{/if}
 </div>
 
 <style>
 	.wishlist-toolbar {
+		isolation: isolate;
 		container-name: wishlist-toolbar;
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
 		padding: 4px 8px;
+	}
+
+	.wishlist-toolbar::before {
+		position: absolute;
+		z-index: -1;
+		inset: -0.75rem 0 -0.5rem;
+		background: var(--background);
+		content: '';
+		pointer-events: none;
+	}
+
+	.toolbar-responsive-carrier,
+	.toolbar-responsive-layout,
+	.toolbar-controls.toolbar-responsive-controls {
+		display: contents;
 	}
 
 	.toolbar-responsive-view-switcher {
@@ -1462,9 +1493,6 @@
 
 	@media (width >= 640px) {
 		.wishlist-toolbar {
-			display: flex;
-			align-items: flex-start;
-			gap: 0.625rem;
 			padding: 0.375rem 0.875rem;
 		}
 
