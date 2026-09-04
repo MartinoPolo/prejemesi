@@ -23,6 +23,7 @@ function createProps() {
 		onpriority: vi.fn(),
 		oncategory: vi.fn(),
 		onaction: vi.fn(),
+		oncopy: vi.fn(),
 		ondone: vi.fn(),
 	};
 }
@@ -101,6 +102,9 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		).toBe(false);
 		const scroll = screen.getByTestId('selection-bulk-sheet-scroll').element();
 		expect(getComputedStyle(scroll).overflowY).toBe('auto');
+		await expect
+			.element(dialog.getByRole('button', { name: m.gift_bulk_copy() }))
+			.toBeVisible();
 		await screen.unmount();
 	});
 
@@ -221,7 +225,10 @@ describe('WishlistSelectionToolbar desktop preservation (#340)', () => {
 		});
 		const wide = screen.getByTestId('selection-wide-controls').element() as HTMLElement;
 		wide.style.display = 'flex';
-		expect(visibleChildren(wide)).toHaveLength(5);
+		expect(visibleChildren(wide)).toHaveLength(6);
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_bulk_copy() }))
+			.toBeVisible();
 		await expect.element(screen.getByRole('button', { name: m.done() })).toBeVisible();
 		await expect
 			.element(screen.getByRole('button', { name: `${m.gift_priority_label()}: Vysoká` }))

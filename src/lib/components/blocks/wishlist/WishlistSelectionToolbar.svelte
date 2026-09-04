@@ -2,6 +2,7 @@
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import CopyIcon from '@lucide/svelte/icons/copy';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
@@ -35,6 +36,7 @@
 		onpriority: (id: string | null) => void;
 		oncategory: (id: string | null) => void;
 		onaction: (action: GiftBulkAction) => void;
+		oncopy?: () => void;
 		ondone: () => void;
 	}
 	let {
@@ -55,6 +57,7 @@
 		onpriority,
 		oncategory,
 		onaction,
+		oncopy = () => undefined,
 		ondone,
 	}: Props = $props();
 	const disabled = $derived(pending !== null || selectedCount === 0);
@@ -130,6 +133,15 @@
 
 	function handleReceived(received: boolean) {
 		onaction({ action: 'received', received });
+	}
+
+	function handleCopy() {
+		if (mobileBulkSheetOpen) {
+			mobileBulkSheetOpen = false;
+			requestAnimationFrame(oncopy);
+			return;
+		}
+		oncopy();
 	}
 </script>
 
@@ -335,6 +347,16 @@
 							() => handleImageBackground(null),
 						)}
 					</fieldset>
+					<div class="bulk-sheet-section">
+						<Button
+							class="w-full justify-start"
+							intent="ghost"
+							{disabled}
+							onclick={handleCopy}
+						>
+							<CopyIcon data-icon="inline-start" />{m.gift_bulk_copy()}
+						</Button>
+					</div>
 					<fieldset class="bulk-sheet-section" {disabled}>
 						<legend>{m.gift_selection_received_state()}: {receivedSummary}</legend>
 						{@render bulkRadioChoice(
@@ -399,6 +421,9 @@
 			>{/if}
 	</div>
 	<div class="wide-controls" data-testid="selection-wide-controls">
+		<Button intent="outline" size="md" {disabled} onclick={handleCopy}>
+			<CopyIcon data-icon="inline-start" />{m.gift_bulk_copy()}
+		</Button>
 		<DropdownMenu.Root
 			><DropdownMenu.Trigger
 				>{#snippet child({ props })}<Button
@@ -483,7 +508,11 @@
 						/></Button
 					>{/snippet}</DropdownMenu.Trigger
 			><DropdownMenu.Content align="end"
-				><DropdownMenu.Sub
+				><DropdownMenu.Item onclick={handleCopy}>
+					<CopyIcon data-icon="inline-start" />{m.gift_bulk_copy()}
+				</DropdownMenu.Item>
+				<DropdownMenu.Separator />
+				<DropdownMenu.Sub
 					><DropdownMenu.SubTrigger disabled={!priorityReady}
 						>{labelWithOptionalSummary(
 							m.gift_priority_label(),

@@ -1,10 +1,11 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql, count as drizzleCount, inArray } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
+import { eq, and, isNull, sql, count as drizzleCount, inArray, ne, or } from 'drizzle-orm';
+import { error, isHttpError } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftCategory, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import {
 	publicQuery,
 	guardedCommand,
@@ -51,6 +52,7 @@ import { appendGifts } from './gift_creation_service.js';
 import { mapGiftCreationError } from './gift_creation_transport.js';
 import { bulkGiftUpdateData, isBulkPresentationAction } from './gift_bulk_update.js';
 import { runBulkUpdateAfterRowsLockedHookForTest } from './gifts.remote.test-hook.js';
+import { BulkCopyGiftsInputSchema, copyGifts } from './gift_bulk_copy.js';
 import {
 	assertActiveGiftCategoryAssignment,
 	publicGiftCategory,
@@ -1005,6 +1007,58 @@ export const markGiftReceived = guardedCommand(
 		return updated;
 	},
 );
+
+/** Eligible non-archived destinations managed by the current actor. */
+export const getBulkCopyDestinations = guardedQueryWithArgs(
+	v.string(),
+	async ({ user: currentUser }, sourceWishlistId) => {
+		await verifyManagerAccess(currentUser.id, sourceWishlistId);
+		const database = getDb();
+		return database
+			.selectDistinct({
+				id: wishlist.id,
+				title: wishlist.title,
+				status: wishlist.status,
+				recipientDisplayName: sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`,
+			})
+			.from(wishlist)
+			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
+			.leftJoin(
+				moderatorAssignment,
+				and(
+					eq(moderatorAssignment.wishlistId, wishlist.id),
+					eq(moderatorAssignment.userId, currentUser.id),
+					isNull(moderatorAssignment.deletedAt),
+				),
+			)
+			.where(
+				and(
+					ne(wishlist.id, sourceWishlistId),
+					ne(wishlist.status, 'archived'),
+					isNull(wishlist.deletedAt),
+					or(
+						eq(wishlist.recipientUserId, currentUser.id),
+						eq(moderatorAssignment.userId, currentUser.id),
+					),
+				),
+			)
+			.orderBy(wishlist.title);
+	},
+);
+
+export const bulkCopyGifts = guardedCommand(BulkCopyGiftsInputSchema, async ({ user }, input) => {
+	try {
+		const result = await copyGifts(user.id, input);
+		singleFlightRefresh(getGiftsByWishlistShortId, result.destinationShortId);
+		return { createdIds: result.created.map((created) => created.id) };
+	} catch (thrown) {
+		if (isHttpError(thrown)) {
+			throw thrown;
+		}
+		console.error('[Bulk gift copy] failed', thrown);
+		error(500, SERVER_ERROR.BULK_COPY_FAILED);
+	}
+});
 
 /** Fetch priority levels for a wishlist */
 export const getPriorityLevels = guardedQueryWithArgs(v.string(), async ({ user }, wishlistId) => {

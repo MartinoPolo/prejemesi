@@ -10,6 +10,7 @@
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
+	import GiftBulkCopyDialog from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
@@ -87,6 +88,8 @@
 		reorderGifts,
 		markGiftReceived,
 		bulkUpdateGifts,
+		bulkCopyGifts,
+		getBulkCopyDestinations,
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
@@ -492,6 +495,18 @@
 		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.received)),
 	);
 	let bulkPending = $state<PendingGiftBulkActionDescriptor | null>(null);
+	let bulkCopyOpen = $state(false);
+	let bulkCopyLoading = $state(false);
+	let bulkCopySubmitting = $state(false);
+	let bulkCopyDestinationId = $state('');
+	let bulkCopyDestinations = $state<
+		Array<{
+			id: string;
+			title: string;
+			status: 'draft' | 'active' | 'archived';
+			recipientDisplayName: string;
+		}>
+	>([]);
 	let hiddenConfirmOpen = $state(false);
 	let deferredBulkAction = $state<GiftBulkAction | null>(null);
 	let contextGift = $state<GiftByRole | null>(null);
@@ -683,6 +698,50 @@
 			bulkPending = null;
 			hiddenConfirmOpen = false;
 			deferredBulkAction = null;
+		}
+	}
+
+	async function openBulkCopy() {
+		if (bulkCopySubmitting || selectionSnapshot.selectedIds.length === 0) {
+			return;
+		}
+		bulkCopyOpen = true;
+		bulkCopyLoading = true;
+		bulkCopyDestinationId = '';
+		try {
+			bulkCopyDestinations = await getBulkCopyDestinations(wishlist.id);
+			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? '';
+		} catch (thrown) {
+			bulkCopyDestinations = [];
+			toastError(translateServerError(thrown));
+		} finally {
+			bulkCopyLoading = false;
+		}
+	}
+
+	async function submitBulkCopy() {
+		if (
+			bulkCopySubmitting ||
+			bulkCopyDestinationId === '' ||
+			selectionSnapshot.selectedIds.length === 0
+		) {
+			return;
+		}
+		const selectedIds = [...selectionSnapshot.selectedIds];
+		bulkCopySubmitting = true;
+		try {
+			await bulkCopyGifts({
+				sourceWishlistId: wishlist.id,
+				destinationWishlistId: bulkCopyDestinationId,
+				giftIds: selectedIds,
+			});
+			toastSuccess(m.gift_bulk_copy_success({ count: selectedIds.length }));
+			bulkCopyOpen = false;
+			giftSelection.exit();
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		} finally {
+			bulkCopySubmitting = false;
 		}
 	}
 
@@ -1412,6 +1471,7 @@
 				oncategory={(categoryId) =>
 					void applyBulkAction({ action: 'category', categoryId })}
 				onaction={(action) => void applyBulkAction(action)}
+				oncopy={() => void openBulkCopy()}
 				ondone={() => giftSelection.exit()}
 			/>
 		{/snippet}
@@ -1528,6 +1588,18 @@
 			giftSelection.exit();
 		}
 	}}
+/>
+
+<GiftBulkCopyDialog
+	open={bulkCopyOpen}
+	destinations={bulkCopyDestinations}
+	selectedDestinationId={bulkCopyDestinationId}
+	selectedCount={selectionSnapshot.selectedIds.length}
+	loading={bulkCopyLoading}
+	submitting={bulkCopySubmitting}
+	onopenchange={(open) => (bulkCopyOpen = open)}
+	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
+	onconfirm={() => void submitBulkCopy()}
 />
 
 <Dialog.Root bind:open={hiddenConfirmOpen}>
