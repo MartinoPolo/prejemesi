@@ -218,15 +218,17 @@
 		{#if !contextualMode && ((canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift) || onmore)}
 			<div
 				class={cn(
-					'mt-auto flex min-w-0 flex-row gap-1 self-end pt-0 sm:flex-col sm:gap-1.5 sm:pt-2',
+					'mt-auto flex w-full min-w-0 flex-row gap-1 self-stretch pt-0 sm:w-auto sm:flex-col sm:gap-1.5 sm:self-end sm:pt-2',
 					!hasDesktopAction && 'sm:hidden',
 				)}
+				data-testid="gift-list-actions"
 			>
 				{#if onmore}
 					<Button
 						intent="outline"
 						class="size-10 min-h-10 shrink-0 p-0 sm:hidden"
 						aria-label={m.gift_more_actions()}
+						data-testid="gift-more-actions"
 						onclick={(event) => {
 							event.stopPropagation();
 							onmore();
@@ -240,7 +242,7 @@
 						{role}
 						{isArchived}
 						{onreceived}
-						class="min-h-10 w-full"
+						class="min-h-10 min-w-0 flex-1 whitespace-normal px-1 text-xs leading-tight [&_svg]:hidden sm:w-full sm:flex-none sm:gap-1.5 sm:px-3 sm:text-(length:--text-md) sm:leading-none sm:[&_svg]:block"
 					/>
 				{/if}
 				{#if isVisitorOrModerator && visitorGift}

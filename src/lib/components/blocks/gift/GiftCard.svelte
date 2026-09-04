@@ -273,6 +273,7 @@
 						intent="outline"
 						class="h-auto min-h-10 w-10 shrink-0 self-stretch p-0 sm:hidden"
 						aria-label={m.gift_more_actions()}
+						data-testid="gift-more-actions"
 						onclick={(event) => {
 							event.stopPropagation();
 							onmore();

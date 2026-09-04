@@ -95,6 +95,59 @@ async function expectInsideViewport(locator: Locator, width: number) {
 	expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 12 + 0.5);
 }
 
+async function expectContainedReceivedActions(page: Page) {
+	const giftItems = page.locator('[data-gift-item]');
+	await expect(giftItems).not.toHaveCount(0);
+	for (const item of await giftItems.all()) {
+		const receivedAction = item.getByTestId('gift-received-toggle');
+		await expect(receivedAction).toBeVisible();
+		const [itemBox, actionBox, labelBox] = await Promise.all([
+			box(item),
+			box(receivedAction),
+			receivedAction.evaluate((action) => {
+				const labelNode = Array.from(action.childNodes).find(
+					(node) =>
+						node.nodeType === Node.TEXT_NODE &&
+						(node.textContent?.trim().length ?? 0) > 0,
+				);
+				if (labelNode === undefined) {
+					throw new Error('Received action has no text label');
+				}
+				const range = document.createRange();
+				range.selectNodeContents(labelNode);
+				const rect = range.getBoundingClientRect();
+				return { x: rect.x, width: rect.width };
+			}),
+		]);
+		expect(actionBox.width).toBeGreaterThanOrEqual(40);
+		expect(actionBox.height).toBeGreaterThanOrEqual(40);
+		expect(actionBox.x).toBeGreaterThanOrEqual(itemBox.x - 0.5);
+		expect(actionBox.x + actionBox.width).toBeLessThanOrEqual(itemBox.x + itemBox.width + 0.5);
+		expect(
+			Math.abs(
+				labelBox.x -
+					actionBox.x -
+					(actionBox.x + actionBox.width - labelBox.x - labelBox.width),
+			),
+		).toBeLessThanOrEqual(4);
+		expect(await receivedAction.evaluate((action) => action.scrollWidth)).toBeLessThanOrEqual(
+			await receivedAction.evaluate((action) => action.clientWidth),
+		);
+
+		const moreAction = item.getByTestId('gift-more-actions');
+		if ((await moreAction.count()) === 0) {
+			continue;
+		}
+		const moreBox = await box(moreAction);
+		expect(moreBox.width).toBeGreaterThanOrEqual(40);
+		expect(moreBox.height).toBeGreaterThanOrEqual(40);
+		const horizontallySeparated =
+			actionBox.x + actionBox.width <= moreBox.x + 0.5 ||
+			moreBox.x + moreBox.width <= actionBox.x + 0.5;
+		expect(horizontallySeparated).toBe(true);
+	}
+}
+
 async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
 	const directory = 'test-results/mobile-wishlist-screenshots';
 	const path = `${directory}/${name}.png`;
@@ -167,6 +220,7 @@ test.describe('mobile wishlist acceptance', () => {
 			for (const item of await page.locator('[data-gift-item]').all()) {
 				await expectInsideViewport(item, width);
 			}
+			await expectContainedReceivedActions(page);
 			const mobileImageState = await page
 				.getByTestId('gift-card-image-frame')
 				.first()
@@ -278,6 +332,7 @@ test.describe('mobile wishlist acceptance', () => {
 			expect(surface.background).not.toBe('rgba(0, 0, 0, 0)');
 			expect(surface.border).not.toBe('none');
 			expect(surface.shadow).not.toBe('none');
+			await expectContainedReceivedActions(page);
 			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
 			await resetAllScroll(page);
 			await attachScreenshot(page, testInfo, `manager-list-${width}`);
@@ -285,11 +340,51 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.context().close();
 	});
 
-	test('manager toolbar and dedicated sheets preserve geometry, scroll and focus', async ({
+	test('English Card and List received actions wrap within manager items at every mobile width', async ({
 		browser,
 		request,
 		baseURL,
-	}) => {
+	}, testInfo) => {
+		const page = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-english-actions'),
+		);
+		const wishlistPath = await createManagerWishlist(page, 'English mobile actions');
+		await page.goto(`/en${wishlistPath}`, { waitUntil: 'load' });
+		await expect(page.locator('[data-gift-item]')).toHaveCount(3);
+		await page.getByTestId('gift-received-toggle').first().click();
+		await expect(
+			page.getByRole('button', { name: 'Mark as not received', exact: true }),
+		).toBeVisible();
+		await waitForGiftAnimationsToSettle(page);
+
+		for (const view of ['card', 'list'] as const) {
+			const viewControl = page.getByTestId(`gift-view-${view}`);
+			await viewControl.click();
+			await expect(viewControl).toHaveAttribute('aria-checked', 'true');
+			await expect(
+				page.getByTestId(
+					view === 'card' ? 'wishlist-gift-card-grid' : 'wishlist-gift-list',
+				),
+			).toBeVisible();
+			for (const width of WIDTHS) {
+				await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+				await expectContainedReceivedActions(page);
+				expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+				await resetAllScroll(page);
+				await attachScreenshot(page, testInfo, `manager-en-${view}-${width}`);
+			}
+		}
+		await page.context().close();
+	});
+
+	test('manager toolbar and dedicated sheets preserve geometry, masking, stacking, scroll and focus', async ({
+		browser,
+		request,
+		baseURL,
+	}, testInfo) => {
 		const page = await registerAndGetPage(
 			browser,
 			request,
@@ -297,8 +392,9 @@ test.describe('mobile wishlist acceptance', () => {
 			createTestUser('mobile-wishlist-sheets'),
 		);
 		await createManagerWishlist(page, 'Mobilní panely nástrojů');
-		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await page.setViewportSize({ width: 390, height: 500 });
 		const toolbar = page.getByTestId('wishlist-toolbar');
+		const toolbarMask = page.getByTestId('wishlist-toolbar-mask');
 		const rows = toolbar.locator('[data-mobile-toolbar-row]');
 		await expect(rows).toHaveCount(1);
 		for (const control of await toolbar
@@ -311,11 +407,93 @@ test.describe('mobile wishlist acceptance', () => {
 			await rows.evaluate((row) => row.clientWidth),
 		);
 
-		await page.evaluate(() => window.scrollTo(0, 180));
+		const scrollContainer = page.locator('main.app-content');
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: 500 });
+			await scrollContainer.evaluate((element) => {
+				element.scrollTop = element.scrollHeight;
+			});
+			const [toolbarBox, scrollContainerBox, toolbarStyle, maskStyle] = await Promise.all([
+				box(toolbar),
+				box(scrollContainer),
+				toolbar.evaluate((element) => {
+					const style = getComputedStyle(element);
+					return {
+						backgroundColor: style.backgroundColor,
+						borderColors: [
+							style.borderTopColor,
+							style.borderRightColor,
+							style.borderBottomColor,
+							style.borderLeftColor,
+						],
+						borderStyles: [
+							style.borderTopStyle,
+							style.borderRightStyle,
+							style.borderBottomStyle,
+							style.borderLeftStyle,
+						],
+						zIndex: style.zIndex,
+					};
+				}),
+				toolbarMask.evaluate((element) => {
+					const style = getComputedStyle(element);
+					return {
+						backgroundColor: style.backgroundColor,
+						backdropFilter: style.backdropFilter,
+						pointerEvents: style.pointerEvents,
+						zIndex: style.zIndex,
+					};
+				}),
+			]);
+			expect(toolbarBox.y).toBeCloseTo(scrollContainerBox.y + 12, 0);
+			expect(toolbarStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+			expect(new Set(toolbarStyle.borderColors).size).toBe(1);
+			expect(toolbarStyle.borderColors[0]).not.toBe('rgba(0, 0, 0, 0)');
+			expect(toolbarStyle.borderStyles).toEqual(['solid', 'solid', 'solid', 'solid']);
+			expect(toolbarStyle.zIndex).toBe('1');
+			expect(maskStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+			expect(maskStyle.backdropFilter).toContain('blur');
+			expect(maskStyle.pointerEvents).toBe('auto');
+			expect(maskStyle.zIndex).toBe('0');
+			expect(
+				await page
+					.locator(
+						'[data-testid="wishlist-gift-card-grid"], [data-testid="wishlist-gift-list"]',
+					)
+					.evaluate((collection) => getComputedStyle(collection).isolation),
+			).toBe('isolate');
+
+			await page.locator('[data-gift-item]').evaluateAll((items) => {
+				for (const item of items) {
+					item.addEventListener('click', () => {
+						document.body.dataset.maskGiftClicked = 'true';
+					});
+				}
+			});
+			const maskedPoint = {
+				x: toolbarBox.x + toolbarBox.width / 2,
+				y: toolbarBox.y + toolbarBox.height + 4,
+			};
+			expect(
+				await page.evaluate(
+					({ x, y }) =>
+						(document.elementFromPoint(x, y) as HTMLElement | null)?.dataset.testid,
+					maskedPoint,
+				),
+			).toBe('wishlist-toolbar-mask');
+			await page.mouse.click(maskedPoint.x, maskedPoint.y);
+			expect(await page.locator('body').getAttribute('data-mask-gift-clicked')).toBeNull();
+			await attachScreenshot(page, testInfo, `toolbar-mask-${width}`);
+		}
+
+		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await scrollContainer.evaluate((element) => {
+			element.scrollTop = 180;
+		});
 		const trigger = page.getByTestId('mobile-display-trigger');
 		const before = {
 			toolbar: await box(toolbar),
-			scrollY: await page.evaluate(() => scrollY),
+			scrollTop: await scrollContainer.evaluate((element) => element.scrollTop),
 		};
 		await trigger.click();
 		const dialog = page.getByRole('dialog', { name: m.gift_display_options() });
@@ -334,6 +512,13 @@ test.describe('mobile wishlist acceptance', () => {
 		).toBe(1);
 		const dialogBox = await box(dialog);
 		expect(dialogBox.height).toBeLessThanOrEqual(MOBILE_HEIGHT * 0.8 + 1);
+		const [sheetZIndex, stickyZIndex] = await Promise.all([
+			dialog.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
+			toolbar.evaluate((element) =>
+				Number.parseInt(getComputedStyle(element.parentElement!).zIndex, 10),
+			),
+		]);
+		expect(sheetZIndex).toBeGreaterThan(stickyZIndex);
 		await page.keyboard.press('Tab');
 		expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
 			true,
@@ -341,10 +526,35 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.keyboard.press('Escape');
 		await expect(dialog).toBeHidden();
 		await expect(trigger).toBeFocused();
-		expect(await page.evaluate(() => scrollY)).toBe(before.scrollY);
+		expect(await scrollContainer.evaluate((element) => element.scrollTop)).toBe(
+			before.scrollTop,
+		);
 		const afterToolbar = await box(toolbar);
 		expect(afterToolbar.x).toBeCloseTo(before.toolbar.x, 0);
 		expect(afterToolbar.width).toBeCloseTo(before.toolbar.width, 0);
+
+		await resetAllScroll(page);
+		await page.locator('[data-gift-item]').first().getByRole('heading', { level: 3 }).click();
+		const giftDialog = page.getByRole('dialog');
+		await expect(giftDialog).toBeVisible();
+		expect(
+			await giftDialog.evaluate((element) =>
+				Number.parseInt(getComputedStyle(element).zIndex, 10),
+			),
+		).toBeGreaterThan(stickyZIndex);
+		await page.keyboard.press('Escape');
+		await expect(giftDialog).toBeHidden();
+
+		await addGift(page, 'Dárek pro ověření vrstvy oznámení');
+		const toast = page.locator('[data-sonner-toast]').last();
+		await expect(toast).toBeVisible();
+		const toaster = toast.locator('xpath=ancestor::*[@data-sonner-toaster]').first();
+		expect(
+			await toaster.evaluate((element) =>
+				Number.parseInt(getComputedStyle(element).zIndex, 10),
+			),
+		).toBeGreaterThan(stickyZIndex);
+		await dismissToasts(page);
 		await page.context().close();
 	});
 
@@ -599,6 +809,7 @@ test.describe('mobile wishlist acceptance', () => {
 				elements.map((element) => Math.round(element.getBoundingClientRect().height)),
 			);
 			expect(new Set(heights).size).toBe(1);
+			await expectContainedReceivedActions(page);
 			await attachScreenshot(page, testInfo, `recipient-card-${width}`);
 		}
 		await page.getByTestId('gift-view-list').click();
@@ -612,6 +823,7 @@ test.describe('mobile wishlist acceptance', () => {
 				elements.map((element) => Math.round(element.getBoundingClientRect().height)),
 			);
 			expect(new Set(heights).size).toBe(1);
+			await expectContainedReceivedActions(page);
 			await attachScreenshot(page, testInfo, `recipient-list-${width}`);
 		}
 		await visitor.context().close();
@@ -671,6 +883,14 @@ test.describe('mobile wishlist acceptance', () => {
 		expect(selectedSurfaceBox.y).toBeCloseTo(selectedItemBox.y, 0);
 		expect(selectedSurfaceBox.width).toBeCloseTo(selectedItemBox.width, 0);
 		expect(selectedSurfaceBox.height).toBeCloseTo(selectedItemBox.height, 0);
+		expect(await firstSelectableItem.evaluate((item) => document.activeElement === item)).toBe(
+			true,
+		);
+		await page.locator('main.app-content').evaluate((element) => {
+			element.scrollTop = element.scrollHeight;
+		});
+		await expect(firstSelectableItem).toHaveAttribute('aria-checked', 'true');
+		await expect(selection).toBeVisible();
 		await dismissToasts(page);
 		await resetAllScroll(page);
 		await attachScreenshot(page, testInfo, 'manager-selection-390');

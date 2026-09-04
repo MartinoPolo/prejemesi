@@ -884,192 +884,202 @@
 	{reorderAnnouncement}
 </div>
 
-<div
-	class="wishlist-toolbar sticky top-3 z-(--z-sticky) min-w-0 rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
-	data-testid="wishlist-toolbar"
->
-	{#if selectionContent}
-		<div class="toolbar-layout min-w-0 toolbar-layout-selection">
-			<div class="toolbar-selection-content min-w-0">{@render selectionContent()}</div>
-		</div>
-	{:else}
-		<div
-			class="toolbar-responsive-carrier"
-			class:toolbar-desktop={mobileViewportMode === false}
-		>
+<div class="wishlist-toolbar-sticky sticky top-3 z-(--z-sticky) min-w-0">
+	<div class="wishlist-toolbar-mask" data-testid="wishlist-toolbar-mask" aria-hidden="true"></div>
+	<div
+		class="wishlist-toolbar relative z-[1] min-w-0 rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
+		data-testid="wishlist-toolbar"
+	>
+		{#if selectionContent}
+			<div class="toolbar-layout min-w-0 toolbar-layout-selection">
+				<div class="toolbar-selection-content min-w-0">{@render selectionContent()}</div>
+			</div>
+		{:else}
 			<div
-				class="toolbar-layout min-w-0"
-				class:toolbar-responsive-layout={mobileViewportMode !== false}
+				class="toolbar-responsive-carrier"
+				class:toolbar-desktop={mobileViewportMode === false}
 			>
 				<div
-					class="toolbar-controls min-w-0"
-					class:toolbar-responsive-controls={mobileViewportMode !== false}
-					data-testid={mobileViewportMode === false
-						? 'wishlist-toolbar-controls'
-						: undefined}
+					class="toolbar-layout min-w-0"
+					class:toolbar-responsive-layout={mobileViewportMode !== false}
 				>
-					{#if mobileViewportMode === false}
-						<div class="toolbar-responsive-view-switcher">
-							<GiftViewSwitcher
-								value={viewMode}
-								onchange={onviewmodechange}
-								disabled={reorderMode}
-							/>
-						</div>
-					{/if}
+					<div
+						class="toolbar-controls min-w-0"
+						class:toolbar-responsive-controls={mobileViewportMode !== false}
+						data-testid={mobileViewportMode === false
+							? 'wishlist-toolbar-controls'
+							: undefined}
+					>
+						{#if mobileViewportMode === false}
+							<div class="toolbar-responsive-view-switcher">
+								<GiftViewSwitcher
+									value={viewMode}
+									onchange={onviewmodechange}
+									disabled={reorderMode}
+								/>
+							</div>
+						{/if}
 
-					{#if mobileViewportMode === false}
-						{@render viewControls()}
-						{@render displayControls()}
+						{#if mobileViewportMode === false}
+							{@render viewControls()}
+							{@render displayControls()}
 
-						{#if canReorder}
-							<div
-								class="toolbar-edit-controls"
-								data-testid="wishlist-toolbar-edit-controls"
-							>
-								<Button
-									size="md"
-									intent={reorderMode ? 'primary' : 'outline'}
-									class="reorder-mode-action min-w-0 max-w-full"
-									title={reorderMode
-										? m.gift_reorder_done()
-										: m.gift_reorder_action()}
-									aria-label={reorderMode
-										? m.gift_reorder_done()
-										: m.gift_reorder_action()}
-									onclick={() => onreordermodechange(!reorderMode)}
+							{#if canReorder}
+								<div
+									class="toolbar-edit-controls"
+									data-testid="wishlist-toolbar-edit-controls"
 								>
-									<span class="reorder-mode-icon-stack" aria-hidden="true">
-										<HandIcon
-											class={`reorder-mode-content${!reorderMode ? ' reorder-mode-content-active' : ''}`}
-											data-icon="inline-start"
-											data-toolbar-icon="reorder"
-										/>
-										<CheckIcon
-											class={`reorder-mode-content${reorderMode ? ' reorder-mode-content-active' : ''}`}
-											data-icon="inline-start"
-											data-toolbar-icon="reorder-done"
-										/>
-									</span>
-									<span
-										class="reorder-mode-label-stack min-w-0"
-										aria-hidden="true"
+									<Button
+										size="md"
+										intent={reorderMode ? 'primary' : 'outline'}
+										class="reorder-mode-action min-w-0 max-w-full"
+										title={reorderMode
+											? m.gift_reorder_done()
+											: m.gift_reorder_action()}
+										aria-label={reorderMode
+											? m.gift_reorder_done()
+											: m.gift_reorder_action()}
+										onclick={() => onreordermodechange(!reorderMode)}
 									>
-										<span
-											class="reorder-mode-content min-w-0 truncate"
-											class:reorder-mode-content-active={!reorderMode}
-										>
-											{m.gift_reorder_action()}
+										<span class="reorder-mode-icon-stack" aria-hidden="true">
+											<HandIcon
+												class={`reorder-mode-content${!reorderMode ? ' reorder-mode-content-active' : ''}`}
+												data-icon="inline-start"
+												data-toolbar-icon="reorder"
+											/>
+											<CheckIcon
+												class={`reorder-mode-content${reorderMode ? ' reorder-mode-content-active' : ''}`}
+												data-icon="inline-start"
+												data-toolbar-icon="reorder-done"
+											/>
 										</span>
 										<span
-											class="reorder-mode-content min-w-0 truncate"
-											class:reorder-mode-content-active={reorderMode}
-											data-reorder-mode-label
+											class="reorder-mode-label-stack min-w-0"
+											aria-hidden="true"
 										>
-											{m.gift_reorder_done()}
+											<span
+												class="reorder-mode-content min-w-0 truncate"
+												class:reorder-mode-content-active={!reorderMode}
+											>
+												{m.gift_reorder_action()}
+											</span>
+											<span
+												class="reorder-mode-content min-w-0 truncate"
+												class:reorder-mode-content-active={reorderMode}
+												data-reorder-mode-label
+											>
+												{m.gift_reorder_done()}
+											</span>
 										</span>
-									</span>
-								</Button>
+									</Button>
+								</div>
+							{/if}
+						{/if}
+					</div>
+
+					{#if mobileViewportMode === false}
+						{@render activeFilterRegion()}
+
+						{#if showActions}
+							<div
+								class="toolbar-actions min-w-0"
+								data-testid="wishlist-toolbar-actions"
+							>
+								{#if showSettingsAction}
+									<SimpleTooltip text={m.wishlist_settings_title()}>
+										<Button
+											size="icon"
+											intent="outline"
+											aria-label={m.wishlist_settings_title()}
+											disabled={reorderMode}
+											onclick={onsettings}
+										>
+											<SettingsIcon />
+										</Button>
+									</SimpleTooltip>
+								{/if}
+								{#if showUnfollowAction}
+									<Button
+										size="md"
+										intent="ghost"
+										class="min-w-0 max-w-48 shrink"
+										title={m.wishlist_detail_unfollow()}
+										disabled={reorderMode}
+										onclick={onunfollow}
+									>
+										<span class="min-w-0 truncate"
+											>{m.wishlist_detail_unfollow()}</span
+										>
+									</Button>
+								{/if}
+								{#if showManagementActions}
+									<SimpleTooltip text={m.batch_add_toolbar_label()}>
+										<Button
+											size="icon"
+											intent="outline"
+											aria-label={m.batch_add_toolbar_label()}
+											disabled={reorderMode}
+											onclick={onbatchadd}
+										>
+											<ListPlusIcon />
+										</Button>
+									</SimpleTooltip>
+									<Button
+										size="md"
+										class="min-w-0 max-w-44 shrink"
+										aria-label={m.wishlist_detail_add_gift_label()}
+										disabled={reorderMode}
+										title={m.wishlist_detail_add_wish()}
+										onclick={onaddgift}
+									>
+										<PlusIcon data-icon="inline-start" />
+										<span class="min-w-0 truncate"
+											>{m.wishlist_detail_add_wish()}</span
+										>
+									</Button>
+								{/if}
 							</div>
 						{/if}
 					{/if}
 				</div>
+			</div>
 
-				{#if mobileViewportMode === false}
-					{@render activeFilterRegion()}
-
-					{#if showActions}
-						<div class="toolbar-actions min-w-0" data-testid="wishlist-toolbar-actions">
-							{#if showSettingsAction}
-								<SimpleTooltip text={m.wishlist_settings_title()}>
-									<Button
-										size="icon"
-										intent="outline"
-										aria-label={m.wishlist_settings_title()}
-										disabled={reorderMode}
-										onclick={onsettings}
-									>
-										<SettingsIcon />
-									</Button>
-								</SimpleTooltip>
-							{/if}
-							{#if showUnfollowAction}
-								<Button
-									size="md"
-									intent="ghost"
-									class="min-w-0 max-w-48 shrink"
-									title={m.wishlist_detail_unfollow()}
-									disabled={reorderMode}
-									onclick={onunfollow}
-								>
-									<span class="min-w-0 truncate"
-										>{m.wishlist_detail_unfollow()}</span
-									>
-								</Button>
-							{/if}
-							{#if showManagementActions}
-								<SimpleTooltip text={m.batch_add_toolbar_label()}>
-									<Button
-										size="icon"
-										intent="outline"
-										aria-label={m.batch_add_toolbar_label()}
-										disabled={reorderMode}
-										onclick={onbatchadd}
-									>
-										<ListPlusIcon />
-									</Button>
-								</SimpleTooltip>
-								<Button
-									size="md"
-									class="min-w-0 max-w-44 shrink"
-									aria-label={m.wishlist_detail_add_gift_label()}
-									disabled={reorderMode}
-									title={m.wishlist_detail_add_wish()}
-									onclick={onaddgift}
-								>
-									<PlusIcon data-icon="inline-start" />
-									<span class="min-w-0 truncate"
-										>{m.wishlist_detail_add_wish()}</span
-									>
-								</Button>
-							{/if}
-						</div>
+			{#if mobileViewportMode === null || mobileViewportMode}
+				<div class="toolbar-mobile" data-testid="wishlist-toolbar-mobile">
+					{#if reorderMode}
+						{@render mobileReorderControls()}
+					{:else}
+						{@render mobileDisplayControls()}
 					{/if}
-				{/if}
-			</div>
-		</div>
-
-		{#if mobileViewportMode === null || mobileViewportMode}
-			<div class="toolbar-mobile" data-testid="wishlist-toolbar-mobile">
-				{#if reorderMode}
-					{@render mobileReorderControls()}
-				{:else}
-					{@render mobileDisplayControls()}
-				{/if}
-			</div>
-			{@render mobileDisplaySheet()}
-			{@render mobileMoreSheet()}
+				</div>
+				{@render mobileDisplaySheet()}
+				{@render mobileMoreSheet()}
+			{/if}
 		{/if}
-	{/if}
+	</div>
 </div>
 
 <style>
-	.wishlist-toolbar {
+	.wishlist-toolbar-sticky {
 		isolation: isolate;
+		max-width: 100%;
+	}
+
+	.wishlist-toolbar-mask {
+		position: absolute;
+		z-index: 0;
+		inset: -0.75rem 0 -0.5rem;
+		background: color-mix(in oklab, var(--background) 92%, transparent);
+		backdrop-filter: blur(10px);
+		pointer-events: auto;
+	}
+
+	.wishlist-toolbar {
 		container-name: wishlist-toolbar;
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
 		padding: 4px 8px;
-	}
-
-	.wishlist-toolbar::before {
-		position: absolute;
-		z-index: -1;
-		inset: -0.75rem 0 -0.5rem;
-		background: var(--background);
-		content: '';
-		pointer-events: none;
 	}
 
 	.toolbar-responsive-carrier,
