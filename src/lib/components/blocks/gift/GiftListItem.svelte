@@ -139,7 +139,7 @@
 				)}
 			/>
 		{/if}
-		<GiftStateOverlay model={presentation.overlay} class="pt-12" />
+		<GiftStateOverlay model={presentation.overlay} class="pt-[3.25rem]" />
 	</div>
 
 	<!-- Content and primary reservation action stay beside the image at every width. The dim
