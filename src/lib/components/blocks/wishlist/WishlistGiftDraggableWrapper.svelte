@@ -227,6 +227,7 @@
 		isDragged && 'invisible',
 		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
+		selectionLayout === 'list' && '[--gift-list-corner-left:5.25rem]',
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[1.75rem_minmax(0,1fr)] sm:gap-2',
@@ -255,9 +256,9 @@
 	{#if selectionMode}
 		<span
 			class={cn(
-				'pointer-events-none absolute left-1 top-1 z-50 grid size-10 place-items-center rounded-md border-2 border-ink bg-card shadow-sticker sm:left-2.5 sm:top-2.5 sm:size-7 sm:border-0 sm:shadow-sm',
+				'pointer-events-none absolute left-1 top-0.5 z-50 grid size-10 place-items-center rounded-md border-2 border-ink bg-card shadow-sticker sm:left-2.5 sm:top-2.5 sm:size-7 sm:border-0 sm:shadow-sm',
 				selectionLayout === 'list' &&
-					'sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2',
+					'left-[var(--gift-list-corner-left)] right-auto sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2',
 			)}
 			aria-hidden="true"
 		>
@@ -273,7 +274,11 @@
 			type="button"
 			aria-label={m.gift_reorder_grip_label()}
 			title={m.gift_reorder_keyboard_hint()}
-			class="absolute left-1 top-1 z-50 grid size-10 cursor-grab touch-none place-items-center rounded-md border-2 border-ink bg-card p-0 shadow-sticker transition-[opacity,transform] duration-200 ease-spring hover:bg-accent focus-visible:opacity-100 active:cursor-grabbing motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 sm:left-2 sm:top-2 sm:z-10 sm:size-auto sm:rounded sm:border-0 sm:bg-card/80 sm:p-0.5 sm:opacity-60 sm:shadow-none"
+			class={cn(
+				'absolute left-1 top-0.5 z-50 grid size-10 cursor-grab touch-none place-items-center rounded-md border-2 border-ink bg-card p-0 shadow-sticker transition-[opacity,transform] duration-200 ease-spring hover:bg-accent focus-visible:opacity-100 active:cursor-grabbing motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 sm:left-2 sm:top-2 sm:z-10 sm:size-auto sm:rounded sm:border-0 sm:bg-card/80 sm:p-0.5 sm:opacity-60 sm:shadow-none',
+				selectionLayout === 'list' &&
+					'left-[var(--gift-list-corner-left)] right-auto sm:left-2',
+			)}
 			data-prevent-gift-card-open
 			onpointerdown={(event) => onreorderpointerdown(event, index)}
 			onkeydown={handleGripKeydown}

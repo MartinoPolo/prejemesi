@@ -260,16 +260,49 @@ function expectNoContextualCardActions(gift: Element) {
 	expect(gift.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
 	expect(gift.querySelector(`[aria-label="${m.gift_more_actions()}"]`)).toBeNull();
 	expect(gift.querySelector(`[aria-label="${m.gift_mark_bought()}"]`)).toBeNull();
-	expect(gift.querySelector('[data-testid="gift-state-overlay"]')).toBeNull();
+}
+
+function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
+	return (
+		first.left < second.right &&
+		first.right > second.left &&
+		first.top < second.bottom &&
+		first.bottom > second.top
+	);
+}
+
+function expectContextualOverlayClearOf(gift: Element, controls: readonly HTMLElement[]): void {
+	const overlays = gift.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"]');
+	expect(overlays).toHaveLength(1);
+	const overlay = overlays[0]!;
+	expect(overlay.querySelector('[data-state-primary]')?.textContent).toBe(
+		m.gift_received_badge(),
+	);
+	expect(overlay.querySelector('[data-reservation-support]')?.textContent).toBe(
+		m.gift_reserved_by_other_overlay(),
+	);
+	expect(overlay.textContent).not.toContain('Soukromá osoba');
+
+	const badge = overlay.querySelector(':scope > span') as HTMLElement;
+	for (const control of controls) {
+		expect(
+			rectanglesIntersect(badge.getBoundingClientRect(), control.getBoundingClientRect()),
+		).toBe(false);
+	}
 }
 
 describe('WishlistGiftDisplay contextual gift presentation', () => {
 	it.each(['card', 'list'] as const)(
 		'renders only the image checkbox control in selection mode for the %s path',
 		async (viewMode) => {
+			await page.viewport(390, 720);
 			const privateGift = {
 				...visitorGift(),
+				received: true,
+				quantity: 3,
+				reservedCount: 3,
 				isFullyReserved: true,
+				myReservationId: null,
 				reserverNames: ['Soukromá osoba'],
 			};
 			const screen = await render(WishlistGiftDisplay, {
@@ -281,11 +314,16 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 				oncontextactions: () => true,
 			});
 			const gift = document.querySelector('[data-gift-item]')!;
+			const checkboxes = gift.querySelectorAll<HTMLElement>(
+				'[aria-hidden="true"] [data-slot="checkbox"]',
+			);
+			const checkboxWrapper = checkboxes[0]!.closest('[aria-hidden="true"]') as HTMLElement;
 
-			expect(
-				gift.querySelectorAll('[aria-hidden="true"] [data-slot="checkbox"]'),
-			).toHaveLength(1);
+			expect(checkboxes).toHaveLength(1);
+			expect(checkboxWrapper.getBoundingClientRect().width).toBeCloseTo(40, 0);
+			expect(checkboxWrapper.getBoundingClientRect().height).toBeCloseTo(40, 0);
 			expectNoContextualCardActions(gift);
+			expectContextualOverlayClearOf(gift, [checkboxWrapper]);
 			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(1);
 			await screen.unmount();
 		},
@@ -294,9 +332,14 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 	it.each(['card', 'list'] as const)(
 		'renders the grip and visible move controls in reorder mode for the %s path',
 		async (viewMode) => {
+			await page.viewport(390, 720);
 			const privateGift = {
 				...visitorGift(),
+				received: true,
+				quantity: 3,
+				reservedCount: 3,
 				isFullyReserved: true,
+				myReservationId: null,
 				reserverNames: ['Soukromá osoba'],
 			};
 			const screen = await render(WishlistGiftDisplay, {
@@ -326,6 +369,7 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 			expect(moveDown).toBeTruthy();
 			expect(moveDown.disabled).toBe(true);
 			expectNoContextualCardActions(gift);
+			expectContextualOverlayClearOf(gift, [grip, moveUp, moveDown]);
 			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(3);
 			await screen.unmount();
 		},
@@ -492,7 +536,11 @@ describe('WishlistGiftDisplay collection transition', () => {
 	});
 
 	it('swaps immediately without transforms when reduced motion is requested', async () => {
-		vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+		vi.spyOn(window, 'matchMedia').mockReturnValue({
+			matches: true,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+		} as unknown as MediaQueryList);
 		const animate = vi.spyOn(HTMLElement.prototype, 'animate');
 		const screen = await render(WishlistGiftDisplay, defaultProps);
 		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;

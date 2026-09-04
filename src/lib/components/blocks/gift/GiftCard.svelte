@@ -1,7 +1,6 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -9,7 +8,6 @@
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
-	import GiftReservedSticker from '$lib/components/blocks/gift/GiftReservedSticker.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
 	import ReserveButton from '$lib/components/blocks/reservation/ReserveButton.svelte';
 	import PurchasedToggle from '$lib/components/blocks/reservation/PurchasedToggle.svelte';
@@ -28,11 +26,11 @@
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { hasExplicitFrameFill } from '$lib/components/derived/image-frame/index.js';
+	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 	import { cn } from '$lib/utils.js';
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
-	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 
 	interface GiftCardProps {
 		gift: GiftByRole;
@@ -65,7 +63,7 @@
 		deriveGiftDisplayState(
 			gift,
 			role,
-			hideReservationState || contextualMode,
+			hideReservationState,
 			{
 				canLike:
 					canLikeGift(role) &&
@@ -77,8 +75,7 @@
 			contextualMode,
 		),
 	);
-	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } =
-		$derived(displayState);
+	const { isVisitorOrModerator, visitorGift, isFullyReserved } = $derived(displayState);
 	const presentation = $derived(displayState.presentation);
 	// Edit-icon hover affordance (issue #125 REQ-3): editing roles see a pencil icon appear
 	// on card hover/focus; visitors rely on the shared cursor-pointer + hover lift only.
@@ -103,6 +100,12 @@
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
+	const hasModeratorReserverLine = $derived(
+		role === 'moderator' && reserverLine !== null && reserverLine.trim() !== '',
+	);
+	const hasDescriptionContent = $derived(
+		(gift.description ?? '').trim() !== '' || gift.descriptionAppends.length > 0,
+	);
 </script>
 
 <div class={styles.card()}>
@@ -133,7 +136,7 @@
 			<div class={styles.imageVeil()} aria-hidden="true"></div>
 		{/if}
 
-		{#if gift.category != null}
+		{#if gift.category != null && !contextualMode}
 			<div class="max-sm:hidden"><GiftCategoryBadge category={gift.category} /></div>
 		{/if}
 
@@ -150,37 +153,15 @@
 			</span>
 		{/if}
 
-		{#if !contextualMode}
-			{#if narrowViewportState.current}
-				<div
-					class="pointer-events-none absolute inset-0 z-20"
-					data-testid="gift-card-image-overlays"
-				>
-					<GiftStateOverlay
-						model={presentation.overlay}
-						topRightAction={presentation.showLike && visitorGift != null}
-					/>
-					{#if presentation.showLike && visitorGift}
-						<LikeButton
-							giftId={gift.id}
-							giftName={gift.name}
-							likeCount={visitorGift.likeCount}
-							size="md"
-							class="pointer-events-auto absolute right-1 top-1 z-20 size-10 rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
-						/>
-					{/if}
-				</div>
-			{:else}
-				{#if isVisitorOrModerator && isFullyReserved}
-					<GiftReservedSticker {reserverLine} />
-				{/if}
-				{#if gift.received}
-					<span class={styles.receivedSticker()} data-testid="gift-received-sticker">
-						<CheckIcon class="size-3" />
-						{m.gift_received_badge()}
-					</span>
-				{/if}
-			{/if}
+		<GiftStateOverlay model={presentation.overlay} />
+		{#if !contextualMode && narrowViewportState.current && presentation.showLike && visitorGift}
+			<LikeButton
+				giftId={gift.id}
+				giftName={gift.name}
+				likeCount={visitorGift.likeCount}
+				size="md"
+				class="absolute top-1 right-1 z-20 size-10 rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
+			/>
 		{/if}
 	</div>
 
@@ -191,13 +172,7 @@
 		<div class={styles.nameRow()}>
 			<h3 class={styles.name()}>{gift.name}</h3>
 			<span class="max-sm:hidden">
-				<GiftPieceCount
-					quantity={gift.quantity}
-					role={hideReservationState || contextualMode ? 'recipient' : role}
-					{reservedCount}
-					reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
-					hideWhenOne
-				/>
+				<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
 			</span>
 		</div>
 
@@ -227,17 +202,24 @@
 			<GiftLinkList links={gift.links} maxVisible={3} />
 		</div>
 
-		{#if !contextualMode && narrowViewportState.current && role === 'moderator' && reserverLine !== null && reserverLine !== ''}
-			<p class="truncate text-xs font-semibold text-muted-foreground max-sm:mt-0.5">
-				{reserverLine}
-			</p>
+		{#if hasModeratorReserverLine || hasDescriptionContent}
+			<div
+				class="row-start-5 mt-0.5 flex flex-col gap-1 sm:mt-3"
+				data-testid="gift-card-description-stack"
+			>
+				{#if hasModeratorReserverLine}
+					<p class="truncate text-xs font-semibold text-muted-foreground">
+						{reserverLine}
+					</p>
+				{/if}
+				<GiftDescription
+					description={gift.description}
+					descriptionAppends={gift.descriptionAppends}
+					maxVisibleAppends={1}
+					class="max-sm:hidden"
+				/>
+			</div>
 		{/if}
-		<GiftDescription
-			description={gift.description}
-			descriptionAppends={gift.descriptionAppends}
-			maxVisibleAppends={1}
-			class="row-start-5 mt-3 max-sm:hidden"
-		/>
 	</div>
 
 	{#if !contextualMode && ((canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift) || onmore)}

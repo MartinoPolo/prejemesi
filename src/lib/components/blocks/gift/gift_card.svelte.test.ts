@@ -73,6 +73,21 @@ function contrastRatio(firstColor: CssRgb, secondColor: CssRgb): number {
 	return (lighterLuminance + 0.05) / (darkerLuminance + 0.05);
 }
 
+function rectanglesIntersect(first: DOMRect, second: DOMRect): boolean {
+	return (
+		first.left < second.right &&
+		first.right > second.left &&
+		first.top < second.bottom &&
+		first.bottom > second.top
+	);
+}
+
+function textOutsideOverlay(host: HTMLElement): string {
+	const clone = host.cloneNode(true) as HTMLElement;
+	clone.querySelector('[data-testid="gift-state-overlay"]')?.remove();
+	return clone.textContent ?? '';
+}
+
 function makeVisitorGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 	return {
 		id: 'gift-1',
@@ -208,11 +223,8 @@ describe('GiftCard category badge (issue #265)', () => {
 			const editRect = (
 				host.querySelector('[data-testid="gift-card-edit-icon"]') as HTMLElement
 			).getBoundingClientRect();
-			const reservedRect = (
-				host.querySelector('[data-testid="gift-reserved-sticker"]') as HTMLElement
-			).getBoundingClientRect();
-			const receivedRect = (
-				host.querySelector('[data-testid="gift-received-sticker"]') as HTMLElement
+			const overlayRect = (
+				host.querySelector('[data-testid="gift-state-overlay"] > span') as HTMLElement
 			).getBoundingClientRect();
 			const overlaps = (a: DOMRect, b: DOMRect) =>
 				a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -227,10 +239,54 @@ describe('GiftCard category badge (issue #265)', () => {
 				imageFrameRect.top + imageFrameRect.height / 2,
 			);
 			expect(overlaps(badgeRect, editRect)).toBe(false);
-			expect(overlaps(badgeRect, reservedRect)).toBe(false);
-			expect(overlaps(badgeRect, receivedRect)).toBe(false);
+			expect(overlaps(badgeRect, overlayRect)).toBe(false);
+			expect(overlaps(editRect, overlayRect)).toBe(false);
 		},
 	);
+
+	it('hides a moderator gift category only in contextual mode while preserving state and body details', async () => {
+		await page.viewport(800, 720);
+		const categorizedGift = makeVisitorGift({
+			received: true,
+			quantity: 3,
+			reservedCount: 3,
+			isFullyReserved: true,
+			myReservationId: null,
+			reserverNames: ['Babička'],
+			categoryId: 'category-sport',
+			category: {
+				id: 'category-sport',
+				presetKey: null,
+				customLabel: 'Sport',
+				color: '#0369A1',
+				sortOrder: 0,
+			},
+		});
+		const normalHost = await renderCardInGridColumn(categorizedGift, WISHLIST_ROLES.moderator);
+		const contextualHost = document.createElement('div');
+		contextualHost.style.width = '280px';
+		document.body.appendChild(contextualHost);
+		fixedHosts.add(contextualHost);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: categorizedGift,
+				role: WISHLIST_ROLES.moderator,
+				contextualMode: true,
+			},
+			{ baseElement: contextualHost },
+		);
+
+		expect(normalHost.querySelector('[data-testid="gift-category-badge"]')).toBeTruthy();
+		expect(contextualHost.querySelector('[data-testid="gift-category-badge"]')).toBeNull();
+		const overlay = contextualHost.querySelector(
+			'[data-testid="gift-state-overlay"]',
+		) as HTMLElement;
+		expect(overlay.querySelector('[data-state-primary]')?.textContent).toBe(
+			m.gift_received_badge(),
+		);
+		expect(textOutsideOverlay(contextualHost)).toContain('Babička');
+	});
 
 	it('renders no category badge while keeping the unchanged image frame for an uncategorized gift', async () => {
 		const host = await renderCardInGridColumn(makeVisitorGift());
@@ -274,7 +330,7 @@ describe('GiftCard image background fill (issue #252)', () => {
 	});
 });
 
-describe('GiftCard unified state presentation (issue #330)', () => {
+describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 	it.each([
 		['available', { reservedCount: 0, isFullyReserved: false, myReservationId: null }],
 		[
@@ -317,12 +373,15 @@ describe('GiftCard unified state presentation (issue #330)', () => {
 				Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) *
 				Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
 
-			expect(image.contains(like)).toBe(true);
 			expect(likeRect.left).toBeGreaterThanOrEqual(imageRect.left);
 			expect(likeRect.right).toBeLessThanOrEqual(imageRect.right);
+			expect(likeRect.top).toBeGreaterThanOrEqual(imageRect.top);
+			expect(likeRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
 			expect(intersectionArea(likeRect, footerRect)).toBe(0);
 			for (const action of footer.querySelectorAll<HTMLButtonElement>('button')) {
-				expect(intersectionArea(likeRect, action.getBoundingClientRect())).toBe(0);
+				if (action !== like) {
+					expect(intersectionArea(likeRect, action.getBoundingClientRect())).toBe(0);
+				}
 			}
 		},
 	);
@@ -366,8 +425,169 @@ describe('GiftCard unified state presentation (issue #330)', () => {
 				likeRect.right > labelRect.left &&
 				likeRect.top < labelRect.bottom &&
 				likeRect.bottom > labelRect.top;
-			expect(overlaps).toBe(false);
+			expect(
+				overlaps,
+				`like ${JSON.stringify(likeRect.toJSON())}; label ${JSON.stringify(labelRect.toJSON())}`,
+			).toBe(false);
 		}
+	});
+
+	it('stacks moderator reserver text above a real description outside the image overlay', async () => {
+		await page.viewport(800, 720);
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({
+				reserverNames: ['Babička'],
+				description: 'Skutečný popis dárku pro kontrolu rozložení.',
+			}),
+			WISHLIST_ROLES.moderator,
+		);
+		const stack = host.querySelector(
+			'[data-testid="gift-card-description-stack"]',
+		) as HTMLElement;
+		const reserverText = Array.from(stack.querySelectorAll('p')).find((element) =>
+			element.textContent?.includes('Babička'),
+		) as HTMLElement;
+		const description = Array.from(stack.querySelectorAll('p')).find((element) =>
+			element.textContent?.includes('Skutečný popis dárku'),
+		) as HTMLElement;
+		const imageOverlay = host.querySelector(
+			'[data-testid="gift-state-overlay"]',
+		) as HTMLElement;
+		const reserverRect = reserverText.getBoundingClientRect();
+		const descriptionRect = description.getBoundingClientRect();
+
+		expect(reserverText).toBeTruthy();
+		expect(description).toBeTruthy();
+		expect(descriptionRect.top).toBeGreaterThanOrEqual(reserverRect.bottom);
+		expect(imageOverlay.contains(reserverText)).toBe(false);
+	});
+
+	it('renders no empty description stack for a recipient without text content', async () => {
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({
+				description: '   ',
+				descriptionAppends: [],
+				reserverNames: ['Private'],
+			}),
+			WISHLIST_ROLES.recipient,
+		);
+
+		expect(host.querySelector('[data-testid="gift-card-description-stack"]')).toBeNull();
+		expect(host.textContent).not.toContain('Private');
+	});
+
+	it('uses the shared centered overlay on desktop without legacy badges', async () => {
+		await page.viewport(800, 720);
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({ received: true, isFullyReserved: true, myReservationId: 'mine' }),
+		);
+
+		const overlays = host.querySelectorAll('[data-testid="gift-state-overlay"]');
+		expect(overlays).toHaveLength(1);
+		expect(overlays[0]?.textContent).toContain(m.gift_received_badge());
+		expect(host.querySelector('[data-testid="gift-reserved-sticker"]')).toBeNull();
+		expect(host.querySelector('[data-testid="gift-received-sticker"]')).toBeNull();
+	});
+
+	it('keeps a received recipient overlay structurally identical with hidden reservation data', async () => {
+		await page.viewport(800, 720);
+		const receivedOnlyHost = await renderCardInGridColumn(
+			makeVisitorGift({ received: true, reservedCount: 0, isFullyReserved: false }),
+			WISHLIST_ROLES.recipient,
+		);
+		const reservedHost = await renderCardInGridColumn(
+			makeVisitorGift({
+				received: true,
+				reservedCount: 1,
+				isFullyReserved: true,
+				myReservationId: 'private',
+				reserverNames: ['Soukromá osoba'],
+			}),
+			WISHLIST_ROLES.recipient,
+		);
+
+		const receivedOnly = receivedOnlyHost.querySelector(
+			'[data-testid="gift-state-overlay"]',
+		) as HTMLElement;
+		const reserved = reservedHost.querySelector(
+			'[data-testid="gift-state-overlay"]',
+		) as HTMLElement;
+		for (const overlay of [receivedOnly, reserved]) {
+			expect(overlay.querySelector('[data-state-primary]')?.textContent).toBe(
+				m.gift_received_badge(),
+			);
+			expect(overlay.querySelector('[data-reservation-support]')).toBeNull();
+			expect(overlay.textContent).not.toMatch(/rezerv|Soukromá osoba/i);
+		}
+		expect(reserved.innerHTML).toBe(receivedOnly.innerHTML);
+		expect(reservedHost.textContent).not.toMatch(/rezerv|Soukromá osoba/i);
+	});
+
+	it('retains the overlay while contextual mode suppresses card actions', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift({ isFullyReserved: true }),
+				role: WISHLIST_ROLES.visitor,
+				contextualMode: true,
+				onunreserve: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		expect(host.querySelector('[data-testid="gift-state-overlay"]')).toBeTruthy();
+		expect(host.querySelector('[data-testid="gift-card-footer"]')).toBeNull();
+		expect(host.querySelector('[data-like-heart]')).toBeNull();
+	});
+
+	it('keeps moderator reserver names in the body during contextual mode', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift({ reserverNames: ['Babička'], isFullyReserved: true }),
+				role: WISHLIST_ROLES.moderator,
+				contextualMode: true,
+				onreceived: () => {},
+				onreserve: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
+		expect(textOutsideOverlay(host)).toContain('Babička');
+		expect(overlay.textContent).not.toContain('Babička');
+		expect(host.querySelector('[data-testid="gift-card-footer"]')).toBeNull();
+		expect(host.querySelector('[data-like-heart]')).toBeNull();
+		expect(host.querySelector('[data-testid="reserve-button"]')).toBeNull();
+	});
+
+	it('derives received with partial-capacity support through the public card component', async () => {
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({
+				received: true,
+				quantity: 3,
+				reservedCount: 1,
+				isFullyReserved: false,
+				myReservationId: null,
+			}),
+			WISHLIST_ROLES.visitor,
+		);
+		const overlays = host.querySelectorAll('[data-testid="gift-state-overlay"]');
+		const overlay = overlays[0] as HTMLElement;
+
+		expect(overlays).toHaveLength(1);
+		expect(overlay.querySelector('[data-state-primary]')?.textContent).toBe(
+			m.gift_received_badge(),
+		);
+		expect(overlay.querySelector('[data-reservation-support]')?.textContent).toBe(
+			m.gift_remaining_capacity({ remaining: 2, total: 3 }),
+		);
 	});
 
 	it('renders one received-first overlay with reservation support', async () => {
@@ -382,6 +602,146 @@ describe('GiftCard unified state presentation (issue #330)', () => {
 		expect(overlays[0]?.textContent).toContain(m.gift_reserved_by_me_overlay());
 		expect(host.querySelector('[data-testid="gift-reserved-sticker"]')).toBeNull();
 		expect(host.querySelector('[data-testid="gift-received-sticker"]')).toBeNull();
+	});
+
+	it.each([
+		{
+			label: 'own-reservation plus partial-capacity',
+			gift: { quantity: 3, reservedCount: 1, isFullyReserved: false },
+			requiredLabels: [
+				m.gift_reserved_by_me_overlay(),
+				m.gift_remaining_capacity({ remaining: 2, total: 3 }),
+			],
+		},
+		{
+			label: 'received plus unavailable',
+			gift: {
+				received: true,
+				quantity: 3,
+				reservedCount: 3,
+				isFullyReserved: true,
+				myReservationId: null,
+			},
+			requiredLabels: [m.gift_received_badge(), m.gift_reserved_by_other_overlay()],
+		},
+	])(
+		'keeps $label overlay clear of Like at real mobile width',
+		async ({ gift, requiredLabels }) => {
+			await page.viewport(390, 720);
+			const host = document.createElement('div');
+			host.style.width = '179px';
+			document.body.appendChild(host);
+			fixedHosts.add(host);
+			await render(
+				GiftCardTestHost,
+				{
+					gift: makeVisitorGift(gift),
+					role: WISHLIST_ROLES.visitor,
+				},
+				{ baseElement: host },
+			);
+			const badge = host.querySelector(
+				'[data-testid="gift-state-overlay"] > span',
+			) as HTMLElement;
+			const likeButton = host.querySelector('[data-like-heart]')
+				?.parentElement as HTMLElement;
+
+			expect(host.getBoundingClientRect().width).toBeCloseTo(179, 0);
+			for (const requiredLabel of requiredLabels) {
+				expect(badge.textContent).toContain(requiredLabel);
+			}
+			expect(likeButton.getBoundingClientRect().width).toBeCloseTo(40, 0);
+			expect(
+				rectanglesIntersect(
+					badge.getBoundingClientRect(),
+					likeButton.getBoundingClientRect(),
+				),
+			).toBe(false);
+		},
+	);
+
+	it('keeps a long unavailable overlay clear of the visible mobile Like control', async () => {
+		await page.viewport(390, 720);
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({
+				quantity: 3,
+				reservedCount: 3,
+				isFullyReserved: true,
+				myReservationId: null,
+			}),
+		);
+		const badge = host.querySelector(
+			'[data-testid="gift-state-overlay"] > span',
+		) as HTMLElement;
+		const likeButton = host.querySelector('[data-like-heart]')?.parentElement as HTMLElement;
+
+		await expect
+			.element(page.getByText(m.gift_reserved_by_other_overlay(), { exact: true }))
+			.toBeVisible();
+		await expect
+			.element(page.getByRole('button', { name: /Přidat do oblíbených/ }))
+			.toBeVisible();
+		expect(likeButton.getBoundingClientRect().width).toBeCloseTo(40, 0);
+		expect(
+			rectanglesIntersect(badge.getBoundingClientRect(), likeButton.getBoundingClientRect()),
+		).toBe(false);
+	});
+
+	it.each([
+		{
+			dark: false,
+			received: false,
+			primary: m.gift_reserved_by_other_overlay(),
+			support: null,
+		},
+		{
+			dark: true,
+			received: true,
+			primary: m.gift_received_badge(),
+			support: m.gift_reserved_by_me_overlay(),
+		},
+	])(
+		'keeps no-image dimmed overlay text visible in a $dark dark host',
+		async ({ dark, received, primary, support }) => {
+			await page.viewport(390, 720);
+			await renderCardInGridColumn(
+				makeVisitorGift({
+					received,
+					isFullyReserved: true,
+					myReservationId: support === null ? null : 'mine',
+				}),
+				WISHLIST_ROLES.visitor,
+				{ palette: 'sky', dark },
+			);
+
+			await expect.element(page.getByText(primary, { exact: true })).toBeVisible();
+			if (support !== null) {
+				await expect.element(page.getByText(support, { exact: true })).toBeVisible();
+			}
+		},
+	);
+
+	it.each([
+		{
+			label: 'fully reserved',
+			gift: { quantity: 3, reservedCount: 3, isFullyReserved: true, myReservationId: null },
+			overlay: m.gift_reserved_by_other_overlay(),
+		},
+		{
+			label: 'partially reserved',
+			gift: { quantity: 3, reservedCount: 1, isFullyReserved: false, myReservationId: null },
+			overlay: m.gift_remaining_capacity({ remaining: 2, total: 3 }),
+		},
+	])('centralizes $label quantity status in the overlay', async ({ gift, overlay }) => {
+		await page.viewport(800, 720);
+		const host = await renderCardInGridColumn(makeVisitorGift(gift));
+		const primary = host.querySelector('[data-state-primary]') as HTMLElement;
+		const pieceCount = host.querySelector('[data-testid="gift-piece-count"]') as HTMLElement;
+		const outsideText = textOutsideOverlay(host);
+
+		expect(primary.textContent).toBe(overlay);
+		expect(pieceCount.textContent?.trim()).toBe('3 kusy');
+		expect(outsideText).not.toMatch(/Volné|Plně rezervováno|\d+\s+rezervováno/i);
 	});
 });
 

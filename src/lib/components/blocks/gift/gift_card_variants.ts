@@ -5,7 +5,7 @@ import { tv } from 'tailwind-variants';
  * shadow, coherent lift on hover, dotted-mat image background that brightens on
  * hover. `dimmed` covers fully reserved (visitor/moderator view) and received
  * gifts — the card greys out, stops lifting, and the mat stops brightening; the
- * reservation sticker stays crisp on top.
+ * centered state overlay stays crisp on top.
  *
  * The card is a row subgrid spanning 7 tracks (image / name / price / priority
  * / links / description / footer) of the grid in WishlistGiftCardGrid, so the
@@ -21,11 +21,11 @@ export const giftCardVariants = tv({
 		// owns that named group): they let a hover/focus on the drag grip lift the card in lock-step
 		// with the grip. Standalone (dashboard/storybook) there is no such ancestor, so only the self
 		// `hover:`/`focus-within:` triggers fire — identical to before (issue #224 follow-up).
-		card: 'group relative grid h-[260px] grid-rows-[120px_minmax(0,1fr)_auto] overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 motion-reduce:transition-none max-[320px]:h-[280px] max-[320px]:grid-rows-[136px_minmax(0,1fr)_auto] sm:row-span-7 sm:h-auto sm:grid-rows-subgrid',
+		card: 'group relative grid h-[280px] grid-rows-[136px_minmax(0,1fr)_auto] overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 motion-reduce:transition-none sm:row-span-7 sm:h-auto sm:grid-rows-subgrid',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
-			'relative isolate row-start-1 h-[120px] w-full overflow-hidden border-b-[2.5px] border-ink bg-surface max-[320px]:h-[136px] sm:h-auto sm:aspect-[4/3]',
+			'relative isolate row-start-1 h-[136px] w-full overflow-hidden border-b-[2.5px] border-ink bg-surface sm:h-auto sm:aspect-[4/3]',
 		/**
 		 * Dotted mat behind the photo (shows through letterboxed photos). Sits on
 		 * its own layer below the image so its opacity can fade up on hover —
@@ -48,15 +48,6 @@ export const giftCardVariants = tv({
 		// Stacks mark-as-bought + cancel vertically; shrink-to-fit column, buttons get `w-full` from the caller (#211).
 		reservationActions:
 			'grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-1.5 sm:flex sm:flex-initial sm:flex-col',
-		reservedSticker:
-			'absolute inset-0 z-10 m-auto flex h-fit w-fit max-w-[85%] -rotate-6 flex-col items-center rounded-[10px] border-[2.5px] border-ink bg-card px-3.5 py-1.5 text-sm font-extrabold text-foreground shadow-sticker',
-		reservedStickerLabel: 'flex items-center gap-1',
-		/** Who reserved, e.g. „rezervoval(a) Babička" — moderators only (issue #198). */
-		reservedStickerNames: 'max-w-full truncate text-[11px] font-semibold text-muted-foreground',
-		// Bottom-right + opposite tilt (issue #184): the top-right corner is the edit
-		// affordance's territory for editing roles; keep both simultaneously visible.
-		receivedSticker:
-			'absolute right-2.5 bottom-2.5 z-10 flex -rotate-4 items-center gap-1 rounded-full border-2 border-ink bg-primary px-2.5 py-0.5 text-[11.5px] font-extrabold text-primary-foreground',
 		/** Edit-icon hover affordance for managers (issue #125 REQ-3): hidden until card hover/focus. */
 		editIcon:
 			'absolute top-2.5 right-2.5 z-10 flex items-center justify-center rounded-full border-2 border-ink bg-card p-1.5 opacity-0 shadow-sticker transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100',

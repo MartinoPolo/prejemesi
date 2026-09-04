@@ -2,14 +2,21 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate, addGift, shareWishlist } from './fixtures/wishlist-helpers.js';
+import {
+	createWishlistAndNavigate,
+	createWishlistForSomeoneAndNavigate,
+	addGift,
+	shareWishlist,
+} from './fixtures/wishlist-helpers.js';
 import { GIFT_CROP_TARGET_SPECS } from '../../src/lib/modules/images/crop_targets.js';
+import * as m from '../../src/lib/paraglide/messages.js';
 
 /**
- * E2E coverage for issue #189 REQ-10 gaps the coverage PR #188 deferred:
+ * E2E coverage for the issue #328 gift-state matrix plus detail gaps that the
+ * #188/#189 work left open:
  *
- *  1. The "received" sticker badge renders in the gift card's bottom-right
- *     quadrant (`gift_card_variants.ts` `receivedSticker` slot, issue #184).
+ *  1. Issue #328: received and reservation states use one centered overlay with
+ *     card/list parity across recipient, moderator, reserver, and foreign-visitor roles.
  *  2. The "Upraveno po sdílení" (edited-after-share) transparency line renders
  *     on BOTH the owner's edit form (`GiftDetailForm.svelte`
  *     `editedAfterShareLine`) and the read-only visitor detail view
@@ -35,130 +42,306 @@ function waitForUpload(page: Page) {
 	);
 }
 
+function gift(page: Page, name: string): Locator {
+	return page
+		.locator('[data-gift-item]')
+		.filter({ has: page.getByRole('heading', { name, exact: true }) });
+}
+
+async function reserveGift(page: Page, name: string): Promise<void> {
+	const giftItem = gift(page, name);
+	await giftItem.getByTestId('reserve-button').click();
+	const dialog = page.getByRole('dialog');
+	await expect(dialog).toBeVisible({ timeout: 5_000 });
+	await dialog.getByRole('button', { name: /Rezervovat/, exact: true }).click();
+	await expect(dialog).not.toBeVisible({ timeout: 10_000 });
+}
+
+async function exposeReceivedGifts(page: Page, giftName: string): Promise<void> {
+	const activeFilterRemovalButton = page
+		.getByTestId('wishlist-toolbar-active-filters')
+		.getByRole('button', {
+			name: m.filter_remove({ label: m.gift_filter_show_received() }),
+			exact: true,
+		});
+	const filterButton = page.getByRole('button', { name: /^Filtrovat/ });
+	const option = page.getByRole('menuitemcheckbox', {
+		name: m.gift_filter_show_received(),
+		exact: true,
+	});
+	if (await activeFilterRemovalButton.isVisible()) {
+		return;
+	}
+
+	await filterButton.click();
+	await expect(async () => {
+		if ((await activeFilterRemovalButton.isVisible()) || (await option.isVisible())) {
+			return;
+		}
+		if ((await filterButton.getAttribute('aria-expanded')) !== 'true') {
+			await filterButton.click();
+		}
+		await expect(activeFilterRemovalButton.or(option)).toBeVisible({ timeout: 1_000 });
+	}).toPass();
+
+	if (await activeFilterRemovalButton.isVisible()) {
+		if ((await filterButton.getAttribute('aria-expanded')) === 'true') {
+			await page.keyboard.press('Escape');
+			await expect(filterButton).toHaveAttribute('aria-expanded', 'false');
+		}
+		return;
+	}
+
+	await expect(option).toBeVisible();
+	if (!(await option.isChecked())) {
+		await option.click();
+	}
+	if ((await filterButton.getAttribute('aria-expanded')) === 'true') {
+		await page.keyboard.press('Escape');
+		await expect(filterButton).toHaveAttribute('aria-expanded', 'false');
+	}
+	await expect(activeFilterRemovalButton).toBeVisible();
+	await expect(gift(page, giftName)).toBeVisible();
+}
+
+interface OverlayExpectation {
+	primary: string;
+	support?: string;
+	bodyName?: string;
+	forbiddenText?: RegExp;
+}
+
+async function assertCenteredOverlay(
+	giftItem: Locator,
+	{ primary, support, bodyName, forbiddenText }: OverlayExpectation,
+): Promise<void> {
+	const overlay = giftItem.getByTestId('gift-state-overlay');
+	await expect(overlay).toHaveCount(1);
+	await expect(overlay.locator('[data-state-primary]')).toHaveText(primary);
+	const supportElement = overlay.locator('[data-reservation-support]');
+	if (support === undefined) {
+		await expect(supportElement).toHaveCount(0);
+	} else {
+		await expect(supportElement).toHaveText(support);
+	}
+	if (bodyName !== undefined) {
+		await expect(giftItem.getByText(bodyName)).toBeVisible();
+		await expect(overlay.getByText(bodyName)).toHaveCount(0);
+	}
+	if (forbiddenText !== undefined) {
+		await expect(giftItem).not.toContainText(forbiddenText);
+	}
+
+	const imageFrame = overlay.locator('xpath=..');
+	await expect(imageFrame).toHaveAttribute(
+		'data-testid',
+		/^(gift-card-image-frame|gift-list-image)$/,
+	);
+	const [imageFrameBox, imageFrameBorders, badgeBox] = await Promise.all([
+		imageFrame.boundingBox(),
+		imageFrame.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				left: Number.parseFloat(style.borderLeftWidth),
+				right: Number.parseFloat(style.borderRightWidth),
+				top: Number.parseFloat(style.borderTopWidth),
+				bottom: Number.parseFloat(style.borderBottomWidth),
+			};
+		}),
+		overlay.locator(':scope > span').boundingBox(),
+	]);
+	expect(imageFrameBox, 'active image frame has a bounding box').not.toBeNull();
+	expect(badgeBox, 'overlay badge has a bounding box').not.toBeNull();
+	const imageContentCenter = {
+		x:
+			imageFrameBox!.x +
+			imageFrameBorders.left +
+			(imageFrameBox!.width - imageFrameBorders.left - imageFrameBorders.right) / 2,
+		y:
+			imageFrameBox!.y +
+			imageFrameBorders.top +
+			(imageFrameBox!.height - imageFrameBorders.top - imageFrameBorders.bottom) / 2,
+	};
+	expect(badgeBox!.x + badgeBox!.width / 2).toBeCloseTo(imageContentCenter.x, 0);
+	expect(badgeBox!.y + badgeBox!.height / 2).toBeCloseTo(imageContentCenter.y, 0);
+}
+
+async function assertOverlayInCardAndList(
+	page: Page,
+	giftName: string,
+	expectation: OverlayExpectation,
+): Promise<void> {
+	for (const view of ['card', 'list'] as const) {
+		const viewControl = page.locator(`[data-testid="gift-view-${view}"]:visible`);
+		await viewControl.click();
+		await expect(viewControl).toBeChecked();
+		await assertCenteredOverlay(gift(page, giftName), expectation);
+	}
+}
+
+async function expectBefore(first: Locator, second: Locator): Promise<void> {
+	await expect
+		.poll(async () => {
+			const secondElement = await second.elementHandle();
+			if (!secondElement) {
+				return false;
+			}
+			return first.evaluate(
+				(firstElement, secondNode) =>
+					firstElement.isConnected &&
+					secondNode.isConnected &&
+					Boolean(
+						firstElement.compareDocumentPosition(secondNode) &
+						Node.DOCUMENT_POSITION_FOLLOWING,
+					),
+				secondElement,
+			);
+		})
+		.toBe(true);
+}
+
+async function assertReceivedSectionOrder(
+	page: Page,
+	receivedGiftName: string,
+	activeGiftNames: readonly string[],
+): Promise<void> {
+	const receivedHeading = page.getByRole('heading', { name: 'Obdržené', exact: true });
+	await expect(receivedHeading).toHaveCount(1);
+	for (const activeGiftName of activeGiftNames) {
+		await expectBefore(gift(page, activeGiftName), receivedHeading);
+	}
+	await expectBefore(receivedHeading, gift(page, receivedGiftName));
+}
+
 test.use({ viewport: { width: 1280, height: 900 } });
 
-test.describe('Gift detail post-#188 coverage', () => {
-	test('received sticker renders in the card bottom-right quadrant', async ({
+test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () => {
+	test('received recipient state stays private and centered in card and list views', async ({
 		browser,
 		request,
 		baseURL,
 	}) => {
-		const user = createTestUser('gift-received-sticker');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
+		const recipient = createTestUser('gift-received-recipient');
+		const recipientPage = await registerAndGetPage(browser, request, baseURL!, recipient);
+		await createWishlistAndNavigate(recipientPage, 'Received Overlay Coverage');
+		const giftName = 'Testovací přijatý dárek';
+		const activeGiftNames = ['Testovací aktivní dárek první', 'Testovací aktivní dárek druhý'];
+		await addGift(recipientPage, giftName);
+		for (const activeGiftName of activeGiftNames) {
+			await addGift(recipientPage, activeGiftName);
+		}
+		await shareWishlist(recipientPage);
+		const wishlistPath = new URL(recipientPage.url()).pathname;
 
-		await createWishlistAndNavigate(page, 'Received Sticker Coverage');
-		const giftName = 'Testovaci darek prijaty';
-		const activeGiftNameOne = 'Testovaci aktivni darek prvni';
-		const activeGiftNameTwo = 'Testovaci aktivni darek druhy';
-		await addGift(page, giftName);
-		await addGift(page, activeGiftNameOne);
-		await addGift(page, activeGiftNameTwo);
+		const reserver = createTestUser('gift-received-reserver');
+		const reserverPage = await registerAndGetPage(browser, request, baseURL!, reserver);
+		await reserverPage.goto(wishlistPath);
+		await reserveGift(reserverPage, giftName);
+		await reserverPage.context().close();
 
-		const giftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
-		const receivedHeading = page.getByRole('heading', { name: 'Obdržené', exact: true });
-		await giftItem.getByRole('button', { name: 'Označit jako přijatý' }).click();
-
-		// Issue #255 keeps the completed gift visible by enabling the received filter,
-		// then updates both the direct action and the existing sticker from refreshed data.
-		await expect(giftItem.getByText('Přijato', { exact: true })).toBeVisible({
+		await recipientPage.reload();
+		const recipientGift = gift(recipientPage, giftName);
+		await recipientGift.getByRole('button', { name: 'Označit jako přijatý' }).click();
+		await expect(recipientGift.getByText('Přijato', { exact: true })).toBeVisible({
 			timeout: 10_000,
 		});
-		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await expect(recipientPage.getByRole('dialog')).toHaveCount(0);
+		await expect(recipientGift.getByTestId('release-reservation-button')).toHaveCount(0);
+
+		await recipientGift.getByRole('button', { name: 'Označit jako nepřijatý' }).click();
 		await expect(
-			giftItem.getByRole('button', { name: 'Označit jako nepřijatý' }),
-		).toBeVisible();
-		await expect(giftItem.getByTestId('release-reservation-button')).toHaveCount(0);
-
-		await giftItem.getByRole('button', { name: 'Označit jako nepřijatý' }).click();
-		await expect(giftItem.getByRole('button', { name: 'Označit jako přijatý' })).toBeVisible({
+			recipientGift.getByRole('button', { name: 'Označit jako přijatý' }),
+		).toBeVisible({
 			timeout: 10_000,
 		});
-		await expect(giftItem.getByText('Přijato', { exact: true })).toHaveCount(0);
-		await expect(receivedHeading).toHaveCount(0);
-		await giftItem.getByRole('button', { name: 'Označit jako přijatý' }).click();
-
-		const revealedGiftItem = page.locator('[data-gift-item]').filter({ hasText: giftName });
-		const activeGiftItemOne = page
-			.locator('[data-gift-item]')
-			.filter({ hasText: activeGiftNameOne });
-		const activeGiftItemTwo = page
-			.locator('[data-gift-item]')
-			.filter({ hasText: activeGiftNameTwo });
-		await expect(receivedHeading).toHaveCount(1);
-		await expect(revealedGiftItem.getByText('Přijato', { exact: true })).toBeVisible({
-			timeout: 10_000,
-		});
-
-		const expectBefore = async (first: Locator, second: Locator) => {
-			// Switching card/list view replaces the gift-list subtree. Retry the
-			// comparison so handles captured on opposite sides of that render are not
-			// mistaken for an ordering regression; a settled wrong order still fails.
-			await expect
-				.poll(
-					async () => {
-						const secondElement = await second.elementHandle();
-						if (!secondElement) {
-							return false;
-						}
-						return first.evaluate(
-							(firstElement, secondNode) =>
-								firstElement.isConnected &&
-								secondNode.isConnected &&
-								Boolean(
-									firstElement.compareDocumentPosition(secondNode) &
-									Node.DOCUMENT_POSITION_FOLLOWING,
-								),
-							secondElement,
-						);
-					},
-					{ message: 'first element occurs before second element in the DOM' },
-				)
-				.toBe(true);
-		};
-
-		await expectBefore(activeGiftItemOne, receivedHeading);
-		await expectBefore(activeGiftItemTwo, receivedHeading);
-		await expectBefore(receivedHeading, revealedGiftItem);
-
-		const cardBox = await revealedGiftItem.boundingBox();
-		const stickerBox = await revealedGiftItem
-			.getByText('Přijato', { exact: true })
-			.boundingBox();
-		expect(cardBox, 'gift card has a bounding box').not.toBeNull();
-		expect(stickerBox, 'received sticker has a bounding box').not.toBeNull();
-
-		const cardCenterX = cardBox!.x + cardBox!.width / 2;
-		const cardCenterY = cardBox!.y + cardBox!.height / 2;
-		const stickerCenterX = stickerBox!.x + stickerBox!.width / 2;
-		const stickerCenterY = stickerBox!.y + stickerBox!.height / 2;
-
-		// Bottom-right quadrant (issue #184): the sticker's center sits right of
-		// AND below the card's own center.
-		expect(stickerCenterX, 'sticker center is right of the card center').toBeGreaterThan(
-			cardCenterX,
-		);
-		expect(stickerCenterY, 'sticker center is below the card center').toBeGreaterThan(
-			cardCenterY,
-		);
-		// The sticker stays within the card's own bounds.
-		expect(stickerBox!.x).toBeGreaterThanOrEqual(cardBox!.x);
-		expect(stickerBox!.y).toBeGreaterThanOrEqual(cardBox!.y);
-		expect(stickerBox!.x + stickerBox!.width).toBeLessThanOrEqual(
-			cardBox!.x + cardBox!.width + 1,
-		);
-		expect(stickerBox!.y + stickerBox!.height).toBeLessThanOrEqual(
-			cardBox!.y + cardBox!.height + 1,
-		);
-
-		await page.getByRole('radio', { name: 'Seznam', exact: true }).click();
-		await expect(page.getByRole('radio', { name: 'Seznam', exact: true })).toBeChecked();
-		await expectBefore(activeGiftItemOne, receivedHeading);
-		await expectBefore(activeGiftItemTwo, receivedHeading);
-		await expectBefore(receivedHeading, revealedGiftItem);
+		await expect(recipientGift.getByText('Přijato', { exact: true })).toHaveCount(0);
 		await expect(
-			revealedGiftItem.getByRole('button', { name: 'Označit jako nepřijatý' }),
-		).toBeVisible();
-		await expect(revealedGiftItem.getByTestId('release-reservation-button')).toHaveCount(0);
+			recipientPage.getByRole('heading', { name: 'Obdržené', exact: true }),
+		).toHaveCount(0);
+		await recipientGift.getByRole('button', { name: 'Označit jako přijatý' }).click();
+		await expect(recipientGift.getByText('Přijato', { exact: true })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		await assertReceivedSectionOrder(recipientPage, giftName, activeGiftNames);
+		await assertOverlayInCardAndList(recipientPage, giftName, {
+			primary: 'Přijato',
+			forbiddenText: new RegExp(`rezerv|\\d+\\s+rezervováno|${reserver.name}`, 'i'),
+		});
+		await assertReceivedSectionOrder(recipientPage, giftName, activeGiftNames);
+		await expect(
+			gift(recipientPage, giftName).locator('[data-reservation-support]'),
+		).toHaveCount(0);
+		await recipientPage.context().close();
+	});
+
+	test('moderator, reserver, and foreign visitor keep overlay parity through receipt', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const moderator = createTestUser('gift-state-moderator');
+		const moderatorPage = await registerAndGetPage(browser, request, baseURL!, moderator);
+		await createWishlistForSomeoneAndNavigate(moderatorPage, {
+			title: 'Moderator Overlay Matrix',
+			recipientName: 'Anička',
+		});
+		const giftName = 'Dárek pro stavovou matici';
+		await addGift(moderatorPage, giftName);
+		await shareWishlist(moderatorPage);
+		const wishlistPath = new URL(moderatorPage.url()).pathname;
+
+		const reserver = createTestUser('gift-state-reserver');
+		const reserverPage = await registerAndGetPage(browser, request, baseURL!, reserver);
+		await reserverPage.goto(wishlistPath);
+		await reserveGift(reserverPage, giftName);
+		await assertOverlayInCardAndList(reserverPage, giftName, {
+			primary: 'Rezervováno vámi',
+		});
+
+		const foreignVisitor = createTestUser('gift-state-foreign');
+		const foreignPage = await registerAndGetPage(browser, request, baseURL!, foreignVisitor);
+		await foreignPage.goto(wishlistPath);
+		await assertOverlayInCardAndList(foreignPage, giftName, {
+			primary: 'Rezervováno někým jiným',
+			forbiddenText: new RegExp(reserver.name, 'i'),
+		});
+
+		await moderatorPage.reload();
+		await assertOverlayInCardAndList(moderatorPage, giftName, {
+			primary: 'Rezervováno někým jiným',
+			bodyName: reserver.name,
+		});
+		const moderatorGift = gift(moderatorPage, giftName);
+		await moderatorGift.getByRole('button', { name: 'Označit jako přijatý' }).click();
+		await expect(moderatorGift.getByText('Přijato', { exact: true })).toBeVisible({
+			timeout: 10_000,
+		});
+		await assertOverlayInCardAndList(moderatorPage, giftName, {
+			primary: 'Přijato',
+			support: 'Rezervováno někým jiným',
+			bodyName: reserver.name,
+		});
+
+		await reserverPage.goto(wishlistPath);
+		await exposeReceivedGifts(reserverPage, giftName);
+		await assertOverlayInCardAndList(reserverPage, giftName, {
+			primary: 'Přijato',
+			support: 'Rezervováno vámi',
+			forbiddenText: new RegExp(moderator.name, 'i'),
+		});
+
+		await foreignPage.goto(wishlistPath);
+		await exposeReceivedGifts(foreignPage, giftName);
+		await assertOverlayInCardAndList(foreignPage, giftName, {
+			primary: 'Přijato',
+			support: 'Rezervováno někým jiným',
+			forbiddenText: new RegExp(reserver.name, 'i'),
+		});
+
+		await foreignPage.context().close();
+		await reserverPage.context().close();
+		await moderatorPage.context().close();
 	});
 
 	test('edited-after-share line appears on both the editor and the visitor detail view', async ({
