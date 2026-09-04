@@ -15,8 +15,8 @@ import * as m from '../../src/lib/paraglide/messages.js';
  * E2E coverage for the issue #328 gift-state matrix plus detail gaps that the
  * #188/#189 work left open:
  *
- *  1. Issue #328: received and reservation states use one centered overlay with
- *     card/list parity across recipient, moderator, reserver, and foreign-visitor roles.
+ *  1. Issues #328/#341: received and reservation states use one centered overlay with
+ *     full-size sibling pills and card/list parity across roles.
  *  2. The "Upraveno po sdílení" (edited-after-share) transparency line renders
  *     on BOTH the owner's edit form (`GiftDetailForm.svelte`
  *     `editedAfterShareLine`) and the read-only visitor detail view
@@ -132,12 +132,40 @@ async function assertCenteredOverlay(
 		await expect(giftItem).not.toContainText(forbiddenText);
 	}
 
+	const pills = overlay.locator(':scope > span');
+	await expect(pills).toHaveCount(support === undefined ? 1 : 2);
+	if (support !== undefined) {
+		const [primaryStyle, supportStyle] = await Promise.all([
+			pills.nth(0).evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					fontSize: style.fontSize,
+					fontWeight: style.fontWeight,
+					padding: style.padding,
+					borderWidth: style.borderWidth,
+					boxShadow: style.boxShadow,
+				};
+			}),
+			pills.nth(1).evaluate((element) => {
+				const style = getComputedStyle(element);
+				return {
+					fontSize: style.fontSize,
+					fontWeight: style.fontWeight,
+					padding: style.padding,
+					borderWidth: style.borderWidth,
+					boxShadow: style.boxShadow,
+				};
+			}),
+		]);
+		expect(supportStyle).toEqual(primaryStyle);
+	}
+
 	const imageFrame = overlay.locator('xpath=..');
 	await expect(imageFrame).toHaveAttribute(
 		'data-testid',
 		/^(gift-card-image-frame|gift-list-image)$/,
 	);
-	const [imageFrameBox, imageFrameBorders, badgeBox] = await Promise.all([
+	const [imageFrameBox, imageFrameBorders, pillBoxes] = await Promise.all([
 		imageFrame.boundingBox(),
 		imageFrame.evaluate((element) => {
 			const style = getComputedStyle(element);
@@ -148,10 +176,18 @@ async function assertCenteredOverlay(
 				bottom: Number.parseFloat(style.borderBottomWidth),
 			};
 		}),
-		overlay.locator(':scope > span').boundingBox(),
+		pills.evaluateAll((elements) =>
+			elements.map((element) => element.getBoundingClientRect().toJSON()),
+		),
 	]);
 	expect(imageFrameBox, 'active image frame has a bounding box').not.toBeNull();
-	expect(badgeBox, 'overlay badge has a bounding box').not.toBeNull();
+	expect(pillBoxes.length, 'overlay pills have bounding boxes').toBeGreaterThan(0);
+	const stackBox = {
+		x: Math.min(...pillBoxes.map((box) => box.x)),
+		y: Math.min(...pillBoxes.map((box) => box.y)),
+		right: Math.max(...pillBoxes.map((box) => box.right)),
+		bottom: Math.max(...pillBoxes.map((box) => box.bottom)),
+	};
 	const imageContentCenter = {
 		x:
 			imageFrameBox!.x +
@@ -162,8 +198,13 @@ async function assertCenteredOverlay(
 			imageFrameBorders.top +
 			(imageFrameBox!.height - imageFrameBorders.top - imageFrameBorders.bottom) / 2,
 	};
-	expect(badgeBox!.x + badgeBox!.width / 2).toBeCloseTo(imageContentCenter.x, 0);
-	expect(badgeBox!.y + badgeBox!.height / 2).toBeCloseTo(imageContentCenter.y, 0);
+	expect(stackBox.x + (stackBox.right - stackBox.x) / 2).toBeCloseTo(imageContentCenter.x, 0);
+	if ((await overlay.evaluate((element) => getComputedStyle(element).paddingTop)) === '0px') {
+		expect(stackBox.y + (stackBox.bottom - stackBox.y) / 2).toBeCloseTo(
+			imageContentCenter.y,
+			0,
+		);
+	}
 }
 
 async function assertOverlayInCardAndList(

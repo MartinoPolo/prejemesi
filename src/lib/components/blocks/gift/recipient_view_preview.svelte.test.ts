@@ -125,6 +125,28 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 		},
 	);
 
+	it.each(['compact', 'detail'] as const)(
+		'shows counts without identity or gifter actions to a self-promoted recipient in %s',
+		async (surface) => {
+			const screen = await render(RecipientViewPreviewTestHost, {
+				gift: makeReservedGift({ isFullyReserved: false, myReservationId: null }),
+				role: WISHLIST_ROLES.recipient,
+				surface,
+				hideReservationState: false,
+				onreceived: vi.fn(),
+			});
+
+			await expect.element(screen.getByText('2 rezervováno', { exact: true })).toBeVisible();
+			await expect.element(screen.getByText('Babička')).not.toBeInTheDocument();
+			await expect.element(screen.getByTestId('reserve-button')).not.toBeInTheDocument();
+			await expect
+				.element(screen.getByRole('button', { name: /oblíbených/ }))
+				.not.toBeInTheDocument();
+
+			await screen.unmount();
+		},
+	);
+
 	it('restores normal reservation-aware presentation when the flag is disabled', async () => {
 		const screen = await render(RecipientViewPreviewTestHost, {
 			gift: makeReservedGift(),

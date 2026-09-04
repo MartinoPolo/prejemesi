@@ -33,16 +33,20 @@
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
+		hideReservationState = role === 'recipient',
 		onclick,
 		onreserve,
 		onunreserve,
 		onreceived,
 	}: GiftCompactRowProps = $props();
 
-	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } = $derived(
-		deriveGiftDisplayState(gift, role, hideReservationState),
-	);
+	const {
+		isVisitorOrModerator,
+		visitorGift,
+		reservationAwareGift,
+		isFullyReserved,
+		reservedCount,
+	} = $derived(deriveGiftDisplayState(gift, role, hideReservationState));
 
 	const canManage = $derived(canManageWishlist(role));
 	const showActions = $derived(
@@ -78,7 +82,7 @@
 			{gift.name}
 			<GiftPieceCount
 				quantity={gift.quantity}
-				role={hideReservationState ? 'recipient' : role}
+				role={reservationAwareGift === null ? 'recipient' : 'visitor'}
 				{reservedCount}
 				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
 				hideWhenOne

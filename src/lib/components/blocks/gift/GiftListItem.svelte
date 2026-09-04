@@ -47,7 +47,7 @@
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
+		hideReservationState = role === 'recipient',
 		contextualMode = false,
 		showLikeCount = false,
 		onreserve,
@@ -118,7 +118,7 @@
 		{#if canManage}
 			<!-- Edit affordance (issue #125 REQ-3): decorative, the whole row is the click target. -->
 			<span
-				class="absolute -top-1.5 -right-1.5 hidden items-center justify-center rounded-full border-2 border-ink bg-card p-1 opacity-0 shadow-sticker transition-opacity duration-150 sm:flex group-hover:opacity-100 group-focus-within:opacity-100"
+				class="absolute -top-1.5 -left-1.5 hidden items-center justify-center rounded-full border-2 border-ink bg-card p-1 opacity-0 shadow-sticker transition-opacity duration-150 sm:flex group-hover:opacity-100 group-focus-within:opacity-100"
 				aria-hidden="true"
 			>
 				<PencilIcon class="size-3" />
@@ -132,14 +132,14 @@
 				size="md"
 				showCount={showLikeCount}
 				class={cn(
-					'absolute right-1 top-1 z-20 h-10 min-h-10 min-w-10 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker sm:right-2 sm:top-auto sm:bottom-2',
+					'absolute right-1 top-1 z-20 h-10 min-h-10 min-w-10 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker sm:right-2 sm:top-2',
 					showLikeCount
 						? 'w-10 gap-0 p-0 max-sm:[&_[data-like-count]]:hidden sm:w-auto sm:gap-1 sm:px-1.5'
 						: 'w-10 p-0',
 				)}
 			/>
 		{/if}
-		<GiftStateOverlay model={presentation.overlay} />
+		<GiftStateOverlay model={presentation.overlay} class="pt-12" />
 	</div>
 
 	<!-- Content and primary reservation action stay beside the image at every width. The dim

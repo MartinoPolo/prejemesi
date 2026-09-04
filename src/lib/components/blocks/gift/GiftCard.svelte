@@ -49,7 +49,7 @@
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
+		hideReservationState = role === 'recipient',
 		contextualMode = false,
 		allowArchivedLike = false,
 		onreserve,
@@ -153,13 +153,17 @@
 			</span>
 		{/if}
 
-		<GiftStateOverlay model={presentation.overlay} />
+		<GiftStateOverlay
+			model={presentation.overlay}
+			class={narrowViewportState.current && presentation.showLike ? 'pt-12' : undefined}
+		/>
 		{#if !contextualMode && narrowViewportState.current && presentation.showLike && visitorGift}
 			<LikeButton
 				giftId={gift.id}
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
 				size="md"
+				countOverlay
 				class="absolute top-1 right-1 z-20 size-10 rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
 			/>
 		{/if}

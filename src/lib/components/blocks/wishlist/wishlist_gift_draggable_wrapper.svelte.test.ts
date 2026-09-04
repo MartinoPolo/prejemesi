@@ -253,6 +253,7 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			reorderEnabled: false,
 			selectionMode: true,
 			selectionLayout: 'list',
+			overlayModel: { kind: 'received', supportKind: 'unavailable' },
 		});
 		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
 		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
@@ -272,6 +273,17 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expect(controlRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
 		expect(controlRect.left).toBeGreaterThanOrEqual(imageHorizontalMidpoint);
 		expect(controlRect.top).toBeLessThan(imageVerticalMidpoint);
+		for (const pill of container.querySelectorAll<HTMLElement>(
+			'[data-testid="gift-state-overlay"] > span',
+		)) {
+			const pillRect = pill.getBoundingClientRect();
+			expect(
+				controlRect.left < pillRect.right &&
+					controlRect.right > pillRect.left &&
+					controlRect.top < pillRect.bottom &&
+					controlRect.bottom > pillRect.top,
+			).toBe(false);
+		}
 		expect(checkboxControl.querySelector('[data-slot="checkbox"]')).toBeNull();
 		await userEvent.click(wrapper);
 		await unmount();
@@ -283,6 +295,7 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			...baseProps,
 			reorderEnabled: true,
 			selectionLayout: 'list',
+			overlayModel: { kind: 'received', supportKind: 'unavailable' },
 		});
 		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
 		const grip = container.querySelector(
@@ -301,6 +314,17 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expect(gripRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
 		expect(gripRect.left).toBeGreaterThanOrEqual(imageHorizontalMidpoint);
 		expect(gripRect.top).toBeLessThan(imageVerticalMidpoint);
+		for (const pill of container.querySelectorAll<HTMLElement>(
+			'[data-testid="gift-state-overlay"] > span',
+		)) {
+			const pillRect = pill.getBoundingClientRect();
+			expect(
+				gripRect.left < pillRect.right &&
+					gripRect.right > pillRect.left &&
+					gripRect.top < pillRect.bottom &&
+					gripRect.bottom > pillRect.top,
+			).toBe(false);
+		}
 		await unmount();
 	});
 
