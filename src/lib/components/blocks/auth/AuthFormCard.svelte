@@ -117,7 +117,7 @@
 		background: var(--card);
 		color: var(--ink);
 		border-color: var(--ink);
-		box-shadow: 2px 2px 0 var(--hard-shadow);
+		box-shadow: var(--elevation-compact);
 	}
 
 	.form-heading {

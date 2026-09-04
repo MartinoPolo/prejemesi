@@ -32,17 +32,20 @@
 <DropdownMenu.Root>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
-			<!-- border-0 removes the Button's own (transparent) 2.5px border so the
-			     bordered Avatar fills the 32px control exactly – the avatar's ink
-			     border is the only border, matching the neighboring outline buttons. -->
 			<Button
 				{...props}
 				intent="ghost"
 				size="icon"
-				class={`rounded-full border-0 hover:bg-transparent ${ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES}`}
+				class={`rounded-full border-[2.5px] border-ink bg-card hover:bg-card ${ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES}`}
 				aria-label={m.nav_user_menu({ name: userName })}
 			>
-				<Avatar src={userImage} alt="" initials={userInitials} size="sm" bordered />
+				<Avatar
+					src={userImage}
+					alt=""
+					initials={userInitials}
+					size="sm"
+					class="size-[calc(100%-5px)] rounded-full"
+				/>
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>

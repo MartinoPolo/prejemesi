@@ -8,7 +8,7 @@ import { tv } from 'tailwind-variants';
  */
 export const wishlistCardVariants = tv({
 	slots: {
-		root: 'group/card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none',
+		root: 'elevation-ordinary group/card relative flex h-full cursor-pointer flex-col overflow-hidden rounded-panel border-[2.5px] border-ink bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none',
 		banner: 'relative flex h-32 shrink-0 flex-col items-start justify-end overflow-hidden border-b-[2.5px] border-ink p-3.5',
 		/** Notebook dot pattern over the tint fallback (hidden when a real photo fills the banner). */
 		bannerPattern:
@@ -45,7 +45,7 @@ export const wishlistCardVariants = tv({
 				root: 'opacity-70 grayscale-[0.7]',
 			},
 			false: {
-				root: 'hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1',
+				root: 'elevation-interactive',
 			},
 		},
 	},

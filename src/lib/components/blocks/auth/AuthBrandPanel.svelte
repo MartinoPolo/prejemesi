@@ -102,7 +102,7 @@
 		border-radius: 3px;
 		padding: 8px 8px 0;
 		transform: rotate(-4deg);
-		box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-lifted-strong);
 		position: relative;
 	}
 
@@ -155,7 +155,7 @@
 		line-height: 1.3;
 		max-width: 180px;
 		transform: rotate(3deg);
-		box-shadow: 4px 5px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-ordinary-strong);
 	}
 
 	.brand-sticky::before {

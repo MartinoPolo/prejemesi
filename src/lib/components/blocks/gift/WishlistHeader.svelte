@@ -437,7 +437,7 @@
 		background-repeat: repeat-y, no-repeat, no-repeat;
 		border: 2.5px solid var(--ink);
 		border-radius: 14px;
-		box-shadow: 6px 6px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-ordinary-strong);
 	}
 
 	.notebook-face {
@@ -464,7 +464,7 @@
 		border: 2.5px solid var(--accent-loud-foreground);
 		border-radius: 4px;
 		transform: rotate(4deg);
-		box-shadow: 4px 5px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-ordinary-strong);
 	}
 
 	/* Strip of translucent tape over the note's top edge (tape belongs on paper) */
@@ -494,7 +494,7 @@
 		border: 2px solid #4a443a;
 		border-radius: 3px;
 		transform: rotate(var(--polaroid-rotation));
-		box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-lifted-strong);
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -568,7 +568,7 @@
 			background: var(--card);
 			border: 2px solid var(--ink);
 			border-radius: var(--radius-xl);
-			box-shadow: 3px 3px 0 var(--hard-shadow);
+			box-shadow: var(--elevation-ordinary);
 		}
 
 		.mobile-photo {

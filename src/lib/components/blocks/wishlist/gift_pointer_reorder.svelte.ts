@@ -226,7 +226,7 @@ export function createGiftPointerReorderController(options: GiftPointerReorderOp
 			transition: 'none',
 			zIndex: '100',
 			opacity: '0.96',
-			filter: 'drop-shadow(0 16px 18px rgb(0 0 0 / 0.22))',
+			boxShadow: 'var(--elevation-lifted)',
 		});
 		document.body.append(clone);
 		overlayElement = clone;

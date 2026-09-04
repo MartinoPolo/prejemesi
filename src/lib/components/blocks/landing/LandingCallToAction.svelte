@@ -43,7 +43,7 @@
 		font-size: 15px;
 		padding: 10px 18px;
 		transform: rotate(6deg);
-		box-shadow: 4px 4px 0 var(--hard-shadow);
+		box-shadow: var(--elevation-ordinary);
 
 		--rot: 6deg;
 	}

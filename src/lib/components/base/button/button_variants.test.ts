@@ -10,35 +10,27 @@ import {
 } from './button_variants.js';
 
 describe('sticker button hover geometry', () => {
-	it('keeps lifted inline stickers within an eight-pixel bottom hit area', () => {
-		for (const intent of ['primary', 'secondary', 'primary-destructive', 'outline'] as const) {
+	it('assigns every raised intent to the shared interaction contract and hit area', () => {
+		for (const intent of [
+			'primary',
+			'secondary',
+			'danger',
+			'primary-destructive',
+			'outline',
+		] as const) {
 			const classes = buttonVariants({ intent });
 
-			expect(classes).toContain('hover:-translate-y-0.5');
+			expect(classes).toContain('elevation-interactive');
+			expect(classes).toContain('elevation-anchored-trigger');
 			expect(classes).toContain('after:h-2');
-		}
-	});
-
-	it('keeps an open overlay trigger flat so hover cannot shift the anchored dropdown', () => {
-		for (const intent of ['primary', 'secondary', 'primary-destructive', 'outline'] as const) {
-			const classNames = buttonVariants({ intent }).split(/\s+/);
-
-			expect(classNames).toContain('data-[state=open]:hover:translate-y-0');
-			expect(classNames).toContain('data-[state=open]:hover:shadow-sticker');
+			expect(classes).not.toContain('shadow-sticker-sm');
 		}
 	});
 
 	it('distinguishes free circular controls from anchored overlay triggers', () => {
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('hover:-translate-y-0.5');
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).not.toContain('data-[state=open]');
-		expect(CIRCULAR_STICKER_BUTTON_CLASSES).not.toContain('aria-expanded');
-
-		expect(ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES).toContain(
-			'data-[state=open]:hover:translate-y-0',
-		);
-		expect(ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES).toContain(
-			'data-[state=open]:hover:shadow-sticker-lift',
-		);
+		expect(CIRCULAR_STICKER_BUTTON_CLASSES).toContain('elevation-interactive');
+		expect(CIRCULAR_STICKER_BUTTON_CLASSES).not.toContain('elevation-anchored-trigger');
+		expect(ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES).toContain('elevation-anchored-trigger');
 	});
 
 	it('keeps the stacked gift-editor footer buttons lift-free', () => {
