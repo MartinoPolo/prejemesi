@@ -254,7 +254,7 @@
 						{role}
 						{isArchived}
 						{onreceived}
-						class="min-h-10 min-w-0 w-full shrink gap-0 whitespace-normal px-1 text-xs leading-tight [&_svg]:hidden sm:gap-1.5 sm:px-3 sm:text-(length:--text-md) sm:leading-none sm:[&_svg]:block"
+						class="min-h-10 min-w-0 w-full shrink gap-0 whitespace-normal px-1 text-xs leading-tight max-sm:min-h-11 [&_svg]:hidden sm:gap-1.5 sm:px-3 sm:text-(length:--text-md) sm:leading-none sm:[&_svg]:block"
 					/>
 				{/if}
 				{#if isVisitorOrModerator && visitorGift}
