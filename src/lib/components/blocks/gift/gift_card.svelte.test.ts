@@ -328,6 +328,24 @@ describe('GiftCard image background fill (issue #252)', () => {
 		expect(cardFrame).toBeTruthy();
 		expect(cardFrame.querySelector('[data-testid="gift-card-image-pattern"]')).toBeTruthy();
 	});
+
+	it('removes only the mobile Fit mat padding while preserving desktop framing', async () => {
+		await page.viewport(390, 720);
+		const host = await renderCardInGridColumn(
+			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#ffffff') }),
+		);
+		const image = host.querySelector('img') as HTMLImageElement;
+		const frame = host.querySelector('[data-testid="image-frame"]') as HTMLElement;
+		const outerFrame = host.querySelector(
+			'[data-testid="gift-card-image-frame"]',
+		) as HTMLElement;
+
+		expect(getComputedStyle(image).padding).toBe('0px');
+		expect(frame.getBoundingClientRect().width).toBeCloseTo(outerFrame.clientWidth, 0);
+		expect(frame.getBoundingClientRect().height).toBeCloseTo(outerFrame.clientHeight, 0);
+		await page.viewport(800, 720);
+		expect(getComputedStyle(image).padding).toBe('8px');
+	});
 });
 
 describe('GiftCard unified state presentation (issues #328 and #330)', () => {

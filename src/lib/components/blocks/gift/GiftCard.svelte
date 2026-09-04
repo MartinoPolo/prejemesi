@@ -124,7 +124,7 @@
 		{/if}
 
 		<GiftImage
-			class="size-full rounded-none bg-transparent"
+			class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
 			imageUrl={imageSrc}
 			imageMeta={gift.imageMeta}
 			target="square"

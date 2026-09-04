@@ -103,7 +103,7 @@ async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
 	await testInfo.attach(name, { path, contentType: 'image/png' });
 }
 
-test.describe('issue #330 mobile wishlist acceptance', () => {
+test.describe('mobile wishlist acceptance', () => {
 	test('320/360/390 card geometry keeps the approved gutter, hero, grid and bounds', async ({
 		browser,
 		request,
@@ -122,6 +122,26 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
 			await expect(page.getByTestId('wishlist-mobile-hero')).toBeVisible();
 			await expect(page.getByTestId('wishlist-gift-card-grid')).toBeVisible();
+			const routeLayout = await page.getByTestId('wishlist-page-shell').evaluate((shell) => {
+				const shellStyle = getComputedStyle(shell);
+				const content = shell.closest('main');
+				const shellRect = shell.getBoundingClientRect();
+				const contentRect = content?.getBoundingClientRect();
+				return {
+					rowGap: Number.parseFloat(shellStyle.rowGap),
+					paddingLeft: Number.parseFloat(shellStyle.paddingLeft),
+					paddingRight: Number.parseFloat(shellStyle.paddingRight),
+					marginLeft: Number.parseFloat(shellStyle.marginLeft),
+					topInset: contentRect === undefined ? null : shellRect.top - contentRect.top,
+				};
+			});
+			expect(routeLayout).toEqual({
+				rowGap: 12,
+				paddingLeft: 12,
+				paddingRight: 12,
+				marginLeft: 0,
+				topInset: 12,
+			});
 
 			const hero = await box(page.getByTestId('wishlist-mobile-hero'));
 			const photo = await box(page.getByTestId('wishlist-mobile-photo'));
@@ -138,6 +158,39 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 			for (const item of await page.locator('[data-gift-item]').all()) {
 				await expectInsideViewport(item, width);
 			}
+			const mobileImageState = await page
+				.getByTestId('gift-card-image-frame')
+				.first()
+				.evaluate((frame) => {
+					const imageFrame = frame.querySelector<HTMLElement>(
+						'[data-testid="image-frame"]',
+					);
+					const fallback = imageFrame?.querySelector<HTMLElement>('[role="img"]');
+					const pattern = frame.querySelector<HTMLElement>(
+						'[data-testid="gift-card-image-pattern"]',
+					);
+					const title = frame.parentElement?.querySelector('h3');
+					return {
+						frame: { width: frame.clientWidth, height: frame.clientHeight },
+						imageFrame: imageFrame?.getBoundingClientRect().toJSON() ?? null,
+						fallback: fallback?.getBoundingClientRect().toJSON() ?? null,
+						patternDisplay: pattern === null ? null : getComputedStyle(pattern).display,
+						titleSize:
+							title == null
+								? null
+								: Number.parseFloat(getComputedStyle(title).fontSize),
+					};
+				});
+			expect(mobileImageState.imageFrame?.width).toBeCloseTo(mobileImageState.frame.width, 0);
+			expect(mobileImageState.imageFrame?.height).toBeCloseTo(
+				mobileImageState.frame.height,
+				0,
+			);
+			expect(mobileImageState.fallback?.width).toBeCloseTo(mobileImageState.frame.width, 0);
+			expect(mobileImageState.fallback?.height).toBeCloseTo(mobileImageState.frame.height, 0);
+			expect(mobileImageState.patternDisplay).toBe('none');
+			expect(mobileImageState.titleSize).toBeGreaterThanOrEqual(13);
+			expect(mobileImageState.titleSize).toBeLessThanOrEqual(15);
 
 			const cards = await page.locator('[data-gift-item]').evaluateAll((elements) =>
 				elements.map((element) => {
@@ -199,6 +252,12 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 				expect(imageBox.width).toBeLessThanOrEqual(128);
 				expect(imageBox.width).toBeCloseTo(imageBox.height, 0);
 			}
+			const titleSizes = await list
+				.locator('h3')
+				.evaluateAll((titles) =>
+					titles.map((title) => Number.parseFloat(getComputedStyle(title).fontSize)),
+				);
+			expect(titleSizes.every((size) => size >= 13 && size <= 15)).toBe(true);
 			const surface = await items[0]!.evaluate((element) => {
 				const style = getComputedStyle(element);
 				return {
@@ -316,7 +375,13 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 			const toolbar = page.getByTestId('wishlist-toolbar');
 			await expect(toolbar.locator('[data-mobile-toolbar-row]')).toHaveCount(1);
 			await expectInsideViewport(toolbar, width);
-			await attachScreenshot(page, testInfo, `visitor-normal-${width}`);
+			await attachScreenshot(page, testInfo, `visitor-card-${width}`);
+		}
+		await page.getByTestId('gift-view-list').click();
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+			await expect(page.getByTestId('wishlist-gift-list')).toBeVisible();
+			await attachScreenshot(page, testInfo, `visitor-list-${width}`);
 		}
 		const firstGift = page.locator('[data-gift-item]').first();
 		await firstGift.getByRole('heading', { level: 3 }).click();
@@ -512,6 +577,21 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 		await page.setViewportSize({ width: 800, height: MOBILE_HEIGHT });
 		await shareWishlist(page);
 		await dismissToasts(page);
+		const wishlistPath = new URL(page.url()).pathname;
+		const visitor = await registerAndGetPage(
+			browser,
+			request,
+			baseURL!,
+			createTestUser('mobile-wishlist-recipient-reserver'),
+		);
+		await visitor.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await visitor.goto(wishlistPath, { waitUntil: 'load' });
+		const privateGift = gift(visitor, 'Dárek s utajenou rezervací');
+		await privateGift.getByTestId('reserve-button').click();
+		const reservationDialog = visitor.getByRole('dialog');
+		await reservationDialog.getByRole('button', { name: /Rezervovat/, exact: true }).click();
+		await expect(reservationDialog).toBeHidden();
+		await page.reload({ waitUntil: 'load' });
 		for (const width of WIDTHS) {
 			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
 			const items = page.locator('[data-gift-item]');
@@ -524,8 +604,22 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 				elements.map((element) => Math.round(element.getBoundingClientRect().height)),
 			);
 			expect(new Set(heights).size).toBe(1);
-			await attachScreenshot(page, testInfo, `recipient-normal-${width}`);
+			await attachScreenshot(page, testInfo, `recipient-card-${width}`);
 		}
+		await page.getByTestId('gift-view-list').click();
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+			const items = page.locator('[data-gift-item]');
+			await expect(page.getByTestId('wishlist-gift-list')).toBeVisible();
+			await expect(page.getByText(/Rezervov|Volné \d+\//i)).toHaveCount(0);
+			await expect(page.getByTestId('reserve-button')).toHaveCount(0);
+			const heights = await items.evaluateAll((elements) =>
+				elements.map((element) => Math.round(element.getBoundingClientRect().height)),
+			);
+			expect(new Set(heights).size).toBe(1);
+			await attachScreenshot(page, testInfo, `recipient-list-${width}`);
+		}
+		await visitor.context().close();
 		await page.context().close();
 	});
 
@@ -552,20 +646,32 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 		const selectableItems = page.locator('[data-gift-item]');
 		for (const item of await selectableItems.all()) {
 			// The gift wrapper itself is the single semantic checkbox; the image-corner
-			// checkmark is deliberately aria-hidden visual feedback, not a duplicate control.
+			// surface is deliberately aria-hidden visual feedback, not a nested control.
 			await expect(item).toHaveAttribute('role', 'checkbox');
-			await expect(item.locator('[aria-hidden="true"] [data-slot="checkbox"]')).toHaveCount(
-				1,
-			);
+			const visualControl = item.getByTestId('gift-selection-control');
+			await expect(visualControl).toHaveCount(1);
+			expect((await box(visualControl)).width).toBeCloseTo(40, 0);
+			await expect(visualControl.locator('[data-slot="checkbox"]')).toHaveCount(0);
 		}
 		await expect(page.getByRole('checkbox', { name: /Vybrat dárek/ })).toHaveCount(
 			await selectableItems.count(),
 		);
-		await page.locator('[data-gift-item]').first().press('Space');
-		await expect(page.locator('[data-gift-item]').first()).toHaveAttribute(
-			'aria-checked',
-			'true',
+		const firstSelectableItem = page.locator('[data-gift-item]').first();
+		await firstSelectableItem.press('Space');
+		await expect(firstSelectableItem).toHaveAttribute('aria-checked', 'true');
+		const selectedItemBox = await box(firstSelectableItem);
+		const selectedSurfaceBox = await box(
+			firstSelectableItem.getByTestId('gift-selection-surface'),
 		);
+		const checkGlyphBox = await box(
+			firstSelectableItem.getByTestId('gift-selection-control').locator('svg'),
+		);
+		expect(checkGlyphBox.width).toBeGreaterThanOrEqual(18);
+		expect(checkGlyphBox.width).toBeLessThanOrEqual(20);
+		expect(selectedSurfaceBox.x).toBeCloseTo(selectedItemBox.x, 0);
+		expect(selectedSurfaceBox.y).toBeCloseTo(selectedItemBox.y, 0);
+		expect(selectedSurfaceBox.width).toBeCloseTo(selectedItemBox.width, 0);
+		expect(selectedSurfaceBox.height).toBeCloseTo(selectedItemBox.height, 0);
 		await dismissToasts(page);
 		await resetAllScroll(page);
 		await attachScreenshot(page, testInfo, 'manager-selection-390');
@@ -587,16 +693,8 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 			name: m.gift_reorder_move_down({ name: namesBefore[0] }),
 			exact: true,
 		});
-		await expect(firstMoveUp).toBeVisible();
-		await expect(firstMoveUp).toBeDisabled();
-		await expect(firstMoveDown).toBeVisible();
-		const downBox = await box(firstMoveDown);
-		expect(downBox.width).toBeGreaterThanOrEqual(40);
-		expect(downBox.height).toBeGreaterThanOrEqual(40);
-		await firstMoveDown.click();
-		await expect
-			.poll(() => page.locator('[data-gift-item] h3').allTextContents())
-			.not.toEqual(namesBefore);
+		await expect(firstMoveUp).toBeHidden();
+		await expect(firstMoveDown).toBeHidden();
 
 		const namesAfterButtonMove = await page.locator('[data-gift-item] h3').allTextContents();
 		const movableGrip = page

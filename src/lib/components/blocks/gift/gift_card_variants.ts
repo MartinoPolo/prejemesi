@@ -33,12 +33,12 @@ export const giftCardVariants = tv({
 		 * top of the card's lift.
 		 */
 		imagePattern:
-			'pointer-events-none absolute inset-0 -z-[1] bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100',
+			'pointer-events-none absolute inset-0 -z-[1] hidden bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 sm:block',
 		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
 		imageVeil: 'absolute inset-0 bg-reserved-veil',
-		body: 'row-start-2 flex min-h-0 flex-col px-2 py-1.5 sm:row-span-5 sm:grid sm:grid-rows-subgrid sm:p-4',
+		body: 'row-start-2 flex min-h-0 flex-col px-[7px] py-1.5 sm:row-span-5 sm:grid sm:grid-rows-subgrid sm:p-4',
 		nameRow: 'row-start-1 flex flex-wrap items-baseline gap-1.5',
-		name: 'line-clamp-2 font-heading text-[17px] font-semibold leading-snug text-foreground',
+		name: 'line-clamp-2 min-h-[34px] font-heading text-[13px] font-semibold leading-[17px] text-foreground sm:min-h-0 sm:text-[17px] sm:leading-snug',
 		price: 'row-start-2 mt-2 text-[15px] font-bold text-foreground',
 		priceEmpty: 'row-start-2 mt-2 text-sm text-muted-foreground italic',
 		priorityEyebrow: 'row-start-3 mt-2 hidden items-center gap-1 sm:flex',

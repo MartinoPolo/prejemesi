@@ -101,7 +101,7 @@
 		class="relative aspect-square size-32 self-start border-r-2 border-ink sm:size-[clamp(8rem,39vw,9.5rem)] sm:border-0 sm:self-center"
 	>
 		<GiftImage
-			class="size-full rounded-none sm:rounded-lg"
+			class="size-full rounded-none max-sm:[&_img]:p-0 sm:rounded-lg"
 			imageUrl={imageSrc}
 			imageMeta={gift.imageMeta}
 			target="thumb"
@@ -153,7 +153,7 @@
 	>
 		<div class="flex items-start gap-1.5">
 			<h3
-				class="line-clamp-2 min-w-0 flex-1 font-heading text-base font-semibold leading-snug text-foreground"
+				class="line-clamp-2 min-h-8 min-w-0 flex-1 font-heading text-[13px] font-semibold leading-4 text-foreground sm:min-h-0 sm:text-base sm:leading-snug"
 			>
 				{gift.name}
 			</h3>

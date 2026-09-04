@@ -27,6 +27,7 @@
 	const user: typeof data.user | null = $derived(
 		typeof data.user === 'object' ? data.user : null,
 	);
+	const isWishlistDetailRoute = $derived(page.route.id === '/(app)/w/[id]');
 	const userInitials = $derived.by(() => {
 		if (user !== null && typeof user.name === 'string' && user.name.length > 0) {
 			return user.name
@@ -76,7 +77,7 @@
 		userImage={resolveUserImageUrl(user?.image)}
 	/>
 	<main class="app-content">
-		<div class="app-content-inner">
+		<div class="app-content-inner" class:wishlist-detail-content={isWishlistDetailRoute}>
 			{@render children()}
 		</div>
 	</main>
@@ -105,5 +106,11 @@
 		margin-inline: auto;
 		padding-inline: var(--space-6);
 		padding-block: var(--space-6);
+	}
+
+	@media (width < 640px) {
+		.app-content-inner.wishlist-detail-content {
+			padding: 0;
+		}
 	}
 </style>

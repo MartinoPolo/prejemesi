@@ -476,7 +476,25 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 	});
 });
 
-describe('GiftListItem responsive image dimensions (issue #328)', () => {
+describe('GiftListItem responsive image dimensions (issues #328 and #336)', () => {
+	it('removes only the mobile Fit padding while keeping the image frame edge-to-edge', async () => {
+		await page.viewport(390, 720);
+		const host = await renderItem(
+			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#ffffff') }),
+			WISHLIST_ROLES.visitor,
+		);
+		const image = host.querySelector('img') as HTMLImageElement;
+		const frame = host.querySelector('[data-testid="image-frame"]') as HTMLElement;
+		const imageRegion = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
+
+		expect(getComputedStyle(image).padding).toBe('0px');
+		expect(frame.getBoundingClientRect().width).toBeCloseTo(imageRegion.clientWidth, 0);
+		expect(frame.getBoundingClientRect().height).toBeCloseTo(imageRegion.clientHeight, 0);
+		await page.viewport(800, 720);
+		expect(getComputedStyle(image).padding).toBe('8px');
+		host.remove();
+	});
+
 	it('keeps the desktop image square when the responsive size grows', async () => {
 		await page.viewport(800, 720);
 		const host = await renderItem(makeVisitorGift(), WISHLIST_ROLES.visitor);

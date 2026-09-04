@@ -165,7 +165,7 @@
 <ContextMenu.Root bind:open={contextMenuOpen}>
 	{#if isLoading}
 		<div
-			class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+			class="gift-card-skeleton-grid grid grid-cols-2 gap-2 sm:gap-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
 			aria-busy="true"
 			aria-label={m.wishlist_detail_loading_gifts()}
 		>
@@ -257,3 +257,12 @@
 	{/if}
 	{#if contextContent}{@render contextContent()}{/if}
 </ContextMenu.Root>
+
+<style>
+	@media (width <= 320px) {
+		.gift-card-skeleton-grid {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 10px;
+		}
+	}
+</style>
