@@ -106,12 +106,12 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Development
 
-| Script               | Description                                 |
-| -------------------- | ------------------------------------------- |
-| `pnpm run dev`       | Ensure db is ready, then start dev server   |
-| `pnpm run build`     | Production build                            |
-| `pnpm run preview`   | Preview the built Cloudflare Worker locally |
-| `pnpm run storybook` | Start Storybook on its assigned port        |
+| Script               | Description                                                              |
+| -------------------- | ------------------------------------------------------------------------ |
+| `pnpm run dev`       | Ensure the database and seed images are ready, then start the dev server |
+| `pnpm run build`     | Production build                                                         |
+| `pnpm run preview`   | Preview the built Cloudflare Worker locally                              |
+| `pnpm run storybook` | Start Storybook on its assigned port                                     |
 
 ### Code Quality
 
@@ -136,14 +136,15 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Database
 
-| Script                 | Description                            |
-| ---------------------- | -------------------------------------- |
-| `pnpm run db:start`    | Ensure PostgreSQL is running and ready |
-| `pnpm run db:push`     | Push schema changes to database        |
-| `pnpm run db:generate` | Generate migration files               |
-| `pnpm run db:migrate`  | Run migrations                         |
-| `pnpm run db:seed`     | Populate the database with test data   |
-| `pnpm run db:studio`   | Open Drizzle Studio (DB GUI)           |
+| Script                 | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| `pnpm run db:start`    | Ensure PostgreSQL is running and ready                    |
+| `pnpm run db:push`     | Push schema changes to database                           |
+| `pnpm run db:generate` | Generate migration files                                  |
+| `pnpm run db:migrate`  | Run migrations                                            |
+| `pnpm run db:seed`     | Prepare seed images, then populate the database           |
+| `pnpm seed:images`     | Repair the local seed image cache without database access |
+| `pnpm run db:studio`   | Open Drizzle Studio                                       |
 
 ### Deployment & Codegen
 
