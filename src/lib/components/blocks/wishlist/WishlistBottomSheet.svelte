@@ -23,8 +23,16 @@
 
 	onMount(() => {
 		const scrollPosition = { x: window.scrollX, y: window.scrollY };
+		const href = window.location.href;
 		return () => {
 			requestAnimationFrame(() => {
+				if (
+					window.location.href !== href ||
+					window.matchMedia('(min-width: 640px)').matches
+				) {
+					return;
+				}
+
 				window.scrollTo(scrollPosition.x, scrollPosition.y);
 				requestAnimationFrame(() => window.scrollTo(scrollPosition.x, scrollPosition.y));
 			});

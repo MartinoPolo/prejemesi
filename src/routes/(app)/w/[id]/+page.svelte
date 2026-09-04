@@ -10,7 +10,9 @@
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
-	import GiftBulkCopyDialog from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
+	import GiftBulkCopyDialog, {
+		type BulkCopyDestination,
+	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
@@ -499,14 +501,7 @@
 	let bulkCopyLoading = $state(false);
 	let bulkCopySubmitting = $state(false);
 	let bulkCopyDestinationId = $state('');
-	let bulkCopyDestinations = $state<
-		Array<{
-			id: string;
-			title: string;
-			status: 'draft' | 'active' | 'archived';
-			recipientDisplayName: string;
-		}>
-	>([]);
+	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
 	let hiddenConfirmOpen = $state(false);
 	let deferredBulkAction = $state<GiftBulkAction | null>(null);
 	let contextGift = $state<GiftByRole | null>(null);
