@@ -135,18 +135,21 @@
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
 				size="md"
-				showCount={showLikeCount}
+				showCount={showLikeCount && !narrowViewportState.current}
 				class={cn(
-					'absolute right-1 top-1 z-20 size-10 min-h-10 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker sm:right-2 sm:top-auto sm:bottom-2',
-					showLikeCount
-						? 'h-(--size-control-md) min-w-(--size-control-md) gap-1 px-1.5'
-						: 'size-(--size-control-md) p-0',
+					'absolute right-1 top-1 z-20 h-10 min-h-10 min-w-10 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker sm:right-2 sm:top-auto sm:bottom-2',
+					showLikeCount && !narrowViewportState.current
+						? 'w-auto gap-1 px-1.5'
+						: 'w-10 p-0',
 				)}
 			/>
 		{/if}
 		{#if !contextualMode}
 			{#if narrowViewportState.current}
-				<GiftStateOverlay model={presentation.overlay} />
+				<GiftStateOverlay
+					model={presentation.overlay}
+					topRightAction={presentation.showLike && visitorGift != null}
+				/>
 			{:else if isVisitorOrModerator && isFullyReserved}
 				<GiftReservedSticker reserverLine={canManage ? reserverLine : null} />
 			{/if}

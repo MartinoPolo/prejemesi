@@ -8,10 +8,11 @@
 
 	interface GiftStateOverlayProps {
 		model: GiftStateOverlayModel | null;
+		topRightAction?: boolean;
 		class?: string;
 	}
 
-	let { model, class: className }: GiftStateOverlayProps = $props();
+	let { model, topRightAction = false, class: className }: GiftStateOverlayProps = $props();
 
 	function label(kind: GiftOverlayKind, state: GiftStateOverlayModel): string {
 		switch (kind) {
@@ -38,23 +39,27 @@
 {#if model !== null}
 	<div
 		class={cn(
-			'pointer-events-none absolute inset-0 z-10 flex items-center justify-center',
+			'pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center justify-center',
+			topRightAction ? 'right-12' : 'right-0',
 			className,
 		)}
 		data-testid="gift-state-overlay"
 	>
 		<span
 			class={cn(
-				'flex max-w-[85%] -rotate-3 flex-col items-center rounded-panel border-2 border-ink px-3 py-1.5 text-center text-xs font-extrabold shadow-sticker',
+				'flex min-w-0 max-w-full -rotate-3 flex-col items-center rounded-panel border-2 border-ink px-1 py-1.5 text-center text-xs font-extrabold shadow-sticker',
 				model.kind === 'own-reservation' && 'bg-reserved text-white',
 				model.kind === 'unavailable' && 'bg-ink text-background',
 				model.kind === 'partial' && 'bg-card text-foreground',
 				model.kind === 'received' && 'bg-primary text-primary-foreground',
 			)}
 		>
-			<span>{primaryLabel}</span>
+			<span class="max-w-full [overflow-wrap:anywhere]">{primaryLabel}</span>
 			{#if supportLabel !== null}
-				<small data-reservation-support class="font-semibold">{supportLabel}</small>
+				<small
+					data-reservation-support
+					class="max-w-full font-semibold [overflow-wrap:anywhere]">{supportLabel}</small
+				>
 			{/if}
 		</span>
 	</div>

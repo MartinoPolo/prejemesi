@@ -173,15 +173,11 @@ test.describe('issue #330 mobile wishlist acceptance', () => {
 			createTestUser('mobile-wishlist-list'),
 		);
 		await createManagerWishlist(page, 'Mobilní seznamové zobrazení');
-		const listChoice = page
-			.getByTestId('wishlist-toolbar-mobile')
-			.getByTestId('gift-view-list');
+		const listChoice = page.getByTestId('gift-view-list');
 		await listChoice.click();
 		await expect(listChoice).toHaveAttribute('aria-checked', 'true');
 		await page.reload({ waitUntil: 'load' });
-		await expect(
-			page.getByTestId('wishlist-toolbar-mobile').getByTestId('gift-view-list'),
-		).toHaveAttribute('aria-checked', 'true');
+		await expect(page.getByTestId('gift-view-list')).toHaveAttribute('aria-checked', 'true');
 
 		for (const width of WIDTHS) {
 			await page.setViewportSize({ width, height: MOBILE_HEIGHT });

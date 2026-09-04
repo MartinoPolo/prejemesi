@@ -295,6 +295,130 @@ describe('GiftListItem responsive image dimensions (issue #330)', () => {
 	});
 });
 
+describe('GiftListItem Like geometry (issue #330 follow-up)', () => {
+	it('contains a long centered state label beside the 40px Like on the 128px image', async () => {
+		await page.viewport(390, 720);
+		const host = document.createElement('div');
+		host.style.width = '366px';
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({
+					likeCount: 12,
+					isFullyReserved: true,
+					myReservationId: 'mine',
+				}),
+				role: WISHLIST_ROLES.visitor,
+				isArchived: false,
+				showLikeCount: false,
+			},
+			{ baseElement: host },
+		);
+		await document.fonts.ready;
+
+		const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
+		const like = host.querySelector('[data-like-heart]')?.closest('button') as HTMLElement;
+		const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
+		const sticker = overlay.firstElementChild as HTMLElement;
+		const label = sticker.firstElementChild as HTMLElement;
+		const imageRect = image.getBoundingClientRect();
+		const likeRect = like.getBoundingClientRect();
+		const overlayRect = overlay.getBoundingClientRect();
+		const stickerRect = sticker.getBoundingClientRect();
+		const labelRange = document.createRange();
+		labelRange.selectNodeContents(label);
+		const labelRect = labelRange.getBoundingClientRect();
+
+		expect(imageRect.width).toBeCloseTo(128, 0);
+		expect(likeRect.width).toBeCloseTo(40, 0);
+		expect(overlayRect.right).toBeLessThanOrEqual(imageRect.right - 40);
+		expect(stickerRect.left + stickerRect.width / 2).toBeCloseTo(
+			overlayRect.left + overlayRect.width / 2,
+			0,
+		);
+		expect(stickerRect.right).toBeLessThanOrEqual(likeRect.left);
+		expect(labelRect.left).toBeGreaterThanOrEqual(stickerRect.left);
+		expect(labelRect.right).toBeLessThanOrEqual(stickerRect.right);
+		expect(labelRect.top).toBeGreaterThanOrEqual(stickerRect.top);
+		expect(labelRect.bottom).toBeLessThanOrEqual(stickerRect.bottom);
+		expect(sticker.scrollWidth).toBeLessThanOrEqual(sticker.clientWidth);
+		host.remove();
+	});
+
+	it('keeps the counted variant 40px square on mobile and allows growth only on desktop', async () => {
+		await page.viewport(390, 720);
+		const mobileHost = document.createElement('div');
+		mobileHost.style.width = '640px';
+		document.body.appendChild(mobileHost);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({ likeCount: 12 }),
+				role: WISHLIST_ROLES.visitor,
+				isArchived: false,
+				showLikeCount: true,
+			},
+			{ baseElement: mobileHost },
+		);
+		const mobileLike = mobileHost
+			.querySelector('[data-like-heart]')
+			?.closest('button') as HTMLElement;
+		expect(mobileLike.getBoundingClientRect().width).toBeCloseTo(40, 0);
+		expect(mobileLike.getBoundingClientRect().height).toBeCloseTo(40, 0);
+		expect(mobileHost.querySelector('[data-like-count]')).toBeNull();
+
+		await page.viewport(800, 720);
+		const desktopHost = document.createElement('div');
+		desktopHost.style.width = '640px';
+		document.body.appendChild(desktopHost);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({ id: 'desktop-like', likeCount: 12 }),
+				role: WISHLIST_ROLES.visitor,
+				isArchived: false,
+				showLikeCount: true,
+			},
+			{ baseElement: desktopHost },
+		);
+		const desktopLike = desktopHost
+			.querySelector('[data-like-heart]')
+			?.closest('button') as HTMLElement;
+		expect(desktopLike.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
+		expect(desktopLike.getBoundingClientRect().height).toBeCloseTo(40, 0);
+		expect(desktopHost.querySelector('[data-like-count]')).not.toBeNull();
+		mobileHost.remove();
+		desktopHost.remove();
+	});
+
+	it('keeps the centered state label clear of the top-right Like on the 128px image', async () => {
+		await page.viewport(390, 720);
+		const host = await renderItem(
+			makeVisitorGift({
+				likeCount: 12,
+				received: true,
+				isFullyReserved: true,
+				myReservationId: 'mine',
+			}),
+			WISHLIST_ROLES.visitor,
+		);
+		const like = host.querySelector('[data-like-heart]')?.closest('button') as HTMLElement;
+		const label = host.querySelector(
+			'[data-testid="gift-state-overlay"] > span',
+		) as HTMLElement;
+		const likeRect = like.getBoundingClientRect();
+		const labelRect = label.getBoundingClientRect();
+		const overlaps =
+			likeRect.left < labelRect.right &&
+			likeRect.right > labelRect.left &&
+			likeRect.top < labelRect.bottom &&
+			likeRect.bottom > labelRect.top;
+		expect(overlaps).toBe(false);
+		host.remove();
+	});
+});
+
 describe('GiftListItem reservation-action layout (issue #211)', () => {
 	it('stacks the mark-as-bought and cancel-reservation actions vertically at equal width', async () => {
 		await page.viewport(800, 720);
@@ -308,9 +432,7 @@ describe('GiftListItem reservation-action layout (issue #211)', () => {
 			{ baseElement: host },
 		);
 
-		const reserveButtonEl = document.querySelector(
-			'[data-testid="reserve-button"]',
-		) as HTMLElement;
+		const reserveButtonEl = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
 		const purchasedButtonEl = reserveButtonEl.parentElement!.querySelector(
 			'button:not([data-testid])',
 		) as HTMLElement;

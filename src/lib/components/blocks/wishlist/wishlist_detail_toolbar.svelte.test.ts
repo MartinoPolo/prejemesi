@@ -638,6 +638,60 @@ describe('WishlistDetailToolbar mobile command bar (#320)', () => {
 		}
 	});
 
+	it('keeps the focused switcher selection when crossing the sm breakpoint', async () => {
+		await page.viewport(639, 720);
+		const host = createTrackedToolbarHost('615px');
+		const screen = await render(WishlistDetailToolbar, defaultProps, { baseElement: host });
+		const selected = screen
+			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
+			.element() as HTMLButtonElement;
+		selected.focus();
+
+		await page.viewport(640, 720);
+		await awaitAnimationFrames();
+
+		const resizedSelected = screen
+			.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`)
+			.element() as HTMLButtonElement;
+		expect(host.querySelectorAll('[data-testid="gift-view-switcher"]')).toHaveLength(1);
+		expect(document.activeElement).toBe(resizedSelected);
+		expect(resizedSelected).toHaveAttribute('aria-checked', 'true');
+		await screen.unmount();
+		host.remove();
+	});
+
+	it('uses a contained labeled desktop switcher without reordering or wrapping commands', async () => {
+		await page.viewport(1280, 720);
+		const host = createTrackedToolbarHost('70rem');
+		const screen = await render(
+			WishlistDetailToolbar,
+			{ ...defaultProps, canManage: true, role: WISHLIST_ROLES.moderator },
+			{ baseElement: host },
+		);
+		await new Promise(requestAnimationFrame);
+		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
+		const switcher = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
+		const controls = screen.getByTestId('wishlist-toolbar-controls').element();
+
+		expect(parseFloat(getComputedStyle(switcher).borderWidth)).toBeGreaterThanOrEqual(2);
+		await expect
+			.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.card}`))
+			.toHaveAccessibleName('Karta');
+		await expect
+			.element(screen.getByTestId(`gift-view-${GIFT_VIEW_MODES.list}`))
+			.toHaveAccessibleName('Seznam');
+		expect(switcher.getBoundingClientRect().right).toBeLessThanOrEqual(
+			controls.firstElementChild!.getBoundingClientRect().left,
+		);
+		expect(
+			new Set(Array.from(controls.children).map((child) => child.getBoundingClientRect().top))
+				.size,
+		).toBe(1);
+		expect(toolbar.scrollWidth).toBeLessThanOrEqual(toolbar.clientWidth);
+		await screen.unmount();
+		host.remove();
+	});
+
 	it('uses the viewport sm breakpoint even when the content column is narrower', async () => {
 		await page.viewport(640, 720);
 		const host = createTrackedToolbarHost('608px');
