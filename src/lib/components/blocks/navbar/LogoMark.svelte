@@ -10,7 +10,7 @@
 		<GiftIcon class="size-[18px]" />
 	</span>
 	<span class="logo-text">
-		prejemesi<span class="logo-tld">.cz</span>
+		přejeme si<span class="logo-tld">.cz</span>
 	</span>
 </a>
 
@@ -57,5 +57,39 @@
 		opacity: 0.42;
 		font-weight: var(--weight-medium);
 		font-size: var(--text-lg);
+	}
+
+	@media (width < 640px) {
+		.logo {
+			min-width: 0;
+			gap: 0.375rem;
+			font-size: 0.9375rem;
+		}
+
+		.logo-icon-wrap {
+			width: 40px;
+			height: 40px;
+			border-radius: var(--radius-btn);
+		}
+
+		.logo-icon-wrap :global(svg) {
+			width: 20px;
+			height: 20px;
+		}
+
+		.logo-text {
+			min-width: 0;
+			white-space: nowrap;
+		}
+
+		.logo-tld {
+			font-size: 0.6875rem;
+		}
+	}
+
+	@media (width <= 340px) {
+		.logo-tld {
+			display: none;
+		}
 	}
 </style>

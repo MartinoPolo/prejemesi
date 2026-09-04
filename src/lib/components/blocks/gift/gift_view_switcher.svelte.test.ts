@@ -131,15 +131,15 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		await screen.unmount();
 	});
 
-	it('uses one inset ink boundary and no selected shadow over its sibling', async () => {
+	it('uses an accent tray with no strong perimeter and only a selected ink boundary', async () => {
 		const rootStyle = document.documentElement.style;
-		const properties = ['--secondary', '--card', '--ink'] as const;
+		const properties = ['--accent', '--card', '--ink'] as const;
 		const previousProperties = properties.map((property) => ({
 			property,
 			value: rootStyle.getPropertyValue(property),
 			priority: rootStyle.getPropertyPriority(property),
 		}));
-		rootStyle.setProperty('--secondary', 'rgb(11, 22, 33)');
+		rootStyle.setProperty('--accent', 'rgb(11, 22, 33)');
 		rootStyle.setProperty('--card', 'rgb(44, 55, 66)');
 		rootStyle.setProperty('--ink', 'rgb(77, 88, 99)');
 
@@ -163,7 +163,8 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			expect(groupStyle.backgroundColor).toBe('rgb(11, 22, 33)');
 			expect(parseFloat(groupStyle.borderWidth)).toBe(0);
 			expect(parseFloat(groupStyle.borderRadius)).toBeLessThanOrEqual(8);
-			expect(groupStyle.boxShadow).toContain('inset');
+			expect(groupStyle.boxShadow).not.toContain('rgb(77, 88, 99)');
+			expect(groupStyle.boxShadow).not.toContain('inset');
 			expect(parseFloat(groupStyle.paddingLeft)).toBe(0);
 			expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
 			expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
@@ -172,6 +173,8 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			expect(cardStyle.boxShadow).toBe(listStyle.boxShadow);
 			expect(parseFloat(cardStyle.borderWidth)).toBe(0);
 			expect(parseFloat(listStyle.borderWidth)).toBe(0);
+			expect(cardStyle.outlineStyle).toBe('solid');
+			expect(listStyle.outlineStyle).not.toBe('solid');
 			expect(card.querySelector('svg')!.getBoundingClientRect().y).toBeCloseTo(
 				list.querySelector('svg')!.getBoundingClientRect().y,
 				1,

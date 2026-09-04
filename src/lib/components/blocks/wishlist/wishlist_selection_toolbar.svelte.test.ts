@@ -1,7 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
-import { describe, expect, it, vi } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WishlistSelectionToolbar from './WishlistSelectionToolbar.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
@@ -27,85 +27,190 @@ function createProps() {
 	};
 }
 
-describe('WishlistSelectionToolbar', () => {
-	it('uses one aligned mobile row with count, Select all, labeled Actions, Cancel, and 40px targets', async () => {
-		const screen = await render(WishlistSelectionToolbar, createProps());
-		const region = screen.getByRole('region', { name: m.gift_selection_toolbar() });
-		const element = region.element() as HTMLElement;
+function visibleChildren(element: HTMLElement) {
+	return Array.from(element.children).filter(
+		(child) => getComputedStyle(child).display !== 'none',
+	);
+}
 
-		expect(element).toHaveTextContent(m.gift_selection_count({ count: 2 }));
-		expect(element).toHaveTextContent(m.draft_grid_select_all());
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_selection_actions() }))
-			.toBeVisible();
-		await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeVisible();
-		const children = Array.from(element.children).filter(
-			(child) => getComputedStyle(child).display !== 'none',
-		);
-		expect(
-			new Set(
-				children.map((child) => {
-					const rect = child.getBoundingClientRect();
-					return rect.top + rect.height / 2;
-				}),
-			).size,
-		).toBe(1);
-		for (const target of element.querySelectorAll<HTMLElement>(
-			'button, [data-slot="checkbox"]',
-		)) {
-			if (target.getClientRects().length === 0) {
-				continue;
+describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
+	beforeEach(async () => page.viewport(390, 760));
+	afterEach(async () => {
+		document.body.style.minHeight = '';
+		window.scrollTo(0, 0);
+		await page.viewport(1280, 760);
+	});
+
+	it('uses one mobile row with an explicit label and right-grouped 40px actions', async () => {
+		for (const width of [320, 360, 390]) {
+			await page.viewport(width, 760);
+			const screen = await render(WishlistSelectionToolbar, createProps());
+			const region = screen.getByRole('region', { name: m.gift_selection_toolbar() });
+			const element = region.element() as HTMLElement;
+			const row = element.querySelector('.mobile-selection-row') as HTMLElement;
+			expect(row).toHaveTextContent(
+				`${m.gift_selection_mode_label()} · ${m.gift_selection_count({ count: 2 })}`,
+			);
+			const actions = row.querySelector('.mobile-selection-actions') as HTMLElement;
+			await expect
+				.element(screen.getByRole('checkbox', { name: m.gift_selection_visible_all() }))
+				.toBeVisible();
+			await expect
+				.element(screen.getByRole('button', { name: m.gift_selection_actions() }))
+				.toBeVisible();
+			await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeVisible();
+			for (const target of actions.querySelectorAll<HTMLElement>(
+				'button, [data-slot="checkbox"]',
+			)) {
+				expect(target.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
 			}
-			expect(target.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+			expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+			expect(actions.getBoundingClientRect().right).toBeCloseTo(
+				row.getBoundingClientRect().right,
+				1,
+			);
+			await screen.unmount();
 		}
+	});
+
+	it('opens a bounded wishlist bottom sheet with every bulk field and mixed summaries', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		const dialog = screen.getByRole('dialog', { name: m.gift_selection_actions() });
+		await expect.element(dialog).toBeVisible();
+		const style = getComputedStyle(dialog.element());
+		expect(style.bottom).toBe('0px');
+		expect(parseFloat(style.borderTopWidth)).toBeGreaterThan(0);
+		expect(parseFloat(style.borderLeftWidth)).toBeGreaterThan(0);
+		expect(parseFloat(style.borderRightWidth)).toBeGreaterThan(0);
+		expect(parseFloat(style.borderTopLeftRadius)).toBeGreaterThan(0);
+		for (const heading of [
+			m.gift_priority_label(),
+			m.gift_context_category(),
+			m.image_fit_label(),
+			m.image_background_label(),
+			m.gift_selection_received_state(),
+		]) {
+			await expect.element(dialog.getByText(new RegExp(heading))).toBeVisible();
+		}
+		expect(dialog.element()).toHaveTextContent(m.gift_selection_mixed());
+		expect(
+			Array.from(dialog.element().querySelectorAll('[type="radio"]')).some(
+				(radio) => (radio as HTMLInputElement).checked,
+			),
+		).toBe(false);
+		const scroll = screen.getByTestId('selection-bulk-sheet-scroll').element();
+		expect(getComputedStyle(scroll).overflowY).toBe('auto');
 		await screen.unmount();
 	});
 
-	it('reports mixed summaries, hidden selection, and dispatches visible-select plus done callbacks', async () => {
+	it('checks common values and dispatches structured bulk actions', async () => {
+		const props = {
+			...createProps(),
+			commonPriorityId: 'high',
+			commonCategoryId: 'sport',
+			commonImageFit: 'fit' as const,
+			commonImageBackground: '#000000',
+			commonReceived: true,
+		};
+		const screen = await render(WishlistSelectionToolbar, props);
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		for (const name of [
+			'Vysoká',
+			'Sport',
+			m.image_fit_fit(),
+			m.image_background_black(),
+			m.gift_mark_received(),
+		]) {
+			await expect.element(screen.getByRole('radio', { name })).toBeChecked();
+		}
+		await screen.getByRole('radio', { name: m.image_fit_fill() }).click();
+		expect(props.onaction).toHaveBeenCalledWith({ action: 'imageFit', fit: 'fill' });
+		await screen.getByRole('radio', { name: m.image_background_transparent() }).click();
+		expect(props.onaction).toHaveBeenCalledWith({
+			action: 'imageBackground',
+			background: null,
+		});
+		await screen.getByRole('radio', { name: m.gift_mark_unreceived() }).click();
+		expect(props.onaction).toHaveBeenCalledWith({ action: 'received', received: false });
+		await screen.getByRole('radio', { name: m.gift_priority_none() }).click();
+		expect(props.onpriority).toHaveBeenCalledWith(null);
+		await screen.getByRole('radio', { name: m.gift_category_uncategorized() }).click();
+		expect(props.oncategory).toHaveBeenCalledWith(null);
+		await screen.unmount();
+	});
+
+	it('preserves loading, disabled, zero-selection, and pending behavior', async () => {
+		const loading = await render(WishlistSelectionToolbar, {
+			...createProps(),
+			priorityReady: false,
+			categoryReady: false,
+		});
+		await loading.getByRole('button', { name: m.gift_selection_actions() }).click();
+		const loadingDialog = loading.getByRole('dialog', { name: m.gift_selection_actions() });
+		expect(loadingDialog.element()).toHaveTextContent(m.moderator_loading());
+		await expect
+			.element(loadingDialog.getByRole('radio', { name: m.gift_priority_none() }))
+			.toBeDisabled();
+		await expect
+			.element(loadingDialog.getByRole('radio', { name: m.gift_category_uncategorized() }))
+			.toBeDisabled();
+		await userEvent.keyboard('{Escape}');
+		await loading.unmount();
+
+		const empty = await render(WishlistSelectionToolbar, {
+			...createProps(),
+			selectedCount: 0,
+			hiddenCount: 0,
+			visibleState: 'none' as const,
+		});
+		await expect
+			.element(empty.getByRole('button', { name: m.gift_selection_actions() }))
+			.toBeDisabled();
+		await expect.element(empty.getByRole('button', { name: m.cancel() })).toBeEnabled();
+		await empty.unmount();
+
+		const pending = await render(WishlistSelectionToolbar, {
+			...createProps(),
+			pending: { action: 'received' as const, count: 2 },
+		});
+		await expect
+			.element(pending.getByRole('button', { name: m.gift_bulk_pending({ count: 2 }) }))
+			.toBeDisabled();
+		await expect.element(pending.getByRole('button', { name: m.cancel() })).toBeEnabled();
+		await pending.unmount();
+	});
+
+	it('restores focus and page scroll on Escape and dispatches select-all plus Cancel', async () => {
 		const props = createProps();
 		const screen = await render(WishlistSelectionToolbar, props);
-		const region = screen.getByRole('region', { name: m.gift_selection_toolbar() });
-		await expect.element(region).toHaveTextContent(m.gift_selection_count({ count: 2 }));
-		await expect.element(region).toHaveTextContent(m.gift_selection_hidden_count({ count: 1 }));
-		await expect.element(region).toHaveTextContent(m.gift_priority_label());
-		await expect.element(region).toHaveTextContent(m.gift_context_category());
-		await expect.element(region).toHaveTextContent(m.gift_selection_mixed());
+		const trigger = screen
+			.getByRole('button', { name: m.gift_selection_actions() })
+			.element() as HTMLButtonElement;
+		document.body.style.minHeight = '200vh';
+		window.scrollTo(0, 17);
+		await new Promise(requestAnimationFrame);
+		const scrollBefore = window.scrollY;
 		await screen.getByRole('checkbox', { name: m.gift_selection_visible_all() }).click();
 		expect(props.onselectvisible).toHaveBeenCalled();
+		await trigger.click();
+		await userEvent.keyboard('{Escape}');
+		await new Promise(requestAnimationFrame);
+		await new Promise(requestAnimationFrame);
+		expect(document.activeElement).toBe(trigger);
+		expect(window.scrollY).toBe(scrollBefore);
 		await screen.getByRole('button', { name: m.cancel() }).click();
 		expect(props.ondone).toHaveBeenCalledOnce();
 		await screen.unmount();
+		document.body.style.minHeight = '';
+		window.scrollTo(0, 0);
 	});
+});
 
-	it('represents mixed bulk values without checking a concrete choice', async () => {
-		const screen = await render(WishlistSelectionToolbar, createProps());
+describe('WishlistSelectionToolbar desktop preservation (#340)', () => {
+	beforeEach(async () => page.viewport(1280, 760));
 
-		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
-		for (const name of [
-			`${m.gift_priority_label()}: ${m.gift_selection_mixed()}`,
-			`${m.gift_context_category()}: ${m.gift_selection_mixed()}`,
-			`${m.image_fit_label()}: ${m.gift_selection_mixed()}`,
-			`${m.image_background_label()}: ${m.gift_selection_mixed()}`,
-			`${m.gift_selection_received_state()}: ${m.gift_selection_mixed()}`,
-		]) {
-			await expect.element(screen.getByRole('menuitem', { name })).toBeVisible();
-		}
-
-		await screen
-			.getByRole('menuitem', {
-				name: `${m.gift_priority_label()}: ${m.gift_selection_mixed()}`,
-			})
-			.click();
-		await expect.element(screen.getByText(m.gift_selection_mixed()).last()).toBeVisible();
-		expect(
-			Array.from(document.querySelectorAll('[role="menuitemradio"]')).some(
-				(item) => item.getAttribute('aria-checked') === 'true',
-			),
-		).toBe(false);
-		await screen.unmount();
-	});
-
-	it('checks common values for every bulk field', async () => {
+	it('keeps the existing wide field controls and Done action', async () => {
 		const screen = await render(WishlistSelectionToolbar, {
 			...createProps(),
 			commonPriorityId: 'high',
@@ -114,126 +219,13 @@ describe('WishlistSelectionToolbar', () => {
 			commonImageBackground: '#000000',
 			commonReceived: true,
 		});
-
-		(screen.getByTestId('selection-wide-controls').element() as HTMLElement).style.display =
-			'flex';
-		for (const [triggerName, choiceName] of [
-			[`${m.gift_priority_label()}: Vysoká`, 'Vysoká'],
-			[`${m.gift_context_category()}: Sport`, 'Sport'],
-			[`${m.image_fit_label()}: ${m.image_fit_fit()}`, m.image_fit_fit()],
-			[
-				`${m.image_background_label()}: ${m.image_background_black()}`,
-				m.image_background_black(),
-			],
-			[
-				`${m.gift_selection_received_state()}: ${m.gift_mark_received()}`,
-				m.gift_mark_received(),
-			],
-		] as const) {
-			await screen.getByRole('button', { name: triggerName }).click();
-			await expect
-				.element(screen.getByRole('menuitemradio', { name: choiceName }))
-				.toHaveAttribute('aria-checked', 'true');
-			await userEvent.keyboard('{Escape}');
-		}
-		await screen.unmount();
-	});
-
-	it('uses complementary selection tokens on nested blue wishlist surfaces', () => {
-		const neutral = document.createElement('div');
-		const blueWishlist = document.createElement('div');
-		const selectedGift = document.createElement('div');
-		blueWishlist.dataset.palette = 'sky';
-		selectedGift.dataset.giftItem = '';
-		selectedGift.setAttribute('aria-selected', 'true');
-		blueWishlist.appendChild(selectedGift);
-		document.body.append(neutral, blueWishlist);
-
-		const neutralStyle = getComputedStyle(neutral);
-		const blueStyle = getComputedStyle(blueWishlist);
-		expect(neutralStyle.getPropertyValue('--selection-ring').trim()).toBe(
-			neutralStyle.getPropertyValue('--primary').trim(),
-		);
-		expect(blueStyle.getPropertyValue('--selection-ring').trim()).toBe(
-			blueStyle.getPropertyValue('--accent-loud').trim(),
-		);
-		expect(blueStyle.getPropertyValue('--selection-ring').trim()).not.toBe(
-			blueStyle.getPropertyValue('--primary').trim(),
-		);
-		expect(getComputedStyle(selectedGift).outlineStyle).toBe('solid');
-		neutral.remove();
-		blueWishlist.remove();
-	});
-
-	it('disables bulk actions when nothing is selected', async () => {
-		const screen = await render(WishlistSelectionToolbar, {
-			...createProps(),
-			selectedCount: 0,
-			hiddenCount: 0,
-			visibleState: 'none',
-		});
+		const wide = screen.getByTestId('selection-wide-controls').element() as HTMLElement;
+		wide.style.display = 'flex';
+		expect(visibleChildren(wide)).toHaveLength(5);
+		await expect.element(screen.getByRole('button', { name: m.done() })).toBeVisible();
 		await expect
-			.element(screen.getByRole('button', { name: m.gift_selection_actions() }))
-			.toBeDisabled();
-		await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeEnabled();
-		await screen.unmount();
-	});
-
-	it('shows pending count on the active trigger and disables bulk controls', async () => {
-		const screen = await render(WishlistSelectionToolbar, {
-			...createProps(),
-			pending: { action: 'received' as const, count: 2 },
-		});
-		await expect
-			.element(screen.getByRole('button', { name: m.gift_bulk_pending({ count: 2 }) }))
-			.toBeDisabled();
-		await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeEnabled();
-		await screen.unmount();
-	});
-
-	it('keeps narrow actions in parity and dispatches structured callbacks', async () => {
-		const props = createProps();
-		const screen = await render(WishlistSelectionToolbar, props);
-
-		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
-		for (const name of [
-			`${m.gift_priority_label()}: ${m.gift_selection_mixed()}`,
-			`${m.gift_context_category()}: ${m.gift_selection_mixed()}`,
-			`${m.image_fit_label()}: ${m.gift_selection_mixed()}`,
-			`${m.image_background_label()}: ${m.gift_selection_mixed()}`,
-			`${m.gift_selection_received_state()}: ${m.gift_selection_mixed()}`,
-		]) {
-			await expect.element(screen.getByRole('menuitem', { name })).toBeVisible();
-		}
-
-		await screen
-			.getByRole('menuitem', {
-				name: `${m.image_fit_label()}: ${m.gift_selection_mixed()}`,
-			})
-			.click();
-		(screen.getByTestId('selection-image-fit-fill').element() as HTMLElement).click();
-		expect(props.onaction).toHaveBeenCalledWith({ action: 'imageFit', fit: 'fill' });
-
-		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
-		await screen
-			.getByRole('menuitem', {
-				name: `${m.image_background_label()}: ${m.gift_selection_mixed()}`,
-			})
-			.click();
-		(screen.getByTestId('selection-image-background-black').element() as HTMLElement).click();
-		expect(props.onaction).toHaveBeenCalledWith({
-			action: 'imageBackground',
-			background: '#000000',
-		});
-
-		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
-		await screen
-			.getByRole('menuitem', {
-				name: `${m.gift_selection_received_state()}: ${m.gift_selection_mixed()}`,
-			})
-			.click();
-		(screen.getByTestId('selection-received-false').element() as HTMLElement).click();
-		expect(props.onaction).toHaveBeenCalledWith({ action: 'received', received: false });
+			.element(screen.getByRole('button', { name: `${m.gift_priority_label()}: Vysoká` }))
+			.toBeVisible();
 		await screen.unmount();
 	});
 });

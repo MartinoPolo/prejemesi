@@ -120,6 +120,15 @@ test.describe('mobile wishlist acceptance', () => {
 
 		for (const width of WIDTHS) {
 			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
+			const logo = page.locator('.topbar .logo');
+			const logoMark = logo.locator('.logo-icon-wrap');
+			await expect(logo).toBeVisible();
+			await expect(logo.locator('.logo-text')).toContainText('přejeme si');
+			expect(await logoMark.evaluate((mark) => getComputedStyle(mark).width)).toBe('40px');
+			for (const action of await page.locator('.topbar button:visible').all()) {
+				expect((await box(action)).height).toBeGreaterThanOrEqual(40);
+			}
+			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
 			await expect(page.getByTestId('wishlist-mobile-hero')).toBeVisible();
 			await expect(page.getByTestId('wishlist-gift-card-grid')).toBeVisible();
 			const routeLayout = await page.getByTestId('wishlist-page-shell').evaluate((shell) => {
@@ -291,66 +300,51 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
 		const toolbar = page.getByTestId('wishlist-toolbar');
 		const rows = toolbar.locator('[data-mobile-toolbar-row]');
-		await expect(rows).toHaveCount(2);
-		const rowBoxes = await Promise.all((await rows.all()).map(box));
-		expect(rowBoxes[0]!.y + rowBoxes[0]!.height).toBeLessThan(rowBoxes[1]!.y);
+		await expect(rows).toHaveCount(1);
 		for (const control of await toolbar
 			.locator('button:visible, [role="radio"]:visible')
 			.all()) {
 			const controlBox = await box(control);
-			expect(controlBox.width).toBeGreaterThanOrEqual(40);
 			expect(controlBox.height).toBeGreaterThanOrEqual(40);
 		}
+		expect(await rows.evaluate((row) => row.scrollWidth)).toBeLessThanOrEqual(
+			await rows.evaluate((row) => row.clientWidth),
+		);
 
 		await page.evaluate(() => window.scrollTo(0, 180));
-		for (const label of await rows.nth(1).locator('button').all()) {
-			const metrics = await label.evaluate((element) => ({
-				clientWidth: element.clientWidth,
-				scrollWidth: element.scrollWidth,
-			}));
-			expect(
-				metrics.scrollWidth,
-				(await label.getAttribute('aria-label')) ?? undefined,
-			).toBeLessThanOrEqual(metrics.clientWidth);
+		const trigger = page.getByTestId('mobile-display-trigger');
+		const before = {
+			toolbar: await box(toolbar),
+			scrollY: await page.evaluate(() => scrollY),
+		};
+		await trigger.click();
+		const dialog = page.getByRole('dialog', { name: m.gift_display_options() });
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByTestId('mobile-sheet-scroll')).toBeVisible();
+		for (const selector of [
+			'mobile-sheet-sort-switch',
+			'mobile-sheet-grouping-switch',
+			'mobile-sheet-filter-switch',
+		]) {
+			await expect(dialog.getByTestId(selector)).toBeVisible();
 		}
-
-		for (const [index, triggerId] of [
-			'mobile-sort-trigger',
-			'mobile-grouping-trigger',
-			'mobile-filter-trigger',
-		].entries()) {
-			const trigger = page.getByTestId(triggerId);
-			const before = {
-				toolbar: await box(toolbar),
-				scrollY: await page.evaluate(() => scrollY),
-			};
-			await trigger.click();
-			const dialog = page.getByRole('dialog');
-			await expect(dialog).toBeVisible();
-			await expect(dialog.getByTestId('mobile-sheet-scroll')).toBeVisible();
-			await expect(dialog.locator('label, [role="checkbox"]')).not.toHaveCount(0);
-			const dialogBox = await box(dialog);
-			expect(dialogBox.height).toBeLessThanOrEqual(MOBILE_HEIGHT * 0.8 + 1);
-			await page.keyboard.press('Tab');
-			expect(
-				await dialog.evaluate((element) => element.contains(document.activeElement)),
-			).toBe(true);
-			if (index === 0) {
-				await page
-					.locator('[data-slot="sheet-overlay"]')
-					.click({ position: { x: 8, y: 8 } });
-			} else {
-				await page.keyboard.press('Escape');
-			}
-			await expect(dialog).toBeHidden();
-			if (index !== 0) {
-				await expect(trigger).toBeFocused();
-			}
-			expect(await page.evaluate(() => scrollY)).toBe(before.scrollY);
-			const afterToolbar = await box(toolbar);
-			expect(afterToolbar.x).toBeCloseTo(before.toolbar.x, 0);
-			expect(afterToolbar.width).toBeCloseTo(before.toolbar.width, 0);
-		}
+		expect(
+			await dialog.locator('[aria-pressed="true"]').count(),
+			'exactly one Display section is selected',
+		).toBe(1);
+		const dialogBox = await box(dialog);
+		expect(dialogBox.height).toBeLessThanOrEqual(MOBILE_HEIGHT * 0.8 + 1);
+		await page.keyboard.press('Tab');
+		expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
+			true,
+		);
+		await page.keyboard.press('Escape');
+		await expect(dialog).toBeHidden();
+		await expect(trigger).toBeFocused();
+		expect(await page.evaluate(() => scrollY)).toBe(before.scrollY);
+		const afterToolbar = await box(toolbar);
+		expect(afterToolbar.x).toBeCloseTo(before.toolbar.x, 0);
+		expect(afterToolbar.width).toBeCloseTo(before.toolbar.width, 0);
 		await page.context().close();
 	});
 
@@ -521,9 +515,10 @@ test.describe('mobile wishlist acceptance', () => {
 		);
 		await visitor.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
 		await visitor.goto(path, { waitUntil: 'networkidle' });
-		await visitor.getByTestId('mobile-filter-trigger').click();
-		const filterDialog = visitor.getByRole('dialog');
+		await visitor.getByTestId('mobile-display-trigger').click();
+		const filterDialog = visitor.getByRole('dialog', { name: m.gift_display_options() });
 		await expect(filterDialog).toBeVisible();
+		await filterDialog.getByTestId('mobile-sheet-filter-switch').click();
 		await filterDialog.getByRole('checkbox', { name: m.gift_filter_show_received() }).click();
 		await visitor.keyboard.press('Escape');
 		await expect(filterDialog).toBeHidden();
@@ -636,7 +631,11 @@ test.describe('mobile wishlist acceptance', () => {
 		);
 		await createManagerWishlist(page, 'Mobilní režimy');
 		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
-		await page.getByRole('button', { name: m.gift_selection_toolbar(), exact: true }).click();
+		await page.getByTestId('mobile-more-trigger').click();
+		await page
+			.getByRole('dialog', { name: m.wishlist_more_actions() })
+			.getByRole('button', { name: m.gift_selection_toolbar(), exact: true })
+			.click();
 		const selection = page.getByRole('region', {
 			name: m.gift_selection_toolbar(),
 			exact: true,
@@ -682,7 +681,11 @@ test.describe('mobile wishlist acceptance', () => {
 		expect.soft(await page.getByRole('button', { name: /oblíbených/ }).count()).toBe(0);
 		await selection.getByRole('button', { name: 'Zrušit', exact: true }).click();
 
-		await page.getByRole('button', { name: 'Změnit pořadí', exact: true }).click();
+		await page.getByTestId('mobile-more-trigger').click();
+		await page
+			.getByRole('dialog', { name: m.wishlist_more_actions() })
+			.getByRole('button', { name: 'Změnit pořadí', exact: true })
+			.click();
 		await expect(page.getByRole('button', { name: 'Hotovo', exact: true })).toBeVisible();
 		const namesBefore = await page.locator('[data-gift-item] h3').allTextContents();
 		const firstMoveUp = page.getByRole('button', {
