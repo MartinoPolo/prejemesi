@@ -624,7 +624,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.elevation-interactive {
+	.elevation-interactive:not(:disabled, [aria-disabled='true'], [data-disabled]):hover {
+		box-shadow: var(--elevation-ordinary);
 		translate: 0;
 	}
 }

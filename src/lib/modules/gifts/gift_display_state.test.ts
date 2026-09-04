@@ -102,7 +102,7 @@ describe('deriveGiftDisplayState presentation', () => {
 		]);
 	});
 
-	it('keeps own reservation as one standalone state pill', () => {
+	it('keeps own reservation and remaining finite capacity as distinct pills', () => {
 		const overlay = deriveGiftDisplayState(
 			gift({ quantity: 3, reservedCount: 1, myReservationId: 'mine' }),
 			'visitor',
@@ -110,7 +110,12 @@ describe('deriveGiftDisplayState presentation', () => {
 			visitorCapabilities,
 		).presentation.overlay;
 
-		expect(overlay).toEqual({ kind: 'own-reservation' });
+		expect(overlay).toEqual({
+			kind: 'own-reservation',
+			supportKind: 'partial',
+			remaining: 2,
+			total: 3,
+		});
 	});
 
 	it('shows counts to a self-promoted recipient without enabling visitor actions or identities', () => {

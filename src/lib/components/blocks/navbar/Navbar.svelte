@@ -486,27 +486,23 @@
 	@media (width < 640px) {
 		.topbar {
 			padding-inline: 4px;
-			gap: 4px;
+			gap: var(--space-2);
 		}
 
 		.nav-right {
-			gap: 4px;
+			gap: var(--space-2);
 		}
 
 		.topbar :global(button),
 		.topbar :global(.logo) {
+			min-width: 40px;
 			min-height: 40px;
 		}
 	}
 
 	@media (width <= 340px) {
 		.topbar {
-			padding-inline: 2px;
-			gap: 2px;
-		}
-
-		.nav-right {
-			gap: 2px;
+			gap: 4px;
 		}
 	}
 </style>

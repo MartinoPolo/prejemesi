@@ -9,7 +9,17 @@ async function shadowState(locator: Locator) {
 	return locator.evaluate((element) => {
 		const style = getComputedStyle(element);
 		const layers = style.boxShadow.match(/(?:[^,(]|\([^)]*\))+/g) ?? [];
-		const raisedLayer = layers.find((layer) => !/\binset\b/.test(layer)) ?? '';
+		const raisedLayer =
+			layers.find((layer) => {
+				if (/\binset\b/.test(layer)) {
+					return false;
+				}
+				const lengths = layer.match(/-?\d+(?:\.\d+)?px/g) ?? [];
+				return (
+					Number.parseFloat(lengths[0] ?? '0') !== 0 ||
+					Number.parseFloat(lengths[1] ?? '0') !== 0
+				);
+			}) ?? '';
 		const lengths = raisedLayer.match(/-?\d+(?:\.\d+)?px/g) ?? [];
 		return {
 			shadow: style.boxShadow,
@@ -52,7 +62,7 @@ test('semantic depth stays responsive and color-only across representative wishl
 	const button = page.getByRole('button', { name: /Přidat dárek/ }).first();
 	const card = page.locator('[data-gift-item] .elevation-ordinary').first();
 	const toolbar = page.locator('.wishlist-toolbar');
-	const tray = page.locator('[data-slot="toggle-group"].shadow-elevation-ordinary').first();
+	const tray = page.getByTestId('gift-view-switcher');
 	const account = page.getByRole('button', { name: new RegExp(user.name) });
 	const surfaces = [button, card, toolbar, tray, account];
 
@@ -95,7 +105,17 @@ test('semantic depth stays responsive and color-only across representative wishl
 				const rect = element.getBoundingClientRect();
 				const style = getComputedStyle(element);
 				const layers = style.boxShadow.match(/(?:[^,(]|\([^)]*\))+/g) ?? [];
-				const raisedLayer = layers.find((layer) => !/\binset\b/.test(layer)) ?? '';
+				const raisedLayer =
+					layers.find((layer) => {
+						if (/\binset\b/.test(layer)) {
+							return false;
+						}
+						const lengths = layer.match(/-?\d+(?:\.\d+)?px/g) ?? [];
+						return (
+							Number.parseFloat(lengths[0] ?? '0') !== 0 ||
+							Number.parseFloat(lengths[1] ?? '0') !== 0
+						);
+					}) ?? '';
 				const lengths = raisedLayer.match(/-?\d+(?:\.\d+)?px/g) ?? [];
 				const x = Number.parseFloat(lengths[0] ?? '0');
 				const y = Number.parseFloat(lengths[1] ?? '0');
@@ -120,6 +140,7 @@ test('semantic depth stays responsive and color-only across representative wishl
 	await button.hover();
 	await page.mouse.down();
 	await expectOffset(button, 2);
+	await page.mouse.move(0, 0);
 	await page.mouse.up();
 	await button.evaluate((element) => element.setAttribute('disabled', ''));
 	await expect.poll(() => shadowState(button).then(({ shadow }) => shadow)).toBe('none');

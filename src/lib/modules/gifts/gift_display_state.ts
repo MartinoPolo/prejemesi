@@ -85,6 +85,10 @@ export function deriveGiftDisplayState(
 					supportKind: reservationKind,
 					...(reservationKind === 'partial' ? { remaining, total: quantity! } : {}),
 				};
+	const remainingCapacityPill =
+		reservationKind === 'own-reservation' && remaining !== undefined && remaining > 0
+			? { supportKind: 'partial' as const, remaining, total: quantity! }
+			: {};
 	const overlay: GiftStateOverlayModel | null = gift.received
 		? {
 				kind: 'received',
@@ -95,6 +99,7 @@ export function deriveGiftDisplayState(
 			: {
 					kind: reservationKind,
 					...(reservationKind === 'partial' ? { remaining, total: quantity! } : {}),
+					...remainingCapacityPill,
 				};
 	const isArchived = capabilities.isArchived ?? false;
 	return {

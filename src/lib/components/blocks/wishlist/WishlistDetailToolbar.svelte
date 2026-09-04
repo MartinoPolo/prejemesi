@@ -222,7 +222,6 @@
 	type OpenDisplayControl = 'sort' | 'grouping' | 'filter';
 
 	let filterTriggerElement = $state<HTMLButtonElement | null>(null);
-	let mobileReorderEntryButton = $state<HTMLButtonElement | null>(null);
 	let mobileReorderDoneButton = $state<HTMLButtonElement | null>(null);
 	let mobileDisplayTrigger = $state<HTMLButtonElement | null>(null);
 	let mobileMoreTrigger = $state<HTMLButtonElement | null>(null);
@@ -385,7 +384,7 @@
 		const scrollPosition = { x: window.scrollX, y: window.scrollY };
 		onreordermodechange(active);
 		await tick();
-		const focusTarget = active ? mobileReorderDoneButton : mobileReorderEntryButton;
+		const focusTarget = active ? mobileReorderDoneButton : mobileMoreTrigger;
 		focusTarget?.focus({ preventScroll: true });
 		window.scrollTo(scrollPosition.x, scrollPosition.y);
 	}
@@ -708,7 +707,6 @@
 						</Button>
 						{#if canReorder}
 							<Button
-								bind:ref={mobileReorderEntryButton}
 								intent="ghost"
 								onclick={() =>
 									runMobileMoreAction(() => void changeMobileReorderMode(true))}

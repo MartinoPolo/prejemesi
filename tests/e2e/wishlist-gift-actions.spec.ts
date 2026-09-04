@@ -64,7 +64,9 @@ async function createActionFixture(page: Page) {
 }
 
 async function selectionCount(toolbar: Locator, count: number) {
-	await expect(toolbar.getByText(new RegExp(`Vybráno ${count}`))).toBeVisible();
+	await expect(
+		toolbar.locator('.mobile-selection-label:visible, .selection-count:visible'),
+	).toContainText(`Vybráno ${count}`);
 }
 
 async function touchPoint(target: Locator) {
@@ -187,7 +189,11 @@ test('mobile toolbar starts an empty selection from deterministic SSR markup', a
 			[],
 	).toHaveLength(1);
 
-	await page.getByRole('button', { name: m.gift_selection_toolbar(), exact: true }).click();
+	await page.getByTestId('mobile-more-trigger').click();
+	await page
+		.getByRole('dialog', { name: m.wishlist_more_actions() })
+		.getByRole('button', { name: m.gift_selection_toolbar(), exact: true })
+		.click();
 	const toolbar = page.getByRole('region', {
 		name: m.gift_selection_toolbar(),
 		exact: true,
@@ -222,9 +228,12 @@ test('mobile long press opens Sheet drill-in and selection toolbar Actions row',
 	await expect(toolbar.getByRole('button', { name: m.cancel() })).toBeVisible();
 
 	await actions.click();
-	await expect(authenticated.getByRole('menu')).toBeVisible();
+	const bulkSheet = authenticated.getByRole('dialog', {
+		name: m.gift_selection_actions(),
+	});
+	await expect(bulkSheet).toBeVisible();
 	await authenticated.keyboard.press('Escape');
-	await expect(authenticated.getByRole('menu')).toBeHidden();
+	await expect(bulkSheet).toBeHidden();
 	await selectionCount(toolbar, 1);
 	await expect(target).toHaveAttribute('aria-selected', 'true');
 
@@ -328,28 +337,26 @@ test('mobile bulk actions expose mixed received state and apply a common value',
 	await selectionCount(toolbar, 2);
 
 	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
-	const mixedReceived = page.getByRole('menuitem', {
-		name: `${m.gift_selection_received_state()}: ${m.gift_selection_mixed()}`,
-	});
-	await expect(mixedReceived).toBeVisible();
-	await mixedReceived.click();
-	await expect(page.getByText(m.gift_selection_mixed(), { exact: true }).last()).toBeVisible();
-	const markReceived = page.getByRole('menuitemradio', { name: m.gift_mark_received() });
-	const markUnreceived = page.getByRole('menuitemradio', { name: m.gift_mark_unreceived() });
-	await expect(markReceived).toHaveAttribute('aria-checked', 'false');
-	await expect(markUnreceived).toHaveAttribute('aria-checked', 'false');
+	const bulkSheet = page.getByRole('dialog', { name: m.gift_selection_actions() });
+	await expect(bulkSheet).toContainText(
+		`${m.gift_selection_received_state()}: ${m.gift_selection_mixed()}`,
+	);
+	const markReceived = bulkSheet.getByRole('radio', { name: m.gift_mark_received() });
+	const markUnreceived = bulkSheet.getByRole('radio', { name: m.gift_mark_unreceived() });
+	await expect(markReceived).not.toBeChecked();
+	await expect(markUnreceived).not.toBeChecked();
 	await markReceived.click();
 
 	await waitForToast(page, m.gift_bulk_success({ count: 2 }));
+	await page.keyboard.press('Escape');
+	await expect(bulkSheet).toBeHidden();
 	await selectionCount(toolbar, 2);
 	await expect(firstGift).toHaveAttribute('aria-selected', 'true');
 	await expect(secondGift).toHaveAttribute('aria-selected', 'true');
 	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
-	await expect(
-		page.getByRole('menuitem', {
-			name: `${m.gift_selection_received_state()}: ${m.gift_mark_received()}`,
-		}),
-	).toBeVisible();
+	await expect(bulkSheet).toContainText(
+		`${m.gift_selection_received_state()}: ${m.gift_mark_received()}`,
+	);
 	await page.keyboard.press('Escape');
 
 	await toolbar.getByRole('button', { name: m.cancel() }).click();

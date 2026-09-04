@@ -387,21 +387,27 @@ test.describe('issue #269 integrated motion strategy', () => {
 			),
 		).toBe(true);
 		await expect(done).toBeFocused();
+		const mobileMore = page.getByTestId('mobile-more-trigger');
 		await done.click();
-		await expect(action).toBeFocused();
+		await expect(mobileMore).toBeFocused();
 		await expect(
 			page.locator('[role="status"]').filter({ hasText: 'Režim změny pořadí ukončen.' }),
 		).toHaveCount(1);
-		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(2);
+		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(1);
 		const mobileAfterExit = await mobileToolbarGeometry();
-		await action.click();
+		await mobileMore.click();
+		const mobileAction = page
+			.getByRole('dialog', { name: 'Další možnosti' })
+			.getByRole('button', { name: 'Změnit pořadí', exact: true });
+		await expect(mobileAction).toBeVisible();
+		await mobileAction.click();
 		await expect(done).toBeFocused();
 		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(1);
 		const mobileAfterReentry = await mobileToolbarGeometry();
 		expect(mobileAfterReentry).toEqual(mobileAfterEntry);
 		await done.click();
-		await expect(action).toBeFocused();
-		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(2);
+		await expect(mobileMore).toBeFocused();
+		await expect(page.locator('[data-mobile-toolbar-row]:visible')).toHaveCount(1);
 		const mobileAfterSecondExit = await mobileToolbarGeometry();
 		expect(mobileAfterSecondExit).toEqual(mobileAfterExit);
 		expect(errors).toEqual([]);

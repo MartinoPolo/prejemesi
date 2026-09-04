@@ -1417,7 +1417,7 @@
 	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
 	style="overflow-anchor: none"
-	class="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 sm:gap-6 sm:px-4 sm:py-6"
+	class="mx-auto mt-3 flex w-full max-w-6xl flex-col gap-3 px-3 pb-3 sm:mt-0 sm:gap-6 sm:px-4 sm:py-6"
 >
 	<WishlistHeader
 		title={wishlist.title}
