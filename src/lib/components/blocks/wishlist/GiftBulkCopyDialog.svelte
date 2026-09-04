@@ -20,6 +20,7 @@
 		loading?: boolean;
 		submitting?: boolean;
 		onopenchange: (open: boolean) => void;
+		onback?: () => void;
 		ondestinationchange: (id: string) => void;
 		onconfirm: () => void;
 	}
@@ -32,6 +33,7 @@
 		loading = false,
 		submitting = false,
 		onopenchange,
+		onback,
 		ondestinationchange,
 		onconfirm,
 	}: Props = $props();
@@ -44,8 +46,8 @@
 
 <svelte:window bind:innerWidth={viewportWidth} />
 
-{#snippet content()}
-	<div class="space-y-4 px-4 py-4 sm:px-0">
+{#snippet destinationPicker()}
+	<div class="space-y-4 px-4 py-3 sm:px-0 sm:py-4">
 		{#if loading}
 			<p class="text-sm text-muted-foreground">{m.moderator_loading()}</p>
 		{:else if destinations.length === 0}
@@ -71,9 +73,18 @@
 			</label>
 		{/if}
 	</div>
-	<div class="flex flex-col-reverse gap-2 px-4 pb-4 sm:flex-row sm:justify-end sm:px-0 sm:pb-0">
-		<Button intent="outline" disabled={submitting} onclick={() => onopenchange(false)}>
-			{m.cancel()}
+{/snippet}
+
+{#snippet actions()}
+	<div
+		class="flex shrink-0 flex-col-reverse gap-2 px-4 pb-3 sm:flex-row sm:justify-end sm:px-0 sm:pb-0"
+	>
+		<Button
+			intent="outline"
+			disabled={submitting}
+			onclick={() => (mobile && onback !== undefined ? onback() : onopenchange(false))}
+		>
+			{mobile && onback !== undefined ? m.gift_context_back() : m.cancel()}
 		</Button>
 		<Button intent="primary" disabled={unavailable} onclick={onconfirm}>
 			{submitting
@@ -86,12 +97,13 @@
 {#if mobile}
 	<Sheet.Root {open} onOpenChange={onopenchange}>
 		{#if open}
-			<WishlistBottomSheet>
-				<Sheet.Header class="border-border border-b px-4 py-3">
+			<WishlistBottomSheet class="max-h-[calc(100dvh-0.25rem)]">
+				<Sheet.Header class="border-border shrink-0 border-b px-4 py-2 pr-14">
 					<Sheet.Title>{m.gift_bulk_copy_title()}</Sheet.Title>
 					<Sheet.Description>{m.gift_bulk_copy_description()}</Sheet.Description>
 				</Sheet.Header>
-				{@render content()}
+				<div class="min-h-0 flex-1 overflow-y-auto">{@render destinationPicker()}</div>
+				{@render actions()}
 			</WishlistBottomSheet>
 		{/if}
 	</Sheet.Root>
@@ -102,7 +114,8 @@
 				<Dialog.Title>{m.gift_bulk_copy_title()}</Dialog.Title>
 				<Dialog.Description>{m.gift_bulk_copy_description()}</Dialog.Description>
 			</Dialog.Header>
-			{@render content()}
+			{@render destinationPicker()}
+			{@render actions()}
 		</Dialog.Content>
 	</Dialog.Root>
 {/if}

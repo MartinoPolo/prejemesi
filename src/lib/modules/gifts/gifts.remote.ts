@@ -788,15 +788,57 @@ function bulkTimestampValue(value: Date | null) {
 	return value === null ? sql`NULL::timestamptz` : sql`${value}::timestamptz`;
 }
 
+type GiftTransaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0];
+
+async function verifyBulkManagerAccess(
+	transaction: GiftTransaction,
+	userId: string,
+	wishlistId: string,
+) {
+	const wishlistRows = await transaction
+		.select()
+		.from(wishlist)
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.for('update');
+	const wishlistRow = wishlistRows[0];
+	if (wishlistRow === undefined) {
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+
+	if (wishlistRow.recipientUserId === userId) {
+		return { role: WISHLIST_ROLES.recipient, wishlistRow };
+	}
+
+	const assignments = await transaction
+		.select({ id: moderatorAssignment.id })
+		.from(moderatorAssignment)
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, wishlistId),
+				eq(moderatorAssignment.userId, userId),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		)
+		.for('update');
+	if (assignments[0] === undefined) {
+		error(403, SERVER_ERROR.ACCESS_DENIED);
+	}
+	return { role: WISHLIST_ROLES.moderator, wishlistRow };
+}
+
 export const bulkUpdateGifts = guardedCommand(
 	BulkUpdateGiftsInputSchema,
 	async ({ user }, input) => {
 		const database = getDb();
 		const uniqueGiftIds = [...new Set(input.giftIds)];
-		const { role, wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
-		assertWishlistMutable(wishlistRow);
 
 		const result = await database.transaction(async (tx) => {
+			const { role, wishlistRow } = await verifyBulkManagerAccess(
+				tx,
+				user.id,
+				input.wishlistId,
+			);
+			assertWishlistMutable(wishlistRow);
 			if (input.action === 'priority' && input.priorityLevelId !== null) {
 				const levels = await tx
 					.select({ id: priorityLevel.id })
@@ -807,7 +849,7 @@ export const bulkUpdateGifts = guardedCommand(
 							eq(priorityLevel.wishlistId, input.wishlistId),
 						),
 					)
-					.limit(1);
+					.for('key share');
 				if (levels[0] === undefined) {
 					error(400, SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH);
 				}
@@ -952,10 +994,12 @@ export const bulkUpdateGifts = guardedCommand(
 				updatedIds: updatedRows.map((row) => row.id),
 				priorReceived: Object.fromEntries(rows.map((row) => [row.id, row.received])),
 				changedPresentationRows,
+				role,
+				wishlistRow,
 			};
 		});
 
-		if (role === WISHLIST_ROLES.moderator) {
+		if (result.role === WISHLIST_ROLES.moderator) {
 			await notifyReserversOfEditedGiftsBestEffort({
 				database,
 				changedGifts: result.changedPresentationRows.map((changedGift) => ({
@@ -965,11 +1009,14 @@ export const bulkUpdateGifts = guardedCommand(
 				})),
 				actorId: user.id,
 				actorName: user.name,
-				wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
+				wishlist: {
+					title: result.wishlistRow.title,
+					shortId: result.wishlistRow.shortId,
+				},
 			});
 		}
 
-		await singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+		await singleFlightRefresh(getGiftsByWishlistShortId, result.wishlistRow.shortId);
 		return { updatedIds: result.updatedIds, priorReceived: result.priorReceived };
 	},
 );

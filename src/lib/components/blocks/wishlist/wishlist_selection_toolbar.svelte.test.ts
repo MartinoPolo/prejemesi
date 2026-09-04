@@ -42,39 +42,55 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		await page.viewport(1280, 760);
 	});
 
-	it('uses one mobile row with an explicit label and right-grouped 40px actions', async () => {
+	it('places the sole global checkbox before the selection label without redundant text', async () => {
 		for (const width of [320, 360, 390]) {
 			await page.viewport(width, 760);
 			const screen = await render(WishlistSelectionToolbar, createProps());
-			const region = screen.getByRole('region', { name: m.gift_selection_toolbar() });
-			const element = region.element() as HTMLElement;
-			const row = element.querySelector('.mobile-selection-row') as HTMLElement;
-			expect(row).toHaveTextContent(
+			const row = screen
+				.getByRole('region', { name: m.gift_selection_toolbar() })
+				.element()
+				.querySelector('.mobile-selection-row') as HTMLElement;
+			const checkbox = screen
+				.getByRole('checkbox', { name: m.gift_selection_visible_all() })
+				.element();
+			const label = row.querySelector('.mobile-selection-label') as HTMLElement;
+			expect(row.children[0]).toBe(checkbox);
+			expect(row.children[1]).toBe(label);
+			expect(label).toHaveTextContent(
 				`${m.gift_selection_mode_label()} · ${m.gift_selection_count({ count: 2 })}`,
 			);
-			const actions = row.querySelector('.mobile-selection-actions') as HTMLElement;
-			await expect
-				.element(screen.getByRole('checkbox', { name: m.gift_selection_visible_all() }))
-				.toBeVisible();
-			await expect
-				.element(screen.getByRole('button', { name: m.gift_selection_actions() }))
-				.toBeVisible();
-			await expect.element(screen.getByRole('button', { name: m.cancel() })).toBeVisible();
-			for (const target of actions.querySelectorAll<HTMLElement>(
+			expect(row).not.toHaveTextContent(m.draft_grid_select_all());
+			expect(row.querySelectorAll('[role="checkbox"]')).toHaveLength(1);
+			for (const target of row.querySelectorAll<HTMLElement>(
 				'button, [data-slot="checkbox"]',
 			)) {
 				expect(target.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
 			}
 			expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
-			expect(actions.getBoundingClientRect().right).toBeCloseTo(
-				row.getBoundingClientRect().right,
-				1,
-			);
 			await screen.unmount();
 		}
 	});
 
-	it('opens a bounded wishlist bottom sheet with every bulk field and mixed summaries', async () => {
+	it('maps zero, partial, and all visible selections to unchecked, indeterminate, and checked', async () => {
+		for (const [visibleState, ariaChecked] of [
+			['none', 'false'],
+			['some', 'mixed'],
+			['all', 'true'],
+		] as const) {
+			const screen = await render(WishlistSelectionToolbar, {
+				...createProps(),
+				visibleState,
+			});
+			const checkbox = screen
+				.getByRole('checkbox', { name: m.gift_selection_visible_all() })
+				.element() as HTMLButtonElement;
+			expect(checkbox).toHaveAttribute('aria-checked', ariaChecked);
+			await screen.unmount();
+		}
+	});
+
+	it('shows exactly six first-level actions without scrolling at 320px height', async () => {
+		await page.viewport(320, 320);
 		const screen = await render(WishlistSelectionToolbar, createProps());
 		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
 		const dialog = screen.getByRole('dialog', { name: m.gift_selection_actions() });
@@ -84,31 +100,30 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		expect(parseFloat(style.borderTopWidth)).toBeGreaterThan(0);
 		expect(parseFloat(style.borderLeftWidth)).toBeGreaterThan(0);
 		expect(parseFloat(style.borderRightWidth)).toBeGreaterThan(0);
-		expect(parseFloat(style.borderTopLeftRadius)).toBeGreaterThan(0);
-		for (const heading of [
-			m.gift_priority_label(),
-			m.gift_context_category(),
-			m.image_fit_label(),
-			m.image_background_label(),
-			m.gift_selection_received_state(),
-		]) {
-			await expect.element(dialog.getByText(new RegExp(heading))).toBeVisible();
-		}
-		expect(dialog.element()).toHaveTextContent(m.gift_selection_mixed());
-		expect(
-			Array.from(dialog.element().querySelectorAll('[type="radio"]')).some(
-				(radio) => (radio as HTMLInputElement).checked,
-			),
-		).toBe(false);
-		const scroll = screen.getByTestId('selection-bulk-sheet-scroll').element();
-		expect(getComputedStyle(scroll).overflowY).toBe('auto');
+		const actions = screen.getByTestId('selection-bulk-sheet-actions').element();
+		const rows = Array.from(
+			actions.querySelectorAll<HTMLButtonElement>('[data-mobile-bulk-action]'),
+		);
+		expect(rows.map((row) => row.dataset.mobileBulkAction)).toEqual([
+			'priority',
+			'category',
+			'imageFit',
+			'imageBackground',
+			'copy',
+			'received',
+		]);
 		await expect
-			.element(dialog.getByRole('button', { name: m.gift_bulk_copy() }))
-			.toBeVisible();
+			.poll(() => Math.max(...rows.map((row) => row.getBoundingClientRect().bottom)))
+			.toBeLessThanOrEqual(320);
+		for (const row of rows) {
+			expect(row.getBoundingClientRect().height).toBeCloseTo(40, 1);
+		}
+		expect(actions.scrollHeight).toBeLessThanOrEqual(actions.clientHeight);
+		expect(getComputedStyle(actions).overflowY).not.toBe('auto');
 		await screen.unmount();
 	});
 
-	it('checks common values and dispatches structured bulk actions', async () => {
+	it('drills into only one action, dispatches it, and restores row focus on Back', async () => {
 		const props = {
 			...createProps(),
 			commonPriorityId: 'high',
@@ -119,28 +134,74 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		};
 		const screen = await render(WishlistSelectionToolbar, props);
 		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
-		for (const name of [
-			'Vysoká',
-			'Sport',
-			m.image_fit_fit(),
-			m.image_background_black(),
-			m.gift_mark_received(),
-		]) {
-			await expect.element(screen.getByRole('radio', { name })).toBeChecked();
+		const actions = screen.getByTestId('selection-bulk-sheet-actions');
+
+		for (const [action, option, assertion] of [
+			[
+				'priority',
+				m.gift_priority_none(),
+				() => expect(props.onpriority).toHaveBeenCalledWith(null),
+			],
+			[
+				'category',
+				m.gift_category_uncategorized(),
+				() => expect(props.oncategory).toHaveBeenCalledWith(null),
+			],
+			[
+				'imageFit',
+				m.image_fit_fill(),
+				() =>
+					expect(props.onaction).toHaveBeenCalledWith({
+						action: 'imageFit',
+						fit: 'fill',
+					}),
+			],
+			[
+				'imageBackground',
+				m.image_background_transparent(),
+				() =>
+					expect(props.onaction).toHaveBeenCalledWith({
+						action: 'imageBackground',
+						background: null,
+					}),
+			],
+			[
+				'received',
+				m.gift_mark_unreceived(),
+				() =>
+					expect(props.onaction).toHaveBeenCalledWith({
+						action: 'received',
+						received: false,
+					}),
+			],
+		] as const) {
+			const invokingRow = actions
+				.element()
+				.querySelector<HTMLButtonElement>(`[data-mobile-bulk-action="${action}"]`)!;
+			await invokingRow.click();
+			await expect
+				.element(screen.getByRole('button', { name: m.gift_context_back() }))
+				.toHaveFocus();
+			expect(screen.getByTestId('selection-bulk-sheet-actions').query()).toBeNull();
+			await screen.getByRole('radio', { name: option }).click();
+			assertion();
+			await screen.getByRole('button', { name: m.gift_context_back() }).click();
+			await new Promise(requestAnimationFrame);
+			await new Promise(requestAnimationFrame);
+			expect(document.activeElement).toHaveAttribute('data-mobile-bulk-action', action);
 		}
-		await screen.getByRole('radio', { name: m.image_fit_fill() }).click();
-		expect(props.onaction).toHaveBeenCalledWith({ action: 'imageFit', fit: 'fill' });
-		await screen.getByRole('radio', { name: m.image_background_transparent() }).click();
-		expect(props.onaction).toHaveBeenCalledWith({
-			action: 'imageBackground',
-			background: null,
-		});
-		await screen.getByRole('radio', { name: m.gift_mark_unreceived() }).click();
-		expect(props.onaction).toHaveBeenCalledWith({ action: 'received', received: false });
-		await screen.getByRole('radio', { name: m.gift_priority_none() }).click();
-		expect(props.onpriority).toHaveBeenCalledWith(null);
-		await screen.getByRole('radio', { name: m.gift_category_uncategorized() }).click();
-		expect(props.oncategory).toHaveBeenCalledWith(null);
+
+		const copyRow = actions
+			.element()
+			.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="copy"]')!;
+		await copyRow.click();
+		await new Promise(requestAnimationFrame);
+		expect(props.oncopy).toHaveBeenCalledOnce();
+		const returnToActions = props.oncopy.mock.calls[0]?.[0] as () => void;
+		returnToActions();
+		await new Promise(requestAnimationFrame);
+		await new Promise(requestAnimationFrame);
+		expect(document.activeElement).toHaveAttribute('data-mobile-bulk-action', 'copy');
 		await screen.unmount();
 	});
 
@@ -154,10 +215,14 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		const loadingDialog = loading.getByRole('dialog', { name: m.gift_selection_actions() });
 		expect(loadingDialog.element()).toHaveTextContent(m.moderator_loading());
 		await expect
-			.element(loadingDialog.getByRole('radio', { name: m.gift_priority_none() }))
+			.element(
+				loadingDialog.getByRole('button', { name: new RegExp(m.gift_priority_label()) }),
+			)
 			.toBeDisabled();
 		await expect
-			.element(loadingDialog.getByRole('radio', { name: m.gift_category_uncategorized() }))
+			.element(
+				loadingDialog.getByRole('button', { name: new RegExp(m.gift_context_category()) }),
+			)
 			.toBeDisabled();
 		await userEvent.keyboard('{Escape}');
 		await loading.unmount();
@@ -183,6 +248,30 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			.toBeDisabled();
 		await expect.element(pending.getByRole('button', { name: m.cancel() })).toBeEnabled();
 		await pending.unmount();
+	});
+
+	it('bounds genuine option overflow while keeping Back reachable', async () => {
+		await page.viewport(320, 320);
+		const screen = await render(WishlistSelectionToolbar, {
+			...createProps(),
+			categories: Array.from({ length: 12 }, (_, index) => ({
+				id: `category-${index}`,
+				label: `Kategorie ${index}`,
+			})),
+		});
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		await screen
+			.getByTestId('selection-bulk-sheet-actions')
+			.element()
+			.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="category"]')!
+			.click();
+		const options = screen.getByTestId('selection-bulk-sheet-options').element();
+		expect(options.scrollHeight).toBeGreaterThan(options.clientHeight);
+		expect(getComputedStyle(options).overflowY).toBe('auto');
+		await expect
+			.element(screen.getByRole('button', { name: m.gift_context_back() }))
+			.toBeVisible();
+		await screen.unmount();
 	});
 
 	it('restores focus and page scroll on Escape and dispatches select-all plus Cancel', async () => {
@@ -223,6 +312,13 @@ describe('WishlistSelectionToolbar desktop preservation (#340)', () => {
 			commonImageBackground: '#000000',
 			commonReceived: true,
 		});
+		const summary = screen
+			.getByRole('region', { name: m.gift_selection_toolbar() })
+			.element()
+			.querySelector('.desktop-selection-summary') as HTMLElement;
+		expect(summary.children[0]).toHaveAttribute('role', 'checkbox');
+		expect(summary.children[1]).toHaveClass('selection-count');
+		expect(summary).not.toHaveTextContent(m.draft_grid_select_all());
 		const wide = screen.getByTestId('selection-wide-controls').element() as HTMLElement;
 		wide.style.display = 'flex';
 		expect(visibleChildren(wide)).toHaveLength(6);

@@ -2,6 +2,8 @@
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
@@ -36,7 +38,7 @@
 		onpriority: (id: string | null) => void;
 		oncategory: (id: string | null) => void;
 		onaction: (action: GiftBulkAction) => void;
-		oncopy?: () => void;
+		oncopy?: (returnToActions?: () => void) => void;
 		ondone: () => void;
 	}
 	let {
@@ -112,14 +114,50 @@
 		return pending?.action === action ? pendingLabel : fallback;
 	}
 
+	type MobileBulkAction =
+		| 'priority'
+		| 'category'
+		| 'imageFit'
+		| 'imageBackground'
+		| 'copy'
+		| 'received';
+
 	const MIXED_RADIO_VALUE = '__mixed__';
 	let mobileBulkSheetOpen = $state(false);
 	let mobileBulkTrigger = $state<HTMLButtonElement | null>(null);
+	let mobileBackButton = $state<HTMLButtonElement | null>(null);
+	let mobileActiveAction = $state<Exclude<MobileBulkAction, 'copy'> | null>(null);
+	let mobileInvokingAction = $state<MobileBulkAction | null>(null);
+
+	function focusMobileAction(action: MobileBulkAction) {
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				document
+					.querySelector<HTMLButtonElement>(`[data-mobile-bulk-action="${action}"]`)
+					?.focus({ preventScroll: true });
+			});
+		});
+	}
 
 	function handleMobileBulkSheetOpenChange(open: boolean) {
 		mobileBulkSheetOpen = open;
 		if (!open) {
+			mobileActiveAction = null;
 			requestAnimationFrame(() => mobileBulkTrigger?.focus({ preventScroll: true }));
+		}
+	}
+
+	function openMobileAction(action: Exclude<MobileBulkAction, 'copy'>) {
+		mobileInvokingAction = action;
+		mobileActiveAction = action;
+		requestAnimationFrame(() => mobileBackButton?.focus({ preventScroll: true }));
+	}
+
+	function returnToMobileActions() {
+		const action = mobileInvokingAction;
+		mobileActiveAction = null;
+		if (action !== null) {
+			focusMobileAction(action);
 		}
 	}
 
@@ -137,8 +175,14 @@
 
 	function handleCopy() {
 		if (mobileBulkSheetOpen) {
+			mobileInvokingAction = 'copy';
 			mobileBulkSheetOpen = false;
-			requestAnimationFrame(oncopy);
+			requestAnimationFrame(() =>
+				oncopy(() => {
+					mobileBulkSheetOpen = true;
+					focusMobileAction('copy');
+				}),
+			);
 			return;
 		}
 		oncopy();
@@ -225,6 +269,183 @@
 	</label>
 {/snippet}
 
+{#snippet mobileActionRow(
+	action: MobileBulkAction,
+	label: string,
+	summary: string,
+	actionDisabled: boolean,
+)}
+	<button
+		type="button"
+		class="bulk-sheet-action"
+		data-mobile-bulk-action={action}
+		disabled={actionDisabled}
+		onclick={() => (action === 'copy' ? handleCopy() : openMobileAction(action))}
+	>
+		<span class="bulk-sheet-action-text">
+			<strong>{label}</strong>
+			<span>{summary}</span>
+		</span>
+		<ChevronRightIcon aria-hidden="true" />
+	</button>
+{/snippet}
+
+{#snippet mobileNestedOptions()}
+	<div class="bulk-sheet-nested">
+		<div class="bulk-sheet-nested-nav">
+			<Button
+				bind:ref={mobileBackButton}
+				intent="ghost"
+				size="md"
+				onclick={returnToMobileActions}
+			>
+				<ArrowLeftIcon data-icon="inline-start" />{m.gift_context_back()}
+			</Button>
+			<strong>
+				{mobileActiveAction === 'priority'
+					? m.gift_priority_label()
+					: mobileActiveAction === 'category'
+						? m.gift_context_category()
+						: mobileActiveAction === 'imageFit'
+							? m.image_fit_label()
+							: mobileActiveAction === 'imageBackground'
+								? m.image_background_label()
+								: m.gift_selection_received_state()}
+			</strong>
+		</div>
+		<div class="bulk-sheet-options" data-testid="selection-bulk-sheet-options">
+			{#if mobileActiveAction === 'priority'}
+				<fieldset disabled={disabled || !priorityReady}>
+					<legend class="sr-only">{m.gift_priority_label()}</legend>
+					{#if commonPriorityId === undefined}<p class="bulk-sheet-mixed">
+							{m.gift_selection_mixed()}
+						</p>{/if}
+					{@render bulkRadioChoice(
+						'bulk-priority',
+						'',
+						m.gift_priority_none(),
+						commonPriorityId === null,
+						disabled || !priorityReady,
+						() => onpriority(null),
+					)}
+					{#each priorityLevels as choice (choice.id)}
+						{@render bulkRadioChoice(
+							'bulk-priority',
+							choice.id,
+							choice.label,
+							commonPriorityId === choice.id,
+							disabled || !priorityReady,
+							() => onpriority(choice.id),
+						)}
+					{/each}
+				</fieldset>
+			{:else if mobileActiveAction === 'category'}
+				<fieldset disabled={disabled || !categoryReady}>
+					<legend class="sr-only">{m.gift_context_category()}</legend>
+					{#if commonCategoryId === undefined}<p class="bulk-sheet-mixed">
+							{m.gift_selection_mixed()}
+						</p>{/if}
+					{@render bulkRadioChoice(
+						'bulk-category',
+						'',
+						m.gift_category_uncategorized(),
+						commonCategoryId === null,
+						disabled || !categoryReady,
+						() => oncategory(null),
+					)}
+					{#each categories as choice (choice.id)}
+						{@render bulkRadioChoice(
+							'bulk-category',
+							choice.id,
+							choice.label,
+							commonCategoryId === choice.id,
+							disabled || !categoryReady,
+							() => oncategory(choice.id),
+						)}
+					{/each}
+				</fieldset>
+			{:else if mobileActiveAction === 'imageFit'}
+				<fieldset {disabled}>
+					<legend class="sr-only">{m.image_fit_label()}</legend>
+					{#if commonImageFit === undefined}<p class="bulk-sheet-mixed">
+							{m.gift_selection_mixed()}
+						</p>{/if}
+					{@render bulkRadioChoice(
+						'bulk-image-fit',
+						'fill',
+						m.image_fit_fill(),
+						commonImageFit === 'fill',
+						disabled,
+						() => handleImageFit('fill'),
+					)}
+					{@render bulkRadioChoice(
+						'bulk-image-fit',
+						'fit',
+						m.image_fit_fit(),
+						commonImageFit === 'fit',
+						disabled,
+						() => handleImageFit('fit'),
+					)}
+				</fieldset>
+			{:else if mobileActiveAction === 'imageBackground'}
+				<fieldset {disabled}>
+					<legend class="sr-only">{m.image_background_label()}</legend>
+					{#if commonImageBackground === undefined}<p class="bulk-sheet-mixed">
+							{m.gift_selection_mixed()}
+						</p>{/if}
+					{@render bulkRadioChoice(
+						'bulk-image-background',
+						'#ffffff',
+						m.image_background_white(),
+						commonImageBackground === '#ffffff',
+						disabled,
+						() => handleImageBackground('#ffffff'),
+					)}
+					{@render bulkRadioChoice(
+						'bulk-image-background',
+						'#000000',
+						m.image_background_black(),
+						commonImageBackground === '#000000',
+						disabled,
+						() => handleImageBackground('#000000'),
+					)}
+					{@render bulkRadioChoice(
+						'bulk-image-background',
+						'transparent',
+						m.image_background_transparent(),
+						commonImageBackground === null,
+						disabled,
+						() => handleImageBackground(null),
+					)}
+				</fieldset>
+			{:else if mobileActiveAction === 'received'}
+				<fieldset {disabled}>
+					<legend class="sr-only">{m.gift_selection_received_state()}</legend>
+					{#if commonReceived === undefined}<p class="bulk-sheet-mixed">
+							{m.gift_selection_mixed()}
+						</p>{/if}
+					{@render bulkRadioChoice(
+						'bulk-received',
+						'true',
+						m.gift_mark_received(),
+						commonReceived === true,
+						disabled,
+						() => handleReceived(true),
+					)}
+					{@render bulkRadioChoice(
+						'bulk-received',
+						'false',
+						m.gift_mark_unreceived(),
+						commonReceived === false,
+						disabled,
+						() => handleReceived(false),
+					)}
+				</fieldset>
+			{/if}
+		</div>
+	</div>
+{/snippet}
+
 {#snippet mobileBulkSheet()}
 	<Sheet.Root open={mobileBulkSheetOpen} onOpenChange={handleMobileBulkSheetOpenChange}>
 		<Sheet.Trigger>
@@ -241,8 +462,10 @@
 			{/snippet}
 		</Sheet.Trigger>
 		{#if mobileBulkSheetOpen}
-			<WishlistBottomSheet>
-				<Sheet.Header class="border-border border-b px-4 py-3">
+			<WishlistBottomSheet class="selection-bulk-sheet max-h-[calc(100dvh-0.25rem)]">
+				<Sheet.Header
+					class="bulk-sheet-header border-border flex min-h-12 flex-row items-center gap-2 border-b px-4 py-1 pr-14"
+				>
 					<Sheet.Title>{m.gift_selection_actions()}</Sheet.Title>
 					<Sheet.Description>
 						{pending !== null
@@ -250,133 +473,43 @@
 							: m.gift_selection_count({ count: selectedCount })}
 					</Sheet.Description>
 				</Sheet.Header>
-				<div class="bulk-sheet-scroll" data-testid="selection-bulk-sheet-scroll">
-					<fieldset class="bulk-sheet-section" disabled={disabled || !priorityReady}>
-						<legend
-							>{m.gift_priority_label()}: {priorityReady
-								? prioritySummary
-								: m.moderator_loading()}</legend
-						>
-						{@render bulkRadioChoice(
-							'bulk-priority',
-							'',
-							m.gift_priority_none(),
-							commonPriorityId === null,
+				{#if mobileActiveAction === null}
+					<div class="bulk-sheet-actions" data-testid="selection-bulk-sheet-actions">
+						{@render mobileActionRow(
+							'priority',
+							m.gift_priority_label(),
+							priorityReady ? prioritySummary : m.moderator_loading(),
 							disabled || !priorityReady,
-							() => onpriority(null),
 						)}
-						{#each priorityLevels as choice (choice.id)}
-							{@render bulkRadioChoice(
-								'bulk-priority',
-								choice.id,
-								choice.label,
-								commonPriorityId === choice.id,
-								disabled || !priorityReady,
-								() => onpriority(choice.id),
-							)}
-						{/each}
-					</fieldset>
-					<fieldset class="bulk-sheet-section" disabled={disabled || !categoryReady}>
-						<legend
-							>{m.gift_context_category()}: {categoryReady
-								? categorySummary
-								: m.moderator_loading()}</legend
-						>
-						{@render bulkRadioChoice(
-							'bulk-category',
-							'',
-							m.gift_category_uncategorized(),
-							commonCategoryId === null,
+						{@render mobileActionRow(
+							'category',
+							m.gift_context_category(),
+							categoryReady ? categorySummary : m.moderator_loading(),
 							disabled || !categoryReady,
-							() => oncategory(null),
 						)}
-						{#each categories as choice (choice.id)}
-							{@render bulkRadioChoice(
-								'bulk-category',
-								choice.id,
-								choice.label,
-								commonCategoryId === choice.id,
-								disabled || !categoryReady,
-								() => oncategory(choice.id),
-							)}
-						{/each}
-					</fieldset>
-					<fieldset class="bulk-sheet-section" {disabled}>
-						<legend>{m.image_fit_label()}: {imageFitSummary}</legend>
-						{@render bulkRadioChoice(
-							'bulk-image-fit',
-							'fill',
-							m.image_fit_fill(),
-							commonImageFit === 'fill',
+						{@render mobileActionRow(
+							'imageFit',
+							m.image_fit_label(),
+							imageFitSummary,
 							disabled,
-							() => handleImageFit('fill'),
 						)}
-						{@render bulkRadioChoice(
-							'bulk-image-fit',
-							'fit',
-							m.image_fit_fit(),
-							commonImageFit === 'fit',
+						{@render mobileActionRow(
+							'imageBackground',
+							m.image_background_label(),
+							backgroundSummary,
 							disabled,
-							() => handleImageFit('fit'),
 						)}
-					</fieldset>
-					<fieldset class="bulk-sheet-section" {disabled}>
-						<legend>{m.image_background_label()}: {backgroundSummary}</legend>
-						{@render bulkRadioChoice(
-							'bulk-image-background',
-							'#ffffff',
-							m.image_background_white(),
-							commonImageBackground === '#ffffff',
+						{@render mobileActionRow('copy', m.gift_bulk_copy(), '', disabled)}
+						{@render mobileActionRow(
+							'received',
+							m.gift_selection_received_state(),
+							receivedSummary,
 							disabled,
-							() => handleImageBackground('#ffffff'),
 						)}
-						{@render bulkRadioChoice(
-							'bulk-image-background',
-							'#000000',
-							m.image_background_black(),
-							commonImageBackground === '#000000',
-							disabled,
-							() => handleImageBackground('#000000'),
-						)}
-						{@render bulkRadioChoice(
-							'bulk-image-background',
-							'transparent',
-							m.image_background_transparent(),
-							commonImageBackground === null,
-							disabled,
-							() => handleImageBackground(null),
-						)}
-					</fieldset>
-					<div class="bulk-sheet-section">
-						<Button
-							class="w-full justify-start"
-							intent="ghost"
-							{disabled}
-							onclick={handleCopy}
-						>
-							<CopyIcon data-icon="inline-start" />{m.gift_bulk_copy()}
-						</Button>
 					</div>
-					<fieldset class="bulk-sheet-section" {disabled}>
-						<legend>{m.gift_selection_received_state()}: {receivedSummary}</legend>
-						{@render bulkRadioChoice(
-							'bulk-received',
-							'true',
-							m.gift_mark_received(),
-							commonReceived === true,
-							disabled,
-							() => handleReceived(true),
-						)}
-						{@render bulkRadioChoice(
-							'bulk-received',
-							'false',
-							m.gift_mark_unreceived(),
-							commonReceived === false,
-							disabled,
-							() => handleReceived(false),
-						)}
-					</fieldset>
-				</div>
+				{:else}
+					{@render mobileNestedOptions()}
+				{/if}
 			</WishlistBottomSheet>
 		{/if}
 	</Sheet.Root>
@@ -384,33 +517,27 @@
 
 <div class="selection-toolbar" role="region" aria-label={m.gift_selection_toolbar()}>
 	<div class="mobile-selection-row">
+		<Checkbox
+			checked={visibleState === 'all'}
+			indeterminate={visibleState === 'some'}
+			onCheckedChange={onselectvisible}
+			aria-label={m.gift_selection_visible_all()}
+		/>
 		<strong class="mobile-selection-label">
 			{m.gift_selection_mode_label()} · {m.gift_selection_count({ count: selectedCount })}
 		</strong>
 		<div class="mobile-selection-actions">
-			<label class="mobile-select-all">
-				<Checkbox
-					checked={visibleState === 'all'}
-					indeterminate={visibleState === 'some'}
-					onCheckedChange={onselectvisible}
-					aria-label={m.gift_selection_visible_all()}
-				/>
-				<span>{m.draft_grid_select_all()}</span>
-			</label>
 			{@render mobileBulkSheet()}
 			<Button intent="primary" size="md" onclick={ondone}>{m.cancel()}</Button>
 		</div>
 	</div>
 	<div class="selection-summary desktop-selection-summary">
-		<label class="select-all">
-			<Checkbox
-				checked={visibleState === 'all'}
-				indeterminate={visibleState === 'some'}
-				onCheckedChange={onselectvisible}
-				aria-label={m.gift_selection_visible_all()}
-			/>
-			<span class="select-all-label">{m.draft_grid_select_all()}</span>
-		</label>
+		<Checkbox
+			checked={visibleState === 'all'}
+			indeterminate={visibleState === 'some'}
+			onCheckedChange={onselectvisible}
+			aria-label={m.gift_selection_visible_all()}
+		/>
 		<strong class="selection-count whitespace-nowrap text-sm"
 			>{m.gift_selection_count({ count: selectedCount })}</strong
 		>{#if hiddenCount > 0}<span
@@ -571,20 +698,11 @@
 		width: 100%;
 	}
 
-	.selection-summary,
-	.select-all {
+	.selection-summary {
 		display: flex;
 		min-width: 0;
 		align-items: center;
-	}
-
-	.selection-summary {
 		gap: 0.75rem;
-	}
-
-	.select-all {
-		gap: 0.375rem;
-		white-space: nowrap;
 	}
 
 	.mobile-selection-row {
@@ -610,29 +728,105 @@
 		grid-row: 1;
 	}
 
-	.bulk-sheet-scroll {
+	:global(.selection-bulk-sheet) {
+		display: flex;
+		flex-direction: column;
+	}
+
+	:global(.bulk-sheet-header) {
+		flex: 0 0 auto;
+	}
+
+	:global(.bulk-sheet-header [data-slot='sheet-description']) {
+		margin-left: auto;
+		white-space: nowrap;
+	}
+
+	.bulk-sheet-actions {
+		flex: 0 0 auto;
+		overflow: hidden;
+		padding: 0.25rem 0.5rem;
+	}
+
+	.bulk-sheet-action {
+		display: flex;
+		width: 100%;
+		min-height: 40px;
+		align-items: center;
+		gap: 0.5rem;
+		border-radius: var(--radius-btn);
+		padding: 0.25rem 0.75rem;
+		text-align: left;
+	}
+
+	.bulk-sheet-action:hover {
+		background: var(--accent);
+	}
+
+	.bulk-sheet-action:disabled {
+		opacity: 0.5;
+	}
+
+	.bulk-sheet-action-text {
+		display: flex;
+		min-width: 0;
+		flex: 1;
+		align-items: baseline;
+		gap: 0.5rem;
+	}
+
+	.bulk-sheet-action-text strong,
+	.bulk-sheet-action-text span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.bulk-sheet-action-text span {
+		color: var(--muted-foreground);
+		font-size: var(--text-xs);
+	}
+
+	.bulk-sheet-action > :global(svg) {
+		width: 1rem;
+		height: 1rem;
+		flex: 0 0 auto;
+	}
+
+	.bulk-sheet-nested {
+		display: flex;
+		min-height: 0;
+		flex: 1 1 auto;
+		flex-direction: column;
+	}
+
+	.bulk-sheet-nested-nav {
+		display: flex;
+		min-height: 44px;
+		flex: 0 0 auto;
+		align-items: center;
+		gap: 0.5rem;
+		border-bottom: 1px solid var(--border);
+		padding: 0.125rem 0.5rem;
+	}
+
+	.bulk-sheet-options {
 		min-height: 0;
 		flex: 1 1 auto;
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding: 0.5rem;
+		padding: 0.25rem 0.5rem;
 	}
 
-	.bulk-sheet-section {
+	.bulk-sheet-options fieldset {
 		min-width: 0;
 		margin: 0;
 		border: 0;
-		padding: 0.25rem 0;
+		padding: 0;
 	}
 
-	.bulk-sheet-section + .bulk-sheet-section {
-		margin-top: 0.5rem;
-		border-top: 1px solid var(--border);
-		padding-top: 0.75rem;
-	}
-
-	.bulk-sheet-section legend {
-		width: 100%;
+	.bulk-sheet-mixed {
+		margin: 0;
 		padding: 0.25rem 0.75rem;
 		color: var(--muted-foreground);
 		font-size: var(--text-xs);
@@ -641,11 +835,11 @@
 
 	.bulk-sheet-choice {
 		display: flex;
-		min-height: 48px;
+		min-height: 44px;
 		align-items: center;
 		gap: 0.75rem;
 		border-radius: var(--radius-btn);
-		padding: 0.5rem 0.75rem;
+		padding: 0.375rem 0.75rem;
 		font-weight: 650;
 	}
 
@@ -676,8 +870,7 @@
 		}
 
 		.mobile-selection-row,
-		.mobile-selection-actions,
-		.mobile-select-all {
+		.mobile-selection-actions {
 			display: flex;
 			min-width: 0;
 			align-items: center;
@@ -703,14 +896,8 @@
 			gap: 4px;
 		}
 
-		.mobile-select-all {
-			gap: 2px;
-			font-size: 0.6875rem;
-			white-space: nowrap;
-		}
-
-		.mobile-selection-actions :global(button),
-		.mobile-selection-actions :global([data-slot='checkbox']) {
+		.mobile-selection-row > :global([data-slot='checkbox']),
+		.mobile-selection-actions :global(button) {
 			min-width: 40px;
 			min-height: 40px;
 			padding-inline: 0.375rem;

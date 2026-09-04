@@ -501,6 +501,7 @@
 	let bulkCopyLoading = $state(false);
 	let bulkCopySubmitting = $state(false);
 	let bulkCopyDestinationId = $state('');
+	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
 	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
 	let hiddenConfirmOpen = $state(false);
 	let deferredBulkAction = $state<GiftBulkAction | null>(null);
@@ -696,10 +697,11 @@
 		}
 	}
 
-	async function openBulkCopy() {
+	async function openBulkCopy(returnToActions?: () => void) {
 		if (bulkCopySubmitting || selectionSnapshot.selectedIds.length === 0) {
 			return;
 		}
+		bulkCopyReturnToActions = returnToActions ?? null;
 		bulkCopyOpen = true;
 		bulkCopyLoading = true;
 		bulkCopyDestinationId = '';
@@ -712,6 +714,20 @@
 		} finally {
 			bulkCopyLoading = false;
 		}
+	}
+
+	function handleBulkCopyOpenChange(open: boolean) {
+		bulkCopyOpen = open;
+		if (!open) {
+			bulkCopyReturnToActions = null;
+		}
+	}
+
+	function returnFromBulkCopy() {
+		const returnToActions = bulkCopyReturnToActions;
+		bulkCopyOpen = false;
+		bulkCopyReturnToActions = null;
+		returnToActions?.();
 	}
 
 	async function submitBulkCopy() {
@@ -730,9 +746,11 @@
 				destinationWishlistId: bulkCopyDestinationId,
 				giftIds: selectedIds,
 			});
+			const returnToActions = bulkCopyReturnToActions;
 			toastSuccess(m.gift_bulk_copy_success({ count: selectedIds.length }));
 			bulkCopyOpen = false;
-			giftSelection.exit();
+			bulkCopyReturnToActions = null;
+			returnToActions?.();
 		} catch (thrown) {
 			toastError(translateServerError(thrown));
 		} finally {
@@ -1466,7 +1484,7 @@
 				oncategory={(categoryId) =>
 					void applyBulkAction({ action: 'category', categoryId })}
 				onaction={(action) => void applyBulkAction(action)}
-				oncopy={() => void openBulkCopy()}
+				oncopy={(returnToActions) => void openBulkCopy(returnToActions)}
 				ondone={() => giftSelection.exit()}
 			/>
 		{/snippet}
@@ -1592,7 +1610,8 @@
 	selectedCount={selectionSnapshot.selectedIds.length}
 	loading={bulkCopyLoading}
 	submitting={bulkCopySubmitting}
-	onopenchange={(open) => (bulkCopyOpen = open)}
+	onopenchange={handleBulkCopyOpenChange}
+	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
 	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
 	onconfirm={() => void submitBulkCopy()}
 />

@@ -377,6 +377,40 @@ beforeEach(() => {
 });
 
 describe('bulkUpdateGifts presentation parity', () => {
+	it('revalidates archived status inside the mutation transaction', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ status: 'archived' })]);
+
+		await expect(
+			callBulkUpdate(makeRecipientAuthContext(), {
+				wishlistId: WISHLIST_ID,
+				giftIds: [GIFT_ID],
+				action: 'priority',
+				priorityLevelId: null,
+			}),
+		).rejects.toMatchObject({
+			status: 400,
+			message: SERVER_ERROR.CANNOT_MODIFY_ARCHIVED_WISHLIST,
+		});
+		expect(mockDbInstance.calls).toContainEqual({ method: 'transaction', args: [] });
+		expect(mockDbInstance.calls.filter((call) => call.method === 'update')).toHaveLength(0);
+	});
+
+	it('revalidates a revoked manager assignment inside the mutation transaction', async () => {
+		mockDbInstance.pushResult([makeWishlistRow({ recipientUserId: null, status: 'active' })]);
+		mockDbInstance.pushResult([]);
+
+		await expect(
+			callBulkUpdate(makeModeratorAuthContext(), {
+				wishlistId: WISHLIST_ID,
+				giftIds: [GIFT_ID],
+				action: 'received',
+				received: true,
+			}),
+		).rejects.toMatchObject({ status: 403, message: SERVER_ERROR.ACCESS_DENIED });
+		expect(mockDbInstance.calls).toContainEqual({ method: 'transaction', args: [] });
+		expect(mockDbInstance.calls.filter((call) => call.method === 'update')).toHaveLength(0);
+	});
+
 	it('applies post-share edit transparency to every changed presentation gift in one update statement', async () => {
 		const secondGiftId = 'gift-2';
 		mockDbInstance.pushResult([makeWishlistRow({ sharedAt: SHARED_AT, status: 'active' })]);

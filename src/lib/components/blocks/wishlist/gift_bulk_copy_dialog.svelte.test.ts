@@ -43,16 +43,20 @@ describe('GiftBulkCopyDialog', () => {
 		await screen.unmount();
 	});
 
-	it('reuses the bounded wishlist bottom sheet on narrow screens', async () => {
+	it('reuses the bounded wishlist bottom sheet and exposes nested Back on narrow screens', async () => {
 		await page.viewport(390, 760);
+		const onback = vi.fn();
 		const screen = await render(GiftBulkCopyDialog, {
 			...props(),
 			selectedDestinationId: 'destination',
+			onback,
 		});
 		const dialog = screen.getByRole('dialog', { name: m.gift_bulk_copy_title() });
 		await expect.element(dialog).toBeVisible();
 		expect(dialog.element()).toHaveClass('wishlist-bottom-sheet');
 		expect(getComputedStyle(dialog.element()).bottom).toBe('0px');
+		await dialog.getByRole('button', { name: m.gift_context_back() }).click();
+		expect(onback).toHaveBeenCalledOnce();
 		await screen.unmount();
 	});
 });
