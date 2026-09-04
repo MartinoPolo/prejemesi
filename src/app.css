@@ -273,6 +273,8 @@
 	--tag-edited-bg: #ece5fc;
 	--like-tint: #fdecec;
 	--link-tint: #f1edfd;
+	--gift-overlay-own-reservation: #16834f;
+	--gift-overlay-unavailable: #163b60;
 	--reserved-veil: color-mix(in oklab, var(--background) 55%, transparent);
 
 	/* Notebook patterns */
@@ -406,6 +408,8 @@
 	--tag-edited-bg: #43356e;
 	--like-tint: #57293a;
 	--link-tint: #352b60;
+	--gift-overlay-own-reservation: #16834f;
+	--gift-overlay-unavailable: #163b60;
 	--reserved-veil: color-mix(in oklab, var(--background) 62%, transparent);
 
 	/* Notebook patterns (dark) */

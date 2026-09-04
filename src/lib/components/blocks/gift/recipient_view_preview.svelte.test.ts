@@ -133,9 +133,16 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 			hideReservationState: false,
 		});
 
-		await expect.element(screen.getByText('Rezervováno', { exact: true })).toBeVisible();
-		await expect.element(screen.getByText('Babička')).toBeVisible();
-		await expect.element(screen.getByText('2 rezervováno', { exact: true })).toBeVisible();
+		const overlay = screen.getByTestId('gift-state-overlay');
+		await expect.element(screen.getByText('Rezervováno vámi', { exact: true })).toBeVisible();
+		const reserverLine = screen.getByText(/Babička/);
+		await expect.element(reserverLine).toBeVisible();
+		expect(reserverLine.element().textContent).toContain('Babička');
+		expect(overlay.element().contains(reserverLine.element())).toBe(false);
+		expect(overlay.element().textContent).not.toContain('Babička');
+		await expect
+			.element(screen.getByText('2 rezervováno', { exact: true }))
+			.not.toBeInTheDocument();
 		await expect.element(screen.getByTestId('reserve-button')).toBeInTheDocument();
 
 		await screen.unmount();

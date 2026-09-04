@@ -13,9 +13,12 @@
 
 <ContextMenu.Root>
 	<WishlistGiftDraggableWrapper {...props}>
-		<div data-testid="card-placeholder">
-			Card
-			<button type="button" data-testid="inner-button">Inner action</button>
+		<div data-testid="card-placeholder" class="grid h-32 grid-cols-[128px_minmax(0,1fr)]">
+			<div data-testid="image-placeholder" class="size-32">Image</div>
+			<div>
+				Card
+				<button type="button" data-testid="inner-button">Inner action</button>
+			</div>
 		</div>
 	</WishlistGiftDraggableWrapper>
 </ContextMenu.Root>

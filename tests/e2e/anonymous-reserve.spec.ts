@@ -95,15 +95,36 @@ test.describe('Anonymous visitor reservation', () => {
 		const mobileListItem = visitorPage
 			.getByTestId('gift-list-item')
 			.filter({ hasText: TEST_GIFT.name });
-		const imageBounds = await mobileListItem.getByTestId('gift-list-image').boundingBox();
-		const reserveBounds = await mobileListItem.getByTestId('reserve-button').boundingBox();
-		const likeBounds = await mobileListItem
-			.getByRole('button', { name: `Přidat do oblíbených: ${TEST_GIFT.name}` })
-			.boundingBox();
+		const image = mobileListItem.getByTestId('gift-list-image');
+		const reserve = mobileListItem.getByTestId('reserve-button');
+		const like = mobileListItem.getByRole('button', {
+			name: `Přidat do oblíbených: ${TEST_GIFT.name}`,
+		});
 		const moreActions = mobileListItem.getByRole('button', {
 			name: /Další akce|More actions/i,
 		});
-		const moreActionsBounds = await moreActions.boundingBox();
+		const [imageElement, reserveElement, likeElement, moreActionsElement] = await Promise.all([
+			image.elementHandle(),
+			reserve.elementHandle(),
+			like.elementHandle(),
+			moreActions.elementHandle(),
+		]);
+		expect(imageElement).not.toBeNull();
+		expect(reserveElement).not.toBeNull();
+		expect(likeElement).not.toBeNull();
+		expect(moreActionsElement).not.toBeNull();
+
+		// Read every rectangle in one browser task so a running view transition cannot
+		// move the card between separately awaited protocol calls.
+		const [imageBounds, reserveBounds, likeBounds, moreActionsBounds] =
+			await visitorPage.evaluate(
+				(elements) =>
+					elements.map((element) => {
+						const { x, y, width, height } = element.getBoundingClientRect();
+						return { x, y, width, height };
+					}),
+				[imageElement!, reserveElement!, likeElement!, moreActionsElement!],
+			);
 
 		expect(imageBounds).not.toBeNull();
 		expect(reserveBounds).not.toBeNull();

@@ -8,11 +8,10 @@
 
 	interface GiftStateOverlayProps {
 		model: GiftStateOverlayModel | null;
-		topRightAction?: boolean;
 		class?: string;
 	}
 
-	let { model, topRightAction = false, class: className }: GiftStateOverlayProps = $props();
+	let { model, class: className }: GiftStateOverlayProps = $props();
 
 	function label(kind: GiftOverlayKind, state: GiftStateOverlayModel): string {
 		switch (kind) {
@@ -39,26 +38,33 @@
 {#if model !== null}
 	<div
 		class={cn(
-			'pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center justify-center',
-			topRightAction ? 'right-12' : 'right-0',
+			'pointer-events-none absolute inset-0 z-10 flex items-center justify-center',
 			className,
 		)}
 		data-testid="gift-state-overlay"
 	>
 		<span
 			class={cn(
-				'flex min-w-0 max-w-full -rotate-3 flex-col items-center rounded-panel border-2 border-ink px-1 py-1.5 text-center text-xs font-extrabold shadow-sticker',
-				model.kind === 'own-reservation' && 'bg-reserved text-white',
-				model.kind === 'unavailable' && 'bg-ink text-background',
+				'flex w-[calc(100%_-_0.5rem)] max-w-[7.5rem] -rotate-1 flex-col items-center rounded-panel border-2 border-ink px-0.5 text-center text-[11px] leading-[13px] font-extrabold shadow-sticker sm:max-w-[8.25rem]',
+				model.kind === 'own-reservation' &&
+					'bg-[var(--gift-overlay-own-reservation)] text-white',
+				model.kind === 'unavailable' && 'bg-[var(--gift-overlay-unavailable)] text-white',
 				model.kind === 'partial' && 'bg-card text-foreground',
-				model.kind === 'received' && 'bg-primary text-primary-foreground',
+				model.kind === 'received' && 'bg-[var(--footer-bg)] text-white',
 			)}
 		>
-			<span class="max-w-full [overflow-wrap:anywhere]">{primaryLabel}</span>
+			<span
+				data-state-primary
+				class={cn(
+					'max-w-full font-black [overflow-wrap:anywhere]',
+					(model.kind !== 'unavailable' || supportLabel !== null) && 'whitespace-nowrap',
+				)}>{primaryLabel}</span
+			>
 			{#if supportLabel !== null}
 				<small
 					data-reservation-support
-					class="max-w-full font-semibold [overflow-wrap:anywhere]">{supportLabel}</small
+					class="max-w-full text-[9px] leading-[11px] font-semibold whitespace-nowrap"
+					>{supportLabel}</small
 				>
 			{/if}
 		</span>

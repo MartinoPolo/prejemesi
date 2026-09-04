@@ -1,7 +1,7 @@
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
 import WishlistGiftDraggableWrapperTestHost from './WishlistGiftDraggableWrapperTestHost.svelte';
 import { createGiftPointerReorderController } from './gift_pointer_reorder.svelte.js';
@@ -222,6 +222,61 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expect(container.querySelector('[data-selection-inert]')).toHaveAttribute('inert');
 		await userEvent.click(wrapper);
 		expect(toggle).toHaveBeenCalledWith('gift-alpha');
+		await unmount();
+	});
+
+	it('anchors list selection checkbox inside the mobile image reserved corner', async () => {
+		await page.viewport(390, 720);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			selectionMode: true,
+			selectionLayout: 'list',
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
+		const checkboxControl = wrapper.querySelector('[aria-hidden="true"]') as HTMLElement;
+		const imageRect = image.getBoundingClientRect();
+		const controlRect = checkboxControl.getBoundingClientRect();
+		const imageHorizontalMidpoint = imageRect.left + imageRect.width / 2;
+		const imageVerticalMidpoint = imageRect.top + imageRect.height / 2;
+
+		expect(imageRect.width).toBeCloseTo(128, 0);
+		expect(controlRect.width).toBeCloseTo(40, 0);
+		expect(controlRect.height).toBeCloseTo(40, 0);
+		expect(controlRect.top).toBeGreaterThanOrEqual(imageRect.top);
+		expect(controlRect.right).toBeLessThanOrEqual(imageRect.right - 4 + 0.5);
+		expect(controlRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
+		expect(controlRect.left).toBeGreaterThanOrEqual(imageHorizontalMidpoint);
+		expect(controlRect.top).toBeLessThan(imageVerticalMidpoint);
+		await userEvent.click(wrapper);
+		await unmount();
+	});
+
+	it('anchors the list reorder grip inside the mobile image reserved corner', async () => {
+		await page.viewport(390, 720);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+			selectionLayout: 'list',
+		});
+		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
+		const grip = container.querySelector(
+			`[aria-label="${m.gift_reorder_grip_label()}"]`,
+		) as HTMLElement;
+		const imageRect = image.getBoundingClientRect();
+		const gripRect = grip.getBoundingClientRect();
+		const imageHorizontalMidpoint = imageRect.left + imageRect.width / 2;
+		const imageVerticalMidpoint = imageRect.top + imageRect.height / 2;
+
+		expect(imageRect.width).toBeCloseTo(128, 0);
+		expect(gripRect.width).toBeCloseTo(40, 0);
+		expect(gripRect.height).toBeCloseTo(40, 0);
+		expect(gripRect.top).toBeGreaterThanOrEqual(imageRect.top);
+		expect(gripRect.right).toBeLessThanOrEqual(imageRect.right - 4 + 0.5);
+		expect(gripRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
+		expect(gripRect.left).toBeGreaterThanOrEqual(imageHorizontalMidpoint);
+		expect(gripRect.top).toBeLessThan(imageVerticalMidpoint);
 		await unmount();
 	});
 

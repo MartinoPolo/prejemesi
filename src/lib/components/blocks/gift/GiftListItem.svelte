@@ -2,12 +2,10 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import { Badge } from '$lib/components/base/badge/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import { Button } from '$lib/components/base/button/index.js';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
-	import GiftReservedSticker from '$lib/components/blocks/gift/GiftReservedSticker.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
@@ -31,7 +29,6 @@
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { cn } from '$lib/utils.js';
 	import GiftDescription from './GiftDescription.svelte';
-	import { useNarrowViewportState } from '$lib/components/derived/narrow_viewport_state.svelte.js';
 
 	interface GiftListItemProps {
 		gift: GiftByRole;
@@ -59,12 +56,11 @@
 		onmore,
 	}: GiftListItemProps = $props();
 
-	const narrowViewportState = useNarrowViewportState();
 	const displayState = $derived(
 		deriveGiftDisplayState(
 			gift,
 			role,
-			hideReservationState || contextualMode,
+			hideReservationState,
 			{
 				canLike: canLikeGift(role) && !hideReservationState && !contextualMode,
 				isArchived,
@@ -72,8 +68,7 @@
 			contextualMode,
 		),
 	);
-	const { isVisitorOrModerator, visitorGift, isFullyReserved, reservedCount } =
-		$derived(displayState);
+	const { isVisitorOrModerator, visitorGift, isFullyReserved } = $derived(displayState);
 	const presentation = $derived(displayState.presentation);
 	// Edit-icon hover affordance (issue #125 REQ-3): mirrors GiftCard's manager-only pencil icon.
 	const canManage = $derived(canManageWishlist(role) && !contextualMode);
@@ -135,29 +130,20 @@
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
 				size="md"
-				showCount={showLikeCount && !narrowViewportState.current}
+				showCount={showLikeCount}
 				class={cn(
 					'absolute right-1 top-1 z-20 h-10 min-h-10 min-w-10 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker sm:right-2 sm:top-auto sm:bottom-2',
-					showLikeCount && !narrowViewportState.current
-						? 'w-auto gap-1 px-1.5'
+					showLikeCount
+						? 'w-10 gap-0 p-0 max-sm:[&_[data-like-count]]:hidden sm:w-auto sm:gap-1 sm:px-1.5'
 						: 'w-10 p-0',
 				)}
 			/>
 		{/if}
-		{#if !contextualMode}
-			{#if narrowViewportState.current}
-				<GiftStateOverlay
-					model={presentation.overlay}
-					topRightAction={presentation.showLike && visitorGift != null}
-				/>
-			{:else if isVisitorOrModerator && isFullyReserved}
-				<GiftReservedSticker reserverLine={canManage ? reserverLine : null} />
-			{/if}
-		{/if}
+		<GiftStateOverlay model={presentation.overlay} />
 	</div>
 
 	<!-- Content and primary reservation action stay beside the image at every width. The dim
-	     lives here (not on the row) so the reserved sticker on the thumb stays crisp. -->
+	     lives here (not on the row) so the centered state overlay stays crisp. -->
 	<div
 		data-testid="gift-list-content"
 		class={cn(
@@ -172,20 +158,8 @@
 				{gift.name}
 			</h3>
 			<span class="max-sm:hidden">
-				<GiftPieceCount
-					quantity={gift.quantity}
-					role={hideReservationState || contextualMode ? 'recipient' : role}
-					{reservedCount}
-					reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
-					hideWhenOne
-				/>
+				<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
 			</span>
-			{#if !contextualMode && !narrowViewportState.current && gift.received}
-				<Badge tone="neutral" class="gap-1 text-[11px]">
-					<CheckIcon class="size-2.5" />
-					{m.gift_received_badge()}
-				</Badge>
-			{/if}
 		</div>
 
 		<div class="flex flex-wrap items-center gap-1.5 text-sm">
@@ -228,7 +202,7 @@
 			{/if}
 		</div>
 
-		{#if !contextualMode && narrowViewportState.current && role === 'moderator' && reserverLine !== null && reserverLine !== ''}
+		{#if role === 'moderator' && reserverLine !== null && reserverLine !== ''}
 			<p class="truncate text-[11px] font-semibold text-muted-foreground">
 				{reserverLine}
 			</p>
