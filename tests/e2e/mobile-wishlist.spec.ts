@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import * as m from '../../src/lib/paraglide/messages.js';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -486,32 +486,29 @@ test.describe('mobile wishlist acceptance', () => {
 			await attachScreenshot(page, testInfo, `toolbar-mask-${width}`);
 		}
 
-		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+		await page.setViewportSize({ width: 390, height: 500 });
 		await scrollContainer.evaluate((element) => {
 			element.scrollTop = 180;
 		});
 		const trigger = page.getByTestId('mobile-display-trigger');
-		const before = {
-			toolbar: await box(toolbar),
-			scrollTop: await scrollContainer.evaluate((element) => element.scrollTop),
-		};
+		const beforeToolbar = await box(toolbar);
 		await trigger.click();
 		const dialog = page.getByRole('dialog', { name: m.gift_display_options() });
+		const options = dialog.getByTestId('mobile-sheet-scroll');
+		const switcher = dialog.getByTestId('mobile-sheet-switcher');
+		const sectionSwitches = {
+			sort: dialog.getByTestId('mobile-sheet-sort-switch'),
+			grouping: dialog.getByTestId('mobile-sheet-grouping-switch'),
+			filter: dialog.getByTestId('mobile-sheet-filter-switch'),
+		};
 		await expect(dialog).toBeVisible();
-		await expect(dialog.getByTestId('mobile-sheet-scroll')).toBeVisible();
-		for (const selector of [
-			'mobile-sheet-sort-switch',
-			'mobile-sheet-grouping-switch',
-			'mobile-sheet-filter-switch',
-		]) {
-			await expect(dialog.getByTestId(selector)).toBeVisible();
-		}
-		expect(
-			await dialog.locator('[aria-pressed="true"]').count(),
-			'exactly one Display section is selected',
-		).toBe(1);
-		const dialogBox = await box(dialog);
-		expect(dialogBox.height).toBeLessThanOrEqual(MOBILE_HEIGHT * 0.8 + 1);
+		await dialog.evaluate(async (element) => {
+			await Promise.all(
+				element
+					.getAnimations({ subtree: true })
+					.map((animation) => animation.finished.catch(() => undefined)),
+			);
+		});
 		const [sheetZIndex, stickyZIndex] = await Promise.all([
 			dialog.evaluate((element) => Number.parseInt(getComputedStyle(element).zIndex, 10)),
 			toolbar.evaluate((element) =>
@@ -519,19 +516,122 @@ test.describe('mobile wishlist acceptance', () => {
 			),
 		]);
 		expect(sheetZIndex).toBeGreaterThan(stickyZIndex);
+
+		const displayGeometry: Array<{
+			width: number;
+			section: 'sort' | 'grouping' | 'filter';
+			x: number;
+			y: number;
+			boxWidth: number;
+			height: number;
+		}> = [];
+		for (const width of WIDTHS) {
+			await page.setViewportSize({ width, height: 500 });
+			const sectionBounds: Record<string, Awaited<ReturnType<typeof box>>> = {};
+			for (const section of ['sort', 'grouping', 'filter'] as const) {
+				await sectionSwitches[section].click();
+				await expect(sectionSwitches[section]).toHaveAttribute('aria-pressed', 'true');
+				await expect(sectionSwitches[section]).toBeFocused();
+				expect(
+					await dialog.locator('[aria-pressed="true"]').count(),
+					'exactly one Display section is selected',
+				).toBe(1);
+				expect(await page.getByRole('dialog').count(), 'one sheet stays open').toBe(1);
+				sectionBounds[section] = await box(switcher);
+				displayGeometry.push({
+					width,
+					section,
+					x: sectionBounds[section].x,
+					y: sectionBounds[section].y,
+					boxWidth: sectionBounds[section].width,
+					height: sectionBounds[section].height,
+				});
+				await attachScreenshot(page, testInfo, `display-${section}-${width}`);
+			}
+
+			const reference = sectionBounds.sort!;
+			for (const current of Object.values(sectionBounds)) {
+				expect(Math.abs(current.x - reference.x)).toBeLessThanOrEqual(1);
+				expect(Math.abs(current.y - reference.y)).toBeLessThanOrEqual(1);
+				expect(Math.abs(current.width - reference.width)).toBeLessThanOrEqual(1);
+				expect(Math.abs(current.height - reference.height)).toBeLessThanOrEqual(1);
+			}
+			const dialogBox = await box(dialog);
+			const safeAreaPadding = await dialog.evaluate((element) =>
+				Number.parseFloat(getComputedStyle(element).paddingBottom),
+			);
+			expect(reference.y + reference.height).toBeLessThanOrEqual(
+				dialogBox.y + dialogBox.height - safeAreaPadding + 1,
+			);
+		}
+		const geometryPath =
+			'test-results/mobile-wishlist-screenshots/display-switcher-geometry.json';
+		await writeFile(geometryPath, `${JSON.stringify(displayGeometry, null, 2)}\n`);
+		await testInfo.attach('display-switcher-geometry', {
+			path: geometryPath,
+			contentType: 'application/json',
+		});
+
+		await sectionSwitches.sort.click();
+		await expect(options).toHaveCSS('overflow-y', 'auto');
+		expect(await options.evaluate((element) => element.scrollHeight)).toBeGreaterThan(
+			await options.evaluate((element) => element.clientHeight),
+		);
+		const fixedBeforeScroll = await box(switcher);
+		await options.evaluate((element) => {
+			element.scrollTop = element.scrollHeight;
+		});
+		const fixedAfterScroll = await box(switcher);
+		expect(Math.abs(fixedAfterScroll.y - fixedBeforeScroll.y)).toBeLessThanOrEqual(1);
+		expect((await box(options)).y + (await box(options)).height).toBeLessThanOrEqual(
+			fixedAfterScroll.y + 1,
+		);
+		const finalSortOption = await box(
+			dialog.getByRole('radio', { name: m.gift_sort_date_added() }),
+		);
+		expect(finalSortOption.y + finalSortOption.height).toBeLessThanOrEqual(
+			fixedAfterScroll.y + 1,
+		);
+
+		await sectionSwitches.filter.click();
+		await dialog.getByRole('checkbox', { name: m.gift_filter_show_received() }).click();
+		await expect(trigger).toContainText('1');
+		await sectionSwitches.grouping.click();
+		await sectionSwitches.sort.click();
+		await expect(dialog.getByRole('radio', { name: m.gift_sort_owner_order() })).toBeChecked();
+		await sectionSwitches.filter.click();
+		await expect(
+			dialog.getByRole('checkbox', { name: m.gift_filter_show_received() }),
+		).toBeChecked();
+		await expect(dialog.getByText(m.filter_active_count({ count: 1 }))).toBeVisible();
 		await page.keyboard.press('Tab');
 		expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
 			true,
+		);
+		const scrollTopBeforeEscape = await scrollContainer.evaluate(
+			(element) => element.scrollTop,
 		);
 		await page.keyboard.press('Escape');
 		await expect(dialog).toBeHidden();
 		await expect(trigger).toBeFocused();
 		expect(await scrollContainer.evaluate((element) => element.scrollTop)).toBe(
-			before.scrollTop,
+			scrollTopBeforeEscape,
 		);
 		const afterToolbar = await box(toolbar);
-		expect(afterToolbar.x).toBeCloseTo(before.toolbar.x, 0);
-		expect(afterToolbar.width).toBeCloseTo(before.toolbar.width, 0);
+		expect(afterToolbar.x).toBeCloseTo(beforeToolbar.x, 0);
+		expect(afterToolbar.width).toBeCloseTo(beforeToolbar.width, 0);
+
+		await trigger.click();
+		await expect(dialog).toBeVisible();
+		const scrollTopBeforeBackdrop = await scrollContainer.evaluate(
+			(element) => element.scrollTop,
+		);
+		await page.mouse.click(4, 20);
+		await expect(dialog).toBeHidden();
+		await expect(trigger).toBeFocused();
+		expect(await scrollContainer.evaluate((element) => element.scrollTop)).toBe(
+			scrollTopBeforeBackdrop,
+		);
 
 		await resetAllScroll(page);
 		await page.locator('[data-gift-item]').first().getByRole('heading', { level: 3 }).click();

@@ -203,6 +203,108 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		await screen.unmount();
 	});
 
+	it('pins the section switcher after the independently scrolling options at narrow widths', async () => {
+		const categoryFilterOptions = Array.from({ length: 8 }, (_, index) => ({
+			value: `category-${index}`,
+			label: `Kategorie ${index}`,
+		}));
+		const priorityFilterOptions = Array.from({ length: 5 }, (_, index) => ({
+			value: `priority-${index}`,
+			label: `Priorita ${index}`,
+		}));
+
+		for (const width of [320, 360, 390]) {
+			const screen = await renderToolbar(
+				{
+					isAuthenticated: true,
+					sortOption: GIFT_SORT_OPTIONS.name,
+					filters: {
+						...defaultFilters,
+						withLinkOnly: true,
+						categoryValues: ['category-0'],
+					},
+					groupingAvailability: { priority: true, category: true },
+					categoryFilterOptions,
+					priorityFilterOptions,
+				},
+				width,
+			);
+			await page.viewport(width, 500);
+			await screen.getByTestId('mobile-display-trigger').click();
+			await frames();
+			const dialog = screen.getByRole('dialog', { name: m.gift_display_options() }).element();
+			await Promise.all(
+				dialog.getAnimations({ subtree: true }).map((animation) => animation.finished),
+			);
+			const scroll = screen.getByTestId('mobile-sheet-scroll').element() as HTMLElement;
+			const switcher = screen.getByTestId('mobile-sheet-switcher').element() as HTMLElement;
+			const sectionButtons = [
+				screen.getByTestId('mobile-sheet-sort-switch'),
+				screen.getByTestId('mobile-sheet-grouping-switch'),
+				screen.getByTestId('mobile-sheet-filter-switch'),
+			];
+			const switcherBounds = switcher.getBoundingClientRect();
+			const dialogBounds = dialog.getBoundingClientRect();
+			const bottomSafeArea = parseFloat(getComputedStyle(dialog).paddingBottom);
+
+			expect(dialogBounds.height).toBeCloseTo(400, 0);
+			expect(
+				scroll.compareDocumentPosition(switcher) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			expect(getComputedStyle(scroll).overflowY).toBe('auto');
+			expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
+			expect(scroll.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+				switcherBounds.top + 1,
+			);
+			expect(switcherBounds.bottom).toBeLessThanOrEqual(
+				dialogBounds.bottom - bottomSafeArea + 1,
+			);
+
+			scroll.scrollTop = scroll.scrollHeight;
+			await frames(1);
+			const scrolledSwitcherBounds = switcher.getBoundingClientRect();
+			expect(scrolledSwitcherBounds.x).toBeCloseTo(switcherBounds.x, 1);
+			expect(scrolledSwitcherBounds.y).toBeCloseTo(switcherBounds.y, 1);
+			expect(scrolledSwitcherBounds.width).toBeCloseTo(switcherBounds.width, 1);
+			expect(scrolledSwitcherBounds.height).toBeCloseTo(switcherBounds.height, 1);
+
+			for (const sectionButton of sectionButtons.slice(1)) {
+				await sectionButton.click();
+				await frames(1);
+				const currentBounds = switcher.getBoundingClientRect();
+				expect(currentBounds.x).toBeCloseTo(switcherBounds.x, 1);
+				expect(currentBounds.y).toBeCloseTo(switcherBounds.y, 1);
+				expect(currentBounds.width).toBeCloseTo(switcherBounds.width, 1);
+				expect(currentBounds.height).toBeCloseTo(switcherBounds.height, 1);
+				expect(
+					sectionButtons.filter(
+						(button) => button.element().getAttribute('aria-pressed') === 'true',
+					),
+				).toHaveLength(1);
+				expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+			}
+
+			await sectionButtons[0].click();
+			await expect
+				.element(screen.getByRole('radio', { name: m.gift_sort_name() }))
+				.toBeChecked();
+			expect(screen.getByTestId('mobile-display-trigger').element()).toHaveTextContent('2');
+			await sectionButtons[2].click();
+			await expect
+				.element(screen.getByRole('checkbox', { name: m.gift_filter_with_link() }))
+				.toBeChecked();
+			await expect
+				.element(screen.getByRole('checkbox', { name: 'Kategorie 0' }))
+				.toBeChecked();
+			(
+				screen.getByTestId('mobile-sheet-grouping-switch').element() as HTMLButtonElement
+			).focus();
+			await expect.element(screen.getByTestId('mobile-sheet-grouping-switch')).toHaveFocus();
+			expect(switcher.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
+			await screen.unmount();
+		}
+	});
+
 	it('preserves all filter gates, facet choices, row activation, and reset semantics', async () => {
 		const onfilterchange = vi.fn();
 		const onsortchange = vi.fn();
@@ -343,7 +445,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		await userEvent.keyboard('{Tab}');
 		expect(dialog.element().contains(document.activeElement)).toBe(true);
 		await userEvent.keyboard('{Escape}');
-		await frames(3);
+		await frames(5);
 		expect(document.activeElement).toBe(trigger);
 		expect(window.scrollY).toBe(scrollBefore);
 		const after = toolbar.getBoundingClientRect();

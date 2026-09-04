@@ -728,10 +728,11 @@
 	<Sheet.Root open={mobileOpenDisplayControl !== null} onOpenChange={handleMobileSheetOpenChange}>
 		{#if mobileOpenDisplayControl !== null}
 			<WishlistBottomSheet
+				class="mobile-display-sheet"
 				portalDisabled
 				onCloseAutoFocus={(event) => event.preventDefault()}
 			>
-				<Sheet.Header class="border-border border-b px-4 py-3">
+				<Sheet.Header class="border-border shrink-0 border-b px-4 py-3">
 					<Sheet.Title>{m.gift_display_options()}</Sheet.Title>
 					<Sheet.Description>
 						{mobileOpenDisplayControl === 'sort'
@@ -745,36 +746,6 @@
 									}`}
 					</Sheet.Description>
 				</Sheet.Header>
-				<div
-					class="mobile-sheet-switcher"
-					role="group"
-					aria-label={m.gift_display_options()}
-				>
-					<Button
-						size="md"
-						intent="ghost"
-						aria-pressed={mobileOpenDisplayControl === 'sort'}
-						data-testid="mobile-sheet-sort-switch"
-						onclick={() => openMobileDisplaySheet('sort')}
-						><ArrowUpDownIcon data-icon="inline-start" />{m.gift_sort_by()}</Button
-					>
-					<Button
-						size="md"
-						intent="ghost"
-						aria-pressed={mobileOpenDisplayControl === 'grouping'}
-						data-testid="mobile-sheet-grouping-switch"
-						onclick={() => openMobileDisplaySheet('grouping')}
-						><LayersIcon data-icon="inline-start" />{m.gift_grouping_label()}</Button
-					>
-					<Button
-						size="md"
-						intent="ghost"
-						aria-pressed={mobileOpenDisplayControl === 'filter'}
-						data-testid="mobile-sheet-filter-switch"
-						onclick={() => openMobileDisplaySheet('filter')}
-						><ListFilterPlusIcon data-icon="inline-start" />{m.gift_filter()}</Button
-					>
-				</div>
 				<div class="mobile-sheet-scroll" data-testid="mobile-sheet-scroll">
 					{#if mobileOpenDisplayControl === 'sort'}
 						{#each GIFT_SORT_KEYS as option (option)}
@@ -858,6 +829,37 @@
 							>
 						{/if}
 					{/if}
+				</div>
+				<div
+					class="mobile-sheet-switcher"
+					role="group"
+					aria-label={m.gift_display_options()}
+					data-testid="mobile-sheet-switcher"
+				>
+					<Button
+						size="md"
+						intent="ghost"
+						aria-pressed={mobileOpenDisplayControl === 'sort'}
+						data-testid="mobile-sheet-sort-switch"
+						onclick={() => openMobileDisplaySheet('sort')}
+						><ArrowUpDownIcon data-icon="inline-start" />{m.gift_sort_by()}</Button
+					>
+					<Button
+						size="md"
+						intent="ghost"
+						aria-pressed={mobileOpenDisplayControl === 'grouping'}
+						data-testid="mobile-sheet-grouping-switch"
+						onclick={() => openMobileDisplaySheet('grouping')}
+						><LayersIcon data-icon="inline-start" />{m.gift_grouping_label()}</Button
+					>
+					<Button
+						size="md"
+						intent="ghost"
+						aria-pressed={mobileOpenDisplayControl === 'filter'}
+						data-testid="mobile-sheet-filter-switch"
+						onclick={() => openMobileDisplaySheet('filter')}
+						><ListFilterPlusIcon data-icon="inline-start" />{m.gift_filter()}</Button
+					>
 				</div>
 			</WishlistBottomSheet>
 		{/if}
@@ -1171,11 +1173,16 @@
 		line-height: 1;
 	}
 
+	:global(.wishlist-bottom-sheet.mobile-display-sheet) {
+		height: 80dvh;
+	}
+
 	.mobile-sheet-switcher {
 		display: flex;
 		min-width: 0;
+		flex: 0 0 auto;
 		gap: 0.25rem;
-		border-bottom: 1px solid var(--border);
+		border-top: 1px solid var(--border);
 		padding: 0.5rem;
 	}
 
