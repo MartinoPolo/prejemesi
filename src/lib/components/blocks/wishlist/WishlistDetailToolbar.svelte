@@ -413,7 +413,6 @@
 		},
 	]);
 	const activeFilters = $derived(normalizeActiveFilters(filterDefinitions, filterFacets));
-	const sortCombinedLabel = $derived(`${m.gift_sort_by()}: ${GIFT_SORT_LABELS[sortOption]()}`);
 
 	let previousReorderMode = $state<boolean | null>(null);
 	let reorderAnnouncement = $state('');
