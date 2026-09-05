@@ -1070,10 +1070,25 @@
 	.wishlist-toolbar-mask {
 		position: absolute;
 		z-index: 0;
-		inset: -0.75rem 0 -0.5rem;
-		background: color-mix(in oklab, var(--background) 92%, transparent);
+		inset-block: -0.75rem 0;
+		inset-inline-start: 50%;
+		inline-size: 100cqw;
+		transform: translateX(-50%);
+		background: var(--app-page-background);
 		backdrop-filter: blur(10px);
 		pointer-events: auto;
+	}
+
+	.wishlist-toolbar-mask::after {
+		position: absolute;
+		inset-block-start: 100%;
+		inset-inline: 0;
+		block-size: 1.5rem;
+		background: var(--app-page-background);
+		backdrop-filter: blur(10px);
+		content: '';
+		mask-image: linear-gradient(to bottom, #000, transparent);
+		pointer-events: none;
 	}
 
 	.wishlist-toolbar {

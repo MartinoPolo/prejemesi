@@ -408,83 +408,211 @@ test.describe('mobile wishlist acceptance', () => {
 		);
 
 		const scrollContainer = page.locator('main.app-content');
-		for (const width of WIDTHS) {
-			await page.setViewportSize({ width, height: 500 });
-			await scrollContainer.evaluate((element) => {
-				element.scrollTop = element.scrollHeight;
-			});
-			const [toolbarBox, scrollContainerBox, toolbarStyle, maskStyle] = await Promise.all([
-				box(toolbar),
-				box(scrollContainer),
-				toolbar.evaluate((element) => {
-					const style = getComputedStyle(element);
-					return {
-						backgroundColor: style.backgroundColor,
-						borderColors: [
-							style.borderTopColor,
-							style.borderRightColor,
-							style.borderBottomColor,
-							style.borderLeftColor,
-						],
-						borderStyles: [
-							style.borderTopStyle,
-							style.borderRightStyle,
-							style.borderBottomStyle,
-							style.borderLeftStyle,
-						],
-						zIndex: style.zIndex,
-					};
-				}),
-				toolbarMask.evaluate((element) => {
-					const style = getComputedStyle(element);
-					return {
-						backgroundColor: style.backgroundColor,
-						backdropFilter: style.backdropFilter,
-						pointerEvents: style.pointerEvents,
-						zIndex: style.zIndex,
-					};
-				}),
-			]);
-			expect(toolbarBox.y).toBeCloseTo(scrollContainerBox.y + 12, 0);
-			expect(toolbarStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-			expect(new Set(toolbarStyle.borderColors).size).toBe(1);
-			expect(toolbarStyle.borderColors[0]).not.toBe('rgba(0, 0, 0, 0)');
-			expect(toolbarStyle.borderStyles).toEqual(['solid', 'solid', 'solid', 'solid']);
-			expect(toolbarStyle.zIndex).toBe('1');
-			expect(maskStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-			expect(maskStyle.backdropFilter).toContain('blur');
-			expect(maskStyle.pointerEvents).toBe('auto');
-			expect(maskStyle.zIndex).toBe('0');
-			expect(
-				await page
-					.locator(
-						'[data-testid="wishlist-gift-card-grid"], [data-testid="wishlist-gift-list"]',
-					)
-					.evaluate((collection) => getComputedStyle(collection).isolation),
-			).toBe('isolate');
-
-			await page.locator('[data-gift-item]').evaluateAll((items) => {
-				for (const item of items) {
-					item.addEventListener('click', () => {
+		const wishlistShell = page.getByTestId('wishlist-page-shell');
+		await expect(wishlistShell).toHaveAttribute('data-palette', 'sky');
+		await page.locator('html').evaluate((element) => {
+			element.dataset.palette = 'grape';
+		});
+		await page.locator('body').evaluate((body) => {
+			body.dataset.maskInteractionProbe = 'active';
+		});
+		await page.locator('[data-gift-item]').evaluateAll((items) => {
+			for (const item of items) {
+				item.addEventListener(
+					'click',
+					(event) => {
+						if (document.body.dataset.maskInteractionProbe !== 'active') {
+							return;
+						}
+						event.preventDefault();
+						event.stopImmediatePropagation();
 						document.body.dataset.maskGiftClicked = 'true';
+					},
+					{ capture: true },
+				);
+			}
+		});
+
+		const maskViewports = [320, 360, 390, 768, 1280] as const;
+		for (const mode of ['light', 'dark'] as const) {
+			await page.locator('html').evaluate((element, dark) => {
+				element.classList.toggle('dark', dark);
+			}, mode === 'dark');
+			for (const width of maskViewports) {
+				await page.setViewportSize({ width, height: 500 });
+				await page
+					.locator('[data-gift-item]')
+					.first()
+					.evaluate((element) => {
+						element.scrollIntoView({ block: 'start' });
 					});
-				}
-			});
-			const maskedPoint = {
-				x: toolbarBox.x + toolbarBox.width / 2,
-				y: toolbarBox.y + toolbarBox.height + 4,
-			};
-			expect(
 				await page.evaluate(
-					({ x, y }) =>
-						(document.elementFromPoint(x, y) as HTMLElement | null)?.dataset.testid,
-					maskedPoint,
-				),
-			).toBe('wishlist-toolbar-mask');
-			await page.mouse.click(maskedPoint.x, maskedPoint.y);
-			expect(await page.locator('body').getAttribute('data-mask-gift-clicked')).toBeNull();
-			await attachScreenshot(page, testInfo, `toolbar-mask-${width}`);
+					() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+				);
+
+				const [
+					toolbarBox,
+					maskBox,
+					scrollContainerBox,
+					firstGiftBox,
+					toolbarStyle,
+					maskStyle,
+					pageColors,
+					scrollContainerClientWidth,
+				] = await Promise.all([
+					box(toolbar),
+					box(toolbarMask),
+					box(scrollContainer),
+					box(page.locator('[data-gift-item]').first()),
+					toolbar.evaluate((element) => {
+						const style = getComputedStyle(element);
+						return {
+							backgroundColor: style.backgroundColor,
+							borderColors: [
+								style.borderTopColor,
+								style.borderRightColor,
+								style.borderBottomColor,
+								style.borderLeftColor,
+							],
+							borderStyles: [
+								style.borderTopStyle,
+								style.borderRightStyle,
+								style.borderBottomStyle,
+								style.borderLeftStyle,
+							],
+							zIndex: style.zIndex,
+						};
+					}),
+					toolbarMask.evaluate((element) => {
+						const style = getComputedStyle(element);
+						const fadeStyle = getComputedStyle(element, '::after');
+						return {
+							backgroundColor: style.backgroundColor,
+							backdropFilter: style.backdropFilter,
+							pointerEvents: style.pointerEvents,
+							zIndex: style.zIndex,
+							fadeBackgroundColor: fadeStyle.backgroundColor,
+							fadeBackdropFilter: fadeStyle.backdropFilter,
+							fadeHeight: Number.parseFloat(fadeStyle.height),
+							fadeMaskImage: fadeStyle.maskImage,
+							fadePointerEvents: fadeStyle.pointerEvents,
+						};
+					}),
+					wishlistShell.evaluate((shell) => {
+						function resolveBackground(element: Element, token: string) {
+							const probe = document.createElement('div');
+							probe.style.backgroundColor = `var(${token})`;
+							element.append(probe);
+							const color = getComputedStyle(probe).backgroundColor;
+							probe.remove();
+							return color;
+						}
+
+						const root = document.documentElement;
+						return {
+							rootBackground: getComputedStyle(document.body).backgroundColor,
+							rootAppBackground: resolveBackground(
+								document.body,
+								'--app-page-background',
+							),
+							wishlistAppBackground: resolveBackground(
+								shell,
+								'--app-page-background',
+							),
+							wishlistBackground: resolveBackground(shell, '--background'),
+							rootToken: getComputedStyle(root)
+								.getPropertyValue('--app-page-background')
+								.trim(),
+							wishlistToken: getComputedStyle(shell)
+								.getPropertyValue('--app-page-background')
+								.trim(),
+						};
+					}),
+					scrollContainer.evaluate((element) => element.clientWidth),
+				]);
+
+				expect(toolbarBox.y).toBeCloseTo(scrollContainerBox.y + 12, 0);
+				expect(toolbarStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+				expect(new Set(toolbarStyle.borderColors).size).toBe(1);
+				expect(toolbarStyle.borderColors[0]).not.toBe('rgba(0, 0, 0, 0)');
+				expect(toolbarStyle.borderStyles).toEqual(['solid', 'solid', 'solid', 'solid']);
+				expect(toolbarStyle.zIndex).toBe('1');
+				expect(maskStyle.backgroundColor).toBe(pageColors.rootBackground);
+				expect(maskStyle.backgroundColor).toBe(pageColors.rootAppBackground);
+				expect(pageColors.wishlistAppBackground).toBe(pageColors.rootAppBackground);
+				expect(pageColors.wishlistBackground).not.toBe(pageColors.rootBackground);
+				expect(pageColors.wishlistToken).toBe(pageColors.rootToken);
+				expect(maskStyle.backdropFilter).toContain('blur');
+				expect(maskStyle.pointerEvents).toBe('auto');
+				expect(maskStyle.zIndex).toBe('0');
+				expect(maskStyle.fadeBackgroundColor).toBe(pageColors.rootBackground);
+				expect(maskStyle.fadeBackdropFilter).toContain('blur');
+				expect(maskStyle.fadeHeight).toBe(24);
+				expect(maskStyle.fadeMaskImage).toContain('linear-gradient');
+				expect(maskStyle.fadePointerEvents).toBe('none');
+				expect(maskBox.x).toBeCloseTo(scrollContainerBox.x, 0);
+				expect(maskBox.width).toBeCloseTo(scrollContainerClientWidth, 0);
+				expect(maskBox.y).toBeCloseTo(scrollContainerBox.y, 0);
+				expect(maskBox.y + maskBox.height).toBeCloseTo(toolbarBox.y + toolbarBox.height, 0);
+				expect(
+					await page
+						.locator(
+							'[data-testid="wishlist-gift-card-grid"], [data-testid="wishlist-gift-list"]',
+						)
+						.evaluate((collection) => getComputedStyle(collection).isolation),
+				).toBe('isolate');
+
+				const maskedPoint = {
+					x: toolbarBox.x + toolbarBox.width / 2,
+					y: toolbarBox.y - 6,
+				};
+				const maskedHitTest = await page.evaluate(({ x, y }) => {
+					const elements = document.elementsFromPoint(x, y);
+					return {
+						maskParticipates: elements.some(
+							(element) =>
+								(element as HTMLElement).dataset.testid === 'wishlist-toolbar-mask',
+						),
+						topIsGift: Boolean(
+							(elements[0] as HTMLElement | undefined)?.closest('[data-gift-item]'),
+						),
+					};
+				}, maskedPoint);
+				expect(maskedHitTest.maskParticipates).toBe(true);
+				expect(maskedHitTest.topIsGift).toBe(false);
+				await page.mouse.click(maskedPoint.x, maskedPoint.y);
+				expect(
+					await page.locator('body').getAttribute('data-mask-gift-clicked'),
+				).toBeNull();
+
+				const usableCardPoint = {
+					x: firstGiftBox.x + firstGiftBox.width / 2,
+					y: toolbarBox.y + toolbarBox.height + 28,
+				};
+				expect(
+					await page.evaluate(
+						({ x, y }) =>
+							(document.elementFromPoint(x, y) as HTMLElement | null)?.closest(
+								'[data-gift-item]',
+							) !== null,
+						usableCardPoint,
+					),
+				).toBe(true);
+				await page.mouse.click(usableCardPoint.x, usableCardPoint.y);
+				expect(await page.locator('body').getAttribute('data-mask-gift-clicked')).toBe(
+					'true',
+				);
+				await page.locator('body').evaluate((body) => {
+					delete body.dataset.maskGiftClicked;
+				});
+				expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+				await attachScreenshot(page, testInfo, `toolbar-mask-${mode}-${width}`);
+			}
 		}
+		await page.locator('body').evaluate((body) => {
+			delete body.dataset.maskInteractionProbe;
+			delete body.dataset.maskGiftClicked;
+		});
 
 		await page.setViewportSize({ width: 390, height: 500 });
 		await scrollContainer.evaluate((element) => {
