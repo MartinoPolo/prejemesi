@@ -85,6 +85,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Typed resolution freezes the root background color before nested wishlist palettes inherit it. */
+@property --app-page-background {
+	syntax: '<color>';
+	inherits: true;
+	initial-value: #fff;
+}
+
 /* ── Palette primitives ──────────────────────────────────────────────────
    10 curated palettes. Palettes without --p-accent inherit sky's yellow.
    `data-palette` on <html> themes the app; on any wrapper element it
@@ -166,6 +173,8 @@
 
 /* ── Non-color tokens (palette-independent) ────────────────────────────── */
 :root {
+	--app-page-background: var(--background);
+
 	/* ── Spacing (4px base) ────────────────────────────────── */
 	--space-1: 4px;
 	--space-2: 8px;
@@ -770,6 +779,10 @@
 
 [data-gift-item][aria-selected='true'] {
 	outline-style: solid;
+}
+
+main.app-content {
+	container-type: inline-size;
 }
 
 @layer base {
