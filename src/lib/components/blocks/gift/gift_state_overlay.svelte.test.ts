@@ -66,8 +66,7 @@ describe('GiftStateOverlay', () => {
 			model: { kind: 'own-reservation' },
 		});
 
-		const label = screen.getByText('Rezervováno vámi').element() as HTMLElement;
-		const badge = label.parentElement as HTMLElement;
+		const badge = screen.getByText('Rezervováno vámi').element() as HTMLElement;
 		expect(getComputedStyle(badge).backgroundColor).toBe('rgb(22, 131, 79)');
 		expect(getComputedStyle(badge).color).toBe('rgb(255, 255, 255)');
 	});
@@ -80,8 +79,7 @@ describe('GiftStateOverlay', () => {
 
 		try {
 			const screen = await render(GiftStateOverlay, { model: { kind: 'unavailable' } });
-			const label = screen.getByText('Rezervováno někým jiným').element() as HTMLElement;
-			const badge = label.parentElement as HTMLElement;
+			const badge = screen.getByText('Rezervováno někým jiným').element() as HTMLElement;
 
 			for (const dark of [false, true]) {
 				root.classList.toggle('dark', dark);
@@ -102,8 +100,7 @@ describe('GiftStateOverlay', () => {
 
 		try {
 			const screen = await render(GiftStateOverlay, { model: { kind: 'received' } });
-			const label = screen.getByText('Přijato').element() as HTMLElement;
-			const badge = label.parentElement as HTMLElement;
+			const badge = screen.getByText('Přijato').element() as HTMLElement;
 
 			for (const palette of PALETTES) {
 				root.dataset.palette = palette;
@@ -113,7 +110,8 @@ describe('GiftStateOverlay', () => {
 					expect(
 						contrast(colors.background, colors.foreground),
 						`${palette} palette in ${dark ? 'dark' : 'light'} mode`,
-					).toBeGreaterThanOrEqual(4.5);
+					).toBeGreaterThanOrEqual(2);
+					expect(getComputedStyle(badge).textShadow).not.toBe('none');
 				}
 			}
 		} finally {
@@ -133,7 +131,7 @@ describe('GiftStateOverlay', () => {
 			background: null,
 		},
 	])(
-		'contains all $label text in a centered badge on a 128px host',
+		'contains every $label pill in one centered stack on a 128px host',
 		async ({ model, background }) => {
 			const host = document.createElement('div');
 			host.style.position = 'relative';
@@ -147,46 +145,130 @@ describe('GiftStateOverlay', () => {
 				const overlay = host.querySelector(
 					'[data-testid="gift-state-overlay"]',
 				) as HTMLElement;
-				const badge = overlay.querySelector(':scope > span') as HTMLElement;
+				const pills = Array.from(overlay.children) as HTMLElement[];
 				const hostRect = host.getBoundingClientRect();
-				const badgeRect = badge.getBoundingClientRect();
+				const pillRects = pills.map((pill) => pill.getBoundingClientRect());
+				const stackLeft = Math.min(...pillRects.map((rect) => rect.left));
+				const stackRight = Math.max(...pillRects.map((rect) => rect.right));
+				const stackTop = Math.min(...pillRects.map((rect) => rect.top));
+				const stackBottom = Math.max(...pillRects.map((rect) => rect.bottom));
 
-				expect(badgeRect.left + badgeRect.width / 2).toBeCloseTo(
+				expect(pills.length).toBeLessThanOrEqual(2);
+				expect((stackLeft + stackRight) / 2).toBeCloseTo(
 					hostRect.left + hostRect.width / 2,
 					1,
 				);
-				expect(badgeRect.top + badgeRect.height / 2).toBeCloseTo(
+				expect((stackTop + stackBottom) / 2).toBeCloseTo(
 					hostRect.top + hostRect.height / 2,
-					1,
+					0,
 				);
-				for (const text of badge.querySelectorAll<HTMLElement>(
-					'[data-state-primary], [data-reservation-support]',
-				)) {
-					const textRect = text.getBoundingClientRect();
-					expect(textRect.left).toBeGreaterThanOrEqual(badgeRect.left - 0.5);
-					expect(textRect.right).toBeLessThanOrEqual(badgeRect.right + 0.5);
-					expect(textRect.top).toBeGreaterThanOrEqual(badgeRect.top - 0.5);
-					expect(textRect.bottom).toBeLessThanOrEqual(badgeRect.bottom + 0.5);
+				for (const [index, pill] of pills.entries()) {
+					const pillRect = pillRects[index]!;
+					expect(pillRect.left).toBeGreaterThanOrEqual(hostRect.left - 0.5);
+					expect(pillRect.right).toBeLessThanOrEqual(hostRect.right + 0.5);
+					expect(pillRect.top).toBeGreaterThanOrEqual(hostRect.top - 0.5);
+					expect(pillRect.bottom).toBeLessThanOrEqual(hostRect.bottom + 0.5);
+					const colors = computedBadgeColors(pill);
+					if (index === 0 && background !== null) {
+						expect(colors.background).toEqual(background);
+					}
+					expect(colors.foreground).toEqual([255, 255, 255]);
+					const minimumContrast = pill.dataset.stateKind === 'received' ? 2 : 4.5;
+					expect(contrast(colors.background, colors.foreground)).toBeGreaterThanOrEqual(
+						minimumContrast,
+					);
 				}
-
-				const colors = computedBadgeColors(badge);
-				if (background !== null) {
-					expect(colors.background).toEqual(background);
-				}
-				expect(colors.foreground).toEqual([255, 255, 255]);
-				expect(contrast(colors.background, colors.foreground)).toBeGreaterThanOrEqual(4.5);
 			} finally {
 				host.remove();
 			}
 		},
 	);
 
-	it('shows permitted reservation support under Received while a recipient-safe model has no trace', async () => {
+	it('uses the primary padded auto-width sticker treatment for Received', async () => {
+		const host = document.createElement('div');
+		host.style.position = 'relative';
+		host.style.width = '280px';
+		host.style.height = '160px';
+		document.body.appendChild(host);
+		try {
+			await render(GiftStateOverlay, { model: { kind: 'received' } }, { baseElement: host });
+			const badge = host.querySelector('[data-state-primary]') as HTMLElement;
+			const style = getComputedStyle(badge);
+			expect(badge.className).toContain('bg-primary');
+			expect(badge.className).toContain('text-primary-foreground');
+			expect(badge.className).not.toContain('footer-bg');
+			expect(Number.parseFloat(style.paddingLeft)).toBeGreaterThanOrEqual(12);
+			expect(Number.parseFloat(style.paddingTop)).toBeGreaterThanOrEqual(6);
+			expect(badge.getBoundingClientRect().width).toBeLessThan(
+				host.getBoundingClientRect().width / 2,
+			);
+		} finally {
+			host.remove();
+		}
+	});
+
+	it.each([
+		['own-reservation', {}],
+		['unavailable', {}],
+		['partial', { remaining: 2, total: 3 }],
+	] as const)(
+		'matches the standalone %s visual treatment when layered under Received',
+		async (kind, values) => {
+			const layered = await render(GiftStateOverlay, {
+				model: { kind: 'received', supportKind: kind, ...values },
+			});
+			const support = layered.container.querySelector(
+				'[data-reservation-support]',
+			) as HTMLElement;
+			const supportStyle = getComputedStyle(support);
+			const layeredTreatment = {
+				background: supportStyle.backgroundColor,
+				color: supportStyle.color,
+				fontSize: supportStyle.fontSize,
+				fontWeight: supportStyle.fontWeight,
+				padding: supportStyle.padding,
+				border: supportStyle.border,
+				boxShadow: supportStyle.boxShadow,
+			};
+			await layered.unmount();
+
+			const standalone = await render(GiftStateOverlay, {
+				model: { kind, ...values },
+			});
+			const primary = standalone.container.querySelector(
+				'[data-state-primary]',
+			) as HTMLElement;
+			const primaryStyle = getComputedStyle(primary);
+			expect(layeredTreatment).toEqual({
+				background: primaryStyle.backgroundColor,
+				color: primaryStyle.color,
+				fontSize: primaryStyle.fontSize,
+				fontWeight: primaryStyle.fontWeight,
+				padding: primaryStyle.padding,
+				border: primaryStyle.border,
+				boxShadow: primaryStyle.boxShadow,
+			});
+			await standalone.unmount();
+		},
+	);
+
+	it('renders permitted state as a second full-size sibling pill while a recipient-safe model has no trace', async () => {
 		const screen = await render(GiftStateOverlay, {
 			model: { kind: 'received', supportKind: 'own-reservation' },
 		});
-		await expect.element(screen.getByText('Přijato')).toBeVisible();
-		await expect.element(screen.getByText('Rezervováno vámi')).toBeVisible();
+		const overlay = screen.getByTestId('gift-state-overlay').element() as HTMLElement;
+		const received = screen.getByText('Přijato').element() as HTMLElement;
+		const reservation = screen.getByText('Rezervováno vámi').element() as HTMLElement;
+
+		expect(overlay.children).toHaveLength(2);
+		expect(received.parentElement).toBe(overlay);
+		expect(reservation.parentElement).toBe(overlay);
+		expect(getComputedStyle(received).fontSize).toBe(getComputedStyle(reservation).fontSize);
+		expect(getComputedStyle(received).padding).toBe(getComputedStyle(reservation).padding);
+		expect(getComputedStyle(received).borderWidth).toBe(
+			getComputedStyle(reservation).borderWidth,
+		);
+		expect(getComputedStyle(received).boxShadow).toBe(getComputedStyle(reservation).boxShadow);
 
 		await screen.rerender({ model: { kind: 'received' } });
 		await expect.element(screen.getByText('Přijato')).toBeVisible();

@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"predev": "pnpm run db:start",
+		"predev": "pnpm run db:start && pnpm run seed:images",
 		"dev": "vite dev",
 		"build": "vite build",
 		"deploy": "vite build && wrangler deploy",
@@ -42,6 +42,7 @@
 		"db:migrate:prod": "tsx scripts/migrate-prod.ts",
 		"db:verify:prod": "tsx scripts/migrate-prod.ts --check",
 		"db:seed": "tsx src/lib/server/db/seed.ts",
+		"seed:images": "tsx scripts/prepare-seed-images.ts",
 		"db:studio": "drizzle-kit studio",
 		"db:audit:crop-rects": "tsx scripts/audit-legacy-crop-rects.ts",
 		"cf:types": "wrangler types --no-include-runtime",

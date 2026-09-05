@@ -2,12 +2,12 @@
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
+	import CheckIcon from '@lucide/svelte/icons/check';
 	import * as m from '$lib/paraglide/messages.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
 	import { createGiftLongPressRecognizer } from '$lib/modules/gifts/gift_long_press.js';
-	import { Checkbox } from '$lib/components/base/checkbox/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
 
 	interface WishlistGiftDraggableWrapperProps {
@@ -221,19 +221,19 @@
 	data-long-press-pending={longPressPending || undefined}
 	class={cn(
 		selectionMode
-			? 'relative h-full cursor-default transition-[opacity,box-shadow]'
-			: 'group/gift-card relative h-full cursor-pointer transition-opacity',
+			? 'relative h-full cursor-default rounded-panel transition-opacity focus-visible:outline-none'
+			: 'group/gift-card relative h-full cursor-pointer rounded-panel transition-opacity focus-visible:outline-none',
 		className,
 		isDragged && 'invisible',
-		isDragOver && dragOverStyle === 'ring' && 'rounded-xl ring-2 ring-primary ring-offset-2',
+		isDragOver && dragOverStyle === 'ring' && 'ring-2 ring-inset ring-primary',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
 		selectionLayout === 'list' && '[--gift-list-corner-left:5.25rem]',
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[1.75rem_minmax(0,1fr)] sm:gap-2',
 		selected &&
-			'rounded-xl bg-[var(--selection-tint)] outline-[3px] outline-[var(--selection-ring)] [&>div]:bg-transparent',
-		longPressPending && 'ring-2 ring-primary/35 ring-offset-2',
+			'sm:rounded-xl sm:bg-[var(--selection-tint)] sm:outline-[3px] sm:outline-[var(--selection-ring)] sm:[&>div]:bg-transparent',
+		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
 	role={selectionMode ? 'checkbox' : reorderEnabled ? undefined : 'button'}
 	tabindex={reorderEnabled ? undefined : 0}
@@ -256,16 +256,19 @@
 	{#if selectionMode}
 		<span
 			class={cn(
-				'pointer-events-none absolute left-1 top-0.5 z-50 grid size-10 place-items-center rounded-md border-2 border-ink bg-card shadow-sticker sm:left-2.5 sm:top-2.5 sm:size-7 sm:border-0 sm:shadow-sm',
+				'pointer-events-none absolute right-1 top-1 z-50 grid size-10 place-items-center rounded-[calc(var(--radius-panel)-4px)] border-2 border-ink bg-card text-[var(--selection-on-ring)] shadow-sticker sm:right-auto sm:left-2.5 sm:top-2.5 sm:size-7 sm:rounded-md sm:border-0 sm:shadow-sm',
+				selected && 'bg-[var(--selection-ring)]',
 				selectionLayout === 'list' &&
 					'left-[var(--gift-list-corner-left)] right-auto sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2',
 			)}
+			data-testid="gift-selection-control"
 			aria-hidden="true"
 		>
-			<Checkbox checked={selected} tabindex={-1} />
+			{#if selected}<CheckIcon class="size-[19px] stroke-[3] sm:size-4" />{/if}
 		</span>
 		{#if selected}<span
-				class="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] bg-[var(--selection-image-tint)]"
+				class="pointer-events-none absolute inset-0 z-30 rounded-panel bg-[var(--selection-image-tint)] ring-[3px] ring-inset ring-[var(--selection-ring)] sm:hidden"
+				data-testid="gift-selection-surface"
 				aria-hidden="true"
 			></span>{/if}
 	{/if}
@@ -275,7 +278,7 @@
 			aria-label={m.gift_reorder_grip_label()}
 			title={m.gift_reorder_keyboard_hint()}
 			class={cn(
-				'absolute left-1 top-0.5 z-50 grid size-10 cursor-grab touch-none place-items-center rounded-md border-2 border-ink bg-card p-0 shadow-sticker transition-[opacity,transform] duration-200 ease-spring hover:bg-accent focus-visible:opacity-100 active:cursor-grabbing motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 sm:left-2 sm:top-2 sm:z-10 sm:size-auto sm:rounded sm:border-0 sm:bg-card/80 sm:p-0.5 sm:opacity-60 sm:shadow-none',
+				'absolute right-1 top-1 z-50 grid size-10 cursor-grab touch-none place-items-center rounded-[calc(var(--radius-panel)-4px)] border-2 border-ink bg-card p-0 shadow-sticker transition-[opacity,transform] duration-200 ease-spring hover:bg-accent focus-visible:opacity-100 active:cursor-grabbing motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 sm:right-auto sm:left-2 sm:top-2 sm:z-10 sm:size-auto sm:rounded sm:border-0 sm:bg-card/80 sm:p-0.5 sm:opacity-60 sm:shadow-none',
 				selectionLayout === 'list' &&
 					'left-[var(--gift-list-corner-left)] right-auto sm:left-2',
 			)}
@@ -294,7 +297,13 @@
 		{@render children()}
 	</div>
 	{#if reorderEnabled && !selectionMode}
-		<div class="absolute bottom-1 right-1 z-50 flex items-center gap-1 sm:hidden">
+		<div
+			class={cn(
+				'absolute bottom-1 right-1 z-50 items-center gap-1',
+				selectionLayout === 'list' ? 'flex sm:hidden' : 'gift-card-directional-actions',
+			)}
+			data-testid="gift-reorder-directional-actions"
+		>
 			<span class="pointer-events-none px-1 text-sm font-medium" aria-hidden="true">
 				{index + 1}/{totalCount}
 			</span>
@@ -331,3 +340,25 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	[data-gift-item]:focus-visible::after {
+		position: absolute;
+		z-index: 40;
+		inset: 0;
+		border-radius: var(--radius-panel);
+		box-shadow: inset 0 0 0 2px var(--ring);
+		content: '';
+		pointer-events: none;
+	}
+
+	.gift-card-directional-actions {
+		display: none;
+	}
+
+	@media (width <= 320px) {
+		.gift-card-directional-actions {
+			display: flex;
+		}
+	}
+</style>

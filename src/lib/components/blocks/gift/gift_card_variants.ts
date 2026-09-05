@@ -21,7 +21,7 @@ export const giftCardVariants = tv({
 		// owns that named group): they let a hover/focus on the drag grip lift the card in lock-step
 		// with the grip. Standalone (dashboard/storybook) there is no such ancestor, so only the self
 		// `hover:`/`focus-within:` triggers fire — identical to before (issue #224 follow-up).
-		card: 'group relative grid h-[280px] grid-rows-[136px_minmax(0,1fr)_auto] overflow-hidden rounded-panel border-[2.5px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:shadow-sticker-lift focus-within:shadow-sticker-lift group-hover/gift-card:shadow-sticker-lift group-focus-within/gift-card:shadow-sticker-lift motion-safe:hover:-translate-y-1 motion-safe:focus-within:-translate-y-1 motion-safe:group-hover/gift-card:-translate-y-1 motion-safe:group-focus-within/gift-card:-translate-y-1 motion-reduce:transition-none sm:row-span-7 sm:h-auto sm:grid-rows-subgrid',
+		card: 'elevation-ordinary group relative grid h-[280px] grid-rows-[136px_minmax(0,1fr)_auto] overflow-hidden rounded-panel border-[2.5px] border-ink bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none sm:row-span-7 sm:h-auto sm:grid-rows-subgrid',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
@@ -33,12 +33,12 @@ export const giftCardVariants = tv({
 		 * top of the card's lift.
 		 */
 		imagePattern:
-			'pointer-events-none absolute inset-0 -z-[1] bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100',
+			'pointer-events-none absolute inset-0 -z-[1] hidden bg-[radial-gradient(var(--pattern-dot)_1.4px,transparent_1.5px)] bg-size-[18px_18px] opacity-60 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 sm:block',
 		/** Grey veil over the image of a dimmed card ("don't buy this" at first glance). */
 		imageVeil: 'absolute inset-0 bg-reserved-veil',
-		body: 'row-start-2 flex min-h-0 flex-col px-2 py-1.5 sm:row-span-5 sm:grid sm:grid-rows-subgrid sm:p-4',
+		body: 'row-start-2 flex min-h-0 flex-col px-[7px] py-1.5 sm:row-span-5 sm:grid sm:grid-rows-subgrid sm:p-4',
 		nameRow: 'row-start-1 flex flex-wrap items-baseline gap-1.5',
-		name: 'line-clamp-2 font-heading text-[17px] font-semibold leading-snug text-foreground',
+		name: 'line-clamp-2 min-h-[34px] font-heading text-[13px] font-semibold leading-[17px] text-foreground sm:min-h-0 sm:text-[17px] sm:leading-snug',
 		price: 'row-start-2 mt-2 text-[15px] font-bold text-foreground',
 		priceEmpty: 'row-start-2 mt-2 text-sm text-muted-foreground italic',
 		priorityEyebrow: 'row-start-3 mt-2 hidden items-center gap-1 sm:flex',
@@ -55,12 +55,14 @@ export const giftCardVariants = tv({
 	variants: {
 		dimmed: {
 			true: {
-				card: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))] hover:shadow-sticker-strong focus-within:shadow-sticker-strong group-hover/gift-card:shadow-sticker-strong group-focus-within/gift-card:shadow-sticker-strong motion-safe:hover:translate-y-0 motion-safe:focus-within:translate-y-0 motion-safe:group-hover/gift-card:translate-y-0 motion-safe:group-focus-within/gift-card:translate-y-0',
+				card: 'bg-[color-mix(in_oklab,var(--card)_82%,var(--surface))]',
 				imagePattern: 'group-hover:opacity-60 group-focus-within:opacity-60',
 				body: 'opacity-55 grayscale-50',
 				footer: 'opacity-55 grayscale-50',
 			},
-			false: {},
+			false: {
+				card: 'elevation-interactive',
+			},
 		},
 	},
 	defaultVariants: {

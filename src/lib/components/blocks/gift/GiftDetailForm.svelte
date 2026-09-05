@@ -712,7 +712,7 @@
 						bind:value={selectedEditorMode}
 						onValueChange={setEditorMode}
 						aria-label={m.image_fit_label()}
-						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
+						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
 					>
 						<ToggleGroup.Item value={IMAGE_EDITOR_MODES.fill} class="rounded-full">
 							{m.image_fit_fill()}
@@ -731,7 +731,7 @@
 						bind:value={selectedBgColor}
 						onValueChange={setBgColor}
 						aria-label={m.image_background_label()}
-						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-[3px_3px_0_var(--hard-shadow)]"
+						class="rounded-full border-2 border-ink bg-card px-1.5 py-1 shadow-sticker"
 					>
 						<ToggleGroup.Item value="#ffffff" class="rounded-full">
 							{m.image_background_white()}

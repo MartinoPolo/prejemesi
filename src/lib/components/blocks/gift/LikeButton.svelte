@@ -19,6 +19,7 @@
 		size?: LikeButtonSize;
 		appearance?: LikeButtonAppearance;
 		showCount?: boolean;
+		countOverlay?: boolean;
 		class?: string;
 	}
 
@@ -29,6 +30,7 @@
 		size = 'md',
 		appearance = 'ghost',
 		showCount = true,
+		countOverlay = false,
 		class: className,
 	}: LikeButtonProps = $props();
 
@@ -140,7 +142,12 @@
 
 <button
 	type="button"
-	class={cn(styles.root(), size === 'md' && 'min-w-10', className)}
+	class={cn(
+		styles.root(),
+		size === 'md' && 'min-w-10',
+		countOverlay && 'relative justify-center gap-0',
+		className,
+	)}
 	aria-label={liked
 		? m.gift_like_remove_aria({ name: giftName })
 		: m.gift_like_add_aria({ name: giftName })}
@@ -151,6 +158,10 @@
 		<HeartIcon class={styles.icon()} />
 	</span>
 	{#if showCount && displayCount > 0}
-		<span data-like-count class={styles.count()}>{displayCount}</span>
+		<span
+			data-like-count
+			class={cn(styles.count(), countOverlay && 'absolute right-0.5 top-0 text-[10px]')}
+			>{displayCount}</span
+		>
 	{/if}
 </button>

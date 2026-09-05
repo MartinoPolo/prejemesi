@@ -8,7 +8,7 @@ import { tv } from 'tailwind-variants';
 export const wishlistListViewVariants = tv({
 	slots: {
 		root: 'stagger-pop flex flex-col gap-3.5',
-		row: 'group/row flex items-center gap-3.5 rounded-panel border-[2.5px] border-ink bg-card px-4 py-3 shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none',
+		row: 'elevation-ordinary group/row flex items-center gap-3.5 rounded-panel border-[2.5px] border-ink bg-card px-4 py-3 transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 motion-reduce:transition-none',
 		bannerMini:
 			'relative flex size-11 shrink-0 -rotate-3 items-center justify-center overflow-hidden rounded-[10px] border-2 border-ink',
 		info: 'flex min-w-0 flex-1 flex-col gap-0.5',
@@ -25,7 +25,7 @@ export const wishlistListViewVariants = tv({
 				row: 'opacity-70 grayscale-[0.7]',
 			},
 			false: {
-				row: 'hover:shadow-sticker-lift focus-within:shadow-sticker-lift motion-safe:hover:-translate-y-0.5 motion-safe:focus-within:-translate-y-0.5',
+				row: 'elevation-interactive',
 			},
 		},
 	},

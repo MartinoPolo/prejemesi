@@ -212,7 +212,7 @@ describe('DepthStyleSwitcher', () => {
 			await expect
 				.element(choice)
 				.toHaveClass(/data-\[state=on\]:bg-\[var\(--selection-tint\)\]/);
-			await expect.element(choice).toHaveClass(/shadow-sticker/);
+			await expect.element(choice).toHaveClass(/elevation-interactive/);
 			await expect.element(choice).not.toHaveClass(/data-\[state=on\]:shadow/);
 			await expect.element(choice).toHaveClass(/rounded-btn/);
 		}

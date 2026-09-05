@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import * as m from '../../src/lib/paraglide/messages.js';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -56,6 +56,33 @@ async function waitForToast(page: Page, text: string | RegExp) {
 	await expect(page.locator('[data-sonner-toast]').filter({ hasText: text })).toBeVisible();
 }
 
+async function dismissToasts(page: Page) {
+	const toasts = page.locator('[data-sonner-toast]');
+	await toasts.locator('button[aria-label="Dismiss"]').evaluateAll((buttons) => {
+		for (const button of buttons) {
+			(button as HTMLButtonElement).click();
+		}
+	});
+	await expect(toasts).toHaveCount(0);
+}
+
+async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
+	const body = await page.screenshot(
+		process.env.ISSUE345_SCREENSHOTS === '1'
+			? { path: `test-results/issue345-visual-${name}.png` }
+			: undefined,
+	);
+	await testInfo.attach(name, { body, contentType: 'image/png' });
+}
+
+async function openMobileBulkAction(page: Page, action: string) {
+	const toolbar = page.getByRole('region', { name: m.gift_selection_toolbar(), exact: true });
+	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
+	const sheet = page.getByRole('dialog', { name: m.gift_selection_actions() });
+	await sheet.locator(`[data-mobile-bulk-action="${action}"]`).click();
+	return sheet;
+}
+
 async function createActionFixture(page: Page) {
 	await createWishlistAndNavigate(page, 'Akce s dárky');
 	await addGift(page, 'Kolo pro výlety');
@@ -63,8 +90,49 @@ async function createActionFixture(page: Page) {
 	await expect(page.locator('[data-gift-item]')).toHaveCount(2, { timeout: 10_000 });
 }
 
+async function createAdditionalWishlist(page: Page, title: string) {
+	await page.goto('/my-lists');
+	await page.waitForLoadState('networkidle');
+	await page
+		.getByRole('button', { name: /^Vytvořit(?: seznam)?$/ })
+		.first()
+		.click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
+	await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
+	await expect(page.getByRole('heading', { level: 1 })).toContainText(title);
+	return new URL(page.url()).pathname;
+}
+
+async function applyNestedBulkOption(
+	page: Page,
+	sheet: Locator,
+	action: string,
+	option: string | number,
+	selectedCount: number,
+) {
+	await sheet.locator(`[data-mobile-bulk-action="${action}"]`).click();
+	const radio =
+		typeof option === 'number'
+			? sheet.getByRole('radio').nth(option)
+			: sheet.getByRole('radio', { name: option });
+	const selectedLabel = await radio.evaluate((element) =>
+		element.closest('label')?.innerText.trim(),
+	);
+	expect(selectedLabel).toBeTruthy();
+	await radio.click();
+	await waitForToast(page, m.gift_bulk_success({ count: selectedCount }));
+	await dismissToasts(page);
+	await sheet.getByRole('button', { name: m.gift_context_back() }).click();
+	await expect(sheet.locator(`[data-mobile-bulk-action="${action}"]`)).toContainText(
+		selectedLabel!,
+	);
+}
+
 async function selectionCount(toolbar: Locator, count: number) {
-	await expect(toolbar.getByText(new RegExp(`Vybráno ${count}`))).toBeVisible();
+	await expect(
+		toolbar.locator('.mobile-selection-label:visible, .selection-count:visible'),
+	).toContainText(`Vybráno ${count}`);
 }
 
 async function touchPoint(target: Locator) {
@@ -187,7 +255,11 @@ test('mobile toolbar starts an empty selection from deterministic SSR markup', a
 			[],
 	).toHaveLength(1);
 
-	await page.getByRole('button', { name: m.gift_selection_toolbar(), exact: true }).click();
+	await page.getByTestId('mobile-more-trigger').click();
+	await page
+		.getByRole('dialog', { name: m.wishlist_more_actions() })
+		.getByRole('button', { name: m.gift_selection_toolbar(), exact: true })
+		.click();
 	const toolbar = page.getByRole('region', {
 		name: m.gift_selection_toolbar(),
 		exact: true,
@@ -222,15 +294,222 @@ test('mobile long press opens Sheet drill-in and selection toolbar Actions row',
 	await expect(toolbar.getByRole('button', { name: m.cancel() })).toBeVisible();
 
 	await actions.click();
-	await expect(authenticated.getByRole('menu')).toBeVisible();
+	const bulkSheet = authenticated.getByRole('dialog', {
+		name: m.gift_selection_actions(),
+	});
+	await expect(bulkSheet).toBeVisible();
 	await authenticated.keyboard.press('Escape');
-	await expect(authenticated.getByRole('menu')).toBeHidden();
+	await expect(bulkSheet).toBeHidden();
 	await selectionCount(toolbar, 1);
 	await expect(target).toHaveAttribute('aria-selected', 'true');
 
 	await authenticated.keyboard.press('Escape');
 	await expect(toolbar).toBeHidden();
 	await authenticated.context().close();
+});
+
+test('mobile bulk hierarchy fits all actions and restores focus through every nested level', async ({
+	browser,
+	request,
+	baseURL,
+}, testInfo) => {
+	const page = await registerAndGetPage(
+		browser,
+		request,
+		baseURL!,
+		createTestUser('gift-actions-mobile-hierarchy'),
+	);
+	await createActionFixture(page);
+	await dismissToasts(page);
+	await page.setViewportSize({ width: 320, height: 640 });
+	await page.getByTestId('mobile-more-trigger').click();
+	await page
+		.getByRole('dialog', { name: m.wishlist_more_actions() })
+		.getByRole('button', { name: m.gift_selection_toolbar(), exact: true })
+		.click();
+	const toolbar = page.getByRole('region', { name: m.gift_selection_toolbar(), exact: true });
+	const toolbarCheckbox = toolbar.getByRole('checkbox', { name: m.gift_selection_visible_all() });
+	const toolbarChildren = toolbar.locator('.mobile-selection-row').locator(':scope > *');
+	await expect(toolbarChildren.nth(0)).toHaveAttribute('role', 'checkbox');
+	await expect(toolbarChildren.nth(1)).toHaveClass(/mobile-selection-label/);
+	await expect(toolbar).not.toContainText(m.draft_grid_select_all());
+	await toolbarCheckbox.click();
+	await expect(toolbarCheckbox).toBeChecked();
+	for (const width of [320, 360, 390]) {
+		await page.setViewportSize({ width, height: 640 });
+		await attachScreenshot(page, testInfo, `selection-toolbar-${width}x640`);
+	}
+	await page.setViewportSize({ width: 320, height: 640 });
+	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
+	const sheet = page.getByRole('dialog', { name: m.gift_selection_actions() });
+	const actionRows = sheet.locator('[data-mobile-bulk-action]');
+	await expect(actionRows).toHaveCount(6);
+	await page.waitForTimeout(400);
+
+	for (const width of [320, 360, 390]) {
+		await page.setViewportSize({ width, height: 640 });
+		await expect(actionRows).toHaveCount(6);
+		await attachScreenshot(page, testInfo, `bulk-actions-${width}x640`);
+	}
+
+	await page.setViewportSize({ width: 320, height: 320 });
+	const rootGeometry = await sheet
+		.getByTestId('selection-bulk-sheet-actions')
+		.evaluate((element) => ({
+			clientHeight: element.clientHeight,
+			scrollHeight: element.scrollHeight,
+			rowBottoms: Array.from(
+				element.querySelectorAll<HTMLElement>('[data-mobile-bulk-action]'),
+			).map((row) => row.getBoundingClientRect().bottom),
+		}));
+	expect(rootGeometry.scrollHeight).toBeLessThanOrEqual(rootGeometry.clientHeight);
+	expect(Math.max(...rootGeometry.rowBottoms)).toBeLessThanOrEqual(320);
+	await attachScreenshot(page, testInfo, 'bulk-actions-320x320');
+
+	for (const action of ['priority', 'category', 'imageFit', 'imageBackground', 'received']) {
+		const invokingRow = sheet.locator(`[data-mobile-bulk-action="${action}"]`);
+		await invokingRow.click();
+		const back = sheet.getByRole('button', { name: m.gift_context_back() });
+		await expect(back).toBeFocused();
+		const options = sheet.getByTestId('selection-bulk-sheet-options');
+		await expect(options).toBeVisible();
+		if (action !== 'category') {
+			const geometry = await options.evaluate((element) => ({
+				clientHeight: element.clientHeight,
+				scrollHeight: element.scrollHeight,
+			}));
+			expect(geometry.scrollHeight).toBeLessThanOrEqual(geometry.clientHeight);
+		}
+		await attachScreenshot(page, testInfo, `bulk-${action}-320x320`);
+		await back.click();
+		await expect(sheet.locator(`[data-mobile-bulk-action="${action}"]`)).toBeFocused();
+	}
+
+	await sheet.locator('[data-mobile-bulk-action="copy"]').click();
+	const copySheet = page.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+	await expect(copySheet).toBeVisible();
+	await page.waitForTimeout(400);
+	for (const button of [
+		copySheet.getByRole('button', { name: m.gift_bulk_copy_confirm() }),
+		copySheet.getByRole('button', { name: m.gift_context_back() }),
+	]) {
+		const box = await button.boundingBox();
+		expect(box).not.toBeNull();
+		expect(box!.y + box!.height).toBeLessThanOrEqual(320);
+	}
+	await attachScreenshot(page, testInfo, 'bulk-copy-320x320');
+	await copySheet.getByRole('button', { name: m.gift_context_back() }).click();
+	await expect(sheet.locator('[data-mobile-bulk-action="copy"]')).toBeFocused();
+	await expect(actionRows).toHaveCount(6);
+	await page.context().close();
+});
+
+test('mobile bulk priority succeeds for one and multiple selected gifts', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const page = await registerAndGetPage(
+		browser,
+		request,
+		baseURL!,
+		createTestUser('gift-actions-mobile-priority-regression'),
+	);
+	await page.setViewportSize({ width: 390, height: 760 });
+	await createActionFixture(page);
+	const firstGift = gift(page, 'Kolo pro výlety');
+	const secondGift = gift(page, 'Stan pro dva');
+	const contextSheet = await openMobileGiftActions(page, firstGift, 'Kolo pro výlety');
+	await contextSheet.getByRole('button', { name: /Vybrat více dárků/ }).click();
+	const toolbar = page.getByRole('region', { name: m.gift_selection_toolbar(), exact: true });
+
+	let bulkSheet = await openMobileBulkAction(page, 'priority');
+	await bulkSheet.getByRole('radio').nth(1).click();
+	await waitForToast(page, m.gift_bulk_success({ count: 1 }));
+	await bulkSheet.getByRole('button', { name: m.gift_context_back() }).click();
+	await page.keyboard.press('Escape');
+	await expect(bulkSheet).toBeHidden();
+	await secondGift.click();
+	await selectionCount(toolbar, 2);
+	bulkSheet = await openMobileBulkAction(page, 'priority');
+	await bulkSheet.getByRole('radio').nth(2).click();
+	await waitForToast(page, m.gift_bulk_success({ count: 2 }));
+	await expect(firstGift).toHaveAttribute('aria-selected', 'true');
+	await expect(secondGift).toHaveAttribute('aria-selected', 'true');
+	await expect(
+		page.locator('[data-sonner-toast]').filter({ hasText: m.error_generic() }),
+	).toHaveCount(0);
+	await page.context().close();
+});
+
+test('all six mobile bulk actions mutate one and multiple selected gifts', async ({
+	browser,
+	request,
+	baseURL,
+}) => {
+	const page = await registerAndGetPage(
+		browser,
+		request,
+		baseURL!,
+		createTestUser('gift-actions-mobile-mutation-matrix'),
+	);
+	await createActionFixture(page);
+	const sourcePath = new URL(page.url()).pathname;
+	const destinationPath = await createAdditionalWishlist(page, 'Cíl hromadného kopírování');
+	await page.goto(sourcePath);
+	await expect(page.locator('[data-gift-item]')).toHaveCount(2);
+	await dismissToasts(page);
+	await page.setViewportSize({ width: 390, height: 760 });
+	const firstGift = gift(page, 'Kolo pro výlety');
+	const secondGift = gift(page, 'Stan pro dva');
+	const contextSheet = await openMobileGiftActions(page, firstGift, 'Kolo pro výlety');
+	await contextSheet.getByRole('button', { name: /Vybrat více dárků/ }).click();
+	const toolbar = page.getByRole('region', { name: m.gift_selection_toolbar(), exact: true });
+	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
+	let sheet = page.getByRole('dialog', { name: m.gift_selection_actions() });
+
+	await applyNestedBulkOption(page, sheet, 'priority', 1, 1);
+	await applyNestedBulkOption(page, sheet, 'category', 1, 1);
+	await applyNestedBulkOption(page, sheet, 'imageFit', m.image_fit_fit(), 1);
+	await applyNestedBulkOption(page, sheet, 'imageBackground', m.image_background_black(), 1);
+	await applyNestedBulkOption(page, sheet, 'received', m.gift_mark_received(), 1);
+	await sheet.locator('[data-mobile-bulk-action="copy"]').click();
+	let copySheet = page.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+	await expect(copySheet.getByRole('button', { name: m.gift_bulk_copy_confirm() })).toBeEnabled();
+	await copySheet.getByRole('button', { name: m.gift_bulk_copy_confirm() }).click();
+	await waitForToast(page, m.gift_bulk_copy_success({ count: 1 }));
+	await dismissToasts(page);
+	await selectionCount(toolbar, 1);
+	await expect(sheet.locator('[data-mobile-bulk-action="copy"]')).toBeFocused();
+
+	await page.keyboard.press('Escape');
+	await expect(sheet).toBeHidden();
+	await secondGift.click();
+	await selectionCount(toolbar, 2);
+	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
+	sheet = page.getByRole('dialog', { name: m.gift_selection_actions() });
+	await applyNestedBulkOption(page, sheet, 'priority', 2, 2);
+	await applyNestedBulkOption(page, sheet, 'category', 2, 2);
+	await applyNestedBulkOption(page, sheet, 'imageFit', m.image_fit_fill(), 2);
+	await applyNestedBulkOption(page, sheet, 'imageBackground', m.image_background_white(), 2);
+	await applyNestedBulkOption(page, sheet, 'received', m.gift_mark_unreceived(), 2);
+	await sheet.locator('[data-mobile-bulk-action="copy"]').click();
+	copySheet = page.getByRole('dialog', { name: m.gift_bulk_copy_title() });
+	await expect(copySheet.getByRole('button', { name: m.gift_bulk_copy_confirm() })).toBeEnabled();
+	await copySheet.getByRole('button', { name: m.gift_bulk_copy_confirm() }).click();
+	await waitForToast(page, m.gift_bulk_copy_success({ count: 2 }));
+	await dismissToasts(page);
+	await selectionCount(toolbar, 2);
+	await expect(firstGift).toHaveAttribute('aria-selected', 'true');
+	await expect(secondGift).toHaveAttribute('aria-selected', 'true');
+	await expect(
+		page.locator('[data-sonner-toast]').filter({ hasText: m.error_generic() }),
+	).toHaveCount(0);
+	await page.goto(destinationPath);
+	await expect(page.locator('[data-gift-item]')).toHaveCount(3);
+	await expect(gift(page, 'Kolo pro výlety')).toHaveCount(2);
+	await expect(gift(page, 'Stan pro dva')).toHaveCount(1);
+	await page.context().close();
 });
 
 test('mobile movement beyond the tolerance cancels a pending long press', async ({
@@ -328,28 +607,25 @@ test('mobile bulk actions expose mixed received state and apply a common value',
 	await selectionCount(toolbar, 2);
 
 	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
-	const mixedReceived = page.getByRole('menuitem', {
-		name: `${m.gift_selection_received_state()}: ${m.gift_selection_mixed()}`,
-	});
-	await expect(mixedReceived).toBeVisible();
-	await mixedReceived.click();
-	await expect(page.getByText(m.gift_selection_mixed(), { exact: true }).last()).toBeVisible();
-	const markReceived = page.getByRole('menuitemradio', { name: m.gift_mark_received() });
-	const markUnreceived = page.getByRole('menuitemradio', { name: m.gift_mark_unreceived() });
-	await expect(markReceived).toHaveAttribute('aria-checked', 'false');
-	await expect(markUnreceived).toHaveAttribute('aria-checked', 'false');
+	const bulkSheet = page.getByRole('dialog', { name: m.gift_selection_actions() });
+	await expect(bulkSheet).toContainText(m.gift_selection_mixed());
+	await bulkSheet.locator('[data-mobile-bulk-action="received"]').click();
+	const markReceived = bulkSheet.getByRole('radio', { name: m.gift_mark_received() });
+	const markUnreceived = bulkSheet.getByRole('radio', { name: m.gift_mark_unreceived() });
+	await expect(markReceived).not.toBeChecked();
+	await expect(markUnreceived).not.toBeChecked();
 	await markReceived.click();
 
 	await waitForToast(page, m.gift_bulk_success({ count: 2 }));
+	await page.keyboard.press('Escape');
+	await expect(bulkSheet).toBeHidden();
 	await selectionCount(toolbar, 2);
 	await expect(firstGift).toHaveAttribute('aria-selected', 'true');
 	await expect(secondGift).toHaveAttribute('aria-selected', 'true');
 	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
-	await expect(
-		page.getByRole('menuitem', {
-			name: `${m.gift_selection_received_state()}: ${m.gift_mark_received()}`,
-		}),
-	).toBeVisible();
+	await expect(bulkSheet.locator('[data-mobile-bulk-action="received"]')).toContainText(
+		m.gift_mark_received(),
+	);
 	await page.keyboard.press('Escape');
 
 	await toolbar.getByRole('button', { name: m.cancel() }).click();

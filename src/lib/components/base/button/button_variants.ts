@@ -16,24 +16,16 @@ const LIFT_HIT_AREA_CLASSES =
 	"after:absolute after:inset-x-0 after:top-full after:h-2 after:content-['']";
 
 const REDUCED_STICKER_MOTION_CLASSES =
-	'motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:translate-y-0 motion-reduce:active:scale-100';
+	'motion-reduce:transition-none motion-reduce:active:scale-100';
 
-/**
- * Flat sticker button: ink border, hard offset shadow, coherent lift on hover, press-down on active.
- * While the button is an open overlay trigger (bits-ui sets `data-state="open"` on popover,
- * dropdown-menu, and sheet triggers), the hover lift is suppressed — lifting the trigger would
- * drag the anchored overlay along with it.
- */
-const STICKER_BUTTON_CLASSES = `border-ink shadow-sticker hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm data-[state=open]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker ${REDUCED_STICKER_MOTION_CLASSES} ${LIFT_HIT_AREA_CLASSES}`;
+/** Shared responsive elevation and interaction states live in app.css. */
+const STICKER_BUTTON_CLASSES = `border-ink elevation-interactive elevation-anchored-trigger ${REDUCED_STICKER_MOTION_CLASSES} ${LIFT_HIT_AREA_CLASSES}`;
 
-/** Shared elevation language for compact circular sticker controls, without layout positioning. */
-export const CIRCULAR_STICKER_BUTTON_CLASSES = `shadow-sticker-sm hover:-translate-y-0.5 hover:shadow-sticker-lift active:translate-y-0 active:shadow-sticker-sm ${REDUCED_STICKER_MOTION_CLASSES} ${LIFT_HIT_AREA_CLASSES}`;
+/** Shared elevation language for circular sticker controls, without layout positioning. */
+export const CIRCULAR_STICKER_BUTTON_CLASSES = `elevation-interactive ${REDUCED_STICKER_MOTION_CLASSES} ${LIFT_HIT_AREA_CLASSES}`;
 
-/**
- * Circular elevation for anchored overlay triggers. Their surface remains stationary while open
- * so anchored content does not move, while hover still provides lifted shadow feedback.
- */
-export const ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES = `${CIRCULAR_STICKER_BUTTON_CLASSES} data-[state=open]:hover:translate-y-0 aria-[expanded=true]:hover:translate-y-0 data-[state=open]:hover:shadow-sticker-lift aria-[expanded=true]:hover:shadow-sticker-lift`;
+/** Circular elevation for overlay triggers that remain geometrically stationary while open. */
+export const ANCHORED_CIRCULAR_STICKER_BUTTON_CLASSES = `${CIRCULAR_STICKER_BUTTON_CLASSES} elevation-anchored-trigger`;
 
 export const OUTLINE_CONTROL_SURFACE_CLASSES = `bg-card text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:border-ink focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring ${STICKER_BUTTON_CLASSES}`;
 
@@ -46,7 +38,7 @@ export const buttonVariants = tv({
 			ghost: 'bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
 			'ghost-overlay':
 				'bg-transparent border-transparent text-current opacity-60 hover:opacity-90 hover:bg-[color-mix(in_oklab,currentColor_10%,transparent)]',
-			danger: 'bg-card text-status-danger border-status-danger shadow-sticker-sm hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]',
+			danger: `bg-card text-status-danger ${STICKER_BUTTON_CLASSES} border-status-danger hover:bg-[color-mix(in_oklab,var(--status-danger)_10%,transparent)]`,
 			'primary-destructive': `bg-status-danger text-white hover:bg-[color-mix(in_oklab,var(--status-danger)_86%,white)] ${STICKER_BUTTON_CLASSES} ${FILLED_BUTTON_KBD_CLASSES}`,
 			outline: OUTLINE_CONTROL_SURFACE_CLASSES,
 			link: 'text-primary underline-offset-4 hover:underline',

@@ -304,52 +304,109 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 		);
 	});
 
-	it('leaves no spacing or action trace of private reservations in received recipient rows', async () => {
-		const receivedOnlyHost = await renderItem(
-			makeVisitorGift({ received: true, reservedCount: 0, isFullyReserved: false }),
-			WISHLIST_ROLES.recipient,
-		);
-		const privateReservationHost = await renderItem(
-			makeVisitorGift({
+	it('keeps received recipient DOM and relative geometry identical across private reservation states', async () => {
+		const states: Partial<GiftForVisitor>[] = [
+			{
 				received: true,
+				quantity: 3,
+				reservedCount: 0,
+				isFullyReserved: false,
+				myReservationId: null,
+			},
+			{
+				received: true,
+				quantity: 3,
 				reservedCount: 1,
+				isFullyReserved: false,
+				myReservationId: null,
+			},
+			{
+				received: true,
+				quantity: 3,
+				reservedCount: 3,
 				isFullyReserved: true,
+				myReservationId: null,
+			},
+			{
+				received: true,
+				quantity: 3,
+				reservedCount: 1,
+				isFullyReserved: false,
 				myReservationId: 'private',
-				myReservationPurchasedAt: new Date('2026-01-03'),
-				reserverNames: ['Soukromá osoba'],
-			}),
-			WISHLIST_ROLES.recipient,
+			},
+		];
+		const hosts = await Promise.all(
+			states.map((state) =>
+				renderItem(
+					makeVisitorGift({ ...state, reserverNames: ['Soukromá osoba'] }),
+					WISHLIST_ROLES.recipient,
+				),
+			),
 		);
-		const receivedOnly = receivedOnlyHost.querySelector(
-			'[data-testid="gift-state-overlay"]',
-		) as HTMLElement;
-		const privateReservation = privateReservationHost.querySelector(
-			'[data-testid="gift-state-overlay"]',
-		) as HTMLElement;
-
-		for (const overlay of [receivedOnly, privateReservation]) {
+		const snapshots = hosts.map((host) => {
+			const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
+			const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
+			const overlayRect = overlay.getBoundingClientRect();
+			const imageRect = image.getBoundingClientRect();
 			expect(overlay.querySelector('[data-state-primary]')?.textContent).toBe(
 				m.gift_received_badge(),
 			);
 			expect(overlay.querySelector('[data-reservation-support]')).toBeNull();
-			expect(overlay.textContent).not.toMatch(/rezerv|Soukromá osoba/i);
-		}
-		expect(privateReservation.innerHTML).toBe(receivedOnly.innerHTML);
-		for (const host of [receivedOnlyHost, privateReservationHost]) {
 			expect(host.querySelector('[data-testid="reserve-button"]')).toBeNull();
 			expect(host.querySelector('[aria-pressed]')).toBeNull();
 			expect(host.textContent).not.toMatch(/rezerv|koupen|Soukromá osoba/i);
+			return {
+				html: overlay.innerHTML,
+				left: overlayRect.left - imageRect.left,
+				top: overlayRect.top - imageRect.top,
+				width: overlayRect.width,
+				height: overlayRect.height,
+				rowHeight: host.firstElementChild!.getBoundingClientRect().height,
+			};
+		});
+		for (const snapshot of snapshots.slice(1)) {
+			expect(snapshot).toEqual(snapshots[0]);
 		}
+	});
+
+	it('shows two pills but no reservation actions or identity to a self-promoted recipient', async () => {
+		const host = document.createElement('div');
+		host.style.width = '640px';
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({
+					received: true,
+					quantity: 3,
+					reservedCount: 1,
+					myReservationId: null,
+					reserverNames: ['Soukromá osoba'],
+				}),
+				role: WISHLIST_ROLES.recipient,
+				hideReservationState: false,
+				onreceived: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
+		expect(overlay.children).toHaveLength(2);
+		expect(overlay.querySelector('[data-reservation-support]')?.textContent).toBe(
+			m.gift_remaining_capacity({ remaining: 2, total: 3 }),
+		);
+		expect(host.textContent).not.toContain('Soukromá osoba');
+		expect(host.querySelector('[data-testid="reserve-button"]')).toBeNull();
+		expect(host.querySelector('[data-like-heart]')).toBeNull();
+		expect(host.querySelector('[data-testid="gift-received-toggle"]')).toBeTruthy();
+		host.remove();
 	});
 
 	it.each([
 		{
-			label: 'own-reservation plus partial-capacity',
+			label: 'own reservation',
 			gift: { quantity: 3, reservedCount: 1, isFullyReserved: false },
-			requiredLabels: [
-				m.gift_reserved_by_me_overlay(),
-				m.gift_remaining_capacity({ remaining: 2, total: 3 }),
-			],
+			requiredLabels: [m.gift_reserved_by_me_overlay()],
 		},
 		{
 			label: 'received plus unavailable',
@@ -368,23 +425,23 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 			await page.viewport(390, 720);
 			const host = await renderItem(makeVisitorGift(gift), WISHLIST_ROLES.visitor);
 			const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
-			const badge = host.querySelector(
-				'[data-testid="gift-state-overlay"] > span',
-			) as HTMLElement;
+			const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
 			const likeButton = host.querySelector('[data-like-heart]')
 				?.parentElement as HTMLElement;
 
 			expect(image.getBoundingClientRect().width).toBeCloseTo(128, 0);
 			for (const requiredLabel of requiredLabels) {
-				expect(badge.textContent).toContain(requiredLabel);
+				expect(overlay.textContent).toContain(requiredLabel);
 			}
 			expect(likeButton.getBoundingClientRect().width).toBeCloseTo(40, 0);
-			expect(
-				rectanglesIntersect(
-					badge.getBoundingClientRect(),
-					likeButton.getBoundingClientRect(),
-				),
-			).toBe(false);
+			for (const pill of overlay.querySelectorAll<HTMLElement>(':scope > span')) {
+				expect(
+					rectanglesIntersect(
+						pill.getBoundingClientRect(),
+						likeButton.getBoundingClientRect(),
+					),
+				).toBe(false);
+			}
 		},
 	);
 
@@ -476,7 +533,25 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 	});
 });
 
-describe('GiftListItem responsive image dimensions (issue #328)', () => {
+describe('GiftListItem responsive image dimensions (issues #328 and #336)', () => {
+	it('removes only the mobile Fit padding while keeping the image frame edge-to-edge', async () => {
+		await page.viewport(390, 720);
+		const host = await renderItem(
+			makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#ffffff') }),
+			WISHLIST_ROLES.visitor,
+		);
+		const image = host.querySelector('img') as HTMLImageElement;
+		const frame = host.querySelector('[data-testid="image-frame"]') as HTMLElement;
+		const imageRegion = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
+
+		expect(getComputedStyle(image).padding).toBe('0px');
+		expect(frame.getBoundingClientRect().width).toBeCloseTo(imageRegion.clientWidth, 0);
+		expect(frame.getBoundingClientRect().height).toBeCloseTo(imageRegion.clientHeight, 0);
+		await page.viewport(800, 720);
+		expect(getComputedStyle(image).padding).toBe('8px');
+		host.remove();
+	});
+
 	it('keeps the desktop image square when the responsive size grows', async () => {
 		await page.viewport(800, 720);
 		const host = await renderItem(makeVisitorGift(), WISHLIST_ROLES.visitor);
@@ -594,7 +669,7 @@ describe('GiftListItem Like geometry (issue #330 follow-up)', () => {
 		const like = host.querySelector('[data-like-heart]')?.closest('button') as HTMLElement;
 		const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
 		const sticker = overlay.firstElementChild as HTMLElement;
-		const label = sticker.firstElementChild as HTMLElement;
+		const label = sticker;
 		const imageRect = image.getBoundingClientRect();
 		const likeRect = like.getBoundingClientRect();
 		const overlayRect = overlay.getBoundingClientRect();
@@ -682,17 +757,13 @@ describe('GiftListItem Like geometry (issue #330 follow-up)', () => {
 			WISHLIST_ROLES.visitor,
 		);
 		const like = host.querySelector('[data-like-heart]')?.closest('button') as HTMLElement;
-		const label = host.querySelector(
+		const pills = host.querySelectorAll<HTMLElement>(
 			'[data-testid="gift-state-overlay"] > span',
-		) as HTMLElement;
+		);
 		const likeRect = like.getBoundingClientRect();
-		const labelRect = label.getBoundingClientRect();
-		const overlaps =
-			likeRect.left < labelRect.right &&
-			likeRect.right > labelRect.left &&
-			likeRect.top < labelRect.bottom &&
-			likeRect.bottom > labelRect.top;
-		expect(overlaps).toBe(false);
+		for (const pill of pills) {
+			expect(rectanglesIntersect(likeRect, pill.getBoundingClientRect())).toBe(false);
+		}
 		host.remove();
 	});
 });

@@ -375,7 +375,7 @@
 		background: #fffdf6;
 		border: 2px solid #4a443a;
 		border-radius: 3px;
-		box-shadow: 5px 6px 0 var(--hard-shadow-strong);
+		box-shadow: var(--elevation-lifted-strong);
 	}
 
 	.demo-polaroid::before {

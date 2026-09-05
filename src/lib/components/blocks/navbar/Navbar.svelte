@@ -483,22 +483,26 @@
 		margin-left: auto;
 	}
 
-	/* Keep the complete authenticated action row inside extra-narrow viewports. The
-	   wordmark is decorative beside its linked gift mark, while every interactive
-	   surface retains a 40px touch target. */
-	@media (width < 480px) {
+	@media (width < 640px) {
+		.topbar {
+			padding-inline: 4px;
+			gap: var(--space-2);
+		}
+
+		.nav-right {
+			gap: var(--space-2);
+		}
+
 		.topbar :global(button),
 		.topbar :global(.logo) {
 			min-width: 40px;
 			min-height: 40px;
 		}
+	}
 
-		.topbar :global(.logo) {
-			justify-content: center;
-		}
-
-		.topbar :global(.logo-text) {
-			display: none;
+	@media (width <= 340px) {
+		.topbar {
+			gap: 4px;
 		}
 	}
 </style>

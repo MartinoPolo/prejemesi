@@ -208,6 +208,10 @@
 	--radius-panel: 16px;
 	--radius-btn: 7px;
 	--border-w: 2.5px;
+	--elevation-compact-offset: 1px;
+	--elevation-ordinary-offset: 3px;
+	--elevation-lifted-offset: 4px;
+	--elevation-pressed-offset: 1px;
 
 	/* ── Size control ──────────────────────────────────────── */
 	--size-control-sm: 26px;
@@ -239,6 +243,15 @@
 	--leading-tight: 1.15;
 	--leading-snug: 1.3;
 	--leading-relaxed: 1.65;
+}
+
+@media (width >= 640px) {
+	:root {
+		--elevation-compact-offset: 2px;
+		--elevation-ordinary-offset: 4px;
+		--elevation-lifted-offset: 7px;
+		--elevation-pressed-offset: 2px;
+	}
 }
 
 /* ── Light derivation ────────────────────────────────────────────────────
@@ -531,6 +544,92 @@
 	--hard-shadow-strong: var(--black-shadow-strong);
 }
 
+:where(:root, [data-palette]) {
+	--elevation-compact: var(--elevation-compact-offset) var(--elevation-compact-offset) 0
+		var(--hard-shadow);
+	--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+		var(--hard-shadow);
+	--elevation-ordinary-strong: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0
+		var(--hard-shadow-strong);
+	--elevation-lifted: var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0
+		var(--hard-shadow);
+	--elevation-lifted-strong: var(--elevation-lifted-offset) var(--elevation-lifted-offset) 0
+		var(--hard-shadow-strong);
+	--elevation-pressed: var(--elevation-pressed-offset) var(--elevation-pressed-offset) 0
+		var(--hard-shadow);
+}
+
+.elevation-compact {
+	box-shadow: var(--elevation-compact);
+}
+
+.elevation-ordinary,
+.elevation-interactive {
+	box-shadow: var(--elevation-ordinary);
+}
+
+.elevation-ordinary-strong {
+	box-shadow: var(--elevation-ordinary-strong);
+}
+
+.elevation-lifted {
+	box-shadow: var(--elevation-lifted);
+}
+
+.elevation-lifted-strong {
+	box-shadow: var(--elevation-lifted-strong);
+}
+
+.elevation-pressed {
+	box-shadow: var(--elevation-pressed);
+}
+
+.elevation-flat,
+.elevation-interactive:is(:disabled, [aria-disabled='true'], [data-disabled]) {
+	box-shadow: none;
+	translate: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.elevation-interactive:not(:disabled, [aria-disabled='true'], [data-disabled]):hover {
+		box-shadow: var(--elevation-lifted);
+		translate: 0 -2px;
+	}
+}
+
+.elevation-interactive.elevation-anchored-trigger:is([data-state='open'], [aria-expanded='true']) {
+	box-shadow: var(--elevation-ordinary);
+	translate: 0;
+}
+
+.elevation-interactive:not(:disabled, [aria-disabled='true'], [data-disabled]):active {
+	box-shadow: var(--elevation-pressed);
+	translate: 0;
+}
+
+.elevation-sheet[data-side='top'] {
+	box-shadow: 0 var(--elevation-ordinary-offset) 0 var(--hard-shadow);
+}
+
+.elevation-sheet[data-side='right'] {
+	box-shadow: calc(-1 * var(--elevation-ordinary-offset)) 0 0 var(--hard-shadow);
+}
+
+.elevation-sheet[data-side='bottom'] {
+	box-shadow: 0 calc(-1 * var(--elevation-ordinary-offset)) 0 var(--hard-shadow);
+}
+
+.elevation-sheet[data-side='left'] {
+	box-shadow: var(--elevation-ordinary-offset) 0 0 var(--hard-shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.elevation-interactive:not(:disabled, [aria-disabled='true'], [data-disabled]):hover {
+		box-shadow: var(--elevation-ordinary);
+		translate: 0;
+	}
+}
+
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
@@ -614,11 +713,15 @@
 	--color-reserved-veil: var(--reserved-veil);
 	--color-ghost-hover: var(--ghost-hover);
 
-	/* Sticker shadows → shadow-sticker-* utilities */
-	--shadow-sticker-sm: 2px 2px 0 var(--hard-shadow);
-	--shadow-sticker: 4px 4px 0 var(--hard-shadow);
-	--shadow-sticker-lift: 7px 7px 0 var(--hard-shadow);
-	--shadow-sticker-strong: 4px 4px 0 var(--hard-shadow-strong);
+	/* Semantic elevation utilities plus compatibility aliases. */
+	--shadow-elevation-compact: var(--elevation-compact);
+	--shadow-elevation-ordinary: var(--elevation-ordinary);
+	--shadow-elevation-lifted: var(--elevation-lifted);
+	--shadow-elevation-pressed: var(--elevation-pressed);
+	--shadow-sticker-sm: var(--elevation-compact);
+	--shadow-sticker: var(--elevation-ordinary);
+	--shadow-sticker-lift: var(--elevation-lifted);
+	--shadow-sticker-strong: var(--elevation-ordinary-strong);
 
 	/* Motion → ease-spring / duration utilities */
 	--ease-spring: var(--ease-spring);

@@ -36,7 +36,7 @@
 	const styles = $derived(avatarVariants({ size, bordered }));
 </script>
 
-<span class={cn(styles.root(), className)}>
+<span data-slot="avatar" class={cn(styles.root(), className)}>
 	{#if hasSrc}
 		<ImageFrame
 			{src}

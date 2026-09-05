@@ -36,6 +36,7 @@ export interface GiftPresentation {
 export interface GiftDisplayState {
 	isVisitorOrModerator: boolean;
 	visitorGift: GiftForVisitor | null;
+	reservationAwareGift: GiftForVisitor | null;
 	isFullyReserved: boolean;
 	reservedCount: number;
 	presentation: GiftPresentation;
@@ -53,40 +54,58 @@ export function deriveGiftDisplayState(
 	hidePresentationState = false,
 ): GiftDisplayState {
 	const isVisitorOrModerator = isGiftForVisitor(gift, role, hideReservationState);
-	const visitorGift = isVisitorOrModerator ? gift : null;
-	const isFullyReserved = visitorGift?.isFullyReserved ?? false;
-	const reservedCount = visitorGift?.reservedCount ?? 0;
-	const quantity = visitorGift?.quantity;
+	const reservationAwareGift =
+		!hideReservationState && 'reservedCount' in gift
+			? role === 'recipient'
+				? {
+						...gift,
+						reserverNames: [],
+						myReservationId: null,
+						myReservationPurchasedAt: null,
+					}
+				: gift
+			: null;
+	const visitorGift = isVisitorOrModerator ? reservationAwareGift : null;
+	const isFullyReserved = reservationAwareGift?.isFullyReserved ?? false;
+	const reservedCount = reservationAwareGift?.reservedCount ?? 0;
+	const quantity = reservationAwareGift?.quantity;
 	const remaining = quantity == null ? undefined : Math.max(0, quantity - reservedCount);
 	const reservationKind: Exclude<GiftOverlayKind, 'received'> | null =
-		visitorGift?.myReservationId != null
+		reservationAwareGift?.myReservationId != null
 			? 'own-reservation'
 			: isFullyReserved
 				? 'unavailable'
 				: quantity != null && reservedCount > 0 && remaining! > 0
 					? 'partial'
 					: null;
+	const reservationPill =
+		reservationKind === null
+			? {}
+			: {
+					supportKind: reservationKind,
+					...(reservationKind === 'partial' ? { remaining, total: quantity! } : {}),
+				};
+	const remainingCapacityPill =
+		reservationKind === 'own-reservation' && remaining !== undefined && remaining > 0
+			? { supportKind: 'partial' as const, remaining, total: quantity! }
+			: {};
 	const overlay: GiftStateOverlayModel | null = gift.received
 		? {
 				kind: 'received',
-				...(reservationKind === null ? {} : { supportKind: reservationKind }),
-				...(reservationKind === 'partial' ? { remaining, total: quantity! } : {}),
+				...reservationPill,
 			}
 		: reservationKind === null
 			? null
 			: {
 					kind: reservationKind,
 					...(reservationKind === 'partial' ? { remaining, total: quantity! } : {}),
-					...(reservationKind === 'own-reservation' &&
-					remaining !== undefined &&
-					remaining > 0
-						? { supportKind: 'partial' as const, remaining, total: quantity! }
-						: {}),
+					...remainingCapacityPill,
 				};
 	const isArchived = capabilities.isArchived ?? false;
 	return {
 		isVisitorOrModerator,
 		visitorGift,
+		reservationAwareGift,
 		isFullyReserved,
 		reservedCount,
 		presentation: {

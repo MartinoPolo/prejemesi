@@ -10,6 +10,9 @@
 	import WishlistDetailToolbar from '$lib/components/blocks/wishlist/WishlistDetailToolbar.svelte';
 	import WishlistGiftDisplay from '$lib/components/blocks/wishlist/WishlistGiftDisplay.svelte';
 	import WishlistSelectionToolbar from '$lib/components/blocks/wishlist/WishlistSelectionToolbar.svelte';
+	import GiftBulkCopyDialog, {
+		type BulkCopyDestination,
+	} from '$lib/components/blocks/wishlist/GiftBulkCopyDialog.svelte';
 	import GiftContextActions from '$lib/components/blocks/wishlist/GiftContextActions.svelte';
 	import WishlistPreparingNotice from '$lib/components/blocks/wishlist/WishlistPreparingNotice.svelte';
 	import WishlistModals from '$lib/components/blocks/wishlist/WishlistModals.svelte';
@@ -87,6 +90,8 @@
 		reorderGifts,
 		markGiftReceived,
 		bulkUpdateGifts,
+		bulkCopyGifts,
+		getBulkCopyDestinations,
 		getPriorityLevels,
 	} from '$lib/modules/gifts/gifts.remote.js';
 	import { importGifts } from '$lib/modules/import/import.remote.js';
@@ -492,6 +497,12 @@
 		commonSelectionValue(selectedGiftRows.map((giftItem) => giftItem.received)),
 	);
 	let bulkPending = $state<PendingGiftBulkActionDescriptor | null>(null);
+	let bulkCopyOpen = $state(false);
+	let bulkCopyLoading = $state(false);
+	let bulkCopySubmitting = $state(false);
+	let bulkCopyDestinationId = $state('');
+	let bulkCopyReturnToActions = $state<(() => void) | null>(null);
+	let bulkCopyDestinations = $state<BulkCopyDestination[]>([]);
 	let hiddenConfirmOpen = $state(false);
 	let deferredBulkAction = $state<GiftBulkAction | null>(null);
 	let contextGift = $state<GiftByRole | null>(null);
@@ -683,6 +694,67 @@
 			bulkPending = null;
 			hiddenConfirmOpen = false;
 			deferredBulkAction = null;
+		}
+	}
+
+	async function openBulkCopy(returnToActions?: () => void) {
+		if (bulkCopySubmitting || selectionSnapshot.selectedIds.length === 0) {
+			return;
+		}
+		bulkCopyReturnToActions = returnToActions ?? null;
+		bulkCopyOpen = true;
+		bulkCopyLoading = true;
+		bulkCopyDestinationId = '';
+		try {
+			bulkCopyDestinations = await getBulkCopyDestinations(wishlist.id);
+			bulkCopyDestinationId = bulkCopyDestinations[0]?.id ?? '';
+		} catch (thrown) {
+			bulkCopyDestinations = [];
+			toastError(translateServerError(thrown));
+		} finally {
+			bulkCopyLoading = false;
+		}
+	}
+
+	function handleBulkCopyOpenChange(open: boolean) {
+		bulkCopyOpen = open;
+		if (!open) {
+			bulkCopyReturnToActions = null;
+		}
+	}
+
+	function returnFromBulkCopy() {
+		const returnToActions = bulkCopyReturnToActions;
+		bulkCopyOpen = false;
+		bulkCopyReturnToActions = null;
+		returnToActions?.();
+	}
+
+	async function submitBulkCopy() {
+		if (
+			bulkCopySubmitting ||
+			bulkCopyDestinationId === '' ||
+			selectionSnapshot.selectedIds.length === 0
+		) {
+			return;
+		}
+		const selectedIds = [...selectionSnapshot.selectedIds];
+		bulkCopySubmitting = true;
+		try {
+			await bulkCopyGifts({
+				sourceWishlistId: wishlist.id,
+				destinationWishlistId: bulkCopyDestinationId,
+				giftIds: selectedIds,
+			});
+			const returnToActions = bulkCopyReturnToActions;
+			toastSuccess(m.gift_bulk_copy_success({ count: selectedIds.length }));
+			bulkCopyOpen = false;
+			bulkCopyReturnToActions = null;
+			returnToActions?.();
+		} catch (thrown) {
+			toastError(translateServerError(thrown));
+		} finally {
+			bulkCopySubmitting = false;
 		}
 	}
 
@@ -1363,7 +1435,7 @@
 	data-testid="wishlist-page-shell"
 	data-palette={activePalette}
 	style="overflow-anchor: none"
-	class="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 max-sm:-mx-6 max-sm:w-[calc(100%+3rem)] sm:gap-6 sm:px-4 sm:py-6"
+	class="mx-auto mt-3 flex w-full max-w-6xl flex-col gap-3 px-3 pb-3 sm:mt-0 sm:gap-6 sm:px-4 sm:py-6"
 >
 	<WishlistHeader
 		title={wishlist.title}
@@ -1412,6 +1484,7 @@
 				oncategory={(categoryId) =>
 					void applyBulkAction({ action: 'category', categoryId })}
 				onaction={(action) => void applyBulkAction(action)}
+				oncopy={(returnToActions) => void openBulkCopy(returnToActions)}
 				ondone={() => giftSelection.exit()}
 			/>
 		{/snippet}
@@ -1528,6 +1601,19 @@
 			giftSelection.exit();
 		}
 	}}
+/>
+
+<GiftBulkCopyDialog
+	open={bulkCopyOpen}
+	destinations={bulkCopyDestinations}
+	selectedDestinationId={bulkCopyDestinationId}
+	selectedCount={selectionSnapshot.selectedIds.length}
+	loading={bulkCopyLoading}
+	submitting={bulkCopySubmitting}
+	onopenchange={handleBulkCopyOpenChange}
+	onback={bulkCopyReturnToActions === null ? undefined : returnFromBulkCopy}
+	ondestinationchange={(id) => (bulkCopyDestinationId = id)}
+	onconfirm={() => void submitBulkCopy()}
 />
 
 <Dialog.Root bind:open={hiddenConfirmOpen}>

@@ -58,6 +58,10 @@ const TRANSLATIONS: Record<string, TranslatorFunction> = {
 	[SERVER_ERROR.CANNOT_DELETE_RESERVED_GIFT]: () => m.server_error_cannot_delete_reserved_gift(),
 	[SERVER_ERROR.GIFT_WISHLIST_MISMATCH]: () => m.server_error_gift_wishlist_mismatch(),
 	[SERVER_ERROR.BULK_GIFT_STATE_MISMATCH]: () => m.server_error_bulk_gift_state_mismatch(),
+	[SERVER_ERROR.BULK_COPY_INVALID_SELECTION]: () => m.server_error_bulk_copy_invalid_selection(),
+	[SERVER_ERROR.BULK_COPY_DESTINATION_UNAVAILABLE]: () =>
+		m.server_error_bulk_copy_destination_unavailable(),
+	[SERVER_ERROR.BULK_COPY_FAILED]: () => m.server_error_bulk_copy_failed(),
 	[SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH]: () =>
 		m.server_error_gift_priority_wishlist_mismatch(),
 	// Reuses the form's own range-error copy so toast and inline hint read identically.

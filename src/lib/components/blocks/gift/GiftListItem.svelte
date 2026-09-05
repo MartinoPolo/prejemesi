@@ -47,7 +47,7 @@
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
+		hideReservationState = role === 'recipient',
 		contextualMode = false,
 		showLikeCount = false,
 		onreserve,
@@ -101,7 +101,7 @@
 		class="relative aspect-square size-32 self-start border-r-2 border-ink sm:size-[clamp(8rem,39vw,9.5rem)] sm:border-0 sm:self-center"
 	>
 		<GiftImage
-			class="size-full rounded-none sm:rounded-lg"
+			class="size-full rounded-none max-sm:[&_img]:p-0 sm:rounded-lg"
 			imageUrl={imageSrc}
 			imageMeta={gift.imageMeta}
 			target="thumb"
@@ -118,7 +118,7 @@
 		{#if canManage}
 			<!-- Edit affordance (issue #125 REQ-3): decorative, the whole row is the click target. -->
 			<span
-				class="absolute -top-1.5 -right-1.5 hidden items-center justify-center rounded-full border-2 border-ink bg-card p-1 opacity-0 shadow-sticker transition-opacity duration-150 sm:flex group-hover:opacity-100 group-focus-within:opacity-100"
+				class="absolute -top-1.5 -left-1.5 hidden items-center justify-center rounded-full border-2 border-ink bg-card p-1 opacity-0 shadow-sticker transition-opacity duration-150 sm:flex group-hover:opacity-100 group-focus-within:opacity-100"
 				aria-hidden="true"
 			>
 				<PencilIcon class="size-3" />
@@ -132,14 +132,14 @@
 				size="md"
 				showCount={showLikeCount}
 				class={cn(
-					'absolute right-1 top-1 z-20 h-10 min-h-10 min-w-10 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker sm:right-2 sm:top-auto sm:bottom-2',
+					'absolute right-1 top-1 z-20 h-10 min-h-10 min-w-10 justify-center rounded-full border-2 border-ink bg-card p-0 shadow-sticker sm:right-2 sm:top-2',
 					showLikeCount
 						? 'w-10 gap-0 p-0 max-sm:[&_[data-like-count]]:hidden sm:w-auto sm:gap-1 sm:px-1.5'
 						: 'w-10 p-0',
 				)}
 			/>
 		{/if}
-		<GiftStateOverlay model={presentation.overlay} />
+		<GiftStateOverlay model={presentation.overlay} class="pt-[3.25rem]" />
 	</div>
 
 	<!-- Content and primary reservation action stay beside the image at every width. The dim
@@ -153,7 +153,7 @@
 	>
 		<div class="flex items-start gap-1.5">
 			<h3
-				class="line-clamp-2 min-w-0 flex-1 font-heading text-base font-semibold leading-snug text-foreground"
+				class="line-clamp-2 min-h-8 min-w-0 flex-1 font-heading text-[13px] font-semibold leading-4 text-foreground sm:min-h-0 sm:text-base sm:leading-snug"
 			>
 				{gift.name}
 			</h3>
@@ -218,15 +218,17 @@
 		{#if !contextualMode && ((canManage && !isArchived && onreceived !== undefined) || (isVisitorOrModerator && visitorGift) || onmore)}
 			<div
 				class={cn(
-					'mt-auto flex min-w-0 flex-row gap-1 self-end pt-0 sm:flex-col sm:gap-1.5 sm:pt-2',
+					'mt-auto flex w-full min-w-0 flex-row gap-1 self-stretch pt-0 sm:w-auto sm:flex-col sm:gap-1.5 sm:self-end sm:pt-2',
 					!hasDesktopAction && 'sm:hidden',
 				)}
+				data-testid="gift-list-actions"
 			>
 				{#if onmore}
 					<Button
 						intent="outline"
 						class="size-10 min-h-10 shrink-0 p-0 sm:hidden"
 						aria-label={m.gift_more_actions()}
+						data-testid="gift-more-actions"
 						onclick={(event) => {
 							event.stopPropagation();
 							onmore();
@@ -240,7 +242,7 @@
 						{role}
 						{isArchived}
 						{onreceived}
-						class="min-h-10 w-full"
+						class="min-h-10 min-w-0 flex-1 whitespace-normal px-1 text-xs leading-tight max-sm:min-h-11 [&_svg]:hidden sm:w-full sm:flex-none sm:gap-1.5 sm:px-3 sm:text-(length:--text-md) sm:leading-none sm:[&_svg]:block"
 					/>
 				{/if}
 				{#if isVisitorOrModerator && visitorGift}

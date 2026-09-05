@@ -43,7 +43,7 @@ export const likeButtonVariants = tv({
 		appearance: {
 			ghost: {},
 			sticker: {
-				root: 'rounded-[7px] border-ink bg-card shadow-sticker transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:bg-like-tint hover:shadow-sticker-lift motion-safe:hover:-translate-y-0.5 motion-safe:hover:scale-100 motion-reduce:transition-none',
+				root: 'elevation-interactive rounded-[7px] border-ink bg-card transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard) delay-0 hover:bg-like-tint motion-reduce:transition-none',
 			},
 		},
 	},

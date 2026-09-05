@@ -1,10 +1,11 @@
 import * as v from 'valibot';
-import { eq, and, isNull, sql, count as drizzleCount, inArray } from 'drizzle-orm';
-import { error } from '@sveltejs/kit';
+import { eq, and, isNull, sql, count as drizzleCount, inArray, ne, or } from 'drizzle-orm';
+import { error, isHttpError } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db/index.js';
 import { gift, giftCategory, reservation, giftLike } from '$lib/server/db/gift.schema.js';
 import { wishlist, priorityLevel } from '$lib/server/db/wishlist.schema.js';
 import { user } from '$lib/server/db/auth.schema.js';
+import { moderatorAssignment } from '$lib/server/db/moderator.schema.js';
 import {
 	publicQuery,
 	guardedCommand,
@@ -51,6 +52,7 @@ import { appendGifts } from './gift_creation_service.js';
 import { mapGiftCreationError } from './gift_creation_transport.js';
 import { bulkGiftUpdateData, isBulkPresentationAction } from './gift_bulk_update.js';
 import { runBulkUpdateAfterRowsLockedHookForTest } from './gifts.remote.test-hook.js';
+import { BulkCopyGiftsInputSchema, copyGifts } from './gift_bulk_copy.js';
 import {
 	assertActiveGiftCategoryAssignment,
 	publicGiftCategory,
@@ -786,15 +788,57 @@ function bulkTimestampValue(value: Date | null) {
 	return value === null ? sql`NULL::timestamptz` : sql`${value}::timestamptz`;
 }
 
+type GiftTransaction = Parameters<Parameters<ReturnType<typeof getDb>['transaction']>[0]>[0];
+
+async function verifyBulkManagerAccess(
+	transaction: GiftTransaction,
+	userId: string,
+	wishlistId: string,
+) {
+	const wishlistRows = await transaction
+		.select()
+		.from(wishlist)
+		.where(and(eq(wishlist.id, wishlistId), isNull(wishlist.deletedAt)))
+		.for('update');
+	const wishlistRow = wishlistRows[0];
+	if (wishlistRow === undefined) {
+		error(404, SERVER_ERROR.WISHLIST_NOT_FOUND);
+	}
+
+	if (wishlistRow.recipientUserId === userId) {
+		return { role: WISHLIST_ROLES.recipient, wishlistRow };
+	}
+
+	const assignments = await transaction
+		.select({ id: moderatorAssignment.id })
+		.from(moderatorAssignment)
+		.where(
+			and(
+				eq(moderatorAssignment.wishlistId, wishlistId),
+				eq(moderatorAssignment.userId, userId),
+				isNull(moderatorAssignment.deletedAt),
+			),
+		)
+		.for('update');
+	if (assignments[0] === undefined) {
+		error(403, SERVER_ERROR.ACCESS_DENIED);
+	}
+	return { role: WISHLIST_ROLES.moderator, wishlistRow };
+}
+
 export const bulkUpdateGifts = guardedCommand(
 	BulkUpdateGiftsInputSchema,
 	async ({ user }, input) => {
 		const database = getDb();
 		const uniqueGiftIds = [...new Set(input.giftIds)];
-		const { role, wishlistRow } = await verifyManagerAccess(user.id, input.wishlistId);
-		assertWishlistMutable(wishlistRow);
 
 		const result = await database.transaction(async (tx) => {
+			const { role, wishlistRow } = await verifyBulkManagerAccess(
+				tx,
+				user.id,
+				input.wishlistId,
+			);
+			assertWishlistMutable(wishlistRow);
 			if (input.action === 'priority' && input.priorityLevelId !== null) {
 				const levels = await tx
 					.select({ id: priorityLevel.id })
@@ -805,7 +849,7 @@ export const bulkUpdateGifts = guardedCommand(
 							eq(priorityLevel.wishlistId, input.wishlistId),
 						),
 					)
-					.limit(1);
+					.for('key share');
 				if (levels[0] === undefined) {
 					error(400, SERVER_ERROR.GIFT_PRIORITY_WISHLIST_MISMATCH);
 				}
@@ -950,10 +994,12 @@ export const bulkUpdateGifts = guardedCommand(
 				updatedIds: updatedRows.map((row) => row.id),
 				priorReceived: Object.fromEntries(rows.map((row) => [row.id, row.received])),
 				changedPresentationRows,
+				role,
+				wishlistRow,
 			};
 		});
 
-		if (role === WISHLIST_ROLES.moderator) {
+		if (result.role === WISHLIST_ROLES.moderator) {
 			await notifyReserversOfEditedGiftsBestEffort({
 				database,
 				changedGifts: result.changedPresentationRows.map((changedGift) => ({
@@ -963,11 +1009,14 @@ export const bulkUpdateGifts = guardedCommand(
 				})),
 				actorId: user.id,
 				actorName: user.name,
-				wishlist: { title: wishlistRow.title, shortId: wishlistRow.shortId },
+				wishlist: {
+					title: result.wishlistRow.title,
+					shortId: result.wishlistRow.shortId,
+				},
 			});
 		}
 
-		await singleFlightRefresh(getGiftsByWishlistShortId, wishlistRow.shortId);
+		await singleFlightRefresh(getGiftsByWishlistShortId, result.wishlistRow.shortId);
 		return { updatedIds: result.updatedIds, priorReceived: result.priorReceived };
 	},
 );
@@ -1005,6 +1054,58 @@ export const markGiftReceived = guardedCommand(
 		return updated;
 	},
 );
+
+/** Eligible non-archived destinations managed by the current actor. */
+export const getBulkCopyDestinations = guardedQueryWithArgs(
+	v.string(),
+	async ({ user: currentUser }, sourceWishlistId) => {
+		await verifyManagerAccess(currentUser.id, sourceWishlistId);
+		const database = getDb();
+		return database
+			.selectDistinct({
+				id: wishlist.id,
+				title: wishlist.title,
+				status: wishlist.status,
+				recipientDisplayName: sql<string>`coalesce(${wishlist.recipientName}, ${user.name})`,
+			})
+			.from(wishlist)
+			.leftJoin(user, eq(user.id, wishlist.recipientUserId))
+			.leftJoin(
+				moderatorAssignment,
+				and(
+					eq(moderatorAssignment.wishlistId, wishlist.id),
+					eq(moderatorAssignment.userId, currentUser.id),
+					isNull(moderatorAssignment.deletedAt),
+				),
+			)
+			.where(
+				and(
+					ne(wishlist.id, sourceWishlistId),
+					ne(wishlist.status, 'archived'),
+					isNull(wishlist.deletedAt),
+					or(
+						eq(wishlist.recipientUserId, currentUser.id),
+						eq(moderatorAssignment.userId, currentUser.id),
+					),
+				),
+			)
+			.orderBy(wishlist.title);
+	},
+);
+
+export const bulkCopyGifts = guardedCommand(BulkCopyGiftsInputSchema, async ({ user }, input) => {
+	try {
+		const result = await copyGifts(user.id, input);
+		singleFlightRefresh(getGiftsByWishlistShortId, result.destinationShortId);
+		return { createdIds: result.created.map((created) => created.id) };
+	} catch (thrown) {
+		if (isHttpError(thrown)) {
+			throw thrown;
+		}
+		console.error('[Bulk gift copy] failed', thrown);
+		error(500, SERVER_ERROR.BULK_COPY_FAILED);
+	}
+});
 
 /** Fetch priority levels for a wishlist */
 export const getPriorityLevels = guardedQueryWithArgs(v.string(), async ({ user }, wishlistId) => {

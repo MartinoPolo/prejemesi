@@ -49,7 +49,7 @@
 		gift,
 		role,
 		isArchived = false,
-		hideReservationState = false,
+		hideReservationState = role === 'recipient',
 		contextualMode = false,
 		allowArchivedLike = false,
 		onreserve,
@@ -124,7 +124,7 @@
 		{/if}
 
 		<GiftImage
-			class="size-full rounded-none bg-transparent"
+			class="size-full rounded-none bg-transparent max-sm:[&_img]:p-0"
 			imageUrl={imageSrc}
 			imageMeta={gift.imageMeta}
 			target="square"
@@ -153,13 +153,17 @@
 			</span>
 		{/if}
 
-		<GiftStateOverlay model={presentation.overlay} />
+		<GiftStateOverlay
+			model={presentation.overlay}
+			class={narrowViewportState.current && presentation.showLike ? 'pt-12' : undefined}
+		/>
 		{#if !contextualMode && narrowViewportState.current && presentation.showLike && visitorGift}
 			<LikeButton
 				giftId={gift.id}
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
 				size="md"
+				countOverlay
 				class="absolute top-1 right-1 z-20 size-10 rounded-full border-2 border-ink bg-card p-0 shadow-sticker"
 			/>
 		{/if}
@@ -250,7 +254,7 @@
 						{role}
 						{isArchived}
 						{onreceived}
-						class="min-h-10 min-w-0 w-full shrink gap-0 whitespace-normal px-1 text-xs leading-tight [&_svg]:hidden sm:gap-1.5 sm:px-3 sm:text-(length:--text-md) sm:leading-none sm:[&_svg]:block"
+						class="min-h-10 min-w-0 w-full shrink gap-0 whitespace-normal px-1 text-xs leading-tight max-sm:min-h-11 [&_svg]:hidden sm:gap-1.5 sm:px-3 sm:text-(length:--text-md) sm:leading-none sm:[&_svg]:block"
 					/>
 				{/if}
 				{#if isVisitorOrModerator && visitorGift}
@@ -269,6 +273,7 @@
 						intent="outline"
 						class="h-auto min-h-10 w-10 shrink-0 self-stretch p-0 sm:hidden"
 						aria-label={m.gift_more_actions()}
+						data-testid="gift-more-actions"
 						onclick={(event) => {
 							event.stopPropagation();
 							onmore();

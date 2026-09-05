@@ -119,7 +119,7 @@ export const giftDetailModalVariants = tv({
 		// mode. Shrink-wraps around the natural-aspect photo (issue #183 REQ-10) instead
 		// of forcing a square crop; the photo itself carries the raised height cap.
 		viewPhoto:
-			'inline-block -rotate-2 rounded-[10px] border-2 border-[#4A443A] bg-[#FFFDF6] p-[9px] shadow-[5px_6px_0_var(--hard-shadow-strong)] max-w-full',
+			'inline-block -rotate-2 rounded-[10px] border-2 border-[#4A443A] bg-[#FFFDF6] p-[9px] shadow-[var(--elevation-lifted-strong)] max-w-full',
 		viewPhotoInner:
 			'inline-block overflow-hidden rounded-[6px] border-2 border-black/10 bg-[#F2F0EA] max-w-full',
 		viewContent: 'flex min-h-0 flex-col sm:overflow-hidden',

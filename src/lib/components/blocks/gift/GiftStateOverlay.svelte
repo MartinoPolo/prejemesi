@@ -33,40 +33,36 @@
 	const supportLabel = $derived(
 		model?.supportKind === undefined ? null : label(model.supportKind, model),
 	);
+
+	function pillClasses(kind: GiftOverlayKind): string {
+		return cn(
+			'max-w-[calc(100%_-_0.5rem)] -rotate-1 rounded-panel border-2 border-ink px-3 py-1.5 text-center text-sm leading-4 font-bold shadow-sticker [overflow-wrap:anywhere]',
+			kind === 'own-reservation' && 'bg-[var(--gift-overlay-own-reservation)] text-white',
+			kind === 'unavailable' && 'bg-[var(--gift-overlay-unavailable)] text-white',
+			kind === 'partial' && 'bg-card text-foreground',
+			kind === 'received' &&
+				'bg-primary text-primary-foreground [text-shadow:0_1px_1px_var(--ink)]',
+		);
+	}
 </script>
 
 {#if model !== null}
 	<div
 		class={cn(
-			'pointer-events-none absolute inset-0 z-10 flex items-center justify-center',
+			'pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5',
 			className,
 		)}
 		data-testid="gift-state-overlay"
 	>
-		<span
-			class={cn(
-				'flex w-[calc(100%_-_0.5rem)] max-w-[7.5rem] -rotate-1 flex-col items-center rounded-panel border-2 border-ink px-0.5 text-center text-[11px] leading-[13px] font-extrabold shadow-sticker sm:max-w-[8.25rem]',
-				model.kind === 'own-reservation' &&
-					'bg-[var(--gift-overlay-own-reservation)] text-white',
-				model.kind === 'unavailable' && 'bg-[var(--gift-overlay-unavailable)] text-white',
-				model.kind === 'partial' && 'bg-card text-foreground',
-				model.kind === 'received' && 'bg-[var(--footer-bg)] text-white',
-			)}
+		<span class={pillClasses(model.kind)} data-state-primary data-state-kind={model.kind}
+			>{primaryLabel}</span
 		>
+		{#if model.supportKind !== undefined && supportLabel !== null}
 			<span
-				data-state-primary
-				class={cn(
-					'max-w-full font-black [overflow-wrap:anywhere]',
-					(model.kind !== 'unavailable' || supportLabel !== null) && 'whitespace-nowrap',
-				)}>{primaryLabel}</span
+				class={pillClasses(model.supportKind)}
+				data-reservation-support
+				data-state-kind={model.supportKind}>{supportLabel}</span
 			>
-			{#if supportLabel !== null}
-				<small
-					data-reservation-support
-					class="max-w-full text-[9px] leading-[11px] font-semibold whitespace-nowrap"
-					>{supportLabel}</small
-				>
-			{/if}
-		</span>
+		{/if}
 	</div>
 {/if}

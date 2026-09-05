@@ -92,7 +92,7 @@ function deferredAnimation() {
 	};
 }
 
-describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
+describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 	it('uses one card column at 320px and exactly two equal columns from 321px through 639px', async () => {
 		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };
 		const responsiveSections = [{ ...sections[0]!, gifts: [visitorGift(), second] }];
@@ -127,8 +127,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 		await screen.unmount();
 	});
 
-	it('keeps two equal columns in constrained intermediate desktop content, then resumes auto-fill density', async () => {
-		const gifts = Array.from({ length: 4 }, (_, index) => ({
+	it('uses adaptive minmax columns at every desktop and tablet acceptance width', async () => {
+		const gifts = Array.from({ length: 6 }, (_, index) => ({
 			...visitorGift(),
 			id: `gift-${index + 1}`,
 			name: `Dárek ${index + 1}`,
@@ -137,6 +137,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 		for (const { viewportWidth, collectionWidth } of [
 			{ viewportWidth: 640, collectionWidth: 560 },
 			{ viewportWidth: 768, collectionWidth: 688 },
+			{ viewportWidth: 1024, collectionWidth: 944 },
+			{ viewportWidth: 1280, collectionWidth: 1152 },
 		]) {
 			await page.viewport(viewportWidth, 900);
 			const screen = await render(WishlistGiftDisplay, {
@@ -148,36 +150,21 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 				'[data-wishlist-gift-collection]',
 			)!;
 			collection.style.width = `${collectionWidth}px`;
-			const cards = Array.from(collection.querySelectorAll<HTMLElement>('[data-gift-item]'));
-			const first = cards[0]!.getBoundingClientRect();
-			const second = cards[1]!.getBoundingClientRect();
-			const third = cards[2]!.getBoundingClientRect();
+			const grid = collection.querySelector<HTMLElement>(
+				'[data-testid="wishlist-gift-card-grid"]',
+			)!;
+			const columns = getComputedStyle(grid).gridTemplateColumns.split(' ');
+			const expectedColumnCount = Math.floor((collectionWidth + 20) / 300);
 
-			expect(second.top).toBeCloseTo(first.top, 0);
-			expect(second.width).toBeCloseTo(first.width, 0);
-			expect(second.left - first.right).toBeCloseTo(20, 0);
-			expect(third.top).toBeGreaterThan(first.top);
+			expect(columns).toHaveLength(expectedColumnCount);
+			for (const column of columns) {
+				expect(parseFloat(column)).toBeGreaterThanOrEqual(280);
+			}
 			await screen.unmount();
 		}
-
-		await page.viewport(1024, 900);
-		const screen = await render(WishlistGiftDisplay, {
-			...defaultProps,
-			sections: [{ ...sections[0]!, gifts }],
-			viewMode: 'card',
-		});
-		const collection = document.querySelector<HTMLElement>('[data-wishlist-gift-collection]')!;
-		collection.style.width = '944px';
-		const cards = Array.from(collection.querySelectorAll<HTMLElement>('[data-gift-item]'));
-		const first = cards[0]!.getBoundingClientRect();
-		const third = cards[2]!.getBoundingClientRect();
-
-		expect(third.top).toBeCloseTo(first.top, 0);
-		expect(first.width).toBeGreaterThanOrEqual(280);
-		await screen.unmount();
 	});
 
-	it('reserves four pixels inside the grid for right and bottom hard-shadow paint', async () => {
+	it('keeps the collection edges exact and leaves card paint unclipped', async () => {
 		const gifts = Array.from({ length: 4 }, (_, index) => ({
 			...visitorGift(),
 			id: `gift-${index + 1}`,
@@ -196,6 +183,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 				...defaultProps,
 				sections: [{ ...sections[0]!, gifts }],
 				viewMode: 'card',
+				selectionMode: true,
+				selectedIds: ['gift-4'],
 			});
 			const collection = document.querySelector<HTMLElement>(
 				'[data-wishlist-gift-collection]',
@@ -210,8 +199,11 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #330)', () => {
 			const rightmostEdge = Math.max(...cardRects.map((rect) => rect.right));
 			const bottomEdge = Math.max(...cardRects.map((rect) => rect.bottom));
 
-			expect(gridRect.right - rightmostEdge).toBeCloseTo(4, 0);
-			expect(gridRect.bottom - bottomEdge).toBeCloseTo(4, 0);
+			expect(gridRect.right - rightmostEdge).toBeCloseTo(0, 0);
+			expect(gridRect.bottom - bottomEdge).toBeCloseTo(0, 0);
+			expect(getComputedStyle(grid).overflowX).toBe('visible');
+			expect(getComputedStyle(grid).overflowY).toBe('visible');
+			expect(getComputedStyle(collection).zIndex).toBe('0');
 			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(viewportWidth);
 			await screen.unmount();
 		}
@@ -314,24 +306,39 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 				oncontextactions: () => true,
 			});
 			const gift = document.querySelector('[data-gift-item]')!;
-			const checkboxes = gift.querySelectorAll<HTMLElement>(
-				'[aria-hidden="true"] [data-slot="checkbox"]',
-			);
-			const checkboxWrapper = checkboxes[0]!.closest('[aria-hidden="true"]') as HTMLElement;
+			const checkboxSurface = gift.querySelector(
+				'[data-testid="gift-selection-control"]',
+			) as HTMLElement;
 
-			expect(checkboxes).toHaveLength(1);
-			expect(checkboxWrapper.getBoundingClientRect().width).toBeCloseTo(40, 0);
-			expect(checkboxWrapper.getBoundingClientRect().height).toBeCloseTo(40, 0);
+			expect(checkboxSurface).toBeTruthy();
+			expect(checkboxSurface.getBoundingClientRect().width).toBeCloseTo(40, 0);
+			expect(checkboxSurface.getBoundingClientRect().height).toBeCloseTo(40, 0);
+			expect(checkboxSurface.querySelector('[data-slot="checkbox"]')).toBeNull();
+			const imageRegion = gift.querySelector(
+				viewMode === 'card'
+					? '[data-testid="gift-card-image-frame"]'
+					: '[data-testid="gift-list-image"]',
+			) as HTMLElement;
+			const checkboxRect = checkboxSurface.getBoundingClientRect();
+			const imageRect = imageRegion.getBoundingClientRect();
+			const giftRect = gift.getBoundingClientRect();
+			expect(checkboxRect.top).toBeGreaterThanOrEqual(giftRect.top + 4 - 0.5);
+			expect(checkboxRect.right).toBeLessThanOrEqual(giftRect.right - 4 + 0.5);
+			expect(checkboxRect.right).toBeLessThanOrEqual(imageRect.right);
+			expect(checkboxRect.bottom).toBeLessThan(imageRect.bottom);
 			expectNoContextualCardActions(gift);
-			expectContextualOverlayClearOf(gift, [checkboxWrapper]);
-			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(1);
+			expectContextualOverlayClearOf(gift, [checkboxSurface]);
+			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(0);
 			await screen.unmount();
 		},
 	);
 
-	it.each(['card', 'list'] as const)(
-		'renders the grip and visible move controls in reorder mode for the %s path',
-		async (viewMode) => {
+	it.each([
+		{ viewMode: 'card' as const, directionalControlsVisible: false },
+		{ viewMode: 'list' as const, directionalControlsVisible: true },
+	])(
+		'renders layout-aware reorder controls in the $viewMode path',
+		async ({ viewMode, directionalControlsVisible }) => {
 			await page.viewport(390, 720);
 			const privateGift = {
 				...visitorGift(),
@@ -365,13 +372,66 @@ describe('WishlistGiftDisplay contextual gift presentation', () => {
 			expect(grip.getBoundingClientRect().width).toBeCloseTo(40, 0);
 			expect(grip.getBoundingClientRect().height).toBeCloseTo(40, 0);
 			expect(moveUp).toBeTruthy();
-			expect(moveUp.disabled).toBe(true);
 			expect(moveDown).toBeTruthy();
-			expect(moveDown.disabled).toBe(true);
+			const directionalActions = moveUp.parentElement as HTMLElement;
+			expect(getComputedStyle(directionalActions).display === 'none').toBe(
+				!directionalControlsVisible,
+			);
+			if (directionalControlsVisible) {
+				expect(moveUp.disabled).toBe(true);
+				expect(moveDown.disabled).toBe(true);
+			}
 			expectNoContextualCardActions(gift);
-			expectContextualOverlayClearOf(gift, [grip, moveUp, moveDown]);
-			expect(gift.querySelectorAll('button, a, input, textarea, select')).toHaveLength(3);
+			expectContextualOverlayClearOf(
+				gift,
+				directionalControlsVisible ? [grip, moveUp, moveDown] : [grip],
+			);
+			const visibleInteractiveElements = Array.from(
+				gift.querySelectorAll<HTMLElement>('button, a, input, textarea, select'),
+			).filter((element) => element.getClientRects().length > 0);
+			expect(visibleInteractiveElements).toHaveLength(directionalControlsVisible ? 3 : 1);
 			await screen.unmount();
+		},
+	);
+});
+
+describe('WishlistGiftDisplay recipient privacy structure (issue #336)', () => {
+	it.each(['card', 'list'] as const)(
+		'keeps reserved and unreserved recipient %s presentations structurally and geometrically identical',
+		async (viewMode) => {
+			await page.viewport(390, 720);
+			const capture = async (gift: GiftForVisitor) => {
+				const screen = await render(WishlistGiftDisplay, {
+					...defaultProps,
+					sections: [{ ...sections[0]!, gifts: [gift] }],
+					role: WISHLIST_ROLES.recipient,
+					viewMode,
+				});
+				const item = document.querySelector('[data-gift-item]') as HTMLElement;
+				const snapshot = {
+					html: item.innerHTML,
+					width: item.getBoundingClientRect().width,
+					height: item.getBoundingClientRect().height,
+					text: item.textContent ?? '',
+				};
+				await screen.unmount();
+				return snapshot;
+			};
+			const available = await capture(visitorGift());
+			const privatelyReserved = await capture({
+				...visitorGift(),
+				reservedCount: 1,
+				isFullyReserved: true,
+				myReservationId: 'private-reservation',
+				myReservationPurchasedAt: new Date('2026-01-03'),
+				reserverNames: ['Soukromá osoba'],
+				likeCount: 9,
+			});
+
+			expect(privatelyReserved.html).toBe(available.html);
+			expect(privatelyReserved.width).toBeCloseTo(available.width, 0);
+			expect(privatelyReserved.height).toBeCloseTo(available.height, 0);
+			expect(privatelyReserved.text).not.toMatch(/rezerv|koupen|Soukromá osoba|9/i);
 		},
 	);
 });

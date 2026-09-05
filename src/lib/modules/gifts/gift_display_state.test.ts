@@ -102,7 +102,7 @@ describe('deriveGiftDisplayState presentation', () => {
 		]);
 	});
 
-	it('keeps own reservation primary and adds finite remaining capacity as support', () => {
+	it('keeps own reservation and remaining finite capacity as distinct pills', () => {
 		const overlay = deriveGiftDisplayState(
 			gift({ quantity: 3, reservedCount: 1, myReservationId: 'mine' }),
 			'visitor',
@@ -116,6 +116,74 @@ describe('deriveGiftDisplayState presentation', () => {
 			remaining: 2,
 			total: 3,
 		});
+	});
+
+	it('shows counts to a self-promoted recipient without enabling visitor actions or identities', () => {
+		const state = deriveGiftDisplayState(
+			gift({
+				received: true,
+				quantity: 3,
+				reservedCount: 1,
+				reserverNames: ['Private reserver'],
+			}),
+			'recipient',
+			false,
+			{ canLike: false },
+		);
+
+		expect(state.presentation.overlay).toEqual({
+			kind: 'received',
+			supportKind: 'partial',
+			remaining: 2,
+			total: 3,
+		});
+		expect(state.isVisitorOrModerator).toBe(false);
+		expect(state.visitorGift).toBeNull();
+		expect(state.reservationAwareGift).not.toBeNull();
+		expect(state.reservationAwareGift?.reserverNames).toEqual([]);
+		expect(state.reservationAwareGift?.myReservationId).toBeNull();
+		expect(state.presentation.showLike).toBe(false);
+	});
+
+	it('ignores every reservation field when recipient privacy is enabled', () => {
+		const state = deriveGiftDisplayState(
+			gift({
+				received: true,
+				quantity: 3,
+				reservedCount: 3,
+				isFullyReserved: true,
+				myReservationId: 'private',
+				reserverNames: ['Private reserver'],
+			}),
+			'recipient',
+			true,
+			{ canLike: false },
+		);
+
+		expect(state.presentation.overlay).toEqual({ kind: 'received' });
+		expect(state.reservationAwareGift).toBeNull();
+		expect(state.reservedCount).toBe(0);
+		expect(state.isFullyReserved).toBe(false);
+	});
+
+	it('reveals the preserved reservation pill when Received is removed', () => {
+		const reservedGift = gift({
+			received: true,
+			quantity: 3,
+			reservedCount: 3,
+			isFullyReserved: true,
+		});
+		const received = deriveGiftDisplayState(reservedGift, 'visitor', false, visitorCapabilities)
+			.presentation.overlay;
+		const unreceived = deriveGiftDisplayState(
+			{ ...reservedGift, received: false },
+			'visitor',
+			false,
+			visitorCapabilities,
+		).presentation.overlay;
+
+		expect(received).toEqual({ kind: 'received', supportKind: 'unavailable' });
+		expect(unreceived).toEqual({ kind: 'unavailable' });
 	});
 
 	it('exposes a remaining count only for finite capacity that is still available', () => {

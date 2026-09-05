@@ -68,12 +68,49 @@ describe('canonical semantic depth tokens', () => {
 		},
 	);
 
-	it('keeps the exact zero-blur sticker geometry', () => {
+	it('defines the narrow responsive zero-blur elevation contract', () => {
+		const rootRule = ruleBody(':root');
+		expectDeclarations(rootRule, [
+			'--elevation-compact-offset: 1px',
+			'--elevation-ordinary-offset: 3px',
+			'--elevation-lifted-offset: 4px',
+			'--elevation-pressed-offset: 1px',
+		]);
+		const recipeRule = ruleBody(':where(:root, [data-palette])');
+		expect(recipeRule).toContain(
+			'--elevation-ordinary: var(--elevation-ordinary-offset) var(--elevation-ordinary-offset) 0\n\t\tvar(--hard-shadow)',
+		);
+	});
+
+	it('raises only the geometry offsets at the wide breakpoint', () => {
+		expect(css).toContain(`@media (width >= 640px) {
+	:root {
+		--elevation-compact-offset: 2px;
+		--elevation-ordinary-offset: 4px;
+		--elevation-lifted-offset: 7px;
+		--elevation-pressed-offset: 2px;
+	}`);
+	});
+
+	it('keeps legacy utilities as aliases of semantic recipes', () => {
 		const themeRule = ruleBody('@theme inline');
 		expectDeclarations(themeRule, [
-			'--shadow-sticker-sm: 2px 2px 0 var(--hard-shadow)',
-			'--shadow-sticker: 4px 4px 0 var(--hard-shadow)',
-			'--shadow-sticker-lift: 7px 7px 0 var(--hard-shadow)',
+			'--shadow-elevation-compact: var(--elevation-compact)',
+			'--shadow-elevation-ordinary: var(--elevation-ordinary)',
+			'--shadow-elevation-lifted: var(--elevation-lifted)',
+			'--shadow-elevation-pressed: var(--elevation-pressed)',
+			'--shadow-sticker-sm: var(--elevation-compact)',
+			'--shadow-sticker: var(--elevation-ordinary)',
+			'--shadow-sticker-lift: var(--elevation-lifted)',
 		]);
+	});
+
+	it('centralizes pressed, disabled, hover-capable, anchored, and sheet directions', () => {
+		expect(css).toContain('@media (hover: hover) and (pointer: fine)');
+		expect(ruleBody('.elevation-pressed')).toContain('box-shadow: var(--elevation-pressed)');
+		expect(css).toContain("[aria-disabled='true']");
+		expect(css).toContain("[aria-expanded='true']");
+		expect(css).toContain(".elevation-sheet[data-side='right']");
+		expect(css).toContain('calc(-1 * var(--elevation-ordinary-offset))');
 	});
 });

@@ -113,7 +113,8 @@ describe('WishlistGiftDraggableWrapper — gift card opening (#284)', () => {
 });
 
 describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => {
-	it('renders 40px reorder controls and makes card actions inert while reorder is enabled', async () => {
+	it('renders 40px directional controls in a single-column card and makes card actions inert', async () => {
+		await page.viewport(320, 720);
 		const onreordermove = vi.fn();
 		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
@@ -142,6 +143,26 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 		await userEvent.click(moveDown);
 		expect(onreordermove).toHaveBeenCalledWith(0, 1);
 		expect(document.querySelector('[data-selection-inert]')).toHaveAttribute('inert');
+		await screen.unmount();
+	});
+
+	it('hides directional card controls at two-column widths while preserving grip keyboard reorder', async () => {
+		await page.viewport(390, 720);
+		const onreordermove = vi.fn();
+		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+			onreordermove,
+		});
+		const grip = screen.getByRole('button', { name: m.gift_reorder_grip_label() });
+		const directionalActions = document.querySelector(
+			'[data-testid="gift-reorder-directional-actions"]',
+		) as HTMLElement;
+
+		expect(getComputedStyle(directionalActions).display).toBe('none');
+		grip.element().focus();
+		await userEvent.keyboard('{ArrowRight}');
+		expect(onreordermove).toHaveBeenCalledWith(0, 1);
 		await screen.unmount();
 	});
 
@@ -232,10 +253,13 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			reorderEnabled: false,
 			selectionMode: true,
 			selectionLayout: 'list',
+			overlayModel: { kind: 'received', supportKind: 'unavailable' },
 		});
 		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
 		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
-		const checkboxControl = wrapper.querySelector('[aria-hidden="true"]') as HTMLElement;
+		const checkboxControl = wrapper.querySelector(
+			'[data-testid="gift-selection-control"]',
+		) as HTMLElement;
 		const imageRect = image.getBoundingClientRect();
 		const controlRect = checkboxControl.getBoundingClientRect();
 		const imageHorizontalMidpoint = imageRect.left + imageRect.width / 2;
@@ -249,6 +273,18 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expect(controlRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
 		expect(controlRect.left).toBeGreaterThanOrEqual(imageHorizontalMidpoint);
 		expect(controlRect.top).toBeLessThan(imageVerticalMidpoint);
+		for (const pill of container.querySelectorAll<HTMLElement>(
+			'[data-testid="gift-state-overlay"] > span',
+		)) {
+			const pillRect = pill.getBoundingClientRect();
+			expect(
+				controlRect.left < pillRect.right &&
+					controlRect.right > pillRect.left &&
+					controlRect.top < pillRect.bottom &&
+					controlRect.bottom > pillRect.top,
+			).toBe(false);
+		}
+		expect(checkboxControl.querySelector('[data-slot="checkbox"]')).toBeNull();
 		await userEvent.click(wrapper);
 		await unmount();
 	});
@@ -259,6 +295,7 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			...baseProps,
 			reorderEnabled: true,
 			selectionLayout: 'list',
+			overlayModel: { kind: 'received', supportKind: 'unavailable' },
 		});
 		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
 		const grip = container.querySelector(
@@ -277,6 +314,17 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expect(gripRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
 		expect(gripRect.left).toBeGreaterThanOrEqual(imageHorizontalMidpoint);
 		expect(gripRect.top).toBeLessThan(imageVerticalMidpoint);
+		for (const pill of container.querySelectorAll<HTMLElement>(
+			'[data-testid="gift-state-overlay"] > span',
+		)) {
+			const pillRect = pill.getBoundingClientRect();
+			expect(
+				gripRect.left < pillRect.right &&
+					gripRect.right > pillRect.left &&
+					gripRect.top < pillRect.bottom &&
+					gripRect.bottom > pillRect.top,
+			).toBe(false);
+		}
 		await unmount();
 	});
 
@@ -322,6 +370,28 @@ afterEach(() => {
 });
 
 describe('WishlistGiftDraggableWrapper — touch gestures', () => {
+	it('leaves touch scrolling unblocked outside the reorder handle', async () => {
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+		});
+		const content = container.querySelector('[data-testid="card-placeholder"]') as HTMLElement;
+		const down = new PointerEvent('pointerdown', {
+			bubbles: true,
+			cancelable: true,
+			pointerId: 1,
+			pointerType: 'touch',
+			clientX: 80,
+			clientY: 80,
+		});
+
+		content.dispatchEvent(down);
+
+		expect(down.defaultPrevented).toBe(false);
+		expect(getComputedStyle(content).touchAction).not.toBe('none');
+		await unmount();
+	});
+
 	it('opens detail after a short touch tap without preventing the synthesized click', async () => {
 		const openDetail = vi.fn();
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {

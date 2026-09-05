@@ -6,15 +6,15 @@ import ViewToggle from './ViewToggle.svelte';
 import ViewToggleTestHarness from './ViewToggleTestHarness.svelte';
 
 describe('ViewToggle toggle selection (fixes: re-click deselects both items)', () => {
-	it('renders the same warm segmented tray treatment as the wishlist switcher', async () => {
+	it('renders the same accent tray treatment as the wishlist switcher', async () => {
 		const rootStyle = document.documentElement.style;
-		const properties = ['--secondary', '--card', '--ink'] as const;
+		const properties = ['--accent', '--card', '--ink'] as const;
 		const previousProperties = properties.map((property) => ({
 			property,
 			value: rootStyle.getPropertyValue(property),
 			priority: rootStyle.getPropertyPriority(property),
 		}));
-		rootStyle.setProperty('--secondary', 'rgb(12, 23, 34)');
+		rootStyle.setProperty('--accent', 'rgb(12, 23, 34)');
 		rootStyle.setProperty('--card', 'rgb(45, 56, 67)');
 		rootStyle.setProperty('--ink', 'rgb(78, 89, 100)');
 
@@ -34,9 +34,10 @@ describe('ViewToggle toggle selection (fixes: re-click deselects both items)', (
 			expect(getComputedStyle(group).backgroundColor).toBe('rgb(12, 23, 34)');
 			expect(getComputedStyle(grid).backgroundColor).toBe('rgb(45, 56, 67)');
 			expect(getComputedStyle(list).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-			expect(getComputedStyle(group).borderColor).toBe('rgb(78, 89, 100)');
-			expect(parseFloat(getComputedStyle(group).borderWidth)).toBeGreaterThan(0);
-			expect(getComputedStyle(group).boxShadow).not.toBe('none');
+			expect(parseFloat(getComputedStyle(group).borderWidth)).toBe(0);
+			expect(getComputedStyle(group).boxShadow).not.toContain('inset');
+			expect(getComputedStyle(grid).outlineStyle).toBe('solid');
+			expect(getComputedStyle(list).outlineStyle).not.toBe('solid');
 			expect(getComputedStyle(grid).boxShadow).toBe(getComputedStyle(list).boxShadow);
 		} finally {
 			await screen.unmount();
