@@ -128,6 +128,49 @@
 	let mobileBackButton = $state<HTMLButtonElement | null>(null);
 	let mobileActiveAction = $state<Exclude<MobileBulkAction, 'copy'> | null>(null);
 	let mobileInvokingAction = $state<MobileBulkAction | null>(null);
+	type PendingFocusDestination =
+		| { kind: 'radio'; target: HTMLInputElement }
+		| { kind: 'action'; action: MobileBulkAction }
+		| { kind: 'trigger'; target: HTMLButtonElement };
+
+	let pendingFocusAction = $state<Exclude<MobileBulkAction, 'copy'> | null>(null);
+	let pendingFocusDestination = $state<PendingFocusDestination | null>(null);
+	let pendingFocusCycleObserved = $state(false);
+
+	function clearPendingFocusTracking() {
+		pendingFocusAction = null;
+		pendingFocusDestination = null;
+		pendingFocusCycleObserved = false;
+	}
+
+	$effect(() => {
+		if (
+			pendingFocusDestination !== null &&
+			pendingFocusAction !== null &&
+			pending?.action === pendingFocusAction
+		) {
+			pendingFocusCycleObserved = true;
+		} else if (pending === null && pendingFocusCycleObserved) {
+			const destination = pendingFocusDestination;
+			clearPendingFocusTracking();
+			requestAnimationFrame(() => {
+				const target =
+					destination?.kind === 'action'
+						? document.querySelector<HTMLButtonElement>(
+								`[data-mobile-bulk-action="${destination.action}"]`,
+							)
+						: destination?.target;
+				if (
+					target !== null &&
+					target !== undefined &&
+					target.isConnected &&
+					!target.disabled
+				) {
+					target.focus({ preventScroll: true });
+				}
+			});
+		}
+	});
 
 	function focusMobileAction(action: MobileBulkAction) {
 		requestAnimationFrame(() => {
@@ -143,7 +186,20 @@
 		mobileBulkSheetOpen = open;
 		if (!open) {
 			mobileActiveAction = null;
-			requestAnimationFrame(() => mobileBulkTrigger?.focus({ preventScroll: true }));
+			if (pendingFocusCycleObserved && mobileBulkTrigger !== null) {
+				pendingFocusDestination = { kind: 'trigger', target: mobileBulkTrigger };
+			} else {
+				clearPendingFocusTracking();
+				requestAnimationFrame(() => {
+					if (
+						mobileBulkTrigger !== null &&
+						mobileBulkTrigger.isConnected &&
+						!mobileBulkTrigger.disabled
+					) {
+						mobileBulkTrigger.focus({ preventScroll: true });
+					}
+				});
+			}
 		}
 	}
 
@@ -156,8 +212,13 @@
 	function returnToMobileActions() {
 		const action = mobileInvokingAction;
 		mobileActiveAction = null;
-		if (action !== null) {
-			focusMobileAction(action);
+		if (pendingFocusCycleObserved && action !== null) {
+			pendingFocusDestination = { kind: 'action', action };
+		} else {
+			clearPendingFocusTracking();
+			if (action !== null) {
+				focusMobileAction(action);
+			}
 		}
 	}
 
@@ -171,6 +232,16 @@
 
 	function handleReceived(received: boolean) {
 		onaction({ action: 'received', received });
+	}
+
+	function handleBulkRadioChange(event: Event, onchange: () => void) {
+		pendingFocusDestination = {
+			kind: 'radio',
+			target: event.currentTarget as HTMLInputElement,
+		};
+		pendingFocusAction = mobileActiveAction;
+		pendingFocusCycleObserved = false;
+		onchange();
 	}
 
 	function handleCopy() {
@@ -264,7 +335,14 @@
 	onchange: () => void,
 )}
 	<label class="bulk-sheet-choice" class:bulk-sheet-choice-disabled={optionDisabled}>
-		<input type="radio" {name} {value} {checked} disabled={optionDisabled} {onchange} />
+		<input
+			type="radio"
+			{name}
+			{value}
+			{checked}
+			disabled={optionDisabled}
+			onchange={(event) => handleBulkRadioChange(event, onchange)}
+		/>
 		<span>{label}</span>
 	</label>
 {/snippet}

@@ -250,6 +250,107 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 		await pending.unmount();
 	});
 
+	it('shows mixed summaries and unselected nested radios for every value action', async () => {
+		const screen = await render(WishlistSelectionToolbar, createProps());
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		const sheet = screen.getByRole('dialog', { name: m.gift_selection_actions() });
+
+		for (const action of ['priority', 'category', 'imageFit', 'imageBackground', 'received']) {
+			const row = sheet
+				.element()
+				.querySelector<HTMLButtonElement>(`[data-mobile-bulk-action="${action}"]`)!;
+			expect(row).toHaveTextContent(m.gift_selection_mixed());
+			await row.click();
+			expect(screen.getByTestId('selection-bulk-sheet-options').element()).toHaveTextContent(
+				m.gift_selection_mixed(),
+			);
+			for (const radio of sheet
+				.element()
+				.querySelectorAll<HTMLInputElement>('input[type="radio"]')) {
+				expect(radio.checked).toBe(false);
+			}
+			await sheet.getByRole('button', { name: m.gift_context_back() }).click();
+		}
+		await screen.unmount();
+	});
+
+	it('restores focus to a nested radio after its matching pending cycle settles', async () => {
+		const props = createProps();
+		const screen = await render(WishlistSelectionToolbar, props);
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		await screen
+			.getByTestId('selection-bulk-sheet-actions')
+			.element()
+			.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="imageFit"]')!
+			.click();
+		const radio = screen
+			.getByRole('radio', { name: m.image_fit_fit() })
+			.element() as HTMLInputElement;
+		await radio.click();
+		await screen.rerender({
+			...props,
+			pending: { action: 'imageFit' as const, count: 2 },
+		});
+		expect(radio).toBeDisabled();
+		await screen.rerender({ ...props, commonImageFit: 'fit' as const, pending: null });
+		await new Promise(requestAnimationFrame);
+		expect(radio).toHaveFocus();
+		await screen.unmount();
+	});
+
+	it('settles focus to the invoking row after Back and the trigger after Sheet dismissal', async () => {
+		const props = createProps();
+		const screen = await render(WishlistSelectionToolbar, props);
+		const trigger = screen
+			.getByRole('button', { name: m.gift_selection_actions() })
+			.element() as HTMLButtonElement;
+		await trigger.click();
+		await screen
+			.getByTestId('selection-bulk-sheet-actions')
+			.element()
+			.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="imageFit"]')!
+			.click();
+		await screen.getByRole('radio', { name: m.image_fit_fit() }).click();
+		await screen.rerender({
+			...props,
+			pending: { action: 'imageFit' as const, count: 2 },
+		});
+		await new Promise(requestAnimationFrame);
+		await screen.getByRole('button', { name: m.gift_context_back() }).click();
+		const imageFitRow = screen
+			.getByTestId('selection-bulk-sheet-actions')
+			.element()
+			.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="imageFit"]')!;
+		expect(imageFitRow).toBeDisabled();
+		await screen.rerender({ ...props, commonImageFit: 'fit' as const, pending: null });
+		await new Promise(requestAnimationFrame);
+		expect(imageFitRow).toHaveFocus();
+
+		await screen
+			.getByTestId('selection-bulk-sheet-actions')
+			.element()
+			.querySelector<HTMLButtonElement>('[data-mobile-bulk-action="imageBackground"]')!
+			.click();
+		await screen.getByRole('radio', { name: m.image_background_black() }).click();
+		await screen.rerender({
+			...props,
+			commonImageFit: 'fit' as const,
+			pending: { action: 'imageBackground' as const, count: 2 },
+		});
+		await new Promise(requestAnimationFrame);
+		await userEvent.keyboard('{Escape}');
+		expect(trigger).toBeDisabled();
+		await screen.rerender({
+			...props,
+			commonImageFit: 'fit' as const,
+			commonImageBackground: '#000000',
+			pending: null,
+		});
+		await new Promise(requestAnimationFrame);
+		expect(trigger).toHaveFocus();
+		await screen.unmount();
+	});
+
 	it('bounds genuine option overflow while keeping Back reachable', async () => {
 		await page.viewport(320, 320);
 		const screen = await render(WishlistSelectionToolbar, {

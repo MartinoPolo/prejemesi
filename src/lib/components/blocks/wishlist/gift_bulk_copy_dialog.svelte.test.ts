@@ -43,6 +43,22 @@ describe('GiftBulkCopyDialog', () => {
 		await screen.unmount();
 	});
 
+	it('restores confirm focus when a recoverable submission settles with the dialog open', async () => {
+		await page.viewport(1280, 760);
+		const handlers = { ...props(), selectedDestinationId: 'destination' };
+		const screen = await render(GiftBulkCopyDialog, handlers);
+		const confirm = screen
+			.getByRole('button', { name: m.gift_bulk_copy_confirm() })
+			.element() as HTMLButtonElement;
+		confirm.focus();
+		await screen.rerender({ ...handlers, submitting: true });
+		expect(confirm).toBeDisabled();
+		await screen.rerender({ ...handlers, submitting: false, open: true });
+		await new Promise(requestAnimationFrame);
+		expect(confirm).toHaveFocus();
+		await screen.unmount();
+	});
+
 	it('reuses the bounded wishlist bottom sheet and exposes nested Back on narrow screens', async () => {
 		await page.viewport(390, 760);
 		const onback = vi.fn();

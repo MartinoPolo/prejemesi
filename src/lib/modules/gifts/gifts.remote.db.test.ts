@@ -324,6 +324,33 @@ describe.skipIf(!DB_READY)('createGift remote boundary [real DB]', () => {
 					{ wishlistId: WISHLIST_ID, giftIds, ...action },
 				);
 				expect(result.updatedIds).toEqual(expect.arrayContaining(giftIds));
+				if (giftIds.length === 1) {
+					const [persisted] = await database
+						.select({
+							priorityLevelId: gift.priorityLevelId,
+							categoryId: gift.categoryId,
+							imageMeta: gift.imageMeta,
+							received: gift.received,
+						})
+						.from(gift)
+						.where(eq(gift.id, BULK_GIFT_ONE_ID));
+					switch (action.action) {
+						case 'priority':
+							expect(persisted?.priorityLevelId).toBe(PRIORITY_ID);
+							break;
+						case 'category':
+							expect(persisted?.categoryId).toBe(CATEGORY_ID);
+							break;
+						case 'imageFit':
+							expect(persisted?.imageMeta?.fitMode).toBe('contain-padded');
+							break;
+						case 'imageBackground':
+							expect(persisted?.imageMeta?.bgColor).toBe('#000000');
+							break;
+						case 'received':
+							expect(persisted?.received).toBe(true);
+					}
+				}
 			}
 		}
 

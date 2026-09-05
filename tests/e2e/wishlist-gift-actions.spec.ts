@@ -101,6 +101,7 @@ async function createAdditionalWishlist(page: Page, title: string) {
 	await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
 	await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
 	await expect(page.getByRole('heading', { level: 1 })).toContainText(title);
+	return new URL(page.url()).pathname;
 }
 
 async function applyNestedBulkOption(
@@ -115,10 +116,17 @@ async function applyNestedBulkOption(
 		typeof option === 'number'
 			? sheet.getByRole('radio').nth(option)
 			: sheet.getByRole('radio', { name: option });
+	const selectedLabel = await radio.evaluate((element) =>
+		element.closest('label')?.innerText.trim(),
+	);
+	expect(selectedLabel).toBeTruthy();
 	await radio.click();
 	await waitForToast(page, m.gift_bulk_success({ count: selectedCount }));
 	await dismissToasts(page);
 	await sheet.getByRole('button', { name: m.gift_context_back() }).click();
+	await expect(sheet.locator(`[data-mobile-bulk-action="${action}"]`)).toContainText(
+		selectedLabel!,
+	);
 }
 
 async function selectionCount(toolbar: Locator, count: number) {
@@ -447,7 +455,7 @@ test('all six mobile bulk actions mutate one and multiple selected gifts', async
 	);
 	await createActionFixture(page);
 	const sourcePath = new URL(page.url()).pathname;
-	await createAdditionalWishlist(page, 'Cíl hromadného kopírování');
+	const destinationPath = await createAdditionalWishlist(page, 'Cíl hromadného kopírování');
 	await page.goto(sourcePath);
 	await expect(page.locator('[data-gift-item]')).toHaveCount(2);
 	await dismissToasts(page);
@@ -497,6 +505,10 @@ test('all six mobile bulk actions mutate one and multiple selected gifts', async
 	await expect(
 		page.locator('[data-sonner-toast]').filter({ hasText: m.error_generic() }),
 	).toHaveCount(0);
+	await page.goto(destinationPath);
+	await expect(page.locator('[data-gift-item]')).toHaveCount(3);
+	await expect(gift(page, 'Kolo pro výlety')).toHaveCount(2);
+	await expect(gift(page, 'Stan pro dva')).toHaveCount(1);
 	await page.context().close();
 });
 

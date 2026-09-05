@@ -38,10 +38,31 @@
 		onconfirm,
 	}: Props = $props();
 	let viewportWidth = $state(1024);
+	let confirmButton = $state<HTMLButtonElement | null>(null);
+	let submittingCycleObserved = $state(false);
 	const mobile = $derived(viewportWidth < 640);
 	const unavailable = $derived(
 		loading || submitting || selectedDestinationId === '' || destinations.length === 0,
 	);
+
+	$effect(() => {
+		if (submitting) {
+			submittingCycleObserved = true;
+		} else if (submittingCycleObserved) {
+			submittingCycleObserved = false;
+			if (open) {
+				requestAnimationFrame(() => {
+					if (
+						confirmButton !== null &&
+						confirmButton.isConnected &&
+						!confirmButton.disabled
+					) {
+						confirmButton.focus({ preventScroll: true });
+					}
+				});
+			}
+		}
+	});
 </script>
 
 <svelte:window bind:innerWidth={viewportWidth} />
@@ -86,7 +107,12 @@
 		>
 			{mobile && onback !== undefined ? m.gift_context_back() : m.cancel()}
 		</Button>
-		<Button intent="primary" disabled={unavailable} onclick={onconfirm}>
+		<Button
+			bind:ref={confirmButton}
+			intent="primary"
+			disabled={unavailable}
+			onclick={onconfirm}
+		>
 			{submitting
 				? m.gift_bulk_pending({ count: selectedCount })
 				: m.gift_bulk_copy_confirm()}
