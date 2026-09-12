@@ -596,15 +596,18 @@
 		</Sheet.Trigger>
 		{#if mobileBulkSheetOpen}
 			<WishlistBottomSheet class="selection-bulk-sheet">
-				<WishlistSheetHeader>
-					<Sheet.Title>{m.gift_selection_actions()}</Sheet.Title>
-					<Sheet.Description>
-						{pending !== null
-							? pendingLabel
-							: m.gift_selection_count({ count: selectedCount })}
-					</Sheet.Description>
+				<WishlistSheetHeader class="selection-bulk-sheet-header">
+					<div class="bulk-sheet-heading">
+						<Sheet.Title>{m.gift_selection_actions()}</Sheet.Title>
+						<Sheet.Description>
+							{m.gift_selection_count({ count: selectedCount })}
+						</Sheet.Description>
+					</div>
 				</WishlistSheetHeader>
 				<WishlistSheetBody>
+					{#if pending !== null}
+						<p class="bulk-sheet-pending" role="status">{pendingLabel}</p>
+					{/if}
 					{#if mobileActiveAction === null}
 						<div class="bulk-sheet-actions" data-testid="selection-bulk-sheet-actions">
 							{@render mobileActionRow(
@@ -792,6 +795,43 @@
 	:global(.selection-bulk-sheet) {
 		display: flex;
 		flex-direction: column;
+	}
+
+	:global(.selection-bulk-sheet-header) {
+		min-height: 72px;
+		flex-direction: row;
+		align-items: center;
+		padding: 16px 80px 16px 16px;
+	}
+
+	.bulk-sheet-heading {
+		display: flex;
+		min-width: 0;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.bulk-sheet-heading :global([data-slot='sheet-title']),
+	.bulk-sheet-heading :global([data-slot='sheet-description']) {
+		margin: 0;
+	}
+
+	.bulk-sheet-heading :global([data-slot='sheet-title']) {
+		flex: 0 0 auto;
+	}
+
+	.bulk-sheet-heading :global([data-slot='sheet-description']) {
+		min-width: 0;
+	}
+
+	.bulk-sheet-pending {
+		margin: 0;
+		border-bottom: 1px solid var(--border);
+		padding: 0.5rem 0.75rem;
+		color: var(--muted-foreground);
+		font-size: var(--text-xs);
+		font-weight: 700;
 	}
 
 	.bulk-sheet-actions {

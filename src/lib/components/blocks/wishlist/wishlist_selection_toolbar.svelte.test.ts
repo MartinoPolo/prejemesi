@@ -109,9 +109,9 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			1,
 		);
 		expect(headerStyle.paddingLeft).toBe('16px');
-		expect(headerStyle.paddingRight).toBe('56px');
-		expect(headerStyle.paddingTop).toBe('12px');
-		expect(headerStyle.paddingBottom).toBe('12px');
+		expect(headerStyle.paddingRight).toBe('80px');
+		expect(headerStyle.paddingTop).toBe('16px');
+		expect(headerStyle.paddingBottom).toBe('16px');
 		expect(parseFloat(headerStyle.borderBottomWidth)).toBeCloseTo(1, 1);
 		const actions = screen.getByTestId('selection-bulk-sheet-actions').element();
 		const rows = Array.from(
@@ -134,6 +134,74 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
 			expect(row.textContent?.trim()).not.toBe('');
 		}
+		await screen.unmount();
+	});
+
+	it('aligns the title, count, and keyboard-close target in a collision-free header', async () => {
+		for (const width of [320, 390]) {
+			for (const selectedCount of [3, 120]) {
+				await page.viewport(width, 760);
+				const screen = await render(WishlistSelectionToolbar, {
+					...createProps(),
+					selectedCount,
+				});
+				const trigger = screen.getByRole('button', { name: m.gift_selection_actions() });
+				await trigger.click();
+				const dialog = screen.getByRole('dialog', { name: m.gift_selection_actions() });
+				const shell = dialog.element();
+				const header = shell.querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
+				const title = header.querySelector<HTMLElement>('[data-slot="sheet-title"]')!;
+				const count = header.querySelector<HTMLElement>('[data-slot="sheet-description"]')!;
+				const close = shell.querySelector<HTMLElement>('[data-slot="sheet-close"]')!;
+				const headerRect = header.getBoundingClientRect();
+				const titleRect = title.getBoundingClientRect();
+				const countRect = count.getBoundingClientRect();
+				const closeRect = close.getBoundingClientRect();
+				const selectedLabel = m.gift_selection_count({ count: selectedCount });
+
+				expect(headerRect.height).toBeGreaterThanOrEqual(72);
+				expect(countRect.left).toBeGreaterThanOrEqual(titleRect.right);
+				expect(countRect.right).toBeLessThanOrEqual(closeRect.left);
+				expect(closeRect.width).toBeGreaterThanOrEqual(40);
+				expect(closeRect.height).toBeGreaterThanOrEqual(40);
+				expect(closeRect.top - headerRect.top).toBeCloseTo(
+					headerRect.bottom - closeRect.bottom,
+					1,
+				);
+				const closeCenter = closeRect.top + closeRect.height / 2;
+				expect(
+					Math.abs(titleRect.top + titleRect.height / 2 - closeCenter),
+				).toBeLessThanOrEqual(1);
+				expect(
+					Math.abs(countRect.top + countRect.height / 2 - closeCenter),
+				).toBeLessThanOrEqual(1);
+				expect(header.textContent?.split(selectedLabel)).toHaveLength(2);
+				expect(shell.textContent?.split(selectedLabel)).toHaveLength(2);
+				expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
+
+				close.focus();
+				await userEvent.keyboard('{Enter}');
+				await expect.element(trigger).toHaveFocus();
+				await screen.unmount();
+			}
+		}
+	});
+
+	it('keeps pending progress separate from the selected-count description', async () => {
+		const props = createProps();
+		const screen = await render(WishlistSelectionToolbar, props);
+		await screen.getByRole('button', { name: m.gift_selection_actions() }).click();
+		await screen.rerender({
+			...props,
+			pending: { action: 'received' as const, count: 2 },
+		});
+		const dialog = screen.getByRole('dialog', { name: m.gift_selection_actions() });
+		const header = dialog.element().querySelector<HTMLElement>('[data-slot="sheet-header"]')!;
+		expect(header).toHaveTextContent(m.gift_selection_count({ count: 2 }));
+		expect(header).not.toHaveTextContent(m.gift_bulk_pending({ count: 2 }));
+		await expect
+			.element(dialog.getByRole('status'))
+			.toHaveTextContent(m.gift_bulk_pending({ count: 2 }));
 		await screen.unmount();
 	});
 
