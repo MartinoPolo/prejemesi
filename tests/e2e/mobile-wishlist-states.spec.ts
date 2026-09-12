@@ -210,10 +210,49 @@ test.describe('mobile wishlist acceptance', () => {
 		const firstSelectableItem = page.locator('[data-gift-item]').first();
 		await firstSelectableItem.press('Space');
 		await expect(firstSelectableItem).toHaveAttribute('aria-checked', 'true');
+		await expect(firstSelectableItem).toHaveAttribute('data-selected', 'true');
 		const selectedItemBox = await box(firstSelectableItem);
-		const selectedSurfaceBox = await box(
-			firstSelectableItem.getByTestId('gift-selection-surface'),
+		const selectedSurface = firstSelectableItem.locator(
+			'[data-testid="gift-card-surface"], [data-testid="gift-list-item"]',
 		);
+		await expect(selectedSurface).toBeVisible();
+		const selectedSurfaceBox = await box(selectedSurface);
+		const selectionPainting = await selectedSurface.evaluate((surface) => {
+			const style = getComputedStyle(surface);
+			const painting = getComputedStyle(surface, '::after');
+			const pixels = (value: string) => Number.parseFloat(value);
+			return {
+				content: painting.content,
+				position: painting.position,
+				insets: [painting.top, painting.right, painting.bottom, painting.left],
+				shadow: painting.boxShadow,
+				radii: [
+					pixels(painting.borderTopLeftRadius),
+					pixels(painting.borderTopRightRadius),
+					pixels(painting.borderBottomRightRadius),
+					pixels(painting.borderBottomLeftRadius),
+				],
+				expectedRadii: [
+					pixels(style.borderTopLeftRadius) -
+						Math.max(pixels(style.borderTopWidth), pixels(style.borderLeftWidth)),
+					pixels(style.borderTopRightRadius) -
+						Math.max(pixels(style.borderTopWidth), pixels(style.borderRightWidth)),
+					pixels(style.borderBottomRightRadius) -
+						Math.max(pixels(style.borderBottomWidth), pixels(style.borderRightWidth)),
+					pixels(style.borderBottomLeftRadius) -
+						Math.max(pixels(style.borderBottomWidth), pixels(style.borderLeftWidth)),
+				],
+			};
+		});
+		expect(selectionPainting.content).not.toBe('none');
+		expect(selectionPainting.content).not.toBe('normal');
+		expect(selectionPainting.position).toBe('absolute');
+		expect(selectionPainting.insets).toEqual(['0px', '0px', '0px', '0px']);
+		expect(selectionPainting.shadow).toContain('inset');
+		expect(selectionPainting.shadow).toMatch(/\b3px\b/);
+		selectionPainting.radii.forEach((radius, corner) => {
+			expect(radius).toBeCloseTo(selectionPainting.expectedRadii[corner], 1);
+		});
 		const checkGlyphBox = await box(
 			firstSelectableItem.getByTestId('gift-selection-control').locator('svg'),
 		);
