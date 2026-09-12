@@ -19,12 +19,15 @@
 	let { value, onchange, disabled = false }: WishlistPalettePickerProps = $props();
 </script>
 
-<!-- Pure controlled wishlist palette picker (issue #102 REQ-5): the 10 curated
-     palettes as a 2-column swatch grid. Selection is a local settings draft; the
-     parent composite save owns persistence. -->
-<div class="grid grid-cols-2 gap-1">
+<!-- Pure controlled wishlist palette picker: selection is a local settings draft;
+     the parent composite save owns persistence. -->
+<div
+	class="mx-auto flex max-w-[45rem] flex-wrap justify-center gap-2"
+	data-testid="wishlist-palette-picker"
+>
 	{#each PALETTES as paletteOption (paletteOption)}
 		<ChoiceRow
+			class="w-32 max-w-full flex-none"
 			selected={paletteOption === value}
 			{disabled}
 			onSelect={() => onchange(paletteOption)}
