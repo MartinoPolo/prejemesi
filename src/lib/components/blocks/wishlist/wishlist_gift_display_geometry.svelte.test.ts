@@ -223,6 +223,68 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		}
 	});
 
+	it.each([
+		{ viewMode: 'card' as const, width: 390, surfaceTestId: 'gift-card-surface' },
+		{ viewMode: 'list' as const, width: 390, surfaceTestId: 'gift-list-item' },
+		{ viewMode: 'card' as const, width: 768, surfaceTestId: 'gift-card-surface' },
+		{ viewMode: 'list' as const, width: 768, surfaceTestId: 'gift-list-item' },
+	])(
+		'traces the real $viewMode surface at $width px while leaving focus distinct',
+		async ({ viewMode, width, surfaceTestId }) => {
+			await page.viewport(width, 720);
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				viewMode,
+				selectionMode: true,
+				selectedIds: ['gift-1'],
+			});
+			const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
+			const surface = wrapper.querySelector<HTMLElement>(`[data-testid="${surfaceTestId}"]`)!;
+			const selectionPaint = getComputedStyle(surface, '::after');
+			const surfaceStyle = getComputedStyle(surface);
+			const corners = [
+				['borderTopLeftRadius', 'borderTopWidth', 'borderLeftWidth'],
+				['borderTopRightRadius', 'borderTopWidth', 'borderRightWidth'],
+				['borderBottomRightRadius', 'borderBottomWidth', 'borderRightWidth'],
+				['borderBottomLeftRadius', 'borderBottomWidth', 'borderLeftWidth'],
+			] as const;
+
+			expect(wrapper.dataset.selected).toBe('true');
+			expect(selectionPaint.position).toBe('absolute');
+			expect(selectionPaint.inset).toBe('0px');
+			for (const [
+				radiusProperty,
+				verticalBorderProperty,
+				horizontalBorderProperty,
+			] of corners) {
+				const outerRadius = parseFloat(surfaceStyle[radiusProperty]);
+				const verticalInset = parseFloat(surfaceStyle[verticalBorderProperty]);
+				const horizontalInset = parseFloat(surfaceStyle[horizontalBorderProperty]);
+				const selectedRadii = selectionPaint[radiusProperty].split(' ').map(parseFloat);
+
+				expect(selectedRadii[0]).toBeCloseTo(outerRadius - horizontalInset, 5);
+				expect(selectedRadii.at(-1)).toBeCloseTo(outerRadius - verticalInset, 5);
+			}
+			expect(selectionPaint.boxShadow).toContain('inset');
+			expect(selectionPaint.boxShadow).toContain('3px');
+			expect(surfaceStyle.overflow).toBe('visible');
+
+			if (viewMode === 'list' && width >= 640) {
+				const wrapperRect = wrapper.getBoundingClientRect();
+				const surfaceRect = surface.getBoundingClientRect();
+				expect(surfaceRect.left).toBeGreaterThan(wrapperRect.left);
+				expect(surfaceRect.right).toBeCloseTo(wrapperRect.right, 0);
+			}
+
+			wrapper.focus();
+			const focusPaint = getComputedStyle(wrapper, '::after');
+			expect(focusPaint.boxShadow).toContain('inset');
+			expect(focusPaint.boxShadow).toContain('2px');
+			expect(focusPaint.boxShadow).not.toBe(selectionPaint.boxShadow);
+			await screen.unmount();
+		},
+	);
+
 	it('uses standalone equal-height list cards with full-height square images and a 10px gap', async () => {
 		await page.viewport(390, 720);
 		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };

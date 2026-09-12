@@ -232,10 +232,9 @@
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[1.75rem_minmax(0,1fr)] sm:gap-2',
-		selected &&
-			'sm:rounded-xl sm:bg-[var(--selection-tint)] sm:outline-[3px] sm:outline-[var(--selection-ring)] sm:[&>div]:bg-transparent',
 		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
+	data-selected={selectionMode && selected ? true : undefined}
 	role={selectionMode ? 'checkbox' : reorderEnabled ? undefined : 'button'}
 	tabindex={reorderEnabled ? undefined : 0}
 	aria-label={selectionMode
@@ -267,11 +266,6 @@
 		>
 			{#if selected}<CheckIcon class="size-[19px] stroke-[3] sm:size-4" />{/if}
 		</span>
-		{#if selected}<span
-				class="pointer-events-none absolute inset-0 z-30 rounded-panel bg-[var(--selection-image-tint)] ring-[3px] ring-inset ring-[var(--selection-ring)] sm:hidden"
-				data-testid="gift-selection-surface"
-				aria-hidden="true"
-			></span>{/if}
 	{/if}
 	{#if reorderEnabled && !selectionMode}
 		<button
@@ -343,6 +337,27 @@
 </div>
 
 <style>
+	/* Selection follows the gift surface, excluding the desktop List checkbox gutter. */
+	[data-gift-item][data-selected] :global([data-testid='gift-card-surface'])::after,
+	[data-gift-item][data-selected] :global([data-testid='gift-list-item'])::after {
+		position: absolute;
+		z-index: 30;
+		inset: 0;
+		background: var(--selection-image-tint);
+		box-shadow: inset 0 0 0 3px var(--selection-ring);
+		content: '';
+		pointer-events: none;
+	}
+
+	[data-gift-item][data-selected] :global([data-testid='gift-card-surface'])::after {
+		border-radius: inherit;
+	}
+
+	/* Absolute children start at the padding edge; subtract the List surface's 2px border. */
+	[data-gift-item][data-selected] :global([data-testid='gift-list-item'])::after {
+		border-radius: calc(var(--radius-panel) - 2px);
+	}
+
 	[data-gift-item]:focus-visible::after {
 		position: absolute;
 		z-index: 40;
