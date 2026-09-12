@@ -35,6 +35,15 @@ afterEach(async () => {
 	await page.viewport(1280, 720);
 });
 
+function computedRotation(element: HTMLElement) {
+	const transform = getComputedStyle(element).transform;
+	if (transform === 'none') {
+		return 0;
+	}
+	const matrix = new DOMMatrixReadOnly(transform);
+	return Math.atan2(matrix.b, matrix.a) * (180 / Math.PI);
+}
+
 describe('WishlistHeader responsive presentation', () => {
 	it('renders a fixed compact mobile hero with an equally inset thumbnail and one management trigger', async () => {
 		await page.viewport(390, 720);
@@ -168,5 +177,57 @@ describe('WishlistHeader responsive presentation', () => {
 				?.getAttribute('src'),
 		).toBe(fixtureImage);
 		await screen.unmount();
+	});
+
+	it('keeps reassurance and trust notices horizontal, contained, and operable', async () => {
+		const variants = [
+			{
+				recipientIsModerator: false,
+				text: m.wishlist_moderator_sees_reservations({
+					name: baseProps.recipientDisplayName,
+				}),
+			},
+			{
+				recipientIsModerator: true,
+				text: m.wishlist_trust_warning({ name: baseProps.recipientDisplayName }),
+			},
+		];
+
+		for (const width of [320, 390, 1280]) {
+			for (const variant of variants) {
+				await page.viewport(width, 720);
+				const onarchive = vi.fn();
+				const screen = await render(WishlistHeader, {
+					...baseProps,
+					eventDate: new Date('2000-01-01T00:00:00.000Z'),
+					recipientIsModerator: variant.recipientIsModerator,
+					onarchive,
+				});
+				const title = screen.getByText(variant.text);
+				const notice = title.element().closest<HTMLElement>('[data-slot="alert"]')!;
+				const assertHorizontal = () =>
+					expect(Math.abs(computedRotation(notice))).toBeLessThan(0.001);
+
+				await expect.element(title).toBeVisible();
+				assertHorizontal();
+				await title.hover();
+				assertHorizontal();
+				notice.tabIndex = 0;
+				notice.focus();
+				expect(document.activeElement).toBe(notice);
+				assertHorizontal();
+
+				const bounds = notice.getBoundingClientRect();
+				expect(bounds.left).toBeGreaterThanOrEqual(0);
+				expect(bounds.right).toBeLessThanOrEqual(width);
+				expect(parseFloat(getComputedStyle(notice).borderTopWidth)).toBeGreaterThan(0);
+
+				const archive = screen.getByRole('button', { name: m.wishlist_archive_button() });
+				await expect.element(archive).toBeVisible();
+				await archive.click();
+				expect(onarchive).toHaveBeenCalledOnce();
+				await screen.unmount();
+			}
+		}
 	});
 });

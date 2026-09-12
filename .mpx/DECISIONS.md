@@ -1594,12 +1594,12 @@ menu post-share.
 
 ### Reservation-visibility notices: subtle reassurance, loud warning
 
-Decided: 2026-07-10 What: Two messages, one Alert-based component with tones — moderator reassurance
-("you see reservations; the owner never will") is a calm tinted disclosure; the visitor trust
-warning (owner self-promoted to moderator) is an accent banner (bold, warning tone, NO tape — see
-round-2 deltas). The bespoke purple strip in WishlistHeader is removed. Why: The trust warning is
-the one visitors must not miss; the reassurance is ambient. Rejected: Both subtle (warning
-missable); both loud (shouty for moderators on every visit).
+Decided: 2026-07-10 What: Two messages, one Alert-based component with tones and horizontal notice
+surfaces — moderator reassurance ("you see reservations; the owner never will") is a calm tinted
+disclosure; the visitor trust warning (owner self-promoted to moderator) is an accent banner (bold,
+warning tone, NO tape). The bespoke purple strip in WishlistHeader is removed. Why: The trust
+warning is the one visitors must not miss; the reassurance is ambient. Rejected: Both subtle
+(warning missable); both loud (shouty for moderators on every visit).
 
 ### ~~Reserver name visible to visitors and moderators~~ (superseded)
 
@@ -1677,7 +1677,7 @@ anime-auth). Deltas over the round-1 base:
 - Primary buttons are FLAT stickers — `--brand-fill` background, ink border, hard offset shadow,
   white text, spring-lift hover. The gradient+glow primary (and glowPulse animation) is superseded.
 - Tape appears only on paper-like artifacts (sticky note, polaroid). The loud trust warning keeps
-  accent bg/bold/rotation but has NO tape.
+  accent bg/bold but has NO tape; notice surfaces remain horizontal.
 - Gift images: real photos `object-fit: cover` by default; non-filling images letterbox with the
   dotted mat visible (`contain` + padding). Dotted gift-image background pans 0 0 → 24px 12px on
   hover (static for reserved/received).
