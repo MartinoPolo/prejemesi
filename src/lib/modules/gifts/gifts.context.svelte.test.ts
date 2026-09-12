@@ -1,5 +1,6 @@
 import { render } from 'vitest-browser-svelte';
 import { afterEach, describe, expect, it } from 'vitest';
+import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
 import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 import { wishlistGiftGroupingStorageKey } from './gifts.context.svelte.js';
 import { GIFT_GROUPING_OPTIONS, type GiftForVisitor } from './types.js';
@@ -53,6 +54,40 @@ async function expectGrouping(screen: ReturnType<typeof render>, value: string) 
 }
 
 afterEach(() => localStorage.clear());
+
+describe('priority filter labels (issue #351)', () => {
+	it.each([
+		['cs', 'Vysoká'],
+		['en', 'High'],
+	] as const)(
+		'localizes default keys in %s without changing option IDs or order',
+		async (locale, highLabel) => {
+			overwriteGetLocale(() => locale);
+			try {
+				const high = makeGift({ priority: true });
+				const custom = {
+					...makeGift({ priority: true }),
+					id: 'gift-custom',
+					priorityLevelId: 'priority-custom',
+					priorityLabel: '__proto__',
+					prioritySortOrder: 1,
+				};
+				high.priorityLabel = 'Vysoka';
+				const screen = render(GiftsContextTestHost, { initialGifts: [custom, high] });
+				await expect
+					.element(screen.getByTestId('priority-filter-options'))
+					.toHaveTextContent(
+						JSON.stringify([
+							{ value: 'priority-high', label: highLabel },
+							{ value: 'priority-custom', label: '__proto__' },
+						]),
+					);
+			} finally {
+				overwriteGetLocale(() => 'cs');
+			}
+		},
+	);
+});
 
 describe('wishlist grouping preference default (#363)', () => {
 	it.each(Object.values(WISHLIST_ROLES))(

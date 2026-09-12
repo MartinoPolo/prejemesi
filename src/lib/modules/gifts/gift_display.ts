@@ -60,7 +60,9 @@ export const PRIORITY_DISPLAY = {
 export type PriorityKey = keyof typeof PRIORITY_DISPLAY;
 
 export function getPriorityKey(label: string | null): PriorityKey | null {
-	return label !== null && label in PRIORITY_DISPLAY ? (label as PriorityKey) : null;
+	return label !== null && Object.prototype.hasOwnProperty.call(PRIORITY_DISPLAY, label)
+		? (label as PriorityKey)
+		: null;
 }
 
 export function getPriorityDisplay(
@@ -68,6 +70,21 @@ export function getPriorityDisplay(
 ): (typeof PRIORITY_DISPLAY)[PriorityKey] | null {
 	const key = getPriorityKey(label);
 	return key === null ? null : PRIORITY_DISPLAY[key];
+}
+
+/** Localize recognized built-in priority keys while preserving custom labels exactly. */
+export function getPriorityDisplayLabel(label: string | null): string {
+	return getPriorityDisplay(label)?.label() ?? label ?? '';
+}
+
+/** Build action-menu options without changing their persisted IDs or ordering. */
+export function getPriorityActionOptions<T extends { id: string; label: string | null }>(
+	levels: readonly T[],
+): Array<{ id: string; label: string }> {
+	return levels.map((level) => ({
+		id: level.id,
+		label: getPriorityDisplayLabel(level.label),
+	}));
 }
 
 /**

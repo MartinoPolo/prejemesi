@@ -132,6 +132,7 @@
 		hasAdditionalGiftContextActions,
 	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
+	import { getPriorityActionOptions } from '$lib/modules/gifts/gift_display.js';
 	import type {
 		GiftBulkAction,
 		PendingGiftBulkActionDescriptor,
@@ -309,9 +310,7 @@
 	let priorityLevelsRequestedForWishlistId = $state<string | null>(null);
 	let priorityLevelsLoadPromise: Promise<void> | null = null;
 	const priorityLevelsReady = $derived(priorityLevelsWishlistId === wishlist.id);
-	const priorityActionOptions = $derived(
-		priorityLevels.map((level) => ({ id: level.id, label: level.label })),
-	);
+	const priorityActionOptions = $derived(getPriorityActionOptions(priorityLevels));
 
 	$effect(() => {
 		const nextState = resetPriorityLevelLoaderForWishlistChange(
