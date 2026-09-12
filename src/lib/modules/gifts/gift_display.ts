@@ -50,7 +50,11 @@ export const PRIORITY_DISPLAY = {
 		colorClass:
 			'bg-[oklch(0.93_0.05_75)] text-[oklch(0.50_0.12_75)] dark:bg-[oklch(0.28_0.04_75)] dark:text-[oklch(0.78_0.08_75)]',
 	},
-	Nizka: { label: () => m.gift_priority_low(), colorClass: 'bg-muted text-muted-foreground' },
+	Nizka: {
+		label: () => m.gift_priority_low(),
+		colorClass:
+			'bg-[oklch(0.93_0.06_145)] text-[oklch(0.38_0.12_145)] dark:bg-[oklch(0.27_0.05_145)] dark:text-[oklch(0.82_0.1_145)]',
+	},
 } as const;
 
 export type PriorityKey = keyof typeof PRIORITY_DISPLAY;

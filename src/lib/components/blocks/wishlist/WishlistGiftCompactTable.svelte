@@ -18,6 +18,7 @@
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		showPriority?: boolean;
 	}
 
 	let {
@@ -30,6 +31,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		showPriority = true,
 	}: WishlistGiftCompactTableProps = $props();
 
 	const showActions = $derived((canManage && !isArchived) || !hideReservationState);
@@ -86,6 +88,7 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
+						{showPriority}
 						onclick={() => onedit(giftItem)}
 						{onreserve}
 						{onunreserve}

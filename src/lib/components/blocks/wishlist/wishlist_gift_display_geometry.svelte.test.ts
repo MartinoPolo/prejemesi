@@ -285,6 +285,86 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		},
 	);
 
+	it.each([
+		{ viewMode: 'card' as const, width: 320 },
+		{ viewMode: 'list' as const, width: 320 },
+		{ viewMode: 'compact' as const, width: 320 },
+		{ viewMode: 'card' as const, width: 768 },
+		{ viewMode: 'list' as const, width: 768 },
+		{ viewMode: 'compact' as const, width: 768 },
+	])(
+		'shows textual high and low priority badges in $viewMode at $width px',
+		async ({ viewMode, width }) => {
+			await page.viewport(width, 720);
+			const high = { ...visitorGift(), id: 'gift-high', priorityLabel: 'Vysoka' };
+			const low = { ...visitorGift(), id: 'gift-low', priorityLabel: 'Nizka' };
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts: [high, low] }],
+				viewMode,
+				grouping: 'none',
+			});
+
+			const badges = Array.from(
+				document.querySelectorAll<HTMLElement>('[data-testid="gift-priority-badge"]'),
+			);
+			expect(badges.map((badge) => badge.dataset.priority)).toEqual(['Vysoka', 'Nizka']);
+			for (const badge of badges) {
+				expect(badge.getBoundingClientRect().width).toBeGreaterThan(0);
+				expect(getComputedStyle(badge).display).not.toBe('none');
+				expect(badge.textContent?.trim().length).toBeGreaterThan(0);
+			}
+			await screen.unmount();
+		},
+	);
+
+	it('shows priority for category grouping, hides it for priority grouping, and reacts to changes', async () => {
+		const high = { ...visitorGift(), priorityLabel: 'Vysoka' };
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts: [high] }],
+			grouping: 'category',
+		});
+		expect(document.querySelector('[data-priority="Vysoka"]')).not.toBeNull();
+
+		await screen.rerender({
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts: [high] }],
+			grouping: 'priority',
+		});
+		expect(document.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
+
+		const low = { ...high, priorityLabel: 'Nizka' };
+		await screen.rerender({
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts: [low] }],
+			grouping: 'none',
+		});
+		expect(document.querySelector('[data-priority="Vysoka"]')).toBeNull();
+		expect(document.querySelector('[data-priority="Nizka"]')).not.toBeNull();
+		await screen.unmount();
+	});
+
+	it('keeps manager priority badges outside the action lane', async () => {
+		await page.viewport(390, 720);
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			role: WISHLIST_ROLES.moderator,
+			hideReservationState: true,
+			viewMode: 'list',
+			sections: [{ ...sections[0]!, gifts: [{ ...visitorGift(), priorityLabel: 'Vysoka' }] }],
+			onreceived: () => {},
+		});
+		const badgeRect = document
+			.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!
+			.getBoundingClientRect();
+		const actionsRect = document
+			.querySelector<HTMLElement>('[data-testid="gift-list-actions"]')!
+			.getBoundingClientRect();
+		expect(badgeRect.bottom).toBeLessThanOrEqual(actionsRect.top);
+		await screen.unmount();
+	});
+
 	it('uses standalone equal-height list cards with full-height square images and a 10px gap', async () => {
 		await page.viewport(390, 720);
 		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };

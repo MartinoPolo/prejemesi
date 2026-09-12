@@ -17,6 +17,7 @@
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
+	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 
 	interface GiftCompactRowProps {
 		gift: GiftByRole;
@@ -27,6 +28,7 @@
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		showPriority?: boolean;
 	}
 
 	let {
@@ -38,6 +40,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		showPriority = true,
 	}: GiftCompactRowProps = $props();
 
 	const {
@@ -78,8 +81,13 @@
 	aria-label={onclick ? m.gift_open_detail_aria({ name: gift.name }) : undefined}
 >
 	<td class="px-3 py-1.5">
-		<span class="text-sm font-medium text-foreground">
-			{gift.name}
+		<div class="flex min-w-0 flex-wrap items-center gap-1.5">
+			<span class="min-w-0 text-sm font-medium text-foreground">{gift.name}</span>
+			<GiftPriorityBadge
+				priorityLabel={gift.priorityLabel}
+				{showPriority}
+				class="text-[10px]"
+			/>
 			<GiftPieceCount
 				quantity={gift.quantity}
 				role={reservationAwareGift === null ? 'recipient' : 'visitor'}
@@ -87,7 +95,7 @@
 				reservationAcknowledgementKey={visitorGift?.myReservationId ?? null}
 				hideWhenOne
 			/>
-		</span>
+		</div>
 	</td>
 
 	<td class="px-3 py-1.5">

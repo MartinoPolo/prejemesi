@@ -33,6 +33,7 @@
 		hascontextactions?: (gift: GiftByRole) => boolean;
 		activeContextGiftId?: string | null;
 		contextSurface?: 'menu' | 'dialog';
+		showPriority?: boolean;
 	}
 
 	let {
@@ -54,6 +55,7 @@
 		hascontextactions,
 		activeContextGiftId = null,
 		contextSurface = 'menu',
+		showPriority = true,
 	}: WishlistGiftCardGridProps = $props();
 
 	let gridEl = $state<HTMLElement | null>(null);
@@ -146,6 +148,7 @@
 						{role}
 						{isArchived}
 						{hideReservationState}
+						{showPriority}
 						contextualMode={selectionMode || reorderEnabled}
 						{onreserve}
 						{onunreserve}

@@ -1654,6 +1654,7 @@
 		{/snippet}
 		<WishlistGiftDisplay
 			sections={giftSections}
+			grouping={giftsContext.effectiveGrouping.current}
 			{role}
 			{isArchived}
 			{hideReservationState}

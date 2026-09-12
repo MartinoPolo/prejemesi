@@ -7,7 +7,12 @@
 	import WishlistGiftCardGrid from './WishlistGiftCardGrid.svelte';
 	import WishlistGiftListView from './WishlistGiftListView.svelte';
 	import WishlistGiftCompactTable from './WishlistGiftCompactTable.svelte';
-	import type { GiftByRole, GiftForVisitor, GiftViewMode } from '$lib/modules/gifts/types.js';
+	import type {
+		GiftByRole,
+		GiftForVisitor,
+		GiftGroupingOption,
+		GiftViewMode,
+	} from '$lib/modules/gifts/types.js';
 	import type { GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
@@ -44,6 +49,7 @@
 		onnativecontextcomplete?: (sessionId: number) => void;
 		activeContextGiftId?: string | null;
 		contextSurface?: 'menu' | 'dialog';
+		grouping?: GiftGroupingOption;
 	}
 
 	let {
@@ -76,6 +82,7 @@
 		onnativecontextcomplete,
 		activeContextGiftId = null,
 		contextSurface = 'menu',
+		grouping = 'none',
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -85,6 +92,7 @@
 	const reservationStateHidden = $derived(
 		hideReservationState || role === WISHLIST_ROLES.recipient,
 	);
+	const showPriority = $derived(grouping !== 'priority');
 
 	const STANDARD_EASING = 'cubic-bezier(0.2, 0.7, 0.3, 1)';
 	let displayedViewMode = $state(untrack(() => viewMode));
@@ -228,6 +236,7 @@
 							{contextSurface}
 							{sections}
 							{role}
+							{showPriority}
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							reorderEnabled={reorderMode &&
@@ -252,6 +261,7 @@
 							{contextSurface}
 							{sections}
 							{role}
+							{showPriority}
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							reorderEnabled={reorderMode &&
@@ -273,6 +283,7 @@
 						<WishlistGiftCompactTable
 							{sections}
 							{role}
+							{showPriority}
 							{isArchived}
 							hideReservationState={reservationStateHidden}
 							{canManage}
