@@ -272,6 +272,42 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		await screen.unmount();
 	});
 
+	it('keeps compact filter rows usable without scrolling when the available choices fit', async () => {
+		const onfilterchange = vi.fn();
+		const screen = await renderToolbar({
+			onfilterchange,
+			categoryFilterOptions: [{ value: 'books', label: 'Knihy' }],
+			priorityFilterOptions: [{ value: 'high', label: 'Vysoká' }],
+		});
+		await screen.getByTestId('mobile-display-trigger').click();
+		await screen.getByTestId('mobile-sheet-filter-switch').click();
+		await frames();
+
+		const scroll = screen.getByTestId('mobile-sheet-scroll').element() as HTMLElement;
+		const checkbox = screen
+			.getByRole('checkbox', { name: m.gift_filter_with_link() })
+			.element() as HTMLElement;
+		const row = checkbox.parentElement!;
+		const rowStyle = getComputedStyle(row);
+		expect(rowStyle.minHeight).toBe('40px');
+		expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(40);
+		expect(rowStyle.paddingTop).toBe('4px');
+		expect(rowStyle.paddingBottom).toBe('4px');
+		expect(scroll.scrollHeight).toBeLessThanOrEqual(scroll.clientHeight);
+
+		await userEvent.click(row.querySelector('span')!);
+		expect(onfilterchange).toHaveBeenLastCalledWith({
+			...defaultFilters,
+			withLinkOnly: true,
+		});
+
+		checkbox.focus();
+		await expect.element(checkbox).toHaveFocus();
+		await userEvent.keyboard(' ');
+		expect(onfilterchange).toHaveBeenCalledTimes(2);
+		await screen.unmount();
+	});
+
 	it('exposes a named radio group with arrow-key selection', async () => {
 		const onsortchange = vi.fn();
 		const screen = await renderToolbar({ onsortchange });
