@@ -1283,11 +1283,11 @@
 
 	.mobile-sheet-choice {
 		display: flex;
-		min-height: 48px;
+		min-height: 40px;
 		align-items: center;
 		gap: 0.75rem;
 		border-radius: var(--radius-btn);
-		padding: 0.5rem 0.75rem;
+		padding: 0.25rem 0.75rem;
 		font-weight: 650;
 	}
 

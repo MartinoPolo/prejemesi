@@ -12,7 +12,7 @@ function createProps() {
 		visibleState: 'some' as const,
 		priorityReady: true,
 		categoryReady: true,
-		priorityLevels: [{ id: 'high', label: 'Vysok�' }],
+		priorityLevels: [{ id: 'high', label: 'Vysoká' }],
 		categories: [{ id: 'sport', label: 'Sport' }],
 		commonPriorityId: undefined,
 		commonCategoryId: undefined,

@@ -1,6 +1,4 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages.js';
-	import { Badge } from '$lib/components/base/badge/index.js';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import GiftLinkList from '$lib/components/blocks/gift/GiftLinkList.svelte';
@@ -11,11 +9,7 @@
 	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import {
-		formatPrice,
-		formatReserverLine,
-		getPriorityDisplay,
-	} from '$lib/modules/gifts/gift_display.js';
+	import { formatPrice, formatReserverLine } from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import {
 		canLikeGift,
@@ -27,6 +21,7 @@
 	import { giftCardVariants } from './gift_card_variants.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 	import GiftActionRow from './GiftActionRow.svelte';
 	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
 
@@ -43,6 +38,7 @@
 		onmore?: (anchor: HTMLButtonElement) => void;
 		moreOpen?: boolean;
 		moreSurface?: 'menu' | 'dialog';
+		showPriority?: boolean;
 	}
 
 	let {
@@ -58,6 +54,7 @@
 		onmore,
 		moreOpen = false,
 		moreSurface = 'menu',
+		showPriority = true,
 	}: GiftCardProps = $props();
 
 	const displayState = $derived(
@@ -97,7 +94,6 @@
 		return hasExplicitFrameFill(fillColor) ? fillColor : null;
 	});
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 	const hasModeratorReserverLine = $derived(
 		role === 'moderator' && reserverLine !== null && reserverLine.trim() !== '',
@@ -174,20 +170,12 @@
 			<span class={styles.priceEmpty()}>{priceDisplay}</span>
 		{/if}
 
-		<!-- Priority eyebrow -->
-		{#if priorityInfo}
-			<div class={styles.priorityEyebrow()}>
-				<Badge tone="neutral" badgeStyle="subtle" class={priorityInfo.colorClass}>
-					<span class="inline-flex items-baseline gap-1">
-						<span class="text-[10px] uppercase opacity-60"
-							>{m.gift_priority_eyebrow()}</span
-						>
-						<span class="opacity-40">&middot;</span>
-						{priorityInfo.label()}
-					</span>
-				</Badge>
-			</div>
-		{/if}
+		<!-- Priority stays in normal content flow, clear of image overlays and actions. -->
+		<GiftPriorityBadge
+			priorityLabel={gift.priorityLabel}
+			{showPriority}
+			class={cn(styles.priorityEyebrow(), 'w-fit')}
+		/>
 
 		<!-- Links -->
 		<div class={styles.linkList()}>

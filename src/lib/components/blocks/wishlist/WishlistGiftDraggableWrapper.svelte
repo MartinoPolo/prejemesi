@@ -228,14 +228,12 @@
 		isDragged && 'invisible',
 		isDragOver && dragOverStyle === 'ring' && 'ring-2 ring-inset ring-primary',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
-		selectionLayout === 'list' && '[--gift-list-corner-left:5.25rem]',
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[1.75rem_minmax(0,1fr)] sm:gap-2',
-		selected &&
-			'sm:rounded-xl sm:bg-[var(--selection-tint)] sm:outline-[3px] sm:outline-[var(--selection-ring)] sm:[&>div]:bg-transparent',
 		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
+	data-selected={selectionMode && selected ? true : undefined}
 	role={selectionMode ? 'checkbox' : reorderEnabled ? undefined : 'button'}
 	tabindex={reorderEnabled ? undefined : 0}
 	aria-label={selectionMode
@@ -257,21 +255,17 @@
 	{#if selectionMode}
 		<span
 			class={cn(
-				'pointer-events-none absolute right-1 top-1 z-50 grid size-10 place-items-center rounded-[calc(var(--radius-panel)-4px)] border-2 border-ink bg-card text-[var(--selection-on-ring)] shadow-sticker sm:right-auto sm:left-2.5 sm:top-2.5 sm:size-7 sm:rounded-md sm:border-0 sm:shadow-sm',
+				'pointer-events-none absolute z-50 grid size-10 place-items-center border-2 border-ink bg-card text-[var(--selection-on-ring)] shadow-sticker sm:size-7 sm:rounded-md sm:border-0 sm:shadow-sm',
 				selected && 'bg-[var(--selection-ring)]',
-				selectionLayout === 'list' &&
-					'left-[var(--gift-list-corner-left)] right-auto sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2',
+				selectionLayout === 'list'
+					? 'left-[6px] top-[6px] rounded-[calc(var(--radius-panel)-6px)] sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2'
+					: 'right-1 top-1 rounded-[calc(var(--radius-panel)-4px)] sm:right-auto sm:left-2.5 sm:top-2.5',
 			)}
 			data-testid="gift-selection-control"
 			aria-hidden="true"
 		>
 			{#if selected}<CheckIcon class="size-[19px] stroke-[3] sm:size-4" />{/if}
 		</span>
-		{#if selected}<span
-				class="pointer-events-none absolute inset-0 z-30 rounded-panel bg-[var(--selection-image-tint)] ring-[3px] ring-inset ring-[var(--selection-ring)] sm:hidden"
-				data-testid="gift-selection-surface"
-				aria-hidden="true"
-			></span>{/if}
 	{/if}
 	{#if reorderEnabled && !selectionMode}
 		<button
@@ -343,6 +337,27 @@
 </div>
 
 <style>
+	/* Selection follows the gift surface, excluding the desktop List checkbox gutter. */
+	[data-gift-item][data-selected] :global([data-testid='gift-card-surface'])::before,
+	[data-gift-item][data-selected] :global([data-testid='gift-list-item'])::before {
+		position: absolute;
+		z-index: 30;
+		inset: 0;
+		background: var(--selection-image-tint);
+		box-shadow: inset 0 0 0 3px var(--selection-ring);
+		content: '';
+		pointer-events: none;
+	}
+
+	[data-gift-item][data-selected] :global([data-testid='gift-card-surface'])::before {
+		border-radius: inherit;
+	}
+
+	/* Absolute children start at the padding edge; subtract the List surface's 2px border. */
+	[data-gift-item][data-selected] :global([data-testid='gift-list-item'])::before {
+		border-radius: calc(var(--radius-panel) - 2px);
+	}
+
 	[data-gift-item]:focus-visible::after {
 		position: absolute;
 		z-index: 40;

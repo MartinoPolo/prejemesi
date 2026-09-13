@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
-	import { Badge } from '$lib/components/base/badge/index.js';
 	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
@@ -15,7 +14,6 @@
 		formatPrice,
 		formatReserverLine,
 		extractGiftDomain,
-		getPriorityDisplay,
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
@@ -27,6 +25,7 @@
 	import { cn } from '$lib/utils.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftActionRow from './GiftActionRow.svelte';
+	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 
 	interface GiftListItemProps {
 		gift: GiftByRole;
@@ -40,6 +39,7 @@
 		onmore?: (anchor: HTMLButtonElement) => void;
 		moreOpen?: boolean;
 		moreSurface?: 'menu' | 'dialog';
+		showPriority?: boolean;
 	}
 
 	let {
@@ -54,6 +54,7 @@
 		onmore,
 		moreOpen = false,
 		moreSurface = 'menu',
+		showPriority = true,
 	}: GiftListItemProps = $props();
 
 	const displayState = $derived(
@@ -85,7 +86,6 @@
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const priorityInfo = $derived(getPriorityDisplay(gift.priorityLabel));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
 
 	function synchronizeListImageSize(item: HTMLElement) {
@@ -240,15 +240,11 @@
 					<span class="text-muted-foreground">{priceDisplay}</span>
 				{/if}
 
-				{#if priorityInfo}
-					<Badge
-						tone="neutral"
-						badgeStyle="subtle"
-						class={cn('text-[11px] max-sm:hidden', priorityInfo.colorClass)}
-					>
-						{priorityInfo.label()}
-					</Badge>
-				{/if}
+				<GiftPriorityBadge
+					priorityLabel={gift.priorityLabel}
+					{showPriority}
+					class="text-[11px]"
+				/>
 			</div>
 
 			<div class="flex min-w-0">

@@ -8,6 +8,9 @@ import {
 	finalizeGiftPrice,
 	finalizeGiftQuantity,
 	getGiftPriceMagnitude,
+	getPriorityActionOptions,
+	getPriorityDisplayLabel,
+	getPriorityKey,
 } from './gift_display.js';
 
 beforeAll(() => {
@@ -18,6 +21,42 @@ beforeAll(() => {
 function normalizeSpaces(value: string): string {
 	return value.replace(/[  ]/g, ' ');
 }
+
+describe('priority display labels (issue #351)', () => {
+	it.each([
+		['cs', ['Vysoká', 'Střední', 'Nízká']],
+		['en', ['High', 'Medium', 'Low']],
+	] as const)('localizes all standard labels in %s', (locale, expected) => {
+		overwriteGetLocale(() => locale);
+		try {
+			expect(['Vysoka', 'Stredni', 'Nizka'].map(getPriorityDisplayLabel)).toEqual(expected);
+		} finally {
+			overwriteGetLocale(() => 'cs');
+		}
+	});
+
+	it.each(['Vlastní priorita', ' constructor ', 'constructor', '__proto__'])(
+		'preserves the exact custom label %j',
+		(label) => {
+			expect(getPriorityDisplayLabel(label)).toBe(label);
+			expect(getPriorityKey(label)).toBeNull();
+		},
+	);
+
+	it('maps the action option path without changing IDs or order', () => {
+		expect(
+			getPriorityActionOptions([
+				{ id: 'medium-id', label: 'Stredni' },
+				{ id: 'custom-id', label: '  Moje  ' },
+				{ id: 'high-id', label: 'Vysoka' },
+			]),
+		).toEqual([
+			{ id: 'medium-id', label: 'Střední' },
+			{ id: 'custom-id', label: '  Moje  ' },
+			{ id: 'high-id', label: 'Vysoká' },
+		]);
+	});
+});
 
 describe('formatPrice', () => {
 	it('returns the "not listed" hint for a null price', () => {

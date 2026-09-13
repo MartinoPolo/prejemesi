@@ -21,6 +21,7 @@ import {
 	type GiftViewMode,
 } from './types.js';
 import { computeGiftSections } from './gift_ordering.js';
+import { getPriorityDisplayLabel } from './gift_display.js';
 import { labelForGiftCategory } from '$lib/modules/gift-categories/types.js';
 import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 import * as m from '$lib/paraglide/messages.js';
@@ -308,7 +309,7 @@ function createGiftsContext(
 				if (!optionsByPriorityId.some((option) => option.value === gift.priorityLevelId)) {
 					optionsByPriorityId.push({
 						value: gift.priorityLevelId!,
-						label: gift.priorityLabel ?? '',
+						label: getPriorityDisplayLabel(gift.priorityLabel),
 						sortOrder: gift.prioritySortOrder!,
 					});
 				}

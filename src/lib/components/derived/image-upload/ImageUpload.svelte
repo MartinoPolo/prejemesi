@@ -25,6 +25,8 @@
 		initialPreviewUrl?: string;
 		/** Called when upload completes successfully. */
 		onUpload?: (result: UploadResult) => void;
+		/** Reports the full upload lifecycle, including authorization. */
+		onPendingChange?: (pending: boolean) => void;
 		/** Called when an error occurs. */
 		onError?: (error: Error) => void;
 		/** Called when the user clears the current image (so callers can drop the key/url). */
@@ -41,6 +43,7 @@
 		label,
 		initialPreviewUrl,
 		onUpload,
+		onPendingChange,
 		onError,
 		onRemove,
 		class: className,
@@ -48,6 +51,7 @@
 
 	let fileInputElement: HTMLInputElement | undefined = $state(undefined);
 	let isDragOver = $state(false);
+	let isUploadPending = $state(false);
 	// Seed from the existing image (edit mode). A real http(s) URL here, not a blob –
 	// the revoke-on-cleanup calls below are harmless no-ops for non-blob URLs.
 	// svelte-ignore state_referenced_locally
@@ -61,7 +65,7 @@
 	const currentState = $derived(
 		isDragOver
 			? 'dragover'
-			: progress.status === 'uploading'
+			: isUploadPending
 				? 'uploading'
 				: progress.status === 'complete'
 					? 'complete'
@@ -84,6 +88,9 @@
 	function handleDrop(event: DragEvent) {
 		event.preventDefault();
 		isDragOver = false;
+		if (isUploadPending) {
+			return;
+		}
 		const file = event.dataTransfer?.files[0];
 		if (file != null) {
 			void processFile(file);
@@ -91,7 +98,7 @@
 	}
 
 	function handleClick() {
-		if (progress.status !== 'uploading') {
+		if (!isUploadPending) {
 			fileInputElement?.click();
 		}
 	}
@@ -119,6 +126,11 @@
 	}
 
 	async function processFile(file: File) {
+		// Keep one operation responsible for the pending lifecycle and preview at a time.
+		if (isUploadPending) {
+			return;
+		}
+
 		// Client-side max size check
 		if (maxSize != null && file.size > maxSize) {
 			const maxMb = Math.round(maxSize / (1024 * 1024));
@@ -127,6 +139,9 @@
 			onError?.(fileError);
 			return;
 		}
+
+		isUploadPending = true;
+		onPendingChange?.(true);
 
 		// Generate preview
 		if (previewUrl != null) {
@@ -151,11 +166,16 @@
 			onError?.(uploadError);
 		} finally {
 			activeAbortController = null;
+			isUploadPending = false;
+			onPendingChange?.(false);
 		}
 	}
 
 	function handleRemove(event: MouseEvent) {
 		event.stopPropagation();
+		if (isUploadPending) {
+			return;
+		}
 		if (previewUrl != null) {
 			URL.revokeObjectURL(previewUrl);
 		}
@@ -185,7 +205,7 @@
 	class={cn(styles.root(), className)}
 	role="button"
 	aria-label={label ?? m.image_upload_aria()}
-	tabindex={progress.status === 'uploading' ? -1 : 0}
+	tabindex={isUploadPending ? -1 : 0}
 	ondragover={handleDragOver}
 	ondragleave={handleDragLeave}
 	ondrop={handleDrop}
@@ -209,7 +229,7 @@
 			data-testid="image-upload-preview"
 		/>
 
-		{#if progress.status !== 'uploading'}
+		{#if !isUploadPending}
 			<Button
 				size="icon-sm"
 				intent="ghost"
@@ -226,7 +246,7 @@
 		<p class={styles.label()}>{label ?? m.image_upload_dropzone()}</p>
 	{/if}
 
-	{#if progress.status === 'uploading'}
+	{#if isUploadPending}
 		<div class={styles.progressTrack()}>
 			<div class={styles.progressBar()} style:width="{String(progress.percentage)}%"></div>
 		</div>

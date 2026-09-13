@@ -72,6 +72,9 @@
 
 <div data-testid="grouping">{context.grouping.current}</div>
 <div data-testid="effective-grouping">{context.effectiveGrouping.current}</div>
+<div data-testid="priority-filter-options">
+	{JSON.stringify(context.priorityFilterOptions.current)}
+</div>
 <div data-testid="stored">
 	{localStorage.getItem(wishlistGiftGroupingStorageKey(wishlistId)) ?? ''}
 </div>

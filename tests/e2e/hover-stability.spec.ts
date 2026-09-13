@@ -47,15 +47,23 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			expectStableLift(stationary);
 			const sweep = await bottomToTopSweep(page, card, 'Gift card');
 			expect(sweep.interveningUnhovered).toEqual([]);
-			const groupingMenu = await openDesktopDisplaySubmenu(page, /^Seskupení/);
+			const displayTrigger = page
+				.getByTestId('desktop-display-trigger')
+				.filter({ visible: true });
+			const groupingMenu = await openDesktopDisplaySubmenu(page, /Seskupení|Grouping/);
 			const ungrouped = groupingMenu.getByRole('menuitemradio', {
-				name: 'Bez seskupení',
-				exact: true,
+				name: /Bez seskupení|No grouping/,
 			});
 			await ungrouped.click();
 			await expect(ungrouped).toHaveAttribute('aria-checked', 'true');
 			await page.keyboard.press('Escape');
+			await expect(groupingMenu).toBeHidden();
 			await page.keyboard.press('Escape');
+			await expect(page.locator('[data-slot="dropdown-menu-content"]:visible')).toHaveCount(
+				0,
+			);
+			await displayTrigger.focus();
+			await expect(displayTrigger).toBeFocused();
 			// Reorder grips only exist while the explicit reorder mode is active.
 			await startGiftReorder(page);
 			const grip = page
@@ -197,7 +205,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 					const controls = [
 						await stationaryLowerEdge(
 							page,
-							page.getByTestId('desktop-display-trigger'),
+							page.getByTestId('desktop-display-trigger').filter({ visible: true }),
 							'Display',
 						),
 						await stationaryLowerEdge(
@@ -225,11 +233,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 					);
 					expect(control.samples.every(({ hovered }) => hovered)).toBe(true);
 					expect(control.hoverTransitions).toBe(0);
-					if (control.control === 'Add gift button') {
-						expectStableLift(control);
-					} else {
-						expect(control.verticalTravel).toBeLessThanOrEqual(0.25);
-					}
+					expectStableLift(control);
 				}
 			}
 		} finally {
@@ -258,7 +262,9 @@ test.describe('Issue #346 stable hover hit regions', () => {
 					await page
 						.locator('html')
 						.evaluate((html, value) => (html.dataset.depth = value), depth);
-					const display = page.getByTestId('desktop-display-trigger');
+					const display = page
+						.getByTestId('desktop-display-trigger')
+						.filter({ visible: true });
 					await expect(display).toBeVisible();
 					const candidates: Array<readonly [string, Locator]> = [
 						['Display', display],

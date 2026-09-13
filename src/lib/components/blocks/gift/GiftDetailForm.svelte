@@ -168,6 +168,7 @@
 	// Component instance ref (issue #131): lets the image-column click-to-edit
 	// affordance open the file picker owned by the Upload-tab ImageUpload.
 	let imageUploadRef: ReturnType<typeof ImageUpload> | undefined = $state();
+	let isImageUploadPending = $state(false);
 
 	// Uploads made in this form session that are not persisted yet (issue #107,
 	// REQ-6). The image key included in the last submit is kept on unmount.
@@ -540,6 +541,10 @@
 	}
 
 	function handleSubmit() {
+		if (isSubmitting || isImageUploadPending) {
+			return;
+		}
+
 		if (!validateForm()) {
 			return;
 		}
@@ -655,6 +660,10 @@
 		console.error('Image upload failed:', uploadError.message);
 	}
 
+	function handleImageUploadPendingChange(pending: boolean) {
+		isImageUploadPending = pending;
+	}
+
 	/**
 	 * Click-to-edit affordance for the image column (issue #131): switches the
 	 * right-column image field to the Upload tab and opens the native file
@@ -662,6 +671,9 @@
 	 * the picker trigger waits a tick for it to render.
 	 */
 	async function openImageEditor() {
+		if (isImageUploadPending) {
+			return;
+		}
 		imageMode = 'upload';
 		await tick();
 		imageUploadRef?.openFilePicker();
@@ -1191,6 +1203,7 @@
 							class={giftDetailModalVariants({
 								imageTabActive: imageMode === 'upload',
 							}).imageTab()}
+							disabled={isImageUploadPending}
 							onclick={() => (imageMode = 'upload')}
 						>
 							<UploadIcon class="mr-1 inline size-3" />
@@ -1201,6 +1214,7 @@
 							class={giftDetailModalVariants({
 								imageTabActive: imageMode === 'url',
 							}).imageTab()}
+							disabled={isImageUploadPending}
 							onclick={() => (imageMode = 'url')}
 						>
 							<LinkIcon class="mr-1 inline size-3" />
@@ -1220,6 +1234,7 @@
 							size="small"
 							initialPreviewUrl={previewSrc ?? undefined}
 							onUpload={handleImageUpload}
+							onPendingChange={handleImageUploadPendingChange}
 							onError={handleImageUploadError}
 							onRemove={handleImageRemove}
 						/>
@@ -1262,7 +1277,7 @@
 			<div class={styles.submitWrapper()}>
 				<Button
 					class={styles.submitButton()}
-					disabled={isSubmitting}
+					disabled={isSubmitting || isImageUploadPending}
 					onclick={handleSubmit}
 				>
 					{#if isSubmitting}
@@ -1285,7 +1300,11 @@
      where `submitWrapper` above already renders Save inline with the manager
      actions. -->
 <div class={styles.mobileSubmitFooter()} data-testid="gift-mobile-submit-footer">
-	<Button class={styles.submitButton()} disabled={isSubmitting} onclick={handleSubmit}>
+	<Button
+		class={styles.submitButton()}
+		disabled={isSubmitting || isImageUploadPending}
+		onclick={handleSubmit}
+	>
 		{#if isSubmitting}
 			{m.saving()}
 		{:else}

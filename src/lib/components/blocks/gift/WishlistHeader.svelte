@@ -376,12 +376,12 @@
 	<!-- Reservation-visibility notices (REQ-13): calm reassurance vs loud trust warning -->
 	{#if recipientIsModerator && role !== WISHLIST_ROLES.recipient}
 		<!-- Loud sticky-note warning — visitors must not miss it. NO tape (settled decision). -->
-		<Alert.Root tone="warning" class="reveal reveal-5 -rotate-[0.5deg]">
+		<Alert.Root tone="warning" class="reveal reveal-5">
 			<TriangleAlertIcon />
 			<Alert.Title>{m.wishlist_trust_warning({ name: recipientDisplayName })}</Alert.Title>
 		</Alert.Root>
 	{:else if role === WISHLIST_ROLES.moderator}
-		<Alert.Root class="reveal reveal-5 -rotate-[0.35deg]">
+		<Alert.Root class="reveal reveal-5">
 			<EyeIcon />
 			<Alert.Title
 				>{m.wishlist_moderator_sees_reservations({

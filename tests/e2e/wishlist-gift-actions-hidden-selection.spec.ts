@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
 import * as m from '../../src/lib/paraglide/messages.js';
-import { DEFAULT_PRIORITY_LEVELS } from '../../src/lib/modules/wishlists/types.js';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { addGift, createWishlistForSomeoneAndNavigate } from './fixtures/wishlist-helpers.js';
 import {
+	dismissToasts,
 	escapeRegex,
 	gift,
 	openSelectionFromContext,
@@ -58,11 +58,13 @@ test('bulk hidden-selection confirmation preserves exact received state on undo'
 		})
 		.click();
 	const highPriorityOption = page
-		.getByRole('menuitemradio', { name: DEFAULT_PRIORITY_LEVELS[0].label, exact: true })
+		.getByRole('menuitemradio', { name: m.gift_priority_high(), exact: true })
 		.filter({ visible: true });
 	await expect(highPriorityOption).toHaveCount(1);
 	await highPriorityOption.click();
 	await expect(toolbar.getByText(m.gift_selection_hidden_count({ count: 2 }))).toBeVisible();
+	await waitForToast(page, m.gift_bulk_success({ count: 2 }));
+	await dismissToasts(page);
 
 	await toolbar.getByTestId('desktop-selection-actions-trigger').click();
 	await expect(selectionActionsMenu).toBeVisible();

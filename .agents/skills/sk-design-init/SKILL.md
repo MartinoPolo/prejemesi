@@ -1,8 +1,13 @@
 ---
 name: sk-design-init
-description: 'Bootstrap the project visual identity — generate design tokens, design system docs, and font/color decisions from project context. Run once per project. Use when: "design init", "setup design", "init design system", "visual identity", "design tokens", "bootstrap design"'
+description:
+    'Bootstrap the project visual identity — generate design tokens, design system docs, and
+    font/color decisions from project context. Run once per project. Use when: "design init", "setup
+    design", "init design system", "visual identity", "design tokens", "bootstrap design"'
 argument-hint: ''
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__context7__resolve-library-id, mcp__context7__query-docs
+allowed-tools:
+    Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__context7__resolve-library-id,
+    mcp__context7__query-docs
 metadata:
     author: MartinoPolo
     version: '0.1'
@@ -11,7 +16,9 @@ metadata:
 
 # Design System Initialization
 
-Bootstrap the project's visual identity. Reads the project description and requirements, derives an opinionated visual style that matches the app's domain, grills the user on remaining taste decisions, then generates `designs/DESIGN_SYSTEM.md` and `designs/tokens.css`.
+Bootstrap the project's visual identity. Reads the project description and requirements, derives an
+opinionated visual style that matches the app's domain, grills the user on remaining taste
+decisions, then generates `designs/DESIGN_SYSTEM.md` and `designs/tokens.css`.
 
 **Run once per project.** Subsequent runs overwrite the design system — confirm with user first.
 
@@ -27,11 +34,13 @@ Read these files to understand what the app is and who it's for:
 4. `src/app.css` — current Tailwind/CSS theme variables
 5. `package.json` — project name and description
 
-If `.mpx/CONTEXT.md` doesn't exist or has no "What This Is" content, ask the user to describe the app in 2-3 sentences before proceeding.
+If `.mpx/CONTEXT.md` doesn't exist or has no "What This Is" content, ask the user to describe the
+app in 2-3 sentences before proceeding.
 
 ### Step 2: Derive Visual Identity from Domain
 
-This is the opinionated step. Based on the project description, **recommend** a complete visual direction:
+This is the opinionated step. Based on the project description, **recommend** a complete visual
+direction:
 
 **Color palette**: Match the app's domain and emotional tone.
 
@@ -41,7 +50,9 @@ This is the opinionated step. Based on the project description, **recommend** a 
 - A developer tool → dark surfaces with accent highlights (focus, precision)
 - A social platform → vibrant, varied palette (energy, expression)
 
-**Font pairing**: Recommend a specific pair (heading + body) that matches the personality. Always use Google Fonts for availability. Never recommend generic system fonts unless the app demands maximum performance.
+**Font pairing**: Recommend a specific pair (heading + body) that matches the personality. Always
+use Google Fonts for availability. Never recommend generic system fonts unless the app demands
+maximum performance.
 
 **Density**: Recommend based on content type:
 
@@ -67,7 +78,8 @@ This is the opinionated step. Based on the project description, **recommend** a 
 - Light mode elevated → layered shadows for depth
 - Dark mode → lighter surfaces for elevation, avoid shadows
 
-Present the full recommendation as a cohesive vision statement (3-4 sentences) followed by the specific values. Explain WHY each choice fits the app.
+Present the full recommendation as a cohesive vision statement (3-4 sentences) followed by the
+specific values. Explain WHY each choice fits the app.
 
 ### Step 3: Grill on Remaining Decisions
 
@@ -89,7 +101,8 @@ The project uses shadcn-svelte with a configured style and base color. Read what
 2. Read `src/app.css` for existing CSS custom properties (shadcn-svelte generates these)
 3. Spawn `mp-context7-docs-fetcher` to check shadcn-svelte theming docs if needed
 
-The design tokens should **complement** the shadcn-svelte theme, not replace it. shadcn-svelte owns the component-level tokens (button colors, input borders, etc.). The design system tokens cover:
+The design tokens should **complement** the shadcn-svelte theme, not replace it. shadcn-svelte owns
+the component-level tokens (button colors, input borders, etc.). The design system tokens cover:
 
 - App-level semantics (primary brand color, accent, semantic colors)
 - Typography (font families, size scale beyond what Tailwind provides)
@@ -133,23 +146,30 @@ Use OKLCH color format for perceptual uniformity. Include Google Fonts `@import`
 
 Populate the stub at `designs/DESIGN_SYSTEM.md` with the settled design language:
 
-- **Typography**: font families with rationale, size scale (heading 1-4, body, small, caption), weight usage, letter-spacing rules for headings
+- **Typography**: font families with rationale, size scale (heading 1-4, body, small, caption),
+  weight usage, letter-spacing rules for headings
 - **Color Palette**: every token with its hex/oklch value, usage guidance, and contrast notes
-- **Spacing & Layout**: the spacing scale, when to use each value, grid/flex preferences, density rules
-- **Component Patterns**: how to use shadcn-svelte components within this design language, variant preferences, icon sizing
+- **Spacing & Layout**: the spacing scale, when to use each value, grid/flex preferences, density
+  rules
+- **Component Patterns**: how to use shadcn-svelte components within this design language, variant
+  preferences, icon sizing
 - **Motion & Transitions**: timing functions, duration standards, what animates and what doesn't
 
-This file is the reference document that `sk-design-brief`, `sk-mockup`, and `sk-design-refine` all read.
+This file is the reference document that `sk-design-brief`, `sk-mockup`, and `sk-design-refine` all
+read.
 
 ### Step 7: Update `.mpx/DECISIONS.md`
 
 Update the existing design categories with user-confirmed, date-sorted inline decisions:
 
 ```markdown
-- YYYY-MM-DD: [Decision, with material rationale and explicitly rejected alternatives inline only when needed.]
+- YYYY-MM-DD: [Decision, with material rationale and explicitly rejected alternatives inline only
+  when needed.]
 ```
 
-Replace superseded rules rather than appending contradictory versions. Do not infer rejection from choosing another option. Typical entries cover fonts, palettes, density, motion, and light/dark strategy.
+Replace superseded rules rather than appending contradictory versions. Do not infer rejection from
+choosing another option. Typical entries cover fonts, palettes, density, motion, and light/dark
+strategy.
 
 ### Step 8: Report
 
@@ -157,4 +177,5 @@ Summarize:
 
 1. Visual identity in one sentence
 2. Files generated/updated
-3. Remind user that `sk-design-brief` → `sk-mockup` → `sk-design-refine` pipeline will now use these tokens
+3. Remind user that `sk-design-brief` → `sk-mockup` → `sk-design-refine` pipeline will now use these
+   tokens

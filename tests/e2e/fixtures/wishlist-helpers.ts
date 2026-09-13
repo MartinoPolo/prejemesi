@@ -176,9 +176,22 @@ export async function openDesktopDisplaySubmenu(
 	await expect(root.getByRole('menuitem').first()).toBeFocused();
 	const subTrigger = root.getByRole('menuitem', { name: accessibleName });
 	await expect(subTrigger).toBeVisible();
-	await subTrigger.focus();
-	await page.keyboard.press('ArrowRight');
-	const submenu = page.locator('[data-slot="dropdown-menu-sub-content"]:visible').last();
+
+	let controlledSubmenuId: string | null = null;
+	await expect(async () => {
+		await subTrigger.focus();
+		await expect(subTrigger).toBeFocused();
+		if ((await subTrigger.getAttribute('aria-expanded')) !== 'true') {
+			await subTrigger.press('ArrowRight');
+		}
+		await expect(subTrigger).toHaveAttribute('aria-expanded', 'true');
+		controlledSubmenuId = await subTrigger.getAttribute('aria-controls');
+		expect(controlledSubmenuId).toBeTruthy();
+	}).toPass({ timeout: 5_000 });
+
+	const submenu = page.locator(
+		`[data-slot="dropdown-menu-sub-content"][id=${JSON.stringify(controlledSubmenuId)}]`,
+	);
 	await expect(submenu).toBeVisible();
 	// Bits finishes deferred autofocus before callers move focus to their chosen option.
 	await expect(
