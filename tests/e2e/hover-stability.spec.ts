@@ -11,6 +11,7 @@ import { rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loginViaApi, parseCookiesForContext } from './fixtures/auth-helpers.js';
+import { openDesktopDisplaySubmenu, startGiftReorder } from './fixtures/wishlist-helpers.js';
 
 const DEPTHS = ['soft', 'ink', 'black'] as const;
 const BROWSER_ZOOMS = [1, 1.25, 1.5] as const;
@@ -402,14 +403,24 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			expectStableLift(stationary);
 			const sweep = await bottomToTopSweep(page, card, 'Gift card');
 			expect(sweep.interveningUnhovered).toEqual([]);
-			await page.getByRole('button', { name: /^Seskupení:/ }).click();
-			await page.getByRole('option', { name: 'Bez seskupení', exact: true }).click();
-			await expect(
-				page.getByRole('button', { name: 'Seskupení: Bez seskupení', exact: true }),
-			).toBeVisible();
+			const displayTrigger = page
+				.getByTestId('desktop-display-trigger')
+				.filter({ visible: true });
+			const groupingMenu = await openDesktopDisplaySubmenu(page, /Seskupení|Grouping/);
+			await groupingMenu
+				.getByRole('menuitemradio', { name: /Bez seskupení|No grouping/ })
+				.click();
+			await page.keyboard.press('Escape');
+			await expect(groupingMenu).toBeHidden();
+			await page.keyboard.press('Escape');
+			await expect(page.locator('[data-slot="dropdown-menu-content"]:visible')).toHaveCount(
+				0,
+			);
+			await displayTrigger.focus();
+			await expect(displayTrigger).toBeFocused();
 			// Reorder grips only exist while the explicit reorder mode is active.
 			// The former selector assumed that setup and intermittently tested no grip.
-			await page.getByRole('button', { name: 'Změnit pořadí', exact: true }).click();
+			await startGiftReorder(page);
 			const grip = page
 				.getByRole('button', { name: 'Přesunout dárek', exact: true })
 				.filter({ visible: true })
@@ -521,7 +532,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			await context.close();
 		}
 	});
-	test('stationary lower-edge pointer does not oscillate Sort or Grouping at real zoom/depth combinations', async ({
+	test('stationary lower-edge pointer does not oscillate Display at real zoom/depth combinations', async ({
 		request,
 		baseURL,
 	}, testInfo) => {
@@ -546,11 +557,12 @@ test.describe('Issue #346 stable hover hit regions', () => {
 					await page
 						.locator('html')
 						.evaluate((html, value) => (html.dataset.depth = value), depth);
-					const toolbar = page.getByTestId('wishlist-toolbar');
-					const selectTriggers = toolbar.locator('[data-slot="select-trigger"]');
 					const controls = [
-						await stationaryLowerEdge(page, selectTriggers.nth(0), 'Sort'),
-						await stationaryLowerEdge(page, selectTriggers.nth(1), 'Grouping'),
+						await stationaryLowerEdge(
+							page,
+							page.getByTestId('desktop-display-trigger').filter({ visible: true }),
+							'Display',
+						),
 						await stationaryLowerEdge(
 							page,
 							page.getByRole('button', { name: /Přidat dárek/ }).first(),
@@ -576,11 +588,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 					);
 					expect(control.samples.every(({ hovered }) => hovered)).toBe(true);
 					expect(control.hoverTransitions).toBe(0);
-					if (control.control === 'Add gift button') {
-						expectStableLift(control);
-					} else {
-						expect(control.verticalTravel).toBeLessThanOrEqual(0.25);
-					}
+					expectStableLift(control);
 				}
 			}
 		} finally {
@@ -609,13 +617,12 @@ test.describe('Issue #346 stable hover hit regions', () => {
 					await page
 						.locator('html')
 						.evaluate((html, value) => (html.dataset.depth = value), depth);
-					const toolbar = page.getByTestId('wishlist-toolbar');
-					const selectTriggers = toolbar.locator('[data-slot="select-trigger"]');
-					await expect(selectTriggers.nth(0)).toBeVisible();
-					await expect(selectTriggers.nth(1)).toBeVisible();
+					const displayTrigger = page
+						.getByTestId('desktop-display-trigger')
+						.filter({ visible: true });
+					await expect(displayTrigger).toBeVisible();
 					const candidates: Array<readonly [string, Locator]> = [
-						['Sort', selectTriggers.nth(0)],
-						['Grouping', selectTriggers.nth(1)],
+						['Display', displayTrigger],
 						[
 							'Add gift button',
 							page.getByRole('button', { name: /Přidat dárek/ }).first(),

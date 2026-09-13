@@ -62,6 +62,32 @@ async function expectDropdownViewportCap(menu: Locator, height: number) {
 }
 
 async function expectInsideViewport(menu: Locator, width: number, height: number) {
+	await expect
+		.poll(() =>
+			menu.evaluate(
+				(element) =>
+					element
+						.getAnimations({ subtree: true })
+						.filter(
+							(animation) =>
+								animation.playState === 'running' &&
+								animation.effect?.getComputedTiming().endTime !== Infinity,
+						).length,
+			),
+		)
+		.toBe(0);
+	await expect
+		.poll(async () => {
+			const rect = await menu.boundingBox();
+			return (
+				rect !== null &&
+				rect.x >= VIEWPORT_PADDING - 1 &&
+				rect.y >= VIEWPORT_PADDING - 1 &&
+				rect.x + rect.width <= width - VIEWPORT_PADDING + 1 &&
+				rect.y + rect.height <= height - VIEWPORT_PADDING + 1
+			);
+		})
+		.toBe(true);
 	const rect = await menu.boundingBox();
 	expect(rect).not.toBeNull();
 	expect(rect!.x).toBeGreaterThanOrEqual(VIEWPORT_PADDING - 1);
