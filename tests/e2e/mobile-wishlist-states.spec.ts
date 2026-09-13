@@ -220,6 +220,7 @@ test.describe('mobile wishlist acceptance', () => {
 		const selectionPainting = await selectedSurface.evaluate((surface) => {
 			const style = getComputedStyle(surface);
 			const painting = getComputedStyle(surface, '::before');
+			const surfaceRect = surface.getBoundingClientRect();
 			const pixels = (value: string) => Number.parseFloat(value);
 			return {
 				content: painting.content,
@@ -227,8 +228,14 @@ test.describe('mobile wishlist acceptance', () => {
 				insets: [painting.top, painting.right, painting.bottom, painting.left],
 				width: pixels(painting.width),
 				height: pixels(painting.height),
-				clientWidth: surface.clientWidth,
-				clientHeight: surface.clientHeight,
+				expectedWidth:
+					surfaceRect.width -
+					pixels(style.borderLeftWidth) -
+					pixels(style.borderRightWidth),
+				expectedHeight:
+					surfaceRect.height -
+					pixels(style.borderTopWidth) -
+					pixels(style.borderBottomWidth),
 				shadow: painting.boxShadow,
 				radii: [
 					pixels(painting.borderTopLeftRadius),
@@ -252,13 +259,48 @@ test.describe('mobile wishlist acceptance', () => {
 		expect(selectionPainting.content).not.toBe('normal');
 		expect(selectionPainting.position).toBe('absolute');
 		expect(selectionPainting.insets).toEqual(['0px', '0px', '0px', '0px']);
-		expect(selectionPainting.width).toBeCloseTo(selectionPainting.clientWidth, 0);
-		expect(selectionPainting.height).toBeCloseTo(selectionPainting.clientHeight, 0);
+		expect(selectionPainting.width).toBeCloseTo(selectionPainting.expectedWidth, 0);
+		expect(selectionPainting.height).toBeCloseTo(selectionPainting.expectedHeight, 0);
 		expect(selectionPainting.shadow).toContain('inset');
 		expect(selectionPainting.shadow).toMatch(/\b3px\b/);
 		selectionPainting.radii.forEach((radius, corner) => {
 			expect(radius).toBeCloseTo(selectionPainting.expectedRadii[corner], 1);
 		});
+
+		await page.setViewportSize({ width: 391, height: MOBILE_HEIGHT });
+		const fractionalSelectionPainting = await selectedSurface.evaluate((surface) => {
+			const style = getComputedStyle(surface);
+			const painting = getComputedStyle(surface, '::before');
+			const surfaceRect = surface.getBoundingClientRect();
+			const pixels = (value: string) => Number.parseFloat(value);
+			return {
+				width: pixels(painting.width),
+				height: pixels(painting.height),
+				expectedWidth:
+					surfaceRect.width -
+					pixels(style.borderLeftWidth) -
+					pixels(style.borderRightWidth),
+				expectedHeight:
+					surfaceRect.height -
+					pixels(style.borderTopWidth) -
+					pixels(style.borderBottomWidth),
+				clientWidth: surface.clientWidth,
+			};
+		});
+		expect(Number.isInteger(fractionalSelectionPainting.expectedWidth)).toBe(false);
+		expect(fractionalSelectionPainting.expectedWidth).not.toBe(
+			fractionalSelectionPainting.clientWidth,
+		);
+		expect(fractionalSelectionPainting.width).toBeCloseTo(
+			fractionalSelectionPainting.expectedWidth,
+			0,
+		);
+		expect(fractionalSelectionPainting.height).toBeCloseTo(
+			fractionalSelectionPainting.expectedHeight,
+			0,
+		);
+		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
+
 		const checkGlyphBox = await box(
 			firstSelectableItem.getByTestId('gift-selection-control').locator('svg'),
 		);

@@ -226,12 +226,18 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 	it.each([
 		{ viewMode: 'card' as const, width: 390, surfaceTestId: 'gift-card-surface' },
+		{
+			viewMode: 'card' as const,
+			width: 391,
+			surfaceTestId: 'gift-card-surface',
+			expectFractionalWidth: true,
+		},
 		{ viewMode: 'list' as const, width: 390, surfaceTestId: 'gift-list-item' },
 		{ viewMode: 'card' as const, width: 768, surfaceTestId: 'gift-card-surface' },
 		{ viewMode: 'list' as const, width: 768, surfaceTestId: 'gift-list-item' },
 	])(
 		'traces the real $viewMode surface at $width px while leaving focus distinct',
-		async ({ viewMode, width, surfaceTestId }) => {
+		async ({ viewMode, width, surfaceTestId, expectFractionalWidth }) => {
 			await page.viewport(width, 720);
 			const screen = await render(WishlistGiftDisplay, {
 				...defaultProps,
@@ -243,6 +249,15 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const surface = wrapper.querySelector<HTMLElement>(`[data-testid="${surfaceTestId}"]`)!;
 			const selectionPaint = getComputedStyle(surface, '::before');
 			const surfaceStyle = getComputedStyle(surface);
+			const surfaceRect = surface.getBoundingClientRect();
+			const expectedPaddingWidth =
+				surfaceRect.width -
+				parseFloat(surfaceStyle.borderLeftWidth) -
+				parseFloat(surfaceStyle.borderRightWidth);
+			const expectedPaddingHeight =
+				surfaceRect.height -
+				parseFloat(surfaceStyle.borderTopWidth) -
+				parseFloat(surfaceStyle.borderBottomWidth);
 			const corners = [
 				['borderTopLeftRadius', 'borderTopWidth', 'borderLeftWidth'],
 				['borderTopRightRadius', 'borderTopWidth', 'borderRightWidth'],
@@ -254,8 +269,12 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			expect(getComputedStyle(wrapper).outlineStyle).toBe('none');
 			expect(selectionPaint.position).toBe('absolute');
 			expect(selectionPaint.inset).toBe('0px');
-			expect(parseFloat(selectionPaint.width)).toBeCloseTo(surface.clientWidth, 0);
-			expect(parseFloat(selectionPaint.height)).toBeCloseTo(surface.clientHeight, 0);
+			expect(parseFloat(selectionPaint.width)).toBeCloseTo(expectedPaddingWidth, 0);
+			expect(parseFloat(selectionPaint.height)).toBeCloseTo(expectedPaddingHeight, 0);
+			if (expectFractionalWidth === true) {
+				expect(Number.isInteger(expectedPaddingWidth)).toBe(false);
+				expect(expectedPaddingWidth).not.toBe(surface.clientWidth);
+			}
 			for (const [
 				radiusProperty,
 				verticalBorderProperty,
