@@ -4,8 +4,11 @@
   destructive schema operations, and migrate existing rows rather than dropping or recreating
   tables. Code may still be freely refactored, but breaking schema/API changes need a migration
   plan.
-- Before implementation, read `.mpx/CONTEXT.md` (domain language, feature index, constraints) and
-  `.mpx/DECISIONS.md` (settled architectural choices).
+- Before implementation, read `.mpx/CONTEXT.md` and all of `.mpx/DECISIONS.md`, including its design
+  sections for styling/UI work.
+- Keep decisions as confirmed `YYYY-MM-DD: sentence` bullets, categorized and date-sorted within
+  each category; replace superseded rules, inline rationale only when useful, and record rejected
+  alternatives only when explicitly rejected by the user.
 - Always fix unrelated errors you encounter (merge artifacts, stale imports, broken references,
   prior bugs) — they accumulate if ignored. Commit fixes separately from main work. If a fix fails
   after two attempts, revert and continue with the main task. Always notify user — both for fixes

@@ -164,8 +164,10 @@ Verification:
 ## Turnstile
 
 Protect registration, password sign-in, password-reset request, and anonymous reservation. The
-widget is only the client signal; every protected server operation must enforce Siteverify before
-email, database, or reservation work.
+widget is only a client signal; servers evaluate Siteverify before side effects. Authentication
+fails closed. Anonymous reservation deliberately fails open with a warning when configuration or
+Siteverify is unavailable, but rejects invalid/replayed tokens and missing tokens when the check is
+configured and running.
 
 1. In **Turnstile > Add widget**, create a Managed widget for `prejemesi.cz` (and `www.prejemesi.cz`
    while it remains a routed hostname). Copy sitekey and secret separately.
@@ -182,14 +184,17 @@ email, database, or reservation work.
 3. Render the widget on all five protected surfaces and submit its token with the
    form/remote-function payload.
 4. On the server, call `POST https://challenges.cloudflare.com/turnstile/v0/siteverify` with the
-   secret and token. Require `success: true`. The Turnstile widget hostname allowlist constrains
-   token issuance to the production domains. Reject missing, invalid, expired, or replayed tokens
-   before side effects.
+   secret and token. The widget hostname allowlist constrains token issuance to production domains.
+   Reject invalid, expired, or replayed tokens before side effects. Require `success: true` for
+   authentication; anonymous reservations additionally accept logged
+   configuration/provider-unavailable outcomes, but not a configured missing token.
 5. Tokens expire after five minutes and are single-use; reset the widget after an error. Never
    expose or log the secret or token. Use Cloudflare's documented test keys outside production.
-6. Verify each surface accepts one valid token and rejects missing, malformed, expired, and replayed
-   tokens. Confirm failed validation creates no user, email, reset request, or reservation. Check
-   Turnstile Analytics without copying personal form fields into logs.
+6. Verify valid tokens succeed and malformed, expired, and replayed tokens fail before side effects.
+   Authentication must also reject missing/unavailable verification. Separately verify the
+   anonymous-reservation configuration/provider-outage exception succeeds and logs without
+   permanently disabling the client form; a configured missing token still fails. Check analytics
+   without copying personal form fields into logs.
 
 ## Smart Placement experiment
 
