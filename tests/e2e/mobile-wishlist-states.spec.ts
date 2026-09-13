@@ -219,12 +219,16 @@ test.describe('mobile wishlist acceptance', () => {
 		const selectedSurfaceBox = await box(selectedSurface);
 		const selectionPainting = await selectedSurface.evaluate((surface) => {
 			const style = getComputedStyle(surface);
-			const painting = getComputedStyle(surface, '::after');
+			const painting = getComputedStyle(surface, '::before');
 			const pixels = (value: string) => Number.parseFloat(value);
 			return {
 				content: painting.content,
 				position: painting.position,
 				insets: [painting.top, painting.right, painting.bottom, painting.left],
+				width: pixels(painting.width),
+				height: pixels(painting.height),
+				clientWidth: surface.clientWidth,
+				clientHeight: surface.clientHeight,
 				shadow: painting.boxShadow,
 				radii: [
 					pixels(painting.borderTopLeftRadius),
@@ -248,6 +252,8 @@ test.describe('mobile wishlist acceptance', () => {
 		expect(selectionPainting.content).not.toBe('normal');
 		expect(selectionPainting.position).toBe('absolute');
 		expect(selectionPainting.insets).toEqual(['0px', '0px', '0px', '0px']);
+		expect(selectionPainting.width).toBeCloseTo(selectionPainting.clientWidth, 0);
+		expect(selectionPainting.height).toBeCloseTo(selectionPainting.clientHeight, 0);
 		expect(selectionPainting.shadow).toContain('inset');
 		expect(selectionPainting.shadow).toMatch(/\b3px\b/);
 		selectionPainting.radii.forEach((radius, corner) => {

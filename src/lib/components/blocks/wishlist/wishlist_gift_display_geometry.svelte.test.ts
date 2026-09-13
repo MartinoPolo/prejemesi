@@ -241,7 +241,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			});
 			const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
 			const surface = wrapper.querySelector<HTMLElement>(`[data-testid="${surfaceTestId}"]`)!;
-			const selectionPaint = getComputedStyle(surface, '::after');
+			const selectionPaint = getComputedStyle(surface, '::before');
 			const surfaceStyle = getComputedStyle(surface);
 			const corners = [
 				['borderTopLeftRadius', 'borderTopWidth', 'borderLeftWidth'],
@@ -254,6 +254,8 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			expect(getComputedStyle(wrapper).outlineStyle).toBe('none');
 			expect(selectionPaint.position).toBe('absolute');
 			expect(selectionPaint.inset).toBe('0px');
+			expect(parseFloat(selectionPaint.width)).toBeCloseTo(surface.clientWidth, 0);
+			expect(parseFloat(selectionPaint.height)).toBeCloseTo(surface.clientHeight, 0);
 			for (const [
 				radiusProperty,
 				verticalBorderProperty,
@@ -269,7 +271,25 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			}
 			expect(selectionPaint.boxShadow).toContain('inset');
 			expect(selectionPaint.boxShadow).toContain('3px');
+			expect(selectionPaint.pointerEvents).toBe('none');
+			expect(selectionPaint.zIndex).toBe('30');
 			expect(surfaceStyle.overflow).toBe('visible');
+
+			if (viewMode === 'card') {
+				const hoverBridge = getComputedStyle(surface, '::after');
+				const ordinaryOffset = parseFloat(
+					surfaceStyle.getPropertyValue('--elevation-ordinary-offset'),
+				);
+
+				expect(hoverBridge.position).toBe('absolute');
+				expect(parseFloat(hoverBridge.top)).toBeCloseTo(surface.clientHeight, 0);
+				expect(parseFloat(hoverBridge.height)).toBeCloseTo(ordinaryOffset + 1, 5);
+				expect(parseFloat(hoverBridge.bottom)).toBeCloseTo(
+					-parseFloat(hoverBridge.height),
+					5,
+				);
+				expect(hoverBridge.pointerEvents).toBe('auto');
+			}
 
 			if (viewMode === 'list' && width >= 640) {
 				const wrapperRect = wrapper.getBoundingClientRect();
