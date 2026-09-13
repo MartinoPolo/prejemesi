@@ -113,7 +113,7 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		}
 		hosts.clear();
 		document.body.style.minHeight = '';
-		window.scrollTo(0, 0);
+		window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 		await page.viewport(1280, 760);
 	});
 	it('preserves all filter gates, facet choices, row activation, and reset semantics', async () => {
@@ -255,10 +255,11 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		const trigger = screen.getByTestId('mobile-display-trigger').element() as HTMLButtonElement;
 		const toolbar = screen.getByTestId('wishlist-toolbar').element() as HTMLElement;
 		document.body.style.minHeight = '200vh';
-		window.scrollTo(0, 17);
+		window.scrollTo({ top: 17, left: 0, behavior: 'instant' });
 		await frames(1);
 		const before = toolbar.getBoundingClientRect();
 		const scrollBefore = window.scrollY;
+		expect(scrollBefore).toBe(17);
 		await trigger.click();
 		const dialog = screen.getByRole('dialog', { name: m.gift_display_options() });
 		await userEvent.keyboard('{Tab}');
