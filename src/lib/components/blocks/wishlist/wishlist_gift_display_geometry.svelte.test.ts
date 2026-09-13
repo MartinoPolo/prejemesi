@@ -251,6 +251,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			] as const;
 
 			expect(wrapper.dataset.selected).toBe('true');
+			expect(getComputedStyle(wrapper).outlineStyle).toBe('none');
 			expect(selectionPaint.position).toBe('absolute');
 			expect(selectionPaint.inset).toBe('0px');
 			for (const [
@@ -285,6 +286,71 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			await screen.unmount();
 		},
 	);
+
+	it('keeps the mobile List selection control inside the image and the desktop control in its gutter', async () => {
+		for (const width of [320, 390]) {
+			await page.viewport(width, 720);
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				viewMode: 'list',
+				selectionMode: true,
+				selectedIds: ['gift-1'],
+			});
+			const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
+			const surface = wrapper.querySelector<HTMLElement>('[data-testid="gift-list-item"]')!;
+			const image = wrapper.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
+			const content = wrapper.querySelector<HTMLElement>(
+				'[data-testid="gift-list-content"]',
+			)!;
+			const control = wrapper.querySelector<HTMLElement>(
+				'[data-testid="gift-selection-control"]',
+			)!;
+			const wrapperRect = wrapper.getBoundingClientRect();
+			const imageRect = image.getBoundingClientRect();
+			const contentRect = content.getBoundingClientRect();
+			const controlRect = control.getBoundingClientRect();
+			const outerRadius = parseFloat(
+				getComputedStyle(wrapper).getPropertyValue('--radius-panel'),
+			);
+
+			expect(controlRect.width).toBeCloseTo(40, 0);
+			expect(controlRect.height).toBeCloseTo(40, 0);
+			expect(controlRect.left - wrapperRect.left).toBeCloseTo(6, 0);
+			expect(controlRect.top - wrapperRect.top).toBeCloseTo(6, 0);
+			expect(controlRect.left - imageRect.left).toBeCloseTo(4, 0);
+			expect(controlRect.right).toBeLessThanOrEqual(imageRect.right);
+			expect(controlRect.right).toBeLessThanOrEqual(contentRect.left);
+			expect(parseFloat(getComputedStyle(control).borderRadius)).toBeCloseTo(
+				outerRadius - 6,
+				5,
+			);
+			await screen.unmount();
+		}
+
+		for (const width of [640, 768]) {
+			await page.viewport(width, 720);
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				viewMode: 'list',
+				selectionMode: true,
+				selectedIds: ['gift-1'],
+			});
+			const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
+			const surface = wrapper.querySelector<HTMLElement>('[data-testid="gift-list-item"]')!;
+			const control = wrapper.querySelector<HTMLElement>(
+				'[data-testid="gift-selection-control"]',
+			)!;
+			const wrapperRect = wrapper.getBoundingClientRect();
+			const surfaceRect = surface.getBoundingClientRect();
+			const controlRect = control.getBoundingClientRect();
+
+			expect(controlRect.width).toBeCloseTo(28, 0);
+			expect(controlRect.height).toBeCloseTo(28, 0);
+			expect(surfaceRect.left - wrapperRect.left).toBeCloseTo(36, 0);
+			expect(surfaceRect.left - controlRect.right).toBeCloseTo(8, 0);
+			await screen.unmount();
+		}
+	});
 
 	it.each([
 		{ viewMode: 'card' as const, width: 320 },

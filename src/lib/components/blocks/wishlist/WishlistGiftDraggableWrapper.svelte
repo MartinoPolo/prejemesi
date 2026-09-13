@@ -228,7 +228,6 @@
 		isDragged && 'invisible',
 		isDragOver && dragOverStyle === 'ring' && 'ring-2 ring-inset ring-primary',
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
-		selectionLayout === 'list' && '[--gift-list-corner-left:5.25rem]',
 		selectionMode &&
 			selectionLayout === 'list' &&
 			'sm:grid sm:grid-cols-[1.75rem_minmax(0,1fr)] sm:gap-2',
@@ -256,10 +255,11 @@
 	{#if selectionMode}
 		<span
 			class={cn(
-				'pointer-events-none absolute right-1 top-1 z-50 grid size-10 place-items-center rounded-[calc(var(--radius-panel)-4px)] border-2 border-ink bg-card text-[var(--selection-on-ring)] shadow-sticker sm:right-auto sm:left-2.5 sm:top-2.5 sm:size-7 sm:rounded-md sm:border-0 sm:shadow-sm',
+				'pointer-events-none absolute z-50 grid size-10 place-items-center border-2 border-ink bg-card text-[var(--selection-on-ring)] shadow-sticker sm:size-7 sm:rounded-md sm:border-0 sm:shadow-sm',
 				selected && 'bg-[var(--selection-ring)]',
-				selectionLayout === 'list' &&
-					'left-[var(--gift-list-corner-left)] right-auto sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2',
+				selectionLayout === 'list'
+					? 'left-[6px] top-[6px] rounded-[calc(var(--radius-panel)-6px)] sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2'
+					: 'right-1 top-1 rounded-[calc(var(--radius-panel)-4px)] sm:right-auto sm:left-2.5 sm:top-2.5',
 			)}
 			data-testid="gift-selection-control"
 			aria-hidden="true"

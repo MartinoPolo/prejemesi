@@ -829,10 +829,6 @@
 	--selection-on-ring: var(--accent-loud-foreground);
 }
 
-[data-gift-item][aria-selected='true'] {
-	outline-style: solid;
-}
-
 main.app-content {
 	container-type: inline-size;
 }
