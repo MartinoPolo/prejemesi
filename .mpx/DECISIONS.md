@@ -1028,12 +1028,13 @@ eager header polaroid. Cleanup: replaced/removed/deleted images (gift, wishlist 
 avatar, account deletion) are deleted from R2 server-side inside the owning mutations;
 cancelled/abandoned pre-save uploads are deleted client-side via an uploader-bound delete token (the
 arbitrary-key `authorizeDelete` command is removed — it let any logged-in user delete any known
-object key). Why: Uploads must not transit or get buffered by the Worker; original multi-MB images
-dominated wishlist loading; orphaned R2 objects accumulated forever. Rejected: Keeping the proxy for
-production (Worker memory ceiling); transforming external gift-image URLs (requires zone-wide
-any-origin resizing, quota risk); srcset/dpr variant matrices (multiplies unique transformations
-against the 5k/month free tier — one bounded width per surface suffices); R2 lifecycle rules for
-cleanup (cannot distinguish referenced from orphaned objects).
+object key). Gift forms block submission while an image is authorizing or uploading; a local preview
+is not proof that its storage key is ready to save. Why: Uploads must not transit or get buffered by
+the Worker; original multi-MB images dominated wishlist loading; orphaned R2 objects accumulated
+forever. Rejected: Keeping the proxy for production (Worker memory ceiling); transforming external
+gift-image URLs (requires zone-wide any-origin resizing, quota risk); srcset/dpr variant matrices
+(multiplies unique transformations against the 5k/month free tier — one bounded width per surface
+suffices); R2 lifecycle rules for cleanup (cannot distinguish referenced from orphaned objects).
 
 ### Currencies: CZK, EUR, USD
 
