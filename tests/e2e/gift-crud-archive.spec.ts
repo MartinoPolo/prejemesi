@@ -145,6 +145,10 @@ test.describe('Gift editing', () => {
 		await createDialog.getByRole('button', { name: 'Bez priority' }).click();
 		await page.getByRole('option', { name: 'Vysoká' }).click();
 		await createDialog.getByRole('button', { name: 'Přidat dárek' }).click();
+		await expect(createDialog).not.toBeVisible({ timeout: 10_000 });
+		await expect(
+			page.getByRole('heading', { name: 'Darek s prioritou', level: 3 }),
+		).toBeVisible({ timeout: 10_000 });
 
 		// Priority grouping hides redundant card badges; disable it so the persistence
 		// assertions below continue to verify the saved priority directly on the card.
