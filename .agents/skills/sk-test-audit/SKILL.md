@@ -84,7 +84,7 @@ Use this prompt template for each reviewer agent:
 
 > You are auditing test quality. Read each file IN FULL and its source module. For each file report:
 > File, Test count, Verdict (KEEP/REMOVE/IMPROVE), Issues, Value assessment. Rules: [paste judging >
-> > rules above] Files: [list of 10-15 files]
+> rules above] Files: [list of 10-15 files]
 
 For storybook, check:
 
