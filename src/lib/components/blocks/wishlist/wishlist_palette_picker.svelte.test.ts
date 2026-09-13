@@ -5,22 +5,30 @@ import { PALETTES, PALETTE_LABELS } from '$lib/theme/palettes.js';
 import WishlistPalettePicker from './WishlistPalettePicker.svelte';
 
 describe('WishlistPalettePicker', () => {
-	it('renders every palette as a compact, consistently sized centered choice group', async () => {
-		const screen = render(WishlistPalettePicker, {
-			value: 'sky',
-			onchange: vi.fn(),
-		});
+	it('renders compact, consistently sized choices in a centered bounded group', async () => {
+		const onchange = vi.fn();
+		const screen = render(WishlistPalettePicker, { value: 'sky', onchange });
 		const group = screen.getByTestId('wishlist-palette-picker');
-		const buttons = PALETTES.map((palette) =>
-			screen.getByRole('button', { name: PALETTE_LABELS[palette] }),
-		);
 
 		await expect.element(group).toBeVisible();
-		expect(buttons).toHaveLength(PALETTES.length);
-		const widths = buttons.map((button) => button.element().getBoundingClientRect().width);
+		const groupRect = group.element().getBoundingClientRect();
+		const buttons = Array.from(group.element().querySelectorAll<HTMLButtonElement>('button'));
+		expect(buttons.length).toBeGreaterThan(1);
+		const widths = buttons.map((button) => button.getBoundingClientRect().width);
 		expect(new Set(widths.map(Math.round))).toEqual(new Set([128]));
-		expect(Math.max(...widths)).toBeLessThan(group.element().getBoundingClientRect().width / 2);
-		await expect.element(buttons[0]!).toHaveAttribute('aria-pressed', 'true');
+		expect(Math.max(...widths)).toBeLessThan(groupRect.width / 2);
+		expect(groupRect.width).toBeLessThanOrEqual(720);
+		expect(groupRect.left + groupRect.width / 2).toBeCloseTo(window.innerWidth / 2, 0);
+
+		const sky = screen.getByRole('button', { name: PALETTE_LABELS.sky });
+		const mint = screen.getByRole('button', { name: PALETTE_LABELS.mint });
+		await expect.element(sky).toHaveAttribute('aria-pressed', 'true');
+		await mint.click();
+		expect(onchange).toHaveBeenCalledOnce();
+		expect(onchange).toHaveBeenCalledWith('mint');
+		await screen.rerender({ value: 'mint', onchange });
+		await expect.element(sky).toHaveAttribute('aria-pressed', 'false');
+		await expect.element(mint).toHaveAttribute('aria-pressed', 'true');
 	});
 
 	it('wraps choices without horizontal overflow at narrow widths', async () => {

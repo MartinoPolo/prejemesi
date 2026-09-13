@@ -6,6 +6,7 @@ import type { ComponentProps } from 'svelte';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { GIFT_SECTION_KINDS, type GiftSection } from '$lib/modules/gifts/gift_ordering.js';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import * as m from '$lib/paraglide/messages.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
@@ -293,7 +294,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		{ viewMode: 'list' as const, width: 768 },
 		{ viewMode: 'compact' as const, width: 768 },
 	])(
-		'shows textual high and low priority badges in $viewMode at $width px',
+		'shows localized high and low priority badges in $viewMode at $width px',
 		async ({ viewMode, width }) => {
 			await page.viewport(width, 720);
 			const high = { ...visitorGift(), id: 'gift-high', priorityLabel: 'Vysoka' };
@@ -309,14 +310,50 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				document.querySelectorAll<HTMLElement>('[data-testid="gift-priority-badge"]'),
 			);
 			expect(badges.map((badge) => badge.dataset.priority)).toEqual(['Vysoka', 'Nizka']);
+			const expectedLabels = {
+				Vysoka: m.gift_priority_high(),
+				Nizka: m.gift_priority_low(),
+			};
 			for (const badge of badges) {
 				expect(badge.getBoundingClientRect().width).toBeGreaterThan(0);
 				expect(getComputedStyle(badge).display).not.toBe('none');
-				expect(badge.textContent?.trim().length).toBeGreaterThan(0);
+				expect(badge.textContent?.trim()).toBe(
+					expectedLabels[badge.dataset.priority as keyof typeof expectedLabels],
+				);
+			}
+			if (viewMode === 'card' && width >= 640) {
+				expect(badges[0]!.getBoundingClientRect().top).toBeCloseTo(
+					badges[1]!.getBoundingClientRect().top,
+					0,
+				);
+				expect(getComputedStyle(badges[0]!).gridRowStart).toBe('3');
 			}
 			await screen.unmount();
 		},
 	);
+
+	it('does not render an empty card priority spacing element for hidden or unrecognized priorities', async () => {
+		const unknown = { ...visitorGift(), priorityLabel: 'Neznama' };
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts: [unknown] }],
+			viewMode: 'card',
+			grouping: 'none',
+		});
+		const body = document.querySelector('[data-testid="gift-card-surface"] > .row-start-2')!;
+		expect(body.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
+		expect(body.querySelector('.row-start-3')).toBeNull();
+
+		await screen.rerender({
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts: [{ ...unknown, priorityLabel: 'Vysoka' }] }],
+			viewMode: 'card',
+			grouping: 'priority',
+		});
+		expect(body.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
+		expect(body.querySelector('.row-start-3')).toBeNull();
+		await screen.unmount();
+	});
 
 	it('shows priority for category grouping, hides it for priority grouping, and reacts to changes', async () => {
 		const high = { ...visitorGift(), priorityLabel: 'Vysoka' };

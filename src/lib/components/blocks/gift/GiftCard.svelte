@@ -171,9 +171,11 @@
 		{/if}
 
 		<!-- Priority stays in normal content flow, clear of image overlays and actions. -->
-		<div class={styles.priorityEyebrow()}>
-			<GiftPriorityBadge priorityLabel={gift.priorityLabel} {showPriority} />
-		</div>
+		<GiftPriorityBadge
+			priorityLabel={gift.priorityLabel}
+			{showPriority}
+			class={cn(styles.priorityEyebrow(), 'w-fit')}
+		/>
 
 		<!-- Links -->
 		<div class={styles.linkList()}>
