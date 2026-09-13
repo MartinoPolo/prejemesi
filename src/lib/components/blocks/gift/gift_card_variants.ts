@@ -12,8 +12,8 @@ import { tv } from 'tailwind-variants';
  * same sections sit on shared rows across every card in a grid row; a card
  * missing a section leaves an aligned blank slot. Sections carry explicit
  * row-start values — without them auto-placement would compact absent sections
- * away. Vertical rhythm comes from item margins (not row gaps) so fully-empty
- * tracks collapse.
+ * away. Vertical rhythm inside cards comes from item margins; the parent grid
+ * deliberately has no desktop row gap so fully-empty shared tracks collapse.
  */
 export const giftCardVariants = tv({
 	slots: {

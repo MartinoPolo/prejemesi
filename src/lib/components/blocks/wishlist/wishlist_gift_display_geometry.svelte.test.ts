@@ -179,7 +179,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		}
 	});
 
-	it('keeps the collection edges exact and leaves card paint unclipped', async () => {
+	it('keeps horizontal edges exact and leaves card paint plus desktop band clearance unclipped', async () => {
 		const gifts = Array.from({ length: 4 }, (_, index) => ({
 			...visitorGift(),
 			id: `gift-${index + 1}`,
@@ -215,7 +215,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const bottomEdge = Math.max(...cardRects.map((rect) => rect.bottom));
 
 			expect(gridRect.right - rightmostEdge).toBeCloseTo(0, 0);
-			expect(gridRect.bottom - bottomEdge).toBeCloseTo(0, 0);
+			expect(gridRect.bottom - bottomEdge).toBeCloseTo(viewportWidth >= 640 ? 20 : 0, 0);
 			expect(getComputedStyle(grid).overflowX).toBe('visible');
 			expect(getComputedStyle(grid).overflowY).toBe('visible');
 			expect(getComputedStyle(collection).zIndex).toBe('0');
@@ -397,6 +397,214 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			await screen.unmount();
 		},
 	);
+
+	it('collapses the shared priority track when every desktop card hides its badge', async () => {
+		await page.viewport(768, 900);
+		const gifts = [
+			{
+				...visitorGift(),
+				id: 'gift-with-price',
+				price: 1299,
+				currency: 'CZK' as const,
+				links: [{ url: 'https://example.com/lampa', label: 'Lampa' }],
+			},
+			{
+				...visitorGift(),
+				id: 'gift-without-price',
+				links: [{ url: 'https://example.com/kniha', label: 'Kniha' }],
+			},
+		];
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts }],
+			viewMode: 'card',
+			grouping: 'priority',
+		});
+
+		for (const card of document.querySelectorAll<HTMLElement>(
+			'[data-testid="gift-card-surface"]',
+		)) {
+			const body = card.querySelector<HTMLElement>(':scope > .row-start-2')!;
+			const price = body.querySelector<HTMLElement>(':scope > .row-start-2')!;
+			const link = body.querySelector<HTMLElement>('a')!;
+			expect(
+				link.getBoundingClientRect().top - price.getBoundingClientRect().bottom,
+			).toBeCloseTo(8, 0);
+		}
+		expect(document.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
+		await screen.unmount();
+	});
+
+	it('preserves the shared priority slot for peers when a desktop band has visible badges', async () => {
+		await page.viewport(1280, 900);
+		const base = {
+			...visitorGift(),
+			price: 1299,
+			currency: 'CZK' as const,
+			links: [{ url: 'https://example.com/darek', label: 'Dárek' }],
+		};
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [
+				{
+					...sections[0]!,
+					gifts: [
+						{ ...base, id: 'gift-high', priorityLabel: 'Vysoka' },
+						{ ...base, id: 'gift-none', priorityLabel: null },
+						{ ...base, id: 'gift-low', priorityLabel: 'Nizka' },
+					],
+				},
+			],
+			viewMode: 'card',
+			grouping: 'none',
+		});
+		const cards = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid="gift-card-surface"]'),
+		);
+		const links = cards.map((card) =>
+			card.querySelector<HTMLElement>('a')!.getBoundingClientRect(),
+		);
+		const badges = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid="gift-priority-badge"]'),
+		);
+
+		expect(badges.map((badge) => badge.dataset.priority)).toEqual(['Vysoka', 'Nizka']);
+		expect(badges[0]!.getBoundingClientRect().top).toBeCloseTo(
+			badges[1]!.getBoundingClientRect().top,
+			0,
+		);
+		expect(links[1]!.top).toBeCloseTo(links[0]!.top, 0);
+		expect(links[2]!.top).toBeCloseTo(links[0]!.top, 0);
+		await screen.unmount();
+	});
+
+	it('keeps desktop footers aligned across missing prices, wrapped links, long descriptions, and mixed actions', async () => {
+		await page.viewport(1280, 1000);
+		const longLinks = Array.from({ length: 3 }, (_, index) => ({
+			url: `https://example.com/very-long-product-address-${index}`,
+			label: `Velmi dlouhý odkaz na variantu produktu ${index}`,
+		}));
+		const gifts = [
+			{
+				...visitorGift(),
+				id: 'gift-missing-price',
+				links: longLinks,
+				priorityLabel: 'Vysoka',
+			},
+			{
+				...visitorGift(),
+				id: 'gift-description',
+				price: 2999,
+				currency: 'CZK' as const,
+				links: longLinks.slice(0, 1),
+				description:
+					'Dlouhý popis dárku, který se zalomí přes několik řádků a ověří společné zarovnání patiček.',
+			},
+			{
+				...visitorGift(),
+				id: 'gift-reserved',
+				price: 499,
+				currency: 'CZK' as const,
+				links: longLinks.slice(0, 2),
+				reservedCount: 1,
+				isFullyReserved: true,
+			},
+		];
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: [{ ...sections[0]!, gifts }],
+			role: WISHLIST_ROLES.moderator,
+			hideReservationState: true,
+			hascontextactions: (gift) => gift.id !== 'gift-reserved',
+			oncontextactions: () => true,
+			viewMode: 'card',
+			grouping: 'none',
+		});
+		const cards = Array.from(
+			document.querySelectorAll<HTMLElement>('[data-testid="gift-card-surface"]'),
+		);
+		const footers = cards.map((card) =>
+			card
+				.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!
+				.getBoundingClientRect(),
+		);
+
+		expect(footers[1]!.top).toBeCloseTo(footers[0]!.top, 0);
+		expect(footers[2]!.top).toBeCloseTo(footers[0]!.top, 0);
+		expect(footers[1]!.bottom).toBeCloseTo(footers[0]!.bottom, 0);
+		expect(footers[2]!.bottom).toBeCloseTo(footers[0]!.bottom, 0);
+		await screen.unmount();
+	});
+
+	it('keeps 20px between desktop card bands and priority-group headers without trailing overlap', async () => {
+		await page.viewport(768, 1400);
+		const gifts = Array.from({ length: 6 }, (_, index) => ({
+			...visitorGift(),
+			id: `gift-${index + 1}`,
+			links: [{ url: `https://example.com/${index + 1}`, label: `Dárek ${index + 1}` }],
+		}));
+		const groupedSections: GiftSection[] = [
+			{
+				kind: GIFT_SECTION_KINDS.priorityGroup,
+				key: 'priority:high',
+				label: 'Vysoká priorita',
+				priorityKey: 'Vysoka',
+				gifts: gifts.slice(0, 4),
+			},
+			{
+				kind: GIFT_SECTION_KINDS.priorityGroup,
+				key: 'priority:low',
+				label: 'Nízká priorita',
+				priorityKey: 'Nizka',
+				gifts: gifts.slice(4),
+			},
+		];
+		const screen = await render(WishlistGiftDisplay, {
+			...defaultProps,
+			sections: groupedSections,
+			viewMode: 'card',
+			grouping: 'priority',
+		});
+		const grid = document.querySelector<HTMLElement>(
+			'[data-testid="wishlist-gift-card-grid"]',
+		)!;
+		const cards = Array.from(grid.querySelectorAll<HTMLElement>('[data-gift-item]'));
+		const headers = Array.from(
+			grid.querySelectorAll<HTMLElement>(':scope > .col-span-full'),
+		).map((wrapper) => wrapper.firstElementChild!.getBoundingClientRect());
+		const cardRects = cards.map((card) => card.getBoundingClientRect());
+
+		expect(cardRects[2]!.top - cardRects[0]!.bottom).toBeCloseTo(20, 0);
+		expect(headers[1]!.top - cardRects[2]!.bottom).toBeCloseTo(20, 0);
+		expect(cardRects[0]!.top - headers[0]!.bottom).toBeCloseTo(20, 0);
+		expect(cardRects[4]!.top - headers[1]!.bottom).toBeCloseTo(20, 0);
+		expect(grid.getBoundingClientRect().bottom - cardRects[5]!.bottom).toBeCloseTo(20, 0);
+		expect(getComputedStyle(grid).overflowY).toBe('visible');
+		await screen.unmount();
+	});
+
+	it('leaves mobile card-band spacing unchanged', async () => {
+		const gifts = Array.from({ length: 3 }, (_, index) => ({
+			...visitorGift(),
+			id: `mobile-gift-${index + 1}`,
+		}));
+		for (const { width, expectedGap } of [
+			{ width: 320, expectedGap: 10 },
+			{ width: 390, expectedGap: 8 },
+		]) {
+			await page.viewport(width, 1000);
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts }],
+				viewMode: 'card',
+			});
+			const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+			const first = cards[0]!.getBoundingClientRect();
+			const nextBand = cards[width === 320 ? 1 : 2]!.getBoundingClientRect();
+			expect(nextBand.top - first.bottom).toBeCloseTo(expectedGap, 0);
+			await screen.unmount();
+		}
+	});
 
 	it('does not render an empty card priority spacing element for hidden or unrecognized priorities', async () => {
 		const unknown = { ...visitorGift(), priorityLabel: 'Neznama' };
