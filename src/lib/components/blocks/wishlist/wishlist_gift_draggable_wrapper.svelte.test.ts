@@ -229,7 +229,7 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		await unmount();
 	});
 
-	it('anchors list selection checkbox inside the mobile image reserved corner', async () => {
+	it('anchors the 40px list selection control fully inside the mobile image top-left corner', async () => {
 		await page.viewport(390, 720);
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
@@ -243,19 +243,19 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		const checkboxControl = wrapper.querySelector(
 			'[data-testid="gift-selection-control"]',
 		) as HTMLElement;
+		const wrapperRect = wrapper.getBoundingClientRect();
 		const imageRect = image.getBoundingClientRect();
 		const controlRect = checkboxControl.getBoundingClientRect();
-		const imageHorizontalMidpoint = imageRect.left + imageRect.width / 2;
-		const imageVerticalMidpoint = imageRect.top + imageRect.height / 2;
 
 		expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
 		expect(controlRect.width).toBeCloseTo(40, 0);
 		expect(controlRect.height).toBeCloseTo(40, 0);
+		expect(controlRect.left - wrapperRect.left).toBeCloseTo(6, 0);
+		expect(controlRect.top - wrapperRect.top).toBeCloseTo(6, 0);
+		expect(controlRect.left).toBeGreaterThanOrEqual(imageRect.left);
 		expect(controlRect.top).toBeGreaterThanOrEqual(imageRect.top);
-		expect(controlRect.right).toBeLessThanOrEqual(imageRect.right - 4 + 0.5);
+		expect(controlRect.right).toBeLessThanOrEqual(imageRect.right);
 		expect(controlRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
-		expect(controlRect.left).toBeGreaterThanOrEqual(imageHorizontalMidpoint);
-		expect(controlRect.top).toBeLessThan(imageVerticalMidpoint);
 		for (const pill of container.querySelectorAll<HTMLElement>(
 			'[data-testid="gift-state-overlay"] > span',
 		)) {

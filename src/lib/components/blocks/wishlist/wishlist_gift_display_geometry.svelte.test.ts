@@ -297,7 +297,6 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				selectedIds: ['gift-1'],
 			});
 			const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
-			const surface = wrapper.querySelector<HTMLElement>('[data-testid="gift-list-item"]')!;
 			const image = wrapper.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
 			const content = wrapper.querySelector<HTMLElement>(
 				'[data-testid="gift-list-content"]',
