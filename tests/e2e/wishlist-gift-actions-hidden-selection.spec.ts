@@ -4,6 +4,7 @@ import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { addGift, createWishlistForSomeoneAndNavigate } from './fixtures/wishlist-helpers.js';
 import {
+	dismissToasts,
 	escapeRegex,
 	gift,
 	openSelectionFromContext,
@@ -62,6 +63,8 @@ test('bulk hidden-selection confirmation preserves exact received state on undo'
 	await expect(highPriorityOption).toHaveCount(1);
 	await highPriorityOption.click();
 	await expect(toolbar.getByText(m.gift_selection_hidden_count({ count: 2 }))).toBeVisible();
+	await waitForToast(page, m.gift_bulk_success({ count: 2 }));
+	await dismissToasts(page);
 
 	await toolbar.getByTestId('desktop-selection-actions-trigger').click();
 	await expect(selectionActionsMenu).toBeVisible();
