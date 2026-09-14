@@ -5,6 +5,14 @@ import * as m from '$lib/paraglide/messages.js';
 import AuthPasswordInput from './AuthPasswordInput.svelte';
 
 describe('AuthPasswordInput reveal control', () => {
+	it('matches the large field with a size-driven reveal surface', async () => {
+		const screen = await render(AuthPasswordInput, { fieldId: 'password', value: '' });
+		const reveal = screen.getByRole('button', { name: m.show_password() }).element();
+		const surface = reveal.querySelector('.elevation-surface');
+		expect(surface?.getBoundingClientRect().height).toBe(40);
+		expect(reveal.getBoundingClientRect().width).toBe(40);
+	});
+
 	it('is keyboard-focusable and toggles the input type, label, and pressed state', async () => {
 		const screen = await render(AuthPasswordInput, { fieldId: 'password', value: 'secret' });
 		const input = document.querySelector('#password') as HTMLInputElement;

@@ -9,8 +9,8 @@ async function expectExactHeight(locator: Locator, expectedHeight: number): Prom
 		.toBe(expectedHeight);
 }
 
-test.describe('issue #159 control-height geometry', () => {
-	test('login controls share the 38px standalone-form step', async ({ page }) => {
+test.describe('shared control-height geometry', () => {
+	test('explicit large form controls stay 40px across breakpoints', async ({ page }) => {
 		await page.goto('/login');
 
 		const controls = [
@@ -20,12 +20,18 @@ test.describe('issue #159 control-height geometry', () => {
 			page.getByTestId('google-login'),
 		];
 
+		await page.setViewportSize({ width: 390, height: 844 });
 		for (const control of controls) {
-			await expectExactHeight(control, 38);
+			await expectExactHeight(control, 40);
+		}
+
+		await page.setViewportSize({ width: 1024, height: 768 });
+		for (const control of controls) {
+			await expectExactHeight(control, 40);
 		}
 	});
 
-	test('create-list controls share the 38px standalone-form step', async ({
+	test('create-list controls share the 40px explicit large step', async ({
 		browser,
 		request,
 		baseURL,
@@ -48,7 +54,7 @@ test.describe('issue #159 control-height geometry', () => {
 		await expect(toggleItems).toHaveCount(2);
 
 		for (const toggleItem of await toggleItems.all()) {
-			await expectExactHeight(toggleItem, 38);
+			await expectExactHeight(toggleItem, 40);
 		}
 
 		await toggleItems.nth(1).click();
@@ -62,7 +68,7 @@ test.describe('issue #159 control-height geometry', () => {
 		];
 
 		for (const control of standaloneControls) {
-			await expectExactHeight(control, 38);
+			await expectExactHeight(control, 40);
 		}
 
 		await page.context().close();

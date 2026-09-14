@@ -44,7 +44,7 @@
 	{#snippet template()}
 		<PageHeader title="Moje seznamy" size="md">
 			{#snippet toolbar()}
-				<Button intent="ghost" size="icon-sm" aria-label="Settings"
+				<Button intent="ghost" size="sm" format="icon" aria-label="Settings"
 					><SettingsIcon data-icon /></Button
 				>
 				<Button intent="primary" size="sm"

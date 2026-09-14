@@ -59,7 +59,7 @@
 		}
 	}}
 	intent="default"
-	size="icon"
+	format="icon"
 	aria-label={m.gift_view_switcher_aria()}
 	onkeydown={handleArrowKey}
 	data-testid="gift-view-switcher"

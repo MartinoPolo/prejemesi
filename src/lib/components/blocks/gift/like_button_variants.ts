@@ -1,12 +1,17 @@
 import { tv } from 'tailwind-variants';
+import {
+	CONTROL_ICON_SIZE_CLASSES,
+	CONTROL_SIZE_CLASSES,
+	RESPONSIVE_CONTROL_SIZE_CLASSES,
+	type ControlSize,
+} from '$lib/components/base/control_sizing.js';
 
 /**
  * Anime-sky like control (issue #102 REQ-14 + round-2 delta): ghost ink chip
  * with the colored heart; hover tints it with the like blush and lifts it as one surface.
- * `md` matches the mockup card footer and the gift detail modal's action bar
- * (matches `ReserveButton`'s `md` there so the two stay height-aligned), `sm`
- * the compact rows. `ghost` is the borderless card/list chip; `sticker` is the
- * ink-bordered hard-shadow pill used in the detail modal's action bar.
+ * Omitted size follows the shared responsive action scale and explicit sizes stay fixed.
+ * `sm` remains the compact-row exception. `ghost` is the borderless card/list chip and
+ * `sticker` is the ink-bordered hard-shadow treatment used in the detail modal's action bar.
  */
 export const likeButtonVariants = tv({
 	slots: {
@@ -26,21 +31,29 @@ export const likeButtonVariants = tv({
 			},
 		},
 		size: {
+			responsive: {
+				root: `${RESPONSIVE_CONTROL_SIZE_CLASSES} min-w-(--size-control-lg) sm:min-w-(--size-control-md)`,
+				surface: `px-1 py-1 text-sm ${CONTROL_ICON_SIZE_CLASSES.lg}`,
+				count: 'text-[13px]',
+			},
 			sm: {
-				surface: 'px-1.5 py-0.5 text-[13px]',
-				icon: 'size-3.5',
+				root: `${CONTROL_SIZE_CLASSES.sm} min-w-(--size-control-sm)`,
+				surface: `px-1.5 py-0.5 text-[13px] ${CONTROL_ICON_SIZE_CLASSES.sm}`,
 				count: 'text-[12px]',
 			},
 			md: {
-				root: 'min-h-10 min-w-10',
-				surface: 'px-1 py-1 text-sm',
-				icon: 'size-5',
+				root: `${CONTROL_SIZE_CLASSES.md} min-w-(--size-control-md)`,
+				surface: `px-1 py-1 text-sm ${CONTROL_ICON_SIZE_CLASSES.md}`,
 				count: 'text-[13px]',
 			},
 			lg: {
-				root: 'min-h-[52px] min-w-[52px]',
-				surface: 'gap-2 px-4 text-base',
-				icon: 'size-5',
+				root: `${CONTROL_SIZE_CLASSES.lg} min-w-(--size-control-lg)`,
+				surface: `gap-2 px-4 text-base ${CONTROL_ICON_SIZE_CLASSES.lg}`,
+				count: 'text-sm',
+			},
+			xl: {
+				root: `${CONTROL_SIZE_CLASSES.xl} min-w-(--size-control-xl)`,
+				surface: `gap-2 px-4 text-base ${CONTROL_ICON_SIZE_CLASSES.xl}`,
 				count: 'text-sm',
 			},
 		},
@@ -54,10 +67,10 @@ export const likeButtonVariants = tv({
 	},
 	defaultVariants: {
 		liked: false,
-		size: 'md',
+		size: 'responsive',
 		appearance: 'ghost',
 	},
 });
 
-export type LikeButtonSize = keyof typeof likeButtonVariants.variants.size;
+export type LikeButtonSize = ControlSize;
 export type LikeButtonAppearance = keyof typeof likeButtonVariants.variants.appearance;

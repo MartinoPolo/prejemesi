@@ -172,7 +172,7 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 			) as HTMLElement;
 			const card = host.querySelector('[data-testid="gift-card-image-frame"]')!
 				.parentElement as HTMLElement;
-			const expectedControlSize = 32;
+			const expectedControlSize = viewport < 640 ? 40 : 32;
 			const actions = Array.from(row.querySelectorAll<HTMLElement>('button'));
 			expect(primary).toBeTruthy();
 			expect(more).toBeTruthy();
@@ -241,7 +241,7 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 				expect(more.getAttribute('aria-label')).toBe(m.gift_more_actions());
 				const actions = [reserve, primary, more];
 				for (const action of actions) {
-					expect(action.getBoundingClientRect().height).toBeCloseTo(32, 0);
+					expect(action.getBoundingClientRect().height).toBeCloseTo(40, 0);
 					expectRaisedActionShadowInside(action, card);
 				}
 				expect(

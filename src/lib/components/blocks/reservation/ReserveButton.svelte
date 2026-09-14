@@ -2,6 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 	import { cn } from '$lib/utils.js';
@@ -9,7 +10,7 @@
 	interface ReserveButtonProps {
 		gift: GiftForVisitor;
 		isArchived?: boolean;
-		size?: 'sm' | 'md' | 'lg' | 'xl';
+		size?: ControlSize;
 		/** Extra classes on the underlying Button (issue #211: stacking this button
 		 *  with PurchasedToggle at equal width needs a `w-full` from the caller). */
 		class?: string;
@@ -21,7 +22,7 @@
 	let {
 		gift,
 		isArchived = false,
-		size = 'sm',
+		size,
 		class: className,
 		surfaceClass,
 		onreserve,

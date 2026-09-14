@@ -30,7 +30,7 @@ test.describe('Gift detail image presentation', () => {
 		await expect(addDialog).toBeVisible({ timeout: 5_000 });
 		await addDialog.getByRole('textbox', { name: 'Název' }).fill(giftName);
 
-		await addDialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
+		await addDialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
 		const fileInput = addDialog.locator('input[type=file]');
 		await expect(fileInput).toBeAttached();
 		await fileInput.setInputFiles(SAMPLE_IMAGE_PORTRAIT_PATH);

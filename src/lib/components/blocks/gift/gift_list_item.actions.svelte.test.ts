@@ -73,7 +73,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				'[data-testid="gift-list-actions"] button',
 			)) {
 				const actionRect = action.getBoundingClientRect();
-				expect(actionRect.height).toBeCloseTo(32, 0);
+				expect(actionRect.height).toBeCloseTo(40, 0);
 				expect(actionRect.left).toBeGreaterThanOrEqual(itemRect.left);
 				expect(actionRect.right).toBeLessThanOrEqual(itemRect.right);
 				expect(actionRect.bottom).toBeLessThanOrEqual(itemRect.bottom);
@@ -109,8 +109,11 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		const moreRect = more.getBoundingClientRect();
 
 		expect(reserveRect.bottom).toBeLessThanOrEqual(receivedRect.top);
-		expect(receivedRect.top).toBeCloseTo(moreRect.top, 0);
-		expect(receivedRect.bottom).toBeCloseTo(moreRect.bottom, 0);
+		if (receivedRect.top === moreRect.top) {
+			expect(receivedRect.bottom).toBeCloseTo(moreRect.bottom, 0);
+		} else {
+			expect(moreRect.top - receivedRect.bottom).toBeCloseTo(8, 0);
+		}
 		expect(reserveRect.right).toBeCloseTo(rowRect.right, 0);
 		expect(moreRect.right).toBeCloseTo(rowRect.right, 0);
 		expect(reserveRect.width).toBeLessThan(rowRect.width);
@@ -189,7 +192,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			const primary = row.querySelector(
 				'[data-testid="gift-received-toggle"], [data-testid="reserve-button"]',
 			) as HTMLElement;
-			const expectedControlSize = 32;
+			const expectedControlSize = viewport < 640 ? 40 : 32;
 			const actions = Array.from(row.querySelectorAll<HTMLElement>('button'));
 			expect(primary).toBeTruthy();
 			expect(more).toBeTruthy();
@@ -251,6 +254,33 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			host.remove();
 		},
 	);
+
+	it('uses an 8px gap throughout the gift action group at mobile and desktop widths', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
+				role: WISHLIST_ROLES.moderator,
+				onreceived: () => {},
+				onreserve: () => {},
+				onmore: () => {},
+			},
+			{ baseElement: host },
+		);
+
+		for (const viewportWidth of [390, 800]) {
+			await page.viewport(viewportWidth, 900);
+			const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
+			const primaryGroup = host.querySelector(
+				'[data-testid="gift-action-primary-group"]',
+			) as HTMLElement;
+			expect(getComputedStyle(row).gap).toBe('8px');
+			expect(getComputedStyle(primaryGroup).gap).toBe('8px');
+		}
+		host.remove();
+	});
 
 	it.each([
 		{ locale: 'cs' as const, received: false },

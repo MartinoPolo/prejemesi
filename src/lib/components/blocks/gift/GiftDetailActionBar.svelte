@@ -73,17 +73,16 @@
 			giftId={gift.id}
 			giftName={gift.name}
 			likeCount={gift.likeCount}
-			size="md"
 			appearance="sticker"
 			class="mr-auto"
 		/>
 		{#if !isFullyReservedByOthers}
 			<div class={styles.primary()}>
-				<ReserveButton {gift} {isArchived} size="md" {onreserve} {onunreserve} />
+				<ReserveButton {gift} {isArchived} {onreserve} {onunreserve} />
 			</div>
 		{/if}
 		<!-- Managers use the edit form; this keeps the app-admin override reachable from
 		     the read-only gift detail without restoring release controls to browse surfaces. -->
-		<ReleaseReservationButton {gift} size="md" />
+		<ReleaseReservationButton {gift} />
 	</div>
 {/if}

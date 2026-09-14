@@ -406,12 +406,7 @@
 
 {#snippet mobileNestedOptions()}
 	<div class="bulk-sheet-nested-nav">
-		<Button
-			bind:ref={mobileBackButton}
-			intent="ghost"
-			size="md"
-			onclick={returnToMobileActions}
-		>
+		<Button bind:ref={mobileBackButton} intent="ghost" onclick={returnToMobileActions}>
 			<ArrowLeftIcon data-icon="inline-start" />{m.gift_context_back()}
 		</Button>
 		<strong>
@@ -583,13 +578,7 @@
 	<Sheet.Root open={mobileBulkSheetOpen} onOpenChange={handleMobileBulkSheetOpenChange}>
 		<Sheet.Trigger>
 			{#snippet child({ props })}
-				<Button
-					bind:ref={mobileBulkTrigger}
-					{...props}
-					intent="outline"
-					size="md"
-					{disabled}
-				>
+				<Button bind:ref={mobileBulkTrigger} {...props} intent="outline" {disabled}>
 					{pending !== null ? pendingLabel : m.gift_selection_actions()}
 				</Button>
 			{/snippet}
@@ -658,7 +647,6 @@
 				<Button
 					{...props}
 					intent="outline"
-					size="md"
 					{disabled}
 					data-testid="desktop-selection-actions-trigger"
 				>
@@ -732,7 +720,7 @@
 		</strong>
 		<div class="mobile-selection-actions">
 			{@render mobileBulkSheet()}
-			<Button intent="primary" size="md" onclick={ondone}>{m.cancel()}</Button>
+			<Button intent="primary" onclick={ondone}>{m.cancel()}</Button>
 		</div>
 	</div>
 	<div class="selection-summary desktop-selection-summary">
@@ -754,7 +742,7 @@
 	<div class="selection-actions">
 		{@render desktopActions()}
 	</div>
-	<Button class="done" intent="primary" size="md" onclick={ondone}>
+	<Button class="done" intent="primary" onclick={ondone}>
 		{m.done()}
 	</Button>
 </div>
@@ -889,7 +877,7 @@
 		.mobile-selection-row {
 			width: 100%;
 			justify-content: space-between;
-			gap: 4px;
+			gap: 8px;
 		}
 
 		.mobile-selection-label {
@@ -903,14 +891,7 @@
 
 		.mobile-selection-actions {
 			flex: 0 0 auto;
-			gap: 4px;
-		}
-
-		.mobile-selection-row > :global([data-slot='checkbox']),
-		.mobile-selection-actions :global(button) {
-			min-width: 40px;
-			min-height: 40px;
-			padding-inline: 0.375rem;
+			gap: 8px;
 		}
 	}
 

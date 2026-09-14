@@ -1,4 +1,6 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
+import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import { overwriteGetLocale } from '$lib/paraglide/runtime.js';
@@ -13,6 +15,31 @@ function section(
 ): GiftSection {
 	return { kind, key: `${kind}:${label ?? ''}`, label, priorityKey, gifts: [] };
 }
+
+describe('GiftSectionHeader selection', () => {
+	it('gives its shared checkbox enough responsive space without overflowing its owner', async () => {
+		for (const [width, expectedSize] of [
+			[390, 40],
+			[768, 32],
+		] as const) {
+			await page.viewport(width, 720);
+			const screen = await render(GiftSectionHeader, {
+				section: section(GIFT_SECTION_KINDS.categoryGroup, 'Knihy'),
+				selectionMode: true,
+			});
+			const checkbox = screen.getByRole('checkbox', { name: 'Knihy' }).element();
+			const owner = checkbox.parentElement as HTMLElement;
+			const checkboxRect = checkbox.getBoundingClientRect();
+			const ownerRect = owner.getBoundingClientRect();
+
+			expect(checkboxRect.width).toBeCloseTo(expectedSize, 0);
+			expect(checkboxRect.height).toBeCloseTo(expectedSize, 0);
+			expect(ownerRect.width).toBeCloseTo(expectedSize, 0);
+			expect(ownerRect.height).toBeGreaterThanOrEqual(checkboxRect.height);
+			await screen.unmount();
+		}
+	});
+});
 
 describe('GiftSectionHeader copy (issue #224 follow-up)', () => {
 	it('renders the „other gifts" header for the band after the own-reservation band', async () => {

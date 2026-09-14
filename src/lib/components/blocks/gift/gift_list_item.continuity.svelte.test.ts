@@ -24,6 +24,7 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: undefined,
+			allowsStacking: false,
 		},
 		{
 			label: 'visitor own reservation',
@@ -37,6 +38,7 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: undefined,
+			allowsStacking: false,
 		},
 		{
 			label: 'dense manager actions and reserver state',
@@ -55,6 +57,7 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.moderator,
 			contentMinimumHeight: undefined,
+			allowsStacking: true,
 		},
 		{
 			label: 'mobile content taller than the stylesheet baseline cap',
@@ -67,6 +70,7 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: 224,
+			allowsStacking: false,
 		},
 		{
 			label: 'desktop content taller than the stylesheet baseline cap',
@@ -79,10 +83,11 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: 240,
+			allowsStacking: false,
 		},
 	])(
-		'keeps a square frame against every inner row edge for $label',
-		async ({ width, gift, role, contentMinimumHeight }) => {
+		'keeps a square frame continuous with the content for $label',
+		async ({ width, gift, role, contentMinimumHeight, allowsStacking }) => {
 			await page.viewport(width + 24, 900);
 			const host = document.createElement('div');
 			host.style.width = `${width}px`;
@@ -106,10 +111,11 @@ describe('GiftListItem image continuity', () => {
 			const content = host.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
 			if (contentMinimumHeight !== undefined) {
 				content.style.minHeight = `${contentMinimumHeight}px`;
-				await new Promise<void>((resolve) =>
-					requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-				);
 			}
+			await document.fonts.ready;
+			await new Promise<void>((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+			);
 			const itemRect = item.getBoundingClientRect();
 			const imageRect = image.getBoundingClientRect();
 			const frameRect = imageFrame.getBoundingClientRect();
@@ -120,14 +126,34 @@ describe('GiftListItem image continuity', () => {
 			expect(getComputedStyle(item).display).toBe('grid');
 			expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
 			expect(imageRect.top).toBeCloseTo(innerTop, 0);
-			expect(imageRect.bottom).toBeCloseTo(innerBottom, 0);
-			expect(frameRect.top).toBeCloseTo(innerTop, 0);
-			expect(frameRect.bottom).toBeCloseTo(innerBottom, 0);
-			expect(content.getBoundingClientRect().left).toBeCloseTo(imageRect.right, 0);
+			const contentRect = content.getBoundingClientRect();
+			if (allowsStacking && item.hasAttribute('data-list-image-stacked')) {
+				expect(imageRect.width).toBeCloseTo(
+					itemRect.width -
+						Number.parseFloat(itemStyle.borderLeftWidth) -
+						Number.parseFloat(itemStyle.borderRightWidth),
+					0,
+				);
+				expect(contentRect.top).toBeCloseTo(imageRect.bottom, 0);
+				expect(contentRect.left).toBeCloseTo(
+					itemRect.left + Number.parseFloat(itemStyle.borderLeftWidth),
+					0,
+				);
+			} else {
+				expect(item).not.toHaveAttribute('data-list-image-stacked');
+				expect(imageRect.bottom).toBeCloseTo(innerBottom, 0);
+				expect(frameRect.bottom).toBeCloseTo(innerBottom, 0);
+				expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
+			}
+			expect(frameRect.top).toBeCloseTo(imageRect.top, 0);
+			expect(frameRect.bottom).toBeCloseTo(imageRect.bottom, 0);
 			for (const action of host.querySelectorAll<HTMLElement>(
 				'[data-testid="gift-list-actions"] button',
 			)) {
-				expect(action.getBoundingClientRect().left).toBeGreaterThanOrEqual(imageRect.right);
+				const actionRect = action.getBoundingClientRect();
+				expect(actionRect.left).toBeGreaterThanOrEqual(contentRect.left);
+				expect(actionRect.right).toBeLessThanOrEqual(itemRect.right);
+				expect(actionRect.bottom).toBeLessThanOrEqual(innerBottom);
 			}
 			host.remove();
 		},

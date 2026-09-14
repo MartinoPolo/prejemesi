@@ -85,9 +85,61 @@ afterEach(() => {
 });
 
 describe('LikeButton approved image treatment (issue #357)', () => {
+	it('uses the shared responsive action and icon sizes when size is omitted', async () => {
+		likesContext();
+		const screen = await render(LikeButton, {
+			giftId: 'gift-responsive',
+			giftName: 'Responsive gift',
+			likeCount: 2,
+		});
+		const button = screen.getByRole('button').element() as HTMLElement;
+		const icon = button.querySelector('svg') as SVGElement;
+
+		for (const [viewportWidth, expectedHeight] of [
+			[390, 40],
+			[800, 32],
+		] as const) {
+			await page.viewport(viewportWidth, 720);
+			expect(button.getBoundingClientRect().height).toBe(expectedHeight);
+			expect(icon.getBoundingClientRect().width).toBe(16);
+			expect(icon.getBoundingClientRect().height).toBe(16);
+		}
+		await screen.unmount();
+	});
+
+	it.each([
+		{ size: 'sm' as const, expectedHeight: 26, expectedIconSize: 14 },
+		{ size: 'md' as const, expectedHeight: 32, expectedIconSize: 16 },
+		{ size: 'lg' as const, expectedHeight: 40, expectedIconSize: 16 },
+		{ size: 'xl' as const, expectedHeight: 48, expectedIconSize: 20 },
+	])(
+		'keeps explicit $size geometry fixed for ghost and sticker appearances',
+		async ({ size, expectedHeight, expectedIconSize }) => {
+			await page.viewport(390, 720);
+			for (const appearance of ['ghost', 'sticker'] as const) {
+				likesContext();
+				const screen = await render(LikeButton, {
+					giftId: `gift-${size}-${appearance}`,
+					giftName: 'Explicit gift',
+					likeCount: 2,
+					size,
+					appearance,
+				});
+				const button = screen.getByRole('button').element() as HTMLElement;
+				const icon = button.querySelector('svg') as SVGElement;
+
+				expect(button.getBoundingClientRect().height).toBe(expectedHeight);
+				expect(icon.getBoundingClientRect().width).toBe(expectedIconSize);
+				expect(icon.getBoundingClientRect().height).toBe(expectedIconSize);
+				await screen.unmount();
+			}
+		},
+	);
+
 	it.each([0, 7, 123])(
-		'renders count %d beside the heart with an accessible ghost target',
+		'renders count %d beside the heart within the shared desktop control target',
 		async (likeCount) => {
+			await page.viewport(800, 720);
 			likesContext(true);
 			await renderLikeButton(likeCount);
 
@@ -108,8 +160,8 @@ describe('LikeButton approved image treatment (issue #357)', () => {
 			expect(heartRect.right).toBeLessThanOrEqual(countRect.left);
 			expect(buttonElement.getAttribute('aria-describedby')).toBe(count.id);
 			await expect.element(button).toHaveAttribute('aria-pressed', 'true');
-			expect(buttonRect.width).toBeGreaterThanOrEqual(40);
-			expect(buttonRect.height).toBeGreaterThanOrEqual(40);
+			expect(buttonRect.width).toBeGreaterThanOrEqual(32);
+			expect(buttonRect.height).toBe(32);
 			expect(surfaceStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)');
 			const shadowAlphas = Array.from(
 				surfaceStyle.boxShadow.matchAll(/rgba\([^)]*, ([\d.]+)\)/g),

@@ -2,7 +2,9 @@
 // Tailwind utilities must be present (mirrors gift_detail_form.svelte.test.ts).
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as m from '$lib/paraglide/messages.js';
 import type { GiftForVisitor } from '$lib/modules/gifts/types.js';
 import { IMAGE_FIT_MODES, type ImageMetadata } from '$lib/modules/images/index.js';
 
@@ -16,6 +18,8 @@ const HOSTILE_NAME = 'x'.repeat(90);
 const IMAGE_URL =
 	'data:image/svg+xml,' +
 	encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="64"/>');
+
+afterEach(async () => page.viewport(1280, 720));
 
 function imageMeta(bgColor: string | null): ImageMetadata {
 	return {
@@ -60,6 +64,34 @@ function makeGift(overrides: Partial<GiftForVisitor> = {}): GiftForVisitor {
 }
 
 describe('ReserveModal contains an unbreakable gift name (issue #210)', () => {
+	it('uses responsive quantity controls without changing the count bounds', async () => {
+		const screen = await render(ReserveModal, {
+			open: true,
+			gift: makeGift({ quantity: 4, reservedCount: 1 }),
+			redirectHref: '/w/abc',
+			isAuthenticated: true,
+		});
+		const decrease = screen
+			.getByRole('button', { name: m.reserve_quantity_decrease() })
+			.element() as HTMLButtonElement;
+		const increase = screen
+			.getByRole('button', { name: m.reserve_quantity_increase() })
+			.element() as HTMLButtonElement;
+
+		await page.viewport(390, 720);
+		expect(Number.parseFloat(getComputedStyle(decrease).height)).toBe(40);
+		expect(Number.parseFloat(getComputedStyle(increase).height)).toBe(40);
+		expect(decrease.disabled).toBe(true);
+
+		await increase.click();
+		await increase.click();
+		expect(increase.disabled).toBe(true);
+		expect(document.body.textContent).toContain('3');
+
+		await page.viewport(1280, 720);
+		expect(Number.parseFloat(getComputedStyle(decrease).height)).toBe(32);
+		expect(Number.parseFloat(getComputedStyle(increase).height)).toBe(32);
+	});
 	it('paints the reservation thumbnail frame with explicit black', async () => {
 		await render(ReserveModal, {
 			open: true,

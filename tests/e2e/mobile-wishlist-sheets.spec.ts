@@ -31,11 +31,21 @@ test.describe('mobile wishlist acceptance', () => {
 		const toolbarMask = page.getByTestId('wishlist-toolbar-mask');
 		const rows = toolbar.locator('[data-mobile-toolbar-row]');
 		await expect(rows).toHaveCount(1);
-		for (const control of await toolbar
-			.locator('button:visible, [role="radio"]:visible')
-			.all()) {
-			const controlBox = await box(control);
-			expect(controlBox.height).toBeCloseTo(32, 0);
+		for (const button of await toolbar.locator('button:visible:not([role="radio"])').all()) {
+			expect((await box(button)).height).toBeCloseTo(40, 0);
+		}
+		const viewSwitcher = toolbar.getByTestId('gift-view-switcher');
+		const viewSwitcherBox = await box(viewSwitcher);
+		expect(viewSwitcherBox.height).toBeCloseTo(40, 0);
+		const viewSwitcherInsets = await viewSwitcher.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+		});
+		for (const radio of await viewSwitcher.getByRole('radio').all()) {
+			expect((await box(radio)).height).toBeCloseTo(
+				viewSwitcherBox.height - viewSwitcherInsets,
+				0,
+			);
 		}
 		expect(await rows.evaluate((row) => row.scrollWidth)).toBeLessThanOrEqual(
 			await rows.evaluate((row) => row.clientWidth),

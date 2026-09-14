@@ -29,7 +29,7 @@
 			<Button
 				{...props}
 				intent="outline"
-				size="icon"
+				format="icon"
 				aria-label={m.nav_open_menu()}
 				class="md:hidden"
 			>

@@ -7,7 +7,7 @@
 		value = $bindable(),
 		type,
 		files = $bindable(),
-		size = 'md',
+		size,
 		state = 'default',
 		class: className,
 		'data-slot': dataSlot = 'input',
@@ -22,7 +22,7 @@
 		data-state={state}
 		aria-invalid={state === 'error' ? true : undefined}
 		class={cn(
-			inputVariants({ size, state }),
+			inputVariants({ size: size ?? 'responsive', state }),
 			'file:h-7 file:text-sm file:font-medium file:text-foreground file:inline-flex file:border-0 file:bg-transparent',
 			className,
 		)}
@@ -37,7 +37,7 @@
 		data-slot={dataSlot}
 		data-state={state}
 		aria-invalid={state === 'error' ? true : undefined}
-		class={cn(inputVariants({ size, state }), className)}
+		class={cn(inputVariants({ size: size ?? 'responsive', state }), className)}
 		{type}
 		bind:value
 		{...restProps}

@@ -74,7 +74,8 @@
 							<Button
 								{...props}
 								intent="secondary"
-								size="icon-sm"
+								size="sm"
+								format="icon"
 								aria-label="Settings"
 							>
 								<SettingsIcon data-icon />
@@ -100,7 +101,8 @@
 							<Button
 								{...props}
 								intent="secondary"
-								size="icon-sm"
+								size="sm"
+								format="icon"
 								aria-label="Settings"
 							>
 								<SettingsIcon data-icon />
@@ -214,7 +216,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Top"
 								>
 									<SettingsIcon data-icon />
@@ -233,7 +236,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Bottom"
 								>
 									<SettingsIcon data-icon />
@@ -252,7 +256,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Left"
 								>
 									<SettingsIcon data-icon />
@@ -271,7 +276,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Right"
 								>
 									<SettingsIcon data-icon />
@@ -358,7 +364,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Top placement"
 								>
 									<SettingsIcon data-icon />
@@ -377,7 +384,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Bottom placement"
 								>
 									<SettingsIcon data-icon />
@@ -396,7 +404,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Left placement"
 								>
 									<SettingsIcon data-icon />
@@ -415,7 +424,8 @@
 								<Button
 									{...props}
 									intent="secondary"
-									size="icon-sm"
+									size="sm"
+									format="icon"
 									aria-label="Right placement"
 								>
 									<SettingsIcon data-icon />

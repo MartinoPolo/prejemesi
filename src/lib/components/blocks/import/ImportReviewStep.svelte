@@ -363,7 +363,7 @@
 											value as CategoryResolutionDraft['action'],
 										)}
 								>
-									<Select.Trigger size="md">
+									<Select.Trigger>
 										{#if resolution.action === 'map-existing'}
 											{m.import_category_resolution_map_existing()}
 										{:else if resolution.action === 'enable-preset' && presetKey !== null}
@@ -429,7 +429,7 @@
 												presetKey: null,
 											})}
 									>
-										<Select.Trigger size="md">
+										<Select.Trigger>
 											{categoryOptions.find(
 												(category) => category.id === resolution.categoryId,
 											)

@@ -28,6 +28,7 @@ export default [
 			'**/*.d.ts',
 			'scripts/**',
 			'.claude/worktrees/**',
+			'.local/**',
 			'.mpx/logs/component-visual-review/**',
 			'.mpx/logs/e2e-audit/**',
 			'.test-audit/**',

@@ -92,15 +92,19 @@
 				)}
 			>
 				{#if href !== null}
-					<a
+					<Button
 						{href}
 						target="_blank"
 						rel="external noopener noreferrer"
-						class="flex size-6 flex-none place-items-center rounded-sm text-primary transition-colors hover:text-foreground focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-ring"
+						intent="ghost"
+						size="sm"
+						format="icon"
+						class="flex-none"
+						surfaceClass="text-primary"
 						aria-label={m.draft_grid_open_link({ label: labelOf(link) })}
 					>
-						<ExternalLinkIcon class="size-3.5" aria-hidden="true" />
-					</a>
+						<ExternalLinkIcon data-icon="solo" aria-hidden="true" />
+					</Button>
 				{:else}
 					<span
 						class={cn(
@@ -123,13 +127,14 @@
 				/>
 				<Button
 					intent="ghost"
-					size="icon-sm"
-					class="size-6 flex-none"
+					size="sm"
+					format="icon"
+					class="flex-none"
 					surfaceClass={cn('text-muted-foreground', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
 					onclick={() => removeLink(index)}
 					aria-label={m.draft_grid_remove_link({ label: labelOf(link) })}
 				>
-					<XIcon class="size-3.5" aria-hidden="true" />
+					<XIcon data-icon="solo" aria-hidden="true" />
 				</Button>
 			</div>
 			{#if invalid}

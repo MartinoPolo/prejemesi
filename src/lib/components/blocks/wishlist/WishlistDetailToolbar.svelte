@@ -474,7 +474,6 @@
 				<Button
 					{...props}
 					bind:ref={desktopDisplayTrigger}
-					size="md"
 					intent="outline"
 					data-testid="desktop-display-trigger"
 					aria-label={activeFilters.length > 0
@@ -613,7 +612,7 @@
 		<SimpleTooltip text={m.gift_display_options()}>
 			<Button
 				bind:ref={mobileDisplayTrigger}
-				size="icon"
+				format="icon"
 				intent="outline"
 				class="mobile-display-trigger"
 				data-testid="mobile-display-trigger"
@@ -640,7 +639,7 @@
 			<SimpleTooltip text={m.wishlist_more_actions()}>
 				<Button
 					bind:ref={mobileMoreTrigger}
-					size="icon"
+					format="icon"
 					intent="outline"
 					data-testid="mobile-more-trigger"
 					aria-label={m.wishlist_more_actions()}
@@ -657,7 +656,7 @@
 		{/if}
 		{#if showManagementActions}
 			<Button
-				size="icon"
+				format="icon"
 				intent="primary"
 				aria-label={m.wishlist_detail_add_gift_label()}
 				title={m.wishlist_detail_add_wish()}
@@ -675,7 +674,6 @@
 		<strong class="mobile-mode-label">{m.gift_reorder_mode_label()}</strong>
 		<Button
 			bind:ref={mobileReorderDoneButton}
-			size="md"
 			intent="primary"
 			class="mobile-reorder-done"
 			surfaceClass="px-1"
@@ -699,7 +697,7 @@
 				<Button
 					{...props}
 					bind:ref={desktopMoreTrigger}
-					size="icon"
+					format="icon"
 					intent="outline"
 					data-testid="desktop-more-trigger"
 					aria-label={m.wishlist_more_actions()}
@@ -961,7 +959,6 @@
 					data-testid="mobile-sheet-switcher"
 				>
 					<Button
-						size="md"
 						intent="ghost"
 						aria-pressed={mobileOpenDisplayControl === 'sort'}
 						data-testid="mobile-sheet-sort-switch"
@@ -969,7 +966,6 @@
 						><ArrowUpDownIcon data-icon="inline-start" />{m.gift_sort_by()}</Button
 					>
 					<Button
-						size="md"
 						intent="ghost"
 						aria-pressed={mobileOpenDisplayControl === 'grouping'}
 						data-testid="mobile-sheet-grouping-switch"
@@ -977,7 +973,6 @@
 						><LayersIcon data-icon="inline-start" />{m.gift_grouping_label()}</Button
 					>
 					<Button
-						size="md"
 						intent="ghost"
 						aria-pressed={mobileOpenDisplayControl === 'filter'}
 						data-testid="mobile-sheet-filter-switch"
@@ -1058,7 +1053,6 @@
 								{#if reorderMode}
 									<Button
 										bind:ref={desktopReorderDoneButton}
-										size="md"
 										intent="primary"
 										onclick={() => changeDesktopReorderMode(false)}
 									>
@@ -1067,7 +1061,6 @@
 									</Button>
 									{#if showManagementActions}
 										<Button
-											size="md"
 											aria-label={m.wishlist_detail_add_gift_label()}
 											disabled
 											title={m.wishlist_detail_add_wish()}
@@ -1080,7 +1073,6 @@
 									{#if showActions}{@render desktopMoreMenu()}{/if}
 									{#if showManagementActions}
 										<Button
-											size="md"
 											aria-label={m.wishlist_detail_add_gift_label()}
 											title={m.wishlist_detail_add_wish()}
 											onclick={onaddgift}
@@ -1165,7 +1157,7 @@
 	.toolbar-mobile {
 		display: grid;
 		min-width: 0;
-		grid-auto-rows: minmax(var(--size-control-md), auto);
+		grid-auto-rows: minmax(var(--size-control-lg), auto);
 		gap: 8px;
 	}
 
@@ -1178,7 +1170,7 @@
 		display: flex;
 		min-width: 0;
 		align-items: center;
-		gap: 6px;
+		gap: 8px;
 		white-space: nowrap;
 	}
 
@@ -1200,26 +1192,10 @@
 		text-overflow: ellipsis;
 	}
 
-	.toolbar-mobile :global(.mobile-reorder-done) {
-		width: auto;
-		min-width: var(--size-control-md);
-		height: var(--size-control-md);
-		min-height: var(--size-control-md);
-		padding: 0;
-	}
-
 	.mobile-browse-spacer {
 		min-width: 0;
 		flex: 1 1 auto;
-		margin-inline-end: -6px;
-	}
-
-	.toolbar-mobile :global(button:not([data-slot='toggle-group-item'], .mobile-reorder-done)) {
-		width: var(--size-control-md);
-		min-width: var(--size-control-md);
-		height: var(--size-control-md);
-		min-height: var(--size-control-md);
-		padding: 0;
+		margin-inline-end: -8px;
 	}
 
 	:global(.mobile-display-trigger) {
@@ -1300,18 +1276,6 @@
 		padding-top: 0.5rem;
 	}
 
-	@media (width <= 639px) {
-		.toolbar-selection-content :global(.selection-toolbar) {
-			gap: 4px;
-		}
-
-		.toolbar-selection-content :global(button),
-		.toolbar-selection-content :global([data-slot='checkbox']) {
-			min-width: 40px;
-			min-height: 40px;
-		}
-	}
-
 	.mobile-filter-section h3 {
 		padding: 0.25rem 0.75rem;
 		color: var(--muted-foreground);
@@ -1326,7 +1290,7 @@
 		max-width: 100%;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.625rem;
+		gap: 0.5rem;
 	}
 
 	.toolbar-controls,
@@ -1343,7 +1307,7 @@
 		flex: 0 0 auto;
 		grid-template-columns: minmax(0, 1fr);
 		align-items: center;
-		gap: 0.625rem;
+		gap: 0.5rem;
 	}
 
 	.toolbar-actions {
@@ -1369,7 +1333,7 @@
 
 	.toolbar-layout-selection {
 		align-items: stretch;
-		gap: 0.75rem;
+		gap: 0.5rem;
 	}
 
 	.toolbar-selection-content {
@@ -1406,7 +1370,7 @@
 		.toolbar-controls {
 			display: flex;
 			flex-wrap: wrap;
-			gap: 0.625rem 0.875rem;
+			gap: 0.5rem;
 		}
 
 		.toolbar-layout-selection .toolbar-selection-content {

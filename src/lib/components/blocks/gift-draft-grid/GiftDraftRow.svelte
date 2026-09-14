@@ -110,7 +110,7 @@
 	inert={exiting}
 	aria-hidden={exiting}
 	class={cn(
-		'relative flex flex-col gap-3 rounded-lg border border-border bg-surface px-5 py-4 transition-[background,border-color,box-shadow] duration-(--duration-normal) hover:shadow-sm',
+		'relative flex flex-col gap-3 rounded-lg border border-border bg-surface px-5 py-4 transition-[background,border-color,box-shadow] duration-(--duration-normal) hover:shadow-elevation-compact',
 		gridColumns,
 		draftRowStatusVariants({ status }),
 		row.selected ? '' : 'opacity-50',
@@ -134,7 +134,8 @@
 		{/if}
 		<Button
 			intent="ghost"
-			size="icon-sm"
+			size="sm"
+			format="icon"
 			disabled
 			aria-label={m.draft_grid_enrich_row()}
 			surfaceClass="text-muted-foreground"
@@ -143,7 +144,8 @@
 		</Button>
 		<Button
 			intent="ghost"
-			size="icon-sm"
+			size="sm"
+			format="icon"
 			onclick={ondelete}
 			aria-label={m.draft_grid_remove_row()}
 			surfaceClass={cn('text-muted-foreground', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
@@ -365,7 +367,8 @@
 	<div class="hidden md:flex md:items-start md:gap-0.5 md:pt-1">
 		<Button
 			intent="ghost"
-			size="icon-sm"
+			size="sm"
+			format="icon"
 			disabled
 			aria-label={m.draft_grid_enrich_row()}
 			surfaceClass="text-muted-foreground"
@@ -374,7 +377,8 @@
 		</Button>
 		<Button
 			intent="ghost"
-			size="icon-sm"
+			size="sm"
+			format="icon"
 			onclick={ondelete}
 			aria-label={m.draft_grid_remove_row()}
 			surfaceClass={cn('text-muted-foreground', DRAFT_DESTRUCTIVE_HOVER_CLASS)}
