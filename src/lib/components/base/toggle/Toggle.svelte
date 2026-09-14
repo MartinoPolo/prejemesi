@@ -12,7 +12,8 @@
 		class: className,
 		surfaceClass,
 		intent = 'default',
-		size = 'md',
+		size,
+		format = 'text',
 		ref = $bindable(null),
 		children,
 		...restProps
@@ -25,6 +26,7 @@
 			{...props}
 			intent={TOGGLE_INTENT_TO_BUTTON_INTENT[intent]}
 			{size}
+			{format}
 			class={className}
 			surfaceClass={cn(togglePressedVariants({ intent }), surfaceClass)}
 			data-slot="toggle"

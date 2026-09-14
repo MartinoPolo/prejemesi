@@ -90,9 +90,10 @@ test.describe('Wishlist per-slot crop (WYSIWYG stage)', () => {
 		const heroBox = await hero.boundingBox();
 		expect(shellBox).not.toBeNull();
 		expect(heroBox).not.toBeNull();
-		expect(heroBox!.x).toBeCloseTo(12, 0);
-		expect(390 - (heroBox!.x + heroBox!.width)).toBeCloseTo(12, 0);
-		expect(shellBox!.width).toBe(390);
+		expect(shellBox!.x).toBeCloseTo(12, 0);
+		expect(390 - (shellBox!.x + shellBox!.width)).toBeCloseTo(12, 0);
+		expect(heroBox!.x).toBeCloseTo(shellBox!.x, 0);
+		expect(heroBox!.width).toBeCloseTo(shellBox!.width, 0);
 
 		await page.context().close();
 	});

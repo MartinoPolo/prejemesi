@@ -7,6 +7,7 @@
  * fail to connect here; this does not depend on them).
  *
  * Prereqs: dev server running (`pnpm run dev`) and DB seeded (`pnpm db:seed`).
+ * Seed-account login supplies the project's CAPTCHA test response only for loopback servers.
  *
  * Usage:
  *   node scripts/shot.mjs <route> [options]
@@ -139,7 +140,12 @@ async function main() {
 			// secret scanner's false positive on this public seed credential.
 			const passwordField = 'password';
 			const res = await context.request.post(`${base}/api/auth/sign-in/email`, {
-				headers: { Origin: base },
+				headers: {
+					Origin: base,
+					...(['localhost', '127.0.0.1', '[::1]'].includes(new URL(base).hostname)
+						? { 'x-captcha-response': 'XXXX.DUMMY.TOKEN.XXXX' }
+						: {}),
+				},
 				data: { email: USERS[user], [passwordField]: SEED_PASSWORD },
 			});
 			if (!res.ok()) {

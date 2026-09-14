@@ -301,7 +301,7 @@ describe('WishlistDetailToolbar mobile actions (#340)', () => {
 		const done = screen
 			.getByRole('button', { name: m.gift_reorder_done() })
 			.element() as HTMLButtonElement;
-		expect(done.getBoundingClientRect().height).toBeCloseTo(32, 0);
+		expect(done.getBoundingClientRect().height).toBeCloseTo(40, 0);
 		expect(done.getBoundingClientRect().right).toBeCloseTo(
 			row.getBoundingClientRect().right,
 			1,

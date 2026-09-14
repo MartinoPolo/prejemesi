@@ -22,6 +22,17 @@ function expectDeclarations(rule: string, declarations: readonly string[]) {
 	}
 }
 
+function wideBreakpointRootBody(): string {
+	const mediaStart = css.indexOf('@media (width >= 640px)');
+	expect(mediaStart, 'missing wide breakpoint').toBeGreaterThanOrEqual(0);
+	const rootStart = css.indexOf(':root {', mediaStart);
+	expect(rootStart, 'missing root rule at wide breakpoint').toBeGreaterThanOrEqual(mediaStart);
+	const bodyStart = css.indexOf('{', rootStart) + 1;
+	const bodyEnd = css.indexOf('}', bodyStart);
+	expect(bodyEnd, 'missing wide breakpoint root rule end').toBeGreaterThan(bodyStart);
+	return css.slice(bodyStart, bodyEnd).replaceAll(/\/\*[\s\S]*?\*\//g, '');
+}
+
 describe('canonical semantic depth tokens', () => {
 	it('defines every approved light recipe in the root and nested palette derivation rule', () => {
 		const lightRule = ruleBody(':root,\n[data-palette]');
@@ -82,14 +93,13 @@ describe('canonical semantic depth tokens', () => {
 		);
 	});
 
-	it('raises only the geometry offsets at the wide breakpoint', () => {
-		expect(css).toContain(`@media (width >= 640px) {
-	:root {
-		--elevation-compact-offset: 2px;
-		--elevation-ordinary-offset: 4px;
-		--elevation-lifted-offset: 7px;
-		--elevation-pressed-offset: 2px;
-	}`);
+	it('sets approved elevation offsets at the wide breakpoint', () => {
+		expectDeclarations(wideBreakpointRootBody(), [
+			'--elevation-compact-offset: 2px',
+			'--elevation-ordinary-offset: 4px',
+			'--elevation-lifted-offset: 7px',
+			'--elevation-pressed-offset: 2px',
+		]);
 	});
 
 	it('keeps legacy utilities as aliases of semantic recipes', () => {

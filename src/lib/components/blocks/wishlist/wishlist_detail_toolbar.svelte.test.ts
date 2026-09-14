@@ -167,7 +167,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 				);
 				for (const button of visibleButtons(toolbar)) {
 					if (!button.closest('[data-testid="gift-view-switcher"]')) {
-						expect(button.getBoundingClientRect().height).toBeCloseTo(32, 0);
+						expect(button.getBoundingClientRect().height).toBeCloseTo(40, 0);
 					}
 				}
 				await screen.unmount();
@@ -179,7 +179,7 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		const screen = await renderToolbar({}, 320);
 
 		for (const viewportWidth of [320, 800] as const) {
-			const expectedSize = 32;
+			const expectedSize = viewportWidth < 640 ? 40 : 32;
 			await page.viewport(viewportWidth, 760);
 			await frames(1);
 			const tray = screen.getByTestId('gift-view-switcher').element() as HTMLElement;
@@ -190,8 +190,12 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 			expect(tray.getBoundingClientRect().height).toBe(expectedSize);
 			expect(items).toHaveLength(2);
 			for (const item of items) {
-				expect(item.getBoundingClientRect().width).toBe(expectedSize);
-				expect(item.getBoundingClientRect().height).toBe(expectedSize);
+				expect(item.getBoundingClientRect().width).toBe(
+					viewportWidth < 640 ? expectedSize - 2 : expectedSize,
+				);
+				expect(item.getBoundingClientRect().height).toBe(
+					viewportWidth < 640 ? expectedSize - 2 : expectedSize,
+				);
 			}
 		}
 		await screen.unmount();

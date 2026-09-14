@@ -210,7 +210,7 @@ test.describe('Request budgets (issue #108)', () => {
 		await expect(dialog).toBeVisible({ timeout: 5_000 });
 		// Exact match: the upload dropzone exposes an aria-label of "Nahrát obrázek",
 		// so a loose /Nahrát/i also matches it — target the upload-mode tab only.
-		await dialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
+		await dialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
 		const fileInput = dialog.locator('input[type=file]');
 		await expect(fileInput).toBeAttached();
 

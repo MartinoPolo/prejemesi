@@ -64,7 +64,7 @@ describe('WishlistHeader responsive presentation', () => {
 		await expect.element(screen.getByTestId('wishlist-banner')).not.toBeVisible();
 		await expect
 			.element(screen.getByRole('button', { name: m.gift_more_actions() }))
-			.toHaveStyle({ width: '32px', height: '32px' });
+			.toHaveStyle({ width: '40px', height: '40px' });
 		await screen.unmount();
 	});
 

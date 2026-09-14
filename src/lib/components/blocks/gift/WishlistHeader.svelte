@@ -273,7 +273,8 @@
 					/>
 					{#if canManage && !isArchived}
 						<Button
-							size="icon-sm"
+							size="sm"
+							format="icon"
 							intent="secondary"
 							class={styles.editImageButton()}
 							aria-label={m.wishlist_edit_image_label()}
@@ -312,7 +313,8 @@
 						<strong class={styles.recipientName()}>{recipientDisplayName}</strong>
 						{#if canEditRecipient}
 							<Button
-								size="icon-sm"
+								size="sm"
+								format="icon"
 								intent="ghost"
 								aria-label={m.wishlist_edit_recipient_label()}
 								data-testid="edit-recipient-button"

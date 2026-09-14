@@ -79,15 +79,17 @@ async function expectInsideViewport(menu: Locator, width: number, height: number
 	await expect
 		.poll(async () => {
 			const rect = await menu.boundingBox();
-			return (
-				rect !== null &&
-				rect.x >= VIEWPORT_PADDING - 1 &&
-				rect.y >= VIEWPORT_PADDING - 1 &&
-				rect.x + rect.width <= width - VIEWPORT_PADDING + 1 &&
-				rect.y + rect.height <= height - VIEWPORT_PADDING + 1
-			);
+			return {
+				inside:
+					rect !== null &&
+					rect.x >= VIEWPORT_PADDING - 1 &&
+					rect.y >= VIEWPORT_PADDING - 1 &&
+					rect.x + rect.width <= width - VIEWPORT_PADDING + 1 &&
+					rect.y + rect.height <= height - VIEWPORT_PADDING + 1,
+				rect,
+			};
 		})
-		.toBe(true);
+		.toMatchObject({ inside: true });
 	const rect = await menu.boundingBox();
 	expect(rect).not.toBeNull();
 	expect(rect!.x).toBeGreaterThanOrEqual(VIEWPORT_PADDING - 1);

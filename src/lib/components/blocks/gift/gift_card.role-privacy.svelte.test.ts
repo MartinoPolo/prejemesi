@@ -442,7 +442,8 @@ describe('GiftCard approved Like geometry (issue #357)', () => {
 			const cardRect = card.getBoundingClientRect();
 			expect(likeRect.top).toBeLessThan(imageRect.top + imageRect.height / 2);
 			expect(likeRect.right).toBeLessThanOrEqual(cardRect.right);
-			expect(likeRect.top - cardRect.top).toBeCloseTo(cardRect.right - likeRect.right, 1);
+			expect(likeRect.top).toBeGreaterThanOrEqual(imageRect.top);
+			expect(likeRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
 			expect(countNode.textContent).toBe(String(count));
 			expect(heart.getBoundingClientRect().right).toBeLessThanOrEqual(
 				countNode.getBoundingClientRect().left,

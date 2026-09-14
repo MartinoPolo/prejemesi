@@ -9,7 +9,8 @@
 		/** Paint and internal layout classes for the moving surface. */
 		surfaceClass,
 		intent = 'primary',
-		size = 'md',
+		size,
+		format = 'text',
 		ref = $bindable(null),
 		href = undefined,
 		type = 'button',
@@ -18,7 +19,7 @@
 		...restProps
 	}: ButtonProps = $props();
 
-	const styles = $derived(buttonVariants({ intent, size }));
+	const styles = $derived(buttonVariants({ intent, size: size ?? 'responsive', format }));
 </script>
 
 {#snippet surface()}

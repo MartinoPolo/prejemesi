@@ -2,6 +2,7 @@
 	import { tick } from 'svelte';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -11,7 +12,7 @@
 		received: boolean;
 		role: WishlistRole;
 		isArchived?: boolean;
-		size?: 'sm' | 'md' | 'lg' | 'xl';
+		size?: ControlSize;
 		compactLabel?: boolean;
 		class?: string;
 		surfaceClass?: string;
@@ -23,7 +24,7 @@
 		received,
 		role,
 		isArchived = false,
-		size = 'md',
+		size,
 		compactLabel = false,
 		class: className,
 		surfaceClass,

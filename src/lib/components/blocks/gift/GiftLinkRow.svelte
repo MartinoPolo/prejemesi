@@ -89,7 +89,8 @@
 			<div class="flex shrink-0 items-center gap-0.5">
 				<Button
 					intent="ghost"
-					size="icon-sm"
+					size="sm"
+					format="icon"
 					onclick={onmoveup}
 					aria-label={m.gift_link_move_up()}
 					disabled={!canMoveUp || disabled}
@@ -98,7 +99,8 @@
 				</Button>
 				<Button
 					intent="ghost"
-					size="icon-sm"
+					size="sm"
+					format="icon"
 					onclick={onmovedown}
 					aria-label={m.gift_link_move_down()}
 					disabled={!canMoveDown || disabled}
@@ -110,7 +112,8 @@
 
 		<Button
 			intent="ghost"
-			size="icon-sm"
+			size="sm"
+			format="icon"
 			class="shrink-0"
 			surfaceClass="text-muted-foreground group-hover:text-destructive"
 			{disabled}

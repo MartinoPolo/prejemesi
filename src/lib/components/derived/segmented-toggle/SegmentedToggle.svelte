@@ -3,6 +3,11 @@
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { cn } from '$lib/utils.js';
 	import { segmentedToggleVariants } from './segmented_toggle_classes.js';
+	import {
+		CONTROL_SIZE_CLASSES,
+		RESPONSIVE_CONTROL_SIZE_CLASSES,
+		type ControlSize,
+	} from '$lib/components/base/control_sizing.js';
 
 	type Props = Omit<
 		ToggleGroup.ToggleGroupProps,
@@ -21,6 +26,7 @@
 		children,
 		onValueChange,
 		onReselect,
+		size,
 		...restProps
 	}: Props = $props();
 
@@ -41,10 +47,15 @@
 
 <ToggleGroup.Root
 	{...restProps}
+	{size}
 	type="single"
 	bind:value={selected}
 	onValueChange={handleValueChange}
-	class={cn(styles.root(), className)}
+	class={cn(
+		styles.root(),
+		size ? CONTROL_SIZE_CLASSES[size as ControlSize] : RESPONSIVE_CONTROL_SIZE_CLASSES,
+		className,
+	)}
 >
 	{@render children?.()}
 </ToggleGroup.Root>

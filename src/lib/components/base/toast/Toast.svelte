@@ -71,8 +71,8 @@
 	{#if onDismiss}
 		<Button
 			intent="ghost"
-			size="icon-sm"
-			class="size-6"
+			size="sm"
+			format="icon"
 			surfaceClass="text-muted-foreground"
 			onclick={onDismiss}
 			aria-label="Dismiss"

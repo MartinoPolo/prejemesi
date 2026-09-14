@@ -229,6 +229,106 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		await unmount();
 	});
 
+	it('toggles selection from Space and Enter while keeping card descendants inert', async () => {
+		const toggle = vi.fn();
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			selectionMode: true,
+			onselectiontoggle: toggle,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const innerButton = container.querySelector(
+			'[data-testid="inner-button"]',
+		) as HTMLButtonElement;
+
+		wrapper.focus();
+		await userEvent.keyboard(' ');
+		await userEvent.keyboard('{Enter}');
+
+		expect(toggle).toHaveBeenNthCalledWith(1, 'gift-alpha');
+		expect(toggle).toHaveBeenNthCalledWith(2, 'gift-alpha');
+		expect(innerButton.closest('[data-selection-inert]')).toHaveAttribute('inert');
+		await unmount();
+	});
+
+	it('uses the shared nonsemantic selection surface at responsive control dimensions', async () => {
+		for (const [width, expectedSize] of [
+			[390, 40],
+			[768, 32],
+		] as const) {
+			await page.viewport(width, 720);
+			const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+				...baseProps,
+				reorderEnabled: false,
+				selectionMode: true,
+				selected: true,
+			});
+			const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+			const markerOwner = wrapper.querySelector(
+				'[data-testid="gift-selection-control"]',
+			) as HTMLElement;
+			const markerSurface = markerOwner.querySelector(
+				'[data-slot="checkbox-surface"]',
+			) as HTMLElement;
+			const markerRect = markerOwner.getBoundingClientRect();
+
+			expect(markerRect.width).toBeCloseTo(expectedSize, 0);
+			expect(markerRect.height).toBeCloseTo(expectedSize, 0);
+			expect(markerSurface).toBeTruthy();
+			expect(markerSurface.getAttribute('aria-hidden')).toBe('true');
+			expect(wrapper.getAttribute('role')).toBe('checkbox');
+			expect(wrapper.querySelectorAll('[role="checkbox"]')).toHaveLength(0);
+			await unmount();
+		}
+	});
+
+	it.each([
+		{
+			name: 'mobile Grid right corner',
+			width: 390,
+			layout: 'overlay' as const,
+			edge: 'right' as const,
+		},
+		{
+			name: 'desktop Grid left corner',
+			width: 768,
+			layout: 'overlay' as const,
+			edge: 'left' as const,
+		},
+		{
+			name: 'mobile List left corner',
+			width: 390,
+			layout: 'list' as const,
+			edge: 'left' as const,
+		},
+	])('keeps the shared marker curve parallel in the $name', async ({ width, layout, edge }) => {
+		await page.viewport(width, 720);
+		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: false,
+			selectionMode: true,
+			selectionLayout: layout,
+		});
+		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+		const marker = wrapper.querySelector(
+			'[data-testid="gift-selection-control"]',
+		) as HTMLElement;
+		const wrapperRect = wrapper.getBoundingClientRect();
+		const markerRect = marker.getBoundingClientRect();
+		const horizontalInset =
+			edge === 'left'
+				? markerRect.left - wrapperRect.left
+				: wrapperRect.right - markerRect.right;
+		const verticalInset = markerRect.top - wrapperRect.top;
+		const parentRadius = parseFloat(getComputedStyle(wrapper).borderRadius);
+		const markerRadius = parseFloat(getComputedStyle(marker).borderRadius);
+
+		expect(horizontalInset).toBeCloseTo(verticalInset, 0);
+		expect(parentRadius - horizontalInset).toBeCloseTo(markerRadius, 0);
+		await unmount();
+	});
+
 	it('anchors the 40px list selection control fully inside the mobile image top-left corner', async () => {
 		await page.viewport(390, 720);
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
@@ -236,7 +336,6 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 			reorderEnabled: false,
 			selectionMode: true,
 			selectionLayout: 'list',
-			overlayModel: { kind: 'received', supportKind: 'unavailable' },
 		});
 		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
 		const image = container.querySelector('[data-testid="image-placeholder"]') as HTMLElement;
@@ -250,23 +349,12 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
 		expect(controlRect.width).toBeCloseTo(40, 0);
 		expect(controlRect.height).toBeCloseTo(40, 0);
-		expect(controlRect.left - wrapperRect.left).toBeCloseTo(6, 0);
-		expect(controlRect.top - wrapperRect.top).toBeCloseTo(6, 0);
+		expect(controlRect.left - wrapperRect.left).toBeCloseTo(9, 0);
+		expect(controlRect.top - wrapperRect.top).toBeCloseTo(9, 0);
 		expect(controlRect.left).toBeGreaterThanOrEqual(imageRect.left);
 		expect(controlRect.top).toBeGreaterThanOrEqual(imageRect.top);
 		expect(controlRect.right).toBeLessThanOrEqual(imageRect.right);
 		expect(controlRect.bottom).toBeLessThanOrEqual(imageRect.bottom);
-		for (const pill of container.querySelectorAll<HTMLElement>(
-			'[data-testid="gift-state-overlay"] > span',
-		)) {
-			const pillRect = pill.getBoundingClientRect();
-			expect(
-				controlRect.left < pillRect.right &&
-					controlRect.right > pillRect.left &&
-					controlRect.top < pillRect.bottom &&
-					controlRect.bottom > pillRect.top,
-			).toBe(false);
-		}
 		expect(checkboxControl.querySelector('[data-slot="checkbox"]')).toBeNull();
 		await userEvent.click(wrapper);
 		await unmount();
@@ -322,7 +410,6 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 				...baseProps,
 				reorderEnabled: true,
 				selectionLayout: layout,
-				overlayModel: { kind: 'received', supportKind: 'unavailable' },
 				onreorderpointerdown,
 			});
 			const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
@@ -356,21 +443,6 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 				}),
 			);
 			expect(onreorderpointerdown).toHaveBeenCalledWith(expect.any(PointerEvent), 0);
-
-			for (const pill of container.querySelectorAll<HTMLElement>(
-				'[data-testid="gift-state-overlay"] > span',
-			)) {
-				const pillRect = pill.getBoundingClientRect();
-				const overlapsVisibleGrip =
-					surfaceRect.left < pillRect.right &&
-					surfaceRect.right > pillRect.left &&
-					surfaceRect.top < pillRect.bottom &&
-					surfaceRect.bottom > pillRect.top;
-				expect(
-					overlapsVisibleGrip,
-					`grip ${JSON.stringify(surfaceRect.toJSON())}, badge ${JSON.stringify(pillRect.toJSON())}`,
-				).toBe(false);
-			}
 
 			grip.focus();
 			expect(getComputedStyle(grip).outlineStyle).toBe('solid');

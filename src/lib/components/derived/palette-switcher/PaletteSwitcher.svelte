@@ -90,7 +90,7 @@
 					<Button
 						{...props}
 						intent="outline"
-						size="icon"
+						format="icon"
 						aria-label={m.palette_switcher_label()}
 					>
 						<!-- Dot inherits the active palette via the cascade (--primary = --p-brand). -->

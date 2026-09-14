@@ -7,8 +7,9 @@ export {
 	type ButtonProps as Props,
 	type ButtonIntent,
 	type ButtonSize,
+	type ButtonFormat,
 	BUTTON_INTENTS,
 	BUTTON_SIZES,
 	BUTTON_TEXT_SIZES,
-	BUTTON_ICON_SIZES,
+	BUTTON_FORMATS,
 } from './button_variants.js';

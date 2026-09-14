@@ -59,10 +59,10 @@
 </script>
 
 {#if settingsAvailable || canManage}
-	<div class="flex shrink-0 items-center gap-3" data-testid="wishlist-header-actions">
+	<div class="flex shrink-0 items-center gap-2" data-testid="wishlist-header-actions">
 		{#if settingsAvailable}
 			<Button
-				size="icon"
+				format="icon"
 				intent="secondary"
 				class="shrink-0 before:absolute before:-inset-1.5 before:content-['']"
 				aria-label={m.wishlist_settings_title()}
@@ -80,7 +80,7 @@
 						{#snippet child({ props })}
 							<Button
 								{...props}
-								size="icon"
+								format="icon"
 								intent="secondary"
 								class="shrink-0 before:absolute before:-inset-1.5 before:content-['']"
 								data-testid="desktop-header-more-trigger"
@@ -123,7 +123,7 @@
 						{#snippet child({ props })}
 							<Button
 								{...props}
-								size="icon"
+								format="icon"
 								intent="secondary"
 								class="shrink-0 before:absolute before:-inset-1.5 before:content-['']"
 								data-testid="mobile-header-more-trigger"

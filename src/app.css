@@ -206,6 +206,7 @@
 
 	/* ── Layout ────────────────────────────────────────────── */
 	--content-max-width: 1200px;
+	--page-gutter: 12px;
 	--nav-height: 56px;
 
 	/* ── Fonts ─────────────────────────────────────────────── */
@@ -225,7 +226,7 @@
 	/* ── Size control ──────────────────────────────────────── */
 	--size-control-sm: 26px;
 	--size-control-md: 32px;
-	--size-control-lg: 38px;
+	--size-control-lg: 40px;
 	--size-control-xl: 48px;
 
 	/* ── Text sizes ────────────────────────────────────────── */
@@ -256,6 +257,7 @@
 
 @media (width >= 640px) {
 	:root {
+		--page-gutter: 16px;
 		--elevation-compact-offset: 2px;
 		--elevation-ordinary-offset: 4px;
 		--elevation-lifted-offset: 7px;

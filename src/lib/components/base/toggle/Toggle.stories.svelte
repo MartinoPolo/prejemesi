@@ -76,12 +76,8 @@
 							<div class="flex flex-col items-center gap-1">
 								<span class="text-[10px] text-muted-foreground">{size}</span>
 								<Toggle {...args} {intent} {size} aria-label="Bold">
-									{#if size === 'icon' || size === 'icon-sm'}
-										<BoldIcon data-icon="inline-start" />
-									{:else}
-										<BoldIcon data-icon="inline-start" />
-										Bold
-									{/if}
+									<BoldIcon data-icon="inline-start" />
+									Bold
 								</Toggle>
 							</div>
 						{/each}
@@ -176,7 +172,7 @@
 
 <Story name="Icon Only">
 	{#snippet template(args: ToggleProps)}
-		<Toggle {...args} size="icon" aria-label="Toggle italic">
+		<Toggle {...args} size="md" format="icon" aria-label="Toggle italic">
 			<ItalicIcon data-icon="inline-start" />
 		</Toggle>
 	{/snippet}

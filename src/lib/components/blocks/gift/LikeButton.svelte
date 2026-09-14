@@ -28,7 +28,7 @@
 		giftId,
 		giftName,
 		likeCount,
-		size = 'md',
+		size,
 		appearance = 'ghost',
 		showCount = true,
 		class: className,

@@ -2,9 +2,9 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Gift detail modal action bar + photo-overlay reservation status (issue #165).
- * The bar is exactly two elements on one line in every state: like leftmost,
- * primary action rightmost, never any status text. Reservation status (own +
- * others') lives on the photo overlay instead — see `GiftDetailActionBar.svelte`.
+ * The bar keeps like in its own left section and reservation actions grouped on the right,
+ * never mixing in status text. Reservation status (own + others') lives on the photo overlay
+ * instead — see `GiftDetailActionBar.svelte`.
  */
 export const giftDetailActionBarVariants = tv({
 	slots: {
@@ -12,9 +12,9 @@ export const giftDetailActionBarVariants = tv({
 		// content scrolls behind it, with a lift shadow. Desktop: the grid's
 		// pinned `auto` row already keeps it outside the scroll region, so the
 		// sticky positioning and drop shadow are dropped there.
-		bar: 'sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t-2 border-ink bg-card px-4 py-3 shadow-[0_-6px_18px_rgba(0,0,0,0.12)] sm:static sm:shadow-none',
-		// Fills the remaining row width on mobile so the two-element bar never
-		// wraps even for the longest label „Zrušit rezervaci"; desktop sizes to content.
+		bar: 'sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t-2 border-ink bg-card px-4 py-3 shadow-[0_-6px_18px_rgba(0,0,0,0.12)] sm:static sm:shadow-none',
+		// Lets the primary reservation action use available mobile width without wrapping;
+		// desktop sizes it to content so a privileged release action can sit beside it.
 		primary: 'flex-1 [&>*]:w-full sm:flex-none sm:[&>*]:w-auto',
 		// Absolutely positioned top-left over the photo mat (never inside the
 		// dimmed photo itself, so it always renders crisp).

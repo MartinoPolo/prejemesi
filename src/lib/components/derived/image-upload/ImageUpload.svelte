@@ -6,6 +6,10 @@
 	import type { UploadResult, UploadProgress } from '$lib/modules/uploads/types.js';
 	import { imageUploadVariants, type ImageUploadSize } from './image_upload_variants.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import {
+		CONTROL_SIZE_CLASSES,
+		RESPONSIVE_CONTROL_SIZE_CLASSES,
+	} from '$lib/components/base/control_sizing.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import XIcon from '@lucide/svelte/icons/x';
@@ -202,7 +206,7 @@
 </script>
 
 <div
-	class={cn(styles.root(), className)}
+	class={cn(styles.root(), size === 'compact' && RESPONSIVE_CONTROL_SIZE_CLASSES, className)}
 	role="button"
 	aria-label={label ?? m.image_upload_aria()}
 	tabindex={isUploadPending ? -1 : 0}
@@ -231,9 +235,10 @@
 
 		{#if !isUploadPending}
 			<Button
-				size="icon-sm"
+				size="sm"
+				format="icon"
 				intent="ghost"
-				class={styles.removeButtonOwner()}
+				class={cn(styles.removeButtonOwner(), CONTROL_SIZE_CLASSES.sm)}
 				surfaceClass={styles.removeButtonSurface()}
 				onclick={handleRemove}
 				aria-label={m.image_upload_remove()}

@@ -7,6 +7,7 @@
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import StoryKeyboardHints from '$lib/storybook/StoryKeyboardHints.svelte';
 	import KeyboardHint from '$lib/storybook/KeyboardHint.svelte';
+	import { CONTROL_SIZES } from '../control_sizing.js';
 
 	const { Story } = defineMeta({
 		title: 'Base/Select',
@@ -149,6 +150,24 @@
 
 <Story name="All Variants">
 	{#snippet template()}
+		<div class="mb-6 grid max-w-4xl grid-cols-4 gap-4">
+			{#each CONTROL_SIZES as size (size)}
+				<div class="flex flex-col gap-2">
+					<Label>{size} / default</Label>
+					<Select.Root type="single" value="apple">
+						<Select.Trigger {size}>Apple</Select.Trigger>
+					</Select.Root>
+					<Label>{size} / error</Label>
+					<Select.Root type="single">
+						<Select.Trigger {size} state="error">Select</Select.Trigger>
+					</Select.Root>
+					<Label>{size} / disabled</Label>
+					<Select.Root type="single" value="apple" disabled>
+						<Select.Trigger {size}>Apple</Select.Trigger>
+					</Select.Root>
+				</div>
+			{/each}
+		</div>
 		<div class="grid max-w-2xl grid-cols-3 gap-4">
 			<div>
 				<Label>Default</Label>

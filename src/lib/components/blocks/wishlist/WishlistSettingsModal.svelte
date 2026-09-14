@@ -924,7 +924,8 @@
 
 		<Button
 			intent="ghost"
-			size="icon-sm"
+			size="sm"
+			format="icon"
 			class={overlayCloseButtonClass}
 			surfaceClass={overlayCloseButtonSurfaceClass}
 			onclick={() => handleOpenChange(false)}
