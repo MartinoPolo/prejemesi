@@ -248,16 +248,37 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Keep active mobile filter pills inside the Display sheet with Reset next to its Filter
   selector, not in another sticky toolbar row. The closed toolbar may show the count; this resolves
   the September 10 request for visible active filters without increasing sticky height.
-- 2026-09-12: Image-bearing Card/List views share category, priority, received/reserved, and
-  authorized reserver-name overlays across desktop/mobile; put assigned categories top-left and
-  reservation identity with its state overlay, not duplicated in the content column. Like is the
-  exception: a ghost heart/count at the top-right of the whole card, not necessarily the image.
-  Compact remains image-free and privacy-gated; validate crowded overlay states in focused mockups
-  before implementing this latest direction.
-- 2026-09-12: Reorder mode starts from the latest saved order every time; Grid/List switching stays
-  available. Use a top-left grip with a small visible surface inside a larger hit target, and keep
-  reordering discoverable on desktop. Approved mockups are not evidence that persistence, dragging,
-  or positioning defects are fixed.
+- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved,
+  and authorized reservation-identity overlays across desktop/mobile, including image placeholders;
+  assigned categories go top-left and reservation identity stays with its state overlay, not
+  duplicated in the content column. Authorized viewers may see a single reserver's name; multiple
+  reservers use a localized generic summary instead of listing names. Preserve server-derived
+  privacy capabilities and keep Compact image-free. Validate crowded valid states in focused mockups
+  before implementation.
+- 2026-09-14: Grid/List gift titles use 18 px mobile / 24 px desktop, at most two lines then
+  ellipsis, with the full title available through gift detail and accessible naming. Keep applicable
+  quantity outside the clamp alongside the title. Grid quantity centers against the visible title
+  block, and Grid Like uses the image/card top-right with a separate wrapping category lane. List
+  quantity and Like center against the first title line even when the title wraps, using
+  typography-derived alignment slots rather than arbitrary offsets. Preserve the ghost heart/count,
+  accessible target and consistent title-to-price spacing. Top-align content at its ordinary inset
+  rather than vertically centering it; equalize cards within each grid row. Received uses full ink
+  secondary, distinct from Reserve and stronger than More, through shared semantic intents.
+- 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
+  lone state remains at its center, independent of edge badges. Category stays top-left and priority
+  bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
+  and must not replace the actual shared badge components.
+- 2026-09-14: Gift-hierarchy mockups are approved except for their broken mobile List composition;
+  agents must not copy its grid-like stacking or prototype dimension script. Preserve genuine mobile
+  List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
+  constrained/enlarged content. Verify the real mobile layout during implementation; this exclusion
+  does not retain the design gate on #377.
+- 2026-09-14: Keep manual reordering discoverable for eligible Card/List managers and recipients
+  even with grouping active. Enter from the latest saved active/non-received order, temporarily
+  bypass grouping/sorting/filters, explain the temporary view, and restore those browsing choices on
+  Done without overwriting preferences or category/priority assignments. Grid/List switching stays
+  available. Retain the top-left grip's small visible surface inside its larger hit target; approved
+  mockups are not evidence that persistence, dragging, or positioning defects are fixed.
 
 ## Forms & settings
 
@@ -347,13 +368,9 @@ sections for UI work. Historical reconciliation and review notes are in
   passes existing regression tests.
 - 2026-09-06: Hover elevation keeps the native semantic button/anchor/trigger stationary as
   `.elevation-owner` and moves a direct `.elevation-surface`; a static strip covers the resting
-  lower shadow. Complex cards move an empty visual plate, not interactive descendants. The approved
-  Button/Select/ToggleGroup forwarding exception exposes this contract; inverse transforms, JS
-  geometry synchronization, debounce, and removing elevation are not substitutes.
-- 2026-09-12: Align shell, hero, toolbar, and gift surfaces to common gutters; use shared gap and
-  height variants for neighboring controls, with consistent shadow depth for a given
-  viewport/preference. Separate shadow clearance and accessible hit area from visible geometry;
-  nested rounded corners follow the sourced inset rule in `AGENTS.md`.
+  lower shadow. The approved Button/Select/ToggleGroup forwarding exception exposes this contract;
+  inverse transforms, JS geometry synchronization, debounce, and removing elevation are not
+  substitutes.
 - 2026-09-12: Informational, reservation-reassurance, and trust-notice panels stay horizontal and
   use no tape treatment; do not tilt them into toolbar masks. Reserve playful rotation and tape for
   suitable decorative paper surfaces. A dialog close icon may rotate, but its shadow/surface must
@@ -361,16 +378,34 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Shadow/depth is a user appearance preference exposed in both profile settings and the
   global palette control, not a wishlist/category color. Apply its tokens consistently across
   controls and keep selected-option text legible in light/dark modes.
-- 2026-09-14: Controls share `sm` 26 px, `md` 32 px, `lg` 40 px, and `xl` 48 px on every device.
-  Omitted sizes default to `lg` on mobile and `md` from the `sm` breakpoint; explicit sizes stay
-  fixed. Icon-only format uses the same size and icon geometry as text controls. Preserve explicit
-  form/CTA contexts, rows-driven textareas, and documented ghost/dense-view exceptions with adequate
-  hit targets; do not introduce a separate mobile scale.
-- 2026-09-14: Toolbar, category-group, and gift-card selection surfaces normally match `md` desktop
-  and `lg` mobile buttons. Equivalent adjacent-action groups use an 8 px gap on both devices;
-  section spacing is separate, and extra clearance must be justified by shadows. The centered
-  wishlist container defines shared shell alignment with 12 px mobile and 16 px desktop gutters,
-  measured to the brand and avatar-circle edges rather than internal form padding or shadow extents.
+- 2026-09-14: Standardize control sizing and usage app-wide on `sm` 26 px, `md` 32 px, `lg` 40 px,
+  and `xl` 48 px; controls default to `md` on desktop and `lg` on mobile, with explicit contextual
+  variants rather than a separate mobile scale. Preserve `xl` calls to action, rows-driven
+  textareas, and deliberate ghost-icon/dense-view exceptions with adequate hit targets. Buttons,
+  single-line fields/selects, view-switcher segments, selection checkboxes, and notification/account
+  triggers share contextual height, radius, and icon sizing; selection controls use button-sized
+  visible surfaces. Preserve semantic primary/outline/ghost emphasis rather than forcing identical
+  intent on neighboring controls.
+- 2026-09-14: Equivalent adjacent-action groups use an 8 px gap on desktop and mobile; section
+  spacing remains distinct. Align header brand/avatar outer visible edges, shell, hero, toolbar, and
+  gift surfaces to the wishlist content container's centered max-width and 12 px mobile / 16 px
+  desktop gutters, not internal notebook/form padding or shadow extents. Keep shadow depth
+  consistent for the viewport/preference, allow additional clearance only where shadows require it,
+  and separate accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
+- 2026-09-14: Shared sizing variants own icon dimensions and consistent parent padding/insets,
+  corner geometry, and shadow treatment; audit app-wide usage rather than patching individual call
+  sites. Reuse shared components instead of new raw controls or one-off styling. Maintain a
+  side-by-side component showcase with size rows and text/icon button treatments alongside fields,
+  selects, checkboxes, switchers, and other compatible controls to expose regressions visually.
+- 2026-09-14: Existing gift-card hover elevation moves the full visible card, including image,
+  content, overlays, and actions, rather than an empty plate alone. Keep the card-level hover owner
+  stationary, nested controls aligned with their visible hit targets, and lower-edge hover stable.
+  Preserve existing motion timing, reduced-motion handling, and eligibility; do not add whole-card
+  lift to flat List/Compact or ineligible dimmed states as part of this correction.
+- 2026-09-14: Filter/sort/group changes must share the existing visible-identity reposition motion
+  in Grid and List, with stale-run cancellation and reduced-motion handling. Keep Compact updates
+  immediate and preserve the separate Grid/List crossfade, Compact view-switch behavior, drag,
+  received-gift flight, and hover effects; this enhancement does not redesign those transitions.
 
 ## Images & cropping
 
