@@ -653,6 +653,14 @@
 	scale: 0.98;
 }
 
+[data-slot='dropdown-menu-content'][data-state='closed'],
+[data-slot='dropdown-menu-sub-content'][data-state='closed'],
+[data-slot='dialog-content'][data-state='closed'],
+[data-slot='dialog-overlay'][data-state='closed'] {
+	animation-fill-mode: forwards;
+	pointer-events: none !important;
+}
+
 @media (prefers-reduced-motion: no-preference) {
 	.elevation-owner:hover > .dialog-close-surface svg {
 		rotate: 90deg;
@@ -660,6 +668,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+	[data-slot='dropdown-menu-content'],
+	[data-slot='dropdown-menu-sub-content'],
+	[data-slot='dialog-content'],
+	[data-slot='dialog-overlay'] {
+		animation: none;
+	}
+
 	.elevation-surface {
 		transition: none !important;
 	}

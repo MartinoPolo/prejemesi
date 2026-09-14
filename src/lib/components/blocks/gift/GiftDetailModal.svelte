@@ -84,14 +84,17 @@
 	);
 
 	function handleOpenChange(newOpen: boolean) {
-		if (!newOpen) {
+		open = newOpen;
+	}
+
+	function handleOpenChangeComplete(completedOpen: boolean) {
+		if (!completedOpen && !open) {
 			onclose?.();
 		}
-		open = newOpen;
 	}
 </script>
 
-<Dialog.Root {open} onOpenChange={handleOpenChange}>
+<Dialog.Root {open} onOpenChange={handleOpenChange} onOpenChangeComplete={handleOpenChangeComplete}>
 	<Dialog.Content
 		bind:ref={contentRef}
 		class={styles.content()}
