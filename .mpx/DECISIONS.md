@@ -248,12 +248,31 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Keep active mobile filter pills inside the Display sheet with Reset next to its Filter
   selector, not in another sticky toolbar row. The closed toolbar may show the count; this resolves
   the September 10 request for visible active filters without increasing sticky height.
-- 2026-09-12: Image-bearing Card/List views share category, priority, received/reserved, and
-  authorized reserver-name overlays across desktop/mobile; put assigned categories top-left and
-  reservation identity with its state overlay, not duplicated in the content column. Like is the
-  exception: a ghost heart/count at the top-right of the whole card, not necessarily the image.
-  Compact remains image-free and privacy-gated; validate crowded overlay states in focused mockups
-  before implementing this latest direction.
+- 2026-09-14: Image-bearing Card/List views share eligible category, priority, received/reserved,
+  and authorized reservation-identity overlays across desktop/mobile, including image placeholders;
+  assigned categories go top-left and reservation identity stays with its state overlay, not
+  duplicated in the content column. Authorized viewers may see a single reserver's name; multiple
+  reservers use a localized generic summary instead of listing names. Preserve server-derived
+  privacy capabilities and keep Compact image-free. Validate crowded valid states in focused mockups
+  before implementation.
+- 2026-09-14: Grid/List gift titles use 18 px mobile / 24 px desktop, at most two lines then
+  ellipsis, with the full title available through gift detail and accessible naming. Keep applicable
+  quantity outside the clamp alongside the title. Grid quantity centers against the visible title
+  block, and Grid Like uses the image/card top-right with a separate wrapping category lane. List
+  quantity and Like center against the first title line even when the title wraps, using
+  typography-derived alignment slots rather than arbitrary offsets. Preserve the ghost heart/count,
+  accessible target and consistent title-to-price spacing. Top-align content at its ordinary inset
+  rather than vertically centering it; equalize cards within each grid row. Received uses full ink
+  secondary, distinct from Reserve and stronger than More, through shared semantic intents.
+- 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
+  lone state remains at its center, independent of edge badges. Category stays top-left and priority
+  bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
+  and must not replace the actual shared badge components.
+- 2026-09-14: Gift-hierarchy mockups are approved except for their broken mobile List composition;
+  agents must not copy its grid-like stacking or prototype dimension script. Preserve genuine mobile
+  List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
+  constrained/enlarged content. Verify the real mobile layout during implementation; this exclusion
+  does not retain the design gate on #377.
 - 2026-09-12: Reorder mode starts from the latest saved order every time; Grid/List switching stays
   available. Use a top-left grip with a small visible surface inside a larger hit target, and keep
   reordering discoverable on desktop. Approved mockups are not evidence that persistence, dragging,
