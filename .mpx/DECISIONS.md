@@ -273,10 +273,12 @@ sections for UI work. Historical reconciliation and review notes are in
   List rows and shared crop geometry, retaining only necessary existing accessibility fallbacks for
   constrained/enlarged content. Verify the real mobile layout during implementation; this exclusion
   does not retain the design gate on #377.
-- 2026-09-12: Reorder mode starts from the latest saved order every time; Grid/List switching stays
-  available. Use a top-left grip with a small visible surface inside a larger hit target, and keep
-  reordering discoverable on desktop. Approved mockups are not evidence that persistence, dragging,
-  or positioning defects are fixed.
+- 2026-09-14: Keep manual reordering discoverable for eligible Card/List managers and recipients
+  even with grouping active. Enter from the latest saved active/non-received order, temporarily
+  bypass grouping/sorting/filters, explain the temporary view, and restore those browsing choices on
+  Done without overwriting preferences or category/priority assignments. Grid/List switching stays
+  available. Retain the top-left grip's small visible surface inside its larger hit target; approved
+  mockups are not evidence that persistence, dragging, or positioning defects are fixed.
 
 ## Forms & settings
 
@@ -351,10 +353,6 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-07-10: Motion uses shared duration/easing tokens and reduced-motion gating for hover lifts,
   wiggles, and staggered reveals; prefer component-library transitions where available rather than
   introducing a parallel animation system.
-- 2026-07-18: Controls use shared `sm` 26 px, `md` 32 px, `lg` 38 px, and `xl` 48 px steps:
-  chrome/import/gift editor use `md`, standalone form stacks `lg`, landing/share CTAs `xl`, compact
-  secondary actions `sm`. Align adjacent controls; textareas remain rows-driven. Explicit later
-  mobile touch-target rules are exceptions, not new ad hoc visual sizes.
 - 2026-07-18: Headings are semibold: page 26–34 px, dialog/section/empty-state 22 px, content card
   17 px, dense utility 14 px. Labels/help use 12 px muted text, with semibold labels and shared
   HelpText; `muted-foreground` is the single secondary-text role, not parallel subtle/ink-soft
@@ -370,13 +368,9 @@ sections for UI work. Historical reconciliation and review notes are in
   passes existing regression tests.
 - 2026-09-06: Hover elevation keeps the native semantic button/anchor/trigger stationary as
   `.elevation-owner` and moves a direct `.elevation-surface`; a static strip covers the resting
-  lower shadow. Complex cards move an empty visual plate, not interactive descendants. The approved
-  Button/Select/ToggleGroup forwarding exception exposes this contract; inverse transforms, JS
-  geometry synchronization, debounce, and removing elevation are not substitutes.
-- 2026-09-12: Align shell, hero, toolbar, and gift surfaces to common gutters; use shared gap and
-  height variants for neighboring controls, with consistent shadow depth for a given
-  viewport/preference. Separate shadow clearance and accessible hit area from visible geometry;
-  nested rounded corners follow the sourced inset rule in `AGENTS.md`.
+  lower shadow. The approved Button/Select/ToggleGroup forwarding exception exposes this contract;
+  inverse transforms, JS geometry synchronization, debounce, and removing elevation are not
+  substitutes.
 - 2026-09-12: Informational, reservation-reassurance, and trust-notice panels stay horizontal and
   use no tape treatment; do not tilt them into toolbar masks. Reserve playful rotation and tape for
   suitable decorative paper surfaces. A dialog close icon may rotate, but its shadow/surface must
@@ -384,6 +378,34 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Shadow/depth is a user appearance preference exposed in both profile settings and the
   global palette control, not a wishlist/category color. Apply its tokens consistently across
   controls and keep selected-option text legible in light/dark modes.
+- 2026-09-14: Standardize control sizing and usage app-wide on `sm` 26 px, `md` 32 px, `lg` 40 px,
+  and `xl` 48 px; controls default to `md` on desktop and `lg` on mobile, with explicit contextual
+  variants rather than a separate mobile scale. Preserve `xl` calls to action, rows-driven
+  textareas, and deliberate ghost-icon/dense-view exceptions with adequate hit targets. Buttons,
+  single-line fields/selects, view-switcher segments, selection checkboxes, and notification/account
+  triggers share contextual height, radius, and icon sizing; selection controls use button-sized
+  visible surfaces. Preserve semantic primary/outline/ghost emphasis rather than forcing identical
+  intent on neighboring controls.
+- 2026-09-14: Equivalent adjacent-action groups use an 8 px gap on desktop and mobile; section
+  spacing remains distinct. Align header brand/avatar outer visible edges, shell, hero, toolbar, and
+  gift surfaces to the wishlist content container's centered max-width and 12 px mobile / 16 px
+  desktop gutters, not internal notebook/form padding or shadow extents. Keep shadow depth
+  consistent for the viewport/preference, allow additional clearance only where shadows require it,
+  and separate accessible hit areas from visible geometry; nested corners follow `AGENTS.md`.
+- 2026-09-14: Shared sizing variants own icon dimensions and consistent parent padding/insets,
+  corner geometry, and shadow treatment; audit app-wide usage rather than patching individual call
+  sites. Reuse shared components instead of new raw controls or one-off styling. Maintain a
+  side-by-side component showcase with size rows and text/icon button treatments alongside fields,
+  selects, checkboxes, switchers, and other compatible controls to expose regressions visually.
+- 2026-09-14: Existing gift-card hover elevation moves the full visible card, including image,
+  content, overlays, and actions, rather than an empty plate alone. Keep the card-level hover owner
+  stationary, nested controls aligned with their visible hit targets, and lower-edge hover stable.
+  Preserve existing motion timing, reduced-motion handling, and eligibility; do not add whole-card
+  lift to flat List/Compact or ineligible dimmed states as part of this correction.
+- 2026-09-14: Filter/sort/group changes must share the existing visible-identity reposition motion
+  in Grid and List, with stale-run cancellation and reduced-motion handling. Keep Compact updates
+  immediate and preserve the separate Grid/List crossfade, Compact view-switch behavior, drag,
+  received-gift flight, and hover effects; this enhancement does not redesign those transitions.
 
 ## Images & cropping
 
