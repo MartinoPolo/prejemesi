@@ -139,6 +139,12 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 | `pnpm run test:e2e`         | Full E2E suite with Playwright (Chromium)                      |
 | `pnpm run test:e2e:changed` | E2E tests changed since or statically affected relative to dev |
 
+Browser automation defaults to installed Google Chrome. If that installation hangs during browser
+teardown, install the bundled browser with `pnpm exec playwright install chromium` and run tests
+with `AUTOMATION_BROWSER=chromium`. The override applies to Playwright E2E and Vitest browser
+projects; `AUTOMATION_BROWSER=chrome` retains the default. It changes only the test browser, not
+application behavior or test assertions.
+
 ### Database
 
 | Script                 | Description                                                |

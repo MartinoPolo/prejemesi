@@ -17,3 +17,5 @@ chromeApi.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 		void chromeApi.tabs.setZoom(tabId, zoom);
 	}
 });
+
+Reflect.set(globalThis, 'browserZoomDriverReady', true);

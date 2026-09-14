@@ -18,6 +18,7 @@ export default [
 			'.storybook',
 			'storybook-static',
 			'.design-probe',
+			'.local/**',
 			'build',
 			'coverage',
 			'node_modules',
