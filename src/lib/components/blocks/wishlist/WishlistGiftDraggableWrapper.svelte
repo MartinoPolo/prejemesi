@@ -2,13 +2,13 @@
 	import GripVerticalIcon from '@lucide/svelte/icons/grip-vertical';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
-	import CheckIcon from '@lucide/svelte/icons/check';
 	import * as m from '$lib/paraglide/messages.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { cn } from '$lib/utils.js';
 	import type { Snippet } from 'svelte';
 	import { createGiftLongPressRecognizer } from '$lib/modules/gifts/gift_long_press.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import { CheckboxSurface, checkboxVariants } from '$lib/components/base/checkbox/index.js';
 	import { ElevationSurface } from '$lib/components/base/elevation-surface/index.js';
 
 	interface WishlistGiftDraggableWrapperProps {
@@ -70,6 +70,7 @@
 	const isDragged = $derived(draggedGiftId === giftId);
 	const isDragOver = $derived(dragOverGiftId === giftId);
 	const safePrimaryLink = $derived(normalizeGiftUrl(primaryLink));
+	const selectionCheckboxStyles = checkboxVariants({ size: 'responsive' });
 
 	$effect(() => () => longPress.cancel());
 
@@ -230,7 +231,7 @@
 		isDragOver && dragOverStyle === 'bg' && 'bg-primary/5',
 		selectionMode &&
 			selectionLayout === 'list' &&
-			'sm:grid sm:grid-cols-[1.75rem_minmax(0,1fr)] sm:gap-2',
+			'sm:grid sm:grid-cols-[var(--size-control-md)_minmax(0,1fr)] sm:gap-2',
 		longPressPending && 'ring-2 ring-inset ring-primary/35',
 	)}
 	data-selected={selectionMode && selected ? true : undefined}
@@ -255,16 +256,16 @@
 	{#if selectionMode}
 		<span
 			class={cn(
-				'pointer-events-none absolute z-50 grid size-10 place-items-center border-2 border-ink bg-card text-[var(--selection-on-ring)] shadow-sticker sm:size-7 sm:rounded-md sm:border-0 sm:shadow-sm',
-				selected && 'bg-[var(--selection-ring)]',
+				selectionCheckboxStyles.owner(),
+				'pointer-events-none absolute top-[calc(var(--radius-panel)-var(--radius-btn))] z-50',
 				selectionLayout === 'list'
-					? 'left-[6px] top-[6px] rounded-[calc(var(--radius-panel)-6px)] sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2'
-					: 'right-1 top-1 rounded-[calc(var(--radius-panel)-4px)] sm:right-auto sm:left-2.5 sm:top-2.5',
+					? 'left-[calc(var(--radius-panel)-var(--radius-btn))] sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2'
+					: 'right-[calc(var(--radius-panel)-var(--radius-btn))] sm:right-auto sm:left-[calc(var(--radius-panel)-var(--radius-btn))]',
 			)}
 			data-testid="gift-selection-control"
 			aria-hidden="true"
 		>
-			{#if selected}<CheckIcon class="size-[19px] stroke-[3] sm:size-4" />{/if}
+			<CheckboxSurface checked={selected} />
 		</span>
 	{/if}
 	{#if reorderEnabled && !selectionMode}
@@ -294,7 +295,7 @@
 	{#if reorderEnabled && !selectionMode}
 		<div
 			class={cn(
-				'absolute bottom-1 right-1 z-50 items-center gap-1',
+				'absolute bottom-1 right-1 z-50 items-center gap-2',
 				selectionLayout === 'list' ? 'flex sm:hidden' : 'gift-card-directional-actions',
 			)}
 			data-testid="gift-reorder-directional-actions"
@@ -305,8 +306,8 @@
 			<Button
 				type="button"
 				intent="secondary"
-				size="icon"
-				class="size-10"
+				size="lg"
+				format="icon"
 				aria-label={m.gift_reorder_move_up({ name: giftName })}
 				disabled={index === 0}
 				data-prevent-gift-card-open
@@ -320,8 +321,8 @@
 			<Button
 				type="button"
 				intent="secondary"
-				size="icon"
-				class="size-10"
+				size="lg"
+				format="icon"
 				aria-label={m.gift_reorder_move_down({ name: giftName })}
 				disabled={index === totalCount - 1}
 				data-prevent-gift-card-open

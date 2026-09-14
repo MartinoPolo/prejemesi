@@ -166,7 +166,7 @@
 						<Label>{m.reserve_quantity_label()}</Label>
 						<div class={styles.quantityRow()}>
 							<Button
-								size="icon"
+								format="icon"
 								intent="outline"
 								disabled={quantity <= 1}
 								onclick={decrementQuantity}
@@ -178,7 +178,7 @@
 								{quantity}
 							</span>
 							<Button
-								size="icon"
+								format="icon"
 								intent="outline"
 								disabled={quantity >= availableCount}
 								onclick={incrementQuantity}

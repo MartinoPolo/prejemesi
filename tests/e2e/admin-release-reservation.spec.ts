@@ -14,12 +14,9 @@ import {
 
 /**
  * Administrator release override (issue #213). The administrator is env-based
- * (`ADMIN_EMAILS` → `isAppAdmin`), so this spec depends on `playwright.config.ts` passing
- * `ADMIN_EMAILS=tomas@test.cz` to the dev server.
- *
- * CAVEAT: `webServer.reuseExistingServer` is true — an already-running `pnpm run dev` keeps
- * the env it was started with, and `tomas@test.cz` will NOT be an administrator there. If the
- * release control never appears, restart the dev server (or let Playwright start its own).
+ * (`ADMIN_EMAILS` → `isAppAdmin`), so the externally managed test server must include
+ * `tomas@test.cz` as a local test administrator. The user owns that server and its lifecycle;
+ * this spec only connects to it.
  *
  * Personas come from the seed (`pnpm db:seed`, shared password below): tomáš is the
  * administrator and is neither obdarovaný nor správce anywhere in this spec; petr is the

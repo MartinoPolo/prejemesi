@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import * as DropdownMenu from '$lib/components/base/dropdown-menu/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import {
 		ANCHORED_CIRCULAR_STICKER_OWNER_CLASSES,
 		CIRCULAR_STICKER_SURFACE_CLASSES,
@@ -19,9 +20,10 @@
 		userEmail: string;
 		userInitials: string;
 		userImage?: string | null;
+		size?: ControlSize;
 	}
 
-	let { userName, userEmail, userInitials, userImage = null }: UserMenuProps = $props();
+	let { userName, userEmail, userInitials, userImage = null, size }: UserMenuProps = $props();
 
 	async function handleSignOut() {
 		try {
@@ -38,7 +40,8 @@
 			<Button
 				{...props}
 				intent="ghost"
-				size="icon"
+				{size}
+				format="icon"
 				class={`rounded-full ${ANCHORED_CIRCULAR_STICKER_OWNER_CLASSES}`}
 				surfaceClass={`border-[2.5px] border-ink bg-card group-hover:bg-card ${CIRCULAR_STICKER_SURFACE_CLASSES}`}
 				aria-label={m.nav_user_menu({ name: userName })}

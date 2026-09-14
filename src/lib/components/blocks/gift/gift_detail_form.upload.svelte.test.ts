@@ -85,7 +85,7 @@ describe('GiftDetailForm pending image uploads', () => {
 		expect(buttons).toHaveLength(2);
 		await vi.waitFor(() => expect(buttons.every((button) => button.disabled)).toBe(true));
 		await expect
-			.element(screen.getByRole('button', { name: m.gift_image_url_tab() }))
+			.element(screen.getByRole('radio', { name: m.gift_image_url_tab() }))
 			.toBeDisabled();
 
 		// Prove the handler itself is guarded, independent of the button's disabled attribute.
@@ -139,7 +139,7 @@ describe('GiftDetailForm pending image uploads', () => {
 				expect(submitButtons().every((button) => !button.disabled)).toBe(true),
 			);
 			await expect
-				.element(screen.getByRole('button', { name: m.gift_image_url_tab() }))
+				.element(screen.getByRole('radio', { name: m.gift_image_url_tab() }))
 				.toBeEnabled();
 			consoleError.mockRestore();
 		},

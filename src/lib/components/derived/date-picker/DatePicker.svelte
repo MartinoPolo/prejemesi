@@ -42,7 +42,7 @@
 		disabled = false,
 		placeholder,
 		class: className,
-		size = 'md',
+		size,
 	}: DatePickerProps = $props();
 
 	/** Map the active app locale to a BCP-47 tag for `Calendar` and `Intl`. */

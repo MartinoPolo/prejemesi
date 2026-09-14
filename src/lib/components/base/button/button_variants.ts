@@ -1,7 +1,15 @@
 import type { WithElementRef } from '$lib/utils.js';
 import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 import { tv } from 'tailwind-variants';
-import { asExhaustiveArray } from '$lib/utils/variants.js';
+import {
+	CONTROL_ICON_SIZE_CLASSES,
+	CONTROL_SIZES,
+	CONTROL_SIZE_CLASSES,
+	RESPONSIVE_CONTROL_SIZE_CLASSES,
+	RESPONSIVE_CONTROL_TEXT_SIZE_CLASSES,
+	CONTROL_TEXT_SIZE_CLASSES,
+	type ControlSize,
+} from '../control_sizing.js';
 
 const FILLED_BUTTON_KBD_CLASSES =
 	'[&_[data-slot=kbd]]:border-[color-mix(in_oklab,currentColor_28%,transparent)] [&_[data-slot=kbd]]:bg-[color-mix(in_oklab,currentColor_16%,transparent)] [&_[data-slot=kbd]]:text-current';
@@ -54,48 +62,47 @@ export const buttonVariants = tv({
 			link: { surface: 'text-primary underline-offset-4 group-hover:underline' },
 		},
 		size: {
-			sm: {
-				owner: 'h-(--size-control-sm)',
-				surface: 'px-2.25 text-(length:--text-sm) [&_[data-icon]]:size-3.5',
+			responsive: {
+				owner: RESPONSIVE_CONTROL_SIZE_CLASSES,
+				surface: CONTROL_ICON_SIZE_CLASSES.lg,
 			},
-			md: {
-				owner: 'h-(--size-control-md)',
-				surface: 'px-3 text-(length:--text-md) [&_[data-icon]]:size-4',
-			},
-			lg: {
-				owner: 'h-(--size-control-lg)',
-				surface: 'px-4 text-(length:--text-base) [&_[data-icon]]:size-4',
-			},
-			xl: {
-				owner: 'h-(--size-control-xl)',
-				surface: 'px-5 text-(length:--text-lg) [&_[data-icon]]:size-5',
-			},
-			icon: { owner: 'size-(--size-control-md)', surface: 'p-0 [&_svg]:size-4' },
-			'icon-sm': { owner: 'size-(--size-control-sm)', surface: 'p-0 [&_svg]:size-3.5' },
+			sm: { owner: CONTROL_SIZE_CLASSES.sm, surface: CONTROL_ICON_SIZE_CLASSES.sm },
+			md: { owner: CONTROL_SIZE_CLASSES.md, surface: CONTROL_ICON_SIZE_CLASSES.md },
+			lg: { owner: CONTROL_SIZE_CLASSES.lg, surface: CONTROL_ICON_SIZE_CLASSES.lg },
+			xl: { owner: CONTROL_SIZE_CLASSES.xl, surface: CONTROL_ICON_SIZE_CLASSES.xl },
+		},
+		format: {
+			text: { surface: '' },
+			icon: { owner: 'aspect-square', surface: 'p-0' },
 		},
 	},
-	defaultVariants: { intent: 'primary', size: 'md' },
+	compoundVariants: [
+		{
+			size: 'responsive',
+			format: 'text',
+			class: { surface: RESPONSIVE_CONTROL_TEXT_SIZE_CLASSES },
+		},
+		{ size: 'sm', format: 'text', class: { surface: CONTROL_TEXT_SIZE_CLASSES.sm } },
+		{ size: 'md', format: 'text', class: { surface: CONTROL_TEXT_SIZE_CLASSES.md } },
+		{ size: 'lg', format: 'text', class: { surface: CONTROL_TEXT_SIZE_CLASSES.lg } },
+		{ size: 'xl', format: 'text', class: { surface: CONTROL_TEXT_SIZE_CLASSES.xl } },
+	],
+	defaultVariants: { intent: 'primary', size: 'responsive', format: 'text' },
 });
 
 export type ButtonIntent = keyof typeof buttonVariants.variants.intent;
-export type ButtonSize = keyof typeof buttonVariants.variants.size;
+export type ButtonSize = ControlSize;
+export type ButtonFormat = keyof typeof buttonVariants.variants.format;
 export const BUTTON_INTENTS = Object.keys(buttonVariants.variants.intent) as ButtonIntent[];
-export const BUTTON_TEXT_SIZES = [
-	'sm',
-	'md',
-	'lg',
-	'xl',
-] as const satisfies ReadonlyArray<ButtonSize>;
-export const BUTTON_ICON_SIZES = ['icon', 'icon-sm'] as const satisfies ReadonlyArray<ButtonSize>;
-export const BUTTON_SIZES = asExhaustiveArray<ButtonSize>()([
-	...BUTTON_TEXT_SIZES,
-	...BUTTON_ICON_SIZES,
-]);
+export const BUTTON_SIZES = [...CONTROL_SIZES];
+export const BUTTON_TEXT_SIZES = BUTTON_SIZES;
+export const BUTTON_FORMATS = Object.keys(buttonVariants.variants.format) as ButtonFormat[];
 
 export type ButtonProps = WithElementRef<HTMLButtonAttributes> &
 	WithElementRef<HTMLAnchorAttributes> & {
 		intent?: ButtonIntent;
 		size?: ButtonSize;
+		format?: ButtonFormat;
 		/** Paint and internal layout classes for the moving surface. */
 		surfaceClass?: string;
 	};

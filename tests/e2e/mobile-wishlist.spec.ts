@@ -41,28 +41,34 @@ test.describe('mobile wishlist acceptance', () => {
 			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
 			await expect(page.getByTestId('wishlist-mobile-hero')).toBeVisible();
 			await expect(page.getByTestId('wishlist-gift-card-grid')).toBeVisible();
-			const routeLayout = await page.getByTestId('wishlist-page-shell').evaluate((shell) => {
-				const shellStyle = getComputedStyle(shell);
-				const content = shell.closest('main');
-				const shellRect = shell.getBoundingClientRect();
-				const contentRect = content?.getBoundingClientRect();
-				return {
-					rowGap: Number.parseFloat(shellStyle.rowGap),
-					paddingLeft: Number.parseFloat(shellStyle.paddingLeft),
-					paddingRight: Number.parseFloat(shellStyle.paddingRight),
-					marginLeft: Number.parseFloat(shellStyle.marginLeft),
-					topInset: contentRect === undefined ? null : shellRect.top - contentRect.top,
-				};
-			});
-			expect(routeLayout).toEqual({
-				rowGap: 12,
-				paddingLeft: 12,
-				paddingRight: 12,
-				marginLeft: 0,
-				topInset: 12,
-			});
+			const pageShell = page.getByTestId('wishlist-page-shell');
+			const heroLocator = page.getByTestId('wishlist-mobile-hero');
+			const toolbarLocator = page.getByTestId('wishlist-toolbar');
+			const [shell, hero, toolbar, routeLayout] = await Promise.all([
+				box(pageShell),
+				box(heroLocator),
+				box(toolbarLocator),
+				pageShell.evaluate((shellElement) => {
+					const content = shellElement.closest('main');
+					const shellRect = shellElement.getBoundingClientRect();
+					const contentRect = content?.getBoundingClientRect();
+					return {
+						rowGap: Number.parseFloat(getComputedStyle(shellElement).rowGap),
+						topInset:
+							contentRect === undefined ? null : shellRect.top - contentRect.top,
+					};
+				}),
+			]);
+			expect(routeLayout).toEqual({ rowGap: 12, topInset: 12 });
+			for (const surface of [shell, hero, toolbar]) {
+				expect(surface.x).toBeCloseTo(12, 0);
+				expect(width - (surface.x + surface.width)).toBeCloseTo(12, 0);
+			}
+			expect(hero.x).toBeCloseTo(shell.x, 0);
+			expect(hero.width).toBeCloseTo(shell.width, 0);
+			expect(toolbar.x).toBeCloseTo(shell.x, 0);
+			expect(toolbar.width).toBeCloseTo(shell.width, 0);
 
-			const hero = await box(page.getByTestId('wishlist-mobile-hero'));
 			const photo = await box(page.getByTestId('wishlist-mobile-photo'));
 			expect(hero.height).toBeGreaterThanOrEqual(104);
 			expect(hero.height).toBeLessThanOrEqual(120);
@@ -160,7 +166,7 @@ test.describe('mobile wishlist acceptance', () => {
 
 		await page.context().close();
 	});
-	test('manager list presentation remains horizontal with full-height square images and contained mobile actions', async ({
+	test('manager list presentation keeps continuous square images and contained actions in narrow and wide layouts', async ({
 		browser,
 		request,
 		baseURL,
@@ -178,80 +184,106 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.reload({ waitUntil: 'load' });
 		await expect(page.getByTestId('gift-view-list')).toHaveAttribute('aria-checked', 'true');
 
-		for (const width of WIDTHS) {
+		for (const width of [...WIDTHS, 768]) {
 			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
 			const list = page.getByTestId('wishlist-gift-list');
 			await expect(list).toBeVisible();
 			await expectInsideViewport(list, width);
 			const items = await page.getByTestId('gift-list-item').all();
 			expect(items).toHaveLength(3);
-			await expect
-				.poll(async () =>
-					Promise.all(
-						items.map(async (item) => {
-							const imageBox = await box(item.getByTestId('gift-list-image'));
-							const itemBox = await box(item);
-							const border = await item.evaluate((element) =>
-								Number.parseFloat(getComputedStyle(element).borderTopWidth),
-							);
-							return {
-								horizontal:
-									(await item.getAttribute('data-list-image-stacked')) === null,
-								square: Math.abs(imageBox.width - imageBox.height) < 0.5,
-								fullHeight:
-									Math.abs(imageBox.y - (itemBox.y + border)) < 0.5 &&
-									Math.abs(
-										imageBox.y +
-											imageBox.height -
-											(itemBox.y + itemBox.height - border),
-									) < 0.5,
-							};
-						}),
-					),
-				)
-				.toEqual(items.map(() => ({ horizontal: true, square: true, fullHeight: true })));
-			const itemBoxes = await Promise.all(items.map(box));
+			const [itemBoxes, listRowGap] = await Promise.all([
+				Promise.all(items.map(box)),
+				list.evaluate((element) => Number.parseFloat(getComputedStyle(element).rowGap)),
+			]);
+			if (width < 768) {
+				expect(listRowGap).toBe(10);
+			}
 			for (let index = 1; index < itemBoxes.length; index += 1) {
 				expect(
 					itemBoxes[index]!.y - (itemBoxes[index - 1]!.y + itemBoxes[index - 1]!.height),
-				).toBeCloseTo(10, 0);
+				).toBeCloseTo(listRowGap, 0);
 			}
 			for (const item of items) {
-				const imageBox = await box(item.getByTestId('gift-list-image'));
-				const itemBox = await box(item);
-				const border = await item.evaluate((element) =>
-					Number.parseFloat(getComputedStyle(element).borderTopWidth),
-				);
-				expect(imageBox.width).toBeCloseTo(imageBox.height, 0);
-				expect(imageBox.y).toBeCloseTo(itemBox.y + border, 0);
-				expect(imageBox.y + imageBox.height).toBeCloseTo(
-					itemBox.y + itemBox.height - border,
-					0,
-				);
-				const contentBox = await box(item.getByTestId('gift-list-content'));
-				expect(contentBox.y).toBeCloseTo(imageBox.y, 0);
-				expect(contentBox.x).toBeCloseTo(imageBox.x + imageBox.width, 0);
-				expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(
-					itemBox.x + itemBox.width - border,
-				);
-				const reserve = item.getByTestId('reserve-button');
-				await expect(
-					item.getByTestId('gift-list-image').getByTestId('reserve-button'),
-				).toHaveCount(0);
-				await expect(
-					item.getByTestId('gift-action-row').getByTestId('reserve-button'),
-				).toBeVisible();
-				const reserveBox = await box(reserve);
-				expect(reserveBox.y + reserveBox.height).toBeLessThanOrEqual(
-					itemBox.y + itemBox.height - border,
-				);
+				await expect(async () => {
+					const image = item.getByTestId('gift-list-image');
+					const content = item.getByTestId('gift-list-content');
+					const [imageBox, contentBox, itemBox, geometry] = await Promise.all([
+						box(image),
+						box(content),
+						box(item),
+						item.evaluate((element) => {
+							const style = getComputedStyle(element);
+							return {
+								stacked: element.hasAttribute('data-list-image-stacked'),
+								borderTop: Number.parseFloat(style.borderTopWidth),
+								borderRight: Number.parseFloat(style.borderRightWidth),
+								borderBottom: Number.parseFloat(style.borderBottomWidth),
+								borderLeft: Number.parseFloat(style.borderLeftWidth),
+								columnGap: Number.parseFloat(style.columnGap),
+								rowGap: Number.parseFloat(style.rowGap),
+							};
+						}),
+					]);
+					expect(imageBox.width).toBeCloseTo(imageBox.height, 0);
+					expect(imageBox.x).toBeCloseTo(itemBox.x + geometry.borderLeft, 0);
+					expect(imageBox.y).toBeCloseTo(itemBox.y + geometry.borderTop, 0);
+					if (geometry.stacked) {
+						expect(WIDTHS).toContain(width);
+						expect(imageBox.width).toBeCloseTo(
+							itemBox.width - geometry.borderLeft - geometry.borderRight,
+							0,
+						);
+						expect(contentBox.x).toBeCloseTo(imageBox.x, 0);
+						expect(contentBox.y).toBeCloseTo(
+							imageBox.y + imageBox.height + geometry.rowGap,
+							0,
+						);
+					} else {
+						expect(imageBox.y + imageBox.height).toBeCloseTo(
+							itemBox.y + itemBox.height - geometry.borderBottom,
+							0,
+						);
+						expect(contentBox.y).toBeCloseTo(imageBox.y, 0);
+						expect(contentBox.x).toBeCloseTo(
+							imageBox.x + imageBox.width + geometry.columnGap,
+							0,
+						);
+					}
+					expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(
+						itemBox.x + itemBox.width - geometry.borderRight,
+					);
+					expect(contentBox.y + contentBox.height).toBeLessThanOrEqual(
+						itemBox.y + itemBox.height - geometry.borderBottom,
+					);
+					const reserve = item.getByTestId('reserve-button');
+					await expect(image.getByTestId('reserve-button')).toHaveCount(0);
+					await expect(
+						item.getByTestId('gift-action-row').getByTestId('reserve-button'),
+					).toBeVisible();
+					const reserveBox = await box(reserve);
+					expect(reserveBox.x).toBeGreaterThanOrEqual(contentBox.x);
+					expect(reserveBox.x + reserveBox.width).toBeLessThanOrEqual(
+						contentBox.x + contentBox.width,
+					);
+					expect(reserveBox.y + reserveBox.height).toBeLessThanOrEqual(
+						itemBox.y + itemBox.height - geometry.borderBottom,
+					);
+				}).toPass();
 			}
-			const titleSizes = await list
-				.locator('h3')
-				.evaluateAll((titles) =>
-					titles.map((title) => Number.parseFloat(getComputedStyle(title).fontSize)),
-				);
-			expect(titleSizes.every((size) => size >= 13 && size <= 15)).toBe(true);
+			if (width < 768) {
+				const titleSizes = await list
+					.locator('h3')
+					.evaluateAll((titles) =>
+						titles.map((title) => Number.parseFloat(getComputedStyle(title).fontSize)),
+					);
+				expect(titleSizes.every((size) => size >= 13 && size <= 15)).toBe(true);
+			} else {
+				expect(
+					await Promise.all(
+						items.map((item) => item.getAttribute('data-list-image-stacked')),
+					),
+				).toEqual(items.map(() => null));
+			}
 			const surface = await items[0]!.evaluate((element) => {
 				const style = getComputedStyle(element);
 				return {

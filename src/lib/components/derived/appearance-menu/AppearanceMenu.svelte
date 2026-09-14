@@ -23,7 +23,7 @@
 				<Button
 					{...props}
 					intent="outline"
-					size="icon"
+					format="icon"
 					aria-label={m.settings_appearance_title()}
 				>
 					<Settings2Icon data-icon />

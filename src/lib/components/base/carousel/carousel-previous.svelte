@@ -9,7 +9,7 @@
 		ref = $bindable(null),
 		class: className,
 		intent = 'secondary',
-		size = 'icon',
+		size = 'md',
 		...restProps
 	}: WithoutChildren<Props> = $props();
 
@@ -20,6 +20,7 @@
 	data-slot="carousel-previous"
 	{intent}
 	{size}
+	format="icon"
 	aria-disabled={!emblaCtx.canScrollPrev}
 	disabled={!emblaCtx.canScrollPrev}
 	class={cn('touch-manipulation', className)}

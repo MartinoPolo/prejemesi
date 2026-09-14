@@ -97,7 +97,7 @@ describe('GiftListItem responsive image dimensions (issues #328 and #336)', () =
 			0,
 		);
 		for (const action of [reserve, received, more]) {
-			expect(action.getBoundingClientRect().height).toBeCloseTo(32, 0);
+			expect(action.getBoundingClientRect().height).toBeCloseTo(40, 0);
 		}
 		reserve.click();
 		received.click();

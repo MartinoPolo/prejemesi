@@ -332,10 +332,6 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-07-10: Motion uses shared duration/easing tokens and reduced-motion gating for hover lifts,
   wiggles, and staggered reveals; prefer component-library transitions where available rather than
   introducing a parallel animation system.
-- 2026-07-18: Controls use shared `sm` 26 px, `md` 32 px, `lg` 38 px, and `xl` 48 px steps:
-  chrome/import/gift editor use `md`, standalone form stacks `lg`, landing/share CTAs `xl`, compact
-  secondary actions `sm`. Align adjacent controls; textareas remain rows-driven. Explicit later
-  mobile touch-target rules are exceptions, not new ad hoc visual sizes.
 - 2026-07-18: Headings are semibold: page 26–34 px, dialog/section/empty-state 22 px, content card
   17 px, dense utility 14 px. Labels/help use 12 px muted text, with semibold labels and shared
   HelpText; `muted-foreground` is the single secondary-text role, not parallel subtle/ink-soft
@@ -365,6 +361,16 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-09-12: Shadow/depth is a user appearance preference exposed in both profile settings and the
   global palette control, not a wishlist/category color. Apply its tokens consistently across
   controls and keep selected-option text legible in light/dark modes.
+- 2026-09-14: Controls share `sm` 26 px, `md` 32 px, `lg` 40 px, and `xl` 48 px on every device.
+  Omitted sizes default to `lg` on mobile and `md` from the `sm` breakpoint; explicit sizes stay
+  fixed. Icon-only format uses the same size and icon geometry as text controls. Preserve explicit
+  form/CTA contexts, rows-driven textareas, and documented ghost/dense-view exceptions with adequate
+  hit targets; do not introduce a separate mobile scale.
+- 2026-09-14: Toolbar, category-group, and gift-card selection surfaces normally match `md` desktop
+  and `lg` mobile buttons. Equivalent adjacent-action groups use an 8 px gap on both devices;
+  section spacing is separate, and extra clearance must be justified by shadows. The centered
+  wishlist container defines shared shell alignment with 12 px mobile and 16 px desktop gutters,
+  measured to the brand and avatar-circle edges rather than internal form padding or shadow extents.
 
 ## Images & cropping
 

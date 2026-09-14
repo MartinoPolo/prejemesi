@@ -2,6 +2,7 @@
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { useGifts } from '$lib/modules/gifts/gifts.context.svelte.js';
@@ -10,13 +11,13 @@
 
 	interface PurchasedToggleProps {
 		gift: GiftForVisitor;
-		size?: 'sm' | 'md' | 'lg' | 'xl';
+		size?: ControlSize;
 		/** Extra classes on the underlying Button (issue #165: the gift detail
 		 *  modal's photo overlay gives the pill a sticker shadow + rotation). */
 		class?: string;
 	}
 
-	let { gift, size = 'sm', class: className }: PurchasedToggleProps = $props();
+	let { gift, size, class: className }: PurchasedToggleProps = $props();
 
 	const giftsContext = useGifts();
 

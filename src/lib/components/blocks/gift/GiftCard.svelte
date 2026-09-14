@@ -110,8 +110,7 @@
 			giftId={gift.id}
 			giftName={gift.name}
 			likeCount={visitorGift.likeCount}
-			size="md"
-			class="absolute top-2 right-2 z-20"
+			class="absolute top-0 right-2 z-20"
 		/>
 	{/if}
 	<!-- Image area: dotted mat behind the photo; letterboxed photos keep the mat visible -->
@@ -210,13 +209,7 @@
 			>
 				{#snippet secondaryReservationAction()}
 					{#if visitorGift}
-						<ReserveButton
-							gift={visitorGift}
-							{isArchived}
-							size="md"
-							{onreserve}
-							{onunreserve}
-						/>
+						<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
 					{/if}
 				{/snippet}
 				<GiftActionRow
@@ -227,11 +220,7 @@
 					controlSizing="intrinsic"
 				>
 					{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
-						<PurchasedToggle
-							gift={visitorGift}
-							size="md"
-							class="w-full max-sm:hidden"
-						/>
+						<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
 					{/if}
 					{#if hasReceivedPrimary}
 						<GiftReceivedToggle
@@ -240,17 +229,10 @@
 							{role}
 							{isArchived}
 							{onreceived}
-							size="md"
 							compactLabel
 						/>
 					{:else if isVisitorOrModerator && visitorGift}
-						<ReserveButton
-							gift={visitorGift}
-							{isArchived}
-							size="md"
-							{onreserve}
-							{onunreserve}
-						/>
+						<ReserveButton gift={visitorGift} {isArchived} {onreserve} {onunreserve} />
 					{/if}
 				</GiftActionRow>
 			</div>

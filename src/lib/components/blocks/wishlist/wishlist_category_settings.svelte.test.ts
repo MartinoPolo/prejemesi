@@ -1,3 +1,4 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
 import { page } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -57,6 +58,35 @@ beforeEach(() => {
 });
 
 describe('WishlistCategorySettings', () => {
+	it('keeps adjacent category actions on the shared responsive size and gap', async () => {
+		remoteMocks.categories = [category({ customLabel: 'Sport' })];
+		for (const [width, expectedSize] of [
+			[390, 40],
+			[768, 32],
+		] as const) {
+			await page.viewport(width, 720);
+			const screen = render(WishlistCategorySettings, { wishlistId: 'wishlist-1' });
+			const actions = [m.move_up(), m.move_down(), m.delete()].map((name) =>
+				screen.getByRole('button', { name }).element(),
+			);
+
+			for (const action of actions) {
+				const rect = action.getBoundingClientRect();
+				expect(rect.width).toBeCloseTo(expectedSize, 0);
+				expect(rect.height).toBeCloseTo(expectedSize, 0);
+			}
+			expect(
+				actions[1]!.getBoundingClientRect().left -
+					actions[0]!.getBoundingClientRect().right,
+			).toBeCloseTo(8, 0);
+			expect(
+				actions[2]!.getBoundingClientRect().left -
+					actions[1]!.getBoundingClientRect().right,
+			).toBeCloseTo(8, 0);
+			await screen.unmount();
+		}
+	});
+
 	it('refreshes stale usage before enabling removal and uses the fresh count', async () => {
 		remoteMocks.categories = [category({ customLabel: 'Sport', usedCount: 0 })];
 		let finishRefresh!: () => void;

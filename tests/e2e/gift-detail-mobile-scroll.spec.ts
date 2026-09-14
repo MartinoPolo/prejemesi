@@ -40,7 +40,7 @@ test.describe('Gift edit modal mobile scroll', () => {
 		await expect(createDialog).toBeVisible({ timeout: 5_000 });
 		await createDialog.locator('#gift-name').fill(giftName);
 
-		await createDialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
+		await createDialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
 		const fileInput = createDialog.locator('input[type=file]');
 		await expect(fileInput).toBeAttached();
 		const uploaded = waitForUpload(page);

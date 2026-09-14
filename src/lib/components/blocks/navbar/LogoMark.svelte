@@ -88,6 +88,11 @@
 	}
 
 	@media (width <= 340px) {
+		.logo {
+			gap: 4px;
+			font-size: 0.8125rem;
+		}
+
 		.logo-tld {
 			display: none;
 		}

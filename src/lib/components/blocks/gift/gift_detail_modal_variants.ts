@@ -85,9 +85,6 @@ export const giftDetailModalVariants = tv({
 		// visually on desktop where all three sit in one pinned block.
 		deleteButton: 'order-2 sm:order-3 w-full',
 		imageInputRow: 'flex flex-col gap-2',
-		imageTabRow: 'flex gap-1.5',
-		imageTab:
-			'cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-semibold transition-colors',
 
 		// ── Read-only view mode (issue #165) ──────────────────────────────────
 		// Dedicated slots instead of reusing the edit-mode `body`/`imageColumn`/
@@ -125,15 +122,6 @@ export const giftDetailModalVariants = tv({
 		viewContentScroll: 'flex flex-col gap-3 p-4 sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:p-6',
 	},
 	variants: {
-		imageTabActive: {
-			true: {
-				imageTab: 'border-ink bg-primary text-primary-foreground',
-			},
-			false: {
-				imageTab:
-					'border-ink bg-card text-muted-foreground hover:bg-accent hover:text-foreground',
-			},
-		},
 		// Fully-reserved-by-others dimming (REQ-3): applied to the photo and content
 		// separately so the crisp photo-overlay status note (a sibling, not a child of
 		// either) is never capped by an ancestor's reduced opacity. Matches the
@@ -147,7 +135,6 @@ export const giftDetailModalVariants = tv({
 		},
 	},
 	defaultVariants: {
-		imageTabActive: false,
 		viewDimmed: false,
 	},
 });

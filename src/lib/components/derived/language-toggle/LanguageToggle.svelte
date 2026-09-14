@@ -98,14 +98,7 @@
 		<SimpleTooltip text={m.language_toggle_tooltip()} side="bottom" disabled={isOpen}>
 			<Popover.Trigger>
 				{#snippet child({ props })}
-					<Button
-						{...props}
-						intent="outline"
-						size="icon"
-						class=""
-						surfaceClass="text-(length:--text-base)"
-						aria-label={ariaLabel}
-					>
+					<Button {...props} intent="outline" format="icon" aria-label={ariaLabel}>
 						{LOCALE_CODES[currentLocale]}
 					</Button>
 				{/snippet}
