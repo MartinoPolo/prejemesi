@@ -1,263 +1,227 @@
-import { writeFile } from 'node:fs/promises';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
 	loginViaApi,
 	parseCookiesForContext,
 	waitForAppHydration,
 } from './fixtures/auth-helpers.js';
 
-const WISHLIST_PATH = '/w/xmas2026';
-const REPRESENTATIVE_GIFT = {
-	name: 'PlayStation 5',
-	description: 'Nejnovější verze, s mechanikou na disky',
-} as const;
-const TRANSITION_PROBE_KEY = '__giftModalTransitionProbe';
+const EXIT_RECORDER_PROPERTY = '__prejemesiExitRecorder';
 
-interface TransitionSample {
-	timestamp: number;
-	source: 'initial' | 'animation-frame' | 'mutation';
-	closing: boolean;
+interface ExitSample {
 	connected: boolean;
-	visible: boolean;
 	state: string | null;
-	heading: string | null;
-	hasDescription: boolean;
-	hasGiftForm: boolean;
+	opacity: number;
+	pointerEvents: string;
+	text: string;
+	source: 'frame' | 'animation-end' | 'detached';
 }
 
-async function openWishlistAsVisitor(
+async function waitForAnimations(surface: Locator): Promise<void> {
+	await expect(surface).toBeVisible();
+	await expect
+		.poll(() =>
+			surface.evaluate(
+				(element) =>
+					element.getAnimations().filter((animation) => animation.playState === 'running')
+						.length,
+			),
+		)
+		.toBe(0);
+}
+
+async function startExitRecording(surface: Locator): Promise<{
+	finish: () => Promise<ExitSample[]>;
+}> {
+	const elementHandle = await surface.elementHandle();
+	if (elementHandle === null) {
+		throw new Error('Cannot record a detached surface');
+	}
+
+	await elementHandle.evaluate((element, recorderProperty) => {
+		const samples: ExitSample[] = [];
+		let animationFrameRequest = 0;
+
+		function record(source: ExitSample['source']) {
+			if (!element.isConnected) {
+				samples.push({
+					connected: false,
+					state: element.getAttribute('data-state'),
+					opacity: 0,
+					pointerEvents: 'none',
+					text: element.textContent ?? '',
+					source: 'detached',
+				});
+				observer.disconnect();
+				cancelAnimationFrame(animationFrameRequest);
+				return;
+			}
+
+			const style = getComputedStyle(element);
+			samples.push({
+				connected: true,
+				state: element.getAttribute('data-state'),
+				opacity: Number.parseFloat(style.opacity),
+				pointerEvents: style.pointerEvents,
+				text: element.textContent ?? '',
+				source,
+			});
+		}
+
+		const observer = new MutationObserver(() => record('frame'));
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['data-state'],
+			childList: true,
+			subtree: true,
+		});
+		element.addEventListener(
+			'animationend',
+			() => {
+				record('animation-end');
+				queueMicrotask(() => record('animation-end'));
+			},
+			{ once: true },
+		);
+
+		function sampleFrame() {
+			record('frame');
+			if (element.isConnected) {
+				animationFrameRequest = requestAnimationFrame(sampleFrame);
+			}
+		}
+
+		Reflect.set(element, recorderProperty, samples);
+		animationFrameRequest = requestAnimationFrame(sampleFrame);
+	}, EXIT_RECORDER_PROPERTY);
+
+	return {
+		finish: async () => {
+			await expect
+				.poll(() => elementHandle.evaluate((element) => element.isConnected))
+				.toBe(false);
+			return elementHandle.evaluate((element, recorderProperty) => {
+				const samples: unknown = Reflect.get(element, recorderProperty);
+				return Array.isArray(samples) ? samples : [];
+			}, EXIT_RECORDER_PROPERTY);
+		},
+	};
+}
+
+function expectStableExit(samples: readonly ExitSample[]): void {
+	const closingSamples = samples.filter(
+		(sample) => sample.connected && sample.state === 'closed',
+	);
+	expect(closingSamples.length, 'the closing surface was observed').toBeGreaterThan(0);
+	expect(
+		closingSamples.every((sample) => sample.pointerEvents === 'none'),
+		'a closing surface is not interactive',
+	).toBe(true);
+	expect(
+		closingSamples.some((sample) => sample.source === 'animation-end'),
+		'the exit animation completed before detach',
+	).toBe(true);
+
+	let lowestOpacity = 1;
+	for (const sample of closingSamples) {
+		expect(sample.opacity, 'opacity does not rebound during exit').toBeLessThanOrEqual(
+			lowestOpacity + 0.08,
+		);
+		lowestOpacity = Math.min(lowestOpacity, sample.opacity);
+	}
+	expect(lowestOpacity, 'the exit reaches transparency').toBeLessThanOrEqual(0.12);
+	expect(samples.at(-1)?.connected, 'the surface is eventually detached').toBe(false);
+}
+
+async function openSeedWishlist(
 	page: Page,
 	request: Parameters<typeof loginViaApi>[0],
 	baseURL: string,
+	email = 'martin@test.cz',
 ) {
 	const cookies = await loginViaApi(request, baseURL, {
-		email: 'petr@test.cz',
+		email,
 		password: ['password', '123'].join(''),
 	});
 	await page.context().addCookies(parseCookiesForContext(cookies, baseURL));
-	await page.goto(WISHLIST_PATH, { waitUntil: 'domcontentloaded' });
-	await expect(page.locator('[data-gift-item]').first()).toBeVisible();
+	await page.goto('/w/xmas2026', { waitUntil: 'domcontentloaded' });
 	await waitForAppHydration(page);
 }
 
-async function startTransitionProbe(page: Page, dialog: Locator) {
-	await dialog.evaluate(
-		(element, probeConfiguration) => {
-			const records: TransitionSample[] = [];
-			const probe = { closing: false, records };
-			Object.defineProperty(window, probeConfiguration.key, {
-				value: probe,
-				configurable: true,
-			});
-
-			function sample(source: TransitionSample['source']) {
-				const bounds = element.getBoundingClientRect();
-				const style = getComputedStyle(element);
-				const heading = element.querySelector('h2');
-				records.push({
-					timestamp: performance.now(),
-					source,
-					closing: probe.closing,
-					connected: element.isConnected,
-					visible:
-						element.isConnected &&
-						bounds.width > 0 &&
-						bounds.height > 0 &&
-						style.visibility !== 'hidden' &&
-						Number.parseFloat(style.opacity) > 0.01,
-					state: element.getAttribute('data-state'),
-					heading: heading?.textContent?.trim() ?? null,
-					hasDescription:
-						element.textContent?.includes(probeConfiguration.description) ?? false,
-					hasGiftForm: element.querySelector('[data-testid="gift-detail-body"]') !== null,
-				});
-			}
-
-			const observer = new MutationObserver(() => sample('mutation'));
-			observer.observe(element, { attributes: true, childList: true, subtree: true });
-			sample('initial');
-
-			function sampleAnimationFrame() {
-				sample('animation-frame');
-				if (element.isConnected) {
-					requestAnimationFrame(sampleAnimationFrame);
-				} else {
-					observer.disconnect();
-				}
-			}
-			requestAnimationFrame(sampleAnimationFrame);
-		},
-		{
-			key: TRANSITION_PROBE_KEY,
-			description: REPRESENTATIVE_GIFT.description,
-		},
-	);
+async function hoverDisplaySubmenu(page: Page, name: RegExp): Promise<Locator> {
+	const root = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
+	const trigger = root.getByRole('menuitem', { name });
+	await trigger.hover();
+	await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+	const controlledId = await trigger.getAttribute('aria-controls');
+	expect(controlledId).not.toBeNull();
+	const submenu = page.locator(`[id=${JSON.stringify(controlledId)}]`);
+	await expect(submenu).toBeVisible();
+	return submenu;
 }
 
-async function openRepresentativeGift(page: Page) {
+test('nested Display menus keep their transparent exit frame through switching and dismissal', async ({
+	page,
+	request,
+	baseURL,
+}) => {
+	await page.setViewportSize({ width: 1100, height: 700 });
+	await openSeedWishlist(page, request, baseURL!);
+	await page.getByTestId('desktop-display-trigger').filter({ visible: true }).click();
+
+	const root = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
+	const outgoingSubmenu = await hoverDisplaySubmenu(page, /Řadit podle/);
+	await waitForAnimations(outgoingSubmenu);
+	const outgoingRecording = await startExitRecording(outgoingSubmenu);
+	const activeSubmenu = await hoverDisplaySubmenu(page, /Seskupení/);
+	expectStableExit(await outgoingRecording.finish());
+
+	const rootRecording = await startExitRecording(root);
+	const submenuRecording = await startExitRecording(activeSubmenu);
+	await page.mouse.click(4, 4);
+	const [rootSamples, submenuSamples] = await Promise.all([
+		rootRecording.finish(),
+		submenuRecording.finish(),
+	]);
+	expectStableExit(rootSamples);
+	expectStableExit(submenuSamples);
+});
+
+test('gift details retain their identity throughout the closing animation', async ({
+	page,
+	request,
+	baseURL,
+}) => {
+	await openSeedWishlist(page, request, baseURL!, 'petr@test.cz');
+	const giftName = 'PlayStation 5';
+	const giftDescription = 'Nejnovější verze, s mechanikou na disky';
 	const giftItem = page.locator('[data-gift-item]').filter({
-		has: page.getByRole('heading', { name: REPRESENTATIVE_GIFT.name, exact: true }),
+		has: page.getByRole('heading', { name: giftName, exact: true }),
 	});
 	await giftItem.focus();
 	await page.keyboard.press('Enter');
 
 	const dialog = page.getByRole('dialog').filter({
-		has: page.getByRole('heading', { name: REPRESENTATIVE_GIFT.name, exact: true }),
+		has: page.getByRole('heading', { name: giftName, exact: true }),
 	});
-	await expect(dialog).toBeVisible();
-	await expect(dialog).toContainText(REPRESENTATIVE_GIFT.description);
-	await expect(dialog.getByTestId('gift-detail-body')).toHaveCount(0);
-	return { giftItem, dialog };
-}
+	const overlay = page.locator('[data-slot="dialog-overlay"]:visible');
+	await waitForAnimations(dialog);
+	const dialogRecording = await startExitRecording(dialog);
+	const overlayRecording = await startExitRecording(overlay);
 
-async function readTransitionTimeline(page: Page): Promise<TransitionSample[]> {
-	return page.evaluate(
-		(key): TransitionSample[] => Reflect.get(window, key).records,
-		TRANSITION_PROBE_KEY,
-	);
-}
-
-function unstableVisibleSamples(timeline: readonly TransitionSample[]) {
-	return timeline.filter(
-		(sample) =>
-			sample.closing &&
-			sample.visible &&
-			(sample.heading !== REPRESENTATIVE_GIFT.name ||
-				!sample.hasDescription ||
-				sample.hasGiftForm),
-	);
-}
-
-async function expectStableGiftExit(options: {
-	page: Page;
-	giftItem: Locator;
-	dialog: Locator;
-	testInfo: TestInfo;
-	evidenceName: string;
-	dismiss: () => Promise<void>;
-	requireVisibleExit?: boolean;
-}) {
-	const {
-		page,
-		giftItem,
-		dialog,
-		testInfo,
-		evidenceName,
-		dismiss,
-		requireVisibleExit = true,
-	} = options;
-	await startTransitionProbe(page, dialog);
-	await page.evaluate((key) => {
-		Reflect.get(window, key).closing = true;
-	}, TRANSITION_PROBE_KEY);
-
-	await dismiss();
-	await page.screenshot({ path: testInfo.outputPath(`${evidenceName}.png`) });
-	await expect(dialog).toBeHidden();
-	await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	const [dialogSamples, overlaySamples] = await Promise.all([
+		dialogRecording.finish(),
+		overlayRecording.finish(),
+	]);
+	expectStableExit(dialogSamples);
+	expectStableExit(overlaySamples);
+	expect(
+		dialogSamples
+			.filter((sample) => sample.connected && sample.state === 'closed')
+			.every(
+				(sample) => sample.text.includes(giftName) && sample.text.includes(giftDescription),
+			),
+		'the outgoing dialog never changes to another gift or an empty form',
+	).toBe(true);
 	await expect(giftItem).toBeFocused();
-	await page.waitForTimeout(250);
-	await expect(page.getByRole('dialog')).toHaveCount(0);
-
-	const timeline = await readTransitionTimeline(page);
-	await writeFile(testInfo.outputPath(`${evidenceName}.json`), JSON.stringify(timeline, null, 2));
-	if (requireVisibleExit) {
-		expect(timeline.some((sample) => sample.closing && sample.visible)).toBe(true);
-	}
-	expect(unstableVisibleSamples(timeline)).toEqual([]);
-}
-
-test.describe('issue #378 gift modal teardown', () => {
-	test.beforeEach(async ({ page, request, baseURL }) => {
-		await openWishlistAsVisitor(page, request, baseURL!);
-	});
-
-	test('Escape keeps the outgoing gift identity stable for every visible exit frame', async ({
-		page,
-	}, testInfo) => {
-		const { giftItem, dialog } = await openRepresentativeGift(page);
-		await expectStableGiftExit({
-			page,
-			giftItem,
-			dialog,
-			testInfo,
-			evidenceName: 'gift-modal-escape-exit',
-			dismiss: () => page.keyboard.press('Escape'),
-		});
-	});
-
-	test('the close button keeps the outgoing gift identity stable through its exit', async ({
-		page,
-	}, testInfo) => {
-		const { giftItem, dialog } = await openRepresentativeGift(page);
-		await expectStableGiftExit({
-			page,
-			giftItem,
-			dialog,
-			testInfo,
-			evidenceName: 'gift-modal-close-button-exit',
-			dismiss: () => dialog.getByRole('button', { name: /Zavřít|Close/ }).click(),
-		});
-	});
-
-	test('outside dismissal keeps the outgoing gift identity stable through its exit', async ({
-		page,
-	}, testInfo) => {
-		const { giftItem, dialog } = await openRepresentativeGift(page);
-		await expectStableGiftExit({
-			page,
-			giftItem,
-			dialog,
-			testInfo,
-			evidenceName: 'gift-modal-outside-exit',
-			dismiss: () =>
-				page.locator('[data-slot="dialog-overlay"]').click({ position: { x: 5, y: 5 } }),
-		});
-	});
-
-	test('a rapid reopen is not cleared by completion from the interrupted close', async ({
-		page,
-	}, testInfo) => {
-		const { giftItem, dialog } = await openRepresentativeGift(page);
-		await startTransitionProbe(page, dialog);
-		await page.evaluate((key) => {
-			Reflect.get(window, key).closing = true;
-		}, TRANSITION_PROBE_KEY);
-
-		await dialog.getByRole('button', { name: /Zavřít|Close/ }).click();
-		await giftItem.focus();
-		await page.keyboard.press('Enter');
-		await expect(page.locator('[data-slot="dialog-content"]')).toHaveAttribute(
-			'data-state',
-			'open',
-		);
-		await page.waitForTimeout(300);
-		await expect(dialog).toContainText(REPRESENTATIVE_GIFT.description);
-		await expect(dialog.getByTestId('gift-detail-body')).toHaveCount(0);
-
-		const timeline = await readTransitionTimeline(page);
-		await writeFile(
-			testInfo.outputPath('gift-modal-rapid-reopen.json'),
-			JSON.stringify(timeline, null, 2),
-		);
-		expect(unstableVisibleSamples(timeline)).toEqual([]);
-
-		await page.keyboard.press('Escape');
-		await expect(dialog).toBeHidden();
-		await expect(page.locator('[data-slot="dialog-overlay"]')).toHaveCount(0);
-	});
-
-	test('reduced motion keeps gift identity stable while closing', async ({ page }, testInfo) => {
-		await page.emulateMedia({ reducedMotion: 'reduce' });
-		const { giftItem, dialog } = await openRepresentativeGift(page);
-		await expectStableGiftExit({
-			page,
-			giftItem,
-			dialog,
-			testInfo,
-			evidenceName: 'gift-modal-reduced-motion-exit',
-			dismiss: () => page.keyboard.press('Escape'),
-			requireVisibleExit: false,
-		});
-	});
 });

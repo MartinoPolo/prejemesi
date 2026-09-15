@@ -27,7 +27,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			email: 'martin@test.cz',
 			password: ['password', '123'].join(''),
 		});
-		const context = await launchZoomableContext(cookies, baseURL!);
+		const context = await launchZoomableContext(testInfo, cookies, baseURL!);
 		const page = context.pages()[0] ?? (await context.newPage());
 		try {
 			await setRealBrowserZoom(page, baseURL!, 1, null);
@@ -89,7 +89,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 	test('visitor detail sticker, link row, and circular close retain hit targets at 1/soft', async ({
 		baseURL,
 	}, testInfo) => {
-		const context = await launchZoomableContext([], baseURL!);
+		const context = await launchZoomableContext(testInfo, [], baseURL!);
 		const page = context.pages()[0] ?? (await context.newPage());
 		try {
 			await setRealBrowserZoom(page, baseURL!, 1, null);
@@ -141,7 +141,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			email: 'martin@test.cz',
 			password: ['password', '123'].join(''),
 		});
-		const context = await launchZoomableContext(cookies, baseURL!);
+		const context = await launchZoomableContext(testInfo, cookies, baseURL!);
 		const page = context.pages()[0] ?? (await context.newPage());
 		try {
 			await page.goto(`${baseURL}/home?browserZoom=1`, { waitUntil: 'domcontentloaded' });
@@ -185,7 +185,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			email: 'martin@test.cz',
 			password: ['password', '123'].join(''),
 		});
-		const context = await launchZoomableContext(rawCookies, baseURL!);
+		const context = await launchZoomableContext(testInfo, rawCookies, baseURL!);
 		const page = context.pages()[0] ?? (await context.newPage());
 		const evidence: Array<{
 			zoom: number;
@@ -249,7 +249,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			email: 'martin@test.cz',
 			password: ['password', '123'].join(''),
 		});
-		const context = await launchZoomableContext(rawCookies, baseURL!);
+		const context = await launchZoomableContext(testInfo, rawCookies, baseURL!);
 		const page = context.pages()[0] ?? (await context.newPage());
 		const evidence: unknown[] = [];
 		try {
