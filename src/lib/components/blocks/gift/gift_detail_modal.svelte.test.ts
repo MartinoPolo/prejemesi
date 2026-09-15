@@ -70,8 +70,9 @@ describe('GiftDetailModal focus contract', () => {
 		expect(document.activeElement).not.toBe(dialog);
 
 		await userEvent.keyboard('{Escape}');
+		expect(onclose).not.toHaveBeenCalled();
 		await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument();
-		await expect.poll(() => onclose.mock.calls.length).toBe(1);
+		expect(onclose).toHaveBeenCalledOnce();
 	});
 });
 

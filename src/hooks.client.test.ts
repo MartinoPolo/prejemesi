@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sentry = vi.hoisted(() => ({
 	init: vi.fn(),
@@ -44,10 +44,6 @@ describe('client observability hook', () => {
 		sentry.replayModuleLoad = Promise.resolve();
 	});
 
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
 	it('loads core Sentry only after load, paint, delay, and idle, then flushes early errors', async () => {
 		const listeners = new Map<string, (event: unknown) => void>();
 		const animationFrames: Array<() => void> = [];
@@ -88,8 +84,7 @@ describe('client observability hook', () => {
 		expect(sentry.init).not.toHaveBeenCalled();
 		idleCallbacks.shift()?.();
 
-		await vi.dynamicImportSettled();
-		expect(sentry.init).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(sentry.init).toHaveBeenCalledOnce());
 		expect(sentry.captureException).toHaveBeenCalledWith(earlyError);
 		expect(sentry.replayIntegration).not.toHaveBeenCalled();
 	});
@@ -115,9 +110,8 @@ describe('client observability hook', () => {
 		const hooks = await import('./hooks.client.js');
 		hooks.init();
 		idle.shift()?.();
-		await vi.dynamicImportSettled();
-		expect(sentry.init).toHaveBeenCalledOnce();
-		expect(idle).toHaveLength(1);
+		await vi.waitFor(() => expect(sentry.init).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(idle).toHaveLength(1));
 		idle.shift()?.();
 		await vi.waitFor(() => expect(sentry.replayModuleImportStarted).toHaveBeenCalledOnce());
 
@@ -125,8 +119,7 @@ describe('client observability hook', () => {
 		listeners.get('sentry-replay-navigation')?.(new CustomEvent('x', { detail: '/login' }));
 		resolveReplayModule();
 
-		await vi.dynamicImportSettled();
-		expect(sentry.replayIntegration).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(sentry.replayIntegration).toHaveBeenCalledOnce());
 		expect(sentry.addIntegration).not.toHaveBeenCalled();
 	});
 
@@ -144,12 +137,10 @@ describe('client observability hook', () => {
 		const hooks = await import('./hooks.client.js');
 		hooks.init();
 		idle.shift()?.();
-		await vi.dynamicImportSettled();
-		expect(sentry.init).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(sentry.init).toHaveBeenCalledOnce());
 		expect(sentry.replayIntegration).not.toHaveBeenCalled();
 		idle.shift()?.();
-		await vi.dynamicImportSettled();
-		expect(sentry.replayIntegration).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(sentry.replayIntegration).toHaveBeenCalledOnce());
 	});
 
 	it('stops Replay on safe-to-sensitive navigation and resumes on sensitive-to-safe navigation', async () => {
@@ -169,11 +160,9 @@ describe('client observability hook', () => {
 		const hooks = await import('./hooks.client.js');
 		hooks.init();
 		idle.shift()?.();
-		await vi.dynamicImportSettled();
-		expect(sentry.init).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(sentry.init).toHaveBeenCalledOnce());
 		idle.shift()?.();
-		await vi.dynamicImportSettled();
-		expect(sentry.replayIntegration).toHaveBeenCalledOnce();
+		await vi.waitFor(() => expect(sentry.replayIntegration).toHaveBeenCalledOnce());
 		location.href = 'https://prejemesi.cz/login';
 		listeners.get('sentry-replay-navigation')?.(new CustomEvent('x', { detail: '/login' }));
 		await vi.waitFor(() => expect(sentry.stopReplay).toHaveBeenCalledWith({ flush: false }));
