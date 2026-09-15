@@ -74,10 +74,19 @@ async function recordDialogExit(
 			expect.poll(() => handle.evaluate((element) => element.isConnected)).toBe(false),
 		),
 	);
+	const overlayConnectionStates = await Promise.all(
+		overlayHandles.map((handle) => handle.evaluate((element) => element.isConnected)),
+	);
 
 	const [contents, overlays] = await Promise.all([
 		Promise.all(contentHandles.map((handle) => finishTransitionObservation(page, handle))),
-		Promise.all(overlayHandles.map((handle) => finishTransitionObservation(page, handle))),
+		Promise.all(
+			overlayHandles.map((handle, index) =>
+				finishTransitionObservation(page, handle, {
+					expectDetached: !overlayConnectionStates[index],
+				}),
+			),
+		),
 	]);
 	return { contents, overlays };
 }
@@ -92,6 +101,65 @@ async function attachSamples(
 		contentType: 'application/json',
 	});
 }
+
+test('transition observation captures a short exit when animation frames are skipped', async ({
+	page,
+}) => {
+	await page.setContent(`
+		<style>
+			@keyframes test-exit { from { opacity: 1; } to { opacity: 0; } }
+			[data-state='closed'] { animation: test-exit 30ms linear forwards; pointer-events: none; }
+		</style>
+		<div data-testid="short-exit" data-state="open">Surface</div>
+	`);
+	await page.evaluate(() => {
+		Object.defineProperty(window, 'requestAnimationFrame', {
+			configurable: true,
+			value: (callback: FrameRequestCallback) =>
+				window.setTimeout(() => callback(performance.now()), 100),
+		});
+	});
+	const surface = page.getByTestId('short-exit');
+	const surfaceHandle = await startTransitionObservation(surface);
+
+	await surface.evaluate((element) => {
+		element.addEventListener('animationend', () => element.remove(), { once: true });
+		element.setAttribute('data-state', 'closed');
+	});
+	await expect(surface).toHaveCount(0);
+
+	const samples = await finishTransitionObservation(page, surfaceHandle);
+	expectSmoothNonInteractiveExit(samples, { requireVisibleTransition: true });
+});
+
+test('transition oracle rejects an exit that loses its transparent fill before detach', async ({
+	page,
+}) => {
+	await page.setContent(`
+		<style>
+			@keyframes faulty-exit { from { opacity: 1; } to { opacity: 0; } }
+			[data-state='closed'] { animation: faulty-exit 30ms linear; pointer-events: none; }
+		</style>
+		<div data-testid="faulty-exit" data-state="open">Surface</div>
+	`);
+	const surface = page.getByTestId('faulty-exit');
+	const surfaceHandle = await startTransitionObservation(surface);
+
+	await surface.evaluate((element) => {
+		element.addEventListener(
+			'animationend',
+			() => window.setTimeout(() => element.remove(), 20),
+			{ once: true },
+		);
+		element.setAttribute('data-state', 'closed');
+	});
+	await expect(surface).toHaveCount(0);
+
+	const samples = await finishTransitionObservation(page, surfaceHandle);
+	expect(() =>
+		expectSmoothNonInteractiveExit(samples, { requireVisibleTransition: true }),
+	).toThrow(/opacity|transparent final state/);
+});
 
 function expectSmoothDialogExit(
 	samples: DialogExitSamples,

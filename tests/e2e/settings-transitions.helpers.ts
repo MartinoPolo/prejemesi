@@ -1,7 +1,29 @@
 import { expect, type ElementHandle, type Locator, type Page } from '@playwright/test';
 
-const RECORDED_SAMPLES_ATTRIBUTE = 'data-test-transition-samples';
+const TRANSITION_RECORDER_PROPERTY = '__prejemesiTestTransitionRecorder';
 const EXIT_OPACITY_TOLERANCE = 0.08;
+
+const SAMPLE_SOURCES = [
+	'initial',
+	'animation-start',
+	'animation-end',
+	'animation-finished',
+	'state-change',
+	'animation-frame',
+	'detached',
+	'observation-finished',
+] as const;
+
+type TransitionSampleSource = (typeof SAMPLE_SOURCES)[number];
+
+function isTransitionSampleSource(value: unknown): value is TransitionSampleSource {
+	return typeof value === 'string' && SAMPLE_SOURCES.some((source) => source === value);
+}
+
+export interface TransitionAnimationMetadata {
+	duration: number;
+	opacityKeyframes: number[];
+}
 
 export interface TransitionSample {
 	time: number;
@@ -10,6 +32,23 @@ export interface TransitionSample {
 	opacity: number;
 	pointerEvents: string;
 	runningAnimations: number;
+	source: TransitionSampleSource;
+	animations: TransitionAnimationMetadata[];
+}
+
+function isTransitionAnimationMetadata(value: unknown): value is TransitionAnimationMetadata {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'duration' in value &&
+		typeof value.duration === 'number' &&
+		Number.isFinite(value.duration) &&
+		'opacityKeyframes' in value &&
+		Array.isArray(value.opacityKeyframes) &&
+		value.opacityKeyframes.every(
+			(opacity): opacity is number => typeof opacity === 'number' && Number.isFinite(opacity),
+		)
+	);
 }
 
 function isTransitionSample(value: unknown): value is TransitionSample {
@@ -18,28 +57,31 @@ function isTransitionSample(value: unknown): value is TransitionSample {
 		value !== null &&
 		'time' in value &&
 		typeof value.time === 'number' &&
+		Number.isFinite(value.time) &&
 		'connected' in value &&
 		typeof value.connected === 'boolean' &&
 		'state' in value &&
 		(typeof value.state === 'string' || value.state === null) &&
 		'opacity' in value &&
 		typeof value.opacity === 'number' &&
+		Number.isFinite(value.opacity) &&
 		'pointerEvents' in value &&
 		typeof value.pointerEvents === 'string' &&
 		'runningAnimations' in value &&
-		typeof value.runningAnimations === 'number'
+		typeof value.runningAnimations === 'number' &&
+		'source' in value &&
+		isTransitionSampleSource(value.source) &&
+		'animations' in value &&
+		Array.isArray(value.animations) &&
+		value.animations.every(isTransitionAnimationMetadata)
 	);
 }
 
-function parseRecordedSamples(serializedSamples: string | null): TransitionSample[] {
-	if (serializedSamples === null) {
-		throw new Error('Transition recorder did not produce samples');
-	}
-	const parsedSamples: unknown = JSON.parse(serializedSamples);
-	if (!Array.isArray(parsedSamples) || !parsedSamples.every(isTransitionSample)) {
+function parseRecordedSamples(value: unknown): TransitionSample[] {
+	if (!Array.isArray(value) || !value.every(isTransitionSample)) {
 		throw new Error('Transition recorder produced malformed samples');
 	}
-	return parsedSamples;
+	return value;
 }
 
 export async function waitForSurfaceMotionToSettle(surface: Locator): Promise<void> {
@@ -63,36 +105,157 @@ export async function startTransitionObservation(
 		throw new Error('Cannot observe a surface that is not attached');
 	}
 
-	await surfaceHandle.evaluate((element, samplesAttribute) => {
-		const samples: Array<{
+	await surfaceHandle.evaluate((element, recorderProperty) => {
+		type SampleSource =
+			| 'initial'
+			| 'animation-start'
+			| 'animation-end'
+			| 'animation-finished'
+			| 'state-change'
+			| 'animation-frame'
+			| 'detached'
+			| 'observation-finished';
+		interface Sample {
 			time: number;
 			connected: boolean;
 			state: string | null;
 			opacity: number;
 			pointerEvents: string;
 			runningAnimations: number;
-		}> = [];
+			source: SampleSource;
+			animations: Array<{ duration: number; opacityKeyframes: number[] }>;
+		}
 
-		function recordFrame() {
+		const samples: Sample[] = [];
+		const trackedAnimations = new WeakSet<Animation>();
+		let stopped = false;
+		let animationFrameRequest = 0;
+
+		function animationsForElement(): Animation[] {
+			return element.getAnimations().filter((animation) => {
+				const effect = animation.effect;
+				return effect !== null && 'target' in effect && effect.target === element;
+			});
+		}
+
+		function animationMetadata(animations: readonly Animation[]) {
+			return animations.map((animation) => {
+				const duration = animation.effect?.getComputedTiming().duration;
+				const keyframes =
+					animation.effect instanceof KeyframeEffect
+						? animation.effect.getKeyframes()
+						: [];
+				return {
+					duration: typeof duration === 'number' ? duration : Number.NaN,
+					opacityKeyframes: keyframes
+						.map((keyframe) => Number.parseFloat(String(keyframe.opacity ?? '')))
+						.filter((opacity) => Number.isFinite(opacity)),
+				};
+			});
+		}
+
+		function trackAnimationCompletion(animations: readonly Animation[]) {
+			for (const animation of animations) {
+				if (trackedAnimations.has(animation)) {
+					continue;
+				}
+				trackedAnimations.add(animation);
+				void animation.finished.then(
+					() => {
+						if (!stopped && element.isConnected) {
+							record('animation-finished');
+						}
+					},
+					() => undefined,
+				);
+			}
+		}
+
+		function record(source: SampleSource) {
+			if (stopped) {
+				return;
+			}
 			const style = getComputedStyle(element);
+			const animations = animationsForElement();
+			trackAnimationCompletion(animations);
 			samples.push({
 				time: performance.now(),
 				connected: element.isConnected,
 				state: element.getAttribute('data-state'),
 				opacity: Number.parseFloat(style.opacity || '0'),
 				pointerEvents: style.pointerEvents,
-				runningAnimations: element
-					.getAnimations()
-					.filter((animation) => animation.playState === 'running').length,
+				runningAnimations: animations.filter(
+					(animation) => animation.playState === 'running',
+				).length,
+				source,
+				animations: animationMetadata(animations),
 			});
-			element.setAttribute(samplesAttribute, JSON.stringify(samples));
-			if (element.isConnected) {
-				requestAnimationFrame(recordFrame);
+		}
+
+		function stop(source: 'detached' | 'observation-finished') {
+			if (stopped) {
+				return;
+			}
+			record(source);
+			stopped = true;
+			observer.disconnect();
+			element.removeEventListener('animationstart', handleAnimationStart);
+			element.removeEventListener('animationend', handleAnimationEnd);
+			cancelAnimationFrame(animationFrameRequest);
+			recorder.terminal = true;
+		}
+
+		function handleAnimationStart(event: Event) {
+			if (event.target === element) {
+				record('animation-start');
 			}
 		}
 
-		recordFrame();
-	}, RECORDED_SAMPLES_ATTRIBUTE);
+		function handleAnimationEnd(event: Event) {
+			if (event.target === element) {
+				record('animation-end');
+			}
+		}
+
+		const observer = new MutationObserver((mutations) => {
+			if (!element.isConnected) {
+				stop('detached');
+				return;
+			}
+			if (
+				mutations.some(
+					(mutation) => mutation.type === 'attributes' && mutation.target === element,
+				)
+			) {
+				record('state-change');
+			}
+		});
+		const recorder = {
+			samples,
+			terminal: false,
+			finish: () => stop('observation-finished'),
+		};
+		Reflect.set(element, recorderProperty, recorder);
+
+		element.addEventListener('animationstart', handleAnimationStart);
+		element.addEventListener('animationend', handleAnimationEnd);
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ['data-state'],
+			childList: true,
+			subtree: true,
+		});
+
+		function sampleAnimationFrame() {
+			record('animation-frame');
+			if (!stopped) {
+				animationFrameRequest = requestAnimationFrame(sampleAnimationFrame);
+			}
+		}
+
+		record('initial');
+		animationFrameRequest = requestAnimationFrame(sampleAnimationFrame);
+	}, TRANSITION_RECORDER_PROPERTY);
 
 	return surfaceHandle;
 }
@@ -100,9 +263,45 @@ export async function startTransitionObservation(
 export async function finishTransitionObservation(
 	page: Page,
 	surfaceHandle: ElementHandle<HTMLElement | SVGElement>,
+	options: { expectDetached?: boolean } = {},
 ): Promise<TransitionSample[]> {
-	await page.waitForTimeout(50);
-	return parseRecordedSamples(await surfaceHandle.getAttribute(RECORDED_SAMPLES_ATTRIBUTE));
+	const expectDetached = options.expectDetached ?? true;
+	if (expectDetached) {
+		await expect
+			.poll(() =>
+				surfaceHandle.evaluate((element, recorderProperty) => {
+					const recorder: unknown = Reflect.get(element, recorderProperty);
+					return (
+						typeof recorder === 'object' &&
+						recorder !== null &&
+						'terminal' in recorder &&
+						recorder.terminal === true
+					);
+				}, TRANSITION_RECORDER_PROPERTY),
+			)
+			.toBe(true);
+	} else {
+		await surfaceHandle.evaluate((element, recorderProperty) => {
+			const recorder: unknown = Reflect.get(element, recorderProperty);
+			if (
+				typeof recorder === 'object' &&
+				recorder !== null &&
+				'finish' in recorder &&
+				typeof recorder.finish === 'function'
+			) {
+				recorder.finish();
+			}
+		}, TRANSITION_RECORDER_PROPERTY);
+	}
+
+	const recordedSamples: unknown = await surfaceHandle.evaluate((element, recorderProperty) => {
+		const recorder: unknown = Reflect.get(element, recorderProperty);
+		if (typeof recorder !== 'object' || recorder === null || !('samples' in recorder)) {
+			return null;
+		}
+		return recorder.samples;
+	}, TRANSITION_RECORDER_PROPERTY);
+	return parseRecordedSamples(recordedSamples);
 }
 
 export function expectSmoothNonInteractiveExit(
@@ -131,6 +330,7 @@ export function expectSmoothNonInteractiveExit(
 			.every((sample) => !sample.connected || sample.state !== 'open'),
 		'a closing surface never reopens',
 	).toBe(true);
+	expect(samples.at(-1)?.connected, 'the observer sees the surface detach').toBe(false);
 
 	let lowestOpacity = 1;
 	for (const sample of closingSamples) {
@@ -142,10 +342,20 @@ export function expectSmoothNonInteractiveExit(
 	}
 
 	if (options.requireVisibleTransition) {
+		const opacityExitAnimations = closingSamples
+			.flatMap((sample) => sample.animations)
+			.filter(
+				(animation) =>
+					animation.duration > 0 &&
+					Number.isFinite(animation.duration) &&
+					animation.opacityKeyframes.length >= 2 &&
+					Math.max(...animation.opacityKeyframes) > 0.9 &&
+					Math.min(...animation.opacityKeyframes) < 0.1,
+			);
 		expect(
-			closingSamples.some((sample) => sample.opacity > 0.1 && sample.opacity < 0.9),
-			'normal motion samples the visible closing transition',
-		).toBe(true);
+			opacityExitAnimations.length,
+			'normal motion runs a positive-duration opacity exit animation',
+		).toBeGreaterThan(0);
 		expect(lowestOpacity, 'closing reaches its transparent final state').toBeLessThanOrEqual(
 			0.12,
 		);
@@ -176,7 +386,9 @@ export function expectReducedMotionDirectExit(samples: readonly TransitionSample
 
 	const attachedSamples = samples.slice(0, detachedIndex);
 	expect(
-		attachedSamples.every((sample) => sample.runningAnimations === 0),
+		attachedSamples.every(
+			(sample) => sample.runningAnimations === 0 && sample.animations.length === 0,
+		),
 		'reduced motion does not run an exit animation',
 	).toBe(true);
 	const firstClosedIndex = attachedSamples.findIndex((sample) => sample.state === 'closed');
@@ -197,8 +409,11 @@ export function expectReducedMotionDirectExit(samples: readonly TransitionSample
 		).toBeLessThanOrEqual(lowestOpacity + EXIT_OPACITY_TOLERANCE);
 		lowestOpacity = Math.min(lowestOpacity, sample.opacity);
 	}
+	const closingAnimationFrames = closingSamples.filter(
+		(sample) => sample.source === 'animation-frame',
+	);
 	expect(
-		closingSamples.length,
+		closingAnimationFrames.length,
 		'reduced-motion teardown removes the surface within its closing frames',
 	).toBeLessThanOrEqual(2);
 }
