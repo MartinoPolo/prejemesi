@@ -372,17 +372,18 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 		await screen.unmount();
 	});
 
-	it('pins the section switcher after the independently scrolling options at narrow widths', async () => {
-		const categoryFilterOptions = Array.from({ length: 8 }, (_, index) => ({
-			value: `category-${index}`,
-			label: `Kategorie ${index}`,
-		}));
-		const priorityFilterOptions = Array.from({ length: 5 }, (_, index) => ({
-			value: `priority-${index}`,
-			label: `Priorita ${index}`,
-		}));
+	it.each([320, 360, 390])(
+		'pins the section switcher after the independently scrolling options at %ipx',
+		async (width) => {
+			const categoryFilterOptions = Array.from({ length: 8 }, (_, index) => ({
+				value: `category-${index}`,
+				label: `Kategorie ${index}`,
+			}));
+			const priorityFilterOptions = Array.from({ length: 5 }, (_, index) => ({
+				value: `priority-${index}`,
+				label: `Priorita ${index}`,
+			}));
 
-		for (const width of [320, 360, 390]) {
 			const screen = await renderToolbar(
 				{
 					isAuthenticated: true,
@@ -469,6 +470,6 @@ describe('WishlistDetailToolbar mobile command surfaces (#340)', () => {
 			await expect.element(screen.getByTestId('mobile-sheet-grouping-switch')).toHaveFocus();
 			expect(switcher.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight);
 			await screen.unmount();
-		}
-	});
+		},
+	);
 });

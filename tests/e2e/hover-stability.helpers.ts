@@ -1,12 +1,4 @@
-import {
-	expect,
-	chromium,
-	type BrowserContext,
-	type Locator,
-	type Page,
-	type TestInfo,
-} from '@playwright/test';
-import { rm } from 'node:fs/promises';
+import { expect, chromium, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCookiesForContext } from './fixtures/auth-helpers.js';
@@ -60,13 +52,11 @@ export interface StationaryEvidence {
 }
 
 export async function launchZoomableContext(
-	testInfo: TestInfo,
 	rawCookies: string[],
 	baseURL: string,
 ): Promise<BrowserContext> {
-	const profile = testInfo.outputPath('chromium-profile');
-	await rm(profile, { recursive: true, force: true });
-	const context = await chromium.launchPersistentContext(profile, {
+	// Chromium's extension storage fails under deeply nested Windows test-output paths.
+	const context = await chromium.launchPersistentContext('', {
 		// Isolated exception: bundled Chromium retains unpacked-extension flags that Chrome removed.
 		channel: 'chromium',
 		headless: true,
@@ -78,8 +68,27 @@ export async function launchZoomableContext(
 			'--window-size=1602,1100',
 		],
 	});
-	await context.addCookies(parseCookiesForContext(rawCookies, baseURL));
-	return context;
+	try {
+		const extensionWorker =
+			context
+				.serviceWorkers()
+				.find((worker) => worker.url().startsWith('chrome-extension://')) ??
+			(await context.waitForEvent('serviceworker', {
+				predicate: (worker) => worker.url().startsWith('chrome-extension://'),
+			}));
+		await expect
+			.poll(() =>
+				extensionWorker.evaluate(
+					() => Reflect.get(globalThis, 'browserZoomDriverReady') === true,
+				),
+			)
+			.toBe(true);
+		await context.addCookies(parseCookiesForContext(rawCookies, baseURL));
+		return context;
+	} catch (error) {
+		await context.close();
+		throw error;
+	}
 }
 
 export async function setRealBrowserZoom(

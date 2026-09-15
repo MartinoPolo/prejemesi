@@ -179,55 +179,56 @@ describe('WishlistHeader responsive presentation', () => {
 		await screen.unmount();
 	});
 
-	it('keeps reassurance and trust notices horizontal, contained, and operable', async () => {
-		const variants = [
+	it.each(
+		[320, 390, 1280].flatMap((width) => [
 			{
+				width,
 				recipientIsModerator: false,
 				text: m.wishlist_moderator_sees_reservations({
 					name: baseProps.recipientDisplayName,
 				}),
 			},
 			{
+				width,
 				recipientIsModerator: true,
 				text: m.wishlist_trust_warning({ name: baseProps.recipientDisplayName }),
 			},
-		];
+		]),
+	)(
+		'keeps reassurance and trust notices horizontal, contained, and operable at $width px (recipient moderator: $recipientIsModerator)',
+		async ({ width, recipientIsModerator, text }) => {
+			await page.viewport(width, 720);
+			const onarchive = vi.fn();
+			const screen = await render(WishlistHeader, {
+				...baseProps,
+				eventDate: new Date('2000-01-01T00:00:00.000Z'),
+				recipientIsModerator,
+				onarchive,
+			});
+			const title = screen.getByText(text);
+			const notice = title.element().closest<HTMLElement>('[data-slot="alert"]')!;
+			const assertHorizontal = () =>
+				expect(Math.abs(computedRotation(notice))).toBeLessThan(0.001);
 
-		for (const width of [320, 390, 1280]) {
-			for (const variant of variants) {
-				await page.viewport(width, 720);
-				const onarchive = vi.fn();
-				const screen = await render(WishlistHeader, {
-					...baseProps,
-					eventDate: new Date('2000-01-01T00:00:00.000Z'),
-					recipientIsModerator: variant.recipientIsModerator,
-					onarchive,
-				});
-				const title = screen.getByText(variant.text);
-				const notice = title.element().closest<HTMLElement>('[data-slot="alert"]')!;
-				const assertHorizontal = () =>
-					expect(Math.abs(computedRotation(notice))).toBeLessThan(0.001);
+			await expect.element(title).toBeVisible();
+			assertHorizontal();
+			await title.hover();
+			assertHorizontal();
+			notice.tabIndex = 0;
+			notice.focus();
+			expect(document.activeElement).toBe(notice);
+			assertHorizontal();
 
-				await expect.element(title).toBeVisible();
-				assertHorizontal();
-				await title.hover();
-				assertHorizontal();
-				notice.tabIndex = 0;
-				notice.focus();
-				expect(document.activeElement).toBe(notice);
-				assertHorizontal();
+			const bounds = notice.getBoundingClientRect();
+			expect(bounds.left).toBeGreaterThanOrEqual(0);
+			expect(bounds.right).toBeLessThanOrEqual(width);
+			expect(parseFloat(getComputedStyle(notice).borderTopWidth)).toBeGreaterThan(0);
 
-				const bounds = notice.getBoundingClientRect();
-				expect(bounds.left).toBeGreaterThanOrEqual(0);
-				expect(bounds.right).toBeLessThanOrEqual(width);
-				expect(parseFloat(getComputedStyle(notice).borderTopWidth)).toBeGreaterThan(0);
-
-				const archive = screen.getByRole('button', { name: m.wishlist_archive_button() });
-				await expect.element(archive).toBeVisible();
-				await archive.click();
-				expect(onarchive).toHaveBeenCalledOnce();
-				await screen.unmount();
-			}
-		}
-	});
+			const archive = screen.getByRole('button', { name: m.wishlist_archive_button() });
+			await expect.element(archive).toBeVisible();
+			await archive.click();
+			expect(onarchive).toHaveBeenCalledOnce();
+			await screen.unmount();
+		},
+	);
 });
