@@ -104,13 +104,13 @@
 	.app-content-inner {
 		max-width: var(--content-max-width);
 		margin-inline: auto;
-		padding-inline: var(--space-6);
+		padding-inline: var(--page-gutter);
 		padding-block: var(--space-6);
 	}
 
 	@media (width < 640px) {
 		.app-content-inner.wishlist-detail-content {
-			padding: 0;
+			padding-block: 0;
 		}
 	}
 </style>

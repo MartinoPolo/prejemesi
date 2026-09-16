@@ -1,5 +1,6 @@
 <script lang="ts">
 	import HeartIcon from '@lucide/svelte/icons/heart';
+	import { Toggle } from '$lib/components/base/toggle/index.js';
 	import { cn } from '$lib/utils.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
 	import * as m from '$lib/paraglide/messages.js';
@@ -16,8 +17,8 @@
 
 	const isHigh = $derived(priority === DRAFT_PRIORITY.high);
 
-	function toggle() {
-		onchange(isHigh ? DRAFT_PRIORITY.medium : DRAFT_PRIORITY.high);
+	function setHigh(pressed: boolean) {
+		onchange(pressed ? DRAFT_PRIORITY.high : DRAFT_PRIORITY.medium);
 	}
 </script>
 
@@ -27,21 +28,21 @@
 	side="top"
 >
 	{#snippet asChild(triggerProps)}
-		<button
+		<Toggle
 			{...triggerProps}
-			type="button"
+			pressed={isHigh}
+			onPressedChange={setHigh}
+			intent="default"
+			size="sm"
+			format="icon"
 			role="checkbox"
 			aria-checked={isHigh}
-			onclick={toggle}
 			aria-label={name.trim() === ''
 				? m.draft_grid_priority_toggle_unnamed()
 				: m.draft_grid_priority_toggle({ name })}
-			class={cn(
-				'border-input bg-input-surface focus-visible:border-ring focus-visible:ring-ring/50 flex size-7 shrink-0 items-center justify-center rounded-[6px] border shadow-xs outline-none transition-colors hover:border-[color-mix(in_oklch,var(--destructive)_50%,var(--border))] focus-visible:ring-3',
-				isHigh ? 'text-destructive' : 'text-muted-foreground',
-			)}
+			surfaceClass={isHigh ? 'text-destructive' : 'text-muted-foreground'}
 		>
-			<HeartIcon class={cn('size-4', isHigh && 'fill-current')} aria-hidden="true" />
-		</button>
+			<HeartIcon data-icon="solo" class={cn(isHigh && 'fill-current')} aria-hidden="true" />
+		</Toggle>
 	{/snippet}
 </SimpleTooltip>

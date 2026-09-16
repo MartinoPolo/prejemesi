@@ -44,7 +44,8 @@
 				{#snippet child({ props })}
 					<Button
 						intent="ghost"
-						size="icon-sm"
+						size="sm"
+						format="icon"
 						class={overlayCloseButtonClass}
 						surfaceClass={overlayCloseButtonSurfaceClass}
 						{...props}

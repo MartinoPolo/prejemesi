@@ -41,14 +41,14 @@
 			{@render secondary()}
 		</div>
 	{/if}
-	<div class={styles.primaryGroup()}>
+	<div class={styles.primaryGroup()} data-testid="gift-action-primary-group">
 		<div class={styles.primary()}>
 			{@render children?.()}
 		</div>
 		{#if onmore}
 			<Button
 				intent="outline"
-				size="icon"
+				format="icon"
 				class={styles.more()}
 				aria-label={m.gift_more_actions()}
 				data-gift-action="more"
@@ -72,27 +72,7 @@
 </div>
 
 <style>
-	.gift-action-row {
-		--gift-action-control-size: var(--size-control-md);
-	}
-
 	.gift-action-slot :global(> [data-slot='button']) {
-		height: var(--gift-action-control-size);
 		min-width: 0;
-	}
-
-	.gift-action-slot :global(> [data-slot='button'] > .elevation-surface) {
-		height: 100%;
-	}
-
-	/* Keep compact visuals while giving coarse pointers a separate 40px hit area.
-	 * The 8px mobile gaps make neighboring 4px expansions meet without overlapping. */
-	@media (width < 640px) and (pointer: coarse) {
-		.gift-action-slot :global(> [data-slot='button']::before),
-		.gift-action-row > :global([data-slot='button']::before) {
-			position: absolute;
-			inset: -4px;
-			content: '';
-		}
 	}
 </style>

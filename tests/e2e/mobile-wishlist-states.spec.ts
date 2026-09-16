@@ -304,8 +304,8 @@ test.describe('mobile wishlist acceptance', () => {
 		const checkGlyphBox = await box(
 			firstSelectableItem.getByTestId('gift-selection-control').locator('svg'),
 		);
-		expect(checkGlyphBox.width).toBeGreaterThanOrEqual(18);
-		expect(checkGlyphBox.width).toBeLessThanOrEqual(20);
+		expect(checkGlyphBox.width).toBeCloseTo(16, 0);
+		expect(checkGlyphBox.height).toBeCloseTo(16, 0);
 		expect(selectedSurfaceBox.x).toBeCloseTo(selectedItemBox.x, 0);
 		expect(selectedSurfaceBox.y).toBeCloseTo(selectedItemBox.y, 0);
 		expect(selectedSurfaceBox.width).toBeCloseTo(selectedItemBox.width, 0);

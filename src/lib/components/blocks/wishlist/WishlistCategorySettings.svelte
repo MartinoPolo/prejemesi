@@ -400,7 +400,7 @@
 					</div>
 					<Button
 						type="button"
-						size="icon-sm"
+						format="icon"
 						intent="ghost"
 						disabled={categoryControlsDisabled || index === 0}
 						onclick={() => move(index, -1)}
@@ -408,7 +408,7 @@
 					>
 					<Button
 						type="button"
-						size="icon-sm"
+						format="icon"
 						intent="ghost"
 						disabled={categoryControlsDisabled || index === customDrafts.length - 1}
 						onclick={() => move(index, 1)}
@@ -416,7 +416,7 @@
 					>
 					<Button
 						type="button"
-						size="icon-sm"
+						format="icon"
 						intent="ghost"
 						disabled={categoryControlsDisabled}
 						onclick={(event) => requestCustomRemoval(category, event.currentTarget)}

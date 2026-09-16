@@ -383,7 +383,8 @@
 							<span class={styles.successLinkText()}>{shareUrlDisplay}</span>
 							<Button
 								intent={linkCopied ? 'primary' : 'outline'}
-								size="icon-sm"
+								size="sm"
+								format="icon"
 								class="flex-shrink-0"
 								aria-label={linkCopied ? m.share_link_copied() : m.share_copy()}
 								aria-live="polite"

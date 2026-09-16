@@ -326,6 +326,81 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		},
 	);
 
+	it.each(['selection', 'reorder'] as const)(
+		'keeps real received and reservation overlays clear of the visible %s control',
+		async (mode) => {
+			const receivedReservedGift = {
+				...visitorGift(),
+				received: true,
+				reservedCount: 1,
+				isFullyReserved: true,
+			};
+
+			for (const { viewMode, width } of [
+				{ viewMode: 'card' as const, width: 320 },
+				{ viewMode: 'card' as const, width: 390 },
+				{ viewMode: 'list' as const, width: 320 },
+				{ viewMode: 'list' as const, width: 390 },
+				{ viewMode: 'card' as const, width: 768 },
+				{ viewMode: 'list' as const, width: 768 },
+			]) {
+				await page.viewport(width, 720);
+				const screen = await render(WishlistGiftDisplay, {
+					...defaultProps,
+					sections: [{ ...sections[0]!, gifts: [receivedReservedGift] }],
+					role: WISHLIST_ROLES.moderator,
+					viewMode,
+					selectionMode: mode === 'selection',
+					selectedIds: mode === 'selection' ? [receivedReservedGift.id] : [],
+					reorderMode: mode === 'reorder',
+				});
+				const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
+				const image = wrapper.querySelector<HTMLElement>(
+					viewMode === 'card'
+						? '[data-testid="gift-card-image-frame"]'
+						: '[data-testid="gift-list-image"]',
+				)!;
+				const controlSurfaces = Array.from(
+					wrapper.querySelectorAll<HTMLElement>(
+						mode === 'selection'
+							? '[data-testid="gift-selection-control"] > [data-slot="checkbox-surface"]'
+							: 'button[title] > [data-slot="elevation-surface"]',
+					),
+				);
+				const pills = Array.from(
+					image.querySelectorAll<HTMLElement>(
+						'[data-testid="gift-state-overlay"] > span',
+					),
+				);
+
+				expect(controlSurfaces).not.toHaveLength(0);
+				expect(pills).toHaveLength(2);
+				for (const controlSurface of controlSurfaces) {
+					const gripRect = controlSurface.getBoundingClientRect();
+					expect(gripRect.width).toBeGreaterThan(0);
+					expect(gripRect.height).toBeGreaterThan(0);
+					for (const pill of pills) {
+						const pillRect = pill.getBoundingClientRect();
+						expect(pillRect.width).toBeGreaterThan(0);
+						expect(pillRect.height).toBeGreaterThan(0);
+						const overlapWidth =
+							Math.min(gripRect.right, pillRect.right) -
+							Math.max(gripRect.left, pillRect.left);
+						const overlapHeight =
+							Math.min(gripRect.bottom, pillRect.bottom) -
+							Math.max(gripRect.top, pillRect.top);
+
+						expect(
+							overlapWidth > 0 && overlapHeight > 0,
+							`${viewMode} ${width}px ${mode} control ${JSON.stringify(gripRect.toJSON())}, badge ${JSON.stringify(pillRect.toJSON())}`,
+						).toBe(false);
+					}
+				}
+				await screen.unmount();
+			}
+		},
+	);
+
 	it('keeps the mobile List selection control inside the image and the desktop control in its gutter', async () => {
 		for (const width of [320, 390]) {
 			await page.viewport(width, 720);
@@ -347,20 +422,19 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const imageRect = image.getBoundingClientRect();
 			const contentRect = content.getBoundingClientRect();
 			const controlRect = control.getBoundingClientRect();
-			const outerRadius = parseFloat(
-				getComputedStyle(wrapper).getPropertyValue('--radius-panel'),
-			);
+			const checkboxSurface = control.querySelector<HTMLElement>(
+				'[data-slot="checkbox-surface"]',
+			)!;
 
 			expect(controlRect.width).toBeCloseTo(40, 0);
 			expect(controlRect.height).toBeCloseTo(40, 0);
-			expect(controlRect.left - wrapperRect.left).toBeCloseTo(6, 0);
-			expect(controlRect.top - wrapperRect.top).toBeCloseTo(6, 0);
-			expect(controlRect.left - imageRect.left).toBeCloseTo(4, 0);
+			expect(controlRect.left - wrapperRect.left).toBeCloseTo(9, 0);
+			expect(controlRect.top - wrapperRect.top).toBeCloseTo(9, 0);
+			expect(controlRect.left - imageRect.left).toBeCloseTo(7, 0);
 			expect(controlRect.right).toBeLessThanOrEqual(imageRect.right);
 			expect(controlRect.right).toBeLessThanOrEqual(contentRect.left);
-			expect(parseFloat(getComputedStyle(control).borderRadius)).toBeCloseTo(
-				outerRadius - 6,
-				5,
+			expect(getComputedStyle(control).borderRadius).toBe(
+				getComputedStyle(checkboxSurface).borderRadius,
 			);
 			await screen.unmount();
 		}
@@ -382,9 +456,9 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			const surfaceRect = surface.getBoundingClientRect();
 			const controlRect = control.getBoundingClientRect();
 
-			expect(controlRect.width).toBeCloseTo(28, 0);
-			expect(controlRect.height).toBeCloseTo(28, 0);
-			expect(surfaceRect.left - wrapperRect.left).toBeCloseTo(36, 0);
+			expect(controlRect.width).toBeCloseTo(32, 0);
+			expect(controlRect.height).toBeCloseTo(32, 0);
+			expect(surfaceRect.left - wrapperRect.left).toBeCloseTo(40, 0);
 			expect(surfaceRect.left - controlRect.right).toBeCloseTo(8, 0);
 			await screen.unmount();
 		}

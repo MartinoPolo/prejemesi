@@ -48,9 +48,9 @@
 	/>
 	<Button
 		intent="ghost"
-		size="icon-sm"
-		class="absolute top-1/2 right-0 size-10 -translate-y-1/2"
-		surfaceClass="m-auto size-(--size-control-sm)"
+		size="lg"
+		format="icon"
+		class="absolute top-1/2 right-0 -translate-y-1/2"
 		type="button"
 		aria-label={showPassword ? m.hide_password() : m.show_password()}
 		aria-pressed={showPassword}

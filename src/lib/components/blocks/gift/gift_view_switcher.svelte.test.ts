@@ -120,7 +120,7 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 		await screen.unmount();
 	});
 
-	it('keeps the visible tray flush with the selected 32px toolbar control at every viewport', async () => {
+	it('uses the shared responsive control size while keeping the tray flush with its selection', async () => {
 		await page.viewport(390, 720);
 		const screen = await render(GiftViewSwitcher, {
 			value: GIFT_VIEW_MODES.card,
@@ -132,17 +132,21 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			.element() as HTMLElement;
 
 		for (const [viewportWidth, expectedSize] of [
-			[390, 32],
+			[390, 40],
 			[800, 32],
 		] as const) {
 			await page.viewport(viewportWidth, 720);
 			const trayBounds = group.getBoundingClientRect();
 			const selectedBounds = card.getBoundingClientRect();
 
-			expect(selectedBounds.width).toBe(expectedSize);
-			expect(selectedBounds.height).toBe(expectedSize);
-			expect(trayBounds.top).toBeCloseTo(selectedBounds.top, 1);
-			expect(trayBounds.bottom).toBeCloseTo(selectedBounds.bottom, 1);
+			expect(trayBounds.height).toBe(expectedSize);
+			expect(selectedBounds.width).toBe(
+				viewportWidth < 640 ? expectedSize - 2 : expectedSize,
+			);
+			const trayInset = viewportWidth < 640 ? 1 : 0;
+			expect(selectedBounds.height).toBe(expectedSize - trayInset * 2);
+			expect(selectedBounds.top - trayBounds.top).toBeCloseTo(trayInset, 1);
+			expect(trayBounds.bottom - selectedBounds.bottom).toBeCloseTo(trayInset, 1);
 			// A shadow paints beyond the tray's border box, recreating the taller accent halo
 			// even when getBoundingClientRect reports the same height as the selected item.
 			expect(hasVisibleBoxShadow(group)).toBe(false);
@@ -184,7 +188,7 @@ describe('GiftViewSwitcher toggle selection (fixes: re-click deselects both item
 			expect(parseFloat(groupStyle.borderRadius)).toBeLessThanOrEqual(8);
 			expect(groupStyle.boxShadow).not.toContain('rgb(77, 88, 99)');
 			expect(groupStyle.boxShadow).not.toContain('inset');
-			expect(parseFloat(groupStyle.paddingLeft)).toBe(0);
+			expect(parseFloat(groupStyle.paddingLeft)).toBe(1);
 			expect(groupStyle.paddingLeft).toBe(groupStyle.paddingRight);
 			expect(groupStyle.paddingTop).toBe(groupStyle.paddingBottom);
 			expect(cardStyle.backgroundColor).toBe('rgb(44, 55, 66)');

@@ -1,11 +1,15 @@
+import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
 import * as m from '$lib/paraglide/messages.js';
 import { createDefaultWishlistSlots } from '$lib/modules/images/index.js';
 
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_R2_URL: '/' } }));
 
 const { default: WishlistCropEditor } = await import('./WishlistCropEditor.svelte');
+
+afterEach(async () => page.viewport(1280, 720));
 
 describe('WishlistCropEditor loaded image', () => {
 	it('stages removal, reports dirty state, and persists only on external submit', async () => {
@@ -47,6 +51,25 @@ describe('WishlistCropEditor loaded image', () => {
 		expect(onsave).toHaveBeenCalledOnce();
 		expect(onsave).toHaveBeenCalledWith({ imageKey: null, imageSlots: null });
 		await vi.waitFor(() => expect(ondirtychange).toHaveBeenLastCalledWith(false));
+	});
+
+	it('keeps adjacent change and remove actions at the contextual control size', async () => {
+		const screen = render(WishlistCropEditor, {
+			imageKey: 'demo/v1/backpack.jpg',
+			imageSlots: createDefaultWishlistSlots(),
+			themeEmoji: '🎁',
+			title: 'Test wishlist',
+			onsave: vi.fn(),
+		});
+		const change = screen.getByRole('button', { name: m.wishlist_image_change() });
+		const remove = screen.getByRole('button', { name: m.wishlist_image_remove() });
+
+		await page.viewport(390, 720);
+		expect(change.element().getBoundingClientRect().height).toBe(40);
+		expect(remove.element().getBoundingClientRect().height).toBe(40);
+		await page.viewport(1280, 720);
+		expect(change.element().getBoundingClientRect().height).toBe(32);
+		expect(remove.element().getBoundingClientRect().height).toBe(32);
 	});
 
 	it('returns to clean when an image setting is restored to its baseline', async () => {

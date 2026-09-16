@@ -178,7 +178,6 @@
 				giftId={gift.id}
 				giftName={gift.name}
 				likeCount={visitorGift.likeCount}
-				size="md"
 				class="absolute top-[6.5px] right-[6.5px] z-20"
 			/>
 		{/if}
@@ -293,7 +292,6 @@
 							<ReserveButton
 								gift={visitorGift}
 								{isArchived}
-								size="md"
 								{onreserve}
 								{onunreserve}
 							/>
@@ -307,11 +305,7 @@
 						controlSizing="intrinsic"
 					>
 						{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
-							<PurchasedToggle
-								gift={visitorGift}
-								size="md"
-								class="w-full max-sm:hidden"
-							/>
+							<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
 						{/if}
 						{#if hasReceivedPrimary}
 							<GiftReceivedToggle
@@ -320,14 +314,12 @@
 								{role}
 								{isArchived}
 								{onreceived}
-								size="md"
 								compactLabel
 							/>
 						{:else if isVisitorOrModerator && visitorGift}
 							<ReserveButton
 								gift={visitorGift}
 								{isArchived}
-								size="md"
 								{onreserve}
 								{onunreserve}
 							/>

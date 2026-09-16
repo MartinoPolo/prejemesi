@@ -2,13 +2,18 @@
 	import { cn } from '$lib/utils.js';
 	import type { ComponentProps } from 'svelte';
 	import { Input } from '$lib/components/base/input/index.js';
+	import { useInputGroup } from './input_group.context.svelte.js';
 
 	let {
 		ref = $bindable(null),
 		value = $bindable(),
+		size,
 		class: className,
 		...props
 	}: ComponentProps<typeof Input> = $props();
+
+	const inputGroup = useInputGroup();
+	const resolvedSize = $derived(size ?? inputGroup.size);
 </script>
 
 <Input
@@ -19,5 +24,6 @@
 		className,
 	)}
 	bind:value
+	size={resolvedSize}
 	{...props}
 />

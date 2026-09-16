@@ -38,7 +38,7 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		expect(reserve.getBoundingClientRect().width).toBeLessThan(
 			actions.getBoundingClientRect().width,
 		);
-		expect(reserve.getBoundingClientRect().height).toBeCloseTo(32, 0);
+		expect(reserve.getBoundingClientRect().height).toBeCloseTo(40, 0);
 	});
 
 	it('keeps an onmore-only archived recipient footer available on desktop and mobile', async () => {
@@ -153,8 +153,8 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		) as HTMLButtonElement;
 		expect(directAction).toBeTruthy();
 		expect(more).toBeTruthy();
-		expect(directAction.getBoundingClientRect().height).toBeCloseTo(32, 0);
-		expect(more.getBoundingClientRect().width).toBeCloseTo(32, 0);
+		expect(directAction.getBoundingClientRect().height).toBeCloseTo(40, 0);
+		expect(more.getBoundingClientRect().width).toBeCloseTo(40, 0);
 		expect(more.getBoundingClientRect().height).toBeCloseTo(
 			directAction.getBoundingClientRect().height,
 			0,
@@ -284,9 +284,9 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 			directAction.closest('[class*="rounded-panel"]') as HTMLElement
 		).getBoundingClientRect();
 
-		expect(actionRect.height).toBeCloseTo(32, 0);
-		expect(moreRect.width).toBeCloseTo(32, 0);
-		expect(moreRect.height).toBeCloseTo(32, 0);
+		expect(actionRect.height).toBeCloseTo(40, 0);
+		expect(moreRect.width).toBeCloseTo(40, 0);
+		expect(moreRect.height).toBeCloseTo(40, 0);
 		expect(labelRect.left).toBeGreaterThanOrEqual(actionRect.left);
 		expect(labelRect.right).toBeLessThanOrEqual(actionRect.right);
 		expect(labelRect.top).toBeGreaterThanOrEqual(actionRect.top);

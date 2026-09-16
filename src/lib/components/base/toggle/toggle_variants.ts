@@ -1,7 +1,12 @@
 import type { Toggle as TogglePrimitive } from 'bits-ui';
 import type { WithoutChildrenOrChild } from '$lib/utils.js';
 import type { Snippet } from 'svelte';
-import { BUTTON_SIZES, type ButtonIntent, type ButtonSize } from '../button/button_variants.js';
+import {
+	BUTTON_SIZES,
+	type ButtonFormat,
+	type ButtonIntent,
+	type ButtonSize,
+} from '../button/button_variants.js';
 import { tv } from 'tailwind-variants';
 
 export const togglePressedVariants = tv({
@@ -20,6 +25,7 @@ export const togglePressedVariants = tv({
 
 export type ToggleIntent = keyof typeof togglePressedVariants.variants.intent;
 export type ToggleSize = ButtonSize;
+export type ToggleFormat = ButtonFormat;
 
 export const TOGGLE_INTENT_TO_BUTTON_INTENT = {
 	default: 'ghost',
@@ -32,6 +38,7 @@ export const TOGGLE_SIZES = [...BUTTON_SIZES] as ToggleSize[];
 export type ToggleProps = WithoutChildrenOrChild<TogglePrimitive.RootProps> & {
 	intent?: ToggleIntent;
 	size?: ToggleSize;
+	format?: ToggleFormat;
 	surfaceClass?: string;
 	children?: Snippet;
 };

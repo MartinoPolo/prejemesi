@@ -53,6 +53,42 @@ describe('WishlistHeaderActions', () => {
 		await screen.unmount();
 	});
 
+	it('keeps hero Settings and More at the shared responsive size with an 8px gap', async () => {
+		const screen = await render(WishlistHeaderActions, {
+			canManage: true,
+			settingsAvailable: true,
+			canShare: true,
+			canEditImage: false,
+			canEditRecipient: false,
+			canArchive: false,
+			...callbacks,
+		});
+		const actions = screen.getByTestId('wishlist-header-actions').element() as HTMLElement;
+		const settings = screen
+			.getByRole('button', {
+				name: m.wishlist_settings_title(),
+			})
+			.element() as HTMLElement;
+
+		for (const [viewportWidth, expectedSize] of [
+			[390, 40],
+			[800, 32],
+		] as const) {
+			await page.viewport(viewportWidth, 720);
+			const more = screen
+				.getByTestId(
+					viewportWidth < 640
+						? 'mobile-header-more-trigger'
+						: 'desktop-header-more-trigger',
+				)
+				.element() as HTMLElement;
+			expect(getComputedStyle(actions).gap).toBe('8px');
+			expect(settings.getBoundingClientRect().height).toBe(expectedSize);
+			expect(more.getBoundingClientRect().height).toBe(expectedSize);
+		}
+		await screen.unmount();
+	});
+
 	it('enables the accessible Settings action after mount and handles activation', async () => {
 		const screen = await render(WishlistHeaderActions, {
 			canManage: false,

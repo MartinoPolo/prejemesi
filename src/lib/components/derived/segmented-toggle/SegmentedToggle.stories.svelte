@@ -35,7 +35,7 @@
 
 <Story name="Selected, unselected, and disabled">
 	{#snippet template()}
-		<SegmentedToggle.Root bind:value={exampleValue} size="icon" aria-label="Layout">
+		<SegmentedToggle.Root bind:value={exampleValue} size="md" format="icon" aria-label="Layout">
 			<SegmentedToggle.Item value="grid" aria-label="Grid">
 				<LayoutGridIcon />
 			</SegmentedToggle.Item>
@@ -51,7 +51,12 @@
 
 <Story name="Focus and keyboard" play={playKeyboardAndFocus}>
 	{#snippet template()}
-		<SegmentedToggle.Root bind:value={keyboardValue} size="icon" aria-label="Layout">
+		<SegmentedToggle.Root
+			bind:value={keyboardValue}
+			size="md"
+			format="icon"
+			aria-label="Layout"
+		>
 			<SegmentedToggle.Item value="grid" aria-label="Grid">
 				<LayoutGridIcon />
 			</SegmentedToggle.Item>
@@ -67,7 +72,8 @@
 		<div class="max-w-full p-3">
 			<SegmentedToggle.Root
 				bind:value={responsiveValue}
-				size="icon"
+				size="md"
+				format="icon"
 				aria-label="Responsive layout"
 			>
 				<SegmentedToggle.Item value="grid" aria-label="Grid">

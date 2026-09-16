@@ -16,7 +16,7 @@
 <SegmentedToggle.Root
 	bind:value
 	intent="default"
-	size="icon"
+	format="icon"
 	class={className}
 	aria-label={m.dashboard_view_label()}
 >

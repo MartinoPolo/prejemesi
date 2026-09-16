@@ -4,7 +4,7 @@
 // (only `.storybook/preview.ts` imports app.css). Mirror that import here.
 import '../../../../app.css';
 import { render } from 'vitest-browser-svelte';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import * as m from '$lib/paraglide/messages.js';
 import type { GiftByRole } from '$lib/modules/gifts/types.js';
@@ -380,10 +380,10 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(secondControl).not.toBeNull();
 		const firstControlRect = firstControl!.getBoundingClientRect();
 		const secondControlRect = secondControl!.getBoundingClientRect();
-		expect(firstControlRect.height).toBe(32);
+		expect(firstControlRect.height).toBe(40);
 		expect(secondControlRect.height).toBe(32);
 		expect(firstControlRect.top).toBe(secondControlRect.top);
-		expect(firstControlRect.bottom).toBe(secondControlRect.bottom);
+		expect(firstControlRect.bottom).toBeGreaterThan(secondControlRect.bottom);
 
 		const labelRows = fields.map((field) =>
 			field.querySelector<HTMLElement>('[data-slot="gift-form-label-row"]'),
@@ -401,7 +401,8 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 		expect(firstLabelRect.bottom).toBe(secondLabelRect.bottom);
 	}
 
-	it('aligns paired label rows and 32px controls for price, currency, quantity, and category', async () => {
+	it('aligns paired label rows while preserving responsive and explicit mobile control sizes', async () => {
+		await page.viewport(390, 720);
 		await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift(),
@@ -429,6 +430,7 @@ describe('GiftDetailForm dense control alignment (issue #159)', () => {
 	});
 
 	it('keeps quantity and the empty category control aligned when no priorities exist', async () => {
+		await page.viewport(390, 720);
 		await render(GiftDetailForm, {
 			...baseProps,
 			gift: makeGift(),

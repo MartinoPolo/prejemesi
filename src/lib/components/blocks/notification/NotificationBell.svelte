@@ -2,9 +2,16 @@
 	import * as m from '$lib/paraglide/messages.js';
 	import * as Popover from '$lib/components/base/popover/index.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import { useNotifications } from '$lib/modules/notifications/notifications.context.svelte.js';
 	import NotificationPanel from './NotificationPanel.svelte';
+
+	interface NotificationBellProps {
+		size?: ControlSize;
+	}
+
+	let { size }: NotificationBellProps = $props();
 
 	const ctx = useNotifications();
 
@@ -28,7 +35,8 @@
 			<Button
 				{...props}
 				intent="ghost"
-				size="icon"
+				{size}
+				format="icon"
 				class="relative"
 				aria-label={m.notification_bell_label({ count: ctx.unreadCount.current })}
 			>

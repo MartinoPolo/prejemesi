@@ -200,6 +200,35 @@ describe('GiftDetailForm actions (issue #255)', () => {
 	);
 });
 
+describe('GiftDetailForm image source selection', () => {
+	it('supports keyboard source selection without losing the URL draft', async () => {
+		const screen = await render(GiftDetailForm, {
+			...baseProps,
+			mode: 'create' as const,
+			gift: null,
+		});
+
+		const uploadSource = screen.getByRole('radio', {
+			name: m.gift_image_upload_tab(),
+			exact: true,
+		});
+		uploadSource.element().focus();
+		await userEvent.keyboard('{ArrowRight} ');
+		const urlInput = screen.getByPlaceholder('https://example.com/image.jpg');
+		await expect.element(urlInput).toBeVisible();
+		await urlInput.fill('https://example.com/photo.jpg');
+
+		const urlSource = screen.getByRole('radio', {
+			name: m.gift_image_url_tab(),
+			exact: true,
+		});
+		urlSource.element().focus();
+		await userEvent.keyboard('{ArrowLeft} ');
+		await userEvent.keyboard('{ArrowRight} ');
+		await expect.element(urlInput).toHaveValue('https://example.com/photo.jpg');
+	});
+});
+
 describe('GiftDetailForm stored images', () => {
 	it('previews the stored key while preserving the raw retailer URL on submit', async () => {
 		const onupdate = vi.fn();

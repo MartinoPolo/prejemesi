@@ -74,7 +74,6 @@
 					{...props}
 					bind:ref={triggerElement}
 					{disabled}
-					size="md"
 					intent="outline"
 					class={cn('min-w-0 max-w-full', triggerClass)}
 					aria-label={activeFilters.length > 0

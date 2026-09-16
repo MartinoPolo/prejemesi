@@ -1,39 +1,39 @@
 <script lang="ts">
 	import { Checkbox as CheckboxPrimitive } from 'bits-ui';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
-	import CheckIcon from '@lucide/svelte/icons/check';
-	import MinusIcon from '@lucide/svelte/icons/minus';
+	import CheckboxSurface from './CheckboxSurface.svelte';
+	import { checkboxVariants, type CheckboxSize } from './checkbox_variants.js';
 
 	let {
 		ref = $bindable(null),
 		checked = $bindable(false),
 		indeterminate = $bindable(false),
 		class: className,
+		size,
+		disabled = false,
 		...restProps
-	}: WithoutChildrenOrChild<CheckboxPrimitive.RootProps> = $props();
+	}: Omit<WithoutChildrenOrChild<CheckboxPrimitive.RootProps>, 'size'> & {
+		size?: CheckboxSize;
+	} = $props();
+
+	const styles = $derived(checkboxVariants({ size: size ?? 'responsive' }));
 </script>
 
 <CheckboxPrimitive.Root
 	bind:ref
 	data-slot="checkbox"
-	class={cn(
-		'border-ink bg-card data-checked:bg-primary data-checked:text-primary-foreground aria-invalid:aria-checked:border-invalid-border aria-invalid:border-invalid-border focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-invalid-ring flex size-4 items-center justify-center rounded-[5px] border-2 transition-[background-color,box-shadow] group-has-disabled/field:opacity-50 focus-visible:ring-3 aria-invalid:ring-3 peer relative shrink-0 outline-none after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50',
-		className,
-	)}
+	class={cn(styles.owner(), className)}
 	bind:checked
 	bind:indeterminate
+	{disabled}
 	{...restProps}
 >
-	{#snippet children({ checked, indeterminate })}
-		<div
-			data-slot="checkbox-indicator"
-			class="[&>svg]:size-3.5 grid place-content-center text-current transition-none"
-		>
-			{#if checked}
-				<CheckIcon />
-			{:else if indeterminate}
-				<MinusIcon />
-			{/if}
-		</div>
+	{#snippet children({ checked: rootChecked, indeterminate: rootIndeterminate })}
+		<CheckboxSurface
+			{size}
+			checked={rootChecked}
+			indeterminate={rootIndeterminate}
+			disabled={disabled === true}
+		/>
 	{/snippet}
 </CheckboxPrimitive.Root>

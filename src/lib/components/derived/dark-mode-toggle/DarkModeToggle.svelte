@@ -59,7 +59,6 @@
 		<Button
 			onclick={cycleMode}
 			intent="outline"
-			size="md"
 			class="w-full"
 			surfaceClass="justify-start"
 			aria-label={currentModeLabel}
@@ -75,7 +74,7 @@
 				{...triggerProps}
 				onclick={cycleMode}
 				intent="outline"
-				size="icon"
+				format="icon"
 				aria-label={currentModeLabel}
 			>
 				{@render modeIcon()}

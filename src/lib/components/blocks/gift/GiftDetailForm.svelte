@@ -10,6 +10,7 @@
 	import { Switch } from '$lib/components/base/switch/index.js';
 	import { Field, type FieldControlContext } from '$lib/components/derived/field/index.js';
 	import ImageUpload from '$lib/components/derived/image-upload/ImageUpload.svelte';
+	import * as SegmentedToggle from '$lib/components/derived/segmented-toggle/index.js';
 	import * as ToggleGroup from '$lib/components/base/toggle-group/index.js';
 	import { HelpText } from '$lib/components/base/help-text/index.js';
 	import { SimpleTooltip } from '$lib/components/base/tooltip/index.js';
@@ -790,9 +791,10 @@
 							<Button
 								type="button"
 								intent="ghost-overlay"
-								size="icon-sm"
+								size="sm"
+								format="icon"
 								class="absolute top-2 right-2 rounded-full"
-								surfaceClass="bg-surface/90 shadow-sm"
+								surfaceClass="bg-surface/90"
 								onclick={openImageEditor}
 								aria-label={m.gift_image_replace_cta()}
 							>
@@ -932,7 +934,8 @@
 										class="flex w-fit gap-1 rounded-md border border-border bg-surface-2 p-1"
 									>
 										<Button
-											size="icon-sm"
+											size="sm"
+											format="icon"
 											intent="ghost"
 											aria-label={m.gift_description_append_edit_aria()}
 											onclick={() => startEditAppend(index, append.text)}
@@ -940,7 +943,8 @@
 											<PencilIcon />
 										</Button>
 										<Button
-											size="icon-sm"
+											size="sm"
+											format="icon"
 											intent="ghost"
 											aria-label={m.gift_description_append_delete_aria()}
 											onclick={() => deleteAppend(index)}
@@ -1197,30 +1201,20 @@
 			     preview they drive, #116 round 3) -->
 				<div class="mt-3 {styles.formField()}">
 					<Label>{m.gift_image_label()}</Label>
-					<div class={styles.imageTabRow()}>
-						<button
-							type="button"
-							class={giftDetailModalVariants({
-								imageTabActive: imageMode === 'upload',
-							}).imageTab()}
-							disabled={isImageUploadPending}
-							onclick={() => (imageMode = 'upload')}
-						>
-							<UploadIcon class="mr-1 inline size-3" />
+					<SegmentedToggle.Root
+						bind:value={imageMode}
+						disabled={isImageUploadPending}
+						aria-label={m.gift_image_label()}
+					>
+						<SegmentedToggle.Item value="upload">
+							<UploadIcon data-icon="inline-start" />
 							{m.gift_image_upload_tab()}
-						</button>
-						<button
-							type="button"
-							class={giftDetailModalVariants({
-								imageTabActive: imageMode === 'url',
-							}).imageTab()}
-							disabled={isImageUploadPending}
-							onclick={() => (imageMode = 'url')}
-						>
-							<LinkIcon class="mr-1 inline size-3" />
+						</SegmentedToggle.Item>
+						<SegmentedToggle.Item value="url">
+							<LinkIcon data-icon="inline-start" />
 							{m.gift_image_url_tab()}
-						</button>
-					</div>
+						</SegmentedToggle.Item>
+					</SegmentedToggle.Root>
 					{#if imageMode === 'url'}
 						<Input
 							bind:value={imageUrl}

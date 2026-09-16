@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/base/button/index.js';
+	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import KeyRoundIcon from '@lucide/svelte/icons/key-round';
 	import { useReservations } from '$lib/modules/reservations/reservations.context.svelte.js';
 	import { RESERVATION_RELEASE_CAPABILITY } from '$lib/modules/wishlists/wishlist_capabilities.js';
@@ -9,12 +10,12 @@
 
 	interface ReleaseReservationButtonProps {
 		gift: GiftForVisitor;
-		size?: 'md' | 'sm';
+		size?: ControlSize;
 		/** Extra classes on the underlying Button for stacked editor/action layouts. */
 		class?: string;
 	}
 
-	let { gift, size = 'sm', class: className }: ReleaseReservationButtonProps = $props();
+	let { gift, size, class: className }: ReleaseReservationButtonProps = $props();
 
 	const reservations = useReservations();
 

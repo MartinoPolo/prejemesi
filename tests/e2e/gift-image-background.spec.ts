@@ -47,7 +47,7 @@ test.describe('Gift image background fill (issue #252)', () => {
 		await createWishlistAndNavigate(page, 'Issue 252 background fill');
 		const defaultDialog = await openAddGiftDialog(page);
 		await defaultDialog.getByRole('textbox', { name: 'Název' }).fill(defaultGiftName);
-		await defaultDialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
+		await defaultDialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
 		const defaultUpload = waitForUpload(page);
 		await defaultDialog.locator('input[type=file]').setInputFiles(SAMPLE_IMAGE_PATH);
 		await defaultUpload;
@@ -63,7 +63,7 @@ test.describe('Gift image background fill (issue #252)', () => {
 
 		const blackDialog = await openAddGiftDialog(page);
 		await blackDialog.getByRole('textbox', { name: 'Název' }).fill(blackGiftName);
-		await blackDialog.getByRole('button', { name: 'Nahrát', exact: true }).click();
+		await blackDialog.getByRole('radio', { name: 'Nahrát', exact: true }).click();
 		const blackUpload = waitForUpload(page);
 		await blackDialog.locator('input[type=file]').setInputFiles(SAMPLE_IMAGE_PATH);
 		await blackUpload;

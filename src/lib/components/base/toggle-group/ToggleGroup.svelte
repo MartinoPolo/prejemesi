@@ -7,7 +7,8 @@
 	let {
 		class: className,
 		intent = 'default',
-		size = 'md',
+		size,
+		format = 'text',
 		children,
 		ref = $bindable(null),
 		value = $bindable(),
@@ -17,6 +18,7 @@
 	setToggleGroupContext(
 		() => intent,
 		() => size,
+		() => format,
 	);
 </script>
 

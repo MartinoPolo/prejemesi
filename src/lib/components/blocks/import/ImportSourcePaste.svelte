@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Textarea } from '$lib/components/base/textarea/index.js';
 	import * as m from '$lib/paraglide/messages.js';
 	import { parseTabular } from '$lib/modules/import/index.js';
 
@@ -51,10 +52,10 @@
 	}
 </script>
 
-<textarea
-	class="border-input bg-input-surface focus-visible:border-ring focus-visible:ring-ring/50 h-full w-full rounded-md border px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 outline-none resize-none"
+<Textarea
+	class="h-full w-full resize-none"
 	placeholder={m.import_wizard_paste_placeholder()}
 	onpaste={handlePaste}
 	{disabled}
 	readonly
-></textarea>
+/>

@@ -116,21 +116,15 @@
 								>
 									<ToggleGroup.Item value="left" aria-label="Align left">
 										<AlignLeftIcon data-icon="inline-start" />
-										{#if size !== 'icon' && size !== 'icon-sm'}
-											Left
-										{/if}
+										Left
 									</ToggleGroup.Item>
 									<ToggleGroup.Item value="center" aria-label="Align center">
 										<AlignCenterIcon data-icon="inline-start" />
-										{#if size !== 'icon' && size !== 'icon-sm'}
-											Center
-										{/if}
+										Center
 									</ToggleGroup.Item>
 									<ToggleGroup.Item value="right" aria-label="Align right">
 										<AlignRightIcon data-icon="inline-start" />
-										{#if size !== 'icon' && size !== 'icon-sm'}
-											Right
-										{/if}
+										Right
 									</ToggleGroup.Item>
 								</ToggleGroup.Root>
 							</div>
@@ -239,7 +233,7 @@
 
 <Story name="Icon Only">
 	{#snippet template(args: Record<string, unknown>)}
-		<ToggleGroup.Root type="single" value="left" size="icon" {...args}>
+		<ToggleGroup.Root type="single" value="left" size="md" format="icon" {...args}>
 			<ToggleGroup.Item value="left" aria-label="Align left">
 				<AlignLeftIcon data-icon="inline-start" />
 			</ToggleGroup.Item>

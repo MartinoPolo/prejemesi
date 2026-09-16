@@ -43,7 +43,7 @@
 
 <div class="flex items-center gap-2 pt-1 pb-0.5">
 	{#if selectionMode}
-		<span class="grid w-7 shrink-0 place-items-center">
+		<span class="inline-flex shrink-0">
 			<Checkbox
 				checked={selectedCount === sectionIds.length && sectionIds.length > 0}
 				indeterminate={selectedCount > 0 && selectedCount < sectionIds.length}

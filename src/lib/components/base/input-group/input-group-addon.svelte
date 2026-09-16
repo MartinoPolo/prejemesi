@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn, type WithElementRef } from '$lib/utils.js';
 	import type { HTMLAttributes } from 'svelte/elements';
+	import { useInputGroup } from './input_group.context.svelte.js';
 	import {
 		inputGroupAddonVariants,
 		type InputGroupAddonAlign,
@@ -15,6 +16,8 @@
 	}: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 		align?: InputGroupAddonAlign;
 	} = $props();
+
+	const inputGroup = useInputGroup();
 </script>
 
 <div
@@ -22,7 +25,7 @@
 	role="group"
 	data-slot="input-group-addon"
 	data-align={align}
-	class={cn(inputGroupAddonVariants({ align }), className)}
+	class={cn(inputGroupAddonVariants({ align, size: inputGroup.size ?? 'responsive' }), className)}
 	onclick={(e) => {
 		if ((e.target as HTMLElement).closest('button')) {
 			return;
