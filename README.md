@@ -163,6 +163,10 @@ email/password auth. Parallel app instances share database/data unless separatel
 | `pnpm run auth:schema`     | Regenerate BetterAuth DB schema   |
 | `pnpm run build:storybook` | Build static Storybook            |
 
+Application platform bindings use scoped imports from `@cloudflare/workers-types` in `src/app.d.ts`.
+Keep Wrangler's generated `worker-configuration.d.ts` out of the application TypeScript globals: its
+worker-entry import pulls compiled build output into typechecking.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and configure:

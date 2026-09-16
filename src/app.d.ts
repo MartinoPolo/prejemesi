@@ -1,6 +1,15 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 import type { User, Session } from 'better-auth/minimal';
+import type {
+	R2Bucket,
+	Hyperdrive,
+	Fetcher,
+	RateLimit,
+	ExecutionContext,
+	CacheStorage,
+	IncomingRequestCfProperties,
+} from '@cloudflare/workers-types';
 
 declare global {
 	// Injected by vite.config.ts at build/dev time; holds the current git branch name.

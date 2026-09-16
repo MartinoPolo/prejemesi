@@ -76,7 +76,7 @@ export function getPublicUrl(objectKey: string): string {
  */
 export async function putObject(
 	key: string,
-	body: ReadableStream | ArrayBuffer | string,
+	body: Parameters<PlatformR2Bucket['put']>[1],
 	contentType: string,
 ): Promise<boolean> {
 	const bucket = getR2Bucket();
