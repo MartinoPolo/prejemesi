@@ -111,12 +111,16 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 ### Development
 
-| Script               | Description                                                              |
-| -------------------- | ------------------------------------------------------------------------ |
-| `pnpm run dev`       | Ensure the database and seed images are ready, then start the dev server |
-| `pnpm run build`     | Production build                                                         |
-| `pnpm run preview`   | Preview the built Cloudflare Worker locally                              |
-| `pnpm run storybook` | Start Storybook on its assigned port                                     |
+| Script               | Description                                                   |
+| -------------------- | ------------------------------------------------------------- |
+| `pnpm run dev`       | Ensure local prerequisites, then run Vite (prefers port 8300) |
+| `pnpm run build`     | Production build                                              |
+| `pnpm run preview`   | Preview the Cloudflare Worker on port 4173                    |
+| `pnpm run storybook` | Start Storybook on port 6006                                  |
+
+Vite uses ordinary port auto-increment when 8300 or an explicit `--port` is occupied. Ports
+8300–8304 are the conventional parallel interactive pool; arbitrary higher ports also work for
+email/password auth. Parallel app instances share database/data unless separately configured.
 
 ### Code Quality
 
@@ -163,20 +167,22 @@ Seeded accounts share the password defined by `SEED_PASSWORD` in `src/lib/server
 
 Copy `.env.example` to `.env` and configure:
 
-| Variable                                                                      | Required | Description                                                                                                     |
-| ----------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                                                | Yes      | PostgreSQL connection string                                                                                    |
-| `AUTH_SECRET`                                                                 | Yes      | 32-byte base64 secret (`openssl rand -base64 32`)                                                               |
-| `ORIGIN`                                                                      | No       | App URL – OAuth redirects + email links (default 5173)                                                          |
-| `GOOGLE_CLIENT_ID`                                                            | No       | Google OAuth client ID                                                                                          |
-| `GOOGLE_CLIENT_SECRET`                                                        | No       | Google OAuth client secret                                                                                      |
-| `PUBLIC_TURNSTILE_SITE_KEY`                                                   | Prod     | Public Cloudflare Turnstile widget site key                                                                     |
-| `TURNSTILE_SECRET_KEY`                                                        | Prod     | Private Cloudflare Turnstile Siteverify secret                                                                  |
-| `PUBLIC_SENTRY_DSN`                                                           | Prod     | Public Sentry DSN for browser and Worker error reporting                                                        |
-| `SENTRY_ORG`, `SENTRY_PROJECT`                                                | CI       | Sentry source-map destination (`martin-poloch` / `prejemesi`)                                                   |
-| `SENTRY_AUTH_TOKEN`                                                           | CI       | Private build-only token used for source-map uploads; never expose it at runtime                                |
-| `PUBLIC_R2_URL`                                                               | No       | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset |
-| `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                      |
+| Variable                                                                      | Required | Description                                                                                                            |
+| ----------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                | Yes      | PostgreSQL connection string                                                                                           |
+| `AUTH_SECRET`                                                                 | Yes      | 32-byte base64 secret (`openssl rand -base64 32`)                                                                      |
+| `ORIGIN`                                                                      | No       | Fixed production/background URL; local request-backed auth and notification links use their validated localhost origin |
+| `PLAYWRIGHT_BASE_URL`                                                         | No       | Exact loopback HTTP origin with explicit port for E2E (default `http://localhost:8300`)                                |
+| `VITEST_CLIENT_PORT`, `VITEST_STORYBOOK_PORT`                                 | No       | Distinct strict browser API ports (defaults 8310 and 8311)                                                             |
+| `GOOGLE_CLIENT_ID`                                                            | No       | Google OAuth client ID                                                                                                 |
+| `GOOGLE_CLIENT_SECRET`                                                        | No       | Google OAuth client secret                                                                                             |
+| `PUBLIC_TURNSTILE_SITE_KEY`                                                   | Prod     | Public Cloudflare Turnstile widget site key                                                                            |
+| `TURNSTILE_SECRET_KEY`                                                        | Prod     | Private Cloudflare Turnstile Siteverify secret                                                                         |
+| `PUBLIC_SENTRY_DSN`                                                           | Prod     | Public Sentry DSN for browser and Worker error reporting                                                               |
+| `SENTRY_ORG`, `SENTRY_PROJECT`                                                | CI       | Sentry source-map destination (`martin-poloch` / `prejemesi`)                                                          |
+| `SENTRY_AUTH_TOKEN`                                                           | CI       | Private build-only token used for source-map uploads; never expose it at runtime                                       |
+| `PUBLIC_R2_URL`                                                               | No       | Public R2 bucket URL (client-visible) – serves images + `/cdn-cgi/image/` variants; in-memory fallback if unset        |
+| `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | No       | Presigned direct-to-R2 uploads (#107); same-origin proxy fallback if unset                                             |
 
 Google OAuth is enabled automatically when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are
 set. Registration, password sign-in, password-reset, and anonymous reservation requests are

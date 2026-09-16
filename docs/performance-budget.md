@@ -148,16 +148,15 @@ making the first in-app navigation fast:
 Prerequisites: a seeded local DB (`pnpm db:seed`, idempotent). The spec's `webServer` starts its own
 dev server.
 
-Port 5173 is often held by another worktree's dev server; because `reuseExistingServer` is `true`,
-point the run at a dedicated free port so it doesn't reuse the wrong code:
+Playwright starts its own strict-port Vite server and never reuses an existing process. Choose an
+explicit free loopback origin when the default port is occupied or another agent is testing:
 
-```powershell
-$env:PLAYWRIGHT_DEV_SERVER_PORT = 5199
-pnpm exec playwright test tests/e2e/performance-budget.spec.ts --project=chromium
+```bash
+PLAYWRIGHT_BASE_URL=http://localhost:8301 pnpm exec playwright test tests/e2e/performance-budget.spec.ts --project=chromium
 ```
 
-(`PLAYWRIGHT_DEV_SERVER_PORT` overrides both the Playwright `baseURL` and the `webServer` port;
-default is 5173.)
+`PLAYWRIGHT_BASE_URL` controls both the browser base URL and the strict web-server port; it defaults
+to `http://localhost:8300`.
 
 ---
 

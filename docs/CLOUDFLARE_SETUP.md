@@ -96,15 +96,17 @@ Without it, images still work but get proxied through the Worker.
 #### R2 CORS (presigned direct uploads – issue #107)
 
 Browsers upload straight to R2 via presigned PUT URLs, which requires CORS on the bucket. Generate
-`scripts/r2-cors.json` from the MPX-assigned app and preview ports, then apply it:
+`scripts/r2-cors.json` with the conventional local app pool (8300–8304) and preview port 4173, then
+apply it:
 
 ```powershell
 pnpm r2:cors:generate
 wrangler r2 bucket cors set prejemesi-images --file scripts/r2-cors.json
 ```
 
-Direct commands safely fall back to ports 8300/8301. Re-run generation before applying when a
-checkout's assignments change.
+Interactive Vite may continue above this pool, but ordinary local development and Playwright use the
+same-origin upload fallback when R2 credentials are absent. Add and apply an exact higher local
+origin deliberately before testing direct-to-R2 uploads there; never use a broad origin wildcard.
 
 #### R2 API token (presigned direct uploads – issue #107)
 

@@ -26,16 +26,15 @@ if (missingEnvironment.length > 0) {
 const { SEED_PASSWORD: password } = process.env;
 const turnstileToken = process.env.TURNSTILE_TEST_TOKEN;
 
-const base = arg('base') ?? process.env.MPX_APP_URL ?? process.env.PLAYWRIGHT_BASE_URL;
+const base = arg('base') ?? process.env.PLAYWRIGHT_BASE_URL;
 if (!base) {
-	throw new Error('No assigned URL. Pass --base or set MPX_APP_URL/PLAYWRIGHT_BASE_URL.');
+	throw new Error('No URL configured. Pass --base or set PLAYWRIGHT_BASE_URL.');
 }
 const origin = new URL(base).origin;
 if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(origin).hostname)) {
 	throw new Error(`Refusing non-loopback target: ${origin}`);
 }
-// Better Auth validates Origin. Default it to the assigned app, never to another checkout's port.
-const authOrigin = arg('auth-origin') ?? process.env.ORIGIN ?? origin;
+const authOrigin = arg('auth-origin') ?? origin;
 const outDir = resolve(arg('out') ?? 'test-results/wishlist-sheets');
 await mkdir(outDir, { recursive: true });
 

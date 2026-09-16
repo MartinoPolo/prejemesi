@@ -24,7 +24,7 @@
  *
  * Options:
  *   --user <martin|jana|petr|eva|tomas|none>  log in via API before loading (default: none)
- *   --base <url>          origin (default: ORIGIN or the MPX-assigned app port)
+ *   --base <url>          origin (default: PLAYWRIGHT_BASE_URL, ORIGIN, or first live app pool port)
  *   --vw <px> --vh <px>   viewport (default 1280x900)
  *   --mobile              iPhone 13 preset (overrides --vw/--vh)
  *   --dark                emulate prefers-color-scheme: dark
@@ -37,6 +37,7 @@
  * Prints the absolute screenshot path on success. Read that path back to view it.
  */
 import { sharedChromeLaunchOptions } from './browser-automation.mjs';
+import { PARALLEL_APPLICATION_ORIGINS } from './local-development-ports.mjs';
 import { chromium, devices } from 'playwright';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -72,8 +73,8 @@ function parseArgs(argv) {
 }
 
 async function resolveBase(preferred) {
-	const assigned = process.env.ORIGIN || `http://localhost:${process.env.MPX_APP_PORT || '8300'}`;
-	const candidates = preferred ? [preferred] : [assigned];
+	const configured = preferred ?? process.env.PLAYWRIGHT_BASE_URL ?? process.env.ORIGIN;
+	const candidates = configured ? [configured] : PARALLEL_APPLICATION_ORIGINS;
 	for (const c of candidates) {
 		try {
 			await fetch(c, { method: 'HEAD' });

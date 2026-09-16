@@ -6,6 +6,7 @@ import {
 } from './types.js';
 
 vi.mock('$env/dynamic/private', () => ({ env: {} }));
+vi.mock('$app/server', () => ({ getRequestEvent: vi.fn() }));
 vi.mock('$lib/server/db/index.js', () => ({ getDb: vi.fn() }));
 vi.mock('$lib/server/email.js', () => ({
 	renderActionEmailParts: vi.fn(() => ({ html: '<html></html>', text: 'text' })),
@@ -13,9 +14,11 @@ vi.mock('$lib/server/email.js', () => ({
 }));
 
 import { dispatchNotification } from './notification_dispatcher.js';
+import { getRequestEvent } from '$app/server';
 import { getDb } from '$lib/server/db/index.js';
 import { sendEmail, renderActionEmailParts } from '$lib/server/email.js';
 
+const mockGetRequestEvent = vi.mocked(getRequestEvent);
 const mockGetDb = vi.mocked(getDb);
 const mockSendEmail = vi.mocked(sendEmail);
 const mockRenderActionEmailParts = vi.mocked(renderActionEmailParts);
@@ -106,6 +109,9 @@ function prefsWith(
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockGetRequestEvent.mockImplementation(() => {
+		throw new Error('No request context');
+	});
 });
 
 describe('dispatchNotification – honoring per-user preferences', () => {
@@ -299,6 +305,34 @@ describe('dispatchNotification email locale', () => {
 				copyLinkText: 'Or copy this link into your browser:',
 				url: 'http://localhost:8300/en/w/rosie-birthday',
 			}),
+		);
+	});
+
+	it('captures the initiating localhost origin before deferred email delivery', async () => {
+		mockGetRequestEvent.mockReturnValue({
+			url: new URL('http://localhost:8302/w/rosie-birthday'),
+		} as ReturnType<typeof getRequestEvent>);
+		const db = makeWishlistDispatcherDb(
+			[
+				{
+					id: 'local-recipient',
+					email: 'local@example.com',
+					preferredLocale: 'cs',
+					notificationPreferences: null,
+				},
+			],
+			wishlistRow,
+		);
+		mockGetDb.mockReturnValue(db);
+
+		await dispatchNotification({
+			type,
+			targetUserIds: ['local-recipient'],
+			wishlistId: 'wishlist-id',
+		});
+
+		expect(mockRenderActionEmailParts).toHaveBeenCalledWith(
+			expect.objectContaining({ url: 'http://localhost:8302/w/rosie-birthday' }),
 		);
 	});
 

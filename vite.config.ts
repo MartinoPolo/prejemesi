@@ -11,8 +11,9 @@ import { playwright } from '@vitest/browser-playwright';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
-import { resolveDevelopmentEnvironment } from './src/lib/config/mpx_development.js';
+import { resolveRuntimeEnvironment } from './src/lib/config/runtime_environment.js';
 import { sharedChromeLaunchOptions } from './scripts/browser-automation.mjs';
+import { PREFERRED_APPLICATION_PORT } from './scripts/local-development-ports.mjs';
 
 // Read current git branch at dev-server start so each worktree gets its own
 // branch name baked in – consumed by +layout.svelte to prefix browser tab titles.
@@ -27,7 +28,7 @@ const gitBranch = (() => {
 const dirname =
 	typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 const isVitest = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
-const development = resolveDevelopmentEnvironment(process.env);
+const runtimeEnvironment = resolveRuntimeEnvironment(process.env);
 
 interface VitestBrowserRunnerFallback {
 	wrapDynamicImport<T>(factory: () => Promise<T>): Promise<T>;
@@ -117,15 +118,16 @@ export default defineConfig({
 			'@lucide/svelte/icons/sparkles',
 			'@lucide/svelte/icons/user-check',
 			'@lucide/svelte/icons/user-plus',
+			'better-auth/svelte',
 			'drizzle-orm',
 			'drizzle-orm/pg-core',
 			'nanoid',
 		],
 	},
 	server: {
-		...development.appServer,
-		strictPort: true,
-		open: isVitest ? false : development.appOrigin,
+		host: 'localhost',
+		port: PREFERRED_APPLICATION_PORT,
+		open: !isVitest,
 		watch: {
 			ignored: ['**/.mpx/**', './*.html'],
 		},
@@ -216,7 +218,7 @@ export default defineConfig({
 						// run under `test --coverage`.
 						api: {
 							host: '127.0.0.1',
-							port: development.vitestClientPort,
+							port: runtimeEnvironment.vitestClientPort,
 							strictPort: true,
 						},
 					},
@@ -254,7 +256,7 @@ export default defineConfig({
 						instances: [{ browser: 'chromium' }],
 						api: {
 							host: '127.0.0.1',
-							port: development.vitestStorybookPort,
+							port: runtimeEnvironment.vitestStorybookPort,
 							strictPort: true,
 						},
 					},

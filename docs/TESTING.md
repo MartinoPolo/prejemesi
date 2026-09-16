@@ -9,10 +9,21 @@ parallel.
 To run only the server project, use `pnpm exec vitest run --project server`.
 
 `pnpm run test:e2e` starts its own localhost-only development server with a non-production signing
-secret. R2 variables are intentionally absent, so uploads use the local in-memory fallback. Set
-`MPX_APP_PORT` to the app port assigned in this worktree's `.worktree-ports.json` and free that port
-before running it. An explicit `MPX_APP_URL` takes precedence, so it must agree with the assigned
-port.
+secret. R2 variables are intentionally absent, so uploads use the local in-memory fallback. It uses
+`PLAYWRIGHT_BASE_URL=http://localhost:8300` by default. Every automation server uses that exact port
+with Vite strict-port mode, preventing a test from attaching to a different process.
+
+Parallel agents must choose distinct explicit origins, for example:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://localhost:8301 pnpm run test:e2e
+```
+
+Any valid loopback port is accepted. Port isolation does not isolate PostgreSQL data: concurrent
+full suites must use distinct prepared local databases through `DATABASE_URL`, while focused runs
+that do not mutate the same fixtures may share the ordinary seeded database. Concurrent browser-mode
+Vitest processes must likewise set distinct `VITEST_CLIENT_PORT` and `VITEST_STORYBOOK_PORT` values;
+their ports remain strict so collisions fail visibly.
 
 The setup project allows extra navigation time for cold Vite compilation without relaxing the warmed
 application's navigation limits. Interaction tests must await actual readiness: opening autofocus

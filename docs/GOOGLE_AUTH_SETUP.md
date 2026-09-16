@@ -44,11 +44,11 @@ Required before credentials can be created.
 2. **Application type**: **Web application**.
 3. **Name**: e.g. `Přejeme si Web`.
 4. **Authorized JavaScript origins**:
-    - `http://localhost:5173`
+    - `http://localhost:8300`
     - _(production)_ `https://yourdomain.com`
 5. **Authorized redirect URIs** – must match **exactly** (Better Auth uses
    `{ORIGIN}/api/auth/callback/google`):
-    - `http://localhost:5173/api/auth/callback/google`
+    - `http://localhost:8300/api/auth/callback/google`
     - _(production)_ `https://yourdomain.com/api/auth/callback/google`
 6. **Create**, then copy the **Client ID** and **Client secret**.
 
@@ -59,14 +59,16 @@ In the project root `.env`:
 ```dotenv
 GOOGLE_CLIENT_ID="<the client id>.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="<the client secret>"
-ORIGIN="http://localhost:5173"
+ORIGIN="http://localhost:8300"
 
 # Required for sessions – generate with: openssl rand -base64 32
 AUTH_SECRET="<random 32-byte base64 string>"
 ```
 
 Keep `ORIGIN` and the Google Console redirect URI in sync – the redirect URI is derived from
-`ORIGIN`.
+`ORIGIN`. Only port 8300 is registered by default. Email/password authentication works on any
+localhost port, but Google rejects a callback from 8301 or higher unless that exact origin and
+callback URI are also registered.
 
 ## 5. Restart the dev server
 
@@ -96,8 +98,9 @@ socialProviders:
 
 ## Notes
 
-- **No `redirectURI` in code** – Better Auth derives it from `baseURL` (`ORIGIN`). Only keep
-  `ORIGIN` and the Console redirect URI aligned.
+- **No `redirectURI` in code** – Better Auth derives it from its effective `baseURL`. Production
+  uses `ORIGIN`; local development uses the current validated localhost request origin. Register
+  every local port intended for Google OAuth exactly in Google Cloud.
 - **Testing vs Production**: in _Testing_ status only listed test users can log in (no verification
   needed). To open sign-in to anyone, click **Publish App** on the consent screen. Verification is
   only required when requesting sensitive scopes – which Přejeme si does not.
@@ -106,9 +109,9 @@ socialProviders:
 
 ## Troubleshooting
 
-| Symptom                               | Cause / Fix                                                                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `redirect_uri_mismatch`               | The Console redirect URI doesn't exactly match `{ORIGIN}/api/auth/callback/google` (check scheme, port, trailing slash). |
-| `access_blocked` / "App not verified" | Your account isn't in **Test users**, or publish the app.                                                                |
-| Button does nothing / 500 on callback | `.env` not loaded – restart the dev server; confirm `AUTH_SECRET` is set.                                                |
-| Works locally, fails in prod          | Add the production origin **and** redirect URI in the Console; set `ORIGIN` to the prod URL.                             |
+| Symptom                               | Cause / Fix                                                                                                                                     |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `redirect_uri_mismatch`               | The Console redirect URI does not exactly match the effective origin plus `/api/auth/callback/google` (check scheme, port, and trailing slash). |
+| `access_blocked` / "App not verified" | Your account isn't in **Test users**, or publish the app.                                                                                       |
+| Button does nothing / 500 on callback | `.env` not loaded – restart the dev server; confirm `AUTH_SECRET` is set.                                                                       |
+| Works locally, fails in prod          | Add the production origin **and** redirect URI in the Console; set `ORIGIN` to the prod URL.                                                    |

@@ -13,6 +13,7 @@ const eslintSvelteConfig = {
 export default [
 	{
 		ignores: [
+			'.local',
 			'.svelte-kit',
 			'.wrangler',
 			'.storybook',

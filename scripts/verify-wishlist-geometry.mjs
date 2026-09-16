@@ -4,7 +4,7 @@
  * Requires an already-running, explicitly assigned local base URL. It never starts a server,
  * seeds data, or activates gift mutation controls.
  *
- * Usage: node scripts/verify-wishlist-geometry.mjs --base "$MPX_APP_URL"
+ * Usage: node scripts/verify-wishlist-geometry.mjs --base http://localhost:8300
  */
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -15,17 +15,12 @@ const arg = (name) => {
 	const index = args.indexOf(`--${name}`);
 	return index < 0 ? undefined : args[index + 1];
 };
-const base = arg('base') ?? process.env.MPX_APP_URL ?? process.env.PLAYWRIGHT_BASE_URL;
+const base = arg('base') ?? process.env.PLAYWRIGHT_BASE_URL;
 if (!base) {
-	throw new Error(
-		'No assigned URL. Pass --base or set MPX_APP_URL/PLAYWRIGHT_BASE_URL; no port fallback is allowed.',
-	);
+	throw new Error('No URL configured. Pass --base or set PLAYWRIGHT_BASE_URL.');
 }
 const origin = new URL(base).origin;
-// The assigned Vite port may differ from the auth base URL in the inherited dev-server
-// environment. BetterAuth validates Origin while setting cookies for the request host, so keep
-// navigation on the requested target but allow the configured local auth origin.
-const authOrigin = arg('auth-origin') ?? process.env.ORIGIN ?? origin;
+const authOrigin = arg('auth-origin') ?? origin;
 if (!['localhost', '127.0.0.1', '[::1]'].includes(new URL(origin).hostname)) {
 	throw new Error(`Refusing non-loopback target: ${origin}`);
 }

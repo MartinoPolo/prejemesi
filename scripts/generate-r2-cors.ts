@@ -1,11 +1,11 @@
 import { writeFile } from 'node:fs/promises';
-import { resolveDevelopmentEnvironment } from '../src/lib/config/mpx_development.js';
+import { resolveRuntimeEnvironment } from '../src/lib/config/runtime_environment.js';
 
 const output = process.argv[2] ?? 'scripts/r2-cors.json';
 const origins = [
 	'https://prejemesi.cz',
 	'https://www.prejemesi.cz',
-	...resolveDevelopmentEnvironment(process.env).r2LocalOrigins,
+	...resolveRuntimeEnvironment(process.env).r2LocalOrigins,
 ];
 const configuration = {
 	rules: [

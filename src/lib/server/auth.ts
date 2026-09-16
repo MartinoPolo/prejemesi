@@ -9,7 +9,7 @@ import { sendEmail, renderActionEmailParts } from './email.js';
 import { getTurnstileSecretKey } from './turnstile.js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { AUTH_CAPTCHA_ENDPOINTS, AUTH_IP_ADDRESS_HEADERS, authRateLimit } from './auth_security.js';
-import { resolveAuthOrigins } from '$lib/config/mpx_development.js';
+import { resolveAuthOrigins } from '$lib/config/runtime_environment.js';
 
 // Local dev has no deliverable inbox (the Resend sandbox sender only emails the
 // account owner), so verification links never arrive. Skip the verification gate
@@ -25,6 +25,7 @@ export function createAuth(event?: RequestEvent) {
 		logger: { disabled: !import.meta.env.DEV },
 		rateLimit: authRateLimit(import.meta.env.PROD),
 		advanced: {
+			trustedProxyHeaders: authOrigins.trustedProxyHeaders,
 			ipAddress: {
 				ipAddressHeaders: [...AUTH_IP_ADDRESS_HEADERS],
 			},

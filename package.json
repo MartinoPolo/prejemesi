@@ -6,10 +6,9 @@
 	"scripts": {
 		"predev": "pnpm run db:start && pnpm run seed:images",
 		"dev": "vite dev",
-		"dev:agent": "node scripts/run-development-service.mjs agent",
 		"build": "vite build",
 		"deploy": "vite build && wrangler deploy",
-		"preview": "node scripts/run-development-service.mjs preview",
+		"preview": "wrangler dev --local --port 4173 --var ORIGIN:http://localhost:4173",
 		"paraglide:compile": "node ./scripts/paraglide-compile.mjs",
 		"check": "node ./scripts/paraglide-compile.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"typecheck": "pnpm check",
@@ -51,7 +50,7 @@
 		"cf:types": "wrangler types --no-include-runtime",
 		"r2:cors:generate": "tsx scripts/generate-r2-cors.ts",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"storybook": "pnpm paraglide:compile && svelte-kit sync && node scripts/run-development-service.mjs storybook",
+		"storybook": "pnpm paraglide:compile && svelte-kit sync && storybook dev -p 6006",
 		"build:storybook": "pnpm paraglide:compile && svelte-kit sync && storybook build"
 	},
 	"dependencies": {

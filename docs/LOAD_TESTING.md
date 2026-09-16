@@ -48,7 +48,7 @@ loadtest rows. `pnpm loadtest:cleanup` deletes **only** these and cannot touch r
 pnpm db:start            # local Postgres (compose enables pg_stat_statements)
 pnpm db:migrate          # schema (or db:push for a dev-iterated DB)
 pnpm loadtest:setup      # idempotent fixtures (100 VU accounts + arena)
-pnpm run dev             # in a second terminal; open the MPX-assigned localhost app URL
+pnpm run dev             # in a second terminal; use the localhost URL printed by Vite
 
 pnpm loadtest --profile smoke
 pnpm loadtest --profile sustained-10 --duration 120
@@ -58,8 +58,8 @@ pnpm loadtest --profile contention
 pnpm loadtest:cleanup    # remove all loadtest rows
 ```
 
-Use the MPX-assigned app URL on `localhost`. For a non-default checkout or worktree, pass that exact
-URL to the load test, for example:
+The local target defaults to `http://localhost:8300`. If Vite selected another port, pass its exact
+printed URL to the load test, for example:
 
 ```bash
 pnpm loadtest --url http://localhost:8405 --profile smoke
@@ -82,8 +82,9 @@ pnpm run preview         # wrangler dev on :4173, local bindings
 pnpm loadtest --target preview --profile smoke
 ```
 
-`ORIGIN` must match the target origin for logins to succeed (better-auth rejects mismatched origins
-outside the dev trusted list).
+Preview remains fixed to `http://localhost:4173`; its command supplies the matching `ORIGIN`.
+Interactive Vite email/password authentication derives its origin from the validated localhost
+request instead.
 
 ## Running against production — explicit authorization only (AC-8)
 
