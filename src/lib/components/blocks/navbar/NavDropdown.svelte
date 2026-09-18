@@ -171,7 +171,7 @@
 					{m.nav_recent()}
 				</span>
 				<a
-					class="inline-flex items-center gap-1 text-xs font-medium text-primary no-underline hover:underline"
+					class="inline-flex items-center gap-1 text-xs font-medium text-brand no-underline hover:underline"
 					href={viewAllHref}
 				>
 					{m.nav_view_all()}

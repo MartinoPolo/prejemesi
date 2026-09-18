@@ -32,7 +32,7 @@ export const buttonVariants = tv({
 		intent: {
 			primary: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
-				surface: `border-ink bg-primary text-primary-foreground group-hover:bg-[color-mix(in_oklab,var(--primary)_86%,white)] ${FILLED_BUTTON_KBD_CLASSES}`,
+				surface: `border-ink bg-primary text-primary-foreground group-hover:bg-(--primary-hover) ${FILLED_BUTTON_KBD_CLASSES}`,
 			},
 			secondary: {
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
@@ -59,7 +59,7 @@ export const buttonVariants = tv({
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
 				surface: OUTLINE_CONTROL_SURFACE_CLASSES,
 			},
-			link: { surface: 'text-primary underline-offset-4 group-hover:underline' },
+			link: { surface: 'text-brand underline-offset-4 group-hover:underline' },
 		},
 		size: {
 			responsive: {

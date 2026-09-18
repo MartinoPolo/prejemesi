@@ -20,7 +20,7 @@
 	class={cn(
 		'flex min-h-7 w-full cursor-pointer select-none items-center gap-2 rounded-btn px-2 py-1 text-(length:--text-sm) font-medium text-foreground outline-none',
 		'hover:bg-accent focus-visible:bg-accent',
-		'data-[state=active]:text-primary',
+		'data-[state=active]:text-brand',
 		className,
 	)}
 	{...restProps}

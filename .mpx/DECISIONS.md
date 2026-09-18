@@ -407,6 +407,12 @@ sections for UI work. Historical reconciliation and review notes are in
   immediate and preserve the separate Grid/List crossfade, Compact view-switch behavior, drag,
   received-gift flight, and hover effects; this enhancement does not redesign those transitions.
 
+- 2026-09-16: Dark palettes use near-charcoal page backgrounds, restrained hue-tinted surfaces, and
+  darker primary fills with readable white labels; preserve light palettes and existing palette
+  identities. Use `brand` for colored text/icons on dark surfaces and reserve `primary` with
+  `primary-foreground` for filled controls. Tune the shared CSS derivation directly in the app
+  before adding choices.
+
 ## Images & cropping
 
 - 2026-05-29: Gift images support external image URLs and file uploads.

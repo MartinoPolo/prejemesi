@@ -142,7 +142,7 @@
 						/>
 					{:else}
 						<span
-							class="flex size-16 items-center justify-center rounded-xl bg-primary/10 text-lg font-semibold text-primary"
+							class="flex size-16 items-center justify-center rounded-xl bg-primary/10 text-lg font-semibold text-brand"
 						>
 							{getInitials(displayName)}
 						</span>

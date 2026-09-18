@@ -336,6 +336,7 @@
 	--popover: #fff;
 	--popover-foreground: var(--p-ink);
 	--primary: var(--p-brand);
+	--primary-hover: color-mix(in oklab, var(--primary) 86%, white);
 	--primary-foreground: #fff;
 	--secondary: color-mix(in oklab, var(--p-brand) 6%, white);
 	--secondary-foreground: var(--p-ink);
@@ -402,32 +403,32 @@
 }
 
 /* ── Dark derivation — „midnight notebook" ──────────────────────────────
-   Same palette hue kept saturated in the surfaces, chalk ink hue-tinted.
+   Charcoal surfaces carry restrained palette tints; color stays in small accents.
    `.dark [data-palette]` outranks the light `[data-palette]` block. */
 .dark,
 .dark [data-palette] {
 	color-scheme: dark;
 
-	--ink: color-mix(in oklab, var(--p-bright) 28%, #fdfeff);
+	--ink: color-mix(in oklab, var(--p-bright) 12%, #e6e8ec);
 	--ink-faint: color-mix(in oklab, var(--ink) 16%, transparent);
-	--brand: var(--p-bright);
+	--brand: color-mix(in oklab, var(--p-bright) 70%, #b8bec8);
 	--brand-deep: var(--p-deep);
-	--tint: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
-	--panel-hover: color-mix(in oklab, var(--p-deep) 58%, #081018);
-	--accent-loud: var(--p-accent);
-	--accent-loud-foreground: var(--p-on-accent);
+	--tint: var(--accent);
+	--panel-hover: var(--secondary);
+	--accent-loud: color-mix(in oklab, var(--p-accent) 65%, #b8bec8);
+	--accent-loud-foreground: #18202b;
 	--selection-tint: color-mix(in oklab, var(--primary) 22%, var(--card));
 	--selection-image-tint: color-mix(in oklab, var(--primary) 28%, transparent);
 	--selection-ring: color-mix(in oklab, var(--primary) 75%, white);
 	--selection-on-ring: var(--primary-foreground);
-	--note-tint: #ffdd75;
-	--note-ink: #43350a;
+	--note-tint: #b9aa7e;
+	--note-ink: #24251f;
 	--link: #b39dfc;
 	--heart: #f58a94;
 	--margin-red: #f07a6e;
 	--ghost-hover: rgb(255 255 255 / 6%);
-	--fan-back-1: color-mix(in oklab, var(--p-deep) 36%, #070d16);
-	--fan-back-2: color-mix(in oklab, var(--p-deep) 52%, #0a1524);
+	--fan-back-1: color-mix(in oklab, var(--p-deep) 12%, #111318);
+	--fan-back-2: color-mix(in oklab, var(--p-deep) 18%, #171a20);
 	--tag-priority-bg: #5a4a12;
 	--tag-edited-bg: #43356e;
 	--like-tint: #57293a;
@@ -463,19 +464,20 @@
 	--glow-soft: color-mix(in oklab, var(--p-bright) 45%, transparent);
 
 	/* ── shadcn semantic tokens (dark) ── */
-	--background: color-mix(in oklab, var(--p-deep) 30%, #060c15);
-	--foreground: color-mix(in oklab, var(--p-bright) 28%, #fdfeff);
-	--card: color-mix(in oklab, var(--p-deep) 48%, #081018);
+	--background: color-mix(in oklab, var(--p-deep) 10%, #090b0f);
+	--foreground: var(--ink);
+	--card: color-mix(in oklab, var(--p-deep) 16%, #13161c);
 	--card-foreground: var(--ink);
-	--popover: color-mix(in oklab, var(--p-deep) 48%, #081018);
+	--popover: var(--card);
 	--popover-foreground: var(--ink);
-	--primary: color-mix(in oklab, var(--p-brand) 88%, #04101c);
+	--primary: color-mix(in oklab, var(--p-brand) 60%, #202630);
+	--primary-hover: color-mix(in oklab, var(--primary) 92%, black);
 	--primary-foreground: #fff;
-	--secondary: color-mix(in oklab, var(--p-deep) 58%, #081018);
+	--secondary: color-mix(in oklab, var(--p-deep) 22%, #1c2027);
 	--secondary-foreground: var(--ink);
-	--muted: color-mix(in oklab, var(--p-deep) 40%, #0a1220);
+	--muted: color-mix(in oklab, var(--p-deep) 12%, #181b21);
 	--muted-foreground: color-mix(in oklab, var(--ink) 65%, transparent);
-	--accent: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
+	--accent: color-mix(in oklab, var(--p-deep) 26%, #222630);
 	--accent-foreground: var(--ink);
 	--destructive: #f07a6e;
 	--border: color-mix(in oklab, var(--ink) 16%, transparent);
@@ -486,11 +488,11 @@
 	--chart-3: var(--p-brand);
 	--chart-4: var(--p-deep);
 	--chart-5: var(--ink);
-	--sidebar: color-mix(in oklab, var(--p-deep) 48%, #081018);
+	--sidebar: var(--card);
 	--sidebar-foreground: var(--ink);
 	--sidebar-primary: var(--p-bright);
 	--sidebar-primary-foreground: #04101c;
-	--sidebar-accent: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
+	--sidebar-accent: var(--accent);
 	--sidebar-accent-foreground: var(--ink);
 	--sidebar-border: color-mix(in oklab, var(--ink) 16%, transparent);
 	--sidebar-ring: var(--p-bright);
@@ -499,7 +501,7 @@
 	--surface: var(--background);
 	--surface-2: var(--secondary);
 	--surface-3: var(--muted);
-	--surface-hover: color-mix(in oklab, var(--p-deep) 62%, #0a1220);
+	--surface-hover: var(--accent);
 
 	/* Text hierarchy (dark) */
 
@@ -507,7 +509,7 @@
 	--border-strong: color-mix(in oklab, var(--ink) 40%, transparent);
 
 	/* Primary (dark) */
-	--primary-soft: color-mix(in oklab, var(--p-bright) 22%, #081018);
+	--primary-soft: color-mix(in oklab, var(--primary) 24%, var(--card));
 
 	/* Status (dark) */
 	--status-success: #3bd598;
