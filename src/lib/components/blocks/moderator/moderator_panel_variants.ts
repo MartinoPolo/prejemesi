@@ -9,7 +9,7 @@ export const moderatorPanelVariants = tv({
 		moderatorRow:
 			'flex items-center gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors',
 		moderatorAvatar:
-			'flex size-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary',
+			'flex size-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-brand',
 		moderatorInfo: 'min-w-0 flex-1',
 		moderatorName: 'truncate text-sm font-medium text-foreground',
 		moderatorDate: 'text-xs text-muted-foreground',

@@ -158,7 +158,7 @@
 						>Something went wrong. Please try again later.</Alert.Description
 					>
 				</Alert.Root>
-				<Alert.Root class="border-primary/50 text-primary [&>svg]:text-primary">
+				<Alert.Root class="border-primary/50 text-brand [&>svg]:text-brand">
 					<CircleCheckIcon size={16} />
 					<Alert.Title>Success</Alert.Title>
 					<Alert.Description>Your changes have been saved successfully.</Alert.Description

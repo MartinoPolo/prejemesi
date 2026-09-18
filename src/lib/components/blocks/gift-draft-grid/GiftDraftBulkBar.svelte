@@ -46,7 +46,7 @@
 			aria-label={m.draft_grid_select_all()}
 		/>
 	</span>
-	<span class="inline-flex items-center gap-2 text-sm font-bold text-primary">
+	<span class="inline-flex items-center gap-2 text-sm font-bold text-brand">
 		<span class="size-2 rounded-full bg-primary" aria-hidden="true"></span>
 		{m.draft_grid_selected_count({ count: selectedCount })}
 	</span>

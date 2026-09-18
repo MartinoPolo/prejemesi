@@ -32,7 +32,7 @@ export const toastIconColors = {
 	success: 'text-status-success',
 	warning: 'text-status-warning',
 	danger: 'text-status-danger',
-	loading: 'text-primary',
+	loading: 'text-brand',
 } as const satisfies Record<ToastTone, string>;
 
 /**

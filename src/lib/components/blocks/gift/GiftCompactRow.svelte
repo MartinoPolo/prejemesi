@@ -104,7 +104,7 @@
 				href={safeGiftUrl ?? '#'}
 				target="_blank"
 				rel="external noopener noreferrer"
-				class="inline-flex items-center gap-1 text-xs text-primary"
+				class="inline-flex items-center gap-1 text-xs text-brand"
 				onclick={(e: MouseEvent) => e.stopPropagation()}
 			>
 				<ExternalLinkIcon class="size-3" />
@@ -122,7 +122,7 @@
 
 	<td class="px-3 py-1.5 text-right">
 		{#if gift.price !== null}
-			<span class="text-sm font-semibold text-primary">{priceDisplay}</span>
+			<span class="text-sm font-semibold text-brand">{priceDisplay}</span>
 		{:else}
 			<span class="text-xs text-muted-foreground">{priceDisplay}</span>
 		{/if}

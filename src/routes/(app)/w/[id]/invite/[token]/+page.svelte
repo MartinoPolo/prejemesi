@@ -90,13 +90,13 @@
 				class="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-primary/10"
 			>
 				{#if accepted}
-					<CheckIcon class="size-7 text-primary" />
+					<CheckIcon class="size-7 text-brand" />
 				{:else if errorMessage !== null}
 					<XCircleIcon class="size-7 text-destructive" />
 				{:else if !isAuthenticated}
-					<LogInIcon class="size-7 text-primary" />
+					<LogInIcon class="size-7 text-brand" />
 				{:else}
-					<UsersIcon class="size-7 text-primary" />
+					<UsersIcon class="size-7 text-brand" />
 				{/if}
 			</div>
 			<Card.Title class="text-xl">

@@ -234,7 +234,7 @@
 
 			<div class="flex flex-wrap items-center gap-1.5 text-sm">
 				{#if gift.price !== null}
-					<span class="font-bold text-primary">{priceDisplay}</span>
+					<span class="font-bold text-brand">{priceDisplay}</span>
 				{:else}
 					<span class="text-muted-foreground">{priceDisplay}</span>
 				{/if}
@@ -252,7 +252,7 @@
 						href={safeGiftUrl ?? '#'}
 						target="_blank"
 						rel="external noopener noreferrer"
-						class="inline-flex min-w-0 items-center gap-1 truncate text-xs text-primary"
+						class="inline-flex min-w-0 items-center gap-1 truncate text-xs text-brand"
 						onclick={(e: MouseEvent) => e.stopPropagation()}
 					>
 						<ExternalLinkIcon class="size-3 shrink-0" />

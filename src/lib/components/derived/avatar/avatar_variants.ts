@@ -5,7 +5,7 @@ export const avatarVariants = tv({
 		root: 'relative inline-flex shrink-0 items-center justify-center overflow-hidden select-none',
 		image: 'size-full',
 		fallback:
-			'flex size-full items-center justify-center bg-primary/10 font-semibold text-primary',
+			'flex size-full items-center justify-center bg-primary/10 font-semibold text-brand',
 	},
 	variants: {
 		size: {
