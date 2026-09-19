@@ -424,15 +424,21 @@ test.describe('issue #269 integrated motion strategy', () => {
 			}
 			const outer = toolbar.getBoundingClientRect();
 			const inner = surface.getBoundingClientRect();
+			const style = getComputedStyle(toolbar);
+			const pixels = (value: string) => Number.parseFloat(value);
 			return {
 				top: inner.top - outer.top,
 				bottom: outer.bottom - inner.bottom,
 				right: outer.right - inner.right,
+				expectedTop: pixels(style.borderTopWidth) + pixels(style.paddingTop),
+				expectedBottom: pixels(style.borderBottomWidth) + pixels(style.paddingBottom),
+				expectedRight: pixels(style.borderRightWidth) + pixels(style.paddingRight),
 			};
 		});
 		expect(doneInsets.top).toBeGreaterThan(0);
-		expect(doneInsets.bottom).toBeCloseTo(doneInsets.top, 0);
-		expect(doneInsets.right).toBeCloseTo(doneInsets.bottom, 0);
+		expect(doneInsets.top).toBeCloseTo(doneInsets.expectedTop, 0);
+		expect(doneInsets.bottom).toBeCloseTo(doneInsets.expectedBottom, 0);
+		expect(doneInsets.right).toBeCloseTo(doneInsets.expectedRight, 0);
 		expect(
 			await page.evaluate(
 				() => document.documentElement.scrollWidth <= document.documentElement.clientWidth,

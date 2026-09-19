@@ -428,18 +428,22 @@ describe('GiftCard approved Like geometry (issue #357)', () => {
 			const image = host.querySelector(
 				'[data-testid="gift-card-image-frame"]',
 			) as HTMLElement;
+			const cropComposition = image.querySelector(
+				'[data-testid="gift-card-crop-composition"]',
+			) as HTMLElement;
 			const card = image.parentElement as HTMLElement;
 			const footer = host.querySelector('[data-testid="gift-card-footer"]') as HTMLElement;
 			const like = host.querySelector('[data-like-heart]')?.closest('button') as HTMLElement;
 			const heart = like.querySelector('[data-like-heart]') as HTMLElement;
 			const countNode = like.querySelector('[data-like-count]') as HTMLElement;
 			const imageRect = image.getBoundingClientRect();
+			const cropCompositionRect = cropComposition.getBoundingClientRect();
 			const likeRect = like.getBoundingClientRect();
 
 			expect(card.contains(like)).toBe(true);
 			expect(image.contains(like)).toBe(true);
 			expect(footer.contains(like)).toBe(false);
-			expect(imageRect.width / imageRect.height).toBeCloseTo(4 / 3, 2);
+			expect(cropCompositionRect.width / cropCompositionRect.height).toBeCloseTo(4 / 3, 2);
 			const cardRect = card.getBoundingClientRect();
 			expect(likeRect.top).toBeLessThan(imageRect.top + imageRect.height / 2);
 			expect(likeRect.right).toBeLessThanOrEqual(cardRect.right);

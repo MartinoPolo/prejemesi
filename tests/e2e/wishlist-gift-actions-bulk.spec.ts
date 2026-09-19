@@ -354,7 +354,11 @@ test('mobile bulk actions expose mixed received state and apply a common value',
 	const sheet = await openMobileGiftActions(page, firstGift, 'Kolo pro výlety');
 	await sheet.getByRole('button', { name: /Vybrat více dárků/ }).click();
 	const toolbar = page.getByRole('region', { name: 'Nástroje výběru' });
+	await expect(firstGift).toHaveAttribute('role', 'checkbox');
+	await expect(firstGift).toHaveAttribute('aria-checked', 'true');
+	await expect(secondGift).toHaveAttribute('role', 'checkbox');
 	await secondGift.click();
+	await expect(secondGift).toHaveAttribute('aria-checked', 'true');
 	await selectionCount(toolbar, 2);
 
 	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
