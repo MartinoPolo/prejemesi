@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
@@ -15,9 +15,41 @@ import {
 
 afterEach(cleanupCardHosts);
 
-describe('GiftCard mobile action row grouping', () => {
-	it('keeps Reserve, Received, and More in one right-aligned row when a mobile card is wide enough', async () => {
+async function nextLayout(): Promise<void> {
+	await new Promise<void>((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+	);
+}
+
+describe('GiftCard responsive action placement', () => {
+	it('omits the footer when More is only a latent overflow callback', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		fixedHosts.add(host);
+		await render(
+			GiftCardTestHost,
+			{
+				gift: makeVisitorGift({
+					links: [],
+					isFullyReserved: true,
+					reservedCount: 1,
+					myReservationId: null,
+				}),
+				role: WISHLIST_ROLES.visitor,
+				onmore: () => {},
+				persistentMore: false,
+			},
+			{ baseElement: host },
+		);
+
+		expect(host.querySelector('[data-testid="gift-card-footer"]')).toBeNull();
+		expect(host.querySelector('[data-testid="gift-action-row"]')).toBeNull();
+	});
+
+	it('keeps Reserve visible while Received overflows, then restores Received when width returns', async () => {
 		await page.viewport(390, 900);
+		const onreserve = vi.fn();
+		const onreceived = vi.fn();
 		const host = document.createElement('div');
 		host.style.width = '296px';
 		document.body.appendChild(host);
@@ -27,79 +59,111 @@ describe('GiftCard mobile action row grouping', () => {
 			{
 				gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
 				role: WISHLIST_ROLES.moderator,
-				onreceived: () => {},
-				onreserve: () => {},
+				onreceived,
+				onreserve,
 				onmore: () => {},
+				persistentMore: false,
 			},
 			{ baseElement: host },
 		);
+		await nextLayout();
 
-		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
-		const reserve = row.querySelector('[data-testid="reserve-button"]') as HTMLElement;
-		const received = row.querySelector('[data-testid="gift-received-toggle"]') as HTMLElement;
-		const more = row.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
-		const rowRect = row.getBoundingClientRect();
-		const reserveRect = reserve.getBoundingClientRect();
-		const receivedRect = received.getBoundingClientRect();
-		const moreRect = more.getBoundingClientRect();
+		const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
+		expect(row.querySelectorAll('[data-testid="reserve-button"]')).toHaveLength(1);
+		expect(row.querySelectorAll('[data-testid="gift-received-toggle"]')).toHaveLength(1);
+		expect(
+			row.querySelector('[data-testid="gift-more-actions"]')?.getAttribute('aria-hidden'),
+		).toBe('true');
 
-		expect(reserveRect.top).toBeCloseTo(receivedRect.top, 0);
-		expect(receivedRect.top).toBeCloseTo(moreRect.top, 0);
-		expect(reserveRect.right).toBeLessThanOrEqual(receivedRect.left);
-		expect(receivedRect.right).toBeLessThanOrEqual(moreRect.left);
-		expect(moreRect.right).toBeCloseTo(rowRect.right, 0);
-	});
+		host.style.width = '210px';
+		await nextLayout();
+		const reserve = row.querySelector<HTMLButtonElement>('[data-testid="reserve-button"]')!;
+		const received = row.querySelector<HTMLElement>('[data-testid="gift-received-toggle"]')!;
+		const more = row.querySelector<HTMLElement>('[data-testid="gift-more-actions"]')!;
+		expect(reserve.closest('[aria-hidden="true"]')).toBeNull();
+		expect(received.closest('[aria-hidden="true"]')?.hasAttribute('inert')).toBe(true);
+		expect(more.getAttribute('aria-hidden')).toBe('false');
+		expect(row.dataset.overflowActions).toBe('received');
+		expect(reserve.getBoundingClientRect().top).toBeCloseTo(
+			more.getBoundingClientRect().top,
+			0,
+		);
+		reserve.click();
+		expect(onreserve).toHaveBeenCalledOnce();
 
-	it('wraps Reserve above the inseparable Received and More group when intrinsic actions no longer fit', async () => {
-		await page.viewport(390, 900);
-		const host = document.createElement('div');
 		host.style.width = '296px';
-		document.body.appendChild(host);
-		fixedHosts.add(host);
-		await render(
-			GiftCardTestHost,
-			{
-				gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
-				role: WISHLIST_ROLES.moderator,
-				onreceived: () => {},
-				onreserve: () => {},
-				onmore: () => {},
-			},
-			{ baseElement: host },
-		);
-
-		const footer = host.querySelector('[data-testid="gift-card-footer"]') as HTMLElement;
-		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
-		const reserve = row.querySelector('[data-testid="reserve-button"]') as HTMLElement;
-		const received = row.querySelector('[data-testid="gift-received-toggle"]') as HTMLElement;
-		const more = row.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
-		const footerStyle = getComputedStyle(footer);
-		const actionGap = Number.parseFloat(getComputedStyle(row).columnGap);
-		const intrinsicRowWidth =
-			reserve.getBoundingClientRect().width +
-			received.getBoundingClientRect().width +
-			more.getBoundingClientRect().width +
-			actionGap * 2;
-		const narrowCardWidth =
-			intrinsicRowWidth +
-			Number.parseFloat(footerStyle.paddingLeft) +
-			Number.parseFloat(footerStyle.paddingRight) -
-			1;
-		host.style.width = `${narrowCardWidth}px`;
-
-		const rowRect = row.getBoundingClientRect();
-		const reserveRect = reserve.getBoundingClientRect();
-		const receivedRect = received.getBoundingClientRect();
-		const moreRect = more.getBoundingClientRect();
-
-		expect(reserveRect.bottom).toBeLessThanOrEqual(receivedRect.top);
-		expect(receivedRect.top).toBeCloseTo(moreRect.top, 0);
-		expect(receivedRect.bottom).toBeCloseTo(moreRect.bottom, 0);
-		expect(reserveRect.right).toBeCloseTo(rowRect.right, 0);
-		expect(moreRect.right).toBeCloseTo(rowRect.right, 0);
+		await nextLayout();
+		const restoredReceived = row.querySelector<HTMLButtonElement>(
+			'[data-testid="gift-received-toggle"]',
+		)!;
+		expect(restoredReceived.closest('[aria-hidden="true"]')).toBeNull();
+		expect(row.querySelectorAll('[data-testid="reserve-button"]')).toHaveLength(1);
+		expect(
+			row.querySelector('[data-testid="gift-more-actions"]')?.getAttribute('aria-hidden'),
+		).toBe('true');
+		restoredReceived.click();
+		expect(onreceived).toHaveBeenCalledWith('gift-1', true);
 	});
 
-	it('keeps Reserve, Received, and More in one right-aligned desktop row', async () => {
+	it.each([
+		{
+			name: 'visitor Reserve',
+			role: WISHLIST_ROLES.visitor,
+			gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
+			primaryTestId: 'reserve-button',
+		},
+		{
+			name: 'visitor own Cancel',
+			role: WISHLIST_ROLES.visitor,
+			gift: makeVisitorGift({
+				myReservationId: 'reservation-1',
+				reservedCount: 1,
+				isFullyReserved: true,
+			}),
+			primaryTestId: 'reserve-button',
+		},
+		{
+			name: 'recipient sole Received',
+			role: WISHLIST_ROLES.recipient,
+			gift: makeVisitorGift(),
+			primaryTestId: 'gift-received-toggle',
+		},
+	])(
+		'keeps the direct primary and persistent More reachable at desktop card width for $name',
+		async ({ role, gift, primaryTestId }) => {
+			await page.viewport(1280, 900);
+			const host = document.createElement('div');
+			host.style.width = '280px';
+			document.body.appendChild(host);
+			fixedHosts.add(host);
+			await render(
+				GiftCardTestHost,
+				{
+					gift,
+					role,
+					onreceived: () => {},
+					onreserve: () => {},
+					onunreserve: () => {},
+					onmore: () => {},
+					persistentMore: true,
+				},
+				{ baseElement: host },
+			);
+			await nextLayout();
+
+			const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
+			const primary = row.querySelector<HTMLElement>(`[data-testid="${primaryTestId}"]`)!;
+			const more = row.querySelector<HTMLElement>('[data-testid="gift-more-actions"]')!;
+			expect(primary.closest('[aria-hidden="true"]')).toBeNull();
+			expect(more.closest('[aria-hidden="true"]')).toBeNull();
+			expect(primary.getBoundingClientRect().top).toBeCloseTo(
+				more.getBoundingClientRect().top,
+				0,
+			);
+		},
+	);
+
+	it('keeps More visible at wide widths when the caller marks it persistent', async () => {
 		await page.viewport(768, 900);
 		const host = document.createElement('div');
 		host.style.width = '360px';
@@ -113,24 +177,17 @@ describe('GiftCard mobile action row grouping', () => {
 				onreceived: () => {},
 				onreserve: () => {},
 				onmore: () => {},
+				persistentMore: true,
 			},
 			{ baseElement: host },
 		);
+		await nextLayout();
 
-		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
-		const reserve = row.querySelector('[data-testid="reserve-button"]') as HTMLElement;
-		const received = row.querySelector('[data-testid="gift-received-toggle"]') as HTMLElement;
-		const more = row.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
-		const rowRect = row.getBoundingClientRect();
-		const reserveRect = reserve.getBoundingClientRect();
-		const receivedRect = received.getBoundingClientRect();
-		const moreRect = more.getBoundingClientRect();
-
-		expect(reserveRect.top).toBeCloseTo(receivedRect.top, 0);
-		expect(receivedRect.top).toBeCloseTo(moreRect.top, 0);
-		expect(reserveRect.right).toBeLessThanOrEqual(receivedRect.left);
-		expect(receivedRect.right).toBeLessThanOrEqual(moreRect.left);
-		expect(moreRect.right).toBeCloseTo(rowRect.right, 0);
+		const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
+		const actions = Array.from(row.querySelectorAll<HTMLElement>('button'));
+		expect(actions).toHaveLength(3);
+		expect(row.querySelector('[data-testid="gift-more-actions"]')).toBeTruthy();
+		expect(new Set(actions.map((action) => action.getBoundingClientRect().top)).size).toBe(1);
 	});
 });
 
@@ -192,9 +249,9 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 				).toBe(false);
 				expect(row.contains(reserve)).toBe(true);
 				const widths = actions.map((action) => action.getBoundingClientRect().width);
-				expect(widths[0]).toBeGreaterThan(32);
-				expect(widths[1]).toBeGreaterThan(32);
-				expect(widths[2]).toBeCloseTo(32, 0);
+				expect(widths[0]).toBeGreaterThan(expectedControlSize);
+				expect(widths[1]).toBeGreaterThan(expectedControlSize);
+				expect(widths[2]).toBeCloseTo(expectedControlSize, 0);
 			}
 		},
 	);
@@ -240,17 +297,32 @@ describe('GiftCard approved action geometry (issue #350)', () => {
 				);
 				expect(more.getAttribute('aria-label')).toBe(m.gift_more_actions());
 				const actions = [reserve, primary, more];
-				for (const action of actions) {
+				const visibleActions = actions.filter(
+					(action) => action.closest('[aria-hidden="true"]') === null,
+				);
+				for (const action of visibleActions) {
 					expect(action.getBoundingClientRect().height).toBeCloseTo(40, 0);
 					expectRaisedActionShadowInside(action, card);
 				}
+				expect(reserve.closest('[aria-hidden="true"]')).toBeNull();
 				expect(
 					host.querySelector('[data-testid="gift-card-image-frame"]')?.contains(reserve),
 				).toBe(false);
-				expect(primary.getBoundingClientRect().top).toBeCloseTo(
-					more.getBoundingClientRect().top,
-					0,
-				);
+				if (primary.closest('[aria-hidden="true"]') === null) {
+					expect(primary.getBoundingClientRect().top).toBeCloseTo(
+						more.getBoundingClientRect().top,
+						0,
+					);
+				} else {
+					expect(primary.closest('[aria-hidden="true"]')?.hasAttribute('inert')).toBe(
+						true,
+					);
+					expect(
+						host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')?.dataset
+							.overflowActions,
+					).toContain('received');
+					expect(more.closest('[aria-hidden="true"]')).toBeNull();
+				}
 			} finally {
 				overwriteGetLocale(() => 'cs');
 			}

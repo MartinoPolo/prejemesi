@@ -16,7 +16,26 @@ import {
 } from './gift_list_item.test_fixtures.js';
 
 describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () => {
-	it('does not render the grid-only category badge for a categorized gift (issue #265)', async () => {
+	it('previews the latest post-share description append instead of stale base text', async () => {
+		const host = await renderItem(
+			makeVisitorGift({
+				description: 'Původní popis',
+				descriptionAppends: [
+					{ text: 'Starší doplnění', addedAt: '2026-01-02T00:00:00.000Z' },
+					{ text: 'Nejnovější důležitá informace', addedAt: '2026-01-03T00:00:00.000Z' },
+				],
+			}),
+			WISHLIST_ROLES.visitor,
+		);
+		const description = host.querySelector('.gift-list-description') as HTMLElement;
+
+		expect(description.textContent).toContain('Nejnovější důležitá informace');
+		expect(description.textContent).not.toContain('Původní popis');
+		expect(description.querySelector('button')).toBeNull();
+		host.remove();
+	});
+
+	it('renders the assigned category over the list image', async () => {
 		const host = await renderItem(
 			makeVisitorGift({
 				categoryId: 'category-sport',
@@ -31,7 +50,118 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 			WISHLIST_ROLES.visitor,
 		);
 
-		expect(host.querySelector('[data-testid="gift-category-badge"]')).toBeNull();
+		const badge = host.querySelector('[data-testid="gift-category-badge"]') as HTMLElement;
+		expect(badge.textContent).toContain('Sport');
+		expect(host.querySelector('[data-testid="gift-list-image"]')?.contains(badge)).toBe(true);
+	});
+
+	it('separates category and priority from the centered state and identity group', async () => {
+		await page.viewport(344, 800);
+		const host = await renderItem(
+			makeVisitorGift({
+				categoryId: 'category-sport',
+				category: {
+					id: 'category-sport',
+					presetKey: null,
+					customLabel: 'Sportovní vybavení',
+					color: '#0369A1',
+					sortOrder: 0,
+				},
+				priorityLabel: 'Vysoka',
+				isFullyReserved: true,
+				reservedCount: 1,
+				reserverNames: ['Alexandra Nováková'],
+				myReservationId: null,
+			}),
+			WISHLIST_ROLES.moderator,
+			null,
+			320,
+		);
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+		);
+		const category = host.querySelector('[data-testid="gift-category-badge"]') as HTMLElement;
+		const priority = host.querySelector('[data-testid="gift-priority-badge"]') as HTMLElement;
+		const overlayItems = host.querySelectorAll<HTMLElement>(
+			'[data-testid="gift-state-overlay"] > span',
+		);
+
+		for (const overlayItem of overlayItems) {
+			expect(
+				rectanglesIntersect(
+					category.getBoundingClientRect(),
+					overlayItem.getBoundingClientRect(),
+				),
+			).toBe(false);
+			expect(
+				rectanglesIntersect(
+					priority.getBoundingClientRect(),
+					overlayItem.getBoundingClientRect(),
+				),
+			).toBe(false);
+		}
+		host.remove();
+	});
+
+	it('keeps a full long category clear of state, identity, and priority at 200% text', async () => {
+		await page.viewport(344, 1000);
+		const previousFontSize = document.documentElement.style.fontSize;
+		document.documentElement.style.fontSize = '32px';
+		const categoryLabel = 'Sportovní vybavení pro dlouhé zimní výpravy celé rodiny';
+		try {
+			const host = await renderItem(
+				makeVisitorGift({
+					categoryId: 'category-sport',
+					category: {
+						id: 'category-sport',
+						presetKey: null,
+						customLabel: categoryLabel,
+						color: '#0369A1',
+						sortOrder: 0,
+					},
+					priorityLabel: 'Vysoka',
+					isFullyReserved: true,
+					reservedCount: 1,
+					reserverNames: ['Alexandra Nováková'],
+					myReservationId: null,
+				}),
+				WISHLIST_ROLES.moderator,
+				null,
+				320,
+			);
+			await new Promise<void>((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+			);
+			const category = host.querySelector(
+				'[data-testid="gift-category-badge"]',
+			) as HTMLElement;
+			const priority = host.querySelector(
+				'[data-testid="gift-priority-badge"]',
+			) as HTMLElement;
+			const overlayItems = host.querySelectorAll<HTMLElement>(
+				'[data-testid="gift-state-overlay"] > span',
+			);
+
+			expect(category.textContent?.trim()).toBe(categoryLabel);
+			expect(category.scrollHeight).toBeLessThanOrEqual(category.clientHeight);
+			for (const overlayItem of overlayItems) {
+				expect(
+					rectanglesIntersect(
+						category.getBoundingClientRect(),
+						overlayItem.getBoundingClientRect(),
+					),
+				).toBe(false);
+				expect(
+					rectanglesIntersect(
+						priority.getBoundingClientRect(),
+						overlayItem.getBoundingClientRect(),
+					),
+				).toBe(false);
+			}
+			host.remove();
+		} finally {
+			document.documentElement.style.fontSize = previousFontSize;
+		}
 	});
 
 	it('paints the visible list thumbnail frame with explicit black', async () => {
@@ -88,7 +218,7 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		expect(thumb.contains(overlayBadge!)).toBe(true);
 	});
 
-	it('dims the content column but keeps the overlay crisp outside the dimmed wrapper', async () => {
+	it('keeps reserved content colors legible while the image overlay carries state', async () => {
 		await renderItem(
 			makeVisitorGift({ isFullyReserved: true, reservedCount: 1, myReservationId: null }),
 			WISHLIST_ROLES.visitor,
@@ -99,7 +229,8 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		expect(row.className).not.toContain('opacity-55');
 
 		const dimmed = document.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
-		expect(dimmed.className).toContain('opacity-55');
+		expect(dimmed.className).not.toContain('grayscale-50');
+		expect(dimmed.className).not.toContain('opacity-55');
 
 		const overlayBadge = Array.from(document.querySelectorAll('span')).find((element) =>
 			element.textContent?.includes('Rezervováno'),
@@ -116,7 +247,7 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		expect(document.body.textContent).not.toContain('rezervoval');
 	});
 
-	it('shows moderator reserver names in body text, never in the image overlay', async () => {
+	it('groups moderator reserver names with state on the image overlay', async () => {
 		await renderItem(
 			makeVisitorGift({
 				isFullyReserved: true,
@@ -128,8 +259,8 @@ describe('GiftListItem centralized state overlay parity (issue #224 REQ-7)', () 
 		);
 		const image = document.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 		const content = document.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
-		expect(content.textContent).toContain('Babička');
-		expect(image.textContent).not.toContain('Babička');
+		expect(content.textContent).not.toContain('Babička');
+		expect(image.textContent).toContain('Babička');
 		expect(image.textContent).toContain('Rezervováno');
 
 		document.body.innerHTML = '';
@@ -163,7 +294,7 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 		);
 	});
 
-	it('keeps moderator reserver names in the body during contextual mode', async () => {
+	it('keeps moderator reserver names with state during contextual mode', async () => {
 		const host = document.createElement('div');
 		host.style.width = '320px';
 		document.body.appendChild(host);
@@ -180,10 +311,10 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 		);
 
 		const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
-		expect(host.querySelector('[data-testid="gift-list-content"]')?.textContent).toContain(
+		expect(host.querySelector('[data-testid="gift-list-content"]')?.textContent).not.toContain(
 			'Babička',
 		);
-		expect(image.textContent).not.toContain('Babička');
+		expect(image.textContent).toContain('Babička');
 		expect(host.querySelector('[data-like-heart]')).toBeNull();
 		expect(host.querySelector('[data-testid="reserve-button"]')).toBeNull();
 		expect(host.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
@@ -341,22 +472,23 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 			requiredLabels: [m.gift_received_badge(), m.gift_reserved_by_other_overlay()],
 		},
 	])(
-		'keeps $label overlay clear of Like on the responsive square thumbnail',
+		'keeps $label overlay on the image while Like stays in the title lane',
 		async ({ gift, requiredLabels }) => {
 			await page.viewport(390, 720);
-			const host = await renderItem(makeVisitorGift(gift), WISHLIST_ROLES.visitor);
+			const host = await renderItem(makeVisitorGift(gift), WISHLIST_ROLES.visitor, null, 360);
+			const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
 			const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 			const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
 			const likeButton = host.querySelector('[data-like-heart]')
 				?.parentElement as HTMLElement;
 
 			const imageRect = image.getBoundingClientRect();
-			expect(imageRect.width).toBeGreaterThanOrEqual(144);
-			expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
+			expect(imageRect.width).toBeCloseTo(item.clientWidth * 0.35, 0);
+			expect(imageRect.width).toBeLessThan(imageRect.height);
 			for (const requiredLabel of requiredLabels) {
 				expect(overlay.textContent).toContain(requiredLabel);
 			}
-			expect(likeButton.getBoundingClientRect().width).toBeCloseTo(40, 0);
+			expect(likeButton.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
 			for (const pill of overlay.querySelectorAll<HTMLElement>(':scope > span')) {
 				expect(
 					rectanglesIntersect(
@@ -368,7 +500,7 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 		},
 	);
 
-	it('keeps a long unavailable overlay clear of the visible Like control on a mobile square thumbnail', async () => {
+	it('keeps a long unavailable overlay clear of the visible Like control on a mobile portrait thumbnail', async () => {
 		await page.viewport(390, 720);
 		const host = await renderItem(
 			makeVisitorGift({
@@ -378,7 +510,10 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 				myReservationId: null,
 			}),
 			WISHLIST_ROLES.visitor,
+			null,
+			360,
 		);
+		const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
 		const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 		const badge = host.querySelector(
 			'[data-testid="gift-state-overlay"] > span',
@@ -392,9 +527,9 @@ describe('GiftListItem unified state presentation (issue #328)', () => {
 			.element(page.getByRole('button', { name: /Přidat do oblíbených/ }))
 			.toBeVisible();
 		const imageRect = image.getBoundingClientRect();
-		expect(imageRect.width).toBeGreaterThanOrEqual(144);
-		expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
-		expect(likeButton.getBoundingClientRect().width).toBeCloseTo(40, 0);
+		expect(imageRect.width).toBeCloseTo(item.clientWidth * 0.35, 0);
+		expect(imageRect.width).toBeLessThan(imageRect.height);
+		expect(likeButton.getBoundingClientRect().width).toBeGreaterThanOrEqual(40);
 		expect(
 			rectanglesIntersect(badge.getBoundingClientRect(), likeButton.getBoundingClientRect()),
 		).toBe(false);

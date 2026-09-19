@@ -14,6 +14,7 @@
 		isArchived?: boolean;
 		size?: ControlSize;
 		compactLabel?: boolean;
+		pending?: boolean;
 		class?: string;
 		surfaceClass?: string;
 		onreceived?: (giftId: string, received: boolean) => void | Promise<void>;
@@ -26,29 +27,47 @@
 		isArchived = false,
 		size,
 		compactLabel = false,
+		pending = false,
 		class: className,
 		surfaceClass,
 		onreceived,
 	}: Props = $props();
 
 	const visible = $derived(canManageWishlist(role) && !isArchived && onreceived !== undefined);
-	let pending = $state(false);
+	let localPending = $state(false);
+	const isPending = $derived(pending || localPending);
 	let action: HTMLButtonElement | HTMLAnchorElement | null = $state(null);
+
+	function focusTarget(): HTMLElement | null {
+		if (action?.isConnected === true) {
+			return action;
+		}
+		for (const candidate of document.querySelectorAll<HTMLElement>(
+			'[data-gift-received-action]',
+		)) {
+			if (
+				candidate.dataset.giftReceivedAction === giftId &&
+				!candidate.matches(':disabled') &&
+				candidate.closest('[inert], [aria-hidden="true"]') === null
+			) {
+				return candidate;
+			}
+		}
+		return null;
+	}
 
 	async function handleClick(event: MouseEvent) {
 		event.stopPropagation();
-		if (onreceived === undefined || pending) {
+		if (onreceived === undefined || isPending) {
 			return;
 		}
-		pending = true;
+		localPending = true;
 		try {
 			await onreceived(giftId, !received);
 		} finally {
-			pending = false;
+			localPending = false;
 			await tick();
-			if (action !== null && action.isConnected) {
-				action.focus({ preventScroll: true });
-			}
+			focusTarget()?.focus({ preventScroll: true });
 		}
 	}
 </script>
@@ -57,14 +76,15 @@
 	<Button
 		bind:ref={action}
 		{size}
-		intent="secondary"
+		intent="secondary-filled"
 		class={className}
 		{surfaceClass}
 		onclick={handleClick}
-		disabled={pending}
+		disabled={isPending}
 		aria-label={received ? m.gift_mark_unreceived() : m.gift_mark_received()}
 		data-testid="gift-received-toggle"
 		data-gift-received-action={giftId}
+		data-pending={isPending}
 	>
 		<CheckIcon data-icon="inline-start" />
 		{#if compactLabel}

@@ -3,6 +3,7 @@ import * as m from '../../src/lib/paraglide/messages.js';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import { shareWishlist } from './fixtures/wishlist-helpers.js';
+import { setGiftReceived } from './fixtures/gift-actions-helpers.js';
 import {
 	gift,
 	createActionFixture,
@@ -252,7 +253,11 @@ test('all six mobile bulk actions refresh and persist on a shared list for one a
 	await waitForReceivedState(secondGift, false);
 	contextSheet = await openMobileGiftActions(page, firstGift, 'Kolo pro výlety');
 	await contextSheet.getByRole('button', { name: /Vybrat více dárků/ }).click();
+	await expect(firstGift).toHaveAttribute('role', 'checkbox');
+	await expect(firstGift).toHaveAttribute('aria-checked', 'true');
+	await expect(secondGift).toHaveAttribute('role', 'checkbox');
 	await secondGift.click();
+	await expect(secondGift).toHaveAttribute('aria-checked', 'true');
 	await selectionCount(toolbar, 2);
 	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();
 	sheet = page.getByRole('dialog', { name: m.gift_selection_actions() });
@@ -341,7 +346,7 @@ test('mobile bulk actions expose mixed received state and apply a common value',
 	await createActionFixture(page);
 	const firstGift = gift(page, 'Kolo pro výlety');
 	const secondGift = gift(page, 'Stan pro dva');
-	await firstGift.getByTestId('gift-received-toggle').click();
+	await setGiftReceived(page, firstGift, true);
 	await waitForReceivedState(firstGift, true);
 	await waitForReceivedState(secondGift, false);
 
@@ -349,7 +354,11 @@ test('mobile bulk actions expose mixed received state and apply a common value',
 	const sheet = await openMobileGiftActions(page, firstGift, 'Kolo pro výlety');
 	await sheet.getByRole('button', { name: /Vybrat více dárků/ }).click();
 	const toolbar = page.getByRole('region', { name: 'Nástroje výběru' });
+	await expect(firstGift).toHaveAttribute('role', 'checkbox');
+	await expect(firstGift).toHaveAttribute('aria-checked', 'true');
+	await expect(secondGift).toHaveAttribute('role', 'checkbox');
 	await secondGift.click();
+	await expect(secondGift).toHaveAttribute('aria-checked', 'true');
 	await selectionCount(toolbar, 2);
 
 	await toolbar.getByRole('button', { name: m.gift_selection_actions() }).click();

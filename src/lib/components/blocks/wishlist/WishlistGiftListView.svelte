@@ -24,6 +24,7 @@
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
 		onreordercancel: (orderedIds: string[]) => void;
@@ -46,6 +47,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPendingGiftIds = new Set<string>(),
 		onreorderpreview,
 		onreordercommit,
 		onreordercancel,
@@ -146,12 +148,17 @@
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						receivedPending={receivedPendingGiftIds.has(giftItem.id)}
 						moreOpen={activeContextGiftId === giftItem.id}
 						moreSurface={contextSurface}
-						onmore={oncontextactions !== undefined &&
-						hascontextactions !== undefined &&
-						hascontextactions(giftItem)
-							? (anchor) => oncontextactions(giftItem, { kind: 'more', anchor })
+						persistentMore={hascontextactions?.(giftItem) ?? false}
+						onmore={oncontextactions !== undefined
+							? (anchor, placementSnapshot) =>
+									oncontextactions(giftItem, {
+										kind: 'more',
+										anchor,
+										placementSnapshot,
+									})
 							: undefined}
 					/>
 				{/snippet}

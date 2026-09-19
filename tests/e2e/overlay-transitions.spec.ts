@@ -74,14 +74,15 @@ async function startExitRecording(surface: Locator): Promise<{
 			childList: true,
 			subtree: true,
 		});
-		element.addEventListener(
-			'animationend',
-			() => {
-				record('animation-end');
-				queueMicrotask(() => record('animation-end'));
-			},
-			{ once: true },
-		);
+		function handleAnimationEnd(event: Event) {
+			if (event.target !== element || element.getAttribute('data-state') !== 'closed') {
+				return;
+			}
+			record('animation-end');
+			queueMicrotask(() => record('animation-end'));
+			element.removeEventListener('animationend', handleAnimationEnd);
+		}
+		element.addEventListener('animationend', handleAnimationEnd);
 
 		function sampleFrame() {
 			record('frame');

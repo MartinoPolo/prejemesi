@@ -101,16 +101,7 @@ export function formatReserverLine(reserverNames: readonly string[]): string | n
 		return m.gift_reserved_by({ name: firstName });
 	}
 
-	let joinedNames: string;
-	try {
-		joinedNames = new Intl.ListFormat(getLocale(), {
-			style: 'long',
-			type: 'conjunction',
-		}).format(reserverNames);
-	} catch {
-		joinedNames = reserverNames.join(', ');
-	}
-	return m.gift_reserved_by_many({ names: joinedNames });
+	return m.gift_reserved_by_many();
 }
 
 /** Format an ISO timestamp from a description append as a short locale date. */

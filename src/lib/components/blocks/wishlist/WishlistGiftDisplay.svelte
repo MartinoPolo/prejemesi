@@ -17,6 +17,7 @@
 	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { giftCardCollectionLayout } from './gift_card_collection_layout.js';
 
 	interface WishlistGiftDisplayProps {
 		/** Shared display sections consumed identically by every view mode. */
@@ -50,6 +51,7 @@
 		activeContextGiftId?: string | null;
 		contextSurface?: 'menu' | 'dialog';
 		grouping?: GiftGroupingOption;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 	}
 
 	let {
@@ -83,6 +85,7 @@
 		activeContextGiftId = null,
 		contextSurface = 'menu',
 		grouping = 'none',
+		receivedPendingGiftIds = new Set<string>(),
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -221,6 +224,7 @@
 					{...triggerProps}
 					style={undefined}
 					bind:this={collectionElement}
+					use:giftCardCollectionLayout
 					data-wishlist-gift-collection
 					data-view-mode={displayedViewMode}
 					inert={collectionIsOutgoing}
@@ -250,6 +254,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 							{onreorderpreview}
 							{onreordercommit}
 							{onreordercancel}
@@ -275,6 +280,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 							{onreorderpreview}
 							{onreordercommit}
 							{onreordercancel}
@@ -291,6 +297,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 						/>
 					{/if}
 				</div>

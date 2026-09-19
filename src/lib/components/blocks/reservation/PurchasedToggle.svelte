@@ -1,6 +1,4 @@
 <script lang="ts">
-	import CheckIcon from '@lucide/svelte/icons/check';
-	import ShoppingBagIcon from '@lucide/svelte/icons/shopping-bag';
 	import { Button } from '$lib/components/base/button/index.js';
 	import type { ControlSize } from '$lib/components/base/control_sizing.js';
 	import { toastSuccess, toastError } from '$lib/components/base/toast/index.js';
@@ -55,19 +53,13 @@
 {#if canTrack}
 	<Button
 		{size}
-		intent={purchased ? 'primary' : 'outline'}
+		intent="secondary-filled"
 		disabled={isSaving}
 		aria-pressed={purchased}
 		aria-label={purchased ? m.gift_bought() : m.gift_mark_bought()}
 		onclick={handleToggle}
 		class={className}
 	>
-		{#if purchased}
-			<CheckIcon data-icon="inline-start" />
-			{m.gift_bought()}
-		{:else}
-			<ShoppingBagIcon data-icon="inline-start" />
-			{m.gift_mark_bought()}
-		{/if}
+		{m.gift_bought()}
 	</Button>
 {/if}

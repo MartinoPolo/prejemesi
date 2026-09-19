@@ -21,7 +21,10 @@
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
 	import * as m from '$lib/paraglide/messages.js';
-	import type { GiftContextFinishPolicy } from './gift_context_invocation.js';
+	import type {
+		GiftActionPlacementSnapshot,
+		GiftContextFinishPolicy,
+	} from './gift_context_invocation.js';
 
 	interface Choice {
 		id: string;
@@ -48,6 +51,7 @@
 		categories: Choice[];
 		priorityLevelId: string | null;
 		categoryId: string | null;
+		placementSnapshot?: GiftActionPlacementSnapshot;
 		onclose: () => void;
 		oncomplete: (sessionId: number) => void;
 		onfinish: (policy: GiftContextFinishPolicy, callback: () => void) => void;
@@ -83,6 +87,7 @@
 		categories,
 		priorityLevelId,
 		categoryId,
+		placementSnapshot,
 		onclose,
 		oncomplete,
 		onfinish,
@@ -103,7 +108,7 @@
 			DOMRect.fromRect({ x: anchorPoint.x, y: anchorPoint.y, width: 0, height: 0 }),
 	});
 
-	const actions = $derived(
+	const capabilityActions = $derived(
 		giftContextActions({
 			role,
 			primaryUrl: safePrimaryUrl,
@@ -113,6 +118,19 @@
 			ownsReservation,
 			canTrackPurchased,
 		}),
+	);
+	const actions = $derived(
+		placementSnapshot === undefined
+			? capabilityActions
+			: capabilityActions.filter(
+					(action) => !placementSnapshot.visibleDirectActions.includes(action),
+				),
+	);
+	const disabledActions = $derived(
+		new Set([
+			...(placementSnapshot?.disabledActions ?? []),
+			...(placementSnapshot?.pendingActions ?? []),
+		]),
 	);
 	const nestedActionSurfaceClass = 'grid grid-cols-[1.25rem_minmax(0,1fr)_1.25rem]';
 	let mobileScreen = $state<'main' | 'priority' | 'category'>('main');
@@ -126,6 +144,9 @@
 
 	function has(action: (typeof actions)[number]) {
 		return actions.includes(action);
+	}
+	function isDisabled(action: (typeof actions)[number]) {
+		return disabledActions.has(action);
 	}
 	function finish(policy: GiftContextFinishPolicy, callback: () => void) {
 		onfinish(policy, callback);
@@ -215,21 +236,26 @@
 				{:else}
 					{#if has('open')}<WishlistSheetAction
 							href={safePrimaryUrl!}
+							disabled={isDisabled('open')}
 							target="_blank"
 							rel="external noopener noreferrer"
 							onclick={onclose}
 							>{@render icon('open')}{m.gift_context_open_link()}</WishlistSheetAction
 						>{/if}
-					{#if has('copy')}<WishlistSheetAction onclick={copyLink}
+					{#if has('copy')}<WishlistSheetAction
+							disabled={isDisabled('copy')}
+							onclick={copyLink}
 							>{@render icon('copy')}{m.gift_context_copy_link()}</WishlistSheetAction
 						>{/if}
-					{#if has('edit')}<WishlistSheetAction onclick={() => finish('handoff', onedit)}
+					{#if has('edit')}<WishlistSheetAction
+							disabled={isDisabled('edit')}
+							onclick={() => finish('handoff', onedit)}
 							>{@render icon('edit')}{m.gift_context_edit()}</WishlistSheetAction
 						>{/if}
 					{#if has('priority')}<WishlistSheetAction
 							indent
 							surfaceClass={nestedActionSurfaceClass}
-							disabled={!priorityReady}
+							disabled={!priorityReady || isDisabled('priority')}
 							onclick={() => (mobileScreen = 'priority')}
 							>{priorityReady
 								? m.gift_priority_label()
@@ -240,7 +266,7 @@
 					{#if has('category')}<WishlistSheetAction
 							indent
 							surfaceClass={nestedActionSurfaceClass}
-							disabled={!categoryReady}
+							disabled={!categoryReady || isDisabled('category')}
 							onclick={() => (mobileScreen = 'category')}
 							>{categoryReady
 								? m.gift_context_category()
@@ -249,24 +275,28 @@
 							/></WishlistSheetAction
 						>{/if}
 					{#if has('received')}<WishlistSheetAction
+							disabled={isDisabled('received')}
 							onclick={() => finish('restore-focus', onreceived)}
 							>{@render icon('received')}{received
 								? m.gift_mark_unreceived()
 								: m.gift_mark_received()}</WishlistSheetAction
 						>{/if}
 					{#if has('multiselect')}<WishlistSheetAction
+							disabled={isDisabled('multiselect')}
 							onclick={() => finish('handoff', onselect)}
 							>{@render icon(
 								'multiselect',
 							)}{m.gift_context_select_multiple()}</WishlistSheetAction
 						>{/if}
 					{#if has('reserve') && onreserve}<WishlistSheetAction
+							disabled={isDisabled('reserve')}
 							onclick={() => finish('handoff', onreserve)}
 							>{@render icon(
 								'reserve',
 							)}{m.reserve_button_reserve()}</WishlistSheetAction
 						>{/if}
 					{#if has('cancel-reservation') && oncancelreservation}<WishlistSheetAction
+							disabled={isDisabled('cancel-reservation')}
 							onclick={() => finish('restore-focus', oncancelreservation)}
 							>{@render icon(
 								'cancel-reservation',
@@ -274,6 +304,7 @@
 						>{/if}
 					{#if has('purchased') && onpurchased}<WishlistSheetAction
 							aria-pressed={purchased}
+							disabled={isDisabled('purchased')}
 							onclick={() => finish('restore-focus', onpurchased)}
 							>{@render icon('purchased')}{purchased
 								? m.gift_bought()
@@ -300,6 +331,7 @@
 			<GiftContextDesktopActions
 				kind="dropdown"
 				{actions}
+				{disabledActions}
 				{safePrimaryUrl}
 				{received}
 				{purchased}
@@ -333,6 +365,7 @@
 		<GiftContextDesktopActions
 			kind="context"
 			{actions}
+			{disabledActions}
 			{safePrimaryUrl}
 			{received}
 			{purchased}

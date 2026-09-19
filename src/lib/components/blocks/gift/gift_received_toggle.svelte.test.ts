@@ -52,6 +52,18 @@ describe('GiftReceivedToggle', () => {
 		},
 	);
 
+	it('uses the shared filled secondary treatment', async () => {
+		await render(GiftReceivedToggle, {
+			giftId: 'gift-filled',
+			received: false,
+			role: WISHLIST_ROLES.moderator,
+			onreceived: vi.fn(),
+		});
+
+		const action = document.querySelector('[data-testid="gift-received-toggle"]')!;
+		expect(action.querySelector('.bg-foreground')).toBeTruthy();
+	});
+
 	it('does not render for a visitor', async () => {
 		await render(GiftReceivedToggle, {
 			giftId: 'gift-1',
@@ -83,6 +95,28 @@ describe('GiftReceivedToggle', () => {
 		});
 
 		expect(document.querySelector('[data-testid="gift-received-toggle"]')).toBeNull();
+	});
+
+	it('honors external pending state until the route-owned mutation settles', async () => {
+		const onreceived = vi.fn();
+		const screen = await render(GiftReceivedToggle, {
+			giftId: 'gift-1',
+			received: true,
+			role: WISHLIST_ROLES.recipient,
+			pending: true,
+			onreceived,
+		});
+		const action = page.getByRole('button', { name: m.gift_mark_unreceived() });
+
+		await expect.element(action).toBeDisabled();
+		await expect.element(action).toHaveAttribute('data-pending', 'true');
+		await action.click({ force: true });
+		expect(onreceived).not.toHaveBeenCalled();
+
+		await screen.rerender({ pending: false });
+		await expect.element(action).toBeEnabled();
+		await action.click();
+		expect(onreceived).toHaveBeenCalledWith('gift-1', false);
 	});
 
 	it('keeps a local disabled acknowledgement while the received mutation is pending', async () => {
@@ -140,7 +174,7 @@ describe('GiftReceivedToggle', () => {
 		await expect.element(action).toHaveFocus();
 	});
 
-	it('does not reclaim focus when relocation disconnected its source action', async () => {
+	it('restores focus to the matching action after relocation disconnects its source', async () => {
 		let settle!: () => void;
 		const onreceived = vi.fn(
 			() =>
@@ -163,8 +197,8 @@ describe('GiftReceivedToggle', () => {
 		const sourceFocus = vi.spyOn(source, 'focus');
 		source.remove();
 		const destination = document.createElement('button');
+		destination.dataset.giftReceivedAction = 'gift-1';
 		document.body.append(destination);
-		destination.focus();
 		settle();
 
 		await vi.waitFor(() => expect(source.disabled).toBe(false));

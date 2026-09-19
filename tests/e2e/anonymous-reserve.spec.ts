@@ -137,11 +137,16 @@ test.describe('Anonymous visitor reservation', () => {
 		expect(likeBounds).not.toBeNull();
 		expect(moreActionsBounds).not.toBeNull();
 		await expect(mobileListItem.getByRole('link', { name: /example\.com/ })).toBeVisible();
-		// The 1:1 thumb frame grows with the row and covers its complete inner height.
-		expect(imageBounds!.height).toBeCloseTo(
-			imageBounds!.width / GIFT_CROP_TARGET_SPECS.thumb.aspect,
-			0,
+		const compositionBounds = await image
+			.getByTestId('gift-list-square-composition')
+			.boundingBox();
+		expect(compositionBounds).not.toBeNull();
+		expect(compositionBounds!.width / compositionBounds!.height).toBeCloseTo(
+			GIFT_CROP_TARGET_SPECS.thumb.aspect,
+			1,
 		);
+		expect(compositionBounds!.height).toBeCloseTo(imageBounds!.height, 0);
+		expect(imageBounds!.height).toBeGreaterThan(imageBounds!.width);
 		expect(imageBounds!.y).toBeCloseTo(itemBounds!.y + 2, 0);
 		expect(imageBounds!.y + imageBounds!.height).toBeCloseTo(
 			itemBounds!.y + itemBounds!.height - 2,
@@ -150,7 +155,7 @@ test.describe('Anonymous visitor reservation', () => {
 		expect(reserveBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
 		expect(moreActionsBounds!.x).toBeGreaterThanOrEqual(imageBounds!.x + imageBounds!.width);
 
-		// Like is a separate control at the full item's top-right, never inside the thumb.
+		// List Like stays beside the title, separate from the image and footer actions.
 		const itemRight = itemBounds!.x + itemBounds!.width;
 		const itemBottom = itemBounds!.y + itemBounds!.height;
 		const likeRight = likeBounds!.x + likeBounds!.width;
@@ -160,9 +165,12 @@ test.describe('Anonymous visitor reservation', () => {
 		expect(likeBounds!.y).toBeGreaterThanOrEqual(itemBounds!.y - 1);
 		expect(likeRight).toBeLessThanOrEqual(itemRight + 1);
 		expect(likeBottom).toBeLessThanOrEqual(itemBottom + 1);
-		expect(
-			Math.abs(likeBounds!.y - itemBounds!.y - (itemRight - likeRight)),
-		).toBeLessThanOrEqual(1);
+		const titleBounds = await mobileListItem
+			.getByRole('heading', { name: TEST_GIFT.name })
+			.boundingBox();
+		expect(titleBounds).not.toBeNull();
+		expect(likeBounds!.y).toBeLessThan(titleBounds!.y + titleBounds!.height);
+		expect(likeBottom).toBeGreaterThan(titleBounds!.y);
 		for (const actionBounds of [reserveBounds!, moreActionsBounds!]) {
 			const overlaps =
 				likeBounds!.x < actionBounds.x + actionBounds.width &&

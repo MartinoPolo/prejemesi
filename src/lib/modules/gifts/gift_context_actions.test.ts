@@ -47,18 +47,13 @@ describe('gift contextual actions', () => {
 		]);
 	});
 
-	it('derives visitor More visibility from actions outside Reserve and Cancel reservation', () => {
-		expect(hasAdditionalGiftContextActions(['reserve'], 'visitor')).toBe(false);
-		expect(hasAdditionalGiftContextActions(['cancel-reservation'], 'visitor')).toBe(false);
-		expect(hasAdditionalGiftContextActions(['purchased'], 'visitor')).toBe(true);
-		expect(hasAdditionalGiftContextActions(['open'], 'visitor')).toBe(true);
-	});
-
-	it('derives manager More visibility from actions outside Received', () => {
-		expect(hasAdditionalGiftContextActions(['received'], 'moderator')).toBe(false);
-		expect(hasAdditionalGiftContextActions(['edit'], 'moderator')).toBe(true);
-		expect(hasAdditionalGiftContextActions(['priority'], 'moderator')).toBe(true);
-		expect(hasAdditionalGiftContextActions(['reserve'], 'moderator')).toBe(true);
+	it('derives More visibility from the commands currently placed as direct actions', () => {
+		expect(hasAdditionalGiftContextActions(['reserve'], ['reserve'])).toBe(false);
+		expect(
+			hasAdditionalGiftContextActions(['received', 'reserve'], ['received', 'reserve']),
+		).toBe(false);
+		expect(hasAdditionalGiftContextActions(['received', 'reserve'], ['reserve'])).toBe(true);
+		expect(hasAdditionalGiftContextActions(['open', 'reserve'], ['reserve'])).toBe(true);
 	});
 
 	it('keeps only cancellation of an own reservation in archived contexts', () => {

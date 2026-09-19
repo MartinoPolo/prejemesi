@@ -80,16 +80,16 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		);
 	});
 
-	it('stacks mark-as-bought and cancel-reservation with intrinsic widths on desktop', async () => {
+	it('keeps Bought and cancel-reservation accessible in one intrinsic desktop row', async () => {
 		await page.viewport(800, 720);
 		await renderCardInGridColumn(makeVisitorGift());
 
 		const reserveButtonEl = document.querySelector(
 			'[data-testid="reserve-button"]',
 		) as HTMLElement;
-		const purchasedButtonEl = reserveButtonEl.parentElement!.querySelector(
-			'button:not([data-testid])',
-		) as HTMLElement;
+		const purchasedButtonEl = document.querySelector(
+			`[aria-label="${m.gift_mark_bought()}"]`,
+		) as HTMLButtonElement;
 
 		expect(reserveButtonEl).toBeTruthy();
 		expect(purchasedButtonEl).toBeTruthy();
@@ -97,11 +97,12 @@ describe('GiftCard reservation-action layout (issue #211)', () => {
 		const reserveRect = reserveButtonEl.getBoundingClientRect();
 		const purchasedRect = purchasedButtonEl.getBoundingClientRect();
 
-		// Stacked: the reserve/cancel button sits below the purchased-toggle button,
-		// not beside it (no vertical overlap).
-		expect(reserveRect.top).toBeGreaterThanOrEqual(purchasedRect.bottom);
-		// Each localized action keeps its intrinsic width rather than stretching to its sibling.
+		expect(reserveRect.top).toBeCloseTo(purchasedRect.top, 0);
+		expect(purchasedRect.right).toBeLessThanOrEqual(reserveRect.left);
 		expect(reserveRect.width).not.toBeCloseTo(purchasedRect.width, 1);
+		expect(purchasedButtonEl.closest('[inert]')).toBeNull();
+		expect(purchasedButtonEl.getAttribute('aria-hidden')).not.toBe('true');
+		expect(purchasedButtonEl.tabIndex).toBe(0);
 	});
 
 	it('keeps Purchased off the direct mobile face and exposes its context through More', async () => {

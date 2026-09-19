@@ -10,10 +10,16 @@
 		model: GiftStateOverlayModel | null;
 		/** Compact labels only when a narrow containing image also has a top-right control. */
 		avoidTopRight?: boolean;
+		identity?: string | null;
 		class?: string;
 	}
 
-	let { model, avoidTopRight = false, class: className }: GiftStateOverlayProps = $props();
+	let {
+		model,
+		avoidTopRight = false,
+		identity = null,
+		class: className,
+	}: GiftStateOverlayProps = $props();
 
 	function label(kind: GiftOverlayKind, state: GiftStateOverlayModel): string {
 		switch (kind) {
@@ -67,6 +73,13 @@
 				class={cn(pillClasses(model.supportKind), 'state-pill')}
 				data-reservation-support
 				data-state-kind={model.supportKind}>{supportLabel}</span
+			>
+		{/if}
+		{#if identity !== null && identity.trim() !== ''}
+			<span
+				data-reserver-identity
+				class="max-w-[calc(100%_-_0.5rem)] rounded-md bg-card/95 px-2 py-1 text-center text-xs font-semibold text-foreground shadow-sticker [overflow-wrap:anywhere]"
+				>{identity}</span
 			>
 		{/if}
 	</div>

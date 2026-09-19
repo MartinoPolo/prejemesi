@@ -62,9 +62,10 @@ export async function renderItem(
 	gift: GiftForVisitor,
 	role: (typeof WISHLIST_ROLES)[keyof typeof WISHLIST_ROLES],
 	theme: { palette: string; dark: boolean } | null = null,
+	width = 640,
 ) {
 	const host = document.createElement('div');
-	host.style.width = '640px';
+	host.style.width = `${width}px`;
 	if (theme !== null) {
 		host.dataset.palette = theme.palette;
 		host.classList.toggle('dark', theme.dark);

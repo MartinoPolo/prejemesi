@@ -11,6 +11,7 @@ import {
 	getPriorityActionOptions,
 	getPriorityDisplayLabel,
 	getPriorityKey,
+	formatReserverLine,
 } from './gift_display.js';
 
 beforeAll(() => {
@@ -55,6 +56,20 @@ describe('priority display labels (issue #351)', () => {
 			{ id: 'custom-id', label: '  Moje  ' },
 			{ id: 'high-id', label: 'Vysoká' },
 		]);
+	});
+});
+
+describe('formatReserverLine', () => {
+	it.each([
+		['cs', 'Rezervováno více lidmi'],
+		['en', 'Reserved by multiple people'],
+	] as const)('hides every identity when multiple people reserved in %s', (locale, expected) => {
+		overwriteGetLocale(() => locale);
+		try {
+			expect(formatReserverLine(['Jana', 'Petr', 'Eva'])).toBe(expected);
+		} finally {
+			overwriteGetLocale(() => 'cs');
+		}
 	});
 });
 

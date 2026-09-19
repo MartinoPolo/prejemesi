@@ -877,7 +877,7 @@
 		.mobile-selection-row {
 			width: 100%;
 			justify-content: space-between;
-			gap: 8px;
+			gap: var(--nested-control-gap, calc(0.5rem + var(--elevation-ordinary-offset)));
 		}
 
 		.mobile-selection-label {
@@ -891,7 +891,7 @@
 
 		.mobile-selection-actions {
 			flex: 0 0 auto;
-			gap: 8px;
+			gap: var(--nested-control-gap, calc(0.5rem + var(--elevation-ordinary-offset)));
 		}
 	}
 

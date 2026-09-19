@@ -100,8 +100,8 @@ sections for UI work. Historical reconciliation and review notes are in
   applicable countdown.
 - 2026-07-02: The original shared description is preserved; later clarification is an immutable,
   accent-colored, dated append, editable/removable only during its own grace. If the original was
-  empty, the first text may populate it. Cards, rows, and editors show the latest append with a
-  full-history toggle rather than discarding the original.
+  empty, the first text may populate it. Browse previews show the latest append; detail and editors
+  retain a full-history toggle rather than discarding the original.
 - 2026-07-12: A byte-identical round trip to the snapshot captured before the first in-grace edit
   clears the post-share badge only inside share/creation grace. Compare against that original
   snapshot, not the immediately previous edit; after grace, even a revert is a visible change.
@@ -205,8 +205,8 @@ sections for UI work. Historical reconciliation and review notes are in
   ordering never depends on reservation state; selected sorting applies inside each band, with
   received gifts final.
 - 2026-08-07: Card and list reserved overlays share the full-text “Rezervováno” sticker, crisp above
-  the image veil and dimmed content; správci additionally see names. Do not replace that signal with
-  an ambiguous check-only icon.
+  the image veil; správci additionally see names. Do not replace that signal with an ambiguous
+  check-only icon.
 - 2026-08-12: Received/unreceived is the primary manager browse action; marking received keeps the
   gift visible by enabling the received filter. Fully reserved gifts do not need a redundant
   disabled reserve button; privileged release belongs in detail/editor.
@@ -240,11 +240,6 @@ sections for UI work. Historical reconciliation and review notes are in
   menus still visible; mobile uses labeled bottom sheets, not desktop dropdowns or cascades.
   Equivalent overflow triggers behave consistently within each viewport. Switching an available
   sibling control closes the old surface and opens the new one in one action.
-- 2026-09-11: List gifts are bordered cards with full-height square image columns; width may grow
-  with row height while preserving the 1:1 crop. Truncate description before title, preserve
-  price/quantity/link/all eligible actions, and stack image/content when enlarged text or narrow
-  manager layouts require it; never solve overflow by clipping actions or leaving an image-bottom
-  gap.
 - 2026-09-12: Keep active mobile filter pills inside the Display sheet with Reset next to its Filter
   selector, not in another sticky toolbar row. The closed toolbar may show the count; this resolves
   the September 10 request for visible active filters without increasing sticky height.
@@ -255,15 +250,11 @@ sections for UI work. Historical reconciliation and review notes are in
   reservers use a localized generic summary instead of listing names. Preserve server-derived
   privacy capabilities and keep Compact image-free. Validate crowded valid states in focused mockups
   before implementation.
-- 2026-09-14: Grid/List gift titles use 18 px mobile / 24 px desktop, at most two lines then
-  ellipsis, with the full title available through gift detail and accessible naming. Keep applicable
-  quantity outside the clamp alongside the title. Grid quantity centers against the visible title
-  block, and Grid Like uses the image/card top-right with a separate wrapping category lane. List
-  quantity and Like center against the first title line even when the title wraps, using
-  typography-derived alignment slots rather than arbitrary offsets. Preserve the ghost heart/count,
-  accessible target and consistent title-to-price spacing. Top-align content at its ordinary inset
-  rather than vertically centering it; equalize cards within each grid row. Received uses full ink
-  secondary, distinct from Reserve and stronger than More, through shared semantic intents.
+- 2026-09-14: Keep applicable gift quantity outside the title clamp, aligned against the first title
+  line using typography-derived slots. Grid Like uses the image/card top-right with a separate
+  wrapping category lane; List Like stays beside the title. Preserve the ghost heart/count and
+  accessible targets. Received uses full ink secondary, distinct from Reserve and stronger than
+  More, through shared semantic intents.
 - 2026-09-14: Center gift state badges and authorized identity as one combined group on the image; a
   lone state remains at its center, independent of edge badges. Category stays top-left and priority
   bottom-left, as finalized in the gift-hierarchy design approval. Its badge styling is schematic
@@ -279,6 +270,42 @@ sections for UI work. Historical reconciliation and review notes are in
   Done without overwriting preferences or category/priority assignments. Grid/List switching stays
   available. Retain the top-left grip's small visible surface inside its larger hit target; approved
   mockups are not evidence that persistence, dragging, or positioning defects are fixed.
+
+- 2026-09-15: List and mobile Card content follow title → description → link badges and price →
+  bottom-right actions. Titles and descriptions flow together without reserving a blank second title
+  line; mobile Card titles allow two lines, desktop List one line with ellipsis, and mobile List two
+  lines. Use 16 px mobile and 24 px desktop titles with full names available in detail and
+  accessible naming. Keep short descriptions immediately below titles and source badges visible on
+  mobile. Place links left and compact prices right, wrapping prices below on collision; use a
+  consistent readable received-button-palette treatment rather than the previous red price styling.
+- 2026-09-16: Desktop Card content aligns across the displayed collection, not only within each grid
+  row. Titles share an adaptive height capped at two lines, reserving the second line only when a
+  displayed title needs it. Descriptions share a one-line preview row, empty for gifts without
+  descriptions and omitted when none have one. Keep full text accessible in detail and card heights
+  consistent across rows. Preserve existing colors and badges; validate the layout in an interactive
+  mockup before production implementation.
+- 2026-09-16: Desktop Card secondary actions may move into More while primary actions and relevant
+  Received/Bought controls stay visible, subject to existing capabilities. Price must have a stable
+  position independent of link count; flowing it horizontally after source links is rejected. Put
+  price in the content directly below link badges on its own left-aligned line, above right-aligned
+  actions, so its width cannot push buttons around. Content and actions share horizontal card
+  insets; image-corner overlays retain their geometry-specific positions. Omit the action separator.
+  Shared card height must shrink to the minimum justified by current content after option changes,
+  never retain space from previous measurements. Role-specific overflow mappings remain illustrated
+  in `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
+- 2026-09-16: Mobile Card and List titles and descriptions show at most two lines, with full text
+  accessible in detail. Mobile action lanes never wrap: move eligible secondary actions into More
+  when buttons cannot fit, restoring them when space returns. Keep Reserve visible ahead of Received
+  when both compete for space; overflow retains the same capabilities. Shared grid tracks measure
+  clamped text and the final single action row, not hidden text or displaced buttons. Keep body text
+  and actions at normal contrast while unavailable images retain their state veil.
+- 2026-09-19: Keep primary gift actions visible at normal text size; mobile Card may switch to one
+  column wherever two columns cannot fit the standard primary and More controls with their spacing.
+  Restore multiple columns when usable card width permits, rather than retaining the former fixed
+  mobile breakpoint. Single-column cards use natural compact flow; side-by-side cards align content.
+  Desktop List keeps square full-height images and one-line text; mobile List keeps a responsive,
+  capped portrait frame, readable content, bottom-left priority, and side-cropping of the saved
+  square composition without new crop targets.
 
 ## Forms & settings
 
@@ -412,6 +439,11 @@ sections for UI work. Historical reconciliation and review notes are in
   identities. Use `brand` for colored text/icons on dark surfaces and reserve `primary` with
   `primary-foreground` for filled controls. Tune the shared CSS derivation directly in the app
   before adding choices.
+- 2026-09-16: Use full resting-shadow allowance for gift action-container bottom/right nesting and
+  wishlist toolbar clearance across soft, ink and black depth modes. Top/left nesting remains
+  face-relative; use rendered borders and shared radius/offset tokens. Keep semantic interaction
+  owners stationary and toolbar faces aligned, with no hover-driven padding or control-height
+  changes. This does not adopt the experiment's mobile Like relocation or wrapped action lanes.
 
 ## Images & cropping
 
@@ -439,9 +471,9 @@ sections for UI work. Historical reconciliation and review notes are in
   letterboxing, not CSS scaling of an already clipped cover image; preserve oversized rects when
   restoring them.
 - 2026-07-18: Gifts offer `square` (legacy name, now 4:3 grid-card crop) and `thumb` (1:1
-  list/reservation crop), both WYSIWYG; `thumb` falls back to `targets.thumb ?? targets.square`
-  without a migration. Retired `card`/`detail` target data remains readable but is not
-  editor-offered. Keep persisted keys stable.
+  list/reservation composition); `thumb` falls back to `targets.thumb ?? targets.square` without a
+  migration. Retired `card`/`detail` target data remains readable but is not editor-offered. Keep
+  persisted keys stable.
 - 2026-07-18: “Karta” and “Seznam a rezervace” preview tiles are the only target switcher; clicking
   one or wheel-zooming a plain preview enters Manual. The adaptive stage contains the whole source
   photo with the active target window overlaid and overhang dimmed, not clipped; reuse its geometry
@@ -452,6 +484,11 @@ sections for UI work. Historical reconciliation and review notes are in
 - 2026-08-26: Image-frame fill is separate from palette identity: offer white, black, or
   transparent/dotted mat for letterboxing, with the dotted/transparent choice as default. Do not
   revive the retired app-background theme axis to control image fill.
+
+- 2026-09-16: Mobile List fills its portrait image frame with a centered side-window of the saved
+  square `thumb` composition. The square editor preview remains exact for square List/reservation
+  consumers, but its sides may be clipped on mobile List; disclose that in the editor. Do not
+  reproject focal/zoom directly to a portrait aspect or alter persisted targets.
 
 ## Architecture, data & delivery
 

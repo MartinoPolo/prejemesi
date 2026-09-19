@@ -228,6 +228,9 @@ test('gift card footer follows nested radii and keeps the action shadow and touc
 			return {
 				outerRadius: Number.parseFloat(styles.borderTopRightRadius),
 				buttonRadius: Number.parseFloat(actionStyles.borderTopRightRadius),
+				shadowOffset: Number.parseFloat(
+					actionStyles.getPropertyValue('--elevation-ordinary-offset'),
+				),
 				rightGap: cardBox.right - surfaceBox.right,
 				bottomGap: cardBox.bottom - surfaceBox.bottom,
 			};
@@ -237,7 +240,7 @@ test('gift card footer follows nested radii and keeps the action shadow and touc
 
 	await expect(surface).toBeVisible();
 	expect(geometry.buttonRadius).toBeCloseTo(
-		Math.max(0, geometry.outerRadius - geometry.rightGap),
+		Math.max(0, geometry.outerRadius - (geometry.rightGap - geometry.shadowOffset)),
 		0,
 	);
 	expect(geometry.bottomGap).toBeCloseTo(geometry.rightGap, 0);

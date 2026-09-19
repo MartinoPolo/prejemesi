@@ -55,9 +55,12 @@ describe('WishlistSelectionToolbar mobile bulk surface (#340)', () => {
 			);
 			expect(row).not.toHaveTextContent(m.draft_grid_select_all());
 			expect(row.querySelectorAll('[role="checkbox"]')).toHaveLength(1);
-			expect(getComputedStyle(row).gap).toBe('8px');
+			const shadowOffset = Number.parseFloat(
+				getComputedStyle(row).getPropertyValue('--elevation-ordinary-offset'),
+			);
+			expect(Number.parseFloat(getComputedStyle(row).gap) - shadowOffset).toBe(8);
 			const actions = row.querySelector('.mobile-selection-actions') as HTMLElement;
-			expect(getComputedStyle(actions).gap).toBe('8px');
+			expect(Number.parseFloat(getComputedStyle(actions).gap) - shadowOffset).toBe(8);
 			for (const target of row.querySelectorAll<HTMLElement>(
 				'button, [data-slot="checkbox"]',
 			)) {

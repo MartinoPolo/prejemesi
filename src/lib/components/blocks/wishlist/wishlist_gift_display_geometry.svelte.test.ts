@@ -11,6 +11,8 @@ import * as m from '$lib/paraglide/messages.js';
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
+const { default: WishlistGiftDisplayTestHost } =
+	await import('./WishlistGiftDisplayTestHost.svelte');
 
 function visitorGift(): GiftForVisitor {
 	return {
@@ -53,6 +55,12 @@ const sections: GiftSection[] = [
 		gifts: [visitorGift()],
 	},
 ];
+
+async function nextLayout(): Promise<void> {
+	await new Promise<void>((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+	);
+}
 
 const defaultProps: ComponentProps<typeof WishlistGiftDisplay> = {
 	sections,
@@ -108,12 +116,13 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		await screen.unmount();
 	});
 
-	it('uses one card column at 320px and exactly two equal columns from 321px through 639px', async () => {
+	it('uses one column when primary actions need the width and equal columns when two fit', async () => {
 		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };
 		const responsiveSections = [{ ...sections[0]!, gifts: [visitorGift(), second] }];
-		await page.viewport(320, 720);
-		const screen = await render(WishlistGiftDisplay, {
+		await page.viewport(390, 720);
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
+			role: WISHLIST_ROLES.visitor,
 			sections: responsiveSections,
 			viewMode: 'card',
 		});
@@ -121,26 +130,71 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		expect(cards[1]!.getBoundingClientRect().top).toBeGreaterThan(
 			cards[0]!.getBoundingClientRect().top,
 		);
+		const reserveButton = Array.from(cards[0]!.querySelectorAll('button')).find(
+			(button) => button.textContent?.trim() === m.reserve_button_reserve(),
+		);
+		expect(reserveButton).toBeDefined();
+		expect(reserveButton!.closest('[inert], [aria-hidden="true"]')).toBeNull();
+		expect(reserveButton!.getBoundingClientRect().width).toBeGreaterThan(0);
+		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
 
-		await page.viewport(321, 720);
-		cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
-		const firstRect = cards[0]!.getBoundingClientRect();
-		const secondRect = cards[1]!.getBoundingClientRect();
-		expect(secondRect.top).toBeCloseTo(firstRect.top, 0);
-		expect(secondRect.width).toBeCloseTo(firstRect.width, 0);
-		expect(secondRect.left - firstRect.right).toBeCloseTo(8, 0);
-		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(321);
-
-		await page.viewport(639, 720);
-		cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
-		const firstAt639 = cards[0]!.getBoundingClientRect();
-		const secondAt639 = cards[1]!.getBoundingClientRect();
-		expect(secondAt639.top).toBeCloseTo(firstAt639.top, 0);
-		expect(secondAt639.width).toBeCloseTo(firstAt639.width, 0);
-		expect(secondAt639.left - firstAt639.right).toBeCloseTo(8, 0);
-		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(639);
+		for (const width of [600, 639]) {
+			await page.viewport(width, 720);
+			await nextLayout();
+			cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+			const firstRect = cards[0]!.getBoundingClientRect();
+			const secondRect = cards[1]!.getBoundingClientRect();
+			expect(secondRect.top).toBeCloseTo(firstRect.top, 0);
+			expect(secondRect.width).toBeCloseTo(firstRect.width, 0);
+			expect(secondRect.left - firstRect.right).toBeCloseTo(8, 0);
+			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+		}
 		await screen.unmount();
 	});
+
+	it.each(['card', 'list'] as const)(
+		'wraps a long price below readable link metadata without overflow in %s view',
+		async (viewMode) => {
+			await page.viewport(320, 720);
+			const gift = {
+				...visitorGift(),
+				links: [
+					{
+						url: 'https://example.com/extra-long-product-address',
+						label: 'Velmi dlouhý čitelný název obchodu',
+					},
+				],
+				price: 123456789,
+				priceMax: 987654321,
+				currency: 'CZK' as const,
+			};
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				sections: [{ ...sections[0]!, gifts: [gift] }],
+				viewMode,
+			});
+			const metadata = document.querySelector<HTMLElement>(
+				viewMode === 'card'
+					? '[data-testid="gift-card-surface"]'
+					: '[data-testid="gift-list-content"]',
+			)!;
+			const link = metadata.querySelector<HTMLElement>('a')!;
+			const price = metadata.querySelector<HTMLElement>(
+				viewMode === 'card'
+					? '[data-testid="gift-card-price"] span'
+					: '[data-testid="gift-list-price"]',
+			)!;
+			const metadataRect = metadata.getBoundingClientRect();
+			const linkRect = link.getBoundingClientRect();
+			const priceRect = price.getBoundingClientRect();
+
+			expect(linkRect.width).toBeGreaterThanOrEqual(100);
+			expect(priceRect.top).toBeGreaterThanOrEqual(linkRect.bottom);
+			expect(priceRect.right).toBeLessThanOrEqual(metadataRect.right + 0.5);
+			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+			await screen.unmount();
+		},
+	);
 
 	it('uses adaptive minmax columns at every desktop and tablet acceptance width', async () => {
 		const gifts = Array.from({ length: 6 }, (_, index) => ({
@@ -228,7 +282,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		{ viewMode: 'card' as const, width: 390, surfaceTestId: 'gift-card-surface' },
 		{
 			viewMode: 'card' as const,
-			width: 391,
+			width: 601,
 			surfaceTestId: 'gift-card-surface',
 			expectFractionalWidth: true,
 		},
@@ -500,17 +554,15 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				);
 			}
 			if (viewMode === 'card' && width >= 640) {
-				expect(badges[0]!.getBoundingClientRect().top).toBeCloseTo(
-					badges[1]!.getBoundingClientRect().top,
-					0,
-				);
-				expect(getComputedStyle(badges[0]!).gridRowStart).toBe('3');
+				for (const badge of badges) {
+					expect(badge.closest('[data-testid="gift-card-image-frame"]')).not.toBeNull();
+				}
 			}
 			await screen.unmount();
 		},
 	);
 
-	it('collapses the shared priority track when every desktop card hides its badge', async () => {
+	it('keeps price in its own left-aligned track below links without a footer separator', async () => {
 		await page.viewport(768, 900);
 		const gifts = [
 			{
@@ -536,12 +588,17 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		for (const card of document.querySelectorAll<HTMLElement>(
 			'[data-testid="gift-card-surface"]',
 		)) {
-			const body = card.querySelector<HTMLElement>(':scope > .row-start-2')!;
-			const price = body.querySelector<HTMLElement>(':scope > .row-start-2')!;
-			const link = body.querySelector<HTMLElement>('a')!;
-			expect(
-				link.getBoundingClientRect().top - price.getBoundingClientRect().bottom,
-			).toBeCloseTo(8, 0);
+			const links = card.querySelector<HTMLElement>('[data-testid="gift-card-links"]')!;
+			const price = card.querySelector<HTMLElement>('[data-testid="gift-card-price"]')!;
+			const footer = card.querySelector<HTMLElement>('[data-testid="gift-card-footer"]')!;
+			expect(price.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+				links.getBoundingClientRect().bottom,
+			);
+			expect(price.getBoundingClientRect().left).toBeCloseTo(
+				links.getBoundingClientRect().left,
+				0,
+			);
+			expect(getComputedStyle(footer).borderTopWidth).toBe('0px');
 		}
 		expect(document.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
 		await screen.unmount();
@@ -632,6 +689,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			viewMode: 'card',
 			grouping: 'none',
 		});
+		await nextLayout();
 		const cards = Array.from(
 			document.querySelectorAll<HTMLElement>('[data-testid="gift-card-surface"]'),
 		);
@@ -703,6 +761,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		for (const { width, expectedGap } of [
 			{ width: 320, expectedGap: 10 },
 			{ width: 390, expectedGap: 8 },
+			{ width: 600, expectedGap: 8 },
 		]) {
 			await page.viewport(width, 1000);
 			const screen = await render(WishlistGiftDisplay, {
@@ -712,8 +771,11 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			});
 			const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
 			const first = cards[0]!.getBoundingClientRect();
-			const nextBand = cards[width === 320 ? 1 : 2]!.getBoundingClientRect();
-			expect(nextBand.top - first.bottom).toBeCloseTo(expectedGap, 0);
+			const nextBand = cards
+				.map((card) => card.getBoundingClientRect())
+				.find((rect) => rect.top > first.top + 0.5);
+			expect(nextBand).toBeDefined();
+			expect(nextBand!.top - first.bottom).toBeCloseTo(expectedGap, 0);
 			await screen.unmount();
 		}
 	});
@@ -726,7 +788,9 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			viewMode: 'card',
 			grouping: 'none',
 		});
-		const body = document.querySelector('[data-testid="gift-card-surface"] > .row-start-2')!;
+		const body = document.querySelector<HTMLElement>(
+			'[data-gift-card-track="title"]',
+		)!.parentElement!;
 		expect(body.querySelector('[data-testid="gift-priority-badge"]')).toBeNull();
 		expect(body.querySelector('.row-start-3')).toBeNull();
 
@@ -778,19 +842,22 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			sections: [{ ...sections[0]!, gifts: [{ ...visitorGift(), priorityLabel: 'Vysoka' }] }],
 			onreceived: () => {},
 		});
-		const badgeRect = document
-			.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!
-			.getBoundingClientRect();
-		const actionsRect = document
-			.querySelector<HTMLElement>('[data-testid="gift-list-actions"]')!
-			.getBoundingClientRect();
-		expect(badgeRect.bottom).toBeLessThanOrEqual(actionsRect.top);
+		const badge = document.querySelector<HTMLElement>('[data-testid="gift-priority-badge"]')!;
+		const image = document.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
+		const actions = document.querySelector<HTMLElement>('[data-testid="gift-list-actions"]')!;
+		expect(image.contains(badge)).toBe(true);
+		expect(actions.contains(badge)).toBe(false);
 		await screen.unmount();
 	});
 
-	it('uses standalone equal-height list cards with full-height square images and a 10px gap', async () => {
+	it('uses equal mobile list image widths for mixed content and contains the footer', async () => {
 		await page.viewport(390, 720);
-		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };
+		const second = {
+			...visitorGift(),
+			id: 'gift-2',
+			name: 'Mimořádně dlouhý název dárku přes dva řádky',
+			description: 'Krátký náhled popisu patří hned pod název.',
+		};
 		const screen = await render(WishlistGiftDisplay, {
 			...defaultProps,
 			sections: [{ ...sections[0]!, gifts: [visitorGift(), second] }],
@@ -803,10 +870,29 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				card.querySelector('[data-testid="gift-list-image"]') as HTMLElement
 			).getBoundingClientRect(),
 		);
-		expect(cardRects[1]!.height).toBeCloseTo(cardRects[0]!.height, 0);
+		expect(imageRects[1]!.width).toBeCloseTo(imageRects[0]!.width, 0);
 		for (const [index, imageRect] of imageRects.entries()) {
-			expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
-			expect(imageRect.height).toBeCloseTo(cardRects[index]!.height - 4, 0);
+			const item = cards[index]!.querySelector<HTMLElement>(
+				'[data-testid="gift-list-item"]',
+			)!;
+			const box = item.getBoundingClientRect();
+			const style = getComputedStyle(item);
+			expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
+			expect(imageRect.top).toBeCloseTo(box.top + parseFloat(style.borderTopWidth), 0);
+			expect(imageRect.bottom).toBeCloseTo(
+				box.bottom - parseFloat(style.borderBottomWidth),
+				0,
+			);
+		}
+		const description = cards[1]!.querySelector<HTMLElement>('.gift-list-description')!;
+		const actions = cards[1]!.querySelector<HTMLElement>('[data-testid="gift-list-actions"]');
+		expect(description.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+			cards[1]!.querySelector('h3')!.getBoundingClientRect().bottom,
+		);
+		if (actions !== null) {
+			expect(actions.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+				cardRects[1]!.bottom,
+			);
 		}
 		expect(cardRects[1]!.top - cardRects[0]!.bottom).toBeCloseTo(10, 0);
 		await screen.unmount();

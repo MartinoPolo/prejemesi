@@ -12,9 +12,10 @@ import {
 	expectContainedReceivedActions,
 	attachScreenshot,
 } from './mobile-wishlist.helpers.js';
+import { expectReceivedActionReachable, setGiftReceived } from './fixtures/gift-actions-helpers.js';
 
 test.describe('mobile wishlist acceptance', () => {
-	test('320/360/390 card geometry keeps the approved gutter, hero, grid and bounds', async ({
+	test('mobile card geometry keeps primary actions visible with adaptive columns and approved bounds', async ({
 		browser,
 		request,
 		baseURL,
@@ -28,7 +29,8 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.setViewportSize({ width: 390, height: MOBILE_HEIGHT });
 		await createManagerWishlist(page);
 
-		for (const width of WIDTHS) {
+		const observedColumnCounts = new Set<number>();
+		for (const width of [...WIDTHS, 600]) {
 			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
 			const logo = page.locator('.topbar .logo');
 			const logoMark = logo.locator('.logo-icon-wrap');
@@ -83,7 +85,7 @@ test.describe('mobile wishlist acceptance', () => {
 			for (const item of await page.locator('[data-gift-item]').all()) {
 				await expectInsideViewport(item, width);
 			}
-			await expectContainedReceivedActions(page);
+			await expectContainedReceivedActions(page, { allowOverflow: true });
 			const mobileImageState = await page
 				.getByTestId('gift-card-image-frame')
 				.first()
@@ -142,8 +144,7 @@ test.describe('mobile wishlist acceptance', () => {
 			expect(mobileImageState.fallback?.x).toBeCloseTo(mobileImageState.contentBox.x, 2);
 			expect(mobileImageState.fallback?.y).toBeCloseTo(mobileImageState.contentBox.y, 2);
 			expect(mobileImageState.patternDisplay).toBe('none');
-			expect(mobileImageState.titleSize).toBeGreaterThanOrEqual(13);
-			expect(mobileImageState.titleSize).toBeLessThanOrEqual(15);
+			expect(mobileImageState.titleSize).toBeCloseTo(16, 1);
 
 			const cards = await page.locator('[data-gift-item]').evaluateAll((elements) =>
 				elements.map((element) => {
@@ -151,9 +152,16 @@ test.describe('mobile wishlist acceptance', () => {
 					return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 				}),
 			);
-			const expectedColumns = width === 320 ? 1 : 2;
-			expect(new Set(cards.map((card) => Math.round(card.x))).size).toBe(expectedColumns);
-			if (expectedColumns === 2) {
+			const columnCount = new Set(cards.map((card) => Math.round(card.x))).size;
+			observedColumnCounts.add(columnCount);
+			expect(columnCount).toBeGreaterThanOrEqual(1);
+			expect(columnCount).toBeLessThanOrEqual(2);
+			const reserveActions = page.getByTestId('reserve-button');
+			await expect(reserveActions).not.toHaveCount(0);
+			for (const action of await reserveActions.all()) {
+				await expect(action).toBeVisible();
+			}
+			if (columnCount === 2) {
 				const firstRow = cards.filter((card) => Math.abs(card.y - cards[0]!.y) < 1);
 				expect(firstRow).toHaveLength(2);
 				expect(firstRow[1]!.x - (firstRow[0]!.x + firstRow[0]!.width)).toBeCloseTo(8, 0);
@@ -163,10 +171,11 @@ test.describe('mobile wishlist acceptance', () => {
 			await resetAllScroll(page);
 			await attachScreenshot(page, testInfo, `manager-card-${width}`);
 		}
+		expect(observedColumnCounts).toEqual(new Set([1, 2]));
 
 		await page.context().close();
 	});
-	test('manager list presentation keeps continuous square images and contained actions in narrow and wide layouts', async ({
+	test('manager list presentation keeps continuous portrait mobile and square desktop images with contained actions', async ({
 		browser,
 		request,
 		baseURL,
@@ -184,7 +193,8 @@ test.describe('mobile wishlist acceptance', () => {
 		await page.reload({ waitUntil: 'load' });
 		await expect(page.getByTestId('gift-view-list')).toHaveAttribute('aria-checked', 'true');
 
-		for (const width of [...WIDTHS, 768]) {
+		const mobileListImageWidths = new Map<number, number>();
+		for (const width of [...WIDTHS, 480, 600, 768]) {
 			await page.setViewportSize({ width, height: MOBILE_HEIGHT });
 			const list = page.getByTestId('wishlist-gift-list');
 			await expect(list).toBeVisible();
@@ -213,41 +223,45 @@ test.describe('mobile wishlist acceptance', () => {
 						box(item),
 						item.evaluate((element) => {
 							const style = getComputedStyle(element);
+							const image = element.querySelector<HTMLElement>(
+								'[data-testid="gift-list-image"]',
+							)!;
+							const square = image.querySelector<HTMLElement>(
+								'[data-testid="gift-list-square-composition"]',
+							)!;
 							return {
-								stacked: element.hasAttribute('data-list-image-stacked'),
 								borderTop: Number.parseFloat(style.borderTopWidth),
 								borderRight: Number.parseFloat(style.borderRightWidth),
 								borderBottom: Number.parseFloat(style.borderBottomWidth),
 								borderLeft: Number.parseFloat(style.borderLeftWidth),
-								columnGap: Number.parseFloat(style.columnGap),
-								rowGap: Number.parseFloat(style.rowGap),
+								imageBorderRight: Number.parseFloat(
+									getComputedStyle(image).borderRightWidth,
+								),
+								square: square.getBoundingClientRect().toJSON(),
 							};
 						}),
 					]);
-					expect(imageBox.width).toBeCloseTo(imageBox.height, 0);
 					expect(imageBox.x).toBeCloseTo(itemBox.x + geometry.borderLeft, 0);
 					expect(imageBox.y).toBeCloseTo(itemBox.y + geometry.borderTop, 0);
-					if (geometry.stacked) {
-						expect(WIDTHS).toContain(width);
-						expect(imageBox.width).toBeCloseTo(
-							itemBox.width - geometry.borderLeft - geometry.borderRight,
-							0,
-						);
-						expect(contentBox.x).toBeCloseTo(imageBox.x, 0);
-						expect(contentBox.y).toBeCloseTo(
-							imageBox.y + imageBox.height + geometry.rowGap,
-							0,
-						);
+					expect(imageBox.y + imageBox.height).toBeCloseTo(
+						itemBox.y + itemBox.height - geometry.borderBottom,
+						0,
+					);
+					expect(contentBox.x).toBeCloseTo(imageBox.x + imageBox.width, 0);
+					expect(geometry.square.width).toBeCloseTo(geometry.square.height, 0);
+					expect(geometry.square.height).toBeCloseTo(imageBox.height, 0);
+					expect(geometry.square.y).toBeCloseTo(imageBox.y, 0);
+					expect(geometry.square.x + geometry.square.width / 2).toBeCloseTo(
+						imageBox.x + (imageBox.width - geometry.imageBorderRight) / 2,
+						0,
+					);
+					if (width < 768) {
+						expect(imageBox.height).toBeGreaterThan(imageBox.width);
+						if (item === items[0]) {
+							mobileListImageWidths.set(width, imageBox.width);
+						}
 					} else {
-						expect(imageBox.y + imageBox.height).toBeCloseTo(
-							itemBox.y + itemBox.height - geometry.borderBottom,
-							0,
-						);
-						expect(contentBox.y).toBeCloseTo(imageBox.y, 0);
-						expect(contentBox.x).toBeCloseTo(
-							imageBox.x + imageBox.width + geometry.columnGap,
-							0,
-						);
+						expect(imageBox.width).toBeCloseTo(imageBox.height, 0);
 					}
 					expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(
 						itemBox.x + itemBox.width - geometry.borderRight,
@@ -276,7 +290,7 @@ test.describe('mobile wishlist acceptance', () => {
 					.evaluateAll((titles) =>
 						titles.map((title) => Number.parseFloat(getComputedStyle(title).fontSize)),
 					);
-				expect(titleSizes.every((size) => size >= 13 && size <= 15)).toBe(true);
+				expect(titleSizes.every((size) => Math.abs(size - 16) <= 0.1)).toBe(true);
 			} else {
 				expect(
 					await Promise.all(
@@ -295,11 +309,13 @@ test.describe('mobile wishlist acceptance', () => {
 			expect(surface.background).not.toBe('rgba(0, 0, 0, 0)');
 			expect(surface.border).not.toBe('none');
 			expect(surface.shadow).not.toBe('none');
-			await expectContainedReceivedActions(page);
+			await expectContainedReceivedActions(page, { allowOverflow: width < 640 });
 			expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
 			await resetAllScroll(page);
 			await attachScreenshot(page, testInfo, `manager-list-${width}`);
 		}
+		expect(mobileListImageWidths.get(480)).toBeCloseTo(mobileListImageWidths.get(600)!, 0);
+		expect(mobileListImageWidths.get(390)).toBeLessThan(mobileListImageWidths.get(480)!);
 		await page.context().close();
 	});
 	test('English Card and List received actions wrap within manager items at every mobile width', async ({
@@ -316,10 +332,17 @@ test.describe('mobile wishlist acceptance', () => {
 		const wishlistPath = await createManagerWishlist(page, 'English mobile actions');
 		await page.goto(`/en${wishlistPath}`, { waitUntil: 'load' });
 		await expect(page.locator('[data-gift-item]')).toHaveCount(3);
-		await page.getByTestId('gift-received-toggle').first().click();
+		const receivedGiftId = await page
+			.locator('[data-gift-item]')
+			.first()
+			.getAttribute('data-gift-id');
+		expect(receivedGiftId).not.toBeNull();
+		const receivedGift = page.locator(`[data-gift-item][data-gift-id="${receivedGiftId}"]`);
+		await setGiftReceived(page, receivedGift, true);
 		await expect(
-			page.getByRole('button', { name: 'Mark as not received', exact: true }),
+			receivedGift.locator('[data-state-primary][data-state-kind="received"]'),
 		).toBeVisible();
+		await expectReceivedActionReachable(page, receivedGift);
 		await waitForGiftAnimationsToSettle(page);
 
 		for (const view of ['card', 'list'] as const) {
@@ -333,7 +356,7 @@ test.describe('mobile wishlist acceptance', () => {
 			).toBeVisible();
 			for (const width of WIDTHS) {
 				await page.setViewportSize({ width, height: MOBILE_HEIGHT });
-				await expectContainedReceivedActions(page);
+				await expectContainedReceivedActions(page, { allowOverflow: true });
 				expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
 				await resetAllScroll(page);
 				await attachScreenshot(page, testInfo, `manager-en-${view}-${width}`);

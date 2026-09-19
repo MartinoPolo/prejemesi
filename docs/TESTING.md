@@ -8,6 +8,13 @@ parallel.
 
 To run only the server project, use `pnpm exec vitest run --project server`.
 
+For browser verification without automatic failure screenshots, set
+`VITEST_SCREENSHOT_FAILURES=false`. This opt-out is applied inside both browser project
+configurations; a top-level CLI flag alone may be overridden by their project settings. Run browser
+projects serially in the same checkout to avoid races in generated SvelteKit state. Wishlist E2E
+attachment helpers accept `E2E_SCREENSHOT_ATTACHMENTS=false` for numeric-only verification;
+behavioral assertions still run.
+
 `pnpm run test:e2e` starts its own localhost-only development server with a non-production signing
 secret. R2 variables are intentionally absent, so uploads use the local in-memory fallback. It uses
 `PLAYWRIGHT_BASE_URL=http://localhost:8300` by default. Every automation server uses that exact port
