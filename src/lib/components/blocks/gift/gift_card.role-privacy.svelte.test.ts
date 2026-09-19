@@ -14,38 +14,37 @@ import {
 	textOutsideOverlay,
 } from './gift_card.test_fixtures.js';
 import { render } from 'vitest-browser-svelte';
+import { giftCardCollectionLayout } from '$lib/components/blocks/wishlist/gift_card_collection_layout.js';
 
-afterEach(cleanupCardHosts);
+const collectionLayouts = new Set<ReturnType<typeof giftCardCollectionLayout>>();
+
+afterEach(() => {
+	for (const layout of collectionLayouts) {
+		layout.destroy();
+	}
+	collectionLayouts.clear();
+	cleanupCardHosts();
+});
+
+async function settleCollectionLayout(): Promise<void> {
+	await new Promise<void>((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+	);
+}
 
 describe('GiftCard unified state presentation (issues #328 and #330)', () => {
-	it('stacks moderator reserver text above a real description outside the image overlay', async () => {
+	it('groups an authorized reserver identity with reservation state on the image', async () => {
 		await page.viewport(800, 720);
 		const host = await renderCardInGridColumn(
-			makeVisitorGift({
-				reserverNames: ['Babička'],
-				description: 'Skutečný popis dárku pro kontrolu rozložení.',
-			}),
+			makeVisitorGift({ reserverNames: ['Babička'], isFullyReserved: true }),
 			WISHLIST_ROLES.moderator,
 		);
-		const stack = host.querySelector(
-			'[data-testid="gift-card-description-stack"]',
-		) as HTMLElement;
-		const reserverText = Array.from(stack.querySelectorAll('p')).find((element) =>
-			element.textContent?.includes('Babička'),
-		) as HTMLElement;
-		const description = Array.from(stack.querySelectorAll('p')).find((element) =>
-			element.textContent?.includes('Skutečný popis dárku'),
-		) as HTMLElement;
 		const imageOverlay = host.querySelector(
 			'[data-testid="gift-state-overlay"]',
 		) as HTMLElement;
-		const reserverRect = reserverText.getBoundingClientRect();
-		const descriptionRect = description.getBoundingClientRect();
 
-		expect(reserverText).toBeTruthy();
-		expect(description).toBeTruthy();
-		expect(descriptionRect.top).toBeGreaterThanOrEqual(reserverRect.bottom);
-		expect(imageOverlay.contains(reserverText)).toBe(false);
+		expect(imageOverlay.textContent).toContain('Babička');
+		expect(textOutsideOverlay(host)).not.toContain('Babička');
 	});
 
 	it('renders no empty description stack for a recipient without text content', async () => {
@@ -198,7 +197,7 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 		expect(host.querySelector('[data-like-heart]')).toBeNull();
 	});
 
-	it('keeps moderator reserver names in the body during contextual mode', async () => {
+	it('keeps moderator reserver names grouped with state during contextual mode', async () => {
 		const host = document.createElement('div');
 		document.body.appendChild(host);
 		fixedHosts.add(host);
@@ -215,8 +214,8 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 		);
 
 		const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
-		expect(textOutsideOverlay(host)).toContain('Babička');
-		expect(overlay.textContent).not.toContain('Babička');
+		expect(textOutsideOverlay(host)).not.toContain('Babička');
+		expect(overlay.textContent).toContain('Babička');
 		expect(host.querySelector('[data-testid="gift-card-footer"]')).toBeNull();
 		expect(host.querySelector('[data-like-heart]')).toBeNull();
 		expect(host.querySelector('[data-testid="reserve-button"]')).toBeNull();
@@ -292,6 +291,8 @@ describe('GiftCard unified state presentation (issues #328 and #330)', () => {
 				},
 				{ baseElement: host },
 			);
+			collectionLayouts.add(giftCardCollectionLayout(host));
+			await settleCollectionLayout();
 			const overlay = host.querySelector('[data-testid="gift-state-overlay"]') as HTMLElement;
 			const likeButton = host.querySelector('[data-like-heart]')
 				?.parentElement as HTMLElement;
@@ -436,7 +437,7 @@ describe('GiftCard approved Like geometry (issue #357)', () => {
 			const likeRect = like.getBoundingClientRect();
 
 			expect(card.contains(like)).toBe(true);
-			expect(image.contains(like)).toBe(false);
+			expect(image.contains(like)).toBe(true);
 			expect(footer.contains(like)).toBe(false);
 			expect(imageRect.width / imageRect.height).toBeCloseTo(4 / 3, 2);
 			const cardRect = card.getBoundingClientRect();

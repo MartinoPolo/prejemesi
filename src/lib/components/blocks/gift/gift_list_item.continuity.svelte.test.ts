@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
+import * as m from '$lib/paraglide/messages.js';
 import {
 	REALISTIC_LONG_NAME,
 	IMAGE_URL,
@@ -24,7 +25,6 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: undefined,
-			allowsStacking: false,
 		},
 		{
 			label: 'visitor own reservation',
@@ -38,7 +38,6 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: undefined,
-			allowsStacking: false,
 		},
 		{
 			label: 'dense manager actions and reserver state',
@@ -57,7 +56,6 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.moderator,
 			contentMinimumHeight: undefined,
-			allowsStacking: true,
 		},
 		{
 			label: 'mobile content taller than the stylesheet baseline cap',
@@ -70,7 +68,6 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: 224,
-			allowsStacking: false,
 		},
 		{
 			label: 'desktop content taller than the stylesheet baseline cap',
@@ -83,11 +80,10 @@ describe('GiftListItem image continuity', () => {
 			}),
 			role: WISHLIST_ROLES.visitor,
 			contentMinimumHeight: 240,
-			allowsStacking: false,
 		},
 	])(
-		'keeps a square frame continuous with the content for $label',
-		async ({ width, gift, role, contentMinimumHeight, allowsStacking }) => {
+		'keeps the image exactly against every inner row edge for $label',
+		async ({ width, gift, role, contentMinimumHeight }) => {
 			await page.viewport(width + 24, 900);
 			const host = document.createElement('div');
 			host.style.width = `${width}px`;
@@ -112,7 +108,6 @@ describe('GiftListItem image continuity', () => {
 			if (contentMinimumHeight !== undefined) {
 				content.style.minHeight = `${contentMinimumHeight}px`;
 			}
-			await document.fonts.ready;
 			await new Promise<void>((resolve) =>
 				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
 			);
@@ -124,36 +119,24 @@ describe('GiftListItem image continuity', () => {
 			const innerBottom = itemRect.bottom - Number.parseFloat(itemStyle.borderBottomWidth);
 
 			expect(getComputedStyle(item).display).toBe('grid');
-			expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
 			expect(imageRect.top).toBeCloseTo(innerTop, 0);
-			const contentRect = content.getBoundingClientRect();
-			if (allowsStacking && item.hasAttribute('data-list-image-stacked')) {
-				expect(imageRect.width).toBeCloseTo(
-					itemRect.width -
-						Number.parseFloat(itemStyle.borderLeftWidth) -
-						Number.parseFloat(itemStyle.borderRightWidth),
-					0,
-				);
-				expect(contentRect.top).toBeCloseTo(imageRect.bottom, 0);
-				expect(contentRect.left).toBeCloseTo(
-					itemRect.left + Number.parseFloat(itemStyle.borderLeftWidth),
-					0,
-				);
+			expect(imageRect.bottom).toBeCloseTo(innerBottom, 0);
+			expect(frameRect.top).toBeCloseTo(innerTop, 0);
+			expect(frameRect.bottom).toBeCloseTo(innerBottom, 0);
+			if (width >= 640) {
+				expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
 			} else {
-				expect(item).not.toHaveAttribute('data-list-image-stacked');
-				expect(imageRect.bottom).toBeCloseTo(innerBottom, 0);
-				expect(frameRect.bottom).toBeCloseTo(innerBottom, 0);
-				expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
+				expect(imageRect.width).toBeLessThan(imageRect.height);
 			}
-			expect(frameRect.top).toBeCloseTo(imageRect.top, 0);
-			expect(frameRect.bottom).toBeCloseTo(imageRect.bottom, 0);
-			for (const action of host.querySelectorAll<HTMLElement>(
-				'[data-testid="gift-list-actions"] button',
-			)) {
-				const actionRect = action.getBoundingClientRect();
-				expect(actionRect.left).toBeGreaterThanOrEqual(contentRect.left);
-				expect(actionRect.right).toBeLessThanOrEqual(itemRect.right);
-				expect(actionRect.bottom).toBeLessThanOrEqual(innerBottom);
+			const contentRect = content.getBoundingClientRect();
+			expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
+			const visibleActions = Array.from(
+				host.querySelectorAll<HTMLElement>('[data-testid="gift-list-actions"] button'),
+			).filter((action) => action.closest('[aria-hidden="true"]') === null);
+			for (const action of visibleActions) {
+				expect(action.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+					contentRect.left,
+				);
 			}
 			host.remove();
 		},
@@ -207,7 +190,11 @@ describe('GiftListItem desktop bordered card geometry (issue #360)', () => {
 			expect(itemStyle.borderTopLeftRadius).toBe('16px');
 			expect(itemStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
 			expect(itemStyle.boxShadow).not.toBe('none');
-			expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
+			if (item.clientWidth >= 640) {
+				expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
+			} else {
+				expect(imageRect.width).toBeLessThan(imageRect.height);
+			}
 			expect(imageRect.top).toBeCloseTo(itemRect.top + 2, 0);
 			expect(itemStyle.display).toBe('grid');
 			expect(imageRect.bottom).toBeLessThanOrEqual(itemRect.bottom - 2);
@@ -223,9 +210,10 @@ describe('GiftListItem desktop bordered card geometry (issue #360)', () => {
 			expect(host.querySelector('[data-testid="reserve-button"]')).toBeTruthy();
 			expect(host.querySelector('[data-testid="gift-more-actions"]')).toBeTruthy();
 
-			for (const action of host.querySelectorAll<HTMLElement>(
-				'[data-testid="gift-list-actions"] button',
-			)) {
+			const visibleActions = Array.from(
+				host.querySelectorAll<HTMLElement>('[data-testid="gift-list-actions"] button'),
+			).filter((action) => action.closest('[aria-hidden="true"]') === null);
+			for (const action of visibleActions) {
 				const actionRect = action.getBoundingClientRect();
 				expect(actionRect.left).toBeGreaterThanOrEqual(contentRect.left);
 				expect(actionRect.right).toBeLessThanOrEqual(itemRect.right - 2);
@@ -237,7 +225,7 @@ describe('GiftListItem desktop bordered card geometry (issue #360)', () => {
 });
 
 describe('GiftListItem reservation-action layout (issue #211)', () => {
-	it('stacks mark-as-bought and cancel-reservation with intrinsic widths', async () => {
+	it('keeps compact bought and cancel-reservation actions in one row', async () => {
 		await page.viewport(800, 720);
 		const host = document.createElement('div');
 		host.style.width = '400px';
@@ -260,9 +248,8 @@ describe('GiftListItem reservation-action layout (issue #211)', () => {
 		const reserveRect = reserveButtonEl.getBoundingClientRect();
 		const purchasedRect = purchasedButtonEl.getBoundingClientRect();
 
-		// Stacked: no vertical overlap between the two actions.
-		expect(reserveRect.top).toBeGreaterThanOrEqual(purchasedRect.bottom);
-		// Each localized action keeps its intrinsic width rather than stretching to its sibling.
-		expect(reserveRect.width).not.toBeCloseTo(purchasedRect.width, 1);
+		expect(reserveRect.top).toBeCloseTo(purchasedRect.top, 0);
+		expect(reserveRect.height).toBeCloseTo(purchasedRect.height, 0);
+		expect(purchasedButtonEl.textContent?.trim()).toBe(m.gift_bought());
 	});
 });

@@ -1,7 +1,5 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages.js';
-	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
-	import GiftImage from '$lib/components/blocks/gift/GiftImage.svelte';
+	import GiftListImage from '$lib/components/blocks/gift/GiftListImage.svelte';
 	import GiftStateOverlay from '$lib/components/blocks/gift/GiftStateOverlay.svelte';
 	import GiftPieceCount from '$lib/components/blocks/gift/GiftPieceCount.svelte';
 	import LikeButton from '$lib/components/blocks/gift/LikeButton.svelte';
@@ -10,22 +8,22 @@
 	import GiftReceivedToggle from './GiftReceivedToggle.svelte';
 	import type { GiftForVisitor, GiftByRole } from '$lib/modules/gifts/types.js';
 	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
-	import {
-		formatPrice,
-		formatReserverLine,
-		extractGiftDomain,
-	} from '$lib/modules/gifts/gift_display.js';
+	import { formatPrice, formatReserverLine } from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
-	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
 	import {
 		canLikeGift,
 		canManageWishlist,
+		canSeeReserverNames,
 	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { resolveGiftImageUrl } from '$lib/modules/images/public_url.js';
 	import { cn } from '$lib/utils.js';
 	import GiftDescription from './GiftDescription.svelte';
 	import GiftActionRow from './GiftActionRow.svelte';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
+	import GiftCategoryBadge from './GiftCategoryBadge.svelte';
+	import GiftLinkList from './GiftLinkList.svelte';
+	import { restingShadowNesting } from '$lib/utils/resting_shadow_nesting.js';
+	import type { GiftActionPlacementSnapshot } from '$lib/components/blocks/wishlist/gift_context_invocation.js';
 
 	interface GiftListItemProps {
 		gift: GiftByRole;
@@ -36,7 +34,11 @@
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
-		onmore?: (anchor: HTMLButtonElement) => void;
+		onmore?: (
+			anchor: HTMLButtonElement,
+			placementSnapshot: GiftActionPlacementSnapshot,
+		) => void;
+		persistentMore?: boolean;
 		moreOpen?: boolean;
 		moreSurface?: 'menu' | 'dialog';
 		showPriority?: boolean;
@@ -52,6 +54,7 @@
 		onunreserve,
 		onreceived,
 		onmore,
+		persistentMore = onmore !== undefined,
 		moreOpen = false,
 		moreSurface = 'menu',
 		showPriority = true,
@@ -80,81 +83,127 @@
 	const hasMultipleActions = $derived(
 		hasReceivedPrimary && isVisitorOrModerator && hasReservationAction,
 	);
+	let actionContentWidth = $state(0);
 	const isDimmed = $derived(presentation.isDimmed);
-	const primaryLink = $derived(getPrimaryGiftLink(gift.links));
-	const domain = $derived(extractGiftDomain(gift.links));
-	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const imageSrc = $derived(resolveGiftImageUrl(gift.imageUrl, gift.imageKey));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
 	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
+	const visibleReserverLine = $derived(
+		canSeeReserverNames(role) && reserverLine !== null && reserverLine.trim() !== ''
+			? reserverLine
+			: null,
+	);
 
-	function synchronizeListImageSize(item: HTMLElement) {
-		const container = item.parentElement;
-		const content = item.querySelector<HTMLElement>('[data-testid="gift-list-content"]');
-		if (container === null || content === null) {
+	function synchronizeListOverlayClearance(image: HTMLElement) {
+		const item = image.parentElement;
+		if (!(item instanceof HTMLElement)) {
 			return;
+		}
+		const itemStyle = item.style;
+		const wrapper = item.closest<HTMLElement>('[data-gift-item]');
+		function contextualControls() {
+			return (
+				wrapper?.querySelectorAll<HTMLElement>(
+					':scope > [data-testid="gift-selection-control"], :scope > button > .elevation-surface',
+				) ?? []
+			);
 		}
 
 		let animationFrame = 0;
-		let destroyed = false;
-		const schedule = () => {
-			if (destroyed) {
-				return;
-			}
+		const resizeObserver = new ResizeObserver(schedule);
+		const mutationObserver = new MutationObserver(refreshObservedElements);
+
+		function schedule() {
 			cancelAnimationFrame(animationFrame);
 			animationFrame = requestAnimationFrame(measure);
-		};
-		const reset = () => {
-			item.style.removeProperty('--gift-list-image-size');
-			item.removeAttribute('data-list-image-stacked');
-		};
-		const measure = () => {
-			animationFrame = 0;
-			reset();
-			// Start at the content minimum so a wider initial image cannot force avoidable wrapping.
-			item.style.setProperty('--gift-list-image-size', '0px');
+		}
 
-			const itemStyle = getComputedStyle(item);
+		function refreshObservedElements() {
+			resizeObserver.disconnect();
+			resizeObserver.observe(image);
+			for (const control of contextualControls()) {
+				resizeObserver.observe(control);
+			}
+			for (const element of image.querySelectorAll<HTMLElement>(
+				'[data-testid="gift-category-badge"], [data-testid="gift-priority-badge"], [data-testid="gift-state-overlay"] > span',
+			)) {
+				resizeObserver.observe(element);
+			}
+			schedule();
+		}
+
+		function measure() {
+			const imageRect = image.getBoundingClientRect();
+			const category = image.querySelector<HTMLElement>(
+				'[data-testid="gift-category-badge"]',
+			);
+			const priority = image.querySelector<HTMLElement>(
+				'[data-testid="gift-priority-badge"]',
+			);
+			const overlay = image.querySelector<HTMLElement>('[data-testid="gift-state-overlay"]');
+			const overlayItems = overlay?.querySelectorAll<HTMLElement>(':scope > span') ?? [];
 			const rootFontSize = Number.parseFloat(
 				getComputedStyle(document.documentElement).fontSize,
 			);
-			const contentFloorInRem = Number.parseFloat(
-				itemStyle.getPropertyValue('--gift-list-content-floor'),
+			const separation = rootFontSize * 0.5;
+			const categoryRect = category?.getBoundingClientRect();
+			const priorityRect = priority?.getBoundingClientRect();
+			const overlayGap = overlay
+				? Number.parseFloat(getComputedStyle(overlay).rowGap) || 0
+				: 0;
+			const overlayHeight =
+				Array.from(overlayItems).reduce(
+					(total, element) => total + element.getBoundingClientRect().height,
+					0,
+				) +
+				Math.max(0, overlayItems.length - 1) * overlayGap;
+			const contextualClearance = Math.max(
+				0,
+				...Array.from(contextualControls(), (control) => {
+					const rect = control.getBoundingClientRect();
+					return rect.right > imageRect.left && rect.left < imageRect.right
+						? rect.bottom - imageRect.top + separation
+						: 0;
+				}),
 			);
-			const maximumImageSize = item.clientWidth - rootFontSize * contentFloorInRem;
-			let imageSize = item.clientHeight;
-
-			while (imageSize <= maximumImageSize) {
-				item.style.setProperty('--gift-list-image-size', `${Math.ceil(imageSize)}px`);
-				const requiredSize = item.clientHeight;
-				if (requiredSize <= imageSize + 0.5) {
-					return;
+			const startClearance = Math.max(
+				contextualClearance,
+				categoryRect
+					? categoryRect.top - imageRect.top + categoryRect.height + separation
+					: 0,
+			);
+			const endClearance = priorityRect
+				? imageRect.bottom - priorityRect.bottom + priorityRect.height + separation
+				: 0;
+			const minimumHeight = Math.ceil(startClearance + overlayHeight + endClearance);
+			const values = {
+				'--gift-list-overlay-start-clearance': `${Math.ceil(startClearance)}px`,
+				'--gift-list-overlay-end-clearance': `${Math.ceil(endClearance)}px`,
+				'--gift-list-overlay-min-height': `${minimumHeight}px`,
+			};
+			for (const [property, value] of Object.entries(values)) {
+				if (itemStyle.getPropertyValue(property) !== value) {
+					itemStyle.setProperty(property, value);
 				}
-				imageSize = requiredSize;
 			}
+		}
 
-			item.setAttribute('data-list-image-stacked', '');
-			item.style.removeProperty('--gift-list-image-size');
-		};
-
-		const resizeObserver = new ResizeObserver(schedule);
-		resizeObserver.observe(container);
-		const mutationObserver = new MutationObserver(schedule);
-		mutationObserver.observe(content, {
-			attributes: true,
+		mutationObserver.observe(wrapper ?? image, {
 			childList: true,
-			characterData: true,
 			subtree: true,
+			characterData: true,
 		});
-		document.fonts.ready.then(schedule);
-		schedule();
+		refreshObservedElements();
+		measure();
 
 		return {
 			destroy() {
-				destroyed = true;
 				cancelAnimationFrame(animationFrame);
 				resizeObserver.disconnect();
 				mutationObserver.disconnect();
+				itemStyle.removeProperty('--gift-list-overlay-start-clearance');
+				itemStyle.removeProperty('--gift-list-overlay-end-clearance');
+				itemStyle.removeProperty('--gift-list-overlay-min-height');
 			},
 		};
 	}
@@ -163,151 +212,145 @@
 <div class="gift-list-query-container w-full">
 	<div
 		data-testid="gift-list-item"
-		use:synchronizeListImageSize
+		use:restingShadowNesting
 		class={cn(
-			'gift-list-item group relative grid items-start gap-0 rounded-panel border-2 border-ink bg-card shadow-sticker transition-colors hover:bg-muted/50',
+			'gift-list-item resting-shadow-nesting group relative grid items-start gap-0 rounded-panel border-2 border-ink bg-card shadow-sticker',
 			hasReceivedPrimary &&
 				reserverLine !== null &&
 				reserverLine !== '' &&
 				'gift-list-item-manager-dense',
 			hasMultipleActions && 'gift-list-item-multiple-actions',
+			gift.category != null &&
+				presentation.overlay !== null &&
+				'gift-list-item-crowded-overlay',
 		)}
 	>
-		{#if !contextualMode && presentation.showLike && isVisitorOrModerator && visitorGift}
-			<LikeButton
-				giftId={gift.id}
-				giftName={gift.name}
-				likeCount={visitorGift.likeCount}
-				class="absolute top-[6.5px] right-[6.5px] z-20"
-			/>
-		{/if}
-
 		<div
 			data-testid="gift-list-image"
-			class="gift-list-image relative aspect-square self-start border-r-2 border-ink"
+			use:synchronizeListOverlayClearance
+			class="gift-list-image relative self-stretch overflow-hidden border-r-2 border-ink"
 		>
-			<GiftImage
-				class="gift-list-image-frame size-full rounded-l-[calc(var(--radius-panel)-2px)] rounded-r-none max-sm:[&_img]:p-0"
-				imageUrl={imageSrc}
-				imageMeta={gift.imageMeta}
-				target="thumb"
-				alt={gift.name}
-				variant="listThumb"
-			/>
+			<GiftListImage imageUrl={imageSrc} imageMeta={gift.imageMeta} alt={gift.name} />
 			{#if isDimmed}
 				<div
 					data-testid="gift-reserved-veil"
-					class="absolute inset-0 rounded-l-[calc(var(--radius-panel)-2px)] rounded-r-none bg-reserved-veil"
+					class="absolute inset-0 rounded-l-[calc(var(--radius-panel)-var(--nested-border-inline))] rounded-r-none bg-reserved-veil"
 					aria-hidden="true"
 				></div>
 			{/if}
+			{#if gift.category != null && !contextualMode}
+				<div class="gift-list-category absolute top-2 right-2 left-2 z-20 min-w-0">
+					<GiftCategoryBadge category={gift.category} />
+				</div>
+			{/if}
 			<GiftStateOverlay
 				model={presentation.overlay}
-				class={contextualMode ? 'pt-[3.25rem]' : undefined}
+				identity={visibleReserverLine}
+				class={cn('gift-list-state-overlay', contextualMode && 'pt-[3.25rem]')}
+			/>
+			<GiftPriorityBadge
+				priorityLabel={gift.priorityLabel}
+				{showPriority}
+				class="absolute bottom-2 left-2 z-20 max-w-[calc(100%-1rem)]"
 			/>
 		</div>
 
-		<!-- Content stays beside the full-height square image. The dim lives here so the
-	     centered state overlay stays crisp. -->
 		<div
 			data-testid="gift-list-content"
-			class={cn(
-				'flex min-w-0 flex-col gap-0.5 self-stretch p-[6.5px] sm:gap-1',
-				isDimmed && 'opacity-55 grayscale-50',
-			)}
+			class="gift-list-content flex min-w-0 flex-col gap-0.5 self-stretch sm:gap-1"
 		>
 			<div
-				class={cn(
-					'flex items-start gap-1.5',
-					!contextualMode && presentation.showLike && visitorGift && 'pr-11',
-				)}
+				class="flex min-w-0 items-start gap-1.5 font-heading text-[1rem] leading-[1.3] sm:text-[1.5rem]"
 			>
 				<h3
-					class="gift-list-title line-clamp-2 min-w-0 flex-1 font-heading text-[13px] font-semibold leading-4 text-foreground sm:text-base sm:leading-snug"
+					class="gift-list-title line-clamp-2 min-w-0 flex-1 font-semibold text-foreground [overflow-wrap:anywhere] sm:line-clamp-1"
+					title={gift.name}
 				>
 					{gift.name}
 				</h3>
-				<span class="shrink-0">
+				<span class="flex h-[1lh] shrink-0 items-center">
 					<GiftPieceCount quantity={gift.quantity} role="recipient" hideWhenOne />
 				</span>
-			</div>
-
-			<div class="flex flex-wrap items-center gap-1.5 text-sm">
-				{#if gift.price !== null}
-					<span class="font-bold text-brand">{priceDisplay}</span>
-				{:else}
-					<span class="text-muted-foreground">{priceDisplay}</span>
-				{/if}
-
-				<GiftPriorityBadge
-					priorityLabel={gift.priorityLabel}
-					{showPriority}
-					class="text-[11px]"
-				/>
-			</div>
-
-			<div class="flex min-w-0">
-				{#if domain}
-					<a
-						href={safeGiftUrl ?? '#'}
-						target="_blank"
-						rel="external noopener noreferrer"
-						class="inline-flex min-w-0 items-center gap-1 truncate text-xs text-brand"
-						onclick={(e: MouseEvent) => e.stopPropagation()}
+				{#if !contextualMode && presentation.showLike && isVisitorOrModerator && visitorGift}
+					<span
+						class="flex h-[1lh] min-w-(--size-control-lg) shrink-0 items-center justify-center"
 					>
-						<ExternalLinkIcon class="size-3 shrink-0" />
-						<span class="truncate">{domain}</span>
-						{#if gift.links.length > 1}
-							<span class="shrink-0 text-muted-foreground"
-								>{m.gift_link_overflow({ count: gift.links.length - 1 })}</span
-							>
-						{/if}
-					</a>
-				{:else}
-					<span class="text-xs text-muted-foreground">{m.gift_link_none()}</span>
+						<LikeButton
+							giftId={gift.id}
+							giftName={gift.name}
+							likeCount={visitorGift.likeCount}
+						/>
+					</span>
 				{/if}
 			</div>
-
-			{#if role === 'moderator' && reserverLine !== null && reserverLine !== ''}
-				<p class="truncate text-[11px] font-semibold text-muted-foreground">
-					{reserverLine}
-				</p>
-			{/if}
 
 			<GiftDescription
 				description={gift.description}
 				descriptionAppends={gift.descriptionAppends}
-				showAppends={false}
+				preview
 				class="gift-list-description"
-				descriptionClass="line-clamp-1"
+				descriptionClass="line-clamp-2 sm:line-clamp-1"
 			/>
 
-			{#if !contextualMode && (hasReceivedPrimary || (isVisitorOrModerator && hasReservationAction) || onmore)}
+			<div class="mt-1.5 min-w-0" data-testid="gift-link-list">
+				<GiftLinkList links={gift.links} maxVisible={3} />
+			</div>
+			{#if gift.price !== null}
+				<span
+					class="text-sm font-bold text-secondary-foreground"
+					data-testid="gift-list-price">{priceDisplay}</span
+				>
+			{:else}
+				<span class="text-sm text-muted-foreground italic" data-testid="gift-list-price"
+					>{priceDisplay}</span
+				>
+			{/if}
+
+			{#if !contextualMode && (hasReceivedPrimary || (isVisitorOrModerator && hasReservationAction) || (onmore && persistentMore))}
 				<div
+					bind:clientWidth={actionContentWidth}
 					class="mt-auto flex min-w-0 flex-col gap-1.5 pt-1.5"
 					data-testid="gift-list-actions"
 				>
-					{#snippet secondaryReservationAction()}
-						{#if visitorGift}
+					{#snippet secondaryReceivedAction()}
+						<GiftReceivedToggle
+							giftId={gift.id}
+							received={gift.received}
+							{role}
+							{isArchived}
+							{onreceived}
+							compactLabel
+						/>
+					{/snippet}
+					<GiftActionRow
+						class="gift-list-action-row"
+						{onmore}
+						{persistentMore}
+						{moreOpen}
+						{moreSurface}
+						contentWidth={actionContentWidth}
+						secondary={hasMultipleActions ? secondaryReceivedAction : undefined}
+						secondaryAction={hasMultipleActions ? 'received' : undefined}
+						primaryAction={hasReservationAction && visitorGift
+							? visitorGift.myReservationId === null
+								? 'reserve'
+								: 'cancel-reservation'
+							: hasReceivedPrimary
+								? 'received'
+								: undefined}
+						controlSizing="intrinsic"
+					>
+						{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
+							<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
+						{/if}
+						{#if hasMultipleActions && visitorGift}
 							<ReserveButton
 								gift={visitorGift}
 								{isArchived}
 								{onreserve}
 								{onunreserve}
 							/>
-						{/if}
-					{/snippet}
-					<GiftActionRow
-						{onmore}
-						{moreOpen}
-						{moreSurface}
-						secondary={hasMultipleActions ? secondaryReservationAction : undefined}
-						controlSizing="intrinsic"
-					>
-						{#if !canManage && isVisitorOrModerator && visitorGift && onmore === undefined}
-							<PurchasedToggle gift={visitorGift} class="w-full max-sm:hidden" />
-						{/if}
-						{#if hasReceivedPrimary}
+						{:else if hasReceivedPrimary}
 							<GiftReceivedToggle
 								giftId={gift.id}
 								received={gift.received}
@@ -337,72 +380,56 @@
 	}
 
 	.gift-list-item {
-		--gift-list-content-floor: 9.25rem;
-		--gift-list-image-size: clamp(
-			9rem,
-			min(34cqi, calc(100cqi - var(--gift-list-content-floor) - 0.25rem)),
-			13rem
-		);
-
 		box-sizing: border-box;
-		grid-template-columns: var(--gift-list-image-size) minmax(0, 1fr);
-		min-height: calc(var(--gift-list-image-size) + 4px);
+		grid-template-columns: auto minmax(0, 1fr);
+		min-height: max(9rem, var(--gift-list-overlay-min-height, 9rem));
 	}
 
-	.gift-list-item-manager-dense {
-		--gift-list-image-size: clamp(
-			9rem,
-			calc(100cqi - var(--gift-list-content-floor) - 0.25rem),
-			13rem
-		);
+	.gift-list-content {
+		padding-block: var(--gift-content-inset, 0.5rem)
+			var(--gift-content-inset-bottom, var(--gift-content-inset, 0.5rem));
+		padding-inline: var(--gift-content-inset, 0.5rem)
+			var(--gift-content-inset-end, var(--gift-content-inset, 0.5rem));
 	}
 
 	.gift-list-image {
-		width: var(--gift-list-image-size);
-		height: var(--gift-list-image-size);
+		aspect-ratio: 1;
+		height: 100%;
+		min-width: 9rem;
 	}
 
-	@container gift-list (width <= 24rem) {
-		.gift-list-title {
-			-webkit-line-clamp: 1;
-			line-clamp: 1;
-			min-height: 0;
-		}
+	:global(.gift-list-state-overlay) {
+		box-sizing: border-box;
+		padding-block: var(--gift-list-overlay-start-clearance, 0)
+			var(--gift-list-overlay-end-clearance, 0);
+	}
 
-		:global(.gift-list-description) {
-			display: none;
-		}
+	:global(.gift-list-action-row) {
+		flex-wrap: nowrap;
+		gap: var(--gift-action-gap, 0.5rem);
+	}
+
+	:global(.gift-list-action-row > div),
+	:global(.gift-list-action-row .gift-action-slot) {
+		flex-flow: row nowrap;
+		justify-content: flex-end;
 	}
 
 	@container gift-list (width < 40rem) {
-		.gift-list-item,
-		.gift-list-item-manager-dense {
-			--gift-list-content-floor: 8rem;
-			--gift-list-image-size: clamp(
-				6.625rem,
-				calc(100cqi - var(--gift-list-content-floor) - 0.25rem),
-				13rem
-			);
+		.gift-list-item {
+			grid-template-columns: min(35%, 9.5rem) minmax(0, 1fr);
 		}
-	}
 
-	:global(.gift-list-item[data-list-image-stacked]) {
-		grid-template-columns: minmax(0, 1fr);
-	}
+		.gift-list-item-crowded-overlay {
+			min-height: max(9rem, var(--gift-list-overlay-min-height, 9rem));
+		}
 
-	:global(.gift-list-item[data-list-image-stacked] .gift-list-image) {
-		width: 100%;
-		height: auto;
-		border-right-width: 0;
-		border-bottom: 2px solid var(--ink);
-	}
-
-	:global(.gift-list-item[data-list-image-stacked] .gift-list-image-frame),
-	:global(
-		.gift-list-item[data-list-image-stacked]
-			.gift-list-image
-			> [data-testid='gift-reserved-veil']
-	) {
-		border-radius: calc(var(--radius-panel) - 2px) calc(var(--radius-panel) - 2px) 0 0;
+		.gift-list-image {
+			aspect-ratio: auto;
+			width: 100%;
+			height: 100%;
+			min-width: 0;
+			max-width: none;
+		}
 	}
 </style>

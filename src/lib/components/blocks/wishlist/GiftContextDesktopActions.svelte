@@ -19,7 +19,8 @@
 	}
 	interface Props {
 		kind: 'context' | 'dropdown';
-		actions: GiftContextAction[];
+		actions: readonly GiftContextAction[];
+		disabledActions: ReadonlySet<GiftContextAction>;
 		safePrimaryUrl: string | null;
 		received: boolean;
 		purchased: boolean;
@@ -43,6 +44,7 @@
 	let {
 		kind,
 		actions,
+		disabledActions,
 		safePrimaryUrl,
 		received,
 		purchased,
@@ -84,19 +86,23 @@
 </script>
 
 {#if has('open')}<Item
+		disabled={disabledActions.has('open')}
 		onSelect={() =>
 			onfinish('restore-focus', () =>
 				window.open(safePrimaryUrl!, '_blank', 'noopener,noreferrer'),
 			)}><ExternalLinkIcon />{m.gift_context_open_link()}</Item
 	>{/if}
-{#if has('copy')}<Item onSelect={oncopy}><CopyIcon />{m.gift_context_copy_link()}</Item>{/if}
+{#if has('copy')}<Item disabled={disabledActions.has('copy')} onSelect={oncopy}
+		><CopyIcon />{m.gift_context_copy_link()}</Item
+	>{/if}
 {#if (has('open') || has('copy')) && has('edit')}<Separator />{/if}
-{#if has('edit')}<Item onSelect={() => onfinish('handoff', onedit)}
-		><PencilIcon />{m.gift_context_edit()}</Item
+{#if has('edit')}<Item
+		disabled={disabledActions.has('edit')}
+		onSelect={() => onfinish('handoff', onedit)}><PencilIcon />{m.gift_context_edit()}</Item
 	>{/if}
 {#if has('priority')}
 	<Sub
-		><SubTrigger disabled={!priorityReady}
+		><SubTrigger disabled={!priorityReady || disabledActions.has('priority')}
 			>{priorityReady
 				? m.gift_priority_label()
 				: `${m.gift_priority_label()}: ${m.moderator_loading()}`}</SubTrigger
@@ -117,7 +123,7 @@
 {/if}
 {#if has('category')}
 	<Sub
-		><SubTrigger disabled={!categoryReady}
+		><SubTrigger disabled={!categoryReady || disabledActions.has('category')}
 			>{categoryReady
 				? m.gift_context_category()
 				: `${m.gift_context_category()}: ${m.moderator_loading()}`}</SubTrigger
@@ -136,19 +142,28 @@
 		>
 	</Sub>
 {/if}
-{#if has('received')}<Item onSelect={() => onfinish('restore-focus', onreceived)}
+{#if has('received')}<Item
+		disabled={disabledActions.has('received')}
+		onSelect={() => onfinish('restore-focus', onreceived)}
 		><CheckIcon />{received ? m.gift_mark_unreceived() : m.gift_mark_received()}</Item
 	>{/if}
-{#if has('multiselect')}<Separator /><Item onSelect={() => onfinish('handoff', onselect)}
+{#if has('multiselect')}<Separator /><Item
+		disabled={disabledActions.has('multiselect')}
+		onSelect={() => onfinish('handoff', onselect)}
 		><ListChecksIcon />{m.gift_context_select_multiple()}</Item
 	>{/if}
-{#if has('reserve') && onreserve}<Item onSelect={() => onfinish('handoff', onreserve!)}
+{#if has('reserve') && onreserve}<Item
+		disabled={disabledActions.has('reserve')}
+		onSelect={() => onfinish('handoff', onreserve!)}
 		><BookmarkIcon />{m.reserve_button_reserve()}</Item
 	>{/if}
 {#if has('cancel-reservation') && oncancelreservation}<Item
+		disabled={disabledActions.has('cancel-reservation')}
 		onSelect={() => onfinish('restore-focus', oncancelreservation!)}
 		><BookmarkXIcon />{m.reserve_button_cancel()}</Item
 	>{/if}
-{#if has('purchased') && onpurchased}<Item onSelect={() => onfinish('restore-focus', onpurchased!)}
+{#if has('purchased') && onpurchased}<Item
+		disabled={disabledActions.has('purchased')}
+		onSelect={() => onfinish('restore-focus', onpurchased!)}
 		><ShoppingBagIcon />{purchased ? m.gift_bought() : m.gift_mark_bought()}</Item
 	>{/if}

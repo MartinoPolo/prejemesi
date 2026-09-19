@@ -4,6 +4,7 @@
 	import { afterNavigate, replaceState, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onDestroy, onMount, tick } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import * as m from '$lib/paraglide/messages.js';
 	import { localizeInternalHref } from '$lib/i18n/locale.js';
 	import WishlistHeader from '$lib/components/blocks/gift/WishlistHeader.svelte';
@@ -69,7 +70,7 @@
 		ReserveGiftInput,
 		ReservationForModerator,
 	} from '$lib/modules/reservations/types.js';
-	import type { WishlistRole } from '$lib/modules/wishlists/types.js';
+	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import {
 		canManageWishlist,
 		REVERT_CAPABILITY,
@@ -130,6 +131,7 @@
 	import {
 		giftContextActions,
 		hasAdditionalGiftContextActions,
+		type GiftContextAction,
 	} from '$lib/modules/gifts/gift_context_actions.js';
 	import { normalizeGiftUrl } from '$lib/modules/gifts/gift_url.js';
 	import { getPriorityActionOptions } from '$lib/modules/gifts/gift_display.js';
@@ -518,8 +520,32 @@
 	let nativeContextOpen = $state(false);
 	let programmaticOpen = $state(false);
 	let queuedContextAction = $state<{ sessionId: number; run: () => void } | null>(null);
+	const receivedPendingGiftIds = new SvelteSet<string>();
 	// Keep content hosts mounted before first invocation; a fallback supplies inert render data only.
-	const contextActionGift = $derived(contextSession?.gift ?? gifts[0] ?? null);
+	const contextActionGift = $derived(
+		contextSession === null
+			? (gifts[0] ?? null)
+			: (gifts.find((giftItem) => giftItem.id === contextSession?.gift.id) ??
+					contextSession.gift),
+	);
+	const contextPlacementSnapshot = $derived.by(() => {
+		if (contextSession?.invocation.kind !== 'more') {
+			return undefined;
+		}
+		const snapshot = contextSession.invocation.placementSnapshot;
+		const receivedPending = receivedPendingGiftIds.has(contextSession.gift.id);
+		const pendingActions = snapshot.pendingActions.filter((action) => action !== 'received');
+		const disabledActions = snapshot.disabledActions.filter(
+			(action) => action !== 'received' || !snapshot.pendingActions.includes('received'),
+		);
+		return {
+			...snapshot,
+			pendingActions: receivedPending
+				? includeContextAction(pendingActions, 'received')
+				: pendingActions,
+			disabledActions,
+		};
+	});
 	const contextMobile = $derived(
 		contextSession?.invocation.kind === 'longpress' ||
 			(contextSession?.invocation.kind === 'more' &&
@@ -581,8 +607,33 @@
 		});
 	}
 
+	function visibleDirectContextActions(giftItem: GiftByRole): GiftContextAction[] {
+		const actions: GiftContextAction[] = [];
+		const reservationContext = reservationContextFor(giftItem);
+		if (
+			!isArchived &&
+			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator)
+		) {
+			actions.push('received');
+		}
+		if (reservationContext.canReserve) {
+			actions.push(reservationContext.ownsReservation ? 'cancel-reservation' : 'reserve');
+		}
+		return actions;
+	}
+
 	function hasAdditionalContextActions(giftItem: GiftByRole) {
-		return hasAdditionalGiftContextActions(contextActionsFor(giftItem), role);
+		return hasAdditionalGiftContextActions(
+			contextActionsFor(giftItem),
+			visibleDirectContextActions(giftItem),
+		);
+	}
+
+	function includeContextAction(
+		actions: readonly GiftContextAction[],
+		action: GiftContextAction,
+	): readonly GiftContextAction[] {
+		return actions.includes(action) ? actions : [...actions, action];
 	}
 
 	function openContextActions(giftItem: GiftByRole, invocation: GiftContextInvocation): boolean {
@@ -591,6 +642,22 @@
 		}
 		const viewportAtOpen = narrowViewport.current;
 		const id = ++nextContextSessionId;
+		const placementSnapshot =
+			invocation.kind === 'more' && receivedPendingGiftIds.has(giftItem.id)
+				? {
+						...invocation.placementSnapshot,
+						pendingActions: includeContextAction(
+							invocation.placementSnapshot.pendingActions,
+							'received',
+						),
+						disabledActions: includeContextAction(
+							invocation.placementSnapshot.disabledActions,
+							'received',
+						),
+					}
+				: invocation.kind === 'more'
+					? invocation.placementSnapshot
+					: undefined;
 		contextSession = {
 			id,
 			gift: giftItem,
@@ -604,6 +671,8 @@
 								kind: 'more',
 								anchor: invocation.anchor,
 								surface: viewportAtOpen ? 'sheet' : 'menu',
+								placementSnapshot:
+									placementSnapshot ?? invocation.placementSnapshot,
 							},
 		};
 		queuedContextAction = null;
@@ -1139,6 +1208,9 @@
 	}
 
 	async function handleReceived(giftId: string, received: boolean) {
+		if (receivedPendingGiftIds.has(giftId)) {
+			return;
+		}
 		const root = wishlistPageElement;
 		const source = root === null ? null : findGiftElement(root, giftId);
 		const snapshot: GiftReceivedMotionSnapshot | null =
@@ -1146,6 +1218,7 @@
 				? null
 				: receivedGiftMotion.capture(giftId, source, root);
 		const giftName = gifts.find((giftItem) => giftItem.id === giftId)?.name ?? '';
+		receivedPendingGiftIds.add(giftId);
 		try {
 			await markGiftReceived({ giftId, received });
 			// Receiving has always revealed the received section. Keep that production semantic,
@@ -1171,6 +1244,8 @@
 				receivedGiftMotion.discard(snapshot);
 			}
 			toastError(translateServerError(thrown));
+		} finally {
+			receivedPendingGiftIds.delete(giftId);
 		}
 	}
 
@@ -1617,6 +1692,7 @@
 					categories={categoryActionOptions}
 					priorityLevelId={contextActionGift.priorityLevelId}
 					categoryId={contextActionGift.categoryId ?? null}
+					placementSnapshot={contextPlacementSnapshot}
 					{...reservationContextFor(contextActionGift)}
 					onclose={requestContextClose}
 					oncomplete={completeContextClose}

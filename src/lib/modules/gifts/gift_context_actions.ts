@@ -14,12 +14,9 @@ export type GiftContextAction =
 
 export function hasAdditionalGiftContextActions(
 	actions: readonly GiftContextAction[],
-	role: WishlistRole,
+	visibleDirectActions: readonly GiftContextAction[],
 ): boolean {
-	const directActions =
-		role === WISHLIST_ROLES.visitor
-			? new Set<GiftContextAction>(['reserve', 'cancel-reservation'])
-			: new Set<GiftContextAction>(['received']);
+	const directActions = new Set(visibleDirectActions);
 	return actions.some((action) => !directActions.has(action));
 }
 

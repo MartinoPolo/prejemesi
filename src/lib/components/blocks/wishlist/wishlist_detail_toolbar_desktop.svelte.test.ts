@@ -84,6 +84,43 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		await page.viewport(1280, 760);
 	});
 
+	it.each([390, 1280])(
+		'balances resting shadow clearance without changing faces at %ipx',
+		async (width) => {
+			const screen = await renderToolbar({}, width);
+			await frames();
+			const toolbar = screen.getByTestId('wishlist-toolbar').element();
+			const trigger = screen
+				.getByTestId(width < 640 ? 'mobile-display-trigger' : 'desktop-display-trigger')
+				.element();
+			const face = trigger.querySelector('.elevation-surface')!;
+			const viewFace = screen
+				.getByTestId('gift-view-card')
+				.element()
+				.querySelector('.elevation-surface')!;
+			const initialHeight = toolbar.getBoundingClientRect().height;
+			for (const depth of ['soft', 'ink', 'black']) {
+				toolbar.setAttribute('data-depth', depth);
+				await frames();
+				const box = toolbar.getBoundingClientRect();
+				const faceBox = face.getBoundingClientRect();
+				const style = getComputedStyle(toolbar);
+				const shadow = parseFloat(style.getPropertyValue('--elevation-ordinary-offset'));
+				const top = faceBox.top - box.top - parseFloat(style.borderTopWidth);
+				const bottom =
+					box.bottom - parseFloat(style.borderBottomWidth) - faceBox.bottom - shadow;
+				expect(top).toBeCloseTo(bottom, 1);
+				expect(top).toBeGreaterThanOrEqual(8);
+				const viewFaceBox = viewFace.getBoundingClientRect();
+				expect(viewFaceBox.top + viewFaceBox.height / 2).toBeCloseTo(
+					faceBox.top + faceBox.height / 2,
+					1,
+				);
+				expect(toolbar.getBoundingClientRect().height).toBeCloseTo(initialHeight, 1);
+			}
+		},
+	);
+
 	it('places one Display trigger after View and opens persistent cascading categories', async () => {
 		const onsortchange = vi.fn();
 		const ongroupingchange = vi.fn();

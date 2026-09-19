@@ -107,6 +107,57 @@ describe('GiftContextActions desktop ContextMenu', () => {
 	});
 });
 
+describe('GiftContextActions placement-aware More', () => {
+	it('excludes direct actions while retaining an overflowed Received command as disabled', async () => {
+		const onreceived = vi.fn();
+		const screen = await render(GiftContextActions, {
+			...managerProps,
+			onreceived,
+			placementSnapshot: {
+				visibleDirectActions: [],
+				pendingActions: ['received'],
+				disabledActions: ['received'],
+			},
+		});
+
+		const received = screen.getByRole('button', { name: m.gift_mark_received() });
+		await expect.element(received).toBeInTheDocument();
+		await expect.element(received).toBeDisabled();
+		await received.click({ force: true });
+		expect(onreceived).not.toHaveBeenCalled();
+		await screen.unmount();
+
+		const directScreen = await render(GiftContextActions, {
+			...managerProps,
+			placementSnapshot: {
+				visibleDirectActions: ['received'],
+				pendingActions: [],
+				disabledActions: [],
+			},
+		});
+		await expect
+			.element(directScreen.getByRole('button', { name: m.gift_mark_received() }))
+			.not.toBeInTheDocument();
+		await expect
+			.element(directScreen.getByRole('button', { name: m.gift_context_edit() }))
+			.toBeInTheDocument();
+		await directScreen.unmount();
+	});
+
+	it('keeps the full capability menu for native invocation without a placement snapshot', async () => {
+		const screen = await render(GiftContextActionsTestHost, {
+			...managerProps,
+			mobile: false,
+			nativeOpen: true,
+			programmaticOpen: false,
+		});
+		await expect
+			.element(screen.getByRole('menuitem', { name: m.gift_mark_received() }))
+			.toBeInTheDocument();
+		await screen.unmount();
+	});
+});
+
 describe('GiftContextActions mobile Sheet', () => {
 	afterEach(async () => page.viewport(1280, 720));
 

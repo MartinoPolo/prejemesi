@@ -67,7 +67,14 @@ test.describe('mobile wishlist acceptance', () => {
 		await createManagerWishlist(manager, 'Mobilní stavové příklady');
 		await addQuantityGift(manager, 'Tři kusy bez ceny a obrázku', 3);
 		const received = gift(manager, 'Třetí dárek');
-		await received.getByTestId('gift-received-toggle').click();
+		await received.getByRole('button', { name: m.gift_more_actions(), exact: true }).click();
+		await manager
+			.getByRole('dialog')
+			.getByRole('button', {
+				name: m.gift_mark_received(),
+				exact: true,
+			})
+			.click();
 		await expect(received.getByText('Přijato', { exact: true })).toBeVisible();
 		const path = new URL(manager.url()).pathname;
 

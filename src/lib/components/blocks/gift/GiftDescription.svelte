@@ -12,6 +12,7 @@
 		descriptionAppends: DescriptionAppend[];
 		maxVisibleAppends?: number | null;
 		showAppends?: boolean;
+		preview?: boolean;
 		descriptionClass?: string;
 		class?: string;
 	}
@@ -21,6 +22,7 @@
 		descriptionAppends,
 		maxVisibleAppends = null,
 		showAppends = true,
+		preview = false,
 		descriptionClass = '',
 		class: className = '',
 	}: GiftDescriptionProps = $props();
@@ -30,6 +32,7 @@
 	const hasBase = $derived((description ?? '').trim() !== '');
 	const hasAppends = $derived(showAppends && descriptionAppends.length > 0);
 	const hasContent = $derived(hasBase || hasAppends);
+	const latestAppend = $derived(showAppends ? descriptionAppends.at(-1) : undefined);
 	const visibleAppendItems = $derived.by(() => {
 		if (maxVisibleAppends === null || showAllAppends) {
 			return showAppends
@@ -57,7 +60,15 @@
 	}
 </script>
 
-{#if hasContent}
+{#if hasContent && preview}
+	<p class={cn('text-sm whitespace-pre-line text-muted-foreground', className, descriptionClass)}>
+		{#if latestAppend}
+			<span class="font-semibold"
+				>{formatAppendDate(latestAppend.addedAt)}:
+			</span>{latestAppend.text}
+		{:else}{description}{/if}
+	</p>
+{:else if hasContent}
 	<div class={cn('flex flex-col gap-1.5', className)}>
 		{#if hasBase}
 			<p class={cn('whitespace-pre-line text-sm text-muted-foreground', descriptionClass)}>

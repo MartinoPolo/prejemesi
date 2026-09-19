@@ -148,10 +148,14 @@
 						{onreceived}
 						moreOpen={activeContextGiftId === giftItem.id}
 						moreSurface={contextSurface}
-						onmore={oncontextactions !== undefined &&
-						hascontextactions !== undefined &&
-						hascontextactions(giftItem)
-							? (anchor) => oncontextactions(giftItem, { kind: 'more', anchor })
+						persistentMore={hascontextactions?.(giftItem) ?? false}
+						onmore={oncontextactions !== undefined
+							? (anchor, placementSnapshot) =>
+									oncontextactions(giftItem, {
+										kind: 'more',
+										anchor,
+										placementSnapshot,
+									})
 							: undefined}
 					/>
 				{/snippet}

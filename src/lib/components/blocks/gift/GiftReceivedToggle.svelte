@@ -57,7 +57,7 @@
 	<Button
 		bind:ref={action}
 		{size}
-		intent="secondary"
+		intent="secondary-filled"
 		class={className}
 		{surfaceClass}
 		onclick={handleClick}
@@ -65,6 +65,7 @@
 		aria-label={received ? m.gift_mark_unreceived() : m.gift_mark_received()}
 		data-testid="gift-received-toggle"
 		data-gift-received-action={giftId}
+		data-pending={pending}
 	>
 		<CheckIcon data-icon="inline-start" />
 		{#if compactLabel}

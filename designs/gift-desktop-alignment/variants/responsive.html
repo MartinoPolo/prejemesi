@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="cs" data-palette="sky">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Responzivní porovnání zobrazení dárků</title>
+		<link rel="stylesheet" href="../../tokens.css" />
+		<link rel="stylesheet" href="../../../src/app.css" />
+		<link rel="stylesheet" href="responsive.css" />
+		<script src="responsive.js" defer></script>
+	</head>
+	<body>
+		<header class="context-header">
+			<a class="wordmark" href="#main">Přejeme si <span>✦</span></a
+			><span class="context-label">Martinovy Vánoce</span
+			><a class="baseline-link" href="variant-a.html">Schválená desktopová mřížka ↗</a>
+		</header>
+		<aside class="prototype-controls" aria-label="Ovládání prototypu">
+			<div class="control-heading">
+				<p class="eyebrow">RESPONZIVNÍ POROVNÁNÍ</p>
+				<strong>Seznam a mobilní mřížka</strong>
+			</div>
+			<label
+				>Zobrazení<select id="mode-control">
+					<option value="desktop-list">Desktop · seznam</option>
+					<option value="mobile-grid">Mobil · mřížka</option>
+					<option value="mobile-list">Mobil · seznam</option>
+				</select></label
+			>
+			<label
+				>Šířka<select id="width-control">
+					<option>320</option>
+					<option>360</option>
+					<option>390</option>
+					<option>430</option>
+					<option>640</option>
+					<option selected>900</option>
+					<option>1180</option>
+				</select></label
+			>
+			<label
+				>Sloupce<select id="columns-control">
+					<option value="1">1</option>
+					<option value="2">2</option>
+				</select></label
+			>
+			<label
+				>Motiv<select id="theme-control">
+					<option value="light">Světlý</option>
+					<option value="dark">Tmavý</option>
+				</select></label
+			>
+			<label
+				>Paleta<select id="palette-control">
+					<option value="sky">Nebe</option>
+					<option value="mint">Máta</option>
+					<option value="grape">Hroznová</option>
+					<option value="graphite">Grafitová</option>
+				</select></label
+			>
+			<label
+				>Role<select id="role-control">
+					<option value="recipient">Obdarovaný</option>
+					<option value="promoted">Povýšený</option>
+					<option value="manager" selected>Správce</option>
+					<option value="visitor">Návštěvník</option>
+					<option value="anonymous">Anonymní</option>
+				</select></label
+			>
+			<label
+				>Stav<select id="lifecycle-control">
+					<option value="shared">Sdílený</option>
+					<option value="draft">Koncept</option>
+					<option value="archive">Archiv</option>
+				</select></label
+			>
+			<label
+				>Obsah<select id="content-control">
+					<option value="mixed">Smíšený</option>
+					<option value="nodesc">Bez popisů</option>
+					<option value="stress">Zátěžový</option>
+				</select></label
+			>
+			<label
+				>Obrázek<select id="crop-control">
+					<option value="sidecrop">Ořez stran</option>
+					<option value="fit">Celý obrázek</option>
+				</select></label
+			>
+			<label class="check-control"
+				><input id="zoom-control" type="checkbox" /> Text 200 %</label
+			>
+		</aside>
+		<main id="main" class="workspace-wrap">
+			<div id="workspace" class="workspace desktop-list" style="--workspace-width: 900px">
+				<section class="page-intro">
+					<div>
+						<p class="eyebrow">Martin Novák</p>
+						<h1>Martinovy Vánoce</h1>
+						<p>Tipy na dárky, které Martinovi letos udělají radost.</p>
+					</div>
+				</section>
+				<section class="review-note" aria-label="Poznámka k návrhu">
+					<strong id="mode-note"></strong> <span id="crop-note"></span>
+					<strong>Pro revizi:</strong> v úzkém proužku zůstávají kategorie, stav, identita
+					i priorita v samostatných měřených zónách nad obrazem. Dlouhé štítky proto mohou
+					zvětšit celý řádek; nic se neskrývá ani nezkracuje. Nezávislý portrétní výřez je
+					pouze budoucí možnost.
+				</section>
+				<section class="role-note" aria-live="polite" id="role-note"></section>
+				<div id="empty-state" class="empty-state" hidden>
+					<h2>Seznam zatím není sdílený</h2>
+					<p>Koncept vidí pouze správci seznamu.</p>
+				</div>
+				<div id="collection" class="collection" data-testid="gift-collection"></div>
+			</div>
+		</main>
+		<dialog id="detail-dialog">
+			<form method="dialog">
+				<button class="dialog-close" aria-label="Zavřít detail">×</button>
+			</form>
+			<p class="eyebrow">Detail · pouze prototyp</p>
+			<h2 id="detail-title"></h2>
+			<p id="detail-description"></p>
+			<div id="detail-links" class="detail-links"></div>
+			<form method="dialog"><button class="sticker-button secondary">Zavřít</button></form>
+		</dialog>
+		<div id="more-popover" role="menu" aria-label="Další akce" hidden>
+			<strong id="more-title"></strong>
+			<div id="more-links" class="more-links"></div>
+			<div id="more-actions"></div>
+		</div>
+		<div id="toast" role="status" aria-live="polite"></div>
+	</body>
+</html>
