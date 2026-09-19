@@ -265,6 +265,23 @@
 	}
 }
 
+.resting-shadow-nesting {
+	--gift-content-inset: max(
+		0px,
+		calc(var(--radius-panel) - var(--radius-btn) - var(--nested-border-inline, 0px))
+	);
+	--gift-content-inset-end: calc(var(--gift-content-inset) + var(--elevation-ordinary-offset));
+	--gift-content-inset-bottom: max(
+		0px,
+		calc(
+			var(--radius-panel) - var(--radius-btn) - var(--nested-border-block, 0px) +
+				var(--elevation-ordinary-offset)
+		)
+	);
+	--nested-control-gap: calc(0.5rem + var(--elevation-ordinary-offset));
+	--gift-action-gap: var(--nested-control-gap);
+}
+
 /* ── Light derivation ────────────────────────────────────────────────────
    Declared for :root AND any [data-palette] wrapper so a subtree carrying
    its own palette (wishlist page) re-derives the full token set. */

@@ -17,6 +17,7 @@
 	import type { GiftContextInvocation } from './gift_context_invocation.js';
 	import { WISHLIST_ROLES, type WishlistRole } from '$lib/modules/wishlists/types.js';
 	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import { giftCardCollectionLayout } from './gift_card_collection_layout.js';
 
 	interface WishlistGiftDisplayProps {
 		/** Shared display sections consumed identically by every view mode. */
@@ -221,6 +222,7 @@
 					{...triggerProps}
 					style={undefined}
 					bind:this={collectionElement}
+					use:giftCardCollectionLayout
 					data-wishlist-gift-collection
 					data-view-mode={displayedViewMode}
 					inert={collectionIsOutgoing}

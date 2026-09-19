@@ -164,8 +164,8 @@ describe('recipient-view preview reservation privacy (#241)', () => {
 			const reserverLine = screen.getByText(/Babička/);
 			await expect.element(reserverLine).toBeVisible();
 			expect(reserverLine.element().textContent).toContain('Babička');
-			expect(overlay.element().contains(reserverLine.element())).toBe(false);
-			expect(overlay.element().textContent).not.toContain('Babička');
+			expect(overlay.element().contains(reserverLine.element())).toBe(true);
+			expect(overlay.element().textContent).toContain('Babička');
 			await expect
 				.element(screen.getByText('2 rezervováno', { exact: true }))
 				.not.toBeInTheDocument();

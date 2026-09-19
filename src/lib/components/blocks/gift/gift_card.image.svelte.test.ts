@@ -77,6 +77,8 @@ describe('GiftCard category badge (issue #265)', () => {
 			expect(
 				contrastRatio(parseCssRgb(style.backgroundColor), parseCssRgb(style.color)),
 			).toBeGreaterThanOrEqual(4.5);
+			expect(style.webkitLineClamp).toBe('none');
+			expect(badge.scrollHeight).toBeLessThanOrEqual(badge.clientHeight);
 			expect(style.rotate).not.toBe('none');
 			expect(Number.parseFloat(style.rotate)).toBeLessThan(0);
 
@@ -146,7 +148,10 @@ describe('GiftCard category badge (issue #265)', () => {
 		expect(overlay.querySelector('[data-state-primary]')?.textContent).toBe(
 			m.gift_received_badge(),
 		);
-		expect(textOutsideOverlay(contextualHost)).toContain('Babička');
+		expect(textOutsideOverlay(contextualHost)).not.toContain('Babička');
+		expect(
+			contextualHost.querySelector('[data-testid="gift-state-overlay"]')?.textContent,
+		).toContain('Babička');
 	});
 
 	it('renders no category badge while keeping the unchanged image frame for an uncategorized gift', async () => {
@@ -154,7 +159,7 @@ describe('GiftCard category badge (issue #265)', () => {
 		expect(host.querySelector('[data-testid="gift-category-badge"]')).toBeNull();
 		expect(
 			host.querySelector(
-				'[data-testid="gift-card-image-frame"] > [data-testid="image-frame"]',
+				'[data-testid="gift-card-crop-composition"] > [data-testid="image-frame"]',
 			),
 		).toBeTruthy();
 	});
@@ -200,11 +205,29 @@ describe('GiftCard image background fill (issue #252)', () => {
 		const outerFrame = host.querySelector(
 			'[data-testid="gift-card-image-frame"]',
 		) as HTMLElement;
+		const cropComposition = host.querySelector(
+			'[data-testid="gift-card-crop-composition"]',
+		) as HTMLElement;
+
+		const expectStableComposition = () => {
+			const outerRect = outerFrame.getBoundingClientRect();
+			const cropRect = cropComposition.getBoundingClientRect();
+			const frameRect = frame.getBoundingClientRect();
+			expect(cropRect.width / cropRect.height).toBeCloseTo(4 / 3, 2);
+			expect(frameRect.width).toBeCloseTo(cropRect.width, 0);
+			expect(frameRect.height).toBeCloseTo(cropRect.height, 0);
+			const visibleContentCenter =
+				outerRect.top +
+				(outerRect.height -
+					Number.parseFloat(getComputedStyle(outerFrame).borderBottomWidth)) /
+					2;
+			expect(cropRect.top + cropRect.height / 2).toBeCloseTo(visibleContentCenter, 0);
+		};
 
 		expect(getComputedStyle(image).padding).toBe('0px');
-		expect(frame.getBoundingClientRect().width).toBeCloseTo(outerFrame.clientWidth, 0);
-		expect(frame.getBoundingClientRect().height).toBeCloseTo(outerFrame.clientHeight, 0);
+		expectStableComposition();
 		await page.viewport(800, 720);
 		expect(getComputedStyle(image).padding).toBe('8px');
+		expectStableComposition();
 	});
 });

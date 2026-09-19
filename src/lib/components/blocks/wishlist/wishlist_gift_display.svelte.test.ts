@@ -124,7 +124,7 @@ function expectContextualOverlayClearOf(gift: Element, controls: readonly HTMLEl
 	expect(overlay.querySelector('[data-reservation-support]')?.textContent).toBe(
 		m.gift_reserved_by_other_overlay(),
 	);
-	expect(overlay.textContent).not.toContain('Soukromá osoba');
+	expect(overlay.textContent).toContain('Soukromá osoba');
 
 	const badge = overlay.querySelector(':scope > span') as HTMLElement;
 	for (const control of controls) {

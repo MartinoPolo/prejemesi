@@ -52,6 +52,18 @@ describe('GiftReceivedToggle', () => {
 		},
 	);
 
+	it('uses the shared filled secondary treatment', async () => {
+		await render(GiftReceivedToggle, {
+			giftId: 'gift-filled',
+			received: false,
+			role: WISHLIST_ROLES.moderator,
+			onreceived: vi.fn(),
+		});
+
+		const action = document.querySelector('[data-testid="gift-received-toggle"]')!;
+		expect(action.querySelector('.bg-foreground')).toBeTruthy();
+	});
+
 	it('does not render for a visitor', async () => {
 		await render(GiftReceivedToggle, {
 			giftId: 'gift-1',

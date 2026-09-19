@@ -105,10 +105,6 @@
 	$effect(() => () => reorder.destroy());
 </script>
 
-<!-- Each card band spans 7 rows of this grid (see gift_card_variants.ts): the wrapper and
-     card are row subgrids, so price/priority/links/footer align across cards in a row.
-     Desktop row gaps stay zero so empty shared tracks collapse; card/header margins provide
-     the 20px separation between visible bands while horizontal gutters remain independent. -->
 <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
 	{reorderAnnouncement}
 </div>
@@ -116,12 +112,12 @@
 <div
 	bind:this={gridEl}
 	data-testid="wishlist-gift-card-grid"
-	class="gift-card-grid isolate grid auto-rows-auto grid-cols-2 gap-2 sm:gap-x-5 sm:gap-y-0 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
+	class="gift-card-grid isolate grid auto-rows-auto grid-cols-2 gap-2 sm:gap-5 sm:pb-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
 >
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
 		{#if giftSectionHasHeader(section)}
 			<!-- Full-width band/group header breaks the auto-fill row so cards flow beneath it. -->
-			<div class="col-span-full sm:mb-5">
+			<div class="col-span-full">
 				<GiftSectionHeader {section} {selectionMode} {onselectiontoggle} />
 			</div>
 		{/if}
@@ -131,7 +127,7 @@
 				{index}
 				totalCount={totalGiftCount}
 				{reorderEnabled}
-				class="h-full min-w-0 sm:mb-5 sm:h-auto sm:row-span-7 sm:grid sm:grid-rows-subgrid sm:gap-y-0 sm:self-stretch"
+				class="h-auto! min-w-0 self-stretch"
 				draggedGiftId={reorder.draggedGiftId.current}
 				dragOverGiftId={reorder.dragOverGiftId.current}
 				dragOverStyle="ring"
@@ -155,10 +151,14 @@
 						{onreceived}
 						moreOpen={activeContextGiftId === giftItem.id}
 						moreSurface={contextSurface}
-						onmore={oncontextactions !== undefined &&
-						hascontextactions !== undefined &&
-						hascontextactions(giftItem)
-							? (anchor) => oncontextactions(giftItem, { kind: 'more', anchor })
+						persistentMore={hascontextactions?.(giftItem) ?? false}
+						onmore={oncontextactions !== undefined
+							? (anchor, placementSnapshot) =>
+									oncontextactions(giftItem, {
+										kind: 'more',
+										anchor,
+										placementSnapshot,
+									})
 							: undefined}
 					/>
 				{/snippet}
@@ -171,7 +171,12 @@
 	@media (width <= 320px) {
 		.gift-card-grid {
 			grid-template-columns: minmax(0, 1fr);
+			align-items: start;
 			gap: 10px;
+		}
+
+		.gift-card-grid > :global([data-gift-item]) {
+			height: auto !important;
 		}
 	}
 </style>

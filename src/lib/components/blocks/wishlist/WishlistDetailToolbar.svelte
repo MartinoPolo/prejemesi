@@ -126,8 +126,7 @@
 		canManage &&
 			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
 			!isArchived &&
-			(viewMode === 'card' || viewMode === 'list') &&
-			grouping === GIFT_GROUPING_OPTIONS.none,
+			(viewMode === 'card' || viewMode === 'list'),
 	);
 	const showLikedFilter = $derived(
 		isAuthenticated && role !== WISHLIST_ROLES.recipient && !recipientViewPreview,
@@ -1008,7 +1007,7 @@
 <div class="wishlist-toolbar-sticky sticky top-3 z-(--z-sticky) min-w-0">
 	<div class="wishlist-toolbar-mask" data-testid="wishlist-toolbar-mask" aria-hidden="true"></div>
 	<div
-		class="wishlist-toolbar relative z-[1] min-w-0 rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
+		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
 		data-testid="wishlist-toolbar"
 	>
 		{#if selectionContent}
@@ -1138,7 +1137,8 @@
 		container-type: inline-size;
 		max-width: 100%;
 		overflow: visible;
-		padding: 0.5rem;
+		padding: 0.5rem calc(0.5rem + var(--elevation-ordinary-offset))
+			calc(0.5rem + var(--elevation-ordinary-offset)) 0.5rem;
 	}
 
 	.toolbar-responsive-carrier,
@@ -1150,7 +1150,7 @@
 	.toolbar-responsive-view-switcher {
 		position: absolute;
 		z-index: 1;
-		inset-block-start: 4px;
+		inset-block-start: 8px;
 		inset-inline-start: 8px;
 	}
 
@@ -1170,7 +1170,7 @@
 		display: flex;
 		min-width: 0;
 		align-items: center;
-		gap: 8px;
+		gap: var(--nested-control-gap);
 		white-space: nowrap;
 	}
 
@@ -1195,7 +1195,7 @@
 	.mobile-browse-spacer {
 		min-width: 0;
 		flex: 1 1 auto;
-		margin-inline-end: -8px;
+		margin-inline-end: calc(-1 * var(--nested-control-gap));
 	}
 
 	:global(.mobile-display-trigger) {
@@ -1290,7 +1290,7 @@
 		max-width: 100%;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-controls,
@@ -1307,7 +1307,7 @@
 		flex: 0 0 auto;
 		grid-template-columns: minmax(0, 1fr);
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-actions {
@@ -1320,7 +1320,7 @@
 		align-items: center;
 		align-self: flex-end;
 		margin-inline-start: auto;
-		gap: 0.5rem;
+		gap: var(--nested-control-gap);
 	}
 
 	.toolbar-active-filters {
@@ -1344,10 +1344,6 @@
 	}
 
 	@media (width >= 640px) {
-		.wishlist-toolbar {
-			padding: 0.375rem 0.875rem;
-		}
-
 		.toolbar-responsive-view-switcher {
 			position: static;
 			flex: 0 0 auto;
@@ -1370,7 +1366,7 @@
 		.toolbar-controls {
 			display: flex;
 			flex-wrap: wrap;
-			gap: 0.5rem;
+			gap: var(--nested-control-gap);
 		}
 
 		.toolbar-layout-selection .toolbar-selection-content {

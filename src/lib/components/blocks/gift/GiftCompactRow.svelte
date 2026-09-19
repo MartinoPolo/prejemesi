@@ -15,7 +15,10 @@
 	} from '$lib/modules/gifts/gift_display.js';
 	import { deriveGiftDisplayState } from '$lib/modules/gifts/gift_display_state.js';
 	import { normalizeGiftUrl, getPrimaryGiftLink } from '$lib/modules/gifts/gift_url.js';
-	import { canManageWishlist } from '$lib/modules/wishlists/wishlist_capabilities.js';
+	import {
+		canManageWishlist,
+		canSeeReserverNames,
+	} from '$lib/modules/wishlists/wishlist_capabilities.js';
 	import { cn } from '$lib/utils.js';
 	import GiftPriorityBadge from './GiftPriorityBadge.svelte';
 
@@ -60,7 +63,9 @@
 	const domain = $derived(extractGiftDomain(gift.links));
 	const safeGiftUrl = $derived(normalizeGiftUrl(primaryLink?.url ?? null));
 	const priceDisplay = $derived(formatPrice(gift.price, gift.currency, gift.priceMax));
-	const reserverLine = $derived(formatReserverLine(visitorGift?.reserverNames ?? []));
+	const reserverLine = $derived(
+		canSeeReserverNames(role) ? formatReserverLine(visitorGift?.reserverNames ?? []) : null,
+	);
 </script>
 
 <tr

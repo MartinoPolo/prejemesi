@@ -211,6 +211,7 @@ export default defineConfig({
 					retry: 1,
 					browser: {
 						enabled: true,
+						screenshotFailures: process.env.VITEST_SCREENSHOT_FAILURES !== 'false',
 						provider: playwright({ launchOptions: sharedChromeLaunchOptions }),
 						instances: [{ browser: 'chromium', headless: true }],
 						// Fixed API port so the two browser projects (client + storybook) bind
@@ -252,6 +253,7 @@ export default defineConfig({
 					browser: {
 						enabled: true,
 						headless: true,
+						screenshotFailures: process.env.VITEST_SCREENSHOT_FAILURES !== 'false',
 						provider: playwright({ launchOptions: sharedChromeLaunchOptions }),
 						instances: [{ browser: 'chromium' }],
 						api: {

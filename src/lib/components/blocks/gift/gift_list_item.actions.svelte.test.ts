@@ -13,7 +13,72 @@ import {
 	GiftListItemTestHost,
 } from './gift_list_item.test_fixtures.js';
 
+async function settleActionPlacement() {
+	await new Promise<void>((resolve) =>
+		requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+	);
+}
+
 describe('GiftListItem approved action geometry (issue #350)', () => {
+	it('omits the action area when More is only a latent overflow callback', async () => {
+		const host = document.createElement('div');
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({
+					links: [],
+					isFullyReserved: true,
+					reservedCount: 1,
+					myReservationId: null,
+				}),
+				role: WISHLIST_ROLES.visitor,
+				onmore: () => {},
+				persistentMore: false,
+			},
+			{ baseElement: host },
+		);
+
+		expect(host.querySelector('[data-testid="gift-list-actions"]')).toBeNull();
+		expect(host.querySelector('[data-testid="gift-action-row"]')).toBeNull();
+		host.remove();
+	});
+
+	it('shows More only when an action overflows when persistent More is disabled', async () => {
+		await page.viewport(800, 900);
+		const host = document.createElement('div');
+		host.style.width = '720px';
+		document.body.appendChild(host);
+		await render(
+			GiftListItemTestHost,
+			{
+				gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
+				role: WISHLIST_ROLES.moderator,
+				onreceived: () => {},
+				onreserve: () => {},
+				onmore: () => {},
+				persistentMore: false,
+			},
+			{ baseElement: host },
+		);
+		await settleActionPlacement();
+
+		expect(host.querySelector('[data-testid="reserve-button"]')).toBeTruthy();
+		expect(host.querySelector('[data-testid="gift-received-toggle"]')).toBeTruthy();
+		const more = host.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
+		expect(more.getAttribute('aria-hidden')).toBe('true');
+
+		host.style.width = '220px';
+		await settleActionPlacement();
+		expect(host.querySelector('[data-testid="reserve-button"]')).toBeTruthy();
+		expect(
+			host
+				.querySelector('[data-testid="gift-received-toggle"]')
+				?.closest('[aria-hidden="true"]'),
+		).toBeTruthy();
+		expect(more.getAttribute('aria-hidden')).toBe('false');
+		host.remove();
+	});
 	it.each([
 		{
 			viewport: 430,
@@ -63,10 +128,14 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			expect(getComputedStyle(description).display).not.toBe('none');
 			expect(descriptionRect.top).toBeGreaterThanOrEqual(itemRect.top);
 			expect(descriptionRect.bottom).toBeLessThanOrEqual(itemRect.bottom);
-			expect(image.getBoundingClientRect().width).toBeCloseTo(
-				image.getBoundingClientRect().height,
-				0,
-			);
+			const imageRect = image.getBoundingClientRect();
+			const itemStyle = getComputedStyle(item);
+			const innerHeight =
+				itemRect.height -
+				Number.parseFloat(itemStyle.borderTopWidth) -
+				Number.parseFloat(itemStyle.borderBottomWidth);
+			expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
+			expect(imageRect.height).toBeCloseTo(innerHeight, 0);
 			expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
 			expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
 			for (const action of host.querySelectorAll<HTMLElement>(
@@ -82,7 +151,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		},
 	);
 
-	it('keeps Reserve alone above the grouped Received and More actions on mobile', async () => {
+	it('keeps Reserve visible and overflows Received into More on a narrow mobile row', async () => {
 		await page.viewport(390, 900);
 		const host = document.createElement('div');
 		host.style.width = '366px';
@@ -99,25 +168,21 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			{ baseElement: host },
 		);
 
+		await settleActionPlacement();
 		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
 		const reserve = row.querySelector('[data-testid="reserve-button"]') as HTMLElement;
 		const received = row.querySelector('[data-testid="gift-received-toggle"]') as HTMLElement;
 		const more = row.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
 		const rowRect = row.getBoundingClientRect();
 		const reserveRect = reserve.getBoundingClientRect();
-		const receivedRect = received.getBoundingClientRect();
 		const moreRect = more.getBoundingClientRect();
 
-		expect(reserveRect.bottom).toBeLessThanOrEqual(receivedRect.top);
-		if (receivedRect.top === moreRect.top) {
-			expect(receivedRect.bottom).toBeCloseTo(moreRect.bottom, 0);
-		} else {
-			expect(moreRect.top - receivedRect.bottom).toBeCloseTo(8, 0);
-		}
-		expect(reserveRect.right).toBeCloseTo(rowRect.right, 0);
+		expect(received.closest('[aria-hidden="true"]')).toBeTruthy();
+		expect(row.dataset.overflowActions?.split(' ')).toContain('received');
+		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
+		expect(reserveRect.top).toBeCloseTo(moreRect.top, 0);
+		expect(reserveRect.right).toBeLessThanOrEqual(moreRect.left);
 		expect(moreRect.right).toBeCloseTo(rowRect.right, 0);
-		expect(reserveRect.width).toBeLessThan(rowRect.width);
-		expect(receivedRect.width).toBeLessThan(rowRect.width);
 		host.remove();
 	});
 
@@ -138,20 +203,23 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			{ baseElement: host },
 		);
 
+		await settleActionPlacement();
 		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
 		const reserve = row.querySelector('[data-testid="reserve-button"]') as HTMLElement;
 		const received = row.querySelector('[data-testid="gift-received-toggle"]') as HTMLElement;
 		const more = row.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
 		const rowRect = row.getBoundingClientRect();
-		const reserveRect = reserve.getBoundingClientRect();
-		const receivedRect = received.getBoundingClientRect();
-		const moreRect = more.getBoundingClientRect();
+		const actionRects = [reserve, received, more].map((action) =>
+			action.getBoundingClientRect(),
+		);
 
-		expect(reserveRect.top).toBeCloseTo(receivedRect.top, 0);
-		expect(receivedRect.top).toBeCloseTo(moreRect.top, 0);
-		expect(reserveRect.right).toBeLessThanOrEqual(receivedRect.left);
-		expect(receivedRect.right).toBeLessThanOrEqual(moreRect.left);
-		expect(moreRect.right).toBeCloseTo(rowRect.right, 0);
+		for (const actionRect of actionRects) {
+			expect(actionRect.top).toBeCloseTo(actionRects[0]!.top, 0);
+			expect(actionRect.left).toBeGreaterThanOrEqual(rowRect.left);
+			expect(actionRect.right).toBeLessThanOrEqual(rowRect.right);
+		}
+		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
+		expect(more.getBoundingClientRect().right).toBeCloseTo(rowRect.right, 0);
 		host.remove();
 	});
 
@@ -184,6 +252,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				{ baseElement: host },
 			);
 
+			await settleActionPlacement();
 			const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
 			const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 			const content = host.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
@@ -224,27 +293,36 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			if (viewport < 640) {
 				const itemRect = item.getBoundingClientRect();
 				const imageRect = image.getBoundingClientRect();
-				expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
-				expect(content.getBoundingClientRect().left - imageRect.left).toBeCloseTo(
-					imageRect.width,
+				const itemStyle = getComputedStyle(item);
+				const innerHeight =
+					itemRect.height -
+					Number.parseFloat(itemStyle.borderTopWidth) -
+					Number.parseFloat(itemStyle.borderBottomWidth);
+				expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
+				expect(imageRect.height).toBeCloseTo(innerHeight, 0);
+				expect(content.getBoundingClientRect().left).toBeCloseTo(imageRect.right, 0);
+				expect(imageRect.top).toBeCloseTo(
+					itemRect.top + Number.parseFloat(itemStyle.borderTopWidth),
 					0,
 				);
-				expect(imageRect.top).toBeCloseTo(itemRect.top + 2, 0);
-				expect(imageRect.bottom).toBeLessThanOrEqual(itemRect.bottom - 2);
 				const imageFrame = image.querySelector(
 					'[data-testid="image-frame"]',
 				) as HTMLElement;
-				expect(getComputedStyle(item).borderTopLeftRadius).toBe('16px');
-				expect(getComputedStyle(imageFrame).borderTopLeftRadius).toBe('14px');
+				const expectedInnerRadius =
+					Number.parseFloat(itemStyle.borderTopLeftRadius) -
+					Number.parseFloat(itemStyle.borderLeftWidth);
+				expect(
+					Number.parseFloat(getComputedStyle(imageFrame).borderTopLeftRadius),
+				).toBeCloseTo(expectedInnerRadius, 0);
 			}
 			if (role === WISHLIST_ROLES.moderator) {
 				const reserve = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
 				expect(actions).toHaveLength(3);
 				expect(image.contains(reserve)).toBe(false);
 				const widths = actions.map((action) => action.getBoundingClientRect().width);
-				expect(widths[0]).toBeGreaterThan(32);
-				expect(widths[1]).toBeGreaterThan(32);
-				expect(widths[2]).toBeCloseTo(32, 0);
+				expect(widths[0]).toBeGreaterThan(expectedControlSize);
+				expect(widths[1]).toBeGreaterThan(expectedControlSize);
+				expect(widths[2]).toBeCloseTo(expectedControlSize, 0);
 			}
 			if (role === WISHLIST_ROLES.recipient) {
 				expect(host.querySelector('[data-like-heart]')).toBeNull();
@@ -254,33 +332,6 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			host.remove();
 		},
 	);
-
-	it('uses an 8px gap throughout the gift action group at mobile and desktop widths', async () => {
-		const host = document.createElement('div');
-		document.body.appendChild(host);
-		await render(
-			GiftListItemTestHost,
-			{
-				gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
-				role: WISHLIST_ROLES.moderator,
-				onreceived: () => {},
-				onreserve: () => {},
-				onmore: () => {},
-			},
-			{ baseElement: host },
-		);
-
-		for (const viewportWidth of [390, 800]) {
-			await page.viewport(viewportWidth, 900);
-			const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
-			const primaryGroup = host.querySelector(
-				'[data-testid="gift-action-primary-group"]',
-			) as HTMLElement;
-			expect(getComputedStyle(row).gap).toBe('8px');
-			expect(getComputedStyle(primaryGroup).gap).toBe('8px');
-		}
-		host.remove();
-	});
 
 	it.each([
 		{ locale: 'cs' as const, received: false },
@@ -316,11 +367,12 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 					{ baseElement: host },
 				);
 
+				await settleActionPlacement();
 				const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
 				const content = host.querySelector(
 					'[data-testid="gift-list-content"]',
 				) as HTMLElement;
-				const primary = host.querySelector(
+				const receivedAction = host.querySelector(
 					'[data-testid="gift-received-toggle"]',
 				) as HTMLElement;
 				const more = host.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
@@ -338,15 +390,16 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 				expect(reserve.getAttribute('aria-label')).toBe(
 					m.reserve_button_cancel_aria({ name: REALISTIC_LONG_NAME }),
 				);
-				expect(primary.getAttribute('aria-label')).toBe(
+				expect(receivedAction.getAttribute('aria-label')).toBe(
 					received ? m.gift_mark_unreceived() : m.gift_mark_received(),
 				);
+				expect(receivedAction.closest('[aria-hidden="true"]')).toBeTruthy();
 				expect(more.getAttribute('aria-label')).toBe(m.gift_more_actions());
-				const actions = [reserve, primary, more];
+				const actions = [reserve, more];
 				const actionRects = actions.map((action) => action.getBoundingClientRect());
 				for (const [index, action] of actions.entries()) {
 					expect(actionRects[index]!.height).toBeCloseTo(32, 0);
-					if (index === 2) {
+					if (index === actions.length - 1) {
 						expect(actionRects[index]!.width).toBeCloseTo(32, 0);
 					} else {
 						expect(actionRects[index]!.width).toBeGreaterThan(32);
@@ -363,7 +416,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		},
 	);
 
-	it('reflows for enlarged root text at a fixed 390px viewport without clipping actions', async () => {
+	it('keeps enlarged-text commands reachable through one non-wrapping mobile action lane', async () => {
 		await page.viewport(390, 900);
 		const previousFontSize = document.documentElement.style.fontSize;
 		document.documentElement.style.fontSize = '32px';
@@ -389,26 +442,34 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
 			const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 			const content = host.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
-			const primary = host.querySelector('[data-testid="reserve-button"]') as HTMLElement;
+			await settleActionPlacement();
+			const primary = host.querySelector(
+				'[data-testid="reserve-button"]',
+			) as HTMLElement | null;
 			const more = host.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
-			await new Promise<void>((resolve) =>
-				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-			);
-			const itemRect = item.getBoundingClientRect();
+			const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
 			const imageRect = image.getBoundingClientRect();
 			const contentRect = content.getBoundingClientRect();
 			expect(getComputedStyle(item).display).toBe('grid');
-			expect(item.hasAttribute('data-list-image-stacked')).toBe(true);
-			expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
-			expect(imageRect.width).toBeCloseTo(itemRect.width - 4, 0);
-			expect(contentRect.left).toBeCloseTo(imageRect.left, 0);
-			expect(contentRect.top).toBeCloseTo(imageRect.bottom, 0);
-			expect(primary.getBoundingClientRect().height).toBeCloseTo(
-				more.getBoundingClientRect().height,
-				0,
-			);
-			expectRaisedActionShadowInside(primary, item);
+			expect(item.hasAttribute('data-list-image-stacked')).toBe(false);
+			expect(imageRect.width).toBeCloseTo(Math.min(item.clientWidth * 0.35, 152), 0);
+			expect(imageRect.width).toBeLessThan(imageRect.height);
+			expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
+			expect(getComputedStyle(row).flexWrap).toBe('nowrap');
+			expect(more).toBeTruthy();
+			const primaryOverflow = primary?.closest<HTMLElement>('[inert]') ?? null;
+			if (primary === null || primaryOverflow !== null) {
+				expect(row.dataset.overflowActions).toContain('cancel-reservation');
+				expect(more.closest('[inert]')).toBeNull();
+			} else {
+				expect(primary.getBoundingClientRect().top).toBeCloseTo(
+					more.getBoundingClientRect().top,
+					0,
+				);
+				expectRaisedActionShadowInside(primary, item);
+			}
 			expectRaisedActionShadowInside(more, item);
+			expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
 			expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
 		} finally {
 			document.documentElement.style.fontSize = previousFontSize;
@@ -416,7 +477,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		}
 	});
 
-	it('keeps the complete square image beside content when actual space is narrow', async () => {
+	it('keeps the portrait image beside content and commands reachable when actual space is narrow', async () => {
 		await page.viewport(280, 900);
 		const host = document.createElement('div');
 		host.style.width = '256px';
@@ -436,15 +497,23 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			{ baseElement: host },
 		);
 
+		await settleActionPlacement();
 		const item = host.querySelector('[data-testid="gift-list-item"]') as HTMLElement;
 		const image = host.querySelector('[data-testid="gift-list-image"]') as HTMLElement;
 		const content = host.querySelector('[data-testid="gift-list-content"]') as HTMLElement;
+		const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
 		const imageRect = image.getBoundingClientRect();
 		expect(getComputedStyle(item).display).toBe('grid');
-		expect(imageRect.width).toBeCloseTo(imageRect.height, 0);
+		expect(imageRect.width).toBeCloseTo(item.clientWidth * 0.35, 0);
+		expect(imageRect.width).toBeLessThan(imageRect.height);
 		expect(content.getBoundingClientRect().left).toBeCloseTo(imageRect.right, 0);
-		expect(host.querySelector('[data-testid="reserve-button"]')).toBeTruthy();
 		expect(host.querySelector('[data-testid="gift-more-actions"]')).toBeTruthy();
+		expect(getComputedStyle(row).flexWrap).toBe('nowrap');
+		const reserve = host.querySelector('[data-testid="reserve-button"]');
+		if (reserve === null) {
+			expect(row.dataset.overflowActions).toContain('reserve');
+		}
+		expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
 		host.remove();
 	});
 });

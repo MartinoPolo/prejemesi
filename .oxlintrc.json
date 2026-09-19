@@ -9,6 +9,7 @@
 		"node_modules",
 		"src/lib/paraglide",
 		".claude/worktrees",
-		".local"
+		".local",
+		"designs"
 	]
 }

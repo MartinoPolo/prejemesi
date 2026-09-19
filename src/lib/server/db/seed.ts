@@ -21,7 +21,7 @@ import { sql } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
 import { user, account } from './auth.schema.js';
 import { wishlist, priorityLevel } from './wishlist.schema.js';
-import { gift, reservation, giftLike } from './gift.schema.js';
+import { gift, giftCategory, reservation, giftLike } from './gift.schema.js';
 import { moderatorAssignment } from './moderator.schema.js';
 import { claimInvite } from './claim.schema.js';
 import { wishlistFollower } from './follower.schema.js';
@@ -112,6 +112,13 @@ const CLAIM_KLARA_TOKEN = 'seed-claim-klara-token';
 // Priority level suffix helpers
 const plId = (wl: string, level: 'h' | 'm' | 'l') => `seed-pl-${wl}-${level}`;
 
+// Gift categories
+const CAT_XMAS_ELECTRONICS = 'seed-cat-xmas-electronics';
+const CAT_XMAS_CLOTHING = 'seed-cat-xmas-clothing';
+const CAT_XMAS_EXPERIENCES = 'seed-cat-xmas-experiences';
+const CAT_KNIHY_BOOKS = 'seed-cat-knihy-books';
+const CAT_KNIHY_LONG = 'seed-cat-knihy-special-editions-and-collections';
+
 // Gift IDs
 const G_PS5 = 'seed-g-ps5';
 const G_BUNDA = 'seed-g-bunda';
@@ -175,6 +182,7 @@ const G_KN_ZAKON = 'seed-g-kn-zakon';
 const G_KN_KRONIKY = 'seed-g-kn-kroniky';
 const G_KN_STOLETI = 'seed-g-kn-stoleti';
 const G_KN_MAPY = 'seed-g-kn-mapy';
+const G_KN_CROWDED = 'seed-g-kn-crowded-long-title';
 // Přání k svátku (Jana) – Martin follows as a gifter (visitor view: full ordering-band spread)
 const G_SV_HODINKY = 'seed-g-sv-hodinky';
 const G_SV_KVETINAC = 'seed-g-sv-kvetinac';
@@ -208,6 +216,7 @@ async function cleanup(db: ReturnType<typeof drizzle>) {
 	await db.execute(sql`DELETE FROM gift_like WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM reservation WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM gift WHERE id LIKE 'seed-%'`);
+	await db.execute(sql`DELETE FROM gift_category WHERE id LIKE 'seed-%'`);
 	await db.execute(sql`DELETE FROM priority_level WHERE id LIKE 'seed-%'`);
 	// moderator_invite FKs to user have no ON DELETE action, so invites created
 	// at runtime BY seed users (non-seed ids) must be matched via FK columns or
@@ -653,6 +662,48 @@ async function seed() {
 		await db.insert(priorityLevel).values(priorityRows);
 
 		// ---------------------------------------------------------------
+		// Gift categories
+		// ---------------------------------------------------------------
+		console.log('Seeding gift categories...');
+		await db.insert(giftCategory).values([
+			{
+				id: CAT_XMAS_ELECTRONICS,
+				wishlistId: WL_XMAS26,
+				presetKey: 'electronics',
+				color: '#0F766E',
+				sortOrder: 0,
+			},
+			{
+				id: CAT_XMAS_CLOTHING,
+				wishlistId: WL_XMAS26,
+				presetKey: 'clothing',
+				color: '#DB2777',
+				sortOrder: 1,
+			},
+			{
+				id: CAT_XMAS_EXPERIENCES,
+				wishlistId: WL_XMAS26,
+				customLabel: 'Společné zážitky',
+				color: '#15803D',
+				sortOrder: 2,
+			},
+			{
+				id: CAT_KNIHY_BOOKS,
+				wishlistId: WL_KNIHY,
+				presetKey: 'books',
+				color: '#2563EB',
+				sortOrder: 0,
+			},
+			{
+				id: CAT_KNIHY_LONG,
+				wishlistId: WL_KNIHY,
+				customLabel: 'Výpravné ilustrované edice a kompletní sběratelské kolekce',
+				color: '#7C3AED',
+				sortOrder: 1,
+			},
+		]);
+
+		// ---------------------------------------------------------------
 		// Gifts
 		// ---------------------------------------------------------------
 		console.log('Seeding gifts...');
@@ -662,6 +713,7 @@ async function seed() {
 				id: G_PS5,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'h'),
+				categoryId: CAT_XMAS_ELECTRONICS,
 				name: 'PlayStation 5',
 				description: 'Nejnovější verze, s mechanikou na disky',
 				links: [
@@ -679,6 +731,7 @@ async function seed() {
 				id: G_BUNDA,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'm'),
+				categoryId: CAT_XMAS_CLOTHING,
 				name: 'Zimní bunda North Face',
 				description: 'Velikost L, černá nebo tmavě modrá',
 				links: [{ url: 'https://www.sportisimo.cz/north-face' }],
@@ -734,6 +787,7 @@ async function seed() {
 				id: G_POUKAZ,
 				wishlistId: WL_XMAS26,
 				priorityLevelId: plId('xmas26', 'm'),
+				categoryId: CAT_XMAS_EXPERIENCES,
 				name: 'Dárkový poukaz do restaurace',
 				description: 'Ideálně La Degustation nebo Alcron',
 				price: 2000,
@@ -823,6 +877,7 @@ async function seed() {
 				createdAt: d('2026-06-21T12:00:00Z'),
 				updatedAt: d('2026-06-21T12:00:00Z'),
 			},
+			// Explicit uncategorized image fixture for the ordinary recipient view.
 			{
 				id: G_XM_SACHY,
 				wishlistId: WL_XMAS26,
@@ -1185,6 +1240,7 @@ async function seed() {
 				id: G_DUNE,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'h'),
+				categoryId: CAT_KNIHY_BOOKS,
 				name: 'Dune – Frank Herbert',
 				links: [{ url: 'https://www.kosmas.cz/dune' }],
 				price: 350,
@@ -1263,6 +1319,7 @@ async function seed() {
 				...giftImage('seed/g-1984.jpg'),
 				sortOrder: 6,
 			},
+			// Explicit uncategorized fixture for the manager view.
 			{
 				id: G_KN_KRONIKY,
 				wishlistId: WL_KNIHY,
@@ -1276,6 +1333,7 @@ async function seed() {
 			{
 				id: G_KN_STOLETI,
 				wishlistId: WL_KNIHY,
+				categoryId: CAT_KNIHY_BOOKS,
 				name: 'Století – Ken Follett',
 				links: [{ url: 'https://www.kosmas.cz/stoleti' }],
 				price: 680,
@@ -1288,6 +1346,7 @@ async function seed() {
 				id: G_KN_MAPY,
 				wishlistId: WL_KNIHY,
 				priorityLevelId: plId('knihy', 'm'),
+				categoryId: CAT_KNIHY_BOOKS,
 				name: 'Mapy – Aleksandra Mizielińska',
 				description: 'Velký ilustrovaný atlas světa',
 				links: [{ url: 'https://www.kosmas.cz/mapy' }],
@@ -1295,6 +1354,18 @@ async function seed() {
 				currency: 'CZK',
 				...giftImage('seed/g-dune.jpg'),
 				sortOrder: 9,
+			},
+			{
+				id: G_KN_CROWDED,
+				wishlistId: WL_KNIHY,
+				priorityLevelId: plId('knihy', 'h'),
+				categoryId: CAT_KNIHY_LONG,
+				name: 'Kompletní ilustrované dějiny fantastických světů ve sběratelském vydání',
+				description: 'Záměrně přeplněný stav s obrázkovým zástupným symbolem.',
+				price: 2490,
+				currency: 'CZK',
+				quantity: 4,
+				sortOrder: 10,
 			},
 
 			// --- Petrovy narozeniny / Petr (3 gifts, 2 free) ---
@@ -1544,6 +1615,9 @@ async function seed() {
 			{ id: 'seed-r-31', giftId: G_KN_STOLETI, userId: EVA, quantity: 1 },
 			// Partially reserved multi-quantity (1 of 2):
 			{ id: 'seed-r-32', giftId: G_KN_ZAKON, userId: EVA, quantity: 1 },
+			// Crowded categorized placeholder, reserved by two valid gifters (2 of 4).
+			{ id: 'seed-r-kn-crowded-petr', giftId: G_KN_CROWDED, userId: PETR, quantity: 1 },
+			{ id: 'seed-r-kn-crowded-jana', giftId: G_KN_CROWDED, userId: JANA, quantity: 1 },
 
 			// Přání k svátku (issue #224) – Martin follows as a gifter, sees every band.
 			// Own reservations (beyond the existing KABELKA):
@@ -1578,6 +1652,8 @@ async function seed() {
 
 			// Tomáš – Knihy
 			{ id: 'seed-lk-10', giftId: G_DUNE, userId: JANA },
+			{ id: 'seed-lk-kn-crowded-eva', giftId: G_KN_CROWDED, userId: EVA },
+			{ id: 'seed-lk-kn-crowded-martin', giftId: G_KN_CROWDED, userId: MARTIN },
 		]);
 
 		// ---------------------------------------------------------------

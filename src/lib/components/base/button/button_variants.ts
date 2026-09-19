@@ -38,6 +38,10 @@ export const buttonVariants = tv({
 				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
 				surface: 'border-ink bg-card text-ink group-hover:bg-panel-hover',
 			},
+			'secondary-filled': {
+				owner: 'elevation-owner elevation-owner-raised elevation-owner-anchored',
+				surface: `border-ink bg-foreground text-background group-hover:bg-[color-mix(in_oklab,var(--foreground)_86%,var(--background))] ${FILLED_BUTTON_KBD_CLASSES}`,
+			},
 			ghost: {
 				surface:
 					'bg-transparent text-muted-foreground group-hover:bg-accent group-hover:text-foreground',
