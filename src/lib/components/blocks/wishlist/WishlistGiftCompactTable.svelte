@@ -18,6 +18,7 @@
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 		showPriority?: boolean;
 	}
 
@@ -31,6 +32,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPendingGiftIds = new Set<string>(),
 		showPriority = true,
 	}: WishlistGiftCompactTableProps = $props();
 
@@ -93,6 +95,7 @@
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						receivedPending={receivedPendingGiftIds.has(giftItem.id)}
 					/>
 				{/each}
 			</tbody>

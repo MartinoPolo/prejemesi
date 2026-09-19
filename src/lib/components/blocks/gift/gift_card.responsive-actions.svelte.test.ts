@@ -105,6 +105,64 @@ describe('GiftCard responsive action placement', () => {
 		expect(onreceived).toHaveBeenCalledWith('gift-1', true);
 	});
 
+	it.each([
+		{
+			name: 'visitor Reserve',
+			role: WISHLIST_ROLES.visitor,
+			gift: makeVisitorGift({ myReservationId: null, reservedCount: 0 }),
+			primaryTestId: 'reserve-button',
+		},
+		{
+			name: 'visitor own Cancel',
+			role: WISHLIST_ROLES.visitor,
+			gift: makeVisitorGift({
+				myReservationId: 'reservation-1',
+				reservedCount: 1,
+				isFullyReserved: true,
+			}),
+			primaryTestId: 'reserve-button',
+		},
+		{
+			name: 'recipient sole Received',
+			role: WISHLIST_ROLES.recipient,
+			gift: makeVisitorGift(),
+			primaryTestId: 'gift-received-toggle',
+		},
+	])(
+		'keeps the direct primary and persistent More reachable at desktop card width for $name',
+		async ({ role, gift, primaryTestId }) => {
+			await page.viewport(1280, 900);
+			const host = document.createElement('div');
+			host.style.width = '280px';
+			document.body.appendChild(host);
+			fixedHosts.add(host);
+			await render(
+				GiftCardTestHost,
+				{
+					gift,
+					role,
+					onreceived: () => {},
+					onreserve: () => {},
+					onunreserve: () => {},
+					onmore: () => {},
+					persistentMore: true,
+				},
+				{ baseElement: host },
+			);
+			await nextLayout();
+
+			const row = host.querySelector<HTMLElement>('[data-testid="gift-action-row"]')!;
+			const primary = row.querySelector<HTMLElement>(`[data-testid="${primaryTestId}"]`)!;
+			const more = row.querySelector<HTMLElement>('[data-testid="gift-more-actions"]')!;
+			expect(primary.closest('[aria-hidden="true"]')).toBeNull();
+			expect(more.closest('[aria-hidden="true"]')).toBeNull();
+			expect(primary.getBoundingClientRect().top).toBeCloseTo(
+				more.getBoundingClientRect().top,
+				0,
+			);
+		},
+	);
+
 	it('keeps More visible at wide widths when the caller marks it persistent', async () => {
 		await page.viewport(768, 900);
 		const host = document.createElement('div');

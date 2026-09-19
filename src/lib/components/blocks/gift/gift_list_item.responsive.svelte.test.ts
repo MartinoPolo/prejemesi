@@ -17,6 +17,38 @@ import {
 } from './gift_list_item.test_fixtures.js';
 
 describe('GiftListItem responsive image dimensions (issues #328 and #336)', () => {
+	it.each([320, 480, 600])(
+		'keeps short rows portrait without unnecessary height at %d px',
+		async (width) => {
+			await page.viewport(width + 24, 720);
+			const host = await renderItem(
+				makeVisitorGift({ name: 'Kniha', myReservationId: null, reservedCount: 0 }),
+				WISHLIST_ROLES.recipient,
+				null,
+				width,
+			);
+			const item = host.querySelector<HTMLElement>('[data-testid="gift-list-item"]')!;
+			const image = host.querySelector<HTMLElement>('[data-testid="gift-list-image"]')!;
+			const rootFontSize = Number.parseFloat(
+				getComputedStyle(document.documentElement).fontSize,
+			);
+			const itemStyle = getComputedStyle(item);
+			const borders =
+				Number.parseFloat(itemStyle.borderTopWidth) +
+				Number.parseFloat(itemStyle.borderBottomWidth);
+			const imageRect = image.getBoundingClientRect();
+			expect(imageRect.width).toBeCloseTo(
+				Math.min(item.clientWidth * 0.35, 9.5 * rootFontSize),
+				0,
+			);
+			expect(imageRect.height).toBeGreaterThan(imageRect.width);
+			expect(item.getBoundingClientRect().height).toBeCloseTo(
+				Math.max(9 * rootFontSize, imageRect.width + borders + 1),
+				0,
+			);
+			host.remove();
+		},
+	);
 	it('removes only mobile Fit padding while keeping the square composition full-height', async () => {
 		await page.viewport(390, 720);
 		const host = await renderItem(

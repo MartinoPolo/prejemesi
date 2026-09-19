@@ -31,6 +31,7 @@
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		receivedPending?: boolean;
 		showPriority?: boolean;
 	}
 
@@ -43,6 +44,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPending = false,
 		showPriority = true,
 	}: GiftCompactRowProps = $props();
 
@@ -155,6 +157,7 @@
 						{isArchived}
 						size="sm"
 						{onreceived}
+						pending={receivedPending}
 					/>
 				{/if}
 				{#if isVisitorOrModerator && visitorGift}

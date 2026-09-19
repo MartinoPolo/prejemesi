@@ -51,6 +51,7 @@
 		activeContextGiftId?: string | null;
 		contextSurface?: 'menu' | 'dialog';
 		grouping?: GiftGroupingOption;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 	}
 
 	let {
@@ -84,6 +85,7 @@
 		activeContextGiftId = null,
 		contextSurface = 'menu',
 		grouping = 'none',
+		receivedPendingGiftIds = new Set<string>(),
 	}: WishlistGiftDisplayProps = $props();
 
 	// Management affordances (add/edit/reorder) open to recipient OR správce.
@@ -252,6 +254,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 							{onreorderpreview}
 							{onreordercommit}
 							{onreordercancel}
@@ -277,6 +280,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 							{onreorderpreview}
 							{onreordercommit}
 							{onreordercancel}
@@ -293,6 +297,7 @@
 							{onreserve}
 							{onunreserve}
 							{onreceived}
+							{receivedPendingGiftIds}
 						/>
 					{/if}
 				</div>

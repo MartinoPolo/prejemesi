@@ -37,6 +37,7 @@
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		receivedPending?: boolean;
 		onmore?: (
 			anchor: HTMLButtonElement,
 			placementSnapshot: GiftActionPlacementSnapshot,
@@ -57,6 +58,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPending = false,
 		onmore,
 		persistentMore = onmore !== undefined,
 		moreOpen = false,
@@ -242,10 +244,7 @@
 				<div
 					bind:clientWidth={actionContentWidth}
 					data-testid="gift-card-reservation-actions"
-					class={cn(
-						styles.reservationActions(),
-						!hasMultipleActions && 'sm:flex-initial',
-					)}
+					class={styles.reservationActions()}
 				>
 					{#snippet secondaryReceivedAction()}
 						<GiftReceivedToggle
@@ -254,6 +253,7 @@
 							{role}
 							{isArchived}
 							{onreceived}
+							pending={receivedPending}
 							compactLabel
 						/>
 					{/snippet}
@@ -291,6 +291,7 @@
 								{role}
 								{isArchived}
 								{onreceived}
+								pending={receivedPending}
 								compactLabel
 							/>
 						{:else if isVisitorOrModerator && visitorGift}

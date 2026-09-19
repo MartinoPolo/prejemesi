@@ -24,6 +24,7 @@
 		onreserve: (gift: GiftForVisitor) => void;
 		onunreserve: (gift: GiftForVisitor) => void;
 		onreceived: (giftId: string, received: boolean) => void;
+		receivedPendingGiftIds?: ReadonlySet<string>;
 		onreorderpreview: (orderedIds: string[]) => void;
 		onreordercommit: (orderedIds: string[]) => void;
 		onreordercancel: (orderedIds: string[]) => void;
@@ -46,6 +47,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPendingGiftIds = new Set<string>(),
 		onreorderpreview,
 		onreordercommit,
 		onreordercancel,
@@ -112,7 +114,7 @@
 <div
 	bind:this={gridEl}
 	data-testid="wishlist-gift-card-grid"
-	class="gift-card-grid isolate grid auto-rows-auto grid-cols-2 gap-2 sm:gap-5 sm:pb-5 sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]"
+	class="gift-card-grid isolate grid auto-rows-auto gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))] sm:gap-5 sm:pb-5"
 >
 	{#each indexedSections as { section, items } (sectionRenderKey(section, items))}
 		{#if giftSectionHasHeader(section)}
@@ -149,6 +151,7 @@
 						{onreserve}
 						{onunreserve}
 						{onreceived}
+						receivedPending={receivedPendingGiftIds.has(giftItem.id)}
 						moreOpen={activeContextGiftId === giftItem.id}
 						moreSurface={contextSurface}
 						persistentMore={hascontextactions?.(giftItem) ?? false}

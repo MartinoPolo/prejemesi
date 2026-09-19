@@ -73,7 +73,15 @@ function requiredImageHeight(card: HTMLElement): number {
 		return 0;
 	}
 	const imageRect = image.getBoundingClientRect();
-	const naturalHeight = imageRect.width * 0.75;
+	const imageStyle = getComputedStyle(image);
+	const contentWidth =
+		imageRect.width -
+		Number.parseFloat(imageStyle.borderLeftWidth) -
+		Number.parseFloat(imageStyle.borderRightWidth);
+	const naturalHeight =
+		contentWidth * 0.75 +
+		Number.parseFloat(imageStyle.borderTopWidth) +
+		Number.parseFloat(imageStyle.borderBottomWidth);
 	const topBounds = visibleChildrenBounds(
 		image.querySelector<HTMLElement>('[data-gift-card-top-overlays]'),
 	);
@@ -105,7 +113,16 @@ function applyImageHeights(collection: HTMLElement, alignAcrossCollection: boole
 	const sharedHeight = Math.max(0, ...requiredHeights);
 	for (const [index, card] of cards.entries()) {
 		const height = alignAcrossCollection ? sharedHeight : requiredHeights[index]!;
-		card.style.setProperty('--gift-card-image-track-height', `${height}px`);
+		const image = card.querySelector<HTMLElement>('[data-testid="gift-card-image-frame"]');
+		if (image === null) {
+			continue;
+		}
+		const imageStyle = getComputedStyle(image);
+		const contentHeight =
+			height -
+			Number.parseFloat(imageStyle.borderTopWidth) -
+			Number.parseFloat(imageStyle.borderBottomWidth);
+		card.style.setProperty('--gift-card-image-track-height', `${contentHeight}px`);
 	}
 }
 

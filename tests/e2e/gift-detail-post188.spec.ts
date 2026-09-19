@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
+import { waitForGiftAnimationsToSettle } from './mobile-wishlist.helpers.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import {
 	createWishlistAndNavigate,
@@ -70,13 +71,13 @@ async function exposeReceivedGifts(page: Page, giftName: string): Promise<void> 
 interface OverlayExpectation {
 	primary: string;
 	support?: string;
-	bodyName?: string;
+	reserverName?: string;
 	forbiddenText?: RegExp;
 }
 
 async function assertCenteredOverlay(
 	giftItem: Locator,
-	{ primary, support, bodyName, forbiddenText }: OverlayExpectation,
+	{ primary, support, reserverName, forbiddenText }: OverlayExpectation,
 ): Promise<void> {
 	const overlay = giftItem.getByTestId('gift-state-overlay');
 	await expect(overlay).toHaveCount(1);
@@ -87,16 +88,18 @@ async function assertCenteredOverlay(
 	} else {
 		await expect(supportElement).toHaveText(support);
 	}
-	if (bodyName !== undefined) {
-		await expect(giftItem.getByText(bodyName)).toBeVisible();
-		await expect(overlay.getByText(bodyName)).toHaveCount(0);
+	if (reserverName !== undefined) {
+		await expect(giftItem.getByText(reserverName)).toHaveCount(1);
+		await expect(overlay.getByText(reserverName)).toBeVisible();
 	}
 	if (forbiddenText !== undefined) {
 		await expect(giftItem).not.toContainText(forbiddenText);
 	}
 
 	const pills = overlay.locator(':scope > span');
-	await expect(pills).toHaveCount(support === undefined ? 1 : 2);
+	await expect(pills).toHaveCount(
+		(support === undefined ? 1 : 2) + (reserverName === undefined ? 0 : 1),
+	);
 	if (support !== undefined) {
 		const [primaryStyle, supportStyle] = await Promise.all([
 			pills.nth(0).evaluate((element) => {
@@ -123,6 +126,7 @@ async function assertCenteredOverlay(
 		expect(supportStyle).toEqual(primaryStyle);
 	}
 
+	await waitForGiftAnimationsToSettle(giftItem.page());
 	const imageFrame = overlay.locator('xpath=..');
 	await expect(imageFrame).toHaveAttribute(
 		'data-testid',
@@ -141,9 +145,16 @@ async function assertCenteredOverlay(
 					top: Number.parseFloat(style.borderTopWidth),
 					bottom: Number.parseFloat(style.borderBottomWidth),
 				},
-				pillBoxes: Array.from(element.querySelectorAll(':scope > span'), (pill) =>
-					pill.getBoundingClientRect().toJSON(),
-				),
+				pillBoxes: Array.from(element.querySelectorAll(':scope > span'), (pill) => {
+					// Center the layout stack, not the unequal rotated ink bounds.
+					const rectangle = pill.getBoundingClientRect();
+					const style = getComputedStyle(pill);
+					const width = Number.parseFloat(style.width);
+					const height = Number.parseFloat(style.height);
+					const x = rectangle.x + (rectangle.width - width) / 2;
+					const y = rectangle.y + (rectangle.height - height) / 2;
+					return { x, y, right: x + width, bottom: y + height };
+				}),
 				paddingTop: getComputedStyle(element).paddingTop,
 			};
 		},
@@ -321,7 +332,7 @@ test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () 
 		await moderatorPage.reload();
 		await assertOverlayInCardAndList(moderatorPage, giftName, {
 			primary: 'Rezervováno někým jiným',
-			bodyName: reserver.name,
+			reserverName: reserver.name,
 		});
 		const moderatorGift = gift(moderatorPage, giftName);
 		await moderatorGift.getByRole('button', { name: 'Označit jako přijatý' }).click();
@@ -331,7 +342,7 @@ test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () 
 		await assertOverlayInCardAndList(moderatorPage, giftName, {
 			primary: 'Přijato',
 			support: 'Rezervováno někým jiným',
-			bodyName: reserver.name,
+			reserverName: reserver.name,
 		});
 
 		await reserverPage.goto(wishlistPath);

@@ -1743,6 +1743,7 @@
 			onreserve={handleOpenReserveModal}
 			onunreserve={handleUnreserve}
 			onreceived={handleReceived}
+			{receivedPendingGiftIds}
 			onaddgift={openCreateModal}
 			onclearfilters={clearFilters}
 			onreorderpreview={handleReorderPreview}

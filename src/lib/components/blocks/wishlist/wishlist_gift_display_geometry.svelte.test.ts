@@ -11,6 +11,8 @@ import * as m from '$lib/paraglide/messages.js';
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
 const { default: WishlistGiftDisplay } = await import('./WishlistGiftDisplay.svelte');
+const { default: WishlistGiftDisplayTestHost } =
+	await import('./WishlistGiftDisplayTestHost.svelte');
 
 function visitorGift(): GiftForVisitor {
 	return {
@@ -114,12 +116,13 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		await screen.unmount();
 	});
 
-	it('uses one card column at 320px and exactly two equal columns from 321px through 639px', async () => {
+	it('uses one column when primary actions need the width and equal columns when two fit', async () => {
 		const second = { ...visitorGift(), id: 'gift-2', name: 'Kávovar' };
 		const responsiveSections = [{ ...sections[0]!, gifts: [visitorGift(), second] }];
-		await page.viewport(320, 720);
-		const screen = await render(WishlistGiftDisplay, {
+		await page.viewport(390, 720);
+		const screen = await render(WishlistGiftDisplayTestHost, {
 			...defaultProps,
+			role: WISHLIST_ROLES.visitor,
 			sections: responsiveSections,
 			viewMode: 'card',
 		});
@@ -127,24 +130,25 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		expect(cards[1]!.getBoundingClientRect().top).toBeGreaterThan(
 			cards[0]!.getBoundingClientRect().top,
 		);
+		const reserveButton = Array.from(cards[0]!.querySelectorAll('button')).find(
+			(button) => button.textContent?.trim() === m.reserve_button_reserve(),
+		);
+		expect(reserveButton).toBeDefined();
+		expect(reserveButton!.closest('[inert], [aria-hidden="true"]')).toBeNull();
+		expect(reserveButton!.getBoundingClientRect().width).toBeGreaterThan(0);
+		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(390);
 
-		await page.viewport(321, 720);
-		cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
-		const firstRect = cards[0]!.getBoundingClientRect();
-		const secondRect = cards[1]!.getBoundingClientRect();
-		expect(secondRect.top).toBeCloseTo(firstRect.top, 0);
-		expect(secondRect.width).toBeCloseTo(firstRect.width, 0);
-		expect(secondRect.left - firstRect.right).toBeCloseTo(8, 0);
-		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(321);
-
-		await page.viewport(639, 720);
-		cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
-		const firstAt639 = cards[0]!.getBoundingClientRect();
-		const secondAt639 = cards[1]!.getBoundingClientRect();
-		expect(secondAt639.top).toBeCloseTo(firstAt639.top, 0);
-		expect(secondAt639.width).toBeCloseTo(firstAt639.width, 0);
-		expect(secondAt639.left - firstAt639.right).toBeCloseTo(8, 0);
-		expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(639);
+		for (const width of [600, 639]) {
+			await page.viewport(width, 720);
+			await nextLayout();
+			cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+			const firstRect = cards[0]!.getBoundingClientRect();
+			const secondRect = cards[1]!.getBoundingClientRect();
+			expect(secondRect.top).toBeCloseTo(firstRect.top, 0);
+			expect(secondRect.width).toBeCloseTo(firstRect.width, 0);
+			expect(secondRect.left - firstRect.right).toBeCloseTo(8, 0);
+			expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+		}
 		await screen.unmount();
 	});
 
@@ -278,7 +282,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		{ viewMode: 'card' as const, width: 390, surfaceTestId: 'gift-card-surface' },
 		{
 			viewMode: 'card' as const,
-			width: 391,
+			width: 601,
 			surfaceTestId: 'gift-card-surface',
 			expectFractionalWidth: true,
 		},
@@ -757,6 +761,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 		for (const { width, expectedGap } of [
 			{ width: 320, expectedGap: 10 },
 			{ width: 390, expectedGap: 8 },
+			{ width: 600, expectedGap: 8 },
 		]) {
 			await page.viewport(width, 1000);
 			const screen = await render(WishlistGiftDisplay, {
@@ -766,8 +771,11 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			});
 			const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
 			const first = cards[0]!.getBoundingClientRect();
-			const nextBand = cards[width === 320 ? 1 : 2]!.getBoundingClientRect();
-			expect(nextBand.top - first.bottom).toBeCloseTo(expectedGap, 0);
+			const nextBand = cards
+				.map((card) => card.getBoundingClientRect())
+				.find((rect) => rect.top > first.top + 0.5);
+			expect(nextBand).toBeDefined();
+			expect(nextBand!.top - first.bottom).toBeCloseTo(expectedGap, 0);
 			await screen.unmount();
 		}
 	});

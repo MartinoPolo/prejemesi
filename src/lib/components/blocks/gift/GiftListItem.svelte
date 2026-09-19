@@ -34,6 +34,7 @@
 		onreserve?: (gift: GiftForVisitor) => void;
 		onunreserve?: (gift: GiftForVisitor) => void;
 		onreceived?: (giftId: string, received: boolean) => void;
+		receivedPending?: boolean;
 		onmore?: (
 			anchor: HTMLButtonElement,
 			placementSnapshot: GiftActionPlacementSnapshot,
@@ -53,6 +54,7 @@
 		onreserve,
 		onunreserve,
 		onreceived,
+		receivedPending = false,
 		onmore,
 		persistentMore = onmore !== undefined,
 		moreOpen = false,
@@ -319,6 +321,7 @@
 							{role}
 							{isArchived}
 							{onreceived}
+							pending={receivedPending}
 							compactLabel
 						/>
 					{/snippet}
@@ -357,6 +360,7 @@
 								{role}
 								{isArchived}
 								{onreceived}
+								pending={receivedPending}
 								compactLabel
 							/>
 						{:else if isVisitorOrModerator && visitorGift}
@@ -418,10 +422,11 @@
 	@container gift-list (width < 40rem) {
 		.gift-list-item {
 			grid-template-columns: min(35%, 9.5rem) minmax(0, 1fr);
-		}
-
-		.gift-list-item-crowded-overlay {
-			min-height: max(9rem, var(--gift-list-overlay-min-height, 9rem));
+			min-height: max(
+				9rem,
+				var(--gift-list-overlay-min-height, 9rem),
+				calc(min(35cqw, 9.5rem) + 2 * var(--nested-border-block, 2px) + 1px)
+			);
 		}
 
 		.gift-list-image {

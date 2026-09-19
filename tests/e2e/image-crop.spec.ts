@@ -281,37 +281,77 @@ test.describe('Gift per-target crop (WYSIWYG stage)', () => {
 			FIXED_TOLERANCE,
 		);
 
-		// Mobile list keeps the `thumb` frame square while filling the row's complete
-		// inner height. Content begins directly after that full-height image rather
-		// than relying on the rejected fixed 128–152px thumbnail cap.
+		// Mobile List uses a responsive full-height portrait window around the saved
+		// square `thumb` composition. The square remains centered and unchanged; only
+		// its sides are clipped by the portrait consumer.
+		const mobileItem = page.getByTestId('gift-list-item').first();
+		const mobileImageFrame = mobileItem.getByTestId('gift-list-image');
+		const mobileImageWidths = new Map<number, number>();
+		for (const width of [390, 480, 600]) {
+			await page.setViewportSize({ width, height: 844 });
+			const imageBox = await mobileImageFrame.boundingBox();
+			expect(imageBox).not.toBeNull();
+			mobileImageWidths.set(width, imageBox!.width);
+		}
+		expect(mobileImageWidths.get(480)).toBeCloseTo(mobileImageWidths.get(600)!, 0);
+		expect(mobileImageWidths.get(390)).toBeLessThan(mobileImageWidths.get(480)!);
+
 		await page.setViewportSize({ width: 390, height: 844 });
 		// A manual crop may zoom the <img> beyond its clipped frame. Measure the
 		// explicit full-bleed list image region rather than an implementation wrapper.
-		const mobileItem = page.getByTestId('gift-list-item').first();
-		const mobileImageFrame = mobileItem.getByTestId('gift-list-image');
 		const mobileContent = mobileItem.getByTestId('gift-list-content');
-		const [mobileItemBox, mobileImageBox, mobileContentBox, mobileBorder] = await Promise.all([
-			mobileItem.boundingBox(),
-			mobileImageFrame.boundingBox(),
-			mobileContent.boundingBox(),
-			mobileItem.evaluate((element) =>
-				Number.parseFloat(getComputedStyle(element).borderTopWidth),
-			),
-		]);
+		const squareComposition = mobileImageFrame.getByTestId('gift-list-square-composition');
+		const [mobileItemBox, mobileImageBox, mobileContentBox, squareBox, borders] =
+			await Promise.all([
+				mobileItem.boundingBox(),
+				mobileImageFrame.boundingBox(),
+				mobileContent.boundingBox(),
+				squareComposition.boundingBox(),
+				mobileItem.evaluate((element) => {
+					const itemStyle = getComputedStyle(element);
+					const image = element.querySelector<HTMLElement>(
+						'[data-testid="gift-list-image"]',
+					)!;
+					return {
+						top: Number.parseFloat(itemStyle.borderTopWidth),
+						bottom: Number.parseFloat(itemStyle.borderBottomWidth),
+						left: Number.parseFloat(itemStyle.borderLeftWidth),
+						imageRight: Number.parseFloat(getComputedStyle(image).borderRightWidth),
+					};
+				}),
+			]);
 		expect(mobileItemBox).not.toBeNull();
 		expect(mobileImageBox).not.toBeNull();
 		expect(mobileContentBox).not.toBeNull();
-		expect(mobileImageBox!.width / mobileImageBox!.height).toBeCloseTo(
+		expect(squareBox).not.toBeNull();
+		expect(mobileImageBox!.height).toBeGreaterThan(mobileImageBox!.width);
+		expect(mobileContentBox!.width).toBeGreaterThan(mobileImageBox!.width);
+		expect(mobileImageBox!.x).toBeCloseTo(mobileItemBox!.x + borders.left, 0);
+		expect(mobileImageBox!.y).toBeCloseTo(mobileItemBox!.y + borders.top, 0);
+		expect(mobileImageBox!.y + mobileImageBox!.height).toBeCloseTo(
+			mobileItemBox!.y + mobileItemBox!.height - borders.bottom,
+			0,
+		);
+		expect(squareBox!.width / squareBox!.height).toBeCloseTo(
 			GIFT_CROP_TARGET_SPECS.thumb.aspect,
 			1,
 		);
-		expect(mobileImageBox!.y).toBeCloseTo(mobileItemBox!.y + mobileBorder, 0);
-		expect(mobileImageBox!.y + mobileImageBox!.height).toBeCloseTo(
-			mobileItemBox!.y + mobileItemBox!.height - mobileBorder,
+		expect(squareBox!.height).toBeCloseTo(mobileImageBox!.height, 0);
+		expect(squareBox!.y).toBeCloseTo(mobileImageBox!.y, 0);
+		expect(squareBox!.x + squareBox!.width / 2).toBeCloseTo(
+			mobileImageBox!.x + (mobileImageBox!.width - borders.imageRight) / 2,
 			0,
 		);
 		expect(mobileContentBox!.x).toBeCloseTo(mobileImageBox!.x + mobileImageBox!.width, 0);
-		await expect(page.getByText(giftDescription, { exact: true })).toBeHidden();
+		const descriptionPreview = mobileItem.getByText(giftDescription, { exact: true });
+		await expect(descriptionPreview).toBeVisible();
+		expect(
+			await descriptionPreview.evaluate(
+				(element) =>
+					element.getBoundingClientRect().height /
+					Number.parseFloat(getComputedStyle(element).lineHeight),
+			),
+		).toBeLessThanOrEqual(2);
 		await expect(page.getByRole('button', { name: /^Rezervovat/ })).toHaveCount(0);
 		await page.setViewportSize({ width: 1280, height: 900 });
 

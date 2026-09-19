@@ -17,7 +17,7 @@ export const giftCardVariants = tv({
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:
-			'relative isolate row-start-1 aspect-[4/3] w-full overflow-hidden rounded-t-[calc(var(--radius-panel)-2.5px)] border-b-[2.5px] border-ink bg-surface [height:var(--gift-card-image-track-height,auto)]',
+			'relative isolate row-start-1 box-content aspect-[4/3] w-full overflow-hidden rounded-t-[calc(var(--radius-panel)-2.5px)] border-b-[2.5px] border-ink bg-surface [height:var(--gift-card-image-track-height,auto)]',
 		/**
 		 * Dotted mat behind the photo (shows through letterboxed photos). Sits on
 		 * its own layer below the image so its opacity can fade up on hover —

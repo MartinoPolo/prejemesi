@@ -78,6 +78,24 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
+describe('WishlistGiftDisplay received pending state', () => {
+	it.each(['card', 'list', 'compact'] as const)(
+		'forwards the route-owned pending state through the %s view',
+		async (viewMode) => {
+			const screen = await render(WishlistGiftDisplay, {
+				...defaultProps,
+				viewMode,
+				receivedPendingGiftIds: new Set(['gift-1']),
+			});
+			const action = page.getByRole('button', { name: m.gift_mark_received() });
+
+			await expect.element(action).toBeDisabled();
+			await expect.element(action).toHaveAttribute('data-pending', 'true');
+			await screen.unmount();
+		},
+	);
+});
+
 describe('WishlistGiftDisplay selection accessibility', () => {
 	it('uses group and independently tabbable checkbox semantics', async () => {
 		const screen = await render(WishlistGiftDisplay, {

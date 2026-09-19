@@ -308,7 +308,7 @@ describe('GiftCard collection alignment', () => {
 			cards[1]!.getBoundingClientRect().height,
 		);
 
-		await page.viewport(390, 1000);
+		await page.viewport(600, 1000);
 		await nextLayout();
 		cards = Array.from(
 			document.querySelectorAll<HTMLElement>('[data-testid="gift-card-surface"]'),
@@ -330,7 +330,7 @@ describe('GiftCard collection alignment', () => {
 	});
 
 	it('expands crowded two-column image zones around an unchanged 4:3 crop and shrinks again', async () => {
-		await page.viewport(390, 1200);
+		await page.viewport(600, 1200);
 		const previousFontSize = document.documentElement.style.fontSize;
 		document.documentElement.style.fontSize = '32px';
 		const crowded = gift({
@@ -366,6 +366,10 @@ describe('GiftCard collection alignment', () => {
 			await nextLayout();
 
 			const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-gift-item]'));
+			expect(cards[1]!.getBoundingClientRect().top).toBeCloseTo(
+				cards[0]!.getBoundingClientRect().top,
+				0,
+			);
 			const crowdedImage = cards[0]!.querySelector<HTMLElement>(
 				'[data-testid="gift-card-image-frame"]',
 			)!;
@@ -413,8 +417,7 @@ describe('GiftCard collection alignment', () => {
 				'[data-testid="wishlist-gift-card-grid"]',
 			)!.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
 			await nextLayout();
-			const widenedImageRect = crowdedImage.getBoundingClientRect();
-			expect(widenedImageRect.width / widenedImageRect.height).toBeCloseTo(4 / 3, 2);
+			expect(crowdedImage.clientWidth / crowdedImage.clientHeight).toBeCloseTo(4 / 3, 2);
 
 			await screen.rerender({
 				...defaultProps,
@@ -426,8 +429,7 @@ describe('GiftCard collection alignment', () => {
 			const restoredImage = document.querySelector<HTMLElement>(
 				'[data-testid="gift-card-image-frame"]',
 			)!;
-			const restoredRect = restoredImage.getBoundingClientRect();
-			expect(restoredRect.width / restoredRect.height).toBeCloseTo(4 / 3, 2);
+			expect(restoredImage.clientWidth / restoredImage.clientHeight).toBeCloseTo(4 / 3, 2);
 			await screen.unmount();
 		} finally {
 			document.documentElement.style.fontSize = previousFontSize;

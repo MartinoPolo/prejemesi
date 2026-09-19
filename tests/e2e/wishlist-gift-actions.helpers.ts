@@ -22,8 +22,14 @@ export async function openSelectionFromContext(page: Page, giftName: string) {
 		button: 'right',
 	});
 	await expect(page.getByRole('menuitem', { name: /Vybrat více dárků/ })).toBeVisible();
-	await page.getByRole('menuitem', { name: /Vybrat více dárků/ }).click();
-	return page.getByRole('region', { name: 'Nástroje výběru' });
+	const action = page.getByRole('menuitem', { name: /Vybrat více dárků/ });
+	await action.click();
+	await expect(action).toBeHidden();
+	const toolbar = page.getByRole('region', { name: 'Nástroje výběru' });
+	await expect(toolbar).toBeVisible();
+	await expect(gift(page, giftName)).toHaveAttribute('role', 'checkbox');
+	await expect(gift(page, giftName)).toHaveAttribute('aria-checked', 'true');
+	return toolbar;
 }
 
 export async function openFilterMenu(page: Page, optionName: string) {
@@ -72,8 +78,12 @@ export async function selectPriorityFilter(page: Page, name: string) {
 
 export async function waitForReceivedState(giftRow: Locator, received: boolean) {
 	const action = giftRow.getByTestId('gift-received-toggle');
-	await expect(action).toHaveAccessibleName(
+	await expect(action).toHaveAttribute(
+		'aria-label',
 		received ? m.gift_mark_unreceived() : m.gift_mark_received(),
+	);
+	await expect(giftRow.locator('[data-state-primary][data-state-kind="received"]')).toHaveCount(
+		received ? 1 : 0,
 	);
 	await expect(action).toHaveText(
 		received ? m.gift_unreceived_compact() : m.gift_received_compact(),
@@ -104,6 +114,9 @@ export async function expectBodyPointerEventsRestored(page: Page) {
 }
 
 export async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
+	if (process.env.E2E_SCREENSHOT_ATTACHMENTS === 'false') {
+		return;
+	}
 	const body = await page.screenshot(
 		process.env.ISSUE345_SCREENSHOTS === '1'
 			? { path: `test-results/issue345-visual-${name}.png` }

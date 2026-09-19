@@ -293,20 +293,19 @@ sections for UI work. Historical reconciliation and review notes are in
   Shared card height must shrink to the minimum justified by current content after option changes,
   never retain space from previous measurements. Role-specific overflow mappings remain illustrated
   in `designs/gift-desktop-alignment/DESIGN_BRIEF_GIFT_DESKTOP_ALIGNMENT.md`.
-- 2026-09-16: Desktop List retains square full-height images with one-line titles and descriptions;
-  explore price/action row sharing only where width permits. Single-column mobile Card uses compact
-  natural flow rather than reserving alignment space for other cards; side-by-side cards retain
-  aligned content. Mobile List uses a full-height portrait frame with width responsive to available
-  row width and an upper cap, rather than a square image that grows with content height. Refine the
-  initial narrow strip to be modestly wider without sacrificing readable text. Priority badges stay
-  bottom-left. The portrait frame side-crops the existing square composition; preserve saved crop
-  keys and metadata rather than introducing a separately editable portrait target.
 - 2026-09-16: Mobile Card and List titles and descriptions show at most two lines, with full text
   accessible in detail. Mobile action lanes never wrap: move eligible secondary actions into More
   when buttons cannot fit, restoring them when space returns. Keep Reserve visible ahead of Received
   when both compete for space; overflow retains the same capabilities. Shared grid tracks measure
   clamped text and the final single action row, not hidden text or displaced buttons. Keep body text
   and actions at normal contrast while unavailable images retain their state veil.
+- 2026-09-19: Keep primary gift actions visible at normal text size; mobile Card may switch to one
+  column wherever two columns cannot fit the standard primary and More controls with their spacing.
+  Restore multiple columns when usable card width permits, rather than retaining the former fixed
+  mobile breakpoint. Single-column cards use natural compact flow; side-by-side cards align content.
+  Desktop List keeps square full-height images and one-line text; mobile List keeps a responsive,
+  capped portrait frame, readable content, bottom-left priority, and side-cropping of the saved
+  square composition without new crop targets.
 
 ## Forms & settings
 

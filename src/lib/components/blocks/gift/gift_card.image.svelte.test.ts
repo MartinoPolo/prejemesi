@@ -16,7 +16,84 @@ import {
 	textOutsideOverlay,
 } from './gift_card.test_fixtures.js';
 
+const { default: WishlistGiftDisplay } = await import('../wishlist/WishlistGiftDisplay.svelte');
+
 afterEach(cleanupCardHosts);
+
+describe('GiftCard saved composition containment', () => {
+	it.each([390, 900])(
+		'keeps the full 4:3 composition inside standalone and collection content at %ipx',
+		async (width) => {
+			await page.viewport(width, 900);
+			const gift = makeVisitorGift({ imageUrl: IMAGE_URL, imageMeta: imageMeta('#ffffff') });
+			const standalone = await renderCardInGridColumn(gift);
+			const collection = document.createElement('div');
+			document.body.appendChild(collection);
+			fixedHosts.add(collection);
+			await render(
+				WishlistGiftDisplay,
+				{
+					sections: [
+						{
+							kind: 'available',
+							key: 'available',
+							label: null,
+							gifts: [gift, { ...gift, id: 'peer' }],
+						},
+					],
+					role: WISHLIST_ROLES.recipient,
+					isArchived: false,
+					hideReservationState: false,
+					viewMode: 'card',
+					isEmpty: false,
+					isFilteredEmpty: false,
+					reorderMode: false,
+					onedit: () => {},
+					onreserve: () => {},
+					onunreserve: () => {},
+					onreceived: () => {},
+					onaddgift: () => {},
+					onclearfilters: () => {},
+					onreorderpreview: () => {},
+					onreordercommit: () => {},
+					onreordercancel: () => {},
+				},
+				{ baseElement: collection },
+			);
+			await expect
+				.poll(() =>
+					collection
+						.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')
+						?.style.getPropertyValue('--gift-card-image-track-height'),
+				)
+				.toBeTruthy();
+
+			for (const host of [standalone, collection]) {
+				for (const frame of host.querySelectorAll<HTMLElement>(
+					'[data-testid="gift-card-image-frame"]',
+				)) {
+					const composition = frame.querySelector<HTMLElement>(
+						'[data-testid="gift-card-crop-composition"]',
+					)!;
+					const frameRect = frame.getBoundingClientRect();
+					const compositionRect = composition.getBoundingClientRect();
+					const style = getComputedStyle(frame);
+					const contentTop = frameRect.top + Number.parseFloat(style.borderTopWidth);
+					const contentBottom =
+						frameRect.bottom - Number.parseFloat(style.borderBottomWidth);
+					const contentLeft = frameRect.left + Number.parseFloat(style.borderLeftWidth);
+					const contentRight =
+						frameRect.right - Number.parseFloat(style.borderRightWidth);
+					expect(compositionRect.width / compositionRect.height).toBeCloseTo(4 / 3, 2);
+					expect(compositionRect.top).toBeGreaterThanOrEqual(contentTop);
+					expect(compositionRect.bottom).toBeLessThanOrEqual(contentBottom);
+					expect(compositionRect.left).toBeGreaterThanOrEqual(contentLeft);
+					expect(compositionRect.right).toBeLessThanOrEqual(contentRight);
+				}
+			}
+		},
+	);
+});
 
 describe('GiftCard category badge (issue #265)', () => {
 	it.each([
@@ -84,7 +161,12 @@ describe('GiftCard category badge (issue #265)', () => {
 
 			const badgeRect = badge.getBoundingClientRect();
 			const imageFrameRect = imageFrame.getBoundingClientRect();
-			expect(imageFrameRect.width / imageFrameRect.height).toBeCloseTo(4 / 3, 2);
+			const imageStyle = getComputedStyle(imageFrame);
+			const contentHeight =
+				imageFrameRect.height -
+				Number.parseFloat(imageStyle.borderTopWidth) -
+				Number.parseFloat(imageStyle.borderBottomWidth);
+			expect(imageFrameRect.width / contentHeight).toBeCloseTo(4 / 3, 2);
 			const overlayRects = Array.from(
 				host.querySelectorAll<HTMLElement>('[data-testid="gift-state-overlay"] > span'),
 				(pill) => pill.getBoundingClientRect(),
