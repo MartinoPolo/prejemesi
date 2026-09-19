@@ -126,8 +126,7 @@
 		canManage &&
 			(role === WISHLIST_ROLES.recipient || role === WISHLIST_ROLES.moderator) &&
 			!isArchived &&
-			(viewMode === 'card' || viewMode === 'list') &&
-			grouping === GIFT_GROUPING_OPTIONS.none,
+			(viewMode === 'card' || viewMode === 'list'),
 	);
 	const showLikedFilter = $derived(
 		isAuthenticated && role !== WISHLIST_ROLES.recipient && !recipientViewPreview,

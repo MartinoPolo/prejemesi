@@ -875,10 +875,7 @@
 	$effect(() => {
 		if (
 			reorderMode &&
-			(!canManage ||
-				isArchived ||
-				(viewMode !== 'card' && viewMode !== 'list') ||
-				giftsContext.effectiveGrouping.current !== 'none')
+			(!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list'))
 		) {
 			reorderMode = false;
 			reorderActiveIds = null;
@@ -1009,12 +1006,7 @@
 
 	function handleReorderModeChange(active: boolean) {
 		if (active) {
-			if (
-				!canManage ||
-				isArchived ||
-				(viewMode !== 'card' && viewMode !== 'list') ||
-				giftsContext.effectiveGrouping.current !== 'none'
-			) {
+			if (!canManage || isArchived || (viewMode !== 'card' && viewMode !== 'list')) {
 				return;
 			}
 			reorderActiveIds = activeGiftsInOwnerOrder(giftsContext.effectiveGifts.current).map(

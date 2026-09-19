@@ -176,6 +176,28 @@ describe('WishlistDetailToolbar consolidated desktop display (#359)', () => {
 		await screen.unmount();
 	});
 
+	it.each([GIFT_GROUPING_OPTIONS.priority, GIFT_GROUPING_OPTIONS.category])(
+		'keeps reorder discoverable while grouped by %s',
+		async (grouping) => {
+			const onreordermodechange = vi.fn();
+			const screen = await renderToolbar(
+				{
+					canManage: true,
+					role: WISHLIST_ROLES.moderator,
+					grouping,
+					groupingAvailability: { priority: true, category: true },
+					onreordermodechange,
+				},
+				1280,
+			);
+			await screen.getByTestId('desktop-more-trigger').click();
+			await page
+				.getByRole('menuitem', { name: m.gift_reorder_action(), exact: true })
+				.click();
+			expect(onreordermodechange).toHaveBeenCalledWith(true);
+		},
+	);
+
 	it('enters and exits desktop reorder with a dedicated visible Done action', async () => {
 		const onreordermodechange = vi.fn();
 		const onviewmodechange = vi.fn();
