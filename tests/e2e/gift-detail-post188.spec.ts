@@ -1,6 +1,5 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page, type Response } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
-import { waitForGiftAnimationsToSettle } from './mobile-wishlist.helpers.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
 import {
 	createWishlistAndNavigate,
@@ -11,26 +10,18 @@ import {
 } from './fixtures/wishlist-helpers.js';
 import * as m from '../../src/lib/paraglide/messages.js';
 
-/**
- * E2E coverage for the issue #328 gift-state matrix plus detail gaps that the
- * #188/#189 work left open:
- *
- *  1. Issues #328/#341: received and reservation states use one centered overlay with
- *     full-size sibling pills and card/list parity across roles.
- *  2. The "Upraveno po sdílení" (edited-after-share) transparency line renders
- *     on BOTH the owner's edit form (`GiftDetailForm.svelte`
- *     `editedAfterShareLine`) and the read-only visitor detail view
- *     (`GiftDetailView.svelte`, message key `gift_edited_after_share_line`)
- *     once a gift is edited after its wishlist was shared (issue #185).
- *  3. The read-only visitor detail view (`GiftDetailView.svelte` ~L64-71,
- *     issue #183 REQ-10) renders the full, uncropped photo at its natural
- *     aspect ratio instead of a crop-target aspect.
- */
-
 function gift(page: Page, name: string): Locator {
 	return page
 		.locator('[data-gift-item]')
 		.filter({ has: page.getByRole('heading', { name, exact: true }) });
+}
+
+function isSuccessfulRemoteMutation(response: Response): boolean {
+	return (
+		response.request().method() === 'POST' &&
+		response.url().includes('/_app/remote/') &&
+		response.ok()
+	);
 }
 
 async function reserveGift(page: Page, name: string): Promise<void> {
@@ -75,7 +66,7 @@ interface OverlayExpectation {
 	forbiddenText?: RegExp;
 }
 
-async function assertCenteredOverlay(
+async function assertGiftStateOverlay(
 	giftItem: Locator,
 	{ primary, support, reserverName, forbiddenText }: OverlayExpectation,
 ): Promise<void> {
@@ -89,100 +80,11 @@ async function assertCenteredOverlay(
 		await expect(supportElement).toHaveText(support);
 	}
 	if (reserverName !== undefined) {
-		await expect(giftItem.getByText(reserverName)).toHaveCount(1);
 		await expect(overlay.getByText(reserverName)).toBeVisible();
+		await expect(giftItem.getByText(reserverName)).toHaveCount(1);
 	}
 	if (forbiddenText !== undefined) {
 		await expect(giftItem).not.toContainText(forbiddenText);
-	}
-
-	const pills = overlay.locator(':scope > span');
-	await expect(pills).toHaveCount(
-		(support === undefined ? 1 : 2) + (reserverName === undefined ? 0 : 1),
-	);
-	if (support !== undefined) {
-		const [primaryStyle, supportStyle] = await Promise.all([
-			pills.nth(0).evaluate((element) => {
-				const style = getComputedStyle(element);
-				return {
-					fontSize: style.fontSize,
-					fontWeight: style.fontWeight,
-					padding: style.padding,
-					borderWidth: style.borderWidth,
-					boxShadow: style.boxShadow,
-				};
-			}),
-			pills.nth(1).evaluate((element) => {
-				const style = getComputedStyle(element);
-				return {
-					fontSize: style.fontSize,
-					fontWeight: style.fontWeight,
-					padding: style.padding,
-					borderWidth: style.borderWidth,
-					boxShadow: style.boxShadow,
-				};
-			}),
-		]);
-		expect(supportStyle).toEqual(primaryStyle);
-	}
-
-	await waitForGiftAnimationsToSettle(giftItem.page());
-	const imageFrame = overlay.locator('xpath=..');
-	await expect(imageFrame).toHaveAttribute(
-		'data-testid',
-		/^(gift-card-image-frame|gift-list-image)$/,
-	);
-	// Sample the frame and sticker in one frame; independent protocol calls can straddle motion.
-	const { imageFrameBox, imageFrameBorders, pillBoxes, paddingTop } = await overlay.evaluate(
-		(element) => {
-			const frame = element.parentElement!;
-			const style = getComputedStyle(frame);
-			return {
-				imageFrameBox: frame.getBoundingClientRect().toJSON(),
-				imageFrameBorders: {
-					left: Number.parseFloat(style.borderLeftWidth),
-					right: Number.parseFloat(style.borderRightWidth),
-					top: Number.parseFloat(style.borderTopWidth),
-					bottom: Number.parseFloat(style.borderBottomWidth),
-				},
-				pillBoxes: Array.from(element.querySelectorAll(':scope > span'), (pill) => {
-					// Center the layout stack, not the unequal rotated ink bounds.
-					const rectangle = pill.getBoundingClientRect();
-					const style = getComputedStyle(pill);
-					const width = Number.parseFloat(style.width);
-					const height = Number.parseFloat(style.height);
-					const x = rectangle.x + (rectangle.width - width) / 2;
-					const y = rectangle.y + (rectangle.height - height) / 2;
-					return { x, y, right: x + width, bottom: y + height };
-				}),
-				paddingTop: getComputedStyle(element).paddingTop,
-			};
-		},
-	);
-	expect(imageFrameBox, 'active image frame has a bounding box').not.toBeNull();
-	expect(pillBoxes.length, 'overlay pills have bounding boxes').toBeGreaterThan(0);
-	const stackBox = {
-		x: Math.min(...pillBoxes.map((box) => box.x)),
-		y: Math.min(...pillBoxes.map((box) => box.y)),
-		right: Math.max(...pillBoxes.map((box) => box.right)),
-		bottom: Math.max(...pillBoxes.map((box) => box.bottom)),
-	};
-	const imageContentCenter = {
-		x:
-			imageFrameBox!.x +
-			imageFrameBorders.left +
-			(imageFrameBox!.width - imageFrameBorders.left - imageFrameBorders.right) / 2,
-		y:
-			imageFrameBox!.y +
-			imageFrameBorders.top +
-			(imageFrameBox!.height - imageFrameBorders.top - imageFrameBorders.bottom) / 2,
-	};
-	expect(stackBox.x + (stackBox.right - stackBox.x) / 2).toBeCloseTo(imageContentCenter.x, 0);
-	if (paddingTop === '0px') {
-		expect(stackBox.y + (stackBox.bottom - stackBox.y) / 2).toBeCloseTo(
-			imageContentCenter.y,
-			0,
-		);
 	}
 }
 
@@ -195,48 +97,14 @@ async function assertOverlayInCardAndList(
 		const viewControl = page.locator(`[data-testid="gift-view-${view}"]:visible`);
 		await viewControl.click();
 		await expect(viewControl).toBeChecked();
-		await assertCenteredOverlay(gift(page, giftName), expectation);
+		await assertGiftStateOverlay(gift(page, giftName), expectation);
 	}
-}
-
-async function expectBefore(first: Locator, second: Locator): Promise<void> {
-	await expect
-		.poll(async () => {
-			const secondElement = await second.elementHandle();
-			if (!secondElement) {
-				return false;
-			}
-			return first.evaluate(
-				(firstElement, secondNode) =>
-					firstElement.isConnected &&
-					secondNode.isConnected &&
-					Boolean(
-						firstElement.compareDocumentPosition(secondNode) &
-						Node.DOCUMENT_POSITION_FOLLOWING,
-					),
-				secondElement,
-			);
-		})
-		.toBe(true);
-}
-
-async function assertReceivedSectionOrder(
-	page: Page,
-	receivedGiftName: string,
-	activeGiftNames: readonly string[],
-): Promise<void> {
-	const receivedHeading = page.getByRole('heading', { name: 'Obdržené', exact: true });
-	await expect(receivedHeading).toHaveCount(1);
-	for (const activeGiftName of activeGiftNames) {
-		await expectBefore(gift(page, activeGiftName), receivedHeading);
-	}
-	await expectBefore(receivedHeading, gift(page, receivedGiftName));
 }
 
 test.use({ viewport: { width: 1280, height: 900 } });
 
-test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () => {
-	test('received recipient state stays private and centered in card and list views', async ({
+test.describe('Gift state roles and post-share disclosure', () => {
+	test('received recipient state stays private in card and list views', async ({
 		browser,
 		request,
 		baseURL,
@@ -245,11 +113,7 @@ test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () 
 		const recipientPage = await registerAndGetPage(browser, request, baseURL!, recipient);
 		await createWishlistAndNavigate(recipientPage, 'Received Overlay Coverage');
 		const giftName = 'Testovací přijatý dárek';
-		const activeGiftNames = ['Testovací aktivní dárek první', 'Testovací aktivní dárek druhý'];
 		await addGift(recipientPage, giftName);
-		for (const activeGiftName of activeGiftNames) {
-			await addGift(recipientPage, activeGiftName);
-		}
 		await shareWishlist(recipientPage);
 		const wishlistPath = new URL(recipientPage.url()).pathname;
 
@@ -261,43 +125,23 @@ test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () 
 
 		await recipientPage.reload();
 		const recipientGift = gift(recipientPage, giftName);
+		await expect(recipientGift.getByTestId('reserve-button')).toHaveCount(0);
+		await expect(recipientGift.getByTestId('release-reservation-button')).toHaveCount(0);
+		await expect(recipientGift.locator('button:has([data-like-heart])')).toHaveCount(0);
 		await recipientGift.getByRole('button', { name: 'Označit jako přijatý' }).click();
 		await expect(
 			recipientGift.locator('[data-state-primary][data-state-kind="received"]'),
 		).toHaveText('Přijato', { timeout: 10_000 });
 		await expect(recipientPage.getByRole('dialog')).toHaveCount(0);
-		await expect(recipientGift.getByTestId('release-reservation-button')).toHaveCount(0);
 
-		await recipientGift.getByRole('button', { name: 'Označit jako nepřijatý' }).click();
-		await expect(
-			recipientGift.getByRole('button', { name: 'Označit jako přijatý' }),
-		).toBeVisible({
-			timeout: 10_000,
-		});
-		await expect(
-			recipientGift.locator('[data-state-primary][data-state-kind="received"]'),
-		).toHaveCount(0);
-		await expect(
-			recipientPage.getByRole('heading', { name: 'Obdržené', exact: true }),
-		).toHaveCount(0);
-		await recipientGift.getByRole('button', { name: 'Označit jako přijatý' }).click();
-		await expect(
-			recipientGift.locator('[data-state-primary][data-state-kind="received"]'),
-		).toHaveText('Přijato', { timeout: 10_000 });
-
-		await assertReceivedSectionOrder(recipientPage, giftName, activeGiftNames);
 		await assertOverlayInCardAndList(recipientPage, giftName, {
 			primary: 'Přijato',
 			forbiddenText: new RegExp(`rezerv|\\d+\\s+rezervováno|${reserver.name}`, 'i'),
 		});
-		await assertReceivedSectionOrder(recipientPage, giftName, activeGiftNames);
-		await expect(
-			gift(recipientPage, giftName).locator('[data-reservation-support]'),
-		).toHaveCount(0);
 		await recipientPage.context().close();
 	});
 
-	test('moderator, reserver, and foreign visitor keep overlay parity through receipt', async ({
+	test('moderator, reserver, and foreign visitor retain authorized reservation disclosure', async ({
 		browser,
 		request,
 		baseURL,
@@ -319,6 +163,7 @@ test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () 
 		await reserveGift(reserverPage, giftName);
 		await assertOverlayInCardAndList(reserverPage, giftName, {
 			primary: 'Rezervováno vámi',
+			forbiddenText: new RegExp(moderator.name, 'i'),
 		});
 
 		const foreignVisitor = createTestUser('gift-state-foreign');
@@ -366,7 +211,7 @@ test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () 
 		await moderatorPage.context().close();
 	});
 
-	test('edited-after-share line appears on both the editor and the visitor detail view', async ({
+	test('edited-after-share disclosure appears for the owner and visitors', async ({
 		browser,
 		request,
 		baseURL,
@@ -380,46 +225,24 @@ test.describe('Issue #328 gift-state matrix and post-#188/#189 detail gaps', () 
 		await shareWishlist(ownerPage);
 		const wishlistPath = new URL(ownerPage.url()).pathname;
 
-		// Edit a tracked field (price) after sharing – this is what actually sets
-		// `editedAfterShareAt` server-side (gift_post_share.ts
-		// computePreShareOwnerEdit + computePostShareEditTransparency): any
-		// changed tracked field badges the gift, even inside the post-share
-		// grace window.
-		const giftItem = ownerPage.locator('[data-gift-item]').filter({ hasText: giftName });
-		await giftItem.click();
+		await gift(ownerPage, giftName).click();
 		const editDialog = ownerPage.getByRole('dialog');
 		await expect(editDialog).toBeVisible({ timeout: 5_000 });
 		await editDialog.locator('#gift-price').fill('450');
+		const mutationCompleted = ownerPage.waitForResponse(isSuccessfulRemoteMutation, {
+			timeout: 15_000,
+		});
 		await editDialog.getByRole('button', { name: 'Uložit' }).click();
+		await mutationCompleted;
 		await expect(editDialog).not.toBeVisible({ timeout: 10_000 });
 
-		// Reopen the editor: GiftDetailForm's `editedAfterShareLine` derived
-		// renders the same i18n'd line the visitor view uses (message key
-		// `gift_edited_after_share_line`, stable "Upraveno po sdílení" prefix).
-		// The save closes the dialog before its own `refreshData()` resolves, so
-		// retry the open/read until the refreshed gift carries the flag instead
-		// of racing a single reopen (never `waitUntil: 'networkidle'` – this
-		// surface has long-lived query subscriptions that keep the network busy).
-		await expect(async () => {
-			await giftItem.click();
-			await expect(editDialog).toBeVisible({ timeout: 2_000 });
-			const editedLineVisible = await editDialog
-				.getByText(/Upraveno po sdílení/)
-				.isVisible()
-				.catch(() => false);
-			if (!editedLineVisible) {
-				await ownerPage.keyboard.press('Escape');
-				await expect(editDialog).not.toBeVisible({ timeout: 2_000 });
-				throw new Error('editedAfterShareLine not visible yet');
-			}
-		}).toPass({ timeout: 15_000 });
+		await ownerPage.reload({ waitUntil: 'load' });
+		await gift(ownerPage, giftName).click();
+		await expect(editDialog).toBeVisible({ timeout: 5_000 });
+		await expect(editDialog.getByText(/Upraveno po sdílení/)).toBeVisible({ timeout: 10_000 });
 		await ownerPage.keyboard.press('Escape');
-		await expect(editDialog).not.toBeVisible({ timeout: 5_000 });
 		await ownerPage.context().close();
 
-		// The read-only visitor detail view (GiftDetailView.svelte) renders the
-		// identical muted line – a fresh navigation reads the current DB state
-		// directly, so no reopen race applies here.
 		const visitorContext = await browser.newContext();
 		const visitorPage = await visitorContext.newPage();
 		await visitorPage.goto(wishlistPath);

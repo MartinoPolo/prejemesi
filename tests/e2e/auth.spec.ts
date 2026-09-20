@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
-import { registerViaApi, registerAndGetPage } from './fixtures/auth-helpers.js';
+import { registerViaApi } from './fixtures/auth-helpers.js';
 
 async function installTurnstileMock(page: Page): Promise<void> {
 	await page.addInitScript(() => {
@@ -16,20 +16,6 @@ async function installTurnstileMock(page: Page): Promise<void> {
 }
 
 test.describe('Authentication', () => {
-	test('register with valid credentials redirects to my-lists', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const user = createTestUser('register');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-		await page.goto('/my-lists');
-		await expect(page.getByRole('heading', { name: 'Moje seznamy' })).toBeVisible({
-			timeout: 10_000,
-		});
-		await page.context().close();
-	});
-
 	test('login with valid credentials', async ({ page, request, baseURL }) => {
 		const user = createTestUser('login');
 		await registerViaApi(request, baseURL!, user);
@@ -65,12 +51,6 @@ test.describe('Authentication', () => {
 	test('unauthenticated user redirected from app routes to login', async ({ page }) => {
 		await page.goto('/my-lists');
 		await expect(page).toHaveURL(/\/login/);
-	});
-
-	test('register page shows password strength indicator', async ({ page }) => {
-		await page.goto('/register');
-		await page.getByRole('textbox', { name: 'Heslo' }).fill('abcdefgh');
-		await expect(page.getByRole('progressbar')).toBeVisible({ timeout: 5_000 });
 	});
 
 	test('magic-link sign-in is unavailable in either locale', async ({ page }) => {

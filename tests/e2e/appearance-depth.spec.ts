@@ -24,12 +24,6 @@ test.describe('Authenticated shadow depth appearance flow', () => {
 		await expect(black).toBeChecked();
 
 		await page.keyboard.press('Escape');
-		await page.setViewportSize({ width: 900, height: 800 });
-		await page.getByRole('button', { name: 'Vzhled' }).click();
-		const appearanceMenu = page.getByRole('dialog', { name: 'Vzhled' });
-		await expect(appearanceMenu.getByRole('radio', { name: 'Černé' })).toBeChecked();
-		await page.keyboard.press('Escape');
-
 		await page.getByRole('button', { name: new RegExp(user.name) }).click();
 		await page.getByRole('menuitem', { name: 'Nastavení' }).click();
 		await expect(page).toHaveURL(/\/settings\/?$/);

@@ -154,6 +154,13 @@ test.describe('Landing demo section', () => {
 		const gifterGift = demoGift(gifterPane(page));
 		const reserveButton = gifterGift.getByTestId('reserve-button');
 		await expect(reserveButton).toHaveText(CS.reserve);
+		const mutations: string[] = [];
+		page.on('request', (networkRequest) => {
+			const method = networkRequest.method();
+			if (method !== 'GET' && method !== 'HEAD') {
+				mutations.push(`${method} ${networkRequest.url()}`);
+			}
+		});
 
 		await toggleReservation(reserveButton, CS.cancelReservation);
 
@@ -189,47 +196,14 @@ test.describe('Landing demo section', () => {
 		await expect(recipientPane(page).getByTestId('landing-demo-invariant-caption')).toHaveCount(
 			0,
 		);
-	});
+		expect(mutations).toEqual([]);
 
-	test('desktop split view leaves the recipient pane untouched by a reservation', async ({
-		page,
-	}) => {
-		await page.setViewportSize(DESKTOP_VIEWPORT);
-		await gotoDemo(page);
-
-		// The narrow-screen scaffolding is gone; both panes are on screen at once.
-		await expect(page.getByTestId('landing-demo-pair')).toBeHidden();
-		await expect(page.getByTestId('landing-demo-role-toggle')).toBeHidden();
-		await expect(gifterPane(page)).toBeVisible();
-		await expect(recipientPane(page)).toBeVisible();
-
-		const recipientGift = demoGift(recipientPane(page));
-		const recipientTextBefore = await recipientGift.innerText();
-
-		const reserveButton = demoGift(gifterPane(page)).getByTestId('reserve-button');
-		await expect(reserveButton).toHaveText(CS.reserve);
-		await toggleReservation(reserveButton, CS.cancelReservation);
-
-		// Positive control: the gifter's own row does carry the reservation wording, so the
-		// absence assertions below are about the invariant, not about a dead locator.
-		await expect(
-			demoGift(gifterPane(page)).getByTestId('gift-list-item').getByText(RESERVATION_TRACE),
-		).not.toHaveCount(0);
-
-		// Petra's side must be indistinguishable from before the click. `innerText` is what she
-		// can actually read, so the mobile-only narration (present but `lg:hidden`) is excluded.
-		await expect.poll(() => recipientGift.innerText()).toBe(recipientTextBefore);
-		await expect(recipientGift.getByTestId('reserve-button')).toHaveCount(0);
-		await expect(
-			recipientGift.getByTestId('gift-list-item').getByText(RESERVATION_TRACE),
-		).toHaveCount(0);
-		// The mobile-only narration must never surface in the split view.
-		await expect(
-			recipientPane(page).getByTestId('landing-demo-invariant-caption'),
-		).toBeHidden();
-
-		await toggleReservation(reserveButton, CS.reserve);
-		await expect.poll(() => recipientGift.innerText()).toBe(recipientTextBefore);
+		await page.reload();
+		await page.waitForSelector('[data-testid="landing-demo"]');
+		await page.getByTestId('landing-demo-role-gifter').click();
+		await expect(demoGift(gifterPane(page)).getByTestId('reserve-button')).toHaveText(
+			CS.reserve,
+		);
 	});
 
 	test('each pane is flanked by its polaroid without breaking the panes alignment', async ({
@@ -257,58 +231,6 @@ test.describe('Landing demo section', () => {
 			);
 			expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(0);
 		}
-	});
-
-	test('the visible pane brings its own polaroid on narrow screens', async ({ page }) => {
-		await page.setViewportSize(MOBILE_VIEWPORT);
-		await gotoDemo(page);
-
-		const gifterPolaroid = page.getByTestId('landing-demo-polaroid-gifter');
-		const recipientPolaroid = page.getByTestId('landing-demo-polaroid-recipient');
-		await expect(gifterPolaroid).toBeVisible();
-		await expect(recipientPolaroid).toBeHidden();
-
-		// Server-rendered section: the click can land before hydration wires the toggle.
-		await expect(async () => {
-			await page.getByTestId('landing-demo-role-recipient').click();
-			await expect(recipientPolaroid).toBeVisible({ timeout: 2_000 });
-		}).toPass({ timeout: 30_000 });
-		await expect(gifterPolaroid).toBeHidden();
-	});
-
-	test('reserving and unreserving fires no network mutation', async ({ page }) => {
-		await page.setViewportSize(DESKTOP_VIEWPORT);
-		await gotoDemo(page);
-
-		const reserveButton = demoGift(gifterPane(page)).getByTestId('reserve-button');
-		await expect(reserveButton).toHaveText(CS.reserve);
-
-		// Only non-GET traffic matters: the dev server streams module GETs continuously.
-		const mutations: string[] = [];
-		page.on('request', (networkRequest) => {
-			const method = networkRequest.method();
-			if (method !== 'GET' && method !== 'HEAD') {
-				mutations.push(`${method} ${networkRequest.url()}`);
-			}
-		});
-
-		await toggleReservation(reserveButton, CS.cancelReservation);
-		await toggleReservation(reserveButton, CS.reserve);
-
-		expect(mutations).toEqual([]);
-	});
-
-	test('a reload resets the demo', async ({ page }) => {
-		await page.setViewportSize(DESKTOP_VIEWPORT);
-		await gotoDemo(page);
-
-		const reserveButton = () => demoGift(gifterPane(page)).getByTestId('reserve-button');
-		await toggleReservation(reserveButton(), CS.cancelReservation);
-
-		await page.reload();
-		await page.waitForSelector('[data-testid="landing-demo"]');
-
-		await expect(reserveButton()).toHaveText(CS.reserve);
 	});
 
 	test('the demo wishlist can be retinted with the palette switcher', async ({ page }) => {

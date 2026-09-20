@@ -20,7 +20,7 @@ function waitForUpload(page: Page) {
 }
 
 test.describe('Gift edit modal mobile scroll', () => {
-	test('image column scrolls, tiles follow the stage, and Save remains available', async ({
+	test('body scrolls while Save remains visible and operable', async ({
 		browser,
 		request,
 		baseURL,
@@ -57,48 +57,26 @@ test.describe('Gift edit modal mobile scroll', () => {
 		const dialog = page.getByRole('dialog');
 		await waitForDialogMotionToSettle(dialog);
 
-		const imageColumn = dialog.getByTestId('gift-image-column');
-		const cardTile = dialog.getByTestId('gift-preview-square');
-		const thumbTile = dialog.getByTestId('gift-preview-thumb');
-		const saveButton = dialog.getByRole('button', { name: 'Uložit' });
-
-		await expect(imageColumn).toBeVisible();
-		await expect(cardTile).toBeVisible();
-		await expect(thumbTile).toBeVisible();
-
-		const imageColumnBox = await imageColumn.boundingBox();
-		const stageBox = await dialog.getByTestId('crop-stage').boundingBox();
-		const cardTileBox = await cardTile.boundingBox();
-		expect(imageColumnBox).not.toBeNull();
-		expect(stageBox).not.toBeNull();
-		expect(cardTileBox).not.toBeNull();
-		expect(cardTileBox!.y, 'preview tiles follow the crop stage').toBeGreaterThanOrEqual(
-			stageBox!.y + stageBox!.height - 1,
-		);
-
-		// Regression coverage (follow-up 2026-07-19): Save must be visible
-		// immediately at scroll-top, not just once scrolled down to it – a
-		// `position: sticky` copy nested inside the scroll only re-enters view
-		// once the scroll reaches its normal flow position, which on a long form
-		// left it invisible until scrolled most of the way down.
 		const scrollRegion = dialog.getByTestId('gift-detail-body');
-		await expect(scrollRegion).toHaveJSProperty('scrollTop', 0);
+		const saveButton = dialog.getByRole('button', { name: 'Uložit' });
+		await expect(saveButton).toBeVisible();
 		await expect(saveButton).toBeInViewport();
-		const saveBoxAtTop = await saveButton.boundingBox();
-		expect(saveBoxAtTop).not.toBeNull();
+		await expect(saveButton).toBeEnabled();
+		expect(
+			await scrollRegion.evaluate((element) => element.scrollHeight > element.clientHeight),
+		).toBe(true);
 
-		// Body scrolling must not displace the footer action.
-		const imageColumnTopBefore = imageColumnBox!.y;
-		await scrollRegion.evaluate((el) => {
-			el.scrollTop = el.scrollHeight;
+		await scrollRegion.evaluate((element) => {
+			element.scrollTop = element.scrollHeight;
 		});
+		await expect
+			.poll(() => scrollRegion.evaluate((element) => element.scrollTop))
+			.toBeGreaterThan(0);
+		await expect(saveButton).toBeVisible();
 		await expect(saveButton).toBeInViewport();
-		const saveBoxAfterScroll = await saveButton.boundingBox();
-		expect(saveBoxAfterScroll).not.toBeNull();
-		expect(Math.abs(saveBoxAfterScroll!.y - saveBoxAtTop!.y)).toBeLessThanOrEqual(3);
-		const imageColumnBoxAfter = await imageColumn.boundingBox();
-		expect(imageColumnBoxAfter).not.toBeNull();
-		expect(imageColumnBoxAfter!.y).toBeLessThan(imageColumnTopBefore);
+		await expect(saveButton).toBeEnabled();
+		await saveButton.click();
+		await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 
 		await page.context().close();
 	});

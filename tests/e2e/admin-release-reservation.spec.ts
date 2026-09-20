@@ -76,6 +76,28 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		await reserveTheGift(gifterPage);
 		await gifterPage.context().close();
 
+		// A plain signed-in visitor sees the reserved status without a redundant disabled
+		// control, and never gets release on either the browse surface or read-only detail.
+		const visitor = createTestUser('release-denied-visitor');
+		const visitorPage = await registerAndGetPage(browser, request, baseURL!, visitor);
+		await visitorPage.goto(wishlistPath);
+
+		const visitorGiftCard = visitorPage
+			.locator('[data-gift-item]')
+			.filter({ hasText: TEST_GIFT.name });
+		await expect(visitorGiftCard.getByText(/Rezervováno|Reserved/).first()).toBeVisible();
+		await expect(visitorGiftCard.getByTestId('reserve-button')).toHaveCount(0);
+		await expect(visitorGiftCard.getByTestId('release-reservation-button')).toHaveCount(0);
+
+		await visitorGiftCard.getByRole('heading', { name: TEST_GIFT.name, exact: true }).click();
+		const visitorGiftDialog = visitorPage.getByRole('dialog').filter({
+			has: visitorPage.getByRole('heading', { name: TEST_GIFT.name, exact: true }),
+		});
+		await expect(visitorGiftDialog).toBeVisible({ timeout: 5_000 });
+		await expect(visitorGiftDialog.getByTestId('reserve-button')).toHaveCount(0);
+		await expect(visitorGiftDialog.getByTestId('release-reservation-button')).toHaveCount(0);
+		await visitorPage.context().close();
+
 		// Tomáš (administrator, plain visitor on this list) sees the release control.
 		const adminPage = await signInAs(browser, request, baseURL!, ADMIN_USER);
 		await adminPage.goto(wishlistPath);
@@ -122,50 +144,6 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		await adminPage.context().close();
 	});
 
-	test('renders no release control for a signed-in visitor who is not the administrator', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('release-denied-owner');
-		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
-		await createWishlistAndNavigate(ownerPage, 'E2E bez uvolneni');
-		await addGift(ownerPage, TEST_GIFT.name, { price: TEST_GIFT.price });
-		await shareWishlist(ownerPage);
-		const wishlistPath = new URL(ownerPage.url()).pathname;
-		await ownerPage.context().close();
-
-		const gifterPage = await signInAs(browser, request, baseURL!, GIFTER_USER);
-		await gifterPage.goto(wishlistPath);
-		await expect(
-			gifterPage.getByRole('heading', { name: TEST_GIFT.name, level: 3 }),
-		).toBeVisible();
-		await reserveTheGift(gifterPage);
-		await gifterPage.context().close();
-
-		// A plain signed-in visitor sees the reserved status without a redundant disabled
-		// control, and never gets release on either the browse surface or read-only detail.
-		const visitor = createTestUser('release-denied-visitor');
-		const visitorPage = await registerAndGetPage(browser, request, baseURL!, visitor);
-		await visitorPage.goto(wishlistPath);
-
-		const giftCard = visitorPage
-			.locator('[data-gift-item]')
-			.filter({ hasText: TEST_GIFT.name });
-		await expect(giftCard.getByText(/Rezervováno|Reserved/).first()).toBeVisible();
-		await expect(giftCard.getByTestId('reserve-button')).toHaveCount(0);
-		await expect(giftCard.getByTestId('release-reservation-button')).toHaveCount(0);
-
-		await giftCard.getByRole('heading', { name: TEST_GIFT.name, exact: true }).click();
-		const giftDialog = visitorPage.getByRole('dialog').filter({
-			has: visitorPage.getByRole('heading', { name: TEST_GIFT.name, exact: true }),
-		});
-		await expect(giftDialog).toBeVisible({ timeout: 5_000 });
-		await expect(giftDialog.getByTestId('reserve-button')).toHaveCount(0);
-		await expect(giftDialog.getByTestId('release-reservation-button')).toHaveCount(0);
-
-		await visitorPage.context().close();
-	});
 	test('does not grant release or reservation visibility to an administrator who is the recipient', async ({
 		browser,
 		request,
@@ -196,7 +174,7 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 		// Admin capability stops at the recipient boundary. Neither status, identity, nor
 		// privileged controls may reveal that another person reserved this gift.
 		await expect(giftCard.getByText(/Rezervov[a\u00e1]no|Reserved/)).toHaveCount(0);
-		await expect(giftCard.getByText(GIFTER_DISPLAY_NAME, { exact: true })).toHaveCount(0);
+		await expect(giftCard.getByText(GIFTER_DISPLAY_NAME)).toHaveCount(0);
 		await expect(giftCard.getByTestId('release-reservation-button')).toHaveCount(0);
 		await expect(giftCard.getByTestId('reserve-button')).toHaveCount(0);
 
@@ -209,7 +187,7 @@ test.describe('Administrator releases another gifter reservation (issue #213)', 
 			TEST_GIFT.name,
 		);
 		await expect(editDialog.getByText(/Rezervov[a\u00e1]no|Reserved/)).toHaveCount(0);
-		await expect(editDialog.getByText(GIFTER_DISPLAY_NAME, { exact: true })).toHaveCount(0);
+		await expect(editDialog.getByText(GIFTER_DISPLAY_NAME)).toHaveCount(0);
 		await expect(editDialog.getByTestId('release-reservation-button')).toHaveCount(0);
 
 		await returningRecipient.context().close();

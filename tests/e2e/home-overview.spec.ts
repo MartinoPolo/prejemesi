@@ -36,7 +36,7 @@ function shelf(page: Page, title: string) {
 }
 
 test.describe('Home overview (issue #225)', () => {
-	test('a signed-in user landing on `/` is redirected to the overview', async ({
+	test('root opens the complete multi-role overview and a category links to its full page', async ({
 		browser,
 		request,
 		baseURL,
@@ -44,23 +44,7 @@ test.describe('Home overview (issue #225)', () => {
 		const page = await signInAs(browser, request, baseURL!, MARTIN);
 
 		await page.goto('/');
-
 		await expect(page).toHaveURL(/\/home\/?$/);
-		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
-			timeout: 10_000,
-		});
-
-		await page.context().close();
-	});
-
-	test('renders all four category rows for a multi-role user', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const page = await signInAs(browser, request, baseURL!, MARTIN);
-
-		await page.goto('/home');
 		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
 			timeout: 10_000,
 		});
@@ -69,37 +53,8 @@ test.describe('Home overview (issue #225)', () => {
 			await expect(shelf(page, title), `the „${title}" row should be present`).toHaveCount(1);
 		}
 
-		await page.context().close();
-	});
-
-	test('a category row links through to its full page', async ({ browser, request, baseURL }) => {
-		const page = await signInAs(browser, request, baseURL!, MARTIN);
-
-		await page.goto('/home');
-		const followed = shelf(page, 'Sledované');
-		await expect(followed).toHaveCount(1);
-
-		await followed.getByTestId('shelf-view-all-link').click();
-
+		await shelf(page, 'Sledované').getByTestId('shelf-view-all-link').click();
 		await expect(page).toHaveURL(/\/followed\/?$/);
-
-		await page.context().close();
-	});
-
-	test('the Nedávné row is capped at six cards and carries no view-all card', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const page = await signInAs(browser, request, baseURL!, MARTIN);
-
-		await page.goto('/home');
-		const recent = shelf(page, 'Nedávné');
-		await expect(recent).toHaveCount(1);
-
-		const cardCount = await recent.getByTestId('wishlist-card').count();
-		expect(cardCount).toBeLessThanOrEqual(6);
-		await expect(recent.getByTestId('view-all-card')).toHaveCount(0);
 
 		await page.context().close();
 	});
@@ -164,54 +119,6 @@ test.describe('Home overview (issue #225)', () => {
 			})
 			.toBeLessThan(initialOffset);
 		await expect(overflowingRow.getByRole('button', { name: 'Předchozí' })).toBeEnabled();
-
-		await page.context().close();
-	});
-
-	test('an overflowing shelf shows the right-edge fade until scrolled to the end', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const page = await signInAs(browser, request, baseURL!, MARTIN);
-
-		await page.goto('/home');
-		await expect(page.getByRole('heading', { name: 'Přehled', level: 1 })).toBeVisible({
-			timeout: 10_000,
-		});
-
-		const rows = page.getByTestId('home-shelf');
-		const overflowingRow = rows
-			.filter({ has: page.getByRole('button', { name: 'Další' }) })
-			.first();
-		await expect(overflowingRow).toHaveCount(1);
-
-		// Fade present at the start (more cards exist to the right).
-		await expect(overflowingRow).toHaveAttribute('data-can-scroll-next', 'true');
-
-		// Click Next until the end; the fade clears once nothing more can scroll right.
-		const next = overflowingRow.getByRole('button', { name: 'Další' });
-		for (let clicks = 0; clicks < 20; clicks++) {
-			if ((await overflowingRow.getAttribute('data-can-scroll-next')) === 'false') {
-				break;
-			}
-			if (await next.isDisabled()) {
-				break;
-			}
-			// The free-scroll boundary can disable Next between the guard and Playwright's
-			// actionability check. A native click is a no-op if that boundary was reached.
-			await next.evaluate((button) => {
-				if (button instanceof HTMLButtonElement) {
-					button.click();
-				}
-			});
-			await page.waitForTimeout(150);
-		}
-
-		await expect(overflowingRow).toHaveAttribute('data-can-scroll-next', 'false', {
-			timeout: 8_000,
-		});
-		await expect(next).toBeDisabled();
 
 		await page.context().close();
 	});

@@ -69,16 +69,16 @@ test.describe('Gift detail image presentation', () => {
 		await expect
 			.poll(
 				() =>
-					detailImage.evaluate((image) => {
-						// A tilted sticker's axis-aligned bounding box does not represent photo aspect.
-						return image.clientWidth / image.clientHeight;
+					detailImage.evaluate((image: HTMLImageElement) => {
+						const renderedAspect = image.clientWidth / image.clientHeight;
+						const naturalAspect = image.naturalWidth / image.naturalHeight;
+						return Math.abs(renderedAspect - naturalAspect) / naturalAspect;
 					}),
 				{
-					message:
-						'the portrait fixture retains its natural 1:2 aspect, without cropping or distortion',
+					message: 'the detail image keeps its decoded natural aspect without cropping',
 				},
 			)
-			.toBeCloseTo(0.5, 2);
+			.toBeLessThan(0.01);
 
 		await visitorContext.close();
 	});

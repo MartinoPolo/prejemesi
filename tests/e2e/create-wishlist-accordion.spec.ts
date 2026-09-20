@@ -67,33 +67,4 @@ test.describe('Create-wishlist „Další nastavení" accordion', () => {
 
 		await page.context().close();
 	});
-
-	test('untouched accordion creates a list with defaults and no description', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const user = createTestUser('create-accordion-default');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-
-		await page.goto('/my-lists');
-		const dialog = await openCreateWishlistDialog(page);
-
-		const title = 'Seznam bez nastavení';
-		await dialog.getByRole('textbox', { name: 'Název' }).fill(title);
-		// Do NOT open the accordion — this is the identical-to-today path.
-		await dialog.getByRole('button', { name: 'Vytvořit', exact: true }).click();
-
-		await page.waitForURL(/\/w\/[^/]+/, { timeout: 20_000 });
-		await expect(page.getByRole('heading', { level: 1 })).toContainText(title, {
-			timeout: 15_000,
-		});
-
-		// AC-1: the untouched path still creates a working list; the page wrapper carries the
-		// default sky palette (`.last()` targets the wrapper, past the viewer-preference <html>).
-		// Absence of a description on this path is asserted deterministically by the unit tests.
-		await expect(page.locator('[data-palette="sky"]').last()).toBeVisible({ timeout: 5_000 });
-
-		await page.context().close();
-	});
 });

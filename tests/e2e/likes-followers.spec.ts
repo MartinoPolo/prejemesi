@@ -15,7 +15,7 @@ async function createSharedWishlistAndNavigate(page: Page, title: string): Promi
 }
 
 test.describe('Like system', () => {
-	test('visitor can like and unlike a gift on a shared wishlist', async ({
+	test('visitor like persists with its count and can be removed', async ({
 		browser,
 		request,
 		baseURL,
@@ -37,69 +37,28 @@ test.describe('Like system', () => {
 		const likeButton = visitorPage.getByRole('button', {
 			name: new RegExp(`P.idat do obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 		});
-		await expect(likeButton).toBeVisible();
 		await expect(likeButton).toHaveAttribute('aria-pressed', 'false');
-
-		// Like the gift
 		await likeButton.click();
-		await expect(
-			visitorPage.getByRole('button', {
-				name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
-			}),
-		).toBeVisible({ timeout: 5_000 });
 
-		// Unlike the gift
-		const unlikeButton = visitorPage.getByRole('button', {
+		let unlikeButton = visitorPage.getByRole('button', {
 			name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 		});
+		await expect(unlikeButton).toBeVisible({ timeout: 5_000 });
+		await expect(unlikeButton.getByText('1', { exact: true })).toBeVisible();
+
+		await visitorPage.reload();
+		unlikeButton = visitorPage.getByRole('button', {
+			name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
+		});
+		await expect(unlikeButton).toBeVisible({ timeout: 5_000 });
+		await expect(unlikeButton.getByText('1', { exact: true })).toBeVisible();
+
 		await unlikeButton.click();
 		await expect(
 			visitorPage.getByRole('button', {
 				name: new RegExp(`P.idat do obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
 			}),
-		).toBeVisible({ timeout: 5_000 });
-
-		await visitorContext.close();
-	});
-
-	test('like count is visible to non-owners after liking', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('likecount-owner');
-		const visitor = createTestUser('likecount-visitor');
-
-		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
-		const wishlistPath = await createSharedWishlistAndNavigate(
-			ownerPage,
-			'Test Like Count Wishlist',
-		);
-		await ownerPage.context().close();
-
-		const visitorCookies = await registerViaApi(request, baseURL!, visitor);
-		const visitorContext = await createAuthenticatedContext(browser, visitorCookies, baseURL!);
-		const visitorPage = await visitorContext.newPage();
-
-		await visitorPage.goto(wishlistPath);
-		await expect(visitorPage.getByText(TEST_GIFT.name)).toBeVisible();
-
-		// Like the gift – count should appear (1)
-		const likeButton = visitorPage.getByRole('button', {
-			name: new RegExp(`P.idat do obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
-		});
-		await likeButton.click();
-		await expect(
-			visitorPage.getByRole('button', {
-				name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
-			}),
-		).toBeVisible({ timeout: 5_000 });
-
-		// The like button should now show the count "1"
-		const likedButton = visitorPage.getByRole('button', {
-			name: new RegExp(`Odebrat z obl.ben.ch: ${TEST_GIFT.name}`, 'i'),
-		});
-		await expect(likedButton.getByText('1')).toBeVisible();
+		).toHaveAttribute('aria-pressed', 'false');
 
 		await visitorContext.close();
 	});
@@ -114,7 +73,6 @@ test.describe('Like system', () => {
 		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
 		await createSharedWishlistAndNavigate(ownerPage, 'Test Owner No Likes Wishlist');
 
-		// Owner should not see any like buttons
 		const likeButtons = ownerPage.getByRole('button', {
 			name: new RegExp(`(P.idat|Odebrat) (do|z) obl.ben.ch`, 'i'),
 		});
@@ -125,20 +83,17 @@ test.describe('Like system', () => {
 });
 
 test.describe('Follower management', () => {
-	test('logged-in user auto-follows a wishlist on first visit and it appears on /followed', async ({
+	test('visit, unfollow, abandoned discovery, and refollow persist as one journey', async ({
 		browser,
 		request,
 		baseURL,
 	}) => {
 		const owner = createTestUser('follow-owner');
 		const follower = createTestUser('follow-visitor');
+		const wishlistTitle = 'Test Follow Lifecycle Wishlist';
 
 		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
-		const wishlistPath = await createSharedWishlistAndNavigate(
-			ownerPage,
-			'Test Auto Follow Wishlist',
-		);
-		const wishlistTitle = 'Test Auto Follow Wishlist';
+		const wishlistPath = await createSharedWishlistAndNavigate(ownerPage, wishlistTitle);
 		await ownerPage.context().close();
 
 		const followerCookies = await registerViaApi(request, baseURL!, follower);
@@ -149,123 +104,37 @@ test.describe('Follower management', () => {
 		);
 		const followerPage = await followerContext.newPage();
 
-		// Visit the shared wishlist – should auto-follow
 		await followerPage.goto(wishlistPath);
 		await expect(followerPage.getByText(TEST_GIFT.name)).toBeVisible();
 
-		// Navigate to /followed – wishlist should be listed
 		await followerPage.goto('/followed');
 		await expect(followerPage.getByRole('heading', { name: 'Sledované' })).toBeVisible({
 			timeout: 5_000,
 		});
-		await expect(
-			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
-		).toBeVisible({ timeout: 5_000 });
-
-		await followerContext.close();
-	});
-
-	test('user can unfollow a wishlist from /followed page', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('unfollow-owner');
-		const follower = createTestUser('unfollow-visitor');
-
-		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
-		const wishlistPath = await createSharedWishlistAndNavigate(
-			ownerPage,
-			'Test Unfollow Wishlist',
-		);
-		const wishlistTitle = 'Test Unfollow Wishlist';
-		await ownerPage.context().close();
-
-		const followerCookies = await registerViaApi(request, baseURL!, follower);
-		const followerContext = await createAuthenticatedContext(
-			browser,
-			followerCookies,
-			baseURL!,
-		);
-		const followerPage = await followerContext.newPage();
-
-		// Visit to trigger auto-follow
-		await followerPage.goto(wishlistPath);
-		await expect(followerPage.getByText(TEST_GIFT.name)).toBeVisible();
-
-		// Unfollow from /followed page
-		await followerPage.goto('/followed');
-		await expect(
-			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
-		).toBeVisible({ timeout: 5_000 });
-
-		const wishlistCard = followerPage
+		let wishlistCard = followerPage
 			.getByTestId('wishlist-card')
-			.filter({ hasText: wishlistTitle })
-			.first();
+			.filter({ hasText: wishlistTitle });
+		await expect(wishlistCard).toBeVisible({ timeout: 5_000 });
 
-		// Use the "Prestat sledovat" button inside the card
 		await wishlistCard.getByRole('button', { name: 'Přestat sledovat' }).click();
-
-		// Wishlist should no longer be visible (unfollowed items hidden by default)
-		await expect(
-			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
-		).not.toBeVisible({ timeout: 5_000 });
-
-		await followerContext.close();
-	});
-
-	test('unfollowed wishlists appear when "Opuštěné" toggle is enabled', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('unfollowed-toggle-owner');
-		const follower = createTestUser('unfollowed-toggle-visitor');
-
-		const ownerPage = await registerAndGetPage(browser, request, baseURL!, owner);
-		const wishlistPath = await createSharedWishlistAndNavigate(
-			ownerPage,
-			'Test Unfollowed Toggle Wishlist',
-		);
-		const wishlistTitle = 'Test Unfollowed Toggle Wishlist';
-		await ownerPage.context().close();
-
-		const followerCookies = await registerViaApi(request, baseURL!, follower);
-		const followerContext = await createAuthenticatedContext(
-			browser,
-			followerCookies,
-			baseURL!,
-		);
-		const followerPage = await followerContext.newPage();
-
-		// Visit to trigger auto-follow, then unfollow
-		await followerPage.goto(wishlistPath);
-		await expect(followerPage.getByText(TEST_GIFT.name)).toBeVisible();
-
-		await followerPage.goto('/followed');
-		await expect(
-			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
-		).toBeVisible({ timeout: 5_000 });
-
-		await followerPage.getByRole('button', { name: 'Přestat sledovat' }).first().click();
-		await expect(
-			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
-		).not.toBeVisible({ timeout: 5_000 });
+		await expect(wishlistCard).not.toBeVisible({ timeout: 5_000 });
 
 		await followerPage.getByRole('button', { name: 'Filtrovat' }).click();
-		const toggle = followerPage.getByRole('menuitemcheckbox', { name: 'Opuštěné' });
-		await expect(toggle).toHaveAttribute('aria-checked', 'false');
-		await toggle.click();
-		await expect(toggle).toHaveAttribute('aria-checked', 'true');
+		const abandonedToggle = followerPage.getByRole('menuitemcheckbox', { name: 'Opuštěné' });
+		await expect(abandonedToggle).toHaveAttribute('aria-checked', 'false');
+		await abandonedToggle.click();
+		await expect(abandonedToggle).toHaveAttribute('aria-checked', 'true');
+		await followerPage.keyboard.press('Escape');
 
-		// Unfollowed wishlist should now be visible again with "Znovu sledovat" button
-		await expect(
-			followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle }),
-		).toBeVisible({ timeout: 5_000 });
-		await expect(
-			followerPage.getByRole('button', { name: 'Znovu sledovat' }).first(),
-		).toBeVisible();
+		wishlistCard = followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle });
+		await expect(wishlistCard).toBeVisible({ timeout: 5_000 });
+		await wishlistCard.getByRole('button', { name: 'Znovu sledovat' }).click();
+		await expect(wishlistCard.getByRole('button', { name: 'Přestat sledovat' })).toBeVisible();
+
+		await followerPage.reload();
+		wishlistCard = followerPage.getByTestId('wishlist-card').filter({ hasText: wishlistTitle });
+		await expect(wishlistCard).toBeVisible({ timeout: 5_000 });
+		await expect(wishlistCard.getByRole('button', { name: 'Přestat sledovat' })).toBeVisible();
 
 		await followerContext.close();
 	});

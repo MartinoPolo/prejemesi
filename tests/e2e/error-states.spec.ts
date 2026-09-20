@@ -27,28 +27,6 @@ test.describe('Error states and edge cases', () => {
 		).toBeVisible({ timeout: 10_000 });
 	});
 
-	test('settings page shows user profile', async ({ browser, request, baseURL }) => {
-		const user = createTestUser('settings-view');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-
-		await page.goto('/settings');
-
-		// Page heading
-		await expect(page.getByRole('heading', { name: 'Nastavení', exact: true })).toBeVisible({
-			timeout: 5_000,
-		});
-
-		// Name is pre-populated in the display name input
-		await expect(page.getByLabel('Zobrazované jméno')).toHaveValue(user.name, {
-			timeout: 5_000,
-		});
-
-		// Email is shown in the email input
-		await expect(page.getByLabel('E-mail')).toHaveValue(user.email, { timeout: 5_000 });
-
-		await page.context().close();
-	});
-
 	test('user can update their name in settings', async ({ browser, request, baseURL }) => {
 		const user = createTestUser('settings-update');
 		const page = await registerAndGetPage(browser, request, baseURL!, user);

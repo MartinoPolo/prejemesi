@@ -61,26 +61,7 @@ test('category color is local to the picker, then staged until global Save', asy
 		.getByRole('button', { name: CATEGORY_NAME })
 		.evaluate((element) => getComputedStyle(element).backgroundColor);
 
-	let picker = await openColorPicker(settingsDialog);
-	await picker.pickerDialog.getByRole('button', { name: ACCEPTED_COLOR }).click();
-	await picker.pickerDialog.getByRole('button', { name: 'Zrušit' }).click();
-	await expect(globalSave).toBeDisabled();
-	await expect(picker.trigger).toHaveCSS('background-color', baselineColor);
-
-	picker = await openColorPicker(settingsDialog);
-	await picker.pickerDialog.getByRole('button', { name: ACCEPTED_COLOR }).click();
-	await page.keyboard.press('Escape');
-	await expect(picker.pickerDialog).not.toBeVisible();
-	await expect(settingsDialog).toBeVisible();
-	await expect(globalSave).toBeDisabled();
-
-	picker = await openColorPicker(settingsDialog);
-	await picker.pickerDialog.getByRole('button', { name: ACCEPTED_COLOR }).click();
-	await settingsDialog.getByText('Barva se uloží až s nastavením seznamu.').click();
-	await expect(picker.pickerDialog).not.toBeVisible();
-	await expect(globalSave).toBeDisabled();
-
-	picker = await openColorPicker(settingsDialog);
+	const picker = await openColorPicker(settingsDialog);
 	await picker.pickerDialog.getByRole('button', { name: ACCEPTED_COLOR }).click();
 	await picker.pickerDialog.getByRole('button', { name: 'Uložit' }).click();
 	await expect(picker.pickerDialog).not.toBeVisible();

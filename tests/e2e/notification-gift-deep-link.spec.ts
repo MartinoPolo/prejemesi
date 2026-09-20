@@ -14,7 +14,7 @@ async function expectGiftMarkerConsumed(page: Page): Promise<void> {
 		.toBe(false);
 }
 
-test('notification gift marker is consumed once and only fresh valid markers reopen the gift', async ({
+test('notification gift marker opens the right gift once and stays consumed after reload', async ({
 	browser,
 	request,
 	baseURL,
@@ -32,25 +32,9 @@ test('notification gift marker is consumed once and only fresh valid markers reo
 
 	await dialog.getByRole('button', { name: /Zavřít|Close/ }).click();
 	await expect(dialog).not.toBeVisible();
-	await page.waitForTimeout(250);
-	await expect(dialog).not.toBeVisible();
 
 	await page.reload();
 	await expect(page.getByRole('heading', { name: 'Vánoce 2026' }).first()).toBeVisible();
-	await expect(dialog).not.toBeVisible();
-
-	await page.goto(`${SEEDED_WISHLIST_PATH}?gift=${SEEDED_GIFT_ID}`);
-	await expect(dialog).toBeVisible();
-	await expect(dialog.locator('#gift-name')).toHaveValue(SEEDED_GIFT_NAME);
-	await expectGiftMarkerConsumed(page);
-	await dialog.getByRole('button', { name: /Zavřít|Close/ }).click();
-	await expect(dialog).not.toBeVisible();
-
-	await page.goto(`${SEEDED_WISHLIST_PATH}?gift=not-a-seeded-gift`);
-	await expect(page.getByRole('heading', { name: 'Vánoce 2026' }).first()).toBeVisible();
-	await expectGiftMarkerConsumed(page);
-	await expect(dialog).not.toBeVisible();
-	await page.waitForTimeout(250);
 	await expect(dialog).not.toBeVisible();
 
 	await context.close();

@@ -1,17 +1,8 @@
-import {
-	expect,
-	chromium,
-	type BrowserContext,
-	type Locator,
-	type Page,
-	type TestInfo,
-} from '@playwright/test';
-import { rm } from 'node:fs/promises';
+import { expect, chromium, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCookiesForContext } from './fixtures/auth-helpers.js';
 
-export const DEPTHS = ['soft', 'ink', 'black'] as const;
 export const BROWSER_ZOOMS = [1, 1.25, 1.5] as const;
 const EXTENSION_PATH = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -60,13 +51,10 @@ export interface StationaryEvidence {
 }
 
 export async function launchZoomableContext(
-	testInfo: TestInfo,
 	rawCookies: string[],
 	baseURL: string,
 ): Promise<BrowserContext> {
-	const profile = testInfo.outputPath('chromium-profile');
-	await rm(profile, { recursive: true, force: true });
-	const context = await chromium.launchPersistentContext(profile, {
+	const context = await chromium.launchPersistentContext('', {
 		// Isolated exception: bundled Chromium retains unpacked-extension flags that Chrome removed.
 		channel: 'chromium',
 		headless: true,
@@ -78,8 +66,13 @@ export async function launchZoomableContext(
 			'--window-size=1602,1100',
 		],
 	});
-	await context.addCookies(parseCookiesForContext(rawCookies, baseURL));
-	return context;
+	try {
+		await context.addCookies(parseCookiesForContext(rawCookies, baseURL));
+		return context;
+	} catch (error) {
+		await context.close();
+		throw error;
+	}
 }
 
 export async function setRealBrowserZoom(

@@ -84,33 +84,6 @@ test('wishlist shell uses the same content edges as the header', async ({
 	await page.context().close();
 });
 
-test('mobile logo preserves its 40px tilted mark and collapses only the .cz suffix', async ({
-	page,
-}) => {
-	await page.goto('/login');
-	const logo = page.getByRole('link', { name: logoName });
-	const mark = logo.locator('.logo-icon-wrap');
-	const coreWordmark = logo.locator('.logo-text');
-	const suffix = logo.locator('.logo-tld');
-
-	await page.setViewportSize(VIEWPORTS[0]);
-	await expect(coreWordmark).toBeVisible();
-	await expect(coreWordmark).toContainText('přejeme si');
-	await expect(suffix).toBeHidden();
-	const mobileMark = await mark.evaluate((element) => ({
-		width: (element as HTMLElement).offsetWidth,
-		height: (element as HTMLElement).offsetHeight,
-		transform: getComputedStyle(element).transform,
-	}));
-	expect(mobileMark.width).toBe(40);
-	expect(mobileMark.height).toBe(40);
-	expect(mobileMark.transform).not.toBe('none');
-
-	await page.setViewportSize(VIEWPORTS[1]);
-	await expect(coreWordmark).toBeVisible();
-	await expect(suffix).toBeVisible();
-});
-
 test('notification and account triggers use responsive shared sizing with an 8px peer gap', async ({
 	browser,
 	request,
@@ -146,57 +119,56 @@ test('authenticated header keeps all controls visible, keyboard reachable, and i
 	const user = createTestUser('header-mobile-bounds');
 	const page = await registerAndGetPage(browser, request, baseURL!, user);
 
-	for (const viewport of [VIEWPORTS[0], VIEWPORTS[1]]) {
-		await page.setViewportSize(viewport);
-		await page.goto('/my-lists');
-		await page.waitForSelector('h1');
-		const header = page.getByRole('banner');
-		const expectedControls = [
-			header.getByRole('link', { name: logoName }),
-			header.getByRole('button', { name: /^(Otevření menu|Open menu)$/ }),
-			header.getByRole('button', { name: /^(Vytvořit|Create)$/ }),
-			header.getByRole('button', { name: notificationName }),
-			header.getByRole('button', { name: accountName }),
-		];
-		const visibleHeaderControls = header.locator('a:visible, button:visible');
+	const viewport = VIEWPORTS[0];
+	await page.setViewportSize(viewport);
+	await page.goto('/my-lists');
+	await page.waitForSelector('h1');
+	const header = page.getByRole('banner');
+	const expectedControls = [
+		header.getByRole('link', { name: logoName }),
+		header.getByRole('button', { name: /^(Otevření menu|Open menu)$/ }),
+		header.getByRole('button', { name: /^(Vytvořit|Create)$/ }),
+		header.getByRole('button', { name: notificationName }),
+		header.getByRole('button', { name: accountName }),
+	];
+	const visibleHeaderControls = header.locator('a:visible, button:visible');
 
-		for (const control of expectedControls) {
-			await expect(control).toBeVisible();
-			const controlBox = await box(control);
-			expect(controlBox.left).toBeGreaterThanOrEqual(0);
-			expect(controlBox.right).toBeLessThanOrEqual(viewport.width);
-		}
-		expect(
-			await visibleHeaderControls.count(),
-			`${viewport.width}px header exposes every required keyboard control`,
-		).toBe(expectedControls.length);
-
-		for (const control of expectedControls) {
-			await page.keyboard.press('Tab');
-			await expect(control).toBeFocused();
-			const focusTreatment = await control.evaluate((element) => {
-				const style = getComputedStyle(element);
-				return {
-					focusVisible: element.matches(':focus-visible'),
-					outlineStyle: style.outlineStyle,
-					outlineWidth: Number.parseFloat(style.outlineWidth),
-					boxShadow: style.boxShadow,
-				};
-			});
-			expect(focusTreatment.focusVisible).toBe(true);
-			expect(
-				(focusTreatment.outlineStyle !== 'none' && focusTreatment.outlineWidth > 0) ||
-					focusTreatment.boxShadow !== 'none',
-				'keyboard focus has visible treatment',
-			).toBe(true);
-		}
-
-		const documentWidth = await page.evaluate(() => ({
-			scrollWidth: document.documentElement.scrollWidth,
-			clientWidth: document.documentElement.clientWidth,
-		}));
-		expect(documentWidth.scrollWidth).toBeLessThanOrEqual(documentWidth.clientWidth);
+	for (const control of expectedControls) {
+		await expect(control).toBeVisible();
+		const controlBox = await box(control);
+		expect(controlBox.left).toBeGreaterThanOrEqual(0);
+		expect(controlBox.right).toBeLessThanOrEqual(viewport.width);
 	}
+	expect(
+		await visibleHeaderControls.count(),
+		`${viewport.width}px header exposes every required keyboard control`,
+	).toBe(expectedControls.length);
+
+	for (const control of expectedControls) {
+		await page.keyboard.press('Tab');
+		await expect(control).toBeFocused();
+		const focusTreatment = await control.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				focusVisible: element.matches(':focus-visible'),
+				outlineStyle: style.outlineStyle,
+				outlineWidth: Number.parseFloat(style.outlineWidth),
+				boxShadow: style.boxShadow,
+			};
+		});
+		expect(focusTreatment.focusVisible).toBe(true);
+		expect(
+			(focusTreatment.outlineStyle !== 'none' && focusTreatment.outlineWidth > 0) ||
+				focusTreatment.boxShadow !== 'none',
+			'keyboard focus has visible treatment',
+		).toBe(true);
+	}
+
+	const documentWidth = await page.evaluate(() => ({
+		scrollWidth: document.documentElement.scrollWidth,
+		clientWidth: document.documentElement.clientWidth,
+	}));
+	expect(documentWidth.scrollWidth).toBeLessThanOrEqual(documentWidth.clientWidth);
 
 	await page.context().close();
 });

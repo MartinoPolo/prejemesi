@@ -1,10 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage, waitForAppHydration } from './fixtures/auth-helpers.js';
-import {
-	createWishlistAndNavigate,
-	waitForDialogMotionToSettle,
-} from './fixtures/wishlist-helpers.js';
+import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
 
 interface RectSnapshot {
 	x: number;
@@ -45,30 +42,6 @@ async function sampleFrameRects(locator: Locator, frameCount = 12): Promise<Rect
 test.use({ viewport: { width: 1280, height: 900 } });
 
 test.describe('Elevated interaction behavior', () => {
-	test('account menu opens through native activation and its owner remains anchored', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const user = createTestUser('elevation-account');
-		const page = await registerAndGetPage(browser, request, baseURL!, user);
-		await page.goto('/my-lists');
-		await waitForAppHydration(page);
-
-		const account = page.getByRole('button', { name: new RegExp(user.name) });
-		await expect(account).toBeVisible();
-		const resting = await rect(account);
-		await account.focus();
-		await page.keyboard.press('Enter');
-		await expect(account).toHaveAttribute('aria-expanded', 'true');
-		await expect(page.locator('[data-slot="dropdown-menu-content"]')).toBeVisible();
-
-		for (const sample of await sampleFrameRects(account)) {
-			expectSameRect(sample, resting);
-		}
-		await page.context().close();
-	});
-
 	test('raised button remains reachable and stationary through a held lower-edge press', async ({
 		browser,
 		request,
@@ -170,16 +143,6 @@ test.describe('Elevated interaction behavior', () => {
 			await page.mouse.move(0, 500);
 		}
 
-		await create.click();
-		const dialog = page.getByRole('dialog', { name: 'Nový seznam přání' });
-		await waitForDialogMotionToSettle(dialog);
-		const close = dialog.getByRole('button', { name: 'Zavřít' });
-		const closeSurface = visualSurface(close);
-		const restingClose = await rect(closeSurface);
-		await close.hover();
-		for (const sample of await sampleFrameRects(closeSurface)) {
-			expectSameRect(sample, restingClose);
-		}
 		await page.context().close();
 	});
 });

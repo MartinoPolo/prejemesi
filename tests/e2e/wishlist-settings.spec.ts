@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import {
+	createWishlistAndNavigate,
+	waitForDialogMotionToSettle,
+} from './fixtures/wishlist-helpers.js';
 
 test.describe('Wishlist settings – controls and draft lifecycle', () => {
 	test('real gift numeric fields suppress spinners and wheel only while focused', async ({
@@ -68,7 +71,7 @@ test.describe('Wishlist settings – controls and draft lifecycle', () => {
 		expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBe(scrollTopBefore);
 		await page.context().close();
 	});
-	test('short viewport keeps settings content scrollable and its stable footer visible', async ({
+	test('short viewport keeps tabs and footer pinned around the scrollable settings body', async ({
 		browser,
 		request,
 		baseURL,
@@ -81,16 +84,38 @@ test.describe('Wishlist settings – controls and draft lifecycle', () => {
 		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
 
 		const dialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
+		const tablist = dialog.getByRole('tablist', { name: 'Nastavení seznamu' });
 		const scrollRegion = dialog.getByTestId('wishlist-settings-scroll-region');
 		const footer = dialog.getByTestId('wishlist-settings-footer');
+		const saveButton = footer.getByRole('button', { name: 'Uložit' });
 		await expect(dialog).toBeVisible({ timeout: 10_000 });
-		await expect(footer.getByRole('button', { name: 'Uložit' })).toBeVisible();
+		await expect(tablist).toHaveAttribute('aria-orientation', 'horizontal');
 
-		const dialogBox = await dialog.boundingBox();
-		expect(dialogBox, 'settings dialog has viewport geometry').not.toBeNull();
-		expect(dialogBox!.y).toBeGreaterThanOrEqual(0);
-		expect(dialogBox!.y + dialogBox!.height).toBeLessThanOrEqual(360);
+		const tabBoxes = await tablist
+			.getByRole('tab')
+			.evaluateAll((tabs) => tabs.map((tab) => tab.getBoundingClientRect()));
+		expect(new Set(tabBoxes.map((box) => Math.round(box.y))).size).toBe(1);
 
+		await waitForDialogMotionToSettle(dialog);
+		const initialTablistBox = await tablist.boundingBox();
+		const initialFooterBox = await footer.boundingBox();
+		expect(initialTablistBox, 'tablist has viewport geometry').not.toBeNull();
+		expect(initialFooterBox, 'settings footer has viewport geometry').not.toBeNull();
+
+		for (const tabName of [
+			'Podrobnosti',
+			'Kategorie',
+			'Vzhled',
+			'Obrázek a ořezy',
+			'Import a export',
+			'Nebezpečná zóna',
+		]) {
+			await dialog.getByRole('tab', { name: tabName }).click();
+			await expect(saveButton).toBeVisible();
+		}
+		await expect(saveButton).toHaveCount(1);
+
+		await dialog.getByRole('tab', { name: 'Obrázek a ořezy' }).click();
 		const overflow = await scrollRegion.evaluate((element) => ({
 			clientHeight: element.clientHeight,
 			scrollHeight: element.scrollHeight,
@@ -101,69 +126,12 @@ test.describe('Wishlist settings – controls and draft lifecycle', () => {
 		await scrollRegion.evaluate((element) => (element.scrollTop = element.scrollHeight));
 		expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 
-		const actionFooterY = (await footer.boundingBox())!.y;
-		await dialog.getByRole('tab', { name: 'Import a export' }).click();
-		await expect(footer.getByRole('button', { name: 'Uložit' })).toBeVisible();
-		await expect
-			.poll(async () => Math.abs((await footer.boundingBox())!.y - actionFooterY))
-			.toBeLessThanOrEqual(3);
-		await expect(footer.getByRole('button', { name: 'Uložit' })).toHaveCount(1);
-
-		await page.context().close();
-	});
-
-	test('Image/Crops overflow and body scrolling leave pinned tab geometry unchanged', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('settings-pinned-tabs');
-		const page = await registerAndGetPage(browser, request, baseURL!, owner);
-		await createWishlistAndNavigate(page, 'Připnuté záložky');
-		await page.setViewportSize({ width: 1280, height: 600 });
-		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
-
-		const dialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
-		const tablist = dialog.getByRole('tablist', { name: 'Nastavení seznamu' });
-		const scrollRegion = dialog.getByTestId('wishlist-settings-scroll-region');
-		await expect
-			.poll(() =>
-				tablist
-					.getByRole('tab')
-					.evaluateAll(
-						(tabs) =>
-							tabs.length > 0 &&
-							tabs.every((tab) => getComputedStyle(tab).justifyContent === 'center'),
-					),
-			)
-			.toBe(true);
-		const tabWidths = await tablist
-			.getByRole('tab')
-			.evaluateAll((tabs) => tabs.map((tab) => tab.getBoundingClientRect().width));
-		expect(Math.max(...tabWidths) - Math.min(...tabWidths)).toBeLessThanOrEqual(1);
-
-		await page.setViewportSize({ width: 900, height: 360 });
-		await dialog.evaluate(async (element) => {
-			await Promise.all(
-				element.getAnimations({ subtree: true }).map((animation) => animation.finished),
-			);
-		});
-		const initialBox = await tablist.boundingBox();
-		expect(initialBox, 'tablist has stable geometry').not.toBeNull();
-
-		await dialog.getByRole('tab', { name: 'Obrázek a ořezy' }).click();
-		await expect
-			.poll(async () => {
-				const box = await tablist.boundingBox();
-				return { y: Math.round(box!.y), height: Math.round(box!.height) };
-			})
-			.toEqual({ y: Math.round(initialBox!.y), height: Math.round(initialBox!.height) });
-
-		await scrollRegion.evaluate((element) => (element.scrollTop = element.scrollHeight));
-		expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-		const scrolledBox = await tablist.boundingBox();
-		expect(Math.abs(scrolledBox!.y - initialBox!.y)).toBeLessThanOrEqual(1);
-		expect(Math.abs(scrolledBox!.height - initialBox!.height)).toBeLessThanOrEqual(1);
+		const scrolledTablistBox = await tablist.boundingBox();
+		const scrolledFooterBox = await footer.boundingBox();
+		expect(Math.abs(scrolledTablistBox!.y - initialTablistBox!.y)).toBeLessThanOrEqual(1);
+		expect(Math.abs(scrolledFooterBox!.y - initialFooterBox!.y)).toBeLessThanOrEqual(1);
+		expect(scrolledFooterBox!.y + scrolledFooterBox!.height).toBeLessThanOrEqual(360);
+		await expect(saveButton).toBeVisible();
 
 		await page.context().close();
 	});

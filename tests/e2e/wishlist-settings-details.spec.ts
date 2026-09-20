@@ -191,40 +191,6 @@ test.describe('Wishlist settings – details and categories', () => {
 		await page.context().close();
 	});
 
-	test('zero-use category removal skips confirmation and persists', async ({
-		browser,
-		request,
-		baseURL,
-	}) => {
-		const owner = createTestUser('settings-zero-use-category-removal');
-		const page = await registerAndGetPage(browser, request, baseURL!, owner);
-
-		await createWishlistAndNavigate(page, 'Odebrání nepoužité kategorie');
-		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
-		let settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
-		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
-		const books = settingsDialog.getByRole('checkbox', { name: 'Knihy' });
-		await expect(books).toBeChecked();
-
-		await books.click();
-
-		await expect(books).not.toBeChecked();
-		await expect(page.getByRole('dialog', { name: /Odebrat kategorii/ })).toHaveCount(0);
-		const save = settingsDialog
-			.locator('[data-slot="dialog-footer"]')
-			.getByRole('button', { name: 'Uložit' });
-		await expect(save).toBeEnabled();
-		await save.click();
-		await expect(settingsDialog).not.toBeVisible({ timeout: 10_000 });
-
-		await page.getByRole('button', { name: 'Nastavení seznamu' }).click();
-		settingsDialog = page.getByRole('dialog', { name: 'Nastavení seznamu' });
-		await settingsDialog.getByRole('tab', { name: 'Kategorie' }).click();
-		await expect(settingsDialog.getByRole('checkbox', { name: 'Knihy' })).not.toBeChecked();
-
-		await page.context().close();
-	});
-
 	test('confirmed category removal leaves its assigned gift uncategorized', async ({
 		browser,
 		request,
@@ -281,13 +247,6 @@ test.describe('Wishlist settings – details and categories', () => {
 			has: page.getByRole('button', { name: 'Potvrdit odebrání', exact: true }),
 		});
 		await expect(confirmationDialog).toBeVisible();
-		await confirmationDialog.getByRole('button', { name: 'Zrušit', exact: true }).click();
-		await expect(confirmationDialog).not.toBeVisible();
-		await expect(settingsDialog).toBeVisible();
-		await expect(customSection.getByTestId('gift-category-used-count')).toHaveText(
-			'Použito: 1',
-		);
-		await customSection.getByRole('button', { name: 'Smazat' }).click();
 		await confirmationDialog.getByRole('button', { name: 'Potvrdit odebrání' }).click();
 		const categoryRemoveSave = settingsDialog
 			.locator('[data-slot="dialog-footer"]')

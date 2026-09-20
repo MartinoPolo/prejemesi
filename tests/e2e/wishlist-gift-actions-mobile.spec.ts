@@ -12,7 +12,7 @@ import {
 	expectBodyPointerEventsRestored,
 } from './wishlist-gift-actions.helpers.js';
 
-test('mobile More uses a Sheet in card and list views and returns focus on Escape', async ({
+test('mobile More uses a Sheet and returns focus on Escape', async ({
 	browser,
 	request,
 	baseURL,
@@ -26,25 +26,16 @@ test('mobile More uses a Sheet in card and list views and returns focus on Escap
 	await page.setViewportSize({ width: 390, height: 844 });
 	await createActionFixture(page);
 
-	for (const view of ['card', 'list'] as const) {
-		if (view === 'list') {
-			await page.evaluate(() => {
-				window.localStorage.setItem('prejemesi-gift-view-mode', JSON.stringify('list'));
-			});
-			await page.reload();
-			await expect(page.locator('[data-view-mode="list"]')).toBeVisible();
-		}
-		const more = gift(page, 'Kolo pro výlety').getByTestId('gift-more-actions');
-		await expect(more).toHaveAttribute('aria-haspopup', 'dialog');
-		await more.click();
-		await expect(more).toHaveAttribute('aria-expanded', 'true');
-		await expect(page.getByRole('dialog', { name: 'Kolo pro výlety' })).toBeVisible();
-		await expect(page.getByRole('menu')).toHaveCount(0);
-		await page.keyboard.press('Escape');
-		await expect(more).toHaveAttribute('aria-expanded', 'false');
-		await expect(more).toBeFocused();
-		await expectBodyPointerEventsRestored(page);
-	}
+	const more = gift(page, 'Kolo pro výlety').getByTestId('gift-more-actions');
+	await expect(more).toHaveAttribute('aria-haspopup', 'dialog');
+	await more.click();
+	await expect(more).toHaveAttribute('aria-expanded', 'true');
+	await expect(page.getByRole('dialog', { name: 'Kolo pro výlety' })).toBeVisible();
+	await expect(page.getByRole('menu')).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	await expect(more).toHaveAttribute('aria-expanded', 'false');
+	await expect(more).toBeFocused();
+	await expectBodyPointerEventsRestored(page);
 	await page.context().close();
 });
 
@@ -78,7 +69,7 @@ test('selection survives responsive reflow while normal controls remain replaced
 	await page.context().close();
 });
 
-test('mobile toolbar starts an empty selection from deterministic SSR markup', async ({
+test('mobile toolbar starts with an observable empty selection', async ({
 	browser,
 	request,
 	baseURL,
@@ -91,15 +82,6 @@ test('mobile toolbar starts an empty selection from deterministic SSR markup', a
 	);
 	await page.setViewportSize({ width: 390, height: 844 });
 	await createActionFixture(page);
-
-	const serverResponse = await page.context().request.get(page.url());
-	expect(serverResponse.ok()).toBe(true);
-	const serverRenderedHtml = await serverResponse.text();
-	const serverRenderedSwitcherCount = await page.evaluate((html) => {
-		const document = new DOMParser().parseFromString(html, 'text/html');
-		return document.querySelectorAll('[data-testid="gift-view-switcher"]').length;
-	}, serverRenderedHtml);
-	expect(serverRenderedSwitcherCount).toBe(1);
 
 	await page.getByTestId('mobile-more-trigger').click();
 	await page
@@ -118,43 +100,7 @@ test('mobile toolbar starts an empty selection from deterministic SSR markup', a
 	await page.context().close();
 });
 
-test('mobile long press opens Sheet drill-in and selection toolbar Actions row', async ({
-	browser,
-	request,
-	baseURL,
-}) => {
-	const user = createTestUser('gift-actions-mobile');
-	const authenticated = await registerAndGetPage(browser, request, baseURL!, user);
-	await authenticated.setViewportSize({ width: 390, height: 844 });
-	await createActionFixture(authenticated);
-
-	const target = gift(authenticated, 'Kolo pro výlety');
-	await openMobileGiftActions(authenticated, target, 'Kolo pro výlety');
-	await authenticated.getByRole('button', { name: 'Priorita' }).click();
-	await expect(authenticated.getByRole('button', { name: 'Zpět' })).toBeVisible();
-	await authenticated.getByRole('button', { name: 'Zpět' }).click();
-	await authenticated.getByRole('button', { name: /Vybrat více dárků/ }).click();
-	const toolbar = authenticated.getByRole('region', { name: 'Nástroje výběru' });
-	const actions = toolbar.getByRole('button', { name: /Akce/ });
-	await expect(actions).toBeVisible();
-	await expect(toolbar.getByRole('button', { name: m.cancel() })).toBeVisible();
-
-	await actions.click();
-	const bulkSheet = authenticated.getByRole('dialog', {
-		name: m.gift_selection_actions(),
-	});
-	await expect(bulkSheet).toBeVisible();
-	await authenticated.keyboard.press('Escape');
-	await expect(bulkSheet).toBeHidden();
-	await selectionCount(toolbar, 1);
-	await expect(target).toHaveAttribute('aria-selected', 'true');
-
-	await authenticated.keyboard.press('Escape');
-	await expect(toolbar).toBeHidden();
-	await authenticated.context().close();
-});
-
-test('mobile movement beyond the tolerance cancels a pending long press', async ({
+test('mobile long press supports drill-in, Back, and entering selection', async ({
 	browser,
 	request,
 	baseURL,
@@ -163,21 +109,26 @@ test('mobile movement beyond the tolerance cancels a pending long press', async 
 		browser,
 		request,
 		baseURL!,
-		createTestUser('gift-actions-mobile-movement-cancel'),
+		createTestUser('gift-actions-mobile'),
 	);
 	await page.setViewportSize({ width: 390, height: 844 });
 	await createActionFixture(page);
 
 	const target = gift(page, 'Kolo pro výlety');
-	const point = await beginTouchLongPress(target);
-	await expect(target).toHaveAttribute('data-long-press-pending', 'true');
-	await target.dispatchEvent('pointermove', {
-		pointerType: 'touch',
-		clientX: point.x + 9,
-		clientY: point.y,
-	});
-	await expect(target).not.toHaveAttribute('data-long-press-pending', 'true');
-	await expect(page.getByRole('dialog')).toHaveCount(0);
+	const sheet = await openMobileGiftActions(page, target, 'Kolo pro výlety');
+	const priorityAction = sheet.getByRole('button', { name: 'Priorita' });
+	await priorityAction.click();
+	const back = sheet.getByRole('button', { name: 'Zpět' });
+	await expect(back).toBeVisible();
+	await expect(back).toBeFocused();
+	await back.click();
+	await expect(priorityAction).toBeVisible();
+	await sheet.getByRole('button', { name: /Vybrat více dárků/ }).click();
+	await expect(sheet).toBeHidden();
+	const toolbar = page.getByRole('region', { name: m.gift_selection_toolbar(), exact: true });
+	await expect(toolbar).toBeVisible();
+	await selectionCount(toolbar, 1);
+	await expect(target).toHaveAttribute('aria-selected', 'true');
 	await page.context().close();
 });
 

@@ -3,7 +3,6 @@ import { waitForAppHydration } from './fixtures/auth-helpers.js';
 
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 } as const;
 const MOBILE_VIEWPORT = { width: 375, height: 812 } as const;
-const LIKE_POPUP_COPY = 'Počítadlo je opravdové';
 function gifterPane(page: Page): Locator {
 	return page.getByTestId('landing-demo-pane-gifter');
 }
@@ -22,7 +21,11 @@ async function gotoDemo(page: Page) {
 function pairLikeButton(page: Page): Locator {
 	return page.getByTestId('landing-demo-pair-gifter').locator('button[aria-pressed]');
 }
-async function toggleLike(button: Locator, expectedPressed: boolean) {
+async function toggleLike(
+	button: Locator,
+	expectedPressed: boolean,
+	onMutationCommitted: () => void,
+) {
 	// Pressed state is optimistic; wait for this mutation before reloading or toggling again.
 	const committed = button
 		.page()
@@ -33,25 +36,73 @@ async function toggleLike(button: Locator, expectedPressed: boolean) {
 		);
 	await button.click();
 	expect((await committed).ok()).toBe(true);
+	onMutationCommitted();
 	await expect(button).toHaveAttribute('aria-pressed', String(expectedPressed));
 }
 
+async function likeCount(button: Locator): Promise<number> {
+	const text = await button.locator('[data-like-count]').innerText();
+	const count = Number.parseInt(text, 10);
+	expect(Number.isFinite(count)).toBe(true);
+	return count;
+}
+
 test.describe('Landing demo likes', () => {
-	test('liking and unliking persist for this browser independently of the shared count', async ({
+	test.describe.configure({ mode: 'default' });
+	test('own-browser persistence is independent from the shared count seen anonymously', async ({
+		browser,
 		page,
+		baseURL,
 	}) => {
 		await page.setViewportSize(MOBILE_VIEWPORT);
-		await gotoDemo(page);
-		const likeButton = pairLikeButton(page);
-		await expect(likeButton).toHaveAttribute('aria-pressed', 'false');
+		const anonymousContext = await browser.newContext({
+			baseURL: baseURL!,
+			viewport: MOBILE_VIEWPORT,
+		});
+		const anonymousPage = await anonymousContext.newPage();
+		let primaryLiked = false;
+		try {
+			await gotoDemo(page);
+			await gotoDemo(anonymousPage);
+			const primaryButton = pairLikeButton(page);
+			const anonymousButton = pairLikeButton(anonymousPage);
+			await expect(primaryButton).toHaveAttribute('aria-pressed', 'false');
+			await expect(anonymousButton).toHaveAttribute('aria-pressed', 'false');
+			const baselineCount = await likeCount(primaryButton);
+			expect(await likeCount(anonymousButton)).toBe(baselineCount);
 
-		await toggleLike(likeButton, true);
-		await gotoDemo(page);
-		await expect(likeButton).toHaveAttribute('aria-pressed', 'true');
+			await toggleLike(primaryButton, true, () => {
+				primaryLiked = true;
+			});
+			await gotoDemo(page);
+			await expect(primaryButton).toHaveAttribute('aria-pressed', 'true');
+			const sharedLikedCount = await likeCount(primaryButton);
+			expect(sharedLikedCount).toBe(baselineCount + 1);
 
-		await toggleLike(likeButton, false);
-		await gotoDemo(page);
-		await expect(likeButton).toHaveAttribute('aria-pressed', 'false');
+			await gotoDemo(anonymousPage);
+			await expect(anonymousButton).toHaveAttribute('aria-pressed', 'false');
+			expect(await likeCount(anonymousButton)).toBe(sharedLikedCount);
+
+			await toggleLike(primaryButton, false, () => {
+				primaryLiked = false;
+			});
+			await gotoDemo(page);
+			await expect(primaryButton).toHaveAttribute('aria-pressed', 'false');
+			expect(await likeCount(primaryButton)).toBe(baselineCount);
+			await gotoDemo(anonymousPage);
+			await expect(anonymousButton).toHaveAttribute('aria-pressed', 'false');
+			expect(await likeCount(anonymousButton)).toBe(baselineCount);
+		} finally {
+			try {
+				if (primaryLiked) {
+					await toggleLike(pairLikeButton(page), false, () => {
+						primaryLiked = false;
+					});
+				}
+			} finally {
+				await anonymousContext.close();
+			}
+		}
 	});
 
 	test('a like explains the counter once per session', async ({ page }) => {
@@ -60,45 +111,57 @@ test.describe('Landing demo likes', () => {
 
 		const heart = demoGift(gifterPane(page)).locator('button[aria-pressed]');
 		const popup = page.getByTestId('landing-demo-like-popup');
-		// Nothing explains anything until the visitor actually likes something.
-		await expect(popup).toHaveCount(0);
+		let liked = false;
+		try {
+			// Nothing explains anything until the visitor actually likes something.
+			await expect(popup).toHaveCount(0);
 
-		await toggleLike(heart, true);
-		await expect(popup).toBeVisible();
-		await expect(popup).toHaveText(new RegExp(LIKE_POPUP_COPY));
+			await toggleLike(heart, true, () => {
+				liked = true;
+			});
+			await expect(popup).toBeVisible();
 
-		const giftCard = demoGift(gifterPane(page)).getByTestId('gift-list-item');
-		const giftContent = giftCard.getByTestId('gift-list-content');
-		const [popupBox, heartBox, giftCardBox, contentBox] = await Promise.all([
-			popup.boundingBox(),
-			heart.boundingBox(),
-			giftCard.boundingBox(),
-			giftContent.boundingBox(),
-		]);
-		expect(popupBox).not.toBeNull();
-		expect(heartBox).not.toBeNull();
-		expect(giftCardBox).not.toBeNull();
-		expect(contentBox).not.toBeNull();
-		expect(popupBox!.x).toBeGreaterThanOrEqual(contentBox!.x);
-		expect(popupBox!.x + popupBox!.width).toBeLessThanOrEqual(
-			giftCardBox!.x + giftCardBox!.width,
-		);
-		expect(popupBox!.y).toBeGreaterThanOrEqual(heartBox!.y + heartBox!.height);
-		expect(popupBox!.y + popupBox!.height).toBeLessThanOrEqual(
-			giftCardBox!.y + giftCardBox!.height,
-		);
-		expect(popupBox!.x).toBeGreaterThanOrEqual(0);
-		expect(popupBox!.y).toBeGreaterThanOrEqual(0);
-		expect(popupBox!.x + popupBox!.width).toBeLessThanOrEqual(DESKTOP_VIEWPORT.width);
-		expect(popupBox!.y + popupBox!.height).toBeLessThanOrEqual(DESKTOP_VIEWPORT.height);
+			const giftCard = demoGift(gifterPane(page)).getByTestId('gift-list-item');
+			const giftContent = giftCard.getByTestId('gift-list-content');
+			const [popupBox, heartBox, giftCardBox, contentBox] = await Promise.all([
+				popup.boundingBox(),
+				heart.boundingBox(),
+				giftCard.boundingBox(),
+				giftContent.boundingBox(),
+			]);
+			expect(popupBox).not.toBeNull();
+			expect(heartBox).not.toBeNull();
+			expect(giftCardBox).not.toBeNull();
+			expect(contentBox).not.toBeNull();
+			expect(popupBox!.x).toBeGreaterThanOrEqual(contentBox!.x);
+			expect(popupBox!.x + popupBox!.width).toBeLessThanOrEqual(
+				giftCardBox!.x + giftCardBox!.width,
+			);
+			expect(popupBox!.y).toBeGreaterThanOrEqual(heartBox!.y + heartBox!.height);
+			expect(popupBox!.y + popupBox!.height).toBeLessThanOrEqual(
+				giftCardBox!.y + giftCardBox!.height,
+			);
 
-		// Restore the shared counter; unliking must never trigger the explainer.
-		await toggleLike(heart, false);
-		await expect(popup).toHaveCount(0, { timeout: 15_000 });
+			// Restore the shared counter; unliking must never trigger the explainer.
+			await toggleLike(heart, false, () => {
+				liked = false;
+			});
+			await expect(popup).toHaveCount(0, { timeout: 15_000 });
 
-		await toggleLike(heart, true);
-		await expect(popup).toHaveCount(0);
+			await toggleLike(heart, true, () => {
+				liked = true;
+			});
+			await expect(popup).toHaveCount(0);
 
-		await toggleLike(heart, false);
+			await toggleLike(heart, false, () => {
+				liked = false;
+			});
+		} finally {
+			if (liked) {
+				await toggleLike(heart, false, () => {
+					liked = false;
+				});
+			}
+		}
 	});
 });
