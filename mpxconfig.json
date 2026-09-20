@@ -7,5 +7,21 @@
 	"issues": {
 		"provider": "github"
 	},
-	"packageManager": "pnpm"
+	"packageManager": "pnpm",
+	"fast_checks": [
+		{ "command": "pnpm run format", "cwd": "." },
+		{ "command": "pnpm run lint", "cwd": "." },
+		{ "command": "pnpm run typecheck", "cwd": "." },
+		{ "command": "pnpm run check:fallow", "cwd": "." },
+		{ "command": "pnpm exec vitest run", "cwd": "." }
+	],
+	"full_checks": [
+		{ "command": "pnpm run lint:eslint", "cwd": "." },
+		{ "command": "pnpm run lint:css", "cwd": "." },
+		{ "command": "pnpm run check:migrations", "cwd": "." },
+		{ "command": "pnpm run check:vykani", "cwd": "." },
+		{ "command": "pnpm run test:scripts", "cwd": "." },
+		{ "command": "pnpm run build", "cwd": "." },
+		{ "command": "pnpm run test:e2e", "cwd": "." }
+	]
 }
