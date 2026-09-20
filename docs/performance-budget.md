@@ -15,40 +15,18 @@ The gate is the automated Playwright spec
 
 ## The budget
 
-| Page             | Max JS requests | Max transferred JS bytes |
-| ---------------- | --------------- | ------------------------ |
-| Landing (`/`)    | **343**         | **14,996,015**           |
-| Login (`/login`) | **202**         | **12,110,852**           |
+The executable `LANDING_BUDGET` and `LOGIN_BUDGET` constants in the
+[spec](../tests/e2e/performance-budget.spec.ts) are authoritative; do not duplicate their values in
+this document. Reviewed re-baselines and their measurements belong together in the change evidence.
 
 Budget = **measured baseline + ~25% headroom** (`ceil(measured × 1.25)`), per page, for both request
-count and bytes. The headroom absorbs benign churn (a new icon, a copy string) while still catching
-a real code-fan-out regression.
+count and bytes. The headroom absorbs benign churn while still catching a real code-fan-out
+regression. The landing budget includes the intentional cost of rendering the real gift components
+in the public demo, as reviewed in #372; this does not exempt authenticated management code.
 
-### Measured baseline
-
-| Page    | Measured   | JS requests | Transferred JS bytes |
-| ------- | ---------- | ----------- | -------------------- |
-| Landing | 2026-08-01 | 299         | 12,200,655           |
-| Login   | 2026-07-12 | 161         | 9,688,681            |
-
-The landing figure rose from 274 (the value the 343 budget was derived from) in two same-day steps:
-to 297 when the demo section gained the real `WishlistHeader` hero above its two panes, then to the
-measured 299 above when the demo's like counter became a real shared counter (issue #218 follow-up:
-`landing_demo_likes.remote.ts` plus its slug allowlist). The budget was **deliberately left at
-343**: the existing headroom still covers the new baseline, and keeping the tighter ceiling
-preserves the gate's sensitivity. Re-baseline to `ceil(299 × 1.25)` only if a future intentional
-change actually needs the room.
-
-The landing baseline jumped on **2026-08-01** when the interactive demo section (issue #218)
-shipped: it server-renders the real `GiftCard`/`GiftListItem` (REQ-3, REQ-10), which pulls the gift
-block components and their dependencies into the landing module graph. That is the intended cost of
-a demo that cannot drift from the shipped product.
-
-> Measure on a **warm** dev server. The 2.5 s post-hydration settle window is a fixed budget, so a
-> cold server that is still transforming modules when it expires reports a lower count (CI has been
-> seen at 245–265 for the same tree that measures a stable 274 warm). Truncation only ever
-> _under_-counts, so it cannot cause a false failure — but always baseline from the warm, higher
-> number.
+Measure on a **warm** dev server. The collector waits for app hydration before its bounded settle
+window; an SSR-visible heading alone does not establish JavaScript readiness. This is a bounded
+startup inventory, not a guarantee that every later asynchronous request has completed.
 
 > **These are Vite _dev-mode_ module counts and bytes, not production chunk sizes.** The e2e suite
 > is local-only and runs against the dev server (`pnpm run dev`), where modules arrive unbundled and
@@ -96,6 +74,7 @@ never drift from the shipped product), so these modules are public code by desig
 | `/lib/modules/gifts/gift_display_state.ts`        | Reserved/archived render state     |
 | `/lib/modules/gifts/gift_url.ts`                  | External-link rendering            |
 | `/lib/modules/gifts/gifts.context.svelte.ts`      | Context the demo stubs locally     |
+| `/lib/modules/gifts/gift_ordering.ts`             | Pure presentation ordering         |
 | `/lib/modules/wishlists/types.ts`                 | `WishlistRole`                     |
 | `/lib/modules/wishlists/wishlist_capabilities.ts` | Release capability (empty in demo) |
 | `/lib/modules/wishlists/dashboard_types.ts`       | Status badge label + tone map      |
@@ -179,8 +158,8 @@ the budget assertion — not the fan-out assertion — fails:
     ```
 3. Set each new budget constant in `tests/e2e/performance-budget.spec.ts` (`LANDING_BUDGET` /
    `LOGIN_BUDGET`) to `ceil(measured × 1.25)` for both request count and bytes.
-4. Update the **budget** and **measured baseline** tables in this doc (and the measurement date), so
-   the numbers and their rationale stay in sync with the spec.
+4. Include the warm-run measurements and rationale with the change for review. Update this document
+   only when the policy or allowed public-module boundary changes, not to mirror numeric constants.
 
 ---
 
