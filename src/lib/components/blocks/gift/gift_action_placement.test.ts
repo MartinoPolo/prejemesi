@@ -25,9 +25,9 @@ describe('gift action placement', () => {
 		});
 		expect(placeGiftActions({ ...common, contentWidth: 42 })).toEqual({
 			showSecondary: false,
-			showPrimary: false,
+			showPrimary: true,
 			showMore: true,
-			overflowActions: ['received', 'reserve'],
+			overflowActions: ['received'],
 		});
 		expect(placeGiftActions({ ...common, contentWidth: 202 })).toEqual({
 			showSecondary: true,
@@ -36,4 +36,24 @@ describe('gift action placement', () => {
 			overflowActions: [],
 		});
 	});
+
+	it.each(['reserve', 'cancel-reservation', 'received'] as const)(
+		'never moves the primary %s command into More',
+		(primaryAction) => {
+			expect(
+				placeGiftActions({
+					contentWidth: 20,
+					primary: { id: primaryAction, width: 120 },
+					moreWidth: 40,
+					gap: 12,
+					persistentMore: true,
+				}),
+			).toEqual({
+				showSecondary: false,
+				showPrimary: true,
+				showMore: true,
+				overflowActions: [],
+			});
+		},
+	);
 });
