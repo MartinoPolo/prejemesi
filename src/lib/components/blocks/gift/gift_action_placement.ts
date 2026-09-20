@@ -47,24 +47,9 @@ export function placeGiftActions(input: Readonly<GiftActionPlacementInput>): Gif
 	if (input.secondary !== undefined) {
 		overflowActions.push(input.secondary.id);
 	}
-	const primaryAndMoreWidths = [input.primary?.width, input.moreWidth].filter(
-		(width): width is number => width !== undefined,
-	);
-	if (requiredWidth(primaryAndMoreWidths, input.gap) <= input.contentWidth) {
-		return {
-			showSecondary: false,
-			showPrimary: input.primary !== undefined,
-			showMore: true,
-			overflowActions,
-		};
-	}
-
-	if (input.primary !== undefined) {
-		overflowActions.push(input.primary.id);
-	}
 	return {
 		showSecondary: false,
-		showPrimary: false,
+		showPrimary: input.primary !== undefined,
 		showMore: true,
 		overflowActions,
 	};

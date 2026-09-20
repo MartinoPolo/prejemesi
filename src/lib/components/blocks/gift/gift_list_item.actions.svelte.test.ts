@@ -1,5 +1,5 @@
 import '../../../../app.css';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-svelte';
 import { WISHLIST_ROLES } from '$lib/modules/wishlists/types.js';
@@ -424,6 +424,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 		host.style.width = '366px';
 		document.body.appendChild(host);
 
+		const onunreserve = vi.fn();
 		try {
 			await render(
 				GiftListItemTestHost,
@@ -433,7 +434,7 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 						isFullyReserved: true,
 					}),
 					role: WISHLIST_ROLES.visitor,
-					onunreserve: () => {},
+					onunreserve,
 					onmore: () => {},
 				},
 				{ baseElement: host },
@@ -445,8 +446,10 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			await settleActionPlacement();
 			const primary = host.querySelector(
 				'[data-testid="reserve-button"]',
-			) as HTMLElement | null;
-			const more = host.querySelector('[data-testid="gift-more-actions"]') as HTMLElement;
+			) as HTMLButtonElement;
+			const more = host.querySelector(
+				'[data-testid="gift-more-actions"]',
+			) as HTMLButtonElement;
 			const row = host.querySelector('[data-testid="gift-action-row"]') as HTMLElement;
 			const imageRect = image.getBoundingClientRect();
 			const contentRect = content.getBoundingClientRect();
@@ -456,18 +459,20 @@ describe('GiftListItem approved action geometry (issue #350)', () => {
 			expect(imageRect.width).toBeLessThan(imageRect.height);
 			expect(contentRect.left).toBeCloseTo(imageRect.right, 0);
 			expect(getComputedStyle(row).flexWrap).toBe('nowrap');
-			expect(more).toBeTruthy();
-			const primaryOverflow = primary?.closest<HTMLElement>('[inert]') ?? null;
-			if (primary === null || primaryOverflow !== null) {
-				expect(row.dataset.overflowActions).toContain('cancel-reservation');
-				expect(more.closest('[inert]')).toBeNull();
-			} else {
-				expect(primary.getBoundingClientRect().top).toBeCloseTo(
-					more.getBoundingClientRect().top,
-					0,
-				);
-				expectRaisedActionShadowInside(primary, item);
-			}
+			expect(primary.closest('[data-testid="gift-action-primary-group"]')).toBeTruthy();
+			expect(primary.closest('[data-testid="gift-action-secondary"]')).toBeNull();
+			expect(primary.closest('[inert]')).toBeNull();
+			expect(row.dataset.overflowActions?.split(' ')).not.toContain('cancel-reservation');
+			expect(more.closest('[inert]')).toBeNull();
+			primary.focus();
+			expect(document.activeElement).toBe(primary);
+			primary.click();
+			expect(onunreserve).toHaveBeenCalledOnce();
+			expect(primary.getBoundingClientRect().top).toBeCloseTo(
+				more.getBoundingClientRect().top,
+				0,
+			);
+			expectRaisedActionShadowInside(primary, item);
 			expectRaisedActionShadowInside(more, item);
 			expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
 			expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);

@@ -165,6 +165,53 @@ describe('WishlistGiftDraggableWrapper — explicit reorder mode (#239)', () => 
 		await screen.unmount();
 	});
 
+	it('places the visible mobile directional fallback inside the bottom-right resting contour', async () => {
+		await page.viewport(320, 720);
+		const onreordermove = vi.fn();
+		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
+			...baseProps,
+			reorderEnabled: true,
+			onreordermove,
+		});
+		const wrapper = document.querySelector('[data-gift-item]') as HTMLElement;
+		const lane = screen
+			.getByTestId('gift-reorder-directional-actions')
+			.element() as HTMLElement;
+		const moveUp = screen
+			.getByRole('button', { name: m.gift_reorder_move_up({ name: baseProps.giftName }) })
+			.element() as HTMLButtonElement;
+		const moveDown = screen
+			.getByRole('button', { name: m.gift_reorder_move_down({ name: baseProps.giftName }) })
+			.element() as HTMLButtonElement;
+		const wrapperRect = wrapper.getBoundingClientRect();
+		const laneRect = lane.getBoundingClientRect();
+		const moveUpRect = moveUp.getBoundingClientRect();
+		const moveDownRect = moveDown.getBoundingClientRect();
+		const styles = getComputedStyle(wrapper);
+		const shadowOffset = parseFloat(styles.getPropertyValue('--elevation-ordinary-offset'));
+		const faceInset =
+			parseFloat(styles.borderRadius) - parseFloat(getComputedStyle(moveDown).borderRadius);
+		const shadowInset = faceInset + shadowOffset;
+		const controlGap = 8 + shadowOffset;
+
+		expect(styles.getPropertyValue('--gift-context-face-inset')).not.toBe('');
+		expect(styles.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
+		expect(styles.getPropertyValue('--gift-context-control-gap')).not.toBe('');
+		expect(getComputedStyle(lane).display).toBe('flex');
+		expect(wrapperRect.right - laneRect.right).toBeCloseTo(shadowInset, 0);
+		expect(wrapperRect.bottom - laneRect.bottom).toBeCloseTo(shadowInset, 0);
+		expect(moveDownRect.left - moveUpRect.right).toBeCloseTo(controlGap, 0);
+		for (const rect of [moveUpRect, moveDownRect]) {
+			expect(rect.right + shadowOffset).toBeLessThanOrEqual(wrapperRect.right);
+			expect(rect.bottom + shadowOffset).toBeLessThanOrEqual(wrapperRect.bottom);
+		}
+		expect(moveUp.disabled).toBe(true);
+		expect(moveDown.disabled).toBe(false);
+		await userEvent.click(moveDown);
+		expect(onreordermove).toHaveBeenCalledWith(0, 1);
+		await screen.unmount();
+	});
+
 	it('does not render the reorder grip outside reorder mode', async () => {
 		const screen = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
@@ -285,30 +332,62 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 
 	it.each([
 		{
-			name: 'mobile Grid right corner',
+			name: 'mobile Grid left corner',
 			width: 390,
 			layout: 'overlay' as const,
-			edge: 'right' as const,
 		},
 		{
 			name: 'desktop Grid left corner',
 			width: 768,
 			layout: 'overlay' as const,
-			edge: 'left' as const,
 		},
 		{
 			name: 'mobile List left corner',
 			width: 390,
 			layout: 'list' as const,
-			edge: 'left' as const,
 		},
-	])('keeps the shared marker curve parallel in the $name', async ({ width, layout, edge }) => {
-		await page.viewport(width, 720);
+	])(
+		'keeps the shared marker curve and resting shadow inside the $name',
+		async ({ width, layout }) => {
+			await page.viewport(width, 720);
+			const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
+				...baseProps,
+				reorderEnabled: false,
+				selectionMode: true,
+				selectionLayout: layout,
+			});
+			const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
+			const marker = wrapper.querySelector(
+				'[data-testid="gift-selection-control"]',
+			) as HTMLElement;
+			const wrapperRect = wrapper.getBoundingClientRect();
+			const markerRect = marker.getBoundingClientRect();
+			const wrapperStyle = getComputedStyle(wrapper);
+			const shadowOffset = parseFloat(
+				wrapperStyle.getPropertyValue('--elevation-ordinary-offset'),
+			);
+			const parentRadius = parseFloat(wrapperStyle.borderRadius);
+			const markerRadius = parseFloat(getComputedStyle(marker).borderRadius);
+			const faceInset = parentRadius - markerRadius;
+
+			expect(wrapperStyle.getPropertyValue('--gift-context-face-inset')).not.toBe('');
+			expect(wrapperStyle.getPropertyValue('--gift-context-shadow-inset')).not.toBe('');
+			expect(markerRect.left - wrapperRect.left).toBeCloseTo(faceInset, 0);
+			expect(markerRect.top - wrapperRect.top).toBeCloseTo(faceInset, 0);
+			expect(parentRadius - faceInset).toBeCloseTo(markerRadius, 0);
+			expect(markerRect.right + shadowOffset).toBeLessThanOrEqual(wrapperRect.right);
+			expect(markerRect.bottom + shadowOffset).toBeLessThanOrEqual(wrapperRect.bottom);
+			await unmount();
+		},
+	);
+
+	it('keeps the desktop List selection control static in its top-left gutter', async () => {
+		await page.viewport(768, 720);
 		const { container, unmount } = await render(WishlistGiftDraggableWrapperTestHost, {
 			...baseProps,
 			reorderEnabled: false,
 			selectionMode: true,
-			selectionLayout: layout,
+			selectionLayout: 'list',
 		});
 		const wrapper = container.querySelector('[data-gift-item]') as HTMLElement;
 		const marker = wrapper.querySelector(
@@ -316,16 +395,10 @@ describe('WishlistGiftDraggableWrapper — context actions and selection', () =>
 		) as HTMLElement;
 		const wrapperRect = wrapper.getBoundingClientRect();
 		const markerRect = marker.getBoundingClientRect();
-		const horizontalInset =
-			edge === 'left'
-				? markerRect.left - wrapperRect.left
-				: wrapperRect.right - markerRect.right;
-		const verticalInset = markerRect.top - wrapperRect.top;
-		const parentRadius = parseFloat(getComputedStyle(wrapper).borderRadius);
-		const markerRadius = parseFloat(getComputedStyle(marker).borderRadius);
 
-		expect(horizontalInset).toBeCloseTo(verticalInset, 0);
-		expect(parentRadius - horizontalInset).toBeCloseTo(markerRadius, 0);
+		expect(getComputedStyle(marker).position).toBe('static');
+		expect(markerRect.left).toBeCloseTo(wrapperRect.left, 0);
+		expect(markerRect.top - wrapperRect.top).toBeCloseTo(8, 0);
 		await unmount();
 	});
 

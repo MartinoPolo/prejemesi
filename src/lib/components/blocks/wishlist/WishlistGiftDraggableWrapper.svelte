@@ -257,10 +257,8 @@
 		<span
 			class={cn(
 				selectionCheckboxStyles.owner(),
-				'pointer-events-none absolute top-[calc(var(--radius-panel)-var(--radius-btn))] z-50',
-				selectionLayout === 'list'
-					? 'left-[calc(var(--radius-panel)-var(--radius-btn))] sm:static sm:left-auto sm:top-auto sm:self-start sm:translate-y-2'
-					: 'right-[calc(var(--radius-panel)-var(--radius-btn))] sm:right-auto sm:left-[calc(var(--radius-panel)-var(--radius-btn))]',
+				'gift-selection-control pointer-events-none absolute z-50',
+				selectionLayout === 'list' && 'sm:static sm:self-start sm:translate-y-2',
 			)}
 			data-testid="gift-selection-control"
 			aria-hidden="true"
@@ -295,7 +293,7 @@
 	{#if reorderEnabled && !selectionMode}
 		<div
 			class={cn(
-				'absolute bottom-1 right-1 z-50 items-center gap-2',
+				'gift-reorder-directional-actions absolute z-50 items-center',
 				selectionLayout === 'list' ? 'flex sm:hidden' : 'gift-card-directional-actions',
 			)}
 			data-testid="gift-reorder-directional-actions"
@@ -338,6 +336,25 @@
 </div>
 
 <style>
+	[data-gift-item] {
+		--gift-context-face-inset: max(0px, calc(var(--radius-panel) - var(--radius-btn)));
+		--gift-context-shadow-inset: calc(
+			var(--gift-context-face-inset) + var(--elevation-ordinary-offset)
+		);
+		--gift-context-control-gap: calc(0.5rem + var(--elevation-ordinary-offset));
+	}
+
+	.gift-selection-control {
+		inset-block-start: var(--gift-context-face-inset);
+		inset-inline-start: var(--gift-context-face-inset);
+	}
+
+	.gift-reorder-directional-actions {
+		inset-inline-end: var(--gift-context-shadow-inset);
+		inset-block-end: var(--gift-context-shadow-inset);
+		gap: var(--gift-context-control-gap);
+	}
+
 	/* Selection follows the gift surface, excluding the desktop List checkbox gutter. */
 	[data-gift-item][data-selected] :global([data-testid='gift-card-surface'])::before,
 	[data-gift-item][data-selected] :global([data-testid='gift-list-item'])::before {

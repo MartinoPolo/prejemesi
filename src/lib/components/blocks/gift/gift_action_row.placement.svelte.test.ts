@@ -80,20 +80,39 @@ describe('GiftActionRow intrinsic placement', () => {
 		});
 	});
 
-	it('keeps only More actionable when neither intrinsic command fits', async () => {
+	it('keeps the primary command direct and both actions operable at an impossible synthetic width', async () => {
 		const onplacementchange = vi.fn();
+		const onmore = vi.fn();
+		const onreserve = vi.fn();
 		const screen = await render(GiftActionRowTestHost, {
 			contentWidth: 35,
 			onplacementchange,
+			onmore,
 		});
 		await settlePlacement();
 
 		const row = screen.getByTestId('gift-action-row').element() as HTMLElement;
+		const receivedSlot = row.querySelector(
+			'[data-testid="gift-action-secondary"]',
+		) as HTMLElement;
+		const reserve = screen.getByTestId('reserve-action').element() as HTMLButtonElement;
+		const more = screen.getByTestId('gift-more-actions').element() as HTMLButtonElement;
+		reserve.addEventListener('click', onreserve);
 		expect(row.querySelectorAll('[data-testid="received-action"]')).toHaveLength(1);
-		expect(row.querySelectorAll('[data-testid="reserve-action"]')).toHaveLength(1);
-		expect(row.querySelectorAll('[inert]')).toHaveLength(2);
-		expect(row.querySelectorAll('[data-testid="gift-more-actions"]')).toHaveLength(1);
-		expect(onplacementchange).toHaveBeenLastCalledWith(['received', 'reserve']);
+		expect(receivedSlot.inert).toBe(true);
+		expect(reserve.closest('[data-testid="gift-action-primary-group"]')).toBeTruthy();
+		expect(reserve.closest('[data-testid="gift-action-secondary"]')).toBeNull();
+		expect(reserve.closest('[inert]')).toBeNull();
+		expect(more.inert).toBe(false);
+		reserve.focus();
+		expect(document.activeElement).toBe(reserve);
+		reserve.click();
+		expect(onreserve).toHaveBeenCalledOnce();
+		more.focus();
+		expect(document.activeElement).toBe(more);
+		more.click();
+		expect(onmore).toHaveBeenCalledOnce();
+		expect(onplacementchange).toHaveBeenLastCalledWith(['received']);
 	});
 
 	it('hands focus to More when the focused direct command overflows', async () => {

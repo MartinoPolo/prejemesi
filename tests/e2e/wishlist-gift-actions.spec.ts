@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import * as m from '../../src/lib/paraglide/messages.js';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage } from './fixtures/auth-helpers.js';
@@ -8,7 +8,12 @@ import {
 	expectBodyPointerEventsRestored,
 	selectionCount,
 	openMobileGiftActions,
+	openSelectionFromContext,
 } from './wishlist-gift-actions.helpers.js';
+import { startGiftReorder } from './fixtures/wishlist-helpers.js';
+
+const DEPTH_MODES = ['soft', 'ink', 'black'] as const;
+type DepthMode = (typeof DEPTH_MODES)[number];
 
 test('desktop contextual selection works in both supported card and list views', async ({
 	browser,
@@ -198,7 +203,7 @@ test('wide touch long press uses the shared Sheet while desktop More remains a m
 	await page.context().close();
 });
 
-test('gift card footer follows nested radii and keeps the action shadow and touch hit inside', async ({
+test('gift action and contextual-control shadows stay nested across viewports and depth modes', async ({
 	browser,
 	request,
 	baseURL,
@@ -209,45 +214,208 @@ test('gift card footer follows nested radii and keeps the action shadow and touc
 		baseURL!,
 		createTestUser('gift-actions-footer-geometry'),
 	);
-	await page.setViewportSize({ width: 390, height: 844 });
 	await createActionFixture(page);
 
-	const target = gift(page, 'Kolo pro výlety');
-	const card = target.getByTestId('gift-card-surface');
-	const action = target.getByTestId('gift-more-actions');
-	const surface = action.locator(':scope > .elevation-surface');
-	const geometry = await card.evaluate(
-		(cardElement, buttonElement) => {
-			const cardBox = cardElement.getBoundingClientRect();
+	for (const viewport of [
+		{ width: 390, height: 844 },
+		{ width: 1024, height: 768 },
+	]) {
+		await page.setViewportSize(viewport);
+		await expectActionGeometryStableAcrossDepthModes(page);
+	}
+
+	await page.setViewportSize({ width: 390, height: 844 });
+	await page.getByRole('radio', { name: m.gift_view_card() }).click();
+	await expect(
+		page.locator('[data-wishlist-gift-collection][data-view-mode="card"]:not([inert])'),
+	).toBeVisible();
+	await openSelectionFromContext(page, 'Kolo pro výlety');
+	const selectedGift = gift(page, 'Kolo pro výlety');
+	let stableSelectionGeometry: Omit<
+		Awaited<ReturnType<typeof measureSelectionControl>>,
+		'shadow'
+	> | null = null;
+	for (const depth of DEPTH_MODES) {
+		await setDepthMode(page, depth);
+		const geometry = await measureSelectionControl(selectedGift);
+		expect(geometry.leftInset).toBeCloseTo(geometry.topInset, 0);
+		expect(geometry.markerRadius).toBeCloseTo(geometry.parentRadius - geometry.leftInset, 0);
+		expect(geometry.shadow).not.toBe('none');
+		const geometryWithoutShadow = {
+			leftInset: geometry.leftInset,
+			topInset: geometry.topInset,
+			parentRadius: geometry.parentRadius,
+			markerRadius: geometry.markerRadius,
+		};
+		if (stableSelectionGeometry === null) {
+			stableSelectionGeometry = geometryWithoutShadow;
+		} else {
+			expect(geometryWithoutShadow).toEqual(stableSelectionGeometry);
+		}
+	}
+	await page
+		.getByRole('region', { name: m.gift_selection_toolbar() })
+		.getByRole('button', { name: /^(Zrušit|Cancel)$/ })
+		.click();
+
+	await page.setViewportSize({ width: 320, height: 844 });
+	await startGiftReorder(page);
+	const reorderedGift = page
+		.locator('[data-wishlist-gift-collection]:not([inert]) [data-gift-item]')
+		.first();
+	const lane = reorderedGift.getByTestId('gift-reorder-directional-actions');
+	await expect(lane).toBeVisible();
+	const reachableDirection = lane.locator('button:not(:disabled)').first();
+	await expect(reachableDirection).toBeVisible();
+	await expect(reachableDirection).toBeEnabled();
+	let stableLaneGeometry: Record<string, number> | null = null;
+	for (const depth of DEPTH_MODES) {
+		await setDepthMode(page, depth);
+		const geometry = await reorderedGift.evaluate((wrapper) => {
+			const laneElement = wrapper.querySelector<HTMLElement>(
+				'[data-testid="gift-reorder-directional-actions"]',
+			)!;
+			const buttons = [...laneElement.querySelectorAll<HTMLButtonElement>('button')];
+			const first = buttons[0]!;
+			const last = buttons.at(-1)!;
+			const wrapperBox = wrapper.getBoundingClientRect();
+			const laneBox = laneElement.getBoundingClientRect();
+			const firstBox = first.getBoundingClientRect();
+			const lastBox = last.getBoundingClientRect();
+			const styles = getComputedStyle(wrapper);
+			const shadowOffset = Number.parseFloat(
+				styles.getPropertyValue('--elevation-ordinary-offset'),
+			);
+			return {
+				rightInset: wrapperBox.right - laneBox.right,
+				bottomInset: wrapperBox.bottom - laneBox.bottom,
+				faceInset:
+					Number.parseFloat(styles.borderTopRightRadius) -
+					Number.parseFloat(getComputedStyle(last).borderTopRightRadius),
+				gap: lastBox.left - firstBox.right,
+				shadowOffset,
+				shadow: getComputedStyle(last.querySelector<HTMLElement>('.elevation-surface')!)
+					.boxShadow,
+			};
+		});
+		expect(geometry.shadow).not.toBe('none');
+		expect(geometry.rightInset).toBeCloseTo(geometry.faceInset + geometry.shadowOffset, 0);
+		expect(geometry.bottomInset).toBeCloseTo(geometry.rightInset, 0);
+		expect(geometry.gap).toBeCloseTo(8 + geometry.shadowOffset, 0);
+		const geometryWithoutShadow = {
+			rightInset: geometry.rightInset,
+			bottomInset: geometry.bottomInset,
+			faceInset: geometry.faceInset,
+			gap: geometry.gap,
+			shadowOffset: geometry.shadowOffset,
+		};
+		if (stableLaneGeometry === null) {
+			stableLaneGeometry = geometryWithoutShadow;
+		} else {
+			expect(geometryWithoutShadow).toEqual(stableLaneGeometry);
+		}
+	}
+	await page.context().close();
+});
+
+async function expectActionGeometryStableAcrossDepthModes(page: Page) {
+	for (const view of ['card', 'list'] as const) {
+		await page
+			.getByRole('radio', { name: view === 'card' ? m.gift_view_card() : m.gift_view_list() })
+			.click();
+		const collection = page.locator(
+			`[data-wishlist-gift-collection][data-view-mode="${view}"]:not([inert])`,
+		);
+		await expect(collection).toBeVisible();
+		const target = collection
+			.locator('[data-gift-item]')
+			.filter({ has: page.getByRole('heading', { name: 'Kolo pro výlety', exact: true }) });
+		const container = target.getByTestId(
+			view === 'card' ? 'gift-card-surface' : 'gift-list-item',
+		);
+		const action = target.getByTestId('gift-more-actions');
+		await expect(action.locator(':scope > .elevation-surface')).toBeVisible();
+
+		let stableGeometry: Omit<Awaited<ReturnType<typeof measureNestedAction>>, 'shadow'> | null =
+			null;
+		for (const depth of DEPTH_MODES) {
+			await setDepthMode(page, depth);
+			const geometry = await measureNestedAction(container, action);
+			expect(geometry.shadow).not.toBe('none');
+			expect(geometry.buttonRadius).toBeCloseTo(
+				Math.max(0, geometry.outerRadius - (geometry.rightGap - geometry.shadowOffset)),
+				0,
+			);
+			expect(geometry.bottomGap).toBeCloseTo(geometry.rightGap, 0);
+			expect(geometry.rightGap).toBeGreaterThanOrEqual(geometry.shadowOffset);
+			expect(geometry.bottomGap).toBeGreaterThanOrEqual(geometry.shadowOffset);
+			const geometryWithoutShadow = {
+				outerRadius: geometry.outerRadius,
+				buttonRadius: geometry.buttonRadius,
+				shadowOffset: geometry.shadowOffset,
+				rightGap: geometry.rightGap,
+				bottomGap: geometry.bottomGap,
+			};
+			if (stableGeometry === null) {
+				stableGeometry = geometryWithoutShadow;
+			} else {
+				expect(geometryWithoutShadow).toEqual(stableGeometry);
+			}
+		}
+	}
+}
+
+async function setDepthMode(page: Page, depth: DepthMode) {
+	await page.locator('html').evaluate((element, value) => {
+		element.dataset.depth = value;
+	}, depth);
+	await page.mouse.move(0, 0);
+}
+
+async function measureSelectionControl(selectedGift: Locator) {
+	return selectedGift.evaluate((wrapper) => {
+		const marker = wrapper.querySelector<HTMLElement>(
+			'[data-testid="gift-selection-control"]',
+		)!;
+		const markerSurface = marker.querySelector<HTMLElement>('.elevation-surface')!;
+		const wrapperBox = wrapper.getBoundingClientRect();
+		const markerBox = marker.getBoundingClientRect();
+		const wrapperStyle = getComputedStyle(wrapper);
+		const markerStyle = getComputedStyle(marker);
+		return {
+			leftInset: markerBox.left - wrapperBox.left,
+			topInset: markerBox.top - wrapperBox.top,
+			parentRadius: Number.parseFloat(wrapperStyle.borderTopLeftRadius),
+			markerRadius: Number.parseFloat(markerStyle.borderTopLeftRadius),
+			shadow: getComputedStyle(markerSurface).boxShadow,
+		};
+	});
+}
+
+async function measureNestedAction(container: Locator, action: Locator) {
+	return container.evaluate(
+		(containerElement, buttonElement) => {
+			const containerBox = containerElement.getBoundingClientRect();
 			const actionSurface = (buttonElement as HTMLElement).querySelector<HTMLElement>(
 				'.elevation-surface',
 			)!;
 			const surfaceBox = actionSurface.getBoundingClientRect();
-			const styles = getComputedStyle(cardElement);
+			const containerStyles = getComputedStyle(containerElement);
 			const actionStyles = getComputedStyle(actionSurface);
 			return {
-				outerRadius: Number.parseFloat(styles.borderTopRightRadius),
+				outerRadius: Number.parseFloat(containerStyles.borderTopRightRadius),
 				buttonRadius: Number.parseFloat(actionStyles.borderTopRightRadius),
 				shadowOffset: Number.parseFloat(
 					actionStyles.getPropertyValue('--elevation-ordinary-offset'),
 				),
-				rightGap: cardBox.right - surfaceBox.right,
-				bottomGap: cardBox.bottom - surfaceBox.bottom,
+				rightGap: containerBox.right - surfaceBox.right,
+				bottomGap: containerBox.bottom - surfaceBox.bottom,
+				shadow: actionStyles.boxShadow,
 			};
 		},
 		await action.elementHandle(),
 	);
-
-	await expect(surface).toBeVisible();
-	expect(geometry.buttonRadius).toBeCloseTo(
-		Math.max(0, geometry.outerRadius - (geometry.rightGap - geometry.shadowOffset)),
-		0,
-	);
-	expect(geometry.bottomGap).toBeCloseTo(geometry.rightGap, 0);
-	expect(geometry.rightGap).toBeGreaterThan(0);
-	expect(geometry.bottomGap).toBeGreaterThan(0);
-	await page.context().close();
-});
+}
 
 test('list view persists on the local device after reload', async ({
 	browser,
