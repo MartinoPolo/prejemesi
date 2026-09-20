@@ -4,6 +4,7 @@ import {
 	parseCookiesForContext,
 	waitForAppHydration,
 } from './fixtures/auth-helpers.js';
+import { openDesktopDisplaySubmenu } from './fixtures/wishlist-helpers.js';
 
 const VIEWPORT_PADDING = 8;
 
@@ -96,23 +97,11 @@ async function expectInsideViewport(menu: Locator, width: number, height: number
 	expect(rect!.y + rect!.height).toBeLessThanOrEqual(height - VIEWPORT_PADDING + 1);
 }
 
-async function openDesktopDisplayRoot(page: Page) {
-	const trigger = page.getByTestId('desktop-display-trigger').filter({ visible: true });
-	await expect(trigger).toBeVisible();
-	await trigger.click();
-	const root = page.getByRole('menu', { name: 'Možnosti zobrazení' });
-	await expect(root).toBeVisible();
-	return { trigger, root };
-}
-
 async function openDisplaySubmenu(page: Page, name: RegExp) {
-	const { trigger, root } = await openDesktopDisplayRoot(page);
+	const submenu = await openDesktopDisplaySubmenu(page, name);
+	const trigger = page.getByTestId('desktop-display-trigger').filter({ visible: true });
+	const root = page.getByRole('menu', { name: 'Možnosti zobrazení' });
 	const subTrigger = root.getByRole('menuitem', { name });
-	await expect(subTrigger).toBeVisible();
-	await subTrigger.focus();
-	await page.keyboard.press('ArrowRight');
-	const submenu = page.locator('[data-slot="dropdown-menu-sub-content"]:visible');
-	await expect(submenu).toBeVisible();
 	return { trigger, root, subTrigger, submenu };
 }
 
