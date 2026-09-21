@@ -300,10 +300,18 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 				selectedIds: ['gift-1'],
 			});
 			const wrapper = document.querySelector<HTMLElement>('[data-gift-item]')!;
-			const surface = wrapper.querySelector<HTMLElement>(`[data-testid="${surfaceTestId}"]`)!;
-			const selectionPaint = getComputedStyle(surface, '::before');
-			const surfaceStyle = getComputedStyle(surface);
-			const surfaceRect = surface.getBoundingClientRect();
+			const interactionOwner = wrapper.querySelector<HTMLElement>(
+				`[data-testid="${surfaceTestId}"]`,
+			)!;
+			const selectedSurface =
+				viewMode === 'card'
+					? interactionOwner.querySelector<HTMLElement>(
+							':scope > .gift-card-painted-surface',
+						)!
+					: interactionOwner;
+			const selectionPaint = getComputedStyle(selectedSurface, '::before');
+			const surfaceStyle = getComputedStyle(selectedSurface);
+			const surfaceRect = selectedSurface.getBoundingClientRect();
 			const expectedPaddingWidth =
 				surfaceRect.width -
 				parseFloat(surfaceStyle.borderLeftWidth) -
@@ -327,7 +335,7 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			expect(parseFloat(selectionPaint.height)).toBeCloseTo(expectedPaddingHeight, 0);
 			if (expectFractionalWidth === true) {
 				expect(Number.isInteger(expectedPaddingWidth)).toBe(false);
-				expect(expectedPaddingWidth).not.toBe(surface.clientWidth);
+				expect(expectedPaddingWidth).not.toBe(selectedSurface.clientWidth);
 			}
 			for (const [
 				radiusProperty,
@@ -349,13 +357,16 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 			expect(surfaceStyle.overflow).toBe('visible');
 
 			if (viewMode === 'card') {
-				const hoverBridge = getComputedStyle(surface, '::after');
+				const ownerSelectionPaint = getComputedStyle(interactionOwner, '::before');
+				const hoverBridge = getComputedStyle(interactionOwner, '::after');
+				const ownerStyle = getComputedStyle(interactionOwner);
 				const ordinaryOffset = parseFloat(
-					surfaceStyle.getPropertyValue('--elevation-ordinary-offset'),
+					ownerStyle.getPropertyValue('--elevation-ordinary-offset'),
 				);
 
+				expect(ownerSelectionPaint.content).toBe('none');
 				expect(hoverBridge.position).toBe('absolute');
-				expect(parseFloat(hoverBridge.top)).toBeCloseTo(surface.clientHeight, 0);
+				expect(parseFloat(hoverBridge.top)).toBeCloseTo(interactionOwner.clientHeight, 0);
 				expect(parseFloat(hoverBridge.height)).toBeCloseTo(ordinaryOffset + 1, 5);
 				expect(parseFloat(hoverBridge.bottom)).toBeCloseTo(
 					-parseFloat(hoverBridge.height),
@@ -366,9 +377,9 @@ describe('WishlistGiftDisplay mobile collection geometry (issue #336)', () => {
 
 			if (viewMode === 'list' && width >= 640) {
 				const wrapperRect = wrapper.getBoundingClientRect();
-				const surfaceRect = surface.getBoundingClientRect();
-				expect(surfaceRect.left).toBeGreaterThan(wrapperRect.left);
-				expect(surfaceRect.right).toBeCloseTo(wrapperRect.right, 0);
+				const interactionRect = interactionOwner.getBoundingClientRect();
+				expect(interactionRect.left).toBeGreaterThan(wrapperRect.left);
+				expect(interactionRect.right).toBeCloseTo(wrapperRect.right, 0);
 			}
 
 			wrapper.focus();

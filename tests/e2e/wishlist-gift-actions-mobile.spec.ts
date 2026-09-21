@@ -63,9 +63,22 @@ test('selection survives responsive reflow while normal controls remain replaced
 	await selectionCount(toolbar, 2);
 	await expect(gift(page, 'Kolo pro výlety')).toHaveAttribute('aria-selected', 'true');
 	await expect(gift(page, 'Stan pro dva')).toHaveAttribute('aria-selected', 'true');
-	await expect(
-		toolbar.getByRole('checkbox', { name: 'Vybrat všechny viditelné dárky' }),
-	).toBeChecked();
+	const selectVisible = toolbar.getByRole('checkbox', {
+		name: 'Vybrat všechny viditelné dárky',
+	});
+	await expect(selectVisible).toBeChecked();
+	await selectVisible.click();
+	await selectionCount(toolbar, 0);
+	await expect(selectVisible).not.toBeChecked();
+	await expect(gift(page, 'Kolo pro výlety')).toHaveAttribute('role', 'checkbox');
+	await expect(gift(page, 'Kolo pro výlety')).toHaveAttribute('aria-selected', 'false');
+	await expect(gift(page, 'Stan pro dva')).toHaveAttribute('aria-selected', 'false');
+
+	await selectVisible.click();
+	await selectionCount(toolbar, 2);
+	await expect(selectVisible).toBeChecked();
+	await expect(gift(page, 'Kolo pro výlety')).toHaveAttribute('aria-selected', 'true');
+	await expect(gift(page, 'Stan pro dva')).toHaveAttribute('aria-selected', 'true');
 	await page.context().close();
 });
 

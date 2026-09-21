@@ -2,8 +2,9 @@ import { tv } from 'tailwind-variants';
 
 /**
  * Anime-sky sticker gift card (issue #102 REQ-14): ink border, hard offset
- * shadow, coherent lift on hover, dotted-mat image background that brightens on
- * hover. `dimmed` covers fully reserved (visitor/moderator view) and received
+ * shadow, coherent lift of the direct surface and all nested content on hover,
+ * dotted-mat image background that brightens on hover. `dimmed` covers fully
+ * reserved (visitor/moderator view) and received
  * gifts — the image is veiled and elevation stops; content, actions, and the
  * centered state overlay retain their contrast.
  */
@@ -13,7 +14,7 @@ export const giftCardVariants = tv({
 		// lock-step; the card itself lifts through the semantic owner selector in app.css.
 		card: 'gift-card-root group relative isolate rounded-panel',
 		surface:
-			'gift-card-painted-surface resting-shadow-nesting elevation-surface grid grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-[2.5px] border-ink bg-card pointer-events-auto transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
+			'gift-card-painted-surface resting-shadow-nesting elevation-surface relative grid grid-rows-[auto_minmax(0,1fr)_auto] rounded-[inherit] border-[2.5px] border-ink bg-card pointer-events-auto transition-[translate,scale,box-shadow] duration-(--duration-normal) ease-(--ease-standard)',
 		// 4:3 (issue #183, revises the earlier 1:1 shape): shorter cards, same
 		// `minmax(280px, 1fr)` grid column sizing.
 		imageArea:

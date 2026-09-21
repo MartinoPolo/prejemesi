@@ -125,7 +125,7 @@ test.describe('Issue #346 stable hover hit regions', () => {
 		}
 	});
 
-	test('stationary lower-edge pointer does not oscillate Display at every real zoom', async ({
+	test('Display and the complete gift card stay coherent at every real zoom', async ({
 		request,
 		baseURL,
 	}) => {
@@ -143,15 +143,63 @@ test.describe('Issue #346 stable hover hit regions', () => {
 				await page.locator('html').evaluate((html, depth) => {
 					html.dataset.depth = depth;
 				}, REPRESENTATIVE_DEPTH);
-				const evidence = await stationaryLowerEdge(
+				const displayEvidence = await stationaryLowerEdge(
 					page,
 					page.getByTestId('desktop-display-trigger').filter({ visible: true }),
 					'Display',
 				);
-				expectNoStationaryTransitions(evidence, ` at zoom ${zoom}`);
-				expect(evidence.samples.every(({ hovered }) => hovered)).toBe(true);
-				expect(evidence.hoverTransitions).toBe(0);
-				expectStableLift(evidence);
+				expectNoStationaryTransitions(displayEvidence, ` at zoom ${zoom}`);
+				expect(displayEvidence.samples.every(({ hovered }) => hovered)).toBe(true);
+				expect(displayEvidence.hoverTransitions).toBe(0);
+				expectStableLift(displayEvidence);
+
+				const cardView = page
+					.getByTestId('wishlist-toolbar')
+					.getByRole('radio', { name: 'Karta', exact: true })
+					.filter({ visible: true });
+				await cardView.click();
+				const card = page
+					.locator('[data-testid="gift-card-surface"].elevation-owner-raised')
+					.first();
+				await expect(card).toBeVisible();
+				const cardEvidence = await stationaryLowerEdge(
+					page,
+					card,
+					`Gift card at zoom ${zoom}`,
+				);
+				expectStableLift(cardEvidence);
+				expect(
+					(await bottomToTopSweep(page, card, `Gift card at zoom ${zoom}`))
+						.interveningUnhovered,
+				).toEqual([]);
+
+				const more = card.getByTestId('gift-more-actions');
+				await expect(more).toBeVisible();
+				await more.click();
+				await expect(more).toHaveAttribute('aria-expanded', 'true');
+				let menu = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
+				await expect(menu).toBeVisible();
+				expect(
+					await menu.evaluate((element) => element.contains(document.activeElement)),
+				).toBe(true);
+				await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+				await page.keyboard.press('Escape');
+				await expect(more).toBeFocused();
+
+				await more.press('Enter');
+				await expect(more).toHaveAttribute('aria-expanded', 'true');
+				menu = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
+				await expect(menu).toBeVisible();
+				await expect(menu.getByRole('menuitem').first()).toBeFocused();
+				await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+				await page.keyboard.press('Escape');
+				await expect(more).toBeFocused();
+
+				await page.mouse.click(cardEvidence.coordinate.x, cardEvidence.coordinate.y);
+				const detail = page.getByRole('dialog').filter({ visible: true });
+				await expect(detail).toBeVisible();
+				await detail.getByRole('button', { name: 'Zavřít', exact: true }).click();
+				await expect(detail).toBeHidden();
 			}
 		} finally {
 			await context.close();
