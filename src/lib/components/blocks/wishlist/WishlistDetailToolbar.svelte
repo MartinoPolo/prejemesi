@@ -1020,7 +1020,7 @@
 	{reorderAnnouncement}
 </div>
 
-<div class="wishlist-toolbar-sticky sticky top-3 z-(--z-sticky) min-w-0">
+<div class="wishlist-toolbar-sticky sticky z-(--z-sticky) min-w-0">
 	<div class="wishlist-toolbar-mask" data-testid="wishlist-toolbar-mask" aria-hidden="true"></div>
 	<div
 		class="wishlist-toolbar resting-shadow-nesting relative z-[1] min-w-0 rounded-panel border-[2.5px] border-ink bg-card shadow-sticker"
@@ -1122,14 +1122,17 @@
 
 <style>
 	.wishlist-toolbar-sticky {
+		--wishlist-toolbar-sticky-top: 0.75rem;
+
 		isolation: isolate;
+		top: var(--wishlist-toolbar-sticky-top);
 		max-width: 100%;
 	}
 
 	.wishlist-toolbar-mask {
 		position: absolute;
 		z-index: 0;
-		inset-block: -0.75rem 0;
+		inset-block: calc(-1 * var(--wishlist-toolbar-sticky-top)) 0;
 		inset-inline-start: 50%;
 		inline-size: 100cqw;
 		transform: translateX(-50%);
@@ -1359,6 +1362,15 @@
 		min-width: 0;
 		width: 100%;
 		flex: 1 1 100%;
+	}
+
+	@media (width < 640px) {
+		.wishlist-toolbar-sticky {
+			--wishlist-toolbar-sticky-top: max(
+				0px,
+				calc(0.75rem - var(--elevation-ordinary-offset))
+			);
+		}
 	}
 
 	@media (width >= 640px) {
