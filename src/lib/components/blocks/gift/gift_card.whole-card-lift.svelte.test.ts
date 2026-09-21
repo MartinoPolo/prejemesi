@@ -103,6 +103,53 @@ describe('GiftCard whole-card elevation', () => {
 		expect(onmore).toHaveBeenCalledTimes(2);
 	});
 
+	it('keeps nested control hover paint owned by the directly hovered control', async () => {
+		const screen = await render(GiftCardTestHost, {
+			gift: makeVisitorGift({
+				links: [{ url: 'https://example.com/gift', label: 'Obchod' }],
+				myReservationId: null,
+				reservedCount: 0,
+			}),
+			role: WISHLIST_ROLES.moderator,
+			onreserve: () => {},
+			onreceived: () => {},
+			onmore: () => {},
+		});
+
+		const owner = document.querySelector<HTMLElement>('[data-testid="gift-card-surface"]')!;
+		const title = owner.querySelector<HTMLElement>('h3')!;
+		const more = owner.querySelector<HTMLButtonElement>('[data-testid="gift-more-actions"]')!;
+		const received = owner.querySelector<HTMLButtonElement>(
+			'[data-testid="gift-received-toggle"]',
+		)!;
+		const sourceLink = owner.querySelector<HTMLAnchorElement>('a[target="_blank"]')!;
+		const moreSurface = more.querySelector<HTMLElement>(':scope > .elevation-surface')!;
+		const receivedSurface = received.querySelector<HTMLElement>(':scope > .elevation-surface')!;
+		const sourceSurface = sourceLink.querySelector<HTMLElement>(':scope > .elevation-surface')!;
+		const restingPaint = [moreSurface, receivedSurface, sourceSurface].map(
+			(element) => getComputedStyle(element).backgroundColor,
+		);
+
+		await userEvent.hover(title);
+		await expect
+			.poll(() =>
+				[moreSurface, receivedSurface, sourceSurface].map(
+					(element) => getComputedStyle(element).backgroundColor,
+				),
+			)
+			.toEqual(restingPaint);
+
+		await userEvent.hover(more);
+		await expect
+			.poll(() => getComputedStyle(moreSurface).backgroundColor)
+			.not.toBe(restingPaint[0]);
+		expect(more.matches(':hover')).toBe(true);
+		expect(received.matches(':hover')).toBe(false);
+		expect(sourceLink.matches(':hover')).toBe(false);
+
+		await screen.unmount();
+	});
+
 	it('does not make a dimmed card a raised owner', async () => {
 		await render(GiftCardTestHost, {
 			gift: makeVisitorGift({ isFullyReserved: true, reservedCount: 1 }),

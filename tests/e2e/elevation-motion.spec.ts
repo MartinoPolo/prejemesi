@@ -1,7 +1,13 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createTestUser } from './fixtures/test-data.js';
 import { registerAndGetPage, waitForAppHydration } from './fixtures/auth-helpers.js';
-import { createWishlistAndNavigate } from './fixtures/wishlist-helpers.js';
+import {
+	addGift,
+	createWishlistAndNavigate,
+	createWishlistForSomeoneAndNavigate,
+	shareWishlist,
+} from './fixtures/wishlist-helpers.js';
+import { visibleDirectReceivedAction } from './fixtures/gift-actions-helpers.js';
 
 interface RectSnapshot {
 	x: number;
@@ -43,6 +49,61 @@ async function sampleFrameRects(locator: Locator, frameCount = 12): Promise<Rect
 		}
 		return samples;
 	}, frameCount);
+}
+
+async function expectAnimationsSettled(locator: Locator) {
+	await expect
+		.poll(() =>
+			locator.evaluate(
+				(element) =>
+					element.getAnimations().filter((animation) => animation.playState === 'running')
+						.length,
+			),
+		)
+		.toBe(0);
+}
+
+async function expectHeldNestedPressDoesNotMove(
+	page: Page,
+	gift: Locator,
+	control: Locator,
+	view: 'card' | 'list',
+) {
+	await control.scrollIntoViewIfNeeded();
+	await expect(control).toBeVisible();
+	const giftSurface =
+		view === 'card'
+			? gift.getByTestId('gift-card-surface').locator(':scope > .elevation-surface')
+			: gift.getByTestId('gift-list-item');
+	const controlBounds = await control.boundingBox();
+	expect(controlBounds).not.toBeNull();
+	if (controlBounds === null) {
+		throw new Error('Nested control has no bounding box');
+	}
+	await page.mouse.move(
+		controlBounds.x + controlBounds.width / 2,
+		controlBounds.y + controlBounds.height / 2,
+	);
+	await expectAnimationsSettled(giftSurface);
+	const beforePress = await rect(giftSurface);
+
+	await page.mouse.down();
+	try {
+		for (const sample of await sampleFrameRects(giftSurface, 4)) {
+			expectSameRect(sample, beforePress);
+		}
+	} finally {
+		await page.mouse.move(1, 1);
+		await page.mouse.up();
+	}
+}
+
+function activeGift(page: Page, view: 'card' | 'list', name: string) {
+	return page
+		.locator(
+			`[data-wishlist-gift-collection][data-view-mode="${view}"]:not([inert]):not([aria-hidden="true"]) [data-gift-item]`,
+		)
+		.filter({ has: page.getByRole('heading', { name, exact: true }) });
 }
 
 async function giftGeometry(
@@ -114,7 +175,7 @@ function expectSameGiftGeometry(actual: GiftGeometrySnapshot, expected: GiftGeom
 test.use({ viewport: { width: 1280, height: 900 } });
 
 test.describe('Elevated interaction behavior', () => {
-	test('gift card press, release, and reduced motion keep the owner and content aligned', async ({
+	test('nested gift-card controls own hover and press while outside menu clicks only dismiss', async ({
 		page,
 	}) => {
 		await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -129,28 +190,287 @@ test.describe('Elevated interaction behavior', () => {
 		const owner = page
 			.locator('[data-testid="gift-card-surface"].elevation-owner-raised')
 			.filter({ has: page.getByTestId('gift-more-actions') })
-			.filter({ has: page.getByTestId('gift-card-price').locator('span') })
-			.filter({ has: page.getByTestId('gift-card-image-frame').locator('img') })
+			.filter({ has: page.getByTestId('reserve-button') })
+			.filter({ has: page.locator('a[target="_blank"]') })
 			.first();
+		const cardSurface = visualSurface(owner);
+		const more = owner.getByTestId('gift-more-actions');
+		const moreSurface = visualSurface(more);
+		const heading = owner.getByRole('heading', { level: 3 });
+		const image = owner.getByTestId('gift-card-image-frame');
+		const like = owner.locator('button:has([data-like-heart])');
+		const reserve = owner.getByTestId('reserve-button');
+		const sourceLink = owner.locator('a[target="_blank"]').first();
+		await expect(owner).toBeVisible();
+		for (const control of [more, like, reserve, sourceLink]) {
+			await expect(control).toBeVisible();
+		}
+
+		await page.mouse.move(1, 1);
+		const restingMoreBackground = await moreSurface.evaluate(
+			(element) => getComputedStyle(element).backgroundColor,
+		);
+		await heading.hover();
+		await expect
+			.poll(() =>
+				moreSurface.evaluate((element) => getComputedStyle(element).backgroundColor),
+			)
+			.toBe(restingMoreBackground);
+		await expect
+			.poll(() => cardSurface.evaluate((element) => getComputedStyle(element).translate))
+			.toBe('0px -2px');
+		await expectAnimationsSettled(cardSurface);
+
+		for (const control of [sourceLink, like, reserve]) {
+			await control.hover();
+			await expect
+				.poll(() => cardSurface.evaluate((element) => getComputedStyle(element).translate))
+				.toBe('0px -2px');
+			await expectAnimationsSettled(cardSurface);
+			const hoveredCard = await rect(cardSurface);
+			await page.mouse.down();
+			try {
+				await expect
+					.poll(() => cardSurface.evaluate((element) => getComputedStyle(element).scale))
+					.toBe('none');
+				expectSameRect(await rect(cardSurface), hoveredCard);
+			} finally {
+				await page.mouse.move(1, 1);
+				await page.mouse.up();
+			}
+		}
+
+		await more.hover();
+		await expect
+			.poll(() =>
+				moreSurface.evaluate((element) => getComputedStyle(element).backgroundColor),
+			)
+			.not.toBe(restingMoreBackground);
+		await expectAnimationsSettled(cardSurface);
+		const hoveredCard = await rect(cardSurface);
+		await page.mouse.down();
+		try {
+			await expect
+				.poll(() => moreSurface.evaluate((element) => getComputedStyle(element).scale))
+				.toBe('0.98');
+			await expect
+				.poll(() => cardSurface.evaluate((element) => getComputedStyle(element).scale))
+				.toBe('none');
+			expectSameRect(await rect(cardSurface), hoveredCard);
+		} finally {
+			await page.mouse.up();
+		}
+
+		const menu = page.locator('[data-slot="dropdown-menu-content"]:visible');
+		await expect(menu).toBeVisible();
+		await expect
+			.poll(() => cardSurface.evaluate((element) => getComputedStyle(element).pointerEvents))
+			.toBe('none');
+		await expect
+			.poll(() =>
+				more.evaluate((element) => getComputedStyle(element, '::after').pointerEvents),
+			)
+			.toBe('none');
+		await expect
+			.poll(() => like.evaluate((element) => getComputedStyle(element).pointerEvents))
+			.toBe('none');
+		const imageBounds = await image.boundingBox();
+		expect(imageBounds).not.toBeNull();
+		await page.mouse.click(
+			imageBounds!.x + imageBounds!.width / 2,
+			imageBounds!.y + imageBounds!.height / 2,
+		);
+		await expect(menu).toBeHidden();
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+	});
+
+	test('nested controls stay isolated across List and mobile layouts', async ({
+		browser,
+		request,
+		baseURL,
+	}) => {
+		const user = createTestUser('elevation-nested-controls');
+		const page = await registerAndGetPage(browser, request, baseURL!, user);
+		const giftName = 'Dárek s izolovanými akcemi';
+		await createWishlistForSomeoneAndNavigate(page, {
+			title: 'Izolované akce dárku',
+			recipientName: 'Anička',
+		});
+		await addGift(page, giftName, { primaryLink: 'https://example.com/product' });
+		await shareWishlist(page);
+
+		const switchView = async (view: 'card' | 'list') => {
+			const viewControl = page.getByTestId(`gift-view-${view}`).filter({ visible: true });
+			await viewControl.click();
+			await expect(viewControl).toHaveAttribute('aria-checked', 'true');
+			const gift = activeGift(page, view, giftName);
+			await expect(gift).toBeVisible();
+			return gift;
+		};
+
+		let gift = await switchView('list');
+		let sourceLink = gift.locator('a[target="_blank"]').first();
+		let like = gift.locator('button:has([data-like-heart])');
+		let reserve = gift.getByTestId('reserve-button');
+		let received = await visibleDirectReceivedAction(gift);
+		let more = gift.getByTestId('gift-more-actions');
+		expect(received).not.toBeNull();
+		if (received === null) {
+			throw new Error('Manager fixture must expose the Received action in desktop List');
+		}
+		for (const control of [sourceLink, like, reserve, received, more]) {
+			await expectHeldNestedPressDoesNotMove(page, gift, control, 'list');
+		}
+
+		await more.click();
+		const menu = page.locator('[data-slot="dropdown-menu-content"]:visible');
+		await expect(menu).toBeVisible();
+		const headingBounds = await gift.getByRole('heading', { name: giftName }).boundingBox();
+		expect(headingBounds).not.toBeNull();
+		if (headingBounds === null) {
+			throw new Error('Gift heading has no bounding box');
+		}
+		await page.mouse.click(
+			headingBounds.x + headingBounds.width / 2,
+			headingBounds.y + headingBounds.height / 2,
+		);
+		await expect(menu).toBeHidden();
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+
+		const popupPromise = page.waitForEvent('popup');
+		await sourceLink.click();
+		const popup = await popupPromise;
+		await expect.poll(() => popup.url()).toBe('https://example.com/product');
+		await popup.close();
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+
+		for (const view of ['card', 'list'] as const) {
+			await page.setViewportSize({ width: 390, height: 844 });
+			gift = await switchView(view);
+			sourceLink = gift.locator('a[target="_blank"]').first();
+			like = gift.locator('button:has([data-like-heart])');
+			reserve = gift.getByTestId('reserve-button');
+			received = await visibleDirectReceivedAction(gift);
+			more = gift.getByTestId('gift-more-actions');
+			const controls = [sourceLink, like, reserve, more];
+			if (received !== null) {
+				controls.push(received);
+			}
+			for (const control of controls) {
+				await expectHeldNestedPressDoesNotMove(page, gift, control, view);
+			}
+
+			await more.click();
+			const sheet = page.getByRole('dialog', { name: giftName });
+			await expect(sheet).toBeVisible();
+			const sheetOverlay = page.locator('[data-slot="sheet-overlay"]:visible');
+			await expect(sheetOverlay).toBeVisible();
+			await sheetOverlay.click({ position: { x: 8, y: 8 } });
+			await expect(sheet).toBeHidden();
+			await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+		}
+
+		await page.setViewportSize({ width: 1280, height: 900 });
+		gift = await switchView('list');
+		received = await visibleDirectReceivedAction(gift);
+		expect(received).not.toBeNull();
+		if (received === null) {
+			throw new Error('Manager fixture must expose the Received action in desktop List');
+		}
+		const receivedMutation = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' && response.url().startsWith(baseURL!),
+		);
+		await received.click();
+		await receivedMutation;
+		await expect(gift.locator('[data-state-primary][data-state-kind="received"]')).toHaveText(
+			'Přijato',
+		);
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+
+		await page.evaluate(() => {
+			const compactValue = JSON.stringify('compact');
+			localStorage.setItem('prejemesi-gift-view-mode', compactValue);
+			window.dispatchEvent(
+				new StorageEvent('storage', {
+					key: 'prejemesi-gift-view-mode',
+					newValue: compactValue,
+				}),
+			);
+		});
+		const compactCollection = page.locator(
+			'[data-wishlist-gift-collection][data-view-mode="compact"]:not([inert])',
+		);
+		await expect(compactCollection).toBeVisible();
+		const compactRow = compactCollection.locator('tr').filter({ hasText: giftName });
+		await expect(compactRow).toBeVisible();
+		const compactLike = compactRow.locator('button:has([data-like-heart])');
+		const initialLikeState = await compactLike.getAttribute('aria-pressed');
+		const likeMutation = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' && response.url().startsWith(baseURL!),
+		);
+		await compactLike.click();
+		await likeMutation;
+		await expect(compactLike).toHaveAttribute(
+			'aria-pressed',
+			initialLikeState === 'true' ? 'false' : 'true',
+		);
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+
+		const compactPopupPromise = page.waitForEvent('popup');
+		await compactRow.locator('a[target="_blank"]').click();
+		const compactPopup = await compactPopupPromise;
+		await expect.poll(() => compactPopup.url()).toBe('https://example.com/product');
+		await compactPopup.close();
+		await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
+		await page.context().close();
+	});
+
+	test('gift card press, release, and reduced motion keep the owner and content aligned', async ({
+		page,
+	}) => {
+		await page.emulateMedia({ reducedMotion: 'no-preference' });
+		await page.goto('/w/xmas2026');
+		await expect(page.getByTestId('wishlist-toolbar')).toBeVisible();
+		await page
+			.getByTestId('wishlist-toolbar')
+			.getByRole('radio', { name: 'Karta', exact: true })
+			.filter({ visible: true })
+			.click();
+
+		const owner = page
+			.locator('[data-testid="gift-card-surface"].elevation-owner-raised')
+			.filter({
+				has: page.getByRole('heading', {
+					name: 'Kávovar DeLonghi',
+					exact: true,
+					level: 3,
+				}),
+			});
 		const surface = visualSurface(owner);
 		const content = [
-			owner.getByTestId('gift-card-image-frame').locator('img'),
+			owner.getByTestId('gift-card-image-frame'),
 			owner.getByRole('heading', { level: 3 }),
 			owner.getByTestId('gift-card-price').locator('span'),
 			owner.getByTestId('gift-more-actions'),
 		];
 		await expect(owner).toBeVisible();
+		await owner.scrollIntoViewIfNeeded();
 		for (const element of content) {
 			await expect(element).toBeVisible();
 		}
+		await content[1]!.scrollIntoViewIfNeeded();
+		await page.mouse.move(0, 500);
 		await page.mouse.move(1, 1);
 		await expect
 			.poll(() => surface.evaluate((element) => getComputedStyle(element).translate))
 			.toBe('none');
 		const resting = await giftGeometry(owner, surface, content);
+		const pressTarget = resting.content[1]!;
 		const point = {
-			x: resting.owner.x + resting.owner.width / 2,
-			y: resting.owner.y + resting.owner.height / 3,
+			x: pressTarget.x + pressTarget.width / 2,
+			y: pressTarget.y + pressTarget.height / 2,
 		};
 
 		await page.mouse.move(point.x, point.y);

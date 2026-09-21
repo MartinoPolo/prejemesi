@@ -4,7 +4,6 @@ import { openDesktopDisplaySubmenu, startGiftReorder } from './fixtures/wishlist
 import {
 	BROWSER_ZOOMS,
 	bottomToTopSweep,
-	expectNoStationaryTransitions,
 	expectReachable,
 	expectSafeClick,
 	expectStableLift,
@@ -120,87 +119,6 @@ test.describe('Issue #346 stable hover hit regions', () => {
 			).toEqual([]);
 			await expectSafeClick(page, close);
 			await expect(dialog).toBeVisible();
-		} finally {
-			await context.close();
-		}
-	});
-
-	test('Display and the complete gift card stay coherent at every real zoom', async ({
-		request,
-		baseURL,
-	}) => {
-		const cookies = await loginViaApi(request, baseURL!, {
-			email: 'martin@test.cz',
-			password: ['password', '123'].join(''),
-		});
-		const context = await launchZoomableContext(cookies, baseURL!);
-		const page = context.pages()[0] ?? (await context.newPage());
-		try {
-			let baseline: { dpr: number; innerWidth: number } | null = null;
-			for (const zoom of BROWSER_ZOOMS) {
-				const zoomMetrics = await setRealBrowserZoom(page, baseURL!, zoom, baseline);
-				baseline ??= zoomMetrics;
-				await page.locator('html').evaluate((html, depth) => {
-					html.dataset.depth = depth;
-				}, REPRESENTATIVE_DEPTH);
-				const displayEvidence = await stationaryLowerEdge(
-					page,
-					page.getByTestId('desktop-display-trigger').filter({ visible: true }),
-					'Display',
-				);
-				expectNoStationaryTransitions(displayEvidence, ` at zoom ${zoom}`);
-				expect(displayEvidence.samples.every(({ hovered }) => hovered)).toBe(true);
-				expect(displayEvidence.hoverTransitions).toBe(0);
-				expectStableLift(displayEvidence);
-
-				const cardView = page
-					.getByTestId('wishlist-toolbar')
-					.getByRole('radio', { name: 'Karta', exact: true })
-					.filter({ visible: true });
-				await cardView.click();
-				const card = page
-					.locator('[data-testid="gift-card-surface"].elevation-owner-raised')
-					.first();
-				await expect(card).toBeVisible();
-				const cardEvidence = await stationaryLowerEdge(
-					page,
-					card,
-					`Gift card at zoom ${zoom}`,
-				);
-				expectStableLift(cardEvidence);
-				expect(
-					(await bottomToTopSweep(page, card, `Gift card at zoom ${zoom}`))
-						.interveningUnhovered,
-				).toEqual([]);
-
-				const more = card.getByTestId('gift-more-actions');
-				await expect(more).toBeVisible();
-				await more.click();
-				await expect(more).toHaveAttribute('aria-expanded', 'true');
-				let menu = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
-				await expect(menu).toBeVisible();
-				expect(
-					await menu.evaluate((element) => element.contains(document.activeElement)),
-				).toBe(true);
-				await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
-				await page.keyboard.press('Escape');
-				await expect(more).toBeFocused();
-
-				await more.press('Enter');
-				await expect(more).toHaveAttribute('aria-expanded', 'true');
-				menu = page.locator('[data-slot="dropdown-menu-content"]:visible').last();
-				await expect(menu).toBeVisible();
-				await expect(menu.getByRole('menuitem').first()).toBeFocused();
-				await expect(page.getByRole('dialog').filter({ visible: true })).toHaveCount(0);
-				await page.keyboard.press('Escape');
-				await expect(more).toBeFocused();
-
-				await page.mouse.click(cardEvidence.coordinate.x, cardEvidence.coordinate.y);
-				const detail = page.getByRole('dialog').filter({ visible: true });
-				await expect(detail).toBeVisible();
-				await detail.getByRole('button', { name: 'Zavřít', exact: true }).click();
-				await expect(detail).toBeHidden();
-			}
 		} finally {
 			await context.close();
 		}

@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { resolveRuntimeEnvironment } from './src/lib/config/runtime_environment.js';
-import { sharedChromeLaunchOptions } from './scripts/browser-automation.mjs';
+import { sharedBrowserTestLaunchOptions } from './scripts/browser-automation.mjs';
 import { PREFERRED_APPLICATION_PORT } from './scripts/local-development-ports.mjs';
 
 // Read current git branch at dev-server start so each worktree gets its own
@@ -212,7 +212,7 @@ export default defineConfig({
 					browser: {
 						enabled: true,
 						screenshotFailures: process.env.VITEST_SCREENSHOT_FAILURES !== 'false',
-						provider: playwright({ launchOptions: sharedChromeLaunchOptions }),
+						provider: playwright({ launchOptions: sharedBrowserTestLaunchOptions }),
 						instances: [{ browser: 'chromium', headless: true }],
 						// Fixed API port so the two browser projects (client + storybook) bind
 						// distinct Vitest servers instead of racing for a default port when both
@@ -254,7 +254,7 @@ export default defineConfig({
 						enabled: true,
 						headless: true,
 						screenshotFailures: process.env.VITEST_SCREENSHOT_FAILURES !== 'false',
-						provider: playwright({ launchOptions: sharedChromeLaunchOptions }),
+						provider: playwright({ launchOptions: sharedBrowserTestLaunchOptions }),
 						instances: [{ browser: 'chromium' }],
 						api: {
 							host: '127.0.0.1',
